@@ -215,7 +215,7 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithoutOptimization) {
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   auto* element = radon_node->element();
-  element->overflow_ = FiberElement::OVERFLOW_XY;
+  element->computed_css_style()->SetOverflowDefaultVisible(true);
   EXPECT_TRUE(element->is_fiber_element());
   EXPECT_TRUE(element->is_view());
   EXPECT_TRUE(element->CanBeLayoutOnly());
@@ -231,7 +231,7 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithOptimization) {
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   auto* element = radon_node->element();
-  element->overflow_ = FiberElement::OVERFLOW_XY;
+  element->computed_css_style()->SetOverflowDefaultVisible(true);
   EXPECT_TRUE(element->is_fiber_element());
   EXPECT_TRUE(element->is_view());
   EXPECT_TRUE(element->CanBeLayoutOnly());
@@ -255,7 +255,7 @@ TEST_F(RadonNodeTest, TestComponentCanBeLayoutOnly) {
                                        nullptr, nullptr, 123, "component");
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
-  element->overflow_ = FiberElement::OVERFLOW_XY;
+  element->computed_css_style()->SetOverflowDefaultVisible(true);
   EXPECT_TRUE(element->is_fiber_element());
   EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_component());
   EXPECT_FALSE(static_cast<FiberElement*>(element.get())->is_wrapper());
@@ -272,7 +272,7 @@ TEST_F(RadonNodeTest,
                                        nullptr, nullptr, 123, "component");
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
-  element->overflow_ = FiberElement::OVERFLOW_XY;
+  element->computed_css_style()->SetOverflowDefaultVisible(true);
   EXPECT_TRUE(element->is_fiber_element());
   EXPECT_TRUE(static_cast<FiberElement*>(element.get())->is_component());
   EXPECT_FALSE(static_cast<FiberElement*>(element.get())->is_wrapper());

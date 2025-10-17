@@ -265,8 +265,9 @@ TEST_F(ElementContainerTest, TransitionToNativeView) {
   element = manager->CreateNode("view", nullptr);
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+      tasm::CSSValue(
+          lepus::Value(static_cast<int32_t>(starlight::OverflowType::kVisible)),
+          lynx::tasm::CSSValuePattern::ENUM));
   element->FlushProps();
   ASSERT_TRUE(element->IsLayoutOnly());
   element->TransitionToNativeView();
@@ -354,7 +355,7 @@ TEST_F(ElementContainerTest, FiberElementLayoutOnlyTransitionCase0) {
   element0->MarkCanBeLayoutOnly(false);
 
   auto element1 = manager->CreateFiberView();
-  element1->overflow_ = Element::OVERFLOW_XY;
+  element1->computed_css_style()->SetOverflowDefaultVisible(true);
   element1->has_layout_only_props_ = true;
 
   page->InsertNode(element0);
@@ -553,7 +554,7 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutForFixed) {
   element0->SetStyle(CSSPropertyID::kPropertyIDTop, lepus::Value("100px"));
   element0->SetStyle(CSSPropertyID::kPropertyIDPosition,
                      lepus::Value("absolute"));
-  element0->overflow_ = Element::OVERFLOW_XY;
+  element0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   auto element_fixed = manager->CreateFiberView();
   element_fixed->SetAttribute("enable-layout", lepus::Value("false"));
@@ -606,7 +607,7 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutWithException) {
   element0->SetStyle(CSSPropertyID::kPropertyIDTop, lepus::Value("100px"));
   element0->SetStyle(CSSPropertyID::kPropertyIDPosition,
                      lepus::Value("absolute"));
-  element0->overflow_ = Element::OVERFLOW_XY;
+  element0->computed_css_style()->SetOverflowDefaultVisible(true);
   page->InsertNode(element0);
 
   page->FlushActionsAsRoot();

@@ -446,14 +446,6 @@ class Element : public lepus::RefCounted,
 
   bool NeedCreateNodeAsync() { return create_node_async_; }
 
-  static constexpr short OVERFLOW_HIDDEN = 0x00;
-  static constexpr short OVERFLOW_X = 0x01;
-  static constexpr short OVERFLOW_Y = 0x02;
-  static constexpr short OVERFLOW_XY = (OVERFLOW_X | OVERFLOW_Y);
-  short overflow() { return overflow_; }
-
-  void CheckOverflow(CSSPropertyID id, const tasm::CSSValue& value);
-
   bool HasPaintingNode() { return has_painting_node_; }
   void ResetPropBundle();
 
@@ -750,8 +742,6 @@ class Element : public lepus::RefCounted,
   int32_t layout_node_type_{kLayoutNodeTypeNotInit};
 
   int pseudo_type_{0};
-
-  short overflow_{0};
 
   ElementArchTypeEnum arch_type_;
 

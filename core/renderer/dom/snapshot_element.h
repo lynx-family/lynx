@@ -114,7 +114,7 @@ static SnapshotElement* constructSnapshotElementTree(
   }
   root->id = node->impl_id();
   root->flatten = node->TendToFlatten();
-  root->overflow = node->overflow();
+  root->overflow = node->computed_css_style()->GetOverflowType();
 
   root->children = std::vector<SnapshotElement*>();
 

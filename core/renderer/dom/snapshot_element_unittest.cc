@@ -81,8 +81,8 @@ TEST_F(SnapshotElementTest, SnapshotElementJsonContent) {
   const char* dump_str = buffer.GetString();
   const char* expect_str =
       "{\"i\":10,\"w\":0.0,\"h\":0.0,\"l\":0.0,\"t\":0.0,\"n\":\"page\",\"id\":"
-      "\"\",\"f\":true,\"o\":0,\"c\":[{\"i\":11,\"w\":0.0,\"h\":0.0,\"l\":50.0,"
-      "\"t\":51.0,\"n\":\"view\",\"id\":\"\",\"f\":false,\"o\":0,\"cl\":["
+      "\"\",\"f\":true,\"o\":257,\"c\":[{\"i\":11,\"w\":0.0,\"h\":0.0,\"l\":50."
+      "0,\"t\":51.0,\"n\":\"view\",\"id\":\"\",\"f\":false,\"o\":257,\"cl\":["
       "\"class1\",\"class2\",\"class3\"],\"at\":{\"attribute_key\":\"attribute_"
       "value\"}}]}";
   EXPECT_STREQ(dump_str, expect_str);

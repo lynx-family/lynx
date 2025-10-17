@@ -234,7 +234,6 @@ FiberElement::~FiberElement() {
 
 void FiberElement::SetDefaultOverflow(bool visible) {
   computed_css_style()->SetOverflowDefaultVisible(visible);
-  overflow_ = visible ? OVERFLOW_XY : OVERFLOW_HIDDEN;
 }
 
 void FiberElement::RequireFlush() {
@@ -3984,7 +3983,7 @@ void FiberElement::DispatchAsyncResolveSubtreeProperty() {
 
 bool FiberElement::CanBeLayoutOnly() const {
   return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
-         has_layout_only_props_ && overflow_ == OVERFLOW_XY;
+         has_layout_only_props_ && computed_css_style()->IsOverflowXY();
 }
 
 void FiberElement::MarkLayoutDirtyLite() {

@@ -68,14 +68,10 @@ RadonElement::RadonElement(const base::String& tag,
   if (is_view_ || tag_ == "component") {
     computed_css_style()->SetOverflowDefaultVisible(
         manager->GetDefaultOverflowVisible());
-    overflow_ =
-        manager->GetDefaultOverflowVisible() ? OVERFLOW_XY : OVERFLOW_HIDDEN;
   }
   if (is_text_ || tag_ == "x-text") {
     computed_css_style()->SetOverflowDefaultVisible(
         manager->GetDefaultTextOverflow());
-    overflow_ =
-        manager->GetDefaultTextOverflow() ? OVERFLOW_XY : OVERFLOW_HIDDEN;
   }
 }
 
@@ -920,7 +916,7 @@ void RadonElement::UpdatePlatformNodeTag() {
 
 bool RadonElement::CanBeLayoutOnly() const {
   return element_manager()->GetEnableLayoutOnly() && has_layout_only_props_ &&
-         overflow_ == OVERFLOW_XY &&
+         computed_css_style()->IsOverflowXY() &&
          (!is_component() || enable_component_layout_only_);
 }
 

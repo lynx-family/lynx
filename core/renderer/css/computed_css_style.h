@@ -241,6 +241,16 @@ class ComputedCSSStyle {
 
   OverflowType GetOverflowY() const { return overflow_y_; }
 
+  int32_t GetOverflowType() const {
+    return (static_cast<int32_t>(overflow_) << 16) |
+           (static_cast<int32_t>(overflow_x_) << 8) |
+           static_cast<int32_t>(overflow_y_);
+  }
+
+  bool IsOverflowXY() const { return origin_overflow_ == OVERFLOW_XY; }
+
+  bool IsOverflowHidden() const { return origin_overflow_ == OVERFLOW_HIDDEN; }
+
   base::flex_optional<TextAttributes>& GetTextAttributes() {
     return text_attributes_;
   }
@@ -366,6 +376,8 @@ class ComputedCSSStyle {
   }
 
  private:
+  void SetOriginOverflowMask(tasm::CSSPropertyID id);
+
   friend class tasm::ComputedCSSStyleCssTextHelper;
   using StyleFunc = bool (ComputedCSSStyle::*)(const tasm::CSSValue&,
                                                const bool reset);
@@ -423,9 +435,22 @@ class ComputedCSSStyle {
   XAppRegionType app_region_ = XAppRegionType::kNone;
   XAnimationColorInterpolationType new_animator_interpolation_ =
       XAnimationColorInterpolationType::kAuto;
+
+  static constexpr int32_t OVERFLOW_HIDDEN = 0x00;
+  static constexpr int32_t OVERFLOW_X = 0x01;
+  static constexpr int32_t OVERFLOW_Y = 0x02;
+  static constexpr int32_t OVERFLOW_XY = (OVERFLOW_X | OVERFLOW_Y);
+  // TODO(songshourui.null): Currently, `overflow` is not treated as a shorthand
+  // property; `overflow`, `overflow-x`, and `overflow-y` are handled
+  // individually. To avoid breaking changes, the original logic from `Element`
+  // is retained. This can be optimized later by treating `overflow` as a
+  // shorthand property.
+  int32_t origin_overflow_{0};
+
   OverflowType overflow_{DefaultComputedStyle::DEFAULT_OVERFLOW};
   OverflowType overflow_x_{DefaultComputedStyle::DEFAULT_OVERFLOW};
   OverflowType overflow_y_{DefaultComputedStyle::DEFAULT_OVERFLOW};
+
   VisibilityType visibility_{DefaultComputedStyle::DEFAULT_VISIBILITY};
   PointerEventsType pointer_events_ = PointerEventsType::kAuto;
 

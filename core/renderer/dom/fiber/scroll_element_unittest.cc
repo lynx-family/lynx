@@ -78,14 +78,14 @@ TEST_F(ScrollElementTest, TestChildInsert0) {
                          lepus::Value("200px"));
   child_view_0->SetStyle(CSSPropertyID::kPropertyIDHeight,
                          lepus::Value("200px"));
-  child_view_0->overflow_ = Element::OVERFLOW_XY;
+  child_view_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   auto child_view_1 = manager->CreateFiberView();
   child_view_1->SetStyle(CSSPropertyID::kPropertyIDWidth,
                          lepus::Value("200px"));
   child_view_1->SetStyle(CSSPropertyID::kPropertyIDHeight,
                          lepus::Value("200px"));
-  child_view_1->overflow_ = Element::OVERFLOW_XY;
+  child_view_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->InsertNode(scroll_view);
   page->InsertNode(child_view_0);

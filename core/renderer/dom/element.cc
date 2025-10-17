@@ -110,7 +110,6 @@ Element::Element(const Element& element, bool clone_resolved_props)
     : tag_(element.tag_),
       id_(element.id_),
       node_index_(element.node_index_),
-      overflow_(element.overflow_),
       arch_type_(element.arch_type_),
       is_fixed_(element.is_fixed_),
       is_sticky_(element.is_sticky_),
@@ -364,18 +363,19 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
     return;
   }
 
-  // if the style is not layout only, it shall be resolved to prop_bundle
+  // resolve style and push to prop_bundle
+  ResolveStyleValue(css_id, value);
 
   // overflow is special: if overflow is visible can be treated as layout only
   // prop!
   if (css_id == kPropertyIDOverflow || css_id == kPropertyIDOverflowX ||
       css_id == kPropertyIDOverflowY) {
-    CheckOverflow(css_id, value);
     // take care: overflow:visible is allowed to be layout only
-    if (overflow() != OVERFLOW_XY) {
+    if (!computed_css_style()->IsOverflowXY()) {
       has_layout_only_props_ = false;
     }
   } else {
+    // if the style is not layout only, it shall be resolved to prop_bundle
     // such style is not layout only
     if (!enable_extended_layout_only_opt_ ||
         !IsExtendedLayoutOnlyProps(css_id)) {
@@ -397,9 +397,6 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
 #endif
     }
   }
-
-  // resolve style and push to prop_bundle
-  ResolveStyleValue(css_id, value);
 }
 
 bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
@@ -995,7 +992,7 @@ starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
 
 bool Element::ShouldAvoidFlattenForView() {
   return is_view() && element_manager()->GetDefaultOverflowVisible() &&
-         overflow_ == OVERFLOW_HIDDEN &&
+         computed_css_style()->IsOverflowHidden() &&
          computed_css_style()->HasBorderRadius();
 }
 
@@ -1112,30 +1109,6 @@ void Element::CheckFlattenRelatedProp(const base::String& key,
   if (check_key(key) || check_key_and_value(key, value) ||
       check_clip_radius(key, value)) {
     has_non_flatten_attrs_ = true;
-  }
-}
-
-void Element::CheckOverflow(CSSPropertyID id, const tasm::CSSValue& value) {
-#define CHECK_OVERFLOW_VAL(mask)                            \
-  if ((starlight::OverflowType)value.GetValue().Number() == \
-      starlight::OverflowType::kVisible) {                  \
-    overflow_ |= (mask);                                    \
-  } else {                                                  \
-    overflow_ &= ~(mask);                                   \
-  }
-
-  switch (id) {
-    case CSSPropertyID::kPropertyIDOverflow:
-      CHECK_OVERFLOW_VAL(0x03)
-      break;
-    case CSSPropertyID::kPropertyIDOverflowX:
-      CHECK_OVERFLOW_VAL(0x01)
-      break;
-    case CSSPropertyID::kPropertyIDOverflowY:
-      CHECK_OVERFLOW_VAL(0x02)
-      break;
-    default:
-      break;
   }
 }
 

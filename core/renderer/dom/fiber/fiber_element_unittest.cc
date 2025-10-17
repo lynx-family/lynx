@@ -102,6 +102,61 @@ TEST_P(FiberElementTest, TestRefType) {
   EXPECT_EQ(prim_obj->GetRefType(), lepus::RefType::kJSIObject);
 }
 
+TEST_P(FiberElementTest, TestSetOverflow) {
+  manager->GetLynxEnvConfig().font_scale_ = 1.3f;
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
+
+  auto page = manager->CreateFiberPage("0", 0);
+
+  auto impl = lepus::Value("visible");
+  CSSPropertyID id = CSSPropertyID::kPropertyIDOverflow;
+  CSSParserConfigs configs;
+  auto map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowXY());
+
+  impl = lepus::Value("hidden");
+  id = CSSPropertyID::kPropertyIDOverflow;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowHidden());
+
+  impl = lepus::Value("visible");
+  id = CSSPropertyID::kPropertyIDOverflowX;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+
+  impl = lepus::Value("visible");
+  id = CSSPropertyID::kPropertyIDOverflowY;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+
+  impl = lepus::Value("hidden");
+  id = CSSPropertyID::kPropertyIDOverflowX;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+
+  impl = lepus::Value("hidden");
+  id = CSSPropertyID::kPropertyIDOverflowY;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowHidden());
+
+  impl = lepus::Value("visible");
+  id = CSSPropertyID::kPropertyIDOverflow;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+}
+
 TEST_P(FiberElementTest, TestSetComputedFontSize0) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
@@ -378,7 +433,7 @@ TEST_P(FiberElementTest, ListItemTest) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -390,7 +445,7 @@ TEST_P(FiberElementTest, ListItemTest) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
 
@@ -401,7 +456,7 @@ TEST_P(FiberElementTest, ListItemTest) {
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   auto scroll_view = manager->CreateFiberScrollView("scroll-view");
   scroll_view->InsertNode(fiber_element_1);
@@ -422,7 +477,7 @@ TEST_P(FiberElementTest, ListItemTest) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -2589,7 +2644,7 @@ TEST_P(FiberElementTest, TestOverflowAndLayoutOnly) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -2601,7 +2656,7 @@ TEST_P(FiberElementTest, TestOverflowAndLayoutOnly) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
 
@@ -2612,7 +2667,7 @@ TEST_P(FiberElementTest, TestOverflowAndLayoutOnly) {
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   auto scroll_view = manager->CreateFiberScrollView("scroll-view");
   scroll_view->InsertNode(fiber_element_1);
@@ -2633,7 +2688,7 @@ TEST_P(FiberElementTest, TestOverflowAndLayoutOnly) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -2706,7 +2761,7 @@ TEST_P(FiberElementTest, TestIsLayoutOnlyUpdate) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   // child1
   auto fiber_element_1 = manager->CreateFiberView();
@@ -2715,7 +2770,7 @@ TEST_P(FiberElementTest, TestIsLayoutOnlyUpdate) {
   page->InsertNode(fiber_element_1);
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
   EXPECT_TRUE(fiber_element_0->is_layout_only_);
@@ -2771,21 +2826,21 @@ TEST_P(FiberElementTest, TestZIndexRemovedRelated) {
   fiber_element->parent_component_element_ = page.get();
   page->InsertNode(fiber_element);
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   // child0
   auto fiber_element_0 = manager->CreateFiberView();
   fiber_element_0->parent_component_element_ = page.get();
   fiber_element->InsertNode(fiber_element_0);
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(false);
 
   // child1
   auto fiber_element_1 = manager->CreateFiberView();
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(false);
   fiber_element_0->InsertNode(fiber_element_1);
 
   page->FlushActionsAsRoot();
@@ -9709,7 +9764,7 @@ TEST_P(FiberElementTest, CopyListItemTest) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -9727,7 +9782,7 @@ TEST_P(FiberElementTest, CopyListItemTest) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
   platform_impl_->Flush();
@@ -9747,14 +9802,14 @@ TEST_P(FiberElementTest, CopyListItemTest) {
       platform_impl_->node_map_.find(fiber_element_0->impl_id())->second;
   EXPECT_TRUE(!node->props_.empty());
   EXPECT_EQ(node->props_["background-color"], lepus::Value(4278190080U));
-  EXPECT_EQ(node->props_["overflow"], lepus::Value(1));
+  EXPECT_EQ(node->props_["overflow"], lepus::Value(0));
 
   // child1
   auto fiber_element_1 = manager->CreateFiberView();
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
   fiber_element_1 = fml::AdoptRef<ViewElement>(
       new ViewElement(*static_cast<ViewElement*>(fiber_element_1.get()), true));
   fiber_element_1->AttachToElementManager(
@@ -9788,7 +9843,7 @@ TEST_P(FiberElementTest, CopyListItemTest) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -10720,7 +10775,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -10730,7 +10785,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
 
@@ -10739,7 +10794,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   auto scroll_view = manager->CreateFiberScrollView("scroll-view");
   scroll_view->InsertNode(fiber_element_1);
@@ -10759,7 +10814,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -10839,7 +10894,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -10849,7 +10904,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
 
@@ -10858,14 +10913,14 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   // child2
   auto fiber_element_2 = manager->CreateFiberView();
   fiber_element_2->parent_component_element_ = page.get();
   fiber_element_2->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_2->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_2->computed_css_style()->SetOverflowDefaultVisible(true);
   fiber_element_2->SetStyle(CSSPropertyID::kPropertyIDPosition,
                             lepus::Value("fixed"));
   fiber_element_1->InsertNode(fiber_element_2);
@@ -10888,7 +10943,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -10938,7 +10993,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain3) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -10948,7 +11003,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain3) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
 
@@ -10957,14 +11012,14 @@ TEST_P(FiberElementTest, TestGenerateResponseChain3) {
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   // child2
   auto fiber_element_2 = manager->CreateFiberView();
   fiber_element_2->parent_component_element_ = page.get();
   fiber_element_2->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_2->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_2->computed_css_style()->SetOverflowDefaultVisible(true);
   fiber_element_2->SetStyle(CSSPropertyID::kPropertyIDPosition,
                             lepus::Value("fixed"));
   fiber_element_1->InsertNode(fiber_element_2);
@@ -10987,7 +11042,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain3) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -11025,7 +11080,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain4) {
   page->InsertNode(fiber_element);
   fiber_element->SetClass("test01");
   // force the element to overflow hidden
-  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(false);
 
   page->FlushActionsAsRoot();
 
@@ -11035,7 +11090,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain4) {
   page->InsertNode(fiber_element_0);
   fiber_element_0->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_0->computed_css_style()->SetOverflowDefaultVisible(true);
 
   page->FlushActionsAsRoot();
 
@@ -11044,14 +11099,14 @@ TEST_P(FiberElementTest, TestGenerateResponseChain4) {
   fiber_element_1->parent_component_element_ = page.get();
   fiber_element_1->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_1->computed_css_style()->SetOverflowDefaultVisible(true);
 
   // child2
   auto fiber_element_2 = manager->CreateFiberView();
   fiber_element_2->parent_component_element_ = page.get();
   fiber_element_2->SetClass("test01");
   // force the element to overflow visible
-  fiber_element_2->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_2->computed_css_style()->SetOverflowDefaultVisible(true);
   fiber_element_2->SetStyle(CSSPropertyID::kPropertyIDPosition,
                             lepus::Value("fixed"));
   fiber_element_1->InsertNode(fiber_element_2);
@@ -11074,7 +11129,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain4) {
 
   comp->SetClass("test01");
   // force the element to overflow visible
-  comp->overflow_ = Element::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
 
   lepus::Value component_at_index(10);
   lepus::Value enqueue_component;
@@ -11113,7 +11168,7 @@ TEST_P(FiberElementTest, ExtendedLayoutOnlyOpt) {
   auto page = manager->CreateFiberPage("page", 11);
 
   auto parent = manager->CreateFiberView();
-  parent->overflow_ = Element::OVERFLOW_XY;
+  parent->computed_css_style()->SetOverflowDefaultVisible(true);
 
   auto child = manager->CreateFiberView();
   child->MarkCanBeLayoutOnly(false);
@@ -11139,7 +11194,7 @@ TEST_P(FiberElementTest, ExtendedLayoutOnlyOpt) {
   painting_context->Flush();
 
   auto parent2 = manager->CreateFiberView();
-  parent2->overflow_ = Element::OVERFLOW_XY;
+  parent2->computed_css_style()->SetOverflowDefaultVisible(true);
   parent2->SetStyle(CSSPropertyID::kPropertyIDTextAlign,
                     lepus::Value("center"));
   parent2->SetStyle(CSSPropertyID::kPropertyIDDirection, lepus::Value("ltr"));
@@ -14247,13 +14302,14 @@ TEST_P(FiberElementTest, TestCanBeLayoutOnly) {
 
   auto comp = manager->CreateFiberComponent(component_id, css_id, entry_name,
                                             component_name, path);
-  comp->overflow_ = FiberElement::OVERFLOW_XY;
+  comp->computed_css_style()->SetOverflowDefaultVisible(true);
   // component can be layout only by default.
   EXPECT_TRUE(comp->CanBeLayoutOnly());
 
   // create view
   auto fiber_element = manager->CreateFiberView();
-  fiber_element->overflow_ = FiberElement::OVERFLOW_XY;
+  fiber_element->computed_css_style()->SetOverflowDefaultVisible(true);
+
   // view can be layout only by default.
   EXPECT_TRUE(fiber_element->CanBeLayoutOnly());
 

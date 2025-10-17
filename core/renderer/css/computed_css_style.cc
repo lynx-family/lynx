@@ -684,6 +684,7 @@ void ComputedCSSStyle::ResetOverflow() {
   overflow_ = overflow;
   overflow_x_ = overflow;
   overflow_y_ = overflow;
+  origin_overflow_ = default_overflow_visible_ ? OVERFLOW_XY : OVERFLOW_HIDDEN;
 }
 
 bool ComputedCSSStyle::InheritValue(tasm::CSSPropertyID id,
@@ -1104,11 +1105,37 @@ bool ComputedCSSStyle::SetDirection(const tasm::CSSValue& value,
       parser_configs_);
 }
 
+void ComputedCSSStyle::SetOriginOverflowMask(tasm::CSSPropertyID id) {
+#define CHECK_OVERFLOW_VAL(value, mask)             \
+  if (value == starlight::OverflowType::kVisible) { \
+    origin_overflow_ |= (mask);                     \
+  } else {                                          \
+    origin_overflow_ &= ~(mask);                    \
+  }
+
+  switch (id) {
+    case tasm::CSSPropertyID::kPropertyIDOverflow:
+      CHECK_OVERFLOW_VAL(overflow_, OVERFLOW_XY)
+      break;
+    case tasm::CSSPropertyID::kPropertyIDOverflowX:
+      CHECK_OVERFLOW_VAL(overflow_x_, OVERFLOW_X)
+      break;
+    case tasm::CSSPropertyID::kPropertyIDOverflowY:
+      CHECK_OVERFLOW_VAL(overflow_y_, OVERFLOW_Y)
+      break;
+    default:
+      break;
+  }
+}
+
 bool ComputedCSSStyle::SetOverflow(const tasm::CSSValue& value,
                                    const bool reset) {
-  return CSSStyleUtils::ComputeEnumStyle<OverflowType>(
+  bool result = CSSStyleUtils::ComputeEnumStyle<OverflowType>(
       value, reset, overflow_, GetDefaultOverflowType(),
       "overflow must be a enum!", parser_configs_);
+
+  SetOriginOverflowMask(tasm::CSSPropertyID::kPropertyIDOverflow);
+  return result;
 }
 
 bool ComputedCSSStyle::SetDisplay(const tasm::CSSValue& value,
@@ -1494,16 +1521,24 @@ bool ComputedCSSStyle::SetOpacity(const tasm::CSSValue& value,
 
 bool ComputedCSSStyle::SetOverflowX(const tasm::CSSValue& value,
                                     const bool reset) {
-  return CSSStyleUtils::ComputeEnumStyle<OverflowType>(
+  bool result = CSSStyleUtils::ComputeEnumStyle<OverflowType>(
       value, reset, overflow_x_, GetDefaultOverflowType(),
       "overflow-x must be an enum!", parser_configs_);
+
+  SetOriginOverflowMask(tasm::CSSPropertyID::kPropertyIDOverflowX);
+
+  return result;
 }
 
 bool ComputedCSSStyle::SetOverflowY(const tasm::CSSValue& value,
                                     const bool reset) {
-  return CSSStyleUtils::ComputeEnumStyle<OverflowType>(
+  bool result = CSSStyleUtils::ComputeEnumStyle<OverflowType>(
       value, reset, overflow_y_, GetDefaultOverflowType(),
       "overflow-y must be an enum!", parser_configs_);
+
+  SetOriginOverflowMask(tasm::CSSPropertyID::kPropertyIDOverflowY);
+
+  return result;
 }
 
 bool ComputedCSSStyle::SetFontSize(const tasm::CSSValue& value,
