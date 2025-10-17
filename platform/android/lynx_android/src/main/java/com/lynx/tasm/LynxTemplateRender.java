@@ -817,7 +817,7 @@ public class LynxTemplateRender
       mViewLayoutTick = new ViewLayoutTick(mBodyView);
       layoutTick = mViewLayoutTick;
     } else {
-      layoutTick = new ChoreographerLayoutTick(mLynxContext);
+      layoutTick = new ChoreographerLayoutTick();
     }
 
     LLog.i(TAG,
