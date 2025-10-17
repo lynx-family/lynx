@@ -986,6 +986,7 @@ public class TouchEventDispatcher {
     mTimestamp = System.currentTimeMillis();
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
       if (!handleFirstTouchDown(ev, rootUi)) {
+        LLog.i(TAG, "hit event through");
         return false;
       }
     } else if (ev.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
@@ -993,6 +994,7 @@ public class TouchEventDispatcher {
     } else {
       if (mActiveUI != null && !mActiveUIMap.isEmpty()) {
         if (mActiveUI.eventThrough()) {
+          LLog.i(TAG, "hit event through");
           return false;
         }
         switch (ev.getActionMasked()) {
@@ -1023,6 +1025,7 @@ public class TouchEventDispatcher {
     }
 
     if (mActiveUI != null && mActiveUI.eventThrough()) {
+      LLog.i(TAG, "hit event through");
       return false;
     }
 

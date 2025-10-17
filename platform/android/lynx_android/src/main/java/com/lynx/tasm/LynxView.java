@@ -1286,8 +1286,13 @@ public class LynxView extends UIBodyView {
   @Override
   public boolean dispatchTouchEvent(MotionEvent ev) {
     try {
-      LLog.i("Lynx",
-          "LynxView dispatchTouchEvent, this: " + hashCode() + ", touch: " + ev.getActionMasked());
+      int action = ev.getAction();
+      if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP
+          || action == MotionEvent.ACTION_CANCEL) {
+        LLog.i("Lynx",
+            "LynxView dispatchTouchEvent, this: " + hashCode() + ", touch: " + ev.getActionMasked()
+                + " x: " + ev.getX() + " y: " + ev.getY());
+      }
 
       if (mLynxTemplateRender == null) {
         return super.dispatchTouchEvent(ev);
@@ -1302,11 +1307,10 @@ public class LynxView extends UIBodyView {
         return super.dispatchTouchEvent(ev);
       }
 
-      int action = ev.getAction();
       if (action == MotionEvent.ACTION_DOWN) {
         if (LynxEnv.inst().isHighlightTouchEnabled()) {
-          showMessageOnConsole(
-              TAG + ": dispatch touch for lynx " + hashCode() + ", touch " + action,
+          showMessageOnConsole(TAG + ": dispatch touch for lynx " + hashCode()
+                  + ", touch: " + action + " x: " + ev.getX() + " y: " + ev.getY(),
               LogBoxLogLevel.Info.ordinal());
         }
         mCanDispatchTouchEvent = true;
@@ -1326,8 +1330,8 @@ public class LynxView extends UIBodyView {
       }
       if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
         if (LynxEnv.inst().isHighlightTouchEnabled()) {
-          showMessageOnConsole(
-              TAG + ": dispatch touch for lynx " + hashCode() + ", touch " + action,
+          showMessageOnConsole(TAG + ": dispatch touch for lynx " + hashCode()
+                  + ", touch: " + action + " x: " + ev.getX() + " y: " + ev.getY(),
               LogBoxLogLevel.Info.ordinal());
         }
         mCanDispatchTouchEvent = false;

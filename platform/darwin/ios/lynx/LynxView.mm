@@ -365,6 +365,7 @@
                                        andEvent:event];
     // If target eventThrough, return nil to let event through LynxView.
     if ([touchTarget eventThrough]) {
+      _LogI(@"LynxView hit event through");
       return nil;
     } else {
       return view;
