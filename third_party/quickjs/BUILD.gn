@@ -122,6 +122,8 @@ source_set("quickjs_source") {
     "src/src/inspector/protocols.cc",
     "src/src/inspector/runtime/runtime.cc",
     "src/src/inspector/string_tools.cc",
+    "src/src/interpreter/quickjs/source/bignum.cc",
+    "src/src/interpreter/quickjs/source/dtoa.cc",
     "src/src/interpreter/quickjs/source/primjs_monitor.cc",
     "src/src/interpreter/quickjs/source/quickjs.cc",
     "src/src/interpreter/quickjs/source/quickjs_gc.cc",

@@ -219,7 +219,7 @@ lepus::Value LEPUSValueHelper::ToLepusValue(LEPUSContext* ctx,
       return Value(LEPUS_VALUE_GET_INT(val));
     case LEPUS_TAG_BIG_INT: {
       int64_t int64;
-      LEPUS_ToInt64(ctx, &int64, val);
+      LEPUS_ToBigInt64(ctx, &int64, val);
       return Value(int64);
     } break;
     case LEPUS_TAG_FLOAT64: {
@@ -305,8 +305,6 @@ const char* LEPUSValueHelper::GetType(LEPUSContext* ctx,
   switch (LEPUS_VALUE_GET_TAG(val)) {
     case LEPUS_TAG_BIG_INT:
       return "LEPUS_BIG_INT";
-    case LEPUS_TAG_BIG_FLOAT:
-      return "LEPUS_BIG_FLOAT";
     case LEPUS_TAG_SYMBOL:
       return "LEPUS_TAG_SYMBOL";
     case LEPUS_TAG_STRING:
