@@ -9933,7 +9933,7 @@ public class com::lynx::tasm::behavior::ui::UIExposure : com.lynx.tasm.behavior.
   public void com.lynx.tasm.behavior.ui.UIExposure.setCallback(ICallBack callback);
   public void com.lynx.tasm.behavior.ui.UIExposure.stopExposure(HashMap< String, Object > options);
   public void com.lynx.tasm.behavior.ui.UIExposure.resumeExposure();
-  public boolean com.lynx.tasm.behavior.ui.UIExposure.addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID, @Nullable JavaOnlyMap data, @Nullable JavaOnlyMap options);
+  public void com.lynx.tasm.behavior.ui.UIExposure.addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID, @Nullable JavaOnlyMap data, @Nullable JavaOnlyMap options);
   public void com.lynx.tasm.behavior.ui.UIExposure.removeUIFromExposedMap(LynxBaseUI ui, @Nullable String uniqueID);
   public void com.lynx.tasm.behavior.ui.UIExposure.setRootUI(UIBody ui);
   public void com.lynx.tasm.behavior.ui.UIExposure.clear();

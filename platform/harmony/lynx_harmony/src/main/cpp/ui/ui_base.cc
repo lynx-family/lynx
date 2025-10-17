@@ -1826,9 +1826,9 @@ bool UIBase::IsVisible() {
     return false;
   }
 
-  if (base::FloatsEqual(NodeManager::Instance().GetAttribute<float>(
-                            DrawNode(), NODE_OPACITY, 0),
-                        0.0f)) {
+  if (base::FloatsLargerOrEqual(0.01f,
+                                NodeManager::Instance().GetAttribute<float>(
+                                    DrawNode(), NODE_OPACITY, 0))) {
     return false;
   }
 

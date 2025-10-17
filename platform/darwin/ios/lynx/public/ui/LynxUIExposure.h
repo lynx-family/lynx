@@ -9,7 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LynxUIExposure : NSObject
 
 - (void)setRootUI:(LynxRootUI *)rootUI;
-- (BOOL)addLynxUI:(LynxUI *)ui
+- (void)addLynxUI:(LynxUI *)ui
     withUniqueIdentifier:(NSString *_Nullable)uniqueID
                extraData:(NSDictionary *_Nullable)data
               useOptions:(NSDictionary *_Nullable)options;
