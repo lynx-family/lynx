@@ -3495,8 +3495,8 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
     return NO;
   }
 
-  // if view's alpha == 0, return NO
-  if (view.alpha == 0) {
+  // if view's alpha < 0.01, return NO
+  if (view.alpha < 0.01) {
     return NO;
   }
 

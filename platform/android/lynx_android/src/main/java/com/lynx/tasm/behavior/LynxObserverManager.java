@@ -140,8 +140,8 @@ public abstract class LynxObserverManager {
   protected void observerHandlerInner(){};
 
   public void onAttachedToWindow() {
-    mViewTreeObserver = getRootViewTreeObserver();
-    if (mViewTreeObserver == null) {
+    ViewTreeObserver observer = getRootViewTreeObserver();
+    if (observer == null) {
       LLog.e(TAG, "LynxObserverManager add listeners failed since observer is null");
       return;
     }
@@ -152,7 +152,6 @@ public abstract class LynxObserverManager {
           requestCheckUI();
         }
       };
-      mViewTreeObserver.addOnGlobalLayoutListener(mGlobalLayoutListener);
     }
     if (mScrollChangedListener == null) {
       mScrollChangedListener = new ViewTreeObserver.OnScrollChangedListener() {
@@ -161,7 +160,6 @@ public abstract class LynxObserverManager {
           requestCheckUI();
         }
       };
-      mViewTreeObserver.addOnScrollChangedListener(mScrollChangedListener);
     }
     if (mDrawListener == null) {
       mDrawListener = new ViewTreeObserver.OnDrawListener() {
@@ -170,6 +168,11 @@ public abstract class LynxObserverManager {
           requestCheckUI();
         }
       };
+    }
+    if (observer != mViewTreeObserver) {
+      mViewTreeObserver = observer;
+      mViewTreeObserver.addOnGlobalLayoutListener(mGlobalLayoutListener);
+      mViewTreeObserver.addOnScrollChangedListener(mScrollChangedListener);
       mViewTreeObserver.addOnDrawListener(mDrawListener);
     }
   }
@@ -338,6 +341,7 @@ public abstract class LynxObserverManager {
     mViewTreeObserver.removeOnGlobalLayoutListener(mGlobalLayoutListener);
     mViewTreeObserver.removeOnScrollChangedListener(mScrollChangedListener);
     mViewTreeObserver.removeOnDrawListener(mDrawListener);
+    mViewTreeObserver = null;
     mGlobalLayoutListener = null;
     mScrollChangedListener = null;
     mDrawListener = null;

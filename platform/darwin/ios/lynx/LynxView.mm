@@ -380,6 +380,7 @@
       targetPoint = [self convertPoint:point toView:touchTarget.view];
     }
     if ([touchTarget eventThrough:targetPoint]) {
+      _LogI(@"LynxView hit event through");
       return nil;
     } else {
       return view;

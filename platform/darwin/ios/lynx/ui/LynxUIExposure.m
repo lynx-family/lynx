@@ -677,7 +677,7 @@
   }
 }
 
-- (BOOL)addLynxUI:(LynxUI *)ui
+- (void)addLynxUI:(LynxUI *)ui
     withUniqueIdentifier:(NSString *)uniqueID
                extraData:(NSDictionary *)data
               useOptions:(NSDictionary *)options {
@@ -689,18 +689,21 @@
       key = [NSString stringWithFormat:@"%@_%@_%ld_%@", ui.exposureScene, ui.exposureID,
                                        (long)ui.sign, ui.internalSignature];
     }
-    if (!_isStopExposure && [_exposedLynxUIMap count] == 0) {
-      [self addExposureToRunLoop];
-    }
-    [_exposedLynxUIMap setObject:[[LynxUIExposureDetail alloc] initWithUI:ui
-                                                         uniqueIdentifier:uniqueID
-                                                                extraData:data
-                                                               useOptions:options]
-                          forKey:key];
-    return YES;
+    __weak typeof(self) weakSelf = self;
+    [self runOnUIThreadSafely:^{
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      if (strongSelf) {
+        if (!strongSelf.isStopExposure && [strongSelf.exposedLynxUIMap count] == 0) {
+          [strongSelf addExposureToRunLoop];
+        }
+        [strongSelf.exposedLynxUIMap setObject:[[LynxUIExposureDetail alloc] initWithUI:ui
+                                                                       uniqueIdentifier:uniqueID
+                                                                              extraData:data
+                                                                             useOptions:options]
+                                        forKey:key];
+      }
+    }];
   }
-
-  return NO;
 }
 
 - (void)removeLynxUI:(LynxUI *)ui withUniqueIdentifier:(NSString *)uniqueID {
@@ -712,25 +715,37 @@
       key = [NSString stringWithFormat:@"%@_%@_%ld_%@", ui.exposureScene, ui.exposureID,
                                        (long)ui.sign, ui.internalSignature];
     }
-    LynxUIExposureDetail *detail = [_exposedLynxUIMap objectForKey:key];
-    if (detail) {
-      [_exposedLynxUIMap removeObjectForKey:key];
-    }
-    // if have no exposuredUI, you should free the system resource
-    if ([_exposedLynxUIMap count] == 0) {
-      [self destroyExposure];
-    }
+    __weak typeof(self) weakSelf = self;
+    [self runOnUIThreadSafely:^{
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      if (strongSelf) {
+        LynxUIExposureDetail *detail = [strongSelf.exposedLynxUIMap objectForKey:key];
+        if (detail) {
+          [strongSelf.exposedLynxUIMap removeObjectForKey:key];
+        }
+        // if have no exposuredUI, you should free the system resource
+        if ([strongSelf.exposedLynxUIMap count] == 0) {
+          [strongSelf destroyExposure];
+        }
+      }
+    }];
   }
 }
 
 - (void)destroyExposure {
-  LLogInfo(@"LynxUIExposure destroyExposure");
-  [self removeFromRunLoop];
-  [_exposedLynxUIMap removeAllObjects];
+  __weak typeof(self) weakSelf = self;
+  [self runOnUIThreadSafely:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (strongSelf) {
+      LLogInfo(@"LynxUIExposure destroyExposure");
+      [strongSelf removeFromRunLoop];
+      [strongSelf.exposedLynxUIMap removeAllObjects];
 
-  // Before reloading the page, we need to disexposure the previous page.
-  [self sendEvent:_uiInWindowMapBefore eventName:@"disexposure"];
-  [_uiInWindowMapBefore removeAllObjects];
+      // Before reloading the page, we need to disexposure the previous page.
+      [strongSelf sendEvent:strongSelf.uiInWindowMapBefore eventName:@"disexposure"];
+      [strongSelf.uiInWindowMapBefore removeAllObjects];
+    }
+  }];
 }
 
 - (void)removeFromRunLoop {
@@ -738,6 +753,14 @@
   if (_displayLink) {
     [_displayLink invalidate];
     _displayLink = nil;
+  }
+}
+
+- (void)runOnUIThreadSafely:(dispatch_block_t)block {
+  if ([NSThread isMainThread]) {
+    block();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), block);
   }
 }
 

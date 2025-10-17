@@ -4371,7 +4371,7 @@ public interface LynxUIContext(Internal) {
 
 public class LynxUIExposure : NSObject {
   public void LynxUIExposure::setRootUI:(LynxRootUI *rootUI);
-  public BOOL LynxUIExposure::addLynxUI:withUniqueIdentifier:extraData:useOptions:(LynxUI *ui,[withUniqueIdentifier] NSString *_Nullable uniqueID,[extraData] NSDictionary *_Nullable data,[useOptions] NSDictionary *_Nullable options);
+  public void LynxUIExposure::addLynxUI:withUniqueIdentifier:extraData:useOptions:(LynxUI *ui,[withUniqueIdentifier] NSString *_Nullable uniqueID,[extraData] NSDictionary *_Nullable data,[useOptions] NSDictionary *_Nullable options);
   public void LynxUIExposure::removeLynxUI:withUniqueIdentifier:(LynxUI *ui,[withUniqueIdentifier] NSString *_Nullable uniqueID);
   public void LynxUIExposure::willMoveToWindow:(BOOL windowIsNil);
   public void LynxUIExposure::didMoveToWindow:(BOOL windowIsNil);

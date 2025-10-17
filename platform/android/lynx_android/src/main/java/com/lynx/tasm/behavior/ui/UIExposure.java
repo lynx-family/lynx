@@ -609,7 +609,7 @@ public class UIExposure extends LynxObserverManager {
       }
     }
   }
-  public boolean addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID,
+  public void addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID,
       @Nullable JavaOnlyMap data, @Nullable JavaOnlyMap options) {
     if (uniqueID != null || ui.getExposureID() != null) {
       String key;
@@ -618,16 +618,19 @@ public class UIExposure extends LynxObserverManager {
       } else {
         key = ui.getExposureScene() + "_" + ui.getExposureID() + "_" + ui.getSign();
       }
-      // Ensure add to Observer once.
-      // After calling stopExposure, the exposure detection task should only be started in
-      // resumeExposure.
-      if (!mIsStopExposure && mExposureDetailMap.isEmpty()) {
-        addToObserverTree();
-      }
-      mExposureDetailMap.put(key, new UIExposureDetail(ui, uniqueID, data, options));
-      return true;
+      UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+        @Override
+        public void run() {
+          // Ensure add to Observer once.
+          // After calling stopExposure, the exposure detection task should only be started in
+          // resumeExposure.
+          if (!mIsStopExposure && mExposureDetailMap.isEmpty()) {
+            addToObserverTree();
+          }
+          mExposureDetailMap.put(key, new UIExposureDetail(ui, uniqueID, data, options));
+        }
+      });
     }
-    return false;
   }
 
   // In MULTI_THREAD mode, the method will be called in other thread, so read mExposureDetailMap in
