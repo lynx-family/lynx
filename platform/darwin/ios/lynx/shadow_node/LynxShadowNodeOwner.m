@@ -7,6 +7,7 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxKeyframeAnimator.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxNativeLayoutNode.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxService.h>
@@ -122,7 +123,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
                   eventSet:(nullable NSSet<NSString*>*)eventSet
              lepusEventSet:(nullable NSSet<NSString*>*)lepusEventSet {
   LynxShadowNode* node = _nodeHolder[[NSNumber numberWithInteger:sign]];
-  NSAssert(node, @"Can not find shadow node for sign:%ld", (long)sign);
 
   // update props for shadow node
   for (NSString* key in props) {
@@ -137,8 +137,18 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
 - (void)insertNode:(NSInteger)childSign toParent:(NSInteger)parentSign atIndex:(NSInteger)index {
   LynxShadowNode* childNode = _nodeHolder[[NSNumber numberWithInteger:childSign]];
   LynxShadowNode* parentNode = _nodeHolder[[NSNumber numberWithInteger:parentSign]];
-  NSAssert(childNode, @"Can not find child shadow node for sign:%ld", (long)childSign);
-  NSAssert(parentNode, @"Can not find parent shadow node for sign:%ld", (long)parentSign);
+  if (childNode == NULL) {
+    LLog(@"[Lynx][ShadowNodeOwner] insertNode: %ld toParent: %ld atIndex: %ld failed, childNode is "
+         @"nil",
+         (long)childSign, (long)parentSign, (long)index);
+    return;
+  }
+  if (parentNode == NULL) {
+    LLog(@"[Lynx][ShadowNodeOwner] insertNode: %ld toParent: %ld atIndex: %ld failed, parentNode "
+         @"is nil",
+         (long)childSign, (long)parentSign, (long)index);
+    return;
+  }
   if (index == -1) {
     index = [[parentNode children] count];
   }
@@ -148,15 +158,25 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
 - (void)removeNode:(NSInteger)childSign fromParent:(NSInteger)parentSign atIndex:(NSInteger)index {
   LynxShadowNode* childNode = _nodeHolder[[NSNumber numberWithInteger:childSign]];
   LynxShadowNode* parentNode = _nodeHolder[[NSNumber numberWithInteger:parentSign]];
-  NSAssert(childNode, @"Can not find child shadow node for sign:%ld", (long)childSign);
-  NSAssert(parentNode, @"Can not find parent shadow node for sign:%ld", (long)parentSign);
+  if (childNode == NULL) {
+    LLog(@"[Lynx][ShadowNodeOwner] removeNode: %ld fromParent: %ld atIndex: %ld failed, childNode "
+         @"is nil",
+         (long)childSign, (long)parentSign, (long)index);
+    return;
+  }
+  if (parentNode == NULL) {
+    LLog(@"[Lynx][ShadowNodeOwner] removeNode: %ld fromParent: %ld atIndex: %ld failed, parentNode "
+         @"is nil",
+         (long)childSign, (long)parentSign, (long)index);
+    return;
+  }
   [parentNode removeChild:childNode atIndex:index];
 }
 
 - (void)destroyNode:(NSInteger)sign {
   LynxShadowNode* node = _nodeHolder[[NSNumber numberWithInteger:sign]];
   if (!node) {
-    NSAssert(node, @"Can not find shadow node for sign:%ld", (long)sign);
+    LLog(@"[Lynx][ShadowNodeOwner] destroyNode: %ld failed, node is nil", (long)sign);
     return;
   }
   [node destroy];

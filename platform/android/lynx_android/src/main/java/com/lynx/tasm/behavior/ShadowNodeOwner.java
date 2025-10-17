@@ -8,6 +8,7 @@ import android.util.SparseArray;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
 import com.lynx.tasm.behavior.shadow.NativeLayoutNodeRef;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
@@ -25,6 +26,8 @@ public class ShadowNodeOwner extends LayoutContext {
   private final LayoutTick mLayoutTick;
   private final BehaviorRegistry mBehaviorRegistry;
   private final ShadowNodeRegistry mShadowNodeRegistry;
+
+  private static final String TAG = "ShadowNodeOwner";
 
   protected LayoutNodeManager mLayoutNodeManager;
   public ShadowNodeOwner(
@@ -104,7 +107,16 @@ public class ShadowNodeOwner extends LayoutContext {
   @Override
   public void removeNode(int parentSignature, int childSignature, int index) {
     ShadowNode parentNode = mShadowNodeRegistry.getNode(parentSignature);
-    parentNode.removeChildAt(index);
+    if (parentNode == null) {
+      return;
+    }
+    try {
+      parentNode.removeChildAt(index);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LLog.w(TAG,
+          "Remove child out of bounds, parentSignature: " + parentSignature + ", index: " + index
+              + ", childSignature: " + childSignature);
+    }
   }
 
   @Override
@@ -114,7 +126,13 @@ public class ShadowNodeOwner extends LayoutContext {
     if (index == -1) {
       index = parentNode.getChildCount();
     }
-    parentNode.addChildAt(childNode, index);
+    try {
+      parentNode.addChildAt(childNode, index);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LLog.w(TAG,
+          "Add child out of bounds, parentSignature: " + parentSignature + ", index: " + index
+              + ", childSignature: " + childSignature);
+    }
     parentNode.markDirty();
   }
 
