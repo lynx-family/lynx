@@ -1,0 +1,101 @@
+name: install windows common dependencies
+
+description: pull common source and binary dependencies via habitat for windows.
+
+inputs:
+  concurrency:
+    description: concurrency of requests
+    default: '2'
+    required: false
+  cache-backend:
+    description: cache backend for habitat
+    default: 'lynx-infra'
+    required: false
+  target:
+    description: habitat target
+    default: ''
+    required: false
+  # actions/cache stores files with relative directory, which causes inconsistency between self-hosted runner and
+  # container runner. Therefore, add this temporary option to modify cache key prefix as a workaround. Delete this when
+  # we are able to adjust the container runner's directory structure to the same as self-hosted runner.
+  cache-key-prefix:
+    description: cache key prefix for cache action
+    default: ''
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Get habitat cache key
+      id: hab
+      shell: PowerShell
+      run: |
+        if ([string]::IsNullOrEmpty("${{ inputs.target }}")) {
+          python lynx/tools/ci/habitat_cache_helper.py
+        } else {
+          python lynx/tools/ci/habitat_cache_helper.py --target ${{ inputs.target }}
+        }
+
+    - name: Setup cache action
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: python -c "import os; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
+        key: hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+        restore-keys: |
+          hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}
+
+    - name: Setup cache action
+      if: ${{ inputs.cache-backend == 'github' }}
+      uses: actions/cache@v4
+      with:
+        path: python -c "import os; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
+        key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+        restore-keys: |
+          hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}
+
+    - name: Get Python Cache Directory
+      id: pip
+      shell: PowerShell
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      run: |
+        echo "PIP_CACHE_DIR=$(python -m pip cache dir)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+    - name: Python Requirements Cache
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
+        key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/tools/vpython_tools/requirements.txt', 'lynx/testing/integration_test/test_script/requirements.txt') }}
+        restore-keys: |
+          pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+
+    - name: Cache pnpm Dependencies
+      if: ${{ inputs.cache-backend == 'lynx-infra' && inputs.cache-key-prefix == '' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        # set pnpm store path to a specific value since we can't get it via `pnpm store path` before pnpm is setup.
+        path: python -c "import os, tempfile; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.local/share/pnpm/store'))"
+        key: pnpm-${{ runner.os }}-${{ hashFiles('lynx/pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-
+
+    - name: Install Python dependencies
+      shell: PowerShell
+      run: |
+        python -m pip install -r lynx/tools/vpython_tools/requirements.txt
+        python -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
+
+    - name: run habitat sync
+      if: ${{ runner.os == 'Windows' }}
+      shell: PowerShell
+      working-directory: lynx
+      run: |
+        if ([string]::IsNullOrEmpty("${{ inputs.target }}")) {
+            .\tools\hab.ps1 sync .
+        } else {
+            .\tools\hab.ps1 sync . --target ${{ inputs.target }}
+        }
+      env:
+        HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
+        npm_config_store_dir: ~/.local/share/pnpm/store

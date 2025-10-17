@@ -1,0 +1,70 @@
+name: build android explorer on windows
+
+description: build android explorer apk on windows.
+
+inputs:
+  build-type:
+    description: The type of explorer we are building. It could be release or whatever.
+    required: true
+  build-params:
+    description: Set project properties for gradle when building explorer.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Python Setup
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Setup Java SDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: 'zulu'
+    - name: Install Common Dependencies
+      uses: ./lynx/.github/actions/windows-common-deps
+      with:
+        target: dev
+    - name: Download Android SDK
+      shell: PowerShell
+      run: |-
+        $env:ANDROID_HOME = Join-Path $env:GITHUB_WORKSPACE 'android\sdk'
+        $env:ANDROID_NDK = Join-Path $env:ANDROID_HOME 'ndk\21.1.6352462'
+        [Environment]::SetEnvironmentVariable('ANDROID_HOME', $env:ANDROID_HOME, 'User')
+        [Environment]::SetEnvironmentVariable('ANDROID_NDK', $env:ANDROID_NDK, 'User')
+
+        $lynx_root_dir_path = Join-Path $env:GITHUB_WORKSPACE 'lynx'
+        $local_properties_file1 = Join-Path $lynx_root_dir_path 'platform\android\local.properties'
+        $local_properties_file2 = Join-Path $lynx_root_dir_path 'explorer\android\local.properties'
+        $cmake_dir = Join-Path $lynx_root_dir_path 'buildtools\cmake'
+        python $lynx_root_dir_path\tools\android_tools\update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$env:ANDROID_NDK" sdk.dir="$env:ANDROID_HOME" cmake.dir="$cmake_dir"
+        Get-Content -Path $local_properties_file1 -Encoding UTF8
+        Get-Content -Path $local_properties_file2 -Encoding UTF8
+
+        cd lynx
+        tools\\envsetup.ps1
+        python3 tools\\android_tools\\prepare_android_build.py --always-agree-license
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    - name: Build Explorer App
+      shell: PowerShell
+      env:
+        BUILD_TYPE: ${{ inputs.build-type }}
+      run: |-
+        $env:ANDROID_HOME = Join-Path $env:GITHUB_WORKSPACE 'android\sdk'
+        $env:ANDROID_NDK = Join-Path $env:ANDROID_HOME 'ndk\21.1.6352462'
+        [Environment]::SetEnvironmentVariable('ANDROID_HOME', $env:ANDROID_HOME, 'User')
+        [Environment]::SetEnvironmentVariable('ANDROID_NDK', $env:ANDROID_NDK, 'User')
+
+        $lynx_root_dir_path = Join-Path $env:GITHUB_WORKSPACE 'lynx'
+        $env:PATH += ";$lynx_root_dir_path\buildtools\ninja"
+        cd $lynx_root_dir_path
+        cd explorer\android
+        if ($env:BUILD_TYPE -eq "release") {
+          .\\gradlew.bat :LynxExplorer:assembleNoasanRelease -Penable_trace=none -no-daemon ${{ inputs.build-params }}
+        } else {
+          .\\gradlew.bat :LynxExplorer:assembleAsanDebug -Penable_trace=none -no-daemon ${{ inputs.build-params }}
+        }
+        if ($LASTEXITCODE -ne 0) {start-sleep -seconds 7200}
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

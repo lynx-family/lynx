@@ -286,6 +286,27 @@ jobs:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
 
+  android-explorer-build-on-windows:
+    runs-on: lynx-windows-2022-large-verify
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Shorten workspace path on Windows
+        shell: PowerShell
+        run: |
+          $orig = "$env:GITHUB_WORKSPACE"
+          subst W: $orig
+          $env:GITHUB_WORKSPACE = 'W:\\'
+          Write-Host "Original workspace: $orig"
+          Write-Host "New workspace: $env:GITHUB_WORKSPACE"
+      - name: Build Explorer App on Windows
+        uses: ./lynx/.github/actions/android-explorer-build-on-windows
+        with:
+          build-type: release
+          build-params: -PIntegrationTest
+
   android-sdk-release:
     timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-large
