@@ -230,8 +230,9 @@ void FontFaceManager::TryMarkDirtyOnLayoutThread(int sign) {
     auto it = shared_self->loading_shadow_nodes_.find(sign);
 
     if (it != shared_self->loading_shadow_nodes_.end()) {
-      if (shared_self->CheckNodeValid(sign)) {
-        it->second->MarkDirty();
+      if (auto* node =
+              shared_self->node_owner_->Context()->FindShadowNodeBySign(sign)) {
+        node->MarkDirty();
       }
       shared_self->loading_shadow_nodes_.erase(it);
     }

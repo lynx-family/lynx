@@ -16,6 +16,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/vector.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/font_collection_harmony.h"
 
 namespace lynx {
@@ -116,7 +117,7 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   bool CheckNodeValid(int sign) const;
   void TryMarkDirtyOnLayoutThread(int sign);
   void AddLoadingShadowNodes(int sign, ShadowNode* node) {
-    loading_shadow_nodes_.emplace(sign, node);
+    loading_shadow_nodes_.emplace(sign);
   }
 
  private:
@@ -130,7 +131,7 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   std::string default_font_family_;
   std::unordered_map<std::string, std::vector<int>>
       font_family_pending_shadow_node_;
-  std::unordered_map<int, ShadowNode*> loading_shadow_nodes_;
+  base::InlineLinearFlatSet<int, 4> loading_shadow_nodes_;
 };
 
 }  // namespace harmony
