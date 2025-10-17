@@ -341,7 +341,8 @@ bool LynxUIHelper::CheckViewportIntersectWithRatio(float rect[4],
   }
   float intersect_ratio = ((right - left) * (bottom - top)) /
                           ((rect[2] - rect[0]) * (rect[3] - rect[1]));
-  return base::FloatsLarger(intersect_ratio, ratio);
+  return !base::IsZero(intersect_ratio) &&
+         base::FloatsLargerOrEqual(intersect_ratio, ratio);
 }
 
 void LynxUIHelper::OffsetRect(float rect[4], float offset[2]) {

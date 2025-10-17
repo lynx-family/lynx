@@ -1068,8 +1068,8 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       return false;
     }
 
-    // if view's alpha == 0, return false
-    if (mView.getAlpha() == 0) {
+    // if view's alpha < 0.01, return false
+    if (mView.getAlpha() < 0.01) {
       return false;
     }
 
