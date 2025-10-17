@@ -14,6 +14,9 @@
 #import <Lynx/UIScrollView+Lynx.h>
 
 #import "LynxUIContext+Internal.h"
+#import "core/public/list_container_proxy.h"
+#import "core/public/list_engine_proxy.h"
+#import "core/shell/lynx_shell.h"
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
@@ -25,6 +28,10 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
   LynxListScrollStateFling = 3,
   LynxListScrollStateScrollAnimation = 4,
 };
+
+@interface LynxUIListContainer ()
+@property(nonatomic, nullable) lynx::shell::ListContainerProxy *listContainerProxy;
+@end
 
 @implementation LynxListContainerComponentWrapper
 
@@ -208,6 +215,12 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)onNodeReady {
   [super onNodeReady];
+
+  auto listNodeInfoFetcher = self.context.fetcher;
+  auto listEngineProxy = reinterpret_cast<lynx::shell::ListEngineProxy *>(
+      listNodeInfoFetcher.self.getListEngineProxyPtr);
+  _listContainerProxy = new lynx::shell::ListContainerProxy(listEngineProxy);
+
   if (_needAdjustContentOffset) {
     _needAdjustContentOffset = NO;
     // Avoid adjustContentOffsetIfnecessary called from system
@@ -1165,13 +1178,18 @@ LYNX_UI_METHOD(scrollToPosition) {
 
   // Tell ListElement that we want scroll to some position
 
-  auto listNodeInfoFetcher = self.context.fetcher;
-  if (listNodeInfoFetcher) {
-    [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
-                                 position:(int)position
-                                   offset:offset
-                                    align:align
-                                   smooth:smooth];
+  if (_listContainerProxy) {
+    _listContainerProxy->ScrollToPosition(static_cast<int32_t>(self.sign), (int)position, offset,
+                                          align, smooth);
+  } else {
+    auto listNodeInfoFetcher = self.context.fetcher;
+    if (listNodeInfoFetcher) {
+      [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
+                                   position:(int)position
+                                     offset:offset
+                                      align:align
+                                     smooth:smooth];
+    }
   }
 }
 
@@ -1254,20 +1272,27 @@ LYNX_UI_METHOD(getVisibleCells) {
     return;
   }
 
-  auto listNodeInfoFetcher = self.context.fetcher;
   // If if the contentOffset was updated by targetContentOffset, which means now the contentOffset
   // is exactly the same with elementList, do not reenter ScrollByListContainer
 
-  if (listNodeInfoFetcher && !_shouldBlockScrollByListContainer) {
+  if (!_shouldBlockScrollByListContainer) {
     // Before sending scrollByListContainer, previousContentOffset should be updated to avoid
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop
     [self updatePreviousContentOffset];
-    [listNodeInfoFetcher scrollByListContainer:(static_cast<int32_t>(self.sign))
-                                             x:[self clampToValidScrollEdge:NO]
-                                             y:[self clampToValidScrollEdge:YES]
-                                     originalX:self.view.contentOffset.x
-                                     originalY:self.view.contentOffset.y];
+
+    if (_listContainerProxy) {
+      _listContainerProxy->ScrollByListContainer(
+          (static_cast<int32_t>(self.sign)), [self clampToValidScrollEdge:NO],
+          [self clampToValidScrollEdge:YES], self.view.contentOffset.x, self.view.contentOffset.y);
+    } else if (self.context.fetcher) {
+      [self.context.fetcher scrollByListContainer:(static_cast<int32_t>(self.sign))
+                                                x:[self clampToValidScrollEdge:NO]
+                                                y:[self clampToValidScrollEdge:YES]
+                                        originalX:self.view.contentOffset.x
+                                        originalY:self.view.contentOffset.y];
+    }
+
     [self updateStickyTops];
     [self updateStickyBottoms];
   }
@@ -1511,10 +1536,10 @@ LYNX_UI_METHOD(getVisibleCells) {
 
   ((LynxListContainerView *)(self.view)).scrollEstimatedOffset =
       kLynxListContainerInvalidScrollEstimatedOffset;
-  auto fetcher = self.context.fetcher;
-
-  if (fetcher) {
-    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
+  if (_listContainerProxy) {
+    _listContainerProxy->ScrollStopped(static_cast<int32_t>(self.sign));
+  } else if (self.context.fetcher) {
+    [self.context.fetcher scrollStopped:static_cast<int32_t>(self.sign)];
   }
 }
 
@@ -1734,6 +1759,13 @@ LYNX_UI_METHOD(getVisibleCells) {
     }
   }];
   return hitTarget;
+}
+
+- (void)dealloc {
+  if (_listContainerProxy) {
+    delete _listContainerProxy;
+    _listContainerProxy = nullptr;
+  }
 }
 
 @end

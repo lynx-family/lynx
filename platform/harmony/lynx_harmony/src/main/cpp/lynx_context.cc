@@ -565,12 +565,14 @@ std::shared_ptr<FontFaceManager> LynxContext::GetFontFaceManager() const {
 }
 
 void LynxContext::OnLynxCreate(
+    const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
     const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
     const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
     const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner) {
+  list_engine_proxy_ = list_engine_proxy;
   engine_proxy_ = engine_proxy;
   runtime_proxy_ = runtime_proxy;
   perf_controller_proxy_ = perf_controller_proxy;

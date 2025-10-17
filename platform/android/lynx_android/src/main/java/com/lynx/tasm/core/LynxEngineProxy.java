@@ -4,6 +4,8 @@
 
 package com.lynx.tasm.core;
 
+import com.lynx.tasm.ListNodeInfoFetcher;
+import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.common.LepusBuffer;
@@ -17,6 +19,7 @@ import java.nio.ByteBuffer;
 public final class LynxEngineProxy {
   private static final String TAG = "LynxEngineProxy";
   private long mNativePtr;
+  private ListNodeInfoFetcher mListNodeInfoFetcher;
 
   public long getNativePtr() {
     return mNativePtr;
@@ -24,6 +27,11 @@ public final class LynxEngineProxy {
 
   public LynxEngineProxy(long nativeCreator) {
     mNativePtr = nativeCreate(nativeCreator);
+  }
+
+  public LynxEngineProxy(LynxTemplateRender templateRender, long nativeCreator) {
+    this(nativeCreator);
+    mListNodeInfoFetcher = new ListNodeInfoFetcher(templateRender, nativeCreator);
   }
 
   public void destroy() {
