@@ -1,6 +1,5 @@
 import os
 import platform
-import shutil
 
 system = platform.system().lower()
 machine = platform.machine().lower()
