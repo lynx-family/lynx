@@ -137,6 +137,7 @@ public class LynxTemplateRender
   private TemplateBundle mTemplateBundle;
   private ILynxViewConfigProvider mLynxViewConfigProvider;
   private ILynxViewRuntimeCacheManager mRuntimeCacheManager;
+  private ILynxLogicExecutor mLogicExecutor;
 
   private LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
   protected LynxModuleFactory mModuleFactory;
@@ -297,6 +298,7 @@ public class LynxTemplateRender
     mContext = context;
     mBodyView = bodyView;
     mLynxViewConfigProvider = builder;
+    mLogicExecutor = builder.getLogicExecutor();
     if (builder.lynxViewGroup instanceof ILynxViewRuntimeCacheManager) {
       mRuntimeCacheManager = ((ILynxViewRuntimeCacheManager) builder.lynxViewGroup);
     }
@@ -914,7 +916,8 @@ public class LynxTemplateRender
     }
 
     if (!"none".equals(BuildConfig.JS_ENGINE_TYPE)) {
-      if (null != mLynxContext && !mLynxContext.isEmbeddedModeOn()) {
+      if (null != mLynxContext && mLogicExecutor == null) {
+        // init LynxRuntime If LogicExecutor is not provided.
         setUpBackgroundThreadModuleFactory();
         mResourceLoader = new LynxResourceLoader(mLynxRuntimeOptions, mLynxViewBuilder.fetcher,
             this, mLynxContext.getTemplateResourceFetcher(),
@@ -1610,7 +1613,7 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mLynxContext.isEmbeddedModeOn() && metaData.getInitialData() != null) {
+    if (mLogicExecutor != null && metaData.getInitialData() != null) {
       metaData.getInitialData().setEnableJSData(false);
       mTemplateData.updateWithTemplateData(metaData.getInitialData());
     }
@@ -1805,7 +1808,7 @@ public class LynxTemplateRender
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
 
     TemplateData data = meta.getUpdatedData();
-    if (mLynxContext != null && mLynxContext.isEmbeddedModeOn() && data != null) {
+    if (mLynxContext != null && mLogicExecutor != null && data != null) {
       data.setEnableJSData(false);
       mTemplateData.updateWithTemplateData(data);
     }
@@ -3215,15 +3218,15 @@ public class LynxTemplateRender
 
     @Override
     public void onLynxEvent(ReadableMap event) {
-      if (mLynxViewConfigProvider.getLogicExecutor() != null) {
-        mLynxViewConfigProvider.getLogicExecutor().onLynxEvent(getLynxView(), event);
+      if (mLogicExecutor != null) {
+        mLogicExecutor.onLynxEvent(getLynxView(), event);
       }
     }
   }
 
   public void onLynxEvent(ReadableMap event) {
-    if (mLynxViewConfigProvider.getLogicExecutor() != null) {
-      mLynxViewConfigProvider.getLogicExecutor().onLynxEvent(getLynxView(), event);
+    if (mLogicExecutor != null) {
+      mLogicExecutor.onLynxEvent(getLynxView(), event);
     }
   }
 

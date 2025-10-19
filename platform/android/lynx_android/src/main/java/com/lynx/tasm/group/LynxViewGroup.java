@@ -142,7 +142,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     }
     if (templateBundle == null) {
       this.fetchTemplate();
-    } else if (this.logicExecutor == null) {
+    } else if (this.logicExecutor == null && EmbeddedMode.isEnginePoolEnable(embeddedMode)) {
       this.logicExecutor = new DefaultLogicExecutor(
           templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this, debuggable);
     }
