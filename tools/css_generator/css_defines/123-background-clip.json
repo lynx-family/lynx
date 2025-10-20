@@ -27,7 +27,13 @@
       "value": "text",
       "version": "1.0",
       "desc": ""
+    },
+    {
+      "value":"border-area",
+      "version":"3.6",
+      "desc":"Clips the background image layer to where the border paints."
     }
   ],
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "padding-box | border-box | content-box | border-area"
 }

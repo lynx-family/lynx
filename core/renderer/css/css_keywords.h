@@ -69,6 +69,7 @@ enum class TokenType {
   PADDING_BOX,      // padding-box
   CONTENT_BOX,      // content-box
   TEXT,             // text
+  BORDER_AREA,      // border-area
   LINEAR_GRADIENT,  // linear-gradient
   RADIAL_GRADIENT,  // radial-gradient
   CLOSEST_SIDE,     // closest-side

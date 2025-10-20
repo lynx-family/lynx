@@ -179,9 +179,11 @@ export interface Properties {
   /**
    * The `background-clip` CSS property sets whether an element's background extends underneath its border box, padding box, or content box.
    *
+   * **Syntax**: `padding-box | border-box | content-box | border-area`
+   *
    * @see https://lynxjs.org/api/css/properties/background-clip
    */
-  backgroundClip?: (number & {}) | (string & {}) | undefined;
+  backgroundClip?: 'border-area' | 'border-box' | 'content-box' | 'padding-box' | undefined;
   outline?: (number & {}) | (string & {}) | undefined;
   outlineColor?: (number & {}) | (string & {}) | undefined;
   outlineStyle?: (number & {}) | (string & {}) | undefined;

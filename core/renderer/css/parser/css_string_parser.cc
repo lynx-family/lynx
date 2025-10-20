@@ -24,6 +24,7 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_string_scanner.h"
 #include "core/renderer/css/unit_handler.h"
+#include "core/renderer/starlight/style/css_type.h"
 
 namespace lynx {
 namespace tasm {
@@ -891,7 +892,8 @@ lepus::Value CSSStringParser::BackgroundBox() {
 
 lepus::Value CSSStringParser::BackgroundClip() {
   Token token;
-  if (Box(token) || ConsumeAndSave(TokenType::TEXT, token)) {
+  if (Box(token) || ConsumeAndSave(TokenType::TEXT, token) ||
+      ConsumeAndSave(TokenType::BORDER_AREA, token)) {
     return lepus::Value(TokenTypeToENUM(token.type));
   }
   return lepus::Value();
@@ -2218,6 +2220,8 @@ uint32_t CSSStringParser::TokenTypeToENUM(TokenType token_type) {
           starlight::BackgroundOriginType::kContentBox);
     case TokenType::TEXT:
       return static_cast<uint32_t>(starlight::BackgroundClipType::kText);
+    case TokenType::BORDER_AREA:
+      return static_cast<uint32_t>(starlight::BackgroundClipType::kBorderArea);
     case TokenType::LEFT:
       return POS_LEFT;
     case TokenType::RIGHT:

@@ -302,6 +302,7 @@ enum class BackgroundClipType : uint8_t {
   kBorderBox = 1,   // version:1.0
   kContentBox = 2,  // version:1.0
   kText = 3,        // version:1.0
+  kBorderArea = 4   // version: 3.6
 };
 
 enum class RadialGradientShapeType : uint8_t {
