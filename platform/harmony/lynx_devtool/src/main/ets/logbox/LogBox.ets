@@ -115,6 +115,7 @@ class NativeBridge {
           this.getResource(msg.callbackId, dataJson.name);
         } catch (e) {
           LLog.d(TAG, 'queryResource error: ' + e);
+          this.sendResult(msg.callbackId, "");
         }
         break;
       default:
@@ -152,17 +153,22 @@ class NativeBridge {
 
   private download(callbackId: number, name: string) {
     let logboxDir = this.context?.tempDir + "/" + name;
-    request.downloadFile(this.context, { url: name, filePath: logboxDir }).then((data: request.DownloadTask) => {
-      let downloadTask: request.DownloadTask = data;
-      let downloadFinishCallback = () => {
-        let content = this.readFileContent(logboxDir);
-        this.sendResult(callbackId, content);
-      };
-      downloadTask.on('complete', downloadFinishCallback);
-    }).catch((err: BusinessError) => {
-      LLog.e(TAG, `Failed to request the download. Code: ${err.code}, message: ${err.message}`);
+    try {
+      request.downloadFile(this.context, { url: name, filePath: logboxDir }).then((data: request.DownloadTask) => {
+        let downloadTask: request.DownloadTask = data;
+        let downloadFinishCallback = () => {
+          let content = this.readFileContent(logboxDir);
+          this.sendResult(callbackId, content);
+        };
+        downloadTask.on("complete", downloadFinishCallback);
+      }).catch((err: BusinessError) => {
+        LLog.e(TAG, `Failed to request the download. Code: ${err.code}, message: ${err.message}`);
+        this.sendResult(callbackId, "");
+      })
+    } catch (e) {
+      LLog.e(TAG, "downloadFile error: " + e);
       this.sendResult(callbackId, "");
-    })
+    }
   }
 
   private readFileContent(filePath: string) {
