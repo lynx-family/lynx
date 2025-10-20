@@ -142,6 +142,7 @@ static constexpr int kInvalidItemCount = -1;
 static constexpr int kInvalidDimensionSize = -1.f;
 static constexpr int kStickyItemSetCapacityForSyncMode = 1;
 static constexpr int kStickyItemSetCapacityForASyncMode = 2;
+static constexpr int kDefaultMainAxisItemSize = 200;
 static constexpr const char kListContainer[] = "list-container";
 static constexpr const char kListContainerInfo[] = "list-container-info";
 static constexpr const char kEstimatedMainAxisSizePx[] =

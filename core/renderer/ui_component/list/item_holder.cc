@@ -80,9 +80,9 @@ float ItemHolder::GetSizeInMainAxis() const {
              ? main_axis_size
              : (base::FloatsLargerOrEqual(estimated_size_, 0.f)
                     ? estimated_size_
-                    : (base::FloatsLargerOrEqual(container_size_, 0.f)
+                    : (base::FloatsLarger(container_size_, 0.f)
                            ? container_size_
-                           : 0.f));
+                           : list::kDefaultMainAxisItemSize));
 }
 
 float ItemHolder::GetBorder(list::FrameDirection frame_direction) const {

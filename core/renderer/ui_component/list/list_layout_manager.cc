@@ -150,13 +150,19 @@ void ListLayoutManager::InitLayoutAndAnchor(
 
 void ListLayoutManager::SetListLayoutInfoToAllItemHolders() {
   if (!list_children_helper_ || !list_orientation_helper_) {
-    LOGE(
+    NLIST_LOGE(
         "ListLayoutManager::SetListLayoutInfoToAllItemHolders: "
         "list_children_helper_ or list_orientation_helper_ is nullptr");
     return;
   }
+  float container_size = list_orientation_helper_->GetMeasurement();
+  if (!base::FloatsLarger(container_size, 0.f)) {
+    NLIST_LOGE(
+        "ListLayoutManager::SetListLayoutInfoToAllItemHolders: invalid list "
+        "container's size.");
+  }
   list_children_helper_->ForEachChild(
-      [container_size = list_orientation_helper_->GetMeasurement(),
+      [container_size,
        is_rtl = list_container_->IsRTL()](ItemHolder* item_holder) {
         item_holder->SetContainerSize(container_size);
         item_holder->SetDirection(is_rtl ? list::Direction::kRTL
