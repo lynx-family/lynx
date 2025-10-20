@@ -554,10 +554,19 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   bool ShouldPostDataToJs() const {
     // currently, only air&air_fiber mode should not post data to js
-    return !(page_config_ && (page_config_->GetLynxAirMode() ==
-                                  CompileOptionAirMode::AIR_MODE_STRICT ||
-                              page_config_->GetLynxAirMode() ==
-                                  CompileOptionAirMode::AIR_MODE_FIBER));
+    // or EmbeddedMode is on, but logic executor has not been set.
+    if (page_config_) {
+      if (page_config_->GetLynxAirMode() ==
+              CompileOptionAirMode::AIR_MODE_FIBER ||
+          page_config_->GetLynxAirMode() ==
+              CompileOptionAirMode::AIR_MODE_STRICT) {
+        if (IsEmbeddedModeOn() && !GetPageOptions().IsHasLogicExecutor()) {
+          return true;
+        }
+        return false;
+      }
+    }
+    return true;
   }
 
   const lepus::Value& GetDefaultProcessor() { return default_processor_; }

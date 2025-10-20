@@ -99,11 +99,16 @@ struct PageOptions {
     return embedded_mode_ & EmbeddedMode::LAYOUT_IN_ELEMENT;
   }
 
+  void SetHasLogicExecutor(bool enable) { has_logic_executor = enable; }
+
+  bool IsHasLogicExecutor() const { return has_logic_executor; }
+
  private:
   int32_t instance_id_{kUnknownInstanceID};
   bool debuggable_{false};
   bool long_task_disabled_{false};
   EmbeddedMode embedded_mode_{UNSET};
+  bool has_logic_executor{false};
 };
 
 }  // namespace tasm
