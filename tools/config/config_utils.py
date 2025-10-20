@@ -57,3 +57,16 @@ def clang_format(file: str, style="Google", file_extension=None) -> str:
     except FileNotFoundError:
         print(f"{CLANG_FORMAT_PATH} not found", file=sys.stderr)
         return file
+
+
+def sort_by_deprecated_and_alphabetical(configs):
+    configs_sorted = configs.copy()
+
+    valid_configs = [config for config in configs_sorted if not config.deprecated]
+    deprecated_configs = [config for config in configs_sorted if config.deprecated]
+
+    valid_configs.sort(key=lambda c: c.name.lower())
+    deprecated_configs.sort(key=lambda c: c.name.lower())
+
+    configs_sorted = valid_configs + deprecated_configs
+    return configs_sorted

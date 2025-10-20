@@ -10,7 +10,7 @@ import yaml
 import re
 import sys
 from jinja2 import Template
-from config_utils import clang_format
+from config_utils import clang_format, sort_by_deprecated_and_alphabetical
 import argparse
 
 _accounts_set = None
@@ -330,7 +330,7 @@ def gen_rspeedy_plugin_config_types(configs: list[Config]):
     render_code_content(
         rspeedy_plugin_config_types_tmpl_path,
         rspeedy_plugin_config_types_header_path,
-        configs,
+        sort_by_deprecated_and_alphabetical(configs),
     )
 
 
@@ -344,13 +344,11 @@ def gen_config_doc(configs: list[Config]):
         "lynx_config_doc.mdx",
     )
 
-    configs_for_docs = configs.copy()
-    valid_configs = [config for config in configs_for_docs if not config.deprecated]
-    deprecated_configs = [config for config in configs_for_docs if config.deprecated]
-    valid_configs.sort(key=lambda c: c.name.lower())
-    deprecated_configs.sort(key=lambda c: c.name.lower())
-    configs_for_docs = valid_configs + deprecated_configs
-    render_code_content(config_doc_tmpl_path, config_doc_header_path, configs_for_docs)
+    render_code_content(
+        config_doc_tmpl_path,
+        config_doc_header_path,
+        sort_by_deprecated_and_alphabetical(configs),
+    )
 
 
 def main():

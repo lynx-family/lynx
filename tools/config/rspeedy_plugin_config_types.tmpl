@@ -5,16 +5,26 @@
 export interface Config {
 {% for config in configs %}
   /**
-   * @description {{ config.desc }}
-   * @valueType {{ config.js_value_type }} | undefined
+   {% if config.desc %}
+   * {{ config.desc }}
+   {% endif %}
+   {% if config.js_value_type %}
+   * @type {{ '{' }}{{ config.js_value_type }}{{ '}' }}
+   {% endif %}
+   {% if config.js_default_value %}
    * @defaultValue {{ config.js_default_value }}
+   {% endif %}
+   {% if config.since %}
    * @since {{ config.since }}
+   {% endif %}
+   {% if config.support_platform %}
    * @supportPlatform {{ config.support_platform }}
+   {% endif %}
    {% if config.deprecated %}
    * @deprecated {{ config.deprecated }}
    {% endif %}
    */
-  {{ config.name }}?: {{ config.js_value_type }} | undefined;
+  {{ config.name }}?: {{ config.js_value_type }};
 
 {% endfor %}
 }
