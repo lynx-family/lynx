@@ -60,7 +60,10 @@ shell_shared_sources = [
   "vsync_observer_impl.h",
   "list_container_proxy.cc",
    "list_container_proxy.h",
-  
+   "list_engine_proxy_impl.cc",
+   "list_engine_proxy_impl.h",  
+   "list_engine_proxy.h",
+
 ]
 
 if (!enable_unittests) {

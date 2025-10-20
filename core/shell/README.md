@@ -144,7 +144,7 @@ To call `CallFunction` through the platform layer on the TASM thread:
 
 ```cpp
 void LynxShell::CallFunction() {
-  engine_actor_->Act(
+  list_engine_proxy->Act(
       [](auto& engine) {
         engine->CallFunction();
       });
@@ -172,7 +172,7 @@ Implement the method in `LynxEngineProxyImpl`:
 class LynxEngineProxyImpl : public LynxEngineProxy {
  public:
   void CallFunction() override {
-    engine_actor_->Act(
+    list_engine_proxy->Act(
         [](auto& engine) {
           engine->CallFunction();
         });

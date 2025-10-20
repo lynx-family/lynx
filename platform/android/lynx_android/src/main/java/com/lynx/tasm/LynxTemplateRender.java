@@ -874,7 +874,7 @@ public class LynxTemplateRender
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
     mNativeLifecycle = nativeLifecycleCreate();
     mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
-    mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this));
+    mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this,mNativePtr));
     mLynxContext.setEnableVSyncAligned(enableVSyncAligned);
     if (mDevTool != null) {
       mDevTool.onTemplateAssemblerCreated(mNativePtr);
@@ -3286,11 +3286,6 @@ public class LynxTemplateRender
     }
 
     mEngineProxy.dispatchTaskToLynxEngine(runnable);
-  }
-  
-  
-  public long getNativePtr(){
-    return mNativePtr;
   }
 
   public void startLynxRuntime() {

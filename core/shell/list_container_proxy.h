@@ -9,24 +9,30 @@
 
 #include "core/shell/lynx_engine.h"
 #include "base/include/lynx_actor.h"
+#include "core/shell/list_engine_proxy.h"
 
 namespace lynx {
  namespace shell { 
 
 class ListContainerProxy {
  public:
-  explicit ListContainerProxy(const std::shared_ptr<LynxActor<shell::LynxEngine>> & engine_actor):engine_actor_(engine_actor){};
+  explicit ListContainerProxy(const std::shared_ptr<ListEngineProxy> & list_engine_proxy): list_engine_proxy_(list_engine_proxy){};
 
-  void ScrollByListContainer(int32_t tag, float offset_x, float offset_y,
-                             float original_x, float original_y);
+    void ScrollByListContainer(int32_t tag, float offset_x, float offset_y,
+                               float original_x, float original_y);
 
-  void ScrollToPosition(int32_t tag, int index, float offset, int align,
-                        bool smooth);
+    void ScrollToPosition(int32_t tag, int index, float offset, int align,
+                          bool smooth);
 
-  void ScrollStopped(int32_t tag);
- 
-  private:
-    std::weak_ptr<LynxActor<shell::LynxEngine>> engine_actor_;
+    void ScrollStopped(int32_t tag); 
+  
+    // ListEngineProxy shared_ptr
+    std::shared_ptr<ListEngineProxy> GetListEngineProxy() const {
+        return list_engine_proxy_;
+    }
+
+private:
+    std::shared_ptr<ListEngineProxy> list_engine_proxy_;
 
 };
 

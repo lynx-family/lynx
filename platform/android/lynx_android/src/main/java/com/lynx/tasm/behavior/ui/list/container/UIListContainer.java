@@ -407,8 +407,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     
     if(mListContainerProxy ==null && getLynxContext().getListNodeInfoFetcher() instanceof ListNodeInfoFetcher){
       ListNodeInfoFetcher listNodeInfoFetcher = (ListNodeInfoFetcher) getLynxContext().getListNodeInfoFetcher();
-      // relax 
-      mListContainerProxy = new ListContainerProxy(this, listNodeInfoFetcher.mRenderer.getNativePtr());//shell_ptr; eng
+      // lynx
+      mListContainerProxy = new ListContainerProxy(this, listNodeInfoFetcher.getShellPtr());
       
     }
     

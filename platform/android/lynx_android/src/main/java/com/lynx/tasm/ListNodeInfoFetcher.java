@@ -10,10 +10,19 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxTemplateRender;
 
 public class ListNodeInfoFetcher implements IListNodeInfoFetcher {
-  public LynxTemplateRender mRenderer;
+  private LynxTemplateRender mRenderer;
+  private long mShellPtr;
+  
+  private ListNodeInfoFetcher() {
+  }
 
-  public ListNodeInfoFetcher(LynxTemplateRender renderer) {
+  public ListNodeInfoFetcher(LynxTemplateRender renderer,long shellPtr) {
     mRenderer = renderer;
+    mShellPtr = shellPtr;
+  }
+  
+  public long getShellPtr() {
+    return mShellPtr;
   }
 
   @Override
