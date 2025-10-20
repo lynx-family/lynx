@@ -10,12 +10,6 @@ interceptor_shared_sources =
         ])
 network_interceptor_shared_sources = []
 
-bindings_extend_sources =
-    rebase_path([
-                  "../core/runtime/bindings/jsi/system_info.cc",
-                  "../core/runtime/bindings/jsi/system_info.h",
-                ])
-
 jsbridge_extend_shared_sources = rebase_path(
         [ "../core/runtime/bindings/jsi/modules/ios/lynx_module_interceptor.mm" ])
 
