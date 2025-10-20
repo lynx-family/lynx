@@ -475,7 +475,7 @@ class Element : public lepus::RefCounted,
   void CheckTimingAttribute(const lynx::base::String& key,
                             const lynx::lepus::Value& value);
   void CheckNewAnimatorAttr(const base::String& key, const lepus::Value& value);
-  void CheckHasOpacityProps(CSSPropertyID id, bool reset);
+
   // return true indicates current style is transtion related
   bool CheckTransitionProps(CSSPropertyID id);
   // return true indicates current style is keyframe related
@@ -772,7 +772,6 @@ class Element : public lepus::RefCounted,
   bool has_keyframe_props_changed_{false};
   bool has_non_flatten_attrs_{false};
 
-  bool has_opacity_{false};
   // relevant to z-index
   bool has_z_props_{false};
 
