@@ -693,7 +693,9 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
   NodeManager::Instance().SetEventDispatcher(this);
+  std::string event_name;
   if (OH_ArkUI_UIInputEvent_GetAction(event) == UI_TOUCH_EVENT_ACTION_DOWN) {
+    event_name = TouchEvent::START;
     float active_x = OH_ArkUI_PointerEvent_GetX(event);
     float active_y = OH_ArkUI_PointerEvent_GetY(event);
     LOGI("EventDispatcher OnTouchEvent down x:" << active_x
@@ -708,14 +710,17 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
     }
     switch (OH_ArkUI_UIInputEvent_GetAction(event)) {
       case UI_TOUCH_EVENT_ACTION_MOVE: {
+        event_name = TouchEvent::MOVE;
         HandleTouchMove(event);
         break;
       }
       case UI_TOUCH_EVENT_ACTION_UP: {
+        event_name = TouchEvent::UP;
         HandleTouchUp(event);
         break;
       }
       case UI_TOUCH_EVENT_ACTION_CANCEL: {
+        event_name = TouchEvent::CANCEL;
         HandleTouchCancel(event);
         break;
       }
@@ -730,6 +735,17 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
 
   if (!first_active_target_.expired()) {
     first_active_target_.lock()->DispatchTouch(event);
+  }
+  if (!first_active_target_.expired() && ui_owner_->GetGestureArenaManager()) {
+    if (event_name == TouchEvent::START) {
+      ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
+    }
+    if (last_touch_event_ != nullptr &&
+        (event_name == TouchEvent::START || event_name == TouchEvent::MOVE ||
+         event_name == TouchEvent::UP || event_name == TouchEvent::CANCEL)) {
+      ui_owner_->DispatchTouchEventToGestureArena(event_name, last_touch_event_,
+                                                  event);
+    }
   }
 }
 
@@ -763,16 +779,7 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetClientPoint(client_point);
   touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
   ui_owner_->SendEvent(touch_event);
-  if (ui_owner_->GetGestureArenaManager()) {
-    if (name == TouchEvent::START) {
-      ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
-    }
-    if (name == TouchEvent::START || name == TouchEvent::MOVE ||
-        name == TouchEvent::UP || name == TouchEvent::CANCEL) {
-      ui_owner_->DispatchTouchEventToGestureArena(
-          name, std::make_shared<TouchEvent>(touch_event), event);
-    }
-  }
+  last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
 }
 
 void EventDispatcher::DispatchMultiTouchEvent(
@@ -781,13 +788,7 @@ void EventDispatcher::DispatchMultiTouchEvent(
   TouchEvent touch_event(name, target_touch_map);
   touch_event.SetTimeStamp(time_stamp_);
   ui_owner_->SendEvent(touch_event);
-  if (ui_owner_->GetGestureArenaManager()) {
-    if (name == TouchEvent::START) {
-      ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
-    }
-    ui_owner_->DispatchTouchEventToGestureArena(
-        name, std::make_shared<TouchEvent>(touch_event), event);
-  }
+  last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
 }
 
 void EventDispatcher::OnLongPressEvent(const ArkUI_UIInputEvent* event) {
