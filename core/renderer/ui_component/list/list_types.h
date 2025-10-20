@@ -98,6 +98,7 @@ static constexpr int kInvalidItemCount = -1;
 static constexpr int kInvalidDimensionSize = -1.f;
 static constexpr int kStickyItemSetCapacityForSyncMode = 1;
 static constexpr int kStickyItemSetCapacityForASyncMode = 2;
+static constexpr int kDefaultMainAxisItemSize = 200;
 static constexpr const char* const kList = "list";
 static constexpr const char* const kListTypeSingle = "single";
 static constexpr const char* const kListTypeFlow = "flow";
