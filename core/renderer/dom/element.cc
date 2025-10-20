@@ -120,7 +120,6 @@ Element::Element(const Element& element, bool clone_resolved_props)
       fixed_changed_(element.is_fixed_),
       has_event_listener_(element.has_event_listener_),
       has_non_flatten_attrs_(element.has_non_flatten_attrs_),
-      has_opacity_(element.has_opacity_),
       has_z_props_(element.has_z_props_),
       is_virtual_(element.is_virtual_),
       subtree_need_update_(element.subtree_need_update_),
@@ -392,7 +391,6 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       // FIXME(linxs): only Android need to check below props for flatten.
       // Normally, it's better to move below checks to Android platform side,
       // but checking in C++ size has a better performance
-      CheckHasOpacityProps(css_id, false);
       CheckHasNonFlattenCSSProps(css_id);
 #endif
     }
@@ -974,7 +972,7 @@ void Element::HandleCSSVariables(StyleMap& styles) {
 void Element::ResolvePlaceHolder() { style_resolver_.ResolvePlaceHolder(); }
 
 bool Element::DisableFlattenWithOpacity() {
-  return has_opacity_ && !is_text() && !is_image();
+  return computed_css_style()->HasOpacity() && !is_text() && !is_image();
 }
 
 starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
@@ -1222,12 +1220,6 @@ void Element::CheckGlobalBindTarget(const lynx::base::String& key,
   base::SplitString(base::TrimString(value_str), kDelimiter, id_targets);
   for (auto& s : id_targets) {
     global_bind_target_set_->insert(base::TrimString(s));
-  }
-}
-
-void Element::CheckHasOpacityProps(CSSPropertyID id, bool reset) {
-  if (UNLIKELY(id == CSSPropertyID::kPropertyIDOpacity)) {
-    has_opacity_ = !reset;
   }
 }
 

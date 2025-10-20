@@ -319,7 +319,7 @@ class ComputedCSSStyle {
 
   uint32_t GetHandleColor() { return handle_color_; }
 
-  bool HasOpacity() const { return base::FloatsNotEqual(opacity_, 1.0f); }
+  bool HasOpacity() const;
 
   const LayoutComputedStyle* GetConstLayoutComputedStyle() const {
     return &layout_computed_style_;
@@ -427,7 +427,10 @@ class ComputedCSSStyle {
   int z_index_{DefaultComputedStyle::DEFAULT_LONG};
   unsigned int handle_color_{0};
   float handle_size_{0.f};
+
+  bool origin_has_opacity_{false};
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
+
   float offset_distance_{DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE};
   float offset_rotate_ = {DefaultComputedStyle::DEFAULT_OFFSET_ROTATE};
 

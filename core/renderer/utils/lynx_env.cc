@@ -524,5 +524,11 @@ bool LynxEnv::EnableCSSInlineVariables() {
       GetBoolEnv(Key::ENABLE_CSS_INLINE_VARIABLES, false);
   return enable_css_inline_variables;
 }
+
+bool LynxEnv::EnableOptimizeHasOpacity() {
+  static bool enable_optimize_has_opacity =
+      GetBoolEnv(Key::ENABLE_OPTIMIZE_HAS_OPACITY, true);
+  return enable_optimize_has_opacity;
+}
 }  // namespace tasm
 }  // namespace lynx

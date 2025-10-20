@@ -122,6 +122,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
+    ENABLE_OPTIMIZE_HAS_OPACITY,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -257,6 +258,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_global_font_collection"},
             {Key::ENABLE_GC_ONCE_ON_IDLE, "enable_gc_once_on_idle"},
             {Key::ENABLE_CSS_INLINE_VARIABLES, "enable_css_inline_variables"},
+            {Key::ENABLE_OPTIMIZE_HAS_OPACITY, "enable_optimize_has_opacity"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -398,6 +400,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableGlobalFontCollection();
   uint32_t EnableGCOnceOnIdle();
   bool EnableCSSInlineVariables();
+  bool EnableOptimizeHasOpacity();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

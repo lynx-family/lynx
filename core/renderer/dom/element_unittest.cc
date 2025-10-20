@@ -100,8 +100,10 @@ TEST_F(ElementTest, CheckHasFilterProps) {
   EXPECT_TRUE(element->has_z_props_);
   EXPECT_TRUE(ret);
 
-  element->CheckHasOpacityProps(CSSPropertyID::kPropertyIDOpacity, false);
-  EXPECT_TRUE(element->has_opacity_);
+  element->computed_css_style()->SetValue(
+      CSSPropertyID::kPropertyIDOpacity,
+      CSSValue(lepus::Value(0.1), CSSValuePattern::NUMBER));
+  EXPECT_TRUE(element->computed_css_style()->HasOpacity());
 
   element->CheckHasNonFlattenCSSProps(CSSPropertyID::kPropertyIDFilter);
   EXPECT_TRUE(element->has_non_flatten_attrs_);

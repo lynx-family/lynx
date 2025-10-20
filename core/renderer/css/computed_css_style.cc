@@ -1512,11 +1512,27 @@ bool ComputedCSSStyle::SetImplicitAnimation(const tasm::CSSValue& value,
   return false;
 }
 
+bool ComputedCSSStyle::HasOpacity() const {
+  // TODO(songshourui.null): Previously, an element was considered to have
+  // opacity if the property was set, but opacity == 1.0f should not count. The
+  // Android flatten check depended on the old logic (`origin_has_opacity_`),
+  // causing performance issues by incorrectly preventing flattening. To avoid
+  // breaking changes, a new `EnableOptimizeHasOpacity` setting is introduced.
+  // This setting will be removed after verifying stability in production.
+  if (tasm::LynxEnv::GetInstance().EnableOptimizeHasOpacity()) {
+    return base::FloatsNotEqual(opacity_, 1.0f);
+  }
+  return origin_has_opacity_;
+}
+
 bool ComputedCSSStyle::SetOpacity(const tasm::CSSValue& value,
                                   const bool reset) {
-  return CSSStyleUtils::ComputeFloatStyle(
+  bool result = CSSStyleUtils::ComputeFloatStyle(
       value, reset, opacity_, DefaultComputedStyle::DEFAULT_OPACITY,
       "opacity must be a float!", parser_configs_);
+
+  origin_has_opacity_ = !reset;
+  return result;
 }
 
 bool ComputedCSSStyle::SetOverflowX(const tasm::CSSValue& value,
