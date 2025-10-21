@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "lynx_export.h"
+#include "lynx_extension_module_types_capi.h"
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_native_module_capi.h"
 #include "lynx_view_capi.h"
@@ -22,7 +23,7 @@ typedef struct lynx_vsync_observer_t lynx_vsync_observer_t;
 
 typedef void (*vsync_observer_callback)(void* user_data, int64_t, int64_t);
 
-// // To synchronize with a given VSync, a callback is set, which is called back
+// To synchronize with a given VSync, a callback is set, which is called back
 // when the next VSync signal arrives. This callback will be called before any
 // normal callback.
 LYNX_CAPI_EXPORT void lynx_vsync_observer_request_before_animation_frame(
@@ -38,10 +39,6 @@ LYNX_CAPI_EXPORT void lynx_vsync_observer_request_animation_frame(
 // normal callback.
 LYNX_CAPI_EXPORT void lynx_vsync_observer_request_after_animation_frame(
     lynx_vsync_observer_t*, vsync_observer_callback callback, void* user_data);
-
-typedef struct lynx_extension_module_t lynx_extension_module_t;
-
-typedef lynx_extension_module_t* (*extension_module_creator)(void* opaque);
 
 typedef void (*lynx_extension_module_on_lynx_view_create_func)(
     lynx_extension_module_t*, lynx_view_t*);
@@ -61,10 +58,18 @@ typedef void (*lynx_extension_module_on_destroy_func)(lynx_extension_module_t*);
 typedef void (*lynx_extension_module_post_task_func)(void* user_data);
 
 // Creates a lynx_extension_module_t instance. It associates the provided
-// user data with the fetcher, which can be retrieved later using
+// user data with the module, which can be retrieved later using
 // `lynx_extension_module_get_user_data`.
 LYNX_CAPI_EXPORT lynx_extension_module_t* lynx_extension_module_create(
     void* user_data);
+
+// Creates a lynx_extension_module_t instance with a finalizer. It associates
+// the provided user data with the module, which can be retrieved later using
+// `lynx_extension_module_get_user_data`. The finalizer function will be called
+// when the module is released.
+LYNX_CAPI_EXPORT lynx_extension_module_t*
+lynx_extension_module_create_with_finalizer(
+    void* user_data, void (*finalizer)(lynx_extension_module_t*, void*));
 
 LYNX_CAPI_EXPORT void* lynx_extension_module_get_user_data(
     lynx_extension_module_t*);
