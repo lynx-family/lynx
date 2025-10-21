@@ -2,12 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxConfig+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
+#import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewGroup.h>
 #import "LynxUIRenderer.h"
@@ -15,14 +17,24 @@
 
 @implementation LynxViewBuilder
 
-- (LynxConfig*)config {
+- (LynxConfig *)config {
   if (_lynxViewGroup) {
     return _lynxViewGroup.config;
   }
   return [super config];
 }
 
-- (LynxGroup*)group {
+// TODO(nihao.royal): config changed in LynxTemplateRender initialization is not a good practice in
+// Lynx. Needs to be optimized
+- (void)setConfig:(LynxConfig *)config {
+  if (_lynxViewGroup) {
+    _lynxViewGroup.config = config;
+    return;
+  }
+  [super setConfig:config];
+}
+
+- (LynxGroup *)group {
   if (_lynxViewGroup) {
     return _lynxViewGroup.group;
   }
@@ -205,7 +217,7 @@
   return [super enableUnifiedPipeline];
 }
 
-- (NSString*)bytecodeUrl {
+- (NSString *)bytecodeUrl {
   if (_lynxViewGroup) {
     return _lynxViewGroup.bytecodeUrl;
   }
@@ -233,7 +245,7 @@
   return [super getEmbeddedMode];
 }
 
-- (void)insertLynxViewConfig:(id)config forKey:(NSString*)key {
+- (void)insertLynxViewConfig:(id)config forKey:(NSString *)key {
   if (!key || !config) {
     return;
   }
@@ -244,6 +256,16 @@
       [self.lynxViewConfig setObject:config forKey:key];
     }
   }
+}
+
+- (NSMutableDictionary<NSString *, id> *)getModuleWrapper {
+  NSMutableDictionary<NSString *, id> *module_wrapper = [[NSMutableDictionary alloc] init];
+  if (self.lynxViewGroup) {
+    [module_wrapper
+        addEntriesFromDictionary:self.lynxViewGroup.config.moduleFactoryPtr->getModuleClasses()];
+  }
+  [module_wrapper addEntriesFromDictionary:[super config].moduleFactoryPtr->getModuleClasses()];
+  return module_wrapper;
 }
 
 @end

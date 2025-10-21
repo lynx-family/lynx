@@ -35,6 +35,7 @@
 #import <Lynx/LynxUILayoutTick.h>
 #import <Lynx/LynxUIMethodModule.h>
 #import <Lynx/LynxUIRenderer.h>
+#import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
 
 #include "core/base/darwin/lynx_env_darwin.h"
@@ -170,7 +171,8 @@
   }
 
   const auto& actor = shell_->GetRuntimeActor();
-  auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, actor->GetInstanceId(),
+  auto runtime_instance_id = actor ? actor->GetInstanceId() : 0;
+  auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, runtime_instance_id,
                                                      [_runtimeOptions groupThreadName]);
   [_context setJSProxy:js_proxy];
 
@@ -277,7 +279,7 @@
   // setup user modules
   if (_config) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
-    module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
+    module_factory->addWrappers([_builder getModuleWrapper]);
   }
   // setup user global modules
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
@@ -311,7 +313,7 @@
     module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
-      module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
+      module_factory->addWrappers([_builder getModuleWrapper]);
     }
   }
   module_factory_ = module_factory;

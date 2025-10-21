@@ -132,6 +132,7 @@ subspec_target("lynx") {
     "LynxUIRendererProtocol.h",
     "LynxView+Protected.h",
     "LynxView.mm",
+    "LynxViewBuilder+Internal.h",
     "LynxViewBuilder.mm",
     "LynxViewGroup.mm",
     "LynxWasmFuncRegistry.mm",

@@ -118,7 +118,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
         [LynxTrailExtensionService parseLynxViewBuilder:builder];
       }
     }
-
+    _builder = builder;
     _lynxViewGroup = builder.lynxViewGroup;
     _logicExecutor = _lynxViewGroup.logicExecutor;
     if ([containerView isKindOfClass:[LynxView class]]) {
@@ -165,6 +165,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
     /// Frame
     [self setUpFrame:builder.frame];
+
+    /// setup globalProps with lynxViewGroup
+    [self updateGlobalPropsWithTemplateData:_lynxViewGroup.globalProps];
 
     /// Timing
     _initEndTiming = [[NSDate date] timeIntervalSince1970] * 1000 * 1000;
@@ -486,7 +489,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       meta.templateBundle ? meta.templateBundle : _lynxViewGroup.templateBundle;
 
   if (templateBundle) {
-    [self loadTemplateBundle:meta.templateBundle withURL:meta.url initData:meta.initialData];
+    [self loadTemplateBundle:templateBundle withURL:meta.url initData:meta.initialData];
     if (_logicExecutor != nil) {
       // if logicExecutor set, we need to kepp _templateData
       if (_templateData == nil) {
