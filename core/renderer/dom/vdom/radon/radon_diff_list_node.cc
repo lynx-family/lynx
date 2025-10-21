@@ -186,6 +186,10 @@ void RadonDiffListNode::TransmitDispatchOptionFromListNodeToListComponent(
 }
 
 void RadonDiffListNode::DispatchFirstTime() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_DISPATCH_FIRST_TIME,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
   platform_info_.diffable_list_result_ = false;
   DiffListComponents();
   RadonNode::DispatchFirstTime();

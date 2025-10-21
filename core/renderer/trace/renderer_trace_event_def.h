@@ -724,26 +724,41 @@ inline constexpr const char* const DEVTOOL_NOTIFY_ELEMENT_NODE_SETTED =
 inline constexpr const char* const DEVTOOL_UPDATE_INLINE_STYLES_FROM_OLD_MODEL =
     "Devtool::UpdateInlineStylesFromOldModel";
 
+// list new arch
+inline constexpr const char* const RADON_LIST_2_SHOULD_FLUSH =
+    "RadonDiffListNode2::ShouldFlush";
+inline constexpr const char* const RADON_LIST_2_DIFF_CHILDREN =
+    "RadonDiffListNode2::RadonDiffChildren";
+inline constexpr const char* const RADON_LIST_2_DISPATCH_FIRST_TIME =
+    "RadonDiffListNode2::DispatchFirstTime";
+inline constexpr const char* const RADON_LIST_2_COMPONENT_AT_INDEX =
+    "RadonDiffListNode2::ComponentAtIndex";
+inline constexpr const char* const RADON_LIST_2_ENQUEUE_COMPONENT =
+    "RadonDiffListNode2::EnqueueComponent";
+inline constexpr const char* const RADON_LIST_2_SYNC_COMPONENT_EXTRA_INFO =
+    "RadonDiffListNode2::SyncComponentExtraInfo";
+// list legacy arch
 inline constexpr const char* const RADON_LIST_SYNC_COMPONENT_EXTRA_INFO =
     "RadonDiffListNode::SyncComponentExtraInfo";
 inline constexpr const char* const RADON_LIST_SHOULD_FLUSH =
     "RadonDiffListNode::ShouldFlush";
 inline constexpr const char* const RADON_LIST_DIFF_CHILDREN =
     "RadonDiffListNode::RadonDiffChildren";
-inline constexpr const char* const RADON_LIST_COMPONENT_AT_INDEX =
-    "RadonDiffListNode2::ComponentAtIndex";
-inline constexpr const char* const RADON_LIST_2_SYNC_COMPONENT_EXTRA_INFO =
-    "RadonDiffListNode2::SyncComponentExtraInfo";
-inline constexpr const char* const RADON_LIST_CREATE_COMPONENT_WITH_TYPE =
+inline constexpr const char* const RADON_LIST_DISPATCH_FIRST_TIME =
+    "RadonDiffListNode::DispatchFirstTime";
+// radon list base
+inline constexpr const char* const RADON_LIST_BASE_CREATE_COMPONENT_WITH_TYPE =
     "RadonListBase::CreateComponentWithType";
-inline constexpr const char* const RADON_LIST_GET_COMPONENT =
-    "List::GetComponent";
-inline constexpr const char* const RADON_LIST_REMOVE_COMPONENT =
-    "List::RemoveComponent";
-inline constexpr const char* const RADON_LIST_UPDATE_COMPONENT =
-    "List::UpdateComponent";
-inline constexpr const char* const RADON_LIST_DIFF_COMPONENTS =
-    "List::DiffListComponents";
+inline constexpr const char* const RADON_LIST_BASE_RENDER_COMPONENT_AT_INDEX =
+    "RadonListBase::RenderComponentAtIndex";
+inline constexpr const char* const RADON_LIST_BASE_GET_COMPONENT =
+    "RadonListBase::GetComponent";
+inline constexpr const char* const RADON_LIST_BASE_REMOVE_COMPONENT =
+    "RadonListBase::RemoveComponent";
+inline constexpr const char* const RADON_LIST_BASE_UPDATE_COMPONENT =
+    "RadonListBase::UpdateComponent";
+inline constexpr const char* const RADON_LIST_BASE_DIFF_COMPONENTS =
+    "RadonListBase::DiffListComponents";
 
 inline constexpr const char* const RADON_ELEMENT_SET_NATIVE_PROPS =
     "RadonElement::SetNativeProps";
