@@ -69,6 +69,7 @@ import com.lynx.tasm.core.resource.LynxResourceLoader;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.group.ILynxViewConfigProvider;
+import com.lynx.tasm.group.ILynxViewGroup;
 import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
 import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.performance.TimingOption;
@@ -136,7 +137,7 @@ public class LynxTemplateRender
   // TODO: absolutly, templateBundle should note be the indicator of EngineReuse.
   private TemplateBundle mTemplateBundle;
   private ILynxViewConfigProvider mLynxViewConfigProvider;
-  private ILynxViewRuntimeCacheManager mRuntimeCacheManager;
+  private ILynxViewGroup mLynxViewGroup;
   private ILynxLogicExecutor mLogicExecutor;
 
   private LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
@@ -299,13 +300,11 @@ public class LynxTemplateRender
     mBodyView = bodyView;
     mLynxViewConfigProvider = builder;
     mLogicExecutor = builder.getLogicExecutor();
-    if (builder.lynxViewGroup instanceof ILynxViewRuntimeCacheManager) {
-      mRuntimeCacheManager = ((ILynxViewRuntimeCacheManager) builder.lynxViewGroup);
-    }
+    mLynxViewGroup = builder.lynxViewGroup;
 
     mLynxViewBuilder = builder;
-    if (mRuntimeCacheManager != null && mRuntimeCacheManager.getTemplateBundle() != null) {
-      mTemplateBundle = mRuntimeCacheManager.getTemplateBundle();
+    if (mLynxViewGroup != null) {
+      mTemplateBundle = mLynxViewGroup.getTemplateBundle();
     }
 
     // fallback to use `builder.templateBundle`, delete it later;
@@ -868,7 +867,7 @@ public class LynxTemplateRender
         tasmPlatformInvoker, whiteBoardPtr, lynxUIRenderer.getUIDelegatePtr(),
         lynxUIRenderer.useInvokeUIMethod(), mLongTaskMonitorEnabled == LynxBooleanOption.FALSE,
         mForceLayoutOnBackgroundThread, mLynxViewConfigProvider.isEnableUnifiedPipeline(),
-        mEmbeddedMode, mLynxViewBuilder.isDebuggable(),
+        mEmbeddedMode, mLogicExecutor != null, mLynxViewBuilder.isDebuggable(),
         mLynxEngineRef == null ? 0 : mLynxEngineRef.getNativePtr(),
         mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
 
@@ -1569,10 +1568,14 @@ public class LynxTemplateRender
         }
       }
 
-      // update GlobalProps
-      if (loadMeta.globalProps != null) {
-        this.updateGlobalProps(loadMeta.globalProps);
+      // update GlobalProps, take globalProps in lynxViewGroup into consideration
+      TemplateData globalProps = null;
+      if (loadMeta.isGlobalPropsValid()) {
+        globalProps = loadMeta.getGlobalProps();
+      } else if (mLynxViewGroup != null) {
+        globalProps = mLynxViewGroup.getGlobalProps();
       }
+      this.updateGlobalProps(globalProps);
     }
   }
 
@@ -4156,8 +4159,8 @@ public class LynxTemplateRender
       boolean enableAsyncHydration, boolean enableJSGroupThread, String jsGroupThreadName,
       Object tasmPlatformInvoker, long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
       boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
-      boolean enableUnifiedPipeline, int embeddedMode, boolean debuggable, long enginePtr,
-      Object moduleFactory);
+      boolean enableUnifiedPipeline, int embeddedMode, boolean has_logic_executor,
+      boolean debuggable, long enginePtr, Object moduleFactory);
 
   private static native void nativeDestroy(long ptr);
 

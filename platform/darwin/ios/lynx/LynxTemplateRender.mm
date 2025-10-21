@@ -158,6 +158,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     /// Frame
     [self setUpFrame:builder.frame];
 
+    /// setup globalProps with lynxViewGroup
+    [self updateGlobalPropsWithTemplateData:_lynxViewGroup.globalProps];
+
     /// Timing
     _initEndTiming = [[NSDate date] timeIntervalSince1970] * 1000 * 1000;
     [self setUpTiming];

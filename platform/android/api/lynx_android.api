@@ -5482,6 +5482,7 @@ public class com::lynx::tasm::LynxLoadMeta :  {
   public TemplateBundle com.lynx.tasm.LynxLoadMeta.getTemplateBundle();
   public TemplateData com.lynx.tasm.LynxLoadMeta.getInitialData();
   public TemplateData com.lynx.tasm.LynxLoadMeta.getGlobalProps();
+  public boolean com.lynx.tasm.LynxLoadMeta.isGlobalPropsValid();
   public Map< String, String > com.lynx.tasm.LynxLoadMeta.getLynxViewConfig();
   public LynxLoadMode com.lynx.tasm.LynxLoadMeta.getLoadMode();
   public EnumSet< LynxLoadOption > com.lynx.tasm.LynxLoadMeta.getLoadOption();
