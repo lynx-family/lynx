@@ -95,7 +95,7 @@ constexpr const char kEnableMicrotaskPromisePolyfill[] =
  * @description: Use for app-service.js or other files to reuse exports of
  *loadScript.
  * @platform: Both
- * @supportVersion: 3.6
+ * @supportVersion: 3.5
  **/
 constexpr const char kEnableReuseLoadScriptExports[] =
     "enableReuseLoadScriptExports";

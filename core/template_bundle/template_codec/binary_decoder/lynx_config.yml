@@ -1495,7 +1495,7 @@ enableReuseLoadScriptExports:
   syncTo:
     - script
   author: lybvinci
-  since: '3.6'
+  since: '3.5'
   supportPlatform:
     - Android
     - HarmonyOS

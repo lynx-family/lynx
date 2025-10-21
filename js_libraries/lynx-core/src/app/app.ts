@@ -721,11 +721,13 @@ export abstract class BaseApp<
     url: string,
     options?: { bundleName?: string; useModuleWrapper?: boolean }
   ): T {
-    const { bundleName = DEFAULT_ENTRY, useModuleWrapper = false } = options;
+    const { bundleName = DEFAULT_ENTRY, useModuleWrapper = false } =
+      options || {};
     const cacheKey = this.getLoadScriptCacheKey(
       url,
       bundleName,
-      this.params.srcName
+      this.params.srcName,
+      true
     );
     let exports: BundleInitReturnObj | object = tryGetLoadScriptCache(cacheKey);
     if (NODE_ENV === 'development' || !exports) {
@@ -966,18 +968,20 @@ export abstract class BaseApp<
   private getLoadScriptCacheKey(
     path: string,
     entryName?: string,
-    template_url?: string
+    templateUrl?: string,
+    ignoreConfig: boolean = false
   ): string | undefined {
     if (
-      !template_url ||
+      !templateUrl ||
       NODE_ENV === 'development' ||
-      !this.params?.pageConfigSubset?.enableReuseLoadScriptExports
+      (!this.params?.pageConfigSubset?.enableReuseLoadScriptExports &&
+        !ignoreConfig)
     ) {
       return undefined;
     }
     let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
     if (path.startsWith('/') || path.startsWith('lynx_assets')) {
-      cacheKey = template_url + cacheKey;
+      cacheKey = templateUrl + cacheKey;
     }
     return cacheKey;
   }
