@@ -41,7 +41,7 @@ RadonDiffListNode2::RadonDiffListNode2(lepus::Context* context,
 bool RadonDiffListNode2::ShouldFlush(
     const std::unique_ptr<RadonBase>& old_radon_child,
     const DispatchOption& option) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_SHOULD_FLUSH,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_2_SHOULD_FLUSH,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -316,7 +316,7 @@ void RadonDiffListNode2::SetupListInfo(bool list_updated) {
 void RadonDiffListNode2::RadonDiffChildren(
     const std::unique_ptr<RadonBase>& old_radon_child,
     const DispatchOption& option) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_DIFF_CHILDREN,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_2_DIFF_CHILDREN,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -372,6 +372,10 @@ void RadonDiffListNode2::TransmitDispatchOptionFromListNodeToListComponent(
 }
 
 void RadonDiffListNode2::DispatchFirstTime() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_2_DISPATCH_FIRST_TIME,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
   platform_info_.diffable_list_result_ = false;
   bool list_updated = DiffListComponents();
   SetupListInfo(list_updated);
@@ -382,7 +386,7 @@ void RadonDiffListNode2::DispatchFirstTime() {
 int32_t RadonDiffListNode2::ComponentAtIndex(uint32_t index,
                                              int64_t operationId,
                                              bool enable_reuse_notification) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_COMPONENT_AT_INDEX, INSTANCE_ID,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_2_COMPONENT_AT_INDEX, INSTANCE_ID,
               tasm_->GetInstanceId());
   if (index >= components_.size()) {
     LOGE("index out of range in RadonDiffListNode2::ComponentAtIndex.");
@@ -560,9 +564,10 @@ int32_t RadonDiffListNode2::ComponentAtIndex(uint32_t index,
 }
 
 void RadonDiffListNode2::EnqueueComponent(int32_t sign) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_2_ENQUEUE_COMPONENT, INSTANCE_ID,
+              tasm_->GetInstanceId());
   // EnqueueComponent is a public API which might be called without care
   // Rigorous checks must be done to avoid crash.
-
   if (!tasm_ || !tasm_->page_proxy() ||
       !tasm_->page_proxy()->element_manager() ||
       !tasm_->page_proxy()->element_manager()->node_manager()) {
