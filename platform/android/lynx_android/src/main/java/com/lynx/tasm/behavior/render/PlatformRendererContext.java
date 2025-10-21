@@ -6,8 +6,12 @@ package com.lynx.tasm.behavior.render;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.shadow.TextLayout;
+import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
+import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
@@ -15,7 +19,7 @@ import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
-public class PlatformRendererContext {
+public class PlatformRendererContext implements TextMeasurerProvider {
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
     public static final int kView = 1;
@@ -25,10 +29,15 @@ public class PlatformRendererContext {
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
 
-  HashMap<Integer, ViewGroup> mViewHolder = new HashMap();
+  HashMap<Integer, ViewGroup> mViewHolder = new HashMap<>();
 
   private LynxContext mContext = null;
   private long mNativePtr = 0;
+  private TextLayout mTextLayout;
+  private boolean mDestroyed = false;
+
+  // TextMeasurer instance for text measurement functionality
+  private TextMeasurer mTextMeasurer = null;
 
   public PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context) {
     if (rootView != null) {
@@ -36,6 +45,12 @@ public class PlatformRendererContext {
     }
     this.mContext = context;
     this.mNativePtr = nativeCreateEmbeddedViewContext(this);
+
+    // Initialize TextMeasurer if layout mode is enabled
+    if (context != null && context.isLayoutInElementModeOn()) {
+      this.mTextMeasurer = new TextMeasurer(context);
+      mTextLayout = new TextLayout(this);
+    }
   }
 
   public void setRootView(@NonNull UIBody.UIBodyView rootView) {
@@ -115,5 +130,41 @@ public class PlatformRendererContext {
   public void getDrawingList(int id, DisplayList drawingList) {
     // TODO: Implement it
   }
+
+  public TextLayout getTextLayout() {
+    return mTextLayout;
+  }
+
+  /**
+   * Implements TextMeasurerProvider.measureText to delegate to the TextMeasurer instance.
+   * This allows PlatformRendererContext to provide text measurement functionality directly.
+   */
+  @Override
+  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
+    if (mTextMeasurer != null) {
+      return mTextMeasurer.measureText(sign, width, widthMode, height, heightMode);
+    }
+    // Return default measurement if TextMeasurer is not available
+    return new float[] {0.0f, 0.0f};
+  }
+
+  /**
+   * Implements TextMeasurerProvider.dispatchLayoutBefore to delegate to the TextMeasurer instance.
+   * This allows PlatformRendererContext to handle layout dispatch functionality directly.
+   */
+  @Override
+  public void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer) {
+    if (mTextMeasurer != null) {
+      mTextMeasurer.dispatchLayoutBefore(sign, buffer);
+    }
+  }
+
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
+
+  public void destroy() {
+    mDestroyed = true;
+    mViewHolder.clear();
+    mTextMeasurer = null;
+    mTextLayout = null;
+  }
 }

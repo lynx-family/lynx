@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+#include "core/base/android/jni_helper.h"
+
 namespace lynx::tasm {
 
 class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
@@ -42,11 +44,13 @@ class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
   }
 };
 
+class PlatformRendererContext;
+
 class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
  public:
-  NativePaintingCtxAndroid() : PaintingCtxPlatformImpl() {
-    // TODO: init with PlatformRendererContext
-  }
+  NativePaintingCtxAndroid(JNIEnv *env, jobject text_layout,
+                           PlatformRendererContext *view_manager);
+  NativePaintingCtxAndroid(const NativePaintingCtxAndroid &) = delete;
 
   void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface> &queue) override;
@@ -103,6 +107,10 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
 
   bool NeedAnimationProps() override;
+
+ private:
+  std::unique_ptr<PlatformRendererContext> view_manager_;
+  std::unique_ptr<TextLayoutImpl> text_layout_impl_;
 };
 
 }  // namespace lynx::tasm

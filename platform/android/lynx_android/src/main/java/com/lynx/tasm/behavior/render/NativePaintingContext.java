@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody;
@@ -14,15 +15,21 @@ import com.lynx.tasm.behavior.ui.UIBody;
  */
 public class NativePaintingContext implements IPaintingContext {
   private long mNativePtr = 0;
-  private PlatformRendererContext mPlatformRendererContext = null;
+
+  @NonNull private final PlatformRendererContext mPlatformRendererContext;
+  private boolean mDestroyed = false;
 
   public NativePaintingContext(UIBody.UIBodyView rootView, LynxContext context) {
     mPlatformRendererContext = new PlatformRendererContext(rootView, context);
-    mNativePtr = nativeCreatePaintingContext(this, mPlatformRendererContext.getNativePtr());
+    mNativePtr = nativeCreatePaintingContext(
+        this, mPlatformRendererContext.getNativePtr(), mPlatformRendererContext.getTextLayout());
   }
 
   @Override
-  public void destroy() {}
+  public void destroy() {
+    mDestroyed = true;
+    mPlatformRendererContext.destroy();
+  }
 
   @Override
   public long getNativePaintingContextPtr() {
@@ -34,5 +41,5 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   private native long nativeCreatePaintingContext(
-      NativePaintingContext jThis, long platformRendererContextPtr);
+      NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout);
 }

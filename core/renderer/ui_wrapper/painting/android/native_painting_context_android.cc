@@ -8,14 +8,22 @@
 #include <string>
 #include <vector>
 
+#include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_register_jni.h"
 
 // TODO: implement necessary functions for native ui renderer.
 jlong CreatePaintingContext(JNIEnv *env, jobject jcaller, jobject jThis,
-                            jlong platformRendererContextPtr) {
-  return reinterpret_cast<jlong>(new lynx::tasm::NativePaintingCtxAndroid());
+                            jlong platformRendererContextPtr,
+                            jobject textLayout) {
+  // This native object will be managed by NativePaintingContextAndroid with
+  // unique_ptr.
+  return reinterpret_cast<jlong>(new lynx::tasm::NativePaintingCtxAndroid(
+      env, textLayout,
+      reinterpret_cast<lynx::tasm::PlatformRendererContext *>(
+          platformRendererContextPtr)));
 }
 namespace lynx {
 namespace jni {
@@ -25,6 +33,14 @@ bool RegisterJNIForNativePaintingContext(JNIEnv *env) {
 }  // namespace jni
 
 namespace tasm {
+
+NativePaintingCtxAndroid::NativePaintingCtxAndroid(
+    JNIEnv *env, jobject text_layout, PlatformRendererContext *view_manager)
+    : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)),
+      text_layout_impl_(std::make_unique<TextLayoutAndroid>(env, text_layout)) {
+  platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>();
+}
+
 void NativePaintingCtxAndroid::SetUIOperationQueue(
     const std::shared_ptr<shell::UIOperationQueueInterface> &queue) {
   PaintingCtxPlatformImpl::SetUIOperationQueue(queue);

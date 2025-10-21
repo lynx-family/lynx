@@ -7884,7 +7884,7 @@ public class com::lynx::tasm::behavior::ui::utils::PlatformLength :  {
   public boolean com.lynx.tasm.behavior.ui.utils.PlatformLength.isZero();
 }
 
-public class com::lynx::tasm::behavior::render::PlatformRendererContext :  {
+public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.lynx.tasm.behavior.shadow.TextMeasurerProvider {
   public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
@@ -7894,6 +7894,10 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext :  {
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDrawingList(int id, DisplayList drawingList);
+  public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
+  public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroy();
 }
 
 public class com::lynx::tasm::behavior::render::PlatformRendererContext::PlatformRendererType :  {
@@ -9404,6 +9408,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextIndent :  {
 }
 
 public class com::lynx::tasm::behavior::shadow::TextLayout :  {
+  public com.lynx.tasm.behavior.shadow.TextLayout.TextLayout(TextMeasurerProvider textMeasurerProvider);
   public com.lynx.tasm.behavior.shadow.TextLayout.TextLayout(LynxUIOwner uiOwner);
   public float[] com.lynx.tasm.behavior.shadow.TextLayout.measureText(int sign, float width, int widthMode, float height, int heightMode);
   public void com.lynx.tasm.behavior.shadow.TextLayout.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
@@ -9422,6 +9427,11 @@ public class com::lynx::tasm::behavior::shadow::text::TextMeasurer :  {
   public Object com.lynx.tasm.behavior.shadow.text.TextMeasurer.takeTextLayout(int sign);
   public void com.lynx.tasm.behavior.shadow.text.TextMeasurer.releaseLayoutObject(int sign);
   public void com.lynx.tasm.behavior.shadow.text.TextMeasurer.removeLayoutObjects();
+}
+
+public interface com::lynx::tasm::behavior::shadow::TextMeasurerProvider {
+  public float[] com.lynx.tasm.behavior.shadow.TextMeasurerProvider.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public void com.lynx.tasm.behavior.shadow.TextMeasurerProvider.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextRenderer :  {
