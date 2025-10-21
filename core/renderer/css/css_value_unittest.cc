@@ -598,8 +598,50 @@ TEST_F(CSSValueSubstitutionTest, SubstitutionNestedVariable) {
   CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
   CSSValue css_value = parser.ParseVariable();
   std::string result =
-      css_value.Substitution(css_value, custom_properties, 10, nullptr);
+      CSSValue::Substitution(css_value, custom_properties, 10, nullptr);
   EXPECT_EQ(result, "   blue");
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
+  CustomPropertiesMap custom_properties;
+  {
+    lepus::Value variable = lepus::Value("var(--b, red)");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_cyclic = parser.ParseVariable();
+    custom_properties.insert_or_assign("--a", ref_to_cyclic);
+    EXPECT_TRUE(ref_to_cyclic.NeedsVariableResolution());
+    EXPECT_TRUE(custom_properties["--a"].NeedsVariableResolution());
+  }
+  {
+    lepus::Value variable = lepus::Value("var(--c, yellow)");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_a = parser.ParseVariable();
+    custom_properties.insert_or_assign("--b", ref_to_a);
+  }
+  {
+    lepus::Value variable = lepus::Value("blue");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_b = parser.ParseVariable();
+    custom_properties.insert_or_assign("--c", ref_to_b);
+  }
+  {
+    lepus::Value variable = lepus::Value(
+        "var(--d, var(--invalid-name, var(--invalid-name2, var(--a))))");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue css_value = parser.ParseVariable();
+    custom_properties.insert_or_assign("--d", css_value);
+  }
+
+  CSSValue::SubstituteAll(custom_properties, 10, nullptr);
+
+  EXPECT_EQ(custom_properties["--a"].AsString(), "blue");
+  EXPECT_EQ(custom_properties["--b"].AsString(), "blue");
+  EXPECT_EQ(custom_properties["--c"].AsString(), "blue");
+  EXPECT_EQ(custom_properties["--d"].AsString(), "   blue");
 }
 
 }  // namespace tasm

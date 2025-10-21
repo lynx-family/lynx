@@ -141,6 +141,19 @@ std::string CSSValue::ResolveVariable(
   ;
 }
 
+void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
+                             int max_depth,
+                             const HandleCustomPropertyFunc& handle_func) {
+  CycleDetector detector(custom_properties);
+  for (auto& [name, value] : custom_properties) {
+    if (value.NeedsVariableResolution()) {
+      auto property = CSSValue::Substitution(value, custom_properties, detector,
+                                             max_depth, handle_func);
+      custom_properties[name] = CSSValue(lepus::Value(std::move(property)));
+    }
+  }
+}
+
 std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     int max_depth, const HandleCustomPropertyFunc& handle_func) {
