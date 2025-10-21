@@ -23,6 +23,11 @@ basedevtool_dependency = [ [
       "$lynx_version",
     ] ]
 
+service_api_dependency = [ [
+      "LynxServiceAPI",
+      "$lynx_version",
+    ] ]
+
 lynx_group_extend_source =
     rebase_path([ "../platform/darwin/common/lynx/LynxGroup.mm" ])
 

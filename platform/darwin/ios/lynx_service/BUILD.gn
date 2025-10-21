@@ -48,6 +48,7 @@ podspec_target("LynxService_podspec") {
     }
   }
   deps = [
+    ":BaseTrace",
     ":Devtool",
     ":Http",
     ":Image",
@@ -74,10 +75,7 @@ subspec_target("Image") {
         "SDWebImageWebPCoder",
         "0.11.0",
       ] ]
-  dependency += [ [
-        "LynxServiceAPI",
-        "$lynx_version",
-      ] ]
+  dependency += service_api_dependency
 }
 
 subspec_target("Log") {
@@ -86,11 +84,17 @@ subspec_target("Log") {
     "log/LynxLogService.mm",
   ]
   dependency = lynx_dependency
-  dependency += [ [
-        "LynxServiceAPI",
-        "$lynx_version",
-      ] ]
+  dependency += service_api_dependency
   dependency += lynxbase_dependency
+}
+
+subspec_target("BaseTrace") {
+  sources = [
+    "base_trace/LynxBaseTraceService.h",
+    "base_trace/LynxBaseTraceService.mm",
+  ]
+  dependency = lynx_dependency
+  dependency += service_api_dependency
 }
 
 subspec_target("Devtool") {
@@ -102,10 +106,7 @@ subspec_target("Devtool") {
 
   dependency = lynx_dependency
   dependency += lynxdevtool_dependency
-  dependency += [ [
-        "LynxServiceAPI",
-        "$lynx_version",
-      ] ]
+  dependency += service_api_dependency
 }
 
 subspec_target("Http") {
@@ -116,8 +117,5 @@ subspec_target("Http") {
     "http/LynxNSUrlSessionDelegate.m",
   ]
   dependency = lynx_dependency
-  dependency += [ [
-        "LynxServiceAPI",
-        "$lynx_version",
-      ] ]
+  dependency += service_api_dependency
 }

@@ -39,6 +39,7 @@ target 'LynxExplorer' do
     'Log',
     'Devtool',
     'Http',
+    'BaseTrace',
   ]
   pod 'LynxServiceAPI', :path => '../../../..', :subspecs => [
     'Core'
