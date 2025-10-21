@@ -14055,6 +14055,56 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles03) {
   }
 }
 
+TEST_P(FiberElementTest, TestSetRawInlineStyles04) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  // page
+  // └── text1
+  //     └── text2
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view1 = manager->CreateFiberView();
+  auto view2 = manager->CreateFiberView();
+  page->InsertNode(view1);
+  view1->InsertNode(view2);
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+
+  {
+    // page inline style: "--color: var(--green, red);"
+    // view1 inline style: "--green: green; color: var(--color);"
+    // view2 inline style: "color: var(--color);"
+    page->SetRawInlineStyles("--color: var(--green, red);");
+    view1->SetRawInlineStyles("--green: green; color: var(--color);");
+    view2->SetRawInlineStyles("color: var(--color);");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[view1->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+    node = painting_context->node_map_[view2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+  }
+
+  {
+    // view1 inline style: "--green: green; --color: var(--green, red);"
+    // view2 inline style: "color: var(--color);"
+    view1->RemoveAllInlineStyles();
+    view1->SetRawInlineStyles("--green: green; --color: var(--green, red);");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+
+    auto node = painting_context->node_map_[view2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  }
+}
+
 TEST_P(FiberElementTest, TestFontSizeWhenUnifyVwVhBehaviorFalse) {
   const_cast<DynamicCSSConfigs&>(manager->GetDynamicCSSConfigs())
       .unify_vw_vh_behavior_ = false;

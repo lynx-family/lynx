@@ -4245,6 +4245,10 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
     CSSValue css_value = parser.ParseVariable();
     custom_properties_->insert_or_assign(name, std::move(css_value));
   }
+
+  if (custom_properties_.has_value()) {
+    CSSValue::SubstituteAll(*custom_properties_);
+  }
   return true;
 }
 

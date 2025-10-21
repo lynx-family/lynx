@@ -120,6 +120,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     if (other.var_references_) {
       var_references_ = std::make_unique<base::InlineVector<VarReference, 1>>(
           *other.var_references_);
+      needs_variable_resolution_ = other.needs_variable_resolution_;
     }
   }
 
@@ -138,6 +139,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     if (other.var_references_) {
       var_references_ = std::make_unique<base::InlineVector<VarReference, 1>>(
           *other.var_references_);
+      needs_variable_resolution_ = other.needs_variable_resolution_;
     } else {
       var_references_ = nullptr;
     }
@@ -269,6 +271,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   using HandleCustomPropertyFunc =
       std::function<void(const base::String&, const base::String&)>;
+  static void SubstituteAll(
+      CustomPropertiesMap& custom_properties, int max_depth = 10,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
   static std::string Substitution(
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       int max_depth = 10,
