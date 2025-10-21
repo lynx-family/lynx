@@ -68,7 +68,7 @@ TEST(TransitionShorthandHandler, Handler) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kEaseIn));
   }
 
@@ -93,7 +93,7 @@ TEST(TransitionShorthandHandler, Handler) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kEaseInEaseOut));
   }
 
@@ -118,7 +118,7 @@ TEST(TransitionShorthandHandler, Handler) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kLinear));
   }
 
@@ -143,7 +143,7 @@ TEST(TransitionShorthandHandler, Handler) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kEaseOut));
   }
 
@@ -167,7 +167,7 @@ TEST(TransitionShorthandHandler, Handler) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kLinear));
   }
 
@@ -191,7 +191,7 @@ TEST(TransitionShorthandHandler, Handler) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kLinear));
   }
 }
@@ -222,7 +222,7 @@ TEST(TransitionShorthandHandler, Negative) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kEaseIn));
   }
 }
@@ -253,7 +253,7 @@ TEST(TransitionShorthandHandler, None) {
     auto timing_function =
         output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
     EXPECT_TRUE(timing_function.GetValue().IsArray());
-    EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+    EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kEaseIn));
   }
 }
@@ -271,27 +271,27 @@ TEST(TransitionShorthandHandler, Multi) {
   EXPECT_TRUE(output.find(id) == output.end());
   auto property = output[CSSPropertyID::kPropertyIDTransitionProperty];
   EXPECT_TRUE(property.GetValue().IsArray());
-  EXPECT_EQ(property.GetValue().Array()->get(0).Number(),
+  EXPECT_EQ(property.GetArray()->get(0).Number(),
             static_cast<int>(starlight::AnimationPropertyType::kWidth));
-  EXPECT_EQ(property.GetValue().Array()->get(1).Number(),
+  EXPECT_EQ(property.GetArray()->get(1).Number(),
             static_cast<int>(starlight::AnimationPropertyType::kHeight));
   auto duration = output[CSSPropertyID::kPropertyIDTransitionDuration];
   EXPECT_TRUE(duration.GetValue().IsArray());
-  EXPECT_EQ(duration.GetValue().Array()->get(0).Number(), 2000);
-  EXPECT_EQ(duration.GetValue().Array()->get(1).Number(), 10000);
+  EXPECT_EQ(duration.GetArray()->get(0).Number(), 2000);
+  EXPECT_EQ(duration.GetArray()->get(1).Number(), 10000);
 
   auto delay = output[CSSPropertyID::kPropertyIDTransitionDelay];
   EXPECT_TRUE(delay.GetValue().IsArray());
-  EXPECT_EQ(delay.GetValue().Array()->get(0).Number(), 1);
-  EXPECT_EQ(delay.GetValue().Array()->get(1).Number(), 0);
+  EXPECT_EQ(delay.GetArray()->get(0).Number(), 1);
+  EXPECT_EQ(delay.GetArray()->get(1).Number(), 0);
 
   auto timing_function =
       output[CSSPropertyID::kPropertyIDTransitionTimingFunction];
   EXPECT_TRUE(timing_function.GetValue().IsArray());
 
-  EXPECT_EQ(timing_function.GetValue().Array()->get(0).Number(),
+  EXPECT_EQ(timing_function.GetArray()->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kEaseIn));
-  EXPECT_EQ(timing_function.GetValue().Array()->get(1).Number(),
+  EXPECT_EQ(timing_function.GetArray()->get(1).Number(),
             static_cast<int>(starlight::TimingFunctionType::kLinear));
 }
 

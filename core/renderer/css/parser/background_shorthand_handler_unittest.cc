@@ -399,9 +399,9 @@ TEST(BackgroundHandler, None) {
 
   CSSValue result = parser.ParseBackgroundOrMask(false);
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-  EXPECT_EQ(result.GetValue().Array()->size(), 2);
-  EXPECT_EQ(result.GetValue().Array()->get(0).Number(), 0);  // background-color
-  const auto& images = result.GetValue().Array()->get(1);
+  EXPECT_EQ(result.GetArray()->size(), 2);
+  EXPECT_EQ(result.GetArray()->get(0).Number(), 0);  // background-color
+  const auto& images = result.GetArray()->get(1);
   EXPECT_TRUE(images.IsArray());  // background-image is an array
   EXPECT_EQ(images.Array()->get(0).Number(),
             static_cast<int>(starlight::BackgroundImageType::kNone));  // none
@@ -415,10 +415,10 @@ TEST(BackgroundHandler, Color) {
 
   CSSValue result = parser.ParseBackgroundOrMask(false);
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-  EXPECT_EQ(result.GetValue().Array()->size(), 2);
-  EXPECT_EQ(result.GetValue().Array()->get(0).Number(),
+  EXPECT_EQ(result.GetArray()->size(), 2);
+  EXPECT_EQ(result.GetArray()->get(0).Number(),
             0xffff0000);  // background-color
-  const auto& images = result.GetValue().Array()->get(1);
+  const auto& images = result.GetArray()->get(1);
   EXPECT_TRUE(images.IsArray());
   EXPECT_EQ(images.Array()->size(), 0);  // background-image is empty
 }

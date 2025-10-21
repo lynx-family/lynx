@@ -494,7 +494,7 @@ TEST_F(TransformOperationsTest,
     EXPECT_EQ(operations.size(), static_cast<size_t>(3));
     auto result_value = operations.ToTransformRawValue();
     EXPECT_TRUE(result_value.IsArray());
-    auto arr = result_value.GetValue().Array();
+    auto arr = result_value.GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(3));
     auto item = arr->get(0).Array().strongify();
     EXPECT_EQ(item->size(), static_cast<size_t>(7));
@@ -532,7 +532,7 @@ TEST_F(TransformOperationsTest,
     EXPECT_EQ(operations.size(), static_cast<size_t>(2));
     auto result_value = operations.ToTransformRawValue();
     EXPECT_TRUE(result_value.IsArray());
-    auto arr = result_value.GetValue().Array();
+    auto arr = result_value.GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(2));
     auto item = arr->get(0).Array().strongify();
     EXPECT_EQ(item->size(), static_cast<size_t>(3));
@@ -565,7 +565,7 @@ TEST_F(TransformOperationsTest,
     EXPECT_EQ(operations.size(), static_cast<size_t>(2));
     auto result_value = operations.ToTransformRawValue();
     EXPECT_TRUE(result_value.IsArray());
-    auto arr = result_value.GetValue().Array();
+    auto arr = result_value.GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(2));
     auto item = arr->get(0).Array().strongify();
     EXPECT_EQ(item->size(), static_cast<size_t>(2));
@@ -596,7 +596,7 @@ TEST_F(TransformOperationsTest,
     EXPECT_EQ(operations.size(), static_cast<size_t>(0));
     auto result_value = operations.ToTransformRawValue();
     EXPECT_TRUE(result_value.IsArray());
-    auto arr = result_value.GetValue().Array();
+    auto arr = result_value.GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(0));
   }
 
@@ -616,7 +616,7 @@ TEST_F(TransformOperationsTest,
     EXPECT_EQ(operations.size(), static_cast<size_t>(12));
     auto result_value = operations.ToTransformRawValue();
     EXPECT_TRUE(result_value.IsArray());
-    auto arr = result_value.GetValue().Array();
+    auto arr = result_value.GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(12));
 
     auto item = arr->get(0).Array().strongify();

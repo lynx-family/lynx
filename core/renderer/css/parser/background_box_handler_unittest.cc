@@ -21,9 +21,9 @@ TEST(BackgroundOriginHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue box = parser.ParseBackgroundBox();
     EXPECT_TRUE(box.IsArray());
-    EXPECT_NE(box.GetValue().Array().get()->size(), 0);
+    EXPECT_NE(box.GetArray()->size(), 0);
     EXPECT_EQ(
-        box.GetValue().Array().get()->get(0).Number(),
+        box.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundOriginType::kContentBox));
   }
   {
@@ -32,9 +32,9 @@ TEST(BackgroundOriginHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue box = parser.ParseBackgroundBox();
     EXPECT_TRUE(box.IsArray());
-    EXPECT_NE(box.GetValue().Array().get()->size(), 0);
+    EXPECT_NE(box.GetArray()->size(), 0);
     EXPECT_EQ(
-        box.GetValue().Array().get()->get(0).Number(),
+        box.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundOriginType::kPaddingBox));
   }
   {
@@ -43,9 +43,9 @@ TEST(BackgroundOriginHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue box = parser.ParseBackgroundBox();
     EXPECT_TRUE(box.IsArray());
-    EXPECT_NE(box.GetValue().Array().get()->size(), 0);
+    EXPECT_NE(box.GetArray()->size(), 0);
     EXPECT_EQ(
-        box.GetValue().Array().get()->get(0).Number(),
+        box.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundOriginType::kBorderBox));
   }
   {
@@ -54,15 +54,15 @@ TEST(BackgroundOriginHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue box = parser.ParseBackgroundBox();
     EXPECT_TRUE(box.IsArray());
-    EXPECT_NE(box.GetValue().Array().get()->size(), 0);
+    EXPECT_NE(box.GetArray()->size(), 0);
     EXPECT_EQ(
-        box.GetValue().Array().get()->get(0).Number(),
+        box.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundOriginType::kBorderBox));
     EXPECT_EQ(
-        box.GetValue().Array().get()->get(1).Number(),
+        box.GetArray()->get(1).Number(),
         static_cast<uint32_t>(starlight::BackgroundOriginType::kPaddingBox));
     EXPECT_EQ(
-        box.GetValue().Array().get()->get(2).Number(),
+        box.GetArray()->get(2).Number(),
         static_cast<uint32_t>(starlight::BackgroundOriginType::kContentBox));
   }
 }

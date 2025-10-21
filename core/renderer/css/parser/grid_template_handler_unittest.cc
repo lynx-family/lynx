@@ -21,7 +21,7 @@ TEST(CSSProperty, GridTemplateHandler_OneLength) {
   auto impl = lepus::Value("2px");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(2));
   EXPECT_EQ(length_array->get(0).Number(), 2);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::PX);
@@ -35,7 +35,7 @@ TEST(CSSProperty, GridTemplateHandler_TwoLength) {
   auto impl = lepus::Value("2px auto");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(4));
   EXPECT_EQ(length_array->get(0).Number(), 2);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::PX);
@@ -52,7 +52,7 @@ TEST(CSSProperty, GridTemplateHandler_ThreeLength) {
   auto impl = lepus::Value("2rpx auto auto");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(6));
   EXPECT_EQ(length_array->get(0).Number(), 2);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::RPX);
@@ -72,7 +72,7 @@ TEST(CSSProperty, GridTemplateHandler_OneLengthAndRepeatOne) {
   auto impl = lepus::Value("2rpx repeat(2, auto)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(6));
   EXPECT_EQ(length_array->get(0).Number(), 2);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::RPX);
@@ -92,7 +92,7 @@ TEST(CSSProperty, GridTemplateHandler_OneLengthAndRepeatTwo) {
   auto impl = lepus::Value("2rpx repeat(1, auto 100px)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(6));
   EXPECT_EQ(length_array->get(0).Number(), 2);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::RPX);
@@ -111,7 +111,7 @@ TEST(CSSProperty, GridTemplateHandler_OneLengthAndRepeatFour) {
   auto impl = lepus::Value("2rpx repeat(2, auto 100px)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(10));
   EXPECT_EQ(length_array->get(0).Number(), 2);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::RPX);
@@ -135,7 +135,7 @@ TEST(CSSProperty, GridTemplateHandler_RepeatFourAndTwoLength) {
   auto impl = lepus::Value("repeat(2, auto 100px) 2rpx auto");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(12));
   EXPECT_EQ(length_array->get(0).Number(),
             (int)starlight::LengthValueType::kAuto);
@@ -163,7 +163,7 @@ TEST(CSSProperty,
   auto impl = lepus::Value("auto repeat(2, auto) 120rpx repeat(2, 100vh)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(12));
   EXPECT_EQ(length_array->get(0).Number(),
             (int)starlight::LengthValueType::kAuto);
@@ -190,7 +190,7 @@ TEST(CSSProperty, GridTemplateHandler_RepeatOne) {
   auto impl = lepus::Value("repeat(1, 100px)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(2));
   EXPECT_EQ(length_array->get(0).Number(), 100);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::PX);
@@ -203,7 +203,7 @@ TEST(CSSProperty, GridTemplateHandler_RepeatOneAndRepeatOne) {
   auto impl = lepus::Value("repeat(1, 100px)repeat(1, 100px)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(4));
   EXPECT_EQ(length_array->get(0).Number(), 100);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::PX);
@@ -219,7 +219,7 @@ TEST(CSSProperty, GridTemplateHandler_RepeatOneAndOneLengthAndRepeatOne) {
   auto impl = lepus::Value("repeat(1,100px)100pxrepeat(1,100px)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(6));
   EXPECT_EQ(length_array->get(0).Number(), 100);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::PX);
@@ -237,7 +237,7 @@ TEST(CSSProperty, GridTemplateHandler_None) {
   auto impl = lepus::Value("");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(0));
 }
 
@@ -249,7 +249,7 @@ TEST(CSSProperty, GridTemplateHandler_OneCalc) {
   auto impl = lepus::Value("calc(2px + 3rpx)");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(2));
   EXPECT_EQ(length_array->get(0).StringView(), "calc(2px + 3rpx)");
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::CALC);
@@ -263,7 +263,7 @@ TEST(CSSProperty, GridTemplateHandler_TwoCalc) {
   auto impl = lepus::Value("calc(2px + 3rpx) calc(100px + (2vh - 100px))");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(4));
   EXPECT_EQ(length_array->get(0).StringView(), "calc(2px + 3rpx)");
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::CALC);
@@ -279,7 +279,7 @@ TEST(CSSProperty, GridTemplateHandler_CalcAndOtherLength) {
   auto impl = lepus::Value("calc(2px + (1px - 3rpx)) 100rpx 20vw");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(6));
   EXPECT_EQ(length_array->get(0).StringView(), "calc(2px + (1px - 3rpx))");
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::CALC);
@@ -299,7 +299,7 @@ TEST(CSSProperty, GridTemplateHandler_RepeatCalcAndOtherLength) {
       "2fr repeat(3, calc(2px + 3vw))");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(22));
   EXPECT_EQ(length_array->get(0).Number(), 100);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::PX);
@@ -333,7 +333,7 @@ TEST(CSSProperty, GridTemplateHandler_Fr) {
   auto impl = lepus::Value("1fr 0.2fr auto 2fr");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(8));
   EXPECT_EQ(length_array->get(0).Number(), 1);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::FR);
@@ -356,7 +356,7 @@ TEST(CSSProperty, GridTemplateHandler_MinMax1) {
       "fit-content(calc(10px + 0.5em))");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(14));
   EXPECT_EQ(length_array->get(0).Number(), (int)tasm::CSSFunctionType::MINMAX);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::ENUM);
@@ -390,7 +390,7 @@ TEST(CSSProperty, GridTemplateHandler_MinMax) {
       "2fr))");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto length_array = output[id].GetValue().Array();
+  auto length_array = output[id].GetArray();
   EXPECT_EQ(length_array->size(), static_cast<size_t>(28));
   EXPECT_EQ(length_array->get(0).Number(), (int)tasm::CSSFunctionType::MINMAX);
   EXPECT_EQ(length_array->get(1).Number(), (int)tasm::CSSValuePattern::ENUM);

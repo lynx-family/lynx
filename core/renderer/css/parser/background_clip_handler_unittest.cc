@@ -21,9 +21,9 @@ TEST(BackgroundClipHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue clip = parser.ParseBackgroundClip();
     EXPECT_TRUE(clip.IsArray());
-    EXPECT_NE(clip.GetValue().Array().get()->size(), 0);
+    EXPECT_NE(clip.GetArray()->size(), 0);
     EXPECT_EQ(
-        clip.GetValue().Array().get()->get(0).Number(),
+        clip.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundClipType::kContentBox));
   }
   {
@@ -32,9 +32,9 @@ TEST(BackgroundClipHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue clip = parser.ParseBackgroundClip();
     EXPECT_TRUE(clip.IsArray());
-    EXPECT_NE(clip.GetValue().Array().get()->size(), 0);
+    EXPECT_NE(clip.GetArray()->size(), 0);
     EXPECT_EQ(
-        clip.GetValue().Array().get()->get(0).Number(),
+        clip.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundClipType::kPaddingBox));
   }
   {
@@ -43,8 +43,8 @@ TEST(BackgroundClipHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue clip = parser.ParseBackgroundClip();
     EXPECT_TRUE(clip.IsArray());
-    EXPECT_NE(clip.GetValue().Array().get()->size(), 0);
-    EXPECT_EQ(clip.GetValue().Array().get()->get(0).Number(),
+    EXPECT_NE(clip.GetArray()->size(), 0);
+    EXPECT_EQ(clip.GetArray()->get(0).Number(),
               static_cast<uint32_t>(starlight::BackgroundClipType::kBorderBox));
   }
   {
@@ -53,8 +53,8 @@ TEST(BackgroundClipHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue clip = parser.ParseBackgroundClip();
     EXPECT_TRUE(clip.IsArray());
-    EXPECT_NE(clip.GetValue().Array().get()->size(), 0);
-    EXPECT_EQ(clip.GetValue().Array().get()->get(0).Number(),
+    EXPECT_NE(clip.GetArray()->size(), 0);
+    EXPECT_EQ(clip.GetArray()->get(0).Number(),
               static_cast<uint32_t>(starlight::BackgroundClipType::kText));
   }
   {
@@ -63,16 +63,16 @@ TEST(BackgroundClipHandler, Valid) {
     CSSStringParser parser{raw, static_cast<uint32_t>(strlen(raw)), configs};
     CSSValue clip = parser.ParseBackgroundClip();
     EXPECT_TRUE(clip.IsArray());
-    EXPECT_NE(clip.GetValue().Array().get()->size(), 0);
-    EXPECT_EQ(clip.GetValue().Array().get()->get(0).Number(),
+    EXPECT_NE(clip.GetArray()->size(), 0);
+    EXPECT_EQ(clip.GetArray()->get(0).Number(),
               static_cast<uint32_t>(starlight::BackgroundClipType::kBorderBox));
     EXPECT_EQ(
-        clip.GetValue().Array().get()->get(1).Number(),
+        clip.GetArray()->get(1).Number(),
         static_cast<uint32_t>(starlight::BackgroundClipType::kPaddingBox));
     EXPECT_EQ(
-        clip.GetValue().Array().get()->get(2).Number(),
+        clip.GetArray()->get(2).Number(),
         static_cast<uint32_t>(starlight::BackgroundClipType::kContentBox));
-    EXPECT_EQ(clip.GetValue().Array().get()->get(3).Number(),
+    EXPECT_EQ(clip.GetArray()->get(3).Number(),
               static_cast<uint32_t>(starlight::BackgroundClipType::kText));
   }
 }

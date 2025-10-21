@@ -36,7 +36,7 @@ TEST(FilterHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array().strongify();
+  auto arr = output[id].GetArray().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(3));
   EXPECT_EQ(arr->get(0).Number(),
             static_cast<int>(starlight::FilterType::kGrayscale));
@@ -50,7 +50,7 @@ TEST(FilterHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), 3);
   EXPECT_EQ(arr->get(0).Number(),
             static_cast<int>(starlight::FilterType::kBlur));

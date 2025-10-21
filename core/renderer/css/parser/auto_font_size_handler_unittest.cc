@@ -30,7 +30,7 @@ TEST(AutoFontSizeHandler, Handler) {
   EXPECT_TRUE(ret);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr0 = output[id].GetValue().Array();
+  auto arr0 = output[id].GetArray();
   EXPECT_FALSE(arr0->get(0).Bool());
 
   output.clear();
@@ -38,7 +38,7 @@ TEST(AutoFontSizeHandler, Handler) {
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr1 = output[id].GetValue().Array();
+  auto arr1 = output[id].GetArray();
   EXPECT_FALSE(arr1->get(0).Bool());
 
   output.clear();
@@ -46,7 +46,7 @@ TEST(AutoFontSizeHandler, Handler) {
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr2 = output[id].GetValue().Array();
+  auto arr2 = output[id].GetArray();
   EXPECT_TRUE(arr2->get(0).Bool());
   EXPECT_EQ(arr2->get(1).Number(), 8.f);
   EXPECT_EQ(static_cast<CSSValuePattern>(arr2->get(2).Number()),
@@ -57,7 +57,7 @@ TEST(AutoFontSizeHandler, Handler) {
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr3 = output[id].GetValue().Array();
+  auto arr3 = output[id].GetArray();
   EXPECT_TRUE(arr3->get(0).Bool());
   EXPECT_EQ(arr3->get(1).Number(), 8.f);
   EXPECT_EQ(static_cast<CSSValuePattern>(arr3->get(2).Number()),
@@ -71,7 +71,7 @@ TEST(AutoFontSizeHandler, Handler) {
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr4 = output[id].GetValue().Array();
+  auto arr4 = output[id].GetArray();
   EXPECT_TRUE(arr4->get(0).Bool());
   EXPECT_EQ(arr4->get(5).Number(), 3.f);
   EXPECT_EQ(static_cast<CSSValuePattern>(arr4->get(6).Number()),

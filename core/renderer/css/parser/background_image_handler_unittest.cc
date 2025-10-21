@@ -121,7 +121,7 @@ TEST(BackgroundImageHandler, parse_url_image) {
 
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
   EXPECT_TRUE(result.IsArray());
-  auto url_array = result.GetValue().Array();
+  auto url_array = result.GetArray();
   EXPECT_EQ(url_array->size(), static_cast<size_t>(6));
 
   LepusCheckEach(result.GetValue(), starlight::BackgroundImageType::kUrl,
@@ -152,7 +152,7 @@ TEST(BackgroundImageHandler, parse_url_data) {
 
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
   EXPECT_TRUE(result.IsArray());
-  auto url_array = result.GetValue().Array();
+  auto url_array = result.GetArray();
   EXPECT_EQ(url_array->size(), static_cast<size_t>(2));
 
   LepusCheckEach(result.GetValue(), starlight::BackgroundImageType::kUrl,
@@ -175,7 +175,7 @@ TEST(BackgroundImageHandler, parse_linear_gradient) {
   CSSValue result = parser.ParseBackgroundImage();
 
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-  auto url_array = result.GetValue().Array();
+  auto url_array = result.GetArray();
   EXPECT_EQ(url_array->size(), static_cast<size_t>(2));
   EXPECT_TRUE(url_array->get(0).IsUInt32());
   EXPECT_EQ(
@@ -212,7 +212,7 @@ TEST(BackgroundImageHandler, parse_radial_gradient) {
   CSSValue value = parser.ParseBackgroundImage();
 
   ASSERT_TRUE(value.IsArray());
-  auto array = value.GetValue().Array();
+  auto array = value.GetArray();
   LepusCheckFunc(array->get(0),
                  starlight::BackgroundImageType::kRadialGradient);
   LepusCheckEach(
@@ -237,7 +237,7 @@ TEST(BackgroundImageHandler, parse_radial_gradient_with_array) {
   CSSValue value = parser.ParseBackgroundImage();
 
   ASSERT_TRUE(value.IsArray());
-  auto array = value.GetValue().Array();
+  auto array = value.GetArray();
   LepusCheckFunc(array->get(0),
                  starlight::BackgroundImageType::kRadialGradient);
   LepusCheckEach(
@@ -276,7 +276,7 @@ TEST(BackgroundImageHandler, parse_radial_gradient_with_size) {
   CSSValue value = parser.ParseBackgroundImage();
 
   ASSERT_TRUE(value.IsArray());
-  auto array = value.GetValue().Array();
+  auto array = value.GetArray();
   LepusCheckFunc(array->get(0),
                  starlight::BackgroundImageType::kRadialGradient);
   LepusCheckEach(
@@ -301,7 +301,7 @@ TEST(BackgroundImageHandler, parse_radial_gradient_with_circle) {
   CSSValue value = parser.ParseBackgroundImage();
 
   ASSERT_TRUE(value.IsArray());
-  auto array = value.GetValue().Array();
+  auto array = value.GetArray();
   LepusCheckFunc(array->get(0),
                  starlight::BackgroundImageType::kRadialGradient);
   LepusCheckEach(
@@ -330,7 +330,7 @@ TEST(BackgroundImageHandler, parse_radial_gradient_with_shape_size) {
     CSSStringParser parser{g.c_str(), static_cast<uint32_t>(g.size()), configs};
     CSSValue value = parser.ParseBackgroundImage();
 
-    auto array = value.GetValue().Array();
+    auto array = value.GetArray();
     LepusCheckFunc(array->get(0),
                    starlight::BackgroundImageType::kRadialGradient);
     LepusCheckEach(
@@ -405,7 +405,7 @@ TEST(BackgroundImageHandler, parse_linear_gradient_option_stop) {
   CSSValue result = parser.ParseBackgroundImage();
 
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-  auto url_array = result.GetValue().Array();
+  auto url_array = result.GetArray();
   EXPECT_EQ(url_array->size(), static_cast<size_t>(2));
   EXPECT_TRUE(url_array->get(0).IsUInt32());
   EXPECT_EQ(
@@ -431,7 +431,7 @@ TEST(BackgroundImageHandler, parse_linear_gradient_option_start) {
   CSSValue result = parser.ParseBackgroundImage();
 
   EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-  auto url_array = result.GetValue().Array();
+  auto url_array = result.GetArray();
   EXPECT_EQ(url_array->size(), static_cast<size_t>(2));
   EXPECT_TRUE(url_array->get(0).IsUInt32());
   EXPECT_EQ(
@@ -467,10 +467,9 @@ TEST(BackgroundImageHandler, linear_gradient_angle_valid_value) {
     CSSValue result = parser.ParseBackgroundImage();
     EXPECT_TRUE(result.IsArray());
     EXPECT_EQ(
-        result.GetValue().Array()->get(0).Number(),
+        result.GetArray()->get(0).Number(),
         static_cast<uint32_t>(starlight::BackgroundImageType::kLinearGradient));
-    lepus::CArray& gradient_array =
-        *(result.GetValue().Array()->get(1).Array().get());
+    lepus::CArray& gradient_array = *(result.GetArray()->get(1).Array().get());
     EXPECT_FLOAT_EQ(gradient_array.get(0).Number(), it->value);
   }
 }

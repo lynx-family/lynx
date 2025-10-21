@@ -205,7 +205,7 @@ class CSSStyleUtils {
     bool changed = false;
     size_t input_size;
     if (value.IsArray()) {
-      auto arr = value.GetValue().Array();
+      auto arr = value.GetArray();
       input_size = arr->size();
       for (size_t i = 0; i < arr->size(); i++) {
         if (anim->size() < i + 1) {

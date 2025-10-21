@@ -44,7 +44,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(4));
     for (int i = 0; i < 4;) {
       EXPECT_EQ((int)arr->get(i).Number(), 50);
@@ -62,7 +62,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     EXPECT_EQ(arr->size(), static_cast<size_t>(4));
 
     // TOP
@@ -81,24 +81,16 @@ TEST(BorderRadiusHandler, Handler) {
                 CSSValuePattern::PERCENT);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -110,7 +102,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     // TOP
     if (id == 0) {
       EXPECT_EQ((int)arr->get(0).Number(), 50);
@@ -127,24 +119,16 @@ TEST(BorderRadiusHandler, Handler) {
                 CSSValuePattern::PERCENT);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -156,7 +140,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     // TOP
     if (id == 0) {
       EXPECT_EQ((int)arr->get(0).Number(), 50);
@@ -165,14 +149,10 @@ TEST(BorderRadiusHandler, Handler) {
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(),
                 CSSValuePattern::PERCENT);
     } else {
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     }
   }
 
@@ -184,7 +164,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     // TOP
     if (id == 0) {
       EXPECT_EQ((int)arr->get(0).Number(), 50);
@@ -193,14 +173,10 @@ TEST(BorderRadiusHandler, Handler) {
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(),
                 CSSValuePattern::PERCENT);
     } else {
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -212,7 +188,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     // TOP
     if (id == 0) {
       EXPECT_EQ((int)arr->get(0).Number(), 50);
@@ -229,24 +205,16 @@ TEST(BorderRadiusHandler, Handler) {
                 CSSValuePattern::PERCENT);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -258,7 +226,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 50);
@@ -275,24 +243,16 @@ TEST(BorderRadiusHandler, Handler) {
                 CSSValuePattern::PERCENT);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -304,7 +264,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 12);
@@ -319,24 +279,16 @@ TEST(BorderRadiusHandler, Handler) {
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -348,7 +300,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 10);
@@ -363,24 +315,16 @@ TEST(BorderRadiusHandler, Handler) {
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -392,7 +336,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 0);
@@ -407,24 +351,16 @@ TEST(BorderRadiusHandler, Handler) {
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 
@@ -436,7 +372,7 @@ TEST(BorderRadiusHandler, Handler) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 0);
@@ -451,24 +387,16 @@ TEST(BorderRadiusHandler, Handler) {
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
     } else if (id == 2) {
       // BOTTOM == TOP
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[0]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[0]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[0]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[0]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[0]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[0]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[0]].GetArray()->get(3));
     } else {
       // RIGHT == LEFT
-      EXPECT_EQ(arr->get(0),
-                output[radius_array[1]].GetValue().Array()->get(0));
-      EXPECT_EQ(arr->get(1),
-                output[radius_array[1]].GetValue().Array()->get(1));
-      EXPECT_EQ(arr->get(2),
-                output[radius_array[1]].GetValue().Array()->get(2));
-      EXPECT_EQ(arr->get(3),
-                output[radius_array[1]].GetValue().Array()->get(3));
+      EXPECT_EQ(arr->get(0), output[radius_array[1]].GetArray()->get(0));
+      EXPECT_EQ(arr->get(1), output[radius_array[1]].GetArray()->get(1));
+      EXPECT_EQ(arr->get(2), output[radius_array[1]].GetArray()->get(2));
+      EXPECT_EQ(arr->get(3), output[radius_array[1]].GetArray()->get(3));
     }
   }
 }
@@ -484,7 +412,7 @@ TEST(BorderRadiusHandler, Calc) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ(arr->get(0).StringView(), "calc(12px*3)");
@@ -520,7 +448,7 @@ TEST(BorderRadiusHandler, Calc) {
   for (size_t id = 0; id < radius_array.size(); id++) {
     EXPECT_FALSE(output.find(radius_array[id]) == output.end());
     EXPECT_TRUE(output[radius_array[id]].IsArray());
-    auto arr = output[radius_array[id]].GetValue().Array();
+    auto arr = output[radius_array[id]].GetArray();
     if (id == 0) {
       // TOP
       EXPECT_EQ(arr->get(0).StringView(), "calc(20px/5)");
@@ -560,7 +488,7 @@ TEST(BorderRadiusHandler, Longhand) {
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array().strongify();
+  auto arr = output[id].GetArray().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
   for (int i = 0; i < 4;) {
     EXPECT_EQ((int)arr->get(i).Number(), 50);
@@ -576,7 +504,7 @@ TEST(BorderRadiusHandler, Longhand) {
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
   // x
   EXPECT_EQ((int)arr->get(0).Number(), 50);
@@ -593,7 +521,7 @@ TEST(BorderRadiusHandler, Longhand) {
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
   EXPECT_EQ((int)arr->get(0).Number(), 50);
   EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PERCENT);
@@ -607,7 +535,7 @@ TEST(BorderRadiusHandler, Longhand) {
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
   EXPECT_EQ((int)arr->get(0).Number(), 50);
   EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PERCENT);

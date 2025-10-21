@@ -189,6 +189,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     }
   }
 
+  fml::WeakRefPtr<lepus::CArray> GetArray() const& { return value_.Array(); }
+  fml::RefPtr<lepus::CArray> GetArray() && { return value_.Array(); }
+
   void SetArray(fml::RefPtr<lepus::CArray>&& array) {
     value_.SetArray(std::move(array));
     pattern_ = CSSValuePattern::ARRAY;

@@ -50,7 +50,7 @@ TEST(BackgroundRepeatHandler, One) {
     EXPECT_EQ(output.size(), static_cast<size_t>(1));
     auto background_size = output[id];
     EXPECT_TRUE(background_size.IsArray());
-    auto size = background_size.GetValue().Array();
+    auto size = background_size.GetArray();
     EXPECT_EQ(size->size(), static_cast<size_t>(1));
     auto arr = size->get(0).Array();
     EXPECT_EQ(arr->size(), static_cast<size_t>(2));
@@ -89,7 +89,7 @@ TEST(BackgroundRepeatHandler, Two) {
     EXPECT_EQ(output.size(), static_cast<size_t>(1));
     auto background_size = output[id];
     EXPECT_TRUE(background_size.IsArray());
-    auto size = background_size.GetValue().Array();
+    auto size = background_size.GetArray();
     EXPECT_EQ(size->size(), static_cast<size_t>(1));
     auto arr = size->get(0).Array();
     EXPECT_EQ(arr->size(), static_cast<size_t>(2));
@@ -190,7 +190,7 @@ TEST(BackgroundRepeatHandler, Valid) {
     CSSStringParser parser = {*it, static_cast<uint32_t>(strlen(*it)), configs};
     CSSValue repeat_array = parser.ParseBackgroundRepeat();
     EXPECT_TRUE(repeat_array.IsArray());
-    CheckLepusArrayNumberValue(repeat_array.GetValue().Array(), expected[i]);
+    CheckLepusArrayNumberValue(repeat_array.GetArray(), expected[i]);
   }
 }
 

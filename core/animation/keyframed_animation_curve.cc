@@ -619,16 +619,12 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
       end_filter == tasm::CSSValue::Empty()) {
     return start_filter;
   }
-  double start_filter_value =
-      start_filter.GetValue().Array().get()->get(1).Double();
-  uint32_t function_type_1 =
-      start_filter.GetValue().Array().get()->get(0).UInt32();
-  uint32_t pattern_1 = start_filter.GetValue().Array().get()->get(2).UInt32();
-  double end_filter_value =
-      end_filter.GetValue().Array().get()->get(1).Double();
-  uint32_t function_type_2 =
-      end_filter.GetValue().Array().get()->get(0).UInt32();
-  uint32_t pattern_2 = end_filter.GetValue().Array().get()->get(2).UInt32();
+  double start_filter_value = start_filter.GetArray()->get(1).Double();
+  uint32_t function_type_1 = start_filter.GetArray()->get(0).UInt32();
+  uint32_t pattern_1 = start_filter.GetArray()->get(2).UInt32();
+  double end_filter_value = end_filter.GetArray()->get(1).Double();
+  uint32_t function_type_2 = end_filter.GetArray()->get(0).UInt32();
+  uint32_t pattern_2 = end_filter.GetArray()->get(2).UInt32();
   if (function_type_1 != function_type_2 || pattern_1 != pattern_2) {
     return start_filter;
   }
@@ -747,9 +743,9 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
   }
 
   auto start_background_position_arr =
-      start_background_position.GetValue().Array()->get(0).Array();
+      start_background_position.GetArray()->get(0).Array();
   auto end_background_position_arr =
-      end_background_position.GetValue().Array()->get(0).Array();
+      end_background_position.GetArray()->get(0).Array();
 
   auto [start_x_type, start_x_value] = ProcessPositionValue(
       static_cast<uint32_t>(start_background_position_arr->get(0).Number()),

@@ -27,7 +27,7 @@ TEST(TransformOriginHandler, Handler) {
   ret = UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(ret);
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array().strongify();
+  auto arr = output[id].GetArray().strongify();
   EXPECT_EQ(arr->get(0).Number(), 10);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PX);
   EXPECT_EQ(arr->get(2).Number(), 50);
@@ -37,7 +37,7 @@ TEST(TransformOriginHandler, Handler) {
   impl = lepus::Value("10px 10%");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(), 10);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PX);
   EXPECT_EQ(arr->get(2).Number(), 10);
@@ -47,7 +47,7 @@ TEST(TransformOriginHandler, Handler) {
   impl = lepus::Value("left top");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(), 0);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PERCENT);
   EXPECT_EQ(arr->get(2).Number(), 0);
@@ -57,7 +57,7 @@ TEST(TransformOriginHandler, Handler) {
   impl = lepus::Value("bottom right");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(), 100);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PERCENT);
   EXPECT_EQ(arr->get(2).Number(), 100);
@@ -67,7 +67,7 @@ TEST(TransformOriginHandler, Handler) {
   impl = lepus::Value("right bottom");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(), 100);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PERCENT);
   EXPECT_EQ(arr->get(2).Number(), 100);
@@ -77,7 +77,7 @@ TEST(TransformOriginHandler, Handler) {
   impl = lepus::Value("center  center ");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(), 50);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PERCENT);
   EXPECT_EQ(arr->get(2).Number(), 50);
@@ -93,7 +93,7 @@ TEST(TransformOriginHandler, Compatibility) {
   auto impl = lepus::Value("center, center");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array();
+  auto arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(), 50);
   EXPECT_EQ(arr->get(1).Number(), (int)CSSValuePattern::PERCENT);
   EXPECT_EQ(arr->get(2).Number(), 50);

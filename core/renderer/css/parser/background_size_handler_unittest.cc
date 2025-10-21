@@ -38,7 +38,7 @@ TEST(BackgroundSizeHandler, Handler) {
     EXPECT_EQ(output.size(), static_cast<size_t>(1));
     auto background_size = output[id];
     EXPECT_TRUE(background_size.IsArray());
-    auto size = background_size.GetValue().Array();
+    auto size = background_size.GetArray();
     EXPECT_EQ(size->size(), static_cast<size_t>(1));
     auto arr = size->get(0).Array();
     EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -59,7 +59,7 @@ TEST(BackgroundSizeHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   auto background_size = output[id];
   EXPECT_TRUE(background_size.IsArray());
-  auto size = background_size.GetValue().Array().strongify();
+  auto size = background_size.GetArray().strongify();
   EXPECT_EQ(size->size(), static_cast<size_t>(1));
   auto arr = size->get(0).Array().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -77,7 +77,7 @@ TEST(BackgroundSizeHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_size = output[id];
   EXPECT_TRUE(background_size.IsArray());
-  size = background_size.GetValue().Array();
+  size = background_size.GetArray();
   EXPECT_EQ(size->size(), static_cast<size_t>(1));
   arr = size->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -95,7 +95,7 @@ TEST(BackgroundSizeHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_size = output[id];
   EXPECT_TRUE(background_size.IsArray());
-  size = background_size.GetValue().Array();
+  size = background_size.GetArray();
   EXPECT_EQ(size->size(), static_cast<size_t>(1));
   arr = size->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -112,7 +112,7 @@ TEST(BackgroundSizeHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_size = output[id];
   EXPECT_TRUE(background_size.IsArray());
-  size = background_size.GetValue().Array();
+  size = background_size.GetArray();
   EXPECT_EQ(size->size(), static_cast<size_t>(1));
   arr = size->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -129,7 +129,7 @@ TEST(BackgroundSizeHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_size = output[id];
   EXPECT_TRUE(background_size.IsArray());
-  size = background_size.GetValue().Array();
+  size = background_size.GetArray();
   EXPECT_EQ(size->size(), static_cast<size_t>(2));
   {
     arr = size->get(0).Array();
@@ -164,7 +164,7 @@ TEST(BackgroundSizeHandler, Legacy) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   auto background_size = output[id];
   EXPECT_TRUE(background_size.IsArray());
-  auto size = background_size.GetValue().Array();
+  auto size = background_size.GetArray();
   EXPECT_EQ(size->size(), static_cast<size_t>(1));
   auto arr = size->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -234,8 +234,8 @@ TEST(BackgroundSizeHandler, Valid) {
           // parsed result should be an array of <size-array>. And <size-array>
           // contains 4 value,( unit x, value x, unit y, value y)
           EXPECT_TRUE(size.IsArray());
-          EXPECT_NE(size.GetValue().Array()->size(), 0);
-          fml::RefPtr<lepus::CArray> size_array = size.GetValue().Array();
+          EXPECT_NE(size.GetArray()->size(), 0);
+          fml::RefPtr<lepus::CArray> size_array = size.GetArray();
           EXPECT_EQ(size_array->size(), expected_size[i]->size());
           CheckLepusArrayNumberValue(size_array, expected_size[i]);
         }

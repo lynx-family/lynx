@@ -67,7 +67,7 @@ TEST(CSSStringParser, parse_cursor) {
     CSSStringParser parser{cursor.c_str(), (uint32_t)cursor.size(), configs};
     CSSValue result = parser.ParseCursor();
     EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-    auto cursor_array = result.GetValue().Array();
+    auto cursor_array = result.GetArray();
     EXPECT_EQ(cursor_array->size(), static_cast<size_t>(2));
     EXPECT_EQ(cursor_array->get(0).UInt32(),
               static_cast<uint32_t>(starlight::CursorType::kKeyword));
@@ -80,7 +80,7 @@ TEST(CSSStringParser, parse_cursor) {
     CSSStringParser parser{cursor.c_str(), (uint32_t)cursor.size(), configs};
     CSSValue result = parser.ParseCursor();
     EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-    auto cursor_array = result.GetValue().Array();
+    auto cursor_array = result.GetArray();
     EXPECT_EQ(cursor_array->size(), static_cast<size_t>(4));
     EXPECT_EQ(cursor_array->get(0).UInt32(),
               static_cast<uint32_t>(starlight::CursorType::kUrl));
@@ -97,7 +97,7 @@ TEST(CSSStringParser, parse_cursor) {
     CSSStringParser parser{cursor.c_str(), (uint32_t)cursor.size(), configs};
     CSSValue result = parser.ParseCursor();
     EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-    auto cursor_array = result.GetValue().Array();
+    auto cursor_array = result.GetArray();
     EXPECT_EQ(cursor_array->size(), static_cast<size_t>(4));
     EXPECT_EQ(cursor_array->get(0).UInt32(),
               static_cast<uint32_t>(starlight::CursorType::kUrl));
@@ -114,7 +114,7 @@ TEST(CSSStringParser, parse_cursor) {
     CSSStringParser parser{cursor.c_str(), (uint32_t)cursor.size(), configs};
     CSSValue result = parser.ParseCursor();
     EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
-    auto cursor_array = result.GetValue().Array();
+    auto cursor_array = result.GetArray();
     EXPECT_EQ(cursor_array->size(), static_cast<size_t>(4));
     EXPECT_EQ(cursor_array->get(0).UInt32(),
               static_cast<uint32_t>(starlight::CursorType::kUrl));
@@ -157,7 +157,7 @@ TEST(CSSStringParse, font_face_src) {
 
   EXPECT_TRUE(result.IsArray());
 
-  auto arr = result.GetValue().Array();
+  auto arr = result.GetArray();
 
   EXPECT_EQ(arr->size(), static_cast<size_t>(8));
 
@@ -225,7 +225,7 @@ TEST(CSSStringParse, font_face_src_failed) {
     auto result = parser.ParseFontSrc();
 
     EXPECT_TRUE(result.IsArray());
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
     EXPECT_TRUE(arr->size() == 0);
   }
 
@@ -236,7 +236,7 @@ TEST(CSSStringParse, font_face_src_failed) {
     auto result = parser.ParseFontSrc();
 
     EXPECT_TRUE(result.IsArray());
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
     EXPECT_TRUE(arr->size() == 0);
   }
 
@@ -247,7 +247,7 @@ TEST(CSSStringParse, font_face_src_failed) {
     auto result = parser.ParseFontSrc();
 
     EXPECT_TRUE(result.IsArray());
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
     EXPECT_TRUE(arr->size() == 0);
   }
 
@@ -258,7 +258,7 @@ TEST(CSSStringParse, font_face_src_failed) {
     auto result = parser.ParseFontSrc();
 
     EXPECT_TRUE(result.IsArray());
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
     EXPECT_TRUE(arr->size() == 0);
   }
 }
@@ -284,7 +284,7 @@ TEST(CSSStringParse, font_weight_parser) {
 
     EXPECT_TRUE(result.IsArray());
 
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
 
     EXPECT_TRUE(arr->size() == 1);
     EXPECT_TRUE(arr->get(0).IsInt32());
@@ -299,7 +299,7 @@ TEST(CSSStringParse, font_weight_parser) {
 
     EXPECT_TRUE(result.IsArray());
 
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
 
     EXPECT_TRUE(arr->size() == 2);
     EXPECT_TRUE(arr->get(0).IsInt32());
@@ -317,7 +317,7 @@ TEST(CSSStringParse, font_weight_parser) {
 
     EXPECT_TRUE(result.IsArray());
 
-    auto arr = result.GetValue().Array();
+    auto arr = result.GetArray();
 
     EXPECT_TRUE(arr->size() == 1);
     EXPECT_TRUE(arr->get(0).IsInt32());
@@ -1009,12 +1009,9 @@ TEST(CSSStringParser, valid_values) {
         CSSParserConfigs()};
     CSSValue filter = parser.ParseFilter();
     EXPECT_EQ(filter.GetPattern(), CSSValuePattern::ARRAY);
-    EXPECT_EQ(filter.GetValue().Array()->get(0).Number(),
-              valid_blur_values[i][0]);
-    EXPECT_EQ(filter.GetValue().Array()->get(1).Number(),
-              valid_blur_values[i][1]);
-    EXPECT_EQ(filter.GetValue().Array()->get(2).Number(),
-              valid_blur_values[i][2]);
+    EXPECT_EQ(filter.GetArray()->get(0).Number(), valid_blur_values[i][0]);
+    EXPECT_EQ(filter.GetArray()->get(1).Number(), valid_blur_values[i][1]);
+    EXPECT_EQ(filter.GetArray()->get(2).Number(), valid_blur_values[i][2]);
   }
 }
 
@@ -1041,8 +1038,8 @@ TEST(CSSStringParser, background_image_none) {
   CSSValue css_value_none = parser.ParseBackgroundImage();
   EXPECT_FALSE(css_value_none.IsEmpty());
   EXPECT_TRUE(css_value_none.IsArray());
-  EXPECT_EQ(css_value_none.GetValue().Array()->size(), 1);
-  EXPECT_EQ(css_value_none.GetValue().Array()->get(0).Number(), 0);
+  EXPECT_EQ(css_value_none.GetArray()->size(), 1);
+  EXPECT_EQ(css_value_none.GetArray()->get(0).Number(), 0);
 }
 
 TEST(CSSStringParser, aspect_ratio_value) {

@@ -45,7 +45,7 @@ TEST(AnimationFillModeHandler, Multi) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
   EXPECT_TRUE(output[id].GetValue().IsArray());
-  const auto& arr = output[id].GetValue().Array();
+  const auto& arr = output[id].GetArray();
   EXPECT_EQ(arr->get(0).Number(),
             static_cast<int>(starlight::AnimationFillModeType::kForwards));
   EXPECT_EQ(arr->get(1).Number(),

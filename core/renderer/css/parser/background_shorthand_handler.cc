@@ -27,7 +27,7 @@ HANDLER_IMPL() {
   if (ret.IsEmpty()) {
     return false;
   }
-  const auto& background = ret.GetValue().Array();
+  const auto& background = ret.GetArray();
   output.emplace_or_assign(kPropertyIDBackgroundColor, background->get(0),
                            CSSValuePattern::NUMBER);
   output.emplace_or_assign(kPropertyIDBackgroundImage,

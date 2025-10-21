@@ -31,7 +31,7 @@ TEST(ShadowHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array().strongify();
+  auto arr = output[id].GetArray().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(1));
   EXPECT_TRUE(arr->get(0).IsTable());
   auto table = arr->get(0).Table().strongify();
@@ -57,7 +57,7 @@ TEST(ShadowHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(1));
   EXPECT_TRUE(arr->get(0).IsTable());
   table = arr->get(0).Table();
@@ -83,7 +83,7 @@ TEST(ShadowHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(2));
   for (size_t i = 0; i < arr->size(); i++) {
     EXPECT_TRUE(arr->get(i).IsTable());
@@ -110,7 +110,7 @@ TEST(ShadowHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(1));
   for (size_t i = 0; i < arr->size(); i++) {
     EXPECT_TRUE(arr->get(i).IsTable());
@@ -141,7 +141,7 @@ TEST(ShadowHandler, None) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array().strongify();
+  auto arr = output[id].GetArray().strongify();
   EXPECT_EQ(arr->size(), 0);
 
   impl = lepus::Value("NONE");
@@ -150,7 +150,7 @@ TEST(ShadowHandler, None) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), 0);
 
   impl = lepus::Value("none ");
@@ -159,7 +159,7 @@ TEST(ShadowHandler, None) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), 0);
 
   impl = lepus::Value("none,");
@@ -225,7 +225,7 @@ TEST(ShadowHandler, TextShadow) {
   impl = lepus::Value("1px 2px 3px red");
   ret = UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(ret);
-  auto arr = output[id].GetValue().Array();
+  auto arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(1));
   for (size_t i = 0; i < arr->size(); i++) {
     EXPECT_TRUE(arr->get(i).IsTable());

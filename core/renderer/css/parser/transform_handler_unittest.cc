@@ -36,7 +36,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array().strongify();
+  auto arr = output[id].GetArray().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(3));
   auto item = arr->get(0).Array().strongify();
   EXPECT_EQ(item->size(), static_cast<size_t>(5));
@@ -60,7 +60,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(3));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(5));
@@ -85,7 +85,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(2));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(7));
@@ -107,7 +107,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(2));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(2));
@@ -124,7 +124,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(2));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(2));
@@ -141,7 +141,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(2));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(2));
@@ -158,7 +158,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(2));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(3));
@@ -183,7 +183,7 @@ TEST(TransformHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  arr = output[id].GetValue().Array();
+  arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), static_cast<size_t>(6));
   item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(3));
@@ -225,7 +225,7 @@ TEST(TransformHandler, One) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array();
+  auto arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), 1);
   auto item = arr->get(0).Array();
   EXPECT_EQ(item->size(), static_cast<size_t>(3));
@@ -244,7 +244,7 @@ TEST(TransformHandler, None) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr = output[id].GetValue().Array();
+  auto arr = output[id].GetArray();
   EXPECT_EQ(arr->size(), 0);
 }
 

@@ -32,7 +32,7 @@ TEST(TimingFunctionHandler, Keywords) {
     EXPECT_FALSE(output.empty());
 
     EXPECT_TRUE(output[id].IsArray());
-    const auto& arr = output[id].GetValue().Array();
+    const auto& arr = output[id].GetArray();
     EXPECT_TRUE(arr->get(0).IsNumber());
     EXPECT_EQ(arr->get(0).Number(), static_cast<int>(s.second));
   }
@@ -47,8 +47,8 @@ TEST(TimingFunctionHandler, Square) {
   EXPECT_TRUE(UnitHandler::Process(id, lepus::Value(s), output, configs));
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].GetValue().IsArray());
-  EXPECT_TRUE(output[id].GetValue().Array()->get(0).IsArray());
-  const auto& arr = output[id].GetValue().Array()->get(0).Array();
+  EXPECT_TRUE(output[id].GetArray()->get(0).IsArray());
+  const auto& arr = output[id].GetArray()->get(0).Array();
   EXPECT_EQ(arr->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kSquareBezier));
   EXPECT_EQ(arr->get(1).Number(), 1);
@@ -64,8 +64,8 @@ TEST(TimingFunctionHandler, Cubic) {
   EXPECT_TRUE(UnitHandler::Process(id, lepus::Value(s), output, configs));
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].GetValue().IsArray());
-  EXPECT_TRUE(output[id].GetValue().Array()->get(0).IsArray());
-  const auto& arr = output[id].GetValue().Array()->get(0).Array();
+  EXPECT_TRUE(output[id].GetArray()->get(0).IsArray());
+  const auto& arr = output[id].GetArray()->get(0).Array();
 
   EXPECT_EQ(arr->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kCubicBezier));
@@ -91,7 +91,7 @@ TEST(TimingFunctionHandler, StepsKeywords) {
         UnitHandler::Process(id, lepus::Value(s.first), output, configs));
     EXPECT_FALSE(output.empty());
     EXPECT_TRUE(output[id].GetValue().IsArray());
-    const auto& arr = output[id].GetValue().Array();
+    const auto& arr = output[id].GetArray();
     EXPECT_TRUE(arr->get(0).IsArray());
     const auto& item = arr->get(0).Array();
     EXPECT_EQ(item->get(0).Number(),
@@ -122,8 +122,8 @@ TEST(TimingFunctionHandler, StepsFunction) {
         UnitHandler::Process(id, lepus::Value(s.first), output, configs));
     EXPECT_FALSE(output.empty());
     EXPECT_TRUE(output[id].GetValue().IsArray());
-    EXPECT_TRUE(output[id].GetValue().Array()->get(0).IsArray());
-    const auto& arr = output[id].GetValue().Array()->get(0).Array();
+    EXPECT_TRUE(output[id].GetArray()->get(0).IsArray());
+    const auto& arr = output[id].GetArray()->get(0).Array();
 
     EXPECT_EQ(arr->get(0).Number(),
               static_cast<int>(starlight::TimingFunctionType::kSteps));
@@ -150,9 +150,9 @@ TEST(TimingFunctionHandler, Multi) {
         UnitHandler::Process(id, lepus::Value(s.first), output, configs));
     EXPECT_FALSE(output.empty());
     EXPECT_TRUE(output[id].IsArray());
-    EXPECT_TRUE(output[id].GetValue().Array()->get(0).IsArray());
+    EXPECT_TRUE(output[id].GetArray()->get(0).IsArray());
     {
-      const auto& arr = output[id].GetValue().Array()->get(0).Array();
+      const auto& arr = output[id].GetArray()->get(0).Array();
 
       EXPECT_EQ(arr->get(0).Number(),
                 static_cast<int>(starlight::TimingFunctionType::kSteps));
@@ -160,7 +160,7 @@ TEST(TimingFunctionHandler, Multi) {
       EXPECT_EQ(arr->get(2).Number(), static_cast<int>(s.second.first));
     }
     {
-      const auto& arr = output[id].GetValue().Array()->get(1).Array();
+      const auto& arr = output[id].GetArray()->get(1).Array();
 
       EXPECT_EQ(arr->get(0).Number(),
                 static_cast<int>(starlight::TimingFunctionType::kSteps));

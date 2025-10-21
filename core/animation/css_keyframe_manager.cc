@@ -250,8 +250,7 @@ void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
     const auto& iter =
         style_map->find(tasm::kPropertyIDAnimationTimingFunction);
     if (iter != style_map->end()) {
-      auto timing_function_value =
-          iter->second.GetValue().Array().get()->get(0);
+      auto timing_function_value = iter->second.GetArray()->get(0);
       starlight::CSSStyleUtils::ComputeTimingFunction(
           timing_function_value, false, timing_function_for_keyframe,
           element_->element_manager()->GetCSSParserConfigs());
@@ -304,7 +303,7 @@ void CSSKeyframeManager::NotifyClientAnimated(tasm::StyleMap& styles,
       // If the transform value is empty, we use transform default value to fit
       // the CSS parsing logic.
       if (value.IsEmpty() ||
-          (value.IsArray() && value.GetValue().Array()->size() == 0)) {
+          (value.IsArray() && value.GetArray()->size() == 0)) {
         value = GetDefaultValue(starlight::AnimationPropertyType::kTransform);
       }
       break;

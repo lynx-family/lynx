@@ -154,7 +154,7 @@ TEST(CSSStyleUtils, ComputeBasicShapes) {
   lepus::Value circle = lepus::Value(R"(circle(20px at left bottom))");
   auto circle_value =
       tasm::UnitHandler::Process(tasm::kPropertyIDClipPath, circle, configs);
-  auto circle_raw = circle_value[tasm::kPropertyIDClipPath].GetValue().Array();
+  auto circle_raw = circle_value[tasm::kPropertyIDClipPath].GetArray();
   out_arr = lepus::CArray::Create();
   CSSStyleUtils::ComputeBasicShapeCircle(circle_raw, false, out_arr, context,
                                          configs);
@@ -170,8 +170,7 @@ TEST(CSSStyleUtils, ComputeBasicShapes) {
   lepus::Value ellipse = lepus::Value(R"(ellipse(20px 30px at left bottom))");
   auto ellipse_value =
       tasm::UnitHandler::Process(tasm::kPropertyIDClipPath, ellipse, configs);
-  auto ellipse_raw =
-      ellipse_value[tasm::kPropertyIDClipPath].GetValue().Array();
+  auto ellipse_raw = ellipse_value[tasm::kPropertyIDClipPath].GetArray();
   out_arr = lepus::CArray::Create();
   CSSStyleUtils::ComputeBasicShapeEllipse(ellipse_raw, false, out_arr, context,
                                           configs);
@@ -262,7 +261,7 @@ TEST(CSSStyleUtils, SetBasicShapeInset) {
         lepus::Value(R"(inset(20px 30% super-ellipse 2 3 10px))");
     auto inset_value =
         tasm::UnitHandler::Process(tasm::kPropertyIDClipPath, inset, configs);
-    auto inset_raw = inset_value[tasm::kPropertyIDClipPath].GetValue().Array();
+    auto inset_raw = inset_value[tasm::kPropertyIDClipPath].GetArray();
     auto out_arr = lepus::CArray::Create();
     CSSStyleUtils::ComputeBasicShapeInset(inset_raw, false, out_arr, context,
                                           configs);
@@ -307,8 +306,7 @@ TEST(CSSStyleUtils, SetBasicShapeInset) {
     lepus::Value ellipse = lepus::Value(R"(inset(20px 30% round 45%))");
     auto ellipse_value =
         tasm::UnitHandler::Process(tasm::kPropertyIDClipPath, ellipse, configs);
-    auto ellipse_raw =
-        ellipse_value[tasm::kPropertyIDClipPath].GetValue().Array();
+    auto ellipse_raw = ellipse_value[tasm::kPropertyIDClipPath].GetArray();
     auto out_arr = lepus::CArray::Create();
     CSSStyleUtils::ComputeBasicShapeInset(ellipse_raw, false, out_arr, context,
                                           configs);

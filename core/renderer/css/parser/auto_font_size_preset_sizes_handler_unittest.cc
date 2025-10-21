@@ -30,7 +30,7 @@ TEST(XAutoFontSizePresetSizesHandler, Handler) {
   EXPECT_TRUE(ret);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr0 = output[id].GetValue().Array();
+  auto arr0 = output[id].GetArray();
   EXPECT_TRUE(arr0->size() == 0);
 
   output.clear();
@@ -38,7 +38,7 @@ TEST(XAutoFontSizePresetSizesHandler, Handler) {
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr1 = output[id].GetValue().Array();
+  auto arr1 = output[id].GetArray();
   EXPECT_TRUE(arr1->size() == 2);
   EXPECT_EQ(static_cast<CSSValuePattern>(arr1->get(1).Number()),
             CSSValuePattern::PX);
@@ -46,7 +46,7 @@ TEST(XAutoFontSizePresetSizesHandler, Handler) {
   output.clear();
   impl = lepus::Value("10rpx 8px 2em");
   UnitHandler::Process(id, impl, output, configs);
-  auto arr2 = output[id].GetValue().Array();
+  auto arr2 = output[id].GetArray();
   EXPECT_TRUE(arr2->size() == 6);
   EXPECT_EQ(static_cast<CSSValuePattern>(arr2->get(1).Number()),
             CSSValuePattern::RPX);

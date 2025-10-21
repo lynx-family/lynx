@@ -37,7 +37,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   auto background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  auto pos = background_position.GetValue().Array().strongify();
+  auto pos = background_position.GetArray().strongify();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   auto arr = pos->get(0).Array().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -58,7 +58,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -81,7 +81,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -104,7 +104,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(2));
   {
     arr = pos->get(0).Array();
@@ -146,7 +146,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -169,7 +169,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -186,7 +186,7 @@ TEST(BackgroundPositionHandler, Handler) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -230,7 +230,7 @@ TEST(BackgroundPositionHandler, Calc) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   auto background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  auto pos = background_position.GetValue().Array().strongify();
+  auto pos = background_position.GetArray().strongify();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   auto arr = pos->get(0).Array().strongify();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -247,7 +247,7 @@ TEST(BackgroundPositionHandler, Calc) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));
@@ -264,7 +264,7 @@ TEST(BackgroundPositionHandler, Calc) {
   EXPECT_EQ(output.size(), static_cast<size_t>(1));
   background_position = output[id];
   EXPECT_TRUE(background_position.IsArray());
-  pos = background_position.GetValue().Array();
+  pos = background_position.GetArray();
   EXPECT_EQ(pos->size(), static_cast<size_t>(1));
   arr = pos->get(0).Array();
   EXPECT_EQ(arr->size(), static_cast<size_t>(4));

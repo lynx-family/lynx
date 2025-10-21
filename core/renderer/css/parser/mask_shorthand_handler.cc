@@ -26,7 +26,7 @@ HANDLER_IMPL() {
   if (ret.IsEmpty()) {
     return false;
   }
-  const auto& mask = ret.GetValue().Array();
+  const auto& mask = ret.GetArray();
   output.emplace_or_assign(kPropertyIDMaskImage, mask->get(1).Array());
   output.emplace_or_assign(kPropertyIDMaskPosition, mask->get(2).Array());
   output.emplace_or_assign(kPropertyIDMaskSize, mask->get(3).Array());

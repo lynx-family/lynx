@@ -630,7 +630,7 @@ bool CSSStyleUtils::ComputeGridTrackSizing(
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsArray(), configs.enable_css_strict_mode,
                             msg)
-    auto length_array = value.GetValue().Array();
+    auto length_array = value.GetArray();
     std::vector<NLength> length_arr_min_result;
     std::vector<NLength> length_arr_max_result;
 
@@ -751,7 +751,7 @@ bool CSSStyleUtils::ComputeFilter(const tasm::CSSValue& value, bool reset,
     CSS_HANDLER_FAIL_IF_NOT(value.IsArray(), configs.enable_css_strict_mode,
                             "filter must be an array! [type, length, unit]")
     FilterData item;
-    auto attributes = value.GetValue().Array();
+    auto attributes = value.GetArray();
     // Check attr size
     CSS_HANDLER_FAIL_IF_NOT(attributes->size() != 0,
                             configs.enable_css_strict_mode,
@@ -825,7 +825,7 @@ bool CSSStyleUtils::ComputeTransform(
     raw->clear();
     CSS_HANDLER_FAIL_IF_NOT(value.IsArray(), configs.enable_css_strict_mode,
                             "transform must be a array!")
-    auto items = value.GetValue().Array();
+    auto items = value.GetArray();
     CSS_HANDLER_FAIL_IF_NOT(items->size() > 0, configs.enable_css_strict_mode,
                             "transform's array size must > 0")
     raw->reserve(items->size());
@@ -988,7 +988,7 @@ lepus_value CSSStyleUtils::TransformToLepus(
 bool CSSStyleUtils::IsLayoutRelatedTransform(
     const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& style) {
   if (style.first == tasm::kPropertyIDTransform) {
-    auto array = style.second.GetValue().Array();
+    auto array = style.second.GetArray();
     for (size_t idx = 0; idx < array->size(); ++idx) {
       auto transform = array->get(idx).Array();
       auto transform_func =
@@ -1096,7 +1096,7 @@ bool CSSStyleUtils::ComputeHeroAnimation(
                             configs.enable_css_strict_mode, msg)
     PrepareOptional(anim);
     if (value.IsArray()) {
-      auto array = value.GetValue().Array();
+      auto array = value.GetArray();
       if (array->size() == 0) {
         return false;
       }
@@ -1191,7 +1191,7 @@ bool CSSStyleUtils::ComputeShadowStyle(
       shadow ? *shadow : DefaultComputedStyle::DEFAULT_BOX_SHADOW();
   CSS_HANDLER_FAIL_IF_NOT(value.IsArray(), configs.enable_css_strict_mode,
                           "shadow must be an array!")
-  auto group = value.GetValue().Array();
+  auto group = value.GetArray();
   base::InlineVector<ShadowData, 1> dest;
   BASE_STATIC_STRING_DECL(kEnable, "enable");
   for (size_t i = 0; i < group->size(); i++) {
@@ -1595,7 +1595,7 @@ lepus::Value CSSStyleUtils::GetGradientArrayFromString(
   if (!value.IsArray()) {
     return lepus::Value();
   }
-  const auto& defArray = value.GetValue().Array();
+  const auto& defArray = value.GetArray();
   auto type = defArray->get(0).Number();
 
   if (type ==

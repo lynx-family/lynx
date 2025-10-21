@@ -440,7 +440,7 @@ std::string CSSDecoder::ToTransformType(lynx::starlight::TransformType type) {
 namespace {
 std::string ToTransformProperty(const lynx::tasm::CSSValue &value) {
   std::string res;
-  auto items = value.GetValue().Array();
+  auto items = value.GetArray();
   for (size_t i = 0; i < items->size(); i++) {
     auto arr = items->get(i).Array();
     TransformType type = static_cast<TransformType>(
@@ -597,7 +597,7 @@ std::string TimingFunctionToString(const lynx::lepus::Value &value) {
 std::string ToTransitionProperties(const lynx::tasm::CSSValue &value) {
   std::string res = "[";
   std::string split = ", ";
-  auto group = value.GetValue().Array();
+  auto group = value.GetArray();
   for (size_t i = 0; i < group->size(); ++i) {
     AnimationPropertyType transition_property =
         static_cast<AnimationPropertyType>(group->get(i).Number());
@@ -615,7 +615,7 @@ std::string ToTransitionProperties(const lynx::tasm::CSSValue &value) {
 std::string ToTimingFunctions(const lynx::tasm::CSSValue &value) {
   std::string res = "[";
   std::string split = ", ";
-  auto group = value.GetValue().Array();
+  auto group = value.GetArray();
   for (size_t i = 0; i < group->size(); ++i) {
     std::string timing_function_string = TimingFunctionToString(group->get(i));
     res += timing_function_string;
@@ -630,7 +630,7 @@ std::string ToTimingFunctions(const lynx::tasm::CSSValue &value) {
 std::string ToTransitionProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
   std::string space = " ";
-  auto group = value.GetValue().Array();
+  auto group = value.GetArray();
   BASE_STATIC_STRING_DECL(kProperty, "property");
   BASE_STATIC_STRING_DECL(kDuration, "duration");
   BASE_STATIC_STRING_DECL(kTiming, "timing");
@@ -671,7 +671,7 @@ std::string ToTransitionProperty(const lynx::tasm::CSSValue &value) {
 }
 
 std::string ToVerticalAlignProperty(const lynx::tasm::CSSValue &value) {
-  auto vertical_align_array = value.GetValue().Array();
+  auto vertical_align_array = value.GetArray();
   VerticalAlignType type =
       static_cast<VerticalAlignType>(vertical_align_array->get(0).Int32());
   switch (type) {
@@ -705,7 +705,7 @@ std::string ToVerticalAlignProperty(const lynx::tasm::CSSValue &value) {
 
 std::string ToXAutoFontSizeProperty(const lynx::tasm::CSSValue &value) {
   std::string res;
-  auto auto_font_size_array = value.GetValue().Array();
+  auto auto_font_size_array = value.GetArray();
   bool is_auto_font_size = auto_font_size_array->get(0).Bool();
   res += is_auto_font_size ? "true" : "false";
 
@@ -739,7 +739,7 @@ std::string ToXAutoFontSizeProperty(const lynx::tasm::CSSValue &value) {
 std::string ToXAutoFontSizePresetSizesProperty(
     const lynx::tasm::CSSValue &value) {
   std::string res;
-  auto preset_sizes_array = value.GetValue().Array();
+  auto preset_sizes_array = value.GetArray();
   for (size_t i = 0; i < preset_sizes_array->size(); i = i + 2) {
     res += CSSDecoder::CSSValueToString(
         kPropertyIDXAutoFontSizePresetSizes,
@@ -768,7 +768,7 @@ std::string ToBoxShadowProperty(const lynx::tasm::CSSValue &value) {
   BASE_STATIC_STRING_DECL(kSpread, "spread");
   BASE_STATIC_STRING_DECL(kOption, "option");
   BASE_STATIC_STRING_DECL(kColor, "color");
-  auto group = value.GetValue().Array();
+  auto group = value.GetArray();
   for (size_t i = 0; i < group->size(); i++) {
     auto dict = group->get(i).Table();
     bool enable = true;
@@ -823,7 +823,7 @@ std::string ToBoxShadowProperty(const lynx::tasm::CSSValue &value) {
 }
 
 std::string ToBorderRadiusProperty(const lynx::tasm::CSSValue &value) {
-  auto container = value.GetValue().Array();
+  auto container = value.GetArray();
   std::string radius_result = "";
   std::string space = " ";
   std::string res = "";
@@ -868,7 +868,7 @@ std::string ToBorderRadiusProperty(const lynx::tasm::CSSValue &value) {
 }
 
 std::string ToSingleBorderRadiusProperty(const lynx::tasm::CSSValue &value) {
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   std::string res = "";
   std::string space = " ";
   auto parse_result = ToLengthWithUnit(
@@ -905,7 +905,7 @@ std::string ToBackgroundSizeEnumString(int32_t val) {
 }
 
 std::string ToBackgroundSizeProperty(const lynx::tasm::CSSValue &value) {
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   std::string res = "";
   std::string space = " ";
   std::string comma = ",";
@@ -946,7 +946,7 @@ std::string ToBackgroundSizeProperty(const lynx::tasm::CSSValue &value) {
 
 std::string ToBackgroundOriginProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   for (size_t i = 0; i < arr->size(); i++) {
     if (i != 0) {
       res += " ,";
@@ -989,7 +989,7 @@ std::string BackgroundPositionEnumToString(uint32_t value) {
 
 std::string ToBackgroundPositionProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   for (size_t i = 0; i < arr->size(); i++) {
     if (i != 0) {
       res += ", ";
@@ -1055,7 +1055,7 @@ std::string BackgroundRepeatEnumToString(uint32_t raw_value) {
 
 std::string ToBackgroundRepeatProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   for (size_t i = 0; i < arr->size(); i++) {
     if (i != 0) {
       res += ", ";
@@ -1257,7 +1257,7 @@ std::string BackgroundRadialGradientToString(const lynx::lepus::Value &value) {
 std::string ToBackgroundImageProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
 
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
 
   for (size_t i = 0; i < arr->size(); i++) {
     auto type = arr->get(i);
@@ -1299,7 +1299,7 @@ std::string GradientColorToString(const lynx::tasm::CSSValue &value) {
     return "";
   }
 
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   if (arr->size() != 2) {
     return "";
   }
@@ -1319,7 +1319,7 @@ std::string ToGridTrackSizingProperty(const lynx::tasm::CSSValue &value) {
     return "";
   }
 
-  auto items = value.GetValue().Array();
+  auto items = value.GetArray();
   std::string res;
 
   for (size_t i = 0; i < items->size(); i += 2) {
@@ -1369,7 +1369,7 @@ std::string ToFilterProperty(const lynx::tasm::CSSValue &value) {
   if (!value.IsArray()) {
     return "";
   }
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   std::string res;
   starlight::FilterType type =
       static_cast<starlight::FilterType>(arr->get(0).Number());
@@ -1403,7 +1403,7 @@ std::string ToTextDecorationProperty(const lynx::tasm::CSSValue &value) {
   if (!value.IsArray()) {
     return "";
   }
-  auto arr = value.GetValue().Array();
+  auto arr = value.GetArray();
   std::string res = "";
   for (size_t i = 0; i < arr->size(); i++) {
     int decoration = static_cast<int>(arr->get(i).Number());

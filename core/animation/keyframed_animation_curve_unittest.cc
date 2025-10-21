@@ -593,9 +593,9 @@ TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
   fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(1.f);
   fml::TimeDelta value3 = fml::TimeDelta::FromSecondsF(2.f);
 
-  auto result_1 = curve->GetValue(value1).GetValue().Array().strongify();
-  auto result_2 = curve->GetValue(value2).GetValue().Array().strongify();
-  auto result_3 = curve->GetValue(value3).GetValue().Array().strongify();
+  auto result_1 = curve->GetValue(value1).GetArray();
+  auto result_2 = curve->GetValue(value2).GetArray();
+  auto result_3 = curve->GetValue(value3).GetArray();
 
   EXPECT_FLOAT_EQ(20.f, result_1.get()->get(1).Double());
   EXPECT_FLOAT_EQ(40.f, result_2.get()->get(1).Double());

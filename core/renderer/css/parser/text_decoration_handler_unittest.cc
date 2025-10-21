@@ -30,7 +30,7 @@ TEST(TextDecorationHandler, Handler) {
   EXPECT_TRUE(ret);
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output[id].IsArray());
-  auto arr1 = output[id].GetValue().Array();
+  auto arr1 = output[id].GetArray();
   EXPECT_EQ((starlight::TextDecorationType)arr1->get(0).Number(),
             starlight::TextDecorationType::kNone);
 
@@ -38,7 +38,7 @@ TEST(TextDecorationHandler, Handler) {
   impl = lepus::Value("underline line-through");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto arr2 = output[id].GetValue().Array();
+  auto arr2 = output[id].GetArray();
   EXPECT_EQ((starlight::TextDecorationType)arr2->get(0).Number(),
             starlight::TextDecorationType::kUnderLine);
   EXPECT_EQ((starlight::TextDecorationType)arr2->get(1).Number(),
@@ -48,7 +48,7 @@ TEST(TextDecorationHandler, Handler) {
   impl = lepus::Value("yellow dashed underline");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsArray());
-  auto arr3 = output[id].GetValue().Array();
+  auto arr3 = output[id].GetArray();
   EXPECT_EQ((starlight::TextDecorationType)arr3->get(0).Number(),
             starlight::TextDecorationType::kColor);
   EXPECT_EQ(arr3->get(1).Number(), 0xffffff00);  // yellow rgb(255,255,0)

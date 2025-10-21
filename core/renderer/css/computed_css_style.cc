@@ -183,7 +183,7 @@ bool SetBorderRadiusHelper(NLength& radiusX, NLength& radiusY,
         value.IsArray(), configs.enable_css_strict_mode, tasm::TYPE_MUST_BE,
         tasm::CSSProperty::GetPropertyName(cssID).c_str(), tasm::ARRAY_TYPE)
 
-    auto arr = value.GetValue().Array();
+    auto arr = value.GetArray();
     auto parse_result = CSSStyleUtils::ToLength(
         tasm::CSSValue(arr->get(0),
                        static_cast<CSSValuePattern>(arr->get(1).Number())),
@@ -233,7 +233,7 @@ bool SetBackgroundOrMaskImage(base::flex_optional<BackgroundData>& data,
     if (!value.IsArray()) {
       return false;
     }
-    auto array = value.GetValue().Array();
+    auto array = value.GetArray();
     for (size_t i = 0; i < array->size(); i++) {
       const auto& img = array->get(i);
       if (img.IsNumber()) {
@@ -259,7 +259,7 @@ bool SetBackgroundOrMaskPosition(base::flex_optional<BackgroundData>& data,
     if (!value.IsArray()) {
       return false;
     }
-    auto pos_arr = value.GetValue().Array();
+    auto pos_arr = value.GetArray();
     for (size_t i = 0; i != pos_arr->size(); ++i) {
       auto array = pos_arr->get(i).Array();
       uint32_t pos_x_type = static_cast<uint32_t>(array->get(0).Number());
@@ -323,7 +323,7 @@ bool SetBackgroundOrMaskSize(base::flex_optional<BackgroundData>& data,
     if (!value.IsArray()) {
       return false;
     }
-    auto size_arr = value.GetValue().Array();
+    auto size_arr = value.GetArray();
     for (size_t i = 0; i != size_arr->size(); ++i) {
       auto array = size_arr->get(i).Array();
       auto pattern = static_cast<uint32_t>(array->get(0).Number());
@@ -356,7 +356,7 @@ bool SetBackgroundOrMaskClip(base::flex_optional<BackgroundData>& data,
     if (!value.IsArray()) {
       return false;
     }
-    auto clip_arr = value.GetValue().Array();
+    auto clip_arr = value.GetArray();
     for (size_t i = 0; i < clip_arr->size(); i++) {
       auto clip_type = static_cast<uint32_t>(clip_arr->get(i).Number());
       image_data->clip.emplace_back(static_cast<BackgroundClipType>(clip_type));
@@ -376,7 +376,7 @@ bool SetBackgroundOrMaskOrigin(base::flex_optional<BackgroundData>& data,
     if (!value.IsArray()) {
       return false;
     }
-    auto origin_arr = value.GetValue().Array();
+    auto origin_arr = value.GetArray();
     for (size_t i = 0; i < origin_arr->size(); i++) {
       auto origin_type = static_cast<uint32_t>(origin_arr->get(i).Number());
       image_data->origin.emplace_back(
@@ -397,7 +397,7 @@ bool SetBackgroundOrMaskRepeat(base::flex_optional<BackgroundData>& data,
     if (!value.IsArray()) {
       return false;
     }
-    auto repeat_arr = value.GetValue().Array();
+    auto repeat_arr = value.GetArray();
     for (size_t i = 0; i < repeat_arr->size(); i++) {
       auto repeat_type =
           static_cast<uint32_t>(repeat_arr->get(i).Array()->get(0).Number());
@@ -631,9 +631,9 @@ bool ComputedCSSStyle::AppendAnimatedAnimationValue(tasm::StyleMap animate_data,
         target_animation_data->iteration_count = value.AsNumber();
         break;
       case tasm::kPropertyIDAnimationTimingFunction:
-        CSSStyleUtils::ComputeTimingFunction(
-            value.GetValue().Array().get()->get(0), reset,
-            target_animation_data->timing_func, parser_configs_);
+        CSSStyleUtils::ComputeTimingFunction(value.GetArray()->get(0), reset,
+                                             target_animation_data->timing_func,
+                                             parser_configs_);
         break;
       case tasm::kPropertyIDAnimationDirection:
         target_animation_data->direction =
@@ -1656,7 +1656,7 @@ bool ComputedCSSStyle::SetXAutoFontSize(const tasm::CSSValue& value,
             .c_str(),
         tasm::ARRAY_TYPE)
 
-    auto arr = value.GetValue().Array();
+    auto arr = value.GetArray();
     CSS_HANDLER_FAIL_IF_NOT(
         arr->size() == 7, parser_configs_.enable_css_strict_mode,
         tasm::SIZE_ERROR,
@@ -1715,7 +1715,7 @@ bool ComputedCSSStyle::SetXAutoFontSizePresetSizes(const tasm::CSSValue& value,
                                 .c_str(),
                             tasm::ARRAY_TYPE)
 
-    auto arr = value.GetValue().Array();
+    auto arr = value.GetArray();
     CSS_HANDLER_FAIL_IF_NOT(arr->size() % 2 == 0,
                             parser_configs_.enable_css_strict_mode,
                             tasm::SIZE_ERROR,
@@ -1803,7 +1803,7 @@ bool ComputedCSSStyle::SetTransformOrigin(const tasm::CSSValue& value,
             .c_str(),
         tasm::ARRAY_TYPE)
 
-    auto arr = value.GetValue().Array();
+    auto arr = value.GetArray();
     CSS_HANDLER_FAIL_IF_NOT(
         arr->size() >= 2, parser_configs_.enable_css_strict_mode,
         tasm::TYPE_MUST_BE,
@@ -1854,7 +1854,7 @@ bool ComputedCSSStyle::SetAnimation(const tasm::CSSValue& value,
     }
     animation_data_->clear();
     if (value.IsArray()) {
-      auto group = value.GetValue().Array();
+      auto group = value.GetArray();
       for (size_t i = 0; i < group->size(); i++) {
         if (animation_data_->size() < i + 1) {
           animation_data_->push_back(AnimationData());
@@ -2108,7 +2108,7 @@ bool ComputedCSSStyle::SetTransition(const tasm::CSSValue& value,
       transition_data_.emplace();
     }
     transition_data_->clear();
-    auto group = value.GetValue().Array();
+    auto group = value.GetArray();
     BASE_STATIC_STRING_DECL(kProperty, "property");
     BASE_STATIC_STRING_DECL(kDuration, "duration");
     BASE_STATIC_STRING_DECL(kTiming, "timing");
@@ -2642,7 +2642,7 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
     text_attributes_->text_decoration_style =
         DefaultComputedStyle::DEFAULT_TEXT_DECORATION_STYLE;
     text_attributes_->text_decoration_color = DefaultColor::DEFAULT_COLOR;
-    auto result = value.GetValue().Array();
+    auto result = value.GetArray();
     for (size_t i = 0; i < result->size(); i++) {
       uint32_t decoration = static_cast<uint32_t>(result->get(i).Number());
       if (decoration & static_cast<uint32_t>(TextDecorationType::kColor)) {
@@ -2725,7 +2725,7 @@ bool ComputedCSSStyle::SetBorderRadius(const tasm::CSSValue& value,
             .c_str(),
         tasm::ARRAY_TYPE)
 
-    auto container = value.GetValue().Array();
+    auto container = value.GetArray();
     for (int i = 0; i < 4; i++) {
       auto parse_result = CSSStyleUtils::ToLength(
           tasm::CSSValue(
@@ -2924,7 +2924,7 @@ bool ComputedCSSStyle::SetVerticalAlign(const tasm::CSSValue& value,
             .c_str(),
         tasm::ARRAY_TYPE)
 
-    auto arr = value.GetValue().Array();
+    auto arr = value.GetArray();
     CSS_HANDLER_FAIL_IF_NOT(
         arr->size() == 4, parser_configs_.enable_css_strict_mode,
         tasm::SIZE_ERROR,
@@ -3001,12 +3001,12 @@ bool ComputedCSSStyle::SetClipPath(const tasm::CSSValue& value,
 
   fml::RefPtr<lepus::CArray> raw_array;
   BasicShapeType type = BasicShapeType::kUnknown;
-  if (reset || !value.IsArray() || value.GetValue().Array()->size() == 0) {
+  if (reset || !value.IsArray() || value.GetArray()->size() == 0) {
     // if not reset, it means value is invalid and launch warning.
     LynxWarning(reset, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
                 "clip-path must be an array")
   } else {
-    raw_array = value.GetValue().Array();
+    raw_array = value.GetArray();
     type = static_cast<starlight::BasicShapeType>(raw_array->get(0).Number());
   }
 
@@ -3086,12 +3086,12 @@ bool ComputedCSSStyle::SetOffsetPath(const tasm::CSSValue& value,
 
   fml::RefPtr<lepus::CArray> raw_array;
   BasicShapeType type = BasicShapeType::kUnknown;
-  if (reset || !value.IsArray() || value.GetValue().Array()->size() == 0) {
+  if (reset || !value.IsArray() || value.GetArray()->size() == 0) {
     // if not reset, it means value is invalid and launch warning.
     LynxWarning(reset, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
                 "clip-path must be an array")
   } else {
-    raw_array = value.GetValue().Array();
+    raw_array = value.GetArray();
     type = static_cast<starlight::BasicShapeType>(raw_array->get(0).Number());
   }
 
@@ -4186,7 +4186,7 @@ bool ComputedCSSStyle::SetFontVariationSettings(const tasm::CSSValue& value,
       tasm::CSSProperty::GetPropertyName(tasm::kPropertyIDFontVariationSettings)
           .c_str(),
       tasm::ARRAY_TYPE)
-  text_attributes_->font_variation_settings = value.GetValue().Array();
+  text_attributes_->font_variation_settings = value.GetArray();
 
   return old_value.get() == nullptr ||
          *old_value != *text_attributes_->font_variation_settings;
@@ -4218,7 +4218,7 @@ bool ComputedCSSStyle::SetFontFeatureSettings(const tasm::CSSValue& value,
       tasm::CSSProperty::GetPropertyName(tasm::kPropertyIDFontFeatureSettings)
           .c_str(),
       tasm::ARRAY_TYPE)
-  text_attributes_->font_feature_settings = value.GetValue().Array();
+  text_attributes_->font_feature_settings = value.GetArray();
 
   return old_value.get() == nullptr ||
          *old_value != *text_attributes_->font_feature_settings;
