@@ -5,8 +5,6 @@
 #import <Lynx/LynxUIComponent.h>
 #import <Lynx/LynxUIScroller.h>
 
-@class LynxUIComponent;
-
 @interface LynxListContainerComponentWrapper : UIView
 @property(nonatomic, weak, nullable) LynxUIComponent *holdingUI;
 @end
@@ -27,6 +25,7 @@
 @property(nonatomic, assign) CGPoint targetDelta;
 // Target contentSize from c++
 @property(nonatomic, assign) CGFloat targetContentSize;
+
 @property(nonatomic, strong, nullable) NSMutableDictionary *listNativeStateCache;
 // <cacheKey, Set<initial- props>> Stores flushed initial- props for cacheKey
 @property(nonatomic, strong, nullable)

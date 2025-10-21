@@ -22,6 +22,10 @@
   return self;
 }
 
+- (long)getShellPtr {
+  return _shellPtr;
+}
+
 /**
  *  notify the scrolled distance to C++
  */

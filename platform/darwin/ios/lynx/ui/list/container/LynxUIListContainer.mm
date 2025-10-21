@@ -13,7 +13,10 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIScrollView+Lynx.h>
 
+#import <Lynx/ListContainerProxyWrapper.h>
 #import "LynxUIContext+Internal.h"
+#import "core/shell/list_engine_proxy.h"
+#import "core/shell/lynx_shell.h"
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
@@ -25,6 +28,10 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
   LynxListScrollStateFling = 3,
   LynxListScrollStateScrollAnimation = 4,
 };
+
+@interface LynxUIListContainer ()
+@property(nonatomic, nullable) ListContainerProxyWrapper *listContainerProxyWrapper;
+@end
 
 @implementation LynxListContainerComponentWrapper
 
@@ -208,6 +215,17 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)onNodeReady {
   [super onNodeReady];
+
+  //  _listContainerProxyWrapper =
+  auto listNodeInfoFetcher = self.context.fetcher;
+
+  auto shellPtr = listNodeInfoFetcher.self.getShellPtr;
+
+  auto shell = reinterpret_cast<lynx::shell::LynxShell *>(shellPtr);
+
+  _listContainerProxyWrapper =
+      [[ListContainerProxyWrapper alloc] initWithListEngineProxy:shell->GetListEngineProxy()];
+
   if (_needAdjustContentOffset) {
     _needAdjustContentOffset = NO;
     // Avoid adjustContentOffsetIfnecessary called from system
@@ -1165,14 +1183,18 @@ LYNX_UI_METHOD(scrollToPosition) {
 
   // Tell ListElement that we want scroll to some position
 
-  auto listNodeInfoFetcher = self.context.fetcher;
-  if (listNodeInfoFetcher) {
-    [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
-                                 position:(int)position
-                                   offset:offset
-                                    align:align
-                                   smooth:smooth];
-  }
+  //  auto listNodeInfoFetcher = self.context.fetcher;
+  //  if (listNodeInfoFetcher) {
+  //    [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
+  //                                 position:(int)position
+  //                                   offset:offset
+  //                                    align:align
+  //                                   smooth:smooth];
+  //
+  //  }
+  //
+  [_listContainerProxyWrapper getListContainerProxy]->ScrollToPosition(
+      static_cast<int32_t>(self.sign), (int)position, offset, align, smooth);
 }
 
 - (void)updateScrollInfoWithEstimatedOffset:(CGFloat)estimatedOffset
@@ -1263,11 +1285,17 @@ LYNX_UI_METHOD(getVisibleCells) {
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop
     [self updatePreviousContentOffset];
-    [listNodeInfoFetcher scrollByListContainer:(static_cast<int32_t>(self.sign))
-                                             x:[self clampToValidScrollEdge:NO]
-                                             y:[self clampToValidScrollEdge:YES]
-                                     originalX:self.view.contentOffset.x
-                                     originalY:self.view.contentOffset.y];
+    //    [listNodeInfoFetcher scrollByListContainer:(static_cast<int32_t>(self.sign))
+    //                                             x:[self clampToValidScrollEdge:NO]
+    //                                             y:[self clampToValidScrollEdge:YES]
+    //                                     originalX:self.view.contentOffset.x
+    //                                     originalY:self.view.contentOffset.y];
+    //
+
+    [_listContainerProxyWrapper getListContainerProxy]->ScrollByListContainer(
+        (static_cast<int32_t>(self.sign)), [self clampToValidScrollEdge:NO],
+        [self clampToValidScrollEdge:YES], self.view.contentOffset.x, self.view.contentOffset.y);
+
     [self updateStickyTops];
     [self updateStickyBottoms];
   }
@@ -1514,7 +1542,9 @@ LYNX_UI_METHOD(getVisibleCells) {
   auto fetcher = self.context.fetcher;
 
   if (fetcher) {
-    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
+    //    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
+    [_listContainerProxyWrapper getListContainerProxy]->ScrollStopped(
+        static_cast<int32_t>(self.sign));
   }
 }
 

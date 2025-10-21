@@ -19,6 +19,11 @@ shell_shared_sources = [
   "layout_mediator.h",
   "layout_result_manager.cc",
   "layout_result_manager.h",
+  "list_container_proxy.cc",
+  "list_container_proxy.h",
+  "list_engine_proxy.h",
+  "list_engine_proxy_impl.cc",
+  "list_engine_proxy_impl.h",
   "lynx_actor_specialization.h",
   "lynx_card_cache_data_manager.cc",
   "lynx_card_cache_data_manager.h",
@@ -58,12 +63,6 @@ shell_shared_sources = [
   "tasm_platform_invoker.h",
   "vsync_observer_impl.cc",
   "vsync_observer_impl.h",
-  "list_container_proxy.cc",
-   "list_container_proxy.h",
-   "list_engine_proxy_impl.cc",
-   "list_engine_proxy_impl.h",  
-   "list_engine_proxy.h",
-
 ]
 
 if (!enable_unittests) {
@@ -99,6 +98,7 @@ if (is_android) {
     "android/runtime_lifecycle_listener_delegate_android.h",
     "android/tasm_platform_invoker_android.cc",
     "android/tasm_platform_invoker_android.h",
+    "list_container_proxy_android.cc",
   ]
 } else if (is_harmony) {
   shell_shared_sources += [

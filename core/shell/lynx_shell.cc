@@ -23,12 +23,12 @@
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"
+#include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/runtime_mediator.h"
 #include "core/shell/runtime_standalone_helper.h"
 #include "core/shell/tasm_operation_queue_async.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-#include "core/shell/list_engine_proxy_impl.h"
 
 namespace lynx {
 namespace shell {
@@ -244,9 +244,7 @@ void LynxShell::InitRuntime(
                 ctx.event()->add_debug_annotations(kTaskName,
                                                    kJSTaskInitRuntime);
               });
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME);
-  list_engine_proxy_ =
-            std::make_shared<ListEngineProxyImpl>(engine_actor_);
+  list_engine_proxy_ = std::make_shared<ListEngineProxyImpl>(engine_actor_);
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
   engine_actor_->ActLite(

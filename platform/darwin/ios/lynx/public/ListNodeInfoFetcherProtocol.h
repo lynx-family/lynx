@@ -8,6 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @required
 
+- (long)getShellPtr;
+
 - (void)scrollByListContainer:(int)containerSign
                             x:(float)x
                             y:(float)y

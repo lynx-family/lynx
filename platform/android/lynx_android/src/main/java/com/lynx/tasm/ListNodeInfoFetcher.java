@@ -12,19 +12,14 @@ import com.lynx.tasm.LynxTemplateRender;
 public class ListNodeInfoFetcher implements IListNodeInfoFetcher {
   private LynxTemplateRender mRenderer;
   private long mShellPtr;
-  
-  private ListNodeInfoFetcher() {
-  }
 
-  public ListNodeInfoFetcher(LynxTemplateRender renderer,long shellPtr) {
+  private ListNodeInfoFetcher() {}
+
+  public ListNodeInfoFetcher(LynxTemplateRender renderer, long shellPtr) {
     mRenderer = renderer;
     mShellPtr = shellPtr;
   }
   
-  public long getShellPtr() {
-    return mShellPtr;
-  }
-
   @Override
   public JavaOnlyMap getPlatformInfo(int listSign) {
     if (mRenderer != null) {
@@ -38,6 +33,14 @@ public class ListNodeInfoFetcher implements IListNodeInfoFetcher {
     if (mRenderer != null) {
       mRenderer.renderChild(listSign, index, operationId);
     }
+  }
+  
+  @Override
+  public long getListEngineProxy(){
+    if (mRenderer!= null ) {
+      return mRenderer.getListEngineProxy(mShellPtr);
+    }
+    return 0;
   }
 
   @Override

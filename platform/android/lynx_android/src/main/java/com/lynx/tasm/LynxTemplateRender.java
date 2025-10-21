@@ -246,7 +246,7 @@ public class LynxTemplateRender
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
     init(context, bodyView, builder);
   }
-  // async render
+  
 
   LynxTemplateRender(Context context, LynxViewBuilder builder) {
     init(context, null, builder);
@@ -874,7 +874,8 @@ public class LynxTemplateRender
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
     mNativeLifecycle = nativeLifecycleCreate();
     mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
-    mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this,mNativePtr));
+    
+    mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this, mNativePtr));
     mLynxContext.setEnableVSyncAligned(enableVSyncAligned);
     if (mDevTool != null) {
       mDevTool.onTemplateAssemblerCreated(mNativePtr);
@@ -948,6 +949,7 @@ public class LynxTemplateRender
       }
       mLynxContext.setEventEmitter(new LynxEventEmitter(mEngineProxy));
     }
+    
     mIntersectionObserverManager = new LynxIntersectionObserverManager(mLynxContext, mJSProxy);
     mLynxContext.setIntersectionObserverManager(mIntersectionObserverManager);
     EventEmitter eventEmitter = mLynxContext.getEventEmitter();
@@ -3785,6 +3787,10 @@ public class LynxTemplateRender
   public JavaOnlyMap getListPlatformInfo(int listSign) {
     return nativeGetListPlatformInfo(mNativePtr, mNativeLifecycle, listSign);
   }
+  
+  public long getListEngineProxy(long ptr){
+    return nativeGetListEngineProxy(ptr);
+  }
 
   public void renderChild(int listSign, int index, long operationId) {
     nativeRenderChild(mNativePtr, mNativeLifecycle, listSign, index, operationId);
@@ -4302,6 +4308,8 @@ public class LynxTemplateRender
 
   private native void nativeScrollStopped(long ptr, long lifecycle, int sign);
 
+  private static native long nativeGetListEngineProxy(long ptr);
+  
   private static native JavaOnlyMap nativeGetListPlatformInfo(
       long ptr, long lifecycle, int listSign);
 

@@ -33,6 +33,7 @@
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/shell/engine_thread_switch.h"
 #include "core/shell/layout_mediator.h"
+#include "core/shell/list_engine_proxy.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
@@ -40,7 +41,6 @@
 #include "core/shell/native_facade.h"
 #include "core/shell/tasm_mediator.h"
 #include "core/shell/tasm_operation_queue.h"
-#include "core/shell/list_engine_proxy.h"
 
 namespace lynx {
 
@@ -281,9 +281,9 @@ class LynxShell {
     return engine_actor_;
   }
 
-    std::shared_ptr<shell::ListEngineProxy> GetListEngineProxy() {
-        return list_engine_proxy_;
-    }
+  std::shared_ptr<shell::ListEngineProxy> GetListEngineProxy() {
+    return list_engine_proxy_;
+  }
 
   std::shared_ptr<LynxActor<tasm::LayoutContext>> GetLayoutActor() {
     return layout_actor_;
@@ -372,7 +372,7 @@ class LynxShell {
       facade_actor_;  // on platform UI runner
 
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;  // on TASM runner
-  std::shared_ptr<ListEngineProxy> list_engine_proxy_;  // on JS
+  std::shared_ptr<ListEngineProxy> list_engine_proxy_;   // on JS
 
   std::shared_ptr<LynxActor<runtime::LynxRuntime>>
       runtime_actor_;  // on JS runner

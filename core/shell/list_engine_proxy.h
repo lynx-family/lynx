@@ -1,36 +1,30 @@
-//
-// Created by ByteDance on 2025/10/20.
-//
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_SHELL_LIST_ENGINE_PROXY_H
-#define CORE_SHELL_LIST_ENGINE_PROXY_H
+#ifndef CORE_SHELL_LIST_ENGINE_PROXY_H_
+#define CORE_SHELL_LIST_ENGINE_PROXY_H_
 
 #include <memory>
 #include <utility>
 
 namespace lynx {
-    namespace shell {
+namespace shell {
 
-        class ListEngineProxy {
-        public:
-            virtual void ScrollByListContainer(int32_t tag, float offset_x, float offset_y,
-                                               float original_x, float original_y) = 0;
+class ListEngineProxy {
+ public:
+  virtual void ScrollByListContainer(int32_t tag, float offset_x,
+                                     float offset_y, float original_x,
+                                     float original_y) = 0;
 
-            virtual void ScrollToPosition(int32_t tag, int index, float offset, int align,
-                                          bool smooth) = 0;
+  virtual void ScrollToPosition(int32_t tag, int index, float offset, int align,
+                                bool smooth) = 0;
 
-            virtual void ScrollStopped(int32_t tag) = 0;
+  virtual void ScrollStopped(int32_t tag) = 0;
+};
 
+}  // namespace shell
 
-           
+}  // namespace lynx
 
-        };
-        
-    } // namespace shell
-   
-} // namespace Lynx
-
-
-
-
-#endif //ANDROID_LIST_ENGINE_PROXY_H
+#endif  // CORE_SHELL_LIST_ENGINE_PROXY_H_
