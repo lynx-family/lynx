@@ -1172,7 +1172,7 @@ enableExposureWhenReload:
     - Android
     - HarmonyOS
     - iOS
-  since: '3.6'
+  since: '3.5'
   author: rAY-ooo
 enableAirDetectRemovedKeysWhenUpdateData:
   description:
@@ -1481,7 +1481,7 @@ enableEventHandleRefactor:
     event listeners, interception of events, etc.
   defaultValue: 'false'
   valueType: bool
-  since: '3.6'
+  since: '3.5'
   readSettings: true
   author: rAY-ooo
   supportPlatform:

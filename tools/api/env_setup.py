@@ -88,7 +88,7 @@ def guarantee_generated_files():
     generate_css_parser()
 
     try:
-        subprocess.run(
+        process = subprocess.run(
             [
                 sys.executable,
                 os.path.join(
@@ -99,8 +99,9 @@ def guarantee_generated_files():
             capture_output=True,
             text=True,
         )
+        print(process.stdout)
     except subprocess.CalledProcessError as e:
-        print(f"generate performance entry failed: {e.output}")
+        print(f"generate performance entry failed: {e.stderr}", file=sys.stderr)
         sys.exit(1)
 
 
