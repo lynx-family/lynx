@@ -56,7 +56,7 @@ RadonListBase::RadonListBase(lepus::Context* context, PageProxy* page_proxy,
 }
 
 RadonComponent* RadonListBase::CreateComponentWithType(uint32_t index) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_CREATE_COMPONENT_WITH_TYPE,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_BASE_CREATE_COMPONENT_WITH_TYPE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -198,7 +198,7 @@ void RadonListBase::SyncComponentExtraInfo(RadonComponent* comp, uint32_t index,
 
 void RadonListBase::RenderComponentAtIndex(uint32_t index,
                                            int64_t operation_id) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_RENDER_COMPONENT,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_BASE_RENDER_COMPONENT_AT_INDEX,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -220,7 +220,7 @@ void RadonListBase::RenderComponentAtIndex(uint32_t index,
 }
 
 RadonComponent* RadonListBase::GetComponent(uint32_t sign) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_LIST_GET_COMPONENT,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_LIST_BASE_GET_COMPONENT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -239,7 +239,7 @@ RadonComponent* RadonListBase::GetComponent(uint32_t sign) {
 // @param sign is the sign of the __LynxListTableViewCell__
 // use GetParam could get the associated RadonComponent
 void RadonListBase::RemoveComponent(uint32_t sign) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_LIST_REMOVE_COMPONENT,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_LIST_BASE_REMOVE_COMPONENT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -266,7 +266,7 @@ void RadonListBase::RemoveComponent(uint32_t sign) {
 
 void RadonListBase::UpdateComponent(uint32_t sign, uint32_t row,
                                     int64_t operation_id) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_LIST_UPDATE_COMPONENT,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_LIST_BASE_UPDATE_COMPONENT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
@@ -340,7 +340,7 @@ bool RadonListBase::HasComponent(const std::string& component_name,
 }
 
 bool RadonListBase::DiffListComponents() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_DIFF_COMPONENTS,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_BASE_DIFF_COMPONENTS,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
