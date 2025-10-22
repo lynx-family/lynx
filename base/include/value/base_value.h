@@ -310,7 +310,7 @@ class BASE_EXPORT Value {
   /// binary size because there is no temporary base::String object generated
   /// although it does not retain the underlying string impl. Use this function
   /// for most scenarios.
-  BASE_EXPORT const std::string& StdString() const;
+  const std::string& StdString() const;
 
   /// @Note
   /// If possible, use StringView(), StdString() or CString() instead of this
@@ -408,7 +408,7 @@ class BASE_EXPORT Value {
 
   bool MarkConst() const;
 
-  BASE_EXPORT bool IsJSValue() const;
+  bool IsJSValue() const;
 
   lynx_api_env env() const { return env_; }
 
