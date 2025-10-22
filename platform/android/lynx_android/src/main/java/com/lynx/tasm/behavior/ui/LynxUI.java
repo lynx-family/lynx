@@ -277,6 +277,10 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     super.detachWithViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
 
     if (mViewInfo != null) {
+      if (mKeyframeManager != null) {
+        mViewInfo.setKeyframeManager(mKeyframeManager);
+        mKeyframeManager = null;
+      }
       mViewInfo.detachFromUI();
       mViewInfo = null;
     }
@@ -378,6 +382,11 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
     if (mAlpha != mView.getAlpha()) {
       mView.setAlpha(mAlpha);
+    }
+    if (mAnimationInfos != null) {
+      prepareKeyframeManager();
+      mKeyframeManager.setAnimations(mAnimationInfos);
+      mKeyframeManager.notifyAnimationUpdated();
     }
   }
 
