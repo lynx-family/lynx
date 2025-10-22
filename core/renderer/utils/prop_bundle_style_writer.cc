@@ -12,6 +12,7 @@
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -28,7 +29,7 @@ void PropBundleStyleWriter::PushStyleToBundle(
 
   for (const auto id : changed_bitset) {
     if (CSSProperty::IsTransitionProps(id) ||
-        CSSProperty::IsKeyframeProps(id)) {
+        CSSProperty::IsKeyframeProps(id) || LayoutProperty::IsLayoutOnly(id)) {
       continue;
     }
 
@@ -38,7 +39,7 @@ void PropBundleStyleWriter::PushStyleToBundle(
 
   for (const auto id : reset_bitset) {
     if (CSSProperty::IsTransitionProps(id) ||
-        CSSProperty::IsKeyframeProps(id)) {
+        CSSProperty::IsKeyframeProps(id) || LayoutProperty::IsLayoutOnly(id)) {
       continue;
     }
 

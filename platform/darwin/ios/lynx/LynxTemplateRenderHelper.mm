@@ -170,7 +170,8 @@
   }
 
   const auto& actor = shell_->GetRuntimeActor();
-  auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, actor->GetInstanceId(),
+  auto runtime_instance_id = actor ? actor->GetInstanceId() : 0;
+  auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, runtime_instance_id,
                                                      [_runtimeOptions groupThreadName]);
   [_context setJSProxy:js_proxy];
 
