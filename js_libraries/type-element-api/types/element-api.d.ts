@@ -352,7 +352,7 @@ declare global {
   function __CreateStyleObject(styleObject: Object): StyleObjectRef;
 
   function __SetStyleObject(elementRef: ElementRef, styleObjects: Array<Object>): void;
-  
+
   function __UpdateStyleObject(styleObjectRef: StyleObjectRef, styleObject: Object): void;
 
   /**
@@ -373,4 +373,6 @@ declare global {
       name: string, // Animation name to pause/play
     ],
   ): void;
+
+  function __CreateFrame(comParentUniID: number, options?: Record<string, unknown>): ElementRef;
 }
