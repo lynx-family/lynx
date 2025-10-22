@@ -519,5 +519,10 @@ uint32_t LynxEnv::EnableGCOnceOnIdle() {
   return cached_enable_gc_once_on_idle;
 }
 
+bool LynxEnv::DisableJSModeStrip() {
+  static bool disable_js_mode_strip =
+      GetBoolEnv(Key::DISABLE_JS_MODE_STRIP, false);
+  return disable_js_mode_strip;
+}
 }  // namespace tasm
 }  // namespace lynx
