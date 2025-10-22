@@ -57,6 +57,16 @@ runs:
         path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
         key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}
 
+    - name: Cache pnpm Dependencies
+      if: ${{ inputs.cache-backend == 'lynx-infra' && inputs.cache-key-prefix == '' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        # set pnpm store path to a specific value since we can't get it via `pnpm store path` before pnpm is setup.
+        path: ~/.local/share/pnpm/store
+        key: pnpm-${{ runner.os }}-${{ hashFiles('lynx/pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-
+
     - name: install Python dependencies
       shell: bash
       run: |
@@ -79,4 +89,4 @@ runs:
         fi
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
-        GIT_LFS_SKIP_SMUDGE: 1
+        npm_config_store_dir: ~/.local/share/pnpm/store
