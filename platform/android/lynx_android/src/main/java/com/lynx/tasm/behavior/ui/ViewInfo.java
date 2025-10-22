@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.text.Spanned;
 import android.view.View;
+import com.lynx.tasm.animation.keyframe.KeyframeManager;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.shapes.BasicShape;
@@ -46,6 +47,7 @@ public class ViewInfo implements IDrawChildHook {
   int[] mOrder;
   boolean mHasOverlappingRendering;
   boolean mNeedGenerateMeaningfulPaintingArea = false;
+  KeyframeManager mKeyframeManager = null;
 
   public void detachWithUI() {}
 
@@ -79,6 +81,10 @@ public class ViewInfo implements IDrawChildHook {
 
   void markNeedGenerateMeaningfulPaintingArea(boolean enable) {
     mNeedGenerateMeaningfulPaintingArea = enable;
+  }
+
+  public void setKeyframeManager(KeyframeManager manager) {
+    mKeyframeManager = manager;
   }
 
   // beforeDispatchDraw

@@ -10560,6 +10560,7 @@ public class com::lynx::tasm::behavior::ui::ViewInfo : com.lynx.tasm.behavior.ui
   public void com.lynx.tasm.behavior.ui.ViewInfo.setClipPath(BasicShape path);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setDrawingOrder(int[] order);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setHasOverlappingRendering(boolean enable);
+  public void com.lynx.tasm.behavior.ui.ViewInfo.setKeyframeManager(KeyframeManager manager);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setClipToRadius(boolean enable);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setClipPathInBeforeDispatchDraw(Path path);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setClipRectInBeforeDispatchDraw(Rect rect);
