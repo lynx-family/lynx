@@ -117,6 +117,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     // in 3.6)
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
+    DISABLE_JS_MODE_STRIP,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -248,6 +249,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
              "fix_radon_transition_property_remove_bug"},
             {Key::ENABLE_GLOBAL_FONT_COLLECTION,
              "enable_global_font_collection"},
+            {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -381,6 +383,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableEventHandleRefactor();
   bool FixRadonTransitionPropertyRemoveBug();
   bool EnableGlobalFontCollection();
+  bool DisableJSModeStrip();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

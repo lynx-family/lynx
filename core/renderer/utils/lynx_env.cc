@@ -497,5 +497,10 @@ bool LynxEnv::EnableGlobalFontCollection() {
   return enable_global_font_collection;
 }
 
+bool LynxEnv::DisableJSModeStrip() {
+  static bool disable_js_mode_strip =
+      GetBoolEnv(Key::DISABLE_JS_MODE_STRIP, false);
+  return disable_js_mode_strip;
+}
 }  // namespace tasm
 }  // namespace lynx
