@@ -251,6 +251,7 @@ deps = {
         'url': 'https://github.com/lynx-family/debug-router.git',
         'commit': '031a44bc1b1fffc6a001a1245dda41b977316062',
         "ignore_in_git": True,
+        "enable_lfs": False,
     },
     "third_party/boringssl":{
         "type": "git",
