@@ -30,6 +30,7 @@ class RadonDiffListNode2 : public RadonListBase {
                            bool enable_reuse_notification) final;
   void EnqueueComponent(int32_t sign) final;
   bool DisablePlatformImplementation() override;
+  bool EnableDecoupledList() override;
 
  protected:
   void DispatchFirstTime() override;
@@ -73,6 +74,7 @@ class RadonDiffListNode2 : public RadonListBase {
   void TransmitDispatchOptionFromListNodeToListComponent(
       const DispatchOption& option);
   std::optional<bool> disable_platform_implementation_;
+  std::optional<bool> enable_decoupled_list_;
 };
 
 }  // namespace tasm

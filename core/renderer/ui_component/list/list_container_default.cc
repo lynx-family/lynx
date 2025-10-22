@@ -8,13 +8,13 @@
 
 namespace lynx {
 namespace tasm {
-
 namespace list {
-std::unique_ptr<ListContainer::Delegate> CreateListContainerDelegate(
+
+std::unique_ptr<ContainerDelegateInternal> CreateListContainerDelegateInternal(
     Element* element) {
   return std::make_unique<ListContainerDefault>();
 }
-}  // namespace list
 
+}  // namespace list
 }  // namespace tasm
 }  // namespace lynx

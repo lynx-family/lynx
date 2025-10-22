@@ -483,6 +483,10 @@ bool LynxEnv::EnableEventHandleRefactor() {
   return GetBoolEnv(Key::ENABLE_EVENT_HANDLE_REFACTOR, false);
 }
 
+bool LynxEnv::EnableDecoupledList() {
+  return GetBoolEnv(Key::ENABLE_DECOUPLED_LIST, false);
+}
+
 bool LynxEnv::EnableReportMTSContextEvent() {
   return GetBoolEnv(Key::ENABLE_REPORT_BTS_CONTEXT_EVENT, false);
 }

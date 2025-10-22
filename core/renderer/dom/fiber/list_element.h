@@ -14,6 +14,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/ui_component/list/list_container.h"
+#include "core/renderer/ui_component/list/mediator/list_mediator.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 
@@ -59,9 +60,7 @@ class ListElementSSRHelper {
       ssr_elements_;
 };
 
-class ListElement : public FiberElement,
-                    public ListContainer,
-                    public tasm::ListNode {
+class ListElement : public FiberElement, public tasm::ListNode {
  public:
   ListElement(ElementManager* manager, const base::String& tag,
               const lepus::Value& component_at_index,
@@ -124,24 +123,31 @@ class ListElement : public FiberElement,
   // information.
   void OnListElementUpdated(
       const std::shared_ptr<PipelineOptions>& options) override;
+
   // When the rendering of the list's child node is complete, this method will
   // be invoked. In this method, we can obtain the correct layout information
   // of the child node.
   void OnComponentFinished(
       Element* component,
       const std::shared_ptr<PipelineOptions>& option) override;
+
   // Receive drag distance from platform list container.
   void ScrollByListContainer(float content_offset_x, float content_offset_y,
                              float original_x, float original_y) override;
+
   void ScrollToPosition(int index, float offset, int align,
                         bool smooth) override;
+
   void OnListItemLayoutUpdated(Element* component) override;
+
   void ScrollStopped() override;
+
   bool DisableListPlatformImplementation() const override {
     return disable_list_platform_implementation_
                ? *disable_list_platform_implementation_
                : false;
   }
+
   void SetEventHandler(const base::String& name,
                        EventHandler* handler) override;
 
@@ -178,7 +184,7 @@ class ListElement : public FiberElement,
   // empty implementation.
   // TODO(WUJINTIAN): copy fiber list element
   ListElement(const ListElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props), ListContainer(element) {}
+      : FiberElement(element, clone_resolved_props) {}
 
   void OnNodeAdded(FiberElement* child) override;
   void FilterComponents(
@@ -193,30 +199,50 @@ class ListElement : public FiberElement,
 
  private:
   void ResolveEnableNativeList();
+
   void ResolvePlatformNodeTag();
+
+  void ResolveEnableDecoupledList();
+
   bool NeedAsyncResolveListItem() {
-    auto batch_render_strategy =
-        list_container_delegate()->GetBatchRenderStrategy();
+    auto batch_render_strategy = GetBatchRenderStrategyFromContainer();
     return batch_render_strategy ==
                list::BatchRenderStrategy::kAsyncResolveProperty ||
            batch_render_strategy ==
                list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
   }
-  bool UseNewResolveStrategy();
 
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
       uint64_t pipeline_scheduler_config, bool enable_parallel_element);
 
+  void ResolveBatchRenderStrategyFinally();
+
+  // TODO(dingwang.wxx): remove following functions in sdk 3.7.
+  void OnAttachToElementManager(ElementManager* element_manager);
+
+  void SetBatchRenderStrategyToContainer(
+      list::BatchRenderStrategy batch_render_strategy);
+
+  list::BatchRenderStrategy GetBatchRenderStrategyFromContainer() const;
+
+ private:
   bool continuous_resolve_tree_{false};
+  bool batch_render_strategy_flushed_{false};
+  bool lazy_notify_element_attach_{false};
   tasm::TemplateAssembler* tasm_{nullptr};
   lepus::Value component_at_index_{};
   lepus::Value enqueue_component_{};
   lepus::Value component_at_indexes_{};
   std::optional<bool> disable_list_platform_implementation_;
+  std::optional<bool> enable_decoupled_list_;
+  list::BatchRenderStrategy batch_render_strategy_from_config_{
+      list::BatchRenderStrategy::kDefault};
   base::String platform_node_tag_{BASE_STATIC_STRING(kListNodeTag)};
   std::optional<ListElementSSRHelper> ssr_helper_;
-  bool batch_render_strategy_flushed_{false};
+  std::unique_ptr<ListMediator> list_mediator_;
+  std::unique_ptr<list::ContainerDelegateInternal>
+      list_container_delegate_internal_;
 };
 
 }  // namespace tasm

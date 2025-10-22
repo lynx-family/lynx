@@ -406,5 +406,11 @@ void ListContainerImpl::ResolveListAxisGap(tasm::CSSPropertyID id, float gap) {
   }
 }
 
+std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(
+    ElementDelegate* list_delegate,
+    const std::shared_ptr<pub::PubValueFactory>& value_factory) {
+  return std::make_unique<ListContainerImpl>(list_delegate, value_factory);
+}
+
 }  // namespace list
 }  // namespace lynx

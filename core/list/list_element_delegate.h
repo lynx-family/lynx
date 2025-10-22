@@ -22,6 +22,7 @@ namespace list {
 class ElementDelegate {
  public:
   virtual ~ElementDelegate() = default;
+
   virtual int32_t GetImplId() const = 0;
   virtual float GetPhysicalPixelsPerLayoutUnit() const = 0;
   virtual float GetLayoutsUnitPerPx() const = 0;

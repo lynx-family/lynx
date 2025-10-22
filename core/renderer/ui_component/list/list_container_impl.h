@@ -24,34 +24,56 @@
 namespace lynx {
 namespace tasm {
 
-class ListContainerImpl : public ListContainer::Delegate {
+class ListContainerImpl : public list::ContainerDelegateInternal {
  public:
   ListContainerImpl(Element* element);
 
+  ~ListContainerImpl() override = default;
+
+  // Implement list::ContainerDelegateInternal
   bool ResolveAttribute(const base::String& key,
                         const lepus::Value& value) override;
+
   void FinishBindItemHolder(
       Element* component,
       const std::shared_ptr<PipelineOptions>& option) override;
+
   void FinishBindItemHolders(
       const std::vector<Element*>& list_items,
       const std::shared_ptr<PipelineOptions>& options) override;
+
   void OnLayoutChildren(
       const std::shared_ptr<PipelineOptions>& options) override;
+
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y) override;
+
   void ScrollToPosition(int index, float offset, int align,
                         bool smooth) override;
+
   void ScrollStopped() override;
+
   void OnNextFrame() override;
+
   void PropsUpdateFinish() override;
+
   void OnAttachToElementManager(ElementManager* manager) override;
+
   void OnListItemLayoutUpdated(Element* component) override;
+
   void UpdateListContainerDataSource(
       fml::RefPtr<lepus::Dictionary>& list_container_info) override;
+
   void AddEvent(const base::String& name) override;
+
   void ClearEvents() override;
+
   void ResolveListAxisGap(CSSPropertyID id, float gap) override;
+
+  void UpdateBatchRenderStrategy(list::BatchRenderStrategy strategy) override;
+
+  list::BatchRenderStrategy GetBatchRenderStrategy() override;
+
   int GetDataCount() const;
   ItemHolder* GetItemHolderForIndex(int index);
   void FlushPatching();
@@ -127,10 +149,6 @@ class ListContainerImpl : public ListContainer::Delegate {
   ListContainerAnimationManager* AnimationManager() const;
 
   bool UpdateAnimation() const;
-
-  void UpdateBatchRenderStrategy(list::BatchRenderStrategy strategy) override;
-
-  list::BatchRenderStrategy GetBatchRenderStrategy() override;
 
  protected:
   // Currently, the list container does not copy any member variables and is an

@@ -35,7 +35,7 @@
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/renderer/ui_component/list/radon_list_element.h"
+#include "core/renderer/ui_component/list/radon/radon_list_element.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -190,11 +190,13 @@ fml::RefPtr<RadonElement> ElementManager::CreateNode(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_CREATE_NODE, "tag",
               tag.str());
   fml::RefPtr<RadonElement> element = nullptr;
+  RadonListBase *radon_list_base = nullptr;
   if (radon_node_type == RadonNodeType::kRadonListNode && node &&
-      static_cast<RadonListBase *>(node->radon_node_ptr())
-          ->DisablePlatformImplementation()) {
-    element =
-        fml::MakeRefCounted<RadonListElement>(tag, node, this, node_index);
+      (radon_list_base =
+           static_cast<RadonListBase *>(node->radon_node_ptr())) &&
+      radon_list_base->DisablePlatformImplementation()) {
+    element = fml::MakeRefCounted<RadonListElement>(
+        tag, node, this, node_index, radon_list_base->EnableDecoupledList());
   }
   if (!element) {
     element = fml::MakeRefCounted<RadonElement>(tag, node, this, node_index);

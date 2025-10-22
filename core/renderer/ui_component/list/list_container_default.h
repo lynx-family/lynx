@@ -13,10 +13,9 @@
 namespace lynx {
 namespace tasm {
 
-class ListContainerDefault : public ListContainer::Delegate {
+class ListContainerDefault : public list::ContainerDelegateInternal {
  public:
   ListContainerDefault() = default;
-  ~ListContainerDefault() override = default;
 
   bool ResolveAttribute(const base::String& key,
                         const lepus::Value& value) override {

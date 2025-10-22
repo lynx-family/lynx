@@ -666,7 +666,8 @@ list::BatchRenderStrategy ListContainerImpl::GetBatchRenderStrategy() {
 }
 
 namespace list {
-std::unique_ptr<ListContainer::Delegate> CreateListContainerDelegate(
+
+std::unique_ptr<ContainerDelegateInternal> CreateListContainerDelegateInternal(
     Element* element) {
   return std::make_unique<ListContainerImpl>(element);
 }
@@ -674,7 +675,7 @@ std::unique_ptr<ListContainer::Delegate> CreateListContainerDelegate(
 bool IsInDebugMode() {
   return lynx::tasm::LynxEnv::GetInstance().IsDevToolComponentAttach();
 }
-}  // namespace list
 
+}  // namespace list
 }  // namespace tasm
 }  // namespace lynx
