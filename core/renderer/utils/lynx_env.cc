@@ -530,5 +530,11 @@ bool LynxEnv::EnableOptimizeHasOpacity() {
       GetBoolEnv(Key::ENABLE_OPTIMIZE_HAS_OPACITY, true);
   return enable_optimize_has_opacity;
 }
+
+bool LynxEnv::DisableJSModeStrip() {
+  static bool disable_js_mode_strip =
+      GetBoolEnv(Key::DISABLE_JS_MODE_STRIP, false);
+  return disable_js_mode_strip;
+}
 }  // namespace tasm
 }  // namespace lynx

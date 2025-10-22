@@ -123,6 +123,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
     ENABLE_OPTIMIZE_HAS_OPACITY,
+    DISABLE_JS_MODE_STRIP,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -259,6 +260,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_GC_ONCE_ON_IDLE, "enable_gc_once_on_idle"},
             {Key::ENABLE_CSS_INLINE_VARIABLES, "enable_css_inline_variables"},
             {Key::ENABLE_OPTIMIZE_HAS_OPACITY, "enable_optimize_has_opacity"},
+            {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -401,6 +403,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   uint32_t EnableGCOnceOnIdle();
   bool EnableCSSInlineVariables();
   bool EnableOptimizeHasOpacity();
+  bool DisableJSModeStrip();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
