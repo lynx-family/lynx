@@ -20,9 +20,8 @@ bool RegisterJNIForListContainerProxy(JNIEnv *env) {
 // ———————————— JNI method start ————————————————
 
 jlong Create(JNIEnv *env, jobject jcaller, jlong ptr) {
-  auto shell = reinterpret_cast<lynx::shell::LynxShell *>(ptr);
-  auto container_proxy =
-      new lynx::shell::ListContainerProxy(shell->GetListEngineProxy());
+  auto engine_proxy = reinterpret_cast<lynx::shell::ListEngineProxy *>(ptr);
+  auto container_proxy = new lynx::shell::ListContainerProxy(engine_proxy);
   return reinterpret_cast<jlong>(container_proxy);
 }
 

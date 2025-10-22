@@ -17,7 +17,7 @@ namespace shell {
 class ListContainerProxy {
  public:
   explicit ListContainerProxy(
-      const std::shared_ptr<ListEngineProxy>& list_engine_proxy)
+      ListEngineProxy*  list_engine_proxy)
       : list_engine_proxy_(list_engine_proxy){};
 
   void ScrollByListContainer(int32_t tag, float offset_x, float offset_y,
@@ -29,12 +29,13 @@ class ListContainerProxy {
   void ScrollStopped(int32_t tag);
 
   // ListEngineProxy shared_ptr
-  std::shared_ptr<ListEngineProxy> GetListEngineProxy() const {
+  ListEngineProxy* GetListEngineProxy() const {
     return list_engine_proxy_;
   }
-
+  
+  
  private:
-  std::shared_ptr<ListEngineProxy> list_engine_proxy_;
+  ListEngineProxy*list_engine_proxy_;
 };
 
 }  // namespace shell

@@ -13,10 +13,12 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIScrollView+Lynx.h>
 
-#import <Lynx/ListContainerProxyWrapper.h>
+
 #import "LynxUIContext+Internal.h"
 #import "core/shell/list_engine_proxy.h"
+#import "core/shell/list_container_proxy.h"
 #import "core/shell/lynx_shell.h"
+
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
@@ -30,7 +32,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 };
 
 @interface LynxUIListContainer ()
-@property(nonatomic, nullable) ListContainerProxyWrapper *listContainerProxyWrapper;
+@property(nonatomic, nullable) lynx::shell::ListContainerProxy *listContainerProxy;
 @end
 
 @implementation LynxListContainerComponentWrapper
@@ -215,16 +217,10 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)onNodeReady {
   [super onNodeReady];
-
-  //  _listContainerProxyWrapper =
+  
   auto listNodeInfoFetcher = self.context.fetcher;
-
-  auto shellPtr = listNodeInfoFetcher.self.getShellPtr;
-
-  auto shell = reinterpret_cast<lynx::shell::LynxShell *>(shellPtr);
-
-  _listContainerProxyWrapper =
-      [[ListContainerProxyWrapper alloc] initWithListEngineProxy:shell->GetListEngineProxy()];
+  auto listEngineProxy= reinterpret_cast<lynx::shell::ListEngineProxy*>(listNodeInfoFetcher.self.getListEngineProxyPtr);
+  _listContainerProxy = new lynx::shell::ListContainerProxy(listEngineProxy);
 
   if (_needAdjustContentOffset) {
     _needAdjustContentOffset = NO;
@@ -1193,7 +1189,7 @@ LYNX_UI_METHOD(scrollToPosition) {
   //
   //  }
   //
-  [_listContainerProxyWrapper getListContainerProxy]->ScrollToPosition(
+  _listContainerProxy->ScrollToPosition(
       static_cast<int32_t>(self.sign), (int)position, offset, align, smooth);
 }
 
@@ -1292,7 +1288,7 @@ LYNX_UI_METHOD(getVisibleCells) {
     //                                     originalY:self.view.contentOffset.y];
     //
 
-    [_listContainerProxyWrapper getListContainerProxy]->ScrollByListContainer(
+    _listContainerProxy->ScrollByListContainer(
         (static_cast<int32_t>(self.sign)), [self clampToValidScrollEdge:NO],
         [self clampToValidScrollEdge:YES], self.view.contentOffset.x, self.view.contentOffset.y);
 
@@ -1543,7 +1539,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 
   if (fetcher) {
     //    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
-    [_listContainerProxyWrapper getListContainerProxy]->ScrollStopped(
+    _listContainerProxy->ScrollStopped(
         static_cast<int32_t>(self.sign));
   }
 }

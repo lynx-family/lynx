@@ -1,3 +1,6 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 #import <Lynx/ListContainerProxyWrapper.h>
 
 @interface ListContainerProxyWrapper () {
@@ -8,9 +11,10 @@
 @implementation ListContainerProxyWrapper
 
 - (instancetype)initWithListEngineProxy:
-    (const std::shared_ptr<lynx::shell::ListEngineProxy> &)listEngineProxy {
+    (lynx::shell::ListEngineProxy* )listEngineProxy {
   self = [super init];
   if (self) {
+    
     listContainerProxy_ = new lynx::shell::ListContainerProxy(listEngineProxy);
   }
   return self;

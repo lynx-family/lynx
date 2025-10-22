@@ -245,6 +245,8 @@ void LynxShell::InitRuntime(
                                                    kJSTaskInitRuntime);
               });
   list_engine_proxy_ = std::make_shared<ListEngineProxyImpl>(engine_actor_);
+  
+  
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
   engine_actor_->ActLite(
