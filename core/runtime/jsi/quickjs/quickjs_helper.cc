@@ -229,6 +229,12 @@ std::string QuickjsHelper::getErrorMessage(LEPUSContext *ctx,
 base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
     const char *filename, int eval_flags, int start_line_offset) {
+#ifdef OS_IOS
+  if (!tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
+      !tasm::LynxEnv::GetInstance().DisableJSModeStrip()) {
+    eval_flags |= LEPUS_EVAL_FLAG_STRIP;
+  }
+#endif
   LEPUSValue val =
       LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
   auto maybe_error = QuickjsException::TryCatch(*rt, val);
@@ -249,6 +255,12 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
 base::expected<Value, JSINativeException> QuickjsHelper::evalBin(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
     const char *filename, int eval_flags) {
+#ifdef OS_IOS
+  if (!tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
+      !tasm::LynxEnv::GetInstance().DisableJSModeStrip()) {
+    eval_flags |= LEPUS_EVAL_FLAG_STRIP;
+  }
+#endif
   LEPUSValue val = LEPUS_EvalBinary(ctx, reinterpret_cast<const uint8_t *>(buf),
                                     buf_len, eval_flags);
   auto maybe_error = QuickjsException::TryCatch(*rt, val);
