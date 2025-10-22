@@ -6,6 +6,8 @@
 
 #include <jni.h>
 
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -44,6 +46,13 @@ class BASE_EXPORT JNIConvertHelper {
   static std::vector<uint8_t> ConvertJavaBinary(JNIEnv* env,
                                                 jbyteArray j_binary);
 
+  static bool ConvertJavaBinary(JNIEnv* env, jbyteArray j_binary,
+                                std::function<void*(int32_t size)> allocator);
+
+  static bool ConvertJavaDirectByteBuffer(
+      JNIEnv* env, jobject j_buffer,
+      std::function<void*(int32_t size)> allocator);
+
   inline static int ConvertToInt(JNIEnv* env, jobject j_obj) {
     int value = JType::IntValue(env, j_obj);
     return value;
@@ -74,6 +83,13 @@ class BASE_EXPORT JNIConvertHelper {
 
   static ScopedLocalJavaRef<jobjectArray> ConvertStringVectorToJavaStringArray(
       JNIEnv* env, const std::vector<std::u16string>& input);
+
+  static ScopedLocalJavaRef<jbyteArray> ConvertToJNIByteArray(JNIEnv* env,
+                                                              const void* data,
+                                                              int32_t size);
+
+  static ScopedLocalJavaRef<jobject> ConvertToJavaDirectByteBuffer(
+      JNIEnv* env, const void* data, int32_t size);
 
   static ScopedLocalJavaRef<jobjectArray> ConvertVectorToBufferArray(
       JNIEnv* env, const std::vector<std::vector<uint8_t>>& vector);

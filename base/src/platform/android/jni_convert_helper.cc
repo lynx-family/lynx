@@ -40,6 +40,14 @@ JNIConvertHelper::ConvertToJNIByteArray(JNIEnv* env, const std::string& str) {
   return lynx::base::android::ScopedLocalJavaRef<jbyteArray>(env, array);
 }
 
+lynx::base::android::ScopedLocalJavaRef<jbyteArray>
+JNIConvertHelper::ConvertToJNIByteArray(JNIEnv* env, const void* data,
+                                        int32_t size) {
+  jbyteArray array = env->NewByteArray(size);  // NOLINT
+  env->SetByteArrayRegion(array, 0, size, reinterpret_cast<const jbyte*>(data));
+  return lynx::base::android::ScopedLocalJavaRef<jbyteArray>(env, array);
+}
+
 std::vector<uint8_t> JNIConvertHelper::ConvertJavaBinary(JNIEnv* env,
                                                          jbyteArray j_binary) {
   std::vector<uint8_t> binary;
@@ -53,6 +61,49 @@ std::vector<uint8_t> JNIConvertHelper::ConvertJavaBinary(JNIEnv* env,
     env->ReleaseByteArrayElements(j_binary, temp, JNI_FALSE);
   }
   return binary;
+}
+
+bool JNIConvertHelper::ConvertJavaBinary(
+    JNIEnv* env, jbyteArray j_binary,
+    std::function<void*(int32_t size)> allocator) {
+  if (j_binary != nullptr) {
+    auto* temp = env->GetByteArrayElements(j_binary, nullptr);
+    size_t len = env->GetArrayLength(j_binary);
+    if (len > 0) {
+      auto data = allocator(len);
+      if (data && temp) {
+        std::memcpy(data, temp, len);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool JNIConvertHelper::ConvertJavaDirectByteBuffer(
+    JNIEnv* env, jobject j_buffer,
+    std::function<void*(int32_t size)> allocator) {
+  if (j_buffer != nullptr) {
+    auto* temp = env->GetDirectBufferAddress(j_buffer);
+    size_t len = env->GetDirectBufferCapacity(j_buffer);
+    if (len > 0 && temp != nullptr) {
+      auto data = allocator(len);
+      if (data) {
+        std::memcpy(data, temp, len);
+      }
+      return true;
+    }
+  }
+
+  return false;
+}
+
+lynx::base::android::ScopedLocalJavaRef<jobject>
+JNIConvertHelper::ConvertToJavaDirectByteBuffer(JNIEnv* env, const void* data,
+                                                int32_t size) {
+  auto buffer = env->NewDirectByteBuffer(const_cast<void*>(data), size);
+  return lynx::base::android::ScopedLocalJavaRef<jobject>(env, buffer);
 }
 
 std::string JNIConvertHelper::ConvertToString(JNIEnv* env, jstring j_str) {
