@@ -13,12 +13,10 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIScrollView+Lynx.h>
 
-
 #import "LynxUIContext+Internal.h"
-#import "core/shell/list_engine_proxy.h"
 #import "core/shell/list_container_proxy.h"
+#import "core/shell/list_engine_proxy.h"
 #import "core/shell/lynx_shell.h"
-
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
@@ -217,9 +215,10 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)onNodeReady {
   [super onNodeReady];
-  
+
   auto listNodeInfoFetcher = self.context.fetcher;
-  auto listEngineProxy= reinterpret_cast<lynx::shell::ListEngineProxy*>(listNodeInfoFetcher.self.getListEngineProxyPtr);
+  auto listEngineProxy = reinterpret_cast<lynx::shell::ListEngineProxy *>(
+      listNodeInfoFetcher.self.getListEngineProxyPtr);
   _listContainerProxy = new lynx::shell::ListContainerProxy(listEngineProxy);
 
   if (_needAdjustContentOffset) {
@@ -1189,8 +1188,8 @@ LYNX_UI_METHOD(scrollToPosition) {
   //
   //  }
   //
-  _listContainerProxy->ScrollToPosition(
-      static_cast<int32_t>(self.sign), (int)position, offset, align, smooth);
+  _listContainerProxy->ScrollToPosition(static_cast<int32_t>(self.sign), (int)position, offset,
+                                        align, smooth);
 }
 
 - (void)updateScrollInfoWithEstimatedOffset:(CGFloat)estimatedOffset
@@ -1539,8 +1538,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 
   if (fetcher) {
     //    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
-    _listContainerProxy->ScrollStopped(
-        static_cast<int32_t>(self.sign));
+    _listContainerProxy->ScrollStopped(static_cast<int32_t>(self.sign));
   }
 }
 
@@ -1760,6 +1758,13 @@ LYNX_UI_METHOD(getVisibleCells) {
     }
   }];
   return hitTarget;
+}
+
+- (void)dealloc {
+  if (_listContainerProxy) {
+    delete _listContainerProxy;
+    _listContainerProxy = nullptr;
+  }
 }
 
 @end
