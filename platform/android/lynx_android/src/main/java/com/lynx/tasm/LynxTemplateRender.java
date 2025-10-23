@@ -2009,7 +2009,7 @@ public class LynxTemplateRender
         propsNativePtr = newGlobalProps.getNativePtr();
       }
       if (mLynxContext != null && mLynxContext.getEnableExposureWhenReload()) {
-        mLynxContext.stopExposure();
+        mLynxContext.stopExposure(null);
         mLynxContext.resumeExposure();
       }
       /**

@@ -923,7 +923,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       __strong __typeof(weakSelf) strongSelf = weakSelf;
       LynxUIContext* uiContext = strongSelf->_context.uiOwner.uiContext;
       if (uiContext.enableExposureWhenReload) {
-        [uiContext stopExposure];
+        [uiContext stopExposure:nil];
         [uiContext resumeExposure];
       }
 

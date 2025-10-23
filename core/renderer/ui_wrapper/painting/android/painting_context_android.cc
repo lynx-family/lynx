@@ -1191,9 +1191,38 @@ void PaintingContextAndroid::BeforeFlush() {
 void PaintingContextAndroid::EnableUIOperationBatching() {
   ui_operation_batch_builder_ = base::android::CompactArrayBufferBuilder{};
 }
+
 std::unique_ptr<pub::Value> PaintingContextAndroid::GetTextInfo(
     const std::string& content, const pub::Value& info) {
   return TextUtilsAndroidHelper::GetTextInfo(content, info);
+}
+
+void PaintingContextAndroid::StopExposure(const pub::Value& options) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  auto java_options =
+      tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
+          lepus_options);
+  if (lepus_options.IsEmpty()) {
+    java_options.PushBoolean("sendEvent", true);
+  }
+  Java_PaintingContext_stopExposure(env, local_ref.Get(),
+                                    java_options.jni_object());
+}
+
+void PaintingContextAndroid::ResumeExposure() {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PaintingContext_resumeExposure(env, local_ref.Get());
 }
 
 }  // namespace tasm

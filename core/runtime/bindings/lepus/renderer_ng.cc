@@ -91,6 +91,9 @@ void Utils::RegisterNGMethodToLynx(lepus::Context* context, lepus::Value& lynx,
         {kLoadScript, &RendererFunctions::LoadScript},
         {kFetchBundle, &RendererFunctions::FetchBundle},
         {kGetModule, &RendererFunctions::GetModule},
+        // exposure
+        {tasm::kStopExposure, &RendererFunctions::StopExposure},
+        {tasm::kResumeExposure, &RendererFunctions::ResumeExposure},
     };
     lepus::RegisterObjectNGCFunction(context, lynx, funcs,
                                      sizeof(funcs) / sizeof(funcs[0]));

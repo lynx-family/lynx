@@ -238,6 +238,13 @@ std::unique_ptr<pub::Value> PaintingContextDarwin::GetTextInfo(const std::string
   return TextUtilsDarwinHelper::GetTextInfo(content, info);
 }
 
+void PaintingContextDarwin::StopExposure(const pub::Value& options) {
+  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  [uiOwner_.uiContext stopExposure:convertLepusValueToNSObject(lepus_options)];
+}
+
+void PaintingContextDarwin::ResumeExposure() { [uiOwner_.uiContext resumeExposure]; }
+
 PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async)
     : uiOwner_(owner), enable_create_ui_async_(enable_create_ui_async) {
   platform_ref_ = std::make_shared<PaintingContextDarwinRef>(owner);

@@ -116,7 +116,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeUIFromExposedMap:(LynxUI*)ui;
 - (void)removeUIFromExposedMap:(LynxUI*)ui withUniqueIdentifier:(NSString* _Nullable)uniqueID;
 - (void)removeUIFromIntersectionManager:(LynxUI*)ui;
-- (void)stopExposure;
+- (void)stopExposure:(NSDictionary* _Nullable)options;
 - (void)resumeExposure;
 
 - (void)findShadowNodeAndRunTask:(NSInteger)sign task:(void (^)(LynxShadowNode*))task;

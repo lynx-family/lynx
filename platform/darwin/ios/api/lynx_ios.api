@@ -4328,7 +4328,7 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext::removeUIFromExposedMap:(LynxUI *ui);
   public void LynxUIContext::removeUIFromExposedMap:withUniqueIdentifier:(LynxUI *ui,[withUniqueIdentifier] NSString *_Nullable uniqueID);
   public void LynxUIContext::removeUIFromIntersectionManager:(LynxUI *ui);
-  public void LynxUIContext::stopExposure();
+  public void LynxUIContext::stopExposure:(NSDictionary *_Nullable options);
   public void LynxUIContext::resumeExposure();
   public void LynxUIContext::findShadowNodeAndRunTask:task:(NSInteger sign,[task] void(^ task)(LynxShadowNode *));
   public nullable id< LynxResourceFetcher > LynxUIContext::getGenericResourceFetcher();

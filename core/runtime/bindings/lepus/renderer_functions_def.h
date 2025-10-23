@@ -195,6 +195,8 @@
   V(GetCustomSectionSync)             \
   V(SetSessionStorageItem)            \
   V(GetSessionStorageItem)            \
+  V(StopExposure)                     \
+  V(ResumeExposure)                   \
   V(FiberAsyncResolveElement)         \
   V(BindPipelineIDWithTimingFlag)     \
   V(MarkTiming)                       \

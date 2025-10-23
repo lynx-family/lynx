@@ -467,6 +467,22 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @CalledByNative
+  public void stopExposure(ReadableMap options) {
+    LynxContext context = mUIOwner.getContext();
+    if (context != null) {
+      context.stopExposure(options.asHashMap());
+    }
+  }
+
+  @CalledByNative
+  public void resumeExposure() {
+    LynxContext context = mUIOwner.getContext();
+    if (context != null) {
+      context.resumeExposure();
+    }
+  }
+
+  @CalledByNative
   public void validate(int sign) {
     mUIOwner.validate(sign);
   }

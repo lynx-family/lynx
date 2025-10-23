@@ -88,6 +88,8 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
                     uint32_t node_index = 0) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
+  void StopExposure(const pub::Value& options) override;
+  void ResumeExposure() override;
   void UpdatePlatformExtraBundle(int32_t signature,
                                  PlatformExtraBundle* bundle) override;
 

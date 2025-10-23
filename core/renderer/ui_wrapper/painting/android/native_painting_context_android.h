@@ -67,6 +67,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
   std::unique_ptr<pub::Value> GetTextInfo(const std::string &content,
                                           const pub::Value &info) override;
 
+  void StopExposure(const pub::Value &options) override;
+  void ResumeExposure() override;
+
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float *paddings, const float *margins,
                     const float *borders, const float *bounds,

@@ -162,6 +162,10 @@ static constexpr const char kTextOverflowAttr[] = "text-overflow";
 static constexpr const char* kSetSessionStorageItem = "setSessionStorageItem";
 static constexpr const char* kGetSessionStorageItem = "getSessionStorageItem";
 
+// exposure API
+static constexpr const char* kStopExposure = "stopExposure";
+static constexpr const char* kResumeExposure = "resumeExposure";
+
 }  // namespace tasm
 }  // namespace lynx
 

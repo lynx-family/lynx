@@ -99,6 +99,11 @@ void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
                                  &LynxAddReporterCustomInfo);
     // NativeModule GetModule Method
     lepus::RegisterTableFunction(context, lynx_table, kGetModule, &GetModule);
+    // exposure
+    lepus::RegisterTableFunction(context, lynx_table, kStopExposure,
+                                 &StopExposure);
+    lepus::RegisterTableFunction(context, lynx_table, kResumeExposure,
+                                 &ResumeExposure);
   }
 }
 

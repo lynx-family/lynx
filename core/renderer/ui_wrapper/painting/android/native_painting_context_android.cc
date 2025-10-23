@@ -60,6 +60,10 @@ std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
   return std::unique_ptr<pub::Value>();
 }
 
+void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {}
+
+void NativePaintingCtxAndroid::ResumeExposure() {}
+
 void NativePaintingCtxAndroid::UpdateLayout(
     int tag, float x, float y, float width, float height, const float *paddings,
     const float *margins, const float *borders, const float *bounds,

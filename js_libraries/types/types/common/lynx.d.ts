@@ -92,4 +92,6 @@ export interface CommonLynx {
   getNative(): ContextProxy;
   getEngine(): ContextProxy;
   fetchBundle(url: string, options?: {}): ResponseHandler;
+  stopExposure(options?: { sendEvent: boolean }): void;
+  resumeExposure(): void;
 }

@@ -235,11 +235,32 @@
   [[self intersectionManager] removeAttachedIntersectionObserver:ui];
 }
 
-- (void)stopExposure {
-  [_uiExposure stopExposure:nil];
+- (void)stopExposure:(NSDictionary*)options {
+  __weak typeof(self) weakSelf = self;
+  [self runOnUIThreadSafely:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (strongSelf) {
+      [strongSelf.uiExposure stopExposure:options];
+    }
+  }];
 }
+
 - (void)resumeExposure {
-  [_uiExposure resumeExposure];
+  __weak typeof(self) weakSelf = self;
+  [self runOnUIThreadSafely:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (strongSelf) {
+      [strongSelf.uiExposure resumeExposure];
+    }
+  }];
+}
+
+- (void)runOnUIThreadSafely:(dispatch_block_t)block {
+  if ([NSThread isMainThread]) {
+    block();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), block);
+  }
 }
 
 #pragma mark - Page configs

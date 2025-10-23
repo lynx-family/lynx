@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.6.2
+- Add `lynx.stopExposure` and `lynx.resumeExposure` APIs.
+
 ## 3.6.1
 - Add new reporting fields for `ImageLoadEvent`
 

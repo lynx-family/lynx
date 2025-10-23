@@ -4443,7 +4443,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.reset();
   public void com.lynx.tasm.behavior.LynxContext.destory();
   public void com.lynx.tasm.behavior.LynxContext.clearExposure();
-  public void com.lynx.tasm.behavior.LynxContext.stopExposure();
+  public void com.lynx.tasm.behavior.LynxContext.stopExposure(HashMap< String, Object > options);
   public void com.lynx.tasm.behavior.LynxContext.resumeExposure();
   public void com.lynx.tasm.behavior.LynxContext.addUIToExposedMap(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.LynxContext.addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID, @Nullable JavaOnlyMap data, @Nullable JavaOnlyMap options);
@@ -7732,6 +7732,8 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public void com.lynx.tasm.behavior.PaintingContext.setKeyframes(PropBundle bundle);
   public void com.lynx.tasm.behavior.PaintingContext.SetGestureDetectorState(int sign, int gestureId, int state);
   public void com.lynx.tasm.behavior.PaintingContext.consumeGesture(int sign, int gestureId, ReadableMap params);
+  public void com.lynx.tasm.behavior.PaintingContext.stopExposure(ReadableMap options);
+  public void com.lynx.tasm.behavior.PaintingContext.resumeExposure();
   public void com.lynx.tasm.behavior.PaintingContext.validate(int sign);
   public void com.lynx.tasm.behavior.PaintingContext.FinishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
   public void com.lynx.tasm.behavior.PaintingContext.updateExtraData(int signature, Object data);

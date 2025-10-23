@@ -1,3 +1,6 @@
+# 0.0.19
+* add renderer functions for exposure control `stopExposure` and `resumeExposure`.
+
 # 0.0.18
 * fix encode error with `experimental_enableQuickjsByteCode`.
 

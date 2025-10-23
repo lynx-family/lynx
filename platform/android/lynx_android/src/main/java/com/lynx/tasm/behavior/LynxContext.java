@@ -52,6 +52,7 @@ import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.utils.FontFaceParser;
 import com.lynx.tasm.utils.LynxConstants;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1198,14 +1199,24 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     }
   }
 
-  public void stopExposure() {
+  public void stopExposure(HashMap<String, Object> options) {
     if (mExposure != null) {
-      mExposure.stopExposure(null);
+      UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+        @Override
+        public void run() {
+          mExposure.stopExposure(options);
+        }
+      });
     }
   }
   public void resumeExposure() {
     if (mExposure != null) {
-      mExposure.resumeExposure();
+      UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+        @Override
+        public void run() {
+          mExposure.resumeExposure();
+        }
+      });
     }
   }
 

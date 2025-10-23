@@ -101,6 +101,9 @@ class PaintingCtxPlatformImpl {
   virtual std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                                   const pub::Value& info) = 0;
 
+  virtual void StopExposure(const pub::Value& options) = 0;
+  virtual void ResumeExposure() = 0;
+
   virtual void SetFrameAppBundle(
       int tag, const std::shared_ptr<LynxTemplateBundle>& bundle){};
 

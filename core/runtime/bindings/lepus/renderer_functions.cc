@@ -578,6 +578,48 @@ RENDERER_FUNCTION_CC(GetSessionStorageItem) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(StopExposure) {
+  CHECK_ARGC_EQ(StopExposure, 1);
+  lepus::Value* options = nullptr;
+  if (argc == 1) {
+    CONVERT_ARG(arg0, 0);
+    if (!arg0->IsEmpty() && !arg0->IsObject()) {
+      LEPUS_CONTEXT()->ReportFatalError(
+          "lynx.stopExposure's first parameter must be empty or an object!",
+          false, error::E_MTS_RENDERER_FUNCTION_FATAL);
+      RETURN_UNDEFINED();
+    }
+    options = arg0;
+  }
+
+  auto* tasm = GET_TASM_POINTER();
+  if (tasm == nullptr) {
+    RETURN_UNDEFINED();
+  }
+  GET_TASM_POINTER()
+      ->page_proxy()
+      ->element_manager()
+      ->painting_context()
+      ->impl()
+      ->StopExposure(pub::ValueImplLepus(options ? *options : lepus::Value()));
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(ResumeExposure) {
+  CHECK_ARGC_EQ(ResumeExposure, 0);
+  auto* tasm = GET_TASM_POINTER();
+  if (tasm == nullptr) {
+    RETURN_UNDEFINED();
+  }
+  GET_TASM_POINTER()
+      ->page_proxy()
+      ->element_manager()
+      ->painting_context()
+      ->impl()
+      ->ResumeExposure();
+  RETURN_UNDEFINED();
+}
+
 RENDERER_FUNCTION_CC(GetDevTool) {
   auto* tasm = GET_TASM_POINTER();
   if (tasm == nullptr) {

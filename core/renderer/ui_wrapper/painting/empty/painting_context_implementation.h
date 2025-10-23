@@ -89,6 +89,10 @@ class PaintingContextPlatformImpl : public PaintingCtxPlatformImpl {
     return std::make_unique<PubLepusValue>(lepus_result);
   }
 
+  virtual void StopExposure(const pub::Value& options) override {}
+
+  virtual void ResumeExposure() override {}
+
   virtual bool NeedAnimationProps() override { return false; }
 
  private:

@@ -200,7 +200,7 @@ export class Lynx {
   };
 
   stopExposure = this.getApp()._apiList['stopExposure'] as (options?: {
-    sendEvent: true;
+    sendEvent: boolean;
   }) => void;
 
   setObserverFrameRate = this.getApp()._apiList[

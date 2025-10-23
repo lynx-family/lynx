@@ -89,6 +89,8 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
+  void StopExposure(const pub::Value& options) override;
+  void ResumeExposure() override;
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
