@@ -91,6 +91,13 @@ LYNX_CAPI_EXPORT void lynx_view_set_parent(lynx_view_t*, NativeWindow parent);
 // Get the native window of the LynxView.
 LYNX_CAPI_EXPORT NativeWindow lynx_view_get_native_window(lynx_view_t*);
 
+// Get the generic resource fetcher of the LynxView. This function increases the
+// reference count of the returned fetcher. The caller assumes ownership and is
+// responsible for calling `lynx_generic_resource_fetcher_release` to release
+// it when no longer needed.
+LYNX_CAPI_EXPORT lynx_generic_resource_fetcher_t*
+lynx_view_get_generic_resource_fetcher(lynx_view_t*);
+
 // Instruct the LynxView to enter the foreground state. This function should be
 // called when the LynxView becomes visible or active again after being in the
 // background. It may trigger necessary operations such as resuming animations,

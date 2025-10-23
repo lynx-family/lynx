@@ -33,6 +33,14 @@ typedef enum lynx_resource_type_e {
 typedef uint64_t lynx_resource_request_id;
 #define kLynxResourceRequestIdInvalid 0
 
+// Creates a new resource request object.
+// The caller assumes ownership of the returned object. Ownership is transferred
+// when the object is passed to a consuming function like
+// `lynx_generic_resource_fetcher_fetch_resource`, which then becomes
+// responsible for its release.
+LYNX_CAPI_EXPORT lynx_resource_request_t* lynx_resource_request_create(
+    const char* url, lynx_resource_type_e type);
+
 // This function fetches the unique identifier associated with the specified
 // `lynx_resource_request_t` object. Each resource request is assigned a
 // distinct identifier upon creation, which can be used to track and manage the

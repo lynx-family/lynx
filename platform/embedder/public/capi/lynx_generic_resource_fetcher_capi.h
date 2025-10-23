@@ -74,6 +74,28 @@ LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_bind_cancel_fetch(
 LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_release(
     lynx_generic_resource_fetcher_t*);
 
+// -----------------------------------------------------------------------------
+// The following functions are provided for an ExtensionModule to invoke the
+// corresponding resource fetching capabilities of the host environment.
+// -----------------------------------------------------------------------------
+
+// Invokes the fetch resource function bound to the generic resource fetcher.
+LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_fetch_resource(
+    lynx_generic_resource_fetcher_t*, lynx_resource_request_t*,
+    lynx_resource_response_t*);
+
+// Invokes the fetch resource path function bound to the generic resource
+// fetcher.
+LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_fetch_resource_path(
+    lynx_generic_resource_fetcher_t*, lynx_resource_request_t*,
+    lynx_resource_response_t*);
+
+// Invokes the cancel fetch function bound to the generic resource fetcher.
+LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_cancel_fetch(
+    lynx_generic_resource_fetcher_t*, lynx_resource_request_id);
+
+// -----------------------------------------------------------------------------
+
 LYNX_EXTERN_C_END
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_GENERIC_RESOURCE_FETCHER_CAPI_H_
