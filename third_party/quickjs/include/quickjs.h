@@ -945,8 +945,7 @@ static inline LEPUS_BOOL LEPUS_IsInteger(LEPUSValueConst v) {
 }
 
 static inline LEPUS_BOOL LEPUS_IsBigInt(LEPUSValueConst v) {
-  auto tag = LEPUS_VALUE_GET_TAG(v);
-  return tag == LEPUS_TAG_BIG_INT;
+  return LEPUS_VALUE_GET_TAG(v) == LEPUS_TAG_BIG_INT;
 }
 
 static inline LEPUS_BOOL LEPUS_IsBool(LEPUSValueConst v) {
