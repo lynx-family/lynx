@@ -1,0 +1,12 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+ui_semantics_sources = [
+  "semantics_node.cc",
+  "semantics_node.h",
+  "semantics_owner.cc",
+  "semantics_owner.h",
+  "semantics_update_builder.cc",
+  "semantics_update_builder.h",
+  "semantics_update_node.h",
+]

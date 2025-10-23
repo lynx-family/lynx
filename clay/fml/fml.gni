@@ -1,0 +1,140 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build_overrides/fml.gni")
+import("../../config.gni")
+
+_src = get_path_info("./", "abspath")
+
+# common
+fml_common_shared_sources = [
+  "$_src/ascii_trie.cc",
+  "$_src/ascii_trie.h",
+  "$_src/atomic_sequence_num.h",
+  "$_src/command_line.cc",
+  "$_src/command_line.h",
+  "$_src/posix_wrappers.h",
+  "$_src/size.h",
+  "$_src/status.h",
+]
+
+# fml_darwin_shared_sources
+fml_darwin_shared_sources = [
+  "$_src/platform/darwin/cf_utils.cc",
+  "$_src/platform/darwin/cf_utils.h",
+  "$_src/platform/darwin/platform_version.h",
+  "$_src/platform/darwin/platform_version.mm",
+  "$_src/platform/darwin/scoped_block.h",
+  "$_src/platform/darwin/scoped_block.mm",
+  "$_src/platform/darwin/scoped_nsobject.h",
+  "$_src/platform/darwin/scoped_nsobject.mm",
+  "$_src/platform/darwin/string_range_sanitization.h",
+  "$_src/platform/darwin/string_range_sanitization.mm",
+]
+
+# fml_darwin_shared_sources end
+
+fml_windows_shared_sources = [ "$_src/platform/win/posix_wrappers_win.cc" ]
+
+# log
+fml_log_sources = [
+  "$_src/log_level.h",
+  "$_src/log_settings.cc",
+  "$_src/log_settings.h",
+  "$_src/log_settings_state.cc",
+  "$_src/logging.cc",
+  "$_src/logging.h",
+]
+
+# backtrace
+fml_backtrace_sources = [ "$_src/backtrace.h" ]
+if (is_mac || is_ios || is_linux || is_tvos) {
+  fml_backtrace_sources += [ "backtrace.cc" ]
+} else if (!is_android) {
+  fml_backtrace_sources += [ "backtrace_stub.cc" ]
+} else if (is_android) {
+  fml_backtrace_sources += [ "backtrace_android.cc" ]
+}
+
+# icu
+fml_icu_util_sources = [
+  "$_src/icu_util.cc",
+  "$_src/icu_util.h",
+]
+
+# native library
+fml_native_library_sources = [ "$_src/native_library.h" ]
+if (is_win) {
+  fml_native_library_sources += [ "$_src/platform/win/native_library_win.cc" ]
+} else {
+  fml_native_library_sources += [ native_library_posix ]
+}
+
+# file
+fml_file_sources = [
+  "$_src/file.cc",
+  "$_src/file.h",
+  "$_src/mapping.cc",
+  "$_src/mapping.h",
+  "$_src/paths.cc",
+  "$_src/paths.h",
+]
+if (is_ios || is_mac || is_tvos) {
+  fml_file_sources += [ "$_src/platform/darwin/paths_darwin.mm" ]
+}
+
+if (is_win) {
+  fml_file_sources += [
+    "$_src/platform/win/command_line_win.cc",
+    "$_src/platform/win/errors_win.cc",
+    "$_src/platform/win/errors_win.h",
+    "$_src/platform/win/file_win.cc",
+    "$_src/platform/win/mapping_win.cc",
+    "$_src/platform/win/paths_win.cc",
+  ]
+} else {
+  fml_file_sources += [
+    "$_src/platform/posix/command_line_posix.cc",
+    "$_src/platform/posix/file_posix.cc",
+    "$_src/platform/posix/mapping_posix.cc",
+    "$_src/platform/posix/paths_posix.cc",
+    "$_src/platform/posix/posix_wrappers_posix.cc",
+  ]
+}
+
+if (is_harmony) {
+  fml_file_sources += [
+    "platform/harmony/paths_harmony.cc",
+    "platform/harmony/paths_harmony.h",
+  ]
+} else if (is_linux) {
+  fml_file_sources += [ "$_src/platform/linux/paths_linux.cc" ]
+} else if (is_android) {
+  fml_file_sources += [
+    "$_src/platform/android/jni_android.cc",
+    "$_src/platform/android/jni_android.h",
+    "$_src/platform/android/jni_weak_ref.cc",
+    "$_src/platform/android/jni_weak_ref.h",
+    "$_src/platform/android/paths_android.cc",
+    "$_src/platform/android/paths_android.h",
+    "$_src/platform/linux/proc_maps_linux.cc",
+    "$_src/platform/linux/proc_maps_linux.h",
+  ]
+}
+
+# string
+fml_string_conversion_sources = [
+  "$_src/base32.cc",
+  "$_src/base32.h",
+  "$_src/base64.cc",
+  "$_src/base64.h",
+  "$_src/hex_codec.cc",
+  "$_src/hex_codec.h",
+]
+if (is_win) {
+  fml_string_conversion_sources += [
+    "$_src/platform/win/wstring_conversion.cc",
+    "$_src/platform/win/wstring_conversion.h",
+  ]
+}

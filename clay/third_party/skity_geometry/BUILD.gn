@@ -1,0 +1,25 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+source_set("skity_geometry") {
+  sources = [
+    "src/geometry/glm_helper.hpp",
+    "src/geometry/math.hpp",
+    "src/geometry/matrix.cc",
+    "src/geometry/rect.cc",
+    "src/geometry/rrect.cc",
+  ]
+
+  include_dirs = [
+    ".",
+    "include",
+    "../glm",
+  ]
+
+  defines = []
+  cflags_objcc = [ "-std=c++17" ]
+  cflags_cc = []
+}

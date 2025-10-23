@@ -1,0 +1,40 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+gfx_style_sources = [
+  "blend_mode.h",
+  "borders_data.cc",
+  "borders_data.h",
+  "box_data.h",
+  "color.cc",
+  "color.h",
+  "color_filter.cc",
+  "color_filter.h",
+  "color_gen.inl",
+  "color_source.cc",
+  "color_source.h",
+  "image_filter.cc",
+  "image_filter.h",
+  "length.h",
+  "mask_filter.cc",
+  "mask_filter.h",
+  "outline_data.cc",
+  "outline_data.h",
+  "path_effect.cc",
+  "path_effect.h",
+  "runtime_effect.cc",
+  "runtime_effect.h",
+  "sampling_options.h",
+  "shadow.h",
+  "tile_mode.h",
+]
+
+if (!enable_skity) {
+  gfx_style_sources += [
+    "vertices.cc",
+    "vertices.h",
+  ]
+}

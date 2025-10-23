@@ -1,0 +1,124 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("fml.gni")
+
+config("fml_config") {
+  # to be deleted if clay opensourced
+  include_dirs = [ "../../" ]
+}
+
+source_set("fml") {
+  sources = fml_common_shared_sources
+
+  if (is_mac || is_ios || is_tvos) {
+    sources += fml_darwin_shared_sources
+  } else if (is_win) {
+    sources += fml_windows_shared_sources
+  }
+
+  sources += fml_backtrace_sources
+
+  public_configs = [ ":fml_config" ]
+  public_deps = [
+    ":file_util",
+    ":fml_log",
+    ":string_conversion",
+  ]
+  deps = []
+
+  libs = []
+
+  if (is_ios || is_mac || is_tvos) {
+    fml_cflags_objc_arc = [
+      "-Werror=overriding-method-mismatch",
+      "-Werror=undeclared-selector",
+      "-fobjc-arc",
+    ]
+    fml_cflags_objcc_arc = fml_cflags_objc_arc
+
+    cflags_objc = fml_cflags_objc_arc
+    cflags_objcc = fml_cflags_objcc_arc
+
+    frameworks = [ "Foundation.framework" ]
+  }
+
+  if (is_android) {
+    libs += [ "android" ]
+  }
+
+  if (is_win) {
+    # For wstring_conversion. See issue #50053.
+    defines = [ "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" ]
+  }
+}
+
+source_set("command_line") {
+  sources = [
+    "command_line.cc",
+    "command_line.h",
+  ]
+  public_configs = [ ":fml_config" ]
+}
+
+source_set("string_conversion") {
+  sources = fml_string_conversion_sources
+
+  # Current versions of libcxx have deprecated some of the UTF-16 string
+  # conversion APIs.
+  defines = [ "_LIBCPP_DISABLE_DEPRECATION_WARNINGS" ]
+
+  if (is_win) {
+    # TODO(cbracken): https://github.com/flutter/flutter/issues/50053
+    defines += [ "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" ]
+  }
+
+  public_configs = [ ":fml_config" ]
+}
+
+source_set("icu_util") {
+  sources = fml_icu_util_sources
+
+  public_deps = [
+    ":file_util",
+
+    # These need to be in sync with the Fuchsia buildroot.
+    "//third_party/icu",
+  ]
+  public_configs = [
+    ":fml_config",
+    "//third_party/icu:icu_config",
+  ]
+}
+
+source_set("fml_log") {
+  sources = fml_log_sources
+  public_configs = [ ":fml_config" ]
+}
+
+source_set("file_util") {
+  sources = fml_file_sources
+  public_deps = [ ":native_library_util" ]
+  public_configs = [ ":fml_config" ]
+  if (is_ios || is_mac || is_tvos) {
+    fml_cflags_objc = [
+      "-Werror=overriding-method-mismatch",
+      "-Werror=undeclared-selector",
+    ]
+    fml_cflags_objcc = fml_cflags_objc
+
+    cflags_objc = fml_cflags_objc
+    cflags_objcc = fml_cflags_objcc
+
+    frameworks = [ "Foundation.framework" ]
+  }
+}
+
+source_set("native_library_util") {
+  sources = fml_native_library_sources
+  public_configs = [ ":fml_config" ]
+}

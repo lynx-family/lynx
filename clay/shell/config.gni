@@ -1,0 +1,31 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+
+declare_args() {
+  shell_enable_gl = !is_fuchsia && !is_mac
+
+  # The logic for enabling Metal is in tools/gn.
+  shell_enable_metal = false
+
+  shell_enable_software = true
+
+  stripped_symbols = true
+}
+
+declare_args() {
+  test_enable_gl = shell_enable_gl
+  test_enable_metal = shell_enable_metal
+  test_enable_software = shell_enable_software
+}
+
+# TODO(Jinsong): Temporarily Headless only supports OpenGL, more rendering
+# backends will be supported soon.
+if (is_headless) {
+  shell_enable_gl = true
+}

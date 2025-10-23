@@ -1,0 +1,46 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/fuchsia/sdk.gni")
+import("../../common/config.gni")
+import("../../testing/testing.gni")
+
+source_set("ui") {
+  sources = [
+    "window/pointer_data.cc",
+    "window/pointer_data.h",
+    "window/pointer_data_packet.cc",
+    "window/pointer_data_packet.h",
+    "window/pointer_data_packet_converter.cc",
+    "window/pointer_data_packet_converter.h",
+    "window/viewport_metrics.cc",
+    "window/viewport_metrics.h",
+  ]
+
+  public_configs = [ "../../:config" ]
+
+  deps = [
+    "../../common",
+    "../../fml:fml",
+  ]
+
+  if (!enable_skity) {
+    deps += [ "//third_party/skia" ]
+  }
+
+  if (!defined(defines)) {
+    defines = []
+  }
+  if (!is_android || enable_unittests) {
+    sources += [
+      "window/key_data.cc",
+      "window/key_data.h",
+      "window/key_data_packet.cc",
+      "window/key_data_packet.h",
+    ]
+  }
+}
