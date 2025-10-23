@@ -40,7 +40,7 @@ TEST(ListGapHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetPattern() == CSSValuePattern::PX);
-  EXPECT_EQ(output[id].GetValue().Number(), 20);
+  EXPECT_EQ(output[id].GetNumber(), 20);
 
   output.clear();
   impl = lepus::Value("30vh");

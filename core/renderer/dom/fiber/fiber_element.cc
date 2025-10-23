@@ -1220,7 +1220,7 @@ void FiberElement::ResolveCSSStyles(
         if (update_map_it != update_map.end()) {
           return std::make_pair(update_map_it->second,
                                 static_cast<starlight::DirectionType>(
-                                    update_map_it->second.GetValue().Number()));
+                                    update_map_it->second.GetNumber()));
         }
         if (updated_inherited_map.has_value()) {
           auto updated_inherited_map_it =
@@ -1229,7 +1229,7 @@ void FiberElement::ResolveCSSStyles(
             return std::make_pair(
                 updated_inherited_map_it->second,
                 static_cast<starlight::DirectionType>(
-                    updated_inherited_map_it->second.GetValue().Number()));
+                    updated_inherited_map_it->second.GetNumber()));
           }
         }
         return std::make_pair(CSSValue::Empty(), pre_direction);

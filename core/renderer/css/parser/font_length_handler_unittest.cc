@@ -28,7 +28,7 @@ TEST(FontLengthHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetPattern() == CSSValuePattern::NUMBER);
-  EXPECT_EQ(output[id].GetValue().Number(), 5);
+  EXPECT_EQ(output[id].GetNumber(), 5);
 
   output.clear();
   impl = lepus::Value("10");
@@ -37,7 +37,7 @@ TEST(FontLengthHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetPattern() == CSSValuePattern::NUMBER);
-  EXPECT_EQ(output[id].GetValue().Number(), 10);
+  EXPECT_EQ(output[id].GetNumber(), 10);
 
   output.clear();
   impl = lepus::Value("20px");
@@ -46,7 +46,7 @@ TEST(FontLengthHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetPattern() == CSSValuePattern::PX);
-  EXPECT_EQ(output[id].GetValue().Number(), 20);
+  EXPECT_EQ(output[id].GetNumber(), 20);
 
   output.clear();
   impl = lepus::Value("30rpx");
@@ -55,7 +55,7 @@ TEST(FontLengthHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 30);
+  EXPECT_EQ(output[id].GetNumber(), 30);
 
   output.clear();
   impl = lepus::Value("40px 123456");
@@ -71,7 +71,7 @@ TEST(FontLengthHandler, Handler) {
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
   float UNDEFINED = 10E20;
-  EXPECT_EQ(output[id].GetValue().Number(), UNDEFINED);
+  EXPECT_EQ(output[id].GetNumber(), UNDEFINED);
 }
 }  // namespace test
 

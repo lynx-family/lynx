@@ -864,7 +864,7 @@ bool ComputedCSSStyle::SetTextStrokeColor(const tasm::CSSValue& value,
 
     if (value.IsNumber()) {
       text_attributes_->text_stroke_color =
-          static_cast<unsigned int>(value.GetValue().Number());
+          static_cast<unsigned int>(value.GetNumber());
     }
   }
   return old_value_color != text_attributes_->text_stroke_color;
@@ -1204,7 +1204,7 @@ bool ComputedCSSStyle::SetBoxSizing(const tasm::CSSValue& value,
         tasm::ENUM_TYPE)
 
     layout_computed_style_.box_sizing_ =
-        static_cast<BoxSizingType>(value.GetValue().Number());
+        static_cast<BoxSizingType>(value.GetNumber());
   }
   return old_value != layout_computed_style_.box_sizing_;
 }
@@ -1605,7 +1605,7 @@ bool ComputedCSSStyle::SetLineHeight(const tasm::CSSValue& value,
   } else {
     if (value.IsNumber() || value.IsPercent()) {
       text_attributes_->line_height_factor =
-          value.GetValue().Number() / (value.IsPercent() ? 100 : 1);
+          value.GetNumber() / (value.IsPercent() ? 100 : 1);
       text_attributes_->computed_line_height =
           text_attributes_->line_height_factor *
           length_context_.cur_node_font_size_;
@@ -2251,8 +2251,7 @@ bool ComputedCSSStyle::SetColor(const tasm::CSSValue& value, const bool reset) {
         tasm::ARRAY_OR_NUMBER_TYPE)
 
     if (value.IsNumber()) {
-      text_attributes_->color =
-          static_cast<uint32_t>(value.GetValue().Number());
+      text_attributes_->color = static_cast<uint32_t>(value.GetNumber());
       text_attributes_->text_gradient.reset();
     } else {
       text_attributes_->color = DefaultColor::DEFAULT_TEXT_COLOR;
@@ -2282,7 +2281,7 @@ bool ComputedCSSStyle::SetXPlaceholderColor(const tasm::CSSValue& value,
 
     if (value.IsNumber()) {
       placeholder_text_attributes_->color =
-          static_cast<uint32_t>(value.GetValue().Number());
+          static_cast<uint32_t>(value.GetNumber());
       placeholder_text_attributes_->text_gradient.reset();
     } else {
       placeholder_text_attributes_->color = DefaultColor::DEFAULT_TEXT_COLOR;
@@ -2350,7 +2349,7 @@ bool ComputedCSSStyle::SetFilter(const tasm::CSSValue& value,
       CSSStyleUtils::PrepareOptional(filter_);
       (*filter_).type = FilterType::kGrayscale;
       (*filter_).amount =
-          NLength::MakePercentageNLength(value.GetValue().Number() * 100);
+          NLength::MakePercentageNLength(value.GetNumber() * 100);
     }
     return last_filter != filter_;
   }
@@ -2683,7 +2682,7 @@ bool ComputedCSSStyle::SetTextDecorationColor(const tasm::CSSValue& value,
 
     if (value.IsNumber()) {
       text_attributes_->decoration_color =
-          static_cast<unsigned int>(value.GetValue().Number());
+          static_cast<unsigned int>(value.GetNumber());
     }
   }
   return old_value_color != text_attributes_->decoration_color;

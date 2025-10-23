@@ -28,7 +28,7 @@ TEST(TimeHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) != output.end());
   EXPECT_TRUE(output[id].IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 2000);
+  EXPECT_EQ(output[id].GetNumber(), 2000);
 
   output.clear();
   impl = lepus::Value("2ms");
@@ -36,7 +36,7 @@ TEST(TimeHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) != output.end());
   EXPECT_TRUE(output[id].IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 2);
+  EXPECT_EQ(output[id].GetNumber(), 2);
 
   output.clear();
   impl = lepus::Value("2000ms, 1s, 10s");
@@ -89,7 +89,7 @@ TEST(TimeHandler, Compatibility) {
   StyleMap output;
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output[id].IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 200);
+  EXPECT_EQ(output[id].GetNumber(), 200);
 }
 
 TEST(TimeHandler, Negative) {
@@ -101,7 +101,7 @@ TEST(TimeHandler, Negative) {
                                     configs));
   EXPECT_TRUE(
       UnitHandler::Process(kPropertyIDAnimationDelay, impl, output, configs));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), -2);
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), -2);
 }
 
 }  // namespace test

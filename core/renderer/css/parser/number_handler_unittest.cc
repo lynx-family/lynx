@@ -30,7 +30,7 @@ TEST(NumberHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) != output.end());
   EXPECT_TRUE(output[id].IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 0.85);
+  EXPECT_EQ(output[id].GetNumber(), 0.85);
 
   output.clear();
   impl = lepus::Value(0.99);
@@ -38,7 +38,7 @@ TEST(NumberHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) != output.end());
   EXPECT_TRUE(output[id].IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 0.99);
+  EXPECT_EQ(output[id].GetNumber(), 0.99);
 }
 
 }  // namespace test

@@ -310,7 +310,7 @@ bool OpacityKeyframe::SetValue(
   if (!keyframe_opacity_value.IsNumber()) {
     return false;
   }
-  value_ = keyframe_opacity_value.GetValue().Number();
+  value_ = keyframe_opacity_value.GetNumber();
   is_empty_ = false;
   return true;
 }
@@ -395,7 +395,7 @@ bool ColorKeyframe::SetValue(
   if (!keyframe_color_value.IsNumber()) {
     return false;
   }
-  value_ = keyframe_color_value.GetValue().Number();
+  value_ = keyframe_color_value.GetNumber();
   is_empty_ = false;
   return true;
 }
@@ -515,7 +515,7 @@ bool FloatKeyframe::SetValue(
   if (!keyframe_float_value.IsNumber()) {
     return false;
   }
-  value_ = keyframe_float_value.GetValue().Number();
+  value_ = keyframe_float_value.GetNumber();
   is_empty_ = false;
   return true;
 }

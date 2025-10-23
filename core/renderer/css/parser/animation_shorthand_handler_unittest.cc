@@ -25,14 +25,14 @@ TEST(AnimationShorthandHandler, Animation) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output[kPropertyIDAnimationName].GetValue().StringView(), "rotate");
-  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetValue().Number(), 10000);
+  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetNumber(), 10000);
   auto timing_function =
       output[kPropertyIDAnimationTimingFunction].GetArray().strongify();
   EXPECT_EQ(timing_function->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kEaseInEaseOut));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), 1000);
-  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetValue().Number(), 10);
-  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), 1000);
+  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetNumber(), 10);
+  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetNumber(),
             static_cast<int>(starlight::AnimationFillModeType::kForwards));
 
   output.clear();
@@ -42,13 +42,13 @@ TEST(AnimationShorthandHandler, Animation) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output[kPropertyIDAnimationName].GetValue().StringView(), "none");
-  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetValue().Number(), 0);
+  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetNumber(), 0);
   EXPECT_TRUE(output[kPropertyIDAnimationTimingFunction].GetValue().IsArray());
   timing_function = output[kPropertyIDAnimationTimingFunction].GetArray();
   EXPECT_EQ(timing_function->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kLinear));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), 0);
-  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetValue().Number(), 10);
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), 0);
+  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetNumber(), 10);
 
   output.clear();
   impl = lepus::Value("10s 10 test");
@@ -57,13 +57,13 @@ TEST(AnimationShorthandHandler, Animation) {
   EXPECT_FALSE(output.empty());
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output[kPropertyIDAnimationName].GetValue().StringView(), "test");
-  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetValue().Number(), 10000);
+  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetNumber(), 10000);
   EXPECT_TRUE(output[kPropertyIDAnimationTimingFunction].GetValue().IsArray());
   timing_function = output[kPropertyIDAnimationTimingFunction].GetArray();
   EXPECT_EQ(timing_function->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kLinear));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), 0);
-  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetValue().Number(), 10);
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), 0);
+  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetNumber(), 10);
 
   output.clear();
   impl = lepus::Value("10s ease 1s forwards 10 item1-ani-frames");
@@ -73,14 +73,14 @@ TEST(AnimationShorthandHandler, Animation) {
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output[kPropertyIDAnimationName].GetValue().StringView(),
             "item1-ani-frames");
-  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetValue().Number(), 10000);
+  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetNumber(), 10000);
   EXPECT_TRUE(output[kPropertyIDAnimationTimingFunction].GetValue().IsArray());
   timing_function = output[kPropertyIDAnimationTimingFunction].GetArray();
   EXPECT_EQ(timing_function->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kEaseInEaseOut));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), 1000);
-  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetValue().Number(), 10);
-  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), 1000);
+  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetNumber(), 10);
+  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetNumber(),
             static_cast<int>(starlight::AnimationFillModeType::kForwards));
 
   output.clear();
@@ -91,19 +91,18 @@ TEST(AnimationShorthandHandler, Animation) {
   EXPECT_TRUE(output.find(id) == output.end());
 
   EXPECT_EQ(output[kPropertyIDAnimationName].GetValue().StringView(), "test");
-  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetValue().Number(), 10000);
+  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetNumber(), 10000);
   EXPECT_TRUE(output[kPropertyIDAnimationTimingFunction].GetValue().IsArray());
   timing_function = output[kPropertyIDAnimationTimingFunction].GetArray();
   EXPECT_EQ(timing_function->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kEaseInEaseOut));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), 1);
-  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetValue().Number(),
-            10E8);
-  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), 1);
+  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetNumber(), 10E8);
+  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetNumber(),
             static_cast<int>(starlight::AnimationFillModeType::kForwards));
-  EXPECT_EQ(output[kPropertyIDAnimationPlayState].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationPlayState].GetNumber(),
             static_cast<int>(starlight::AnimationPlayStateType::kPaused));
-  EXPECT_EQ(output[kPropertyIDAnimationDirection].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationDirection].GetNumber(),
             static_cast<int>(starlight::AnimationDirectionType::kReverse));
 }
 
@@ -119,18 +118,18 @@ TEST(AnimationShorthandHandler, Default) {
   EXPECT_TRUE(output.find(id) == output.end());
 
   EXPECT_EQ(output[kPropertyIDAnimationName].GetValue().StringView(), "test");
-  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetValue().Number(), 0);
+  EXPECT_EQ(output[kPropertyIDAnimationDuration].GetNumber(), 0);
   EXPECT_TRUE(output[kPropertyIDAnimationTimingFunction].GetValue().IsArray());
   auto timing_function = output[kPropertyIDAnimationTimingFunction].GetArray();
   EXPECT_EQ(timing_function->get(0).Number(),
             static_cast<int>(starlight::TimingFunctionType::kLinear));
-  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetValue().Number(), 0);
-  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetValue().Number(), 1);
-  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationDelay].GetNumber(), 0);
+  EXPECT_EQ(output[kPropertyIDAnimationIterationCount].GetNumber(), 1);
+  EXPECT_EQ(output[kPropertyIDAnimationFillMode].GetNumber(),
             static_cast<int>(starlight::AnimationFillModeType::kNone));
-  EXPECT_EQ(output[kPropertyIDAnimationPlayState].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationPlayState].GetNumber(),
             static_cast<int>(starlight::AnimationPlayStateType::kRunning));
-  EXPECT_EQ(output[kPropertyIDAnimationDirection].GetValue().Number(),
+  EXPECT_EQ(output[kPropertyIDAnimationDirection].GetNumber(),
             static_cast<int>(starlight::AnimationDirectionType::kNormal));
 }
 

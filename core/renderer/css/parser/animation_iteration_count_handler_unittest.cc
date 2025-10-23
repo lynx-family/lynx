@@ -26,7 +26,7 @@ TEST(AnimIterCountHandler, Handler) {
         UnitHandler::Process(id, lepus::Value(s.first), output, configs));
     EXPECT_FALSE(output.empty());
     EXPECT_TRUE(output[id].IsNumber());
-    EXPECT_EQ(output[id].GetValue().Number(), static_cast<int>(s.second));
+    EXPECT_EQ(output[id].GetNumber(), static_cast<int>(s.second));
   }
 }
 

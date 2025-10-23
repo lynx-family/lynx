@@ -336,7 +336,7 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
         return false;
       }
       if (value.IsNumber()) {
-        auto parse_result = value.GetValue().Number();
+        auto parse_result = value.GetNumber();
         if (parse_result < 0 || parse_result > 1) {
           return false;
         }

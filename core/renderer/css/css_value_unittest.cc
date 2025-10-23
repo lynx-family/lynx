@@ -638,10 +638,10 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
 
   CSSValue::SubstituteAll(custom_properties, 10, nullptr);
 
-  EXPECT_EQ(custom_properties["--a"].AsString(), "blue");
-  EXPECT_EQ(custom_properties["--b"].AsString(), "blue");
-  EXPECT_EQ(custom_properties["--c"].AsString(), "blue");
-  EXPECT_EQ(custom_properties["--d"].AsString(), "   blue");
+  EXPECT_EQ(custom_properties["--a"].AsStdString(), "blue");
+  EXPECT_EQ(custom_properties["--b"].AsStdString(), "blue");
+  EXPECT_EQ(custom_properties["--c"].AsStdString(), "blue");
+  EXPECT_EQ(custom_properties["--d"].AsStdString(), "   blue");
 }
 
 }  // namespace tasm

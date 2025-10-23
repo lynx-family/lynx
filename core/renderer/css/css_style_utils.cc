@@ -210,7 +210,7 @@ std::pair<NLength, bool> TryMakeCalcNLength(
       CalcValue value;
       if (css_value.GetPattern() == tasm::CSSValuePattern::NUMBER) {
         value.is_number = true;
-        value.number_value = static_cast<float>(css_value.GetValue().Number());
+        value.number_value = static_cast<float>(css_value.GetNumber());
       } else {
         std::pair<NLength, bool> result = CSSStyleUtils::ToLength(
             css_value, context, configs, is_font_relevant);
@@ -330,7 +330,7 @@ namespace {
 
 std::pair<NLength, bool> ToLengthHelper(const tasm::CSSValue& value,
                                         const float& factor) {
-  float float_value = static_cast<float>(value.GetValue().Number()) * factor;
+  float float_value = static_cast<float>(value.GetNumber()) * factor;
   return std::pair<NLength, bool>(NLength::MakeUnitNLength(float_value), true);
 }
 
@@ -371,21 +371,21 @@ std::pair<NLength, bool> CSSStyleUtils::ToLength(
 
   if (pattern == tasm::CSSValuePattern::NUMBER) {
     float float_value =
-        static_cast<float>(value.GetValue().Number()) * non_sp_font_scale;
+        static_cast<float>(value.GetNumber()) * non_sp_font_scale;
     return std::pair<NLength, bool>(NLength::MakeUnitNLength(float_value),
                                     true);
   } else if (pattern == tasm::CSSValuePattern::PX) {
-    float float_value = static_cast<float>(value.GetValue().Number()) *
+    float float_value = static_cast<float>(value.GetNumber()) *
                         context.layouts_unit_per_px_ * non_sp_font_scale;
     return std::pair<NLength, bool>(NLength::MakeUnitNLength(float_value),
                                     true);
   } else if (pattern == tasm::CSSValuePattern::RPX) {
-    float float_value = static_cast<float>(value.GetValue().Number()) *
+    float float_value = static_cast<float>(value.GetNumber()) *
                         context.screen_width_ / kRpxRatio * non_sp_font_scale;
     return std::pair<NLength, bool>(NLength::MakeUnitNLength(float_value),
                                     true);
   } else if (pattern == tasm::CSSValuePattern::PPX) {
-    float float_value = static_cast<float>(value.GetValue().Number()) /
+    float float_value = static_cast<float>(value.GetNumber()) /
                         context.physical_pixels_per_layout_unit_ *
                         non_sp_font_scale;
     return std::pair<NLength, bool>(NLength::MakeUnitNLength(float_value),
@@ -395,7 +395,7 @@ std::pair<NLength, bool> CSSStyleUtils::ToLength(
   } else if (pattern == tasm::CSSValuePattern::EM) {
     return ToLengthHelper(value, context.cur_node_font_size_);
   } else if (pattern == tasm::CSSValuePattern::PERCENT) {
-    float float_value = static_cast<float>(value.GetValue().Number());
+    float float_value = static_cast<float>(value.GetNumber());
     return std::pair<NLength, bool>(NLength::MakePercentageNLength(float_value),
                                     true);
   } else if (pattern == tasm::CSSValuePattern::VH) {
@@ -431,12 +431,12 @@ std::pair<NLength, bool> CSSStyleUtils::ToLength(
   } else if (pattern == tasm::CSSValuePattern::ENUM) {
     return std::pair<NLength, bool>(NLength::MakeAutoNLength(), true);
   } else if (pattern == tasm::CSSValuePattern::SP) {
-    float float_value = static_cast<float>(value.GetValue().Number()) *
+    float float_value = static_cast<float>(value.GetNumber()) *
                         context.layouts_unit_per_px_ * context.font_scale_;
     return std::pair<NLength, bool>(NLength::MakeUnitNLength(float_value),
                                     true);
   } else if (pattern == tasm::CSSValuePattern::FR) {
-    float float_value = static_cast<float>(value.GetValue().Number());
+    float float_value = static_cast<float>(value.GetNumber());
     return std::pair<NLength, bool>(NLength::MakeFrNLength(float_value), true);
   } else {
     tasm::UnitHandler::CSSWarning(false, configs.enable_css_strict_mode,
@@ -547,7 +547,7 @@ bool CSSStyleUtils::ComputeBoolStyle(const tasm::CSSValue& value,
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsBoolean(), configs.enable_css_strict_mode,
                             msg)
-    dest = value.GetValue().Bool();
+    dest = value.GetBool();
   }
   return old_value != dest;
 }
@@ -564,7 +564,7 @@ inline bool ComputeNumberStyle(const tasm::CSSValue& value, const bool reset,
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsNumber(), configs.enable_css_strict_mode,
                             msg)
-    dest = static_cast<T>(value.GetValue().Number());
+    dest = static_cast<T>(value.GetNumber());
   }
   if (!base::FloatsEqual(old_value, dest)) {
     return true;
@@ -584,7 +584,7 @@ inline bool ComputeNumberStyle(const tasm::CSSValue& value, const bool reset,
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.GetValue().IsNumber(),
                             configs.enable_css_strict_mode, msg)
-    dest = static_cast<uint32_t>(value.GetValue().Number());
+    dest = static_cast<uint32_t>(value.GetNumber());
   }
   return old_value != dest;
 }
@@ -644,7 +644,7 @@ bool CSSStyleUtils::ComputeGridTrackSizing(
       // (10, CSSValuePattern::PX),
       // ("max-content", CSSValuePattern::INTRINSIC)
       if (css_value.GetPattern() == tasm::CSSValuePattern::ENUM &&
-          static_cast<tasm::CSSFunctionType>(css_value.GetValue().Number()) ==
+          static_cast<tasm::CSSFunctionType>(css_value.GetNumber()) ==
               tasm::CSSFunctionType::MINMAX) {
         idx += 2;
         if (idx + 3 >= length_array->size()) {

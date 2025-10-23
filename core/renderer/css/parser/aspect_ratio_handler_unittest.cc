@@ -29,7 +29,7 @@ TEST(AspectRatioHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_FLOAT_EQ(output[id].GetValue().Number(), 0.1);
+  EXPECT_FLOAT_EQ(output[id].GetNumber(), 0.1);
 
   output.clear();
   impl = lepus::Value("10");
@@ -38,7 +38,7 @@ TEST(AspectRatioHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 10);
+  EXPECT_EQ(output[id].GetNumber(), 10);
 
   output.clear();
   impl = lepus::Value(0.25);
@@ -47,7 +47,7 @@ TEST(AspectRatioHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 0.25);
+  EXPECT_EQ(output[id].GetNumber(), 0.25);
 
   output.clear();
   impl = lepus::Value(-0.75);
@@ -56,7 +56,7 @@ TEST(AspectRatioHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), -0.75);
+  EXPECT_EQ(output[id].GetNumber(), -0.75);
 }
 }  // namespace test
 

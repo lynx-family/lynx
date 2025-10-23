@@ -30,25 +30,25 @@ TEST(BoolHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsBoolean());
-  EXPECT_TRUE(output[id].GetValue().Bool());
+  EXPECT_TRUE(output[id].GetBool());
 
   output.clear();
   impl = lepus::Value("True");
   ret = UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsBoolean());
-  EXPECT_TRUE(output[id].GetValue().Bool());
+  EXPECT_TRUE(output[id].GetBool());
 
   output.clear();
   impl = lepus::Value("false");
   ret = UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsBoolean());
-  EXPECT_FALSE(output[id].GetValue().Bool());
+  EXPECT_FALSE(output[id].GetBool());
 
   output.clear();
   impl = lepus::Value("False");
   ret = UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].IsBoolean());
-  EXPECT_FALSE(output[id].GetValue().Bool());
+  EXPECT_FALSE(output[id].GetBool());
 }
 
 }  // namespace test

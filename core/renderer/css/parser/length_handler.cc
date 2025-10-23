@@ -29,7 +29,7 @@ void CheckLengthUnitValid(CSSPropertyID key, const lepus::Value& input,
     return;
   }
   // number 0 doesn't need to carry any units
-  if (css_value.IsNumber() && css_value.GetValue().Number() != 0) {
+  if (css_value.IsNumber() && css_value.GetNumber() != 0) {
     UnitHandler::ReportError("CSS length need units (except 0)",
                              "Add unit for length value", key,
                              input.StdString());

@@ -29,43 +29,43 @@ TEST(LengthHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 10);
+  EXPECT_EQ(output[id].GetNumber(), 10);
   EXPECT_TRUE(output[id].IsPx());
 
   impl = lepus::Value("1em");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 1);
+  EXPECT_EQ(output[id].GetNumber(), 1);
   EXPECT_TRUE(output[id].IsEm());
 
   impl = lepus::Value("2.1rem");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 2.1);
+  EXPECT_EQ(output[id].GetNumber(), 2.1);
   EXPECT_TRUE(output[id].IsRem());
 
   impl = lepus::Value("0.7rpx");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 0.7);
+  EXPECT_EQ(output[id].GetNumber(), 0.7);
   EXPECT_TRUE(output[id].IsRpx());
 
   impl = lepus::Value("0.7vw");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 0.7);
+  EXPECT_EQ(output[id].GetNumber(), 0.7);
   EXPECT_TRUE(output[id].IsVw());
 
   impl = lepus::Value("0.7vh");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 0.7);
+  EXPECT_EQ(output[id].GetNumber(), 0.7);
   EXPECT_TRUE(output[id].IsVh());
 
   impl = lepus::Value("10%");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 10);
+  EXPECT_EQ(output[id].GetNumber(), 10);
   EXPECT_TRUE(output[id].IsPercent());
 
   impl = lepus::Value("calc(2px + 3rpx)");
@@ -89,7 +89,7 @@ TEST(LengthHandler, Process) {
   impl = lepus::Value("10px");
   EXPECT_TRUE(LengthHandler::Process(impl, css_value, configs));
   EXPECT_TRUE(css_value.IsPx());
-  EXPECT_EQ(css_value.GetValue().Number(), 10);
+  EXPECT_EQ(css_value.GetNumber(), 10);
 }
 }  // namespace test
 

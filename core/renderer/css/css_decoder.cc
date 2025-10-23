@@ -73,7 +73,7 @@ std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
   if (value.IsEmpty()) {
     return "";
   } else if (value.IsString()) {
-    return value.AsString();
+    return value.AsStdString();
   } else if (value.IsNumber()) {
     return CSSValueNumberToString(id, value);
   } else if (value.IsPx()) {
@@ -95,11 +95,11 @@ std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
   } else if (value.IsSp()) {
     return CSSDecoder::NumberToString(value.AsNumber()) + std::string("sp");
   } else if (value.IsCalc()) {
-    return value.AsString();
+    return value.AsStdString();
   } else if (value.IsIntrinsic()) {
     return value.GetValue().StdString();
   } else if (value.IsEnv()) {
-    return value.AsString();
+    return value.AsStdString();
   } else if (value.IsArray()) {
     return CSSValueArrayToString(id, value);
   } else if (value.IsMap()) {

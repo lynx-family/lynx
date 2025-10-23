@@ -68,12 +68,12 @@ TEST(TextStrokeHandler1, Handle) {
   EXPECT_FALSE(output.empty());
   id = CSSPropertyID::kPropertyIDTextStrokeColor;
   EXPECT_FALSE(output.find(id) == output.end());
-  EXPECT_EQ(output[id].GetValue().Number(),
+  EXPECT_EQ(output[id].GetNumber(),
             0xffffff00);  // yellow rgb(255,255,0)
   id = CSSPropertyID::kPropertyIDTextStrokeWidth;
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 1);
+  EXPECT_EQ(output[id].GetNumber(), 1);
   EXPECT_TRUE(output[id].IsPx());
 
   output.clear();
@@ -84,12 +84,12 @@ TEST(TextStrokeHandler1, Handle) {
   EXPECT_FALSE(output.empty());
   id = CSSPropertyID::kPropertyIDTextStrokeColor;
   EXPECT_FALSE(output.find(id) == output.end());
-  EXPECT_EQ(output[id].GetValue().Number(),
+  EXPECT_EQ(output[id].GetNumber(),
             0xffffff00);  // yellow rgb(255,255,0)
   id = CSSPropertyID::kPropertyIDTextStrokeWidth;
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 2.0);
+  EXPECT_EQ(output[id].GetNumber(), 2.0);
   EXPECT_TRUE(output[id].IsPx());
 
   output.clear();
@@ -100,12 +100,12 @@ TEST(TextStrokeHandler1, Handle) {
   EXPECT_FALSE(output.empty());
   id = CSSPropertyID::kPropertyIDTextStrokeColor;
   EXPECT_FALSE(output.find(id) == output.end());
-  EXPECT_EQ(output[id].GetValue().Number(),
+  EXPECT_EQ(output[id].GetNumber(),
             0xffffff00);  // yellow rgb(255,255,0)
   id = CSSPropertyID::kPropertyIDTextStrokeWidth;
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsNumber());
-  EXPECT_EQ(output[id].GetValue().Number(), 1.0);
+  EXPECT_EQ(output[id].GetNumber(), 1.0);
   EXPECT_TRUE(output[id].IsPx());
 
   output.clear();

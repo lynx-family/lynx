@@ -58,7 +58,7 @@ class CSSValue::CycleDetector {
         var_it->second.var_references_) {
       const auto& refs = *var_it->second.var_references_;
       for (const auto& var_ref : refs) {
-        const std::string dep_name(var_ref.Name(var_it->second.AsString()));
+        const std::string dep_name(var_ref.Name(var_it->second.AsStdString()));
 
         if (variables_.find(dep_name) != variables_.end()) {
           auto& dep_node = nodes_[dep_name];
@@ -89,7 +89,7 @@ class CSSValue::CycleDetector {
           if (var_it != variables_.end() && var_it->second.IsVariable() &&
               var_it->second.var_references_) {
             for (const auto& var_ref : *var_it->second.var_references_) {
-              if (var_ref.Name(var_it->second.AsString()) == w) {
+              if (var_ref.Name(var_it->second.AsStdString()) == w) {
                 has_cycle = true;
                 break;
               }
@@ -115,8 +115,6 @@ std::string CSSValue::AsJsonString(bool map_key_ordered) const {
   return lepus::lepusValueToString(value_, map_key_ordered);
 }
 
-bool CSSValue::AsBool() const { return value_.Bool(); }
-
 std::string CSSValue::ResolveVariable(
     const std::string& var_name, const CustomPropertiesMap& custom_properties,
     const CycleDetector& detector, int max_depth,
@@ -133,7 +131,7 @@ std::string CSSValue::ResolveVariable(
   const CSSValue& css_value = value->second;
   // If it's a simple string value (no variables), return it directly
   if (!css_value.IsVariable()) {
-    return css_value.AsString();
+    return css_value.AsStdString();
   }
 
   return CSSValue::Substitution(css_value, custom_properties, detector,
@@ -169,14 +167,14 @@ std::string CSSValue::Substitution(
     const CycleDetector& detector, int max_depth,
     const HandleCustomPropertyFunc& handle_func) {
   if (!css_value.IsVariable() || !css_value.var_references_) {
-    return css_value.AsString();
+    return css_value.AsStdString();
   }
 
-  const std::string& raw_value = css_value.AsString();
+  const std::string& raw_value = css_value.AsStdString();
   const auto& var_refs = *css_value.var_references_;
 
   if (var_refs.empty()) {
-    return css_value.AsString();
+    return css_value.AsStdString();
   }
 
   std::string result;

@@ -32,32 +32,32 @@ TEST(EnumHandler, Handler) {
   EXPECT_FALSE(output.empty());
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::AlignContentType)output[id].GetValue().Number(),
+  EXPECT_EQ((starlight::AlignContentType)output[id].GetNumber(),
             starlight::AlignContentType::kFlexStart);
 
   impl = lepus::Value("flex-end");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ((starlight::AlignContentType)output[id].GetValue().Number(),
+  EXPECT_EQ((starlight::AlignContentType)output[id].GetNumber(),
             starlight::AlignContentType::kFlexEnd);
 
   impl = lepus::Value("center");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ((starlight::AlignContentType)output[id].GetValue().Number(),
+  EXPECT_EQ((starlight::AlignContentType)output[id].GetNumber(),
             starlight::AlignContentType::kCenter);
 
   impl = lepus::Value("stretch");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ((starlight::AlignContentType)output[id].GetValue().Number(),
+  EXPECT_EQ((starlight::AlignContentType)output[id].GetNumber(),
             starlight::AlignContentType::kStretch);
 
   impl = lepus::Value("space-between");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ((starlight::AlignContentType)output[id].GetValue().Number(),
+  EXPECT_EQ((starlight::AlignContentType)output[id].GetNumber(),
             starlight::AlignContentType::kSpaceBetween);
 
   impl = lepus::Value("space-around");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ((starlight::AlignContentType)output[id].GetValue().Number(),
+  EXPECT_EQ((starlight::AlignContentType)output[id].GetNumber(),
             starlight::AlignContentType::kSpaceAround);
 
   // other cases see before @link{process}.

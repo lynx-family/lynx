@@ -32,12 +32,12 @@ TEST(BorderHandler, Border) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(12));
-  EXPECT_EQ(output[width_id].GetValue().Number(), 10);
+  EXPECT_EQ(output[width_id].GetNumber(), 10);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-  EXPECT_EQ(output[color_id].GetValue().Number(), 0xffff0000);
+  EXPECT_EQ(output[color_id].GetNumber(), 0xffff0000);
   EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
 
   output.clear();
@@ -45,9 +45,9 @@ TEST(BorderHandler, Border) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(8));
-  EXPECT_EQ(output[width_id].GetValue().Number(), 10);
+  EXPECT_EQ(output[width_id].GetNumber(), 10);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
 
@@ -56,7 +56,7 @@ TEST(BorderHandler, Border) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(4));
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
   configs.enable_new_border_handler = true;
@@ -64,12 +64,12 @@ TEST(BorderHandler, Border) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(12));
-  EXPECT_EQ(output[width_id].GetValue().Number(), 0);
+  EXPECT_EQ(output[width_id].GetNumber(), 0);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::NUMBER);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-  EXPECT_EQ(output[color_id].GetValue().Number(), 0xff000000);
+  EXPECT_EQ(output[color_id].GetNumber(), 0xff000000);
   EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
 
   output.clear();
@@ -125,12 +125,12 @@ TEST(BorderHandler, BorderLine) {
     EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
     EXPECT_TRUE(output.find(id) == output.end());
     EXPECT_EQ(output.size(), static_cast<size_t>(3));
-    EXPECT_EQ(output[width_id].GetValue().Number(), 10);
+    EXPECT_EQ(output[width_id].GetNumber(), 10);
     EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-    EXPECT_EQ(output[style_id].GetValue().Number(),
+    EXPECT_EQ(output[style_id].GetNumber(),
               static_cast<double>(BorderStyleType::kRidge));
     EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-    EXPECT_EQ(output[color_id].GetValue().Number(), 0xff000000);
+    EXPECT_EQ(output[color_id].GetNumber(), 0xff000000);
     EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
   }
 }
@@ -156,12 +156,12 @@ TEST(BorderHandler, Outline) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(3));
-  EXPECT_EQ(output[width_id].GetValue().Number(), 10);
+  EXPECT_EQ(output[width_id].GetNumber(), 10);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-  EXPECT_EQ(output[color_id].GetValue().Number(), 0xffff0000);
+  EXPECT_EQ(output[color_id].GetNumber(), 0xffff0000);
   EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
 
   output.clear();
@@ -169,9 +169,9 @@ TEST(BorderHandler, Outline) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(2));
-  EXPECT_EQ(output[width_id].GetValue().Number(), 10);
+  EXPECT_EQ(output[width_id].GetNumber(), 10);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
 
@@ -181,12 +181,12 @@ TEST(BorderHandler, Outline) {
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(3));
 
-  EXPECT_EQ(output[width_id].GetValue().Number(), 5);
+  EXPECT_EQ(output[width_id].GetNumber(), 5);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDouble));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-  EXPECT_EQ(output[color_id].GetValue().Number(), 0xffff0000);
+  EXPECT_EQ(output[color_id].GetNumber(), 0xffff0000);
   EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
 
   output.clear();
@@ -195,12 +195,12 @@ TEST(BorderHandler, Outline) {
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(3));
 
-  EXPECT_EQ(output[width_id].GetValue().Number(), 3);
+  EXPECT_EQ(output[width_id].GetNumber(), 3);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kDashed));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-  EXPECT_EQ(output[color_id].GetValue().Number(), 0xff0000ff);
+  EXPECT_EQ(output[color_id].GetNumber(), 0xff0000ff);
   EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
 
   output.clear();
@@ -209,12 +209,12 @@ TEST(BorderHandler, Outline) {
   EXPECT_TRUE(output.find(id) == output.end());
   EXPECT_EQ(output.size(), static_cast<size_t>(3));
 
-  EXPECT_EQ(output[width_id].GetValue().Number(), 1);
+  EXPECT_EQ(output[width_id].GetNumber(), 1);
   EXPECT_EQ(output[width_id].GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(output[style_id].GetValue().Number(),
+  EXPECT_EQ(output[style_id].GetNumber(),
             static_cast<double>(BorderStyleType::kOutset));
   EXPECT_EQ(output[style_id].GetPattern(), CSSValuePattern::ENUM);
-  EXPECT_EQ(output[color_id].GetValue().Number(), 0x4c84b84c);
+  EXPECT_EQ(output[color_id].GetNumber(), 0x4c84b84c);
   EXPECT_EQ(output[color_id].GetPattern(), CSSValuePattern::NUMBER);
 }
 
@@ -277,14 +277,14 @@ TEST(BorderWidthHandler, BorderWidth) {
   auto impl = lepus::Value("thin");
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) != output.end());
-  EXPECT_EQ(output[id].GetValue().Number(), 1);
+  EXPECT_EQ(output[id].GetNumber(), 1);
   EXPECT_EQ(output[id].GetPattern(), CSSValuePattern::PX);
 
   output.clear();
   impl = lepus::Value("10px");
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   EXPECT_TRUE(output.find(id) != output.end());
-  EXPECT_EQ(output[id].GetValue().Number(), 10);
+  EXPECT_EQ(output[id].GetNumber(), 10);
   EXPECT_EQ(output[id].GetPattern(), CSSValuePattern::PX);
 
   output.clear();

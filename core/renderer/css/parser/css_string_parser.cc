@@ -76,7 +76,7 @@ void PositionAddLegacyValue(fml::RefPtr<lepus::CArray> &arr,
   // [patten|enum, value]
   if (pos.IsEnum()) {
     arr->emplace_back(pos.GetValue());
-    arr->emplace_back(-pos.GetValue().Number());
+    arr->emplace_back(-pos.GetNumber());
   } else {  // Length
     arr->emplace_back(static_cast<uint32_t>(pos.GetPattern()));
     arr->emplace_back(pos.GetValue());
@@ -315,8 +315,8 @@ CSSValue CSSStringParser::ParseBackgroundSize() {
       return CSSValue::Empty();
     }
 
-    if (legacy_parser_ && size_x.GetValue().Number() == SIZE_AUTO &&
-        size_y.GetValue().Number() == SIZE_AUTO) {
+    if (legacy_parser_ && size_x.GetNumber() == SIZE_AUTO &&
+        size_y.GetNumber() == SIZE_AUTO) {
       // For compatibility, <auto> <contain> and <cover> is all 100%
       // tailed
       size_x = CSSValue(lepus::Value(100.0), CSSValuePattern::PERCENT);

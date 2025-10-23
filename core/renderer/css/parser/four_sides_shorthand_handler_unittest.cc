@@ -39,7 +39,7 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_EQ(output[kPropertyIDMarginLeft], output[kPropertyIDMarginTop]);
   EXPECT_EQ(output[kPropertyIDMarginLeft], output[kPropertyIDMarginRight]);
   EXPECT_TRUE(output[kPropertyIDMarginTop].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetValue().Number(), 2);
+  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetNumber(), 2);
 
   output.clear();
   impl = lepus::Value("2px 3px");
@@ -53,8 +53,8 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_EQ(output[kPropertyIDMarginRight], output[kPropertyIDMarginLeft]);
   EXPECT_TRUE(output[kPropertyIDMarginTop].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginRight].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetValue().Number(), 2);
-  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetValue().Number(), 3);
+  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetNumber(), 2);
+  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetNumber(), 3);
 
   output.clear();
   impl = lepus::Value("2px 3px 4px");
@@ -69,10 +69,10 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_TRUE(output[kPropertyIDMarginTop].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginRight].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginBottom].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetValue().Number(), 2);
-  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetValue().Number(), 3);
-  EXPECT_EQ((int)output[kPropertyIDMarginBottom].GetValue().Number(), 4);
-  EXPECT_EQ((int)output[kPropertyIDMarginLeft].GetValue().Number(), 3);
+  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetNumber(), 2);
+  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetNumber(), 3);
+  EXPECT_EQ((int)output[kPropertyIDMarginBottom].GetNumber(), 4);
+  EXPECT_EQ((int)output[kPropertyIDMarginLeft].GetNumber(), 3);
 
   output.clear();
   impl = lepus::Value("2px 3px 4px 5px");
@@ -89,10 +89,10 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_TRUE(output[kPropertyIDMarginRight].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginBottom].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginLeft].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetValue().Number(), 2);
-  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetValue().Number(), 3);
-  EXPECT_EQ((int)output[kPropertyIDMarginBottom].GetValue().Number(), 4);
-  EXPECT_EQ((int)output[kPropertyIDMarginLeft].GetValue().Number(), 5);
+  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetNumber(), 2);
+  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetNumber(), 3);
+  EXPECT_EQ((int)output[kPropertyIDMarginBottom].GetNumber(), 4);
+  EXPECT_EQ((int)output[kPropertyIDMarginLeft].GetNumber(), 5);
 
   output.clear();
   impl = lepus::Value(" 2px  3px    4px     5px  ");
@@ -109,10 +109,10 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_TRUE(output[kPropertyIDMarginRight].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginBottom].IsPx());
   EXPECT_TRUE(output[kPropertyIDMarginLeft].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetValue().Number(), 2);
-  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetValue().Number(), 3);
-  EXPECT_EQ((int)output[kPropertyIDMarginBottom].GetValue().Number(), 4);
-  EXPECT_EQ((int)output[kPropertyIDMarginLeft].GetValue().Number(), 5);
+  EXPECT_EQ((int)output[kPropertyIDMarginTop].GetNumber(), 2);
+  EXPECT_EQ((int)output[kPropertyIDMarginRight].GetNumber(), 3);
+  EXPECT_EQ((int)output[kPropertyIDMarginBottom].GetNumber(), 4);
+  EXPECT_EQ((int)output[kPropertyIDMarginLeft].GetNumber(), 5);
 
   output.clear();
   impl = lepus::Value("2px 3em 4rem 5rpx");
@@ -153,7 +153,7 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_EQ(output[kPropertyIDPaddingLeft], output[kPropertyIDPaddingTop]);
   EXPECT_EQ(output[kPropertyIDPaddingLeft], output[kPropertyIDPaddingRight]);
   EXPECT_TRUE(output[kPropertyIDPaddingTop].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDPaddingTop].GetValue().Number(), 2);
+  EXPECT_EQ((int)output[kPropertyIDPaddingTop].GetNumber(), 2);
 
   // border-width
   id = kPropertyIDBorderWidth;
@@ -172,7 +172,7 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_EQ(output[kPropertyIDBorderLeftWidth],
             output[kPropertyIDBorderRightWidth]);
   EXPECT_TRUE(output[kPropertyIDBorderTopWidth].IsPx());
-  EXPECT_EQ((int)output[kPropertyIDBorderTopWidth].GetValue().Number(), 2);
+  EXPECT_EQ((int)output[kPropertyIDBorderTopWidth].GetNumber(), 2);
 
   // border-style
   id = kPropertyIDBorderStyle;
@@ -185,44 +185,34 @@ TEST(FourSidesShorthandHandler, Handler) {
   EXPECT_FALSE(output.find(kPropertyIDBorderBottomStyle) == output.end());
   EXPECT_FALSE(output.find(kPropertyIDBorderLeftStyle) == output.end());
   EXPECT_TRUE(output[kPropertyIDBorderTopStyle].IsEnum());
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderTopStyle].GetValue().Number(),
-      BorderStyleType::kSolid);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderRightStyle].GetValue().Number(),
-      BorderStyleType::kDashed);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderBottomStyle].GetValue().Number(),
-      BorderStyleType::kDotted);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderLeftStyle].GetValue().Number(),
-      BorderStyleType::kDouble);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderTopStyle].GetNumber(),
+            BorderStyleType::kSolid);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderRightStyle].GetNumber(),
+            BorderStyleType::kDashed);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderBottomStyle].GetNumber(),
+            BorderStyleType::kDotted);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderLeftStyle].GetNumber(),
+            BorderStyleType::kDouble);
 
   output.clear();
   impl = lepus::Value("groove ridge inset outset");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderTopStyle].GetValue().Number(),
-      BorderStyleType::kGroove);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderRightStyle].GetValue().Number(),
-      BorderStyleType::kRidge);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderBottomStyle].GetValue().Number(),
-      BorderStyleType::kInset);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderLeftStyle].GetValue().Number(),
-      BorderStyleType::kOutset);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderTopStyle].GetNumber(),
+            BorderStyleType::kGroove);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderRightStyle].GetNumber(),
+            BorderStyleType::kRidge);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderBottomStyle].GetNumber(),
+            BorderStyleType::kInset);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderLeftStyle].GetNumber(),
+            BorderStyleType::kOutset);
 
   output.clear();
   impl = lepus::Value("hidden none");
   UnitHandler::Process(id, impl, output, configs);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderTopStyle].GetValue().Number(),
-      BorderStyleType::kHide);
-  EXPECT_EQ(
-      (BorderStyleType)output[kPropertyIDBorderRightStyle].GetValue().Number(),
-      BorderStyleType::kNone);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderTopStyle].GetNumber(),
+            BorderStyleType::kHide);
+  EXPECT_EQ((BorderStyleType)output[kPropertyIDBorderRightStyle].GetNumber(),
+            BorderStyleType::kNone);
 
   output.clear();
   impl = lepus::Value("notstyle");

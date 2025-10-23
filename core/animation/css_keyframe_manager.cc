@@ -309,7 +309,7 @@ void CSSKeyframeManager::NotifyClientAnimated(tasm::StyleMap& styles,
       break;
     }
     case tasm::kPropertyIDOpacity: {
-      if (value.IsNumber() && value.GetValue().Number() < 0.0f) {
+      if (value.IsNumber() && value.GetNumber() < 0.0f) {
         return;
       }
       break;

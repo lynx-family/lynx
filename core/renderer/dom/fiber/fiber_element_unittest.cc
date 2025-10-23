@@ -1607,9 +1607,9 @@ TEST_P(FiberElementTest, SetStyle) {
 
   EXPECT_TRUE(page->IsPageForBaseComponent());
   EXPECT_TRUE(parsed_style_value.IsEnum());
-  EXPECT_TRUE(static_cast<starlight::OverflowType>(
-                  parsed_style_value.GetValue().Number()) ==
-              starlight::OverflowType::kVisible);
+  EXPECT_TRUE(
+      static_cast<starlight::OverflowType>(parsed_style_value.GetNumber()) ==
+      starlight::OverflowType::kVisible);
 }
 
 TEST_P(FiberElementTest, DestroyPlatformNode) {
@@ -9993,9 +9993,9 @@ TEST_P(FiberElementTest, CopySetStyle) {
 
   EXPECT_TRUE(page->IsPageForBaseComponent());
   EXPECT_TRUE(parsed_style_value.IsEnum());
-  EXPECT_TRUE(static_cast<starlight::OverflowType>(
-                  parsed_style_value.GetValue().Number()) ==
-              starlight::OverflowType::kVisible);
+  EXPECT_TRUE(
+      static_cast<starlight::OverflowType>(parsed_style_value.GetNumber()) ==
+      starlight::OverflowType::kVisible);
 }
 
 TEST_P(FiberElementTest, CloneAPITest) {

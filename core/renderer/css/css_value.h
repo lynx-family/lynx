@@ -192,7 +192,18 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   }
 
   fml::WeakRefPtr<lepus::CArray> GetArray() const& { return value_.Array(); }
-  fml::RefPtr<lepus::CArray> GetArray() && { return value_.Array(); }
+  fml::RefPtr<lepus::CArray> GetArray() && { return std::move(value_).Array(); }
+
+  double GetNumber() const { return value_.Number(); }
+  double AsNumber() const { return value_.Number(); }
+  bool GetBool() const { return value_.Bool(); }
+  bool AsBool() const { return value_.Bool(); }
+
+  base::String AsString() const& { return value_.String(); }
+  base::String AsString() && { return std::move(value_).String(); }
+
+  const std::string& AsStdString() const& { return value_.StdString(); }
+  std::string AsStdString() && { return value_.StdString(); }
 
   void SetArray(fml::RefPtr<lepus::CArray>&& array) {
     value_.SetArray(std::move(array));
@@ -252,12 +263,6 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   bool IsEnv() const { return pattern_ == CSSValuePattern::ENV; }
   bool IsIntrinsic() const { return pattern_ == CSSValuePattern::INTRINSIC; }
   bool IsSp() const { return pattern_ == CSSValuePattern::SP; }
-
-  double AsNumber() const { return value_.Number(); }
-
-  const std::string& AsString() const { return value_.StdString(); }
-
-  bool AsBool() const;
 
   std::string AsJsonString(bool map_key_ordered = false) const;
 

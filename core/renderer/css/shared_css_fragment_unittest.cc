@@ -185,12 +185,12 @@ TEST(SharedCSSFragment, Handler) {
   id = kPropertyIDFontSize;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsNumber());
-  EXPECT_EQ(style[id].GetValue().Number(), 18);
+  EXPECT_EQ(style[id].GetNumber(), 18);
   EXPECT_TRUE(style[id].IsPx());
   id = kPropertyIDTextAlign;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::TextAlignType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::TextAlignType)style[id].GetNumber(),
             starlight::TextAlignType::kCenter);
   id = kPropertyIDColor;
   EXPECT_FALSE(style.find(id) == style.end());
@@ -201,12 +201,12 @@ TEST(SharedCSSFragment, Handler) {
   id = kPropertyIDFontSize;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsNumber());
-  EXPECT_EQ(style[id].GetValue().Number(), 20);
+  EXPECT_EQ(style[id].GetNumber(), 20);
   EXPECT_TRUE(style[id].IsPx());
   id = kPropertyIDTextAlign;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::TextAlignType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::TextAlignType)style[id].GetNumber(),
             starlight::TextAlignType::kCenter);
   id = kPropertyIDColor;
   EXPECT_FALSE(style.find(id) == style.end());
@@ -217,12 +217,12 @@ TEST(SharedCSSFragment, Handler) {
   id = kPropertyIDFontSize;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsNumber());
-  EXPECT_EQ(style[id].GetValue().Number(), 18);
+  EXPECT_EQ(style[id].GetNumber(), 18);
   EXPECT_TRUE(style[id].IsPx());
   id = kPropertyIDTextAlign;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::TextAlignType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::TextAlignType)style[id].GetNumber(),
             starlight::TextAlignType::kCenter);
   id = kPropertyIDColor;
   EXPECT_FALSE(style.find(id) == style.end());
@@ -230,7 +230,7 @@ TEST(SharedCSSFragment, Handler) {
   id = kPropertyIDFontWeight;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::FontWeightType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::FontWeightType)style[id].GetNumber(),
             starlight::FontWeightType::kBold);
   // check text-4 style
   style = css[".text-4"]->GetAttributes();
@@ -238,12 +238,12 @@ TEST(SharedCSSFragment, Handler) {
   id = kPropertyIDFontSize;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsNumber());
-  EXPECT_EQ(style[id].GetValue().Number(), 18);
+  EXPECT_EQ(style[id].GetNumber(), 18);
   EXPECT_TRUE(style[id].IsPx());
   id = kPropertyIDTextAlign;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::TextAlignType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::TextAlignType)style[id].GetNumber(),
             starlight::TextAlignType::kCenter);
   id = kPropertyIDBackgroundColor;
   EXPECT_FALSE(style.find(id) == style.end());
@@ -254,17 +254,17 @@ TEST(SharedCSSFragment, Handler) {
   id = kPropertyIDFontSize;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsNumber());
-  EXPECT_EQ(style[id].GetValue().Number(), 20);
+  EXPECT_EQ(style[id].GetNumber(), 20);
   EXPECT_TRUE(style[id].IsPx());
   id = kPropertyIDFontWeight;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::FontWeightType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::FontWeightType)style[id].GetNumber(),
             starlight::FontWeightType::kBold);
   id = kPropertyIDFontStyle;
   EXPECT_FALSE(style.find(id) == style.end());
   EXPECT_TRUE(style[id].GetValue().IsInt32());
-  EXPECT_EQ((starlight::FontStyleType)style[id].GetValue().Number(),
+  EXPECT_EQ((starlight::FontStyleType)style[id].GetNumber(),
             starlight::FontStyleType::kItalic);
   id = kPropertyIDBackgroundColor;
   EXPECT_FALSE(style.find(id) == style.end());

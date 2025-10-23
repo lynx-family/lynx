@@ -122,7 +122,7 @@ class CSSStyleUtils {
     } else {
       CSS_HANDLER_FAIL_IF_NOT(value.IsEnum(), configs.enable_css_strict_mode,
                               msg)
-      dest = static_cast<T>(value.GetValue().Number());
+      dest = static_cast<T>(value.GetNumber());
     }
     return old_value != dest;
   }

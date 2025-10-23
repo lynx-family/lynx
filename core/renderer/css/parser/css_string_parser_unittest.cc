@@ -378,7 +378,7 @@ TEST(CSSStringScanner, DecimalPointsInNumbers) {
   for (const char** it = valid; *it; it++) {
     CSSStringParser parser{*it, static_cast<uint32_t>(strlen(*it)), configs};
     CSSValue length = parser.ParseLength();
-    EXPECT_EQ(length.GetValue().Number(), 0.1);
+    EXPECT_EQ(length.GetNumber(), 0.1);
   }
 
   // decimal point after digits is invalid.
@@ -767,7 +767,7 @@ TEST(CSSStringParser, valid_blur_value) {
                            static_cast<uint32_t>(strlen(valid_blur[i])),
                            CSSParserConfigs()};
     CSSValue blur = parser.ParseBlur();
-    EXPECT_EQ(valid_values[i].GetValue().Number(), blur.GetValue().Number());
+    EXPECT_EQ(valid_values[i].GetNumber(), blur.GetNumber());
     EXPECT_EQ(static_cast<uint32_t>(valid_values[i].GetPattern()),
               static_cast<uint32_t>(blur.GetPattern()));
   }
@@ -799,8 +799,7 @@ TEST(CSSStringParser, valid_grayscale_value) {
         static_cast<uint32_t>(strlen(valid_grayscale_str[i])),
         CSSParserConfigs()};
     CSSValue grayscale = parser.ParseGrayscale();
-    EXPECT_EQ(grayscale_values[i].GetValue().Number(),
-              grayscale.GetValue().Number());
+    EXPECT_EQ(grayscale_values[i].GetNumber(), grayscale.GetNumber());
     EXPECT_EQ(static_cast<uint32_t>(grayscale_values[i].GetPattern()),
               static_cast<uint32_t>(grayscale.GetPattern()));
   }
@@ -1055,7 +1054,7 @@ TEST(CSSStringParser, aspect_ratio_value) {
                            static_cast<uint32_t>(strlen(aspect_ratio_single)),
                            CSSParserConfigs()};
   CSSValue aspect_ratio_single_css_value = parser_2.ParseAspectRatio();
-  EXPECT_EQ(aspect_ratio_single_css_value.GetValue().Number(), 6.0);
+  EXPECT_EQ(aspect_ratio_single_css_value.GetNumber(), 6.0);
   EXPECT_EQ(aspect_ratio_single_css_value.GetPattern(),
             CSSValuePattern::NUMBER);
 
@@ -1064,7 +1063,7 @@ TEST(CSSStringParser, aspect_ratio_value) {
                            static_cast<uint32_t>(strlen(aspect_ratio_divide)),
                            CSSParserConfigs()};
   CSSValue aspect_ratio_divide_css_value = parser_3.ParseAspectRatio();
-  EXPECT_EQ(aspect_ratio_divide_css_value.GetValue().Number(), 0.5);
+  EXPECT_EQ(aspect_ratio_divide_css_value.GetNumber(), 0.5);
   EXPECT_EQ(aspect_ratio_divide_css_value.GetPattern(),
             CSSValuePattern::NUMBER);
 
@@ -1096,7 +1095,7 @@ TEST(CSSStringParser, aspect_ratio_value) {
                            static_cast<uint32_t>(strlen(aspect_ratio_equal)),
                            CSSParserConfigs()};
   CSSValue aspect_ratio_equal_css_value = parser_7.ParseAspectRatio();
-  EXPECT_EQ(aspect_ratio_equal_css_value.GetValue().Number(), 1.0);
+  EXPECT_EQ(aspect_ratio_equal_css_value.GetNumber(), 1.0);
   EXPECT_EQ(aspect_ratio_equal_css_value.GetPattern(), CSSValuePattern::NUMBER);
 
   const char* aspect_ratio_negative = "-7";
@@ -1104,7 +1103,7 @@ TEST(CSSStringParser, aspect_ratio_value) {
                            static_cast<uint32_t>(strlen(aspect_ratio_negative)),
                            CSSParserConfigs()};
   CSSValue aspect_ratio_negative_css_value = parser_8.ParseAspectRatio();
-  EXPECT_EQ(aspect_ratio_negative_css_value.GetValue().Number(), -7.0);
+  EXPECT_EQ(aspect_ratio_negative_css_value.GetNumber(), -7.0);
   EXPECT_EQ(aspect_ratio_negative_css_value.GetPattern(),
             CSSValuePattern::NUMBER);
 }
@@ -1114,9 +1113,9 @@ TEST(CSSStringParser, gap_value) {
   CSSStringParser parser_1{gap_none, static_cast<uint32_t>(strlen(gap_none)),
                            CSSParserConfigs()};
   auto gap_none_value = parser_1.ParseGap();
-  EXPECT_EQ(gap_none_value.first.GetValue().Number(), 0);
+  EXPECT_EQ(gap_none_value.first.GetNumber(), 0);
   EXPECT_EQ(gap_none_value.first.GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(gap_none_value.second.GetValue().Number(), 0);
+  EXPECT_EQ(gap_none_value.second.GetNumber(), 0);
   EXPECT_EQ(gap_none_value.second.GetPattern(), CSSValuePattern::PX);
 
   const char* gap_single = "10px";
@@ -1124,9 +1123,9 @@ TEST(CSSStringParser, gap_value) {
                            static_cast<uint32_t>(strlen(gap_single)),
                            CSSParserConfigs()};
   auto gap_single_value = parser_2.ParseGap();
-  EXPECT_EQ(gap_single_value.first.GetValue().Number(), 10);
+  EXPECT_EQ(gap_single_value.first.GetNumber(), 10);
   EXPECT_EQ(gap_single_value.first.GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(gap_single_value.second.GetValue().Number(), 10);
+  EXPECT_EQ(gap_single_value.second.GetNumber(), 10);
   EXPECT_EQ(gap_single_value.second.GetPattern(), CSSValuePattern::PX);
 
   const char* gap_double = "10px 20px";
@@ -1134,9 +1133,9 @@ TEST(CSSStringParser, gap_value) {
                            static_cast<uint32_t>(strlen(gap_double)),
                            CSSParserConfigs()};
   auto gap_double_value = parser_3.ParseGap();
-  EXPECT_EQ(gap_double_value.first.GetValue().Number(), 10);
+  EXPECT_EQ(gap_double_value.first.GetNumber(), 10);
   EXPECT_EQ(gap_double_value.first.GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(gap_double_value.second.GetValue().Number(), 20);
+  EXPECT_EQ(gap_double_value.second.GetNumber(), 20);
   EXPECT_EQ(gap_double_value.second.GetPattern(), CSSValuePattern::PX);
 
   const char* gap_single_prev_wrong = "abc 20px";
@@ -1144,10 +1143,10 @@ TEST(CSSStringParser, gap_value) {
                            static_cast<uint32_t>(strlen(gap_single_prev_wrong)),
                            CSSParserConfigs()};
   auto gap_single_prev_wrong_value = parser_4.ParseGap();
-  EXPECT_EQ(gap_single_prev_wrong_value.first.GetValue().Number(), 0);
+  EXPECT_EQ(gap_single_prev_wrong_value.first.GetNumber(), 0);
   EXPECT_EQ(gap_single_prev_wrong_value.first.GetPattern(),
             CSSValuePattern::PX);
-  EXPECT_EQ(gap_single_prev_wrong_value.second.GetValue().Number(), 20);
+  EXPECT_EQ(gap_single_prev_wrong_value.second.GetNumber(), 20);
   EXPECT_EQ(gap_single_prev_wrong_value.second.GetPattern(),
             CSSValuePattern::PX);
 
@@ -1156,10 +1155,10 @@ TEST(CSSStringParser, gap_value) {
                            static_cast<uint32_t>(strlen(gap_single_next_wrong)),
                            CSSParserConfigs()};
   auto gap_single_next_wrong_value = parser_5.ParseGap();
-  EXPECT_EQ(gap_single_next_wrong_value.first.GetValue().Number(), 30);
+  EXPECT_EQ(gap_single_next_wrong_value.first.GetNumber(), 30);
   EXPECT_EQ(gap_single_next_wrong_value.first.GetPattern(),
             CSSValuePattern::PX);
-  EXPECT_EQ(gap_single_next_wrong_value.second.GetValue().Number(), 0);
+  EXPECT_EQ(gap_single_next_wrong_value.second.GetNumber(), 0);
   EXPECT_EQ(gap_single_next_wrong_value.second.GetPattern(),
             CSSValuePattern::PX);
 
@@ -1168,9 +1167,9 @@ TEST(CSSStringParser, gap_value) {
                            static_cast<uint32_t>(strlen(gap_all_wrong)),
                            CSSParserConfigs()};
   auto gap_all_wrong_value = parser_6.ParseGap();
-  EXPECT_EQ(gap_all_wrong_value.first.GetValue().Number(), 0);
+  EXPECT_EQ(gap_all_wrong_value.first.GetNumber(), 0);
   EXPECT_EQ(gap_all_wrong_value.first.GetPattern(), CSSValuePattern::PX);
-  EXPECT_EQ(gap_all_wrong_value.second.GetValue().Number(), 0);
+  EXPECT_EQ(gap_all_wrong_value.second.GetNumber(), 0);
   EXPECT_EQ(gap_all_wrong_value.second.GetPattern(), CSSValuePattern::PX);
 
   const char* gap_single_percent = "40%";
@@ -1178,10 +1177,10 @@ TEST(CSSStringParser, gap_value) {
                            static_cast<uint32_t>(strlen(gap_single_percent)),
                            CSSParserConfigs()};
   auto gap_single_percent_value = parser_7.ParseGap();
-  EXPECT_EQ(gap_single_percent_value.first.GetValue().Number(), 40);
+  EXPECT_EQ(gap_single_percent_value.first.GetNumber(), 40);
   EXPECT_EQ(gap_single_percent_value.first.GetPattern(),
             CSSValuePattern::PERCENT);
-  EXPECT_EQ(gap_single_percent_value.second.GetValue().Number(), 40);
+  EXPECT_EQ(gap_single_percent_value.second.GetNumber(), 40);
   EXPECT_EQ(gap_single_percent_value.second.GetPattern(),
             CSSValuePattern::PERCENT);
 }
