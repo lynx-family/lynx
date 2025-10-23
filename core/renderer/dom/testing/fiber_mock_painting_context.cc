@@ -27,6 +27,10 @@ void FiberMockPaintingContext::Flush() {
   flush_ = true;
 }
 
+void FiberMockPaintingContext::ResetCapturedRemoveSigns() {
+  captured_remove_signs_.clear();
+}
+
 std::unique_ptr<pub::Value> FiberMockPaintingContext::GetTextInfo(
     const std::string& content, const pub::Value& info) {
   return tasm::TextUtils::GetTextInfo(content, info);
@@ -67,7 +71,7 @@ void FiberMockPaintingContext::InsertPaintingNode(int parent, int child,
 }
 void FiberMockPaintingContext::RemovePaintingNode(int parent, int child,
                                                   int index, bool is_move) {
-  EnqueueOperation([this, parent, child]() {
+  EnqueueOperation([this, parent, child, is_move]() {
     auto* parent_node = node_map_.at(parent).get();
     auto* child_node = node_map_.at(child).get();
 
@@ -78,8 +82,17 @@ void FiberMockPaintingContext::RemovePaintingNode(int parent, int child,
 
       parent_node->children_.erase(it_child);
     }
+
+    if (!is_move) {
+      captured_remove_signs_.emplace(child);
+    }
   });
 }
+
+bool FiberMockPaintingContext::HasCapturedRemoveSign(int id) {
+  return captured_remove_signs_.find(id) != captured_remove_signs_.end();
+}
+
 void FiberMockPaintingContext::DestroyPaintingNode(int parent, int child,
                                                    int index) {
   EnqueueOperation([this, parent, child]() -> void {

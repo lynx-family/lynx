@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 
@@ -26,10 +27,15 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
 
   void Flush() override;
 
+  void ResetCapturedRemoveSigns();
+
+  bool HasCapturedRemoveSign(int id);
+
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info);
 
   std::unordered_map<int, std::string> captured_create_tags_map_;
+  std::unordered_set<int> captured_remove_signs_;
 
   // TODO(liting.src): remove after painting context refactor.
   bool HasEnableUIOperationBatching() override;

@@ -186,6 +186,23 @@ class RadonElement : public Element {
 
   virtual int32_t GetMemoryUsage() const override { return sizeof(*this); }
 
+  virtual void MarkAttached() override {
+    // explicitly override this function to invalidate logic in element
+  }
+  virtual bool IsAttached() const override {
+    // explicitly override this function to invalidate logic in element
+    return false;
+  }
+
+  virtual void MarkDetached() override {
+    // explicitly override this function to invalidate logic in element
+  }
+
+  virtual bool IsDetached() const override {
+    // explicitly override this function to invalidate logic in element
+    return false;
+  }
+
  private:
   void RemoveNode(RadonElement* child, int32_t index, bool destroy);
 

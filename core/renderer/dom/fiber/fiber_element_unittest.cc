@@ -14975,6 +14975,57 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
   }
 }
 
+TEST_P(FiberElementTest, TestRemovePaintingNodeIsMoveFlag) {
+  // Create the page element as root
+  auto page = manager->CreateFiberPage("page", 11);
+
+  // Create container node as child of page element
+  auto container = manager->CreateFiberView();
+  container->parent_component_element_ = page.get();
+  page->InsertNode(container);
+  // Ensure container is not layout only
+  container->computed_css_style()->SetOverflowDefaultVisible(false);
+
+  // Create leaf element as child of container
+  auto leaf = manager->CreateFiberView();
+  leaf->parent_component_element_ = page.get();
+  container->InsertNode(leaf);
+  // Ensure leaf element is not layout only
+  leaf->computed_css_style()->SetOverflowDefaultVisible(false);
+
+  // Flush actions to build the tree
+  page->FlushActionsAsRoot();
+
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context->Flush();
+
+  // Verify that the leaf element is not layout only
+  EXPECT_FALSE(leaf->is_layout_only_);
+
+  // Create leaf element as child of container
+  auto second_leaf = manager->CreateFiberView();
+  second_leaf->parent_component_element_ = page.get();
+  // Ensure leaf element is not layout only
+  second_leaf->computed_css_style()->SetOverflowDefaultVisible(false);
+
+  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  inserted_elements.emplace_back(second_leaf);
+  inserted_elements.emplace_back(leaf);
+  removed_elements.emplace_back(leaf);
+  container->ReplaceElements(inserted_elements, removed_elements, nullptr);
+
+  // Flush actions to build the tree
+  page->FlushActionsAsRoot();
+
+  painting_context->Flush();
+
+  EXPECT_TRUE(second_leaf->IsAttached());
+  EXPECT_TRUE(leaf->IsAttached());
+  EXPECT_FALSE(painting_context->HasCapturedRemoveSign(leaf->impl_id()));
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

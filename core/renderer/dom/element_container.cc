@@ -184,7 +184,11 @@ void ElementContainer::RemoveSelf(bool destroy) {
   if (destroy) {
     Destroy();
   } else {
-    RemoveFromParent(false);
+    // When remove self from parent element container, attach state should be
+    // considered. If internal element is still attached, it should be
+    // considered as a move operation.
+    bool is_move = element_ == nullptr ? false : element_->IsAttached();
+    RemoveFromParent(is_move);
   }
 }
 

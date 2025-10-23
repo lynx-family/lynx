@@ -116,6 +116,15 @@ class Element : public lepus::RefCounted,
 
   Element& operator=(const Element&) = delete;
 
+  // Element state, used to indicate whether the current Element is on the root
+  // Dom tree.
+  enum class State : uint8_t {
+    // attached to root DOM tree
+    kAttached,
+    // removed from root DOM tree
+    kDetached,
+  };
+
   lepus::RefType GetRefType() const override {
     return lepus::RefType::kElement;
   };
@@ -718,6 +727,12 @@ class Element : public lepus::RefCounted,
     return std::to_string(impl_id());
   }
 
+  virtual void MarkAttached() { state_ = State::kAttached; }
+  virtual bool IsAttached() const { return state_ == State::kAttached; }
+
+  virtual void MarkDetached() { state_ = State::kDetached; }
+  virtual bool IsDetached() const { return state_ == State::kDetached; }
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
@@ -894,6 +909,11 @@ class Element : public lepus::RefCounted,
   base::LinearFlatMap<std::string, BindEventCatch> bind_event_catch_map_;
 
  private:
+  // Element state, used to identify whether the current Element is on the root
+  // Dom tree. When an Element is constructed, it is definitely not on the root
+  // Dom tree, so state_ is initialized as State::kDetached.
+  State state_{State::kDetached};
+
   bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
   void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);

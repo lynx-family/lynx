@@ -80,15 +80,6 @@ class FiberElement : public Element,
 
   void ReleaseSelf() const override { delete this; }
 
-  // Element state, used to indicate whether the current Element is on the root
-  // Dom tree.
-  enum class State : uint8_t {
-    // attached to root DOM tree
-    kAttached,
-    // removed from root DOM tree
-    kDetached,
-  };
-
   enum class Action : uint8_t {
     kCreateAct = 0,
     kDestroyAct,
@@ -839,12 +830,6 @@ class FiberElement : public Element,
   // elements may be converted into inline elements.
   virtual void ConvertToInlineElement();
 
-  void MarkAttached() { state_ = State::kAttached; }
-  bool IsAttached() const { return state_ == State::kAttached; }
-
-  void MarkDetached() { state_ = State::kDetached; }
-  bool IsDetached() const { return state_ == State::kDetached; }
-
   bool flush_required() { return flush_required_; }
 
   void MarkTemplateElement() { is_template_ = true; }
@@ -1132,11 +1117,6 @@ class FiberElement : public Element,
   // indicate current not style related flags, such as viewport_unit_, em_units_
   // for performance, we will never reset it
   DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags_{0};
-
-  // Element state, used to identify whether the current Element is on the root
-  // Dom tree. When an Element is constructed, it is definitely not on the root
-  // Dom tree, so state_ is initialized as State::kDetached.
-  State state_{State::kDetached};
 
   AsyncResolveStatus resolve_status_{AsyncResolveStatus::kCreated};
 
