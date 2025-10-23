@@ -19,7 +19,6 @@ import androidx.annotation.RestrictTo;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxExtensionModule;
-import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -162,6 +161,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private int embeddedMode = EmbeddedMode.UNSET;
 
   private boolean isFallbackProcess = false;
+
+  private boolean mLayoutThreadChanged = false;
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
@@ -1439,7 +1440,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     proxy.runOnJSThread(runnable);
   }
 
-  private void runOnLayoutThread(Runnable runnable) {
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void runOnLayoutThread(Runnable runnable) {
     if (runnable == null) {
       return;
     }
@@ -1538,5 +1540,15 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public boolean getEnableVSyncAligned() {
     return mEnableVSyncAligned;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public boolean hasLayoutThreadChanged() {
+    return mLayoutThreadChanged;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void setLayoutThreadChanged(boolean layoutThreadChanged) {
+    this.mLayoutThreadChanged = layoutThreadChanged;
   }
 }
