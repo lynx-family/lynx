@@ -782,6 +782,9 @@ bool DynamicCSSStylesManager::UpdateWithParentStatus(
     const auto& env_config = element_->element_manager()->GetLynxEnvConfig();
     element_->computed_css_style()->SetScreenWidth(env_config.ScreenWidth());
     element_->computed_css_style()->SetFontScale(env_config.FontScale());
+    element_->computed_css_style()->SetLayoutUnit(
+        env_config.PhysicalPixelsPerLayoutUnit(),
+        env_config.LayoutsUnitPerPx());
 
     element_->computed_css_style()->SetViewportWidth(
         env_config.ViewportWidth());

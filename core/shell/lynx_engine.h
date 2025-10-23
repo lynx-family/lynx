@@ -110,7 +110,7 @@ class LynxEngine {
 
   void UpdateFontScale(float scale);
 
-  void UpdateScreenMetrics(float width, float height, float scale);
+  void UpdateScreenMetrics(float width, float height, float device_pixel_ratio);
 
   void UpdateViewport(float width, int32_t width_mode, float height,
                       int32_t height_mode, bool need_layout = true);

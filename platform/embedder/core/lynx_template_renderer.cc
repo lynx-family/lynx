@@ -312,6 +312,7 @@ void LynxTemplateRenderer::UpdateScreenMetrics(float width, float height,
   float device_pixel_ratio =
       ui_delegate_->UsesLogicalPixels() ? device_ratio : 1.0f;
   ui_delegate_->OnUpdateScreenMetrics(width, height, device_pixel_ratio);
+  tasm::Config::InitPixelValues(width, height, device_pixel_ratio);
   shell_->UpdateScreenMetrics(width, height, device_pixel_ratio);
 }
 

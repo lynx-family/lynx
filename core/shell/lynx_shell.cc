@@ -739,9 +739,22 @@ void LynxShell::TriggerLayout() {
   layout_actor_->Act([](auto& layout) { layout->Layout(); });
 }
 
-void LynxShell::UpdateScreenMetrics(float width, float height, float scale) {
-  engine_actor_->Act([width, height, scale](auto& engine) {
-    engine->UpdateScreenMetrics(width, height, scale);
+void LynxShell::UpdateScreenMetrics(float width, float height,
+                                    float device_pixel_ratio) {
+  engine_actor_->Act([runtime_actor = runtime_actor_, width, height,
+                      device_pixel_ratio](auto& engine) {
+    float prev_device_pixel_ratio = engine->GetTasm()->GetDevicePixelRatio();
+    engine->UpdateScreenMetrics(width, height, device_pixel_ratio);
+
+    // update BTS `SystemInfo.pixelRatio` if needed
+    if (prev_device_pixel_ratio != device_pixel_ratio && runtime_actor) {
+      runtime_actor->ActAsync([device_pixel_ratio](auto& runtime) {
+        std::string js_str =
+            base::FormatString("SystemInfo.pixelRatio=%f;", device_pixel_ratio);
+        runtime->EvaluateScript(tasm::kGlobalLynx, std::move(js_str),
+                                piper::ApiCallBack());
+      });
+    }
   });
 }
 

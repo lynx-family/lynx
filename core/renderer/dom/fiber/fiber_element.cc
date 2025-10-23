@@ -170,6 +170,8 @@ void FiberElement::AttachToElementManager(
       manager->GetLayoutConfigs().css_align_with_legacy_w3c_);
   platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
       manager->GetLynxEnvConfig().FontScaleSpOnly());
+  platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                     env_config.LayoutsUnitPerPx());
 
   computed_css_style()->SetEnableZIndex(manager->GetEnableZIndex());
 
@@ -3907,6 +3909,8 @@ void FiberElement::UpdateLengthContextValueForAllElement(
   computed_css_style()->SetViewportWidth(env_config.ViewportWidth());
   computed_css_style()->SetViewportHeight(env_config.ViewportHeight());
   computed_css_style()->SetScreenWidth(env_config.ScreenWidth());
+  computed_css_style()->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                      env_config.LayoutsUnitPerPx());
 
   if (pseudo_elements_.has_value()) {
     for (const auto &[key, pseudo_element] : *pseudo_elements_) {
@@ -3918,6 +3922,9 @@ void FiberElement::UpdateLengthContextValueForAllElement(
           env_config.ViewportHeight());
       pseudo_element.get()->ComputedCSSStyle()->SetScreenWidth(
           env_config.ScreenWidth());
+      pseudo_element.get()->ComputedCSSStyle()->SetLayoutUnit(
+          env_config.PhysicalPixelsPerLayoutUnit(),
+          env_config.LayoutsUnitPerPx());
     }
   }
 }

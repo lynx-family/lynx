@@ -685,7 +685,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void SetPlatformConfig(std::string platform_config_json_string);
 
-  void OnScreenMetricsSet(float width, float height);
+  float GetDevicePixelRatio() const;
+  void OnScreenMetricsSet(float width, float height, float device_pixel_ratio);
 
   void SendFontScaleChanged(float scale);
 

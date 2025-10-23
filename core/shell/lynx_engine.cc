@@ -218,8 +218,9 @@ void LynxEngine::SetAnimationsPending(bool need_pending_ui_op) {
   }
 }
 
-void LynxEngine::UpdateScreenMetrics(float width, float height, float scale) {
-  tasm_->OnScreenMetricsSet(width, height);
+void LynxEngine::UpdateScreenMetrics(float width, float height,
+                                     float device_pixel_ratio) {
+  tasm_->OnScreenMetricsSet(width, height, device_pixel_ratio);
 }
 
 void LynxEngine::UpdateViewport(float width, int32_t width_mode, float height,

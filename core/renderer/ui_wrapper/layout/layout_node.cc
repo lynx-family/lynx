@@ -19,6 +19,8 @@ void UpdateStyleWithEnvConfig(starlight::ComputedCSSStyle& css_style,
   css_style.SetFontScale(envs.FontScale());
   css_style.SetViewportWidth(envs.ViewportWidth());
   css_style.SetViewportHeight(envs.ViewportHeight());
+  css_style.SetLayoutUnit(envs.PhysicalPixelsPerLayoutUnit(),
+                          envs.LayoutsUnitPerPx());
 }
 
 }  // namespace

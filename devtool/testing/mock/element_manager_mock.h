@@ -14,7 +14,7 @@ class ElementManagerMock : public tasm::ElementManager {
  public:
   ElementManagerMock()
       : tasm::ElementManager(nullptr, nullptr,
-                             tasm::LynxEnvConfig(100, 100, 0, 0)) {}
+                             tasm::LynxEnvConfig(100, 100, 1, 1)) {}
 
   bool IsDomTreeEnabled() override { return dom_tree_enabled_; }
   bool dom_tree_enabled_ = true;

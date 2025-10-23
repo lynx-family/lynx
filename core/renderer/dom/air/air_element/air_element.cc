@@ -620,9 +620,10 @@ starlight::ComputedCSSStyle *AirElement::computed_css_style() {
     platform_css_style_->SetCssAlignLegacyWithW3c(
         air_element_manager_->GetLayoutConfigs().css_align_with_legacy_w3c_);
     platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
-        air_element_manager_->GetLynxEnvConfig().FontScaleSpOnly());
-    platform_css_style_->SetFontScale(
-        air_element_manager_->GetLynxEnvConfig().FontScale());
+        env_config.FontScaleSpOnly());
+    platform_css_style_->SetFontScale(env_config.FontScale());
+    platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                       env_config.LayoutsUnitPerPx());
   }
   return platform_css_style_.get();
 }

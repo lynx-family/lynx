@@ -552,7 +552,8 @@ TemplateData TemplateAssembler::OnRenderTemplate(
   auto& client = page_proxy_.element_manager();
   if (client != nullptr) {
     OnScreenMetricsSet(client->GetLynxEnvConfig().ScreenWidth(),
-                       client->GetLynxEnvConfig().ScreenHeight());
+                       client->GetLynxEnvConfig().ScreenHeight(),
+                       client->GetLynxEnvConfig().DevicePixelRatio());
   }
 
   // If need post js, call OnJSPrepared.
@@ -2406,13 +2407,34 @@ void TemplateAssembler::SetPlatformConfig(
   platform_config_json_string_ = std::move(platform_config_json_string);
 }
 
-void TemplateAssembler::OnScreenMetricsSet(float width, float height) {
+float TemplateAssembler::GetDevicePixelRatio() const {
+  auto& client = page_proxy_.element_manager();
+  if (client == nullptr) {
+    return Config::pixelRatio();
+  }
+  return client->GetLynxEnvConfig().DevicePixelRatio();
+}
+
+void TemplateAssembler::OnScreenMetricsSet(float width, float height,
+                                           float device_pixel_ratio) {
   LOGI("TemplateAssembler::OnScreenMetricsSet with width: "
-       << width << " height: " << height);
+       << width << " height: " << height
+       << " device_pixel_ratio: " << device_pixel_ratio);
   auto& client = page_proxy_.element_manager();
   if (client == nullptr) {
     LOGE("Update ScreenMetrics failed since element manager is null!!");
     return;
+  }
+
+  LynxEnvConfig& env_config = client->GetLynxEnvConfig();
+  if (env_config.UpdateDevicePixelRatio(device_pixel_ratio)) {
+    // update MTS `SystemInfo.pixelRatio`
+    ForEachEntry([device_pixel_ratio](const auto& entry) {
+      if (auto ctx = entry->GetVm()) {
+        ctx->UpdateTopLevelVariable("SystemInfo.pixelRatio",
+                                    lepus::Value(device_pixel_ratio));
+      }
+    });
   }
 
   auto kWidth_str = BASE_STATIC_STRING(kWidth);
@@ -2421,12 +2443,10 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height) {
   auto input = lepus::Value(lepus::Dictionary::Create());
   input.SetProperty(
       kWidth_str,
-      lepus::Value(width *
-                   client->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit()));
+      lepus::Value(width * env_config.PhysicalPixelsPerLayoutUnit()));
   input.SetProperty(
       kHeight_str,
-      lepus::Value(height *
-                   client->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit()));
+      lepus::Value(height * env_config.PhysicalPixelsPerLayoutUnit()));
   lepus::Value result;
   if (EnableFiberArch()) {
     result =
@@ -2438,17 +2458,17 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height) {
     result = page_proxy()->OnScreenMetricsSet(input);
   }
 
-  auto width_res = result.GetProperty(kWidth_str);
-  auto height_res = result.GetProperty(kHeight_str);
-  if (width_res.IsNumber() && height_res.IsNumber() &&
-      !std::isnan(width_res.Number()) && !std::isnan(height_res.Number())) {
-    width = width_res.Number() /
-            client->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
-    height = height_res.Number() /
-             client->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
-  } else {
-    LOGE("getScreenMetricsOverride return invalid width or height. width: "
-         << width_res << ", height: " << height_res);
+  if (result.IsObject()) {
+    auto width_res = result.GetProperty(kWidth_str);
+    auto height_res = result.GetProperty(kHeight_str);
+    if (width_res.IsNumber() && height_res.IsNumber() &&
+        !std::isnan(width_res.Number()) && !std::isnan(height_res.Number())) {
+      width = width_res.Number() / env_config.PhysicalPixelsPerLayoutUnit();
+      height = height_res.Number() / env_config.PhysicalPixelsPerLayoutUnit();
+    } else {
+      LOGE("getScreenMetricsOverride return invalid width or height. width: "
+           << width_res << ", height: " << height_res);
+    }
   }
 
   if (EnableEventReporter()) {

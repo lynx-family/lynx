@@ -1079,6 +1079,8 @@ void LayoutContext::UpdateViewport(float width, int width_mode, float height,
 
 void LayoutContext::UpdateLynxEnvForLayoutThread(LynxEnvConfig env) {
   lynx_env_config_ = env;
+  init_css_style_->SetLayoutUnit(env.PhysicalPixelsPerLayoutUnit(),
+                                 env.LayoutsUnitPerPx());
 
   if (!root()) {
     return;

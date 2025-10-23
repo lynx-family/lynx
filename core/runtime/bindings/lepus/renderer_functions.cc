@@ -542,9 +542,8 @@ RENDERER_FUNCTION_CC(GetTextInfo) {
         error::E_MTS_RENDERER_FUNCTION_FATAL);
     RETURN_UNDEFINED();
   }
-  // TODO(songshourui.null): get current LynxView's pixelRatio
   options->SetProperty(BASE_STATIC_STRING(kPixelRatio),
-                       lepus::Value(Config::pixelRatio()));
+                       lepus::Value(GET_TASM_POINTER()->GetDevicePixelRatio()));
   auto text_info =
       GET_TASM_POINTER()
           ->page_proxy()

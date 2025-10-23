@@ -54,6 +54,11 @@ class LynxEnvConfig {
     font_scale_sp_only_ = font_scale_sp_only;
   }
 
+  float DevicePixelRatio() const {
+    return layouts_unit_per_px_ * physical_pixels_per_layout_unit_;
+  }
+  bool UpdateDevicePixelRatio(float device_pixel_ratio);
+
   float PageDefaultFontSize() const {
     return (font_scale_sp_only_ ? 1.f : FontScale()) * DefaultFontSize();
   }

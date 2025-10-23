@@ -95,6 +95,8 @@ Element::Element(const base::String& tag, ElementManager* manager,
       env_config.FontScaleSpOnly());
   platform_css_style_->SetFontSize(env_config.DefaultFontSize(),
                                    env_config.DefaultFontSize());
+  platform_css_style_->SetLayoutUnit(env_config.PhysicalPixelsPerLayoutUnit(),
+                                     env_config.LayoutsUnitPerPx());
   if (IsRadonArch()) {
     enable_extended_layout_only_opt_ =
         manager->GetEnableExtendedLayoutOnlyOpt();

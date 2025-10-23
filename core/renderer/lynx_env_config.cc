@@ -4,6 +4,7 @@
 
 #include "core/renderer/lynx_env_config.h"
 
+#include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
@@ -13,6 +14,8 @@ namespace tasm {
 LynxEnvConfig::LynxEnvConfig(float width, float height,
                              float layouts_unit_per_px,
                              double physical_pixels_per_layout_unit) {
+  DCHECK(layouts_unit_per_px == 1.0 || physical_pixels_per_layout_unit == 1.0);
+  DCHECK(layouts_unit_per_px != 0 && physical_pixels_per_layout_unit != 0);
   screen_width_ = width;
   screen_height_ = height;
   layouts_unit_per_px_ = layouts_unit_per_px;
@@ -41,6 +44,18 @@ void LynxEnvConfig::UpdateScreenSize(float width, float height) {
   vhbase_for_font_size_to_align_with_legacy_bug_ =
       viewport_height_.IsDefinite() ? viewport_height_
                                     : starlight::LayoutUnit(screen_height_);
+}
+
+bool LynxEnvConfig::UpdateDevicePixelRatio(float device_pixel_ratio) {
+  if (DevicePixelRatio() == device_pixel_ratio) {
+    return false;
+  }
+  if (layouts_unit_per_px_ == 1.0f) {
+    physical_pixels_per_layout_unit_ = device_pixel_ratio;
+  } else {
+    layouts_unit_per_px_ = device_pixel_ratio;
+  }
+  return true;
 }
 
 }  // namespace tasm

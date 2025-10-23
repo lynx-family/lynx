@@ -141,6 +141,20 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   EXPECT_EQ(shell_->layout_result_manager_, nullptr);
   EXPECT_EQ(shell_->layout_mediator_->layout_result_manager_, nullptr);
+
+  // SystemInfo.pixelRatio test
+  auto& element_manager = shell_->GetTasm()->page_proxy()->element_manager();
+  ASSERT_EQ(shell_->GetTasm()->GetDevicePixelRatio(), 1.0f);
+  ASSERT_EQ(element_manager->GetLynxEnvConfig().DevicePixelRatio(), 1.0f);
+
+  shell_->UpdateScreenMetrics(800, 600, 1.75f);
+
+  fml::AutoResetWaitableEvent arwe;
+  shell_->RunOnTasmThread([&arwe]() { arwe.Signal(); });
+  arwe.Wait();
+
+  ASSERT_EQ(shell_->GetTasm()->GetDevicePixelRatio(), 1.75f);
+  ASSERT_EQ(element_manager->GetLynxEnvConfig().DevicePixelRatio(), 1.75f);
 }
 
 TEST_F(LynxShellBuilderTest,

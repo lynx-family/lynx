@@ -617,6 +617,10 @@ void ElementManager::UpdateScreenMetrics(float width, float height) {
   LOGI("ElementManager::UpdateScreenMetrics width:" << width
                                                     << ",height:" << height);
   GetLynxEnvConfig().UpdateScreenSize(width, height);
+  // 0.update layout unit for computed_css_style template
+  platform_computed_css_->SetLayoutUnit(
+      GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit(),
+      GetLynxEnvConfig().LayoutsUnitPerPx());
   // 1.update layout tree
   delegate_->UpdateLynxEnvForLayoutThread(GetLynxEnvConfig());
   if (root()) {
