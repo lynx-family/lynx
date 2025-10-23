@@ -817,7 +817,7 @@ public class LynxTemplateRender
       mViewLayoutTick = new ViewLayoutTick(mBodyView);
       layoutTick = mViewLayoutTick;
     } else {
-      layoutTick = new ChoreographerLayoutTick();
+      layoutTick = new ChoreographerLayoutTick(mLynxContext);
     }
 
     LLog.i(TAG,
@@ -3426,9 +3426,15 @@ public class LynxTemplateRender
   private void onThreadStrategyUpdated() {
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
         || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
-    if (mLynxContext != null && mLynxContext.enableEventReporter()) {
-      LynxEventReporter.updateGenericInfo(LynxEventReporter.PROP_NAME_THREAD_MODE,
-          mThreadStrategyForRendering.id(), mLynxContext.getInstanceId());
+    if (mLynxContext != null) {
+      if (mLynxContext.enableEventReporter()) {
+        LynxEventReporter.updateGenericInfo(LynxEventReporter.PROP_NAME_THREAD_MODE,
+            mThreadStrategyForRendering.id(), mLynxContext.getInstanceId());
+      }
+      if (mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM
+          || mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI) {
+        mLynxContext.setLayoutThreadChanged(true);
+      }
     }
   }
 
