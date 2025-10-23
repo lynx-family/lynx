@@ -1001,6 +1001,7 @@ void UIList::InsertListItemNode(lynx::tasm::harmony::UIComponent* child) {
   if (!child) {
     return;
   }
+  child->SetIsListItem(true);
   if (enable_list_sticky_) {
     if (update_sticky_for_diff_) {
       // This method is invoked in FinishLayoutOperation or by c++ list element
@@ -1028,6 +1029,7 @@ void UIList::RemoveListItemNode(lynx::tasm::harmony::UIComponent* child) {
   if (!child) {
     return;
   }
+  child->SetIsListItem(false);
   if (enable_list_sticky_) {
     if (update_sticky_for_diff_) {
       // Remove <item-key, list-item> from map if current component is sticky
@@ -1118,6 +1120,8 @@ void UIList::ResetStickyItem(UIComponent* component) {
         component->DrawNode(), NODE_TRANSLATE, 0, 0, 0);
     NodeManager::Instance().SetAttributeWithNumberValue(
         component->DrawNode(), NODE_Z_INDEX, component->z_index());
+    component->SetStickyXOffset(0);
+    component->SetStickyYOffset(0);
   }
 }
 
@@ -1207,13 +1211,15 @@ void UIList::UpdateStickyStartView(float scroll_offset_x,
       }
     }
     if (!is_horizontal_) {
+      float sticky_y_offset = sticky_start_offset - sticky_start_item->top_;
+      sticky_start_item->SetStickyYOffset(sticky_y_offset);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          sticky_start_item->DrawNode(), NODE_TRANSLATE, 0,
-          sticky_start_offset - sticky_start_item->top_, 0);
+          sticky_start_item->DrawNode(), NODE_TRANSLATE, 0, sticky_y_offset, 0);
     } else {
+      float sticky_x_offset = sticky_start_offset - sticky_start_item->left_;
+      sticky_start_item->SetStickyXOffset(sticky_x_offset);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          sticky_start_item->DrawNode(), NODE_TRANSLATE,
-          sticky_start_offset - sticky_start_item->left_, 0, 0);
+          sticky_start_item->DrawNode(), NODE_TRANSLATE, sticky_x_offset, 0, 0);
     }
 
     NodeManager::Instance().SetAttributeWithNumberValue(
@@ -1301,13 +1307,15 @@ void UIList::UpdateStickyEndView(float scroll_offset_x, float scroll_offset_y) {
     }
 
     if (!is_horizontal_) {
+      float sticky_y_offset = sticky_start_offset - sticky_end_item->top_;
+      sticky_end_item->SetStickyYOffset(sticky_y_offset);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          sticky_end_item->DrawNode(), NODE_TRANSLATE, 0,
-          sticky_start_offset - sticky_end_item->top_, 0);
+          sticky_end_item->DrawNode(), NODE_TRANSLATE, 0, sticky_y_offset, 0);
     } else {
+      float sticky_x_offset = sticky_start_offset - sticky_end_item->left_;
+      sticky_end_item->SetStickyXOffset(sticky_x_offset);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          sticky_end_item->DrawNode(), NODE_TRANSLATE,
-          sticky_start_offset - sticky_end_item->left_, 0, 0);
+          sticky_end_item->DrawNode(), NODE_TRANSLATE, sticky_x_offset, 0, 0);
     }
 
     NodeManager::Instance().SetAttributeWithNumberValue(
