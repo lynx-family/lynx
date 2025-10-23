@@ -156,8 +156,13 @@ void VSyncMonitorIOS::RequestVSyncOnUIThread(Callback callback) {
   if ([NSThread isMainThread]) {
     RequestVSync();
   } else {
+    std::weak_ptr<VSyncMonitorIOS> weak_self =
+        std::static_pointer_cast<VSyncMonitorIOS>(shared_from_this());
     dispatch_async(dispatch_get_main_queue(), ^{
-      RequestVSync();
+      auto strong_self = weak_self.lock();
+      if (strong_self) {
+        strong_self->RequestVSync();
+      }
     });
   }
 }
@@ -166,8 +171,13 @@ void VSyncMonitorIOS::RequestVSyncOnUIThread() {
   if ([NSThread isMainThread]) {
     RequestVSync();
   } else {
+    std::weak_ptr<VSyncMonitorIOS> weak_self =
+        std::static_pointer_cast<VSyncMonitorIOS>(shared_from_this());
     dispatch_async(dispatch_get_main_queue(), ^{
-      RequestVSync();
+      auto strong_self = weak_self.lock();
+      if (strong_self) {
+        strong_self->RequestVSync();
+      }
     });
   }
 }
