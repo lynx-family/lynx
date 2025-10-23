@@ -173,8 +173,9 @@ LynxTemplateRenderer::LynxTemplateRenderer(
                       bytecode_source_url);
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
       shell_->GetPerfControllerActor());
-  ui_delegate_->OnLynxCreate(engine_proxy_, runtime_proxy_,
-                             perf_controller_proxy_, resource_loader,
+  ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
+                             runtime_proxy_, perf_controller_proxy_,
+                             resource_loader,
                              shell_->GetRunners()->GetUITaskRunner(),
                              shell_->GetRunners()->GetLayoutTaskRunner());
 

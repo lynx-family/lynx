@@ -18,6 +18,7 @@
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/perf_controller_proxy.h"
+#include "core/shell/list_engine_proxy.h"
 
 namespace lynx {
 namespace tasm {
@@ -50,6 +51,7 @@ class UIDelegate {
   // displaying
   virtual double GetScreenScaleFactor() const { return 1.0; }
   virtual void OnLynxCreate(
+      const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
@@ -62,6 +64,7 @@ class UIDelegate {
 
   void SetInstanceId(int32_t id) { instance_id_ = id; }
   int32_t GetInstanceId() const { return instance_id_; }
+
   virtual void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) {}
   virtual void TakeSnapshot(
       size_t max_width, size_t max_height, int quality,
