@@ -35,12 +35,29 @@ class UIComponent : public UIView {
     node_ready_listener_ = node_ready_listener;
   }
 
+  void SetStickyXOffset(float sticky_x_offset) { sticky_x_offset_ = sticky_x_offset; }
+
+  void SetStickyYOffset(float sticky_y_offset) { sticky_y_offset_ = sticky_y_offset; }
+
+  void SetIsListItem(bool is_list_item) { is_list_item_ = is_list_item; }
+
+  float OffsetXForCalcPosition() override {
+    return is_list_item_ ? -sticky_x_offset_ : UIBase::OffsetXForCalcPosition();
+  }
+
+  float OffsetYForCalcPosition() override {
+    return is_list_item_ ? -sticky_y_offset_ : UIBase::OffsetYForCalcPosition();
+  }
+
  protected:
   UIComponent(LynxContext* context, int sign, const std::string& tag);
 
  private:
   std::string item_key_;
   int z_index_{0};
+  bool is_list_item_{false};
+  float sticky_x_offset_{0.f};
+  float sticky_y_offset_{0.f};
   NodeReadyListener* node_ready_listener_{nullptr};
 };
 

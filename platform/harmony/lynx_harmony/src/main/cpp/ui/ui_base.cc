@@ -1680,6 +1680,10 @@ void UIBase::UpdateDrawNodeFrame() {
 
 bool UIBase::NeedDraw(ArkUI_NodeHandle node) { return node_ == node; }
 
+float UIBase::TranslateZ() const {
+  return NodeManager::Instance().GetAttribute<int>(DrawNode(), NODE_Z_INDEX, 0);
+}
+
 float UIBase::ViewLeft() const {
   return NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION,
                                                      0);
