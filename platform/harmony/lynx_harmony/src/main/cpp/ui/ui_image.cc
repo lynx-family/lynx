@@ -185,8 +185,10 @@ void UIImage::HandleImageSuccessCallback(float image_width,
 
 void UIImage::HandleImageFailCallback(float error_code,
                                       const std::string& error_msg) {
-  LOGE("UIImage load image failed error_code = " << error_code
-                                                 << " url = " << src_)
+  auto src =
+      NodeManager::Instance().GetAttribute<std::string>(node_, NODE_IMAGE_SRC);
+  LOGE("UIImage load image failed error_code: " << error_code << ", src: "
+                                                << src << ", url: " << src_);
   if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_) {
     auto dict = lepus::Dictionary::Create();
     dict->SetValue(image::kErrorEventCode, error_code);
