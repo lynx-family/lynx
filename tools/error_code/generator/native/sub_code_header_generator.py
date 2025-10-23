@@ -48,7 +48,7 @@ class MetaDataDeclGenerator(ModuleGenerator):
         # Generate enum declarations
         for meta_data in self._meta_data_list:
             if meta_data.get(KEY_TYPE) == TYPE_ENUM:
-                self._append("enum class {0} {{\n".format(meta_data[KEY_NAME]))
+                self._append("enum class {0}: int32_t {{\n".format(meta_data[KEY_NAME]))
                 values = meta_data["values"]
                 for i, value in enumerate(values):
                     self._append("\t{0} = {1}".format(str_to_upper_case(value), i))
