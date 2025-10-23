@@ -20,6 +20,14 @@ typedef napi_value (*napi_module_creator)(napi_env, napi_value exports,
                                           const char* module_name,
                                           void* opaque);
 
+// Stores a data with key to the global map.
+LYNX_CAPI_EXPORT void lynx_napi_set_instance_data(napi_env env, uint64_t key,
+                                                  void* data,
+                                                  napi_finalize finalize_cb,
+                                                  void* finalize_hint);
+LYNX_CAPI_EXPORT void lynx_napi_get_instance_data(napi_env env, uint64_t key,
+                                                  void** data);
+
 LYNX_EXTERN_C_END
 
 #ifdef USE_PRIMJS_NAPI

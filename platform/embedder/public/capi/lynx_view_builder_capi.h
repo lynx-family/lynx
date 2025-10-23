@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_BUILDER_CAPI_H_
 
 #include "lynx_export.h"
+#include "lynx_extension_module_types_capi.h"
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_group_capi.h"
 #include "lynx_native_module_capi.h"
@@ -69,6 +70,12 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_generic_resource_fetcher(
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_module(
     lynx_view_builder_t* builder, const char* name, napi_module_creator creator,
     void* opaque);
+
+// Register instance-level extension module, which have a higher priority than
+// global extension modules.
+LYNX_CAPI_EXPORT void lynx_view_builder_register_extension_module(
+    lynx_view_builder_t* builder, const char* name,
+    extension_module_creator creator, bool is_lazy_create, void* opaque);
 
 // Register instance-level view factory.
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_view(

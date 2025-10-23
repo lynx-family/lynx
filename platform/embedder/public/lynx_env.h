@@ -25,6 +25,9 @@ class LynxEnv {
   bool IsLogboxEnabled();
   void RegisterNativeModule(const std::string& module_name,
                             napi_module_creator creator, void* opaque);
+  void RegisterExtensionModule(const std::string& module_name,
+                               extension_module_creator creator,
+                               bool is_lazy_create, void* opaque);
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
@@ -67,6 +70,14 @@ inline void LynxEnv::RegisterNativeModule(const std::string& module_name,
                                           napi_module_creator creator,
                                           void* opaque) {
   lynx_env_register_native_module(module_name.c_str(), creator, opaque);
+}
+
+inline void LynxEnv::RegisterExtensionModule(const std::string& module_name,
+                                             extension_module_creator creator,
+                                             bool is_lazy_create,
+                                             void* opaque) {
+  lynx_env_register_extension_module(module_name.c_str(), creator,
+                                     is_lazy_create, opaque);
 }
 
 }  // namespace pub

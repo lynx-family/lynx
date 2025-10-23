@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_ENV_CAPI_H_
 
 #include "lynx_export.h"
+#include "lynx_extension_module_types_capi.h"
 #include "lynx_native_module_capi.h"
 
 LYNX_EXTERN_C_BEGIN
@@ -24,6 +25,10 @@ LYNX_CAPI_EXPORT int lynx_env_is_logbox_enabled();
 // Global native module
 LYNX_CAPI_EXPORT void lynx_env_register_native_module(
     const char* name, napi_module_creator creator, void* opaque);
+// Global extension module
+LYNX_CAPI_EXPORT void lynx_env_register_extension_module(
+    const char* name, extension_module_creator creator, bool is_lazy_create,
+    void* opaque);
 
 LYNX_EXTERN_C_END
 
