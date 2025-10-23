@@ -261,6 +261,7 @@ class LynxDevToolMediator
   std::weak_ptr<LynxDevToolNG> devtool_wp_;
   int view_id_{-1};
   bool fully_initialized_{false};
+  bool attached_{false};
 
   std::unordered_map<std::string, std::shared_ptr<MessageSender>>
       cdp_event_listener_map_;

@@ -97,6 +97,13 @@ void LynxDevToolMediator::Init(
     element_executor_->SetWhiteBoardEnabled(white_board_enabled);
   }
 
+  // When using background runtime, `OnAttached()` is called before `Init()`, so
+  // `lepus_debugger_` is not initialized at this time. Therefore, we need to
+  // call `OnAttached()` again.
+  if (attached_) {
+    OnAttached();
+  }
+
   fully_initialized_ = true;
 }
 
@@ -142,6 +149,7 @@ LynxDevToolMediator::InitWhenBackgroundRuntimeCreated(
 }
 
 void LynxDevToolMediator::OnAttached() {
+  attached_ = true;
   if (js_debugger_ != nullptr) {
     js_debugger_->OnAttached();
   }
