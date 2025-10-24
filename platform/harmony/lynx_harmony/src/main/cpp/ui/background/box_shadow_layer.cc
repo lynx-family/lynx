@@ -12,6 +12,7 @@
 #include <native_drawing/drawing_path.h>
 
 #include <algorithm>
+#include <limits>
 
 #include "base/include/float_comparison.h"
 #include "core/renderer/utils/value_utils.h"
@@ -91,7 +92,8 @@ void BoxShadowLayer::UpdateShadowDrawer(float left, float top, float width,
     shadow->mask_filter =
         OH_Drawing_MaskFilterCreateBlur(NORMAL, blur_radius, true);
     float inset = shadow->spread_radius * scale_density;
-    float inset_max = std::min(width, height) / 2;
+    float inset_max = shadow->is_inset ? std::min(width, height) / 2
+                                       : std::numeric_limits<float>::max();
     if (base::FloatsLarger(inset, inset_max)) {
       inset = inset_max;
     }
