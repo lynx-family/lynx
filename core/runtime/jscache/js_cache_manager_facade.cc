@@ -44,6 +44,8 @@ void JsCacheManagerFacade::PostCacheGenerationTask(
   if (sources.size() > 0) {
     PostCacheGenerationTask(template_url, std::move(sources), engine_type,
                             std::move(callback));
+  } else if (callback) {
+    (*callback)("no source need generate bytecode", {});
   }
 }
 
@@ -54,21 +56,17 @@ void JsCacheManagerFacade::PostCacheGenerationTask(
     std::unique_ptr<BytecodeGenerateCallback> callback) {
   LOGI("JsCacheManagerFacade::PostCacheGenerationTask template_url: "
        << template_url << " engine_type: " << static_cast<int>(engine_type));
-  switch (engine_type) {
-    case JSRuntimeType::v8:
-      LOGI("PostCacheGenerationTask for V8 is not supported");
-      return;
-    case JSRuntimeType::jsc:
-      LOGI("PostCacheGenerationTask for JSC is not supported");
-      return;
-    case JSRuntimeType::quickjs: {
-      PostCacheGenerationTaskQuickJs(template_url, std::move(js_contents),
-                                     std::move(callback));
-      return;
+  if (engine_type == JSRuntimeType::quickjs) {
+    PostCacheGenerationTaskQuickJs(template_url, std::move(js_contents),
+                                   std::move(callback));
+  } else {
+    LOGI("PostCacheGenerationTask is not supported for engine:"
+         << static_cast<int>(engine_type));
+    if (callback) {
+      (*callback)("generate bytecode not supported for engine:" +
+                      std::to_string(static_cast<int>(engine_type)),
+                  {});
     }
-    case JSRuntimeType::jsvm:
-      LOGI("PostCacheGenerationTask for JSVM is not supported");
-      return;
   }
 }
 
