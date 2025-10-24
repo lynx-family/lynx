@@ -339,10 +339,10 @@ void InputView::setInputFilter(const LynxModuleValues& args,
   std::string pattern;
   CastNamedLynxModuleArgs({"pattern"}, args, pattern);
   if (pattern.empty()) {
-    user_input_filter_ = {};
+    input_filter_pattern_ = {};
     ApplyFilter(&InputView::FilterInputTextByUser, false);
   } else {
-    user_input_filter_ = std::regex(pattern);
+    input_filter_pattern_ = pattern;
     ApplyFilter(&InputView::FilterInputTextByUser, true);
   }
   callback(LynxUIMethodResult::kSuccess, clay::Value());

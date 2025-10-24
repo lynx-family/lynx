@@ -369,6 +369,11 @@ class PlatformView {
   virtual void setMarkedTextRect(float x, float y, float width, float height) {}
   virtual void ShowTextInput() {}
   virtual void HideTextInput() {}
+  virtual std::string InputFilter(const std::string& input,
+                                  const std::string& pattern) {
+    return input;
+  };
+
   virtual void WindowMove() {}
   virtual void ActivateSystemCursor(int type, const std::string& path) {}
 

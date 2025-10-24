@@ -76,18 +76,30 @@ FontWeight ToFontWeight(int font_weight_val) {
 
 // Returns units filtered. If nothing changed, returns 0.
 size_t EditableView::FilterInput(TextEditingValue* value,
-                                 const std::regex& filter_regex) {
+                                 const std::string& pattern) {
   auto input = value->GetText();
   auto origin_length = input.length();
-  input = std::regex_replace(input, filter_regex, "");
-  value->SetTextAndReserveSelectionState(input);
-  return origin_length - input.length();
+  text_input_controller_->InputFilterAsync(
+      input, pattern,
+      [weak_self = weak_factory_.GetWeakPtr(), origin_length,
+       edit_value =
+           TextEditingValue(*value)](const std::string& result) mutable {
+        if (!weak_self) {
+          return;
+        }
+        auto editable_view = static_cast<EditableView*>(weak_self.get());
+        edit_value.SetTextAndReserveSelectionState(result);
+        if (origin_length - result.length()) {
+          editable_view->UpdateRemoteStateIfNeeded(edit_value);
+        }
+      });
+  return 0;
 }
 
 size_t EditableView::FilterNewLine(TextEditingValue* value) {
   // May costs time.
-  static auto regex = std::regex("\n");
-  return FilterInput(value, regex);
+  static auto pattern = std::string("\n");
+  return FilterInput(value, pattern);
 }
 
 size_t EditableView::FilterMaxLength(TextEditingValue* value) {
@@ -120,20 +132,20 @@ size_t EditableView::FilterInputTextByType(TextEditingValue* value) {
   switch (keyboard_input_type_) {
     case KeyboardInputType::kClassNumber: {
       if (max_lines_ > 1) {
-        static auto regex = std::regex("[^0-9\\.\n]");
-        return FilterInput(value, regex);
+        static auto pattern = std::string("[^0-9\\.\n]");
+        return FilterInput(value, pattern);
       } else {
-        static auto regex = std::regex("[^0-9\\.]");
-        return FilterInput(value, regex);
+        static auto pattern = std::string("[^0-9\\.]");
+        return FilterInput(value, pattern);
       }
     }
     case KeyboardInputType::kClassPhone: {
       if (max_lines_ > 1) {
-        static auto regex = std::regex("[^0-9\n]");
-        return FilterInput(value, regex);
+        static auto pattern = std::string("[^0-9\n]");
+        return FilterInput(value, pattern);
       } else {
-        static auto regex = std::regex("[^0-9]");
-        return FilterInput(value, regex);
+        static auto pattern = std::string("[^0-9]");
+        return FilterInput(value, pattern);
       }
     }
     default:
@@ -142,7 +154,7 @@ size_t EditableView::FilterInputTextByType(TextEditingValue* value) {
 }
 
 size_t EditableView::FilterInputTextByUser(TextEditingValue* value) {
-  return FilterInput(value, user_input_filter_);
+  return FilterInput(value, input_filter_pattern_);
 }
 
 EditableView::EditableView(int id, std::string tag, PageView* page_view,
