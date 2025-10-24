@@ -480,6 +480,8 @@
 
 - (void)sendEvent:(NSMutableSet<LynxUIExposureDetail *> *)uiSet eventName:(NSString *)eventName {
   if ([uiSet count] != 0) {
+    NSSet<LynxUIExposureDetail *> *uiSetCopy = [uiSet copy];
+
     NSMutableArray<NSDictionary<NSString *, NSString *> *> *params = [[NSMutableArray alloc] init];
     NSMutableDictionary<NSString *,
                         NSMutableDictionary<NSString *, NSMutableArray<LynxUIExposureDetail *> *> *>
@@ -488,7 +490,7 @@
                                     [_rootUI.lynxView.templateRender enableJSRuntime] ||
                                     [_rootUI.lynxView.templateRender enableAirStrictMode];
     if (enableGlobalEventSending) {
-      for (LynxUIExposureDetail *detail in uiSet) {
+      for (LynxUIExposureDetail *detail in uiSetCopy) {
         if (detail.internalSignature && [detail.ui respondsToSelector:@selector(targetOffScreen)]) {
           [detail.ui targetOffScreen];
         }
@@ -526,7 +528,7 @@
       }
     } else {
       // Just use for Air 1.0, forward compatible is required
-      for (LynxUIExposureDetail *detail in uiSet) {
+      for (LynxUIExposureDetail *detail in uiSetCopy) {
         LynxUI *ui = [_rootUI.context.uiOwner findUIBySign:detail.sign];
         if (ui != nil) {
           LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:eventName
