@@ -935,6 +935,101 @@ TEST_F(JsCacheManagerTest, ClearCache) {
                     std::move(event));
 }
 
+TEST_F(JsCacheManagerTest, RequestCacheGenerationWithGlobalCallback) {
+  auto &quickjs_instance = JsCacheManager::GetQuickjsInstance();
+  const std::string source_url = "/generationWithGlobalCallback.js";
+  const std::shared_ptr<const Buffer> buffer =
+      std::make_shared<StringBuffer>(js_file);
+
+  const std::string js_content =
+      "var action = 'request_cache_generation_success';";
+
+  fml::AutoResetWaitableEvent latch;
+  JsCacheManager::g_bytecode_generate_callback = std::make_unique<
+      BytecodeGenerateCallback>(
+      [&latch, &source_url](
+          std::string error_msg,
+          std::unordered_map<std::string, std::shared_ptr<lynx::piper::Buffer>>
+              buffers) {
+        EXPECT_EQ(error_msg, "");
+        EXPECT_EQ(buffers.size(), 1);
+        EXPECT_TRUE(buffers[k_template_url + std::string("##") + source_url]);
+        latch.Signal();
+      });
+  std::vector<std::unique_ptr<CacheGenerator>> generators;
+  generators.push_back(
+      std::make_unique<TestingCacheGenerator>(source_url, buffer, js_content));
+  quickjs_instance.RequestCacheGeneration(k_template_url, std::move(generators),
+                                          true);
+  JsCacheManager::g_bytecode_generate_callback = nullptr;
+  EXPECT_FALSE(latch.WaitWithTimeout(fml::TimeDelta::FromSeconds(5)));
+}
+
+TEST_F(JsCacheManagerTest, RequestCacheGenerationWithTwoCallback) {
+  auto &quickjs_instance = JsCacheManager::GetQuickjsInstance();
+  const std::string source_url = "/generationWithTwoCallback.js";
+  const std::shared_ptr<const Buffer> buffer =
+      std::make_shared<StringBuffer>(js_file);
+
+  const std::string js_content =
+      "var action = 'request_cache_generation_success';";
+
+  fml::AutoResetWaitableEvent latch;
+  JsCacheManager::g_bytecode_generate_callback =
+      std::make_unique<BytecodeGenerateCallback>(
+          [](std::string error_msg,
+             std::unordered_map<std::string,
+                                std::shared_ptr<lynx::piper::Buffer>>
+                 buffers) { EXPECT_TRUE(false); });
+  std::vector<std::unique_ptr<CacheGenerator>> generators;
+  generators.push_back(
+      std::make_unique<TestingCacheGenerator>(source_url, buffer, js_content));
+  quickjs_instance.RequestCacheGeneration(
+      k_template_url, std::move(generators), true,
+      std::make_unique<BytecodeGenerateCallback>(
+          [&latch, &source_url](
+              std::string error_msg,
+              std::unordered_map<std::string,
+                                 std::shared_ptr<lynx::piper::Buffer>>
+                  buffers) {
+            EXPECT_EQ(error_msg, "");
+            EXPECT_EQ(buffers.size(), 1);
+            EXPECT_TRUE(
+                buffers[k_template_url + std::string("##") + source_url]);
+            latch.Signal();
+          }));
+  JsCacheManager::g_bytecode_generate_callback = nullptr;
+  EXPECT_FALSE(latch.WaitWithTimeout(fml::TimeDelta::FromSeconds(5)));
+}
+
+TEST_F(JsCacheManagerTest, TryGetCacheWithGlobalCallback) {
+  auto &quickjs_instance = JsCacheManager::GetQuickjsInstance();
+  const std::string source_url = "/TryGetCacheWithGlobalCallback.js";
+  const std::shared_ptr<const Buffer> buffer =
+      std::make_shared<StringBuffer>(js_file);
+
+  const std::string js_content =
+      "var action = 'request_cache_generation_success';";
+
+  fml::AutoResetWaitableEvent latch;
+  JsCacheManager::g_bytecode_generate_callback = std::make_unique<
+      BytecodeGenerateCallback>(
+      [&latch, &source_url](
+          std::string error_msg,
+          std::unordered_map<std::string, std::shared_ptr<lynx::piper::Buffer>>
+              buffers) {
+        EXPECT_EQ(error_msg, "");
+        EXPECT_EQ(buffers.size(), 1);
+        EXPECT_TRUE(buffers[k_template_url + std::string("##") + source_url]);
+        latch.Signal();
+      });
+  quickjs_instance.TryGetCache(
+      source_url, k_template_url, 0,
+      std::make_unique<TestingCacheGenerator>(source_url, buffer, js_content));
+  JsCacheManager::g_bytecode_generate_callback = nullptr;
+  EXPECT_FALSE(latch.WaitWithTimeout(fml::TimeDelta::FromSeconds(5)));
+}
+
 }  // namespace testing
 }  // namespace cache
 }  // namespace piper

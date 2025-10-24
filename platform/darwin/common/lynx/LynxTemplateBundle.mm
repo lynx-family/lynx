@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxTemplateBundle.h>
+#import "LynxBytecodeResponseBlock+Converter.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/runtime/jscache/js_cache_manager_facade.h"
@@ -103,30 +104,8 @@
 - (void)postJsCacheGenerationTask:(nonnull NSString*)bytecodeSourceUrl
                          callback:(nullable LynxBytecodeResponseBlock)callback {
   if (template_bundle_ && bytecodeSourceUrl && bytecodeSourceUrl.length > 0) {
-    std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback> bytecode_callback = nullptr;
-    if (callback) {
-      bytecode_callback = std::make_unique<lynx::piper::cache::BytecodeGenerateCallback>(
-          [callback](
-              std::string error_msg,
-              std::unordered_map<std::string, std::shared_ptr<lynx::piper::Buffer>> buffers) {
-            NSString* errorInfo =
-                error_msg.empty() ? nil : [NSString stringWithUTF8String:error_msg.c_str()];
-            NSMutableDictionary* dict = nil;
-            if (buffers.size() > 0) {
-              dict = [[NSMutableDictionary alloc] init];
-              for (const auto& iter : buffers) {
-                NSData* byteBuffer =
-                    [NSData dataWithBytesNoCopy:const_cast<void*>(
-                                                    static_cast<const void*>(iter.second->data()))
-                                         length:iter.second->size()
-                                   freeWhenDone:NO];
-                [dict setObject:byteBuffer
-                         forKey:[NSString stringWithUTF8String:iter.first.c_str()]];
-              }
-            }
-            callback(errorInfo, dict);
-          });
-    }
+    std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback> bytecode_callback =
+        CreateBytecodeGenerateCallback(callback);
     lynx::piper::cache::JsCacheManagerFacade::PostCacheGenerationTask(
         *template_bundle_, [bytecodeSourceUrl UTF8String], lynx::piper::JSRuntimeType::quickjs,
         std::move(bytecode_callback));

@@ -12,6 +12,7 @@
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/jscache/android/bytecode_callback.h"
 #include "core/runtime/jscache/js_cache_manager_facade.h"
 #include "core/services/ssr/ssr_type_info.h"
 #include "core/services/timing_handler/timing.h"
@@ -96,6 +97,12 @@ void ClearBytecode(JNIEnv* env, jclass jcaller, jstring bytecodeSourceUrl,
   lynx::piper::cache::JsCacheManagerFacade::ClearBytecode(
       template_url, useV8 ? lynx::piper::JSRuntimeType::v8
                           : lynx::piper::JSRuntimeType::quickjs);
+}
+
+void SetGlobalBytecodeGenerateCallback(JNIEnv* env, jclass jcaller,
+                                       jobject callback) {
+  lynx::piper::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
+      lynx::piper::cache::CreateBytecodeCallback(env, callback));
 }
 
 }  // namespace lynxenv

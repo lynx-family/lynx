@@ -1417,6 +1417,7 @@ public class LynxEnv : NSObject {
   public instancetype LynxEnv::sharedInstance();
   public NSString *_Nonnull LynxEnv::getSSRApiVersion();
   public void LynxEnv::clearBytecode:(nonnull NSString *bytecodeSourceUrl);
+  public void LynxEnv::setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock callback);
   public NSString * LynxEnv()::_keyStringFromType:(LynxEnvKey key);
   public BOOL LynxEnv()::stringValueToBool:defaultValue:(NSString *value, [defaultValue] BOOL defaultValue);
 }
@@ -5399,6 +5400,8 @@ public enum LynxFeature {
 }
 
 
+  public std::unique_ptr< lynx::piper::cache::BytecodeGenerateCallback > CreateBytecodeGenerateCallback(LynxBytecodeResponseBlock _Nullable callback);
+
   public std::shared_ptr< lynx::tasm::LynxTemplateBundle > LynxGetRawTemplateBundle(LynxTemplateBundle *bundle);
   public LynxTemplateBundle * ConstructTemplateBundleFromNative(lynx::tasm::LynxTemplateBundle bundle);
   public void LynxSetRawTemplateBundle(LynxTemplateBundle *bundle, lynx::tasm::LynxTemplateBundle *raw_bundle);
@@ -5847,6 +5850,8 @@ public enum LynxPointerEventsValue {
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT int32_t const kUnknownInstanceId kUnknownInstanceId;
   public FOUNDATION_EXPORT NSString* const kLynxSDKErrorEvent kLynxSDKErrorEvent;
 
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxBytecodeResponseBlock) (NSString *_Nullable errorMsg, NSDictionary< NSString *, NSData * > *_Nullable buffers) LynxBytecodeResponseBlock;
+
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const kDefaultComponentID kDefaultComponentID;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxOpenCardCallback) (NSString *) LynxOpenCardCallback;
@@ -6088,8 +6093,6 @@ public enum ELynxConsumer {
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentCustom ECLynxComponentCustom;
   public FOUNDATION_EXPORT NSInteger const ECLynxExceptionPlatform ECLynxExceptionPlatform;
   public FOUNDATION_EXPORT NSInteger const ECLynxExceptionJNI ECLynxExceptionJNI;
-
-  typedef void(^ LynxBytecodeResponseBlock) (NSString *_Nullable errorMsg, NSDictionary< NSString *, NSData * > *_Nullable buffers)
 
   typedef void(^ LynxTemplateLoadBlock) (id data, NSError *error)
 

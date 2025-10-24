@@ -79,6 +79,11 @@ void JsCacheManagerFacade::ClearBytecode(const std::string& template_url,
   }
 }
 
+void JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
+    std::unique_ptr<BytecodeGenerateCallback> callback) {
+  JsCacheManager::g_bytecode_generate_callback = std::move(callback);
+}
+
 inline void JsCacheManagerFacade::PostCacheGenerationTaskQuickJs(
     const std::string& template_url,
     std::unordered_map<std::string, JsContent> js_contents,

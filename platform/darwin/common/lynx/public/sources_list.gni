@@ -10,6 +10,7 @@ common_lynx_public_headers =
                     "LynxTemplateRenderDelegateExternal.h",
                     "LynxDynamicComponentFetcher.h",
                     "LynxEnv.h",
+                    "LynxBytecodeResponseBlock.h",
                     "LynxEngineProxy.h",
                     "LynxEnvKey.h",
                     "base/LynxLog.h",

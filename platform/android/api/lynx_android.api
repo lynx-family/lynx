@@ -4645,6 +4645,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public static boolean com.lynx.tasm.LynxEnv.runJavaTaskOnConcurrentLoop(Runnable task, int taskType);
   public static void com.lynx.tasm.LynxEnv.onJavaTaskOnConcurrentLoop(long taskId, int taskType);
   public static void com.lynx.tasm.LynxEnv.clearBytecode(String bytecodeSourceUrl, boolean useV8);
+  public static void com.lynx.tasm.LynxEnv.setGlobalBytecodeGenerateCallback(LynxBytecodeCallback callback);
   public synchronized void com.lynx.tasm.LynxEnv.init(Application context, INativeLibraryLoader nativeLibraryLoader, AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle);
   public synchronized void com.lynx.tasm.LynxEnv.init(Application context, INativeLibraryLoader nativeLibraryLoader, AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle, @Nullable IDynamicHandler dynamicHandler);
   public void com.lynx.tasm.LynxEnv.lazyInitIfNeeded();
