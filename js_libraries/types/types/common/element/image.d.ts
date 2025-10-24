@@ -119,8 +119,8 @@ export interface ImageProps extends StandardProps {
   'prefetch-height'?: string;
 
   /**
-   * When set to true and the <image> element has no width or height,
-   * the size of the <image> will be automatically adjusted
+   * When set to true and the `<image>` element has no width or height,
+   * the size of the `<image>` will be automatically adjusted
    * to match the image's original dimensions after the image is successfully loaded,
    * ensuring that the aspect ratio is maintained.
    * @defaultValue false
@@ -133,7 +133,7 @@ export interface ImageProps extends StandardProps {
   'auto-size'?: boolean;
 
   /**
-   * When set to true, the <image> will only clear the previously displayed image resource after a new image has successfully loaded.
+   * When set to true, the `<image>` will only clear the previously displayed image resource after a new image has successfully loaded.
    * The default behavior is to clear the image resource before starting a new load.
    * This can resolve flickering issues when the image src is switched and reloaded. It is not recommended to enable this in scenarios where there is node reuse in views like lists.
    * @defaultValue false
@@ -157,7 +157,7 @@ export interface ImageProps extends StandardProps {
   'autoplay'?: boolean;
 
   /**
-   * Changes the color of all non-transparent pixels to the tint-color specified. The value is a <color>.
+   * Changes the color of all non-transparent pixels to the tint-color specified. The value is a `<color>`.
    * @iOS
    * @Android
    * @Harmony
