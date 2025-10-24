@@ -18,6 +18,11 @@ LYNX_DIR = os.path.normpath(os.path.join(HARMONY_DIR, '..', '..'))
 TEMPLATE_DEVTOOL_DIR = os.path.normpath(
     os.path.join(LYNX_DIR, 'devtool', 'lynx_devtool', 'resources', 'devtool-switch'))
 
+ABI_LIST = [
+    'arm64-v8a',
+    'x86_64',
+]
+
 DEFAULT_MODULES = [
     'lynx',
     'lynx_base',
@@ -46,6 +51,9 @@ def add_node_home_env():
 
 def get_build_type(args):
     return 'debug' if args.debug else 'release'
+
+def get_cpu_type(abi):
+    return 'arm64' if abi == 'arm64-v8a' else 'x64'
 
 def run_build_lynx_core(verbose, version):
     os.environ['PATH'] = os.pathsep.join([os.path.join(LYNX_DIR, '..', 'buildtools', 'node', 'bin'), os.environ['PATH']])
@@ -98,15 +106,15 @@ def build_explorer_bundle(verbose):
     else:
         print(f'Warning: {homepage_build_path} not found')
 
-def get_out_dir(args):
-    dir_name = f'harmony_{get_build_type(args)}_arm64'
+def get_out_dir(args, abi):
+    dir_name = f'harmony_{get_build_type(args)}_{get_cpu_type(abi)}'
     if args.dev:
         dir_name += '_dev'
     out_dir = os.path.join(HARMONY_DIR, '..', '..', 'out', dir_name)
     return out_dir
 
-def run_gn(args, gn_out_dir):
-    gn_args = f'target_os="harmony" jsengine_type="quickjs" is_debug={str(args.debug).lower()} target_cpu="arm64" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true'
+def run_gn(args, gn_out_dir, abi):
+    gn_args = f'target_os="harmony" jsengine_type="quickjs" is_debug={str(args.debug).lower()} target_cpu="{get_cpu_type(abi)}" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true'
     if args.dev:
         gn_args += ' enable_testbench_replay=true enable_testbench_recorder=true enable_trace="perfetto"'
     cmd = f'gn gen {gn_out_dir} --args=\'{gn_args}\' --export-compile-commands'
@@ -120,11 +128,11 @@ def run_build_so(output_path, args):
     check_call(cmd, shell=True, cwd=HARMONY_DIR)
 
 
-def run_cp_so(output_path, args):
+def run_cp_so(output_path, args, abi):
     shared_object_cp_map = {
-        'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', 'arm64-v8a'),
-        'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', 'arm64-v8a'),
-        'liblynxdevtool.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'libs', 'arm64-v8a'),
+        'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
+        'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', abi),
+        'liblynxdevtool.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'libs', abi),
     }
     for so, dst in shared_object_cp_map.items():
         src = os.path.join(output_path, so)
@@ -211,10 +219,11 @@ def main(argv):
     if args.build_bundle:
         build_explorer_bundle(args.verbose)
 
-    gn_out_dir = get_out_dir(args)
-    run_gn(args, gn_out_dir)
-    run_build_so(gn_out_dir, args)
-    run_cp_so(gn_out_dir, args)
+    for abi in ABI_LIST:
+        gn_out_dir = get_out_dir(args, abi)
+        run_gn(args, gn_out_dir, abi)
+        run_build_so(gn_out_dir, args)
+        run_cp_so(gn_out_dir, args, abi)
 
     if args.build_har and len(modules) > 0:
         commit_hash = os.popen('git rev-parse HEAD').read().strip()
