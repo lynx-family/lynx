@@ -71,6 +71,8 @@ const std::string GetCacheUrlFromIdentifier(
 }
 
 }  // namespace
+std::unique_ptr<BytecodeGenerateCallback>
+    JsCacheManager::g_bytecode_generate_callback = nullptr;
 
 JsCacheManager &JsCacheManager::GetQuickjsInstance() noexcept {
   static base::NoDestructor<JsCacheManager> instance(JSRuntimeType::quickjs);
@@ -246,9 +248,11 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
   auto identifier = BuildIdentifier(source_url, template_url);
   // try get bytecode from external
   if (bytecode_getter) {
-    auto maybe_bytecode =
-        (*bytecode_getter)(GetCacheUrlFromIdentifier(identifier));
+    auto cache_url = GetCacheUrlFromIdentifier(identifier);
+    auto maybe_bytecode = (*bytecode_getter)(cache_url);
     if (maybe_bytecode) {
+      LOGI("cache loaded from external,cache_url:" << cache_url << " size: "
+                                                   << maybe_bytecode->size());
       JsCacheTracker::OnGetBytecode(
           runtime_id, engine_type_, source_url, true, true, true,
           JsCacheType::EXTERNAL, JsCacheErrorCode::NO_ERROR,
@@ -411,15 +415,22 @@ void JsCacheManager::RunTask(TaskInfo &task) {
 
   auto &[type, template_key, generators, callback] = task;
   std::unordered_map<std::string, std::shared_ptr<Buffer>> generator_results;
+  BytecodeGenerateCallback *callback_ptr =
+      callback ? callback.get() : g_bytecode_generate_callback.get();
 
   for (const auto &generator : generators) {
     auto identifier = BuildIdentifier(generator->SourceUrl(), template_key);
     std::string file_md5 = EnsureMd5(generator->SrcBuffer(), generator->Md5());
+    std::string cache_url;
+    if (callback_ptr) {
+      cache_url = GetCacheUrlFromIdentifier(identifier);
+      LOGI("bytecode generation is controlled by external interface:"
+           << cache_url);
+    }
     if (type == TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED) {
       if (auto cache = LoadCacheFromStorage(identifier, file_md5)) {
-        if (callback) {
-          generator_results[GetCacheUrlFromIdentifier(identifier)] =
-              std::move(cache);
+        if (!cache_url.empty()) {
+          generator_results[cache_url] = std::move(cache);
         }
         continue;
       }
@@ -432,22 +443,20 @@ void JsCacheManager::RunTask(TaskInfo &task) {
 
     std::shared_ptr<Buffer> cache_buffer(generator->GenerateCache());
     if (!cache_buffer) {
-      LOGE("GenerateCacheBuffer failed!");
+      std::string error_msg = "generate failed:" + template_key +
+                              " source_url:" + generator->SourceUrl();
+      LOGE(error_msg);
       JsCacheTracker::OnGenerateBytecodeFailed(
           engine_type_, identifier.url, identifier.template_url,
           GetBytecodeGenerateEngineVersion(),
           JsCacheErrorCode::RUNTIME_GENERATE_FAILED);
-      if (callback) {
-        (*callback)("generate failed.", {});
-        return;
+      if (callback_ptr) {
+        (*callback_ptr)(std::move(error_msg), {});
       }
       continue;
-    } else {
-      if (callback) {
-        generator_results[GetCacheUrlFromIdentifier(identifier)] =
-            std::move(cache_buffer);
-        continue;
-      }
+    } else if (!cache_url.empty()) {
+      generator_results[cache_url] = std::move(cache_buffer);
+      continue;
     }
     auto generate_cost = base::CurrentTimeMilliseconds() - start;
 
@@ -467,11 +476,11 @@ void JsCacheManager::RunTask(TaskInfo &task) {
          << " bytes, time spent: " << (base::CurrentTimeMilliseconds() - start)
          << " ms");
   }
-  if (callback) {
+  if (callback_ptr) {
     if (generator_results.size() > 0) {
-      (*callback)("", std::move(generator_results));
+      (*callback_ptr)("", std::move(generator_results));
     } else {
-      (*callback)("generate failed.", {});
+      (*callback_ptr)("generate failed." + template_key, {});
     }
   }
 }

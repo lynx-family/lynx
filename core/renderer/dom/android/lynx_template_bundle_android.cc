@@ -134,44 +134,11 @@ void PostJsCacheGenerationTask(JNIEnv* env, jclass jcaller, jlong bundle,
                                                              bytecodeSourceUrl);
   lynx::tasm::LynxTemplateBundle* template_bundle =
       reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(bundle);
-  std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback>
-      bytecode_callback = nullptr;
-  if (nullptr != callback) {
-    lynx::base::android::ScopedGlobalJavaRef<jobject> jni_object(env, callback);
-    bytecode_callback = std::make_unique<
-        lynx::piper::cache::BytecodeGenerateCallback>(
-        [jni_object = std::move(jni_object)](
-            std::string error_msg,
-            std::unordered_map<std::string,
-                               std::shared_ptr<lynx::piper::Buffer>>
-                buffers) {
-          JNIEnv* env = lynx::base::android::AttachCurrentThread();
-          lynx::base::android::ScopedLocalJavaRef<jstring> jni_error_msg;
-          if (!error_msg.empty()) {
-            jni_error_msg =
-                lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
-                    env, error_msg);
-          }
-          auto java_map = lynx::base::android::JavaOnlyMap();
-          for (const auto& iter : buffers) {
-            if (nullptr != iter.second) {
-              jobject byte_buffer = env->NewDirectByteBuffer(
-                  const_cast<void*>(
-                      static_cast<const void*>(iter.second->data())),
-                  iter.second->size());
-              java_map.PushByteBuffer(iter.first, byte_buffer);
-            }
-          }
-          lynx::piper::cache::OnBytecodeResponse(
-              env, std::move(jni_object), std::move(jni_error_msg), java_map);
-        });
-  }
-  // base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;
   lynx::piper::cache::JsCacheManagerFacade::PostCacheGenerationTask(
       *template_bundle, template_url,
       useV8 ? lynx::piper::JSRuntimeType::v8
             : lynx::piper::JSRuntimeType::quickjs,
-      std::move(bytecode_callback));
+      lynx::piper::cache::CreateBytecodeCallback(env, callback));
 }
 
 jboolean ConstructContext(JNIEnv* env, jclass jcaller, jlong ptr, jint count) {

@@ -1,0 +1,18 @@
+// Copyright 2022 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef DARWIN_COMMON_LYNX_LYNX_LYNX_BYTECODE_RESPONSE_BLOCK_CONVERTER_H_
+#define DARWIN_COMMON_LYNX_LYNX_LYNX_BYTECODE_RESPONSE_BLOCK_CONVERTER_H_
+
+#import <Lynx/LynxBytecodeResponseBlock.h>
+
+#include <memory>
+
+#include "core/runtime/jscache/js_cache_manager.h"
+
+std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback>
+    CreateBytecodeGenerateCallback(
+        LynxBytecodeResponseBlock _Nullable callback);
+
+#endif  // DARWIN_COMMON_LYNX_LYNX_LYNX_BYTECODE_RESPONSE_BLOCK_CONVERTER_H_

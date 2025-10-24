@@ -29,6 +29,7 @@
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
 #import <LynxBase/LynxBaseEnv.h>
+#import "LynxBytecodeResponseBlock+Converter.h"
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/trace/native/trace_event.h"
@@ -652,5 +653,10 @@
 + (void)clearBytecode:(nonnull NSString *)bytecodeSourceUrl {
   lynx::piper::cache::JsCacheManagerFacade::ClearBytecode([bytecodeSourceUrl UTF8String],
                                                           lynx::piper::JSRuntimeType::quickjs);
+}
+
++ (void)setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock)callback {
+  lynx::piper::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
+      CreateBytecodeGenerateCallback(callback));
 }
 @end

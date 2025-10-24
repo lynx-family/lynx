@@ -24,6 +24,7 @@ import com.lynx.base.IBaseNativeLibraryLoader;
 import com.lynx.base.LynxBaseEnv;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.LynxDevToolUtils;
+import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.tasm.base.CalledByNative;
@@ -1497,6 +1498,17 @@ public class LynxEnv {
     }
   }
 
+  /**
+   * set global bytecode generate callback
+   * @param callback will call when generate bytecode success or failed.This will be held globally;
+   *     please pay attention to memory management.
+   */
+  public static void setGlobalBytecodeGenerateCallback(LynxBytecodeCallback callback) {
+    if (inst().isNativeLibraryLoaded()) {
+      nativeSetGlobalBytecodeGenerateCallback(callback);
+    }
+  }
+
   public boolean tryToLoadV8Bridge(boolean unused) {
     synchronized (this) {
       if (mHasV8BridgeLoadSuccess) {
@@ -1538,4 +1550,5 @@ public class LynxEnv {
 
   protected static native void nativePrepareLynxGlobalPool();
   private static native void nativeClearBytecode(String bytecodeSourceUrl, boolean useV8);
+  private static native void nativeSetGlobalBytecodeGenerateCallback(LynxBytecodeCallback callback);
 }

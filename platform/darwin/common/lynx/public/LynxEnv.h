@@ -5,6 +5,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 
+#import <Lynx/LynxBytecodeResponseBlock.h>
 #import <Lynx/LynxEnvKey.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -163,6 +164,14 @@ NS_ASSUME_NONNULL_BEGIN
  * When bytecodeSourceUrl is empty, that means clear all bytecode.
  */
 + (void)clearBytecode:(nonnull NSString *)bytecodeSourceUrl;
+
+/**
+ * set global bytecode generate callback
+ * @param callback will call when generate bytecode success or failed.This will be held globally;
+ *     please pay attention to memory management.
+ */
++ (void)setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock)callback;
+
 @end
 
 NS_ASSUME_NONNULL_END

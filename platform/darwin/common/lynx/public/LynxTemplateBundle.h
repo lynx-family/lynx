@@ -5,18 +5,8 @@
 #ifndef DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 #define DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 
+#import <Lynx/LynxBytecodeResponseBlock.h>
 #import <Lynx/LynxTemplateBundleOption.h>
-
-/**
- * block that represents a bytecode generate result callback.
- * @param errorMsg when success, errorMsg will be null, otherwise is error.
- * @param buffers when success, this will be bytecode result. Each key is sourceUrl, value is
- * bytecode result.Note: Please note that the current NSData is constructed using
- * dataWithBytesNoCopy. If you need to use it, please make a copy yourself and do not store this
- * object directly.
- */
-typedef void (^LynxBytecodeResponseBlock)(NSString* _Nullable errorMsg,
-                                          NSDictionary<NSString*, NSData*>* _Nullable buffers);
 
 /**
  * @apidoc

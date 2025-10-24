@@ -46,6 +46,8 @@ class JsCacheManager {
   // Get js bytecode manager for v8.
   static JsCacheManager &GetV8Instance() noexcept;
 
+  static std::unique_ptr<BytecodeGenerateCallback> g_bytecode_generate_callback;
+
   /**
    * Struct of info needed to make a new js cache file.
    */

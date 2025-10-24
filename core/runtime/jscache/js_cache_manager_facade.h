@@ -44,6 +44,9 @@ class JsCacheManagerFacade {
   static void ClearBytecode(const std::string& template_url,
                             JSRuntimeType engine_type);
 
+  static void SetGlobalBytecodeGenerateCallback(
+      std::unique_ptr<BytecodeGenerateCallback> callback);
+
  private:
   static void PostCacheGenerationTask(
       const std::string& template_url,
