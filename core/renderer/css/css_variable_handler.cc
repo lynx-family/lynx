@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/no_destructor.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_property.h"
@@ -155,6 +156,11 @@ base::String CSSVariableHandler::GetCSSVariableByRule(
   return css_variable_value;
 }
 
+static CustomPropertiesMap* EmptyCustomPropertyMap() {
+  static base::NoDestructor<CustomPropertiesMap> map;
+  return map.get();
+}
+
 void CSSVariableHandler::ResolveCSSVariables(CSSPropertyID id,
                                              const CSSValue& value,
                                              StyleMap& style_map,
@@ -173,8 +179,7 @@ void CSSVariableHandler::ResolveCSSVariables(CSSPropertyID id,
 
   const CustomPropertiesMap* custom_properties = holder->GetCustomProperties();
   if (!custom_properties) {
-    LOGE("ResolveCSSVariables: custom_properties is null");
-    return;
+    custom_properties = EmptyCustomPropertyMap();
   }
 
   const auto handle_custom_property_func = [holder](const base::String& name,
