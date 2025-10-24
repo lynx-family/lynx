@@ -56,7 +56,6 @@ public final class EmbeddedMode {
   /**
    * Generate render content based native `Fragment` layer.
    */
-
   public static final int FRAGMENT_LAYER_RENDER = 1 << 3;
   /**
    * Combination of all optimization options

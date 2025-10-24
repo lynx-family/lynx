@@ -527,6 +527,10 @@ class Element : public lepus::RefCounted,
     return enable_layout_in_element_mode_;
   }
 
+  bool EnableFragmentLayerRender() const {
+    return enable_fragment_layer_render_;
+  }
+
   virtual void WillResetCSSValue(CSSPropertyID& id) {}
 
   virtual bool ResetCSSValue(CSSPropertyID id);
@@ -834,6 +838,7 @@ class Element : public lepus::RefCounted,
   bool enable_component_layout_only_{true};
 
   bool enable_layout_in_element_mode_{false};
+  bool enable_fragment_layer_render_{false};
 
   starlight::DirectionType direction_ =
       starlight::DefaultLayoutStyle::SL_DEFAULT_DIRECTION;

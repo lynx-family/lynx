@@ -1120,6 +1120,10 @@ class ElementManager : public ElementContextDelegate {
     return enable_layout_in_element_mode_;
   }
 
+  bool IsFragmentLayerRenderModeOn() const {
+    return enable_fragment_layer_render_;
+  }
+
   LayoutCtxPlatformImpl *layout_context() {
     return platform_layout_context_.get();
   }
@@ -1240,6 +1244,8 @@ class ElementManager : public ElementContextDelegate {
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_layout_in_element_mode_{false};
+  bool enable_fragment_layer_render_{false};
+
   bool has_viewport_ready_{false};
   bool is_memory_collecting_{false};
 

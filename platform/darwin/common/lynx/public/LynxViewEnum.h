@@ -63,6 +63,10 @@ typedef NS_OPTIONS(NSInteger, LynxEmbeddedMode) {
    */
   LynxEmbeddedModeLayoutInElement = 1 << 2,
   /**
+   * Generate render content based native `Fragment` layer.
+   */
+  LynxEmbeddedModeFragmentLayerRender = 1 << 3,
+  /**
    * Combination of all optimization options
    *
    * Note: When adding new optimization options, update this value

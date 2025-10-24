@@ -1589,7 +1589,10 @@ void ElementManager::ClearExtremeParsedStyles() {
 void ElementManager::SetPageOptions(const PageOptions &options) {
   page_options_ = options;
 
+  enable_fragment_layer_render_ = ((page_options_.GetEmbeddedMode() &
+                                    EmbeddedMode::FRAGMENT_LAYER_RENDER) > 0);
   enable_layout_in_element_mode_ =
+      enable_fragment_layer_render_ ||
       ((page_options_.GetEmbeddedMode() & EmbeddedMode::LAYOUT_IN_ELEMENT) > 0);
 }
 

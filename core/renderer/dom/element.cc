@@ -100,6 +100,7 @@ Element::Element(const base::String& tag, ElementManager* manager,
 
   record_parent_font_size_ = manager->GetLynxEnvConfig().PageDefaultFontSize();
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
+  enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 }
 
 // The copy constructor of the element is now only used for copying fiber
@@ -186,6 +187,7 @@ void Element::AttachToElementManager(
     enable_component_layout_only_ = manager->GetEnableComponentLayoutOnly();
   }
   enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
+  enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 }
 
 void Element::PushStyleToBundle() {

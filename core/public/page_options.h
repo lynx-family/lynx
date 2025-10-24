@@ -50,6 +50,11 @@ enum EmbeddedMode {
   LAYOUT_IN_ELEMENT = 1 << 2,
 
   /**
+   * Generate render content based native `Fragment` layer.
+   */
+  FRAGMENT_LAYER_RENDER = 1 << 3,
+
+  /**
    * Combination of all optimization options
    *
    * Note: When adding new optimization options, update this value
