@@ -276,6 +276,10 @@
   std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory =
       std::make_shared<lynx::piper::ModuleFactoryDarwin>();
   // setup user modules
+  if (_lynxViewGroup && _lynxViewGroup.config) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
+    module_factory->addWrappers(_lynxViewGroup.config.moduleFactoryPtr->moduleWrappers());
+  }
   if (_config) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
     module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
@@ -310,6 +314,10 @@
   }
   if (!module_factory) {
     module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+    if (_lynxViewGroup && _lynxViewGroup.config) {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
+      module_factory->addWrappers(_lynxViewGroup.config.moduleFactoryPtr->moduleWrappers());
+    }
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
       module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
