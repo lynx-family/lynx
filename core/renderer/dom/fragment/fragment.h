@@ -4,6 +4,7 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 #define CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 
+#include "core/renderer/dom/element_container.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 
@@ -17,36 +18,35 @@ using starlight::LayoutResultForRendering;
 
 // Combines layout results and rendering styles to generate display content
 // via DisplayList. Owned by an element; lifetime must not exceed that element.
-class Fragment : public fml::RefCountedThreadSafeStorage {
+class Fragment : public ElementContainer {
  public:
-  Fragment(const starlight::ComputedCSSStyle& style, int sign,
-           PaintingContext& painting_context, base::String tag);
+  Fragment(Element* element, bool is_flatten,
+           const fml::RefPtr<PropBundle>& painting_data);
+
+  ~Fragment() override = default;
 
   void CreateLayerIfNeeded();
 
   void UpdateLayout(LayoutResultForRendering layout_result_for_rendering);
 
  private:
-  virtual ~Fragment() = default;
-
   const base::String& Tag() const { return tag_; };
 
   base::MoveOnlyClosure<bool> should_create_layer_;
 
   // TODO(zhongyr): children management methods.
-  base::InlineVector<fml::RefPtr<Fragment>, kChildrenInlineVectorSize>
-      children_;
+  base::InlineVector<Fragment*, kChildrenInlineVectorSize> children_;
   // Sign is used to identify the fragment in the tree. Same to the sign in
   // element.
   const int sign_;
 
   LayoutResultForRendering layout_result_for_rendering_;
-  PaintingContext& painting_context_;
+  PaintingContext* painting_context_;
 
   // XXX(zhongyr): Do we need a refCounted style? Fragment's lifetime should not
   // exceed the element who owns it.
   // TODO(songshourui.null): remove maybe_unused later.
-  [[maybe_unused]] const starlight::ComputedCSSStyle& style_;
+  [[maybe_unused]] const starlight::ComputedCSSStyle* style_;
   const base::String tag_;
 };
 

@@ -7,22 +7,24 @@
 #include <utility>
 
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 
 namespace lynx {
 namespace tasm {
 
-Fragment::Fragment(const starlight::ComputedCSSStyle& style, int sign,
-                   PaintingContext& painting_context, base::String tag)
-    : sign_(sign),
-      painting_context_(painting_context),
-      style_(style),
-      tag_(std::move(tag)) {}
+Fragment::Fragment(Element* element, bool is_flatten,
+                   const fml::RefPtr<PropBundle>& painting_data)
+    : ElementContainer(element, is_flatten, painting_data),
+      sign_(element->impl_id()),
+      painting_context_(element->painting_context()),
+      style_(element->computed_css_style()),
+      tag_(element->GetTag()) {}
 
 void Fragment::CreateLayerIfNeeded() {
   // TODO(zhongyr): Create HostPlatformRenderer here.
-  painting_context_.CreatePaintingNode(sign_, Tag().str(), nullptr, false,
-                                       false, 0);
+  painting_context_->CreatePaintingNode(sign_, Tag().str(), nullptr, false,
+                                        false, 0);
 }
 
 void Fragment::UpdateLayout(

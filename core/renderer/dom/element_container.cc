@@ -20,10 +20,28 @@ namespace tasm {
 
 static int CompareElementOrder(Element* left, Element* right);
 
-ElementContainer::ElementContainer(Element* element) : element_(element) {
+ElementContainer::ElementContainer(Element* element, bool is_flatten,
+                                   const fml::RefPtr<PropBundle>& painting_data)
+    : element_(element) {
   was_stacking_context_ = IsStackingContextNode();
   was_position_fixed_ = element->IsNewFixed();
   old_index_ = ZIndex();
+
+  if (element->EnableFragmentLayerRender()) {
+    return;
+  }
+
+  if (element->IsLayoutOnly()) {
+    return;
+  }
+
+  // TODO(songshourui.null): Abstract ElementContainer into a base class. Rename
+  // the current ElementContainer to FragmentForPlatformRenderer, inheriting
+  // from ElementContainer. Rename the current Fragment to
+  // FragmentForNativeRenderer, also inheriting from ElementContainer.
+  painting_context()->CreatePaintingNode(
+      element->impl_id(), element->GetPlatformNodeTag().str(), painting_data,
+      is_flatten, element->NeedCreateNodeAsync(), element->NodeIndex());
 }
 
 ElementContainer::~ElementContainer() {

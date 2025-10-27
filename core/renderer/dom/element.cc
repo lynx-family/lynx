@@ -23,6 +23,7 @@
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
@@ -679,16 +680,16 @@ void Element::ResetEventHandlers() {
 }
 
 void Element::CreateElementContainer(bool platform_is_flatten) {
-  element_container_ = std::make_unique<ElementContainer>(this);
+  element_container_ =
+      EnableFragmentLayerRender()
+          ? std::make_unique<Fragment>(this, platform_is_flatten, prop_bundle_)
+          : std::make_unique<ElementContainer>(this, platform_is_flatten,
+                                               prop_bundle_);
+
   element_manager_->IncreaseElementCount();
   if (IsLayoutOnly()) {
     element_manager_->IncreaseLayoutOnlyElementCount();
-    return;
   }
-
-  painting_context()->CreatePaintingNode(id_, GetPlatformNodeTag().str(),
-                                         prop_bundle_, platform_is_flatten,
-                                         create_node_async_, node_index_);
 }
 
 void Element::UpdateElement() {

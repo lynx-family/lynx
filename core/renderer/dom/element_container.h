@@ -27,8 +27,9 @@ struct FixedContainer {
 
 class ElementContainer {
  public:
-  explicit ElementContainer(Element* element);
-  ~ElementContainer();
+  explicit ElementContainer(Element* element, bool is_flatten,
+                            const fml::RefPtr<PropBundle>& painting_data);
+  virtual ~ElementContainer();
 
   Element* element() const { return element_; }
   ElementContainer* parent() const { return parent_; }
