@@ -510,6 +510,9 @@ public class LynxEnv {
         // It is ok that quick does not exist when it's already statically linked
         mLibraryLoader.loadLibrary("quick");
       }
+      if (!LynxBaseEnv.inst().isNativeLibraryLoaded()) {
+        initBase(mLibraryLoader);
+      }
       mLibraryLoader.loadLibrary("lynx");
       if (!LynxTraceEnv.inst().isNativeLibraryLoaded()) {
         mLibraryLoader.loadLibrary("lynxtrace");
