@@ -927,7 +927,21 @@
     }
   }
 
-  return !self.disableEndEditing;
+  if (self.customizedEndEditingStrategy) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+    // TODO: Migrate to foucsd-ui logic like we do on Android
+    BOOL holdKeyboard =
+        [self.focusedInputTarget respondsToSelector:@selector(enableHoldKeyboard)] &&
+        [self.focusedInputTarget performSelector:@selector(enableHoldKeyboard)];
+#pragma clang diagnostic pop
+
+    if ([self.focusedInputTarget.view isFirstResponder] && holdKeyboard) {
+      return NO;
+    }
+  }
+
+  return YES;
 }
 
 - (void)handleFocus:(id<LynxEventTarget>)target

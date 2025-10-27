@@ -1528,7 +1528,8 @@ public class LynxEventHandler : NSObject {
   public LynxCustomGestureRecognizer* LynxEventHandler::customPlatformGesture customPlatformGesture;
   public LynxGestureArenaManager* _Nullable LynxEventHandler::gestureArenaManager gestureArenaManager;
   public BOOL LynxEventHandler::enableSimultaneousTap enableSimultaneousTap;
-  public BOOL LynxEventHandler::disableEndEditing disableEndEditing;
+  public BOOL LynxEventHandler::customizedEndEditingStrategy customizedEndEditingStrategy;
+  public id<LynxEventTarget> LynxEventHandler::focusedInputTarget focusedInputTarget;
   public instancetype LynxEventHandler::initWithRootView:(UIView *rootView);
   public instancetype LynxEventHandler::initWithRootView:withRootUI:(UIView *rootView,[withRootUI] nullable LynxUI *rootUI);
   public void LynxEventHandler::attachContainerView:(UIView *rootView);

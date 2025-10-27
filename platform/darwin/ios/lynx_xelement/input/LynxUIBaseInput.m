@@ -33,6 +33,7 @@
 @property (nonatomic, assign) CGFloat avoidKeyboardSpacingInLynxView;
 @property (nonatomic, assign) CGFloat keyboardHeight;
 @property (nonatomic, assign) CGFloat avoidKeyboardDist;
+@property (nonatomic, assign) BOOL enableHoldKeyboard;
 @end
 
 @implementation LynxUIBaseInput
@@ -369,7 +370,10 @@ LYNX_PROP_SETTER("avoid-keyboard-spacing", setAvoidKeyboardSpacing, id) {
 }
 
 LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
-  self.context.eventHandler.disableEndEditing = value;
+  if (value) {
+    self.context.eventHandler.customizedEndEditingStrategy = YES;
+  }
+  self.enableHoldKeyboard = value;
 }
 
 - (void)propsDidUpdate {
@@ -627,12 +631,18 @@ LYNX_UI_METHOD(setSelectionRange) {
   [self emitEvent:@"focus" detail:@{
     @"value" : [self getText]
   }];
+  if (self.context.eventHandler.customizedEndEditingStrategy) {
+    self.context.eventHandler.focusedInputTarget = self;
+  }
 }
 
 - (void)inputViewDidEndEditing:(id<UITextInput>)input {
   [self emitEvent:@"blur" detail:@{
     @"value" : [self getText]
   }];
+  if (self.context.eventHandler.customizedEndEditingStrategy && self.context.eventHandler.focusedInputTarget == self) {
+    self.context.eventHandler.focusedInputTarget = nil;
+  }
 }
 
 - (BOOL)inputViewShouldBeginEditing:(id<UITextInput>)input {
