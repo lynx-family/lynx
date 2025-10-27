@@ -38,8 +38,12 @@ import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class TextMeasurer {
   private final static int kPropInlineStart = 0; // value:inline str begin pos
@@ -66,7 +70,7 @@ public class TextMeasurer {
   private final static int kTextPropTextMaxLine = 99;
   private final static int kTextPropBackGroundColor = 100;
   private final static int kPropImageSrc = 101; // image
-  private final static int kPropInlineView = 102;
+  private final static int kPropInlineViewSign = 102;
   private final static int kPropRectSize = 103;
   private final static int kPropMargin = 104;
 
@@ -101,6 +105,8 @@ public class TextMeasurer {
      */
     boolean isParagraph = true;
     int start = 0, end = 0;
+    int inlineViewSign = -1;
+    HashMap<Integer, NativeLayoutNodeSpan> inlineViewMap = new HashMap<>();
 
     int[] margins = null;
 
@@ -121,7 +127,10 @@ public class TextMeasurer {
           break;
         case kPropInlineEnd:
           end = iterator.next().getInt();
-          if (inlineImageProps != null) {
+          if (inlineViewSign != -1) {
+            buildNativeNodeSpan(start, end, ops, shadowStyle, baselineShiftCalculatorSpans,
+                inlineViewMap, inlineViewSign);
+          } else if (inlineImageProps != null) {
             // inline image
             buildImageStyledSpan(start, end, ops, inlineImageProps, textAttributes, shadowStyle,
                 baselineShiftCalculatorSpans);
@@ -135,6 +144,7 @@ public class TextMeasurer {
           start = 0;
           isParagraph = true;
           inlineImageProps = null;
+          inlineViewSign = -1;
           break;
         case kPropTextString:
           text = iterator.next().getString();
@@ -260,8 +270,6 @@ public class TextMeasurer {
           if (inlineImageProps != null) {
             inlineImageProps.mWidth = width;
             inlineImageProps.mHeight = height;
-          } else {
-            // inline view
           }
           break;
         case kPropMargin:
@@ -272,8 +280,6 @@ public class TextMeasurer {
           margins[3] = iterator.next().getInt();
           if (inlineImageProps != null) {
             inlineImageProps.mMargins = margins;
-          } else {
-            // inline view
           }
           break;
 
@@ -328,6 +334,9 @@ public class TextMeasurer {
           background.setBorderRadius(0, array);
           inlineImageProps.mComplexBackground = background;
           break;
+        case kPropInlineViewSign:
+          inlineViewSign = iterator.next().getInt();
+          break;
 
         default:
           break;
@@ -366,10 +375,27 @@ public class TextMeasurer {
 
     textAttributes.setHasImageSpan(mHasImageSpan);
     AttributedTextBundle attributedTextBundle = new AttributedTextBundle(span, textAttributes);
+    if (!inlineViewMap.isEmpty()) {
+      attributedTextBundle.setInlineViewMap(inlineViewMap);
+    }
     mAttributedTextBundles.put(sign, attributedTextBundle);
   }
 
-  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
+  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+      float[] inlineViewLayoutResult) {
+    AttributedTextBundle bundle = (AttributedTextBundle) mAttributedTextBundles.get(sign);
+    if (bundle != null) {
+      for (int i = 0; i < inlineViewLayoutResult.length / 4; i++) {
+        int inlineViewSign = (int) inlineViewLayoutResult[i * 4];
+        NativeLayoutNodeSpan span = bundle.getNativeLayoutNodeSpan(inlineViewSign);
+        if (span != null) {
+          span.updateLayoutNodeSize((int) Math.ceil(inlineViewLayoutResult[i * 4 + 1]),
+              (int) Math.ceil(inlineViewLayoutResult[i * 4 + 2]),
+              (int) Math.ceil(inlineViewLayoutResult[i * 4 + 3]));
+        }
+      }
+    }
+
     float[] result = measureTextInternal(sign, width, MeasureMode.fromInt(widthMode), height,
         MeasureMode.fromInt(heightMode), new TextMeasurer.TypefaceListener(sign, this));
 
@@ -489,6 +515,23 @@ public class TextMeasurer {
     }
   }
 
+  private void buildNativeNodeSpan(int start, int end,
+      List<BaseTextShadowNode.SetSpanOperation> ops, ShadowStyle shadowStyle,
+      ArrayList<AbsBaselineShiftCalculatorSpan> baselineShiftCalculatorSpans,
+      HashMap<Integer, NativeLayoutNodeSpan> inlineViewMap, int inlineViewSign) {
+    NativeLayoutNodeSpan nativeLayoutNodeSpan = new NativeLayoutNodeSpan();
+    nativeLayoutNodeSpan.setEnableTextRefactor(true);
+    if (shadowStyle != null) {
+      nativeLayoutNodeSpan.setVerticalAlign(
+          shadowStyle.verticalAlign, shadowStyle.verticalAlignLength);
+    }
+
+    baselineShiftCalculatorSpans.add(nativeLayoutNodeSpan);
+    nativeLayoutNodeSpan.setSpanIndex(start);
+    ops.add(new BaseTextShadowNode.SetSpanOperation(start, end, nativeLayoutNodeSpan));
+    inlineViewMap.put(inlineViewSign, nativeLayoutNodeSpan);
+  }
+
   private void buildImageStyledSpan(int start, int end,
       List<BaseTextShadowNode.SetSpanOperation> ops, InlineImageProps imageProps,
       TextAttributes attributes, ShadowStyle shadowStyle,
@@ -567,6 +610,54 @@ public class TextMeasurer {
   public void removeLayoutObjects() {
     mExtraDatas.clear();
     mAttributedTextBundles.clear();
+  }
+
+  public float[] align(int sign) {
+    AttributedTextBundle attributedBundle = (AttributedTextBundle) mAttributedTextBundles.get(sign);
+    TextUpdateBundle extraData = (TextUpdateBundle) mExtraDatas.get(sign);
+    if (attributedBundle == null || extraData == null) {
+      return new float[0];
+    }
+
+    ArrayList<Float> alignResult = new ArrayList<>();
+    Set<Map.Entry<Integer, NativeLayoutNodeSpan>> nativeLayoutNodeSpans =
+        attributedBundle.getNativeLayoutNodeSpans();
+    if (nativeLayoutNodeSpans == null) {
+      return new float[0];
+    }
+    Layout layout = extraData.getTextLayout();
+    HashSet viewTruncatedSet = new HashSet();
+    for (Map.Entry<Integer, NativeLayoutNodeSpan> entry : nativeLayoutNodeSpans) {
+      NativeLayoutNodeSpan span = entry.getValue();
+      float leftOffset = 0.f, topOffset = 0.f;
+      if (span.getSpanIndex() < layout.getText().length()) {
+        int line = layout.getLineForOffset(span.getSpanIndex());
+        leftOffset =
+            layout.getPrimaryHorizontal(span.getSpanIndex()) + extraData.getTextTranslateOffset().x;
+        if (layout.isRtlCharAt(span.getSpanIndex())) {
+          leftOffset -= span.getWidth();
+        }
+        topOffset = span.getYOffset(layout.getLineTop(line), layout.getLineBottom(line),
+                        layout.getLineAscent(line), layout.getLineDescent(line))
+            + extraData.getTextTranslateOffset().y;
+      }
+      if (span.getSpanIndex() >= layout.getText().length()
+          || layout.getText().charAt(span.getSpanIndex())
+              != TextAttributes.INLINE_IMAGE_PLACEHOLDER.charAt(0)) {
+        viewTruncatedSet.add(entry.getKey());
+      }
+
+      alignResult.add(Float.valueOf(entry.getKey()));
+      alignResult.add(topOffset);
+      alignResult.add(leftOffset);
+    }
+    extraData.setViewTruncatedSet(viewTruncatedSet);
+    float[] res = new float[alignResult.size()];
+    for (int i = 0; i < alignResult.size(); i++) {
+      res[i] = alignResult.get(i);
+    }
+
+    return res;
   }
 
   public class TypefaceListener implements TypefaceCache.TypefaceListener {

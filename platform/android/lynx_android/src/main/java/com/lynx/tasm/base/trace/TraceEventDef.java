@@ -47,6 +47,7 @@ public class TraceEventDef {
   public static final String TEXT_SHADOW_NODE_MEASURE = "TextShadowNode.measure";
   public static final String TEXT_LAYOUT_MEASURE_TEXT = "TextLayout.measureText";
   public static final String TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE = "TextLayout.dispatchLayoutBefore";
+  public static final String TEXT_LAYOUT_ALIGN = "TextLayout.align";
 
   /**
    * @trace_description: Redirect the image URL.

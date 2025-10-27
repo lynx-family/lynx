@@ -196,9 +196,18 @@ void TextLayoutMock::AppendViewProps(ViewElement* view_element, size_t start,
   props->AddProp(kPropInlineStart);
   props->AddProp(static_cast<int>(start));
 
-  props->AddProp(kPropInlineView);
+  props->AddProp(kPropInlineViewSign);
+  props->AddProp(view_element->impl_id());
 
-  // TODO(linxs): width, height...
+  const auto& text_attributes =
+      view_element->computed_css_style()->GetTextAttributes();
+  if (text_attributes.has_value() &&
+      text_attributes->vertical_align !=
+          starlight::DefaultComputedStyle::DEFAULT_VERTICAL_ALIGN) {
+    props->AddProp(kTextPropVerticalAlign);
+    props->AddProp(static_cast<int>(text_attributes->vertical_align));
+    props->AddProp(text_attributes->vertical_align_length);
+  }
   // range end
   props->AddProp(kPropInlineEnd);
   props->AddProp(static_cast<int>(end));

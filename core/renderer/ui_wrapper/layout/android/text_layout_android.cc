@@ -4,6 +4,9 @@
 
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 
+#include <utility>
+#include <vector>
+
 #include "core/base/android/android_jni.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -35,13 +38,36 @@ LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
 
   base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
   if (local_ref.IsNull()) {
-    return LayoutResult{0, 0, 0};
+    return LayoutResult{0.f, 0.f, 0.f};
   }
+
+  std::vector<float> layout_result;
+  TextElement* text_element = static_cast<TextElement*>(element);
+  if (text_element->need_layout_children()) {
+    starlight::Constraints constraints;
+    constraints[starlight::kHorizontal] = starlight::OneSideConstraint(
+        width, static_cast<SLMeasureMode>(width_mode));
+    constraints[starlight::kVertical] = starlight::OneSideConstraint(
+        height, static_cast<SLMeasureMode>(height_mode));
+    MeasureInlineViewRecursively(element, constraints, layout_result);
+  }
+
+  jsize result_size = static_cast<jsize>(layout_result.size());
+  jfloatArray layout_result_array = env->NewFloatArray(result_size);
+  if (layout_result_array == nullptr) {
+    return LayoutResult{0.f, 0.f, 0.f};
+  }
+
+  env->SetFloatArrayRegion(layout_result_array, 0, layout_result.size(),
+                           layout_result.data());
+
   const lynx::base::android::ScopedLocalJavaRef<jfloatArray> result_array =
       Java_TextLayout_measureText(env, local_ref.Get(), element->impl_id(),
-                                  width, width_mode, height, height_mode);
+                                  width, width_mode, height, height_mode,
+                                  layout_result_array);
+  env->DeleteLocalRef(layout_result_array);
   if (!result_array.Get()) {
-    return LayoutResult{0, 0, 0};
+    return LayoutResult{0.f, 0.f, 0.f};
   }
   jfloat* result = env->GetFloatArrayElements(result_array.Get(), JNI_FALSE);
   float measured_width = result[0];
@@ -50,6 +76,73 @@ LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
 
   env->ReleaseFloatArrayElements(result_array.Get(), result, JNI_ABORT);
   return LayoutResult{measured_width, measured_height, base_line};
+}
+
+void TextLayoutAndroid::MeasureInlineViewRecursively(
+    Element* element, const starlight::Constraints& constraints,
+    std::vector<float>& layout_result) {
+  for (auto* child = element->first_render_child(); child;
+       child = child->next_render_sibling()) {
+    if (child->is_text()) {
+      MeasureInlineViewRecursively(child, constraints, layout_result);
+    } else if (child->is_view()) {
+      FiberElement* fiber_element = static_cast<FiberElement*>(child);
+      FloatSize size =
+          fiber_element->slnode()->UpdateMeasureByPlatform(constraints, true);
+      layout_result.push_back(fiber_element->impl_id());
+      layout_result.push_back(size.width_);
+      layout_result.push_back(size.height_);
+      layout_result.push_back(size.baseline_);
+    }
+  }
+}
+
+void TextLayoutAndroid::Align(Element* element) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
+  if (local_ref.IsNull() || !element->is_text()) {
+    return;
+  }
+  TextElement* text_element = static_cast<TextElement*>(element);
+  if (!text_element->need_layout_children()) {
+    return;
+  }
+  std::unordered_map<int, std::pair<float, float>> result_map;
+
+  base::android::ScopedLocalJavaRef<jfloatArray> result =
+      Java_TextLayout_align(env, local_ref.Get(), element->impl_id());
+  if (!result.Get()) {
+    return;
+  }
+  jsize size = env->GetArrayLength(result.Get());
+  if (size <= 0) {
+    return;
+  }
+  jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
+  for (auto i = 0; i < size / 3; i++) {
+    result_map[arr[i * 3]] = std::make_pair(arr[i * 3 + 1], arr[i * 3 + 2]);
+  }
+  AlignChildrenRecursively(element, result_map);
+
+  env->ReleaseFloatArrayElements(result.Get(), arr, 0);
+}
+
+void TextLayoutAndroid::AlignChildrenRecursively(
+    Element* element,
+    const std::unordered_map<int, std::pair<float, float>>& result_map) {
+  for (auto* child = element->first_render_child(); child;
+       child = child->next_render_sibling()) {
+    if (child->is_text()) {
+      AlignChildrenRecursively(child, result_map);
+    } else if (child->is_view()) {
+      FiberElement* fiber_element = static_cast<FiberElement*>(child);
+      auto it = result_map.find(fiber_element->impl_id());
+      if (it != result_map.end()) {
+        fiber_element->slnode()->AlignmentByPlatform(it->second.first,
+                                                     it->second.second);
+      }
+    }
+  }
 }
 
 void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
@@ -64,8 +157,10 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
   size_t current_length = 0;
   bool use_utf16 =
       text_element->is_inline_element() || text_element->has_inline_child();
+  bool has_inline_view = false;
   BuildTextPropsBuffer(text_element, output_str, current_length, use_utf16,
-                       props.get());
+                       props.get(), &has_inline_view);
+  text_element->set_need_layout_children(has_inline_view);
 
   props->AddProp(kPropTextString);
   props->AddProp(output_str.c_str());
@@ -86,11 +181,9 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
                                        j_text_props->Get());
 }
 
-void TextLayoutAndroid::BuildTextPropsBuffer(TextElement* element,
-                                             std::string& output,
-                                             size_t& current_length,
-                                             bool use_utf16,
-                                             PropArrayAndroid* props) {
+void TextLayoutAndroid::BuildTextPropsBuffer(
+    TextElement* element, std::string& output, size_t& current_length,
+    bool use_utf16, PropArrayAndroid* props, bool* has_inline_view) {
   size_t start = current_length;
   base::String& content = element->content();
   if (!content.empty()) {
@@ -112,13 +205,20 @@ void TextLayoutAndroid::BuildTextPropsBuffer(TextElement* element,
     } else if (child->is_text()) {
       // inline text
       BuildTextPropsBuffer(static_cast<TextElement*>(child), output,
-                           current_length, use_utf16, props);
-    } else if (child->is_image() || child->is_view()) {
+                           current_length, use_utf16, props, has_inline_view);
+    } else if (child->is_image()) {
       // inline image
       output += kInlinePlaceHolder;
       current_length += 1;  // placeholder's length is 1
       AppendImageProps(static_cast<ImageElement*>(child), current_length - 1,
                        current_length, props);
+    } else if (child->is_view()) {
+      // inline view
+      output += kInlinePlaceHolder;
+      current_length += 1;  // placeholder's length is 1
+      AppendViewProps(static_cast<ViewElement*>(child), current_length - 1,
+                      current_length, props);
+      *has_inline_view = true;
     }
     child = child->next_render_sibling();
   }
@@ -237,9 +337,18 @@ void TextLayoutAndroid::AppendViewProps(ViewElement* view_element, size_t start,
   props->AddProp(kPropInlineStart);
   props->AddProp(static_cast<int>(start));
 
-  props->AddProp(kPropInlineView);
+  props->AddProp(kPropInlineViewSign);
+  props->AddProp(view_element->impl_id());
 
-  // TODO(linxs): width, height...
+  const auto& text_attributes =
+      view_element->computed_css_style()->GetTextAttributes();
+  if (text_attributes.has_value() &&
+      text_attributes->vertical_align !=
+          starlight::DefaultComputedStyle::DEFAULT_VERTICAL_ALIGN) {
+    props->AddProp(kTextPropVerticalAlign);
+    props->AddProp(static_cast<int>(text_attributes->vertical_align));
+    props->AddProp(text_attributes->vertical_align_length);
+  }
   // range end
   props->AddProp(kPropInlineEnd);
   props->AddProp(static_cast<int>(end));

@@ -11,6 +11,7 @@ public class NativeLayoutNodeSpan extends AbsBaselineShiftCalculatorSpan {
   private int mHeight;
   private int mWidth;
   private int mBaseline;
+  private int mIndex;
 
   public NativeLayoutNodeSpan() {
     if (mEnableTextRefactor) {
@@ -29,6 +30,14 @@ public class NativeLayoutNodeSpan extends AbsBaselineShiftCalculatorSpan {
     mWidth = width;
     mHeight = height;
     mBaseline = baseline;
+  }
+
+  public void setSpanIndex(int index) {
+    mIndex = index;
+  }
+
+  public int getSpanIndex() {
+    return mIndex;
   }
 
   @Override
