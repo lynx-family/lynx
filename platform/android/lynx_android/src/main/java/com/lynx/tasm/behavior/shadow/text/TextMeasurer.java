@@ -169,7 +169,7 @@ public class TextMeasurer {
 
           break;
         case kTextPropLineHeight:
-          int lineHeight = iterator.next().getInt();
+          float lineHeight = (float) (iterator.next().getDouble());
           if (!isParagraph) {
             Log.w("TextMeasurer", "line-height should be set to paragraph");
             continue;
