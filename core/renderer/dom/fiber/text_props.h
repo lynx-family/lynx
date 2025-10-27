@@ -37,7 +37,7 @@ enum TextPropertyKeyID {
   kTextPropTextMaxLine = 99,
   kTextPropBackGroundColor = 100,
   kPropImageSrc = 101,  // image
-  kPropInlineView = 102,
+  kPropInlineViewSign = 102,
   kPropRectSize = 103,
   kPropMargin = 104,
   kPropBorderRadius = 105,

@@ -3,9 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.shadow.text;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 public class AttributedTextBundle {
   final private CharSequence mSpan;
   final private TextAttributes mTextAttributes;
+  private HashMap<Integer, NativeLayoutNodeSpan> mInlineViewMap;
 
   public AttributedTextBundle(CharSequence span, TextAttributes textAttributes) {
     mSpan = span;
@@ -18,5 +23,24 @@ public class AttributedTextBundle {
 
   public TextAttributes getTextAttributes() {
     return mTextAttributes;
+  }
+
+  public void setInlineViewMap(HashMap<Integer, NativeLayoutNodeSpan> map) {
+    mInlineViewMap = map;
+  }
+
+  public NativeLayoutNodeSpan getNativeLayoutNodeSpan(int sign) {
+    if (mInlineViewMap == null) {
+      return null;
+    }
+    return mInlineViewMap.get(sign);
+  }
+
+  public Set<Map.Entry<Integer, NativeLayoutNodeSpan>> getNativeLayoutNodeSpans() {
+    if (mInlineViewMap == null || mInlineViewMap.isEmpty()) {
+      return null;
+    }
+
+    return mInlineViewMap.entrySet();
   }
 }

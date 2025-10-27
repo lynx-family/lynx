@@ -16,9 +16,11 @@ public class TextLayout {
   }
 
   @CalledByNative
-  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
+  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+      float[] inlineViewLayoutResult) {
     TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
-    float[] result = mUIOwner.measureText(sign, width, widthMode, height, heightMode);
+    float[] result =
+        mUIOwner.measureText(sign, width, widthMode, height, heightMode, inlineViewLayoutResult);
     TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
     return result;
   }
@@ -30,5 +32,10 @@ public class TextLayout {
   }
 
   @CalledByNative
-  public void align() {}
+  public float[] align(int sign) {
+    TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_ALIGN);
+    float[] res = mUIOwner.align(sign);
+    TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_ALIGN);
+    return res;
+  }
 }
