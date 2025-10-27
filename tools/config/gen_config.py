@@ -26,7 +26,11 @@ _accounts_mapping_path = os.path.normpath(
 
 
 class Config:
-    _type_known_list = ["PackageInstanceBundleModuleMode", "PackageInstanceDSL"]
+    _type_known_list = [
+        "lepus::Value",
+        "std::unordered_set<CSSPropertyID>",
+        "base::Version",
+    ]
 
     def __init__(
         self,
@@ -318,18 +322,27 @@ def gen_lynx_config(configs: list[Config]):
     render_code_content(config_const_tmpl_path, lynx_config_const_header_path, configs)
 
 
-def gen_rspeedy_plugin_config_types(configs: list[Config]):
-    rspeedy_plugin_config_types_tmpl_path = os.path.join(
+def gen_config_types(configs: list[Config]):
+    config_types_tmpl_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "rspeedy_plugin_config_types.tmpl",
+        "config_types.tmpl",
     )
-    rspeedy_plugin_config_types_header_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "rspeedy_plugin_config_types.ts",
+
+    config_types_header_path = os.path.normpath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            os.path.pardir,
+            os.path.pardir,
+            "js_libraries",
+            "type-config",
+            "types",
+            "config.d.ts",
+        )
     )
+
     render_code_content(
-        rspeedy_plugin_config_types_tmpl_path,
-        rspeedy_plugin_config_types_header_path,
+        config_types_tmpl_path,
+        config_types_header_path,
         sort_by_deprecated_and_alphabetical(configs),
     )
 
@@ -354,7 +367,7 @@ def gen_config_doc(configs: list[Config]):
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--gen-lynx-config", default=True, action="store_true")
-    arg_parser.add_argument("--gen-rspeedy-plugin-config-types", action="store_true")
+    arg_parser.add_argument("--gen-config-types", action="store_true")
     arg_parser.add_argument("--gen-config-doc", action="store_true")
     args = arg_parser.parse_args()
 
@@ -367,9 +380,8 @@ def main():
         gen_page_config_decode(configs)
         # gen lynx config constants
         gen_lynx_config(configs)
-    if args.gen_rspeedy_plugin_config_types:
-        # gen rspeedy plugin config types
-        gen_rspeedy_plugin_config_types(configs)
+        # gen config types
+        gen_config_types(configs)
     if args.gen_config_doc:
         # gen config doc
         gen_config_doc(configs)

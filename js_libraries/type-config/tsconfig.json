@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2015", "ES2016", "ES2017"],
+    "esModuleInterop": true,
+    "baseUrl": "./types",
+    "strict": true,
+    "outDir": "lib",
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["./types/index"],
+    "jsx": "preserve",
+    "module": "esnext",
+    "moduleResolution": "Node",
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["types/**/*.d.ts", "test/**/*.test-d.ts"],
+  "exclude": ["node_modules", "lib"]
+}

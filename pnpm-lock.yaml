@@ -218,6 +218,14 @@ importers:
     dependencies:
       tslib: 2.5.0
 
+  js_libraries/type-config:
+    specifiers:
+      tsd: 0.30.4
+      vitest: 2.1.9
+    devDependencies:
+      tsd: 0.30.4
+      vitest: 2.1.9
+
   js_libraries/type-element-api:
     specifiers:
       tsd: 0.30.4

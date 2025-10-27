@@ -1,0 +1,31 @@
+{
+  "name": "@lynx-js/type-config",
+  "version": "0.0.1",
+  "description": "Type definitions for Lynx Config(aka PageConfig) provided by the Lynx team, used to optimize the configuration experience of Lynx Config.",
+  "keywords": ["lynx-config" , "types"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Lynx Authors",
+  "types":"types/index.d.ts",
+  "main": "types/index.d.ts",
+  "scripts": {
+    "test": "vitest --typecheck --run && tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts"
+    }
+  },
+  "files": [
+    "types/",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "tsd": "0.30.4",
+    "vitest": "2.1.9"
+  }
+}

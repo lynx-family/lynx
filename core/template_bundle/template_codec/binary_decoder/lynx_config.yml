@@ -6,7 +6,7 @@ extraInfo:
   description: user defined extraInfo.
   defaultValue: ''
   valueType: lepus::Value
-  jsValueType: Object
+  jsValueType: Record<string, unknown>
   syncTo:
     - script
   codeGen:
