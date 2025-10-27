@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.10
+- Fix list-type to avoid incompatible type error.
+
 ## 3.5.9
 - Update `list` and `list-item` typings.
 
