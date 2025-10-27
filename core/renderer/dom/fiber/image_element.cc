@@ -52,5 +52,9 @@ void ImageElement::ResetAttribute(const base::String& key) {
   FiberElement::ResetAttribute(key);
 }
 
+int32_t ImageElement::GetBuiltInNodeInfo() const {
+  return GetImageNodeInfo<GetOSType()>();
+}
+
 }  // namespace tasm
 }  // namespace lynx
