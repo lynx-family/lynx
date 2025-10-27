@@ -5,7 +5,9 @@
 #ifndef CORE_PUBLIC_PERF_CONTROLLER_PROXY_H_
 #define CORE_PUBLIC_PERF_CONTROLLER_PROXY_H_
 #include <memory>
+#include <string>
 
+#include "base/include/closure.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/timing_key.h"
 
@@ -16,6 +18,14 @@ class PerfControllerProxy {
   virtual ~PerfControllerProxy() = default;
 
   /**
+   * @brief Support setting HostPlatformType field (such as 'windowsClay'),
+   * which will affect the platform type tag in HostPlatformTiming data in
+   * PipelineEntry
+   * @param type The specific host platform type.
+   */
+  virtual void SetHostPlatformType(const std::string& type) = 0;
+
+  /**
    * @brief Marks a timing event with the specified key and pipeline ID.
    * @param timing_key The key that uniquely identifies the timing event.
    * @param pipeline_id The optional pipeline ID associated with the timing
@@ -23,8 +33,32 @@ class PerfControllerProxy {
    */
   virtual void MarkTiming(tasm::TimingKey timing_key,
                           const tasm::PipelineID& pipeline_id) = 0;
-  virtual void SetTiming(uint64_t timestamp_us, tasm::TimingKey timing_key,
-                         const tasm::PipelineID& pipeline_id) const = 0;
+  virtual void SetTiming(tasm::TimingKey timing_key, uint64_t timestamp_us,
+                         const tasm::PipelineID& pipeline_id) = 0;
+
+  /**
+   * @brief Set a host-platform-timing event with the specified key and
+   * pipeline ID.
+   * @param timing_key The key that uniquely identifies the timing event.
+   * @param timestamp_us Timestamp of the timing event occurrence
+   * @param pipeline_id The optional pipeline ID associated with the timing
+   * event.
+   */
+  virtual void SetHostPlatformTiming(tasm::TimingKey timing_key,
+                                     uint64_t timestamp_us,
+                                     const tasm::PipelineID& pipeline_id) = 0;
+
+  /**
+   * @brief Get the currently running platform
+   * @return eg. 'windows' 'macOS' 'iOS' 'Android' 'Linux'
+   */
+  virtual std::string GetPlatform() const = 0;
+
+  /**
+   * @brief Post an async task to the report thread
+   * @param task The async task
+   */
+  virtual void RunTaskInReportThread(base::closure task) = 0;
 };
 
 }  // namespace shell

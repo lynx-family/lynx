@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "core/renderer/tasm/config.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/timing_handler/timing_utils.h"
@@ -266,6 +267,9 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
       host_platform_info_value->PushStringToMap(info_key, info_value);
     }
   }
+  // 3.2 merge kHostPlatformType
+  host_platform_info_value->PushStringToMap(kHostPlatformType,
+                                            GetHostPlatformType());
   entry->PushValueToMap(kFrameworkRenderingTiming,
                         std::move(framework_info_value));
   entry->PushValueToMap(kHostPlatformTiming,
@@ -586,6 +590,17 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFmpEntry(
   }
   return nullptr;
 }
+
+void TimingInfoNg::SetHostPlatformType(const std::string& type) {
+  host_platform_type_ = type;
+}
+
+std::string TimingInfoNg::GetHostPlatformType() const {
+  auto platform_type =
+      host_platform_type_.empty() ? Config::Platform() : host_platform_type_;
+  return platform_type;
+}
+
 }  // namespace timing
 }  // namespace tasm
 }  // namespace lynx

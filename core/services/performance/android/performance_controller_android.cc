@@ -203,6 +203,15 @@ static void SetPaintEndTimingAndHostPlatformTiming(
               paint_end_key,
               static_cast<lynx::tasm::timing::TimestampUs>(j_us_timestamp),
               pipeline_id);
+
+          // The rendering pipeline is considerd to be complete after the
+          // kPaintEnd phase, so we mark pipelineEnd here
+          lynx::tasm::timing::TimestampKey pipeline_end_key(
+              lynx::tasm::timing::kPipelineEnd);
+          controller->GetTimingHandler().SetTiming(
+              pipeline_end_key,
+              static_cast<lynx::tasm::timing::TimestampUs>(j_us_timestamp),
+              pipeline_id);
         });
   });
 }

@@ -140,6 +140,9 @@ class TimingInfoNg {
   void ClearContainerTimingInfo();
   void ReleasePipelineTiming(const PipelineID& pipeline_id);
 
+  void SetHostPlatformType(const std::string& type);
+  std::string GetHostPlatformType() const;
+
  private:
   bool UpdateMetrics(const std::string& name, const std::string& start_name,
                      const std::string& end_name, uint64_t start_time,
@@ -198,6 +201,8 @@ class TimingInfoNg {
   bool enable_engine_callback_{false};
   bool enable_background_runtime_{true};
   std::shared_ptr<pub::PubValueFactory> value_factory_ = nullptr;
+
+  std::string host_platform_type_;
 };
 }  // namespace timing
 }  // namespace tasm

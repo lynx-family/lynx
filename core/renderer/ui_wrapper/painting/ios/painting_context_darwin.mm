@@ -207,6 +207,9 @@ void PaintingContextDarwinRef::SetNeedMarkPaintEndTiming(const tasm::PipelineID&
   NSString* pipelineId = [NSString stringWithUTF8String:pipeline_id.c_str()];
   dispatch_async(dispatch_get_main_queue(), ^{
     [performanceController markTiming:kTimingPaintEnd pipelineID:pipelineId];
+    // The rendering pipeline is considerd to be complete after the kPaintEnd phase,
+    // so we mark pipelineEnd here
+    [performanceController markTiming:kTimingPipelineEnd pipelineID:pipelineId];
   });
 }
 

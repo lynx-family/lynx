@@ -149,6 +149,14 @@ class TimingHandler {
   // Used in RuntimeMediator::AttachToLynxShell only
   TimingHandlerDelegate* GetDelegate() { return delegate_.get(); }
 
+  /**
+   * @brief Support setting HostPlatformType field (such as 'windowsClay'),
+   * which will affect the platform type tag in HostPlatformTiming data in
+   * PipelineEntry
+   * @param type The specific host platform type.
+   */
+  void SetHostPlatformType(const std::string& type);
+
  private:
   TimingHandlerNg handler_ng_;
   // Internal storage and delegate for timing information.

@@ -71,6 +71,14 @@ class TimingHandlerNg {
     timing_info_.SetEnableBackgroundRuntime(enable_background_runtime);
   }
 
+  /**
+   * @brief Support setting HostPlatformType field (such as 'windowsClay'),
+   * which will affect the platform type tag in HostPlatformTiming data in
+   * PipelineEntry
+   * @param type The specific host platform type.
+   */
+  void SetHostPlatformType(const std::string &type);
+
  private:
   // Internal storage and delegate for timing information.
   TimingInfoNg timing_info_;

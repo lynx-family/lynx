@@ -339,6 +339,10 @@ void TimingHandler::ReleaseTiming(const PipelineID& pipeline_id) {
   timing_info_.ReleaseTiming(pipeline_id);
 }
 
+void TimingHandler::SetHostPlatformType(const std::string& type) {
+  handler_ng_.SetHostPlatformType(type);
+}
+
 }  // namespace timing
 }  // namespace tasm
 }  // namespace lynx
