@@ -5,7 +5,10 @@
 #ifndef CORE_RENDERER_DOM_FIBER_IMAGE_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_IMAGE_ELEMENT_H_
 
+#include <cstdint>
+
 #include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/dom/fiber/platform_types.h"
 
 namespace lynx {
 namespace tasm {
@@ -33,10 +36,7 @@ class ImageElement : public FiberElement {
 
   void ResetAttribute(const base::String& key) override;
 
-  int32_t GetBuiltInNodeInfo() const override {
-    return is_inline_element() ? kVirtualBuiltInNodeInfo
-                               : kCommonBuiltInNodeInfo;
-  }
+  int32_t GetBuiltInNodeInfo() const override;
 
  protected:
   ImageElement(const ImageElement& element, bool clone_resolved_props)
@@ -48,7 +48,19 @@ class ImageElement : public FiberElement {
                             const lepus::Value& value) override;
 
   AttrUMap attr_map_;
+
+ private:
+  template <OSType type>
+  int32_t GetImageNodeInfo() const {
+    return is_inline_element() ? kVirtualBuiltInNodeInfo
+                               : kCommonBuiltInNodeInfo;
+  }
 };
+
+template <>
+inline int32_t ImageElement::GetImageNodeInfo<OSType::kIOS>() const {
+  return kCommonBuiltInNodeInfo;
+}
 
 }  // namespace tasm
 }  // namespace lynx
