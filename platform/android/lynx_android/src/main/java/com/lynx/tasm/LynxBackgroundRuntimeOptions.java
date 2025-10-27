@@ -42,6 +42,7 @@ public class LynxBackgroundRuntimeOptions {
   LynxBooleanOption enableGenericResourceFetcher = LynxBooleanOption.UNSET;
   // Pending lynx_core.js load
   private boolean mPendingCoreJsLoad;
+  private LynxModule.AuthValidator mAuthValidator;
 
   public LynxBackgroundRuntimeOptions() {
     mResourceProviders = new HashMap<>();
@@ -54,6 +55,14 @@ public class LynxBackgroundRuntimeOptions {
     wrapper.setParam(param);
     wrapper.setName(name);
     mWrappers.add(wrapper);
+  }
+
+  public void registerModuleAuthValidator(LynxModule.AuthValidator authValidator) {
+    mAuthValidator = authValidator;
+  }
+
+  public LynxModule.AuthValidator getModuleAuthValidator() {
+    return mAuthValidator;
   }
 
   public boolean useQuickJSEngine() {

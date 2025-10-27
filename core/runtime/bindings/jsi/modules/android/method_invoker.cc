@@ -430,6 +430,24 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
           std::make_pair(std::move(error_message), std::move(error)));
     }
   }
+  // Auth Verify
+  if (auth_verify_) {
+    std::shared_ptr<base::android::JavaOnlyArray> verify_params =
+        std::make_shared<base::android::JavaOnlyArray>();
+    for (size_t i = 0; i < args_count_; i++) {
+      verify_params->PushJavaValue(transfer_method_params[i]);
+    }
+    bool verify_result = auth_verify_(method_name_, verify_params);
+    if (!verify_result) {
+      std::string error_message =
+          std::string{" has been rejected by LynxMethodAuth!"};
+      auto error = base::LynxError{
+          error::E_NATIVE_MODULES_COMMON_AUTHORIZATION_ERROR, error_message,
+          "Please check the arguments.", base::LynxErrorLevel::Error};
+      return base::unexpected(
+          std::make_pair(std::move(error_message), std::move(error)));
+    }
+  }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
   // Append promise param
   if (ContainsPromise()) {

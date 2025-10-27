@@ -54,6 +54,13 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
           function_creator,
       jobject nativePromise = nullptr);
 
+  void SetAuthValidator(
+      base::MoveOnlyClosure<bool, std::string,
+                            const std::shared_ptr<base::android::JavaOnlyArray>>
+          validator) {
+    auth_verify_ = std::move(validator);
+  }
+
   inline std::string GetModuleName() const { return module_name_; }
   inline std::string GetMethodName() const { return method_name_; }
   inline bool ContainsPromise() const {
@@ -73,6 +80,9 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
   CallPlatformImplementation(JNIEnv* env, jobject module,
                              jvalue* java_arguments);
   std::optional<base::LynxError> ReportPendingJniException();
+  base::MoveOnlyClosure<bool, std::string,
+                        const std::shared_ptr<base::android::JavaOnlyArray>>
+      auth_verify_;
 };
 
 }  // namespace piper
