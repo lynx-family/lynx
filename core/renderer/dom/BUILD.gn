@@ -35,6 +35,7 @@ lynx_core_source_set("dom") {
     "../utils:renderer_dom_utils",
     "../utils:renderer_utils",
     "fiber",
+    "fragment",
     "//${lynx_dir}/core/services/ssr",
   ]
 

@@ -45,7 +45,8 @@ class Fragment : public fml::RefCountedThreadSafeStorage {
 
   // XXX(zhongyr): Do we need a refCounted style? Fragment's lifetime should not
   // exceed the element who owns it.
-  const starlight::ComputedCSSStyle& style_;
+  // TODO(songshourui.null): remove maybe_unused later.
+  [[maybe_unused]] const starlight::ComputedCSSStyle& style_;
   const base::String tag_;
 };
 
