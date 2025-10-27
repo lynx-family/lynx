@@ -32,6 +32,7 @@ class LynxModuleManager;
 }  // namespace piper
 namespace shell {
 class LynxEngineProxy;
+class ListEngineProxy;
 class LynxRuntimeProxy;
 class LynxShell;
 }  // namespace shell
@@ -199,6 +200,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   float display_density_{1.f};
 
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;
+  std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_;  
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;

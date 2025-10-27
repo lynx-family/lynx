@@ -146,6 +146,11 @@ LynxTemplateRenderer::LynxTemplateRenderer(
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
 
+  // TODO(@hujing.1)
+
+  list_engine_proxy_ =
+      std::make_shared<shell::ListEngineProxyImpl>(shell_->GetEngineActor());
+
   // InitJSBridge
   module_manager_ = std::make_shared<piper::LynxModuleManager>();
   module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
@@ -173,9 +178,9 @@ LynxTemplateRenderer::LynxTemplateRenderer(
                       bytecode_source_url);
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
       shell_->GetPerfControllerActor());
-  ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
-                             runtime_proxy_, perf_controller_proxy_,
-                             resource_loader,
+  // TODO(@hujing.1)
+  ui_delegate_->OnLynxCreate(list_engine_proxy_, engine_proxy_, runtime_proxy_,
+                             perf_controller_proxy_, resource_loader,
                              shell_->GetRunners()->GetUITaskRunner(),
                              shell_->GetRunners()->GetLayoutTaskRunner());
 
