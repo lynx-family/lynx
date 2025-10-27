@@ -4,13 +4,16 @@
 
 #import "LynxUIRenderer.h"
 
+#import <Lynx/DevToolOverlayDelegate.h>
 #import <Lynx/LUIConfigAdapter.h>
 #import <Lynx/ListNodeInfoFetcher.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxWeakProxy.h>
+#import <Lynx/UIView+Lynx.h>
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxContext+Internal.h"
 #import "LynxEnv+Internal.h"
@@ -23,6 +26,25 @@
 #import "LynxUIIntersectionObserver+Internal.h"
 
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
+
+typedef NS_ENUM(NSUInteger, BoxModelOffset) {
+  PAD_LEFT = 0,
+  PAD_TOP,
+  PAD_RIGHT,
+  PAD_BOTTOM,
+  BORDER_LEFT,
+  BORDER_TOP,
+  BORDER_RIGHT,
+  BORDER_BOTTOM,
+  MARGIN_LEFT,
+  MARGIN_TOP,
+  MARGIN_RIGHT,
+  MARGIN_BOTTOM,
+  LAYOUT_LEFT,
+  LAYOUT_TOP,
+  LAYOUT_RIGHT,
+  LAYOUT_BOTTOM,
+};
 
 @implementation LynxUIRenderer {
   __weak UIView<LUIBodyView> *_containerView;
@@ -350,6 +372,163 @@
                               callback:(LynxUIMethodCallbackBlock)callback
                                 toNode:(int)sign {
   [_uiOwner invokeUIMethodForSelectorQuery:method params:params callback:callback toNode:sign];
+}
+
+std::vector<float> NSArrayToVector(NSArray<NSNumber *> *array) {
+  std::vector<float> result;
+  result.reserve(array.count);
+  for (NSNumber *num in array) {
+    result.push_back(num.floatValue);
+  }
+  return result;
+}
+
+NSArray<NSNumber *> *VectorToNSArray(const std::vector<float> &vec) {
+  NSMutableArray<NSNumber *> *result = [NSMutableArray arrayWithCapacity:vec.size()];
+  for (float value : vec) {
+    [result addObject:@(value)];
+  }
+  return [result copy];
+}
+
+- (BOOL)isFullScreenShotSupported {
+  return YES;
+}
+
+- (NSArray<NSNumber *> *)getTransformValue:(NSInteger)sign
+                 withPadBorderMarginLayout:(NSArray<NSNumber *> *)arrayLayout {
+  std::vector<float> padBorderMarginLayout = NSArrayToVector(arrayLayout);
+  std::vector<float> res;
+  LynxUI *ui = [_uiOwner findUIBySign:sign];
+  if (ui != nil) {
+    for (int i = 0; i < 4; i++) {
+      TransOffset arr;
+      if (i == 0) {
+        arr = [ui getTransformValueWithLeft:padBorderMarginLayout[PAD_LEFT] +
+                                            padBorderMarginLayout[BORDER_LEFT] +
+                                            padBorderMarginLayout[LAYOUT_LEFT]
+                                      right:-padBorderMarginLayout[PAD_RIGHT] -
+                                            padBorderMarginLayout[BORDER_RIGHT] -
+                                            padBorderMarginLayout[LAYOUT_RIGHT]
+                                        top:padBorderMarginLayout[PAD_TOP] +
+                                            padBorderMarginLayout[BORDER_TOP] +
+                                            padBorderMarginLayout[LAYOUT_TOP]
+                                     bottom:-padBorderMarginLayout[PAD_BOTTOM] -
+                                            padBorderMarginLayout[BORDER_BOTTOM] -
+                                            padBorderMarginLayout[LAYOUT_BOTTOM]];
+      } else if (i == 1) {
+        arr = [ui getTransformValueWithLeft:padBorderMarginLayout[BORDER_LEFT] +
+                                            padBorderMarginLayout[LAYOUT_LEFT]
+                                      right:-padBorderMarginLayout[BORDER_RIGHT] -
+                                            padBorderMarginLayout[LAYOUT_RIGHT]
+                                        top:padBorderMarginLayout[BORDER_TOP] +
+                                            padBorderMarginLayout[LAYOUT_TOP]
+                                     bottom:-padBorderMarginLayout[BORDER_BOTTOM] -
+                                            padBorderMarginLayout[LAYOUT_BOTTOM]];
+      } else if (i == 2) {
+        arr = [ui getTransformValueWithLeft:padBorderMarginLayout[LAYOUT_LEFT]
+                                      right:-padBorderMarginLayout[LAYOUT_RIGHT]
+                                        top:padBorderMarginLayout[LAYOUT_TOP]
+                                     bottom:-padBorderMarginLayout[LAYOUT_BOTTOM]];
+      } else {
+        arr = [ui getTransformValueWithLeft:-padBorderMarginLayout[MARGIN_LEFT] +
+                                            padBorderMarginLayout[LAYOUT_LEFT]
+                                      right:padBorderMarginLayout[MARGIN_RIGHT] -
+                                            padBorderMarginLayout[LAYOUT_RIGHT]
+                                        top:-padBorderMarginLayout[MARGIN_TOP] +
+                                            padBorderMarginLayout[LAYOUT_TOP]
+                                     bottom:padBorderMarginLayout[MARGIN_BOTTOM] -
+                                            padBorderMarginLayout[LAYOUT_BOTTOM]];
+      }
+      res.push_back(arr.left_top.x);
+      res.push_back(arr.left_top.y);
+      res.push_back(arr.right_top.x);
+      res.push_back(arr.right_top.y);
+      res.push_back(arr.right_bottom.x);
+      res.push_back(arr.right_bottom.y);
+      res.push_back(arr.left_bottom.x);
+      res.push_back(arr.left_bottom.y);
+    }
+  }
+
+  NSArray<NSNumber *> *result = VectorToNSArray(res);
+  return result;
+}
+
+- (CGPoint)convertPointFromScreen:(CGPoint)point ToView:(UIView *)view {
+  return [[LynxUIKitAPIAdapter getKeyWindow] convertPoint:point toView:view];
+}
+
+/*
+ *find the minimum ui node which the point falls in
+ *
+ *Parameter:
+ * x,y is coordinate to the screen of the point
+ * uiSign is the id of the starting search node, lynxView or overlay view
+ * thus,before calling view's hitTest function, We need to first convert the coordinates relative to
+ *the screen into coordinates relative to the view
+ *
+ * Return Value:
+ * the id of the found node , return 0 if not found
+ */
+- (int)findNodeIdForLocationWithX:(float)x withY:(float)y fromUI:(int)uiSign mode:(NSString *)mode {
+  if (_uiOwner) {
+    UIView *view;
+    if (uiSign == 0) {
+      // find node from LynxView
+      view = _uiOwner.rootUI.rootView;
+    } else {
+      // find node from overlay view
+      LynxUI *ui = [_uiOwner findUIBySign:uiSign];
+      if (ui != NULL) {
+        view = ui.view;
+      } else {
+        return 0;
+      }
+    }
+    UIEvent *event = nil;
+    CGPoint point_to_view;
+    if ([mode isEqualToString:@"lynxview"]) {
+      point_to_view = CGPointMake(x, y);
+    } else {  // fullscreen
+      point_to_view = [self convertPointFromScreen:CGPointMake(x, y) ToView:view];
+    }
+    UIView *target = [view hitTest:point_to_view withEvent:event];
+    if (target && target.lynxSign) {
+      return [target.lynxSign intValue];
+    }
+  }
+  return 0;
+}
+
+- (NSArray<NSNumber *> *)getVisibleOverlayView {
+  NSArray<NSNumber *> *array = [DevToolOverlayDelegate.sharedInstance getAllVisibleOverlaySign];
+  return array;
+}
+
+- (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString *)mode {
+  int node_id = 0;
+  if ([mode isEqualToString:@"fullscreen"]) {
+    NSArray<NSNumber *> *overlays = [self getVisibleOverlayView];
+    NSEnumerator *enumerator = [overlays reverseObjectEnumerator];
+    NSNumber *num;
+    while ((num = [enumerator nextObject]) != nil) {
+      node_id = [self findNodeIdForLocationWithX:x withY:y fromUI:[num intValue] mode:mode];
+      // overlay node's size is window size and it has one and only
+      // one child if id == overlays[i], it means point is not in child so
+      // not in overlay Under this circumstances,we need reset id to 0
+      if (node_id != 0 && node_id != [num intValue]) {
+        return node_id;
+      } else {
+        node_id = 0;
+      }
+    }
+    node_id =
+        node_id != 0 ? node_id : [self findNodeIdForLocationWithX:x withY:y fromUI:0 mode:mode];
+  } else {  // lynxview
+    node_id = [self findNodeIdForLocationWithX:x withY:y fromUI:0 mode:mode];
+  }
+  return node_id;
 }
 
 #pragma mark - Find Node

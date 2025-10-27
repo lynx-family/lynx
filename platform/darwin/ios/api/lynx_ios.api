@@ -4835,6 +4835,9 @@ public protocol LynxUIRendererProtocol-p : <NSObject> {
   public void LynxUIRendererProtocol-p::restartAnimation();
   public void LynxUIRendererProtocol-p::resetAnimation();
   public void LynxUIRendererProtocol-p::invokeUIMethodForSelectorQuery:params:callback:toNode:(NSString *method,[params] NSDictionary *params,[callback] LynxUIMethodCallbackBlock callback,[toNode] int sign);
+  public BOOL LynxUIRendererProtocol-p::isFullScreenShotSupported();
+  public NSArray< NSNumber * > * LynxUIRendererProtocol-p::getTransformValue:withPadBorderMarginLayout:(NSInteger sign,[withPadBorderMarginLayout] NSArray< NSNumber * > *padBorderMarginLayout);
+  public int LynxUIRendererProtocol-p::findNodeIdForLocationWithX:withY:mode:(float x,[withY] float y,[mode] NSString *mode);
   public LynxUI * LynxUIRendererProtocol-p::findUIBySign:(NSInteger sign);
   public nullable UIView * LynxUIRendererProtocol-p::findViewWithName:(nonnull NSString *name);
   public nullable LynxUI * LynxUIRendererProtocol-p::uiWithName:(nonnull NSString *name);
