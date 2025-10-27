@@ -31,6 +31,7 @@ public class LynxModuleWrapper {
   private final ArrayList<AttributeDescriptor> mAttributeDescriptors;
   private final String mName;
   private WeakReference<Context> mWeakContext;
+  private LynxModule.AuthValidator mAuthValidator;
 
   public LynxModuleWrapper(String name, LynxModule module) {
     mName = name;
@@ -51,6 +52,25 @@ public class LynxModuleWrapper {
   @CalledByNative
   public String getName() {
     return mName;
+  }
+
+  public void setAuthValidator(LynxModule.AuthValidator authValidator) {
+    mAuthValidator = authValidator;
+  }
+
+  @CalledByNative
+  public boolean hasAuthValidator() {
+    return mAuthValidator != null;
+  }
+
+  @CalledByNative
+  public boolean verify(String moduleName, String methodName, JavaOnlyArray methodParams) {
+    // If AuthValidator does not exist, it means that the current LynxMethod can be called.
+    if (mAuthValidator == null) {
+      return true;
+    }
+
+    return mAuthValidator.verify(moduleName, methodName, methodParams);
   }
 
   private void findMethods() {
