@@ -2,12 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxConfig+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
+#import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewGroup.h>
 #import "LynxUIRenderer.h"
@@ -254,6 +256,16 @@
       [self.lynxViewConfig setObject:config forKey:key];
     }
   }
+}
+
+- (NSMutableDictionary<NSString *, id> *)getModuleWrapper {
+  NSMutableDictionary<NSString *, id> *module_wrapper = [[NSMutableDictionary alloc] init];
+  if (self.lynxViewGroup) {
+    [module_wrapper
+        addEntriesFromDictionary:self.lynxViewGroup.config.moduleFactoryPtr->getModuleClasses()];
+  }
+  [module_wrapper addEntriesFromDictionary:[super config].moduleFactoryPtr->getModuleClasses()];
+  return module_wrapper;
 }
 
 @end

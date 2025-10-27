@@ -5123,6 +5123,7 @@ public class LynxViewBuilder : LynxBaseConfigurator {
   public NSURL* LynxViewBuilder::uri uri;
   public BOOL isUIRunningMode LynxViewBuilder::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
   public void LynxViewBuilder::insertLynxViewConfig:forKey:(id _Nonnull config,[forKey] NSString *_Nonnull key);
+  public NSMutableDictionary< NSString *, id > * LynxViewBuilder()::getModuleWrapper();
 }
 
 public class LynxViewGroup : LynxBaseConfigurator {

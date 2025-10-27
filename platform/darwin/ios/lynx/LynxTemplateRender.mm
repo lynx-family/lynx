@@ -117,7 +117,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
         [LynxTrailExtensionService parseLynxViewBuilder:builder];
       }
     }
-
+    _builder = builder;
     _lynxViewGroup = builder.lynxViewGroup;
     /// Runtime Options
     _runtime = builder.lynxBackgroundRuntime;
