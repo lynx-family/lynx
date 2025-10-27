@@ -7,25 +7,46 @@
 #import <Lynx/LynxBaseConfigurator.h>
 #import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxTemplateResourceFetcher.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxViewGroup : LynxBaseConfigurator
 
 /**
  * Url of the AppBundle associated with lynxViewGroup;
  */
-@property(nonatomic, strong, nullable) NSString* url;
-
-/**
- * Template bundle object associated with lynxViewGroup, the loading process
- * will use bundle in priority
- */
-@property(nonatomic, strong, nullable) LynxTemplateBundle* templateBundle;
+@property(nonatomic, strong, nullable) NSString *url;
 
 /**
  * GlobalProps of the lynxViewGroup
  */
-@property(nonatomic, strong, nullable) LynxTemplateData* globalProps;
+@property(nonatomic, strong, nullable) LynxTemplateData *globalProps;
+
+/**
+ * Get the associated TemplateBundle with LynxViewGroup.
+ * If templateBundle is not ready yet. It will block current thread
+ * and waiting for the result.
+ *
+ * @return The Associated TemplateBundle
+ */
+@property(nonatomic, nullable, readonly) LynxTemplateBundle *templateBundle;
+
+#pragma mark - Init
+
+- (instancetype)initWithUrl:(NSString *)url
+            templateFetcher:(id<LynxTemplateResourceFetcher>)templateFetcher;
+
+- (instancetype)initWithUrl:(NSString *)url templateBundle:(LynxTemplateBundle *)bundle;
+
+#pragma mark - Info
+
+- (bool)isTemplateBundleReady;
+
+- (nullable LynxView *)getLynxViewById:(NSInteger)viewId;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif  // PLATFORM_DARWIN_IOS_LYNX_PUBLIC_LYNXBASECONFIGURATOR_H_

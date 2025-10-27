@@ -771,6 +771,14 @@
 
 #pragma mark - Get Info
 
+- (NSInteger)getLynxViewId {
+  return _lynxViewId;
+}
+
+- (void)setLynxViewId:(NSInteger)id {
+  _lynxViewId = id;
+}
+
 - (NSDictionary*)getPageDataByKey:(NSArray*)keys {
   if ([keys count] == 0) {
     _LogI(@"getPageDataByKey called with empty keys.");

@@ -230,6 +230,7 @@ subspec_target("lynx") {
     "public/LynxView+Internal.h",
     "public/LynxView.h",
     "public/LynxViewBuilder.h",
+    "public/LynxViewGroup+Internal.h",
     "public/LynxViewGroup.h",
     "shadow_node/LynxCustomMeasureShadowNode.mm",
     "shadow_node/LynxLayoutNode.mm",

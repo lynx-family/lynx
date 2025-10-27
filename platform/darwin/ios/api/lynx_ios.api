@@ -4974,6 +4974,7 @@ public protocol LynxVerticalScrollProtocol-p : <NSObject> {
 
 public class LynxView : UIView, <LUIBodyView> {
   public NSString* LynxView::url url;
+  public NSInteger LynxView::lynxViewId lynxViewId;
   public BOOL LynxView::enableAsyncDisplay enableAsyncDisplay;
   public LynxViewSizeMode LynxView::layoutWidthMode layoutWidthMode;
   public LynxViewSizeMode LynxView::layoutHeightMode layoutHeightMode;
@@ -5096,6 +5097,7 @@ public class LynxView : UIView, <LUIBodyView> {
   public LynxTemplateRender *_Nullable LynxView()::templateRender();
   public NSDictionary *_Nullable LynxView()::getAllJsSource();
   public void LynxView()::onLongPress();
+  public void LynxView()::setLynxViewId:(NSInteger id);
   public void LynxView()::setIntrinsicContentSize:(CGSize size);
   public void LynxView()::dispatchError:(LynxError *error);
 }
@@ -5124,8 +5126,13 @@ public class LynxViewBuilder : LynxBaseConfigurator {
 
 public class LynxViewGroup : LynxBaseConfigurator {
   public NSString* LynxViewGroup::url url;
-  public LynxTemplateBundle* LynxViewGroup::templateBundle templateBundle;
   public LynxTemplateData* LynxViewGroup::globalProps globalProps;
+  public LynxTemplateBundle* LynxViewGroup::templateBundle templateBundle;
+  public instancetype LynxViewGroup::initWithUrl:templateFetcher:(NSString *url,[templateFetcher] id< LynxTemplateResourceFetcher > templateFetcher);
+  public instancetype LynxViewGroup::initWithUrl:templateBundle:(NSString *url,[templateBundle] LynxTemplateBundle *bundle);
+  public bool LynxViewGroup::isTemplateBundleReady();
+  public nullable LynxView * LynxViewGroup::getLynxViewById:(NSInteger viewId);
+  public void LynxViewGroup()::addLynxView:(nonnull LynxView *view);
 }
 
 public protocol LynxViewLifecycle-p : <NSObject>, <LynxTimingListener>, <LynxJSBTimingListener>, <LynxViewBaseLifecycle> {

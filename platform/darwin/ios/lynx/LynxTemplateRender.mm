@@ -52,6 +52,7 @@
 #import "LynxUIMethodModule.h"
 #import "LynxUIRenderer.h"
 #import "LynxUIRendererProtocol.h"
+#import "LynxViewGroup+Internal.h"
 #import "PaintingContextProxy.h"
 
 #include <functional>
@@ -260,6 +261,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       [lynxView setEnableTextNonContiguousLayout:[builder enableTextNonContiguousLayout]];
       [lynxView setEnableLayoutOnly:[LynxEnv.sharedInstance getEnableLayoutOnly]];
       [lynxView setEnableSyncFlush:[builder enableSyncFlush]];
+
+      if (_lynxViewGroup) {
+        [_lynxViewGroup addLynxView:lynxView];
+      }
     }
   }
 }
@@ -2080,6 +2085,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   if (_devTool) {
     [_devTool attachLynxView:lynxView];
+  }
+
+  if (_lynxViewGroup) {
+    [_lynxViewGroup addLynxView:lynxView];
   }
 }
 
