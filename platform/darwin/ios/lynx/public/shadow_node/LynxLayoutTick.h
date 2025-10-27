@@ -12,6 +12,7 @@ typedef void (^LynxOnLayoutBlock)(void);
 - (nonnull instancetype)initWithBlock:(nonnull LynxOnLayoutBlock)block;
 
 - (void)requestLayout;
+- (void)requestLayout:(nonnull LynxOnLayoutBlock)block;
 - (void)triggerLayout;
 - (void)cancelLayoutRequest;
 

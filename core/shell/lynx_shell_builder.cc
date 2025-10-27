@@ -341,6 +341,16 @@ LynxShell* LynxShellBuilder::build() {
         shell->instance_id_);
     element_manager->painting_context()->SetPerfActor(
         shell->perf_controller_actor_);
+    if (shell_option_.page_options_.IsLayoutInElementModeOn()) {
+      element_manager->SetRequestLayoutCallback(
+          [engine_actor = shell->engine_actor_]() {
+            engine_actor->Act([](auto& engine) {
+              auto pipeline_option = std::make_shared<tasm::PipelineOptions>();
+              engine->GetTasm()->TriggerLayout(pipeline_option);
+            });
+          });
+    }
+
     shell->layout_mediator_->Init(shell->engine_actor_, shell->facade_actor_,
                                   shell->perf_controller_actor_,
                                   element_manager->node_manager(),

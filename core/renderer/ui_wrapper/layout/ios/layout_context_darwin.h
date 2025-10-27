@@ -31,6 +31,7 @@ class LayoutContextDarwin : public LayoutCtxPlatformImpl {
                       int to_index) override;
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override;
   void ScheduleLayout(base::closure) override;
+  void ScheduleLayoutInEmbeddedMode(base::closure) override;
   void OnLayoutBefore(int sign) override;
   void OnLayout(int sign, float left, float top, float width, float height,
                 const std::array<float, 4>& paddings,

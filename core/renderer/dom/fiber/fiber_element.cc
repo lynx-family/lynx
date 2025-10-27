@@ -2766,6 +2766,9 @@ void FiberElement::MarkAsLayoutRoot() {
         starlight::FlexDirectionType::kColumn);
     sl_node_->SetContext(element_manager());
     sl_node_->MarkDirty();
+    sl_node_->SetSLRequestLayoutFunc([](void *context) {
+      static_cast<ElementManager *>(context)->ScheduleLayout();
+    });
     return;
   }
 
@@ -4012,7 +4015,7 @@ bool FiberElement::CanBeLayoutOnly() const {
 void FiberElement::MarkLayoutDirtyLite() {
   if (!is_virtual_) {
     EnsureSLNode();
-    sl_node_->MarkDirty();
+    sl_node_->MarkDirtyAndRequestLayout();
   } else {
     auto *parent = render_parent_;
     while (parent) {

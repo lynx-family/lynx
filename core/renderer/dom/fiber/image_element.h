@@ -47,11 +47,18 @@ class ImageElement : public FiberElement {
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 
+  void ProcessAttributeForLayoutInElement(const base::String& key,
+                                          const lepus::Value& value);
+
   AttrUMap attr_map_;
+  bool has_auto_size_{false};
 
  private:
   template <OSType type>
   int32_t GetImageNodeInfo() const {
+    if (has_auto_size_) {
+      return kCustomBuiltInNodeInfo;
+    }
     return is_inline_element() ? kVirtualBuiltInNodeInfo
                                : kCommonBuiltInNodeInfo;
   }
@@ -59,6 +66,9 @@ class ImageElement : public FiberElement {
 
 template <>
 inline int32_t ImageElement::GetImageNodeInfo<OSType::kIOS>() const {
+  if (has_auto_size_) {
+    return kCustomBuiltInNodeInfo;
+  }
   return kCommonBuiltInNodeInfo;
 }
 
