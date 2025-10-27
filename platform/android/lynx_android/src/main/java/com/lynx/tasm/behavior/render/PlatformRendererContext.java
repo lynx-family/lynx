@@ -140,9 +140,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
    * This allows PlatformRendererContext to provide text measurement functionality directly.
    */
   @Override
-  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
+  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+      float[] inlineViewLayoutResult) {
     if (mTextMeasurer != null) {
-      return mTextMeasurer.measureText(sign, width, widthMode, height, heightMode);
+      return mTextMeasurer.measureText(
+          sign, width, widthMode, height, heightMode, inlineViewLayoutResult);
     }
     // Return default measurement if TextMeasurer is not available
     return new float[] {0.0f, 0.0f};
@@ -157,6 +159,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (mTextMeasurer != null) {
       mTextMeasurer.dispatchLayoutBefore(sign, buffer);
     }
+  }
+
+  @Override
+  public float[] align(int sign) {
+    if (mTextMeasurer != null) {
+      return mTextMeasurer.align(sign);
+    }
+    return new float[0];
   }
 
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);

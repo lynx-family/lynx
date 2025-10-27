@@ -18,9 +18,11 @@ public interface TextMeasurerProvider {
    * @param widthMode The width measurement mode
    * @param height The height constraint
    * @param heightMode The height measurement mode
+   * @param inlineViewLayoutResult The inline view layout result array
    * @return Array containing the measurement results [width, height]
    */
-  float[] measureText(int sign, float width, int widthMode, float height, int heightMode);
+  float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+      float[] inlineViewLayoutResult);
 
   /**
    * Dispatches layout information before text layout.
@@ -29,4 +31,12 @@ public interface TextMeasurerProvider {
    * @param buffer The layout information buffer
    */
   void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
+
+  /**
+   * Aligns text with the given sign.
+   *
+   * @param sign The sign identifier
+   * @return Array containing children element's sign and alignment results [sign, left, top]
+   */
+  float[] align(int sign);
 }

@@ -67,4 +67,8 @@ public class TextUpdateBundle {
   public CharSequence getOriginText() {
     return mOriginText;
   }
+
+  public void setViewTruncatedSet(Set viewTruncatedSet) {
+    mViewTruncatedSet = viewTruncatedSet;
+  }
 }

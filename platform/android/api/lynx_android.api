@@ -555,6 +555,9 @@ public class com::lynx::tasm::behavior::shadow::text::AttributedTextBundle :  {
   public com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.AttributedTextBundle(CharSequence span, TextAttributes textAttributes);
   public CharSequence com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.getSpan();
   public TextAttributes com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.getTextAttributes();
+  public void com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.setInlineViewMap(HashMap< Integer, NativeLayoutNodeSpan > map);
+  public NativeLayoutNodeSpan com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.getNativeLayoutNodeSpan(int sign);
+  public Set< Map.Entry< Integer, NativeLayoutNodeSpan > > com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.getNativeLayoutNodeSpans();
 }
 
 public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
@@ -6635,8 +6638,9 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.reportCreateViewConfig(int sign, String tagName, boolean createAsync);
   public void com.lynx.tasm.behavior.LynxUIOwner.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
   public void com.lynx.tasm.behavior.LynxUIOwner.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer valueArray);
-  public float[] com.lynx.tasm.behavior.LynxUIOwner.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public float[] com.lynx.tasm.behavior.LynxUIOwner.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public Object com.lynx.tasm.behavior.LynxUIOwner.takeTextLayout(int sign);
+  public float[] com.lynx.tasm.behavior.LynxUIOwner.align(int sign);
 }
 
 public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.ILynxUIRenderer {
@@ -7372,6 +7376,8 @@ public class com::lynx::tasm::behavior::shadow::text::NativeLayoutNodeSpan : com
   public com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.NativeLayoutNodeSpan();
   public int com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.getWidth();
   public void com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.updateLayoutNodeSize(int width, int height, int baseline);
+  public void com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.setSpanIndex(int index);
+  public int com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.getSpanIndex();
   public int com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm);
   public void com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, Paint paint);
   public int com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.getYOffset(int top, int bottom, int ascent, int descent);
@@ -7901,8 +7907,9 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDrawingList(int id, DisplayList drawingList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
-  public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
+  public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.align(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroy();
 }
 
@@ -9417,9 +9424,9 @@ public class com::lynx::tasm::behavior::shadow::text::TextIndent :  {
 public class com::lynx::tasm::behavior::shadow::TextLayout :  {
   public com.lynx.tasm.behavior.shadow.TextLayout.TextLayout(TextMeasurerProvider textMeasurerProvider);
   public com.lynx.tasm.behavior.shadow.TextLayout.TextLayout(LynxUIOwner uiOwner);
-  public float[] com.lynx.tasm.behavior.shadow.TextLayout.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public float[] com.lynx.tasm.behavior.shadow.TextLayout.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.shadow.TextLayout.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
-  public void com.lynx.tasm.behavior.shadow.TextLayout.align();
+  public float[] com.lynx.tasm.behavior.shadow.TextLayout.align(int sign);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextLayoutWarmer : HandlerThread {
@@ -9430,15 +9437,17 @@ public class com::lynx::tasm::behavior::shadow::text::TextLayoutWarmer : Handler
 public class com::lynx::tasm::behavior::shadow::text::TextMeasurer :  {
   public com.lynx.tasm.behavior.shadow.text.TextMeasurer.TextMeasurer(LynxContext context);
   public void com.lynx.tasm.behavior.shadow.text.TextMeasurer.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer valueArray);
-  public float[] com.lynx.tasm.behavior.shadow.text.TextMeasurer.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public float[] com.lynx.tasm.behavior.shadow.text.TextMeasurer.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public Object com.lynx.tasm.behavior.shadow.text.TextMeasurer.takeTextLayout(int sign);
   public void com.lynx.tasm.behavior.shadow.text.TextMeasurer.releaseLayoutObject(int sign);
   public void com.lynx.tasm.behavior.shadow.text.TextMeasurer.removeLayoutObjects();
+  public float[] com.lynx.tasm.behavior.shadow.text.TextMeasurer.align(int sign);
 }
 
 public interface com::lynx::tasm::behavior::shadow::TextMeasurerProvider {
-  public float[] com.lynx.tasm.behavior.shadow.TextMeasurerProvider.measureText(int sign, float width, int widthMode, float height, int heightMode);
+  public float[] com.lynx.tasm.behavior.shadow.TextMeasurerProvider.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.shadow.TextMeasurerProvider.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
+  public float[] com.lynx.tasm.behavior.shadow.TextMeasurerProvider.align(int sign);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextRenderer :  {
@@ -9503,6 +9512,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextUpdateBundle :  {
   public boolean com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.isJustify();
   public void com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.setOriginText(CharSequence string);
   public CharSequence com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.getOriginText();
+  public void com.lynx.tasm.behavior.shadow.text.TextUpdateBundle.setViewTruncatedSet(Set viewTruncatedSet);
 }
 
 public interface com::lynx::tasm::provider::ThemeResourceProvider {
@@ -9602,6 +9612,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_SHADOW_NODE_MEASURE TEXT_SHADOW_NODE_MEASURE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT TEXT_LAYOUT_MEASURE_TEXT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_ALIGN TEXT_LAYOUT_ALIGN;
   public final String com.lynx.tasm.base.trace.TraceEventDef.IMAGE_SHOULD_REDIRECT_IMAGE_URL IMAGE_SHOULD_REDIRECT_IMAGE_URL;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW UI_BODY_ATTACH_UI_BODY_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_DETACH_UI_BODY_VIEW UI_BODY_DETACH_UI_BODY_VIEW;

@@ -1953,10 +1953,16 @@ public class LynxUIOwner {
     mTextMeasurer.dispatchLayoutBefore(sign, valueArray);
   }
 
-  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
-    return mTextMeasurer.measureText(sign, width, widthMode, height, heightMode);
+  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+      float[] inlineViewLayoutResult) {
+    return mTextMeasurer.measureText(
+        sign, width, widthMode, height, heightMode, inlineViewLayoutResult);
   }
   public Object takeTextLayout(int sign) {
     return mTextMeasurer != null ? mTextMeasurer.takeTextLayout(sign) : null;
+  }
+
+  public float[] align(int sign) {
+    return mTextMeasurer.align(sign);
   }
 }

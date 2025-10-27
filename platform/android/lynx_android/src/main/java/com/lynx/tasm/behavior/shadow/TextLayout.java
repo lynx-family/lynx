@@ -27,22 +27,30 @@ public class TextLayout {
   public TextLayout(LynxUIOwner uiOwner) {
     mTextMeasurerProvider = new TextMeasurerProvider() {
       @Override
-      public float[] measureText(
-          int sign, float width, int widthMode, float height, int heightMode) {
-        return uiOwner.measureText(sign, width, widthMode, height, heightMode);
+      public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+          float[] inlineViewLayoutResult) {
+        return uiOwner.measureText(
+            sign, width, widthMode, height, heightMode, inlineViewLayoutResult);
       }
 
       @Override
       public void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer) {
         uiOwner.dispatchLayoutBefore(sign, buffer);
       }
+
+      @Override
+      public float[] align(int sign) {
+        return uiOwner.align(sign);
+      }
     };
   }
 
   @CalledByNative
-  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
+  public float[] measureText(int sign, float width, int widthMode, float height, int heightMode,
+      float[] inlineViewLayoutResult) {
     TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
-    float[] result = mTextMeasurerProvider.measureText(sign, width, widthMode, height, heightMode);
+    float[] result = mTextMeasurerProvider.measureText(
+        sign, width, widthMode, height, heightMode, inlineViewLayoutResult);
     TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
     return result;
   }
@@ -54,5 +62,10 @@ public class TextLayout {
   }
 
   @CalledByNative
-  public void align() {}
+  public float[] align(int sign) {
+    TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_ALIGN);
+    float[] res = mTextMeasurerProvider.align(sign);
+    TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_ALIGN);
+    return res;
+  }
 }
