@@ -3382,6 +3382,16 @@ bool TemplateAssembler::LoadTemplateForSSRRuntime(std::vector<uint8_t> source) {
   return true;
 }
 
+void TemplateAssembler::TriggerLayout(
+    const std::shared_ptr<PipelineOptions>& pipeline_options) {
+  PipelineScope pipeline_scope(this, pipeline_options);
+  pipeline_options->layout_requested = true;
+
+  if (!pipeline_options->enable_unified_pixel_pipeline) {
+    page_proxy()->element_manager()->RequestLayout(pipeline_options);
+  }
+}
+
 void TemplateAssembler::RequestLayout(
     const std::shared_ptr<PipelineOptions>& pipeline_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateAssembler::RequestLayout");

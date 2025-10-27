@@ -1085,6 +1085,9 @@ class ElementManager : public ElementContextDelegate {
    */
   void RequestLayout(const std::shared_ptr<PipelineOptions> &options);
 
+  void MarkLayoutDirtyAndRequestLayout(
+      int32_t id, const std::shared_ptr<PipelineOptions> &options);
+
   inline bool GetEnableBatchLayoutTaskWithSyncLayout() {
     return enable_batch_layout_task_with_sync_layout_;
   }
@@ -1146,6 +1149,12 @@ class ElementManager : public ElementContextDelegate {
   void RequestResolve(std::shared_ptr<PipelineOptions> &pipeline_options);
 
   bool SetViewportSizeToRootNode();
+
+  void ScheduleLayout();
+
+  void SetRequestLayoutCallback(base::MoveOnlyClosure<void> callback) {
+    request_layout_callback_ = std::move(callback);
+  }
 
  protected:
   /**
@@ -1322,6 +1331,8 @@ class ElementManager : public ElementContextDelegate {
   ALLOW_UNUSED_TYPE std::map<lynx::devtool::DevToolFunction,
                              std::function<void(const base::any &)>>
       devtool_func_map_;
+
+  base::MoveOnlyClosure<void> request_layout_callback_;
 
  public:
   // fixed node attached to the page node.

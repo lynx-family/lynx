@@ -36,6 +36,21 @@
   }
 }
 
+- (void)requestLayout:(LynxOnLayoutBlock)block {
+  [super requestLayout:block];
+  if (_root) {
+    if ([NSThread isMainThread]) {
+      [_root setNeedsLayout];
+    } else {
+      __weak LynxUILayoutTick* weakSelf = self;
+      dispatch_async(dispatch_get_main_queue(), ^{
+        __strong LynxUILayoutTick* strongSelf = weakSelf;
+        [strongSelf.root setNeedsLayout];
+      });
+    }
+  }
+}
+
 - (void)attach:(UIView<LUIBodyView>* _Nonnull)root {
   _root = root;
 }

@@ -386,6 +386,17 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
   });
 }
 
+void ElementManager::MarkLayoutDirtyAndRequestLayout(
+    int32_t id, const std::shared_ptr<PipelineOptions> &options) {
+  if (IsLayoutInElementModeOn()) {
+    layout_node_manager_->MarkDirtyAndRequestLayout(id);
+    options->layout_requested = true;
+    if (!options->enable_unified_pixel_pipeline) {
+      RequestLayout(options);
+    }
+  }
+}
+
 void ElementManager::RequestLayout(
     const std::shared_ptr<PipelineOptions> &options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REQUEST_LAYOUT);
@@ -1594,6 +1605,13 @@ void ElementManager::SetPageOptions(const PageOptions &options) {
   enable_layout_in_element_mode_ =
       enable_fragment_layer_render_ ||
       ((page_options_.GetEmbeddedMode() & EmbeddedMode::LAYOUT_IN_ELEMENT) > 0);
+}
+
+void ElementManager::ScheduleLayout() {
+  if (platform_layout_context_) {
+    platform_layout_context_->ScheduleLayoutInEmbeddedMode(
+        [this]() { request_layout_callback_(); });
+  }
 }
 
 }  // namespace tasm

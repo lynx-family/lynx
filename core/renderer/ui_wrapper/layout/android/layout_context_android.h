@@ -34,6 +34,7 @@ class LayoutContextAndroid : public LayoutCtxPlatformImpl {
                 const std::array<float, 4>& paddings,
                 const std::array<float, 4>& borders) override;
   void ScheduleLayout(base::closure callback) override;
+  void ScheduleLayoutInEmbeddedMode(base::closure callback) override;
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override;
   void Destroy() override;
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override;

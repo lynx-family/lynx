@@ -154,6 +154,11 @@ void LayoutContextAndroid::OnLayout(int id, float left, float top, float width,
                                       width, height);
 }
 
+void LayoutContextAndroid::ScheduleLayoutInEmbeddedMode(
+    base::closure callback) {
+  ScheduleLayout(std::move(callback));
+}
+
 void LayoutContextAndroid::ScheduleLayout(base::closure callback) {
   trigger_layout_callback_ = std::move(callback);
   JNIEnv* env = base::android::AttachCurrentThread();

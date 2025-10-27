@@ -53,6 +53,10 @@ constexpr const int32_t kCommonBuiltInNodeInfo =
 constexpr const int32_t kVirtualBuiltInNodeInfo =
     (static_cast<int32_t>(LayoutNodeType::VIRTUAL) &
      NodeInfoBits::kLayoutNodeTypeMask);
+constexpr const int32_t kCustomBuiltInNodeInfo =
+    (static_cast<int32_t>(LayoutNodeType::CUSTOM) &
+     NodeInfoBits::kLayoutNodeTypeMask) |
+    NodeInfoBits::kCreateAsyncMask;
 
 class FiberElement : public Element,
                      public SelectorItem,

@@ -2364,6 +2364,7 @@ public class LynxLayoutStyle : NSObject {
 public class LynxLayoutTick : NSObject {
   public nonnull instancetype LynxLayoutTick::initWithBlock:(nonnull LynxOnLayoutBlock block);
   public void LynxLayoutTick::requestLayout();
+  public void LynxLayoutTick::requestLayout:(nonnull LynxOnLayoutBlock block);
   public void LynxLayoutTick::triggerLayout();
   public void LynxLayoutTick::cancelLayoutRequest();
 }

@@ -75,6 +75,14 @@ void LayoutContextDarwin::ScheduleLayout(base::closure callback) {
   [nodeOwner.layoutTick requestLayout];
 }
 
+void LayoutContextDarwin::ScheduleLayoutInEmbeddedMode(base::closure callback) {
+  // In order to be compatible, add new ScheduleLayoutInEmbeddedMode
+  // in this method, callback will be considered to triggerLayout.
+  auto cb_ptr = std::make_shared<base::closure>(std::move(callback));
+  void (^block)(void) = [cb_ptr = std::move(cb_ptr)]() mutable { (*cb_ptr)(); };
+  [nodeOwner.layoutTick requestLayout:block];
+}
+
 void LayoutContextDarwin::Destroy() { [nodeOwner destroy]; }
 
 void LayoutContextDarwin::UpdateRootSize(float width, float height) {
