@@ -36,19 +36,6 @@ export enum ListEventSource {
   SCROLL = 2,
 }
 
-/**
- * The layout type of list.
- * @Android
- * @iOS
- * @Harmony
- * @PC
- */
-export enum ListType {
-  SINGLE = 'single',
-  FLOW = 'flow',
-  WATERFALL = 'waterfall',
-}
-
 export interface ListAttachedCell {
   /**
    * id of list item
@@ -414,13 +401,13 @@ export interface ListProps extends StandardProps {
 
   /**
    * layout type of the list
-   * @defaultValue  ListType.SINGLE
+   * @defaultValue  'single'
    * @Android
    * @iOS
    * @Harmony
    * @PC
    */
-  'list-type'?: ListType
+  'list-type'?: 'single' | 'flow' | 'waterfall';
 
   /**
    * Whether to allow scrolling for a list.

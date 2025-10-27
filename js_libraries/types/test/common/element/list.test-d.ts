@@ -5,7 +5,6 @@
 import { describe, it, assertType } from 'vitest';
 import {
   ListProps,
-  ListType,
   StandardProps,
   ListEventSource,
   ListScrollEvent,
@@ -40,10 +39,10 @@ describe('ListItemProps type test', () => {
 
   it('check list-type', () => {
     assertType<ListProps>({
-      'list-type': ListType.SINGLE,
+      'list-type': 'single',
     });
     assertType<ListProps>({
-      'list-type': ListType.FLOW,
+      'list-type': 'flow',
     });
     assertType<ListProps>({
       // @ts-expect-error

@@ -1,4 +1,7 @@
 # CHANGELOG
+# 3.6.3
+- Fix list-type to avoid incompatible type error.
+ 
 ## 3.6.2
 - Add `lynx.stopExposure` and `lynx.resumeExposure` APIs.
 
