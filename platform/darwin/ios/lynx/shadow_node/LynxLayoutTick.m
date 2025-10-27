@@ -21,6 +21,11 @@
   _enableLayout = YES;
 }
 
+- (void)requestLayout:(LynxOnLayoutBlock)block {
+  _enableLayout = YES;
+  _block = block;
+}
+
 - (void)triggerLayout {
   if (_enableLayout) {
     _block();

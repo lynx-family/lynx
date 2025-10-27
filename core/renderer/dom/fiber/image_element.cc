@@ -40,9 +40,17 @@ void ImageElement::SetAttributeInternal(const base::String& key,
   // TODO(songshourui.null): we can process image's attribute in C++ to optimize
   // the performance.
   if (EnableLayoutInElementMode()) {
+    ProcessAttributeForLayoutInElement(key, value);
     attr_map_[key] = value;
   }
   FiberElement::SetAttributeInternal(key, value);
+}
+
+void ImageElement::ProcessAttributeForLayoutInElement(
+    const base::String& key, const lepus::Value& value) {
+  if (key.IsEqual(kImageAutoSize)) {
+    has_auto_size_ = value.Bool();
+  }
 }
 
 void ImageElement::ResetAttribute(const base::String& key) {
