@@ -119,6 +119,13 @@ NS_ASSUME_NONNULL_BEGIN
                               callback:(LynxUIMethodCallbackBlock)callback
                                 toNode:(int)sign;
 
+- (BOOL)isFullScreenShotSupported;
+
+- (NSArray<NSNumber *> *)getTransformValue:(NSInteger)sign
+                 withPadBorderMarginLayout:(NSArray<NSNumber *> *)padBorderMarginLayout;
+
+- (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString *)mode;
+
 #pragma mark - Find Node
 
 - (LynxUI *)findUIBySign:(NSInteger)sign;

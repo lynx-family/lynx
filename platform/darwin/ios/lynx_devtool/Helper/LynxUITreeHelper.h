@@ -12,24 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)attachLynxUIOwner:(nullable LynxUIOwner *)uiOwner;
 
-/*
- *find the minimum ui node which the point falls in
- *
- *Parameter:
- * x,y is coordinate to the screen of the point
- * uiSign is the id of the starting search node, lynxView or overlay view
- * thus,before calling view's hitTest function, We need to first convert the coordinates relative to
- *the screen into coordinates relative to the view
- *
- * Return Value:
- * the id of the found node , return 0 if not found
- */
-- (int)findNodeIdForLocationWithX:(float)x withY:(float)y fromUI:(int)uiSign mode:(NSString *)mode;
-
-- (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString *)mode;
-
-- (CGPoint)convertPointFromScreen:(CGPoint)point ToView:(UIView *)view;
-
 - (void)scrollIntoView:(int)node_id;
 
 - (CGRect)getRectToWindow;

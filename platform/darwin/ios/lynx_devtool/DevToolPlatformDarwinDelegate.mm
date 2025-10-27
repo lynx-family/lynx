@@ -7,6 +7,9 @@
 #import <BaseDevTool/DevToolToast.h>
 #import <Lynx/LynxPageReloadHelper+Internal.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxUIRenderer.h>
+#import <Lynx/LynxUIRendererProtocol.h>
 #import <LynxDevtool/ConsoleDelegateManager.h>
 #import <LynxDevtool/LepusDebugInfoHelper.h>
 #import <LynxDevtool/LynxDeviceInfoHelper.h>
@@ -345,10 +348,8 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 }
 
 - (int)findNodeIdForLocationWithX:(float)x withY:(float)y mode:(NSString*)mode {
-  if (_uiTreeHelper) {
-    return [_uiTreeHelper findNodeIdForLocationWithX:x withY:y mode:mode];
-  }
-  return 0;
+  __strong typeof(_lynxView) lynxView = _lynxView;
+  return [lynxView.templateRender.lynxUIRenderer findNodeIdForLocationWithX:x withY:y mode:mode];
 }
 
 - (NSString*)getDebugInfoByUrl:(NSString*)url {
@@ -360,10 +361,9 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 
 - (NSArray<NSNumber*>*)getTransformValue:(NSInteger)sign
                withPadBorderMarginLayout:(NSArray<NSNumber*>*)padBorderMarginLayout {
-  if (_uiTreeHelper) {
-    return [_uiTreeHelper getTransformValue:sign withPadBorderMarginLayout:padBorderMarginLayout];
-  }
-  return @[];
+  __strong typeof(_lynxView) lynxView = _lynxView;
+  return [lynxView.templateRender.lynxUIRenderer getTransformValue:sign
+                                         withPadBorderMarginLayout:padBorderMarginLayout];
 }
 
 - (void)setLynxInspectorConsoleDelegate:(id)delegate {
@@ -394,7 +394,11 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
                width:(int)max_width
               height:(int)max_height
                 mode:(NSString*)screenshot_mode {
-  [_castHelper startCasting:quality width:max_width height:max_height mode:screenshot_mode];
+  __strong typeof(_lynxView) lynxView = _lynxView;
+  NSString* mode = [lynxView.templateRender.lynxUIRenderer isFullScreenShotSupported]
+                       ? screenshot_mode
+                       : @"lynxview";
+  [_castHelper startCasting:quality width:max_width height:max_height mode:mode];
 }
 
 - (void)sendScreenCast:(NSString*)data
