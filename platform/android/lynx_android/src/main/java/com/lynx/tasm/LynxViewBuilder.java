@@ -224,6 +224,11 @@ public class LynxViewBuilder
   }
 
   @Override
+  public void registerModuleAuthValidator(LynxModule.AuthValidator authValidator) {
+    super.registerModuleAuthValidator(authValidator);
+  }
+
+  @Override
   public LynxViewBuilder setEnableUserCodeCache(boolean enableUserBytecode) {
     return super.setEnableUserCodeCache(enableUserBytecode);
   }

@@ -557,6 +557,10 @@ public class com::lynx::tasm::behavior::shadow::text::AttributedTextBundle :  {
   public TextAttributes com.lynx.tasm.behavior.shadow.text.AttributedTextBundle.getTextAttributes();
 }
 
+public interface com::lynx::jsbridge::LynxModule::AuthValidator {
+  public boolean com.lynx.jsbridge.LynxModule.AuthValidator.verify(String moduleName, String methodName, JavaOnlyArray methodParams);
+}
+
 public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.WHITESPACE_NORMAL WHITESPACE_NORMAL;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.WHITESPACE_NOWRAP WHITESPACE_NOWRAP;
@@ -3576,6 +3580,8 @@ public class abstract com::lynx::tasm::LynxBackgroundRuntimeClient :  {
 public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {
   public com.lynx.tasm.LynxBackgroundRuntimeOptions.LynxBackgroundRuntimeOptions();
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.registerModule(String name, Class<? extends LynxModule > module, Object param);
+  public void com.lynx.tasm.LynxBackgroundRuntimeOptions.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
+  public LynxModule.AuthValidator com.lynx.tasm.LynxBackgroundRuntimeOptions.getModuleAuthValidator();
   public boolean com.lynx.tasm.LynxBackgroundRuntimeOptions.useQuickJSEngine();
   public boolean com.lynx.tasm.LynxBackgroundRuntimeOptions.isEnableUserBytecode();
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.setEnableUserBytecode(boolean mEnableUserBytecode);
@@ -5582,6 +5588,7 @@ public class com::lynx::jsbridge::LynxModuleFactory :  {
   public void com.lynx.jsbridge.LynxModuleFactory.registerModule( @NonNull String name, @NonNull Class<? extends LynxModule > module, @Nullable Object param);
   public void com.lynx.jsbridge.LynxModuleFactory.addModuleParamWrapper(List< ParamWrapper > wrappers);
   public void com.lynx.jsbridge.LynxModuleFactory.addModuleParamWrapperIfAbsent(List< ParamWrapper > wrappers);
+  public void com.lynx.jsbridge.LynxModuleFactory.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
   public LynxModuleWrapper com.lynx.jsbridge.LynxModuleFactory.getModule(String name);
   public void com.lynx.jsbridge.LynxModuleFactory.markLynxViewIsDestroying();
   public void com.lynx.jsbridge.LynxModuleFactory.retainJniObject();
@@ -5594,6 +5601,9 @@ public class com::lynx::jsbridge::LynxModuleWrapper :  {
   public void com.lynx.jsbridge.LynxModuleWrapper.setLynxContext(WeakReference< Context > weakContext);
   public LynxModule com.lynx.jsbridge.LynxModuleWrapper.getModule();
   public String com.lynx.jsbridge.LynxModuleWrapper.getName();
+  public void com.lynx.jsbridge.LynxModuleWrapper.setAuthValidator(LynxModule.AuthValidator authValidator);
+  public boolean com.lynx.jsbridge.LynxModuleWrapper.hasAuthValidator();
+  public boolean com.lynx.jsbridge.LynxModuleWrapper.verify(String moduleName, String methodName, JavaOnlyArray methodParams);
   public Collection< MethodDescriptor > com.lynx.jsbridge.LynxModuleWrapper.getMethodDescriptors();
   public Collection< AttributeDescriptor > com.lynx.jsbridge.LynxModuleWrapper.getAttributeDescriptor();
   public void com.lynx.jsbridge.LynxModuleWrapper.destroy();
@@ -6914,6 +6924,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setResourceProvider(String key, LynxResourceProvider provider);
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module);
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module, Object param);
+  public void com.lynx.tasm.LynxViewBuilder.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableUserCodeCache(boolean enableUserBytecode);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setCodeCacheSourceUrl(String url);
   public void com.lynx.tasm.LynxViewBuilder.setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher);

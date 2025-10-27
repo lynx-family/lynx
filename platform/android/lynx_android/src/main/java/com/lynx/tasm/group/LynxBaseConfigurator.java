@@ -254,6 +254,15 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   }
 
   /**
+   *
+   * @param authValidator {#{@link LynxModule.AuthValidator}} LynxMethod verification interface,
+   *     used to verify whether the LynxMethod is allowed to be called.
+   */
+  public void registerModuleAuthValidator(LynxModule.AuthValidator authValidator) {
+    lynxRuntimeOptions.registerModuleAuthValidator(authValidator);
+  }
+
+  /**
    * Whether to allow synchronous retrieval of asynchronous layout results during the onMeasure
    * phase.
    *

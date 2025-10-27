@@ -37,6 +37,9 @@ public class LynxModuleFactory {
   private boolean mHasDestroyed = false;
   private Object mLynxModuleExtraData;
 
+  // AuthValidator is only valid for the current LynxBackgroundRuntime Options.
+  private LynxModule.AuthValidator mAuthValidator;
+
   public LynxModuleFactory(@NonNull Context context) {
     mWrappers = new ConcurrentHashMap<>();
     setContext(context);
@@ -101,6 +104,10 @@ public class LynxModuleFactory {
       }
       this.mWrappers.putIfAbsent(name, w);
     }
+  }
+
+  public void registerModuleAuthValidator(LynxModule.AuthValidator authValidator) {
+    mAuthValidator = authValidator;
   }
 
   private void getModuleExceptionReport(Exception e) {
@@ -193,6 +200,7 @@ public class LynxModuleFactory {
     }
     module.setExtraData(mLynxModuleExtraData);
     LynxModuleWrapper moduleWrapper = new LynxModuleWrapper(name, module);
+    moduleWrapper.setAuthValidator(mAuthValidator);
     moduleWrapper.setLynxContext(mWeakContext);
     mModulesByName.put(name, moduleWrapper);
     return moduleWrapper;

@@ -103,6 +103,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     eventSender.setWeakRuntime(this);
     mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
     mModuleFactory.addModuleParamWrapper(options.getWrappers());
+    mModuleFactory.registerModuleAuthValidator(options.getModuleAuthValidator());
 
     if (LynxEnv.inst().isLynxDebugEnabled()) {
       initDevtool(context, debuggable);

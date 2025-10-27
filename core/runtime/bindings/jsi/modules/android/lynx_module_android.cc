@@ -12,6 +12,7 @@
 #include "base/include/timer/time_utils.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/java_only_array.h"
+#include "core/base/android/jni_helper.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/jsi/modules/android/java_method_descriptor.h"
 #include "core/runtime/common/utils.h"
@@ -54,6 +55,8 @@ LynxModuleAndroid::LynxModuleAndroid(
   // Build callback_invoker_ Map
   auto method_descriptions =
       Java_LynxModuleWrapper_getMethodDescriptors(env, local_ref.Get());
+  has_auth_validator_ =
+      Java_LynxModuleWrapper_hasAuthValidator(env, local_ref.Get()) == JNI_TRUE;
   buildMap(env, method_descriptions, methods_, method_invokers_);
   LOGI("NativeModule: LynxModuleAndroid Create: " << module_name_);
 }
@@ -186,6 +189,13 @@ void LynxModuleAndroid::buildMap(
     method_invoker_maps[method_name] = std::make_shared<MethodInvoker>(
         descriptor.getMethod().Get(), descriptor.getSignature(), module_name_,
         method_name);
+    // Verify that the method is allowed to be called
+    if (has_auth_validator_) {
+      method_invoker_maps[method_name]->SetAuthValidator(
+          [this](const std::string& method_name,
+                 const std::shared_ptr<base::android::JavaOnlyArray>& validator)
+              -> bool { return Verify(method_name, validator); });
+    }
     env->DeleteLocalRef(description_wrapper);
   }
 }
@@ -406,6 +416,29 @@ ModuleCallbackAndroid* LynxModuleAndroid::GetModuleCallbackById(
     return nullptr;
   }
   return it->second.get();
+}
+
+bool LynxModuleAndroid::Verify(
+    const std::string& method_name,
+    const std::shared_ptr<base::android::JavaOnlyArray>& params) {
+  if (has_auth_validator_) {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    base::android::ScopedLocalJavaRef<jobject> local_ref(wrapper_);
+    if (local_ref.IsNull()) {
+      return false;
+    }
+    return Java_LynxModuleWrapper_verify(
+               env, local_ref.Get(),
+               base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+                   env, module_name_)
+                   .Get(),
+               base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+                   env, method_name)
+                   .Get(),
+               params->jni_object()) == JNI_TRUE;
+  }
+  // Calling is allowed by default
+  return true;
 }
 
 }  // namespace piper

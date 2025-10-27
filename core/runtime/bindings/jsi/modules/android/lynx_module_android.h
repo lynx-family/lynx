@@ -85,11 +85,16 @@ class LynxModuleAndroid
   // case of high-frequency calls.
   CallbackHolders callbackHolders_;
   std::unordered_set<std::shared_ptr<LynxPromiseImpl>> promises_;
+  // Whether the Module has registered the Auth Validator
+  bool has_auth_validator_ = false;
 
   base::expected<piper::Value, std::string> CreateLynxNativePromise(
       const std::shared_ptr<MethodInvoker> &invoker, jobject module,
       const pub::Value *method_args, size_t args_count,
       const CallbackMap &callbacks);
+
+  bool Verify(const std::string &method_name,
+              const std::shared_ptr<base::android::JavaOnlyArray> &params);
 
   inline Runtime *GetScopeRuntime() {
     if (!scope_rts_.empty()) {

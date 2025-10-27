@@ -521,6 +521,7 @@ public class LynxTemplateRender
       mModuleFactory.setContext(mLynxContext);
     } else {
       mModuleFactory = new LynxModuleFactory(mLynxContext);
+      mModuleFactory.registerModuleAuthValidator(mLynxRuntimeOptions.getModuleAuthValidator());
     }
     // set user modules
     setUserModules(mModuleFactory);
