@@ -418,7 +418,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
                     templateBundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
                   }
                   if (templateBundle != null) {
-                    if (logicExecutor == null) {
+                    if (logicExecutor == null && EmbeddedMode.isEnginePoolEnable(embeddedMode)) {
+                      // it's a workaround, temporarily we use isEnginePoolEnable to check if need
+                      // to create this DefaultLogicExecutor!
                       logicExecutor = new DefaultLogicExecutor(templateBundle, lynxRuntimeOptions,
                           mContext, LynxViewGroup.this, debuggable);
                     }
