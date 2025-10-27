@@ -23,7 +23,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readonly) UIGestureRecognizer *longPressRecognizer;
 @property(nonatomic, weak, readonly) LynxGestureArenaManager *_Nullable gestureArenaManager;
 @property(nonatomic, assign) BOOL enableSimultaneousTap;
-@property(nonatomic, assign) BOOL disableEndEditing;
+@property(nonatomic, assign)
+    BOOL customizedEndEditingStrategy;  // TODO: Migrate to foucsd-ui logic like we do on Android
+@property(nonatomic, weak) id<LynxEventTarget>
+    focusedInputTarget;  // TODO: Migrate to foucsd-ui logic like we do on Android
 
 - (instancetype)initWithRootView:(UIView *)rootView;
 - (instancetype)initWithRootView:(UIView *)rootView withRootUI:(nullable LynxUI *)rootUI;
