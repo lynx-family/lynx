@@ -198,6 +198,7 @@ public class LynxRecorderActionManager {
   private final Handler mHandler;
   private final Context mContext;
   private String mUrl;
+  private String mRawUrl;
   private byte[] templateSource;
   private byte[] mPreloadedTemplateSource;
   private JSONObject mThreadStrategyData;
@@ -518,6 +519,10 @@ public class LynxRecorderActionManager {
     return mUrl;
   }
 
+  public String getRawUrl() {
+    return mRawUrl;
+  }
+
   public JSONArray getComponentList() {
     return mComponentList;
   }
@@ -532,6 +537,7 @@ public class LynxRecorderActionManager {
       mViewGroup.addView(mStateView);
       return;
     }
+    mRawUrl = url;
     QueryMapUtils queryMap = new QueryMapUtils();
     queryMap.parse(url);
     mUrl = queryMap.getString("url");

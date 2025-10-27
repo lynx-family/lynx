@@ -247,6 +247,7 @@ static const int kVirtual = 1 << 2;
           withOrigin:(CGPoint)point
         replayConfig:(LynxRecorderReplayConfig*)replayConfig
               NavBar:(CGSize)navBarSize {
+  self.url = url;
   if (![url hasPrefix:[LynxRecorderEnv sharedInstance].lynxRecorderUrlPrefix]) {
     _stateView = [[LynxRecorderReplayStateView alloc] init];
     [parentView addSubview:_stateView];

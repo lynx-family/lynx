@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) void (^firstScreenBlock)(void);
 @property(nonatomic) LynxGroup *lynxGroup;
 @property(nonatomic, readonly) NSArray<NSDictionary *> *componentList;
+@property(nonatomic, copy) NSString *url;
 
 - (void)registerLynxRecorderActionCallback:(id<LynxRecorderActionCallback>)callback;
 - (void)startWithUrl:(NSString *)url
