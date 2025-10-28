@@ -670,7 +670,9 @@ static const int kVirtual = 1 << 2;
     [_lynxView updateViewportWithPreferredLayoutWidth:preferredLayoutWidth
                                 preferredLayoutHeight:preferredLayoutHeight];
   }
-  [_lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
+  if (_lynxView.baseInspectorOwner != nil) {
+    [_lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
+  }
 }
 
 - (void)updateFontScale:(NSDictionary*)params {
@@ -815,7 +817,10 @@ static const int kVirtual = 1 << 2;
              forKeyPath:@"frame"
                 options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld
                 context:nil];
-  [lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
+
+  if (lynxView.baseInspectorOwner != nil) {
+    [lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
+  }
   // provide a change to register module or resource provider
   for (id<LynxRecorderActionCallback> callback in self.actionCallbacks) {
     [callback onLynxViewDidBuild:lynxView];
