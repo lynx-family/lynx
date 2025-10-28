@@ -382,6 +382,24 @@ Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const Callbac
   {% else %}
   return {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
   {% endif %}
+  {#                                                                            #}
+  {% elif attribute.is_frozen_array %}
+  const auto& vector_result = {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+  auto result = Array::New(info.Env(), vector_result.size());
+  for (size_t i = 0; i < vector_result.size(); ++i) {
+    {% if attribute.sequence_element_type == 'Number' %}
+    result[i] = Number::New(info.Env(), vector_result[i]);
+    {% elif attribute.sequence_element_type == 'String' %}
+    result[i] = String::New(info.Env(), vector_result[i]);
+    {% elif attribute.sequence_element_type == 'Object' %}
+    result[static_cast<uint32_t>(i)] = (vector_result[i]->IsNapiWrapped() ? vector_result[i]->NapiObject() : Napi{{attribute.sequence_element_idl_type}}::Wrap(std::unique_ptr<{{attribute.sequence_element_idl_type}}>(vector_result[i]), info.Env()));
+    {% else %}
+    ExceptionMessage::NotSupportYet(info.Env());
+    return Value();
+    {% endif %}{# sequence_element_type #}
+  }
+  return result;
+{#                                                                            #}
   {% else %}
   ExceptionMessage::NotImplemented(info.Env());
   return Value();

@@ -207,6 +207,17 @@ def attribute_context(interface, attribute, interfaces, component_info):
 
     idl_type_name, native_value_traits_support, raises_exception = napi_types.native_value_traits_idl_type(idl_type)
 
+    sequence_element_type = None
+    sequence_element_idl_type = None
+    if idl_type.is_frozen_array:
+        if idl_type.native_array_element_type.is_numeric_type:
+            sequence_element_type = "Number"
+        elif idl_type.native_array_element_type.is_string_type:
+            sequence_element_type = "String"
+        elif idl_type.native_array_element_type.is_wrapper_type:
+            sequence_element_type = "Object"
+        sequence_element_idl_type = idl_type.native_array_element_type.base_type
+
     context = {
         # [ActivityLogging]
         'activity_logging_world_list_for_getter':
@@ -327,6 +338,12 @@ def attribute_context(interface, attribute, interfaces, component_info):
         raises_exception,
         'from_shared':
         interface.sharing_impl and attribute.from_shared,
+        'is_frozen_array':
+        idl_type.is_frozen_array,
+        'sequence_element_type':
+        sequence_element_type,
+        'sequence_element_idl_type':
+        sequence_element_idl_type,
     }
 
     if not has_custom_getter(attribute):

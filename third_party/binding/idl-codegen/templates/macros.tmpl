@@ -28,7 +28,7 @@
   {{union_type.idl_type}}* arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}} = nullptr;
   {% elif union_type.is_string_type %}
   std::string arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}};
-  {% elif union_type.is_dictionary_type %}
+  {% elif union_type.is_dictionary %}
   std::unique_ptr<{{union_type.idl_type}}> arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}};
   {% elif union_type.is_sequence_type %}
   {{union_type.cpp_type}} arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}};
@@ -47,7 +47,7 @@
     arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}} = {{literal}}.ToString().Utf8Value();
     union_branch = {{loop.index}};
     break;
-    {% elif union_type.is_dictionary_type %}
+    {% elif union_type.is_dictionary %}
     if (auto {{argument.name}} = NativeValueTraits<{{union_type.idl_type_name}}>::NativeValue({{literal}})) {
       arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}} = std::move({{argument.name}});
       union_branch = {{loop.index}};
@@ -60,6 +60,8 @@
       break;
     }
     {% endif %}
+    // Union matching errors are 'soft'.
+    info.Env().GetAndClearPendingException();
     {% endfor %}
     ExceptionMessage::InvalidType(info.Env(), "{{'argument ' + argument.index|string if 'index' in argument else argument.name}}", "{{argument.idl_type or argument.cpp_type}}");
     {{ return_type }}
@@ -118,8 +120,7 @@
   switch (union_branch) {
     {% for union_type in constructor.arguments[0].union_types %}
     case {{loop.index}}: {
-      auto impl = {{constructor.cpp_type[:-1]}}::Create({% if constructor.is_raises_exception %}exception_state, {% endif %}arg0_{{constructor.arguments[0].name}}_{{union_type.idl_type}}{% for arg in constructor.arguments[1:num_args] %}, {{arg | argument_literal }}{% endfor %});
-      {% if constructor.is_raises_exception %}
+      auto impl = {{constructor.cpp_type[:-1]}}::Create({% if constructor.is_raises_exception %}exception_state, {% endif %}std::move(arg0_{{constructor.arguments[0].name}}_{{union_type.idl_type}}){% for arg in constructor.arguments[1:num_args] %}, {{arg | argument_literal }}{% endfor %});      {% if constructor.is_raises_exception %}
       if (exception_state.HadException()) {
         return;
       }
@@ -149,7 +150,7 @@
   switch (union_branch) {
     {% for union_type in method.arguments[0].union_types %}
     case {{loop.index}}: {
-      {{'auto&& result = ' if method.cpp_type != 'void'}}{{callee}}{{method.camel_case_name}}({% if method.is_raises_exception %}exception_state, {% endif %}arg0_{{method.arguments[0].name}}_{{union_type.idl_type}}{% for argument in method.arguments[1:num_args] %}, {{argument | argument_literal}}{% endfor %});
+      {{'auto&& result = ' if method.cpp_type != 'void'}}{{callee}}{{method.camel_case_name}}({% if method.is_raises_exception %}exception_state, {% endif %}std::move(arg0_{{method.arguments[0].name}}_{{union_type.idl_type}}){% for argument in method.arguments[1:num_args] %}, {{argument | argument_literal}}{% endfor %});
       {% if method.is_raises_exception and method.cpp_type != 'void' %}
       if (exception_state.HadException()) {
         return Value();
