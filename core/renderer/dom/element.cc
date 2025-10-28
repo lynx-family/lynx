@@ -1649,6 +1649,11 @@ void Element::ResolveAndFlushKeyframes() {
       !css_fragment->GetKeyframesRuleMap().empty()) {
     SetKeyframesByNames(lepus::Value(animation_names),
                         css_fragment->GetKeyframesRuleMap(), false);
+  } else if (animation_names->size() != 0 &&
+             element_manager_->GetSimpleStyleKeyframes()) {
+    SetKeyframesByNames(lepus::Value(animation_names),
+                        *(element_manager_->GetSimpleStyleKeyframes().get()),
+                        false);
   }
 }
 
