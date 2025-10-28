@@ -408,6 +408,11 @@ void TemplateAssembler::DidDecodeTemplate(
     }
   }
 
+  if (card && page_proxy_.element_manager()) {
+    page_proxy_.element_manager()->SetEnableSimpleStyle(
+        card->compile_options().enable_simple_styling_);
+  }
+
   // timing actions
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kParseEnd);
 }
@@ -701,6 +706,9 @@ void TemplateAssembler::RenderTemplateForFiber(
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
 
   HandleSimpleStyleFontFaces(card);
+
+  HandleSimpleStyleKeyframes(card);
+
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
@@ -726,6 +734,18 @@ void TemplateAssembler::HandleSimpleStyleFontFaces(
   }
 
   page_proxy()->element_manager()->SetFontFaces(font_face_rule);
+}
+
+void TemplateAssembler::HandleSimpleStyleKeyframes(
+    const std::shared_ptr<TemplateEntry>& card) {
+  if (!card->compile_options().enable_simple_styling_) {
+    return;
+  }
+  auto& keyframes_token_map = card->CSSKeyframesTokenMap();
+  if (!keyframes_token_map || keyframes_token_map->size() == 0) {
+    return;
+  }
+  page_proxy()->element_manager()->SetSimpleStyleKeyframes(keyframes_token_map);
 }
 
 void TemplateAssembler::RenderTemplateForAir(

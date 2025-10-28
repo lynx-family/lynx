@@ -335,6 +335,18 @@ class ElementManager : public ElementContextDelegate {
                                  const lepus::Value &value);
   void SetFontFaces(const tasm::CSSFontFaceRuleMap &fontfaces);
   void AddFontFace(const lepus::Value &font);
+
+  void SetEnableSimpleStyle(bool enable) { enable_simple_style_ = enable; }
+
+  void SetSimpleStyleKeyframes(
+      const std::shared_ptr<CSSKeyframesTokenMap> &keyframes) {
+    key_frames_ = keyframes;
+  }
+
+  const std::shared_ptr<CSSKeyframesTokenMap> &GetSimpleStyleKeyframes() {
+    return key_frames_;
+  }
+
   void UpdateLayoutNodeByBundle(int32_t id,
                                 std::unique_ptr<LayoutBundle> bundle);
   void UpdateLayoutNodeProps(int32_t id,
@@ -478,9 +490,10 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetEnableNewAnimatorForFiber() {
     if (config_) {
-      return config_->GetEnableNewAnimator();
+      return config_->GetEnableNewAnimator() && !enable_simple_style_;
     }
-    return LynxEnv::GetInstance().EnableNewAnimatorFiber();
+    return LynxEnv::GetInstance().EnableNewAnimatorFiber() &&
+           !enable_simple_style_;
   }
 
   bool GetParallelWithSyncLayout() { return parallel_with_sync_layout_; }
@@ -973,6 +986,7 @@ class ElementManager : public ElementContextDelegate {
   void SetEnableDumpElementTree(bool enable) {
     enable_dump_element_tree_ = enable;
   }
+
   bool GetEnableDumpElementTree() { return enable_dump_element_tree_; }
 
   void SetFiberPageElement(const fml::RefPtr<PageElement> &page) {
@@ -1249,6 +1263,8 @@ class ElementManager : public ElementContextDelegate {
   bool has_viewport_ready_{false};
   bool is_memory_collecting_{false};
 
+  bool enable_simple_style_{false};
+
   LynxEnvConfig lynx_env_config_;
   std::shared_ptr<PageConfig> config_;
   PageOptions page_options_;
@@ -1297,6 +1313,8 @@ class ElementManager : public ElementContextDelegate {
   base::ConcurrentQueue<base::String> attribute_timing_flag_list_;
 
   std::shared_ptr<tasm::TasmWorkerTaskRunner> task_runner_;
+
+  std::shared_ptr<CSSKeyframesTokenMap> key_frames_;
 
   base::MoveOnlyClosure<void, int> vm_update_outer_obj_size_callback_{};
 

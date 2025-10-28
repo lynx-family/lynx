@@ -218,7 +218,9 @@ FiberElement::~FiberElement() {
                                                impl_id());
     element_manager()->NotifyElementDestroy(this);
     DestroyPlatformNode();
-    element_manager()->DestroyLayoutNode(impl_id());
+    if (!EnableLayoutInElementMode() || customized_layout_node_) {
+      element_manager()->DestroyLayoutNode(impl_id());
+    }
     element_manager()->node_manager()->Erase(id_);
     if (customized_layout_node_) {
       customized_layout_node_->Destroy();
@@ -477,6 +479,26 @@ void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
           }
         }
       });
+
+  if (has_keyframe_props_changed_) {
+    HandleDelayTask([this]() { HandleKeyframePropsChange(); });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDAnimation);
+    }
+  }
+
+  if (has_transition_props_changed_) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
+                [this](lynx::perfetto::EventContext ctx) {
+                  UpdateTraceDebugInfo(ctx.event());
+                });
+    if (!enable_new_animator()) {
+      PushToBundle(kPropertyIDTransition);
+    } else {
+      SetDataToNativeTransitionAnimator();
+    }
+    has_transition_props_changed_ = false;
+  }
   EXEC_EXPR_FOR_INSPECTOR(
       element_manager()->OnElementNodeSetForInspector(this););
   MarkDirty(kDirtyForceUpdate);

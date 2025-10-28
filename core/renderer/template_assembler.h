@@ -935,6 +935,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void HandleSimpleStyleFontFaces(const std::shared_ptr<TemplateEntry>& card);
 
+  void HandleSimpleStyleKeyframes(const std::shared_ptr<TemplateEntry>& card);
+
   template <
       class... Args,
       class = std::enable_if_t<
