@@ -5423,6 +5423,7 @@ public enum LynxFeature {
   public FOUNDATION_EXTERN NSString* const kTimingContainerInitEnd kTimingContainerInitEnd;
   public FOUNDATION_EXTERN NSString* const kTimingOpenTime kTimingOpenTime;
   public FOUNDATION_EXTERN NSString* const kTimingPaintEnd kTimingPaintEnd;
+  public FOUNDATION_EXTERN NSString* const kTimingPipelineEnd kTimingPipelineEnd;
 
 public enum LynxWhiteSpaceType {
   LynxWhiteSpaceNormal

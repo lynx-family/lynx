@@ -118,6 +118,12 @@ void TimingHandler::SetTiming(TimestampKey& timing_key,
   }
   handler_ng_.SetTiming(timing_key, us_timestamp, pipeline_id);
 
+  // kPipelineEnd should only be processed in handler_ng_(PerformanceAPI)
+  // So ignore kPipelineEnd in TimingAPI
+  if (timing_key == kPipelineEnd) {
+    return;
+  }
+
   TimestampKey polyfillKey = "";
   if (!TryUpdatePolyfillTimingKey(timing_key, polyfillKey)) {
     return;
@@ -337,6 +343,10 @@ void TimingHandler::ReleaseTiming(const PipelineID& pipeline_id) {
   pipeline_id_to_timing_flags_map_.erase(pipeline_id);
   pipeline_id_to_origin_map_.erase(pipeline_id);
   timing_info_.ReleaseTiming(pipeline_id);
+}
+
+void TimingHandler::SetHostPlatformType(const std::string& type) {
+  handler_ng_.SetHostPlatformType(type);
 }
 
 }  // namespace timing

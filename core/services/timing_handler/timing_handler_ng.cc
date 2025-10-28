@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
-#include "core/renderer/tasm/config.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 
@@ -23,14 +22,17 @@ TimingHandlerNg::TimingHandlerNg(performance::PerformanceEventSender* sender)
   }
 }
 
+void TimingHandlerNg::SetHostPlatformType(const std::string& type) {
+  if (type.empty()) {
+    return;
+  }
+  timing_info_.SetHostPlatformType(type);
+}
+
 void TimingHandlerNg::OnPipelineStart(
     const PipelineID& pipeline_id, const PipelineOrigin& pipeline_origin,
     const TimestampUs pipeline_start_timestamp) {
   timing_info_.BindPipelineOriginWithPipelineId(pipeline_id, pipeline_origin);
-  if (sender_) {
-    timing_info_.SetHostPlatformTimingExtraInfo(pipeline_id, kHostPlatformType,
-                                                Config::Platform());
-  }
   if (pipeline_origin == kLoadBundle ||
       pipeline_origin == kReloadBundleFromNative ||
       pipeline_origin == kReloadBundleFromBts) {
@@ -124,10 +126,6 @@ void TimingHandlerNg::ProcessPipelineTiming(
       FlushPendingPerformanceEntries();
     }
     DispatchPerformanceEventIfNeeded(timing_key, pipeline_id);
-  }
-  // TODO(zhangkaijie.9): temporarily regard PaintEnd as PipelineEnd.
-  if (timing_key == kPaintEnd) {
-    ProcessPipelineTiming(kPipelineEnd, us_timestamp, pipeline_id);
   }
 }
 

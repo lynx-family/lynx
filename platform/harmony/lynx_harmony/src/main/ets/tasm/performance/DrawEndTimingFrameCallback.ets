@@ -21,6 +21,9 @@ export class DrawEndTimingFrameCallback extends FrameCallback {
   onFrame(frameTimeNanos: number) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.DRAW_END_TIMING_ON_FRAME_CALLBACK);
     this.perfController.markTiming("paintEnd", this.pipelineId);
+    // The rendering pipeline is considerd to be complete after the kPaintEnd phase,
+    // so we mark pipelineEnd here
+    this.perfController.markTiming("pipelineEnd", this.pipelineId);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.DRAW_END_TIMING_ON_FRAME_CALLBACK);
   }
 }
