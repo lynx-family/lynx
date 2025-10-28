@@ -35,6 +35,7 @@
 #import <Lynx/LynxUILayoutTick.h>
 #import <Lynx/LynxUIMethodModule.h>
 #import <Lynx/LynxUIRenderer.h>
+#import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
 
 #include "core/base/darwin/lynx_env_darwin.h"
@@ -278,7 +279,7 @@
   // setup user modules
   if (_config) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
-    module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
+    module_factory->addWrappers([_builder getModuleWrapper]);
   }
   // setup user global modules
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
@@ -312,7 +313,7 @@
     module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
-      module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
+      module_factory->addWrappers([_builder getModuleWrapper]);
     }
   }
   module_factory_ = module_factory;
@@ -415,6 +416,7 @@
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   _context = [[LynxContext alloc] initWithContainerView:_containerView];
+  [_context setEmbeddedMode:_embeddedMode];
   [self setUpResourceProviderWithBuilder:builder];
   _lynxUIRenderer = [builder.uiRendererCreator createUIRendererWithContext:_context
                                                              containerView:_containerView

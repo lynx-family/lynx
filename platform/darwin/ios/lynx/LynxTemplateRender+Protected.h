@@ -67,6 +67,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _enableMTSModule;
   BOOL _isMemoryCollecting;
 
+  LynxViewBuilder* _builder;
   LynxConfig* _config;
   LynxContext* _context;
   LynxUILayoutTick* _uilayoutTick;

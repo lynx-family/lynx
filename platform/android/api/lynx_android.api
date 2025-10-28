@@ -4621,11 +4621,13 @@ public class com::lynx::devtoolwrapper::LynxDevToolUtils :  {
 public class abstract com::lynx::tasm::behavior::ui::utils::LynxDrawableManager< T extends LayerDrawable :  {
 }
 
-public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxModule {
+public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxContextModule {
   public final String com.lynx.jsbridge.LynxEmbeddedModule.NAME NAME;
-  public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(Context context, Object param);
+  public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(LynxContext context, Object param);
   public void com.lynx.jsbridge.LynxEmbeddedModule.updateData(final int lynxViewId, final ReadableMap params, final Callback resolve, final Callback reject);
   public void com.lynx.jsbridge.LynxEmbeddedModule.getData(final int lynxViewId, final Callback resolve, final Callback reject);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.setDataV2(final ReadableMap params, final Callback resolve, final Callback reject);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.getDataV2(final Callback resolve, final Callback reject);
 }
 
 public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder {
