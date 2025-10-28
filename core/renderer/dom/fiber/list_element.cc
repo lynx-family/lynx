@@ -23,10 +23,11 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
                          const lepus::Value& enqueue_component,
                          const lepus::Value& component_at_indexes)
     : FiberElement(manager, tag),
-      ListContainer(this),
       component_at_index_(component_at_index),
       enqueue_component_(enqueue_component),
-      component_at_indexes_(component_at_indexes) {
+      component_at_indexes_(component_at_indexes),
+      list_container_delegate_internal_(
+          list::CreateListContainerDelegateInternal(this)) {
   if (manager == nullptr) {
     return;
   }
@@ -34,8 +35,9 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
           manager->GetEnableParallelElement());
-  if (list_container_delegate()) {
-    list_container_delegate()->UpdateBatchRenderStrategy(batch_render_strategy);
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->UpdateBatchRenderStrategy(
+        batch_render_strategy);
   }
 }
 
@@ -47,10 +49,10 @@ ListNode* ListElement::GetListNode() {
   return static_cast<RadonListBase*>(data_model_->radon_node_ptr());
 }
 
-bool ListElement::UseNewResolveStrategy() {
+bool ListElement::NeedAsyncResolveListItem() {
   auto batch_render_strategy =
-      DisableListPlatformImplementation() && list_container_delegate()
-          ? list_container_delegate()->GetBatchRenderStrategy()
+      DisableListPlatformImplementation() && list_container_delegate_internal_
+          ? list_container_delegate_internal_->GetBatchRenderStrategy()
           : list::BatchRenderStrategy::kDefault;
   return batch_render_strategy ==
              list::BatchRenderStrategy::kAsyncResolveProperty ||
@@ -66,9 +68,9 @@ void ListElement::OnNodeAdded(FiberElement* child) {
   // Mark list's child as list item
   child->MarkAsListItem();
   // Create scheduler for each list-item
-  if (UseNewResolveStrategy()) {
+  if (NeedAsyncResolveListItem()) {
     child->CreateListItemScheduler(
-        list_container_delegate()->GetBatchRenderStrategy(),
+        list_container_delegate_internal_->GetBatchRenderStrategy(),
         element_context_delegate_, continuous_resolve_tree_);
     // Mark inserted child as render_root of its subtree
     // TODO: Override UpdateRenderRootElementIfNecessary when list-item-element
@@ -82,7 +84,7 @@ void ListElement::ParallelFlushAsRoot() {
   if (!element_manager()->GetEnableParallelElement()) {
     return;
   }
-  if (!UseNewResolveStrategy()) {
+  if (!NeedAsyncResolveListItem()) {
     FiberElement::ParallelFlushAsRoot();
     return;
   }
@@ -226,8 +228,9 @@ void ListElement::EnqueueComponent(int32_t sign) {
 }
 
 void ListElement::TickElement(fml::TimePoint& time) {
-  if (list_container_delegate() && DisableListPlatformImplementation()) {
-    list_container_delegate()->OnNextFrame();
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnNextFrame();
   }
 }
 
@@ -323,7 +326,8 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     }
   }
   // Handle experimental-batch-render-strategy property.
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
     auto it = attr_map.find(
         BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy));
     if (it != attr_map.end()) {
@@ -341,7 +345,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
           batch_render_strategy_from_prop =
               list::BatchRenderStrategy::kBatchRender;
         }
-        list_container_delegate()->UpdateBatchRenderStrategy(
+        list_container_delegate_internal_->UpdateBatchRenderStrategy(
             batch_render_strategy_from_prop);
       }
     }
@@ -349,7 +353,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       // Flush to platform ui once time.
       batch_render_strategy_flushed_ = true;
       list::BatchRenderStrategy batch_render_strategy =
-          list_container_delegate()->GetBatchRenderStrategy();
+          list_container_delegate_internal_->GetBatchRenderStrategy();
       FiberElement::SetAttributeInternal(
           BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy),
           lepus::Value(static_cast<int>(batch_render_strategy)));
@@ -367,15 +371,16 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
 void ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
   if (!DisableListPlatformImplementation() ||
-      (DisableListPlatformImplementation() && list_container_delegate() &&
-       list_container_delegate()->ResolveAttribute(key, value))) {
+      (DisableListPlatformImplementation() &&
+       list_container_delegate_internal_ &&
+       list_container_delegate_internal_->ResolveAttribute(key, value))) {
     FiberElement::SetAttributeInternal(key, value);
-  } else if (list_container_delegate() &&
+  } else if (list_container_delegate_internal_ &&
              (key.IsEqual(list::kFiberListDiffInfo) ||
               key.IsEqual(list::kListPlatformInfo))) {
     // fiber-list-info
     auto list_container_info = lepus::Dictionary::Create();
-    list_container_delegate()->UpdateListContainerDataSource(
+    list_container_delegate_internal_->UpdateListContainerDataSource(
         list_container_info);
     FiberElement::SetAttributeInternal(
         BASE_STATIC_STRING(list::kListContainerInfo),
@@ -426,8 +431,9 @@ void ListElement::SetAttributeInternal(const base::String& key,
 }
 
 void ListElement::PropsUpdateFinish() {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->PropsUpdateFinish();
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->PropsUpdateFinish();
   }
 }
 
@@ -439,8 +445,9 @@ void ListElement::PropsUpdateFinish() {
 void ListElement::OnListElementUpdated(
     const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ON_ELEMENT_UPDATED);
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->OnLayoutChildren(options);
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnLayoutChildren(options);
   }
 }
 
@@ -454,27 +461,31 @@ void ListElement::OnListElementUpdated(
  **/
 void ListElement::OnComponentFinished(
     Element* component, const std::shared_ptr<PipelineOptions>& option) {
-  if (DisableListPlatformImplementation() && list_container_delegate() &&
-      component && option->operation_id != 0) {
-    list_container_delegate()->FinishBindItemHolder(component, option);
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_ && component &&
+      option->operation_id != 0) {
+    list_container_delegate_internal_->FinishBindItemHolder(component, option);
   }
 }
 
 void ListElement::OnListItemLayoutUpdated(Element* component) {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->OnListItemLayoutUpdated(component);
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnListItemLayoutUpdated(component);
   }
 }
 
 void ListElement::OnListItemBatchFinished(
     const std::shared_ptr<PipelineOptions>& options) {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
     std::vector<Element*> list_items;
     for (const auto& list_item_id : options->list_item_ids_) {
       list_items.emplace_back(
           element_manager()->node_manager()->Get(list_item_id));
     }
-    list_container_delegate()->FinishBindItemHolders(list_items, options);
+    list_container_delegate_internal_->FinishBindItemHolders(list_items,
+                                                             options);
   }
 }
 
@@ -486,8 +497,9 @@ void ListElement::OnListItemBatchFinished(
 void ListElement::ScrollByListContainer(float content_offset_x,
                                         float content_offset_y,
                                         float original_x, float original_y) {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->ScrollByPlatformContainer(
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->ScrollByPlatformContainer(
         content_offset_x, content_offset_y, original_x, original_y);
   }
 }
@@ -501,8 +513,10 @@ void ListElement::ScrollByListContainer(float content_offset_x,
  **/
 void ListElement::ScrollToPosition(int index, float offset, int align,
                                    bool smooth) {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->ScrollToPosition(index, offset, align, smooth);
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->ScrollToPosition(index, offset, align,
+                                                        smooth);
   }
 }
 
@@ -510,39 +524,43 @@ void ListElement::ScrollToPosition(int index, float offset, int align,
  * @description: Finish ScrollToPosition
  **/
 void ListElement::ScrollStopped() {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->ScrollStopped();
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->ScrollStopped();
   }
 }
 
 void ListElement::SetEventHandler(const base::String& name,
                                   EventHandler* handler) {
   Element::SetEventHandler(name, handler);
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->AddEvent(name);
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->AddEvent(name);
   }
 }
 
 void ListElement::ResetEventHandlers() {
   Element::ResetEventHandlers();
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->ClearEvents();
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->ClearEvents();
   }
 }
 
 bool ListElement::ResolveStyleValue(CSSPropertyID id,
                                     const tasm::CSSValue& value) {
   bool ret = Element::ResolveStyleValue(id, value);
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
     switch (id) {
       case CSSPropertyID::kPropertyIDListMainAxisGap:
-        list_container_delegate()->ResolveListAxisGap(
+        list_container_delegate_internal_->ResolveListAxisGap(
             id, computed_css_style()
                     ->GetLayoutComputedStyle()
                     ->GetListMainAxisGap());
         break;
       case CSSPropertyID::kPropertyIDListCrossAxisGap:
-        list_container_delegate()->ResolveListAxisGap(
+        list_container_delegate_internal_->ResolveListAxisGap(
             id, computed_css_style()
                     ->GetLayoutComputedStyle()
                     ->GetListCrossAxisGap());
@@ -577,9 +595,11 @@ void ListElement::AttachToElementManager(
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
           manager->GetEnableParallelElement());
-  if (list_container_delegate()) {
-    list_container_delegate()->OnAttachToElementManager(manager);
-    list_container_delegate()->UpdateBatchRenderStrategy(batch_render_strategy);
+  if (DisableListPlatformImplementation() &&
+      list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnAttachToElementManager(manager);
+    list_container_delegate_internal_->UpdateBatchRenderStrategy(
+        batch_render_strategy);
   }
 }
 

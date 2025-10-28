@@ -14438,9 +14438,9 @@ TEST_P(FiberElementTest, MarkRenderRootElementTest) {
                                        enqueue_component, component_at_indexes);
   parent->InsertNode(list);
   list->disable_list_platform_implementation_ = true;
-  list->list_container_delegate_ =
-      list::CreateListContainerDelegate(list.get());
-  list->list_container_delegate_->UpdateBatchRenderStrategy(
+  list->list_container_delegate_internal_ =
+      list::CreateListContainerDelegateInternal(list.get());
+  list->list_container_delegate_internal_->UpdateBatchRenderStrategy(
       list::BatchRenderStrategy::kAsyncResolveProperty);
   EXPECT_TRUE(list->render_root_element_ == nullptr);
 

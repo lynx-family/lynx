@@ -31,6 +31,7 @@ lynx_core_source_set("dom") {
     "../css:css_dom",
     "../simple_styling",
     "../trace:renderer_trace",
+    "../ui_component/list/radon:radon_list_component",
     "../ui_wrapper",
     "../utils:renderer_dom_utils",
     "../utils:renderer_utils",
@@ -40,10 +41,7 @@ lynx_core_source_set("dom") {
   ]
 
   if (!is_oliver_ssr) {
-    public_deps += [
-      "../ui_component/list:react_component_list",
-      "selector:element_selector",
-    ]
+    public_deps += [ "selector:element_selector" ]
   }
 
   if (is_android) {

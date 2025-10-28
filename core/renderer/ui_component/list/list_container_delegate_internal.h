@@ -1,0 +1,80 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef CORE_RENDERER_UI_COMPONENT_LIST_LIST_CONTAINER_DELEGATE_INTERNAL_H_
+#define CORE_RENDERER_UI_COMPONENT_LIST_LIST_CONTAINER_DELEGATE_INTERNAL_H_
+
+#include <memory>
+#include <vector>
+
+#include "base/include/value/base_value.h"
+#include "core/renderer/dom/element.h"
+#include "core/renderer/ui_component/list/list_types.h"
+
+namespace lynx {
+namespace tasm {
+
+class ListContainerDelegateInternal {
+ public:
+  virtual ~ListContainerDelegateInternal() = default;
+
+  virtual bool ResolveAttribute(const base::String& key,
+                                const lepus::Value& value) = 0;
+
+  virtual void OnLayoutChildren(
+      const std::shared_ptr<PipelineOptions>& options) = 0;
+
+  virtual void OnNextFrame() = 0;
+
+  virtual void FinishBindItemHolder(
+      Element* component, const std::shared_ptr<PipelineOptions>& option) = 0;
+
+  virtual void FinishBindItemHolders(
+      const std::vector<Element*>& list_items,
+      const std::shared_ptr<PipelineOptions>& options) = 0;
+
+  virtual void ScrollByPlatformContainer(float content_offset_x,
+                                         float content_offset_y,
+                                         float original_x,
+                                         float original_y) = 0;
+
+  virtual void ScrollToPosition(int index, float offset, int align,
+                                bool smooth) = 0;
+
+  virtual void ScrollStopped() = 0;
+
+  virtual void UpdateListContainerDataSource(
+      fml::RefPtr<lepus::Dictionary>& list_container_info) = 0;
+
+  virtual void AddEvent(const base::String& name) = 0;
+
+  virtual void ClearEvents() = 0;
+
+  virtual void ResolveListAxisGap(CSSPropertyID id, float gap) = 0;
+
+  virtual void PropsUpdateFinish() = 0;
+
+  virtual void OnAttachToElementManager(ElementManager* manager) = 0;
+
+  virtual void OnListItemLayoutUpdated(Element* component) = 0;
+
+  virtual void UpdateBatchRenderStrategy(
+      list::BatchRenderStrategy strategy) = 0;
+
+  virtual list::BatchRenderStrategy GetBatchRenderStrategy() = 0;
+};
+
+namespace list {
+
+std::unique_ptr<ListContainerDelegateInternal>
+CreateListContainerDelegateInternal(Element* element);
+
+bool IsInDebugMode();
+
+}  // namespace list
+
+}  // namespace tasm
+}  // namespace lynx
+
+#endif  // CORE_RENDERER_UI_COMPONENT_LIST_LIST_CONTAINER_DELEGATE_INTERNAL_H_

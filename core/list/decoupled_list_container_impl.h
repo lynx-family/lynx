@@ -136,6 +136,10 @@ class ListContainerImpl : public list::ContainerDelegate {
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };
 
+std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(
+    ElementDelegate* list_delegate,
+    const std::shared_ptr<pub::PubValueFactory>& value_factory);
+
 }  // namespace list
 }  // namespace lynx
 

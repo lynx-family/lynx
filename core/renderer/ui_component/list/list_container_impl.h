@@ -15,8 +15,8 @@
 #include "core/renderer/ui_component/list/item_holder.h"
 #include "core/renderer/ui_component/list/list_adapter.h"
 #include "core/renderer/ui_component/list/list_children_helper.h"
-#include "core/renderer/ui_component/list/list_container.h"
 #include "core/renderer/ui_component/list/list_container_animation_manager.h"
+#include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 #include "core/renderer/ui_component/list/list_event_manager.h"
 #include "core/renderer/ui_component/list/list_layout_manager.h"
 #include "core/renderer/ui_component/list/list_types.h"
@@ -24,9 +24,10 @@
 namespace lynx {
 namespace tasm {
 
-class ListContainerImpl : public ListContainer::Delegate {
+class ListContainerImpl : public ListContainerDelegateInternal {
  public:
   ListContainerImpl(Element* element);
+  ~ListContainerImpl() override = default;
 
   bool ResolveAttribute(const base::String& key,
                         const lepus::Value& value) override;

@@ -54,9 +54,9 @@ fiber_shared_sources = [
 
 lynx_core_source_set("fiber") {
   sources = fiber_shared_sources
-  public_deps = [
-    "../../css:css_dom",
-    "../../ui_component/list:react_component_list",
+  public_deps = [ "../../css:css_dom" ]
+  deps = [
+    "../../../../base/src:base_log_headers",
+    "../../ui_component/list:internal_list_container",
   ]
-  deps = [ "../../../../base/src:base_log_headers" ]
 }

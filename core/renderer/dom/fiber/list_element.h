@@ -13,7 +13,7 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
-#include "core/renderer/ui_component/list/list_container.h"
+#include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 
@@ -59,9 +59,7 @@ class ListElementSSRHelper {
       ssr_elements_;
 };
 
-class ListElement : public FiberElement,
-                    public ListContainer,
-                    public tasm::ListNode {
+class ListElement : public FiberElement, public tasm::ListNode {
  public:
   ListElement(ElementManager* manager, const base::String& tag,
               const lepus::Value& component_at_index,
@@ -178,7 +176,7 @@ class ListElement : public FiberElement,
   // empty implementation.
   // TODO(WUJINTIAN): copy fiber list element
   ListElement(const ListElement& element, bool clone_resolved_props)
-      : FiberElement(element, clone_resolved_props), ListContainer(element) {}
+      : FiberElement(element, clone_resolved_props) {}
 
   void OnNodeAdded(FiberElement* child) override;
   void FilterComponents(
@@ -194,16 +192,7 @@ class ListElement : public FiberElement,
  private:
   void ResolveEnableNativeList();
   void ResolvePlatformNodeTag();
-  bool NeedAsyncResolveListItem() {
-    auto batch_render_strategy =
-        list_container_delegate()->GetBatchRenderStrategy();
-    return batch_render_strategy ==
-               list::BatchRenderStrategy::kAsyncResolveProperty ||
-           batch_render_strategy ==
-               list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
-  }
-  bool UseNewResolveStrategy();
-
+  bool NeedAsyncResolveListItem();
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
       uint64_t pipeline_scheduler_config, bool enable_parallel_element);
@@ -217,6 +206,8 @@ class ListElement : public FiberElement,
   base::String platform_node_tag_{BASE_STATIC_STRING(kListNodeTag)};
   std::optional<ListElementSSRHelper> ssr_helper_;
   bool batch_render_strategy_flushed_{false};
+  std::unique_ptr<ListContainerDelegateInternal>
+      list_container_delegate_internal_;
 };
 
 }  // namespace tasm

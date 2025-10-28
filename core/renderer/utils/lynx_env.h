@@ -116,6 +116,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_NEW_ANIMATOR_FLUSH_BUG,
     ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
     ENABLE_EVENT_HANDLE_REFACTOR,
+    ENABLE_DECOUPLED_LIST,
     // FIXME(wangyifei.20010605): remove this config in the next version(remove
     // in 3.6)
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
@@ -253,6 +254,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
              "enable_new_animator_on_patch_finish_opt"},
             {Key::ENABLE_EVENT_HANDLE_REFACTOR, "enable_event_refactor"},
+            {Key::ENABLE_DECOUPLED_LIST, "enable_decoupled_list"},
             {Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
              "fix_radon_transition_property_remove_bug"},
             {Key::ENABLE_GLOBAL_FONT_COLLECTION,
@@ -398,6 +400,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixFontSizeOverrideDirectionChangeBug();
   bool EnableNewAnimatorOnPatchFinishOpt();
   bool EnableEventHandleRefactor();
+  bool EnableDecoupledList();
   bool FixRadonTransitionPropertyRemoveBug();
   bool EnableGlobalFontCollection();
   uint32_t EnableGCOnceOnIdle();

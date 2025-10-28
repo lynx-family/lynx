@@ -666,14 +666,16 @@ list::BatchRenderStrategy ListContainerImpl::GetBatchRenderStrategy() {
 }
 
 namespace list {
-std::unique_ptr<ListContainer::Delegate> CreateListContainerDelegate(
-    Element* element) {
+
+std::unique_ptr<ListContainerDelegateInternal>
+CreateListContainerDelegateInternal(Element* element) {
   return std::make_unique<ListContainerImpl>(element);
 }
 
 bool IsInDebugMode() {
   return lynx::tasm::LynxEnv::GetInstance().IsDevToolComponentAttach();
 }
+
 }  // namespace list
 
 }  // namespace tasm

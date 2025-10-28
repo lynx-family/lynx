@@ -8,12 +8,12 @@
 #include <memory>
 #include <vector>
 
-#include "core/renderer/ui_component/list/list_container.h"
+#include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 
 namespace lynx {
 namespace tasm {
 
-class ListContainerDefault : public ListContainer::Delegate {
+class ListContainerDefault : public list::ListContainerDelegateInternal {
  public:
   ListContainerDefault() = default;
   ~ListContainerDefault() override = default;
@@ -22,6 +22,7 @@ class ListContainerDefault : public ListContainer::Delegate {
                         const lepus::Value& value) override {
     return true;
   }
+  virtual void OnNextFrame() override {}
   void FinishBindItemHolder(
       Element* component,
       const std::shared_ptr<PipelineOptions>& option) override {}

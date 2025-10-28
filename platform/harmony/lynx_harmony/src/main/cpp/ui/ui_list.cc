@@ -18,7 +18,7 @@
 #include "core/base/threading/vsync_monitor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
-#include "core/renderer/ui_component/list/list_container.h"
+#include "core/renderer/ui_component/list/list_types.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/auto_scroller.h"

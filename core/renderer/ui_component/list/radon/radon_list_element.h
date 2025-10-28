@@ -1,29 +1,29 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_UI_COMPONENT_LIST_RADON_LIST_ELEMENT_H_
-#define CORE_RENDERER_UI_COMPONENT_LIST_RADON_LIST_ELEMENT_H_
+#ifndef CORE_RENDERER_UI_COMPONENT_LIST_RADON_RADON_LIST_ELEMENT_H_
+#define CORE_RENDERER_UI_COMPONENT_LIST_RADON_RADON_LIST_ELEMENT_H_
 
 #include <memory>
 
 #include "core/renderer/dom/vdom/radon/radon_element.h"
-#include "core/renderer/ui_component/list/list_container.h"
+#include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 
 namespace lynx {
 namespace tasm {
 
 // List element in radon diff.
-class RadonListElement : public RadonElement, public ListContainer {
+class RadonListElement : public RadonElement {
  public:
   RadonListElement(const base::String& tag,
                    const fml::RefPtr<AttributeHolder>& node,
-                   ElementManager* element_manager, uint32_t node_index = 0);
-  void TickElement(fml::TimePoint& time) override;
+                   ElementManager* element_manager, uint32_t node_index,
+                   bool enable_decoupled_list);
 
+  void TickElement(fml::TimePoint& time) override;
   bool ResolveStyleValue(CSSPropertyID id,
                          const tasm::CSSValue& value) override;
-
   bool OnAttributeSet(const base::String& key,
                       const lepus::Value& value) override;
   void OnListElementUpdated(
@@ -42,9 +42,14 @@ class RadonListElement : public RadonElement, public ListContainer {
   void ResetEventHandlers() override;
   bool DisableListPlatformImplementation() const override { return true; }
   void PropsUpdateFinish() override;
+
+ private:
+  bool enable_decoupled_list_{false};
+  std::unique_ptr<ListContainerDelegateInternal>
+      list_container_delegate_internal_;
 };
 
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_UI_COMPONENT_LIST_RADON_LIST_ELEMENT_H_
+#endif  // CORE_RENDERER_UI_COMPONENT_LIST_RADON_RADON_LIST_ELEMENT_H_

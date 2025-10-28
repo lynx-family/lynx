@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "core/list/list_element_delegate.h"
 #include "core/list/list_item_element_delegate.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/pub_value.h"
@@ -18,6 +19,7 @@ namespace list {
 class ContainerDelegate {
  public:
   virtual ~ContainerDelegate() = default;
+
   virtual bool ResolveAttribute(const pub::Value& key,
                                 const pub::Value& value) = 0;
   virtual void ResolveListAxisGap(lynx::tasm::CSSPropertyID id, float gap) = 0;
@@ -38,6 +40,10 @@ class ContainerDelegate {
   virtual void ScrollStopped() = 0;
   virtual void EnableInsertPlatformView() = 0;
 };
+
+std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(
+    ElementDelegate* list_delegate,
+    const std::shared_ptr<pub::PubValueFactory>& value_factory);
 
 }  // namespace list
 }  // namespace lynx

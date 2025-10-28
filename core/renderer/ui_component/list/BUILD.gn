@@ -5,15 +5,11 @@
 import("../../../../testing/test.gni")
 import("../../../Lynx.gni")
 
-component_list_shared_sources = [
-  "list_container.cc",
-  "list_container.h",
-  "radon_list_element.cc",
-  "radon_list_element.h",
-]
+internal_list_container_shared_sources =
+    [ "list_container_delegate_internal.h" ]
 
 if (disable_list_platform_implementation) {
-  component_list_shared_sources += [
+  internal_list_container_shared_sources += [
     "adapter_helper.cc",
     "adapter_helper.h",
     "animation_item_holder.cc",
@@ -49,21 +45,21 @@ if (disable_list_platform_implementation) {
     "staggered_grid_layout_manager.h",
   ]
 } else {
-  component_list_shared_sources += [
+  internal_list_container_shared_sources += [
     "list_container_default.cc",
     "list_container_default.h",
   ]
 }
 
-lynx_core_source_set("react_component_list") {
-  sources = component_list_shared_sources
+lynx_core_source_set("internal_list_container") {
+  sources = internal_list_container_shared_sources
   deps = [
     "../../../../base/src:base_log_headers",
     "../../trace:renderer_trace",
   ]
 }
 
-unittest_set("react_component_list_testset") {
+unittest_set("internal_list_container_testset") {
   public_deps = [
     "../../:tasm",
     "../../../runtime/bindings/lepus",
@@ -87,15 +83,15 @@ unittest_set("react_component_list_testset") {
   ]
 }
 
-unittest_exec("react_component_list_testset_exec") {
+unittest_exec("internal_list_container_testset_exec") {
   sources = []
-  deps = [ ":react_component_list_testset" ]
+  deps = [ ":internal_list_container_testset" ]
 }
 
-group("react_component_list_testset_group") {
+group("internal_list_container_testset_group") {
   testonly = true
   deps = [
-    ":react_component_list_testset",
-    ":react_component_list_testset_exec",
+    ":internal_list_container_testset",
+    ":internal_list_container_testset_exec",
   ]
 }

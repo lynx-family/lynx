@@ -35,6 +35,7 @@ using ItemHolderPtrMap =
 // custom-list-name
 static constexpr const char kCustomLisName[] = "custom-list-name";
 static constexpr const char kListContainer[] = "list-container";
+static constexpr const char kEnableDecoupledList[] = "enable-decoupled-list";
 static constexpr const char kUpdateAnimation[] = "update-animation";
 static constexpr const char kUpdateAnimationTypeDefault[] = "default";
 

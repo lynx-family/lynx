@@ -21,7 +21,7 @@ group("lynx_test") {
     "../../core/renderer/simple_styling:simple_styling_tests",
     "../../core/renderer/starlight:starlight_tests",
     "../../core/renderer/tasm/react/android/mapbuffer:mapbuffer_tests",
-    "../../core/renderer/ui_component/list:react_component_list_testset_group",
+    "../../core/renderer/ui_component/list:internal_list_container_testset_group",
     "../../core/runtime:jsbridge_tests_exec",
     "../../core/runtime/bindings/common/event:runtime_common_unittests_exec",
     "../../core/runtime/bindings/common/resource:resource_common_unittests_exec",

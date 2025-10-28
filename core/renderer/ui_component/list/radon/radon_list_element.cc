@@ -1,8 +1,8 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/ui_component/list/radon_list_element.h"
+#include "core/renderer/ui_component/list/radon/radon_list_element.h"
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
@@ -15,9 +15,19 @@ namespace tasm {
 RadonListElement::RadonListElement(const base::String& tag,
                                    const fml::RefPtr<AttributeHolder>& node,
                                    ElementManager* element_manager,
-                                   uint32_t node_index)
+                                   uint32_t node_index,
+                                   bool enable_decoupled_list)
     : RadonElement(tag, node, element_manager, node_index),
-      ListContainer(this) {
+      enable_decoupled_list_(enable_decoupled_list) {
+  LOGI("Create RadonListElement: this = "
+       << this << ", node_index = " << node_index
+       << ", enable_decoupled_list = " << enable_decoupled_list);
+  if (!enable_decoupled_list_) {
+    list_container_delegate_internal_ =
+        list::CreateListContainerDelegateInternal(this);
+  } else {
+    // TODO(dingwang.wxx): impl for decoupled list.
+  }
   UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kListContainer,
                             lepus::Value(true));
   tasm::report::FeatureCounter::Instance()->Count(
@@ -25,8 +35,8 @@ RadonListElement::RadonListElement(const base::String& tag,
 }
 
 void RadonListElement::TickElement(fml::TimePoint& time) {
-  if (list_container_delegate()) {
-    list_container_delegate()->OnNextFrame();
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnNextFrame();
   }
 }
 
@@ -39,8 +49,8 @@ void RadonListElement::TickElement(fml::TimePoint& time) {
  **/
 bool RadonListElement::OnAttributeSet(const base::String& key,
                                       const lepus::Value& value) {
-  return list_container_delegate()
-             ? list_container_delegate()->ResolveAttribute(key, value)
+  return list_container_delegate_internal_
+             ? list_container_delegate_internal_->ResolveAttribute(key, value)
              : true;
 }
 
@@ -52,8 +62,8 @@ bool RadonListElement::OnAttributeSet(const base::String& key,
 void RadonListElement::OnListElementUpdated(
     const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_LIST_ELEMENT_UPDATED);
-  if (list_container_delegate()) {
-    list_container_delegate()->OnLayoutChildren(options);
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnLayoutChildren(options);
   }
 }
 
@@ -67,14 +77,15 @@ void RadonListElement::OnListElementUpdated(
  **/
 void RadonListElement::OnComponentFinished(
     Element* component, const std::shared_ptr<PipelineOptions>& option) {
-  if (list_container_delegate() && component && option->operation_id != 0) {
-    list_container_delegate()->FinishBindItemHolder(component, option);
+  if (list_container_delegate_internal_ && component &&
+      option->operation_id != 0) {
+    list_container_delegate_internal_->FinishBindItemHolder(component, option);
   }
 }
 
 void RadonListElement::OnListItemLayoutUpdated(Element* component) {
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
-    list_container_delegate()->OnListItemLayoutUpdated(component);
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->OnListItemLayoutUpdated(component);
   }
 }
 
@@ -87,8 +98,8 @@ void RadonListElement::ScrollByListContainer(float content_offset_x,
                                              float content_offset_y,
                                              float original_x,
                                              float original_y) {
-  if (list_container_delegate()) {
-    list_container_delegate()->ScrollByPlatformContainer(
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->ScrollByPlatformContainer(
         content_offset_x, content_offset_y, original_x, original_y);
   }
 }
@@ -102,8 +113,9 @@ void RadonListElement::ScrollByListContainer(float content_offset_x,
  **/
 void RadonListElement::ScrollToPosition(int index, float offset, int align,
                                         bool smooth) {
-  if (list_container_delegate()) {
-    list_container_delegate()->ScrollToPosition(index, offset, align, smooth);
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->ScrollToPosition(index, offset, align,
+                                                        smooth);
   }
 }
 
@@ -111,39 +123,39 @@ void RadonListElement::ScrollToPosition(int index, float offset, int align,
  * @description: Finish ScrollToPosition
  **/
 void RadonListElement::ScrollStopped() {
-  if (list_container_delegate()) {
-    list_container_delegate()->ScrollStopped();
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->ScrollStopped();
   }
 }
 
 void RadonListElement::SetEventHandler(const base::String& name,
                                        EventHandler* handler) {
   Element::SetEventHandler(name, handler);
-  if (list_container_delegate()) {
-    list_container_delegate()->AddEvent(name);
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->AddEvent(name);
   }
 }
 
 void RadonListElement::ResetEventHandlers() {
   Element::ResetEventHandlers();
-  if (list_container_delegate()) {
-    list_container_delegate()->ClearEvents();
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->ClearEvents();
   }
 }
 
 bool RadonListElement::ResolveStyleValue(CSSPropertyID id,
                                          const tasm::CSSValue& value) {
   bool ret = Element::ResolveStyleValue(id, value);
-  if (list_container_delegate()) {
+  if (list_container_delegate_internal_) {
     switch (id) {
       case CSSPropertyID::kPropertyIDListMainAxisGap:
-        list_container_delegate()->ResolveListAxisGap(
+        list_container_delegate_internal_->ResolveListAxisGap(
             id, computed_css_style()
                     ->GetLayoutComputedStyle()
                     ->GetListMainAxisGap());
         break;
       case CSSPropertyID::kPropertyIDListCrossAxisGap:
-        list_container_delegate()->ResolveListAxisGap(
+        list_container_delegate_internal_->ResolveListAxisGap(
             id, computed_css_style()
                     ->GetLayoutComputedStyle()
                     ->GetListCrossAxisGap());
@@ -156,8 +168,8 @@ bool RadonListElement::ResolveStyleValue(CSSPropertyID id,
 }
 
 void RadonListElement::PropsUpdateFinish() {
-  if (list_container_delegate()) {
-    list_container_delegate()->PropsUpdateFinish();
+  if (list_container_delegate_internal_) {
+    list_container_delegate_internal_->PropsUpdateFinish();
   }
 }
 

@@ -775,5 +775,19 @@ void RadonDiffListNode2::CheckComponentNameAndItemKey(
   }
 }
 
+bool RadonDiffListNode2::EnableDecoupledList() {
+  if (!enable_decoupled_list_) {
+    const auto& attrs = attributes();
+    const auto& it = attrs.find(BASE_STATIC_STRING(list::kEnableDecoupledList));
+    // Priority: attribute > settings
+    if (it != attrs.end() && it->second.IsBool()) {
+      enable_decoupled_list_ = it->second.Bool();
+    } else {
+      enable_decoupled_list_ = LynxEnv::GetInstance().EnableDecoupledList();
+    }
+  }
+  return *enable_decoupled_list_;
+}
+
 }  // namespace tasm
 }  // namespace lynx
