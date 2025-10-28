@@ -416,6 +416,7 @@
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   _context = [[LynxContext alloc] initWithContainerView:_containerView];
+  [_context setEmbeddedMode:_embeddedMode];
   [self setUpResourceProviderWithBuilder:builder];
   _lynxUIRenderer = [builder.uiRendererCreator createUIRendererWithContext:_context
                                                              containerView:_containerView

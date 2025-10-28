@@ -19,6 +19,7 @@ NSString *const kDefaultComponentID = @"-1";
 
 @property(nonatomic, strong)
     NSMutableDictionary<NSString *, id<LynxExtensionModule>> *extentionModules;
+@property(nonatomic, assign) LynxEmbeddedMode lynxEmbeddedMode;
 
 @end
 
@@ -149,6 +150,14 @@ NSString *const kDefaultComponentID = @"-1";
 #if TARGET_OS_IPHONE
   [_keyboardEventDispatcher addKeyboardEventObserver:observer];
 #endif
+}
+
+- (void)setEmbeddedMode:(LynxEmbeddedMode)mode {
+  self.lynxEmbeddedMode = mode;
+}
+
+- (bool)isEmbeddedModeOn {
+  return (self.lynxEmbeddedMode & LynxEmbeddedModeBase) > 0;
 }
 
 @end
