@@ -27,8 +27,8 @@ export interface UIMethods {
   'text': TextUIMethods;
 }
 
-type LynxComponentProps = ComponentProps;
 
+type LynxComponentProps = ComponentProps;
 // add also to global.JSX.IntrinsicElements
 export interface IntrinsicElements {
   'component': LynxComponentProps;
@@ -48,29 +48,4 @@ export interface IntrinsicElements {
   'input': InputProps;
   'textarea': TextAreaProps;
   'frame': FrameProps;
-}
-
-declare module 'react' {
-  namespace JSX {
-    // Should copy from above IntrinsicElements
-    interface IntrinsicElements {
-      'component': LynxComponentProps;
-      'filter-image': FilterImageProps;
-      'image': ImageProps;
-      'inline-image': ImageProps;
-      'inline-text': TextProps;
-      'inline-truncation': NoProps;
-      'list': ListProps;
-      'list-item': ListItemProps;
-      'list-row': StandardProps;
-      'page': PageProps;
-      'scroll-view': ScrollViewProps;
-      'text': TextProps;
-      'view': ViewProps;
-      'raw-text': StandardProps & { text: number | string };
-      'input': InputProps;
-      'textarea': TextAreaProps;
-      'frame': FrameProps;
-    }
-  }
 }
