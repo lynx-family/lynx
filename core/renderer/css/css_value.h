@@ -151,11 +151,6 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   CSSValue(CSSValue&& other) = default;
   CSSValue& operator=(CSSValue&& other) = default;
 
-  template <typename T>
-  T GetEnum() const {
-    return (T)AsNumber();
-  }
-
   static CSSValue Empty() { return CSSValue(CSSValuePattern::EMPTY); }
 
   static CSSValue MakeEnum(int enumType) {
@@ -191,6 +186,11 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     }
   }
 
+  template <typename T>
+  T GetEnum() const {
+    return (T)AsNumber();
+  }
+
   fml::WeakRefPtr<lepus::CArray> GetArray() const& { return value_.Array(); }
   fml::RefPtr<lepus::CArray> GetArray() && { return std::move(value_).Array(); }
 
@@ -223,8 +223,22 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     type_ = CSSValueType::DEFAULT;
   }
 
-  void SetNumber(int num, CSSValuePattern pattern) {
+  template <typename NumType>
+  void SetNumber(NumType num, CSSValuePattern pattern) {
+    DCHECK(pattern != CSSValuePattern::ENUM);  // Use SetEnum instead
     value_.SetNumber(num);
+    pattern_ = pattern;
+    type_ = CSSValueType::DEFAULT;
+  }
+
+  void SetString(const base::String& value, CSSValuePattern pattern) {
+    value_.SetString(value);
+    pattern_ = pattern;
+    type_ = CSSValueType::DEFAULT;
+  }
+
+  void SetString(base::String&& value, CSSValuePattern pattern) {
+    value_.SetString(std::move(value));
     pattern_ = pattern;
     type_ = CSSValueType::DEFAULT;
   }

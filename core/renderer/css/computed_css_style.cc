@@ -625,7 +625,7 @@ bool ComputedCSSStyle::AppendAnimatedAnimationValue(tasm::StyleMap animate_data,
         break;
       case tasm::kPropertyIDAnimationFillMode:
         target_animation_data->fill_mode =
-            static_cast<AnimationFillModeType>(value.AsNumber());
+            value.GetEnum<AnimationFillModeType>();
         break;
       case tasm::kPropertyIDAnimationIterationCount:
         target_animation_data->iteration_count = value.AsNumber();
@@ -637,11 +637,11 @@ bool ComputedCSSStyle::AppendAnimatedAnimationValue(tasm::StyleMap animate_data,
         break;
       case tasm::kPropertyIDAnimationDirection:
         target_animation_data->direction =
-            static_cast<AnimationDirectionType>(value.AsNumber());
+            value.GetEnum<AnimationDirectionType>();
         break;
       case tasm::kPropertyIDAnimationPlayState:
         target_animation_data->play_state =
-            static_cast<AnimationPlayStateType>(value.AsNumber());
+            value.GetEnum<AnimationPlayStateType>();
         break;
       default:
         break;
@@ -1203,8 +1203,7 @@ bool ComputedCSSStyle::SetBoxSizing(const tasm::CSSValue& value,
         tasm::CSSProperty::GetPropertyName(tasm::kPropertyIDBoxSizing).c_str(),
         tasm::ENUM_TYPE)
 
-    layout_computed_style_.box_sizing_ =
-        static_cast<BoxSizingType>(value.GetNumber());
+    layout_computed_style_.box_sizing_ = value.GetEnum<BoxSizingType>();
   }
   return old_value != layout_computed_style_.box_sizing_;
 }

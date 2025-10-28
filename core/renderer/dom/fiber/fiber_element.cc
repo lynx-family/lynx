@@ -3541,7 +3541,7 @@ void FiberElement::RemoveFixedElement(FiberElement *child) {
 // FIXME(baiqiang): CALC info should be parsed before, and uniftied with
 // DynamicCSSStylesManager::GetValueFlags
 bool CheckCALCValueHasViewPortUnit(const CSSValue &value) {
-  const auto &str = value.GetValue().StdString();
+  const auto &str = value.AsStdString();
   if (str.find("vw") != std::string::npos ||
       str.find("vh") != std::string::npos ||
       str.find("view_width") != std::string::npos ||

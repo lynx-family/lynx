@@ -57,11 +57,10 @@ void TextElement::SetStyleInternal(CSSPropertyID id,
 
   if (id == kPropertyIDFontFamily) {
     if (!EnableLayoutInElementMode()) {
-      EnqueueLayoutTask([this, value]() {
-        ResolveAndFlushFontFaces(value.GetValue().String());
-      });
+      EnqueueLayoutTask(
+          [this, value]() { ResolveAndFlushFontFaces(value.AsString()); });
     } else {
-      ResolveAndFlushFontFaces(value.GetValue().String());
+      ResolveAndFlushFontFaces(value.AsString());
     }
   }
 }

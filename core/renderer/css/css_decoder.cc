@@ -97,7 +97,7 @@ std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
   } else if (value.IsCalc()) {
     return value.AsStdString();
   } else if (value.IsIntrinsic()) {
-    return value.GetValue().StdString();
+    return value.AsStdString();
   } else if (value.IsEnv()) {
     return value.AsStdString();
   } else if (value.IsArray()) {

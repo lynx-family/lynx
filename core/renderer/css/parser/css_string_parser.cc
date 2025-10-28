@@ -61,7 +61,8 @@ bool PositionAddValue(fml::RefPtr<lepus::CArray> &arr, const CSSValue &value) {
   uint32_t pattern = 0;
   float f = 0;
   if (value.IsEnum()) {
-    ConvertPositionEnumToValue(value.GetValue().UInt32(), f, pattern);
+    ConvertPositionEnumToValue(static_cast<uint32_t>(value.AsNumber()), f,
+                               pattern);
     arr->emplace_back(f);
     arr->emplace_back(pattern);
   } else {  // Length value
@@ -667,17 +668,14 @@ void CSSStringParser::TokenToLengthTarget(const Token &token,
   if (pattern == static_cast<uint32_t>(CSSValuePattern::CALC) ||
       pattern == static_cast<uint32_t>(CSSValuePattern::ENV) ||
       pattern == static_cast<uint32_t>(CSSValuePattern::INTRINSIC)) {
-    css_value.GetValue().SetString(base::String(token.start, token.length));
-    css_value.SetPattern(static_cast<CSSValuePattern>(pattern));
+    css_value.SetString(base::String(token.start, token.length),
+                        static_cast<CSSValuePattern>(pattern));
   } else if (pattern == static_cast<uint32_t>(CSSValuePattern::ENUM)) {
     // We know the enum pattern is auto
-    css_value.GetValue().SetNumber(
-        static_cast<int>(starlight::LengthValueType::kAuto));
-    css_value.SetPattern(CSSValuePattern::ENUM);
+    css_value.SetEnum(static_cast<int>(starlight::LengthValueType::kAuto));
   } else if (pattern < static_cast<uint32_t>(CSSValuePattern::COUNT)) {
     auto dest = TokenToDouble(token);
-    css_value.GetValue().SetNumber(dest);
-    css_value.SetPattern(static_cast<CSSValuePattern>(pattern));
+    css_value.SetNumber(dest, static_cast<CSSValuePattern>(pattern));
 
     // As the FE developer's wish, red screen won't show if no value exists
     // before unit. Only show a red screen when the value is Inf or NaN.
@@ -1674,9 +1672,8 @@ CSSValue CSSStringParser::ConsumeTimingFunction(
     const Token &token, const CSSParserConfigs &configs) {
   CSSValue css_value = CSSValue::Empty();
   auto type = TokenToTimingFunctionType(token);
-  css_value.GetValue().SetNumber(static_cast<int>(type));
   if (token.type >= TokenType::LINEAR & token.type <= TokenType::EASE_IN_OUT) {
-    css_value.SetPattern(CSSValuePattern::ENUM);
+    css_value.SetEnum(static_cast<int>(type));
   } else if (token.type == TokenType::STEP_START ||
              token.type == TokenType::STEP_END) {
     auto arr = lepus::CArray::Create();
@@ -1768,8 +1765,7 @@ bool CSSStringParser::ParseTimingFunctionParams(
 
 void CSSStringParser::ConsumeBorderLineWidth(Token &token, CSSValue &result) {
   if (BorderWidthIdent(token)) {
-    result.GetValue().SetNumber(TokenTypeToBorderWidth(token.type));
-    result.SetPattern(CSSValuePattern::PX);
+    result.SetNumber(TokenTypeToBorderWidth(token.type), CSSValuePattern::PX);
   } else {
     // The next token may be length
     LengthTo(result);
@@ -3107,8 +3103,7 @@ bool CSSStringParser::ParseBorderStyle(CSSValue &result_style) {
   Advance();
   Token token;
   if (BorderStyleIdent(token)) {
-    result_style.GetValue().SetNumber(TokenTypeToBorderStyle(token.type));
-    result_style.SetPattern(CSSValuePattern::ENUM);
+    result_style.SetEnum(TokenTypeToBorderStyle(token.type));
     return Check(TokenType::TOKEN_EOF);
   }
   return false;
@@ -3128,8 +3123,7 @@ bool CSSStringParser::ParseBorder(CSSValue &result_width,
       }
     }
     if (result_style.IsEmpty() && BorderStyleIdent(token)) {
-      result_style.GetValue().SetNumber(TokenTypeToBorderStyle(token.type));
-      result_style.SetPattern(CSSValuePattern::ENUM);
+      result_style.SetEnum(TokenTypeToBorderStyle(token.type));
       if (!result_style.IsEmpty()) {
         continue;
       }

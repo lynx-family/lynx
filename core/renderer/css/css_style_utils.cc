@@ -409,13 +409,13 @@ std::pair<NLength, bool> CSSStyleUtils::ToLength(
                                 context.viewport_width_.ToFloat() / 100.f)
                : std::pair<NLength, bool>(NLength::MakeAutoNLength(), false);
   } else if (pattern == tasm::CSSValuePattern::CALC) {
-    const auto& value_old = value.GetValue().StdString();
+    const auto& value_old = value.AsStdString();
     return TryMakeCalcNLength(value_old, context, configs, is_font_relevant);
   } else if (pattern == tasm::CSSValuePattern::INTRINSIC) {
-    const auto& value_old = value.GetValue().StdString();
+    const auto& value_old = value.AsStdString();
     return TryMakeIntrinsicNLength(value_old, context, configs);
   } else if (pattern == tasm::CSSValuePattern::ENV) {
-    const auto& value_old = value.GetValue().StdString();
+    const auto& value_old = value.AsStdString();
     size_t len = value_old.length();
     auto env_name = value_old.substr(4, len - 5);
     auto found = env_name.find_first_not_of(' ');
@@ -582,8 +582,8 @@ inline bool ComputeNumberStyle(const tasm::CSSValue& value, const bool reset,
   if (reset) {
     dest = default_value;
   } else {
-    CSS_HANDLER_FAIL_IF_NOT(value.GetValue().IsNumber(),
-                            configs.enable_css_strict_mode, msg)
+    CSS_HANDLER_FAIL_IF_NOT(value.IsNumber(), configs.enable_css_strict_mode,
+                            msg)
     dest = static_cast<uint32_t>(value.GetNumber());
   }
   return old_value != dest;
@@ -644,7 +644,7 @@ bool CSSStyleUtils::ComputeGridTrackSizing(
       // (10, CSSValuePattern::PX),
       // ("max-content", CSSValuePattern::INTRINSIC)
       if (css_value.GetPattern() == tasm::CSSValuePattern::ENUM &&
-          static_cast<tasm::CSSFunctionType>(css_value.GetNumber()) ==
+          css_value.GetEnum<tasm::CSSFunctionType>() ==
               tasm::CSSFunctionType::MINMAX) {
         idx += 2;
         if (idx + 3 >= length_array->size()) {
@@ -1027,7 +1027,7 @@ bool CSSStyleUtils::ComputeStringStyle(const tasm::CSSValue& value,
   } else {
     CSS_HANDLER_FAIL_IF_NOT(value.IsString(), configs.enable_css_strict_mode,
                             msg)
-    dest = value.GetValue().String();
+    dest = value.AsString();
   }
   return !old_value.IsEqual(dest);
 }

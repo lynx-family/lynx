@@ -694,7 +694,7 @@ DynamicCSSStylesManager::GetValueFlags(CSSPropertyID id, const CSSValue& value,
       flags = DynamicCSSStylesManager::kUpdateViewport;
       break;
     case CSSValuePattern::CALC: {
-      const auto& calc_str = value.GetValue().StdString();
+      const auto& calc_str = value.AsStdString();
       if (calc_str.find("rpx") != std::string::npos) {
         flags |= DynamicCSSStylesManager::kUpdateScreenMetrics;
         flags |= CheckFontScaleRelevance(id);
