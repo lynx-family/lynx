@@ -108,8 +108,7 @@ class LynxTemplateBundle final {
    */
   std::shared_ptr<style::StyleObject *> &InitStyleObjectList(size_t size);
 
-  base::LinearFlatMap<base::String, fml::RefPtr<CSSKeyframesToken>> &
-  InitKeyframesMap(size_t size);
+  std::shared_ptr<CSSKeyframesTokenMap> &InitKeyframesMap(size_t size);
 
   CSSFontFaceRuleMap &InitFontFacesMap(size_t size);
 
@@ -194,7 +193,7 @@ class LynxTemplateBundle final {
 
   std::shared_ptr<style::StyleObject *> style_object_list_{nullptr};
 
-  CSSKeyframesTokenMap keyframes_;
+  std::shared_ptr<CSSKeyframesTokenMap> keyframes_;
 
   CSSFontFaceRuleMap font_face_rules_;
 

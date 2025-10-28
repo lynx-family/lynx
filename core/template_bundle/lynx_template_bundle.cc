@@ -143,12 +143,13 @@ std::shared_ptr<style::StyleObject *> &LynxTemplateBundle::InitStyleObjectList(
   return style_object_list_;
 }
 
-base::LinearFlatMap<base::String, fml::RefPtr<CSSKeyframesToken>> &
-LynxTemplateBundle::InitKeyframesMap(size_t size) {
-  if (!keyframes_.empty()) {
+std::shared_ptr<CSSKeyframesTokenMap> &LynxTemplateBundle::InitKeyframesMap(
+    size_t size) {
+  if (keyframes_) {
     return keyframes_;
   }
-  keyframes_.reserve(size);
+  keyframes_ = std::make_shared<CSSKeyframesTokenMap>();
+  keyframes_->reserve(size);
   return keyframes_;
 }
 

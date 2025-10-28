@@ -106,6 +106,10 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     return template_bundle_.font_face_rules_;
   }
 
+  const std::shared_ptr<CSSKeyframesTokenMap>& CSSKeyframesTokenMap() {
+    return template_bundle_.keyframes_;
+  }
+
   piper::JsBundle& GetJsBundle() { return template_bundle_.GetJsBundle(); }
   std::unordered_map<int32_t, std::shared_ptr<PageMould>>& page_moulds() {
     return template_bundle_.page_moulds_;
