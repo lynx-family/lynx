@@ -51,6 +51,16 @@
 @property(nonatomic, readonly, nullable) NSString* url;
 
 /*!
+ Unique identifier generated when LynxView is added to a LynxViewGroup,
+ assigned by the view group's ID generation mechanism.
+
+ Return 0 if the LynxView is not bound to any LynxViewGroup.
+
+ @see LynxViewGroup
+ */
+@property(nonatomic, readonly) NSInteger lynxViewId;
+
+/*!
  If `enableAsyncDisplay` is YES, sub-nodes' contents will be drawn asynchronously.
  Set `enableAsyncDisplay` is NO if it is not wanted. Default to YES.
  */

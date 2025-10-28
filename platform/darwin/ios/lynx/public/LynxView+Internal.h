@@ -11,5 +11,6 @@
 - (LynxTemplateRender* _Nullable)templateRender;
 - (NSDictionary* _Nullable)getAllJsSource;
 - (void)onLongPress;
+- (void)setLynxViewId:(NSInteger)id;
 
 @end
