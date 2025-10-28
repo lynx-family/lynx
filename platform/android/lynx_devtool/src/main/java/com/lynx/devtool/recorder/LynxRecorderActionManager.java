@@ -1075,7 +1075,9 @@ public class LynxRecorderActionManager {
       if (hasScreenSizeInfo() && mEnableSizeOptimization) {
         updateViewLayoutParams(measureSpec[2], measureSpec[3]);
       }
-      mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+      if (mLynxView.getBaseInspectorOwner() != null) {
+        mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -1157,7 +1159,9 @@ public class LynxRecorderActionManager {
         mLynxView.addLynxViewClient(mViewClient);
         mThreadStrategyData = null;
         onLynxViewDidBuild(mLynxView, mIntent, mContext, mViewGroup);
-        mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+        if (mLynxView.getBaseInspectorOwner() != null) {
+          mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+        }
       } catch (JSONException e) {
         e.printStackTrace();
       }
