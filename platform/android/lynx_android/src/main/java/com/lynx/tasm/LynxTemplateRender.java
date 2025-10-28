@@ -971,13 +971,8 @@ public class LynxTemplateRender
   }
 
   private void setUpExtensionModules() {
-    boolean isEmptyBodyView = mBodyView == null;
-    boolean isEnableJSRuntime = mLynxViewBuilder.isEnableJSRuntime();
-
-    if (isEmptyBodyView || !isEnableJSRuntime) {
-      LLog.e(TAG,
-          "setUpExtensionModules failed, isEmptyBodyView: " + isEmptyBodyView
-              + " isEnableJSRuntime: " + isEnableJSRuntime);
+    if (!mLynxViewBuilder.isEnableJSRuntime()) {
+      LLog.e(TAG, "setUpExtensionModules failed, isEnableJSRuntime is false");
       return;
     }
     Map<String, LynxExtensionModule> modules = mLynxContext.getExtensionModules();
