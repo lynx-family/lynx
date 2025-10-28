@@ -29,6 +29,17 @@ void RuntimeMediator::AttachToLynxShell(
   // TODO(chenyouhui): Use LynxResourceLoader directly.
   external_resource_loader_->SetEngineActor(engine_actor);
   card_cached_data_mgr_ = card_cached_data_mgr;
+  // attach NativeFacadeActor to TimingActor, so the TmingHandler is fully
+  // functional.
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync([facade_actor](auto& performance) {
+      auto* delegate = performance->GetTimingHandler().GetDelegate();
+      if (delegate != nullptr) {
+        static_cast<lynx::tasm::timing::TimingMediator*>(delegate)
+            ->SetFacadeActor(facade_actor);
+      }
+    });
+  }
   runtime_standalone_mode_ = false;
 }
 
