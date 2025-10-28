@@ -203,7 +203,7 @@ void ListContainerImpl::FlushPatching() {
     // Note: Add list's id to patching_node_ready_ids_ before invoking
     // UpdateNodeReadyPatching(), and in list's OnNodeReady to handle sticky
     // list items.
-    element_->painting_context()->OnNodeReady(element_->impl_id());
+    element_->OnNodeReady();
     element_->painting_context()->UpdateNodeReadyPatching();
     if (should_flush_finish_layout_) {
       should_flush_finish_layout_ = false;

@@ -212,9 +212,6 @@ class FiberElement : public Element,
 
   const InheritedProperty GetParentInheritedProperty();
 
-  virtual void SetKeyframesByNamesInner(
-      fml::RefPtr<PropBundle> keyframes_data) override;
-
   virtual bool NeedFullFlushPath(
       const std::pair<CSSPropertyID, tasm::CSSValue>& style) override;
 

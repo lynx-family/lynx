@@ -614,11 +614,7 @@ void Element::SetKeyframesByNames(const lepus::Value& names,
   auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
   bundle->SetProps("keyframes", pub::ValueImplLepus(lepus_keyframes));
 
-  SetKeyframesByNamesInner(std::move(bundle));
-}
-
-void Element::SetKeyframesByNamesInner(fml::RefPtr<PropBundle> bundle) {
-  painting_context()->SetKeyframes(std::move(bundle));
+  element_container()->SetKeyframes(painting_context(), std::move(bundle));
 }
 
 lepus::Value Element::ResolveCSSKeyframesByNames(
@@ -694,8 +690,7 @@ void Element::CreateElementContainer(bool platform_is_flatten) {
 
 void Element::UpdateElement() {
   if (!IsLayoutOnly()) {
-    painting_context()->UpdatePaintingNode(impl_id(), TendToFlatten(),
-                                           prop_bundle_);
+    element_container()->UpdatePaintingNode(TendToFlatten(), prop_bundle_);
   } else if (!CanBeLayoutOnly()) {
     // Is layout only and can not be layout only
     TransitionToNativeView();
@@ -703,7 +698,19 @@ void Element::UpdateElement() {
   element_container()->StyleChanged();
 }
 
-void Element::onNodeReload() { painting_context()->OnNodeReload(impl_id()); }
+void Element::OnNodeReady() {
+  if (element_container() == nullptr) {
+    return;
+  }
+  element_container()->OnNodeReady();
+}
+
+void Element::onNodeReload() {
+  if (element_container() == nullptr) {
+    return;
+  }
+  element_container()->OnNodeReload();
+}
 
 void Element::Animate(const lepus::Value& args,
                       std::shared_ptr<PipelineOptions>& pipeline_option) {
@@ -741,7 +748,8 @@ void Element::Animate(const lepus::Value& args,
           auto bundle =
               element_manager()->GetPropBundleCreator()->CreatePropBundle();
           bundle->SetProps("removeKeyframe", pub::ValueImplLepus(remove_name));
-          painting_context()->SetKeyframes(std::move(bundle));
+          element_container()->SetKeyframes(painting_context(),
+                                            std::move(bundle));
         }
         will_removed_keyframe_name_ = base::String();
       }
@@ -1590,8 +1598,8 @@ bool Element::WriteRenderStyleToBundle(tasm::CSSPropertyID id,
 void Element::DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle) {
   HandleDelayTask([this, impl_id = impl_id(), tend_to_flatten = TendToFlatten(),
                    bundle = bundle]() {
-    painting_context()->UpdatePaintingNode(impl_id, tend_to_flatten, bundle);
-    painting_context()->OnNodeReady(impl_id);
+    element_container()->UpdatePaintingNode(tend_to_flatten, bundle);
+    element_container()->OnNodeReady();
   });
 }
 

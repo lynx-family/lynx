@@ -361,8 +361,7 @@ void ElementContainer::UpdateLayout(float left, float top,
     dy = 0;
 
     if (need_update_impl) {  // Update to impl layer
-
-      element_->painting_context()->UpdateLayout(
+      painting_context()->UpdateLayout(
           element_->impl_id(), left, top, element_->width(), element_->height(),
           element_->paddings().data(), element_->margins().data(),
           element_->borders().data(), nullptr,
@@ -370,7 +369,7 @@ void ElementContainer::UpdateLayout(float left, float top,
           element_->max_height(), element_->NodeIndex());
     }
     if (need_update_impl || props_changed_) {
-      element_->painting_context()->OnNodeReady(element_->impl_id());
+      painting_context()->OnNodeReady(element_->impl_id());
       props_changed_ = false;
     }
   }
@@ -407,7 +406,7 @@ void ElementContainer::UpdateLayout(float left, float top,
 
 void ElementContainer::UpdateLayoutWithoutChange() {
   if (props_changed_) {
-    element_->painting_context()->OnNodeReady(element_->impl_id());
+    painting_context()->OnNodeReady(element_->impl_id());
     props_changed_ = false;
   }
   if (element_->is_radon_element()) {
@@ -450,7 +449,7 @@ void ElementContainer::TransitionToNativeView(
   PropBundleStyleWriter::PushStyleToBundle(
       prop_bundle.get(), kPropertyIDOverflow, element()->computed_css_style());
 
-  element_->painting_context()->CreatePaintingNode(
+  painting_context()->CreatePaintingNode(
       element_->impl_id(), element_->GetPlatformNodeTag().str(), prop_bundle,
       element_->TendToFlatten(), element_->NeedCreateNodeAsync(),
       element_->NodeIndex());
@@ -620,6 +619,25 @@ ElementManager* ElementContainer::element_manager() {
 
 bool ElementContainer::IsStackingContextNode() {
   return element()->IsStackingContextNode();
+}
+
+void ElementContainer::UpdatePaintingNode(
+    bool tend_to_flatten, const fml::RefPtr<PropBundle>& painting_data) {
+  painting_context()->UpdatePaintingNode(element()->impl_id(), tend_to_flatten,
+                                         painting_data);
+}
+
+void ElementContainer::SetKeyframes(PaintingContext* context,
+                                    fml::RefPtr<PropBundle> bundle) {
+  context->SetKeyframes(std::move(bundle));
+}
+
+void ElementContainer::OnNodeReady() {
+  painting_context()->OnNodeReady(element()->impl_id());
+}
+
+void ElementContainer::OnNodeReload() {
+  painting_context()->OnNodeReload(element()->impl_id());
 }
 
 bool ElementContainer::IsSticky() { return element()->is_sticky(); }

@@ -278,10 +278,6 @@ bool FiberElement::NeedFullFlushPath(
          style.first == kPropertyIDBackgroundPosition;
 }
 
-void FiberElement::SetKeyframesByNamesInner(fml::RefPtr<PropBundle> bundle) {
-  painting_context()->SetKeyframes(std::move(bundle));
-}
-
 void FiberElement::ResolveParentComponentElement() const {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_RESOLVE_PARENT_COMPONENT);
   // parent_component_unique_id_ less than page element element id is invalid.
@@ -2917,7 +2913,7 @@ void FiberElement::UpdateFiberElement() {
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
                 });
-    painting_context()->UpdatePaintingNode(id_, TendToFlatten(), prop_bundle_);
+    element_container()->UpdatePaintingNode(TendToFlatten(), prop_bundle_);
   } else if (!CanBeLayoutOnly()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_TRANSITION_TO_NATIVE_VIEW,
                 [this](lynx::perfetto::EventContext ctx) {

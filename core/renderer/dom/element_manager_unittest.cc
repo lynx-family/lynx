@@ -386,6 +386,7 @@ TEST_F(ElementManagerTest, CreateFiberElementXScrollView) {
 TEST_F(ElementManagerTest, ReloadTemplateEvent) {
   base::String tag("none");
   auto node = manager->CreateFiberElement(tag);
+  node->CreateElementContainer(false);
   auto options = std::make_shared<PipelineOptions>();
   options->is_reload_template = true;
   auto config = std::make_shared<PageConfig>();

@@ -59,6 +59,17 @@ class ElementContainer {
   ElementContainer* EnclosingStackingContextNode();
   bool IsStackingContextNode();
 
+  void UpdatePaintingNode(bool tend_to_flatten,
+                          const fml::RefPtr<PropBundle>& painting_data);
+
+  // TODO(songshourui.null): these functions may be called before
+  // ElementContainer is created, need pass PaintingContext as the parameter for
+  // now. We will consider create ElementContainer when create Element to avoid
+  // NPE.
+  void SetKeyframes(PaintingContext* context, fml::RefPtr<PropBundle> bundle);
+  void OnNodeReady();
+  void OnNodeReload();
+
  private:
   void ZIndexChanged();
   void PositionFixedChanged();

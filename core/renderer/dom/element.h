@@ -205,8 +205,6 @@ class Element : public lepus::RefCounted,
   void SetKeyframesByNames(const lepus::Value& names,
                            const CSSKeyframesTokenMap&, bool force_flush);
 
-  virtual void SetKeyframesByNamesInner(fml::RefPtr<PropBundle> bundle);
-
   //  The first parameter names can be string type or array type of lepus value
   lepus::Value ResolveCSSKeyframesByNames(
       const lepus::Value& names, const tasm::CSSKeyframesTokenMap& frames,
@@ -297,6 +295,8 @@ class Element : public lepus::RefCounted,
   inline bool CanHasLayoutOnlyChildren() {
     return can_has_layout_only_children_;
   };
+
+  void OnNodeReady();
 
   void onNodeReload();
 

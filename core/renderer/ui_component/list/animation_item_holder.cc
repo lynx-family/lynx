@@ -42,7 +42,7 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
       element_->UpdateLayout(l, t);
       element_->element_container()->UpdateLayout(l, t);
       element_->painting_context()->UpdateLayoutPatching();
-      element_->painting_context()->OnNodeReady(element_->impl_id());
+      element_->OnNodeReady();
       element_->painting_context()->UpdateNodeReadyPatching();
       element_->painting_context()->Flush();
     } else if (animation_type_ == list::ItemHolderAnimationType::kOpacity &&
@@ -52,7 +52,7 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
           tasm::CSSValue(static_cast<double>(
                              std::fabs(animation_origin_opacity_ - progress)),
                          CSSValue::kCreateNumberTag));
-      element_->painting_context()->OnNodeReady(element_->impl_id());
+      element_->OnNodeReady();
       element_->painting_context()->UpdateNodeReadyPatching();
       element_->painting_context()->Flush();
     }
