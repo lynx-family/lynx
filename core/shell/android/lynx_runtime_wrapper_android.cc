@@ -84,7 +84,7 @@ static jlong CreateBackgroundRuntimeWrapper(
   }
   auto *global_props = reinterpret_cast<lynx::lepus::Value *>(globalPropsPtr);
 
-  auto result = lynx::shell::InitRuntimeStandalone(
+  auto result = lynx::shell::RuntimeStandalone::InitRuntimeStandalone(
       group_name, group_id, std::move(native_facade_runtime),
       observer ? *observer : nullptr, loader, native_module_manager,
       bundle_creator, white_board, on_runtime_actor_created, std::move(paths),
@@ -93,8 +93,8 @@ static jlong CreateBackgroundRuntimeWrapper(
   // Delete observer to decrease ref count.
   delete observer;
 
-  auto *runtime_wrapper = new lynx::shell::LynxRuntimeWrapperAndroid(
-      std::move(result), std::move(group_name));
+  auto *runtime_wrapper =
+      new lynx::shell::LynxRuntimeWrapperAndroid(std::move(result));
   return reinterpret_cast<jlong>(runtime_wrapper);
 }
 
@@ -110,7 +110,8 @@ void EvaluateTemplateBundle(JNIEnv *env, jobject jcaller, jlong ptr,
   }
   auto url = JNIConvertHelper::ConvertToString(env, java_url);
   auto js_file = JNIConvertHelper::ConvertToString(env, java_js_file);
-  runtime_wrapper->EvaluateScript(std::move(url), bundle, std::move(js_file));
+  runtime_wrapper->RuntimeStandalone().EvaluateScript(std::move(url), bundle,
+                                                      std::move(js_file));
 }
 
 void EvaluateScript(JNIEnv *env, jobject jcaller, jlong ptr, jstring java_url,
@@ -119,7 +120,8 @@ void EvaluateScript(JNIEnv *env, jobject jcaller, jlong ptr, jstring java_url,
       reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr);
   auto url = JNIConvertHelper::ConvertToString(env, java_url);
   auto script = JNIConvertHelper::ConvertToString(env, java_source);
-  runtime_wrapper->EvaluateScript(std::move(url), std::move(script));
+  runtime_wrapper->RuntimeStandalone().EvaluateScript(std::move(url),
+                                                      std::move(script));
 }
 
 void SetPresetData(JNIEnv *env, jobject jcaller, jlong nativePtr,
@@ -130,9 +132,10 @@ void SetPresetData(JNIEnv *env, jobject jcaller, jlong nativePtr,
         reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(nativePtr);
     if (readOnly) {
       // no need clone here
-      runtime_wrapper->SetPresetData(*data);
+      runtime_wrapper->RuntimeStandalone().SetPresetData(*data);
     } else {
-      runtime_wrapper->SetPresetData(lynx::lepus::Value::Clone(*data));
+      runtime_wrapper->RuntimeStandalone().SetPresetData(
+          lynx::lepus::Value::Clone(*data));
     }
   }
 }
@@ -145,7 +148,8 @@ static void SetSessionStorageItem(JNIEnv *env, jobject jcaller, jlong ptr,
       value ? *(reinterpret_cast<lynx::lepus::Value *>(value))
             : lynx::lepus::Value();
   reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr)
-      ->SetSessionStorageItem(
+      ->RuntimeStandalone()
+      .SetSessionStorageItem(
           std::move(shared_key),
           std::make_shared<lynx::tasm::TemplateData>(shared_data, readonly));
 }
@@ -157,8 +161,9 @@ static void GetSessionStorageItem(JNIEnv *env, jobject jcaller, jlong ptr,
   auto platform_callback =
       std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callback);
   reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr)
-      ->GetSessionStorageItem(std::move(shared_key),
-                              std::move(platform_callback));
+      ->RuntimeStandalone()
+      .GetSessionStorageItem(std::move(shared_key),
+                             std::move(platform_callback));
 }
 
 static jdouble SubscribeSessionStorage(JNIEnv *env, jobject jcaller, jlong ptr,
@@ -169,8 +174,9 @@ static jdouble SubscribeSessionStorage(JNIEnv *env, jobject jcaller, jlong ptr,
       std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callBack);
 
   return reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr)
-      ->SubscribeSessionStorage(std::move(shared_key),
-                                std::move(platform_callback));
+      ->RuntimeStandalone()
+      .SubscribeSessionStorage(std::move(shared_key),
+                               std::move(platform_callback));
 }
 
 static void UnsubscribeSessionStorage(JNIEnv *env, jobject jcaller, jlong ptr,
@@ -178,13 +184,14 @@ static void UnsubscribeSessionStorage(JNIEnv *env, jobject jcaller, jlong ptr,
   std::string shared_key =
       lynx::base::android::JNIConvertHelper::ConvertToString(env, key);
   reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr)
-      ->UnSubscribeSessionStorage(std::move(shared_key), id);
+      ->RuntimeStandalone()
+      .UnSubscribeSessionStorage(std::move(shared_key), id);
 }
 
 void TransitionToFullRuntime(JNIEnv *env, jobject jcaller, jlong ptr) {
   auto *runtime_wrapper =
       reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr);
-  runtime_wrapper->TransitionToFullRuntime();
+  runtime_wrapper->RuntimeStandalone().TransitionToFullRuntime();
 }
 
 void DestroyWrapper(JNIEnv *env, jclass jcaller, jlong ptr) {
@@ -196,161 +203,17 @@ void DestroyWrapper(JNIEnv *env, jclass jcaller, jlong ptr) {
 void DestroyRuntime(JNIEnv *env, jobject jcaller, jlong ptr) {
   auto *runtime_wrapper =
       reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr);
-  runtime_wrapper->DestroyRuntime();
+  runtime_wrapper->RuntimeStandalone().DestroyRuntime();
 }
 
 jint GetRuntimeId(JNIEnv *env, jobject jcaller, jlong ptr) {
   auto *runtime_wrapper =
       reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr);
-  return runtime_wrapper->GetRuntimeId();
+  return runtime_wrapper->RuntimeStandalone().GetRuntimeId();
 }
 
 namespace lynx {
 namespace shell {
-
-void LynxRuntimeWrapperAndroid::EvaluateScript(std::string url,
-                                               std::string script) {
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", url);
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [url = std::move(url), script = std::move(script),
-       trace_flow_id](auto &runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                          trace_flow_id);
-      });
-}
-
-void LynxRuntimeWrapperAndroid::EvaluateScript(
-    std::string url, lynx::tasm::LynxTemplateBundle *bundle,
-    std::string js_file) {
-  auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
-  if (!js_content.has_value()) {
-    return;
-  }
-  auto js_content_val = js_content->get();
-  if (js_content_val.IsError()) {
-    return;
-  }
-  auto buffer = js_content_val.GetBuffer();
-
-  if (!buffer || !buffer->data()) {
-    return;
-  }
-
-  const auto length = buffer->size();
-  const auto *data = reinterpret_cast<const char *>(buffer->data());
-
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", url);
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [url = std::move(url), script = std::string(data, length),
-       trace_flow_id](auto &runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                          trace_flow_id);
-      });
-}
-
-void LynxRuntimeWrapperAndroid::SetPresetData(lepus::Value data) {
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [data = std::move(data)](auto &runtime) mutable {
-        runtime->OnSetPresetData(std::move(data));
-      });
-}
-
-void LynxRuntimeWrapperAndroid::SetSessionStorageItem(
-    const std::string &key, const std::shared_ptr<tasm::TemplateData> &data) {
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [key, data, delegate = runtime_standalone_bundle_.white_board_delegate_](
-          auto &runtime) mutable {
-        delegate->SetSessionStorageItem(std::move(key), data->GetValue());
-      });
-}
-void LynxRuntimeWrapperAndroid::GetSessionStorageItem(
-    const std::string &key, std::unique_ptr<PlatformCallBack> callback) {
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [key, callback = std::move(callback),
-       facade = runtime_standalone_bundle_.native_runtime_facade_,
-       delegate = runtime_standalone_bundle_.white_board_delegate_](
-          auto &runtime) mutable {
-        auto callback_holder = facade->ActSync(
-            [callback = std::move(callback)](auto &facade) mutable {
-              return facade->CreatePlatformCallBackHolder(std::move(callback));
-            });
-
-        auto value = delegate->GetSessionStorageItem(key);
-        delegate->CallPlatformCallbackWithValue(callback_holder, value);
-      });
-}
-
-double LynxRuntimeWrapperAndroid::SubscribeSessionStorage(
-    const std::string &key, std::unique_ptr<PlatformCallBack> callback) {
-  auto callback_holder =
-      runtime_standalone_bundle_.native_runtime_facade_->ActSync(
-          [callback = std::move(callback)](auto &facade) mutable {
-            return facade->CreatePlatformCallBackHolder(std::move(callback));
-          });
-
-  double callback_id = callback_holder->id();
-
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [key, callback_holder = std::move(callback_holder),
-       delegate = runtime_standalone_bundle_.white_board_delegate_](
-          auto &runtime) mutable {
-        delegate->SubScribeClientSessionStorage(std::move(key),
-                                                std::move(callback_holder));
-      });
-  return callback_id;
-}
-
-void LynxRuntimeWrapperAndroid::UnSubscribeSessionStorage(
-    const std::string &key, double callback_id) {
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [key, callback_id,
-       delegate = runtime_standalone_bundle_.white_board_delegate_](
-          auto &runtime) mutable {
-        delegate->UnsubscribeClientSessionStorage(std::move(key), callback_id);
-      });
-}
-
-void LynxRuntimeWrapperAndroid::TransitionToFullRuntime() {
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [](auto &runtime) { runtime->TransitionToFullRuntime(); });
-}
-
-void LynxRuntimeWrapperAndroid::DestroyRuntime() {
-  runtime_standalone_bundle_.perf_controller_actor_->Act(
-      [instance_id =
-           runtime_standalone_bundle_.perf_controller_actor_->GetInstanceId()](
-          auto &facade) {
-        facade = nullptr;
-        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(
-            instance_id);
-      });
-
-  runtime_standalone_bundle_.native_runtime_facade_->Act(
-      [instance_id =
-           runtime_standalone_bundle_.perf_controller_actor_->GetInstanceId()](
-          auto &facade) {
-        facade = nullptr;
-        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(
-            instance_id);
-      });
-
-  runtime_standalone_bundle_.runtime_actor_->ActAsync(
-      [runtime_actor = runtime_standalone_bundle_.runtime_actor_,
-       js_group_thread_name = group_name_](auto &runtime) {
-        lynx::shell::LynxShell::TriggerDestroyRuntime(runtime_actor,
-                                                      js_group_thread_name);
-      });
-}
 
 void NativeRuntimeFacadeAndroid::ReportError(const base::LynxError &error) {
   JNIEnv *env = AttachCurrentThread();

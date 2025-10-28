@@ -33,11 +33,9 @@ class NativeRuntimeFacadeAndroid : public NativeFacadeEmptyImpl {
 
 class LynxRuntimeWrapperAndroid {
  public:
-  LynxRuntimeWrapperAndroid(
-      InitRuntimeStandaloneResult runtime_standalone_bundle,
-      std::string group_name)
-      : runtime_standalone_bundle_(std::move(runtime_standalone_bundle)),
-        group_name_(std::move(group_name)) {}
+  explicit LynxRuntimeWrapperAndroid(
+      std::unique_ptr<RuntimeStandalone> runtime_standalone)
+      : runtime_standalone_(std::move(runtime_standalone)) {}
 
   ~LynxRuntimeWrapperAndroid() = default;
   LynxRuntimeWrapperAndroid(const LynxRuntimeWrapperAndroid& facade) = delete;
@@ -46,42 +44,10 @@ class LynxRuntimeWrapperAndroid {
   LynxRuntimeWrapperAndroid(LynxRuntimeWrapperAndroid&& facade) = delete;
   LynxRuntimeWrapperAndroid& operator=(LynxRuntimeWrapperAndroid&&) = delete;
 
-  void SetPresetData(lepus::Value data);
-
-  void EvaluateScript(std::string url, std::string script);
-
-  void EvaluateScript(std::string url, lynx::tasm::LynxTemplateBundle* bundle,
-                      std::string js_file);
-
-  void DestroyRuntime();
-
-  void SetSessionStorageItem(const std::string& key,
-                             const std::shared_ptr<tasm::TemplateData>& data);
-  void GetSessionStorageItem(const std::string& key,
-                             std::unique_ptr<PlatformCallBack> callback);
-
-  double SubscribeSessionStorage(const std::string& key,
-                                 std::unique_ptr<PlatformCallBack> callback);
-
-  void UnSubscribeSessionStorage(const std::string& key, double callback_id);
-
-  const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& GetRuntimeActor() {
-    return runtime_standalone_bundle_.runtime_actor_;
-  }
-
-  const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>&
-  GetPerfControllerActor() {
-    return runtime_standalone_bundle_.perf_controller_actor_;
-  }
-
-  void TransitionToFullRuntime();
-
-  int32_t GetRuntimeId() { return runtime_standalone_bundle_.runtime_id_; }
+  RuntimeStandalone& RuntimeStandalone() { return *runtime_standalone_; }
 
  private:
-  const InitRuntimeStandaloneResult
-      runtime_standalone_bundle_;  // keep this read-only until destruction
-  std::string group_name_;
+  std::unique_ptr<shell::RuntimeStandalone> runtime_standalone_;
 };
 
 }  // namespace shell

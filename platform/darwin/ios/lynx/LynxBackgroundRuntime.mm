@@ -169,7 +169,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   std::weak_ptr<lynx::piper::ModuleFactoryDarwin> _weak_module_factory;
   std::shared_ptr<lynx::shell::JSProxyDarwin> _js_proxy;
   std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> _runtime_observer;
-  lynx::shell::InitRuntimeStandaloneResult _runtime_standalone_bundle;
+  std::unique_ptr<lynx::shell::RuntimeStandalone> _runtime_standalone_bundle;
   LynxDevtool* _devTool;
 }
 
@@ -178,12 +178,12 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 }
 
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::runtime::LynxRuntime>>)runtimeActor {
-  return _runtime_standalone_bundle.runtime_actor_;
+  return _runtime_standalone_bundle->GetRuntimeActor();
 }
 
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>>)
     perfControllerActor {
-  return _runtime_standalone_bundle.perf_controller_actor_;
+  return _runtime_standalone_bundle->GetPerfControllerActor();
 }
 
 - (LynxDevtool*)devtool {
@@ -265,13 +265,13 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
         false, _options.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs, false,
         _options.enableBytecode, &enableJSGroupThread, &pendingCoreJsLoad);
-    _runtime_standalone_bundle = lynx::shell::InitRuntimeStandalone(
+    _runtime_standalone_bundle = lynx::shell::RuntimeStandalone::InitRuntimeStandalone(
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         native_module_manager, bundle_creator, _options.group.whiteBoard,
         std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],
         runtime_flags, LynxGetLepusValueFromTemplateData(_options.globalProps), debuggable, false);
 
-    const auto& runtime_actor = _runtime_standalone_bundle.runtime_actor_;
+    const auto& runtime_actor = _runtime_standalone_bundle->GetRuntimeActor();
     _js_proxy = lynx::shell::JSProxyDarwin::Create(
         runtime_actor, self, runtime_actor->Impl()->GetRuntimeId(), group_thread_name, true);
 
@@ -322,53 +322,25 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
   _lastScriptUrl = url;
 
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", std::string([url UTF8String]));
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  _runtime_standalone_bundle.runtime_actor_->Act([url = std::string([url UTF8String]),
-                                                  sources = std::string([sources UTF8String]),
-                                                  trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(sources), trace_flow_id);
-  });
+  _runtime_standalone_bundle->EvaluateScript(std::string([url UTF8String]),
+                                             std::string([sources UTF8String]));
 }
 
 - (void)evaluateTemplateBundle:(NSString*)url
                    widthBundle:(LynxTemplateBundle*)bundle
                     withJSFile:(NSString*)jsFile {
+  auto raw_bundle = LynxGetRawTemplateBundle(bundle);
+  if (!url || !jsFile || !raw_bundle) {
+    _LogE(@"LynxBackgroundRuntime, evaluateJavaScript warning: url or jsFile is nil: %@, %@", url,
+          jsFile);
+    return;
+  }
   if (_state == LynxBackgroundRuntimeStateStart) {
     [_devTool onStandaloneRuntimeLoadFromURL:url];
     [_devTool attachDebugBridge:url];
   }
-  auto raw_bundle = LynxGetRawTemplateBundle(bundle).get();
-  std::string js_path = [jsFile UTF8String];
-  auto js_content = raw_bundle->GetJsBundle().GetJsContent(js_path);
-  if (!js_content.has_value()) {
-    return;
-  }
-  auto js_content_val = js_content->get();
-  if (js_content_val.IsError()) {
-    return;
-  }
-  auto buffer = js_content_val.GetBuffer();
-  if (!buffer || !buffer->data()) {
-    return;
-  }
-  const auto length = buffer->size();
-  const auto* data = reinterpret_cast<const char*>(buffer->data());
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE_FROM_BUNDLE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", std::string([url UTF8String]));
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  _runtime_standalone_bundle.runtime_actor_->Act([url = std::string([url UTF8String]),
-                                                  sources = std::string(data, length),
-                                                  trace_flow_id](auto& runtime) mutable {
-    runtime->EvaluateScriptStandalone(std::move(url), std::move(sources), trace_flow_id);
-  });
+  _runtime_standalone_bundle->EvaluateScript(std::string([url UTF8String]), raw_bundle.get(),
+                                             std::string([jsFile UTF8String]));
 }
 
 - (void)sendGlobalEvent:(nonnull NSString*)name withParams:(nullable NSArray*)params {
@@ -403,11 +375,8 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
 - (void)setSessionStorageItem:(nonnull NSString*)key
              withTemplateData:(nullable LynxTemplateData*)data {
-  _runtime_standalone_bundle.runtime_actor_->Act(
-      [key = std::string([key UTF8String]), lepus_data = *LynxGetLepusValueFromTemplateData(data),
-       delegate = _runtime_standalone_bundle.white_board_delegate_](auto& runtime) mutable {
-        delegate->SetSessionStorageItem(std::move(key), std::move(lepus_data));
-      });
+  _runtime_standalone_bundle->SetSessionStorageItem(std::string([key UTF8String]),
+                                                    *LynxGetLepusValueFromTemplateData(data));
 }
 
 - (void)getSessionStorageItem:(nonnull NSString*)key
@@ -418,19 +387,8 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
           callback(lynx::tasm::convertLepusValueToNSObject(value));
         }
       });
-
-  _runtime_standalone_bundle.runtime_actor_->Act(
-      [key = std::string([key UTF8String]), platform_callback = std::move(platform_callback),
-       facade = _runtime_standalone_bundle.native_runtime_facade_,
-       delegate = _runtime_standalone_bundle.white_board_delegate_](auto& runtime) mutable {
-        auto callback_holder =
-            facade->ActSync([callback = std::move(platform_callback)](auto& facade) mutable {
-              return facade->CreatePlatformCallBackHolder(std::move(callback));
-            });
-
-        auto value = delegate->GetSessionStorageItem(key);
-        delegate->CallPlatformCallbackWithValue(callback_holder, value);
-      });
+  _runtime_standalone_bundle->GetSessionStorageItem(std::string([key UTF8String]),
+                                                    std::move(platform_callback));
 }
 
 - (double)subscribeSessionStorage:(nonnull NSString*)key
@@ -441,28 +399,12 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
           callback(lynx::tasm::convertLepusValueToNSObject(value));
         }
       });
-
-  auto callback_holder = _runtime_standalone_bundle.native_runtime_facade_->ActSync(
-      [callback = std::move(platform_callback)](auto& facade) mutable {
-        return facade->CreatePlatformCallBackHolder(std::move(callback));
-      });
-
-  double callback_id = callback_holder->id();
-
-  _runtime_standalone_bundle.runtime_actor_->Act(
-      [key = std::string([key UTF8String]), callback_holder = std::move(callback_holder),
-       delegate = _runtime_standalone_bundle.white_board_delegate_](auto& runtime) mutable {
-        delegate->SubScribeClientSessionStorage(std::move(key), std::move(callback_holder));
-      });
-  return callback_id;
+  return _runtime_standalone_bundle->SubscribeSessionStorage(std::string([key UTF8String]),
+                                                             std::move(platform_callback));
 }
 
 - (void)unSubscribeSessionStorage:(nonnull NSString*)key withId:(double)callbackId {
-  _runtime_standalone_bundle.runtime_actor_->Act(
-      [key = std::string([key UTF8String]), callbackId,
-       delegate = _runtime_standalone_bundle.white_board_delegate_](auto& runtime) mutable {
-        delegate->UnsubscribeClientSessionStorage(std::move(key), callbackId);
-      });
+  _runtime_standalone_bundle->UnSubscribeSessionStorage(std::string([key UTF8String]), callbackId);
 }
 
 - (void)addRuntimeLifecycleListener:(nonnull id<LynxRuntimeLifecycleListener>)listener {
@@ -470,8 +412,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 }
 
 - (void)transitionToFullRuntime {
-  _runtime_standalone_bundle.runtime_actor_->Act(
-      [](auto& runtime) { runtime->TransitionToFullRuntime(); });
+  _runtime_standalone_bundle->TransitionToFullRuntime();
 }
 
 - (void)dealloc {
@@ -480,25 +421,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     return;
   }
 
-  _runtime_standalone_bundle.perf_controller_actor_->Act(
-      [instance_id =
-           _runtime_standalone_bundle.perf_controller_actor_->GetInstanceId()](auto& facade) {
-        facade = nullptr;
-        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
-      });
-
-  _runtime_standalone_bundle.native_runtime_facade_->Act(
-      [instance_id =
-           _runtime_standalone_bundle.perf_controller_actor_->GetInstanceId()](auto& facade) {
-        facade = nullptr;
-        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
-      });
-
-  _runtime_standalone_bundle.runtime_actor_->ActAsync(
-      [runtime_actor = _runtime_standalone_bundle.runtime_actor_,
-       js_group_thread_name = [_options groupThreadName]](auto& runtime) {
-        lynx::shell::LynxShell::TriggerDestroyRuntime(runtime_actor, js_group_thread_name);
-      });
+  _runtime_standalone_bundle->DestroyRuntime();
 }
 
 // If user uses the Runtime to build LynxView, `attachToLynxView` will be

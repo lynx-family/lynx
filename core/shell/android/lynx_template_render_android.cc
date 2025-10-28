@@ -293,7 +293,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
   shell_option.instance_id_ =
       runtime_wrapper == nullptr
           ? -1  // {kUnknownInstanceId};
-          : runtime_wrapper->GetRuntimeActor()->GetInstanceId();
+          : runtime_wrapper->RuntimeStandalone().GetRuntimeId();
   shell_option.page_options_.SetInstanceID(shell_option.instance_id_);
   shell_option.page_options_.SetLongTaskMonitorDisabled(
       long_task_monitor_disabled);
@@ -335,13 +335,14 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
           .SetEngineActor(
               [loader](auto& actor) { loader->SetEngineActor(actor); })
           .SetLynxEngineWrapper(engine_wrapper)
-          .SetRuntimeActor((runtime_wrapper != nullptr)
-                               ? runtime_wrapper->GetRuntimeActor()
-                               : nullptr)
-          .SetPerfControllerActor(
+          .SetRuntimeActor(
               (runtime_wrapper != nullptr)
-                  ? runtime_wrapper->GetPerfControllerActor()
+                  ? runtime_wrapper->RuntimeStandalone().GetRuntimeActor()
                   : nullptr)
+          .SetPerfControllerActor((runtime_wrapper != nullptr)
+                                      ? runtime_wrapper->RuntimeStandalone()
+                                            .GetPerfControllerActor()
+                                      : nullptr)
           .SetPerformanceControllerPlatform(
               j_performance_controller != nullptr
                   ? std::make_unique<

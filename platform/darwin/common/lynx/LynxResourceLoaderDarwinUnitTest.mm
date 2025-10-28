@@ -13,6 +13,7 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
+#import "LynxBackgroundRuntime+Internal.h"
 #import "LynxTemplateRender+Protected.h"
 #import "LynxUnitTestUtils.h"
 
@@ -97,11 +98,7 @@
   [backgroundRuntime addLifecycleClient:client];
 
   // invoke LynxResourceLoader.reportError
-  Ivar privateVar =
-      class_getInstanceVariable([LynxBackgroundRuntime class], "_runtime_standalone_bundle");
-  auto* bundle = (__bridge lynx::shell::InitRuntimeStandaloneResult*)object_getIvar(
-      backgroundRuntime, privateVar);
-  [self invokeReportError:bundle->runtime_actor_];
+  [self invokeReportError:[backgroundRuntime runtimeActor]];
 
   // wait to receive error
   [self await];

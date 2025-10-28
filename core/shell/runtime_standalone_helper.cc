@@ -10,13 +10,14 @@
 #include "core/base/threading/vsync_monitor.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/performance_mediator.h"
+#include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime_mediator.h"
 
 namespace lynx {
 namespace shell {
 
-InitRuntimeStandaloneResult InitRuntimeStandalone(
+std::unique_ptr<RuntimeStandalone> RuntimeStandalone::InitRuntimeStandalone(
     const std::string& group_name, const std::string& group_id,
     std::unique_ptr<NativeFacade> native_facade_runtime,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
@@ -108,9 +109,147 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
         runtime->Init(native_module_manager, runtime_observer,
                       std::move(preload_js_paths));
       });
+  return std::unique_ptr<RuntimeStandalone>(new RuntimeStandalone(
+      group_name, instance_id, runtime_actor, performance_actor,
+      native_runtime_facade, white_board_delegate));
+}
 
-  return {runtime_actor, performance_actor, native_runtime_facade,
-          white_board_delegate, instance_id};
+void RuntimeStandalone::EvaluateScript(std::string url, std::string script) {
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+  runtime_actor_->Act([url = std::move(url), script = std::move(script),
+                       trace_flow_id](auto& runtime) mutable {
+    runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
+                                      trace_flow_id);
+  });
+}
+
+void RuntimeStandalone::EvaluateScript(std::string url,
+                                       lynx::tasm::LynxTemplateBundle* bundle,
+                                       std::string js_file) {
+  auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
+  if (!js_content.has_value()) {
+    return;
+  }
+  auto js_content_val = js_content->get();
+  if (js_content_val.IsError()) {
+    return;
+  }
+  auto buffer = js_content_val.GetBuffer();
+
+  if (!buffer || !buffer->data()) {
+    return;
+  }
+
+  const auto length = buffer->size();
+  const auto* data = reinterpret_cast<const char*>(buffer->data());
+
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+  runtime_actor_->Act([url = std::move(url), script = std::string(data, length),
+                       trace_flow_id](auto& runtime) mutable {
+    runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
+                                      trace_flow_id);
+  });
+}
+
+void RuntimeStandalone::SetPresetData(lepus::Value data) {
+  runtime_actor_->Act([data = std::move(data)](auto& runtime) mutable {
+    runtime->OnSetPresetData(std::move(data));
+  });
+}
+
+void RuntimeStandalone::SetSessionStorageItem(
+    const std::string& key, const std::shared_ptr<tasm::TemplateData>& data) {
+  runtime_actor_->Act(
+      [key, data, delegate = white_board_delegate_](auto& runtime) mutable {
+        delegate->SetSessionStorageItem(std::move(key), data->GetValue());
+      });
+}
+
+void RuntimeStandalone::SetSessionStorageItem(const std::string& key,
+                                              const lepus::Value value) {
+  runtime_actor_->Act(
+      [key, data = std::move(value),
+       delegate = white_board_delegate_](auto& runtime) mutable {
+        delegate->SetSessionStorageItem(std::move(key), std::move(data));
+      });
+}
+
+void RuntimeStandalone::GetSessionStorageItem(
+    const std::string& key, std::unique_ptr<PlatformCallBack> callback) {
+  runtime_actor_->Act(
+      [key, callback = std::move(callback), facade = native_runtime_facade_,
+       delegate = white_board_delegate_](auto& runtime) mutable {
+        auto callback_holder = facade->ActSync(
+            [callback = std::move(callback)](auto& facade) mutable {
+              return facade->CreatePlatformCallBackHolder(std::move(callback));
+            });
+
+        auto value = delegate->GetSessionStorageItem(key);
+        delegate->CallPlatformCallbackWithValue(callback_holder, value);
+      });
+}
+
+double RuntimeStandalone::SubscribeSessionStorage(
+    const std::string& key, std::unique_ptr<PlatformCallBack> callback) {
+  auto callback_holder = native_runtime_facade_->ActSync(
+      [callback = std::move(callback)](auto& facade) mutable {
+        return facade->CreatePlatformCallBackHolder(std::move(callback));
+      });
+
+  double callback_id = callback_holder->id();
+
+  runtime_actor_->Act(
+      [key, callback_holder = std::move(callback_holder),
+       delegate = white_board_delegate_](auto& runtime) mutable {
+        delegate->SubScribeClientSessionStorage(std::move(key),
+                                                std::move(callback_holder));
+      });
+  return callback_id;
+}
+
+void RuntimeStandalone::UnSubscribeSessionStorage(const std::string& key,
+                                                  double callback_id) {
+  runtime_actor_->Act([key, callback_id, delegate = white_board_delegate_](
+                          auto& runtime) mutable {
+    delegate->UnsubscribeClientSessionStorage(std::move(key), callback_id);
+  });
+}
+
+void RuntimeStandalone::TransitionToFullRuntime() {
+  runtime_actor_->Act(
+      [](auto& runtime) { runtime->TransitionToFullRuntime(); });
+}
+
+void RuntimeStandalone::DestroyRuntime() {
+  perf_controller_actor_->Act(
+      [instance_id = perf_controller_actor_->GetInstanceId()](auto& facade) {
+        facade = nullptr;
+        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(
+            instance_id);
+      });
+
+  native_runtime_facade_->Act(
+      [instance_id = perf_controller_actor_->GetInstanceId()](auto& facade) {
+        facade = nullptr;
+        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(
+            instance_id);
+      });
+
+  runtime_actor_->ActAsync([runtime_actor = runtime_actor_,
+                            js_group_thread_name = group_name_](auto& runtime) {
+    lynx::shell::LynxShell::TriggerDestroyRuntime(runtime_actor,
+                                                  js_group_thread_name);
+  });
 }
 
 }  // namespace shell

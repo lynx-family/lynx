@@ -60,7 +60,7 @@ jlong CreateWithRuntimeActor(JNIEnv* env, jobject jcaller, jlong ptr,
 
                              jstring js_group_thread_name_jstring) {
   auto* shell = reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid*>(ptr);
-  auto runtime_actor = shell->GetRuntimeActor();
+  auto runtime_actor = shell->RuntimeStandalone().GetRuntimeActor();
   auto js_group_thread_name =
       JNIConvertHelper::ConvertToString(env, js_group_thread_name_jstring);
   auto proxy =

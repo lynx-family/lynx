@@ -108,22 +108,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   };
   // LynxDevToolProxy override end
 
-  void EvaluateScript(std::string url, std::string script);
-
-  void EvaluateTemplateBundle(std::string url,
-                              const lynx::tasm::LynxTemplateBundle& bundle,
-                              std::string js_file);
-
-  const std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>>&
-  GetRuntimeActor() {
-    return runtime_standalone_bundle_.runtime_actor_;
-  }
-
-  const std::shared_ptr<
-      shell::LynxActor<tasm::performance::PerformanceController>>&
-  GetPerfControllerActor() {
-    return runtime_standalone_bundle_.perf_controller_actor_;
-  }
+  shell::RuntimeStandalone& RuntimeStandalone() { return *runtime_standalone_; }
 
   std::shared_ptr<piper::LynxModuleManager> GetModuleManager() {
     return module_manager_;
@@ -133,7 +118,6 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
     return runtime_proxy_;
   }
 
-  void TransitionToFullRuntime();
   void SetAttached(bool is_attached);
   void AddRuntimeLifecycleListener(napi_env env, napi_ref ref);
 
@@ -143,8 +127,6 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   static napi_value NativeEvaluateScript(napi_env env, napi_callback_info info);
   static napi_value NativeEvaluateTemplateBundle(napi_env env,
                                                  napi_callback_info info);
-  //  static napi_value NativeDestroyRuntime(napi_env env, napi_callback_info
-  //  info);
   static napi_value NativeTransitionToFullRuntime(napi_env env,
                                                   napi_callback_info info);
   static napi_value NativeCallJSFunction(napi_env env, napi_callback_info info);
@@ -156,11 +138,10 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
 
  private:
   void DestroyRuntime();
-  shell::InitRuntimeStandaloneResult runtime_standalone_bundle_;
+  std::unique_ptr<shell::RuntimeStandalone> runtime_standalone_;
   std::shared_ptr<shell::LynxRuntimeProxyImpl> runtime_proxy_;
   // TODO(liyanbo.monster): use weak_ptr instead of shared_ptr
   std::shared_ptr<piper::LynxModuleManager> module_manager_;
-  std::string group_name_;
   bool is_attached_{false};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
 };

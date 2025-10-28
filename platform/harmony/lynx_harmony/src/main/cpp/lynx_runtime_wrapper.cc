@@ -16,7 +16,6 @@
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
-#include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/module_delegate_impl.h"
 
@@ -150,9 +149,6 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
   if (inspector_owner_ != nullptr) {
     inspector_observer =
         inspector_owner_->OnBackgroundRuntimeCreated(group_name);
-    // inspector_owner_->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
-    // inspector_owner_->OnTemplateAssemblerCreated(
-    //     reinterpret_cast<intptr_t>(shell_.get()));
   }
 
   // Init module manager
@@ -171,7 +167,7 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
   auto runtime_flags =
       runtime::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
 
-  runtime_standalone_bundle_ = lynx::shell::InitRuntimeStandalone(
+  runtime_standalone_ = lynx::shell::RuntimeStandalone::InitRuntimeStandalone(
       group_name, group_id, std::move(native_facade_runtime),
       std::move(inspector_observer), resource_loader, module_manager_,
       bundle_creator, white_board, on_runtime_actor_created,
@@ -185,87 +181,7 @@ void LynxRuntimeWrapper::DestroyRuntime() {
   if (is_attached_) {
     return;
   }
-  runtime_standalone_bundle_.perf_controller_actor_->Act(
-      [instance_id =
-           runtime_standalone_bundle_.perf_controller_actor_->GetInstanceId()](
-          auto& facade) {
-        facade = nullptr;
-        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(
-            instance_id);
-      });
-
-  runtime_standalone_bundle_.native_runtime_facade_->Act(
-      [instance_id =
-           runtime_standalone_bundle_.perf_controller_actor_->GetInstanceId()](
-          auto& facade) {
-        facade = nullptr;
-        lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(
-            instance_id);
-      });
-
-  runtime_standalone_bundle_.runtime_actor_->ActAsync(
-      [runtime_actor = runtime_standalone_bundle_.runtime_actor_,
-       js_group_thread_name = group_name_](auto& runtime) {
-        lynx::shell::LynxShell::TriggerDestroyRuntime(runtime_actor,
-                                                      js_group_thread_name);
-      });
-}
-
-void LynxRuntimeWrapper::EvaluateScript(std::string url, std::string script) {
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", url);
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  if (inspector_owner_) {
-    inspector_owner_->OnLoaded(url);
-  }
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [url = std::move(url), script = std::move(script),
-       trace_flow_id](auto& runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                          trace_flow_id);
-      });
-}
-
-void LynxRuntimeWrapper::EvaluateTemplateBundle(
-    std::string url, const lynx::tasm::LynxTemplateBundle& bundle,
-    std::string js_file) {
-  auto js_content = bundle.GetJsBundle().GetJsContent(js_file);
-  if (!js_content.has_value()) {
-    return;
-  }
-  auto js_content_val = js_content->get();
-  if (js_content_val.IsError()) {
-    return;
-  }
-  auto buffer = js_content_val.GetBuffer();
-
-  if (!buffer || !buffer->data()) {
-    return;
-  }
-
-  const auto length = buffer->size();
-  const auto* data = reinterpret_cast<const char*>(buffer->data());
-
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
-              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("url", url);
-                ctx.event()->add_flow_ids(trace_flow_id);
-              });
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [url = std::move(url), script = std::string(data, length),
-       trace_flow_id](auto& runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
-                                          trace_flow_id);
-      });
-}
-
-void LynxRuntimeWrapper::TransitionToFullRuntime() {
-  runtime_standalone_bundle_.runtime_actor_->Act(
-      [](auto& runtime) { runtime->TransitionToFullRuntime(); });
+  runtime_standalone_->DestroyRuntime();
 }
 
 void LynxRuntimeWrapper::SetAttached(bool is_attached) {
@@ -389,7 +305,7 @@ napi_value LynxRuntimeWrapper::NativeEvaluateScript(napi_env env,
   }
   std::string url = base::NapiUtil::ConvertToString(env, args[0]);
   std::string sources = base::NapiUtil::ConvertToString(env, args[1]);
-  obj->EvaluateScript(std::move(url), std::move(sources));
+  obj->RuntimeStandalone().EvaluateScript(std::move(url), std::move(sources));
   return nullptr;
 }
 
@@ -415,27 +331,10 @@ napi_value LynxRuntimeWrapper::NativeEvaluateTemplateBundle(
     return nullptr;
   }
   std::string js_file = base::NapiUtil::ConvertToString(env, args[2]);
-  obj->EvaluateTemplateBundle(std::move(url), bundle->GetBundle(),
-                              std::move(js_file));
+  obj->RuntimeStandalone().EvaluateScript(
+      std::move(url), &(bundle->GetBundle()), std::move(js_file));
   return nullptr;
 }
-
-// napi_value LynxRuntimeWrapper::NativeDestroyRuntime(napi_env env,
-// napi_callback_info info) {
-//   napi_value js_this;
-//   size_t argc = 1;
-//   napi_value args[1] = {nullptr};
-//   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
-//   LynxRuntimeWrapper* wrapper = nullptr;
-//   napi_status status =
-//       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&wrapper));
-//   if (!CheckNapiUnwrapObject(status, wrapper, "NativeDetach failed")) {
-//     return nullptr;
-//   }
-//   wrapper->DestroyRuntime();
-//   delete wrapper;
-//   return nullptr;
-// }
 
 napi_value LynxRuntimeWrapper::NativeTransitionToFullRuntime(
     napi_env env, napi_callback_info info) {
@@ -450,7 +349,7 @@ napi_value LynxRuntimeWrapper::NativeTransitionToFullRuntime(
                              "NativeTransitionToFullRuntime failed")) {
     return nullptr;
   }
-  wrapper->TransitionToFullRuntime();
+  wrapper->RuntimeStandalone().TransitionToFullRuntime();
   return nullptr;
 }
 
