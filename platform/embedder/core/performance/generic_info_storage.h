@@ -32,6 +32,20 @@ class GenericInfo {
   void RemoveGenericInfo(const std::string& key);
   std::unique_ptr<const pub::Value> GetGenericInfo();
 
+  /**
+   * @brief Get specific generic infos by value type
+   */
+  const std::unordered_map<std::string, std::string>& GetStrGenericInfos()
+      const {
+    return str_infos_;
+  }
+  const std::unordered_map<std::string, int64_t>& GetInt64GenericInfos() const {
+    return i64_infos_;
+  }
+  const std::unordered_map<std::string, float>& GetFloatGenericInfos() const {
+    return float_infos_;
+  }
+
  private:
   void MarkDirty(bool dirty) { is_dirty_ = dirty; };
 
@@ -72,6 +86,12 @@ class GenericInfoStorage {
   void ClearCache(int32_t instance_id);
 
   void ClearAll() { generic_infos_.clear(); }
+
+  /**
+   * @brief get generic info by instance id
+   * please make sure this interface is called in report thread
+   */
+  GenericInfo GetGenericInfo(int32_t instance_id);
 
  private:
   // {instance_id -> generic_infos}

@@ -15,6 +15,7 @@ lynx_core_source_set("renderer") {
     "performance/generic_info_storage.h",
     "performance/lynx_event_reporter.cc",
     "performance/lynx_event_reporter.h",
+    "performance/lynx_event_reporter_observer.h",
     "performance/performance_controller_impl.cc",
     "performance/performance_controller_impl.h",
     "tasm_platform_invoker_impl.cc",
@@ -30,4 +31,6 @@ lynx_core_source_set("renderer") {
   if (enable_inspector) {
     public_deps = [ "../lynx_devtool:lynx_devtool" ]
   }
+
+  include_dirs = [ "../../../base/include/value" ]
 }

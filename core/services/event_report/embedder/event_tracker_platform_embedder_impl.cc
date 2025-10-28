@@ -13,12 +13,14 @@ namespace report {
 
 void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
                                        MoveOnlyEvent&& event) {
-  // TODO(zhangpengcheng): implement onEvent for embedder
+  embedder::LynxEventReporter::OnEvent(instance_id, std::move(event));
 }
 
 void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
                                         std::vector<MoveOnlyEvent> stack) {
-  // TODO(zhangpengcheng): implement onEvent for embedder
+  for (auto& event : stack) {
+    OnEvent(instance_id, std::move(event));
+  }
 }
 
 void EventTrackerPlatformImpl::UpdateGenericInfo(

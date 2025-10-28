@@ -62,11 +62,12 @@ LynxTemplateRenderer::LynxTemplateRenderer(
 }
 
 LynxTemplateRenderer::~LynxTemplateRenderer() {
-  ClearGenericInfo();
+  auto instance_id = GetInstanceId();
   shell_.reset();
   runtime_proxy_.reset();
   engine_proxy_.reset();
   perf_controller_proxy_.reset();
+  ClearGenericInfo(instance_id);
 }
 
 int32_t LynxTemplateRenderer::GetInstanceId() {
@@ -91,13 +92,14 @@ void LynxTemplateRenderer::Reset() {
   auto view_size = settings_.viewport_size;
   auto lynx_env_config =
       tasm::LynxEnvConfig(view_size.cx, view_size.cy, density, ratio);
-  ClearGenericInfo();
+  auto instance_id = GetInstanceId();
   shell_.reset();
 #if ENABLE_INSPECTOR
   auto& devtool_env = DevToolEnvEmbedder::GetInstance();
   bool is_devtool_enabled =
       devtool_env.IsLynxDebugEnabled() && devtool_env.IsDevToolEnabled();
 #endif
+  ClearGenericInfo(instance_id);
   auto native_facade = std::make_unique<NativeFacadeImpl>(this);
   auto loader =
       std::make_shared<tasm::LazyBundleLoader>(settings_.resource_loader);
@@ -595,8 +597,7 @@ void LynxTemplateRenderer::UpdateGenericInfoWithUrl(const std::string& url) {
                                                 std::move(generic_infos));
 }
 
-void LynxTemplateRenderer::ClearGenericInfo() {
-  auto instance_id = GetInstanceId();
+void LynxTemplateRenderer::ClearGenericInfo(int32_t instance_id) {
   if (instance_id != shell::kUnknownInstanceId) {
     tasm::report::EventTracker::ClearCache(instance_id);
   }

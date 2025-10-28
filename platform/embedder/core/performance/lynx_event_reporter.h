@@ -9,12 +9,20 @@
 #include <unordered_map>
 
 #include "core/public/pub_value.h"
+#include "core/services/event_report/event_tracker.h"
+#include "platform/embedder/core/performance/lynx_event_reporter_observer.h"
 
 namespace lynx {
 namespace embedder {
 
 class LynxEventReporter {
  public:
+  /**
+   * @brief
+   * @param type The specific host platform type.
+   */
+  static void OnEvent(int32_t instance_id, tasm::report::MoveOnlyEvent&& event);
+
   static void UpdateGenericInfo(const std::string& key,
                                 const std::string& value, int32_t instance_id);
 
@@ -45,6 +53,17 @@ class LynxEventReporter {
   static void ClearCache(int32_t instance_id);
 
   static void ClearAll();
+
+  /**
+   * @brief
+   * @param type The specific host platform type.
+   */
+  static uint32_t AddEventReporterObserver(
+      std::weak_ptr<LynxEventReporterObserver> observer);
+  static void RemoveEventReporterObserver(uint32_t token);
+
+ private:
+  static void InitLynxReporterServiceObserverIfNeeded();
 };
 
 }  // namespace embedder

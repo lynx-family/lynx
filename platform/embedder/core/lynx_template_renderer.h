@@ -243,7 +243,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
  protected:
   std::vector<uint8_t> LoadJSSource(const std::string& url);
   void UpdateGenericInfoWithUrl(const std::string& url);
-  void ClearGenericInfo();
+  void ClearGenericInfo(int32_t instance_id);
 
   Settings settings_;
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;

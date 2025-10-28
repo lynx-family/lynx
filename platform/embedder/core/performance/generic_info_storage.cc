@@ -160,5 +160,10 @@ void GenericInfoStorage::ClearCache(int32_t instance_id) {
   generic_infos_.erase(instance_id);
 }
 
+GenericInfo GenericInfoStorage::GetGenericInfo(int32_t instance_id) {
+  auto it = generic_infos_.find(instance_id);
+  return it == generic_infos_.end() ? GenericInfo{} : it->second;
+}
+
 }  // namespace embedder
 }  // namespace lynx
