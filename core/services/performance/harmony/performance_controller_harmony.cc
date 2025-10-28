@@ -269,7 +269,7 @@ PerformanceControllerHarmony::~PerformanceControllerHarmony() {
   if (!js_wrapper_) {
     return;
   }
-  base::UIThread::GetRunner()->PostSyncTask(
+  base::UIThread::GetRunner()->PostTask(
       [js_wrapper = js_wrapper_]() { js_wrapper->Destroy(); });
 }
 
