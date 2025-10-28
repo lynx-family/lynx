@@ -885,11 +885,7 @@ bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
     LOGE("QuickContext deserialize error " << msg);
     return false;
   }
-  if (inspector_manager_ &&
-      (tasm::LynxEnv::GetInstance().IsDevToolConnected() ||
-       tasm::LynxEnv::GetInstance().IsLogBoxEnabled())) {
-    SetFunctionFileName(val, file_name);
-  }
+  SetFunctionFileName(val, file_name);
   SetTopLevelFunction(val);
   return true;
 }

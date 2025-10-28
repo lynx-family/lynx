@@ -68,7 +68,9 @@ void LynxContextPool::AddContextSafely(int32_t count) {
       context->RegisterLynx(enable_signal_api_);
       // if context_bundle_ exists, should call DeSerialize. And if DeSerialize
       // fails, just return.
-      if (!context->DeSerialize(*context_bundle_, false, nullptr)) {
+      static const char* kMTSFileName = "file:///main-thread.js";
+      if (!context->DeSerialize(*context_bundle_, false, nullptr,
+                                kMTSFileName)) {
         return;
       }
     }
