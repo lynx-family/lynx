@@ -41,6 +41,9 @@ FOUNDATION_EXPORT NSString *const kDefaultComponentID;
 @property(nonatomic, assign) BOOL hasCustomTemplateFetcher;
 - (void)addKeyboardEventObserver:(id)observer;
 
+- (void)setEmbeddedMode:(LynxEmbeddedMode)mode;
+- (bool)isEmbeddedModeOn;
+
 @end
 
 NS_ASSUME_NONNULL_END
