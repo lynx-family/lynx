@@ -1104,6 +1104,8 @@ public class LynxContext : NSObject {
   public void LynxContext::setExtensionModule:forKey:(nonnull id< LynxExtensionModule > extensionModule,[forKey] nonnull NSString *key);
   public nonnull id< LynxExtensionModule > LynxContext::getExtensionModuleByKey:(nonnull NSString *key);
   public void LynxContext::addKeyboardEventObserver:(id observer);
+  public void LynxContext::setEmbeddedMode:(LynxEmbeddedMode mode);
+  public bool LynxContext::isEmbeddedModeOn();
   public nonnull instancetype LynxContext()::initWithContainerView:(id< LUIBodyView > _Nullable containerView);
   public void LynxContext()::setJSProxy:(const std::shared_ptr< lynx::shell::JSProxyDarwin > &proxy);
   public void LynxContext()::setLayoutProxy:(const std::shared_ptr< lynx::shell::LynxLayoutProxyDarwin > &layout_proxy);
@@ -5156,6 +5158,7 @@ public class LynxViewBuilder : LynxBaseConfigurator {
   public NSURL* LynxViewBuilder::uri uri;
   public BOOL isUIRunningMode LynxViewBuilder::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
   public void LynxViewBuilder::insertLynxViewConfig:forKey:(id _Nonnull config,[forKey] NSString *_Nonnull key);
+  public NSMutableDictionary< NSString *, id > * LynxViewBuilder()::getModuleWrapper();
 }
 
 public class LynxViewGroup : LynxBaseConfigurator {

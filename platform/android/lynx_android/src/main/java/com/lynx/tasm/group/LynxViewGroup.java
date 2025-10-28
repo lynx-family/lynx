@@ -4,6 +4,7 @@
 package com.lynx.tasm.group;
 
 import android.content.Context;
+import com.lynx.jsbridge.LynxEmbeddedModule;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.tasm.DefaultLogicExecutor;
 import com.lynx.tasm.EmbeddedMode;
@@ -150,6 +151,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     } else if (this.logicExecutor == null && EmbeddedMode.isEnginePoolEnable(embeddedMode)) {
       this.logicExecutor = new DefaultLogicExecutor(
           templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this, debuggable);
+    }
+
+    if (this.logicExecutor == null) {
+      registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, this);
     }
   }
 
