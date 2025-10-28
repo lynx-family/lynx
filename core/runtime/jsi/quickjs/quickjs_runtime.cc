@@ -191,6 +191,7 @@ QuickjsRuntime::evaluateJavaScriptBytecode(
   if (!eval_res.has_value()) {
     LOGE("QuickjsRuntime::evaluateJavaScriptBytecode failed:"
          << eval_res.error().ToString());
+    reportJSIException(eval_res.error());
     return eval_res;
   }
   LOGI("QuickjsRuntime::evaluateJavaScriptBytecode finished successfully.");
