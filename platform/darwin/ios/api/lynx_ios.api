@@ -443,6 +443,8 @@ public class LynxBackgroundRuntime : NSObject {
   public void LynxBackgroundRuntime::addLifecycleClient:(nonnull id< LynxBackgroundRuntimeLifecycle > lifecycleClient);
   public void LynxBackgroundRuntime::removeLifecycleClient:(nonnull id< LynxBackgroundRuntimeLifecycle > lifecycleClient);
   public void LynxBackgroundRuntime::evaluateJavaScript:withSources:(NSString *url,[withSources] NSString *sources);
+  public void LynxBackgroundRuntime::evaluateTemplateBundle:widthBundle:withJSFile:(NSString *url,[widthBundle] LynxTemplateBundle *bundle,[withJSFile] NSString *jsFile);
+  public void LynxBackgroundRuntime::callFunction:withMethod:withParams:(nonnull NSString *moduleName,[withMethod] nonnull NSString *method,[withParams] nullable NSArray *params);
   public void LynxBackgroundRuntime::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public void LynxBackgroundRuntime::addRuntimeLifecycleListener:(nonnull id< LynxRuntimeLifecycleListener > listener);
   public void LynxBackgroundRuntime::setSessionStorageItem:withTemplateData:(nonnull NSString *key,[withTemplateData] nullable LynxTemplateData *data);
