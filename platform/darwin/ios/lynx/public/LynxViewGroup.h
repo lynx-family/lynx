@@ -5,11 +5,15 @@
 #define PLATFORM_DARWIN_IOS_LYNX_PUBLIC_LYNXVIEWGROUP_H_
 
 #import <Lynx/LynxBaseConfigurator.h>
+#import <Lynx/LynxModule.h>
 #import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
 
 NS_ASSUME_NONNULL_BEGIN
+
+@protocol LynxLogicExecutor;
+@class LynxView;
 
 @interface LynxViewGroup : LynxBaseConfigurator
 
@@ -43,8 +47,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (bool)isTemplateBundleReady;
 
-- (nullable LynxView *)getLynxViewById:(NSInteger)viewId;
+/**
+ * default logicExecutor
+ */
+@property(nonatomic, strong, nullable) id<LynxLogicExecutor> logicExecutor;
 
+- (int)generateNextLynxViewID;
+- (void)addLynxView:(int)LynxViewId view:(LynxView *_Nonnull)view;
+- (void)removeLynxView:(int)LynxViewId;
+- (LynxView *_Nullable)getLynxViewById:(int)LynxViewId;
+
+- (void)setTemplateBundle:(LynxTemplateBundle *_Nullable)templateBundle;
+
+- (void)setLogicExecutor:(id<LynxLogicExecutor>)logicExecutor;
 @end
 
 NS_ASSUME_NONNULL_END

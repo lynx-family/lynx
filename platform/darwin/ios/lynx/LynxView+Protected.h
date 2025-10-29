@@ -21,7 +21,6 @@
   LynxLifecycleDispatcher* _lifecycleDispatcher;
   LynxTemplateRender* _templateRender;
   BOOL _isChildLynxPage;
-  NSInteger _lynxViewId;
 }
 
 @end
