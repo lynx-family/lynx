@@ -1566,7 +1566,8 @@ extern NSString* const kDefaultComponentID;
 }
 
 - (Boolean)isLayoutInElementModeOn {
-  return (_embeddedMode & LynxEmbeddedModeLayoutInElement) > 0;
+  return (_embeddedMode & (LynxEmbeddedModeLayoutInElement | LynxEmbeddedModeFragmentLayerRender)) >
+         0;
 }
 
 @end

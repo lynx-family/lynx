@@ -239,7 +239,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   }
 
   public boolean isLayoutInElementModeOn() {
-    return (embeddedMode & EmbeddedMode.LAYOUT_IN_ELEMENT) > 0;
+    return (embeddedMode & (EmbeddedMode.LAYOUT_IN_ELEMENT | EmbeddedMode.FRAGMENT_LAYER_RENDER))
+        > 0;
   }
 
   /**
