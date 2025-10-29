@@ -6,7 +6,7 @@ package com.lynx.tasm.behavior;
 public class LayoutNodeManager {
   public static float UNDEFINED_MAX_SIZE = (float) 0x7FFFFFF;
   public static float UNDEFINED_MIN_SIZE = 0f;
-  private long mNativePtr = 0;
+  protected long mNativePtr = 0;
 
   public void attachNativePtr(long mNativePtr) {
     this.mNativePtr = mNativePtr;
