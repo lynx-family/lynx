@@ -8,6 +8,7 @@
 
 #include "base/include/float_comparison.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/ui_component/list/list_orientation_helper.h"
 
 namespace lynx::tasm {
@@ -41,10 +42,10 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
       }
       element_->UpdateLayout(l, t);
       element_->element_container()->UpdateLayout(l, t);
-      element_->painting_context()->UpdateLayoutPatching();
+      element_->element_container()->UpdateLayoutPatching();
       element_->OnNodeReady();
-      element_->painting_context()->UpdateNodeReadyPatching();
-      element_->painting_context()->Flush();
+      element_->element_container()->UpdateNodeReadyPatching();
+      element_->element_container()->Flush();
     } else if (animation_type_ == list::ItemHolderAnimationType::kOpacity &&
                !std::isnan(animation_origin_opacity_)) {
       element_->FlushAnimatedStyle(
@@ -53,8 +54,8 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
                              std::fabs(animation_origin_opacity_ - progress)),
                          CSSValue::kCreateNumberTag));
       element_->OnNodeReady();
-      element_->painting_context()->UpdateNodeReadyPatching();
-      element_->painting_context()->Flush();
+      element_->element_container()->UpdateNodeReadyPatching();
+      element_->element_container()->Flush();
     }
   }
 }

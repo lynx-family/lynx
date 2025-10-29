@@ -53,8 +53,7 @@ class ElementContainerTest : public ::testing::Test {
 
 TEST_F(ElementContainerTest, Create) {
   auto element = manager->CreateNode("view", nullptr);
-  auto element_container =
-      std::make_unique<ElementContainer>(element.get(), false, nullptr);
+  auto element_container = std::make_unique<ElementContainer>(element.get());
   EXPECT_EQ(element_container->element(), element.get());
 
   auto child = manager->CreateNode("view", nullptr);
@@ -329,7 +328,7 @@ TEST_F(ElementContainerTest, FiberElementCase0) {
   EXPECT_TRUE(element_after_yellow_index == 3);
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -365,7 +364,7 @@ TEST_F(ElementContainerTest, FiberElementLayoutOnlyTransitionCase0) {
   page->FlushActionsAsRoot();
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -448,7 +447,7 @@ TEST_F(ElementContainerTest, FiberElementCase1) {
   EXPECT_TRUE(page_container->none_layout_only_children_size_ == 4);
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -528,7 +527,7 @@ TEST_F(ElementContainerTest, FiberElementCase2) {
   EXPECT_TRUE(page_container->none_layout_only_children_size_ == 4);
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -578,7 +577,7 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutForFixed) {
   page->element_container()->UpdateLayout(page->left(), page->top());
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -628,7 +627,7 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutWithException) {
   page->element_container()->UpdateLayout(page->left(), page->top());
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -753,7 +752,7 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(2));
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -861,7 +860,7 @@ TEST_F(ElementContainerTest, OldFixedZIndexSwitchCase) {
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(3));
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();

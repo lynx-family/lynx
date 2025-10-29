@@ -101,7 +101,8 @@ struct PageOptions {
   }
 
   bool IsLayoutInElementModeOn() const {
-    return embedded_mode_ & EmbeddedMode::LAYOUT_IN_ELEMENT;
+    return embedded_mode_ & EmbeddedMode::LAYOUT_IN_ELEMENT ||
+           embedded_mode_ & EmbeddedMode::FRAGMENT_LAYER_RENDER;
   }
 
   void SetHasLogicExecutor(bool enable) { has_logic_executor_ = enable; }

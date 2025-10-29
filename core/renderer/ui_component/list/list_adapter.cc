@@ -500,7 +500,7 @@ void ListAdapter::EnqueueElementsIfNeeded() {
     }
   }
   if (need_flush) {
-    list_element_->painting_context()->FlushImmediately();
+    list_element_->element_container()->FlushImmediately();
   }
 }
 
@@ -531,11 +531,9 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
   }
   if (list_item) {
     // Remove list item platform view.
-    int32_t list_id = list_element_->impl_id();
     int32_t list_item_id = list_item->impl_id();
-    list_element_->element_manager()
-        ->painting_context()
-        ->RemoveListItemPaintingNode(list_id, list_item_id);
+    list_element_->element_container()->RemoveListItemPaintingNode(
+        list_item_id);
     // Enqueue list item.
     list_node->EnqueueComponent(list_item_id);
     // Detach child.

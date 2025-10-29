@@ -679,7 +679,7 @@ void RadonElement::FlushProps() {
             return radon_element->TendToFlatten();
           }
         };
-    platform_is_flatten = painting_context()->IsFlatten(std::move(func));
+    platform_is_flatten = element_container()->CheckFlatten(std::move(func));
     bool is_layout_only = CanBeLayoutOnly() || is_virtual_;
     set_is_layout_only(is_layout_only);
     // native layer don't flatten.

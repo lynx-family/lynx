@@ -161,24 +161,28 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   sl_node_->ReLayout();
 
-  painting_context()->AppendOptionsForTiming(options);
+  // TODO(songshourui.null): avoid use painting_context in Element, move the
+  // following logic to RunPixelPipeline.
+  element_manager()->painting_context()->AppendOptionsForTiming(options);
 
-  painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
+  element_manager()
+      ->painting_context()
+      ->MarkLayoutUIOperationQueueFlushStartIfNeed();
 
   UpdateLayoutInfoRecursively();
 
   element_container()->UpdateLayout(left_, top_, false);
 
-  painting_context()->UpdateLayoutPatching();
+  element_container()->UpdateLayoutPatching();
 
-  painting_context()->OnFirstScreen();
+  element_manager()->painting_context()->OnFirstScreen();
 
-  painting_context()->UpdateNodeReadyPatching();
+  element_container()->UpdateNodeReadyPatching();
 
-  painting_context()->FinishLayoutOperation(options);
+  element_manager()->painting_context()->FinishLayoutOperation(options);
 
   if (!options->enable_unified_pixel_pipeline) {
-    painting_context()->Flush();
+    element_container()->Flush();
   }
 }
 

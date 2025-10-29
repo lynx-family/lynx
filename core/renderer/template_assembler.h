@@ -543,6 +543,12 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SetPageConfigClient() {
     // add for global config
     if (page_proxy_.element_manager()) {
+      // If IsFragmentLayerRenderModeOn() == true, we should enable new fixed
+      // default.
+      if (page_proxy_.element_manager()->IsFragmentLayerRenderModeOn()) {
+        page_config_->SetEnableFixedNew(true);
+      }
+
       page_proxy_.element_manager()->SetConfig(GetPageConfig());
     }
   }

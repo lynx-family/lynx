@@ -77,7 +77,6 @@ Element::Element(const base::String& tag, ElementManager* manager,
                              : manager->GetEnableNewAnimatorForRadon();
   manager->node_manager()->Record(id_, this);
 
-  catalyzer_ = manager->catalyzer();
   config_flatten_ = manager->GetPageFlatten();
 
   const auto& env_config = manager->GetLynxEnvConfig();
@@ -102,6 +101,10 @@ Element::Element(const base::String& tag, ElementManager* manager,
   record_parent_font_size_ = manager->GetLynxEnvConfig().PageDefaultFontSize();
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
+
+  element_container_ = EnableFragmentLayerRender()
+                           ? std::make_unique<Fragment>(this)
+                           : std::make_unique<ElementContainer>(this);
 }
 
 // The copy constructor of the element is now only used for copying fiber
@@ -168,7 +171,6 @@ void Element::AttachToElementManager(
         element_manager_->GetEnableCSSLazyImport());
   }
   config_flatten_ = manager->GetPageFlatten();
-  catalyzer_ = manager->catalyzer();
 
   if (keep_element_id) {
     manager->ReuseElementID(id_);
@@ -189,6 +191,10 @@ void Element::AttachToElementManager(
   }
   enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
+
+  element_container_ = EnableFragmentLayerRender()
+                           ? std::make_unique<Fragment>(this)
+                           : std::make_unique<ElementContainer>(this);
 }
 
 void Element::PushStyleToBundle() {
@@ -200,7 +206,7 @@ void Element::PushStyleToBundle() {
 }
 
 std::vector<float> Element::ScrollBy(float width, float height) {
-  return catalyzer_->ScrollBy(impl_id(), width, height);
+  return element_container()->ScrollBy(width, height);
 }
 
 // Sets the state of a gesture detector for the Element.
@@ -209,12 +215,11 @@ std::vector<float> Element::ScrollBy(float width, float height) {
 //   state: The state to set for the gesture  (state: 1 - active, 2 - fail, 3 -
 //   end)
 void Element::SetGestureDetectorState(int32_t gesture_id, int32_t state) {
-  catalyzer_->SetGestureDetectorState(impl_id(), gesture_id, state);
+  element_container()->SetGestureDetectorState(gesture_id, state);
 }
 
 void Element::ConsumeGesture(int32_t gesture_id, const lepus::Value& params) {
-  catalyzer_->ConsumeGesture(impl_id(), gesture_id,
-                             pub::ValueImplLepus(params));
+  element_container()->ConsumeGesture(gesture_id, params);
 }
 
 // Returns the GestureMap associated with the Element, if available.
@@ -242,13 +247,13 @@ void Element::SetGestureDetector(const uint32_t key,
 }
 
 std::vector<float> Element::GetRectToLynxView() {
-  return catalyzer_->GetRectToLynxView(this);
+  return element_container()->GetRectToLynxView();
 }
 
 void Element::Invoke(
     const std::string& method, const pub::Value& params,
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {
-  return catalyzer_->Invoke(impl_id(), method, params, callback);
+  return element_container()->Invoke(method, params, callback);
 }
 
 const EventMap& Element::event_map() const {
@@ -614,7 +619,7 @@ void Element::SetKeyframesByNames(const lepus::Value& names,
   auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
   bundle->SetProps("keyframes", pub::ValueImplLepus(lepus_keyframes));
 
-  element_container()->SetKeyframes(painting_context(), std::move(bundle));
+  element_container()->SetKeyframes(std::move(bundle));
 }
 
 lepus::Value Element::ResolveCSSKeyframesByNames(
@@ -676,11 +681,9 @@ void Element::ResetEventHandlers() {
 }
 
 void Element::CreateElementContainer(bool platform_is_flatten) {
-  element_container_ =
-      EnableFragmentLayerRender()
-          ? std::make_unique<Fragment>(this, platform_is_flatten, prop_bundle_)
-          : std::make_unique<ElementContainer>(this, platform_is_flatten,
-                                               prop_bundle_);
+  if (element_container_ != nullptr) {
+    element_container_->CreatePaintingNode(platform_is_flatten, prop_bundle_);
+  }
 
   element_manager_->IncreaseElementCount();
   if (IsLayoutOnly()) {
@@ -748,8 +751,7 @@ void Element::Animate(const lepus::Value& args,
           auto bundle =
               element_manager()->GetPropBundleCreator()->CreatePropBundle();
           bundle->SetProps("removeKeyframe", pub::ValueImplLepus(remove_name));
-          element_container()->SetKeyframes(painting_context(),
-                                            std::move(bundle));
+          element_container()->SetKeyframes(std::move(bundle));
         }
         will_removed_keyframe_name_ = base::String();
       }
@@ -1310,10 +1312,6 @@ bool Element::IsCSSInheritanceEnabled() const {
 bool Element::IsCSSInlineVariablesEnabled() const {
   return element_manager_ &&
          element_manager_->GetDynamicCSSConfigs().enable_css_inline_variables_;
-}
-
-PaintingContext* Element::painting_context() {
-  return catalyzer_->painting_context();
 }
 
 void Element::MarkLayoutDirty() { element_manager_->MarkLayoutDirty(id_); }

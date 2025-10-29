@@ -237,8 +237,6 @@ class Element : public lepus::RefCounted,
   LYNX_EXPORT_FOR_DEVTOOL virtual Element* GetParentComponentElement()
       const = 0;
 
-  Catalyzer* GetCaCatalyzer() { return catalyzer_; }
-
   virtual const EventMap& event_map() const;
   virtual const EventMap& lepus_event_map();
   virtual const EventMap& global_bind_event_map();
@@ -332,8 +330,6 @@ class Element : public lepus::RefCounted,
 
   bool HasPlaceHolder() { return has_placeholder_; }
   bool HasTextSelection() { return has_text_selection_; }
-
-  PaintingContext* painting_context();
 
   // Declared platform node tag
   const base::String& GetTag() const { return tag_; }
@@ -871,8 +867,6 @@ class Element : public lepus::RefCounted,
   fml::RefPtr<AttributeHolder> data_model_;
 
   ElementManager* element_manager_{nullptr};
-
-  Catalyzer* catalyzer_;
 
   fml::RefPtr<PropBundle> prop_bundle_;
 

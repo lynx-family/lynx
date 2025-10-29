@@ -20,29 +20,8 @@ namespace tasm {
 
 static int CompareElementOrder(Element* left, Element* right);
 
-ElementContainer::ElementContainer(Element* element, bool is_flatten,
-                                   const fml::RefPtr<PropBundle>& painting_data)
-    : element_(element) {
-  was_stacking_context_ = IsStackingContextNode();
-  was_position_fixed_ = element->IsNewFixed();
-  old_index_ = ZIndex();
-
-  if (element->EnableFragmentLayerRender()) {
-    return;
-  }
-
-  if (element->IsLayoutOnly()) {
-    return;
-  }
-
-  // TODO(songshourui.null): Abstract ElementContainer into a base class. Rename
-  // the current ElementContainer to FragmentForPlatformRenderer, inheriting
-  // from ElementContainer. Rename the current Fragment to
-  // FragmentForNativeRenderer, also inheriting from ElementContainer.
-  painting_context()->CreatePaintingNode(
-      element->impl_id(), element->GetPlatformNodeTag().str(), painting_data,
-      is_flatten, element->NeedCreateNodeAsync(), element->NodeIndex());
-}
+ElementContainer::ElementContainer(Element* element)
+    : element_(element), manager_(element->element_manager()) {}
 
 ElementContainer::~ElementContainer() {
   if (!element_->will_destroy()) {
@@ -218,7 +197,7 @@ void ElementContainer::InsertSelf() {
 }
 
 PaintingContext* ElementContainer::painting_context() {
-  return element()->painting_context();
+  return manager_->painting_context();
 }
 
 std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
@@ -621,15 +600,45 @@ bool ElementContainer::IsStackingContextNode() {
   return element()->IsStackingContextNode();
 }
 
+void ElementContainer::CreatePaintingNode(
+    bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) {
+  was_stacking_context_ = IsStackingContextNode();
+  was_position_fixed_ = element()->IsNewFixed();
+  old_index_ = ZIndex();
+
+  if (element()->IsLayoutOnly()) {
+    return;
+  }
+
+  painting_context()->CreatePaintingNode(
+      element()->impl_id(), element()->GetTag().str(), painting_data,
+      is_flatten, element()->NeedCreateNodeAsync());
+}
+
 void ElementContainer::UpdatePaintingNode(
     bool tend_to_flatten, const fml::RefPtr<PropBundle>& painting_data) {
   painting_context()->UpdatePaintingNode(element()->impl_id(), tend_to_flatten,
                                          painting_data);
 }
 
-void ElementContainer::SetKeyframes(PaintingContext* context,
-                                    fml::RefPtr<PropBundle> bundle) {
-  context->SetKeyframes(std::move(bundle));
+void ElementContainer::UpdatePlatformExtraBundle(PlatformExtraBundle* bundle) {
+  // TODO(songshourui.null): Using a raw PlatformExtraBundle* may lead to
+  // dangling pointers during asynchronous rendering. Consider passing a
+  // unique_ptr<PlatformExtraBundle> instead.
+  painting_context()->UpdatePlatformExtraBundle(element()->impl_id(), bundle);
+}
+
+bool ElementContainer::CheckFlatten(base::MoveOnlyClosure<bool, bool> func) {
+  return painting_context()->IsFlatten(std::move(func));
+}
+
+void ElementContainer::SetKeyframes(fml::RefPtr<PropBundle> bundle) {
+  painting_context()->SetKeyframes(std::move(bundle));
+}
+
+void ElementContainer::SetFrameAppBundle(
+    const std::shared_ptr<LynxTemplateBundle>& bundle) {
+  painting_context()->SetFrameAppBundle(element()->impl_id(), bundle);
 }
 
 void ElementContainer::OnNodeReady() {
@@ -638,6 +647,77 @@ void ElementContainer::OnNodeReady() {
 
 void ElementContainer::OnNodeReload() {
   painting_context()->OnNodeReload(element()->impl_id());
+}
+
+void ElementContainer::ListCellWillAppear(const std::string& item_key) {
+  painting_context()->ListCellWillAppear(element()->impl_id(), item_key);
+}
+
+void ElementContainer::ListCellDisappear(bool is_exist,
+                                         const base::String& item_key) {
+  painting_context()->ListCellDisappear(element()->impl_id(), is_exist,
+                                        item_key);
+}
+
+void ElementContainer::ListReusePaintingNode(const std::string& item_key) {
+  painting_context()->ListReusePaintingNode(element()->impl_id(), item_key);
+}
+
+void ElementContainer::InsertListItemPaintingNode(int32_t child_id) {
+  painting_context()->InsertListItemPaintingNode(element()->impl_id(),
+                                                 child_id);
+}
+
+void ElementContainer::RemoveListItemPaintingNode(int32_t child_id) {
+  painting_context()->RemoveListItemPaintingNode(element()->impl_id(),
+                                                 child_id);
+}
+
+std::vector<float> ElementContainer::ScrollBy(float width, float height) {
+  return painting_context()->ScrollBy(element()->impl_id(), width, height);
+}
+
+std::vector<float> ElementContainer::GetRectToLynxView() {
+  return painting_context()->GetRectToLynxView(element()->impl_id());
+}
+
+void ElementContainer::Invoke(
+    const std::string& method, const pub::Value& params,
+    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
+  return painting_context()->Invoke(element()->impl_id(), method, params,
+                                    callback);
+}
+
+void ElementContainer::UpdateScrollInfo(float estimated_offset, bool smooth,
+                                        bool scrolling) {
+  painting_context()->UpdateScrollInfo(element()->impl_id(), smooth,
+                                       estimated_offset, scrolling);
+}
+
+void ElementContainer::SetGestureDetectorState(int32_t gesture_id,
+                                               int32_t state) {
+  painting_context()->SetGestureDetectorState(element()->impl_id(), gesture_id,
+                                              state);
+}
+
+void ElementContainer::ConsumeGesture(int32_t gesture_id,
+                                      const lepus::Value& params) {
+  painting_context()->ConsumeGesture(element()->impl_id(), gesture_id,
+                                     pub::ValueImplLepus(params));
+}
+
+void ElementContainer::UpdateLayoutPatching() {
+  painting_context()->UpdateLayoutPatching();
+}
+
+void ElementContainer::UpdateNodeReadyPatching() {
+  painting_context()->UpdateNodeReadyPatching();
+}
+
+void ElementContainer::Flush() { painting_context()->Flush(); }
+
+void ElementContainer::FlushImmediately() {
+  painting_context()->FlushImmediately();
 }
 
 bool ElementContainer::IsSticky() { return element()->is_sticky(); }

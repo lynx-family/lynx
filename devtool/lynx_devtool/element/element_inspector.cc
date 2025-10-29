@@ -1236,7 +1236,7 @@ std::vector<double> ElementInspector::GetOverlayNGBoxModel(Element* element) {
   std::vector<double> res;
 
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", res);
-  auto* catalyzer = element->GetCaCatalyzer();
+  auto* catalyzer = element->element_manager()->catalyzer();
   CHECK_NULL_AND_LOG_RETURN_VALUE(catalyzer, "catalyzer is null", res);
 
   auto size = catalyzer->getWindowSize(element);
@@ -1261,7 +1261,7 @@ std::vector<double> ElementInspector::GetOverlayNGBoxModel(Element* element) {
 
 std::vector<float> ElementInspector::GetRectToWindow(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", {});
-  auto* catalyzer = element->GetCaCatalyzer();
+  auto* catalyzer = element->element_manager()->catalyzer();
   CHECK_NULL_AND_LOG_RETURN_VALUE(catalyzer, "catalyzer is null", {});
   return catalyzer->GetRectToWindow(element);
 }

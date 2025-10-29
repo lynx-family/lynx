@@ -280,8 +280,8 @@ void ListLayoutManager::RecycleOffScreenItemHolders() {
   for (auto item_holder : off_screen_item_holders) {
     Element* list_item = list_adapter->GetListItemElement(item_holder);
     if (list_item && list_container_->should_request_state_restore()) {
-      list_container_->element_manager()->painting_context()->ListCellDisappear(
-          list_item->impl_id(), true, item_holder->item_key());
+      list_item->element_container()->ListCellDisappear(
+          true, item_holder->item_key());
     }
     list_container_->list_adapter()->RecycleItemHolder(item_holder);
   }
@@ -491,10 +491,8 @@ void ListLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
        list_element = list_container_->element()](ItemHolder* item_holder) {
         Element* list_item = list_adapter->GetListItemElement(item_holder);
         if (list_item) {
-          list_element->element_manager()
-              ->painting_context()
-              ->InsertListItemPaintingNode(list_element->impl_id(),
-                                           list_item->impl_id());
+          list_element->element_container()->InsertListItemPaintingNode(
+              list_item->impl_id());
         }
         return false;
       };
