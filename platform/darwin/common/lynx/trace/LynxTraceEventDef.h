@@ -187,6 +187,8 @@ static const char* const LYNX_ENGINE_POOL_POLL_ENGINE = "LynxEnginePool::pollEng
 
 static const char* const UI_IMAGE_REQUEST_IMAGE = "LynxUIImage::requestImage";
 static const char* const EVALUATE_SCRIPT_STANDALONE = "EvaluateScriptStandalone";
+static const char* const EVALUATE_SCRIPT_STANDALONE_FROM_BUNDLE =
+    "EvaluateScriptStandaloneFromBundle";
 
 #endif
 
