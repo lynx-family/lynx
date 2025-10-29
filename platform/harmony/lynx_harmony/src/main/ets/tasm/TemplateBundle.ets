@@ -28,6 +28,18 @@ export class TemplateBundle extends lynx.TemplateBundle {
     this.errMsg = errMsg;
   }
 
+  private static createTemplateBundle(template: ArrayBuffer): TemplateBundle {
+    let bundle: TemplateBundle = new TemplateBundle(template.byteLength);
+    let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
+    if (securityService) {
+      let result: SecurityResult = securityService.verifyTASM(template, undefined, LynxTasmType.TYPE_TEMPLATE)
+      if (!result.verified) {
+        bundle.setErrMsg(`template verify failed, error message: ${result.errMsg}`)
+      }
+    }
+    return bundle;
+  }
+
   /**
    * Input Lynx template binary content and return the parsed `TemplateBundle` object.
    * @apidoc
@@ -35,15 +47,11 @@ export class TemplateBundle extends lynx.TemplateBundle {
    * @returns The `TemplateBundle` object.
    */
   public static fromTemplate(template: ArrayBuffer): TemplateBundle {
-    let bundle: TemplateBundle = new TemplateBundle(template.byteLength);
-    let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
-    if (securityService) {
-      let result: SecurityResult = securityService.verifyTASM(template, undefined, LynxTasmType.TYPE_TEMPLATE)
-      if (!result.verified) {
-        bundle.setErrMsg(`template verify failed, error message: ${result.errMsg}`)
-        return bundle;
-      }
+    let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
+    if (bundle.getErrorMessage() != '') {
+      return bundle;
     }
+
     let errMsg: string | undefined = bundle.nativeParseTemplate(template);
     if (errMsg === undefined) {
       errMsg = 'native parse template failed';
@@ -52,9 +60,53 @@ export class TemplateBundle extends lynx.TemplateBundle {
     return bundle;
   }
 
+  /**
+   * Creates a TemplateBundle from a template binary data with options.
+   *
+   * @apidoc
+   * @param template The template binary content.
+   * @param option The TemplateBundleOption object.
+   * @returns The new TemplateBundle object.
+   */
   public static fromTemplateWithOption(template: ArrayBuffer,
     option: TemplateBundleOption): TemplateBundle {
     let bundle: TemplateBundle = TemplateBundle.fromTemplate(template);
+    bundle.initWithOption(option);
+    return bundle;
+  }
+
+  /**
+   * Asynchronously creates a TemplateBundle from a template binary data. This method avoids blocking the main thread.
+   *
+   * @apidoc
+   * @param template: ArrayBuffer, a buffer of template binary data.
+   * @return: Promise<TemplateBundle>, a promise that resolves with a new TemplateBundle object.
+   */
+  public static async fromTemplateAsync(template: ArrayBuffer): Promise<TemplateBundle> {
+    let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
+    if (bundle.getErrorMessage() != '') {
+      return bundle;
+    }
+
+    let errMsg: string | undefined = await bundle.nativeAsyncParseTemplate(template);
+    if (errMsg === undefined) {
+      errMsg = "native parse template bundle failed";
+    }
+    bundle.setErrMsg(errMsg);
+    return bundle;
+  }
+
+  /**
+   * Asynchronously creates a TemplateBundle from a template binary data with options. This method avoids blocking the main thread.
+   *
+   * @apidoc
+   * @param template The template binary content.
+   * @param option The TemplateBundleOption object.
+   * @returns A promise that resolves with the new TemplateBundle object.
+   */
+  public static async fromTemplateAsyncWithOption(template: ArrayBuffer,
+    option: TemplateBundleOption): Promise<TemplateBundle> {
+    let bundle: TemplateBundle = await TemplateBundle.fromTemplateAsync(template);
     bundle.initWithOption(option);
     return bundle;
   }

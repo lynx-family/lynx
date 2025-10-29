@@ -271,6 +271,8 @@ export class TemplateBundle {
 
   nativeParseTemplate(template: ArrayBuffer): string | undefined;
 
+  nativeAsyncParseTemplate(template: ArrayBuffer): Promise<string> | undefined;
+
   nativeGetExtraInfo(): Record<string, Object>;
 
   nativeGetContainsElementTree(): boolean;
