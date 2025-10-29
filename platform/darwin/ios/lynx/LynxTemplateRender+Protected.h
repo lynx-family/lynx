@@ -76,6 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
   LynxBackgroundRuntimeOptions* _runtimeOptions;
   LynxTheme* _localTheme;
   LynxTemplateData* _globalProps;
+  LynxTemplateData* _templateData;
   PaintingContextProxy* _paintingContextProxy;
   LynxSSRHelper* _lynxSSRHelper;
   LynxPerformanceController* _performanceController;

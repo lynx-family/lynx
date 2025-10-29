@@ -44,6 +44,8 @@
 @property(nonatomic, strong, nullable) NSMutableDictionary<NSString*, id>* lepusModulesClasses;
 @property(nonatomic, weak, nullable) id<LynxResourceFetcher> resourceFetcher;
 
+@property(nonatomic, weak, nullable) id<LynxLogicExecutor> logicExecutor;
+
 - (nullable id<LynxEventTarget>)hitTestInEventHandler:(CGPoint)point
                                             withEvent:(UIEvent* _Nonnull)event;
 - (void)willMoveToWindow:(nonnull UIWindow*)newWindow;
@@ -91,6 +93,8 @@
 
 - (float)rootWidth;
 - (float)rootHeight;
+
+- (LynxTemplateData* _Nullable)getTemplateData;
 
 #pragma mark - preload
 

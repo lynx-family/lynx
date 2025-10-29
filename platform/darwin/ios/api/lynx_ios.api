@@ -2666,6 +2666,12 @@ public protocol LynxLogBoxProtocol-p : <NSObject> {
   public void LynxLogBoxProtocol-p::destroy();
 }
 
+public protocol LynxLogicExecutor-p : <NSObject> {
+  public void LynxLogicExecutor-p::onLynxEvent:event:(LynxView *lynxView,[event] NSDictionary *event);
+  public void LynxLogicExecutor-p::setTemplateBundle:(LynxTemplateBundle *bundle);
+  public void LynxLogicExecutor-p::destroy();
+}
+
 public class LynxLongPressGestureHandler : LynxBaseGestureHandler {
 }
 
@@ -3486,6 +3492,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public BOOL LynxTemplateRender::enableRecycleTemplateBundle enableRecycleTemplateBundle;
   public NSMutableDictionary<NSString*, id>* LynxTemplateRender::lepusModulesClasses lepusModulesClasses;
   public id<LynxResourceFetcher> LynxTemplateRender::resourceFetcher resourceFetcher;
+  public id<LynxLogicExecutor> LynxTemplateRender::logicExecutor logicExecutor;
   public nullable id< LynxEventTarget > LynxTemplateRender::hitTestInEventHandler:withEvent:(CGPoint point,[withEvent] UIEvent *_Nonnull event);
   public void LynxTemplateRender::willMoveToWindow:(nonnull UIWindow *newWindow);
   public void LynxTemplateRender::setCustomizedLayoutInUIContext:(id< LynxListLayoutProtocol > _Nullable customizedListLayout);
@@ -3517,6 +3524,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public BOOL LynxTemplateRender::trailNewImage();
   public float LynxTemplateRender::rootWidth();
   public float LynxTemplateRender::rootHeight();
+  public LynxTemplateData *_Nullable LynxTemplateRender::getTemplateData();
   public void LynxTemplateRender::attachLynxView:(LynxView *_Nonnull lynxView);
   public BOOL LynxTemplateRender::processRender:(LynxView *_Nonnull lynxView);
   public void LynxTemplateRender::processLayout:withURL:initData:(nonnull NSData *tem,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
@@ -5098,6 +5106,7 @@ public class LynxView : UIView, <LUIBodyView> {
   public void LynxView::processLayoutWithTemplateBundle:withURL:initData:(nonnull LynxTemplateBundle *bundle,[withURL] nonnull NSString *url,[initData](deprecated("Use `loadTemplate:LynxLoadMeta` with " "LynxLoadOption(LynxLoadOptionProcessLayoutWithoutUIFlush)instead.")) __attribute__);
   public void LynxView::processLayoutWithSSRData:withURL:initData:(nonnull NSData *tem,[withURL] nonnull NSString *url,[initData](deprecated("Use `loadTemplate:LynxLoadMeta` with " "LynxLoadOption(LynxLoadOptionProcessLayoutWithoutUIFlush)instead.")) __attribute__);
   public nonnull LynxConfigInfo * LynxView::lynxConfigInfo();
+  public LynxTemplateData *_Nullable LynxView::getTemplateData();
   public LynxTemplateRender *_Nullable LynxView()::templateRender();
   public NSDictionary *_Nullable LynxView()::getAllJsSource();
   public void LynxView()::onLongPress();
@@ -5132,10 +5141,16 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public NSString* LynxViewGroup::url url;
   public LynxTemplateData* LynxViewGroup::globalProps globalProps;
   public LynxTemplateBundle* LynxViewGroup::templateBundle templateBundle;
+  public id<LynxLogicExecutor> LynxViewGroup::logicExecutor logicExecutor;
   public instancetype LynxViewGroup::initWithUrl:templateFetcher:(NSString *url,[templateFetcher] id< LynxTemplateResourceFetcher > templateFetcher);
   public instancetype LynxViewGroup::initWithUrl:templateBundle:(NSString *url,[templateBundle] LynxTemplateBundle *bundle);
   public bool LynxViewGroup::isTemplateBundleReady();
-  public nullable LynxView * LynxViewGroup::getLynxViewById:(NSInteger viewId);
+  public int LynxViewGroup::generateNextLynxViewID();
+  public void LynxViewGroup::addLynxView:view:(int LynxViewId,[view] LynxView *_Nonnull view);
+  public void LynxViewGroup::removeLynxView:(int LynxViewId);
+  public LynxView *_Nullable LynxViewGroup::getLynxViewById:(int LynxViewId);
+  public void LynxViewGroup::setTemplateBundle:(LynxTemplateBundle *_Nullable templateBundle);
+  public void LynxViewGroup::setLogicExecutor:(id< LynxLogicExecutor > logicExecutor);
   public void LynxViewGroup()::addLynxView:(nonnull LynxView *view);
 }
 
@@ -5301,6 +5316,7 @@ public protocol TemplateRenderCallbackProtocol-p : <LynxErrorReceiverProtocol> {
   public void TemplateRenderCallbackProtocol-p::onEventFire:withEventStop:andEventID:(NSInteger targetID,[withEventStop] BOOL isStop,[andEventID] int64_t eventID);
   public void TemplateRenderCallbackProtocol-p::notifyIntersectionObservers();
   public BOOL TemplateRenderCallbackProtocol-p::onLynxEvent:(LynxEvent *event);
+  public void TemplateRenderCallbackProtocol-p::onLynxEventWithDictionary:(NSDictionary *detail);
 }
 
 public struct TransOffset {

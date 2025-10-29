@@ -165,7 +165,7 @@
   [_devTool onTemplateAssemblerCreated:(intptr_t)shell_.get()];
 
   // Runtime
-  if (_embeddedMode == LynxEmbeddedModeUnset) {
+  if (_lynxViewGroup.logicExecutor == nil) {
     [self setUpRuntimeWithLastInstanceId:lastInstanceId];
   }
 

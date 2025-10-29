@@ -226,6 +226,7 @@ subspec_target("lynx") {
     "module/LynxUIMethodModule.h",
     "module/LynxUIMethodModule.mm",
     "public/LynxBaseConfigurator.h",
+    "public/LynxLogicExecutor.h",
     "public/LynxServiceProtocol.h",
     "public/LynxTemplateRender.h",
     "public/LynxView+Internal.h",

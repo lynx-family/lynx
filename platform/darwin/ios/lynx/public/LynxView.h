@@ -58,7 +58,7 @@
 
  @see LynxViewGroup
  */
-@property(nonatomic, readonly) NSInteger lynxViewId;
+@property(nonatomic, readwrite, assign) NSInteger lynxViewId;
 
 /*!
  If `enableAsyncDisplay` is YES, sub-nodes' contents will be drawn asynchronously.
@@ -576,6 +576,8 @@
                    "LynxLoadOption(LynxLoadOptionProcessLayoutWithoutUIFlush) instead.")));
 
 - (nonnull LynxConfigInfo*)lynxConfigInfo;
+
+- (LynxTemplateData* _Nullable)getTemplateData;
 
 @end
 

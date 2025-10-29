@@ -156,6 +156,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)onLynxEvent:(LynxEvent *)event;
 
+- (void)onLynxEventWithDictionary:(NSDictionary *)detail;
+
 @end
 
 NS_ASSUME_NONNULL_END
