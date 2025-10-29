@@ -177,11 +177,9 @@ void BaseTextShadowNode::LoadFontFamilyIfNeeded(
     return;
   }
   for (const auto& raw_font_family : raw_font_families) {
-    auto it = font_face_manager->GetFontFaces().find(raw_font_family);
-    if (it != font_face_manager->GetFontFaces().end()) {
+    std::vector<FontFace::FontSrcData> font_src_data;
+    if (font_face_manager->TryGetFontSrcData(raw_font_family, font_src_data)) {
       // has custom font families
-      const std::vector<FontFace::FontSrcData>& font_src_data =
-          it->second.GetSrcData();
       for (auto& font_src : font_src_data) {
         const auto& font_family = font_src.unique_custom_font_family;
         if (font_family.empty() ||
