@@ -710,6 +710,8 @@ export class TemplateBundle extends lynx.TemplateBundle {
   public setErrMsg(errMsg: string): void;
   public static fromTemplate(template: ArrayBuffer): TemplateBundle;
   public static fromTemplateWithOption(template: ArrayBuffer, option: TemplateBundleOption): TemplateBundle;
+  public static async fromTemplateAsync(template: ArrayBuffer): Promise<TemplateBundle>;
+  public static async fromTemplateAsyncWithOption(template: ArrayBuffer, option: TemplateBundleOption): Promise<TemplateBundle>;
   public getExtraInfo(): Map<string, Object>;
   public isElementBundleValid(): boolean;
   public getTemplateSize(): number;

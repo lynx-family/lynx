@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/template_bundle/lynx_template_bundle.h"
 
@@ -17,7 +18,7 @@ namespace lynx {
 namespace harmony {
 class LynxTemplateBundleHarmony {
  public:
-  LynxTemplateBundleHarmony() = default;
+  LynxTemplateBundleHarmony() : bundle_(nullptr), weak_factory_(this){};
   ~LynxTemplateBundleHarmony() = default;
 
   tasm::LynxTemplateBundle& GetBundle() { return *bundle_; };
@@ -26,6 +27,7 @@ class LynxTemplateBundleHarmony {
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value New(napi_env env, napi_callback_info info);
   static napi_value ParseTemplate(napi_env env, napi_callback_info info);
+  static napi_value AsyncParseTemplate(napi_env env, napi_callback_info info);
   static napi_value GetExtraInfo(napi_env env, napi_callback_info info);
   static napi_value GetContainsElementTree(napi_env env,
                                            napi_callback_info info);
@@ -33,6 +35,8 @@ class LynxTemplateBundleHarmony {
   static napi_value PostJsCacheGenerationTask(napi_env env,
                                               napi_callback_info info);
 
+  napi_value AsyncParseTemplate(napi_env env,
+                                std::vector<uint8_t>& template_buffer);
   napi_value GetExtraInfo(napi_env env);
   napi_value GetContainsElementTree(napi_env env);
   napi_value InitWithOption(napi_env env, int32_t count, bool enable);
@@ -42,6 +46,7 @@ class LynxTemplateBundleHarmony {
 
  private:
   std::unique_ptr<tasm::LynxTemplateBundle> bundle_;
+  fml::WeakPtrFactory<LynxTemplateBundleHarmony> weak_factory_;
 };
 }  // namespace harmony
 }  // namespace lynx

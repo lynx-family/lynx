@@ -24,6 +24,15 @@
 namespace lynx {
 
 namespace harmony {
+struct AsyncParseTemplateContext {
+  fml::WeakPtr<LynxTemplateBundleHarmony> weak_bundle;
+  std::string error_msg{};
+  tasm::LynxTemplateBundle bundle_result;
+  napi_async_work async_work = nullptr;
+  napi_deferred deferred = nullptr;
+  std::vector<uint8_t> template_buffer;
+};
+
 void LynxTemplateBundleHarmony::SetBundle(tasm::LynxTemplateBundle bundle) {
   bundle_ = std::make_unique<tasm::LynxTemplateBundle>(std::move(bundle));
 }
@@ -34,6 +43,8 @@ napi_value LynxTemplateBundleHarmony::Init(napi_env env, napi_value exports) {
 
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_STATIC_FUNCTION("nativeParseTemplate", ParseTemplate),
+      DECLARE_NAPI_STATIC_FUNCTION("nativeAsyncParseTemplate",
+                                   AsyncParseTemplate),
       DECLARE_NAPI_STATIC_FUNCTION("nativeGetExtraInfo", GetExtraInfo),
       DECLARE_NAPI_STATIC_FUNCTION("nativeGetContainsElementTree",
                                    GetContainsElementTree),
@@ -130,6 +141,105 @@ napi_value LynxTemplateBundleHarmony::ParseTemplate(napi_env env,
   napi_create_string_utf8(env, "", 0, &error_value);
 
   return error_value;
+}
+
+napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[argc];
+  napi_value js_this = nullptr;
+  napi_status status =
+      napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+  if (status != napi_ok) {
+    LOGE("fail to get callback info " << status);
+    return nullptr;
+  }
+
+  LynxTemplateBundleHarmony* bundle = nullptr;
+  status = napi_unwrap(env, js_this, reinterpret_cast<void**>(&bundle));
+  if (status != napi_ok) {
+    LOGE("fail to unwrap bundle from js_this " << status);
+    return nullptr;
+  }
+
+  std::vector<uint8_t> template_buffer = {};
+  bool result =
+      base::NapiUtil::ConvertToArrayBuffer(env, args[0], template_buffer);
+  if (!result) {
+    return nullptr;
+  }
+
+  return bundle->AsyncParseTemplate(env, template_buffer);
+}
+
+napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
+    napi_env env, std::vector<uint8_t>& template_buffer) {
+  napi_deferred deferred = nullptr;
+  napi_value promise = nullptr;
+  auto status = napi_create_promise(env, &deferred, &promise);
+  if (status != napi_ok) {
+    LOGE("fail to create promise " << status);
+    return nullptr;
+  }
+
+  napi_value work_name;
+  napi_create_string_utf8(env, "LynxTemplateBundleHarmony::AsyncParseTemplate",
+                          NAPI_AUTO_LENGTH, &work_name);
+
+  AsyncParseTemplateContext* context = new AsyncParseTemplateContext();
+  context->deferred = deferred;
+  context->weak_bundle = weak_factory_.GetWeakPtr();
+  context->template_buffer = std::move(template_buffer);
+
+  auto excute_task = [](napi_env env, void* data) {
+    AsyncParseTemplateContext* context =
+        static_cast<AsyncParseTemplateContext*>(data);
+    if (context) {
+      auto decoder = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
+          std::move(context->template_buffer));
+      decoder.Decode();
+      context->error_msg = std::move(decoder.error_message_);
+      context->bundle_result = decoder.GetTemplateBundle();
+    }
+  };
+  auto complete_task = [](napi_env env, napi_status status, void* data) {
+    AsyncParseTemplateContext* context =
+        static_cast<AsyncParseTemplateContext*>(data);
+    if (context) {
+      if (context->weak_bundle) {
+        context->weak_bundle->SetBundle(std::move(context->bundle_result));
+      }
+      napi_value error_value = nullptr;
+      if (context->error_msg.empty()) {
+        napi_create_string_utf8(env, "", 0, &error_value);
+      } else {
+        napi_create_string_utf8(env, context->error_msg.c_str(),
+                                context->error_msg.length(), &error_value);
+      }
+      napi_resolve_deferred(env, context->deferred, error_value);
+
+      delete context;
+      napi_delete_async_work(env, context->async_work);
+    }
+  };
+
+  status = napi_create_async_work(
+      env, nullptr, work_name, std::move(excute_task), std::move(complete_task),
+      context, &context->async_work);
+  if (status != napi_ok) {
+    LOGE("fail to create async work " << status);
+    delete context;
+    return nullptr;
+  }
+
+  status = napi_queue_async_work(env, context->async_work);
+  if (status != napi_ok) {
+    LOGE("fail to queue async work " << status);
+    delete context;
+    return nullptr;
+  }
+
+  return promise;
 }
 
 napi_value LynxTemplateBundleHarmony::GetExtraInfo(napi_env env,
