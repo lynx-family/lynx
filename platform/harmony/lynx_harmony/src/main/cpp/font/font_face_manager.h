@@ -84,11 +84,20 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
         font_collection_(
             FontCollectionHarmony::MakeSharedFontCollectionHarmony()) {}
   void AddFontFace(std::string font_family, FontFace font_face) {
+    std::unique_lock<std::shared_mutex> lock(mutex_);
     font_faces_.emplace(std::move(font_family), std::move(font_face));
   }
 
-  const std::unordered_map<std::string, FontFace>& GetFontFaces() {
-    return font_faces_;
+  bool TryGetFontSrcData(
+      const std::string& font_family,
+      std::vector<FontFace::FontSrcData>& out_src_data) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    auto it = font_faces_.find(font_family);
+    if (it != font_faces_.end()) {
+      out_src_data = it->second.GetSrcData();
+      return true;
+    }
+    return false;
   }
 
   void LoadFontWithUrl(int sign, const std::string& custom_font_family,
@@ -132,6 +141,7 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   std::unordered_map<std::string, std::vector<int>>
       font_family_pending_shadow_node_;
   base::InlineLinearFlatSet<int, 4> loading_shadow_nodes_;
+  mutable std::shared_mutex mutex_;
 };
 
 }  // namespace harmony

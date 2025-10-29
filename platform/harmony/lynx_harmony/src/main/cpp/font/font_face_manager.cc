@@ -254,6 +254,7 @@ std::vector<std::string> FontFaceManager::GetCustomFamiliesFromRawString(
 
 std::vector<std::string> FontFaceManager::GetCustomFamiliesFromRawVector(
     const std::vector<std::string>& raw_family_vec) {
+  std::shared_lock<std::shared_mutex> lock(mutex_);
   std::vector<std::string> custom_families;
   for (auto& raw_font_family : raw_family_vec) {
     auto it = font_faces_.find(raw_font_family);
