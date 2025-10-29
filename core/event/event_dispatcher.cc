@@ -108,6 +108,9 @@ DispatchEventResult EventDispatcher::Dispatch() {
     event_->set_current_target(target_->GetWeakTarget());
     auto result = target_->DispatchEvent(*event_);
     consumed |= result.consumed;
+    if (result.IsCanceled()) {
+      return result;
+    }
   }
 
   // bubble, eg: bindtap

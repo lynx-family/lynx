@@ -117,10 +117,12 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   }
 
   bool is_catch_in_capture =
-      event.event_phase() == Event::PhaseType::kCapturingPhase &&
+      (event.event_phase() == Event::PhaseType::kCapturingPhase ||
+       event.event_phase() == Event::PhaseType::kAtTarget) &&
       IsEventCaptureCatch(event.type());
   bool is_catch_in_bubble =
-      event.event_phase() == Event::PhaseType::kBubblingPhase &&
+      (event.event_phase() == Event::PhaseType::kBubblingPhase ||
+       event.event_phase() == Event::PhaseType::kAtTarget) &&
       IsEventBubbleCatch(event.type());
   if (event.is_stop_propagation() || event.is_stop_immediate_propagation() ||
       is_catch_in_capture || is_catch_in_bubble) {
