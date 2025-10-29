@@ -1265,6 +1265,10 @@
   return [[LynxConfigInfo alloc] init];
 }
 
+- (LynxTemplateData* _Nullable)getTemplateData {
+  return [_templateRender getTemplateData];
+}
+
 - (LynxPerformance*)forceGetPerf {
   return nil;
 }

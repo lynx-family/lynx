@@ -10,6 +10,7 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxLoadMeta.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxLogicExecutor.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxScreenMetrics.h>
@@ -119,6 +120,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     }
 
     _lynxViewGroup = builder.lynxViewGroup;
+    _logicExecutor = _lynxViewGroup.logicExecutor;
+    if ([containerView isKindOfClass:[LynxView class]]) {
+      LynxView* targetLynxView = (LynxView*)containerView;
+      targetLynxView.lynxViewId = [_lynxViewGroup generateNextLynxViewID];
+      [_lynxViewGroup addLynxView:(int)targetLynxView.lynxViewId view:targetLynxView];
+    }
     /// Runtime Options
     _runtime = builder.lynxBackgroundRuntime;
     // Avoid unexpected changes
@@ -258,10 +265,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       [lynxView setEnableTextNonContiguousLayout:[builder enableTextNonContiguousLayout]];
       [lynxView setEnableLayoutOnly:[LynxEnv.sharedInstance getEnableLayoutOnly]];
       [lynxView setEnableSyncFlush:[builder enableSyncFlush]];
-
-      if (_lynxViewGroup) {
-        [_lynxViewGroup addLynxView:lynxView];
-      }
     }
   }
 }
@@ -484,6 +487,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   if (templateBundle) {
     [self loadTemplateBundle:meta.templateBundle withURL:meta.url initData:meta.initialData];
+    if (_logicExecutor != nil) {
+      // if logicExecutor set, we need to kepp _templateData
+      if (_templateData == nil) {
+        _templateData = meta.initialData;
+      } else {
+        [_templateData updateWithTemplateData:meta.initialData];
+      }
+    }
   } else if (meta.binaryData) {
     [self loadTemplate:meta.binaryData withURL:meta.url initData:meta.initialData];
   } else if (meta.url) {
@@ -2073,10 +2084,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (_devTool) {
     [_devTool attachLynxView:lynxView];
   }
-
-  if (_lynxViewGroup) {
-    [_lynxViewGroup addLynxView:lynxView];
-  }
 }
 
 - (BOOL)processRender:(LynxView* _Nonnull)lynxView {
@@ -2454,6 +2461,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [[_lynxUIRenderer.uiOwner findUIBySign:targetID] onEventFire:isStop withEventID:eventID];
 }
 
+- (void)onLynxEventWithDictionary:(NSDictionary*)detail {
+  [_logicExecutor onLynxEvent:[self getLynxView] event:detail];
+}
+
 - (LynxViewBuilderBlock)getLynxViewBuilderBlock {
   // TODO(zhoupeng.z): provide with move params
   return ^(LynxViewBuilder* builder) {
@@ -2470,6 +2481,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
     [builder setThreadStrategyForRender:self->_threadStrategyForRendering];
   };
+}
+
+- (LynxTemplateData* _Nullable)getTemplateData {
+  return _templateData;
 }
 
 @end

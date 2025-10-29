@@ -3,14 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxLogicExecutor.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewGroup.h>
 #import <pthread.h>
+#include <atomic>
 
 @implementation LynxViewGroup {
   LynxTemplateBundle *_templateBundle;
-  int _nextLynxViewId;
+  std::atomic<int> _nextLynxViewId;
   NSMapTable<NSNumber *, LynxView *> *_viewMap;
   pthread_rwlock_t _viewMapLock;
   dispatch_group_t _fetch_task;
@@ -51,17 +53,25 @@
   return _templateBundle != nil;
 }
 
-- (nullable LynxView *)getLynxViewById:(NSInteger)viewId {
+- (int)generateNextLynxViewID {
+  return _nextLynxViewId++;
+}
+- (nullable LynxView *)getLynxViewById:(int)viewId {
   pthread_rwlock_rdlock(&_viewMapLock);
   LynxView *view = [_viewMap objectForKey:@(viewId)];
   pthread_rwlock_unlock(&_viewMapLock);
   return view;
 }
 
-- (void)addLynxView:(nonnull LynxView *)view {
+- (void)addLynxView:(int)lynxViewId view:(LynxView *)view {
   pthread_rwlock_wrlock(&_viewMapLock);
-  view.lynxViewId = _nextLynxViewId++;
-  [_viewMap setObject:view forKey:@(view.lynxViewId)];
+  [_viewMap setObject:view forKey:@(lynxViewId)];
+  pthread_rwlock_unlock(&_viewMapLock);
+}
+
+- (void)removeLynxView:(int)lynxViewId {
+  pthread_rwlock_wrlock(&_viewMapLock);
+  [_viewMap removeObjectForKey:@(lynxViewId)];
   pthread_rwlock_unlock(&_viewMapLock);
 }
 
@@ -112,6 +122,20 @@
   dispatch_time_t wait = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
   dispatch_group_wait(_fetch_task, wait);
   return self->_templateBundle;
+}
+
+- (void)setTemplateBundle:(LynxTemplateBundle *_Nullable)templateBundle {
+  _templateBundle = templateBundle;
+  if (_logicExecutor) {
+    [_logicExecutor setTemplateBundle:_templateBundle];
+  }
+}
+
+- (void)setLogicExecutor:(id<LynxLogicExecutor>)logicExecutor {
+  _logicExecutor = logicExecutor;
+  if (_templateBundle) {
+    [_logicExecutor setTemplateBundle:_templateBundle];
+  }
 }
 
 @end
