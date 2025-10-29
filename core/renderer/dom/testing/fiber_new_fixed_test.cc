@@ -57,8 +57,8 @@ TEST_P(FiberElementTest, FiberElementUnderNewFixed) {
   page->FlushActionsAsRoot();
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();

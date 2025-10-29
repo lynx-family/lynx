@@ -191,13 +191,13 @@ TEST_P(TextElementTest, TestSetTextOverflow) {
   text->SetAttribute("text-overflow", lepus::Value("ellipsis"));
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* mock_text_painting_node_ =
       static_cast<FiberMockPaintingContext*>(
-          page->painting_context()->platform_impl_.get())
+          manager->painting_context()->platform_impl_.get())
           ->node_map_.at(text->impl_id())
           .get();
 
@@ -255,8 +255,8 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
   text->SetRawInlineStyles(base::String("color:red;"));
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* mock_text_painting_node_ =
       painting_context->node_map_.at(text->impl_id()).get();
@@ -306,8 +306,8 @@ TEST_P(TextElementTest, TestMeasureCase0) {
   auto options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* mock_text_painting_node_ =
@@ -420,8 +420,8 @@ TEST_P(TextElementTest, LayoutInElementFontScale) {
   auto options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* mock_text_layout =

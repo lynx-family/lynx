@@ -155,7 +155,7 @@ TEST_F(AirElementContainerTest, AirElementCase0) {
   EXPECT_EQ(element_after_yellow_index, 3);
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
 
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -214,7 +214,7 @@ TEST_F(AirElementContainerTest, AirElementCase1) {
   EXPECT_EQ(page_container->none_layout_only_children_size_, 4);
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
   auto page_painting_children = page_painting_node->children_;
@@ -282,7 +282,7 @@ TEST_F(AirElementContainerTest, AirElementCase2) {
   page->FlushRecursively();
 
   auto painting_context =
-      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
   auto page_painting_children = page_painting_node->children_;

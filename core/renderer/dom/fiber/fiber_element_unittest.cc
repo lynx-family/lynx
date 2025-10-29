@@ -205,8 +205,8 @@ TEST_P(FiberElementTest, TestSetAttributeInternal00) {
   page->InsertNode(scroll);
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* scroll_painting_node =
@@ -233,8 +233,8 @@ TEST_P(FiberElementTest, TestSetAttributeInternal01) {
   page->InsertNode(scroll);
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* scroll_painting_node =
@@ -261,8 +261,8 @@ TEST_P(FiberElementTest, TestSetAttributeInternal02) {
   page->InsertNode(scroll);
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* scroll_painting_node =
@@ -289,8 +289,8 @@ TEST_P(FiberElementTest, TestSetAttributeInternal03) {
   page->InsertNode(scroll);
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* scroll_painting_node =
@@ -317,8 +317,8 @@ TEST_P(FiberElementTest, TestSetAttributeInternal04) {
   page->InsertNode(scroll);
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* scroll_painting_node =
@@ -345,8 +345,8 @@ TEST_P(FiberElementTest, TestSetAttributeInternal05) {
   page->InsertNode(scroll);
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* scroll_painting_node =
@@ -1901,8 +1901,8 @@ TEST_P(FiberElementTest, RemoveWrapperElementCase02) {
   EXPECT_TRUE(page->scoped_children_[1] == element_before_black);
 
   // check page painting node tree
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -2108,7 +2108,7 @@ TEST_P(FiberElementTest, TestSetAndRemoveClass) {
 
   page->FlushActionsAsRoot();
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   auto* mock_painting_node_ =
@@ -2184,8 +2184,8 @@ TEST_P(FiberElementTest, FiberElementCaseForWrapper) {
   page->FlushActionsAsRoot();
 
   // check element container tree
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* page_painting_node =
@@ -2319,8 +2319,8 @@ TEST_P(FiberElementTest, TestCSSResolveCase01) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node =
@@ -2476,8 +2476,8 @@ TEST_P(FiberElementTest, TestCSSResolveCase02) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node =
@@ -2552,8 +2552,8 @@ TEST_P(FiberElementTest, FiberElementSetAndResetAttribute) {
   ASSERT_TRUE(page->prop_bundle_ == nullptr);
   ASSERT_TRUE(element0->prop_bundle_ == nullptr);
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node =
@@ -2845,8 +2845,8 @@ TEST_P(FiberElementTest, TestZIndexRemovedRelated) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* page_painting_node =
@@ -2945,8 +2945,8 @@ TEST_P(FiberElementTest, FiberElementCaseForWrapper02) {
   page->FlushActionsAsRoot();
 
   // check element container tree
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* page_painting_node =
@@ -3042,8 +3042,8 @@ TEST_P(FiberElementTest, FiberElementInheritCase00) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* element0_painting_node =
@@ -3171,8 +3171,8 @@ TEST_P(FiberElementTest, FiberElementInheritCase01) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* element0_painting_node =
@@ -3262,8 +3262,8 @@ TEST_P(FiberElementTest, FiberElementInheritCase02) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* element0_painting_node =
@@ -3365,8 +3365,8 @@ TEST_P(FiberElementTest, FiberElementInheritCase03) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* element0_painting_node =
@@ -4088,7 +4088,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase02) {
   page->FlushActionsAsRoot();
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
   auto* element_painting_node_ =
       painting_context->node_map_.at(element0->impl_id()).get();
@@ -4350,8 +4350,8 @@ TEST_P(FiberElementTest, FiberElementFixedStyle) {
   page->FlushActionsAsRoot();
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -4453,8 +4453,8 @@ TEST_P(FiberElementTest, FiberElementFixedRemovedCase) {
   element0->InsertNode(element1);
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
 
   page->FlushActionsAsRoot();
   painting_context->Flush();
@@ -4507,8 +4507,8 @@ TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase) {
   element0->InsertNode(element1);
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
 
   page->FlushActionsAsRoot();
   painting_context->Flush();
@@ -4565,8 +4565,8 @@ TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase1) {
   element0->InsertNode(element1);
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
 
   page->FlushActionsAsRoot();
   painting_context->Flush();
@@ -4625,8 +4625,8 @@ TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase2) {
   element0->InsertNode(element1);
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
 
   page->FlushActionsAsRoot();
   painting_context->Flush();
@@ -4693,8 +4693,8 @@ TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase3) {
   element0->InsertNode(element1);
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
 
   page->FlushActionsAsRoot();
   painting_context->Flush();
@@ -4766,8 +4766,8 @@ TEST_P(FiberElementTest, FiberElementFixedChangedBeforeWrapper) {
   page->FlushActionsAsRoot();
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -5035,8 +5035,8 @@ TEST_P(FiberElementTest, FlushActionsAsRootCase01) {
   page->FlushActionsAsRoot();
 
   // check painting node
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -5233,7 +5233,7 @@ TEST_P(FiberElementTest, DynamicFontScaleUpdate) {
       HasCaptureSignWithFontSize(element->impl_id(), 20, root_font_size, 1));
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   auto* mock_painting_node_ =
@@ -5271,7 +5271,7 @@ TEST_P(FiberElementTest, DynamicScreenMetricsUpdate) {
       CSSValue(CSSValuePattern::RPX)));
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   auto* mock_painting_node_ =
@@ -5320,7 +5320,7 @@ TEST_P(FiberElementTest, DynamicViewportUpdateAndRTL) {
   page->FlushActionsAsRoot();
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
   auto* element_painting_node_ =
       painting_context->node_map_.at(element->impl_id()).get();
@@ -5373,7 +5373,7 @@ TEST_P(FiberElementTest, TestREMPattern) {
       CSSValue(CSSValuePattern::REM)));
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
   auto* mock_painting_node_ =
       painting_context->node_map_.at(element->impl_id()).get();
@@ -5533,8 +5533,8 @@ TEST_P(FiberElementTest, UpdateCSSVariables_0) {
   fiber_element_4->SetIdSelector("test1");
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node_4 =
@@ -5648,8 +5648,8 @@ TEST_P(FiberElementTest, UpdateCSSVariables_1) {
   fiber_element_4->SetIdSelector("test1");
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node_4 =
@@ -5799,8 +5799,8 @@ TEST_P(FiberElementTest, UpdateCSSVariables_CSS_NG_1) {
   fiber_element_4->SetIdSelector("test1");
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node_4 =
@@ -5959,8 +5959,8 @@ TEST_P(FiberElementTest, UpdateMultipleCSSVariables) {
   child_4_1->SetClasses({"two", "three"});
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node_4 =
@@ -6163,8 +6163,8 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
   EXPECT_EQ(fiber_element_5->ParentComponentEntryName(), "__Card__");
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node_4 =
@@ -6284,7 +6284,7 @@ TEST_P(FiberElementTest, CSSVariableShorthandProcess) {
   page->FlushActionsAsRoot();
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
   auto* child1_painting_node_ =
       painting_context->node_map_.at(child1->impl_id()).get();
@@ -6428,7 +6428,7 @@ TEST_P(FiberElementTest, SetKeyframes) {
   EXPECT_TRUE(comp->GetCSSFragment() == css_fragment);
 
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   EXPECT_TRUE(painting_context->keyframes_.size() == 1);
@@ -6623,7 +6623,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
   EXPECT_TRUE(comp->GetCSSFragment() == css_fragment);
 
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   EXPECT_TRUE(painting_context->keyframes_.size() == 1);
@@ -6812,7 +6812,7 @@ TEST_P(FiberElementTest, SetKeyframes_new_animator) {
   EXPECT_TRUE(comp->GetCSSFragment() == css_fragment);
 
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   EXPECT_TRUE(painting_context->keyframes_.size() == 0);
@@ -6960,7 +6960,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
   EXPECT_TRUE(comp->GetCSSFragment() == css_fragment);
 
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   EXPECT_TRUE(painting_context->keyframes_.size() == 0);
@@ -7329,7 +7329,7 @@ TEST_P(FiberElementTest, TestOnPseudoStatusChanged) {
   page->FlushActionsAsRoot();
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
   auto* mock_painting_node_ =
@@ -7373,8 +7373,8 @@ TEST_P(FiberElementTest, RemoveIntergenerationalChild) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -7601,8 +7601,8 @@ TEST_P(FiberElementTest, DISABLED_RemoveIntergenerationalChild1) {
   child->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
   child3->InsertNode(child);
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   auto options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(options, page.get());
   painting_context->Flush();
@@ -7665,8 +7665,8 @@ TEST_P(FiberElementTest, DISABLED_RemoveIntergenerationalChild2) {
   child->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
   child3->InsertNode(child);
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   auto options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(options, page.get());
   painting_context->Flush();
@@ -7729,8 +7729,8 @@ TEST_P(FiberElementTest, DISABLED_RemoveIntergenerationalChild3) {
   child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(999));
   child3->InsertNode(child);
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   auto options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(options, page.get());
   painting_context->Flush();
@@ -7989,8 +7989,8 @@ TEST_P(FiberElementTest, SetNativePropsCases) {
   ;
   fiber_element_2->SetNativeProps(native_props, pipeline_options);
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* painting_node_2_after_set_native_props =
       painting_context->node_map_.at(fiber_element_2->impl_id()).get();
@@ -8053,8 +8053,8 @@ TEST_P(FiberElementTest, TestTagSelectorCase) {
   fiber_element_2->SetAttribute("text", lepus::Value("This is a text."));
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* painting_node_2 =
@@ -8100,8 +8100,8 @@ TEST_P(FiberElementTest, SetNativePropsNormalCases) {
   ;
   fiber_element_2->SetNativeProps(native_props, pipeline_options);
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* painting_node_2_after_set_native_props =
       painting_context->node_map_.at(fiber_element_2->impl_id()).get();
@@ -8158,7 +8158,7 @@ TEST_P(FiberElementTest, SetNativePropsTextCases) {
     fiber_text_1->SetNativeProps(native_props, pipeline_options);
 
     auto painting_context = static_cast<FiberMockPaintingContext*>(
-        page->painting_context()->impl());
+        manager->painting_context()->impl());
     painting_context->Flush();
     auto* fiber_text_1_after_set_native_props =
         painting_context->node_map_.at(fiber_text_1->impl_id()).get();
@@ -8179,7 +8179,7 @@ TEST_P(FiberElementTest, SetNativePropsTextCases) {
     fiber_text_1->SetNativeProps(native_props, pipeline_options);
 
     auto painting_context = static_cast<FiberMockPaintingContext*>(
-        page->painting_context()->impl());
+        manager->painting_context()->impl());
     painting_context->Flush();
     auto* fiber_text_1_after_set_native_props =
         painting_context->node_map_.at(fiber_text_1->impl_id()).get();
@@ -8443,8 +8443,8 @@ TEST_P(FiberElementTest, CSSVariableOrderTest) {
   fiber_element_5->SetClass("text3");
 
   page->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -8504,8 +8504,8 @@ TEST_P(FiberElementTest, ReInsertNodeTest) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -8976,7 +8976,7 @@ TEST_P(FiberElementTest, InlineElementTest2_1) {
   manager->OnPatchFinish(options, page.get());
 
   auto* mock_painting_context = static_cast<FiberMockPaintingContext*>(
-      page->painting_context()->platform_impl_.get());
+      manager->painting_context()->platform_impl_.get());
   mock_painting_context->Flush();
 
   EXPECT_FALSE(text->is_inline_element());
@@ -9529,8 +9529,8 @@ TEST_P(FiberElementTest, TestFlushActionsOnWrapper) {
   // a bad case, element1&wrapper is not flushed, do nothing
   child->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -9585,8 +9585,8 @@ TEST_P(FiberElementTest, TestFlushActionsFromSubTree) {
 
   // a bad case, element1 is not flushed
   new_parent->FlushActionsAsRoot();
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   auto* page_painting_node =
       painting_context->node_map_.at(page->impl_id()).get();
@@ -10683,8 +10683,8 @@ TEST_P(FiberElementTest, TestGenerateResponseChain0) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* element0_painting_node =
@@ -11179,8 +11179,8 @@ TEST_P(FiberElementTest, ExtendedLayoutOnlyOpt) {
   page->FlushActionsAsRoot();
 
   // check element container tree
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   auto* page_painting_node =
@@ -11376,8 +11376,8 @@ TEST_P(FiberElementTest, ClassChildSelectorTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -11460,8 +11460,8 @@ TEST_P(FiberElementTest, TagNotSelectorTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -11483,8 +11483,8 @@ TEST_P(FiberElementTest, TagNotSelectorTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   node_2_background_color_value =
       painting_node_2->props_.at(background_color_key);
@@ -11549,8 +11549,8 @@ TEST_P(FiberElementTest, ClassNotSelectorTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
   std::string color_key = "color";
@@ -11577,8 +11577,8 @@ TEST_P(FiberElementTest, ClassNotSelectorTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   node_1_background_color_value =
       painting_node_1->props_.at(background_color_key);
@@ -11645,8 +11645,8 @@ TEST_P(FiberElementTest, IdNotSelectorTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
   std::string color_key = "color";
@@ -11673,8 +11673,8 @@ TEST_P(FiberElementTest, IdNotSelectorTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   node_1_background_color_value =
       painting_node_1->props_.at(background_color_key);
@@ -11776,8 +11776,8 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -11795,8 +11795,8 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -11876,8 +11876,8 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -11895,8 +11895,8 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -11976,8 +11976,8 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -11995,8 +11995,8 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -12076,8 +12076,8 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12095,8 +12095,8 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -12198,8 +12198,8 @@ TEST_P(FiberElementTest, ClassChildSelectorCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12286,8 +12286,8 @@ TEST_P(FiberElementTest, TagNotSelectorCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12309,8 +12309,8 @@ TEST_P(FiberElementTest, TagNotSelectorCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   node_2_background_color_value =
       painting_node_2->props_.at(background_color_key);
@@ -12378,8 +12378,8 @@ TEST_P(FiberElementTest, ClassNotSelectorCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
   std::string color_key = "color";
@@ -12406,8 +12406,8 @@ TEST_P(FiberElementTest, ClassNotSelectorCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   node_1_background_color_value =
       painting_node_1->props_.at(background_color_key);
@@ -12477,8 +12477,8 @@ TEST_P(FiberElementTest, IdNotSelectorCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
   std::string color_key = "color";
@@ -12505,8 +12505,8 @@ TEST_P(FiberElementTest, IdNotSelectorCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   node_1_background_color_value =
       painting_node_1->props_.at(background_color_key);
@@ -12618,8 +12618,8 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12637,8 +12637,8 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -12724,8 +12724,8 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12743,8 +12743,8 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -12830,8 +12830,8 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12849,8 +12849,8 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -12936,8 +12936,8 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushCSSParserTest) {
   options->force_resolve_style_ = true;
   manager->OnPatchFinish(options, page.get());
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
   std::string background_color_key = "background-color";
 
@@ -12955,8 +12955,8 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushCSSParserTest) {
   // flush fiber tree again
   manager->OnPatchFinish(options, page.get());
 
-  painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // EXPECT element == red (B C)
@@ -13710,8 +13710,8 @@ TEST_P(FiberElementTest, TestRemoveVirtualParentCase) {
 
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
 
   painting_context->Flush();
 
@@ -14996,8 +14996,8 @@ TEST_P(FiberElementTest, TestRemovePaintingNodeIsMoveFlag) {
   // Flush actions to build the tree
   page->FlushActionsAsRoot();
 
-  auto painting_context =
-      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
   painting_context->Flush();
 
   // Verify that the leaf element is not layout only
