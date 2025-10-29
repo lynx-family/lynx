@@ -123,7 +123,12 @@
                  shellPtr:(int64_t)shellPtr
                     block:(onLynxEvent)block {
   _uiOwner.uiContext.shellPtr = shellPtr;
-  _uiOwner.uiContext.fetcher = [[ListNodeInfoFetcher alloc] initWithShell:shellPtr];
+
+  auto shell = reinterpret_cast<lynx::shell::LynxShell *>(shellPtr);
+  int64_t list_engine_proxy_ptr = reinterpret_cast<int64_t>(shell->GetListEngineProxy().get());
+  _uiOwner.uiContext.fetcher = [[ListNodeInfoFetcher alloc] initWithShell:shellPtr
+                                                       andListEngineProxy:list_engine_proxy_ptr];
+
   _eventEmitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
   __weak typeof(self) weakSelf = self;
   [_eventEmitter setEventReporterBlock:block];

@@ -3783,6 +3783,10 @@ public class LynxTemplateRender
     context.getEventEmitter().sendCustomEvent(event);
   }
 
+  public long getListEngineProxy() {
+    return nativeGetListEngineProxy(mNativePtr, mNativeLifecycle);
+  }
+
   public JavaOnlyMap getListPlatformInfo(int listSign) {
     return nativeGetListPlatformInfo(mNativePtr, mNativeLifecycle, listSign);
   }
@@ -4302,6 +4306,8 @@ public class LynxTemplateRender
       long ptr, long lifecycle, int sign, int position, float offset, int align, boolean smooth);
 
   private native void nativeScrollStopped(long ptr, long lifecycle, int sign);
+
+  private static native long nativeGetListEngineProxy(long ptr, long lifecycle);
 
   private static native JavaOnlyMap nativeGetListPlatformInfo(
       long ptr, long lifecycle, int listSign);

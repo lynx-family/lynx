@@ -12,8 +12,18 @@ import com.lynx.tasm.LynxTemplateRender;
 public class ListNodeInfoFetcher implements IListNodeInfoFetcher {
   private LynxTemplateRender mRenderer;
 
+  private ListNodeInfoFetcher() {}
+
   public ListNodeInfoFetcher(LynxTemplateRender renderer) {
     mRenderer = renderer;
+  }
+
+  @Override
+  public long getListEngineProxy() {
+    if (mRenderer != null) {
+      return mRenderer.getListEngineProxy();
+    }
+    return 0;
   }
 
   @Override

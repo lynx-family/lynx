@@ -4,22 +4,29 @@
 
 #import <Lynx/ListNodeInfoFetcher.h>
 #import <Lynx/LynxTemplateRender.h>
+#include "core/public/list_engine_proxy.h"
 #include "core/shell/lynx_shell.h"
 
 @interface ListNodeInfoFetcher ()
 
 @property(nonatomic, assign, readwrite) int64_t shellPtr;
+@property(nonatomic, assign, readwrite) int64_t listEngineProxyPtr;
 
 @end
 
 @implementation ListNodeInfoFetcher
 
-- (instancetype)initWithShell:(int64_t)shellPtr {
+- (instancetype)initWithShell:(int64_t)shellPtr andListEngineProxy:(int64_t)listEngineProxyPtr {
   self = [super init];
   if (self) {
     self.shellPtr = shellPtr;
+    self.listEngineProxyPtr = listEngineProxyPtr;
   }
   return self;
+}
+
+- (long)getListEngineProxyPtr {
+  return self.listEngineProxyPtr;
 }
 
 /**

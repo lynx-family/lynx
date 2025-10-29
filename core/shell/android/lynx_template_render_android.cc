@@ -1205,6 +1205,22 @@ void ScrollStopped(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
+jlong GetListEngineProxy(JNIEnv* env, jclass jcaller, jlong ptr,
+                         jlong lifecycle) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    return 0;
+  }
+  auto shell = reinterpret_cast<lynx::shell::LynxShell*>(ptr);
+  auto engine_proxy = shell->GetListEngineProxy();
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+  if (!engine_proxy) {
+    return 0;
+  }
+  return reinterpret_cast<jlong>(engine_proxy.get());
+};
+
 jobject GetListPlatformInfo(JNIEnv* env, jclass jcaller, jlong ptr,
                             jlong lifecycle, jint tag) {
   JavaOnlyMap jni_map;

@@ -44,6 +44,8 @@ lynx_core_source_set("build") {
     "gen/LayoutNodeManager_register_jni.h",
     "gen/LayoutNode_jni.h",
     "gen/LayoutNode_register_jni.h",
+    "gen/ListContainerProxy_jni.h",
+    "gen/ListContainerProxy_register_jni.h",
     "gen/LynxBackgroundRuntime_jni.h",
     "gen/LynxBackgroundRuntime_register_jni.h",
     "gen/LynxBytecodeCallback_jni.h",

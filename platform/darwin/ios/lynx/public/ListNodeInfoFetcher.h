@@ -9,7 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ListNodeInfoFetcher : NSObject <ListNodeInfoFetcherProtocol>
 
-- (instancetype)initWithShell:(int64_t)shellPtr;
+- (instancetype)initWithShell:(int64_t)shellPtr andListEngineProxy:(int64_t)listEngineProxyPtr;
 
 @end
 

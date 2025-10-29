@@ -8,6 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @required
 
+- (long)getListEngineProxyPtr;
+
 - (void)scrollByListContainer:(int)containerSign
                             x:(float)x
                             y:(float)y

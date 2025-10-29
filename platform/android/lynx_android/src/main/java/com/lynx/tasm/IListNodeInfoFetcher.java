@@ -6,6 +6,8 @@ package com.lynx.tasm;
 import com.lynx.react.bridge.JavaOnlyMap;
 
 public interface IListNodeInfoFetcher {
+  public long getListEngineProxy();
+
   public JavaOnlyMap getPlatformInfo(int listSign);
 
   public void renderChild(int listSign, int index, long operationId);
