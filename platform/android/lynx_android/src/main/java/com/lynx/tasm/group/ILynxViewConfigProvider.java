@@ -173,4 +173,9 @@ public interface ILynxViewConfigProvider {
    * @return LogicExecutor which execute event callback and other logic.
    */
   ILynxLogicExecutor getLogicExecutor();
+
+  /**
+   * @return tapSlop set
+   */
+  String getTapSlop();
 }

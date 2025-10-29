@@ -18,6 +18,7 @@ import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.BuiltInUIRegistry;
 import com.lynx.tasm.behavior.LynxUIRendererCreator;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
@@ -77,6 +78,8 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   protected int embeddedMode = EmbeddedMode.UNSET;
   protected boolean enableMTSModule = false;
+
+  protected String tapSlop = TouchEventDispatcher.mTapSlopDefault;
 
   public LynxBaseConfigurator() {
     LynxEnv.inst().lazyInitIfNeeded();
@@ -478,6 +481,11 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   public T setEnableMTSModule(boolean enable) {
     enableMTSModule = enable;
+    return (T) this;
+  }
+
+  public T setTapSlop(String tapSlop) {
+    this.tapSlop = tapSlop;
     return (T) this;
   }
 }
