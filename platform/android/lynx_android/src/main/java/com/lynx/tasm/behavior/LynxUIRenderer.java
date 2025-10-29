@@ -37,6 +37,7 @@ import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
+import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.NativeFacade;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -95,7 +96,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private static final Object mSyncObject = new Object();
   private static HandlerThread mPixelCopyHandlerThread = null;
   private boolean mIsUpdatedConfig;
-  private String mTapSlop;
+  private String mTapSlop = TouchEventDispatcher.mTapSlopDefault;
   private boolean mEnableMultiTouch;
   private boolean mEnableFiberArc;
   private boolean mEnableNewGesture;
@@ -230,7 +231,20 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   @Override
   public void onPageConfigDecoded(PageConfig config) {
     mIsUpdatedConfig = true;
-    mTapSlop = config.getTapSlop();
+    if (!TouchEventDispatcher.mTapSlopDefault.equals(config.getTapSlop())) {
+      mTapSlop = config.getTapSlop();
+    } else {
+      LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
+      if (lynxContext != null) {
+        LynxView lynxView = lynxContext.getLynxView();
+        if (lynxView != null) {
+          LynxViewBuilder builder = lynxView.getLynxViewBuilder();
+          if (builder != null) {
+            mTapSlop = builder.getTapSlop();
+          }
+        }
+      }
+    }
     mEnableMultiTouch = config.getEnableMultiTouch();
     mEnableFiberArc = config.getEnableFiberArc();
     mEnablePlatformGesture = config.isEnablePlatformGesture();
