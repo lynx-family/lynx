@@ -612,6 +612,14 @@ public class LynxViewBuilder
     return null;
   }
 
+  @Override
+  public String getTapSlop() {
+    if (lynxViewGroup != null) {
+      return lynxViewGroup.getTapSlop();
+    }
+    return this.tapSlop;
+  }
+
   public LynxView build(@NonNull Context context) {
     TraceEvent.beginSection(TraceEventDef.LYNXVIEW_BUILDER_BUILD);
     ILynxTrailService trailService = LynxServiceCenter.inst().getService(ILynxTrailService.class);

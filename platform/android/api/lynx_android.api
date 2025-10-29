@@ -2456,6 +2456,7 @@ public interface com::lynx::tasm::group::ILynxViewConfigProvider {
   public LynxMediaResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxMediaResourceFetcher();
   public LynxTemplateResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxTemplateResourceFetcher();
   public ILynxLogicExecutor com.lynx.tasm.group.ILynxViewConfigProvider.getLogicExecutor();
+  public String com.lynx.tasm.group.ILynxViewConfigProvider.getTapSlop();
 }
 
 public interface com::lynx::tasm::group::ILynxViewGroup {
@@ -6954,6 +6955,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxMediaResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxMediaResourceFetcher();
   public LynxTemplateResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxTemplateResourceFetcher();
   public ILynxLogicExecutor com.lynx.tasm.LynxViewBuilder.getLogicExecutor();
+  public String com.lynx.tasm.LynxViewBuilder.getTapSlop();
   public LynxView com.lynx.tasm.LynxViewBuilder.build(@NonNull Context context);
 }
 

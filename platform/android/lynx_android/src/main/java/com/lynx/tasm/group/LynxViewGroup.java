@@ -18,6 +18,7 @@ import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.BehaviorRegistry;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.resourceprovider.LynxResourceCallback;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
@@ -79,6 +80,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private boolean hasPresetMeasureSpec = false;
   private boolean enableMTSModule;
   private ILynxLogicExecutor logicExecutor;
+  private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
+
   private Context mContext;
   private CountDownLatch countDownLatch = new CountDownLatch(1);
 
@@ -99,7 +102,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime, boolean enableAirStrictMode,
       boolean debuggable, int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
       boolean enablePreUpdateData, IUIRendererCreator uiRendererCreator, int embeddedMode,
-      boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor, boolean enableMTSModule) {
+      boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor, boolean enableMTSModule,
+      String tapSlop) {
     this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
@@ -132,6 +136,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.hasPresetMeasureSpec = hasPresetMeasureSpec;
     this.logicExecutor = logicExecutor;
     this.enableMTSModule = enableMTSModule;
+    this.tapSlop = tapSlop;
 
     init();
   }
@@ -367,6 +372,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   public ILynxLogicExecutor getLogicExecutor() {
     return logicExecutor;
+  }
+
+  public String getTapSlop() {
+    return tapSlop;
   }
 
   @Override
