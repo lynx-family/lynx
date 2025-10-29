@@ -662,6 +662,15 @@ export interface ScrollToPositionParams {
   offset?: number;
 
   /**
+   * Specify the unique identifier of the node to scroll to. If `item-key` is specified, `index` will be ignored.
+   * @Android
+   * @iOS
+   * @Harmony
+   * @since 3.6
+   */
+  'item-key'?:string
+
+  /**
    * Enable scroll animation during scroll.
    * @defaultValue  false
    * @Android

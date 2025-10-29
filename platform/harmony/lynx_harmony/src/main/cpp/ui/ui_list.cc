@@ -206,6 +206,7 @@ void UIList::InvokeMethod(
     float offset{0};
     bool smooth{false};
     int aline_to{0};
+    std::string item_key{};
     if (!args.IsTable()) {
       callback(LynxGetUIResult::PARAM_INVALID,
                lepus_value("params is not object!"));
@@ -217,6 +218,8 @@ void UIList::InvokeMethod(
         index = static_cast<int32_t>(v.Number());
       } else if (k.IsEqual("index") && v.IsNumber()) {
         index = static_cast<int32_t>(v.Number());
+      } else if (k.IsEqual("item-key") && v.IsString()) {
+        item_key = v.StdString();
       } else if (k.IsEqual("offset") && v.IsNumber()) {
         offset = v.Number();
       } else if (k.IsEqual("smooth") && v.IsBool()) {
@@ -231,8 +234,22 @@ void UIList::InvokeMethod(
       }
     }
 
+    int resolved_index = index;
+    if (!item_key.empty()) {
+      int idx_by_key = GetIndexFromItemKey(item_key);
+      if (idx_by_key >= 0) {
+        resolved_index = idx_by_key;
+      }
+    }
+
+    if (resolved_index < 0 || resolved_index >= item_keys_.size()) {
+      callback(LynxGetUIResult::OPERATION_ERROR,
+               lepus_value("position < 0 or position >= data count"));
+      return;
+    }
+
     scroll_callback_ = std::move(callback);
-    ScrollToPosition(index, offset, aline_to, smooth);
+    ScrollToPosition(resolved_index, offset, aline_to, smooth);
     if (!smooth) {
       scroll_callback_(LynxGetUIResult::SUCCESS, lepus_value(""));
       scroll_callback_ = nullptr;

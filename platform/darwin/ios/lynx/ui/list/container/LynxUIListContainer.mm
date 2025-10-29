@@ -1095,7 +1095,7 @@ LYNX_UI_METHOD(scrollToPosition) {
     self.scrollToCallback = nil;
   }
 
-  // Perform parameter parsing
+  // Perform parameter parsing (item-key first)
 
   NSInteger position = 0;
   if ([params objectForKey:@"position"]) {
@@ -1105,13 +1105,22 @@ LYNX_UI_METHOD(scrollToPosition) {
     position = ((NSNumber *)[params objectForKey:@"index"]).intValue;
   }
 
+  NSString *itemKey = [params objectForKey:@"item-key"];
+  NSInteger resolvedPosition = position;
+  if (itemKey.length) {
+    NSInteger idx = [self getIndexFromItemKey:itemKey];
+    if (idx >= 0) {
+      resolvedPosition = idx;
+    }
+  }
+
   CGFloat offset = ((NSNumber *)[params objectForKey:@"offset"]).doubleValue;
 
   BOOL smooth = [[params objectForKey:@"smooth"] boolValue];
 
-  if (position < 0 || (NSUInteger)position >= self.itemKeys.count) {
+  if (resolvedPosition < 0 || (NSUInteger)resolvedPosition >= self.itemKeys.count) {
     if (callback) {
-      callback(kUIMethodUnknown, @"position < 0 or position >= data count");
+      callback(kUIMethodOperationError, @"position < 0 or position >= data count");
     }
     return;
   }
@@ -1133,7 +1142,7 @@ LYNX_UI_METHOD(scrollToPosition) {
   }
 
   // Tell ListElement that we want scroll to some position
-  [self scrollToPosition:position offset:offset align:(int)alignTo smooth:smooth];
+  [self scrollToPosition:resolvedPosition offset:offset align:(int)alignTo smooth:smooth];
 
   auto listNodeInfoFetcher = self.context.fetcher;
 

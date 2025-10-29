@@ -734,12 +734,22 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
 
     // Perform parameter parsing
-    int position = params.getInt("index", params.getInt("position", 0));
+    int positionParam = params.getInt("index", params.getInt("position", 0));
+    String itemKey = params.getString("item-key");
+    int resolvedPosition = positionParam;
+    if (!TextUtils.isEmpty(itemKey)) {
+      Integer idx = mItemKeyMap.get(itemKey);
+      if (idx != null) {
+        resolvedPosition = idx;
+      }
+    }
+
     float offset = (float) params.getDouble("offset", 0.0);
     boolean smooth = params.getBoolean("smooth", false);
     int offsetVal = (int) PixelUtils.dipToPx(offset);
-    if (position < 0 || position >= mItemKeys.size()) {
-      callback.invoke(LynxUIMethodConstants.UNKNOWN, "position < 0 or position >= data count");
+    if (resolvedPosition < 0 || resolvedPosition >= mItemKeys.size()) {
+      callback.invoke(
+          LynxUIMethodConstants.OPERATION_ERROR, "position < 0 or position >= data count");
       return;
     }
 
@@ -768,7 +778,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
 
     if (listNodeInfoFetcher != null) {
-      listNodeInfoFetcher.scrollToPosition(getSign(), position, offsetVal, alignTo, smooth);
+      listNodeInfoFetcher.scrollToPosition(getSign(), resolvedPosition, offsetVal, alignTo, smooth);
       if (!smooth) {
         // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll on Most_On_Tasm
         sendCustomEvent(mView.getScrollX(), mView.getScrollY(), mView.getScrollX(),

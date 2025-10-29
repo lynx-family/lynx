@@ -1,4 +1,7 @@
 # CHANGELOG
+# 3.6.4
+- Introduce `item-key` on `list.scrollToPosition`.
+
 # 3.6.3
 - Fix list-type to avoid incompatible type error.
  
