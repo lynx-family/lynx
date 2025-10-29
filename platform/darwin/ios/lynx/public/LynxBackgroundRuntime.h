@@ -121,6 +121,27 @@ typedef NS_ENUM(NSInteger, LynxBackgroundJsRuntimeType) {
 - (void)evaluateJavaScript:(NSString *)url withSources:(NSString *)sources;
 
 /**
+ * Execute a Background Script, valid until LynxBackgroundRuntime is destroyed or attached.
+ * @param url unique identifier for each script, will be used to track the script and related
+ *     reports
+ * @param bundle script will be inside of the TemplateBundle
+ * @param jsFile related js file name
+ */
+- (void)evaluateTemplateBundle:(NSString *)url
+                   widthBundle:(LynxTemplateBundle *)bundle
+                    withJSFile:(NSString *)jsFile;
+
+/**
+ *  callJSFunction to Background Script
+ * @param moduleName module name
+ * @param method method name
+ * @param params event params
+ */
+- (void)callFunction:(nonnull NSString *)moduleName
+          withMethod:(nonnull NSString *)method
+          withParams:(nullable NSArray *)params;
+
+/**
  * Send GlobalEvent to Background Script, can be called from any thread, valid until
  * LynxBackgroundRuntime is destroyed or attached.
  * @param name event name
