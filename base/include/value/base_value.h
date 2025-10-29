@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/base_defines.h"
 #include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
@@ -100,6 +101,7 @@ class BASE_EXPORT Value {
 
  public:
   Value() { value_.type = lynx_value_null; };
+  ~Value() { FreeValue(); }
 
   enum CreateAsUndefinedTag { kCreateAsUndefinedTag };
   explicit Value(CreateAsUndefinedTag);
@@ -114,6 +116,8 @@ class BASE_EXPORT Value {
 
   Value(const Value& value);
   Value(Value&& value) noexcept;
+  Value& operator=(const Value& value);
+  Value& operator=(Value&& value) noexcept;
 
   explicit Value(const base::String& data);
   explicit Value(base::String&& data);
@@ -132,6 +136,13 @@ class BASE_EXPORT Value {
   explicit Value(const fml::RefPtr<lepus::RefCounted>& data);
   explicit Value(fml::RefPtr<lepus::RefCounted>&& data);
 
+#define NumberConstructor(name, type) explicit Value(type data);
+
+  NumberType(NumberConstructor)
+
+      explicit Value(uint8_t data);
+#undef NumberConstructor
+
   explicit Value(bool val);
   explicit Value(void* data);
   explicit Value(CFunction val);
@@ -141,7 +152,16 @@ class BASE_EXPORT Value {
   Value(lynx_api_env env, int64_t val, int32_t tag);
   Value(lynx_api_env env, const lynx_value& value);
   Value(lynx_api_env env, lynx_value&& value);
+
   void CopyWeakValue(const Value& value);
+  BASE_INLINE void DupValue() const {
+    if (IsReference() && likely(value_.val_ptr)) {
+      reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
+          ->AddRef();
+    }
+  }
+  void FreeValue();
+  void ResetValueRef();
 
   inline bool IsCDate() const {
     return value_.type == lynx_value_object &&
@@ -152,23 +172,11 @@ class BASE_EXPORT Value {
            value_.tag == static_cast<int32_t>(RefType::kRegExp);
   }
 
-  void DupValue() const;
-  void FreeValue();
-  void ResetValueRef();
-
   inline bool IsClosure() const {
     return value_.type == lynx_value_object &&
            value_.tag == static_cast<int32_t>(RefType::kClosure);
   }
   inline bool IsCallable() const { return IsClosure() || IsJSFunction(); }
-
-// add for compile
-#define NumberConstructor(name, type) explicit Value(type data);
-
-  NumberType(NumberConstructor)
-
-      explicit Value(uint8_t data);
-#undef NumberConstructor
 
   void SetNumber(double val) {
     FreeValue();
@@ -201,7 +209,7 @@ class BASE_EXPORT Value {
 
   static Value ShallowCopy(const Value& src, bool clone_as_jsvalue = false);
 
-  inline bool IsReference() const {
+  BASE_INLINE bool IsReference() const {
     return (value_.type >= lynx_value_string &&
             value_.type <= lynx_value_object);
   }
@@ -283,12 +291,6 @@ class BASE_EXPORT Value {
   }
 
   double Number() const;
-
-  Value& operator=(const Value& value) {
-    Copy(value);
-    return *this;
-  }
-  Value& operator=(Value&& value) noexcept;
 
 #define NumberValue(name, type) type name() const;
   NumberType(NumberValue)
@@ -408,7 +410,9 @@ class BASE_EXPORT Value {
 
   bool MarkConst() const;
 
-  bool IsJSValue() const;
+  BASE_INLINE bool IsJSValue() const {
+    return value_.type == lynx_value_extended;
+  }
 
   lynx_api_env env() const { return env_; }
 
@@ -470,7 +474,6 @@ class BASE_EXPORT Value {
   void SetCPoint(void*);
   void SetCFunction(CFunction);
   void SetNan(bool);
-  ~Value();
 
   bool IsTrue() const { return !IsFalse(); }
 
@@ -681,8 +684,6 @@ class BASE_EXPORT Value {
   using TriviallyRelocatable = bool;
 
  private:
-  void Copy(const Value& value);
-
   Value GetPropertyFromTableOrArray(const std::string& key) const;
   bool SetPropertyToTableOrArray(const std::string& key, const Value& update);
   inline lynx_value DeepCopyExtendedValue() const {

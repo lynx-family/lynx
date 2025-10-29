@@ -30,8 +30,13 @@ namespace lepus {
 Value::Value(CreateAsUndefinedTag) { value_.type = lynx_value_undefined; }
 
 Value::Value(const Value& value) {
-  value_.type = lynx_value_null;
-  Copy(value);
+  value.DupValue();
+  if (unlikely(value.IsJSValue())) {
+    env_ = value.env_;
+    value_ref_ = nullptr;
+    lynx_value_add_reference_ext(value.env_, value.value_, &value_ref_);
+  }
+  value_ = value.value_;
 }
 
 void Value::CopyWeakValue(const Value& value) {
@@ -52,23 +57,42 @@ void Value::CopyWeakValue(const Value& value) {
 }
 
 Value::Value(Value&& value) noexcept {
-  if (value.IsJSValue()) {
+  if (unlikely(value.IsJSValue())) {
     env_ = value.env_;
     value_ref_ = nullptr;
     lynx_value_move_reference_ext(env_, value.value_, value.value_ref_,
                                   &value_ref_);
-    value_ = value.value_;
-    value.value_ref_ = nullptr;
-    value.env_ = nullptr;
-    value.value_.type = lynx_value_null;
-  } else {
-    value_ = value.value_;
-    value.value_.type = lynx_value_null;
   }
+  value_ = value.value_;
+  value.value_.type = lynx_value_null;
+}
+
+Value& Value::operator=(const Value& value) {
+  if (likely(this != &value)) {
+    value.DupValue();
+
+    // Manually inline FreeValue()
+    //    FreeValue();
+    if (unlikely(IsJSValue())) {
+      lynx_value_remove_reference_ext(env_, value_, value_ref_);
+      value_ref_ = nullptr;
+    } else if (IsReference() && likely(value_.val_ptr)) {
+      reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
+          ->Release();
+    }
+
+    if (unlikely(value.IsJSValue())) {
+      env_ = value.env_;
+      value_ref_ = nullptr;
+      lynx_value_add_reference_ext(value.env_, value.value_, &value_ref_);
+    }
+    value_ = value.value_;
+  }
+  return *this;
 }
 
 Value& Value::operator=(Value&& value) noexcept {
-  if (this != &value) {
+  if (likely(this != &value)) {
     this->~Value();
     new (this) Value(std::move(value));
   }
@@ -260,8 +284,6 @@ void Value::ToLepusValueRecursively(Value& value, bool deep_convert) {
   int32_t flag = deep_convert ? 1 : 0;
   value = ToLepusValue(value.env_, value.value_, flag);
 }
-
-Value::~Value() { FreeValue(); }
 
 double Value::Number() const {
   switch (value_.type) {
@@ -1016,44 +1038,24 @@ bool Value::MarkConst() const {
       return true;
   }
 }
-void Value::Copy(const Value& value) {
-  // avoid self-assignment
-  if (this == &value) {
-    return;
-  }
-  value.DupValue();
-  FreeValue();
-  if (value.IsJSValue()) {
-    env_ = value.env_;
-    if (value_.type != lynx_value_extended) {
-      value_ref_ = nullptr;
-    }
-    lynx_value_add_reference_ext(value.env_, value.value_, &value_ref_);
-  }
-  value_ = value.value_;
-}
-
-void Value::DupValue() const {
-  if (!IsReference() || !value_.val_ptr) return;
-  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)->AddRef();
-}
 
 void Value::FreeValue() {
-  if (IsJSValue()) {
+  if (unlikely(IsJSValue())) {
     lynx_value_remove_reference_ext(env_, value_, value_ref_);
     value_ref_ = nullptr;
-    return;
+  } else if (IsReference() && likely(value_.val_ptr)) {
+    reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
+        ->Release();
   }
-  if (!IsReference() || !value_.val_ptr) return;
-  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
-      ->Release();
 }
+
 void Value::ResetValueRef() {
   if (IsJSValue()) {
     lynx_value_remove_reference_ext(env_, value_, value_ref_);
     value_ref_ = nullptr;
   }
 }
+
 double Value::Double() const {
   if (value_.type != lynx_value_double) {
     return 0;
@@ -1166,8 +1168,6 @@ void Value::IteratorJSValue(const LepusValueIterator& callback) const {
     IterateExtendedValue(env_, value_, &callback_wrap);
   }
 }
-
-bool Value::IsJSValue() const { return value_.type == lynx_value_extended; }
 
 double Value::LEPUSNumber() const {
   DCHECK(IsJSNumber());
