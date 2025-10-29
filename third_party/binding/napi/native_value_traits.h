@@ -196,7 +196,7 @@ template <typename T>
 struct NativeValueTraits<
     T, typename std::enable_if_t<std::is_base_of<BridgeBase, T>::value>> {
   typedef decltype(Napi::ObjectWrap<T>::Unwrap(Napi::Object())
-                       ->ToImplUnsafe()) ImplType;
+      ->ToImplUnsafe()) ImplType;
   static ImplType NativeValue(Napi::Value value, int32_t index = 0) {
     if (auto* bridge = SafeUnwrap<T>(value)) {
       return bridge->ToImplUnsafe();
@@ -277,7 +277,17 @@ struct NativeValueTraits<
   }
 };
 
-// record
+template <>
+struct NativeValueTraits<uint64_t> {
+  static uint64_t NativeValue(Napi::Value value, int32_t index = 0) {
+    return NativeValueTraits<IDLNumber>::NativeValue(value, index);
+  }
+  static uint64_t NativeValue(const Napi::CallbackInfo& info,
+                              int32_t index = 0) {
+    return NativeValueTraits<IDLNumber>::NativeValue(info, index);
+  }
+};
+
 template <typename K, typename V>
 struct IDLRecord {};
 
