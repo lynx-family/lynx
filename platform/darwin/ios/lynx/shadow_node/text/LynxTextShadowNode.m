@@ -469,10 +469,14 @@ LYNX_REGISTER_SHADOW_NODE("text")
                       baselineOffset = result.baseline - result.size.height;
                     } else {
                       baselineOffset =
-                          [self calcBaselineShiftOffset:node.shadowNodeStyle.valign
-                                     verticalAlignValue:node.shadowNodeStyle.valignLength
-                                           withAscender:result.size.height
-                                          withDescender:0.f];
+                          [LynxTextUtils calcBaselineShiftOffset:node.shadowNodeStyle.valign
+                                              verticalAlignValue:node.shadowNodeStyle.valignLength
+                                                    withAscender:result.size.height
+                                                   withDescender:0.f
+                                                  withLineHeight:_lineSpacingAdaptation.lineHeight
+                                                 withMaxAscender:_maxAscender
+                                                withMaxDescender:_maxDescender
+                                                  withMaxXHeight:_maxXHeight];
                     }
                     maxLineAscender = MAX(maxLineAscender, baselineOffset + result.size.height);
                     maxLineDescender = MIN(maxLineDescender, baselineOffset);
@@ -513,10 +517,14 @@ LYNX_REGISTER_SHADOW_NODE("text")
                         baselineOffset = result.baseline - result.size.height;
                       } else {
                         baselineOffset =
-                            [self calcBaselineShiftOffset:node.shadowNodeStyle.valign
-                                       verticalAlignValue:node.shadowNodeStyle.valignLength
-                                             withAscender:result.size.height
-                                            withDescender:0.f];
+                            [LynxTextUtils calcBaselineShiftOffset:node.shadowNodeStyle.valign
+                                                verticalAlignValue:node.shadowNodeStyle.valignLength
+                                                      withAscender:result.size.height
+                                                     withDescender:0.f
+                                                    withLineHeight:_lineSpacingAdaptation.lineHeight
+                                                   withMaxAscender:_maxAscender
+                                                  withMaxDescender:_maxDescender
+                                                    withMaxXHeight:_maxXHeight];
                       }
                       self.maxTruncationLineAscender =
                           MAX(self.maxLineAscender, baselineOffset + result.size.height);
@@ -702,10 +710,11 @@ LYNX_REGISTER_SHADOW_NODE("text")
                     LynxNativeLayoutNode *child = (LynxNativeLayoutNode *)value;
                     CGFloat yPosition =
                         [layoutManager locationForGlyphAtIndex:glyphRange.location].y;
-                    yOffsetToTop = [self alignInlineNodeInVertical:child.shadowNodeStyle.valign
-                                                    withLineHeight:rect.size.height
-                                              withAttachmentHeight:attachment.bounds.size.height
-                                           withAttachmentYPosition:yPosition];
+                    yOffsetToTop =
+                        [LynxTextUtils alignInlineNodeInVertical:child.shadowNodeStyle.valign
+                                                  withLineHeight:rect.size.height
+                                            withAttachmentHeight:attachment.bounds.size.height
+                                         withAttachmentYPosition:yPosition];
 
                     AlignParam *alignParam = [[AlignParam alloc] init];
                     CGFloat leftOffset = glyphRect.origin.x + attachment.bounds.origin.x +
@@ -1070,10 +1079,14 @@ LYNX_REGISTER_SHADOW_NODE("text")
                                                           nil]
                                range:range];
                     CGFloat baselineOffset =
-                        [self calcBaselineShiftOffset:textNode.shadowNodeStyle.valign
-                                   verticalAlignValue:textNode.shadowNodeStyle.valignLength
-                                         withAscender:fontAscent
-                                        withDescender:fontDescent];
+                        [LynxTextUtils calcBaselineShiftOffset:textNode.shadowNodeStyle.valign
+                                            verticalAlignValue:textNode.shadowNodeStyle.valignLength
+                                                  withAscender:fontAscent
+                                                 withDescender:fontDescent
+                                                withLineHeight:_lineSpacingAdaptation.lineHeight
+                                               withMaxAscender:_maxAscender
+                                              withMaxDescender:_maxDescender
+                                                withMaxXHeight:_maxXHeight];
                     [attributedString addAttribute:NSBaselineOffsetAttributeName
                                              value:@(baselineOffset)
                                              range:range];
@@ -1097,10 +1110,14 @@ LYNX_REGISTER_SHADOW_NODE("text")
                                                             effectiveRange:nil];
                 if (imageNode.shadowNodeStyle.valign != LynxVerticalAlignDefault) {
                   CGFloat baselineOffset =
-                      [self calcBaselineShiftOffset:imageNode.shadowNodeStyle.valign
-                                 verticalAlignValue:imageNode.shadowNodeStyle.valignLength
-                                       withAscender:attachment.bounds.size.height
-                                      withDescender:0.f];
+                      [LynxTextUtils calcBaselineShiftOffset:imageNode.shadowNodeStyle.valign
+                                          verticalAlignValue:imageNode.shadowNodeStyle.valignLength
+                                                withAscender:attachment.bounds.size.height
+                                               withDescender:0.f
+                                              withLineHeight:_lineSpacingAdaptation.lineHeight
+                                             withMaxAscender:_maxAscender
+                                            withMaxDescender:_maxDescender
+                                              withMaxXHeight:_maxXHeight];
 
                   CGRect rect = attachment.bounds;
                   rect.origin.y = baselineOffset;
@@ -1112,65 +1129,6 @@ LYNX_REGISTER_SHADOW_NODE("text")
               }];
   _maxLineAscender = MAX(_maxLineAscender, maxLineAscender);
   _maxLineDescender = MIN(_maxLineDescender, maxLineDescender);
-}
-
-- (CGFloat)calcBaselineShiftOffset:(LynxVerticalAlign)verticalAlign
-                verticalAlignValue:(CGFloat)verticalAlignValue
-                      withAscender:(CGFloat)ascender
-                     withDescender:(CGFloat)descender {
-  switch (verticalAlign) {
-    case LynxVerticalAlignLength:
-      return verticalAlignValue;
-    case LynxVerticalAlignPercent:
-      // if set vertical-align:50%, baselineShift = 50 * lineHeight /100.f, the lineHeight is 0 if
-      // lineHeight not set.
-      return _lineSpacingAdaptation.lineHeight * verticalAlignValue / 100.f;
-    case LynxVerticalAlignMiddle:
-      // the middle of element will be align to the middle of max x-height
-      return (-descender - ascender + _maxXHeight) * 0.5f;
-    case LynxVerticalAlignTextTop:
-    case LynxVerticalAlignTop:
-      // the ascender of element will be align to text max ascender
-      return _maxAscender - ascender;
-    case LynxVerticalAlignTextBottom:
-    case LynxVerticalAlignBottom:
-      // the descender of element will be align to text max descender
-      return _maxDescender - descender;
-    case LynxVerticalAlignSub:
-      //-height * 0.1
-      return -(ascender - descender) * 0.1f;
-    case LynxVerticalAlignSuper:
-      // height * 0.1
-      return (ascender - descender) * 0.1f;
-    case LynxVerticalAlignCenter:
-      // the middle of element will be align to the middle of line
-      return (_maxAscender + _maxDescender - ascender - descender) * 0.5f;
-    default:
-      // baseline,center,top,bottom
-      return 0.f;
-  }
-}
-
-- (CGFloat)alignInlineNodeInVertical:(LynxVerticalAlign)verticalAlign
-                      withLineHeight:(CGFloat)lineFragmentHeight
-                withAttachmentHeight:(CGFloat)attachmentHeight
-             withAttachmentYPosition:(CGFloat)attachmentYPosition {
-  CGFloat yOffsetToTop = 0;
-  switch (verticalAlign) {
-    case LynxVerticalAlignBottom:
-      yOffsetToTop = lineFragmentHeight - attachmentHeight;
-      break;
-    case LynxVerticalAlignTop:
-      yOffsetToTop = 0;
-      break;
-    case LynxVerticalAlignCenter:
-      yOffsetToTop = (lineFragmentHeight - attachmentHeight) * 0.5f;
-      break;
-    default:
-      yOffsetToTop = attachmentYPosition - attachmentHeight;
-      break;
-  }
-  return yOffsetToTop;
 }
 
 - (void)layoutDidUpdate {
@@ -1272,10 +1230,11 @@ LYNX_REGISTER_SHADOW_NODE("text")
                                                    : LynxVerticalAlignDefault);
 
                 if (self.enableTextRefactor) {
-                  yOffsetToTop = [self alignInlineNodeInVertical:vAlign
-                                                  withLineHeight:lineFragment.size.height
-                                            withAttachmentHeight:attachment.bounds.size.height
-                                         withAttachmentYPosition:yPosition];
+                  yOffsetToTop =
+                      [LynxTextUtils alignInlineNodeInVertical:vAlign
+                                                withLineHeight:lineFragment.size.height
+                                          withAttachmentHeight:attachment.bounds.size.height
+                                       withAttachmentYPosition:yPosition];
                 } else {
                   switch (vAlign) {
                     case LynxVerticalAlignBottom:

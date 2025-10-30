@@ -200,4 +200,67 @@ NSString *const RTL_MARK = @"\u200F";
   return text;
 }
 
++ (CGFloat)calcBaselineShiftOffset:(LynxVerticalAlign)verticalAlign
+                verticalAlignValue:(CGFloat)verticalAlignValue
+                      withAscender:(CGFloat)ascender
+                     withDescender:(CGFloat)descender
+                    withLineHeight:(CGFloat)lineHeight
+                   withMaxAscender:(CGFloat)maxAscender
+                  withMaxDescender:(CGFloat)maxDescender
+                    withMaxXHeight:(CGFloat)maxXHeight {
+  switch (verticalAlign) {
+    case LynxVerticalAlignLength:
+      return verticalAlignValue;
+    case LynxVerticalAlignPercent:
+      // if set vertical-align:50%, baselineShift = 50 * lineHeight /100.f, the lineHeight is 0 if
+      // lineHeight not set.
+      return lineHeight * verticalAlignValue / 100.f;
+    case LynxVerticalAlignMiddle:
+      // the middle of element will be align to the middle of max x-height
+      return (-descender - ascender + maxXHeight) * 0.5f;
+    case LynxVerticalAlignTextTop:
+    case LynxVerticalAlignTop:
+      // the ascender of element will be align to text max ascender
+      return maxAscender - ascender;
+    case LynxVerticalAlignTextBottom:
+    case LynxVerticalAlignBottom:
+      // the descender of element will be align to text max descender
+      return maxDescender - descender;
+    case LynxVerticalAlignSub:
+      //-height * 0.1
+      return -(ascender - descender) * 0.1f;
+    case LynxVerticalAlignSuper:
+      // height * 0.1
+      return (ascender - descender) * 0.1f;
+    case LynxVerticalAlignCenter:
+      // the middle of element will be align to the middle of line
+      return (maxAscender + maxDescender - ascender - descender) * 0.5f;
+    default:
+      // baseline,center,top,bottom
+      return 0.f;
+  }
+}
+
++ (CGFloat)alignInlineNodeInVertical:(LynxVerticalAlign)verticalAlign
+                      withLineHeight:(CGFloat)lineFragmentHeight
+                withAttachmentHeight:(CGFloat)attachmentHeight
+             withAttachmentYPosition:(CGFloat)attachmentYPosition {
+  CGFloat yOffsetToTop = 0;
+  switch (verticalAlign) {
+    case LynxVerticalAlignBottom:
+      yOffsetToTop = lineFragmentHeight - attachmentHeight;
+      break;
+    case LynxVerticalAlignTop:
+      yOffsetToTop = 0;
+      break;
+    case LynxVerticalAlignCenter:
+      yOffsetToTop = (lineFragmentHeight - attachmentHeight) * 0.5f;
+      break;
+    default:
+      yOffsetToTop = attachmentYPosition - attachmentHeight;
+      break;
+  }
+  return yOffsetToTop;
+}
+
 @end
