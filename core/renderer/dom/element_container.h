@@ -6,7 +6,9 @@
 #define CORE_RENDERER_DOM_ELEMENT_CONTAINER_H_
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/geometry/point.h"
 #include "base/include/vector.h"
@@ -59,16 +61,45 @@ class ElementContainer {
   ElementContainer* EnclosingStackingContextNode();
   bool IsStackingContextNode();
 
-  void UpdatePaintingNode(bool tend_to_flatten,
-                          const fml::RefPtr<PropBundle>& painting_data);
+  virtual void CreatePaintingNode(bool is_flatten,
+                                  const fml::RefPtr<PropBundle>& painting_data);
+  virtual void UpdatePaintingNode(bool tend_to_flatten,
+                                  const fml::RefPtr<PropBundle>& painting_data);
+  virtual void UpdatePlatformExtraBundle(PlatformExtraBundle* bundle);
+  virtual bool CheckFlatten(base::MoveOnlyClosure<bool, bool> func);
 
   // TODO(songshourui.null): these functions may be called before
   // ElementContainer is created, need pass PaintingContext as the parameter for
   // now. We will consider create ElementContainer when create Element to avoid
   // NPE.
   void SetKeyframes(PaintingContext* context, fml::RefPtr<PropBundle> bundle);
-  void OnNodeReady();
-  void OnNodeReload();
+  virtual void SetFrameAppBundle(
+      const std::shared_ptr<LynxTemplateBundle>& bundle);
+
+  virtual void ListCellWillAppear(const std::string& item_key);
+  virtual void ListCellDisappear(bool is_exist, const base::String& item_key);
+  virtual void ListReusePaintingNode(const std::string& item_key);
+  virtual void InsertListItemPaintingNode(int32_t child_id);
+  virtual void RemoveListItemPaintingNode(int32_t child_id);
+
+  virtual std::vector<float> ScrollBy(float width, float height);
+  virtual std::vector<float> GetRectToLynxView();
+  virtual void UpdateScrollInfo(float estimated_offset, bool smooth,
+                                bool scrolling);
+  virtual void Invoke(
+      const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>&
+          callback);
+
+  virtual void SetGestureDetectorState(int32_t gesture_id, int32_t state);
+  virtual void ConsumeGesture(int32_t gesture_id, const lepus::Value& params);
+
+  virtual void OnNodeReady();
+  virtual void OnNodeReload();
+  virtual void UpdateLayoutPatching();
+  virtual void UpdateNodeReadyPatching();
+  virtual void Flush();
+  virtual void FlushImmediately();
 
  private:
   void ZIndexChanged();
