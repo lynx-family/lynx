@@ -71,4 +71,6 @@ void PlatformRendererImpl::RemoveFromParent() {
   parent_ = nullptr;
 }
 
+void PlatformRendererImpl::ReleaseSelf() const { delete this; }
+
 }  // namespace lynx::tasm

@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/include/fml/memory/ref_counted.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer.h"
 
 namespace lynx::tasm {
@@ -32,6 +33,9 @@ class PlatformRendererImpl : public PlatformRenderer {
   bool IsValid() const override { return valid_; }
 
  protected:
+  void ReleaseSelf() const override;
+
+ protected:
   // Platform-specific operations to be implemented by derived classes
   virtual void OnUpdateDisplayList(const DisplayList& display_list) = 0;
   virtual void OnAddChild(PlatformRenderer* child) = 0;
@@ -53,19 +57,6 @@ class PlatformRendererImpl : public PlatformRenderer {
   PlatformRendererImpl* parent_;
   std::vector<std::unique_ptr<PlatformRenderer>> children_;
   bool valid_;
-};
-
-// Generic factory implementation that can be extended by platforms
-class PlatformRendererFactoryImpl : public PlatformRendererFactory {
- public:
-  ~PlatformRendererFactoryImpl() override = default;
-
- protected:
-  // Helper method for creating renderers with proper initialization
-  template <typename T>
-  std::unique_ptr<PlatformRenderer> CreateRendererImpl(int id) {
-    return std::make_unique<T>(id);
-  }
 };
 
 }  // namespace lynx::tasm

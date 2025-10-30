@@ -20,11 +20,14 @@ if (!enable_unittests) {
       "android/native_painting_context_android.h",
       "android/painting_context_android.cc",
       "android/painting_context_android.h",
+
+      # The following implementations are used for FlattenView rendering.
       "android/platform_renderer.h",
       "android/platform_renderer_android.cc",
       "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
       "android/platform_renderer_context.h",
+      "android/platform_renderer_type.h",
 
       # platform_renderer_impl class and its common iterface in header file can
       # be moved to common sources to share with other platforms.

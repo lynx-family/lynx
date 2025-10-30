@@ -8,16 +8,18 @@
 #include <memory>
 #include <vector>
 
+#include "base/include/fml/memory/ref_counted.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_type.h"
+
 namespace lynx::tasm {
 
 class DisplayList;
 
 // Abstract base class for platform-specific UI rendering operations.
 // Provides a common interface for cross-platform UI element management.
-class PlatformRenderer {
+class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
  public:
-  virtual ~PlatformRenderer() = default;
-
+  ~PlatformRenderer() override = default;
   // Update the display list for this renderer
   virtual void UpdateDisplayList(const DisplayList& display_list) = 0;
 
@@ -32,6 +34,8 @@ class PlatformRenderer {
 
   // Check if this renderer is valid and ready for operations
   virtual bool IsValid() const = 0;
+
+  void ReleaseSelf() const override = 0;
 };
 
 // Factory interface for creating platform-specific renderers
@@ -40,7 +44,8 @@ class PlatformRendererFactory {
   virtual ~PlatformRendererFactory() = default;
 
   // Create a new platform renderer with the given ID
-  virtual std::unique_ptr<PlatformRenderer> CreateRenderer(int id) = 0;
+  virtual fml::RefPtr<PlatformRenderer> CreateRenderer(
+      int id, PlatformRendererType type) = 0;
 };
 
 }  // namespace lynx::tasm

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
@@ -34,16 +35,53 @@ bool RegisterJNIForNativePaintingContext(JNIEnv *env) {
 
 namespace tasm {
 
+class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
+ public:
+  explicit NativePaintingCtxAndroidRef(PlatformRendererContext *view_manager)
+      : view_factory_(view_manager) {}
+
+  ~NativePaintingCtxAndroidRef() override = default;
+
+  void CreatePaintingNode(int id, PlatformRendererType type) {
+    renderers_.insert_or_assign(id, view_factory_.CreateRenderer(id, type));
+  }
+
+  void InsertPaintingNode(int parent, int child, int index) override {}
+
+  void RemovePaintingNode(int parent, int child, int index,
+                          bool is_move) override {
+    PaintingCtxPlatformRef::RemovePaintingNode(parent, child, index, is_move);
+  }
+
+  void DestroyPaintingNode(int parent, int child, int index) override {
+    PaintingCtxPlatformRef::DestroyPaintingNode(parent, child, index);
+  }
+
+  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
+                               std::vector<int32_t> remove_ids) override {
+    PaintingCtxPlatformRef::UpdateNodeReadyPatching(ready_ids, remove_ids);
+  }
+
+  void UpdateFlattenStatus(int id, bool flatten) override {
+    PaintingCtxPlatformRef::UpdateFlattenStatus(id, flatten);
+  }
+
+ private:
+  PlatformRendererAndroidFactory view_factory_;
+  base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformRenderer>, 64>
+      renderers_;
+};
+
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
     JNIEnv *env, jobject text_layout, PlatformRendererContext *view_manager)
     : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)),
       text_layout_impl_(std::make_unique<TextLayoutAndroid>(env, text_layout)) {
-  platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>();
+  platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(view_manager);
 }
 
 void NativePaintingCtxAndroid::SetUIOperationQueue(
     const std::shared_ptr<shell::UIOperationQueueInterface> &queue) {
-  PaintingCtxPlatformImpl::SetUIOperationQueue(queue);
+  queue_ = std::static_pointer_cast<shell::DynamicUIOperationQueue>(queue);
 }
 
 void NativePaintingCtxAndroid::CreatePaintingNode(
@@ -77,7 +115,7 @@ void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
 void NativePaintingCtxAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {}
 
-void NativePaintingCtxAndroid::Flush() {}
+void NativePaintingCtxAndroid::Flush() { queue_->Flush(); }
 
 void NativePaintingCtxAndroid::HandleValidate(int tag) {}
 

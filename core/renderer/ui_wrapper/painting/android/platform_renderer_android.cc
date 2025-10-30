@@ -10,11 +10,6 @@
 
 namespace lynx::tasm {
 
-PlatformRendererAndroid::PlatformRendererAndroid(int id)
-    : PlatformRendererImpl(id) {
-  InitializeAndroidView();
-}
-
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
 void PlatformRendererAndroid::OnUpdateDisplayList(
@@ -45,7 +40,7 @@ void PlatformRendererAndroid::OnRemoveFromParent() {
 void PlatformRendererAndroid::InitializeAndroidView() {
   // TODO: Create Android view via JNI
   // context_ = std::make_unique<PlatformRendererContext>();
-  // context_->CreateView(GetId());
+  // context_->CreateView(GetId(), type);
 }
 
 void PlatformRendererAndroid::CleanupAndroidView() {
@@ -54,10 +49,15 @@ void PlatformRendererAndroid::CleanupAndroidView() {
     // context_->DestroyView();
   }
 }
+PlatformRendererAndroid::PlatformRendererAndroid(
+    PlatformRendererContext* context, int id, PlatformRendererType type)
+    : PlatformRendererImpl(id), context_(context), type_(type) {
+  InitializeAndroidView();
+}
 
-std::unique_ptr<PlatformRenderer>
-PlatformRendererAndroidFactory::CreateRenderer(int id) {
-  return CreateRendererImpl<PlatformRendererAndroid>(id);
+fml::RefPtr<PlatformRenderer> PlatformRendererAndroidFactory::CreateRenderer(
+    int id, PlatformRendererType type) {
+  return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, type);
 }
 
 }  // namespace lynx::tasm

@@ -9,40 +9,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "core/base/android/jni_helper.h"
 
 namespace lynx::tasm {
-
-class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
- public:
-  explicit NativePaintingCtxAndroidRef() {}
-
-  ~NativePaintingCtxAndroidRef() override = default;
-
-  void InsertPaintingNode(int parent, int child, int index) override {
-    PaintingCtxPlatformRef::InsertPaintingNode(parent, child, index);
-  }
-
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override {
-    PaintingCtxPlatformRef::RemovePaintingNode(parent, child, index, is_move);
-  }
-
-  void DestroyPaintingNode(int parent, int child, int index) override {
-    PaintingCtxPlatformRef::DestroyPaintingNode(parent, child, index);
-  }
-
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override {
-    PaintingCtxPlatformRef::UpdateNodeReadyPatching(ready_ids, remove_ids);
-  }
-
-  void UpdateFlattenStatus(int id, bool flatten) override {
-    PaintingCtxPlatformRef::UpdateFlattenStatus(id, flatten);
-  }
-};
 
 class PlatformRendererContext;
 
@@ -112,8 +84,13 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
   bool NeedAnimationProps() override;
 
  private:
+  void Enqueue(shell::UIOperation op) {
+    queue_->EnqueueUIOperation(std::move(op));
+  }
+
   std::unique_ptr<PlatformRendererContext> view_manager_;
   std::unique_ptr<TextLayoutImpl> text_layout_impl_;
+  std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 };
 
 }  // namespace lynx::tasm

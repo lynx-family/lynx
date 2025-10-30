@@ -15,7 +15,8 @@ namespace lynx::tasm {
 // Android-specific implementation of PlatformRenderer
 class PlatformRendererAndroid : public PlatformRendererImpl {
  public:
-  explicit PlatformRendererAndroid(int id);
+  explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
+                                   PlatformRendererType type);
   ~PlatformRendererAndroid() override;
 
  protected:
@@ -26,7 +27,9 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
 
  private:
   // Android-specific context for managing native views via JNI
-  std::shared_ptr<PlatformRendererContext> context_;
+  PlatformRendererContext* context_;
+
+  [[maybe_unused]] PlatformRendererType type_;
 
   // Initialize the Android view
   void InitializeAndroidView();
@@ -36,11 +39,17 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
 };
 
 // Android-specific factory
-class PlatformRendererAndroidFactory : public PlatformRendererFactoryImpl {
+class PlatformRendererAndroidFactory : public PlatformRendererFactory {
  public:
+  explicit PlatformRendererAndroidFactory(PlatformRendererContext* context)
+      : context_(context) {}
   ~PlatformRendererAndroidFactory() override = default;
 
-  std::unique_ptr<PlatformRenderer> CreateRenderer(int id) override;
+  fml::RefPtr<PlatformRenderer> CreateRenderer(
+      int id, PlatformRendererType type) override;
+
+ private:
+  PlatformRendererContext* context_;
 };
 
 }  // namespace lynx::tasm
