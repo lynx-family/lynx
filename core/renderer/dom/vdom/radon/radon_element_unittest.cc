@@ -82,7 +82,7 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
 
   EXPECT_TRUE(element->has_transition_props_changed_ == false);
   EXPECT_TRUE(element->has_keyframe_props_changed_ == false);
-  EXPECT_TRUE(element->has_z_props_ == false);
+  EXPECT_FALSE(element->has_z_props());
 
   EXPECT_TRUE(element->computed_css_style()->IsOverflowHidden());
   element->SetStyleInternal(
@@ -108,7 +108,7 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
       tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING));
-  EXPECT_TRUE(element->has_z_props_ == true);
+  EXPECT_TRUE(element->has_z_props());
 
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDTransition);
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDAnimation);
@@ -183,7 +183,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
       CSSPropertyID::kPropertyIDZIndex,
       tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
 
-  EXPECT_TRUE(element0->has_z_props_ == true);
+  EXPECT_TRUE(element0->has_z_props());
   EXPECT_TRUE(element0->is_view() == true);
   EXPECT_TRUE(element0->is_image() == false);
   EXPECT_TRUE(element0->is_text() == false);
@@ -196,7 +196,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
       CSSPropertyID::kPropertyIDZIndex,
       tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
 
-  EXPECT_TRUE(element1->has_z_props_ == true);
+  EXPECT_TRUE(element1->has_z_props());
   EXPECT_TRUE(element1->is_image() == true);
   EXPECT_TRUE(element1->is_text() == false);
   EXPECT_TRUE(element1->TendToFlatten() == true);
@@ -208,7 +208,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
       CSSPropertyID::kPropertyIDZIndex,
       tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
 
-  EXPECT_TRUE(element2->has_z_props_ == true);
+  EXPECT_TRUE(element2->has_z_props());
   EXPECT_TRUE(element2->is_image() == false);
   EXPECT_TRUE(element2->is_text() == true);
   EXPECT_TRUE(element2->TendToFlatten() == true);

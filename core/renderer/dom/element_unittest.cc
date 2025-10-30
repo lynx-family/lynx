@@ -96,8 +96,15 @@ TEST_F(ElementTest, CheckHasFilterProps) {
   EXPECT_TRUE(element->has_keyframe_props_changed_);
   EXPECT_TRUE(ret);
 
-  ret = element->CheckZIndexProps(CSSPropertyID::kPropertyIDZIndex, false);
-  EXPECT_TRUE(element->has_z_props_);
+  element->computed_css_style()->SetEnableZIndex(true);
+
+  CSSParserConfigs configs;
+  lepus::Value z_index_raw_value = lepus::Value("1");
+  auto z_index =
+      UnitHandler::Process(kPropertyIDZIndex, z_index_raw_value, configs);
+  element->computed_css_style()->SetValue(kPropertyIDZIndex,
+                                          z_index[kPropertyIDZIndex]);
+  EXPECT_TRUE(element->has_z_props());
   EXPECT_TRUE(ret);
 
   element->computed_css_style()->SetValue(

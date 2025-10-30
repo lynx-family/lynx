@@ -227,7 +227,11 @@ class ComputedCSSStyle {
 
   tasm::CSSParserConfigs& GetCSSParserConfigs() { return parser_configs_; }
 
+  void SetEnableZIndex(bool enable) { enable_z_index_ = enable; }
+
   int GetZIndex() const { return z_index_; }
+
+  bool HasZIndex() const { return has_z_index_; }
 
   ImageRenderingType GetImageRendering() { return image_rendering_; }
 
@@ -425,6 +429,9 @@ class ComputedCSSStyle {
   fml::RefPtr<lepus::CArray> offset_path_{nullptr};
 
   int z_index_{DefaultComputedStyle::DEFAULT_LONG};
+  bool enable_z_index_{false};
+  bool has_z_index_{false};
+
   unsigned int handle_color_{0};
   float handle_size_{0.f};
 

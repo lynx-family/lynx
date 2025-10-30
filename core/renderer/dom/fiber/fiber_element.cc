@@ -171,6 +171,8 @@ void FiberElement::AttachToElementManager(
   platform_css_style_->SetFontScaleOnlyEffectiveOnSp(
       manager->GetLynxEnvConfig().FontScaleSpOnly());
 
+  computed_css_style()->SetEnableZIndex(manager->GetEnableZIndex());
+
   // Create layout node and update layout styles
   InitLayoutBundle();
   UpdateLayoutNodeFontSize(GetFontSize(), GetRecordedRootFontSize());
@@ -2697,7 +2699,7 @@ void FiberElement::FlushProps() {
     is_virtual_ = IsShadowNodeVirtual();
     bool platform_is_flatten = true;
     base::MoveOnlyClosure<bool, bool> func =
-        [radon_element = this, has_z_props = has_z_props_,
+        [radon_element = this, has_z_props = has_z_props(),
          is_fixed = is_fixed_](bool judge_by_props) {
           if (judge_by_props) {
             return !(has_z_props || is_fixed);

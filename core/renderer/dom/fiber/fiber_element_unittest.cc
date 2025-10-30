@@ -5137,7 +5137,7 @@ TEST_P(FiberElementTest, CheckFlattenRelatedFlags) {
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
       tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING));
-  EXPECT_TRUE(element->has_z_props_ == true);
+  EXPECT_TRUE(element->has_z_props());
 
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDTransition);
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDAnimation);

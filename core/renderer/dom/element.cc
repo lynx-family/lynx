@@ -84,6 +84,7 @@ Element::Element(const base::String& tag, ElementManager* manager,
 
   platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
       *manager->platform_computed_css());
+  platform_css_style_->SetEnableZIndex(manager->GetEnableZIndex());
   platform_css_style_->SetScreenWidth(env_config.ScreenWidth());
   platform_css_style_->SetViewportHeight(env_config.ViewportHeight());
   platform_css_style_->SetViewportWidth(env_config.ViewportWidth());
@@ -122,7 +123,6 @@ Element::Element(const Element& element, bool clone_resolved_props)
       fixed_changed_(element.is_fixed_),
       has_event_listener_(element.has_event_listener_),
       has_non_flatten_attrs_(element.has_non_flatten_attrs_),
-      has_z_props_(element.has_z_props_),
       is_virtual_(element.is_virtual_),
       subtree_need_update_(element.subtree_need_update_),
       frame_changed_(element.frame_changed_),
@@ -387,8 +387,7 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
     }
 
     // do special check for transition, keyframe, z-index,etc.
-    if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id) ||
-          CheckZIndexProps(css_id, false))) {
+    if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id))) {
 #if OS_ANDROID
       // check flatten flag for Android platform if needed
       // FIXME(linxs): only Android need to check below props for flatten.
@@ -477,8 +476,6 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   }
   has_layout_only_props_ = false;
   processed = computed_css_style()->ResetValue(css_id);
-
-  CheckZIndexProps(css_id, true);
 
   // The properties of transition and keyframe no need to be pushed to bundle
   // separately here. Those properties will be pushed to bundle together
@@ -1008,7 +1005,7 @@ bool Element::ShouldAvoidFlattenForView() {
 bool Element::TendToFlatten() {
   return config_flatten_ && !has_event_listener_ && !has_non_flatten_attrs_ &&
          !DisableFlattenWithOpacity() &&
-         !(has_z_props_ && !is_image() && !is_text()) && !is_inline_element_ &&
+         !(has_z_props() && !is_image() && !is_text()) && !is_inline_element_ &&
          !ShouldAvoidFlattenForView();
 }
 
@@ -1270,15 +1267,6 @@ void Element::CheckHasNonFlattenCSSProps(CSSPropertyID id) {
   }
 }
 
-bool Element::CheckZIndexProps(CSSPropertyID id, bool reset) {
-  if (!GetEnableZIndex()) return false;
-  if (UNLIKELY(id == CSSPropertyID::kPropertyIDZIndex)) {
-    has_z_props_ = !reset;
-    return true;
-  }
-  return false;
-}
-
 void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
   if (id == kPropertyIDPosition) {
     // Check fixed&sticky before layout only
@@ -1297,7 +1285,7 @@ void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
 
 bool Element::IsStackingContextNode() {
   if (!GetEnableZIndex()) return false;
-  return element_manager()->root() == this || has_z_props_ || is_fixed_ ||
+  return element_manager()->root() == this || has_z_props() || is_fixed_ ||
          computed_css_style()->HasTransform() ||
          computed_css_style()->HasOpacity();
 }

@@ -10,6 +10,41 @@
 
 namespace lynx {
 namespace starlight {
+
+TEST(CssStyleUtils, SetZIndex) {
+  ComputedCSSStyle computed_css_style(1.f, 1.f);
+
+  computed_css_style.SetEnableZIndex(false);
+
+  tasm::CSSParserConfigs configs;
+  lepus::Value z_index_raw_value = lepus::Value("1");
+  auto z_index = tasm::UnitHandler::Process(tasm::kPropertyIDZIndex,
+                                            z_index_raw_value, configs);
+
+  EXPECT_FALSE(computed_css_style.SetValue(tasm::kPropertyIDZIndex,
+                                           z_index[tasm::kPropertyIDZIndex]));
+  EXPECT_FALSE(computed_css_style.HasZIndex());
+
+  computed_css_style.SetEnableZIndex(true);
+
+  z_index_raw_value = lepus::Value("0");
+  z_index = tasm::UnitHandler::Process(tasm::kPropertyIDZIndex,
+                                       z_index_raw_value, configs);
+  EXPECT_FALSE(computed_css_style.SetValue(tasm::kPropertyIDZIndex,
+                                           z_index[tasm::kPropertyIDZIndex]));
+  EXPECT_TRUE(computed_css_style.HasZIndex());
+
+  z_index_raw_value = lepus::Value("1");
+  z_index = tasm::UnitHandler::Process(tasm::kPropertyIDZIndex,
+                                       z_index_raw_value, configs);
+  EXPECT_TRUE(computed_css_style.SetValue(tasm::kPropertyIDZIndex,
+                                          z_index[tasm::kPropertyIDZIndex]));
+  EXPECT_TRUE(computed_css_style.HasZIndex());
+
+  EXPECT_TRUE(computed_css_style.ResetValue(tasm::kPropertyIDZIndex));
+  EXPECT_FALSE(computed_css_style.HasZIndex());
+}
+
 TEST(CssStyleUtils, ComputeFilter) {
   ComputedCSSStyle computedCssStyle(1.f, 1.f);
   tasm::CSSParserConfigs configs;

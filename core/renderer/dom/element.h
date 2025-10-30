@@ -345,9 +345,11 @@ class Element : public lepus::RefCounted,
   virtual const base::String& GetPlatformNodeTag() const { return tag_; }
 
   void UpdateElement();
+
   int ZIndex() {
     return GetEnableZIndex() ? computed_css_style()->GetZIndex() : 0;
   }
+
   bool HasElementContainer() { return element_container_ != nullptr; }
 
   bool IsStackingContextNode();
@@ -484,8 +486,7 @@ class Element : public lepus::RefCounted,
 
   void CheckHasNonFlattenCSSProps(CSSPropertyID id);
   void CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value);
-  // return true indicate that current css is z-index
-  bool CheckZIndexProps(CSSPropertyID id, bool reset);
+
   void CheckBoxShadowOrOutline(CSSPropertyID id);
   bool DisableFlattenWithOpacity();
 
@@ -667,7 +668,7 @@ class Element : public lepus::RefCounted,
 
   void PushToBundle(CSSPropertyID id);
 
-  bool has_z_props() const { return has_z_props_; }
+  bool has_z_props() const { return computed_css_style()->HasZIndex(); }
 
   // For devtool
   ALLOW_UNUSED_TYPE void set_inspector_attribute(
@@ -780,9 +781,6 @@ class Element : public lepus::RefCounted,
   bool has_transition_props_changed_{false};
   bool has_keyframe_props_changed_{false};
   bool has_non_flatten_attrs_{false};
-
-  // relevant to z-index
-  bool has_z_props_{false};
 
   bool enable_class_change_transmit_{false};
 

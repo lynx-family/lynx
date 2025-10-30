@@ -2689,6 +2689,19 @@ bool ComputedCSSStyle::SetTextDecorationColor(const tasm::CSSValue& value,
 
 bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
                                  const bool reset) {
+  // If not enable z-index, return false default.
+  if (!enable_z_index_) {
+    return false;
+  }
+
+  has_z_index_ = !reset;
+
+  // TODO(songshourui.null): A z-index can be 0, but an initial value of 0
+  // currently means no z-index is set, which conflicts with a developer
+  // explicitly setting it to 0. To optimize this, consider using an optional to
+  // store the z-index. If the optional has no value, it would mean z-index is
+  // not set. This change would also require modifications at the platform
+  // layer.
   return CSSStyleUtils::ComputeIntStyle(
       value, reset, z_index_, 0, "z-index must be a number!", parser_configs_);
 }
