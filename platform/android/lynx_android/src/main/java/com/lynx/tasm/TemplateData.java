@@ -6,14 +6,15 @@ package com.lynx.tasm;
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
-import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.common.LepusBuffer;
 import com.lynx.tasm.common.NullableConcurrentHashMap;
 import com.lynx.tasm.core.LynxThreadPool;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -111,6 +112,7 @@ public final class TemplateData {
   volatile long mJsNativeData;
   private boolean mEnableJSData = true;
   private final AtomicBoolean mConsumed = new AtomicBoolean(false);
+  private WeakReference<LynxContext> weakContext;
 
   enum ActionType {
     STRING_DATA,
@@ -367,6 +369,23 @@ public final class TemplateData {
   // is completed. Therefore, to avoid thread safety issues, js data is not released in recycle()
   // and let js data be released in finalize().
   public synchronized void recycle() {
+    // Try making sure that the native pointer
+    // is released on engine thread.
+    if (weakContext != null) {
+      LynxContext context = weakContext.get();
+      if (context != null) {
+        context.runOnTasmThread(new Runnable() {
+          @Override
+          public void run() {
+            if (checkIfEnvPrepared() && mNativeData != 0) {
+              nativeReleaseData(mNativeData);
+              mNativeData = 0;
+            }
+          }
+        });
+        return;
+      }
+    }
     if (checkIfEnvPrepared() && mNativeData != 0) {
       nativeReleaseData(mNativeData);
       mNativeData = 0;
@@ -374,6 +393,21 @@ public final class TemplateData {
   }
 
   synchronized void recycleJsData() {
+    if (weakContext != null) {
+      LynxContext context = weakContext.get();
+      if (context != null) {
+        context.runOnTasmThread(new Runnable() {
+          @Override
+          public void run() {
+            if (checkIfEnvPrepared() && mJsNativeData != 0) {
+              nativeReleaseData(mJsNativeData);
+              mJsNativeData = 0;
+            }
+          }
+        });
+        return;
+      }
+    }
     if (checkIfEnvPrepared() && mJsNativeData != 0) {
       nativeReleaseData(mJsNativeData);
       mJsNativeData = 0;
@@ -578,6 +612,10 @@ public final class TemplateData {
     data.addUpdateActions(this.getUpdateActionsWithJsNativeData());
     TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_SHALLOW_CLONE);
     return data;
+  }
+
+  void bindContext(LynxContext context) {
+    this.weakContext = new WeakReference<>(context);
   }
 
   /**
