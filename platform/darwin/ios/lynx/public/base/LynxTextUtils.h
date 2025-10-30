@@ -5,6 +5,8 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
+#import <Lynx/LynxCSSType.h>
+
 @interface LynxTextUtils : NSObject
 /*
  * Resolve NSTextAlignNatural to physical alignment according to the inferred languange of given
@@ -35,4 +37,16 @@
 
 + (UIFontWeight)convertLynxFontWeight:(NSUInteger)fontWeight;
 + (NSString *_Nonnull)ConvertRawText:(id _Nullable)rawText;
++ (CGFloat)calcBaselineShiftOffset:(LynxVerticalAlign)verticalAlign
+                verticalAlignValue:(CGFloat)verticalAlignValue
+                      withAscender:(CGFloat)ascender
+                     withDescender:(CGFloat)descender
+                    withLineHeight:(CGFloat)lineHeight
+                   withMaxAscender:(CGFloat)maxAscender
+                  withMaxDescender:(CGFloat)maxDescender
+                    withMaxXHeight:(CGFloat)maxXHeight;
++ (CGFloat)alignInlineNodeInVertical:(LynxVerticalAlign)verticalAlign
+                      withLineHeight:(CGFloat)lineFragmentHeight
+                withAttachmentHeight:(CGFloat)attachmentHeight
+             withAttachmentYPosition:(CGFloat)attachmentYPosition;
 @end

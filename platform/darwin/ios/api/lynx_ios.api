@@ -3687,6 +3687,8 @@ public protocol LynxTemplateResourceFetcher-p : <NSObject> {
 
 public class LynxTextAttachment : NSTextAttachment {
   public NSInteger LynxTextAttachment::sign sign;
+  public LynxVerticalAlign LynxTextAttachment::verticalAlign verticalAlign;
+  public CGFloat LynxTextAttachment::verticalAlignLength verticalAlignLength;
 }
 
 public class LynxTextAttachmentInfo : NSObject {
@@ -3813,6 +3815,8 @@ public class LynxTextUtils : NSObject {
   public NSDictionary *_Nonnull LynxTextUtils::measureText:fontSize:fontFamily:maxWidth:maxLine:(NSString *_Nullable text,[fontSize] CGFloat fontSize,[fontFamily] NSString *_Nullable fontFamily,[maxWidth] CGFloat maxWidth,[maxLine] NSInteger maxLine);
   public UIFontWeight LynxTextUtils::convertLynxFontWeight:(NSUInteger fontWeight);
   public NSString *_Nonnull LynxTextUtils::ConvertRawText:(id _Nullable rawText);
+  public CGFloat LynxTextUtils::calcBaselineShiftOffset:verticalAlignValue:withAscender:withDescender:withLineHeight:withMaxAscender:withMaxDescender:withMaxXHeight:(LynxVerticalAlign verticalAlign,[verticalAlignValue] CGFloat verticalAlignValue,[withAscender] CGFloat ascender,[withDescender] CGFloat descender,[withLineHeight] CGFloat lineHeight,[withMaxAscender] CGFloat maxAscender,[withMaxDescender] CGFloat maxDescender,[withMaxXHeight] CGFloat maxXHeight);
+  public CGFloat LynxTextUtils::alignInlineNodeInVertical:withLineHeight:withAttachmentHeight:withAttachmentYPosition:(LynxVerticalAlign verticalAlign,[withLineHeight] CGFloat lineFragmentHeight,[withAttachmentHeight] CGFloat attachmentHeight,[withAttachmentYPosition] CGFloat attachmentYPosition);
 }
 
 public class LynxTextView : UIView {
