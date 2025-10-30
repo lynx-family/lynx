@@ -715,9 +715,6 @@ public class LynxTemplateRender
       if (globalProps != null) {
         globalProps = globalProps.deepClone();
       }
-      if (LynxEnv.inst().enableEnableRecycleRenderDataListWhileReload()) {
-        recycleUpdatedDataList();
-      }
       int lastInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
       if (mNativePtr != 0) {
         if (mLynxContext != null && mLynxContext.enableEventReporter()) {
@@ -1908,8 +1905,12 @@ public class LynxTemplateRender
   // called after renderTemplate or updateData.
   private void postRenderOrUpdateData(TemplateData data) {
     if (data != null) {
-      // add to updatedList and recycle it manually at destroy period.
-      updatedDataList.add(data);
+      if (LynxEnv.inst().enableDataListFix()) {
+        data.bindContext(mLynxContext);
+      } else {
+        // add to updatedList and recycle it manually at destroy period.
+        updatedDataList.add(data);
+      }
     }
   }
 
@@ -1963,9 +1964,6 @@ public class LynxTemplateRender
     timingOption.setTiming(TimingConstants.PIPELINE_START, currentTimeMillis);
     timingOption.setTiming(TimingConstants.RELOAD_BUNDLE_START, currentTimeMillis);
 
-    if (LynxEnv.inst().enableEnableRecycleRenderDataListWhileReload()) {
-      recycleUpdatedDataList();
-    }
     if (prepareUpdateData(data)) {
       if (newGlobalProps != null) {
         globalProps = newGlobalProps;
