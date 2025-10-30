@@ -173,7 +173,7 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic, strong) NSDictionary* additional_custom_info;
 @property(nonatomic, strong) NSString* request_priority;
 @property(nonatomic, strong) NSString* cache_choice;
-@property(nonatomic, strong) NSDictionary* placeholder_hash_config;
+@property(nonatomic, strong) NSMutableDictionary* placeholder_hash_config;
 @property(nonatomic) LynxBooleanOption frameCacheAutomatically;
 @property(nonatomic) CGFloat superResolutionScale;
 @end
@@ -1546,7 +1546,15 @@ LYNX_PROP_SETTER("placeholder-hash-config", setPlaceHolderHash, NSDictionary*) {
   if (requestReset) {
     value = nil;
   }
-  _placeholder_hash_config = value;
+  _placeholder_hash_config = [NSMutableDictionary dictionaryWithDictionary:value];
+
+  NSString* type = [_placeholder_hash_config objectForKey:@"type"];
+  if (type && [type isEqualToString:@"preview"]) {
+    NSString* metaData = [_placeholder_hash_config objectForKey:@"metaData"];
+    if (metaData == nil && self.context.imagePreviewHashMetadata != nil) {
+      [_placeholder_hash_config setObject:self.context.imagePreviewHashMetadata forKey:@"metaData"];
+    }
+  }
 }
 
 #pragma mark UI_Method

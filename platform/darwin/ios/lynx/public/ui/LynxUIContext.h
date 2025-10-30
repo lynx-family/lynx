@@ -62,6 +62,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) id<LynxTemplateResourceFetcher> templateResourceFetcher;
 @property(nonatomic, assign) BOOL enableFetchUIImage;
 
+// image global property
+@property(nonatomic, nullable) NSString* imagePreviewHashMetadata;
+
 // settings
 @property(nonatomic, readonly) BOOL defaultOverflowVisible;
 @property(nonatomic, readonly) BOOL defaultImplicitAnimation;
