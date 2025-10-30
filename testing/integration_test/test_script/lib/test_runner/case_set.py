@@ -86,8 +86,8 @@ class CaseSet:
             url = f"file://lynx?local://{config['path']}.lynx.bundle"
             if enable_scale :
                 if platform == 'android':
-                    config['width'] = config['width'] if 'width' in config else 720
-                    config['height'] = config['height'] if 'height' in config else 1280
+                    config['width'] = config['width'] if 'width' in config else 1080
+                    config['height'] = config['height'] if 'height' in config else 1664
                     config['density'] = config['density'] if 'density' in config else 320
                     url = utils.append_query_to_url(url, f'width={config["width"]}&height={config["height"]}&density={config["density"]}')
                 elif platform == 'ios':
