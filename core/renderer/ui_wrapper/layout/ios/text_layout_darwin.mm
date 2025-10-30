@@ -187,9 +187,17 @@ void TextLayoutDarwin::GenerateAttributedString(
                                hasViewOrImage);
     } else if (child->is_image() || child->is_view()) {
       *hasViewOrImage = YES;
-      ImageElement* image_element = static_cast<ImageElement*>(child);
+      FiberElement* placeholder_element = static_cast<FiberElement*>(child);
       LynxTextAttachment* textAttachment = [[LynxTextAttachment alloc] init];
-      textAttachment.sign = image_element->impl_id();
+      textAttachment.sign = placeholder_element->impl_id();
+      const auto& text_attributes = placeholder_element->computed_css_style()->GetTextAttributes();
+      textAttachment.verticalAlign =
+          text_attributes.has_value()
+              ? static_cast<LynxVerticalAlign>(text_attributes->vertical_align)
+              : LynxVerticalAlignDefault;
+      textAttachment.verticalAlignLength =
+          text_attributes.has_value() ? text_attributes->vertical_align_length : 0.f;
+
       [inlineElementSigns addObject:@(textAttachment.sign)];
       NSMutableAttributedString* inlineElementAttributedString =
           [[NSMutableAttributedString alloc] init];

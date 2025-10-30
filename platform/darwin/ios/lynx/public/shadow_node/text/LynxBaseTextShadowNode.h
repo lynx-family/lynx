@@ -18,6 +18,8 @@ extern NSAttributedStringKey const LynxVerticalAlignKey;
 
 @interface LynxTextAttachment : NSTextAttachment
 @property(readwrite, nonatomic, assign) NSInteger sign;
+@property(readwrite, nonatomic, assign) LynxVerticalAlign verticalAlign;
+@property(readwrite, nonatomic, assign) CGFloat verticalAlignLength;
 @end
 
 @interface LynxBaseTextShadowNode : LynxShadowNode

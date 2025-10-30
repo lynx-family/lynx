@@ -6,6 +6,7 @@
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxTextShadowNode.h>
+#import <Lynx/LynxTextUtils.h>
 
 @implementation LynxAttributedTextBundle
 @end
@@ -49,10 +50,15 @@
   LineSpacingAdaptation *layoutDelegate = [LineSpacingAdaptation new];
   layoutDelegate.enableLayoutRefactor = YES;
   layoutDelegate.attributedString = textBundle.attributedString;
+  if (!isnan(textBundle.textStyle.lineHeight)) {
+    layoutDelegate.lineHeight = textBundle.textStyle.lineHeight;
+  }
   spec.layoutManagerDelegate = layoutDelegate;
 
   if (childrenSizeDic && childrenSizeDic.count != 0) {
-    [self updateAttachmentSize:childrenSizeDic attributedString:textBundle.attributedString];
+    [self updateAttachmentSize:childrenSizeDic
+              attributedString:textBundle.attributedString
+                    lineHeight:textBundle.textStyle.lineHeight];
   }
 
   LynxTextRenderer *renderer =
@@ -71,20 +77,48 @@
 }
 
 - (void)updateAttachmentSize:(NSDictionary *)childrenSizeDic
-            attributedString:(NSAttributedString *)attributedString {
-  [attributedString enumerateAttribute:NSAttachmentAttributeName
+            attributedString:(NSAttributedString *)attributedString
+                  lineHeight:(CGFloat)lineHeight {
+  __block CGFloat maxAscender = 0, maxDescender = 0, maxXHeight = 0;
+  [attributedString enumerateAttribute:NSFontAttributeName
                                inRange:NSMakeRange(0, attributedString.length)
-                               options:0
-                            usingBlock:^(id _Nullable value, NSRange range, BOOL *_Nonnull stop) {
-                              if ([value isKindOfClass:[LynxTextAttachment class]]) {
-                                LynxTextAttachment *attachment = value;
-                                NSArray *size = [childrenSizeDic objectForKey:@(attachment.sign)];
-                                if (size) {
-                                  attachment.bounds =
-                                      CGRectMake(0, 0, [size[0] floatValue], [size[1] floatValue]);
-                                }
+                               options:NSAttributedStringEnumerationLongestEffectiveRangeNotRequired
+                            usingBlock:^(UIFont *font, NSRange range, BOOL *_Nonnull stop) {
+                              if (font) {
+                                maxAscender = MAX(maxAscender, font.ascender);
+                                maxDescender = MIN(maxDescender, font.descender);
+                                maxXHeight = MAX(maxXHeight, font.xHeight);
                               }
                             }];
+  [attributedString
+      enumerateAttribute:NSAttachmentAttributeName
+                 inRange:NSMakeRange(0, attributedString.length)
+                 options:0
+              usingBlock:^(id _Nullable value, NSRange range, BOOL *_Nonnull stop) {
+                if ([value isKindOfClass:[LynxTextAttachment class]]) {
+                  LynxTextAttachment *attachment = value;
+                  NSArray *size = [childrenSizeDic objectForKey:@(attachment.sign)];
+                  if (size) {
+                    CGFloat width = [size[0] floatValue], height = [size[1] floatValue],
+                            baseline = [size[2] floatValue];
+                    CGFloat baselineOffset = 0.f;
+                    if (attachment.verticalAlign == LynxVerticalAlignBaseline) {
+                      baselineOffset = baseline - height;
+                    } else if (attachment.verticalAlign != LynxVerticalAlignDefault) {
+                      baselineOffset = [LynxTextUtils
+                          calcBaselineShiftOffset:attachment.verticalAlign
+                               verticalAlignValue:attachment.verticalAlignLength
+                                     withAscender:height
+                                    withDescender:0.f
+                                   withLineHeight:isnan(lineHeight) ? 0.f : lineHeight
+                                  withMaxAscender:maxAscender
+                                 withMaxDescender:maxDescender
+                                   withMaxXHeight:maxXHeight];
+                    }
+                    attachment.bounds = CGRectMake(0, baselineOffset, width, [size[1] floatValue]);
+                  }
+                }
+              }];
 }
 
 - (id)takeTextRender:(NSInteger)sign {
@@ -176,7 +210,11 @@
   CGFloat leftOffset =
       glyphRect.origin.x + attachment.bounds.origin.x + renderer.textContentOffsetX;
   CGFloat baselineY = [layoutManager locationForGlyphAtIndex:glyphRange.location].y;
-  CGFloat topOffset = glyphRect.origin.y + baselineY - attachment.bounds.size.height;
+  CGFloat topOffset =
+      glyphRect.origin.y + [LynxTextUtils alignInlineNodeInVertical:attachment.verticalAlign
+                                                     withLineHeight:glyphRect.size.height
+                                               withAttachmentHeight:attachment.bounds.size.height
+                                            withAttachmentYPosition:baselineY];
   return CGPointMake(leftOffset, topOffset);
 }
 
