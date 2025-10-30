@@ -9,7 +9,9 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/vector.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer.h"
+#include "core/renderer/utils/base/base_def.h"
 
 namespace lynx::tasm {
 
@@ -20,17 +22,16 @@ class DisplayList;
 // inherit from this class to share common logic.
 class PlatformRendererImpl : public PlatformRenderer {
  public:
-  explicit PlatformRendererImpl(int id)
-      : id_(id), parent_(nullptr), valid_(true) {}
+  explicit PlatformRendererImpl(int id) : id_(id) {}
 
   ~PlatformRendererImpl() override = default;
 
   // PlatformRenderer interface
   void UpdateDisplayList(const DisplayList& display_list) override;
-  void AddChild(std::unique_ptr<PlatformRenderer> child) override;
+
   void RemoveFromParent() override;
+  void AddChild(fml::RefPtr<PlatformRenderer> child) override;
   int GetId() const override { return id_; }
-  bool IsValid() const override { return valid_; }
 
  protected:
   void ReleaseSelf() const override;
@@ -44,19 +45,11 @@ class PlatformRendererImpl : public PlatformRenderer {
   // Get the parent renderer
   PlatformRendererImpl* GetParent() const { return parent_; }
 
-  // Get all child renderers
-  const std::vector<std::unique_ptr<PlatformRenderer>>& GetChildren() const {
-    return children_;
-  }
-
-  // Mark this renderer as invalid
-  void Invalidate() { valid_ = false; }
-
  private:
   int id_;
-  PlatformRendererImpl* parent_;
-  std::vector<std::unique_ptr<PlatformRenderer>> children_;
-  bool valid_;
+  PlatformRendererImpl* parent_ = nullptr;
+  base::InlineVector<fml::RefPtr<PlatformRenderer>, kChildrenInlineVectorSize>
+      children_;
 };
 
 }  // namespace lynx::tasm

@@ -24,16 +24,13 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   virtual void UpdateDisplayList(const DisplayList& display_list) = 0;
 
   // Add a child renderer
-  virtual void AddChild(std::unique_ptr<PlatformRenderer> child) = 0;
+  virtual void AddChild(fml::RefPtr<PlatformRenderer> child) = 0;
 
   // Remove this renderer from its parent
   virtual void RemoveFromParent() = 0;
 
   // Get the unique identifier for this renderer
   virtual int GetId() const = 0;
-
-  // Check if this renderer is valid and ready for operations
-  virtual bool IsValid() const = 0;
 
   void ReleaseSelf() const override = 0;
 };

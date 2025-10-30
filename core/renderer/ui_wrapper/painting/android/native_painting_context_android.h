@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "core/base/android/jni_helper.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_type.h"
 
 namespace lynx::tasm {
 
@@ -82,6 +83,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
 
   bool NeedAnimationProps() override;
+
+  void CreatePaintingNode(int id, PlatformRendererType type);
 
  private:
   void Enqueue(shell::UIOperation op) {

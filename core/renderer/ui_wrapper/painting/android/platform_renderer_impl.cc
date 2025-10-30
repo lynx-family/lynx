@@ -11,23 +11,12 @@
 namespace lynx::tasm {
 
 void PlatformRendererImpl::UpdateDisplayList(const DisplayList& display_list) {
-  if (!IsValid()) {
-    return;
-  }
-
   // Call platform-specific implementation
   OnUpdateDisplayList(display_list);
-
-  // Update all children
-  for (auto& child : children_) {
-    if (child->IsValid()) {
-      child->UpdateDisplayList(display_list);
-    }
-  }
 }
 
-void PlatformRendererImpl::AddChild(std::unique_ptr<PlatformRenderer> child) {
-  if (!IsValid() || !child) {
+void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child) {
+  if (!child) {
     return;
   }
 
@@ -48,7 +37,7 @@ void PlatformRendererImpl::AddChild(std::unique_ptr<PlatformRenderer> child) {
 }
 
 void PlatformRendererImpl::RemoveFromParent() {
-  if (!IsValid() || parent_ == nullptr) {
+  if (parent_ == nullptr) {
     return;
   }
 
@@ -57,11 +46,10 @@ void PlatformRendererImpl::RemoveFromParent() {
 
   // Remove from parent's children list
   auto& siblings = parent_->children_;
-  auto it =
-      std::find_if(siblings.begin(), siblings.end(),
-                   [this](const std::unique_ptr<PlatformRenderer>& child) {
-                     return child.get() == this;
-                   });
+  auto it = std::find_if(siblings.begin(), siblings.end(),
+                         [this](const fml::RefPtr<PlatformRenderer>& child) {
+                           return child.get() == this;
+                         });
 
   if (it != siblings.end()) {
     siblings.erase(it);

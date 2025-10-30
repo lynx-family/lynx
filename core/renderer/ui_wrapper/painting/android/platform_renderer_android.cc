@@ -22,31 +22,24 @@ void PlatformRendererAndroid::OnUpdateDisplayList(
 
 void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child) {
   if (context_ && child) {
-    auto* android_child = static_cast<PlatformRendererAndroid*>(child);
-    if (android_child->context_) {
-      // TODO: Implement child addition via JNI
-      // context_->AddChild(android_child->context_.get());
-    }
+    context_->InsertPlatformRenderer(PlatformRendererImpl::GetId(),
+                                     child->GetId(), -1);
   }
 }
 
 void PlatformRendererAndroid::OnRemoveFromParent() {
   if (context_) {
-    // TODO: Implement removal via JNI
-    // context_->RemoveFromParent();
+    context_->RemovePlatformRenderer(PlatformRendererImpl::GetId());
   }
 }
 
 void PlatformRendererAndroid::InitializeAndroidView() {
-  // TODO: Create Android view via JNI
-  // context_ = std::make_unique<PlatformRendererContext>();
-  // context_->CreateView(GetId(), type);
+  context_->CreatePlatformRenderer(GetId(), type_);
 }
 
 void PlatformRendererAndroid::CleanupAndroidView() {
   if (context_) {
-    // TODO: Clean up Android view via JNI
-    // context_->DestroyView();
+    context_->DestroyPlatformRenderer(PlatformRendererImpl::GetId());
   }
 }
 PlatformRendererAndroid::PlatformRendererAndroid(

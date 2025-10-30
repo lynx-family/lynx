@@ -46,15 +46,26 @@ class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
     renderers_.insert_or_assign(id, view_factory_.CreateRenderer(id, type));
   }
 
-  void InsertPaintingNode(int parent, int child, int index) override {}
+  void InsertPaintingNode(int parent, int child, int index) override {
+    auto it_parent = renderers_.find(parent);
+    auto it_child = renderers_.find(child);
+    if (it_parent != renderers_.end() && it_child != renderers_.end()) {
+      it_parent->second->AddChild(it_child->second);
+    }
+  }
 
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override {
-    PaintingCtxPlatformRef::RemovePaintingNode(parent, child, index, is_move);
+    if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
+      it_child->second->RemoveFromParent();
+    }
   }
 
   void DestroyPaintingNode(int parent, int child, int index) override {
-    PaintingCtxPlatformRef::DestroyPaintingNode(parent, child, index);
+    if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
+      it_child->second->RemoveFromParent();
+      renderers_.erase(child);
+    }
   }
 
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
@@ -160,5 +171,13 @@ bool NativePaintingCtxAndroid::IsFlatten(
 }
 
 bool NativePaintingCtxAndroid::NeedAnimationProps() { return false; }
+
+void NativePaintingCtxAndroid::CreatePaintingNode(int id,
+                                                  PlatformRendererType type) {
+  Enqueue([ref = platform_ref_, id, type]() {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+        ->CreatePaintingNode(id, type);
+  });
+}
 }  // namespace tasm
 }  // namespace lynx
