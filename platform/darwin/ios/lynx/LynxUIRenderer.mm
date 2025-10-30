@@ -69,6 +69,11 @@
   _uiOwner.uiContext.lynxContext = _lynxContext;
   _uiOwner.uiContext.contextDict = [builder.config.contextDict copy];
   _uiOwner.uiContext.lynxModuleExtraData = builder.lynxModuleExtraData;
+  _uiOwner.uiContext.imagePreviewHashMetadata = nil;
+  if ([builder.lynxViewConfig objectForKey:KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA]) {
+    _uiOwner.uiContext.imagePreviewHashMetadata =
+        [[builder.lynxViewConfig objectForKey:KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA] copy];
+  }
 }
 
 - (void)setupResourceProviderWithBuilder:(LynxViewBuilder *)builder {

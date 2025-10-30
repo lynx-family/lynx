@@ -4279,6 +4279,7 @@ public class LynxUIContext : NSObject {
   public id<LynxGenericResourceFetcher> LynxUIContext::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxUIContext::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
+  public NSString* LynxUIContext::imagePreviewHashMetadata imagePreviewHashMetadata;
   public BOOL LynxUIContext::defaultOverflowVisible defaultOverflowVisible;
   public BOOL LynxUIContext::defaultImplicitAnimation defaultImplicitAnimation;
   public BOOL LynxUIContext::enableTextRefactor enableTextRefactor;
@@ -6504,6 +6505,7 @@ public enum LynxImageRequestType {
 
 
   public NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG KEY_LYNX_PLATFORM_CONFIG;
+  public NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA;
 
   typedef struct MeasureResult MeasureResult
 

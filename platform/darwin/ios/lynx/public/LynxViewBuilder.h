@@ -15,6 +15,12 @@
  */
 static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
 
+/**
+ * Key for set image preview hash metadata to LynxViewConfig
+ */
+static NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA =
+    @"lynx_image_preview_hash_metadata";
+
 @interface LynxViewBuilder : LynxBaseConfigurator
 
 // legacy props that needs to be removed.
