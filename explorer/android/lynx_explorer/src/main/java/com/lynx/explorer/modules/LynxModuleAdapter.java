@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.explorer.LynxViewShellActivity;
@@ -114,6 +115,23 @@ public class LynxModuleAdapter {
     SharedPreferences p =
         mContext.getSharedPreferences(LynxViewShellActivity.PREFERENCES, Context.MODE_PRIVATE);
     p.edit().putString(theme, value).apply();
+  }
+
+  public void saveToLocalStorage(String key, String value) {
+    if (key == null) {
+      return;
+    }
+    SharedPreferences p =
+        mContext.getSharedPreferences(LynxViewShellActivity.PREFERENCES, Context.MODE_PRIVATE);
+    p.edit().putString(key, value).apply();
+  }
+
+  @Nullable
+  public String readFromLocalStorage(String key) {
+    SharedPreferences p =
+        mContext.getSharedPreferences(LynxViewShellActivity.PREFERENCES, Context.MODE_PRIVATE);
+    String value = p.getString(key, null);
+    return value;
   }
 
   private LynxModuleAdapter() {}

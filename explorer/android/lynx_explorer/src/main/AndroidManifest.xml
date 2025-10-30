@@ -15,7 +15,6 @@
         android:usesCleartextTraffic="true">
         <activity
             android:name=".LynxViewShellActivity"
-            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustNothing"
             android:exported="true"
             android:theme="@style/LynxShellTheme">

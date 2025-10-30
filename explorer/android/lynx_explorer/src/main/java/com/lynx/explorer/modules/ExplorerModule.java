@@ -57,4 +57,14 @@ public class ExplorerModule extends LynxModule {
   public void saveThemePreferences(String theme, String value) {
     LynxModuleAdapter.getInstance().saveThemePreferences(theme, value);
   }
+
+  @LynxMethod
+  public void saveToLocalStorage(String key, String value) {
+    LynxModuleAdapter.getInstance().saveToLocalStorage(key, value);
+  }
+
+  @LynxMethod
+  public String readFromLocalStorage(String key) {
+    return LynxModuleAdapter.getInstance().readFromLocalStorage(key);
+  }
 }

@@ -6,6 +6,7 @@ package com.lynx.explorer;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -53,7 +54,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private static final String URL_PREFIX = "file://lynx?local://";
   private static final String TAG = "LynxViewShellActivity";
   private static final String HOME_PAGE_URL =
-      "file://lynx?local://homepage.lynx.bundle?fullscreen=true";
+      "file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
   private static final String DEFAULT_TOP_BAR_COLOR = "#F0F2F5";
   private static final String DEFAULT_TOP_BAR_TITLE_COLOR = "#000000";
   private static final String DEFAULT_TOP_BAR_BACK_BUTTON_STYLE = "light";
@@ -233,7 +234,12 @@ public class LynxViewShellActivity extends AppCompatActivity {
     // Parse the URL parameters and specify the LynxView width, height, and density according to the
     // parameters.
     QueryMapUtils queryMap = new QueryMapUtils();
-    queryMap.parse(url);
+    if (isAssetFilename(url)) {
+      queryMap.parse(getAssetFilename(url));
+    } else {
+      queryMap.parse(url);
+    }
+
     if (queryMap.contains("width") && queryMap.contains("height")) {
       builder.setPresetMeasuredSpec(
           View.MeasureSpec.makeMeasureSpec(queryMap.getInt("width", 720), View.MeasureSpec.EXACTLY),
@@ -243,8 +249,23 @@ public class LynxViewShellActivity extends AppCompatActivity {
     if (queryMap.contains("density")) {
       builder.setDensity(queryMap.getFloat("density", 320) / 160.f);
     }
+
+    if (queryMap.contains("orientation")) {
+      switch (queryMap.getString("orientation")) {
+        case "portrait":
+          setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+          break;
+        case "landscape":
+          setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+          break;
+        default:
+          setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+          break;
+      }
+    }
+
     LynxView lynxView = builder.build(this);
-    lynxView.updateGlobalProps(getGlobalProps(this));
+    lynxView.updateGlobalProps(getGlobalProps(this, queryMap));
     extraTimingInfo.mPrepareTemplateStart = System.currentTimeMillis();
 
     renderLynxViewWithUrl(lynxView, url);
@@ -289,7 +310,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
       Log.i(TAG, "openTargetUrl failed: not supported url.");
     }
   }
-  private TemplateData getGlobalProps(Context context) {
+  private TemplateData getGlobalProps(Context context, QueryMapUtils queryMap) {
     DisplayMetrics displayMetrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(context);
     Map globalProps = new HashMap();
     globalProps.put("isNotchScreen", isNotchScreen());
@@ -311,6 +332,24 @@ public class LynxViewShellActivity extends AppCompatActivity {
     } else {
       globalProps.put("frontendTheme", "light");
     }
+
+    queryMap.toMap().forEach((key, value) -> {
+      int leadingUnderline = 0;
+      while (leadingUnderline < key.length() && key.charAt(leadingUnderline) == '_') {
+        leadingUnderline++;
+      }
+      key = key.substring(leadingUnderline);
+
+      String[] parts = key.split("_");
+      String propsKey = parts[0];
+      for (int i = 1; i < parts.length; i++) {
+        if (parts[i].isEmpty()) {
+          continue;
+        }
+        propsKey += parts[i].substring(0, 1).toUpperCase() + parts[i].substring(1);
+      }
+      globalProps.put(propsKey, value);
+    });
 
     return TemplateData.fromMap(globalProps);
   }
