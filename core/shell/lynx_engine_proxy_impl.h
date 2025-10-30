@@ -10,6 +10,7 @@
 #include <string>
 
 #include "core/public/lynx_engine_proxy.h"
+#include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_engine.h"
 
@@ -21,6 +22,7 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
   LynxEngineProxyImpl(
       std::shared_ptr<shell::LynxActor<shell::LynxEngine>> actor)
       : engine_actor_(actor) {}
+
   ~LynxEngineProxyImpl() = default;
 
   void DispatchTaskToLynxEngine(base::closure task) override;

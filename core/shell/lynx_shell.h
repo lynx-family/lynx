@@ -19,6 +19,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
+#include "core/public/list_engine_proxy.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/page_options.h"
 #include "core/renderer/data/template_data.h"
@@ -280,6 +281,15 @@ class LynxShell {
     return engine_actor_;
   }
 
+  std::shared_ptr<shell::ListEngineProxy> GetListEngineProxy() {
+    return list_engine_proxy_;
+  }
+
+  void SetListEngineProxy(
+      std::shared_ptr<shell::ListEngineProxy> list_engine_proxy) {
+    list_engine_proxy_ = list_engine_proxy;
+  }
+
   std::shared_ptr<LynxActor<tasm::LayoutContext>> GetLayoutActor() {
     return layout_actor_;
   }
@@ -367,6 +377,7 @@ class LynxShell {
       facade_actor_;  // on platform UI runner
 
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;  // on TASM runner
+  std::shared_ptr<ListEngineProxy> list_engine_proxy_;   // on JS
 
   std::shared_ptr<LynxActor<runtime::LynxRuntime>>
       runtime_actor_;  // on JS runner

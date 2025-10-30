@@ -11,6 +11,7 @@
 
 #include "base/include/closure.h"
 #include "core/public/list_data.h"
+#include "core/public/list_engine_proxy.h"
 #include "core/public/pub_value.h"
 
 namespace lynx {

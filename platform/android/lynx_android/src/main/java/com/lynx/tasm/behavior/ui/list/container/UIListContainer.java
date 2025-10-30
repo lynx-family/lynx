@@ -28,6 +28,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
 import com.lynx.tasm.IListNodeInfoFetcher;
+import com.lynx.tasm.ListNodeInfoFetcher;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -100,6 +101,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private Callback mScrollToCallback = null;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
 
+  public ListContainerProxy mListContainerProxy = null;
+
   private final NestedScrollContainerView.CustomScrollHook mCustomScrollHook =
       new NestedScrollContainerView.CustomScrollHook() {
         private int mInitialScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
@@ -116,9 +119,13 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
         @Override
         public void onSmoothScrollEnd() {
-          LynxContext context = getLynxContext();
-          if (context != null && context.getListNodeInfoFetcher() != null) {
-            getLynxContext().getListNodeInfoFetcher().scrollStopped(getSign());
+          if (mListContainerProxy != null) {
+            mListContainerProxy.scrollStopped(getSign());
+          } else {
+            LynxContext context = getLynxContext();
+            if (context != null && context.getListNodeInfoFetcher() != null) {
+              getLynxContext().getListNodeInfoFetcher().scrollStopped(getSign());
+            }
           }
         }
 
@@ -397,6 +404,14 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     super.onNodeReady();
     updateStickyStarts();
     updateStickyEnds();
+
+    if (mListContainerProxy == null
+        && getLynxContext().getListNodeInfoFetcher() instanceof ListNodeInfoFetcher) {
+      ListNodeInfoFetcher listNodeInfoFetcher =
+          (ListNodeInfoFetcher) getLynxContext().getListNodeInfoFetcher();
+      // lynx
+      mListContainerProxy = new ListContainerProxy(this, listNodeInfoFetcher.getListEngineProxy());
+    }
   }
 
   @Override
@@ -761,22 +776,22 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
 
     // Tell ListElement that we want scroll to some position
-    LynxContext context = getLynxContext();
-    IListNodeInfoFetcher listNodeInfoFetcher = null;
-    if (context != null) {
-      listNodeInfoFetcher = context.getListNodeInfoFetcher();
-    }
 
-    if (listNodeInfoFetcher != null) {
-      listNodeInfoFetcher.scrollToPosition(getSign(), position, offsetVal, alignTo, smooth);
-      if (!smooth) {
-        // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll on Most_On_Tasm
-        sendCustomEvent(mView.getScrollX(), mView.getScrollY(), mView.getScrollX(),
-            mView.getScrollY(), LynxScrollEvent.EVENT_SCROLL_END);
-        callback.invoke(LynxUIMethodConstants.SUCCESS);
-      }
+    if (mListContainerProxy != null) {
+      mListContainerProxy.scrollToPosition(getSign(), position, offsetVal, alignTo, smooth);
+    } else if (getLynxContext() != null && getLynxContext().getListNodeInfoFetcher() != null) {
+      getLynxContext().getListNodeInfoFetcher().scrollToPosition(
+          getSign(), position, offsetVal, alignTo, smooth);
     } else {
       callback.invoke(LynxUIMethodConstants.UNKNOWN, "List has been destroyed");
+      return;
+    }
+
+    if (!smooth) {
+      // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll on Most_On_Tasm
+      sendCustomEvent(mView.getScrollX(), mView.getScrollY(), mView.getScrollX(),
+          mView.getScrollY(), LynxScrollEvent.EVENT_SCROLL_END);
+      callback.invoke(LynxUIMethodConstants.SUCCESS);
     }
   }
 

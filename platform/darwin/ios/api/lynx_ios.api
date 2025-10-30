@@ -119,10 +119,11 @@ public class LineSpacingAdaptation : NSObject, <NSLayoutManagerDelegate> {
 }
 
 public class ListNodeInfoFetcher : NSObject, <ListNodeInfoFetcherProtocol> {
-  public instancetype ListNodeInfoFetcher::initWithShell:(int64_t shellPtr);
+  public instancetype ListNodeInfoFetcher::initWithShell:andListEngineProxy:(int64_t shellPtr,[andListEngineProxy] int64_t listEngineProxyPtr);
 }
 
 public protocol ListNodeInfoFetcherProtocol-p : <NSObject> {
+  public long ListNodeInfoFetcherProtocol-p::getListEngineProxyPtr();
   public void ListNodeInfoFetcherProtocol-p::scrollByListContainer:x:y:originalX:originalY:(int containerSign,[x] float x,[y] float y,[originalX] float originalX,[originalY] float originalY);
   public void ListNodeInfoFetcherProtocol-p::scrollToPosition:position:offset:align:smooth:(int containerSign,[position] int position,[offset] float offset,[align] int align,[smooth] BOOL smooth);
   public void ListNodeInfoFetcherProtocol-p::scrollStopped:(int containerSign);

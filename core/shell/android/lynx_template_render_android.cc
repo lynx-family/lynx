@@ -447,7 +447,9 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
   auto perf_controller_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(
           shell->GetPerfControllerActor());
-  ui_delegate->OnLynxCreate(std::move(engine_proxy), std::move(runtime_proxy),
+
+  ui_delegate->OnLynxCreate(shell->GetListEngineProxy(),
+                            std::move(engine_proxy), std::move(runtime_proxy),
                             std::move(perf_controller_proxy), nullptr, nullptr,
                             nullptr);
 }
@@ -1204,6 +1206,13 @@ void ScrollStopped(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
   reinterpret_cast<LynxShell*>(ptr)->ScrollStopped(sign);
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
+
+jlong GetListEngineProxy(JNIEnv* env, jclass jcaller, jlong ptr) {
+  auto engine_proxy = reinterpret_cast<lynx::shell::LynxShell*>(ptr)
+                          ->GetListEngineProxy()
+                          .get();
+  return reinterpret_cast<jlong>(engine_proxy);
+};
 
 jobject GetListPlatformInfo(JNIEnv* env, jclass jcaller, jlong ptr,
                             jlong lifecycle, jint tag) {

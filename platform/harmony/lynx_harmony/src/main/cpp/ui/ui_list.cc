@@ -183,6 +183,11 @@ void UIList::ResetItemSnapProp() {
 }
 
 void UIList::OnNodeReady() {
+  if (!list_container_proxy_) {
+    list_container_proxy_ = std::make_shared<shell::ListContainerProxy>(
+        context_->GetListEngineProxy().get());
+  }
+
   BaseScrollContainer::OnNodeReady();
   UpdateStickyView();
 }
@@ -836,12 +841,24 @@ void UIList::SetScrollState(list::ScrollState state) {
 void UIList::ScrollByListContainer(float content_offset_x,
                                    float content_offset_y, float original_x,
                                    float original_y) {
-  context_->ScrollByListContainer(Sign(), content_offset_x, content_offset_y,
-                                  original_x, original_y);
+  LOGE("KWB ScrollByListContainer");
+  if (list_container_proxy_) {
+    list_container_proxy_->ScrollByListContainer(
+        Sign(), content_offset_x, content_offset_y, original_x, original_y);
+  } else {
+    context_->ScrollByListContainer(Sign(), content_offset_x, content_offset_y,
+                                    original_x, original_y);
+  }
 }
 
 void UIList::ScrollToPosition(int index, float offset, int align, bool smooth) {
-  context_->ScrollToPosition(Sign(), index, offset, align, smooth);
+  if (list_container_proxy_) {
+    list_container_proxy_->ScrollToPosition(Sign(), index, offset, align,
+                                            smooth);
+  } else {
+    context_->ScrollToPosition(Sign(), index, offset, align, smooth);
+  }
+
   if (!smooth) {
     SendScrollEndEvent();
   }
@@ -852,7 +869,12 @@ void UIList::ScrollStopped() {
     scroll_callback_(LynxGetUIResult::SUCCESS, lepus_value(""));
     scroll_callback_ = nullptr;
   }
-  context_->ScrollStopped(Sign());
+  if (list_container_proxy_) {
+    list_container_proxy_->ScrollStopped(Sign());
+  } else {
+    context_->ScrollStopped(Sign());
+  }
+
   SendScrollEndEvent();
   SetScrollState(list::ScrollState::kIdle);
 }

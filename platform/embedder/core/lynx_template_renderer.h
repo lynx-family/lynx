@@ -18,6 +18,7 @@
 #include "core/public/ui_delegate.h"
 #include "core/renderer/data/template_data.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
@@ -246,6 +247,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void ClearGenericInfo();
 
   Settings settings_;
+  std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_;
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;

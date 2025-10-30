@@ -2130,6 +2130,7 @@ public interface com::lynx::tasm::fluency::LynxFpsTracer::IFluencyCallback {
 }
 
 public interface com::lynx::tasm::IListNodeInfoFetcher {
+  public long com.lynx.tasm.IListNodeInfoFetcher.getListEngineProxy();
   public JavaOnlyMap com.lynx.tasm.IListNodeInfoFetcher.getPlatformInfo(int listSign);
   public void com.lynx.tasm.IListNodeInfoFetcher.renderChild(int listSign, int index, long operationId);
   public void com.lynx.tasm.IListNodeInfoFetcher.updateChild(int listSign, int oldSign, int newIndex, long operationId);
@@ -3182,6 +3183,13 @@ public enum com::lynx::tasm::LynxSubErrorCode::Level {
   public com.lynx.tasm.LynxSubErrorCode.Level.Level(String value);
 }
 
+public class com::lynx::tasm::behavior::ui::list::container::ListContainerProxy :  {
+  public com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.ListContainerProxy(UIListContainer uiList, long ptr);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.scrollByListContainer(int sign, float x, float y, float originalX, float originalY);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.scrollToPosition(int sign, int position, float offset, int align, boolean smooth);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.scrollStopped(int sign);
+}
+
 public class com::lynx::tasm::behavior::ui::list::container::ListContainerView : com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
   public com.lynx.tasm.behavior.ui.list.container.ListContainerView.ListContainerView(@NonNull Context context, UIListContainer uiListContainer);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onInterceptTouchEvent(MotionEvent e);
@@ -3253,9 +3261,10 @@ public class com::lynx::tasm::behavior::ui::list::ListLayoutManager::ListLinearL
 }
 
 public class com::lynx::tasm::ListNodeInfoFetcher : com.lynx.tasm.IListNodeInfoFetcher {
-  public com.lynx.tasm.ListNodeInfoFetcher.ListNodeInfoFetcher(LynxTemplateRender renderer);
+  public com.lynx.tasm.ListNodeInfoFetcher.ListNodeInfoFetcher(LynxTemplateRender renderer, long shellPtr);
   public JavaOnlyMap com.lynx.tasm.ListNodeInfoFetcher.getPlatformInfo(int listSign);
   public void com.lynx.tasm.ListNodeInfoFetcher.renderChild(int listSign, int index, long operationId);
+  public long com.lynx.tasm.ListNodeInfoFetcher.getListEngineProxy();
   public void com.lynx.tasm.ListNodeInfoFetcher.updateChild(int listSign, int oldSign, int newIndex, long operationId);
   public void com.lynx.tasm.ListNodeInfoFetcher.removeChild(int listSign, int childSign);
   public int com.lynx.tasm.ListNodeInfoFetcher.obtainChild(int listSign, int index, long operationId, boolean enableReuseNotification);
@@ -4617,6 +4626,7 @@ public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder 
 public class com::lynx::tasm::core::LynxEngineProxy :  {
   public long com.lynx.tasm.core.LynxEngineProxy.getNativePtr();
   public com.lynx.tasm.core.LynxEngineProxy.LynxEngineProxy(long nativeCreator);
+  public com.lynx.tasm.core.LynxEngineProxy.LynxEngineProxy(LynxTemplateRender templateRender, long nativeCreator);
   public void com.lynx.tasm.core.LynxEngineProxy.destroy();
   public void com.lynx.tasm.core.LynxEngineProxy.dispatchTaskToLynxEngine(Runnable runnable);
   public void com.lynx.tasm.core.LynxEngineProxy.sendTouchEvent(LynxTouchEvent event);
@@ -6295,6 +6305,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public LynxEngineProxy com.lynx.tasm.LynxTemplateRender.getEngineProxy();
   public void com.lynx.tasm.LynxTemplateRender.sendCustomEvent(@NonNull LynxCustomEvent event);
   public JavaOnlyMap com.lynx.tasm.LynxTemplateRender.getListPlatformInfo(int listSign);
+  public long com.lynx.tasm.LynxTemplateRender.getListEngineProxy(long ptr);
   public void com.lynx.tasm.LynxTemplateRender.renderChild(int listSign, int index, long operationId);
   public void com.lynx.tasm.LynxTemplateRender.updateChild(int listSign, int oldSign, int newIndex, long operationId);
   public void com.lynx.tasm.LynxTemplateRender.removeChild(int listSign, int childSign);
@@ -10201,6 +10212,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public final int com.lynx.tasm.behavior.ui.list.container.UIListContainer.INVALID_SCROLL_ESTIMATED_OFFSET INVALID_SCROLL_ESTIMATED_OFFSET;
   public Map<String, Object> com.lynx.tasm.behavior.ui.list.container.UIListContainer.nativeListStateCache nativeListStateCache;
   public Map<String, HashSet<String> > com.lynx.tasm.behavior.ui.list.container.UIListContainer.initialFlushPropCache initialFlushPropCache;
+  public ListContainerProxy com.lynx.tasm.behavior.ui.list.container.UIListContainer.mListContainerProxy mListContainerProxy;
   public com.lynx.tasm.behavior.ui.list.container.UIListContainer.UIListContainer(LynxContext context);
   public com.lynx.tasm.behavior.ui.list.container.UIListContainer.UIListContainer(LynxContext context, Object params);
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.isScrollContainer();
