@@ -121,6 +121,25 @@ class LynxView {
 
   /**
    * @apidoc
+   * @brief Register a native view for the `LynxView`.
+   * @param tag_name The tag name of element, specifying exists tag name will
+   * override corresponding builtin element.
+   * @param opaque An opaque pointer to user-specific data.
+   */
+  template <typename T>
+  LynxView& RegisterNativeView(const std::string& tag_name,
+                               void* opaque = nullptr) {
+    lynx_view_register_native_view(
+        lynx_view_, tag_name.c_str(),
+        [](void* opaque) -> lynx_native_view_t* {
+          return (new T(opaque))->native_view();
+        },
+        opaque);
+    return *this;
+  }
+
+  /**
+   * @apidoc
    * @brief Register lifecycle event observer `LynxViewClient` for the
    * `LynxView`.
    * @param client The structure implemented by the client and registered to

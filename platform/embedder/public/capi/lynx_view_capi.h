@@ -109,6 +109,10 @@ LYNX_CAPI_EXPORT void lynx_view_enter_background(lynx_view_t*);
 // replay the bubble event.
 LYNX_CAPI_EXPORT void lynx_view_inject_bubble_event(lynx_view_t*,
                                                     const char* params);
+// Register instance-level view factory.
+LYNX_CAPI_EXPORT void lynx_view_register_native_view(
+    lynx_view_t*, const char* name, lynx_native_view_creator creator,
+    void* opaque);
 
 // Users should call lynx_view_release() to release the LynxView when it is no
 // longer needed.
