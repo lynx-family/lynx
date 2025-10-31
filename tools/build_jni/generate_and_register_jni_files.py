@@ -308,6 +308,13 @@ def get_modification_time_str(root_path, file_name):
     timestamp = os.path.getmtime(file_path)
     return f'{file_path}:{timestamp}#@'
 
+def get_java_class_list(java_class):
+  java_path_raw = java_class.get('java', '')
+  if type(java_path_raw) != set and type(java_path_raw) != list:
+    java_path_list = [java_path_raw]
+  else:
+    java_path_list = java_path_raw
+  return java_path_list
 def should_skip_generate_jni(root_path, jni_configs_file, jni_classes, jni_output_path, gn_file_path, so_load_file_path, use_base_jni_utils_header):
   # timestamps of files:
   # input: current script / jni_generator.py / config yaml script / java files
@@ -325,8 +332,9 @@ def should_skip_generate_jni(root_path, jni_configs_file, jni_classes, jni_outpu
   timestamps += get_modification_time_str(root_path, jni_configs_file)
   
   for java_class in jni_classes:
-    java_path = java_class.get('java', '')
-    timestamps += get_modification_time_str(root_path, java_path)
+    java_path_list = get_java_class_list(java_class)
+    for java_path in java_path_list:
+      timestamps += get_modification_time_str(root_path, java_path)
 
   # output file timestamps
   timestamps += get_modification_time_str(root_path, jni_output_path)
@@ -421,53 +429,55 @@ def generate_files(root_path, jni_configs_file, use_base_jni_utils_header):
   register_methods = []
   gn_files = []
   for input in jni_classes:
-    java_path = input.get('java', '')
+    java_path_list = get_java_class_list(input)
     register_method_name = input.get('register_method_name', '')
     macro = input.get('macro', '')
-    if len(java_path) == 0:
-      continue
-    if hash_map.get(java_path):
-      continue
-    if excluded_java_files.get(java_path):
-      continue
-    java_file_full_path = os.path.join(root_path, java_path)
-    if not os.path.exists(java_file_full_path):
-      print(f'Error: {java_file_full_path} is not exist.')
-      continue
-    hash_map[java_path] = True
-    java_file_name = os.path.basename(java_path)
-    java_base_name = os.path.splitext(java_file_name)[0]
-    if len(register_method_name) == 0:
-      register_method_name = 'RegisterJNIFor' + java_base_name
-    # file name
-    jni_file_name = java_base_name + '_jni.h'
-    jni_register_header_name = java_base_name + '_register_jni.h'
-    jni_register_source_name = java_base_name + '_register_jni.cc'
-    # file path
-    jni_file_path = os.path.join(root_path, jni_output_path, jni_file_name).replace("\\", "/")
-    jni_file_rel_path = os.path.relpath(jni_file_path, root_path).replace("\\", "/")
-    jni_register_header_abs_path = os.path.join(root_path, jni_output_path, jni_register_header_name).replace("\\", "/")
-    jni_register_header_rel_path = os.path.relpath(jni_register_header_abs_path, root_path).replace("\\", "/")
+    if register_method_name != '' and len(java_path_list) > 1:
+      print(f"register_method_name cannot match multiple Java classes, please declare them separately.")
+      return -1 
+    for java_path in java_path_list:
+      if hash_map.get(java_path):
+        continue
+      if excluded_java_files.get(java_path):
+        continue
+      java_file_full_path = os.path.join(root_path, java_path)
+      if not os.path.exists(java_file_full_path):
+        print(f'Error: {java_file_full_path} is not exist.')
+        continue
+      hash_map[java_path] = True
+      java_file_name = os.path.basename(java_path)
+      java_base_name = os.path.splitext(java_file_name)[0]
+      if len(register_method_name) == 0:
+        register_method_name = 'RegisterJNIFor' + java_base_name
+      # file name
+      jni_file_name = java_base_name + '_jni.h'
+      jni_register_header_name = java_base_name + '_register_jni.h'
+      jni_register_source_name = java_base_name + '_register_jni.cc'
+      # file path
+      jni_file_path = os.path.join(root_path, jni_output_path, jni_file_name).replace("\\", "/")
+      jni_file_rel_path = os.path.relpath(jni_file_path, root_path).replace("\\", "/")
+      jni_register_header_abs_path = os.path.join(root_path, jni_output_path, jni_register_header_name).replace("\\", "/")
+      jni_register_header_rel_path = os.path.relpath(jni_register_header_abs_path, root_path).replace("\\", "/")
 
-    include_header = f'#include "{jni_register_header_rel_path}"'
-    include_headers.append([include_header, macro])
-    register_method = '::'.join(get_namespace(jni_register_configs)) + f'::{register_method_name}(env);'
-    register_methods.append([register_method, macro])
+      include_header = f'#include "{jni_register_header_rel_path}"'
+      include_headers.append([include_header, macro])
+      register_method = '::'.join(get_namespace(jni_register_configs)) + f'::{register_method_name}(env);'
+      register_methods.append([register_method, macro])
 
-    gn_files.append(convert_to_relative_path(root_path, gn_file_path, jni_file_rel_path))
-    gn_files.append(convert_to_relative_path(root_path, gn_file_path, jni_register_header_rel_path))
+      gn_files.append(convert_to_relative_path(root_path, gn_file_path, jni_file_rel_path))
+      gn_files.append(convert_to_relative_path(root_path, gn_file_path, jni_register_header_rel_path))
 
-    # generate jni
-    options = Options(use_base_jni_utils_header)
-    print(jni_file_path)
-    GenerateJNIHeader(java_file_full_path, jni_file_path, options)
-    # generate register method header file
-    namespace_start_str, namespace_end_str = get_namespace_guard(jni_register_configs)
-    generate_register_header(java_path, 
-                             register_method_name, 
-                             jni_register_header_abs_path,
-                             namespace_start_str,
-                             namespace_end_str)
+      # generate jni
+      options = Options(use_base_jni_utils_header)
+      print(jni_file_path)
+      GenerateJNIHeader(java_file_full_path, jni_file_path, options)
+      # generate register method header file
+      namespace_start_str, namespace_end_str = get_namespace_guard(jni_register_configs)
+      generate_register_header(java_path, 
+                              register_method_name, 
+                              jni_register_header_abs_path,
+                              namespace_start_str,
+                              namespace_end_str)
 
   # generate SoLoad.cc
   if not so_load_file_path:
@@ -487,6 +497,8 @@ def generate_files(root_path, jni_configs_file, use_base_jni_utils_header):
     gn_files.sort()
     gn_configs['output_path'] = os.path.join(root_path, gn_file_path)
     append_files_to_gn(root_path, gn_configs, gn_files)
+  
+  return 0
 
 def main():
   parser = argparse.ArgumentParser()
@@ -498,8 +510,7 @@ def main():
   root_dir = args.root_dir
   use_base_jni_utils_header = args.use_base_jni_utils_header
 
-  generate_files(root_dir, jni_config_path, use_base_jni_utils_header)
-  return 0
+  return generate_files(root_dir, jni_config_path, use_base_jni_utils_header)
 
 if __name__ == "__main__":
   sys.exit(main())

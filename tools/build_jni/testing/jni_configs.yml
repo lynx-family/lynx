@@ -31,6 +31,8 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxBackgroundRuntime.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/JavaOnlyMap.java
       register_method_name: RegisterJNIForJavaOnlyMapTest
-    - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/JavaOnlyArray.java
+    - java:
+        - platform/android/lynx_android/src/main/java/com/lynx/react/bridge/JavaOnlyArray.java
+        - platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/shadow/LayoutNode.java
       macro: TEST_MACRO
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxError.java

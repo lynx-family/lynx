@@ -62,8 +62,21 @@ jni_class_configs:
         jni_class_configs.jni_classes & java:lynx
     # Process a single Java class
     - java: platform/android/lynx_android/.../Example.java  # Path to the Java source file (relative to -root)
-      register_method_name: RegisterJNIForExample           # Override the default registration function name
-      macro: TEST_MACRO                                     # Wrap generated code in an #ifdef
+      register_method_name: RegisterJNIForExample           # [Optional] Override the default registration function name
+      macro: TEST_MACRO                                     # [Optional] Wrap generated code in the #ifdef and #endif
+```
+
+If there is a macro controlling the inclusion of multiple Java classes, you can declare them as follows:
+
+```yaml
+jni_class_configs:
+  output_dir: "tools/build_jni/testing/gen"                 
+  jni_classes:                                             
+    # Process two or more Java classes
+    - java: 
+        - platform/android/lynx_android/.../Example.java
+        - platform/android/lynx_android/.../demo.java
+      macro: TEST_MACRO
 ```
 
 ### 3. `gn_configs`

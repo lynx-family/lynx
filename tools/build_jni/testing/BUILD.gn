@@ -12,6 +12,8 @@ lynx_source_set("build") {
     "gen/JavaOnlyArray_register_jni.h",
     "gen/JavaOnlyMap_jni.h",
     "gen/JavaOnlyMap_register_jni.h",
+    "gen/LayoutNode_jni.h",
+    "gen/LayoutNode_register_jni.h",
     "gen/LynxBackgroundRuntime_jni.h",
     "gen/LynxBackgroundRuntime_register_jni.h",
     "gen/LynxError_jni.h",
