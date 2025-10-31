@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
+#import "LynxTemplateData+Converter.h"
+#include "core/runtime/common/utils.h"
+#include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {
 namespace pub {
@@ -387,6 +390,27 @@ bool ValueImplDarwin::PushUInt64ToMap(const std::string& key, uint64_t value) {
   [(NSMutableDictionary*)backend_value_ setObject:[NSNumber numberWithUnsignedLongLong:value]
                                            forKey:[NSString stringWithUTF8String:key.c_str()]];
   return true;
+}
+
+bool ValueImplDarwin::IsTemplateData() const {
+  return [backend_value_ isKindOfClass:LynxTemplateData.class];
+}
+
+std::unique_ptr<Value> ValueImplDarwin::ParseTemplateData(
+    std::shared_ptr<PubValueFactory> value_factory) const {
+  if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
+    piper::Runtime* rt = reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
+    piper::Scope scope(*rt);
+    if (IsTemplateData()) {
+      auto value = *LynxGetLepusValueFromTemplateData(backend_value_);
+
+      auto result = piper::valueFromLepus(*rt, value);
+      if (result.has_value()) {
+        return std::make_unique<ValueImplPiper>(*rt, std::move(*result));
+      }
+    }
+  }
+  return nullptr;
 }
 
 // PubValueFactoryDarwin
