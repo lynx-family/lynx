@@ -21,26 +21,33 @@ if (enable_napi_binding) {
     "napi/value_impl_napi_primjs.h",
   ]
 }
+
+value_wrapper_platform_sources = []
 if (is_android) {
-  value_wrapper_shared_sources += [
+  value_wrapper_platform_sources += [
     "android/value_impl_android.cc",
     "android/value_impl_android.h",
   ]
 } else if (is_harmony) {
-  value_wrapper_shared_sources += [
+  value_wrapper_platform_sources += [
     "harmony/value_impl_napi.cc",
     "harmony/value_impl_napi.h",
   ]
-} else if (is_apple) {
-  value_wrapper_shared_sources += [
+} else if (is_apple && !enable_unittests) {
+  value_wrapper_platform_sources += [
     "darwin/value_impl_darwin.h",
     "darwin/value_impl_darwin.mm",
   ]
 }
 
-lynx_core_source_set("value_wrapper") {
+lynx_core_source_set("value_wrapper_common") {
   sources = value_wrapper_shared_sources
-  deps = [ "../../base/src:base_log_headers" ]
+  public_deps = [ "../../base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("value_wrapper") {
+  sources = value_wrapper_platform_sources + value_wrapper_shared_sources
+  public_deps = [ "../../base/src:base_log_headers" ]
 }
 
 lynx_core_source_set("value_impl_android_unittest") {

@@ -192,7 +192,7 @@ if (build_lynx_lepus_node) {
       "../../core/runtime/common:reporter",
       "../../core/runtime/jsi:jsi",
       "../../core/template_bundle/template_codec:template_encoder",
-      "../../core/value_wrapper:value_wrapper",
+      "../../core/value_wrapper:value_wrapper_common",
       "../../third_party/double-conversion:double_conversion",
     ]
 
