@@ -377,9 +377,9 @@ void ContextBinaryWriter::EncodeCSSValue(const tasm::CSSValue& css_value,
     // pattern
     WriteCompactU32((uint16_t)css_value.GetPattern());
     // value
-    EncodeValue(&(css_value.GetValue()));
+    EncodeValue(&tasm::CSSValue::Unsafe::GetValueStorage(css_value));
   } else {
-    EncodeValue(&(css_value.GetValue()));
+    EncodeValue(&tasm::CSSValue::Unsafe::GetValueStorage(css_value));
   }
 
   if (enable_css_variable) {

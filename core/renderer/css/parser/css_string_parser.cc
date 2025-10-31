@@ -218,9 +218,9 @@ CSSValue CSSStringParser::ParseSingleBorderRadius() {
     radii[1] = radii[0];
   }
   auto array = lepus::CArray::Create();
-  array->emplace_back(std::move(radii[0].GetValue()));
+  array->emplace_back(radii[0].GetValue());
   array->emplace_back(static_cast<int>(radii[0].GetPattern()));
-  array->emplace_back(std::move(radii[1].GetValue()));
+  array->emplace_back(radii[1].GetValue());
   array->emplace_back(static_cast<int>(radii[1].GetPattern()));
   return CSSValue(std::move(array));
 }
@@ -820,7 +820,7 @@ bool CSSStringParser::BasicShapeInset() {
   }
   Complete4Sides(insets);
   for (auto &inset : insets) {
-    arr->emplace_back(std::move(inset.GetValue()));
+    arr->emplace_back(inset.GetValue());
     arr->emplace_back(static_cast<uint32_t>(inset.GetPattern()));
   }
 
@@ -1470,9 +1470,9 @@ bool CSSStringParser::RadialGradient() {
     if (shape_size ==
         static_cast<uint32_t>(starlight::RadialGradientSizeType::kLength)) {
       shape_arr->emplace_back(static_cast<uint32_t>(size_x.GetPattern()));
-      shape_arr->emplace_back(std::move(size_x.GetValue()));
+      shape_arr->emplace_back(size_x.GetValue());
       shape_arr->emplace_back(static_cast<uint32_t>(size_y.GetPattern()));
-      shape_arr->emplace_back(std::move(size_y.GetValue()));
+      shape_arr->emplace_back(size_y.GetValue());
     }
     radial_gradient_obj->emplace_back(std::move(shape_arr));
   }
@@ -2824,7 +2824,7 @@ bool CSSStringParser::ConsumeLengthAndSetValue(
   if (value.IsEmpty()) {
     return false;
   }
-  arr->emplace_back(std::move(value.GetValue()));
+  arr->emplace_back(value.GetValue());
   arr->emplace_back(static_cast<int>(value.GetPattern()));
   return true;
 }
@@ -3059,7 +3059,7 @@ CSSValue CSSStringParser::FilterBlurValue(const Token &function_token) {
 
   // append to result array
   if (!blur.IsEmpty() && Check(TokenType::TOKEN_EOF)) {
-    result->emplace_back(std::move(blur.GetValue()));
+    result->emplace_back(blur.GetValue());
     result->emplace_back(static_cast<uint32_t>(blur.GetPattern()));
     return CSSValue(std::move(result));
   }
@@ -3085,7 +3085,7 @@ CSSValue CSSStringParser::FilterGrayscaleValue(const Token &function_token) {
 
   CSSValue grayscale = grayscale_parser.ParseGrayscale();
   if (!grayscale.IsEmpty() && Check(TokenType::TOKEN_EOF)) {
-    result->emplace_back(std::move(grayscale.GetValue()));
+    result->emplace_back(grayscale.GetValue());
     result->emplace_back(static_cast<uint32_t>(CSSValuePattern::PERCENT));
     return CSSValue(std::move(result));
   }
@@ -3274,7 +3274,7 @@ lepus::Value CSSStringParser::ParseSingleShadow(bool inset_and_spread) {
       continue;
     }
     auto arr = lepus::CArray::Create();
-    arr->emplace_back(std::move(lengths[i].GetValue()));
+    arr->emplace_back(lengths[i].GetValue());
     arr->emplace_back(static_cast<int>(lengths[i].GetPattern()));
     dict->SetValue(props[i], std::move(arr));
   }
@@ -3701,7 +3701,7 @@ bool CSSStringParser::ParseNumberOrArray(bool single, TokenFunc is_token,
         if (value.IsEmpty()) {
           return false;
         }
-        arr->emplace_back(std::move(value.GetValue()));
+        arr->emplace_back(value.GetValue());
       } else {
         return false;
       }
@@ -3944,7 +3944,7 @@ bool CSSStringParser::ParseTransition(bool single, lepus::Value arr[4]) {
     arr[1].SetNumber(layer.duration);
     arr[2].SetNumber(layer.delay);
     auto timing_array = lepus::CArray::Create();
-    timing_array->emplace_back(std::move(layer.timing_function.GetValue()));
+    timing_array->emplace_back(layer.timing_function.GetValue());
     arr[3].SetArray(std::move(timing_array));
     return AtEnd();
   } else {
@@ -3968,7 +3968,7 @@ bool CSSStringParser::ParseTransition(bool single, lepus::Value arr[4]) {
       property_array->emplace_back(static_cast<int>(layer.property));
       duration_array->emplace_back(layer.duration);
       delay_array->emplace_back(layer.delay);
-      timing_array->emplace_back(std::move(layer.timing_function.GetValue()));
+      timing_array->emplace_back(layer.timing_function.GetValue());
     } while (Consume(TokenType::COMMA));
 
     arr[0].SetArray(std::move(property_array));
@@ -4062,7 +4062,7 @@ bool CSSStringParser::ParseAnimation(bool single, lepus::Value arr[8]) {
     arr[1].SetNumber(layer.duration);
     arr[2].SetNumber(layer.delay);
     auto timing_array = lepus::CArray::Create();
-    timing_array->emplace_back(std::move(layer.timing_function.GetValue()));
+    timing_array->emplace_back(layer.timing_function.GetValue());
     arr[3].SetArray(std::move(timing_array));
     arr[4].SetNumber(layer.count);
     arr[5].SetNumber(static_cast<int>(layer.direction));
@@ -4087,7 +4087,7 @@ bool CSSStringParser::ParseAnimation(bool single, lepus::Value arr[8]) {
       name_array->emplace_back(layer.name);
       duration_array->emplace_back(layer.duration);
       delay_array->emplace_back(layer.delay);
-      timing_array->emplace_back(std::move(layer.timing_function.GetValue()));
+      timing_array->emplace_back(layer.timing_function.GetValue());
       count_array->emplace_back(layer.count);
       direction_array->emplace_back(static_cast<int>(layer.direction));
       fill_mode_array->emplace_back(static_cast<int>(layer.fill_mode));

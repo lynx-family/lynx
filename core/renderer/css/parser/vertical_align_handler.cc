@@ -57,7 +57,7 @@ HANDLER_IMPL() {
 
   array->emplace_back(static_cast<int>(vertical_align_type));
   array->emplace_back(static_cast<int>(CSSValuePattern::ENUM));
-  array->emplace_back(std::move(css_value.GetValue()));
+  array->emplace_back(css_value.GetValue());
   array->emplace_back(static_cast<int32_t>(css_value.GetPattern()));
   output.emplace_or_assign(key, std::move(array));
   return true;

@@ -1604,7 +1604,7 @@ lepus::Value CSSStyleUtils::GetGradientArrayFromString(
     lynx::starlight::CSSStyleUtils::ComputeRadialGradient(gradientData, context,
                                                           configs);
   }
-  return std::move(value.GetValue());
+  return value.GetValue();
 }
 
 }  // namespace starlight

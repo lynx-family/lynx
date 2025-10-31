@@ -157,7 +157,25 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return CSSValue(lepus::Value(enumType), CSSValuePattern::ENUM);
   }
 
-  lepus::Value& GetValue() const { return value_; }
+  // TODO(yuyang), The `value_` variable in `CSSValue` will no longer be of type
+  // `lepus::Value`.
+  lepus::Value GetValue() const { return value_; }
+
+  // TODO(yuyang), remove Unsafe after all refactor completes.
+  class Unsafe {
+    // ATTENTION: function under this class is for optimization purpose and is
+    // UNSAFE to use.
+   public:
+    Unsafe() = delete;
+    static inline lepus::Value& GetValueStorage(CSSValue& value) {
+      return value.value_;
+    }
+
+    static inline const lepus::Value& GetValueStorage(const CSSValue& value) {
+      return value.value_;
+    }
+  };
+
   CSSValuePattern GetPattern() const { return pattern_; }
   CSSValueType GetValueType() const { return type_; }
   base::String& GetDefaultValue() const { return default_value_; }
@@ -300,6 +318,8 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
  private:
   class CycleDetector;
+  friend class Unsafe;
+
   static std::string Substitution(
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       const CycleDetector& detector, int max_depth = 10,

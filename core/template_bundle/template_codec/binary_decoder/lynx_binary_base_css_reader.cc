@@ -355,10 +355,10 @@ bool LynxBinaryBaseCSSReader::DecodeCSSValue(
     bool enable_css_variable_multi_default_value) {
   if (enable_css_parser) {
     DECODE_COMPACT_U32(pattern);
-    DECODE_VALUE_INTO(result->GetValue());
+    DECODE_VALUE_INTO(tasm::CSSValue::Unsafe::GetValueStorage(*result));
     result->SetPattern(static_cast<tasm::CSSValuePattern>(pattern));
   } else {
-    DECODE_VALUE_INTO(result->GetValue());
+    DECODE_VALUE_INTO(tasm::CSSValue::Unsafe::GetValueStorage(*result));
   }
   if (enable_css_variable) {
     DECODE_COMPACT_U32(value_type);

@@ -42,7 +42,7 @@ bool ParserTrackListValue(const std::string& len_arr_str,
       return false;
     }
 
-    array->emplace_back(std::move(css_value.GetValue()));
+    array->emplace_back(css_value.GetValue());
     array->emplace_back(static_cast<int32_t>(css_value.GetPattern()));
     return true;
   };

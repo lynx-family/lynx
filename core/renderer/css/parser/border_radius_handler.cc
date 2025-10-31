@@ -36,9 +36,9 @@ HANDLER_IMPL() {
           kPropertyIDBorderBottomLeftRadius};
       for (int i = 0; i < 4; i++) {
         auto container = lepus::CArray::Create();
-        container->emplace_back(std::move(x_radii[i].GetValue()));
+        container->emplace_back(x_radii[i].GetValue());
         container->emplace_back(static_cast<int>(x_radii[i].GetPattern()));
-        container->emplace_back(std::move(y_radii[i].GetValue()));
+        container->emplace_back(y_radii[i].GetValue());
         container->emplace_back(static_cast<int>(y_radii[i].GetPattern()));
         output.emplace_or_assign(radius_key_array[i], std::move(container));
       }
