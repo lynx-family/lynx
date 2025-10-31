@@ -159,7 +159,9 @@ bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
 std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     const std::string& group_id,
     std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
-    std::vector<std::pair<std::string, std::string>>& js_pre_sources,
+    base::MoveOnlyClosure<
+        std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>>
+        js_pre_sources_getter,
     bool force_use_lightweight_js_engine, piper::JSExecutor& executor,
     int64_t rt_id, bool ensure_console, bool enable_bytecode,
     const std::string& bytecode_source_url,
@@ -288,6 +290,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     }
 
     piper::GCPauseSuppressionMode mode(global_runtime.get());
+    auto js_pre_sources = js_pre_sources_getter();
     context_wrapper->loadPreJS(js_runtime, js_pre_sources);
   } else {
     // share context also need call this, because lynx_runtime is different.

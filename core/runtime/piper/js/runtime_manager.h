@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "core/base/lynx_export.h"
 #include "core/public/page_options.h"
 #include "core/runtime/jsi/jsi.h"
@@ -78,7 +79,9 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   std::shared_ptr<piper::Runtime> CreateJSRuntime(
       const std::string& group_id,
       std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
-      std::vector<std::pair<std::string, std::string>>& js_pre_sources,
+      base::MoveOnlyClosure<
+          std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>>
+          js_pre_sources_getter,
       bool forceUseLightweightJSEngine, piper::JSExecutor& executor,
       int64_t rt_id, bool ensure_console, bool enable_bytecode,
       const std::string& bytecode_source_url,

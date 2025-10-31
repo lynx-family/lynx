@@ -15,7 +15,8 @@ JSContextWrapper::JSContextWrapper(std::shared_ptr<piper::JSIContext> context)
 
 void JSContextWrapper::loadPreJS(
     std::weak_ptr<piper::Runtime> js_runtime,
-    std::vector<std::pair<std::string, std::string>>& js_preload) {
+    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>&
+        js_preload) {
   if (js_core_loaded_) {
     return;
   }
@@ -27,8 +28,7 @@ void JSContextWrapper::loadPreJS(
 
   // load the lynx_core.js
   piper::Scope scope(*rt);
-  for (auto& [url, source] : js_preload) {
-    auto buffer = std::make_shared<piper::StringBuffer>(source);
+  for (auto& [url, buffer] : js_preload) {
     auto prep = rt->prepareJavaScript(buffer, url);
     auto ret = rt->evaluatePreparedJavaScript(prep);
     if (!ret.has_value()) {

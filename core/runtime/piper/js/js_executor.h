@@ -32,7 +32,6 @@ class RuntimeManagerDelegate;
 }  // namespace runtime
 
 namespace piper {
-
 class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
  public:
   JSExecutor(const std::shared_ptr<JSIExceptionHandler>& handler,
@@ -48,7 +47,9 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   void Destroy();
 
   void loadPreJSBundle(
-      std::vector<std::pair<std::string, std::string>>& js_pre_sources,
+      base::MoveOnlyClosure<
+          std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>>
+          js_pre_sources_getter,
       bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
       const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
       const tasm::PageOptions& page_options);

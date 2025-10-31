@@ -180,11 +180,8 @@ void LynxRuntime::Init(
       module_manager, runtime_observer,
       runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
 
-  if (runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) {
-    InitPartRuntime(std::move(preload_js_paths));
-  } else {
-    InitFullRuntime(std::move(preload_js_paths));
-  }
+  InitExecutor(!(runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD),
+               std::move(preload_js_paths));
   LOGI("js_runtime_type :" << static_cast<int32_t>(
                                   js_executor_->getJSRuntimeType())
                            << " " << this);
@@ -211,31 +208,26 @@ void LynxRuntime::Init(
   }
 }
 
-void LynxRuntime::InitFullRuntime(std::vector<std::string> preload_js_paths) {
-  std::vector<std::pair<std::string, std::string>> preload_js_sources;
-  // read lynx_core.js
-  ReadCoreJS(preload_js_sources);
-  // read preload js
-  ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
-  // init jsvm runtime
-  InitExecutor(std::move(preload_js_sources));
-}
-
-void LynxRuntime::InitPartRuntime(std::vector<std::string> preload_js_paths) {
-  std::vector<std::pair<std::string, std::string>> preload_js_sources;
-  ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
-  InitExecutor(std::move(preload_js_sources));
-}
-
-void LynxRuntime::InitExecutor(
-    std::vector<std::pair<std::string, std::string>> preload_js_sources) {
+void LynxRuntime::InitExecutor(bool is_full_runtime,
+                               std::vector<std::string> preload_js_paths) {
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreStart);
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, LYNX_JS_LOAD_CORE);
+  auto preload_js_sources_getter =
+      [&, preload_js_paths = std::move(preload_js_paths), is_full_runtime]()
+      -> std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>> {
+    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>
+        preload_js_sources;
+    if (is_full_runtime) {
+      ReadCoreJS(preload_js_sources);
+    }
+    ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
+    return preload_js_sources;
+  };
   // FIXME(wangboyong):invoke before decode...in fact in 1.4
   // here NeedGlobalConsole always return true...
   // bool need_console = delegate_->NeedGlobalConsole();
   js_executor_->loadPreJSBundle(
-      preload_js_sources, true, GetRuntimeId(),
+      std::move(preload_js_sources_getter), true, GetRuntimeId(),
       runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE,
       bytecode_source_url_,
       [delegate_ptr = delegate_.get()](const std::string& url) {
@@ -243,7 +235,6 @@ void LynxRuntime::InitExecutor(
       },
       page_options_);
   js_executor_->SetObserver(delegate_.get());
-
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);
 }
@@ -257,12 +248,12 @@ void LynxRuntime::TransitionToFullRuntime() {
   if (!rt) {
     return;
   }
-  std::vector<std::pair<std::string, std::string>> preload_js_sources;
+  std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>
+      preload_js_sources;
   ReadCoreJS(preload_js_sources);
   // load the lynx_core.js
   piper::Scope scope(*rt);
-  for (auto& [url, source] : preload_js_sources) {
-    auto buffer = std::make_shared<piper::StringBuffer>(source);
+  for (auto& [url, buffer] : preload_js_sources) {
     auto prep = rt->prepareJavaScript(buffer, url);
     auto ret = rt->evaluatePreparedJavaScript(prep);
     if (!ret.has_value()) {
@@ -281,17 +272,18 @@ void LynxRuntime::SetJsBundleHolder(
 
 void LynxRuntime::ReadPreloadJSSource(
     std::vector<std::string> preload_js_paths,
-    std::vector<std::pair<std::string, std::string>>& ret) {
+    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret) {
   for (auto&& path : preload_js_paths) {
     std::string res = delegate_->LoadJSSource(path);
     if (res.length() > 0) {
-      ret.emplace_back(std::move(path), std::move(res));
+      ret.emplace_back(std::move(path),
+                       std::make_shared<piper::StringBuffer>(std::move(res)));
     }
   }
 }
 
 void LynxRuntime::ReadCoreJS(
-    std::vector<std::pair<std::string, std::string>>& ret) {
+    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret) {
   if (!js_core_source_ || js_core_source_->length() <= 0 ||
       (runtime_flags_ & LynxRuntimeFlags::FORCE_RELOAD_CORE_JS)) {
     delete js_core_source_;
@@ -300,7 +292,8 @@ void LynxRuntime::ReadCoreJS(
     DCHECK(js_core_source_->length() > 0);
     delegate_->OnCoreJSUpdated(*js_core_source_);
   }
-  ret.emplace_back(kLynxCoreJSName, *js_core_source_);
+  ret.emplace_back(kLynxCoreJSName,
+                   std::make_shared<piper::StringViewBuffer>(*js_core_source_));
 }
 
 void LynxRuntime::UpdateState(State state) {

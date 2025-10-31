@@ -67,6 +67,18 @@ class StringBuffer : public Buffer {
   std::string s_;
 };
 
+class StringViewBuffer : public Buffer {
+ public:
+  explicit StringViewBuffer(std::string_view s) : s_(std::move(s)) {}
+  size_t size() const override { return s_.size(); }
+  const uint8_t* data() const override {
+    return reinterpret_cast<const uint8_t*>(s_.data());
+  }
+
+ private:
+  std::string_view s_;
+};
+
 class ByteBuffer : public Buffer {
  public:
   explicit ByteBuffer(std::vector<uint8_t>&& data) : data_(std::move(data)) {}

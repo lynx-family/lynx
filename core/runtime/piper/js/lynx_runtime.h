@@ -205,12 +205,11 @@ class LynxRuntime final {
   void DestroyAppAndNapi();
   void ReadPreloadJSSource(
       std::vector<std::string> preload_js_paths,
-      std::vector<std::pair<std::string, std::string>>& ret);
-  void ReadCoreJS(std::vector<std::pair<std::string, std::string>>& ret);
-  void InitPartRuntime(std::vector<std::string> preload_js_paths);
-  void InitFullRuntime(std::vector<std::string> preload_js_paths);
-  void InitExecutor(
-      std::vector<std::pair<std::string, std::string>> preload_js_sources);
+      std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret);
+  void ReadCoreJS(
+      std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret);
+  void InitExecutor(bool is_full_runtime,
+                    std::vector<std::string> preload_js_paths);
   void UpdateState(State state);
   void OnRuntimeReady();
   void OnSsrRuntimeReady();

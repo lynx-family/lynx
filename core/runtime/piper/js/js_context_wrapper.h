@@ -36,8 +36,10 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
 
   bool isGlobalInited() { return global_inited_; }
   bool isJSCoreLoaded() { return js_core_loaded_; }
-  void loadPreJS(std::weak_ptr<piper::Runtime> js_runtime,
-                 std::vector<std::pair<std::string, std::string>>& js_preload);
+  void loadPreJS(
+      std::weak_ptr<piper::Runtime> js_runtime,
+      std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>&
+          js_preload);
   std::shared_ptr<piper::JSIContext> getJSContext() {
     return js_context_.lock();
   }
