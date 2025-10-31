@@ -57,12 +57,14 @@ TEST_F(JavaScriptDebuggerNGTest, SendResponse) {
     devtool->message_sender_ = message_sender;
 
     debugger_->SendResponse(message);
+    sleep(1);
     EXPECT_EQ(MockReceiver::GetInstance().received_message_.first, "CDP");
     EXPECT_EQ(MockReceiver::GetInstance().received_message_.second, message);
   }
 
   MockReceiver::GetInstance().received_message_ = {"", ""};
   debugger_->SendResponse(message);
+  sleep(1);
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.first, "");
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.second, "");
 }
