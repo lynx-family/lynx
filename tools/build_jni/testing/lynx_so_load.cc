@@ -18,6 +18,9 @@
 #include "tools/build_jni/testing/gen/JavaOnlyArray_register_jni.h"
 #endif
 #include "tools/build_jni/testing/gen/JavaOnlyMap_register_jni.h"
+#if TEST_MACRO
+#include "tools/build_jni/testing/gen/LayoutNode_register_jni.h"
+#endif
 #include "tools/build_jni/testing/gen/LynxBackgroundRuntime_register_jni.h"
 #include "tools/build_jni/testing/gen/LynxError_register_jni.h"
 #include "tools/build_jni/testing/gen/LynxTemplateRender_register_jni.h"
@@ -25,12 +28,20 @@
 // AUTO_GENERATED_INCLUDE_HEADERS_END
 
 namespace lynx {
-
+namespace jni {
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   lynx::base::android::InitVM(vm);
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  lynx::base::logging::RegisterJNI(env);
   lynx::fml::MessageLoopAndroid::Register(env);
+  lynx::base::logging::RegisterJNI(env);
+  lynx::piper::JSBUtilsRegisterJNI(env);
+  lynx::piper::JSBUtilsMapRegisterJNI(env);
+#if TEST_MACRO_
+  lynx::piper::LynxPromiseImpl::RegisterJNI(env);
+#endif
+#if TEST_MACRO
+  lynx::jni::RegisterJNIForJavaOnlyArray(env);
+#endif
 #if TEST_MACRO
   lynx::jni::RegisterJNIForJavaOnlyArray(env);
 #endif
@@ -38,13 +49,9 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   lynx::jni::RegisterJNIForLynxBackgroundRuntime(env);
   lynx::jni::RegisterJNIForLynxError(env);
   lynx::jni::RegisterJNIForLynxTemplateRender(env);
-  lynx::piper::JSBUtilsMapRegisterJNI(env);
-  lynx::piper::JSBUtilsRegisterJNI(env);
-#if TEST_MACRO_
-  lynx::piper::LynxPromiseImpl::RegisterJNI(env);
-#endif
 
   return JNI_VERSION_1_6;
 }
 
+}  // namespace jni
 }  // namespace lynx
