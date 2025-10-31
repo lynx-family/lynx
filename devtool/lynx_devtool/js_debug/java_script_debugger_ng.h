@@ -71,7 +71,14 @@ class JavaScriptDebuggerNG
     Json::Value mes;
     Json::Reader reader;
     reader.parse(message, mes, false);
-    sp->SendCDPEvent(mes);
+    sp->RunOnDevToolThread(
+        [mediator = devtool_mediator_wp_, mes] {
+          auto sp = mediator.lock();
+          if (sp) {
+            sp->SendCDPEvent(mes);
+          }
+        },
+        false);
   }
 
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
