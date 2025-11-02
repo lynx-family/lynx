@@ -230,7 +230,7 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode,
   // TODO(nihao.royal): maybe add a platform interface to enable the runtime
   // leak checker later;
   bool debuggable = page_options.GetDebuggable();
-  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable) {
+  if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker() || debuggable) {
     EnableRuntimeLeakCheck(true);
     PushContextValidTid();
   }
