@@ -124,6 +124,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_CSS_INLINE_VARIABLES,
     ENABLE_OPTIMIZE_HAS_OPACITY,
     DISABLE_JS_MODE_STRIP,
+    ENABLE_QUICKJS_THREAD_CHECKER,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -261,6 +262,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_CSS_INLINE_VARIABLES, "enable_css_inline_variables"},
             {Key::ENABLE_OPTIMIZE_HAS_OPACITY, "enable_optimize_has_opacity"},
             {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
+            {Key::ENABLE_QUICKJS_THREAD_CHECKER,
+             "enable_quickjs_thread_checker"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -404,6 +407,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableCSSInlineVariables();
   bool EnableOptimizeHasOpacity();
   bool DisableJSModeStrip();
+  bool EnableQuickJsThreadChecker();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

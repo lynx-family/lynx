@@ -536,5 +536,11 @@ bool LynxEnv::DisableJSModeStrip() {
       GetBoolEnv(Key::DISABLE_JS_MODE_STRIP, false);
   return disable_js_mode_strip;
 }
+
+bool LynxEnv::EnableQuickJsThreadChecker() {
+  static bool enable_quickjs_thread_checker =
+      GetBoolEnv(Key::ENABLE_QUICKJS_THREAD_CHECKER, false);
+  return enable_quickjs_thread_checker || IsDevToolEnabled();
+}
 }  // namespace tasm
 }  // namespace lynx
