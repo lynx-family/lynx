@@ -251,8 +251,8 @@ void ListElement::NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,
               });
 
   if (child) {
-    element_manager_->painting_context()->ListReusePaintingNode(
-        child->impl_id(), item_key);
+    element_container()->ListReusePaintingNode(child->impl_id(),
+                                               item_key.str());
   }
 }
 

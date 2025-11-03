@@ -20,8 +20,7 @@ using starlight::LayoutResultForRendering;
 // via DisplayList. Owned by an element; lifetime must not exceed that element.
 class Fragment : public ElementContainer {
  public:
-  Fragment(Element* element, bool is_flatten,
-           const fml::RefPtr<PropBundle>& painting_data);
+  Fragment(Element* element);
 
   ~Fragment() override = default;
 
@@ -41,7 +40,6 @@ class Fragment : public ElementContainer {
   const int sign_;
 
   LayoutResultForRendering layout_result_for_rendering_;
-  PaintingContext* painting_context_;
 
   // XXX(zhongyr): Do we need a refCounted style? Fragment's lifetime should not
   // exceed the element who owns it.

@@ -13,18 +13,16 @@
 namespace lynx {
 namespace tasm {
 
-Fragment::Fragment(Element* element, bool is_flatten,
-                   const fml::RefPtr<PropBundle>& painting_data)
-    : ElementContainer(element, is_flatten, painting_data),
+Fragment::Fragment(Element* element)
+    : ElementContainer(element),
       sign_(element->impl_id()),
-      painting_context_(element->painting_context()),
       style_(element->computed_css_style()),
       tag_(element->GetTag()) {}
 
 void Fragment::CreateLayerIfNeeded() {
   // TODO(zhongyr): Create HostPlatformRenderer here.
-  painting_context_->CreatePaintingNode(sign_, Tag().str(), nullptr, false,
-                                        false, 0);
+  painting_context()->CreatePaintingNode(sign_, Tag().str(), nullptr, false,
+                                         false, 0);
 }
 
 void Fragment::UpdateLayout(

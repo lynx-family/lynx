@@ -102,6 +102,10 @@ Element::Element(const base::String& tag, ElementManager* manager,
   record_parent_font_size_ = manager->GetLynxEnvConfig().PageDefaultFontSize();
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
+
+  element_container_ = EnableFragmentLayerRender()
+                           ? std::make_unique<Fragment>(this)
+                           : std::make_unique<ElementContainer>(this);
 }
 
 // The copy constructor of the element is now only used for copying fiber
@@ -189,6 +193,10 @@ void Element::AttachToElementManager(
   }
   enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
+
+  element_container_ = EnableFragmentLayerRender()
+                           ? std::make_unique<Fragment>(this)
+                           : std::make_unique<ElementContainer>(this);
 }
 
 void Element::PushStyleToBundle() {
@@ -614,7 +622,7 @@ void Element::SetKeyframesByNames(const lepus::Value& names,
   auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
   bundle->SetProps("keyframes", pub::ValueImplLepus(lepus_keyframes));
 
-  element_container()->SetKeyframes(painting_context(), std::move(bundle));
+  element_container()->SetKeyframes(std::move(bundle));
 }
 
 lepus::Value Element::ResolveCSSKeyframesByNames(
@@ -676,11 +684,7 @@ void Element::ResetEventHandlers() {
 }
 
 void Element::CreateElementContainer(bool platform_is_flatten) {
-  element_container_ =
-      EnableFragmentLayerRender()
-          ? std::make_unique<Fragment>(this, platform_is_flatten, prop_bundle_)
-          : std::make_unique<ElementContainer>(this, platform_is_flatten,
-                                               prop_bundle_);
+  element_container()->CreatePaintingNode(platform_is_flatten, prop_bundle_);
 
   element_manager_->IncreaseElementCount();
   if (IsLayoutOnly()) {
@@ -748,8 +752,7 @@ void Element::Animate(const lepus::Value& args,
           auto bundle =
               element_manager()->GetPropBundleCreator()->CreatePropBundle();
           bundle->SetProps("removeKeyframe", pub::ValueImplLepus(remove_name));
-          element_container()->SetKeyframes(painting_context(),
-                                            std::move(bundle));
+          element_container()->SetKeyframes(std::move(bundle));
         }
         will_removed_keyframe_name_ = base::String();
       }

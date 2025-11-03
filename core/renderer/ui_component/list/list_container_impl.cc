@@ -199,19 +199,19 @@ ItemHolder* ListContainerImpl::GetItemHolderForIndex(int index) {
 void ListContainerImpl::FlushPatching() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_CONTAINER_FLUSH_PATCHING);
   if (element_) {
-    element_->painting_context()->UpdateLayoutPatching();
+    element_->element_container()->UpdateLayoutPatching();
     // Note: Add list's id to patching_node_ready_ids_ before invoking
     // UpdateNodeReadyPatching(), and in list's OnNodeReady to handle sticky
     // list items.
     element_->OnNodeReady();
-    element_->painting_context()->UpdateNodeReadyPatching();
+    element_->element_container()->UpdateNodeReadyPatching();
     if (should_flush_finish_layout_) {
       should_flush_finish_layout_ = false;
       auto options = std::make_shared<PipelineOptions>();
       options->has_layout = true;
-      element_->painting_context()->FinishLayoutOperation(options);
+      element_->element_container()->FinishLayoutOperation(options);
     }
-    element_->painting_context()->FlushImmediately();
+    element_->element_container()->FlushImmediately();
   }
 }
 
@@ -220,9 +220,8 @@ void ListContainerImpl::UpdateContentOffsetAndSizeToPlatform(
     float content_size, float delta_x, float delta_y,
     bool is_init_scroll_offset, bool from_layout) {
   if (element_) {
-    element_->painting_context()->UpdateContentOffsetForListContainer(
-        element_->impl_id(), content_size, delta_x, delta_y,
-        is_init_scroll_offset, from_layout);
+    element_->element_container()->UpdateContentOffsetForListContainer(
+        content_size, delta_x, delta_y, is_init_scroll_offset, from_layout);
   }
 }
 
@@ -233,8 +232,8 @@ void ListContainerImpl::UpdateScrollInfo(float estimated_offset, bool smooth,
     return;
   }
 
-  element_->painting_context()->UpdateScrollInfo(element_->impl_id(), smooth,
-                                                 estimated_offset, scrolling);
+  element_->element_container()->UpdateScrollInfo(estimated_offset, smooth,
+                                                  scrolling);
 }
 
 // This function should be called before any code that may trigger list's

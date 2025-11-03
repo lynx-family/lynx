@@ -60,14 +60,14 @@ bool FrameElement::DidBundleLoaded(
   }
   PostBundle(bundle);
   // TODO(yangguangzhao.solace): remove this when unified pipeline is ready
-  painting_context()->Flush();
+  element_container()->Flush();
   return true;
 }
 
 void FrameElement::PostBundle(
     const std::shared_ptr<LynxTemplateBundle>& bundle) {
   if (HasPaintingNode()) {
-    painting_context()->SetFrameAppBundle(id_, bundle);
+    element_container()->SetFrameAppBundle(bundle);
   } else {
     template_bundle_ = bundle;
   }
@@ -76,7 +76,7 @@ void FrameElement::PostBundle(
 void FrameElement::FlushProps() {
   FiberElement::FlushProps();
   if (template_bundle_ && HasPaintingNode()) {
-    painting_context()->SetFrameAppBundle(id_, template_bundle_);
+    element_container()->SetFrameAppBundle(template_bundle_);
     template_bundle_ = nullptr;
   }
 }
