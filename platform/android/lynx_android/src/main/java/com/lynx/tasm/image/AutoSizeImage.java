@@ -6,28 +6,58 @@ package com.lynx.tasm.image;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.behavior.LynxProp;
+import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.shadow.LayoutNode;
 import com.lynx.tasm.behavior.shadow.MeasureFunc;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.MeasureOutput;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
+import com.lynx.tasm.group.BitmapSize;
+import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
 
 public class AutoSizeImage extends ShadowNode implements MeasureFunc {
   private boolean mAutoSize = false;
+  private boolean mBlockAutoSizeMarkDirty = false;
   private int mBitmapWidth;
   private int mBitmapHeight;
   private boolean mExactly = true;
   private Handler mLayoutHandler;
   private Runnable mPendingRunnable;
+
+  private String source;
+
   private final Object mLock = new Object();
   public AutoSizeImage() {
     setMeasureFunc(this);
   }
 
+  @LynxProp(name = PropsConstants.SRC)
+  public void setSrc(String source) {
+    this.source = source;
+    // reset bitmap cache hit flag.
+    this.mBlockAutoSizeMarkDirty = false;
+  }
+
+  private BitmapSize getCacheBitmapSize(String source) {
+    if (mContext != null) {
+      ILynxViewRuntimeCacheManager cacheManager = mContext.getRuntimeCacheManager();
+      if (cacheManager != null) {
+        return cacheManager.getBitmapSizeCache(source);
+      }
+    }
+    return null;
+  }
+
   @Override
   public long measure(
       LayoutNode node, float width, MeasureMode widthMode, float height, MeasureMode heightMode) {
+    String traceEvent = null;
+    if (TraceEvent.isTracingStarted()) {
+      traceEvent = "AutoSizeImage Measure: " + width + " - " + height + " " + source;
+      TraceEvent.beginSection(traceEvent);
+    }
     synchronized (mLock) {
       if (mLayoutHandler == null) {
         // layout thread
@@ -40,16 +70,39 @@ public class AutoSizeImage extends ShadowNode implements MeasureFunc {
     }
     mExactly = widthMode == MeasureMode.EXACTLY && heightMode == MeasureMode.EXACTLY;
     if (mExactly) {
+      if (TraceEvent.isTracingStarted()) {
+        TraceEvent.endSection(traceEvent);
+      }
+      this.mBlockAutoSizeMarkDirty = true;
       return MeasureOutput.make(width, height);
     }
 
-    int bitmapW = mBitmapWidth;
-    int bitmapH = mBitmapHeight;
+    int bitmapW;
+    int bitmapH;
+    BitmapSize cachedSize = getCacheBitmapSize(source);
+    if (cachedSize != null) {
+      String cacheHitEvent = null;
+      if (TraceEvent.isTracingStarted()) {
+        cacheHitEvent = "CacheHit";
+        TraceEvent.beginSection(cacheHitEvent);
+      }
+      bitmapW = cachedSize.getWidth();
+      bitmapH = cachedSize.getHeight();
+      this.mBlockAutoSizeMarkDirty = true;
+      if (TraceEvent.isTracingStarted()) {
+        TraceEvent.beginSection(cacheHitEvent);
+      }
+    } else {
+      bitmapW = mBitmapWidth;
+      bitmapH = mBitmapHeight;
+    }
     mExactly = (width == 0 && widthMode != MeasureMode.UNDEFINED)
         || (height == 0 && heightMode != MeasureMode.UNDEFINED);
-    if (!mAutoSize || bitmapW <= 0 || bitmapH <= 0 || mExactly) {
-      return MeasureOutput.make(widthMode == MeasureMode.EXACTLY ? width : 0,
-          heightMode == MeasureMode.EXACTLY ? height : 0);
+    if (!mBlockAutoSizeMarkDirty) {
+      if (!mAutoSize || bitmapW <= 0 || bitmapH <= 0 || mExactly) {
+        return MeasureOutput.make(widthMode == MeasureMode.EXACTLY ? width : 0,
+            heightMode == MeasureMode.EXACTLY ? height : 0);
+      }
     }
 
     if (widthMode == MeasureMode.EXACTLY) {
@@ -95,7 +148,7 @@ public class AutoSizeImage extends ShadowNode implements MeasureFunc {
         }
       }
     }
-
+    TraceEvent.endSection(traceEvent);
     return MeasureOutput.make(width, height);
   }
 
@@ -126,6 +179,10 @@ public class AutoSizeImage extends ShadowNode implements MeasureFunc {
     mAutoSize = autoSize;
     mBitmapWidth = bitmapW;
     mBitmapHeight = bitmapH;
+    if (mBlockAutoSizeMarkDirty) {
+      // do not markDirty & requestLayout if bitmap size cache hit.
+      return;
+    }
     if (lastState != autoSize) {
       markDirty();
       return;
