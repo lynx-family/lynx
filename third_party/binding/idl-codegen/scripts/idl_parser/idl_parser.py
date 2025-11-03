@@ -711,44 +711,44 @@ class IDLParser(object):
     p[0] = self.BuildProduction('Setlike', p, 2, p[3])
 
   def p_Namespace(self, p):
-    """Namespace : NAMESPACE identifier '{' NamespaceMembers '}' ';'"""
+    """Namespace : NAMESPACE identifier '{' InterfaceMembers '}' ';'"""
     p[0] = self.BuildNamed('Namespace', p, 2, p[4])
 
   # Error recovery for namespace.
-  def p_NamespaceError(self, p):
-    """Namespace : NAMESPACE identifier '{' error"""
-    p[0] = self.BuildError(p, 'Namespace')
+  # def p_NamespaceError(self, p):
+  #   """Namespace : NAMESPACE identifier '{' error"""
+  #   p[0] = self.BuildError(p, 'Namespace')
 
-  def p_NamespaceMembers(self, p):
-    """NamespaceMembers : NamespaceMember NamespaceMembers
-                        | """
-    if len(p) > 1:
-      p[0] = ListFromConcat(p[1], p[2])
+  # def p_NamespaceMembers(self, p):
+  #   """NamespaceMembers : NamespaceMember NamespaceMembers
+  #                       | """
+  #   if len(p) > 1:
+  #     p[0] = ListFromConcat(p[1], p[2])
 
-  # Error recovery for NamespaceMembers
-  def p_NamespaceMembersError(self, p):
-    """NamespaceMembers : ExtendedAttributeList error"""
-    p[0] = self.BuildError(p, 'NamespaceMembers')
+  # # Error recovery for NamespaceMembers
+  # def p_NamespaceMembersError(self, p):
+  #   """NamespaceMembers : ExtendedAttributeList error"""
+  #   p[0] = self.BuildError(p, 'NamespaceMembers')
 
-  def p_NamespaceMember(self, p):
-    """NamespaceMember : ExtendedAttributeList ReturnType OperationRest
-                       | ExtendedAttributeList READONLY AttributeRest"""
-    if p[2] != 'readonly':
-      applicable_to_types, non_applicable_to_types = \
-          DivideExtAttrsIntoApplicableAndNonApplicable(p[1])
-      if applicable_to_types:
-        attributes = self.BuildProduction('ExtAttributes', p, 1,
-            applicable_to_types)
-        p[2].AddChildren(attributes)
-      p[3].AddChildren(p[2])
-      if non_applicable_to_types:
-        attributes = self.BuildProduction('ExtAttributes', p, 1,
-            non_applicable_to_types)
-        p[3].AddChildren(attributes)
-    else:
-      p[3].AddChildren(self.BuildTrue('READONLY'))
-      p[3].AddChildren(p[1])
-    p[0] = p[3]
+  # def p_NamespaceMember(self, p):
+  #   """NamespaceMember : ExtendedAttributeList ReturnType OperationRest
+  #                      | ExtendedAttributeList READONLY AttributeRest"""
+  #   if p[2] != 'readonly':
+  #     applicable_to_types, non_applicable_to_types = \
+  #         DivideExtAttrsIntoApplicableAndNonApplicable(p[1])
+  #     if applicable_to_types:
+  #       attributes = self.BuildProduction('ExtAttributes', p, 1,
+  #           applicable_to_types)
+  #       p[2].AddChildren(attributes)
+  #     p[3].AddChildren(p[2])
+  #     if non_applicable_to_types:
+  #       attributes = self.BuildProduction('ExtAttributes', p, 1,
+  #           non_applicable_to_types)
+  #       p[3].AddChildren(attributes)
+  #   else:
+  #     p[3].AddChildren(self.BuildTrue('READONLY'))
+  #     p[3].AddChildren(p[1])
+  #   p[0] = p[3]
 
   def p_Dictionary(self, p):
     """Dictionary : DICTIONARY identifier Inheritance '{' DictionaryMembers '}' ';'"""

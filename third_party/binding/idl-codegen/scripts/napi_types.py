@@ -217,8 +217,6 @@ def cpp_type(idl_type,
     else:
         native_array_element_type = idl_type.native_array_element_type
     if native_array_element_type:
-        # vector_type = cpp_ptr_type('Vector', 'HeapVector',
-        #                            native_array_element_type.is_traceable)
         vector_type = 'std::vector'
         vector_template_type = cpp_template_type(
             vector_type,
@@ -229,12 +227,13 @@ def cpp_type(idl_type,
 
     # Record types.
     if idl_type.is_record_type:
-        vector_type = cpp_ptr_type('Vector', 'HeapVector',
-                                   idl_type.value_type.is_traceable)
+        # vector_type = cpp_ptr_type('Vector', 'HeapVector',
+        #                            idl_type.value_type.is_traceable)
+        vector_type = 'std::vector'
         value_type = idl_type.value_type.cpp_type_args(
             used_in_cpp_sequence=True)
         vector_template_type = cpp_template_type(
-            vector_type, 'std::pair<String, %s>' % value_type)
+            vector_type, 'std::pair<std::string, %s>' % value_type)
         if used_as_rvalue_type:
             return 'const %s&' % vector_template_type
         return vector_template_type
@@ -768,6 +767,13 @@ def native_value_traits_idl_type(idl_type,
         idl_type_name = 'IDL%s' % idl_type.base_type
     elif idl_type.base_type == "ArrayBuffer" or idl_type.base_type == "ArrayBufferView":
         idl_type_name = 'IDL%s' % idl_type.base_type
+    elif idl_type.is_record_type:
+        if not idl_type.key_type.is_string_type:
+            raise ValueError('Record key must be one of DOMString, USVString, or ByteString')
+        if idl_type.value_type.is_numeric_type:
+            idl_type_name = 'IDLRecord<IDLString, %s>' % (NUMBER_CPP_NAME.get(idl_type.value_type.base_type))
+        else:
+            raise ValueError('Please add support for this record value type')
     else :
         native_value_traits_support = False
         raises_exception = False

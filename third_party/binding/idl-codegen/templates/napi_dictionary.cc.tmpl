@@ -25,6 +25,7 @@ using lynx::binding::IDLUnrestrictedFloat;
 using lynx::binding::IDLUnrestrictedDouble;
 using lynx::binding::IDLNullable;
 using lynx::binding::IDLObject;
+using lynx::binding::IDLRecord;
 using lynx::binding::IDLTypedArray;
 using lynx::binding::IDLArrayBuffer;
 using lynx::binding::IDLArrayBufferView;
@@ -136,7 +137,7 @@ namespace {{component}} {
     ExceptionMessage::InvalidType(info.Env(), "{{member.name}}", "{{member.enum_values}}");
     {{ return_type }}
   } while (false);
-  {% elif member.is_boolean_type or member.is_numeric_type or member.is_string_type or member.is_wrapper_type %}
+  {% elif member.is_boolean_type or member.is_numeric_type or member.is_string_type or member.is_wrapper_type or member.is_record_type %}
   {{member.name}}_ = NativeValueTraits<{{member.idl_type_name}}>::NativeValue({{member.name}}_val);
   {% if member.is_wrapper_type %}{# further check if unwrapping went well #}
   if (info.Env().IsExceptionPending()) {
@@ -200,6 +201,17 @@ namespace {{component}} {
   {% else %}
   obj["{{name}}"] = {{member_name}}_->IsNapiWrapped() ? {{member_name}}_->NapiObject() : Napi{{member.idl_type}}::Wrap(std::unique_ptr<{{member.idl_type}}>({{member_name}}_), env);
   {% endif %}{# member.is_nullable #}
+  {% elif member.is_record_type %}
+  Object rec = Object::New(env);
+  for (const auto& kv : {{name}}_) {
+    {% if member.record_value_type.is_numeric_type %}
+    rec[kv.first.c_str()] = Number::New(env, kv.second);
+    {% else %}
+    // Not implemented
+    BINDING_NOTREACHED();
+    {% endif %}
+  }
+  obj["{{name}}"] = rec;
   {% endif %}{# member.is_boolean_type #}
 {% endmacro %}
 

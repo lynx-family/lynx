@@ -245,7 +245,7 @@
   {% elif method.is_sequence_type %}
   return result;
   {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type or method.idl_type == 'ArrayBuffer' or method.idl_type == 'ArrayBufferView' or method.idl_type == 'Float32Array' %}
-  {% if method.remote_method_id or method.idl_type == 'ArrayBuffer' %}
+  {% if method.remote_method_id %}
   return ToNAPI(std::move(result), info.Env());
   {% else %}
   return result;

@@ -218,8 +218,7 @@ struct IDLSequence {};
 
 template <typename T>
 struct NativeValueTraits<
-    IDLSequence<T>,
-    typename std::enable_if_t<!std::is_integral<T>::value>> {
+    IDLSequence<T>, typename std::enable_if_t<!std::is_integral<T>::value>> {
   typedef decltype(NativeValueTraits<T>::NativeValue(Napi::Value(),
                                                      int32_t())) ElementType;
   static std::vector<ElementType> NativeValue(Napi::Value value,
@@ -251,10 +250,8 @@ struct NativeValueTraits<
 
 template <typename T>
 struct NativeValueTraits<
-    IDLSequence<T>,
-    typename std::enable_if_t<std::is_integral<T>::value>> {
-  static std::vector<T> NativeValue(Napi::Value value,
-                                          int32_t index = 0) {
+    IDLSequence<T>, typename std::enable_if_t<std::is_integral<T>::value>> {
+  static std::vector<T> NativeValue(Napi::Value value, int32_t index = 0) {
     if (value.IsArray()) {
       std::vector<T> dst;
       auto array = value.As<Napi::Array>();
@@ -262,8 +259,7 @@ struct NativeValueTraits<
       dst.resize(len);
       for (uint32_t i = 0; i < len; i++) {
         Napi::Value val = array[i];
-        dst[i] =
-            NativeValueTraits<IDLNumber>::NativeValue(val, index);
+        dst[i] = NativeValueTraits<IDLNumber>::NativeValue(val, index);
         if (val.Env().IsExceptionPending()) {
           return std::vector<T>();
         }
@@ -275,7 +271,67 @@ struct NativeValueTraits<
     }
   }
   static std::vector<T> NativeValue(const Napi::CallbackInfo& info,
-                                          int32_t index = 0) {
+                                    int32_t index = 0) {
+    Napi::Value value = GetArgument(info, index);
+    return NativeValue(value, index);
+  }
+};
+
+// record
+template <typename K, typename V>
+struct IDLRecord {};
+
+template <typename K, typename V>
+struct NativeValueTraits<IDLRecord<K, V>> {
+  typedef decltype(NativeValueTraits<K>::NativeValue(Napi::Value(),
+                                                     int32_t())) KeyType;
+  typedef decltype(NativeValueTraits<V>::NativeValue(Napi::Value(),
+                                                     int32_t())) ValueType;
+  static std::vector<std::pair<std::string, ValueType>> NativeValue(
+      Napi::Value value, int32_t index = 0) {
+    // Converts a JavaScript value |O| to an IDL record<K, V> value. In C++, a
+    // record is represented as a std::vector<std::pair<k, v>>.
+    // See https://webidl.spec.whatwg.org/#es-record
+    Napi::Env env = value.Env();
+
+    // "2. Let result be a new empty instance of record<K, V>."
+    std::vector<std::pair<std::string, ValueType>> result;
+
+    // "1. If Type(O) is not Object, throw a TypeError."
+    if (!value.IsObject()) {
+      InvalidType(env, index, "Array");
+      return result;
+    }
+    Napi::Object obj = value.ToObject();
+
+    // "3. Let keys be ? O.[[OwnPropertyKeys]]()."
+    Napi::Array keys = obj.GetPropertyNames();
+
+    // "4. Repeat, for each element key of keys in List order:"
+    for (uint32_t i = 0; i < keys.Length(); ++i) {
+      // "4.2.1. Let typedKey be key converted to an IDL value of type K."
+      std::string key = NativeValueTraits<K>::NativeValue(keys[i]).Utf8Value();
+      if (env.IsExceptionPending()) {
+        return result;
+      }
+
+      // "4.2.2. Let value be ? Get(O, key)."
+      Napi::Value value = obj[key.c_str()];
+
+      // "4.2.3. Let typedValue be value converted to an IDL value of type V."
+      ValueType typed_value = NativeValueTraits<V>::NativeValue(value);
+      if (env.IsExceptionPending()) {
+        return result;
+      }
+      // Skipping: "4.2.4. If typedKey is already a key in result, set its value
+      // to typedValue"
+      // "4.2.5. Otherwise, append to result a mapping (typedKey, typedValue)."
+      result.push_back({key, typed_value});
+    }
+    return result;
+  }
+  static std::vector<std::pair<std::string, ValueType>> NativeValue(
+      const Napi::CallbackInfo& info, int32_t index = 0) {
     Napi::Value value = GetArgument(info, index);
     return NativeValue(value, index);
   }
@@ -333,7 +389,8 @@ struct NativeValueTraits<IDLNullable<T>,
 
 template <typename T>
 auto ToRawPtr(T&& ptr) -> decltype(ptr.get()) {
-  static_assert(std::is_same_v<T, std::unique_ptr<typename T::element_type>>, "Type must be std::unique_ptr or raw pointer");
+  static_assert(std::is_same_v<T, std::unique_ptr<typename T::element_type>>,
+                "Type must be std::unique_ptr or raw pointer");
   return ptr.release();
 }
 
@@ -342,9 +399,7 @@ T* ToRawPtr(T* ptr) {
   return ptr;
 }
 
-inline std::nullptr_t ToRawPtr(std::nullptr_t ptr) {
-  return nullptr;
-}
+inline std::nullptr_t ToRawPtr(std::nullptr_t ptr) { return nullptr; }
 
 }  // namespace binding
 }  // namespace lynx

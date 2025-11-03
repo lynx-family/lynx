@@ -442,7 +442,7 @@ def match_interface_extended_attributes_and_name_from_idl(file_contents):
 
     match = re.search(
         r'(?:\[([^{};]*)\]\s*)?'
-        r'(interface|interface\s+mixin|callback\s+interface|partial\s+interface|dictionary)\s+'
+        r'(interface|interface\s+mixin|callback\s+interface|partial\s+interface|dictionary|namespace)\s+'
         r'(\w+)\s*'
         r'(:\s*\w+\s*)?'
         r'{',

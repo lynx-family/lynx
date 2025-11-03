@@ -305,6 +305,10 @@ def member_context(_, member, component_info):
         member.idl_type.is_wrapper_type,
         'is_sequence_type':
         member.idl_type.is_sequence_type,
+        'is_record_type':
+        member.idl_type.is_record_type,
+        'record_value_type':
+        member.idl_type.value_type,
         'is_dictionary':
         member.idl_type.is_dictionary,
         'is_sequence_element_interface_type':

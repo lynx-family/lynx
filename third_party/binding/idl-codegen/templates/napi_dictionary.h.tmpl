@@ -63,7 +63,7 @@ class {{cpp_class}}{{' : public ' + parent_cpp_class if parent_cpp_class}} {
 
   {% for member in members %}
   bool {{member.has_method_name}}() const { return has_{{member.name}}_; }
-  {% if member.is_sequence_type %}
+  {% if member.is_sequence_type or member.is_record_type %}
   const {{member.cpp_type}}& {{member.getter_name}}() const {
     {% if member.is_required %}
     BINDING_DCHECK({{member.has_method_name}}());
