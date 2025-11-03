@@ -1206,6 +1206,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   } else {
     _LogE(@"TemplateRender %p sendGlobalEvent %@ error, can't get LynxContext", self, name);
   }
+
+  if (_logicExecutor != nil) {
+    NSMutableDictionary* event = [NSMutableDictionary dictionary];
+    event[@"method"] = @"sendGlobalEvent";
+    event[@"name"] = name;
+    event[@"params"] = params;
+    [_logicExecutor onLynxEvent:[self getLynxView] event:event];
+  }
 }
 
 - (void)sendGlobalEventToLepus:(nonnull NSString*)name withParams:(nullable NSArray*)params {
