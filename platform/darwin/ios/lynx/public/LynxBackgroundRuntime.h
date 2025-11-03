@@ -64,6 +64,13 @@ typedef NS_ENUM(NSInteger, LynxBackgroundJsRuntimeType) {
 // Set bytecode key for current lynxview.
 @property(nonatomic, strong, nullable) NSString *bytecodeUrl;
 
+/**
+ * Set readonly data for LynxBackgroundRuntime, FE can access this data
+ * via `lynx.__globalProps`
+ * @important set data {@link TemplateData#markReadOnly()} readonly} to avoid copy
+ */
+@property(nonatomic, nullable) LynxTemplateData *globalProps;
+
 // generic resource fetcher api.
 @property(nonatomic, nonnull) id<LynxGenericResourceFetcher> genericResourceFetcher;
 @property(nonatomic, nonnull) id<LynxMediaResourceFetcher> mediaResourceFetcher;
