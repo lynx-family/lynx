@@ -60,6 +60,10 @@ LYNX_PROP_SETTER("maxlines", setMaxLines, NSInteger) {
   self.maxlines = value;
 }
 
+LYNX_PROP_SETTER("enable-scroll-bar", setEnableScrollBar, BOOL) {
+  self.view.showsVerticalScrollIndicator = value;
+}
+
 LYNX_PROP_SETTER("bounces", setBounces, BOOL) {
   self.view.bounces = value;
 }

@@ -116,6 +116,13 @@ let a;
     // @ts-expect-error type error
     <textarea placeholder={100} />;
   });
+
+  <textarea enable-scroll-bar={true} />;
+  assertType<boolean | undefined>(a as IntrinsicElements['textarea']['enable-scroll-bar']);
+  expectError(() => {
+    // @ts-expect-error type error
+    <textarea enable-scroll-bar={1} />;
+  });
 }
 
 // Events types check

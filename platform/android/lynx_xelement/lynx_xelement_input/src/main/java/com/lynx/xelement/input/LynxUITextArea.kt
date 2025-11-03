@@ -4,6 +4,9 @@
 
 package com.lynx.xelement.input
 import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.text.Editable
 import android.text.InputFilter
 import android.text.Layout
@@ -57,6 +60,17 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
     fun setMaxLines(maxLines: Int) {
         mView.maxLines = maxLines
         maxHeightInputFilter = InputFilter { source, start, end, dest, dstart, dend -> maxLinesFilter(source,start,end,dest,dstart,dend, maxLines) }
+    }
+  
+    @LynxProp(name = "enable-scroll-bar", defaultBoolean = false )
+    fun setEnableScrollBar(enable: Boolean){
+      mView.isVerticalScrollBarEnabled = enable
+      mView.isHorizontalScrollBarEnabled = false
+      mView.isScrollbarFadingEnabled = true
+      mView.scrollBarDefaultDelayBeforeFade = 1000
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        mView.verticalScrollbarThumbDrawable = ColorDrawable(Color.LTGRAY)
+      }
     }
 
     override fun afterPropsUpdated(props: StylesDiffMap?) {

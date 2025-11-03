@@ -192,6 +192,15 @@ export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindbl
    */
   'input-filter'?: string;
 
+  /** 
+   * Whether to show scroll bar, on HarmonyOS, the scroll bar will always be shown
+   * @defaultValue false
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  'enable-scroll-bar'?: boolean;
+
   /**
    * Input content type
    * @defaultValue "text"

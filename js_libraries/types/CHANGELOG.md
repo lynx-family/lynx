@@ -1,4 +1,7 @@
 # CHANGELOG
+# 3.6.5
+- Introduce `enable-scroll-bar` property for `<textarea>` element.
+
 # 3.6.4
 - Introduce `item-key` on `list.scrollToPosition`.
 
