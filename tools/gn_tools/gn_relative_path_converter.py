@@ -4,149 +4,218 @@
 # LICENSE file in the root directory of this source tree.
 import os
 import re
+import sys
 import argparse
+from pathlib import Path
 
-def convert_absolute_to_relative(match, current_dir_parts, lynx_index):
-    """Convert the matched absolute path to a relative path based on the current directory.
-    
-    Args:
-        match: The regex match object containing the absolute path.
-        current_dir_parts: List of directory components for the current file's directory.
-        lynx_index: Index of the 'lynx' directory in current_dir_parts.
-    
-    Returns:
-        str: The converted relative path.
+# GN path prefixes that don't need processing
+skip_prefixes = [
+    "//PODS_ROOT",
+    "//PODS_CONFIGURATION_BUILD_DIR",
+    "//TARGET_BUILD_DIR",
+    "//PODS_TARGET_SRCROOT",
+    "//build_overrides", 
+    "//build",
+    "//$lynx_dir",
+    "//${lynx_dir}",
+    "//third_party",
+    "//config.gni",
+    "//tools/idl_parser",
+    "//out/",
+]
+
+def convert_absolute_to_relative_path(absolute_path, current_file_dir, project_root):
     """
-    full_match = match.group(0)
-    path_part = match.group(1)  # Path part after '//lynx/', e.g., "xx/yy.gni"
-    path_parts = path_part.split(os.sep)
-    
-    # Get the part of the current directory after the lynx directory
-    current_sub_dir_parts = current_dir_parts[lynx_index + 1:]
-    
-    # Find the common prefix length
-    common_prefix_length = 0
-    for i in range(min(len(current_sub_dir_parts), len(path_parts))):
-        if current_sub_dir_parts[i] == path_parts[i]:
-            common_prefix_length += 1
-        else:
-            break
-    
-    # Calculate the number of '../' needed
-    parent_levels = len(current_sub_dir_parts) - common_prefix_length
-    relative_prefix = "../" * parent_levels if parent_levels > 0 else ""
-    
-    # Construct the relative path
-    relative_path = f"{relative_prefix}{'/'.join(path_parts[common_prefix_length:])}"
-    
-    # Add the target (e.g., ":zz") if it exists in the original match
-    if len(match.groups()) > 1 and match.group(2):
-        relative_path += match.group(2)
-    
-    return relative_path
-
-def process_file(file_path, lynx_dir):
-    """Process a single GN/GNI file to convert absolute paths to relative paths.
+    Convert absolute paths starting with '//' to paths relative to current_file_dir.
     
     Args:
-        file_path: Path to the file to process.
-        lynx_dir: Name of the 'lynx' directory.
+        absolute_path: Path starting with '//', e.g. //lynx/core/BUILD.gn.
+        current_file_dir: Directory of current file.
+        project_root: Project root directory path.
     
     Returns:
-        bool: True if the file was modified, False otherwise.
+        Converted relative path
+    """
+    # Remove leading '//'.
+    for skip_prefix in skip_prefixes:
+        if absolute_path.startswith(skip_prefix):
+            return absolute_path
+    path_without_prefix = absolute_path[2:]
+    
+    # Build complete absolute path.
+    full_absolute_path = os.path.join(project_root, path_without_prefix)
+    
+    # Calculate relative path.
+    try:
+        relative_path = os.path.relpath(full_absolute_path, current_file_dir)
+        return relative_path
+    except ValueError:
+        return absolute_path
+
+def process_file(file_path, project_root):
+    """
+    Process a single file, convert '//' paths within it.
+    
+    Args:
+        file_path: Path of file to process.
+        project_root: Project root directory path.
+    
+    Returns:
+        (whether file was modified, number of replacements).
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-    except UnicodeDecodeError:
-        # Try alternative encoding
-        try:
-            with open(file_path, 'r', encoding='latin-1') as f:
-                content = f.read()
-        except Exception as e:
-            print(f"Failed to read file {file_path}: {e}")
-            return False
-    
-    # Get directory components of the current file's path
-    current_dir = os.path.dirname(file_path)
-    current_dir_parts = current_dir.split(os.sep)
-    
-    # Find the position of the lynx directory in the path
-    try:
-        lynx_index = current_dir_parts.index(lynx_dir)
-    except ValueError:
-        # Skip if 'lynx' directory not found in the current path
-        return False
-    
-    # Regular expression pattern to match //lynx/... paths, including optional targets (e.g., :zz)
-    pattern = re.compile(r'//lynx/([^:\s]+)(:[^\s]+)?')
-    
-    # Replace all matched paths with relative paths
-    new_content, count = pattern.subn(
-        lambda match: convert_absolute_to_relative(match, current_dir_parts, lynx_index),
-        content
-    )
-    
-    if count > 0:
-        # Write the modified content back to the file
-        try:
+        
+        original_content = content
+        current_file_dir = os.path.dirname(file_path)
+
+        
+        # Match paths starting with '//' (excluding '//' comments),
+        # Use regex to match '//' paths in non-comment lines.
+        lines = content.split('\n')
+        modified_lines = []
+        total_replacements = 0
+        
+        for line_num, line in enumerate(lines):
+            # Skip empty lines and pure comment lines.
+            stripped_line = line.strip()
+            if not stripped_line or stripped_line.startswith('#'):
+                modified_lines.append(line)
+                continue
+            
+            # Match '//' paths within quotes (both double and single quotes),
+            # Example: "//platform/darwin/ios/lynx/clay/LynxClayHelper.h".
+            pattern_quotes = r'(["\'])(//[a-zA-Z0-9_:{}/$+\-?&%=~]+(?:\.[a-zA-Z0-9_]+)?)(\1)'
+            
+            def replace_path_in_quotes(match):
+                nonlocal total_replacements
+                quote_char = match.group(1)  # Quote character (" or ')
+                absolute_path = match.group(2)  # Path starting with '//'
+                
+                # Convert path.
+                relative_path = convert_absolute_to_relative_path(
+                    absolute_path, current_file_dir, project_root
+                )
+                total_replacements += 1
+                return f"{quote_char}{relative_path}{quote_char}"
+            
+            # Process paths in quotes first.
+            modified_line = re.sub(pattern_quotes, replace_path_in_quotes, line)
+            
+            # Then process '//' paths not in quotes.
+            # Use more precise pattern to match standalone '//' paths.
+            pattern_standalone = r'(^|\s)(//[a-zA-Z0-9_:{}/$+\-?&%=~]+(?:\.[a-zA-Z0-9_]+)?)(\s|$|[,)])'
+            
+            def replace_path_standalone(match):
+                nonlocal total_replacements
+                prefix = match.group(1)  # Prefix (space or line start)
+                absolute_path = match.group(2)  # Path starting with '//'
+                suffix = match.group(3)  # Suffix (space, line end, comma, right parenthesis, etc.)
+                
+                # Convert path.
+                relative_path = convert_absolute_to_relative_path(
+                    absolute_path, current_file_dir, project_root
+                )
+                total_replacements += 1
+                return f"{prefix}{relative_path}{suffix}"
+            
+            modified_line = re.sub(pattern_standalone, replace_path_standalone, modified_line)
+            modified_lines.append(modified_line)
+        
+        modified_content = '\n'.join(modified_lines)
+        
+        if modified_content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-            print(f"Modified {file_path}, replaced {count} paths")
-            return True
-        except Exception as e:
-            print(f"Failed to write file {file_path}: {e}")
-            return False
+                f.write(modified_content)
+            return True, total_replacements
+        
+        return False, total_replacements
+        
+    except Exception as e:
+        print(f"Error processing file {file_path}: {e}")
+        return False, 0
+
+def find_gn_files(directory):
+    """
+    Find all .gn and .gni files in directory.
     
-    return False
+    Args:
+        directory: Directory to search.
+    
+    Returns:
+        List of file paths.
+    """
+    gn_files = []
+    
+    for root, dirs, files in os.walk(directory):
+        # Skip hidden directories and node_modules etc.
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d != 'node_modules']
+        
+        for file in files:
+            if file.endswith(('.gn', '.gni')):
+                gn_files.append(os.path.join(root, file))
+    
+    return gn_files
+
 
 def main():
-    '''
-    Usage: python3 tools/gn_tools/gn_relative_path_converter.py . in lynx directory.
-    '''
-    """Main function to handle command line arguments and process directories."""
-    parser = argparse.ArgumentParser(description='Convert //lynx/ paths in GN/GNI files to relative paths')
-    parser.add_argument('directory', help='Directory to process')
-    parser.add_argument('--lynx-dir', default='lynx', help='Name of the lynx directory (default: lynx)')
-    parser.add_argument('--dry-run', action='store_true', help='Show what would be modified without writing changes')
+    parser = argparse.ArgumentParser(description='Batch process "//" paths in .gn and .gni files')
+    parser.add_argument('directory', nargs='?', default='.', 
+                      help='Specify subdirectory to process GN files (default: current directory).')
+    parser.add_argument('--root', required=True, help='Project root directory path.')
+    
     args = parser.parse_args()
+    
+    # Get absolute paths.
+    target_directory = os.path.abspath(args.directory)
+    project_root = os.path.abspath(args.root)
+    
+    if not os.path.exists(target_directory):
+        print(f"Error: Directory {target_directory} does not exist.")
+        return 1
+    
+    if not os.path.exists(project_root):
+        print(f"Error: Project root directory {project_root} does not exist.")
+        return 1
+    
+    print(f"Starting directory scan: {target_directory}.")
+    print(f"Project root: {project_root}.")
+    print("-" * 60)
+    
+    # Find all .gn and .gni files.
+    gn_files = find_gn_files(target_directory)
+    
+    if not gn_files:
+        print("No .gn or .gni files found.")
+        return 0
+    
+    print(f"Found {len(gn_files)} .gn/.gni files.")
+    print("-" * 60)
+    
+    processed_files = 0
+    total_replacements = 0
+    
+    # Process each file.
+    for i, file_path in enumerate(gn_files, 1):
+        print(f"[{i}/{len(gn_files)}] Processing file: {file_path}.")
+        
+        modified, replacements = process_file(file_path, project_root)
+        
+        if modified:
+            processed_files += 1
+            total_replacements += replacements
+            print(f"  ✓ Modified, replaced {replacements} locations.")
+        else:
+            print(f"  - No modification needed.")
+    
+    print("-" * 60)
+    print(f"Processing complete!")
+    print(f"Scanned {len(gn_files)} files.")
+    print(f"Processed {processed_files} files.")
+    print(f"Total {total_replacements} path replacements.")
 
-    # Convert the input directory to an absolute path
-    args.directory = os.path.abspath(args.directory)
-    
-    # Check if the directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: Directory '{args.directory}' does not exist")
-        return
-    
-    # Recursively process the directory
-    modified_count = 0
-    total_count = 0
-    
-    for root, _, files in os.walk(args.directory):
-        for file in files:
-            if file.endswith(('.gni', '.gn')):
-                file_path = os.path.join(root, file)
-                total_count += 1
-                
-                if args.dry_run:
-                    # Simulate processing without modifying files
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                        pattern = re.compile(r'//lynx/([^:\s]+)(:[^\s]+)?')
-                        matches = pattern.findall(content)
-                        if matches:
-                            print(f"File {file_path} contains {len(matches)} convertible paths")
-                            modified_count += 1
-                    except Exception:
-                        continue
-                else:
-                    # Process the file
-                    if process_file(file_path, args.lynx_dir):
-                        modified_count += 1
-    
-    print(f"Processing complete: Scanned {total_count} files, modified {modified_count} files")
+    return 0
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    sys.exit(main())
