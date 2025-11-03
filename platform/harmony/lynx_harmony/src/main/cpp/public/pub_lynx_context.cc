@@ -32,7 +32,8 @@ PubLynxContext::PubLynxContext(
       lynx::fml::MakeRefCounted<lynx::fml::TaskRunner>(
           lynx::fml::MessageLoop::EnsureInitializedForCurrentThread()
               .GetLoopImpl());
-  context_->OnLynxCreate(nullptr, nullptr, nullptr, resource_loader,
+  // TODO(@hujing.1)add list_engine_proxy
+  context_->OnLynxCreate(nullptr, nullptr, nullptr, nullptr, resource_loader,
                          ui_task_runner, ui_task_runner);
 }
 

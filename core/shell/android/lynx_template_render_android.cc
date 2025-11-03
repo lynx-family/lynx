@@ -447,7 +447,8 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
   auto perf_controller_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(
           shell->GetPerfControllerActor());
-  ui_delegate->OnLynxCreate(std::move(engine_proxy), std::move(runtime_proxy),
+  ui_delegate->OnLynxCreate(shell->GetListEngineProxy(),
+                            std::move(engine_proxy), std::move(runtime_proxy),
                             std::move(perf_controller_proxy), nullptr, nullptr,
                             nullptr);
 }

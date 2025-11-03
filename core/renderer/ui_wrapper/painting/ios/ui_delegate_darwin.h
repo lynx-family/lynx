@@ -36,6 +36,7 @@ class UIDelegateDarwin : public UIDelegate {
     return nullptr;
   }
   void OnLynxCreate(
+      const std::shared_ptr<shell::ListEngineProxy>& ListEngineProxy,
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,

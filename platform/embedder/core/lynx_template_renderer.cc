@@ -179,8 +179,9 @@ void LynxTemplateRenderer::Reset() {
                       std::move(settings_.preload_js_paths), runtime_flags,
                       settings_.bytecode_source_url);
 
-  ui_delegate_->OnLynxCreate(engine_proxy_, runtime_proxy_,
-                             perf_controller_proxy_, settings_.resource_loader,
+  ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
+                             runtime_proxy_, perf_controller_proxy_,
+                             settings_.resource_loader,
                              shell_->GetRunners()->GetUITaskRunner(),
                              shell_->GetRunners()->GetLayoutTaskRunner());
 }

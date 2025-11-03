@@ -178,8 +178,8 @@
 
   auto perf_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(shell_->GetPerfControllerActor());
-  ui_delegate->OnLynxCreate([_lynxEngineProxy nativeProxy], std::move(js_proxy),
-                            std::move(perf_proxy), nullptr, nullptr, nullptr);
+  ui_delegate->OnLynxCreate(shell_->GetListEngineProxy(), [_lynxEngineProxy nativeProxy],
+                            std::move(js_proxy), std::move(perf_proxy), nullptr, nullptr, nullptr);
 
   // reset ui flush flag
   [self setNeedPendingUIOperation:_needPendingUIOperation];

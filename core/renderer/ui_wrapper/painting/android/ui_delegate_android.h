@@ -35,6 +35,7 @@ class UIDelegateAndroid : public UIDelegate {
     return nullptr;
   }
   void OnLynxCreate(
+      const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,

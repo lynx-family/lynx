@@ -13,6 +13,7 @@
 #include "core/public/box_model.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/public/layout_ctx_platform_impl.h"
+#include "core/public/list_engine_proxy.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/lynx_runtime_proxy.h"
@@ -50,6 +51,7 @@ class UIDelegate {
   // displaying
   virtual double GetScreenScaleFactor() const { return 1.0; }
   virtual void OnLynxCreate(
+      const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
