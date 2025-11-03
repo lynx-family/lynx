@@ -114,8 +114,17 @@ public class LynxViewBuilder
     return this;
   }
 
+  @Override
   public LynxGroup getLynxGroup() {
-    return this.lynxRuntimeOptions.getLynxGroup();
+    // Prefers lynxGroup in lynxViewBuilder.
+    LynxGroup lynxGroup = this.lynxRuntimeOptions.getLynxGroup();
+    if (lynxGroup != null) {
+      return lynxGroup;
+    }
+    if (lynxViewGroup != null) {
+      return lynxViewGroup.getLynxGroup();
+    }
+    return null;
   }
 
   /**

@@ -225,22 +225,24 @@
   auto resource_loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
       _providerRegistry, _fetcher, self, templateResourceFetcher, genericResourceFetcher);
 
-  auto on_runtime_actor_created = [&native_module_manager,
-                                   js_group_thread_name =
-                                       [_runtimeOptions groupThreadName]](auto& actor) {
-    std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
-        std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
-    native_module_manager->SetModuleDelegate(module_delegate);
-  };
+  auto on_runtime_actor_created =
+      [&native_module_manager,
+       js_group_thread_name =
+           [[LynxGroup jsThreadNameForLynxGroupOrDefault:_group] UTF8String]](auto& actor) {
+        std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
+            std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
+        native_module_manager->SetModuleDelegate(module_delegate);
+      };
 
   // Init Runtime
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_RUNTIME);
   auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
       false, _runtimeOptions.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs,
       _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode);
-  shell_->InitRuntime([_runtimeOptions groupID], resource_loader, native_module_manager,
-                      std::move(on_runtime_actor_created), [_runtimeOptions preloadJSPath],
-                      runtime_flags, [_runtimeOptions bytecodeUrlString]);
+  shell_->InitRuntime([[LynxGroup groupNameForLynxGroupOrDefault:_group] UTF8String],
+                      resource_loader, native_module_manager, std::move(on_runtime_actor_created),
+                      [_runtimeOptions preloadJSPath], runtime_flags,
+                      [_runtimeOptions bytecodeUrlString]);
   [self setUpExtensionModules];
 }
 
