@@ -51,8 +51,17 @@ GestureReceiver EventDispatcher::velocity_tracker_pan_receiver_callback_ =
 
 GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     [](ArkUI_GestureInterruptInfo* info) -> ArkUI_GestureInterruptResult {
-  auto event_dispatcher = NodeManager::Instance().GetEventDispatcher();
-  if (!event_dispatcher) {
+  auto event = OH_ArkUI_GestureInterruptInfo_GetGestureEvent(info);
+  if (event == nullptr) {
+    return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  auto node = OH_ArkUI_GestureEvent_GetNode(event);
+  if (node == nullptr) {
+    return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
+  auto event_dispatcher = reinterpret_cast<EventDispatcher*>(
+      NodeManager::Instance().GetUserData(node));
+  if (event_dispatcher == nullptr) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
   if (event_dispatcher->EventThrough()) {
@@ -143,7 +152,6 @@ void EventDispatcher::EventTargetDetail::SetPrePoint(float pre_point[2]) {
 }
 
 EventDispatcher::EventDispatcher(UIOwner* ui_owner) : ui_owner_(ui_owner) {
-  NodeManager::Instance().SetEventDispatcher(this);
   velocity_tracker_pan_gesture_ =
       NodeManager::Instance().CreatePanGesture(1, GESTURE_DIRECTION_ALL, 0);
   NodeManager::Instance().SetGestureEventTarget(
@@ -170,7 +178,10 @@ EventDispatcher::EventDispatcher(UIOwner* ui_owner) : ui_owner_(ui_owner) {
 }
 
 EventDispatcher::~EventDispatcher() {
-  NodeManager::Instance().SetEventDispatcher(nullptr);
+  if (!root_target_.expired()) {
+    NodeManager::Instance().SetUserData(root_target_.lock()->RootNode(),
+                                        nullptr);
+  }
   if (long_press_gesture_) {
     NodeManager::Instance().DisposeGesture(long_press_gesture_);
   }
@@ -195,6 +206,7 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
     return;
   }
   root_target_ = root->WeakTarget();
+  NodeManager::Instance().SetUserData(root->RootNode(), this);
   if (long_press_gesture_) {
     NodeManager::Instance().AddGestureToNode(
         root->RootNode(), long_press_gesture_, PARALLEL, NORMAL_GESTURE_MASK);
@@ -703,7 +715,6 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
   time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
-  NodeManager::Instance().SetEventDispatcher(this);
   std::string event_name;
   if (OH_ArkUI_UIInputEvent_GetAction(event) == UI_TOUCH_EVENT_ACTION_DOWN) {
     event_name = TouchEvent::START;
