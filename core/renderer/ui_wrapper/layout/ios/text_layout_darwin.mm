@@ -244,6 +244,22 @@ void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* 
         case kPropertyIDLetterSpacing:
           textStyle.letterSpacing = text_attributes->letter_spacing;
           break;
+        case kPropertyIDTextDecoration:
+          if (text_attributes->underline_decoration) {
+            textStyle.underLine = NSUnderlineStyleAttributeName;
+          }
+          if (text_attributes->line_through_decoration) {
+            textStyle.lineThrough = NSStrikethroughStyleAttributeName;
+          }
+          textStyle.textDecorationStyle = [LynxTextUtils
+              convertLynxTextDecorationStyle:static_cast<int>(
+                                                 text_attributes->text_decoration_style)];
+
+          textStyle.textDecorationColor = [LynxConverter
+              toUIColor:@(static_cast<int>(text_attributes->text_decoration_color.has_value()
+                                               ? *text_attributes->text_decoration_color
+                                               : starlight::DefaultColor::DEFAULT_TEXT_COLOR))];
+          break;
         default:
           break;
       }

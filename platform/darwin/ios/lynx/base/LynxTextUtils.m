@@ -263,4 +263,26 @@ NSString *const RTL_MARK = @"\u200F";
   return yOffsetToTop;
 }
 
++ (NSInteger)convertLynxTextDecorationStyle:(NSInteger)decorationStyle {
+  NSInteger textDecorationStyle;
+  switch (decorationStyle) {
+    case LynxTextDecorationSolid:
+      textDecorationStyle = NSUnderlineStylePatternSolid;
+      break;
+    case LynxTextDecorationDouble:
+      textDecorationStyle = NSUnderlineStyleDouble;
+      break;
+    case LynxTextDecorationDotted:
+      textDecorationStyle = NSUnderlineStylePatternDot;
+      break;
+    case LynxTextDecorationDashed:
+      textDecorationStyle = NSUnderlineStylePatternDash;
+      break;
+    // todo wavy
+    default:
+      textDecorationStyle = NSUnderlineStyleSingle;
+  }
+  return textDecorationStyle;
+}
+
 @end
