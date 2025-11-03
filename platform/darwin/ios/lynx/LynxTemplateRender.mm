@@ -131,6 +131,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     // Avoid unexpected changes
     _runtimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:builder.lynxBackgroundRuntimeOptions];
+    _group = builder.group;
     if (_runtime) {
       if (![_runtime attachToLynxView]) {
         _LogE(@"Create a LynxView with an invalid LynxBackgroundRuntime, returning nil");
@@ -837,6 +838,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
           std::shared_ptr<lynx::tasm::TemplateData> updated_data = nullptr;
           if (meta.data) {
+            if (_logicExecutor) {
+              [_templateData updateWithTemplateData:meta.data];
+            }
             lynx::lepus::Value value = *LynxGetLepusValueFromTemplateData(meta.data);
             updated_data = std::make_shared<lynx::tasm::TemplateData>(
                 value, meta.data.isReadOnly,

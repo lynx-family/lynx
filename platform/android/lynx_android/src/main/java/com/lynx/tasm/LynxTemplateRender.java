@@ -830,7 +830,7 @@ public class LynxTemplateRender
     }
 
     mPageLoadListener = new InnerPageLoadListener();
-    mGroup = mLynxRuntimeOptions.getLynxGroup();
+    mGroup = mLynxViewBuilder.getLynxGroup();
     mLoader = new LynxResourceLoader(null, mLynxViewBuilder.fetcher, this,
         mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
@@ -1565,13 +1565,12 @@ public class LynxTemplateRender
       }
 
       // update GlobalProps, take globalProps in lynxViewGroup into consideration
-      TemplateData globalProps = null;
-      if (loadMeta.isGlobalPropsValid()) {
-        globalProps = loadMeta.getGlobalProps();
-      } else if (mLynxViewGroup != null) {
-        globalProps = mLynxViewGroup.getGlobalProps();
+      if (mLynxViewGroup != null) {
+        this.updateGlobalProps(mLynxViewGroup.getGlobalProps());
       }
-      this.updateGlobalProps(globalProps);
+      if (loadMeta.isGlobalPropsValid()) {
+        this.updateGlobalProps(loadMeta.getGlobalProps());
+      }
     }
   }
 

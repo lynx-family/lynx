@@ -2443,6 +2443,7 @@ public interface com::lynx::tasm::group::ILynxViewConfigProvider {
   public boolean com.lynx.tasm.group.ILynxViewConfigProvider.isEnableUnifiedPipeline();
   public HashMap com.lynx.tasm.group.ILynxViewConfigProvider.getContextData();
   public LynxBackgroundRuntimeOptions com.lynx.tasm.group.ILynxViewConfigProvider.getLynxRuntimeOptions();
+  public LynxGroup com.lynx.tasm.group.ILynxViewConfigProvider.getLynxGroup();
   public int com.lynx.tasm.group.ILynxViewConfigProvider.getScreenWidth();
   public int com.lynx.tasm.group.ILynxViewConfigProvider.getScreenHeight();
   public boolean com.lynx.tasm.group.ILynxViewConfigProvider.getForceDarkAllowed();
