@@ -19,6 +19,7 @@ import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.core.LynxThreadPool;
@@ -86,6 +87,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   private Context mContext;
   private CountDownLatch countDownLatch = new CountDownLatch(1);
+
+  private Map<String, BitmapSize> bitmapSizePool = new ConcurrentHashMap<>();
 
   /** Runtime Cache Manager **/
   private Future<Void> templateResultFutureTask;
@@ -379,6 +382,39 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   public ILynxEngine getLynxEngine() {
     // TODO(@huangweiwu): to impl this;
     return null;
+  }
+
+  @Override
+  public void setBitmapSizeCache(String source, int width, int height) {
+    String traceEvent = null;
+    if (TraceEvent.isTracingStarted()) {
+      traceEvent = "setBitmapSizeCache: " + source + ": " + width + " - " + height;
+      TraceEvent.beginSection(traceEvent);
+    }
+    if (source == null) {
+      if (TraceEvent.isTracingStarted()) {
+        TraceEvent.endSection(traceEvent);
+      }
+      return;
+    }
+    this.bitmapSizePool.put(source, new BitmapSize(source, width, height));
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.endSection(traceEvent);
+    }
+  }
+
+  @Override
+  public BitmapSize getBitmapSizeCache(String source) {
+    String traceEvent = null;
+    if (TraceEvent.isTracingStarted()) {
+      traceEvent = "getBitmapSizeCache: " + source;
+      TraceEvent.beginSection(traceEvent);
+    }
+    BitmapSize size = this.bitmapSizePool.get(source);
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.endSection(traceEvent);
+    }
+    return size;
   }
 
   public ILynxLogicExecutor getLogicExecutor() {
