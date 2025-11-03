@@ -138,6 +138,7 @@ public class LynxTemplateRender
   private TemplateBundle mTemplateBundle;
   private ILynxViewConfigProvider mLynxViewConfigProvider;
   private ILynxViewGroup mLynxViewGroup;
+  private ILynxViewRuntimeCacheManager mCacheManager;
   private ILynxLogicExecutor mLogicExecutor;
 
   private LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
@@ -301,6 +302,9 @@ public class LynxTemplateRender
     mLynxViewConfigProvider = builder;
     mLogicExecutor = builder.getLogicExecutor();
     mLynxViewGroup = builder.lynxViewGroup;
+    if (builder.lynxViewGroup instanceof ILynxViewRuntimeCacheManager) {
+      mCacheManager = (ILynxViewRuntimeCacheManager) builder.lynxViewGroup;
+    }
 
     mLynxViewBuilder = builder;
     if (mLynxViewGroup != null) {
@@ -406,6 +410,7 @@ public class LynxTemplateRender
             onErrorOccurred(error);
           }
         };
+    mLynxContext.setRuntimeCacheManager(this.mCacheManager);
     mTemplateAssembler.setLynxContext(mLynxContext);
 
     mLynxContext.setEmbeddedMode(mEmbeddedMode);

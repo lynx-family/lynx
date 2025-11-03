@@ -35,6 +35,7 @@ import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxDetailEvent;
+import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
 import com.lynx.tasm.image.AutoSizeImage;
 import com.lynx.tasm.image.ImageContent;
 import com.lynx.tasm.image.ImageErrorCodeUtils;
@@ -326,6 +327,10 @@ public class LynxImageManager implements Drawable.Callback {
       }
       mImageWidth = imageInfo.getWidth();
       mImageHeight = imageInfo.getHeight();
+      ILynxViewRuntimeCacheManager cacheManager = mContext.getRuntimeCacheManager();
+      if (cacheManager != null) {
+        cacheManager.setBitmapSizeCache(requestInfo.getUrl(), mImageWidth, mImageHeight);
+      }
       justSizeIfNeeded();
       if (mColorFilter != null) {
         mImageDrawable.setColorFilter(mColorFilter);
