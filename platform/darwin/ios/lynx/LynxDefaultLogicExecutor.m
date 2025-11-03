@@ -85,7 +85,7 @@ static NSString *const kLynxAppServicePath = @"/app-service.js";
   NSString *methodName = event[@"method"];
   if ([methodName isEqualToString:@"sendGlobalEvent"]) {
     NSString *name = event[@"name"];
-    NSMutableArray *params = event[@"params"];
+    NSMutableArray *params = [event[@"params"] mutableCopy];
     [params addObject:@([lynxView lynxViewId])];
     [_runtime sendGlobalEvent:name withParams:params];
   } else {
