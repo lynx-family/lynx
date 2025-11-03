@@ -96,6 +96,9 @@ FloatPoint RenderBox::GetPaintOffsetForScroll() const {
   } else {
     offset = FloatPoint(MaxScrollWidth() - ScrollLeft(), ScrollTop());
   }
+  if (renderer_ == nullptr) {
+    return {0.0f, 0.0f};
+  }
   // To improve the TextBlob cache hit rate, round the scroll offset here.
   // Because the TextBlob cache only works when the translation between the
   // positionMatrix is integer.
