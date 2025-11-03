@@ -492,12 +492,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (templateBundle) {
     [self loadTemplateBundle:templateBundle withURL:meta.url initData:meta.initialData];
     if (_logicExecutor != nil) {
-      // if logicExecutor set, we need to kepp _templateData
+      // if logicExecutor set, we need to keep _templateData
       if (_templateData == nil) {
-        _templateData = meta.initialData;
-      } else {
-        [_templateData updateWithTemplateData:meta.initialData];
+        _templateData = [[LynxTemplateData alloc] initWithDictionary:@{}];
       }
+      [_templateData updateWithTemplateData:meta.initialData];
     }
   } else if (meta.binaryData) {
     [self loadTemplate:meta.binaryData withURL:meta.url initData:meta.initialData];

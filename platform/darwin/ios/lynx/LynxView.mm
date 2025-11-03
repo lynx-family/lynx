@@ -15,6 +15,7 @@
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxLogicExecutor.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
@@ -243,10 +244,16 @@
 
 - (void)updateDataWithString:(NSString*)data {
   [self updateDataWithString:data processorName:nil];
+
+  // fire onDataChanged to logicExecutor
+  [self triggerEmbeddedModeLifecycle:@"onDataChanged" needData:YES];
 }
 
 - (void)updateDataWithString:(NSString*)data processorName:(NSString*)name {
   RUN_RENDER_SAFELY([_templateRender updateDataWithString:data processorName:name];);
+
+  // fire onDataChanged to logicExecutor
+  [self triggerEmbeddedModeLifecycle:@"onDataChanged" needData:YES];
 }
 
 - (void)updateDataWithDictionary:(NSDictionary<NSString*, id>*)data {
@@ -255,15 +262,24 @@
 
 - (void)updateDataWithDictionary:(NSDictionary<NSString*, id>*)data processorName:(NSString*)name {
   RUN_RENDER_SAFELY([_templateRender updateDataWithDictionary:data processorName:name];);
+
+  // fire onDataChanged to logicExecutor
+  [self triggerEmbeddedModeLifecycle:@"onDataChanged" needData:YES];
 }
 
 - (void)updateDataWithTemplateData:(LynxTemplateData*)data {
   RUN_RENDER_SAFELY([_templateRender updateDataWithTemplateData:data];);
+
+  // fire onDataChanged to logicExecutor
+  [self triggerEmbeddedModeLifecycle:@"onDataChanged" needData:YES];
 }
 
 - (void)updateMetaData:(LynxUpdateMeta*)meta {
   // TODO(nihao.royal) migrate updateData/updateGlobalProps to this api later~
   RUN_RENDER_SAFELY([_templateRender updateMetaData:meta];);
+
+  // fire onDataChanged to logicExecutor
+  [self triggerEmbeddedModeLifecycle:@"onDataChanged" needData:YES];
 }
 
 #pragma mark - Global Props
@@ -280,6 +296,9 @@
 
 - (void)resetDataWithTemplateData:(LynxTemplateData*)data {
   RUN_RENDER_SAFELY([_templateRender resetDataWithTemplateData:data];);
+
+  // fire onDataChanged to logicExecutor
+  [self triggerEmbeddedModeLifecycle:@"onDataChanged" needData:YES];
 }
 
 - (void)reloadTemplateWithTemplateData:(LynxTemplateData*)data {
@@ -1066,6 +1085,9 @@
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_VIEW_LIFECYCLE_LOAD_FINISHED_WITH_URL, "url",
               [url UTF8String]);
   [_lifecycleDispatcher lynxView:self didLoadFinishedWithUrl:url];
+
+  // fire the onLoad to LogicExecutor when template Loaded
+  [self triggerEmbeddedModeLifecycle:@"onLoad" needData:YES];
 }
 
 - (void)templateRenderOnRuntimeReady:(LynxTemplateRender*)templateRender {
@@ -1198,6 +1220,28 @@
 - (void)templateRender:(LynxTemplateRender*)templateRender
     onTemplateBundleReady:(LynxTemplateBundle*)bundle {
   [_lifecycleDispatcher onTemplateBundleReady:bundle];
+}
+
+- (void)triggerEmbeddedModeLifecycle:(NSString*)name needData:(BOOL)needData {
+  if (!_templateRender || !_templateRender.logicExecutor) {
+    return;
+  }
+  __weak typeof(self) weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf || !strongSelf->_templateRender) {
+      return;
+    }
+    NSMutableDictionary* event = [NSMutableDictionary dictionary];
+    event[@"method"] = name;
+    if (needData) {
+      LynxTemplateData* templateData = [strongSelf->_templateRender getTemplateData];
+      if (templateData) {
+        event[@"args"] = templateData;
+      }
+    }
+    [strongSelf->_templateRender.logicExecutor onLynxEvent:self event:event];
+  });
 }
 
 #pragma mark - Deprecated

@@ -101,9 +101,9 @@
                  return;
                }
                if (data.bundle) {
-                 strongSelf->_templateBundle = data.bundle;
+                 strongSelf.templateBundle = data.bundle;
                } else if (data.data) {
-                 strongSelf->_templateBundle =
+                 strongSelf.templateBundle =
                      [[LynxTemplateBundle alloc] initWithTemplate:data.data];
                } else {
                  LLogError(@"failed to fetch template: empty data, url=%@", strongSelf.url);

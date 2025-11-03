@@ -79,6 +79,7 @@
   _enableBytecode = other.enableBytecode;
   _bytecodeUrl = other.bytecodeUrl;
   _pendingCoreJsLoad = other.pendingCoreJsLoad;
+  _globalProps = other.globalProps;
 
   // Merge these Fetchers only if they are unset:
   // This part of configurations are shared between runtime and platform-level of LynxView.
@@ -268,7 +269,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         native_module_manager, bundle_creator, _options.group.whiteBoard,
         std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],
-        runtime_flags, nullptr, debuggable, false);
+        runtime_flags, LynxGetLepusValueFromTemplateData(_options.globalProps), debuggable, false);
 
     const auto& runtime_actor = _runtime_standalone_bundle.runtime_actor_;
     _js_proxy = lynx::shell::JSProxyDarwin::Create(
