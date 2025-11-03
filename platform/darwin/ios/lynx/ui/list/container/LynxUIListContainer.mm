@@ -15,6 +15,9 @@
 
 #import "LynxUIContext+Internal.h"
 
+#import "core/public/list_container_proxy.h"
+#import "core/public/list_engine_proxy.h"
+
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
 static const CGFloat kFadeInAnimationDefaultDuration = 0.1;
@@ -111,7 +114,9 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 
 @end
 
-@interface LynxUIListContainer ()
+@interface LynxUIListContainer () {
+  std::unique_ptr<lynx::shell::ListContainerProxy> _listContainerProxy;
+}
 @property(nonatomic, assign) BOOL verticalOrientation;
 @property(nonatomic, strong) NSArray<NSString *> *itemKeys;
 @property(nonatomic, copy) LynxUIMethodCallbackBlock scrollToCallback;
@@ -208,6 +213,13 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)onNodeReady {
   [super onNodeReady];
+  auto listNodeInfoFetcher = self.context.fetcher;
+  auto listEngineProxyPtr = [listNodeInfoFetcher getListEngineProxyPtr];
+  if (_listContainerProxy == nullptr && listEngineProxyPtr != 0) {
+    auto listEngineProxy = reinterpret_cast<lynx::shell::ListEngineProxy *>(listEngineProxyPtr);
+    _listContainerProxy = std::make_unique<lynx::shell::ListContainerProxy>(listEngineProxy);
+  }
+
   if (_needAdjustContentOffset) {
     _needAdjustContentOffset = NO;
     // Avoid adjustContentOffsetIfnecessary called from system
@@ -1174,13 +1186,18 @@ LYNX_UI_METHOD(scrollToPosition) {
 
   // Tell ListElement that we want scroll to some position
 
-  auto listNodeInfoFetcher = self.context.fetcher;
-  if (listNodeInfoFetcher) {
-    [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
-                                 position:(int)position
-                                   offset:offset
-                                    align:align
-                                   smooth:smooth];
+  if (_listContainerProxy) {
+    _listContainerProxy->ScrollToPosition(static_cast<int32_t>(self.sign), (int)position, offset,
+                                          align, smooth);
+  } else {
+    auto listNodeInfoFetcher = self.context.fetcher;
+    if (listNodeInfoFetcher) {
+      [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
+                                   position:(int)position
+                                     offset:offset
+                                      align:align
+                                     smooth:smooth];
+    }
   }
 }
 
@@ -1272,11 +1289,19 @@ LYNX_UI_METHOD(getVisibleCells) {
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop
     [self updatePreviousContentOffset];
-    [listNodeInfoFetcher scrollByListContainer:(static_cast<int32_t>(self.sign))
-                                             x:[self clampToValidScrollEdge:NO]
-                                             y:[self clampToValidScrollEdge:YES]
-                                     originalX:self.view.contentOffset.x
-                                     originalY:self.view.contentOffset.y];
+
+    if (_listContainerProxy) {
+      _listContainerProxy->ScrollByListContainer(
+          (static_cast<int32_t>(self.sign)), [self clampToValidScrollEdge:NO],
+          [self clampToValidScrollEdge:YES], self.view.contentOffset.x, self.view.contentOffset.y);
+    } else {
+      [listNodeInfoFetcher scrollByListContainer:(static_cast<int32_t>(self.sign))
+                                               x:[self clampToValidScrollEdge:NO]
+                                               y:[self clampToValidScrollEdge:YES]
+                                       originalX:self.view.contentOffset.x
+                                       originalY:self.view.contentOffset.y];
+    }
+
     [self updateStickyTops];
     [self updateStickyBottoms];
   }
@@ -1522,7 +1547,9 @@ LYNX_UI_METHOD(getVisibleCells) {
       kLynxListContainerInvalidScrollEstimatedOffset;
   auto fetcher = self.context.fetcher;
 
-  if (fetcher) {
+  if (_listContainerProxy) {
+    _listContainerProxy->ScrollStopped(static_cast<int32_t>(self.sign));
+  } else if (fetcher) {
     [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
   }
 }

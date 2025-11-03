@@ -17,6 +17,7 @@
 
 #include "core/animation/lynx_basic_animator/basic_animator.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/public/list_container_proxy.h"
 #include "core/renderer/ui_component/list/list_types.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_component.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
@@ -161,6 +162,8 @@ class UIList : public BaseScrollContainer,
 
   std::shared_ptr<animation::basic::LynxBasicAnimator>
       smooth_scroller_animator_;
+
+  std::unique_ptr<shell::ListContainerProxy> list_container_proxy_;
 };
 
 }  // namespace harmony

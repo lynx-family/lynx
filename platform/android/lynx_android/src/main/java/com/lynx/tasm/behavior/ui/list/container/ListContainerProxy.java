@@ -34,9 +34,11 @@ public class ListContainerProxy {
     }
   }
 
-  private void destroy() {
-    nativeDestroy(mNativeContainerPtr);
-    mNativeContainerPtr = 0;
+  public void destroy() {
+    if (mNativeContainerPtr != 0) {
+      nativeDestroy(mNativeContainerPtr);
+      mNativeContainerPtr = 0;
+    }
   }
 
   // ------------------JNI Method start -----------------------

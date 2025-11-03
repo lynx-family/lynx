@@ -18,6 +18,7 @@
 #include "base/include/fml/task_runner.h"
 #include "core/base/lynx_export.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/public/list_engine_proxy.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/public/lynx_extension_delegate.h"
 #include "core/public/lynx_resource_loader.h"
@@ -86,6 +87,10 @@ class LynxContext {
   UIOwner* GetUIOwner() const { return ui_owner_; }
 
   const std::shared_ptr<base::VSyncMonitor> VSyncMonitor();
+
+  const std::shared_ptr<shell::ListEngineProxy> GetListEngineProxy() {
+    return list_engine_proxy_;
+  }
 
   void ResetNodeOwner() {
     std::unique_lock<std::shared_mutex> guard(node_owner_shared_mutex_);
@@ -303,6 +308,7 @@ class LynxContext {
   std::unordered_map<std::string, NodeInfo> dynamic_node_info_map_;
   bool enable_text_overflow_{false};
 
+  std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_{nullptr};
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_{nullptr};
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_{nullptr};
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_{nullptr};

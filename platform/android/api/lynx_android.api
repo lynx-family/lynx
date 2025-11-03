@@ -3208,6 +3208,7 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerProxy 
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.scrollByListContainer(int sign, float x, float y, float originalX, float originalY);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.scrollToPosition(int sign, int position, float offset, int align, boolean smooth);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.scrollStopped(int sign);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerProxy.destroy();
 }
 
 public class com::lynx::tasm::behavior::ui::list::container::ListContainerView : com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
@@ -10268,6 +10269,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.removeView(LynxBaseUI child);
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.isAsyncThreadStrategy();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onNodeReady();
+  public ListContainerProxy com.lynx.tasm.behavior.ui.list.container.UIListContainer.getListContainerProxy();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onLayoutUpdated();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.removeKeyFromNativeStorage(String key);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.storeKeyToNativeStorage(String key, Object value);

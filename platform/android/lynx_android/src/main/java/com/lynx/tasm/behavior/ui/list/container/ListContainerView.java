@@ -245,16 +245,21 @@ public class ListContainerView
     }
     if (!mShouldBlockScrollByListContainer && mUiListContainer != null
         && mUiListContainer.getLynxContext() != null) {
-      IListNodeInfoFetcher listNodeInfoFetcher =
-          mUiListContainer.getLynxContext().getListNodeInfoFetcher();
-      if (listNodeInfoFetcher == null) {
-        LLog.e(TAG, "onScrollChanged: listNodeInfoFetcher is nullptr");
-        return;
-      }
       mPreviousOffsetY = t;
       mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(l) : l;
-      listNodeInfoFetcher.scrollByListContainer(
-          mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
+      if (mUiListContainer.getListContainerProxy() != null) {
+        mUiListContainer.getListContainerProxy().scrollByListContainer(
+            mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
+      } else {
+        IListNodeInfoFetcher listNodeInfoFetcher =
+            mUiListContainer.getLynxContext().getListNodeInfoFetcher();
+        if (listNodeInfoFetcher == null) {
+          LLog.e(TAG, "onScrollChanged: listNodeInfoFetcher is nullptr");
+          return;
+        }
+        listNodeInfoFetcher.scrollByListContainer(
+            mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
+      }
 
       mUiListContainer.updateStickyStarts();
       mUiListContainer.updateStickyEnds();
