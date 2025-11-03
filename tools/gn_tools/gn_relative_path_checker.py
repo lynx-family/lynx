@@ -5,6 +5,7 @@
 
 import subprocess
 import sys
+import os
 
 from gn_relative_path_converter import process_file
 
@@ -20,6 +21,10 @@ def get_changed_files():
     changed_files = changed_files.split('\n')
     return changed_files
 
+def get_lynx_path():
+    lynx_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return lynx_path
+
 
 def process_gn_relative_path():
     """
@@ -28,10 +33,13 @@ def process_gn_relative_path():
     gn_file_modified = False
     changed_files = get_changed_files()
     print(changed_files)
+    print(get_lynx_path())
     for file in changed_files:
         if file.endswith('.gn') or file.endswith('.gni'):
-            print(file)
-            if process_file(file, "lynx"):
+            file_path = os.path.join(get_lynx_path(), file)
+            print(file_path)
+            is_need_process, _ = process_file(file_path, get_lynx_path())
+            if is_need_process:
                 print(f'{COLORED_RED_MSG}Found gn files with absolute path in {file}. {COLORED_PRINT_END}')
                 gn_file_modified = True
 
