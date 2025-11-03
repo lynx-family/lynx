@@ -624,6 +624,7 @@ public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
 
 public class com::lynx::tasm::image::AutoSizeImage : com.lynx.tasm.behavior.shadow.ShadowNode, com.lynx.tasm.behavior.shadow.MeasureFunc {
   public com.lynx.tasm.image.AutoSizeImage.AutoSizeImage();
+  public void com.lynx.tasm.image.AutoSizeImage.setSrc(String source);
   public long com.lynx.tasm.image.AutoSizeImage.measure(LayoutNode node, float width, MeasureMode widthMode, float height, MeasureMode heightMode);
   public void com.lynx.tasm.image.AutoSizeImage.justSizeIfNeeded(final boolean autoSize, final int bitmapW, final int bitmapH, final int width, final int height);
 }
@@ -949,6 +950,14 @@ public interface com::lynx::tasm::image::model::BitmapPostProcessor {
   public void com.lynx.tasm.image.model.BitmapPostProcessor.process(Bitmap sourceBitmap, Bitmap dstBitmap);
   public String com.lynx.tasm.image.model.BitmapPostProcessor.getName();
   public String com.lynx.tasm.image.model.BitmapPostProcessor.getPostprocessorCacheKey();
+}
+
+public class com::lynx::tasm::group::BitmapSize :  {
+  public com.lynx.tasm.group.BitmapSize.BitmapSize(String source, int width, int height);
+  public String com.lynx.tasm.group.BitmapSize.getSource();
+  public int com.lynx.tasm.group.BitmapSize.getWidth();
+  public int com.lynx.tasm.group.BitmapSize.getHeight();
+  public String com.lynx.tasm.group.BitmapSize.toString();
 }
 
 public class com::lynx::tasm::utils::BitmapUtils :  {
@@ -2488,6 +2497,8 @@ public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
   public TemplateBundle com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getTemplateBundle();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setLynxEngine(ILynxEngine lynxEngine);
   public ILynxEngine com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getLynxEngine();
+  public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setBitmapSizeCache(String source, int width, int height);
+  public BitmapSize com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getBitmapSizeCache(String source);
 }
 
 public interface com::lynx::tasm::ILynxViewStateListener {
@@ -4333,6 +4344,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isFragmentLayerRenderOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnginePoolEnabled();
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
+  public void com.lynx.tasm.behavior.LynxContext.setRuntimeCacheManager(ILynxViewRuntimeCacheManager cacheManager);
+  public ILynxViewRuntimeCacheManager com.lynx.tasm.behavior.LynxContext.getRuntimeCacheManager();
   public void com.lynx.tasm.behavior.LynxContext.setEnableAsyncLoadImage(boolean b);
   public boolean com.lynx.tasm.behavior.LynxContext.isEnableAsyncLoadImage();
   public LynxBooleanOption com.lynx.tasm.behavior.LynxContext.getLongTaskMonitorEnabled();
