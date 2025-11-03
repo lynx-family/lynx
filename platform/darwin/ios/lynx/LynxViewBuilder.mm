@@ -35,10 +35,11 @@
 }
 
 - (LynxGroup *)group {
-  if (_lynxViewGroup) {
-    return _lynxViewGroup.group;
+  // Prefers group in lynxViewBuilder.
+  if ([super group]) {
+    return [super group];
   }
-  return [super group];
+  return _lynxViewGroup.group;
 }
 
 - (BOOL)enableLayoutSafepoint {

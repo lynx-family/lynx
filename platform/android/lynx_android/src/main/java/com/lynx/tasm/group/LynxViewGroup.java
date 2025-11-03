@@ -13,6 +13,7 @@ import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
@@ -196,6 +197,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   @Override
   public LynxBackgroundRuntimeOptions getLynxRuntimeOptions() {
     return this.lynxRuntimeOptions;
+  }
+
+  @Override
+  public LynxGroup getLynxGroup() {
+    return this.lynxRuntimeOptions.getLynxGroup();
   }
 
   @Override

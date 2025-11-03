@@ -7,6 +7,7 @@ import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
@@ -60,6 +61,11 @@ public interface ILynxViewConfigProvider {
    * Returns the associated lynxRuntimeOptions
    */
   LynxBackgroundRuntimeOptions getLynxRuntimeOptions();
+
+  /**
+   * Returns the associated lynxGroup
+   */
+  LynxGroup getLynxGroup();
 
   /**
    * @return ScreenWidth set

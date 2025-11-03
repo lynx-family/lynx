@@ -75,6 +75,7 @@ NS_ASSUME_NONNULL_BEGIN
   LynxThreadStrategyForRender _threadStrategyForRendering;
   LynxBackgroundRuntime* _runtime;
   LynxBackgroundRuntimeOptions* _runtimeOptions;
+  LynxGroup* _group;
   LynxTheme* _localTheme;
   LynxTemplateData* _globalProps;
   LynxTemplateData* _templateData;
