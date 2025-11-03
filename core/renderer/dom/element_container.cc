@@ -20,29 +20,8 @@ namespace tasm {
 
 static int CompareElementOrder(Element* left, Element* right);
 
-ElementContainer::ElementContainer(Element* element, bool is_flatten,
-                                   const fml::RefPtr<PropBundle>& painting_data)
-    : element_(element) {
-  was_stacking_context_ = IsStackingContextNode();
-  was_position_fixed_ = element->IsNewFixed();
-  old_index_ = ZIndex();
-
-  if (element->EnableFragmentLayerRender()) {
-    return;
-  }
-
-  if (element->IsLayoutOnly()) {
-    return;
-  }
-
-  // TODO(songshourui.null): Abstract ElementContainer into a base class. Rename
-  // the current ElementContainer to FragmentForPlatformRenderer, inheriting
-  // from ElementContainer. Rename the current Fragment to
-  // FragmentForNativeRenderer, also inheriting from ElementContainer.
-  painting_context()->CreatePaintingNode(
-      element->impl_id(), element->GetPlatformNodeTag().str(), painting_data,
-      is_flatten, element->NeedCreateNodeAsync(), element->NodeIndex());
-}
+ElementContainer::ElementContainer(Element* element)
+    : element_(element), manager_(element->element_manager()) {}
 
 ElementContainer::~ElementContainer() {
   if (!element_->will_destroy()) {
@@ -218,7 +197,7 @@ void ElementContainer::InsertSelf() {
 }
 
 PaintingContext* ElementContainer::painting_context() {
-  return element()->painting_context();
+  return element_manager()->painting_context();
 }
 
 std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
@@ -613,9 +592,7 @@ void ElementContainer::UpdateZIndexList() {
   SetNeedUpdate(true);
 }
 
-ElementManager* ElementContainer::element_manager() {
-  return element()->element_manager();
-}
+ElementManager* ElementContainer::element_manager() { return manager_; }
 
 bool ElementContainer::IsStackingContextNode() {
   return element()->IsStackingContextNode();
@@ -630,8 +607,8 @@ void ElementContainer::CreatePaintingNode(
     return;
   }
   painting_context()->CreatePaintingNode(
-      element()->impl_id(), element()->GetTag().str(), painting_data,
-      is_flatten, element()->NeedCreateNodeAsync());
+      element()->impl_id(), element()->GetPlatformNodeTag().str(),
+      painting_data, is_flatten, element()->NeedCreateNodeAsync());
 }
 
 void ElementContainer::UpdatePaintingNode(
@@ -651,9 +628,8 @@ bool ElementContainer::CheckFlatten(base::MoveOnlyClosure<bool, bool> func) {
   return painting_context()->IsFlatten(std::move(func));
 }
 
-void ElementContainer::SetKeyframes(PaintingContext* context,
-                                    fml::RefPtr<PropBundle> bundle) {
-  context->SetKeyframes(std::move(bundle));
+void ElementContainer::SetKeyframes(fml::RefPtr<PropBundle> bundle) {
+  painting_context()->SetKeyframes(std::move(bundle));
 }
 
 void ElementContainer::SetFrameAppBundle(
@@ -671,8 +647,9 @@ void ElementContainer::ListCellDisappear(bool is_exist,
                                         item_key);
 }
 
-void ElementContainer::ListReusePaintingNode(const std::string& item_key) {
-  painting_context()->ListReusePaintingNode(element()->impl_id(), item_key);
+void ElementContainer::ListReusePaintingNode(int32_t child_id,
+                                             const std::string& item_key) {
+  painting_context()->ListReusePaintingNode(child_id, item_key);
 }
 
 void ElementContainer::InsertListItemPaintingNode(int32_t child_id) {
@@ -706,6 +683,14 @@ void ElementContainer::Invoke(
                                     callback);
 }
 
+void ElementContainer::UpdateContentOffsetForListContainer(
+    float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  painting_context()->UpdateContentOffsetForListContainer(
+      element()->impl_id(), content_size, delta_x, delta_y,
+      is_init_scroll_offset, from_layout);
+}
+
 void ElementContainer::SetGestureDetectorState(int32_t gesture_id,
                                                int32_t state) {
   painting_context()->SetGestureDetectorState(element()->impl_id(), gesture_id,
@@ -737,6 +722,22 @@ void ElementContainer::Flush() { painting_context()->Flush(); }
 
 void ElementContainer::FlushImmediately() {
   painting_context()->FlushImmediately();
+}
+
+void ElementContainer::OnFirstScreen() { painting_context()->OnFirstScreen(); }
+
+void ElementContainer::AppendOptionsForTiming(
+    const std::shared_ptr<PipelineOptions>& options) {
+  painting_context()->AppendOptionsForTiming(options);
+}
+
+void ElementContainer::FinishLayoutOperation(
+    const std::shared_ptr<PipelineOptions>& options) {
+  painting_context()->FinishLayoutOperation(options);
+}
+
+void ElementContainer::MarkLayoutUIOperationQueueFlushStartIfNeed() {
+  painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
 }
 
 bool ElementContainer::IsSticky() { return element()->is_sticky(); }

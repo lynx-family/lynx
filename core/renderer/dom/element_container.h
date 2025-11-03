@@ -29,8 +29,7 @@ struct FixedContainer {
 
 class ElementContainer {
  public:
-  explicit ElementContainer(Element* element, bool is_flatten,
-                            const fml::RefPtr<PropBundle>& painting_data);
+  explicit ElementContainer(Element* element);
   virtual ~ElementContainer();
 
   Element* element() const { return element_; }
@@ -68,17 +67,14 @@ class ElementContainer {
   virtual void UpdatePlatformExtraBundle(PlatformExtraBundle* bundle);
   virtual bool CheckFlatten(base::MoveOnlyClosure<bool, bool> func);
 
-  // TODO(songshourui.null): these functions may be called before
-  // ElementContainer is created, need pass PaintingContext as the parameter for
-  // now. We will consider create ElementContainer when create Element to avoid
-  // NPE.
-  void SetKeyframes(PaintingContext* context, fml::RefPtr<PropBundle> bundle);
+  virtual void SetKeyframes(fml::RefPtr<PropBundle> bundle);
   virtual void SetFrameAppBundle(
       const std::shared_ptr<LynxTemplateBundle>& bundle);
 
   virtual void ListCellWillAppear(const std::string& item_key);
   virtual void ListCellDisappear(bool is_exist, const base::String& item_key);
-  virtual void ListReusePaintingNode(const std::string& item_key);
+  virtual void ListReusePaintingNode(int32_t child_id,
+                                     const std::string& item_key);
   virtual void InsertListItemPaintingNode(int32_t child_id);
   virtual void RemoveListItemPaintingNode(int32_t child_id);
 
@@ -90,6 +86,10 @@ class ElementContainer {
       const std::string& method, const pub::Value& params,
       const std::function<void(int32_t code, const pub::Value& data)>&
           callback);
+  virtual void UpdateContentOffsetForListContainer(float content_size,
+                                                   float delta_x, float delta_y,
+                                                   bool is_init_scroll_offset,
+                                                   bool from_layout);
 
   virtual void SetGestureDetectorState(int32_t gesture_id, int32_t state);
   virtual void ConsumeGesture(int32_t gesture_id, const lepus::Value& params);
@@ -100,6 +100,13 @@ class ElementContainer {
   virtual void UpdateNodeReadyPatching();
   virtual void Flush();
   virtual void FlushImmediately();
+
+  virtual void OnFirstScreen();
+  virtual void AppendOptionsForTiming(
+      const std::shared_ptr<PipelineOptions>& options);
+  virtual void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options);
+  virtual void MarkLayoutUIOperationQueueFlushStartIfNeed();
 
  private:
   void ZIndexChanged();
@@ -130,6 +137,8 @@ class ElementContainer {
   base::Vector<ElementContainer*> children_;
   std::unique_ptr<FixedContainer> fixed_node_;
   Element* element_{nullptr};
+  ElementManager* manager_{nullptr};
+
   ElementContainer* parent_{nullptr};
   float last_left_{0};
   float last_top_{0};

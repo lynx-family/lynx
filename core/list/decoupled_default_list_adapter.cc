@@ -178,7 +178,6 @@ void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
               });
   if (item_holder) {
     EnqueueElement(item_holder);
-    //    list_element_->painting_context()->FlushImmediately();
   }
 }
 

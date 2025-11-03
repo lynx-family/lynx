@@ -125,8 +125,8 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
     // TODO(dingwang.wxx): Move the events invocations in finishing bind.
     if (list_container_->should_request_state_restore() &&
         item_holder->element() != nullptr) {
-      list_element_->painting_context()->ListCellWillAppear(
-          item_holder->element()->impl_id(), item_holder->item_key());
+      item_holder->element()->element_container()->ListCellWillAppear(
+          item_holder->item_key());
     }
     if (list_container_->list_event_manager() && should_send) {
       list_container_->list_event_manager()->OnViewAttach(item_holder);
@@ -217,7 +217,7 @@ void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
               });
   if (item_holder) {
     EnqueueElement(item_holder);
-    list_element_->painting_context()->FlushImmediately();
+    list_element_->element_container()->FlushImmediately();
   }
 }
 

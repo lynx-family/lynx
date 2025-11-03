@@ -161,24 +161,24 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   sl_node_->ReLayout();
 
-  painting_context()->AppendOptionsForTiming(options);
+  element_container()->AppendOptionsForTiming(options);
 
-  painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
+  element_container()->MarkLayoutUIOperationQueueFlushStartIfNeed();
 
   UpdateLayoutInfoRecursively();
 
   element_container()->UpdateLayout(left_, top_, false);
 
-  painting_context()->UpdateLayoutPatching();
+  element_container()->UpdateLayoutPatching();
 
-  painting_context()->OnFirstScreen();
+  element_container()->OnFirstScreen();
 
-  painting_context()->UpdateNodeReadyPatching();
+  element_container()->UpdateNodeReadyPatching();
 
-  painting_context()->FinishLayoutOperation(options);
+  element_container()->FinishLayoutOperation(options);
 
   if (!options->enable_unified_pixel_pipeline) {
-    painting_context()->Flush();
+    element_container()->Flush();
   }
 }
 

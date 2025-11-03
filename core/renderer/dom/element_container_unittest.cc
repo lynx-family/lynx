@@ -53,8 +53,7 @@ class ElementContainerTest : public ::testing::Test {
 
 TEST_F(ElementContainerTest, Create) {
   auto element = manager->CreateNode("view", nullptr);
-  auto element_container =
-      std::make_unique<ElementContainer>(element.get(), false, nullptr);
+  auto element_container = std::make_unique<ElementContainer>(element.get());
   EXPECT_EQ(element_container->element(), element.get());
 
   auto child = manager->CreateNode("view", nullptr);

@@ -84,6 +84,11 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
   virtual void InsertPaintingNode(int parent, int child, int index) override {
     std::lock_guard guard(lock_);
 
+    if (node_map_.find(parent) == node_map_.end() ||
+        node_map_.find(child) == node_map_.end()) {
+      return;
+    }
+
     auto* parent_node = node_map_.at(parent).get();
     auto* child_node = node_map_.at(child).get();
     if (index == -1) {
@@ -98,6 +103,11 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
                                   bool is_move) override {
     std::lock_guard guard(lock_);
 
+    if (node_map_.find(parent) == node_map_.end() ||
+        node_map_.find(child) == node_map_.end()) {
+      return;
+    }
+
     auto* parent_node = node_map_.at(parent).get();
     auto* child_node = node_map_.at(child).get();
 
@@ -111,6 +121,11 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
   }
   virtual void DestroyPaintingNode(int parent, int child, int index) override {
     std::lock_guard guard(lock_);
+
+    if (node_map_.find(parent) == node_map_.end() ||
+        node_map_.find(child) == node_map_.end()) {
+      return;
+    }
 
     auto* child_node = node_map_.at(child).get();
     child_node->parent_ = nullptr;
@@ -136,6 +151,10 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
     if (!painting_data) {
       return;
     }
+    if (node_map_.find(id) == node_map_.end()) {
+      return;
+    }
+
     auto* node = node_map_.at(id).get();
     auto* props = painting_data.get();
     for (const auto& update : static_cast<PropBundleMock*>(props)->props_) {
