@@ -15,6 +15,10 @@ lynx_core_source_set("lynx_xelement") {
     "input/ui_input.h",
     "input/ui_textarea.cc",
     "input/ui_textarea.h",
+    "overlay/overlay_shadow_node.cc",
+    "overlay/overlay_shadow_node.h",
+    "overlay/ui_overlay.cc",
+    "overlay/ui_overlay.h",
     "registry.cc",
     "registry.h",
   ]

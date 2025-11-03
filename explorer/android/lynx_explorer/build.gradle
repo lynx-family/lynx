@@ -97,6 +97,7 @@ dependencies {
     implementation project(':LynxDevtool')
     implementation project(':LynxXElement')
     implementation project(':LynxXElement:Input')
+    implementation project(':LynxXElement:Overlay')
     
     kapt project(':LynxProcessor')
     compileOnly project(':LynxProcessor')

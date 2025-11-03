@@ -38,6 +38,7 @@ podspec_target("XElement_podspec") {
 
     default_subspecs = [
       "Input",
+      "Overlay",
       "Behavior",
     ]
   }
@@ -45,6 +46,7 @@ podspec_target("XElement_podspec") {
   deps = [
     ":Behavior",
     ":Input",
+    ":Overlay",
   ]
 }
 
@@ -84,18 +86,41 @@ subspec_target("Input") {
   dependency = lynx_dependency
 }
 
+subspec_target("Overlay") {
+  sources = [
+    "overlay/LynxOverlayContainer.h",
+    "overlay/LynxOverlayContainer.m",
+    "overlay/LynxOverlayGlobalManager.h",
+    "overlay/LynxOverlayGlobalManager.m",
+    "overlay/LynxUIOverlay.h",
+    "overlay/LynxUIOverlay.m",
+  ]
+  public_header_files = [
+    "overlay/LynxOverlayContainer.h",
+    "overlay/LynxOverlayGlobalManager.h",
+    "overlay/LynxUIOverlay.h",
+  ]
+  dependency = lynx_dependency
+}
+
 subspec_target("Behavior") {
   sources = [
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.m",
+    "behavior/LynxUIOverlayAutoRegistry.h",
+    "behavior/LynxUIOverlayAutoRegistry.m",
     "behavior/LynxUITextAreaAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.m",
   ]
   public_header_files = [
     "behavior/LynxUIInputAutoRegistry.h",
+    "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.h",
   ]
 
   dependency = lynx_dependency
-  dependency += [ "XElement/Input" ]
+  dependency += [
+    "XElement/Input",
+    "XElement/Overlay",
+  ]
 }
