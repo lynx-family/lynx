@@ -120,8 +120,7 @@ void TimingHandlerNg::ProcessPipelineTiming(
         timing_key == kReloadBackgroundEnd) {
       is_background_runtime_ready_ = true;
       FlushPendingPerformanceEntries();
-    } else if (timing_key == kLoadBundleEnd ||
-               timing_key == kReloadBackgroundEnd) {
+    } else if (timing_key == kLoadBundleEnd || timing_key == kReloadBundleEnd) {
       is_main_thread_runtime_ready_ = true;
       FlushPendingPerformanceEntries();
     }
