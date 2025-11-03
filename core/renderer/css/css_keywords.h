@@ -140,7 +140,12 @@ enum class TokenType {
   CUBIC_BEZIER,   // cubic-bezier
   STEPS,          // steps
 
-  GRAYSCALE,  // grayscale(10%)
+  GRAYSCALE,   // grayscale(10%)
+  BRIGHTNESS,  // brightness(10%)
+  CONTRAST,    // contrast(10%)
+  SATURATE,    // saturate(10%)
+  HUE_ROTATE,  // hue-rotate(10deg)
+
   VAR,
   /* function end */
 

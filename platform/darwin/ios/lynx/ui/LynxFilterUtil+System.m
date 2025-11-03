@@ -25,6 +25,11 @@
         filterName = @"gaussianBlur";
         keyPath = @"inputRadius";
         break;
+      case LynxFilterTypeBrightness:
+        filterName = @"colorBrightness";
+        filter_amount -= 1.0f;
+        keyPath = @"inputAmount";
+        break;
       default:
         // No such filter
         return nil;

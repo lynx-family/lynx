@@ -170,6 +170,10 @@ public final class StyleConstants implements AutoGenStyleConstants {
   public static final int FILTER_TYPE_NONE = 0;
   public static final int FILTER_TYPE_GRAYSCALE = 1;
   public static final int FILTER_TYPE_BLUR = 2;
+  public static final int FILTER_TYPE_BRIGHTNESS = 3;
+  public static final int FILTER_TYPE_CONTRAST = 4;
+  public static final int FILTER_TYPE_SATURATE = 5;
+  public static final int FILTER_TYPE_HUE_ROTATE = 6;
 
   public static final int BASIC_SHAPE_TYPE_UNKNOWN = 0;
   public static final int BASIC_SHAPE_TYPE_CIRCLE = 1;

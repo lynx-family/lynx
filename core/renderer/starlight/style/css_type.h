@@ -359,6 +359,10 @@ enum class FilterType : uint8_t {
   kNone = 0,
   kGrayscale = 1,
   kBlur = 2,
+  kBrightness = 3,
+  kContrast = 4,
+  kSaturate = 5,
+  kHueRotate = 6,
 };
 
 enum class BasicShapeType : uint8_t {

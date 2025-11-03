@@ -9134,6 +9134,10 @@ public class com::lynx::tasm::behavior::StyleConstants : com.lynx.tasm.behavior.
   public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_NONE FILTER_TYPE_NONE;
   public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_GRAYSCALE FILTER_TYPE_GRAYSCALE;
   public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BLUR FILTER_TYPE_BLUR;
+  public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BRIGHTNESS FILTER_TYPE_BRIGHTNESS;
+  public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_CONTRAST FILTER_TYPE_CONTRAST;
+  public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_SATURATE FILTER_TYPE_SATURATE;
+  public final int com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_HUE_ROTATE FILTER_TYPE_HUE_ROTATE;
   public final int com.lynx.tasm.behavior.StyleConstants.BASIC_SHAPE_TYPE_UNKNOWN BASIC_SHAPE_TYPE_UNKNOWN;
   public final int com.lynx.tasm.behavior.StyleConstants.BASIC_SHAPE_TYPE_CIRCLE BASIC_SHAPE_TYPE_CIRCLE;
   public final int com.lynx.tasm.behavior.StyleConstants.BASIC_SHAPE_TYPE_ELLIPSE BASIC_SHAPE_TYPE_ELLIPSE;

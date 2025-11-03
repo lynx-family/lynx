@@ -2915,27 +2915,6 @@ bool CSSStringParser::SuperEllipse() {
   return true;
 }
 
-CSSValue CSSStringParser::ParseGrayscale() {
-  Token grayscale;
-  Advance();
-  if (!ConsumeGrayscale(grayscale) || !Check(TokenType::TOKEN_EOF)) {
-    return CSSValue();
-  }
-  double value = TokenToDouble(grayscale);
-
-  // Amount is specified as a <number> or a <percentage>. Convert <number> to
-  // <percentage> here.
-  if (grayscale.type == TokenType::NUMBER) {
-    value *= 100;
-  }
-
-  return CSSValue(value, CSSValuePattern::PERCENT);
-}
-
-bool CSSStringParser::ConsumeGrayscale(Token &token) {
-  return NumberOrPercentValue(token);
-}
-
 bool CSSStringParser::ParseVarReference(VarReference &ref) {
   // Parse variable name - should be the first argument
   Advance();
@@ -3001,20 +2980,6 @@ CSSValue CSSStringParser::ParseVariable() {
   return result;
 }
 
-CSSValue CSSStringParser::ParseBlur() {
-  Token blur;
-  Advance();
-  if (!ConsumeBlur(blur) || !Check(TokenType::TOKEN_EOF)) {
-    return CSSValue();
-  }
-  return CSSValue(TokenToDouble(blur),
-                  static_cast<CSSValuePattern>(TokenTypeToENUM(blur.type)));
-}
-
-bool CSSStringParser::ConsumeBlur(Token &token) {
-  return LengthOrPercentageValue(token) && token.type != TokenType::PERCENTAGE;
-}
-
 CSSValue CSSStringParser::ParseFilter() {
   Advance();
   Token function_token;
@@ -3024,64 +2989,66 @@ CSSValue CSSStringParser::ParseFilter() {
     result->emplace_back(static_cast<uint32_t>(starlight::FilterType::kNone));
     return CSSValue{std::move(result)};
   } else if (ConsumeAndSave(TokenType::GRAYSCALE, function_token)) {
-    return FilterGrayscaleValue(function_token);
+    return FilterValue(function_token, starlight::FilterType::kGrayscale);
   } else if (ConsumeAndSave(TokenType::BLUR, function_token)) {
-    return FilterBlurValue(function_token);
+    return FilterValue(function_token, starlight::FilterType::kBlur);
+  } else if (ConsumeAndSave(TokenType::BRIGHTNESS, function_token)) {
+    return FilterValue(function_token, starlight::FilterType::kBrightness);
   }
   return CSSValue();
 }
 
-/**
- * Create CSSValue for the css property `filter: blur()`
- * @param function_token The function type token, whose type should be blur.
- * @return An array type CSSValue contains a array with [type, value, pattern]
- * or empty value when failed.
- */
-CSSValue CSSStringParser::FilterBlurValue(const Token &function_token) {
+CSSValue CSSStringParser::FilterValue(const Token &function_token,
+                                      starlight::FilterType type) {
   auto result = lepus::CArray::Create();
-  // push back type blur
-  result->emplace_back(static_cast<uint32_t>(starlight::FilterType::kBlur));
-
-  // extract function args
-  CSSStringParser blur_parser{function_token.start, function_token.length,
-                              this->parser_configs_};
-
-  // parse blur args
-  CSSValue blur = blur_parser.ParseBlur();
-
-  // append to result array
-  if (!blur.IsEmpty() && Check(TokenType::TOKEN_EOF)) {
-    result->emplace_back(blur.GetValue());
-    result->emplace_back(static_cast<uint32_t>(blur.GetPattern()));
-    return CSSValue(std::move(result));
-  }
-  return CSSValue();
-}
-
-/**
- * Create CSSValue for the css property `filter: grayscale()`
- * @param function_token The function type token, whose type should be
- * grayscale.
- * @return An array type CSSValue contains a array with [type, value, pattern]
- * or empty value when failed.
- */
-CSSValue CSSStringParser::FilterGrayscaleValue(const Token &function_token) {
-  auto result = lepus::CArray::Create();
-  // Push back type grayscale
-  result->emplace_back(
-      static_cast<uint32_t>(starlight::FilterType::kGrayscale));
-
-  // Begin parse the args.
-  CSSStringParser grayscale_parser = CSSStringParser{
+  result->emplace_back(static_cast<uint32_t>(type));
+  CSSStringParser filter_parser = CSSStringParser{
       function_token.start, function_token.length, this->parser_configs_};
-
-  CSSValue grayscale = grayscale_parser.ParseGrayscale();
-  if (!grayscale.IsEmpty() && Check(TokenType::TOKEN_EOF)) {
-    result->emplace_back(grayscale.GetValue());
-    result->emplace_back(static_cast<uint32_t>(CSSValuePattern::PERCENT));
+  CSSValue filter = filter_parser.ParseFilterValue(type);
+  if (!filter.IsEmpty() && Check(TokenType::TOKEN_EOF)) {
+    result->emplace_back(filter.GetValue());
+    result->emplace_back(static_cast<uint32_t>(filter.GetPattern()));
     return CSSValue(std::move(result));
   }
   return CSSValue();
+}
+
+CSSValue CSSStringParser::ParseFilterValue(starlight::FilterType filter_type) {
+  Token token;
+  Advance();
+  if (!ConsumeFilter(token, filter_type) || !Check(TokenType::TOKEN_EOF)) {
+    return CSSValue();
+  }
+  double value = TokenToDouble(token);
+  CSSValuePattern pattern_type = CSSValuePattern::NUMBER;
+  if (filter_type == starlight::FilterType::kGrayscale) {
+    if (token.type == TokenType::NUMBER) {
+      value *= 100;
+    }
+    pattern_type = CSSValuePattern::PERCENT;
+  } else if (filter_type == starlight::FilterType::kBrightness) {
+    if (token.type == TokenType::PERCENTAGE) {
+      value /= 100.0;
+    }
+    pattern_type = CSSValuePattern::NUMBER;
+  } else if (filter_type == starlight::FilterType::kBlur) {
+    pattern_type = static_cast<CSSValuePattern>(TokenTypeToENUM(token.type));
+  }
+
+  return CSSValue(value, pattern_type);
+}
+
+bool CSSStringParser::ConsumeFilter(Token &token, starlight::FilterType type) {
+  switch (type) {
+    case starlight::FilterType::kBlur:
+      return LengthOrPercentageValue(token) &&
+             token.type != TokenType::PERCENTAGE;
+    case starlight::FilterType::kGrayscale:
+    case starlight::FilterType::kBrightness:
+      return NumberOrPercentValue(token);
+    default:
+      return false;
+  }
 }
 
 bool CSSStringParser::ParseBorderLineWidth(CSSValue &result_width) {

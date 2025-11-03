@@ -5800,6 +5800,10 @@ public enum LynxFilterType {
   LynxFilterTypeNone
   LynxFilterTypeGrayScale
   LynxFilterTypeBlur
+  LynxFilterTypeBrightness
+  LynxFilterTypeContrast
+  LynxFilterTypeSaturate
+  LynxFilterTypeHueRotate
 }
 
 public enum LynxBasicShapeType {

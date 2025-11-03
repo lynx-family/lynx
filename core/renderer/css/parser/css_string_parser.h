@@ -477,14 +477,10 @@ class CSSStringParser final {
   void SkipWhitespaceToken();
   bool ConsumeAndSave(TokenType tokenType, Token& token);
   bool LengthOrPercentageValue(Token& token);
-  bool ConsumeGrayscale(Token& token);
-  bool ConsumeBlur(Token& token);
   bool ParseVarReference(VarReference& ref);
-  CSSValue ParseGrayscale();
-  CSSValue ParseBlur();
-  CSSValue FilterGrayscaleValue(const Token& function_token);
-  CSSValue FilterBlurValue(const Token& function_token);
-
+  CSSValue FilterValue(const Token& function_token, starlight::FilterType type);
+  CSSValue ParseFilterValue(starlight::FilterType filter_type);
+  bool ConsumeFilter(Token& token, starlight::FilterType type);
   StackValue stack_value_;
   Token current_token_;
   Token previous_token_;

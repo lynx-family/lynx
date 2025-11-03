@@ -14,6 +14,7 @@ import static androidx.core.view.ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
 import static androidx.core.view.ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS;
 import static com.lynx.tasm.behavior.StyleConstants.DIRECTION_RTL;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BLUR;
+import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BRIGHTNESS;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_GRAYSCALE;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_NONE;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_LENGTH_UNIT_NUMBER;
@@ -103,6 +104,11 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   protected OnceTask<T> mOnceTask;
 
   private float mGrayscaleAmount = 1.0f;
+  private float mBrightnessAmount = 1.0f;
+  private float mContrastAmount = 1.0f;
+  private float mSaturateAmount = 1.0f;
+  private float mHueRotateAmount = 0.0f;
+
   private static final float OFFSET_ROTATE_AUTO = -1024.0f;
 
   private BackgroundManager mBackgroundManager;
@@ -1350,6 +1356,17 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
         // ViewTreeObserver#OnPreDrawListener.
         if (mView instanceof AndroidView) {
           ((AndroidView) mView).setBlur((float) amount);
+        }
+        break;
+      case FILTER_TYPE_BRIGHTNESS:
+        amount = UnitUtils.clamp(amount, 0.0, 2.0);
+        if (!FloatUtils.floatsEqual(mBrightnessAmount, (float) amount)) {
+          ColorMatrix colorMatrix = new ColorMatrix();
+          colorMatrix.setScale((float) amount, (float) amount, (float) amount, 1.0f);
+          Paint filterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+          filterPaint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+          mView.setLayerType(View.LAYER_TYPE_HARDWARE, filterPaint);
+          mBrightnessAmount = (float) amount;
         }
         break;
       default:

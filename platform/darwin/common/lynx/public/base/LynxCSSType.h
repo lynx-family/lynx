@@ -247,6 +247,10 @@ typedef NS_ENUM(NSInteger, LynxFilterType) {
   LynxFilterTypeNone = 0,
   LynxFilterTypeGrayScale = 1,
   LynxFilterTypeBlur = 2,
+  LynxFilterTypeBrightness = 3,
+  LynxFilterTypeContrast = 4,
+  LynxFilterTypeSaturate = 5,
+  LynxFilterTypeHueRotate = 6,
 };
 
 typedef NS_ENUM(NSInteger, LynxBasicShapeType) {

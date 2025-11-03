@@ -765,7 +765,7 @@ TEST(CSSStringParser, valid_blur_value) {
     CSSStringParser parser{valid_blur[i],
                            static_cast<uint32_t>(strlen(valid_blur[i])),
                            CSSParserConfigs()};
-    CSSValue blur = parser.ParseBlur();
+    CSSValue blur = parser.ParseFilterValue(starlight::FilterType::kBlur);
     EXPECT_EQ(valid_values[i].GetNumber(), blur.GetNumber());
     EXPECT_EQ(static_cast<uint32_t>(valid_values[i].GetPattern()),
               static_cast<uint32_t>(blur.GetPattern()));
@@ -778,7 +778,8 @@ TEST(CSSStringParser, invalid_blur_value) {
   for (const char** it = invalid_blur_str; *it; it++) {
     CSSStringParser parser{*it, static_cast<uint32_t>(strlen(*it)),
                            CSSParserConfigs()};
-    EXPECT_TRUE(parser.ParseBlur().IsEmpty());
+    EXPECT_TRUE(
+        parser.ParseFilterValue(starlight::FilterType::kBlur).IsEmpty());
   }
 }
 
@@ -796,7 +797,8 @@ TEST(CSSStringParser, valid_grayscale_value) {
         valid_grayscale_str[i],
         static_cast<uint32_t>(strlen(valid_grayscale_str[i])),
         CSSParserConfigs()};
-    CSSValue grayscale = parser.ParseGrayscale();
+    CSSValue grayscale =
+        parser.ParseFilterValue(starlight::FilterType::kGrayscale);
     EXPECT_EQ(grayscale_values[i].GetNumber(), grayscale.GetNumber());
     EXPECT_EQ(static_cast<uint32_t>(grayscale_values[i].GetPattern()),
               static_cast<uint32_t>(grayscale.GetPattern()));
@@ -978,7 +980,8 @@ TEST(CSSStringParser, invalid_grayscale) {
   for (const char** it = invalid_grayscale_str; *it; it++) {
     CSSStringParser parser{*it, static_cast<uint32_t>(strlen(*it)),
                            CSSParserConfigs()};
-    CSSValue grayscale = parser.ParseGrayscale();
+    CSSValue grayscale =
+        parser.ParseFilterValue(starlight::FilterType::kGrayscale);
     EXPECT_TRUE(grayscale.IsEmpty());
   }
 }
