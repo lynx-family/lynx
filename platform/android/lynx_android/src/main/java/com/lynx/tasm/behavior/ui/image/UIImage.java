@@ -7,7 +7,6 @@ package com.lynx.tasm.behavior.ui.image;
 import static com.lynx.tasm.behavior.AutoGenStyleConstants.IMAGERENDERING_PIXELATED;
 
 import android.graphics.Canvas;
-import android.graphics.Path;
 import android.view.View;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
@@ -16,7 +15,6 @@ import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
-import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.event.EventsListener;
 import java.util.Map;
