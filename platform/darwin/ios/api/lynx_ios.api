@@ -473,6 +473,7 @@ public class LynxBackgroundRuntimeOptions : NSObject {
   public LynxTemplateData* LynxBackgroundRuntimeOptions::presetData presetData;
   public BOOL LynxBackgroundRuntimeOptions::enableBytecode enableBytecode;
   public NSString* LynxBackgroundRuntimeOptions::bytecodeUrl bytecodeUrl;
+  public LynxTemplateData* LynxBackgroundRuntimeOptions::globalProps globalProps;
   public id<LynxGenericResourceFetcher> LynxBackgroundRuntimeOptions::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxBackgroundRuntimeOptions::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxBackgroundRuntimeOptions::templateResourceFetcher templateResourceFetcher;
@@ -1254,6 +1255,11 @@ public protocol LynxDebugInfoRecorderProtocol-p : <NSObject> {
 public class LynxDefaultGestureHandler : LynxBaseGestureHandler {
 }
 
+public class LynxDefaultLogicExecutor : NSObject, <LynxLogicExecutor> {
+  public instancetype LynxDefaultLogicExecutor::initWithRuntimeOptions:lynxViewGroup:debuggable:(LynxBackgroundRuntimeOptions *backgroundRuntimeOptions,[lynxViewGroup] LynxViewGroup *lynxViewGroup,[debuggable] BOOL debuggable);
+  public instancetype LynxDefaultLogicExecutor::initWithTemplateBundle:backgroundRuntimeOptions:lynxViewGroup:debuggable:(nullable LynxTemplateBundle *bundle,[backgroundRuntimeOptions] LynxBackgroundRuntimeOptions *backgroundRuntimeOptions,[lynxViewGroup] LynxViewGroup *lynxViewGroup,[debuggable] BOOL debuggable);
+}
+
 public class LynxDetailEvent : LynxCustomEvent {
   public instancetype LynxDetailEvent::initWithName:targetSign:detail:(NSString *name,[targetSign] NSInteger target,[detail] nullable NSDictionary *detail);
   public instancetype LynxDetailEvent::initWithName:targetSign:currentTargetSign:detail:(NSString *name,[targetSign] NSInteger target,[currentTargetSign] NSInteger currentTarget,[detail] nullable NSDictionary *detail);
@@ -1299,6 +1305,11 @@ public class LynxDevToolUtils : NSObject {
 
 public protocol LynxDynamicComponentFetcher-p : <NSObject> {
   public void LynxDynamicComponentFetcher-p::loadDynamicComponent:withLoadedBlock:(NSString *url,[withLoadedBlock] onComponentLoaded block);
+}
+
+public class LynxEmbeddedModule : NSObject, <LynxContextModule> {
+  public instancetype LynxEmbeddedModule::initWithLynxContext:(LynxContext *context);
+  public instancetype LynxEmbeddedModule::initWithLynxContext:WithParam:(LynxContext *context,[WithParam] id param);
 }
 
 public class LynxEngine : NSObject {
@@ -5131,9 +5142,9 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public instancetype LynxViewGroup::initWithUrl:templateBundle:(NSString *url,[templateBundle] LynxTemplateBundle *bundle);
   public bool LynxViewGroup::isTemplateBundleReady();
   public int LynxViewGroup::generateNextLynxViewID();
-  public void LynxViewGroup::addLynxView:view:(int LynxViewId,[view] LynxView *_Nonnull view);
-  public void LynxViewGroup::removeLynxView:(int LynxViewId);
-  public LynxView *_Nullable LynxViewGroup::getLynxViewById:(int LynxViewId);
+  public void LynxViewGroup::addLynxView:view:(int lynxViewId,[view] LynxView *_Nonnull view);
+  public void LynxViewGroup::removeLynxView:(int lynxViewId);
+  public LynxView *_Nullable LynxViewGroup::getLynxViewById:(int lynxViewId);
   public void LynxViewGroup::setTemplateBundle:(LynxTemplateBundle *_Nullable templateBundle);
   public void LynxViewGroup::setLogicExecutor:(id< LynxLogicExecutor > logicExecutor);
   public void LynxViewGroup()::addLynxView:(nonnull LynxView *view);

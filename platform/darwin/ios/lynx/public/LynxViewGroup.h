@@ -53,9 +53,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) id<LynxLogicExecutor> logicExecutor;
 
 - (int)generateNextLynxViewID;
-- (void)addLynxView:(int)LynxViewId view:(LynxView *_Nonnull)view;
-- (void)removeLynxView:(int)LynxViewId;
-- (LynxView *_Nullable)getLynxViewById:(int)LynxViewId;
+- (void)addLynxView:(int)lynxViewId view:(LynxView *_Nonnull)view;
+- (void)removeLynxView:(int)lynxViewId;
+- (LynxView *_Nullable)getLynxViewById:(int)lynxViewId;
 
 - (void)setTemplateBundle:(LynxTemplateBundle *_Nullable)templateBundle;
 
