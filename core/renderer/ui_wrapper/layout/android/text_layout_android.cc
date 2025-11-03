@@ -310,6 +310,29 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
           props->AddProp(text_attributes->vertical_align_length);
           break;
 
+        case kPropertyIDTextDecoration: {
+          props->AddProp(kTextPropTextDecoration);
+          int flags = 0;
+          if (text_attributes->underline_decoration) {
+            flags |=
+                static_cast<int>(starlight::TextDecorationType::kUnderLine);
+          }
+          if (text_attributes->line_through_decoration) {
+            flags |=
+                static_cast<int>(starlight::TextDecorationType::kLineThrough);
+          }
+          // type
+          props->AddProp(flags);
+          // style
+          props->AddProp(
+              static_cast<int>(text_attributes->text_decoration_style));
+          // color
+          props->AddProp(static_cast<int>(
+              text_attributes->text_decoration_color.has_value()
+                  ? *text_attributes->text_decoration_color
+                  : starlight::DefaultColor::DEFAULT_TEXT_COLOR));
+        } break;
+
         default:
           break;
       }

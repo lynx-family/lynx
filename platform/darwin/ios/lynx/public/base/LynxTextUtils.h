@@ -49,4 +49,5 @@
                       withLineHeight:(CGFloat)lineFragmentHeight
                 withAttachmentHeight:(CGFloat)attachmentHeight
              withAttachmentYPosition:(CGFloat)attachmentYPosition;
++ (NSInteger)convertLynxTextDecorationStyle:(NSInteger)decorationStyle;
 @end

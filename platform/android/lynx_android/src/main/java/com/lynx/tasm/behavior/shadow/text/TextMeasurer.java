@@ -6,8 +6,11 @@ package com.lynx.tasm.behavior.shadow.text;
 
 import static com.lynx.tasm.behavior.AutoGenStyleConstants.FONTSTYLE_ITALIC;
 import static com.lynx.tasm.behavior.AutoGenStyleConstants.FONTSTYLE_OBLIQUE;
+import static com.lynx.tasm.behavior.AutoGenStyleConstants.WHITESPACE_NOWRAP;
 import static com.lynx.tasm.behavior.StyleConstants.TEXTALIGN_CENTER;
 import static com.lynx.tasm.behavior.StyleConstants.TEXTALIGN_RIGHT;
+import static com.lynx.tasm.behavior.StyleConstants.TEXT_DECORATION_LINETHROUGH;
+import static com.lynx.tasm.behavior.StyleConstants.TEXT_DECORATION_UNDERLINE;
 import static java.util.Arrays.asList;
 
 import android.graphics.Typeface;
@@ -136,7 +139,7 @@ public class TextMeasurer {
                 baselineShiftCalculatorSpans);
           } else {
             buildStyledSpanIfNeeded(
-                start, end, ops, textAttributes, new TypefaceListener(sign, this));
+                start, end, ops, textAttributes, new TypefaceListener(sign, this), false);
           }
 
           // reset current span for inline node
@@ -163,6 +166,9 @@ public class TextMeasurer {
             wordBreakStyle = UnicodeFontUtils.DECODE_CJK_INSERT_WORD_JOINER;
           }
           spannableString.append(UnicodeFontUtils.decode(text, wordBreakStyle));
+
+          buildStyledSpanIfNeeded(
+              0, text.length(), ops, textAttributes, new TypefaceListener(sign, this), true);
           break;
         case kTextPropFontSize:
           textAttributes = ensureTextAttributes(textAttributes);
@@ -338,6 +344,17 @@ public class TextMeasurer {
           inlineViewSign = iterator.next().getInt();
           break;
 
+        case kTextPropTextDecoration:
+          // type, style,color
+          int textDecorationLine = iterator.next().getInt();
+          int textDecorationStyle = iterator.next().getInt();
+          int textDecorationColor = iterator.next().getInt();
+          textAttributes = ensureTextAttributes(textAttributes);
+          textAttributes.mTextDecoration = textDecorationLine;
+          textAttributes.mTextDecorationStyle = textDecorationStyle;
+          textAttributes.mTextDecorationColor = textDecorationColor;
+          break;
+
         default:
           break;
       }
@@ -374,6 +391,7 @@ public class TextMeasurer {
     }
 
     textAttributes.setHasImageSpan(mHasImageSpan);
+    textAttributes.setHasInlineViewSpan(!inlineViewMap.isEmpty());
     AttributedTextBundle attributedTextBundle = new AttributedTextBundle(span, textAttributes);
     if (!inlineViewMap.isEmpty()) {
       attributedTextBundle.setInlineViewMap(inlineViewMap);
@@ -447,12 +465,56 @@ public class TextMeasurer {
     return result;
   }
 
+  private boolean needSetLineHeightSpan(TextAttributes attributes) {
+    return attributes.getWhiteSpace() == WHITESPACE_NOWRAP && !attributes.hasImageSpan()
+        && !attributes.hasInlineViewSpan();
+  }
+
   private void buildStyledSpanIfNeeded(int start, int end,
       List<BaseTextShadowNode.SetSpanOperation> ops, TextAttributes attributes,
-      TextMeasurer.TypefaceListener typefaceListener) {
+      TextMeasurer.TypefaceListener typefaceListener, boolean isParaAttr) {
     if (attributes == null) {
       return;
     }
+
+    // para attributes which need span
+    //  Set text line-height
+    if (isParaAttr && needSetLineHeightSpan(attributes)
+        && !MeasureUtils.isUndefined(attributes.mLineHeight)) {
+      ops.add(new BaseTextShadowNode.SetSpanOperation(
+          start, end, new CustomLineHeightSpan(attributes.mLineHeight, true, 0, false)));
+    }
+
+    // Set letter spacing
+    if (attributes.mLetterSpacing != MeasureUtils.UNDEFINED
+        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      ops.add(new BaseTextShadowNode.SetSpanOperation(
+          start, end, new CustomLetterSpacingSpan(attributes.mLetterSpacing)));
+    }
+
+    // text decoration
+    if (attributes.mTextDecorationStyle != 4 || attributes.mTextDecorationColor != 0) {
+      boolean underline = ((attributes.mTextDecoration & TEXT_DECORATION_UNDERLINE) != 0);
+      boolean through = ((attributes.mTextDecoration & TEXT_DECORATION_LINETHROUGH) != 0);
+      if (underline || through) {
+        ops.add(new BaseTextShadowNode.SetSpanOperation(start, end,
+            new TextDecorationSpan(underline, through, attributes.mTextDecorationStyle,
+                attributes.mTextDecorationColor)));
+      }
+    } else { // if not set the color and style, we will use default span.
+      if ((attributes.mTextDecoration & TEXT_DECORATION_LINETHROUGH) != 0) {
+        ops.add(new BaseTextShadowNode.SetSpanOperation(start, end, new LynxStrikethroughSpan()));
+      }
+      if ((attributes.mTextDecoration & TEXT_DECORATION_UNDERLINE) != 0) {
+        ops.add(new BaseTextShadowNode.SetSpanOperation(start, end, new LynxUnderlineSpan()));
+      }
+    }
+
+    if (isParaAttr) {
+      return;
+    }
+
+    // paragraph attributes do not need to handle below attributes
 
     if (attributes.mFontSize != MeasureUtils.UNDEFINED) {
       ops.add(new BaseTextShadowNode.SetSpanOperation(
@@ -499,19 +561,6 @@ public class TextMeasurer {
     } else if (attributes.mTextAlign == TEXTALIGN_CENTER) {
       ops.add(new BaseTextShadowNode.SetSpanOperation(
           start, end, new AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER)));
-    }
-
-    // Set text line-height
-    if (!MeasureUtils.isUndefined(attributes.mLineHeight)) {
-      ops.add(new BaseTextShadowNode.SetSpanOperation(
-          start, end, new CustomLineHeightSpan(attributes.mLineHeight, true, 0, false)));
-    }
-
-    // Set letter spacing
-    if (attributes.mLetterSpacing != MeasureUtils.UNDEFINED
-        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      ops.add(new BaseTextShadowNode.SetSpanOperation(
-          start, end, new CustomLetterSpacingSpan(attributes.mLetterSpacing)));
     }
   }
 
