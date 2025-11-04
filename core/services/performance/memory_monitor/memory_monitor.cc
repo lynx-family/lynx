@@ -293,8 +293,8 @@ void MemoryMonitor::ReportMemory() {
   // Throttle reporting: only report if memory change exceeds the threshold.
   static int64_t memory_report_threshold_bytes =
       static_cast<int64_t>(MemoryChangeThresholdMb()) * 1024 * 1024;
-  if (std::abs(size_bytes - last_reported_size_bytes_) <
-      memory_report_threshold_bytes) {
+  if (size_bytes > 0 && std::abs(size_bytes - last_reported_size_bytes_) <
+                            memory_report_threshold_bytes) {
     return;
   }
   // Update the last reported size for the next check.
