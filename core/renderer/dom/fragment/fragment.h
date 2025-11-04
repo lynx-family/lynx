@@ -4,9 +4,11 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 #define CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 
+#include <memory>
+
 #include "core/renderer/dom/element_container.h"
+#include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/starlight/types/layout_result.h"
-#include "core/renderer/ui_wrapper/painting/painting_context.h"
 
 namespace lynx {
 namespace starlight {
@@ -20,13 +22,19 @@ using starlight::LayoutResultForRendering;
 // via DisplayList. Owned by an element; lifetime must not exceed that element.
 class Fragment : public ElementContainer {
  public:
-  Fragment(Element* element);
+  explicit Fragment(Element* element);
 
   ~Fragment() override = default;
 
-  void CreateLayerIfNeeded();
+  void CreatePaintingNode(
+      bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) override;
+
+  void CreateLayerIfNeeded() const;
+  void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;
 
   void UpdateLayout(LayoutResultForRendering layout_result_for_rendering);
+
+  void SetBehavior(std::unique_ptr<FragmentBehavior> behavior);
 
  private:
   const base::String& Tag() const { return tag_; };
@@ -46,6 +54,7 @@ class Fragment : public ElementContainer {
   // TODO(songshourui.null): remove maybe_unused later.
   [[maybe_unused]] const starlight::ComputedCSSStyle* style_;
   const base::String tag_;
+  std::unique_ptr<FragmentBehavior> behavior_;
 };
 
 }  // namespace tasm

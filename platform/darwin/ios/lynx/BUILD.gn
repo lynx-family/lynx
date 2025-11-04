@@ -763,6 +763,7 @@ subspec_target("tasm") {
            "../../../../core/renderer/dom:renderer_dom",
            "../../../../core/renderer/dom/fiber",
            "../../../../core/renderer/dom/fragment",
+           "../../../../core/renderer/dom/fragment:display_list",
            "../../../../core/renderer/dom/selector:element_selector",
            "../../../../core/renderer/dom/vdom/radon",
            "../../../../core/renderer/events:events",

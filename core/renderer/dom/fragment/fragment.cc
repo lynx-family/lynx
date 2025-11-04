@@ -4,11 +4,12 @@
 
 #include "core/renderer/dom/fragment/fragment.h"
 
+#include <memory>
 #include <utility>
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/dom/element.h"
-#include "core/renderer/ui_wrapper/painting/painting_context.h"
+#include "core/renderer/dom/fragment/fragment_behavior.h"
 
 namespace lynx {
 namespace tasm {
@@ -19,15 +20,29 @@ Fragment::Fragment(Element* element)
       style_(element->computed_css_style()),
       tag_(element->GetTag()) {}
 
-void Fragment::CreateLayerIfNeeded() {
-  // TODO(zhongyr): Create HostPlatformRenderer here.
-  painting_context()->CreatePaintingNode(sign_, Tag().str(), nullptr, false,
-                                         false, 0);
+void Fragment::CreateLayerIfNeeded() const {
+  // TODO(zhongyr): CreatePlatformRenderer according to result of layerize.
+  if (behavior_) {
+    behavior_->CreatePlatformRenderer();
+  }
 }
+
+void Fragment::CreatePaintingNode(
+    bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) {
+  element()->SetupFragmentBehavior(this);
+  CreateLayerIfNeeded();
+}
+
+// TODO(zhongyr): Finish Update attributes Fragment tree related operations.
+// Should create displayList and update it to platform renderer.
 
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
   layout_result_for_rendering_ = std::move(layout_result_for_rendering);
+}
+
+void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
+  behavior_ = std::move(behavior);
 }
 
 }  // namespace tasm

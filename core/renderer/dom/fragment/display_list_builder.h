@@ -5,8 +5,6 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
 #define CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
 
-#include <memory>
-
 #include "core/renderer/dom/fragment/display_list.h"
 
 namespace lynx {

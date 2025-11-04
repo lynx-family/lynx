@@ -9,6 +9,7 @@ lynx_core_source_set("fragment") {
   sources = [
     "fragment.cc",
     "fragment.h",
+    "fragment_behavior.h",
   ]
   public_deps = [
     ":display_list",

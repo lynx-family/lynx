@@ -46,6 +46,7 @@ class AttributeHolder;
 class ElementManager;
 class HierarchyObserver;
 class ListNode;
+class Fragment;
 
 using ElementChildrenArray =
     base::InlineVector<Element*, kChildrenInlineVectorSize>;
@@ -737,6 +738,7 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkDetached() { state_ = State::kDetached; }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
+  virtual void SetupFragmentBehavior(Fragment* fragment) {}
 
  protected:
   Element(const Element&, bool clone_resolved_props);
