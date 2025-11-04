@@ -1040,10 +1040,10 @@ bool Value::MarkConst() const {
 }
 
 void Value::FreeValue() {
-  if (unlikely(IsJSValue())) {
+  if (IsJSValue()) {
     lynx_value_remove_reference_ext(env_, value_, value_ref_);
     value_ref_ = nullptr;
-  } else if (IsReference() && likely(value_.val_ptr)) {
+  } else if (IsReference() && value_.val_ptr) {
     reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
         ->Release();
   }
