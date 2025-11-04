@@ -432,5 +432,5 @@ lynx_base_source_set("datauri_utils") {
   public = datauri_utils_public_headers
   sources = datauri_utils_public_headers + [ "datauri_utils.cc" ]
 
-  public_deps = [ "../../third_party/modp_b64" ]
+  public_deps = [ "//third_party/modp_b64" ]
 }

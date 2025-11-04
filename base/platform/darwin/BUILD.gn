@@ -86,7 +86,6 @@ subspec_target("Framework") {
   public_header_files = base_darwin_public_headers
   deps = [
     ":base",
-    "../../../third_party/modp_b64",
     "../../../third_party/rapidjson:rapidjson",
     "../../src:base_core",
     "../../src:base_log",
@@ -96,6 +95,7 @@ subspec_target("Framework") {
     "../../src:string_utils",
     "../../src:time_utils",
     "../../src:values",
+    "//third_party/modp_b64",
   ]
   frameworks = []
   libraries = [ "stdc++" ]

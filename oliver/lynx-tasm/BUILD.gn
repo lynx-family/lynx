@@ -41,7 +41,7 @@ if (build_lynx_lepus_node) {
     "../../core/parser",
     "../../core/template_bundle/template_codec/generator",
     "../../third_party/aes",
-    "../../third_party/modp_b64",
+    "//third_party/modp_b64",
   ]
 
   lynx_decoder_deps = [
