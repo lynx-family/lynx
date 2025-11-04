@@ -81,8 +81,8 @@ group("devtool_jni_files") {
 group("devtool_third_party") {
   public_deps = [
     "../../../third_party/jsoncpp:jsoncpp",
-    "../../../third_party/modp_b64:modp_b64",
     "../../../third_party/rapidjson:rapidjson",
+    "//third_party/modp_b64:modp_b64",
   ]
 }
 

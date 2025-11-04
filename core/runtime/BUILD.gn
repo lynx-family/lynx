@@ -98,7 +98,6 @@ lynx_core_source_set("runtime") {
   sources = jsbridge_shared_sources
   deps = [
     ":js_common",
-    "../../third_party/modp_b64",
     "../../third_party/rapidjson",
     "bindings/common/modules:native_modules",
     "bindings/jsi",
@@ -109,6 +108,7 @@ lynx_core_source_set("runtime") {
     "profile",
     "profile/lepusng:lepusng_profile",
     "profile/quickjs:quickjs_profile",
+    "//third_party/modp_b64",
   ]
 
   if (is_android || is_ios || is_win || is_mac || enable_unittests) {

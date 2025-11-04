@@ -1,0 +1,56 @@
+From 731e109634d324896b16a5662c9a67081de033b8 Mon Sep 17 00:00:00 2001
+From: tangyongjie <80395553+yongjieTang@users.noreply.github.com>
+Date: Tue, 4 Nov 2025 20:49:04 +0800
+Subject: [PATCH] add new modp_b64 APIs.
+
+add `std::string& modp_b64_decode(std::string&)` and `std::string& modp_b64_encode(std::string&)` APIs
+---
+ modp_b64.h | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/modp_b64.h b/modp_b64.h
+index 9d11f81..0d0612e 100644
+--- a/modp_b64.h
++++ b/modp_b64.h
+@@ -154,6 +154,38 @@ size_t modp_b64_decode(
+ 
+ #ifdef __cplusplus
+ }
++
++#include <string>
++inline std::string& modp_b64_encode(std::string& s)
++{
++    std::string x(modp_b64_encode_len(s.size()), '\0');
++    size_t d = modp_b64_encode(const_cast<char*>(x.data()), s.data(), (int)s.size());
++    x.erase(d, std::string::npos);
++    s.swap(x);
++    return s;
++}
++/**
++ * base 64 decode a string (self-modifing)
++ * On failure, the string is empty.
++ *
++ * This function is for C++ only (duh)
++ *
++ * \param[in,out] s the string to be decoded
++ * \return a reference to the input string
++ */
++inline std::string& modp_b64_decode(std::string& s)
++{
++    std::string x(modp_b64_decode_len(s.size()), '\0');
++    size_t d = modp_b64_decode(const_cast<char*>(x.data()), s.data(), (int)s.size());
++    if (d == MODP_B64_ERROR) {
++        x.clear();
++    } else {
++        x.erase(d, std::string::npos);
++    }
++    s.swap(x);
++    return s;
++}
++
+ #endif /* __cplusplus */
+ 
+ #endif /* MODP_B64 */
+-- 
+2.50.1 (Apple Git-155)
+

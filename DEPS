@@ -276,6 +276,13 @@ deps = {
         'patches': os.path.join(root_dir, 'patches', 'httplib', '*.patch'),
         "ignore_in_git": True,
     },
+    'third_party/modp_b64': {
+        'type': 'git',
+        'url': 'https://chromium.googlesource.com/chromium/src/third_party/modp_b64',
+        'commit': '50685101d51ef9aabbd60c94f52d9e026d39c509',
+        "patches": os.path.join(root_dir, 'patches', 'modp_b64', '*.patch'),
+        "ignore_in_git": True,
+    },
     'buildtools/corepack/pnpm/7.33.6': {
         "type": "http",
         "url": "https://registry.npmjs.org/pnpm/-/pnpm-7.33.6.tgz",
