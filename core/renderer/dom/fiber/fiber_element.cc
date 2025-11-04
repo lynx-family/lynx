@@ -3115,7 +3115,18 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
 
 void FiberElement::RemoveLayoutNode(FiberElement *child) {
   if (EnableLayoutInElementMode()) {
-    sl_node_->RemoveChild(child->sl_node_.get());
+    if (auto *child_layout_node = child->slnode();
+        child_layout_node && child_layout_node->parent()) {
+      // FIXME: this->sl_node_ is accidentally not the parent of
+      // child->sl_node_->parent_. Should try to figure out why it happens.
+      if (child_layout_node->parent() != sl_node_.get()) {
+        LOGD(
+            "Trying to remove a LayoutObject that doesn't belong to the "
+            "Element.");
+      }
+      child->slnode()->parent()->RemoveChild(child->slnode());
+      child->attached_to_layout_parent_ = false;
+    }
     return;
   }
 
