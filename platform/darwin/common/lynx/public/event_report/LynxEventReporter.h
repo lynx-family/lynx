@@ -92,6 +92,16 @@ FOUNDATION_EXPORT NSString *const kLynxSDKErrorEvent;
 /// Remove event report observer.
 + (void)removeEventReportObserver:(id<LynxEventReportObserverProtocol>)observer;
 
+/// @brief Submits a task to be executed on the dedicated reporting thread after a specified delay.
+///
+/// This method ensures that performance-sensitive or thread-safe reporting operations are executed
+/// off the main thread, preventing UI freezes and ensuring data consistency.
+///
+/// @param task The block of code to be executed. This block will be retained and run on the
+/// reporting thread.
+/// @param delayMS The delay in milliseconds before the task is executed.
++ (void)delayRunOnReportThread:(void (^)(void))task delayMs:(int64_t)delayMS;
+
 @end
 
 NS_ASSUME_NONNULL_END

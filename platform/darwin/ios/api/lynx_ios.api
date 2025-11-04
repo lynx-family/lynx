@@ -1581,6 +1581,7 @@ public class LynxEventReporter : NSObject {
   public void LynxEventReporter::clearCacheForInstanceId:(int32_t instanceId);
   public void LynxEventReporter::addEventReportObserver:(id< LynxEventReportObserverProtocol > observer);
   public void LynxEventReporter::removeEventReportObserver:(id< LynxEventReportObserverProtocol > observer);
+  public void LynxEventReporter::delayRunOnReportThread:delayMs:(void(^ task)(void),[delayMs] int64_t delayMS);
 }
 
 public class LynxEventReporterUtils : NSObject {
