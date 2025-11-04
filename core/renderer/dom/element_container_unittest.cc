@@ -121,9 +121,8 @@ TEST_F(ElementContainerTest, ZIndex) {
 
   auto child = manager->CreateNode("view", nullptr);
   parent_element->AddChildAt(child.get(), 0);
-  child->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+  child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                          tasm::CSSValue(1, CSSValuePattern::NUMBER));
 
   ASSERT_TRUE(child->IsStackingContextNode());
   child->FlushProps();
@@ -147,9 +146,8 @@ TEST_F(ElementContainerTest, ZIndex) {
   {
     auto child = manager->CreateNode("view", nullptr);
     parent_element->AddChildAt(child.get(), 1);
-    child->SetStyleInternal(
-        CSSPropertyID::kPropertyIDZIndex,
-        tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+    child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                            tasm::CSSValue(-1, CSSValuePattern::NUMBER));
     child->FlushProps();
 
     auto child_container = child->element_container();
@@ -184,9 +182,8 @@ TEST_F(ElementContainerTest, ZIndexMove) {
 
   auto child = manager->CreateNode("view", nullptr);
   parent_element->AddChildAt(child.get(), 0);
-  child->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+  child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                          tasm::CSSValue(1, CSSValuePattern::NUMBER));
 
   ASSERT_TRUE(child->IsStackingContextNode());
   child->FlushProps();
@@ -199,9 +196,8 @@ TEST_F(ElementContainerTest, ZIndexMove) {
   EXPECT_EQ(child_container->parent(), page_container);
 
   // Change stacking context, child_container attach to parent_container
-  parent_element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+  parent_element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
   parent_container->StyleChanged();
 
   // Attach to parent container
@@ -218,9 +214,8 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
 
   auto parent_element = manager->CreateNode("view", nullptr);
   page->AddChildAt(parent_element.get(), 0);
-  parent_element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+  parent_element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
@@ -232,9 +227,8 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
   // Add z-index children to child element
   auto child = manager->CreateNode("view", nullptr);
   parent_element->AddChildAt(child.get(), 0);
-  child->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+  child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                          tasm::CSSValue(1, CSSValuePattern::NUMBER));
   child->FlushProps();
   auto child_container = child->element_container();
   ASSERT_TRUE(child_container->IsStackingContextNode());
@@ -265,9 +259,8 @@ TEST_F(ElementContainerTest, TransitionToNativeView) {
   element = manager->CreateNode("view", nullptr);
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(
-          lepus::Value(static_cast<int32_t>(starlight::OverflowType::kVisible)),
-          lynx::tasm::CSSValuePattern::ENUM));
+      tasm::CSSValue(static_cast<int32_t>(starlight::OverflowType::kVisible),
+                     lynx::tasm::CSSValuePattern::ENUM));
   element->FlushProps();
   ASSERT_TRUE(element->IsLayoutOnly());
   element->TransitionToNativeView();
@@ -658,9 +651,8 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
 
   auto fixed_child = manager->CreateNode("view", nullptr);
   parent_element->AddChildAt(fixed_child.get(), 0);
-  fixed_child->SetStyleInternal(
-      CSSPropertyID::kPropertyIDPosition,
-      tasm::CSSValue(lepus::Value(2), CSSValuePattern::NUMBER));
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                tasm::CSSValue(2, CSSValuePattern::NUMBER));
 
   ASSERT_TRUE(fixed_child->IsStackingContextNode());
   fixed_child->FlushProps();
@@ -684,9 +676,8 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   {
     auto child_sibling = manager->CreateNode("view", nullptr);
     parent_element->AddChildAt(child_sibling.get(), 1);
-    child_sibling->SetStyleInternal(
-        CSSPropertyID::kPropertyIDPosition,
-        tasm::CSSValue(lepus::Value(2), CSSValuePattern::NUMBER));
+    child_sibling->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                    tasm::CSSValue(2, CSSValuePattern::NUMBER));
     child_sibling->FlushProps();
 
     auto child_sibling_container = child_sibling->element_container();
@@ -702,9 +693,8 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
 
     EXPECT_EQ(page_container->children().size(), static_cast<size_t>(2));
 
-    fixed_child->SetStyleInternal(
-        CSSPropertyID::kPropertyIDPosition,
-        tasm::CSSValue(lepus::Value(2), CSSValuePattern::NUMBER));
+    fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                  tasm::CSSValue(2, CSSValuePattern::NUMBER));
     fixed_child->FlushProps();
     fixed_child_container->StyleChanged();
     // fixed node should follow the order in the element tree.
@@ -731,14 +721,14 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   auto parent0_element = manager->CreateFiberView();
   parent0_element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+      tasm::CSSValue(-1, CSSValuePattern::NUMBER));
   page->InsertNode(parent0_element);
 
   // parent1
   auto parent1_element = manager->CreateFiberView();
   parent1_element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+      tasm::CSSValue(-1, CSSValuePattern::NUMBER));
   page->InsertNode(parent1_element);
 
   page->FlushActionsAsRoot();
@@ -766,7 +756,7 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   auto parent2_element = manager->CreateFiberView();
   parent2_element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+      tasm::CSSValue(-1, CSSValuePattern::NUMBER));
   page->InsertNode(parent2_element);
 
   page->FlushActionsAsRoot();
@@ -784,14 +774,13 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   auto parent3_element = manager->CreateFiberView();
   parent3_element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+      tasm::CSSValue(-1, CSSValuePattern::NUMBER));
   page->InsertNode(parent3_element);
 
   // parent4: z-index:0 node
   auto parent4_element = manager->CreateFiberView();
-  parent4_element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(0), CSSValuePattern::NUMBER));
+  parent4_element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                                    tasm::CSSValue(0, CSSValuePattern::NUMBER));
   page->InsertNode(parent4_element);
 
   page->FlushActionsAsRoot();
@@ -912,8 +901,7 @@ TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
 
   // mock 'transition' or 'animation delay' to directly setComputeStyle which
   // may affect the IsStackingContextNode()
-  CSSValue opacity_value =
-      tasm::CSSValue(lepus::Value(0.5), CSSValuePattern::NUMBER);
+  CSSValue opacity_value = tasm::CSSValue(0.5, CSSValuePattern::NUMBER);
   parent0_element->computed_css_style()->SetValue(
       CSSPropertyID::kPropertyIDOpacity, opacity_value);
   EXPECT_TRUE(parent0_element->IsStackingContextNode());

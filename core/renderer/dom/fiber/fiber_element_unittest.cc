@@ -218,7 +218,7 @@ TEST_P(FiberElementTest, TestSetAttributeInternal00) {
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().first,
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
-            tasm::CSSValue(lepus::Value(1), CSSValuePattern::ENUM));
+            tasm::CSSValue(1, CSSValuePattern::ENUM));
 }
 
 TEST_P(FiberElementTest, TestSetAttributeInternal01) {
@@ -246,7 +246,7 @@ TEST_P(FiberElementTest, TestSetAttributeInternal01) {
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().first,
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
-            tasm::CSSValue(lepus::Value(0), CSSValuePattern::ENUM));
+            tasm::CSSValue(0, CSSValuePattern::ENUM));
 }
 
 TEST_P(FiberElementTest, TestSetAttributeInternal02) {
@@ -274,7 +274,7 @@ TEST_P(FiberElementTest, TestSetAttributeInternal02) {
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().first,
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
-            tasm::CSSValue(lepus::Value(1), CSSValuePattern::ENUM));
+            tasm::CSSValue(1, CSSValuePattern::ENUM));
 }
 
 TEST_P(FiberElementTest, TestSetAttributeInternal03) {
@@ -302,7 +302,7 @@ TEST_P(FiberElementTest, TestSetAttributeInternal03) {
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().first,
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
-            tasm::CSSValue(lepus::Value(0), CSSValuePattern::ENUM));
+            tasm::CSSValue(0, CSSValuePattern::ENUM));
 }
 
 TEST_P(FiberElementTest, TestSetAttributeInternal04) {
@@ -330,7 +330,7 @@ TEST_P(FiberElementTest, TestSetAttributeInternal04) {
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().first,
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
-            tasm::CSSValue(lepus::Value(2), CSSValuePattern::ENUM));
+            tasm::CSSValue(2, CSSValuePattern::ENUM));
 }
 
 TEST_P(FiberElementTest, TestSetAttributeInternal05) {
@@ -358,7 +358,7 @@ TEST_P(FiberElementTest, TestSetAttributeInternal05) {
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().first,
             CSSPropertyID::kPropertyIDLinearOrientation);
   EXPECT_EQ(tasm_mediator.captured_bundles_.back()->styles.back().second,
-            tasm::CSSValue(lepus::Value(3), CSSValuePattern::ENUM));
+            tasm::CSSValue(3, CSSValuePattern::ENUM));
 }
 
 TEST_P(FiberElementTest, ElementInitTest1) {
@@ -1143,7 +1143,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
                                          page->GetCurrentRootFontSize(), 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
       view->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::REM)));
+      tasm::CSSValue(1.0f, CSSValuePattern::REM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 1, 1));
   page->pre_prop_bundle_ = nullptr;
@@ -1161,7 +1161,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
                                          1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
       view->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::REM)));
+      tasm::CSSValue(1.0f, CSSValuePattern::REM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 10,
                                          1));
@@ -1212,7 +1212,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle6) {
                                          page->GetCurrentRootFontSize(), 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
       view->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::EM)));
+      tasm::CSSValue(1.0f, CSSValuePattern::EM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 1, 1));
   page->pre_prop_bundle_ = nullptr;
@@ -1230,7 +1230,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle6) {
                                          1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
       view->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::EM)));
+      tasm::CSSValue(1.0f, CSSValuePattern::EM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 10,
                                          1));
@@ -1281,7 +1281,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
                                          page->GetCurrentRootFontSize(), 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
       view->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::EM)));
+      tasm::CSSValue(1.0f, CSSValuePattern::EM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 1, 1));
   page->pre_prop_bundle_ = nullptr;
@@ -1299,7 +1299,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
                                          1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
       view->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::EM)));
+      tasm::CSSValue(1.0f, CSSValuePattern::EM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 10,
                                          1));
@@ -4177,7 +4177,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase03) {
 
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValueAtLeastNTimes(
       view_element0->impl_id(), CSSPropertyID::kPropertyIDMarginLeft,
-      tasm::CSSValue(lepus::Value(12), CSSValuePattern::PX), 1));
+      tasm::CSSValue(12, CSSValuePattern::PX), 1));
 
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
@@ -7001,7 +7001,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
                                   CSSValue(lepus::Value("scale(0, 0))")));
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
-                                  CSSValue(lepus::Value(0.0)));
+                                  CSSValue(0.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
     raw_keyframes.insert(
         std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -7010,7 +7010,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
                                   CSSValue(lepus::Value("scale(1, 1))")));
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
-                                  CSSValue(lepus::Value(1.0)));
+                                  CSSValue(1.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
     raw_keyframes.insert(
         std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -7107,7 +7107,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle_new_animator) {
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
                                   CSSValue(lepus::Value("scale(0, 0))")));
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
-                                  CSSValue(lepus::Value(0.0)));
+                                  CSSValue(0.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
     raw_keyframes.insert(
         std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -7116,7 +7116,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle_new_animator) {
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
                                   CSSValue(lepus::Value("scale(1, 1))")));
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
-                                  CSSValue(lepus::Value(1.0)));
+                                  CSSValue(1.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
     raw_keyframes.insert(
         std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -10296,7 +10296,7 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
                                   CSSValue(lepus::Value("scale(0, 0))")));
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
-                                  CSSValue(lepus::Value(0.0)));
+                                  CSSValue(0.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
     raw_keyframes.insert(
         std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -10305,7 +10305,7 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
                                   CSSValue(lepus::Value("scale(1, 1))")));
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
-                                  CSSValue(lepus::Value(1.0)));
+                                  CSSValue(1.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
     raw_keyframes.insert(
         std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -14374,7 +14374,7 @@ TEST_P(FiberElementTest, TestCanBeLayoutOnly) {
   EXPECT_TRUE(fiber_element->CanBeLayoutOnly());
   // Other style will make layout only false.
   fiber_element->SetStyleInternal(CSSPropertyID::kPropertyIDOpacity,
-                                  tasm::CSSValue(lepus::Value(0.2)));
+                                  tasm::CSSValue(0.2, CSSValuePattern::NUMBER));
   EXPECT_FALSE(fiber_element->CanBeLayoutOnly());
 }
 

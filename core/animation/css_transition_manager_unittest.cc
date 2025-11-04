@@ -138,11 +138,9 @@ TEST_F(CSSTransitionManagerTest, NoNeedUpdateExistingAnimator) {
                          starlight::TimingFunctionData()));
   test_manager->setTransitionData(transition_data);
   test_manager->element()->RecordElementPreviousStyle(
-      tasm::kPropertyIDOpacity,
-      tasm::CSSValue(lepus::Value(0.5), CSSValuePattern::NUMBER));
-  test_manager->ConsumeCSSProperty(
-      tasm::kPropertyIDOpacity,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.5, CSSValuePattern::NUMBER));
+  test_manager->ConsumeCSSProperty(tasm::kPropertyIDOpacity,
+                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
   // Animation map check
   EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
   starlight::AnimationData& opacity_animation_data =
@@ -180,11 +178,9 @@ TEST_F(CSSTransitionManagerTest, HasTwoSameAnimation) {
                          starlight::TimingFunctionData()));
   test_manager->setTransitionData(transition_data);
   test_manager->element()->RecordElementPreviousStyle(
-      tasm::kPropertyIDOpacity,
-      tasm::CSSValue(lepus::Value(0.5), CSSValuePattern::NUMBER));
-  test_manager->ConsumeCSSProperty(
-      tasm::kPropertyIDOpacity,
-      tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+      tasm::kPropertyIDOpacity, tasm::CSSValue(0.5, CSSValuePattern::NUMBER));
+  test_manager->ConsumeCSSProperty(tasm::kPropertyIDOpacity,
+                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
   // Animation map check
   EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
   starlight::AnimationData& opacity_animation_data =
@@ -215,11 +211,9 @@ TEST_F(CSSTransitionManagerTest, ClearEffect) {
                            starlight::TimingFunctionData()));
     test_manager->setTransitionData(transition_data);
     test_manager->element()->RecordElementPreviousStyle(
-        tasm::kPropertyIDOpacity,
-        tasm::CSSValue(lepus::Value(0.5), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDOpacity, tasm::CSSValue(0.5, CSSValuePattern::NUMBER));
     test_manager->ConsumeCSSProperty(
-        tasm::kPropertyIDOpacity,
-        tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDOpacity, tasm::CSSValue(1, CSSValuePattern::NUMBER));
     EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
     transition_data.clear();
     test_manager->setTransitionData(transition_data);
@@ -236,15 +230,12 @@ TEST_F(CSSTransitionManagerTest, ClearEffect) {
                            starlight::TimingFunctionData()));
     test_manager->setTransitionData(transition_data);
     test_manager->element()->RecordElementPreviousStyle(
-        tasm::kPropertyIDOpacity,
-        tasm::CSSValue(lepus::Value(0.5), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDOpacity, tasm::CSSValue(0.5, CSSValuePattern::NUMBER));
     test_manager->ConsumeCSSProperty(
-        tasm::kPropertyIDOpacity,
-        tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDOpacity, tasm::CSSValue(1, CSSValuePattern::NUMBER));
     EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
     test_manager->ConsumeCSSProperty(
-        tasm::kPropertyIDOpacity,
-        tasm::CSSValue(lepus::Value(0.8), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDOpacity, tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
     EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
     // If a transition animation is replaced by another identical transition
     // animation (both animate the same properties), then this transition
@@ -262,11 +253,9 @@ TEST_F(CSSTransitionManagerTest, ClearEffect) {
                            starlight::TimingFunctionData()));
     test_manager->setTransitionData(transition_data);
     test_manager->element()->RecordElementPreviousStyle(
-        tasm::kPropertyIDLeft,
-        tasm::CSSValue(lepus::Value(0), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDLeft, tasm::CSSValue(0, CSSValuePattern::NUMBER));
     test_manager->ConsumeCSSProperty(
-        tasm::kPropertyIDLeft,
-        tasm::CSSValue(lepus::Value(1), CSSValuePattern::NUMBER));
+        tasm::kPropertyIDLeft, tasm::CSSValue(1, CSSValuePattern::NUMBER));
     EXPECT_TRUE(test_manager->animations_map().count(base::String("left")));
     test_manager->ConsumeCSSProperty(tasm::kPropertyIDLeft,
                                      tasm::CSSValue::Empty());

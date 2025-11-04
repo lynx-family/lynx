@@ -25,14 +25,10 @@ HANDLER_IMPL() {
 
   auto array = lepus::CArray::Create();
 
-  CSSValue is_auto_font_size =
-      CSSValue(lepus::Value(false), CSSValuePattern::BOOLEAN);
-  CSSValue auto_font_size_min_size =
-      CSSValue(lepus::Value(0), CSSValuePattern::PX);
-  CSSValue auto_font_size_max_size =
-      CSSValue(lepus::Value(0), CSSValuePattern::PX);
-  CSSValue auto_font_size_step_granularity =
-      CSSValue(lepus::Value(1), CSSValuePattern::PX);
+  CSSValue is_auto_font_size = CSSValue(false);
+  CSSValue auto_font_size_min_size = CSSValue(0, CSSValuePattern::PX);
+  CSSValue auto_font_size_max_size = CSSValue(0, CSSValuePattern::PX);
+  CSSValue auto_font_size_step_granularity = CSSValue(1, CSSValuePattern::PX);
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
   auto res = parser.ParseAutoFontSize(
       is_auto_font_size, auto_font_size_min_size, auto_font_size_max_size,

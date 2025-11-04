@@ -52,7 +52,7 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
           CSSPropertyID::kPropertyIDOpacity,
           tasm::CSSValue(static_cast<double>(
                              std::fabs(animation_origin_opacity_ - progress)),
-                         CSSValue::kCreateNumberTag));
+                         tasm::CSSValuePattern::NUMBER));
       element_->OnNodeReady();
       element_->element_container()->UpdateNodeReadyPatching();
       element_->element_container()->Flush();
@@ -82,7 +82,7 @@ void AnimationItemHolder::EndAnimation() {
     if (element_) {
       element_->FlushAnimatedStyle(
           CSSPropertyID::kPropertyIDOpacity,
-          tasm::CSSValue(1, CSSValue::kCreateNumberTag));
+          tasm::CSSValue(1, tasm::CSSValuePattern::NUMBER));
     }
     if (animation_origin_opacity_ == 1.f) {
       animation_delegate_->RecycleItemHolder(this);

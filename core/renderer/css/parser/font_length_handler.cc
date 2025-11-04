@@ -20,8 +20,7 @@ HANDLER_IMPL() {
   }
   if (input.IsString()) {
     if (input.StdString() == "normal") {
-      output.emplace_or_assign(key, lepus::Value(UNDEFINED),
-                               CSSValuePattern::NUMBER);
+      output.emplace_or_assign(key, UNDEFINED, CSSValuePattern::NUMBER);
       return true;
     }
     CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);

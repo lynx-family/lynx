@@ -1275,8 +1275,8 @@ void FiberElement::ResolveCSSStyles(
       }
       if (is_text() || NeedProcessDirection()) {
         auto current_text_align = CSSValue(
-            lepus::Value(
-                static_cast<int32_t>(starlight::TextAlignType::kStart)),
+
+            static_cast<int32_t>(starlight::TextAlignType::kStart),
             CSSValuePattern::ENUM);
         current_text_align =
             ResolveCurrentStyleValue(kPropertyIDTextAlign, current_text_align);
@@ -3473,9 +3473,9 @@ void FiberElement::ResetTextAlign(StyleMap &update_map,
   // reset when handling direction change. Thus when reset text align,
   // set kPropertyIDTextAlign to kStart only when direction is not changed.
   if (!direction_changed) {
-    update_map[CSSPropertyID::kPropertyIDTextAlign] = CSSValue(
-        lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kStart)),
-        CSSValuePattern::ENUM);
+    update_map[CSSPropertyID::kPropertyIDTextAlign] =
+        CSSValue(static_cast<int32_t>(starlight::TextAlignType::kStart),
+                 CSSValuePattern::ENUM);
   }
 }
 

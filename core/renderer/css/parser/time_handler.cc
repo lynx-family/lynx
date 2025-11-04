@@ -19,7 +19,7 @@ namespace TimeHandler {
 
 HANDLER_IMPL() {
   if (input.IsNumber()) {
-    output.emplace_or_assign(key, input.Number(), CSSValue::kCreateNumberTag);
+    output.emplace_or_assign(key, input.Number(), CSSValuePattern::NUMBER);
     return true;
   } else if (input.IsString()) {
     CSSValue css_value;

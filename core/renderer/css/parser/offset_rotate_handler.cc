@@ -21,7 +21,7 @@ HANDLER_IMPL() {
   lepus::Value result = parser.ParseOffsetRotate();
   CSS_HANDLER_FAIL_IF_NOT(result.IsNumber(), configs.enable_css_strict_mode,
                           "offset-rotate format error.")
-  output.emplace_or_assign(key, result.Number(), CSSValue::kCreateNumberTag);
+  output.emplace_or_assign(key, result.Number(), CSSValuePattern::NUMBER);
   return true;
 }
 

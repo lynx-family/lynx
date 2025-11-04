@@ -137,9 +137,8 @@ TEST_F(PseudoElementTest, FontSizeUnit) {
   auto text_element = static_cast<lynx::tasm::FiberElement *>(text.get());
   PseudoElement pseudo_element(state, text_element);
   StyleMap new_style_map;
-  new_style_map.insert_or_assign(
-      kPropertyIDFontSize,
-      tasm::CSSValue(lepus::Value(2), CSSValuePattern::EM));
+  new_style_map.insert_or_assign(kPropertyIDFontSize,
+                                 tasm::CSSValue(2, CSSValuePattern::EM));
   pseudo_element.UpdateStyleMap(new_style_map);
   EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 28.f, kEpsilon);
 
@@ -147,9 +146,8 @@ TEST_F(PseudoElementTest, FontSizeUnit) {
   EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 60.f, kEpsilon);
 
   new_style_map.clear();
-  new_style_map.insert_or_assign(
-      kPropertyIDFontSize,
-      tasm::CSSValue(lepus::Value(3), CSSValuePattern::REM));
+  new_style_map.insert_or_assign(kPropertyIDFontSize,
+                                 tasm::CSSValue(3, CSSValuePattern::REM));
   pseudo_element.UpdateStyleMap(new_style_map);
   EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 42.f, kEpsilon);
   pseudo_element.SetFontSize(30.f, 50.f);

@@ -161,9 +161,8 @@ CSSStyleValue ResolveTextAlign(CSSPropertyID css_id,
       result_type = align_type;
       break;
   }
-  return CSSStyleValue(css_id,
-                       CSSValue(lepus::Value(static_cast<int32_t>(result_type)),
-                                CSSValuePattern::ENUM));
+  return CSSStyleValue(css_id, CSSValue(static_cast<int32_t>(result_type),
+                                        CSSValuePattern::ENUM));
 }
 
 }  // namespace tasm

@@ -87,7 +87,7 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
   EXPECT_TRUE(element->computed_css_style()->IsOverflowHidden());
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value((int)starlight::OverflowType::kVisible),
+      tasm::CSSValue((int)starlight::OverflowType::kVisible,
                      lynx::tasm::CSSValuePattern::ENUM));
   EXPECT_TRUE(element->computed_css_style()->IsOverflowXY());
   EXPECT_TRUE(element->has_non_flatten_attrs_ == false);
@@ -181,7 +181,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
   // Set an internal style property for the element's width.
   element0->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
+      tasm::CSSValue(100, lynx::tasm::CSSValuePattern::NUMBER));
 
   EXPECT_TRUE(element0->has_z_props());
   EXPECT_TRUE(element0->is_view() == true);
@@ -194,7 +194,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
   // Set an internal style property for the element's width.
   element1->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
+      tasm::CSSValue(100, lynx::tasm::CSSValuePattern::NUMBER));
 
   EXPECT_TRUE(element1->has_z_props());
   EXPECT_TRUE(element1->is_image() == true);
@@ -206,7 +206,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
   // Set an internal style property for the element's width.
   element2->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
+      tasm::CSSValue(100, lynx::tasm::CSSValuePattern::NUMBER));
 
   EXPECT_TRUE(element2->has_z_props());
   EXPECT_TRUE(element2->is_image() == false);

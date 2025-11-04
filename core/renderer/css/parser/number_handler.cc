@@ -28,7 +28,7 @@ HANDLER_IMPL() {
     CSS_HANDLER_FAIL_IF_NOT(false, configs.enable_css_strict_mode, TYPE_MUST_BE,
                             FLOAT_TYPE, STRING_OR_NUMBER_TYPE)
   }
-  output.emplace_or_assign(key, num, CSSValue::kCreateNumberTag);
+  output.emplace_or_assign(key, num, CSSValuePattern::NUMBER);
   return true;
 }
 

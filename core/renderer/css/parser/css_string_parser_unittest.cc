@@ -759,9 +759,8 @@ TEST(CSSStringParser, valid_blur_value) {
       "1.5rpx",
   };
   constexpr int value_len = sizeof(valid_blur) / sizeof(char*);
-  const CSSValue valid_values[] = {
-      CSSValue(lepus::Value(10), CSSValuePattern::PX),
-      CSSValue(lepus::Value(1.5), CSSValuePattern::RPX)};
+  const CSSValue valid_values[] = {CSSValue(10, CSSValuePattern::PX),
+                                   CSSValue(1.5, CSSValuePattern::RPX)};
   for (int i = 0; i < value_len; i++) {
     CSSStringParser parser{valid_blur[i],
                            static_cast<uint32_t>(strlen(valid_blur[i])),
@@ -786,12 +785,11 @@ TEST(CSSStringParser, invalid_blur_value) {
 TEST(CSSStringParser, valid_grayscale_value) {
   constexpr const char* valid_grayscale_str[] = {"0" /* 0 doesn't need unit*/,
                                                  "50%", "100%", "0.5", ".5"};
-  CSSValue grayscale_values[] = {
-      CSSValue(lepus::Value(0), CSSValuePattern::PERCENT),
-      CSSValue(lepus::Value(50), CSSValuePattern::PERCENT),
-      CSSValue(lepus::Value(100), CSSValuePattern::PERCENT),
-      CSSValue(lepus::Value(50), CSSValuePattern::PERCENT),
-      CSSValue(lepus::Value(50), CSSValuePattern::PERCENT)};
+  CSSValue grayscale_values[] = {CSSValue(0, CSSValuePattern::PERCENT),
+                                 CSSValue(50, CSSValuePattern::PERCENT),
+                                 CSSValue(100, CSSValuePattern::PERCENT),
+                                 CSSValue(50, CSSValuePattern::PERCENT),
+                                 CSSValue(50, CSSValuePattern::PERCENT)};
   constexpr int num_str = sizeof(valid_grayscale_str) / sizeof(char*);
   for (int i = 0; i < num_str; i++) {
     CSSStringParser parser{

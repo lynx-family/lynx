@@ -186,8 +186,8 @@ TEST_F(TransformAnimationCurveTest, GetStyleInElement) {
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
   auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  auto raw_value = lynx::tasm::CSSValue(lepus_value(1.0f),
-                                        lynx::tasm::CSSValuePattern::NUMBER);
+  auto raw_value =
+      lynx::tasm::CSSValue(1.0f, lynx::tasm::CSSValuePattern::NUMBER);
   auto y_id = lynx::tasm::CSSPropertyID::kPropertyIDOpacity;
   auto value_pair1 = std::make_pair(y_id, raw_value);
   bool set_success1 = test_frame1->SetValue(value_pair1, test_element);

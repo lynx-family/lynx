@@ -1049,7 +1049,7 @@ void Element::SetComputedFontSize(double font_size, double root_font_size) {
   computed_css_style()->SetFontSize(font_size, root_font_size);
   UpdateLayoutNodeFontSize(font_size, root_font_size);
   ResolveStyleValue(kPropertyIDFontSize,
-                    CSSValue(lepus_value(font_size), CSSValuePattern::NUMBER));
+                    CSSValue(font_size, CSSValuePattern::NUMBER));
 }
 
 void Element::CheckFlattenRelatedProp(const base::String& key,

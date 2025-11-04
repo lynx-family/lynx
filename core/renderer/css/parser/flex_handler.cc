@@ -46,9 +46,9 @@ HANDLER_IMPL() {
   auto ret = parser.ParseFlex(flex_grow, flex_shrink, flex_basis);
   if (ret) {
     output.emplace_or_assign(kPropertyIDFlexGrow, flex_grow,
-                             CSSValue::kCreateNumberTag);
+                             CSSValuePattern::NUMBER);
     output.emplace_or_assign(kPropertyIDFlexShrink, flex_shrink,
-                             CSSValue::kCreateNumberTag);
+                             CSSValuePattern::NUMBER);
     output.insert_or_assign(kPropertyIDFlexBasis, std::move(flex_basis));
   }
   return ret;

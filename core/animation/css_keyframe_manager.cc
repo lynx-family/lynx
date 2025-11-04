@@ -393,15 +393,15 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     // the default values of layout properties are 'auto'.
     return tasm::CSSValue::Empty();
   } else if (type == starlight::AnimationPropertyType::kOpacity) {
-    return tasm::CSSValue(lepus_value(OpacityKeyframe::kDefaultOpacity),
+    return tasm::CSSValue(OpacityKeyframe::kDefaultOpacity,
                           tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kBackgroundColor ||
              (type >= starlight::AnimationPropertyType::kBorderTopColor &&
               type <= starlight::AnimationPropertyType::kBorderBottomColor)) {
-    return tasm::CSSValue(lepus_value(ColorKeyframe::kDefaultBackgroundColor),
+    return tasm::CSSValue(ColorKeyframe::kDefaultBackgroundColor,
                           tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kColor) {
-    return tasm::CSSValue(lepus_value(ColorKeyframe::kDefaultTextColor),
+    return tasm::CSSValue(ColorKeyframe::kDefaultTextColor,
                           tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kTransform) {
     // There are many kinds of identity transforms, we choose one(rotateZ 0
@@ -413,7 +413,7 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     items->emplace_back(std::move(item));
     return tasm::CSSValue(std::move(items));
   } else if (type == starlight::AnimationPropertyType::kFlexGrow) {
-    return tasm::CSSValue(lepus_value(FloatKeyframe::kDefaultFloatValue),
+    return tasm::CSSValue(FloatKeyframe::kDefaultFloatValue,
                           tasm::CSSValuePattern::NUMBER);
   }
   return tasm::CSSValue::Empty();

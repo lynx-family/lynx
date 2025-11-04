@@ -142,9 +142,9 @@ LayoutKeyframe::GetLayoutKeyframeValue(LayoutKeyframe* keyframe,
                                        tasm::Element* element) {
   // Layout length default value : auto
   starlight::NLength length = starlight::NLength::MakeAutoNLength();
-  tasm::CSSValue css_value = tasm::CSSValue(
-      lepus::Value(static_cast<int>(starlight::LengthValueType::kAuto)),
-      tasm::CSSValuePattern::ENUM);
+  tasm::CSSValue css_value =
+      tasm::CSSValue(static_cast<int>(starlight::LengthValueType::kAuto),
+                     tasm::CSSValuePattern::ENUM);
   if (keyframe->IsEmpty()) {
     std::optional<tasm::CSSValue> value_opt = element->GetElementStyle(id);
     if (!value_opt) {
@@ -247,7 +247,7 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
       (start_len.IsPercent() && end_len.IsUnit()) ||
       (start_len.IsCalc() || end_len.IsCalc())) {
     if (!element_ || !element_->parent()) {
-      return tasm::CSSValue(lepus::Value(start_len.GetRawValue()),
+      return tasm::CSSValue(start_len.GetRawValue(),
                             start_len.IsCalc() ? tasm::CSSValuePattern::CALC
                             : start_len.IsUnit()
                                 ? tasm::CSSValuePattern::NUMBER
@@ -273,7 +273,7 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
                                  : tasm::CSSValuePattern::PERCENT;
   }
   float new_result = start_value + (end_value - start_value) * progress;
-  return tasm::CSSValue(lepus::Value(new_result), pattern);
+  return tasm::CSSValue(new_result, pattern);
 }
 
 //====== LayoutValueAnimator end =======
@@ -355,8 +355,7 @@ tasm::CSSValue KeyframedOpacityAnimationCurve::GetValue(
     result_value = 1.0f;
   }
 
-  return tasm::CSSValue(lepus_value(result_value),
-                        tasm::CSSValuePattern::NUMBER);
+  return tasm::CSSValue(result_value, tasm::CSSValuePattern::NUMBER);
 }
 
 //====== OpacityValueAnimator end =======
@@ -477,8 +476,7 @@ tasm::CSSValue KeyframedColorAnimationCurve::GetValue(fml::TimeDelta& t) const {
                           static_cast<uint32_t>(round(r)) << 16 |
                           static_cast<uint32_t>(round(g)) << 8 |
                           static_cast<uint32_t>(round(b));
-  return tasm::CSSValue(lepus_value(result_value),
-                        tasm::CSSValuePattern::NUMBER);
+  return tasm::CSSValue(result_value, tasm::CSSValuePattern::NUMBER);
 }
 //====== ColorValueAnimator end =======
 
@@ -550,8 +548,7 @@ tasm::CSSValue KeyframedFloatAnimationCurve::GetValue(fml::TimeDelta& t) const {
   float end_float = FloatKeyframe::GetFloatKeyframeValue(
       keyframe_next, tasm::kPropertyIDFlexGrow, element_);
   float result_value = start_float + (end_float - start_float) * progress;
-  return tasm::CSSValue(lepus_value(result_value),
-                        tasm::CSSValuePattern::NUMBER);
+  return tasm::CSSValue(result_value, tasm::CSSValuePattern::NUMBER);
 }
 
 //====== FloatValueAnimator end =======

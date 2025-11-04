@@ -245,7 +245,7 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithOptimization) {
   EXPECT_TRUE(element->CanBeLayoutOnly());
   // Other style will make layout only false.
   element->SetStyleInternal(CSSPropertyID::kPropertyIDOpacity,
-                            tasm::CSSValue(lepus::Value(0.2)));
+                            tasm::CSSValue(0.2, tasm::CSSValuePattern::NUMBER));
   EXPECT_FALSE(element->CanBeLayoutOnly());
 }
 

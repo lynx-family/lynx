@@ -210,7 +210,7 @@ TEST_F(AirElementTest, SetStyle) {
       .Times(0);
   element->SetStyle(CSSPropertyID::kPropertyIDOverflow, css_value_visible);
 
-  tasm::CSSValue css_value_width(lepus::Value(10), CSSValuePattern::NUMBER);
+  tasm::CSSValue css_value_width(10, CSSValuePattern::NUMBER);
   if (!element->EnableAsyncCalc()) {
     EXPECT_CALL(
         tasm_mediator,
@@ -529,7 +529,7 @@ TEST_F(AirElementTest, RefreshStylesAndUpdatePatch) {
   view->SetClasses(lepus::Value("class1 class2"));
   view->SetIdSelector(lepus::Value("id1"));
   view->SetInlineStyle(static_cast<CSSPropertyID>(6),
-                       CSSValue(lepus::Value(2)));
+                       CSSValue(2, CSSValuePattern::NUMBER));
 
   view->RefreshStyles();
   view->has_painting_node_ = true;
@@ -569,11 +569,11 @@ TEST_F(AirElementTest, DiffStyles) {
   AirElement::StylePatch final_patch;
 
   old_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(1)));
+                           CSSValue(1, CSSValuePattern::NUMBER));
   old_map.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
-                           CSSValue(lepus::Value(2)));
+                           CSSValue(2, CSSValuePattern::NUMBER));
   new_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(3)));
+                           CSSValue(3, CSSValuePattern::NUMBER));
 
   page->DiffStyles(old_map, new_map, final_patch);
 
@@ -600,19 +600,19 @@ TEST_F(AirElementTest, DiffStyles) {
   final_patch.update_styles_map_.clear();
 
   old_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(1)));
+                           CSSValue(1, CSSValuePattern::NUMBER));
   old_map.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
-                           CSSValue(lepus::Value(2)));
+                           CSSValue(2, CSSValuePattern::NUMBER));
   new_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(3)));
+                           CSSValue(3, CSSValuePattern::NUMBER));
   final_patch.reserve_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyIDWidth, CSSValue(lepus::Value(1)));
+      CSSPropertyID::kPropertyIDWidth, CSSValue(1, CSSValuePattern::NUMBER));
   final_patch.reserve_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyIDHeight, CSSValue(lepus::Value(2)));
+      CSSPropertyID::kPropertyIDHeight, CSSValue(2, CSSValuePattern::NUMBER));
   final_patch.reserve_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyStart, CSSValue(lepus::Value(2)));
-  final_patch.update_styles_map_.insert_or_assign(CSSPropertyID::kPropertyEnd,
-                                                  CSSValue(lepus::Value(2)));
+      CSSPropertyID::kPropertyStart, CSSValue(2, CSSValuePattern::NUMBER));
+  final_patch.update_styles_map_.insert_or_assign(
+      CSSPropertyID::kPropertyEnd, CSSValue(2, CSSValuePattern::NUMBER));
 
   page->DiffStyles(old_map, new_map, final_patch, true);
 
@@ -644,11 +644,11 @@ TEST_F(AirElementTest, DiffStyles) {
   final_patch.reserve_styles_map_.clear();
 
   final_patch.update_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyIDWidth, CSSValue(lepus::Value(2)));
+      CSSPropertyID::kPropertyIDWidth, CSSValue(2, CSSValuePattern::NUMBER));
   old_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(1)));
+                           CSSValue(1, CSSValuePattern::NUMBER));
   new_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(1)));
+                           CSSValue(1, CSSValuePattern::NUMBER));
   page->DiffStyles(old_map, new_map, final_patch, true);
   EXPECT_TRUE(final_patch.reserve_styles_map_.contains(
       CSSPropertyID::kPropertyIDWidth));
@@ -665,14 +665,14 @@ TEST_F(AirElementTest, DiffStyles) {
   final_patch.reserve_styles_map_.clear();
 
   final_patch.update_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyIDWidth, CSSValue(lepus::Value(2)));
+      CSSPropertyID::kPropertyIDWidth, CSSValue(2, CSSValuePattern::NUMBER));
   final_patch.update_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyIDHeight, CSSValue(lepus::Value(2)));
+      CSSPropertyID::kPropertyIDHeight, CSSValue(2, CSSValuePattern::NUMBER));
   final_patch.reserve_styles_map_.insert_or_assign(
-      CSSPropertyID::kPropertyStart, CSSValue(lepus::Value(2)));
+      CSSPropertyID::kPropertyStart, CSSValue(2, CSSValuePattern::NUMBER));
 
   old_map.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                           CSSValue(lepus::Value(2)));
+                           CSSValue(2, CSSValuePattern::NUMBER));
   page->DiffStyles(old_map, new_map, final_patch, true);
   EXPECT_TRUE(final_patch.update_styles_map_.contains(
       CSSPropertyID::kPropertyIDHeight));

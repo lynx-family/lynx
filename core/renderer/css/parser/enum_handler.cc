@@ -811,7 +811,7 @@ HANDLER_IMPL() {
   CSS_HANDLER_FAIL_IF_NOT(success, configs.enable_css_strict_mode,
                           TYPE_UNSUPPORTED,
                           CSSProperty::GetPropertyNameCStr(key), str.data())
-  output.emplace_or_assign(key, result, CSSValue::kCreateEnumTag);
+  output.emplace_or_assign(key, result, CSSValuePattern::ENUM);
   return true;
 }
 

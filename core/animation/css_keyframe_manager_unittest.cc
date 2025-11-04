@@ -227,17 +227,15 @@ TEST_F(CSSKeyframeManagerTest, GetDefaultValue) {
 
   auto default_value2 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kOpacity);
-  EXPECT_EQ(
-      default_value2,
-      tasm::CSSValue(lepus_value(animation::OpacityKeyframe::kDefaultOpacity),
-                     tasm::CSSValuePattern::NUMBER));
+  EXPECT_EQ(default_value2,
+            tasm::CSSValue(animation::OpacityKeyframe::kDefaultOpacity,
+                           tasm::CSSValuePattern::NUMBER));
 
   auto default_value3 = test_manager->GetDefaultValue(
       starlight::AnimationPropertyType::kBackgroundColor);
   EXPECT_EQ(default_value3,
-            tasm::CSSValue(
-                lepus_value(animation::ColorKeyframe::kDefaultBackgroundColor),
-                tasm::CSSValuePattern::NUMBER));
+            tasm::CSSValue(animation::ColorKeyframe::kDefaultBackgroundColor,
+                           tasm::CSSValuePattern::NUMBER));
 
   auto default_value4 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kNone);

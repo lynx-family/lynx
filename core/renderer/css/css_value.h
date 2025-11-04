@@ -73,16 +73,35 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:
   explicit CSSValue(CSSValuePattern pattern = CSSValuePattern::STRING)
       : pattern_(pattern), type_(CSSValueType::DEFAULT) {}
-  explicit CSSValue(const lepus::Value& value,
-                    CSSValuePattern pattern = CSSValuePattern::STRING,
-                    CSSValueType type = CSSValueType::DEFAULT)
-      : value_(value), pattern_(pattern), type_(type) {}
+
+  explicit CSSValue(bool value)
+      : value_(value),
+        pattern_(CSSValuePattern::BOOLEAN),
+        type_(CSSValueType::DEFAULT) {}
+
+#define NumberConstructor(name, type)                    \
+  explicit CSSValue(type value, CSSValuePattern pattern) \
+      : value_(value), pattern_(pattern), type_(CSSValueType::DEFAULT) {}
+
+  NumberType(NumberConstructor)
+#undef NumberConstructor
+
+      // deprecated, @yuyang, avoid constructors from lepus::Value
+      explicit CSSValue(const lepus::Value& value,
+                        CSSValuePattern pattern = CSSValuePattern::STRING,
+                        CSSValueType type = CSSValueType::DEFAULT)
+      : value_(value), pattern_(pattern), type_(type) {
+  }
+
+  // deprecated, @yuyang, avoid constructors from lepus::Value
   CSSValue(const lepus::Value& value, CSSValuePattern pattern,
            CSSValueType type, const base::String& default_val)
       : value_(value),
         default_value_(default_val),
         pattern_(pattern),
         type_(type) {}
+
+  // deprecated, @yuyang, avoid constructors from lepus::Value
   CSSValue(const lepus::Value& value, CSSValuePattern pattern,
            CSSValueType type, const base::String& default_val,
            const lepus::Value& default_value_map_opt)
@@ -91,22 +110,11 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
         default_value_map_opt_(new lepus::Value(default_value_map_opt)),
         pattern_(pattern),
         type_(type) {}
+
   explicit CSSValue(fml::RefPtr<lepus::CArray>&& array,
                     CSSValuePattern pattern = CSSValuePattern::ARRAY)
       : value_(std::move(array)),
         pattern_(pattern),
-        type_(CSSValueType::DEFAULT) {}
-
-  enum CreateEnumTag { kCreateEnumTag };
-  CSSValue(int enum_value, CreateEnumTag)
-      : value_(enum_value),
-        pattern_(CSSValuePattern::ENUM),
-        type_(CSSValueType::DEFAULT) {}
-
-  enum CreateNumberTag { kCreateNumberTag };
-  CSSValue(double value, CreateNumberTag)
-      : value_(value),
-        pattern_(CSSValuePattern::NUMBER),
         type_(CSSValueType::DEFAULT) {}
 
   CSSValue(const CSSValue& other)
@@ -155,7 +163,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   static CSSValue Empty() { return CSSValue(CSSValuePattern::EMPTY); }
 
   static CSSValue MakeEnum(int enumType) {
-    return CSSValue(lepus::Value(enumType), CSSValuePattern::ENUM);
+    return CSSValue(enumType, CSSValuePattern::ENUM);
   }
 
   // TODO(yuyang), The `value_` variable in `CSSValue` will no longer be of type

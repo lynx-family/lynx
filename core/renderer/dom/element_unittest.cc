@@ -109,7 +109,7 @@ TEST_F(ElementTest, CheckHasFilterProps) {
 
   element->computed_css_style()->SetValue(
       CSSPropertyID::kPropertyIDOpacity,
-      CSSValue(lepus::Value(0.1), CSSValuePattern::NUMBER));
+      CSSValue(0.1, CSSValuePattern::NUMBER));
   EXPECT_TRUE(element->computed_css_style()->HasOpacity());
 
   element->CheckHasNonFlattenCSSProps(CSSPropertyID::kPropertyIDFilter);

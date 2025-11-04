@@ -25,8 +25,7 @@ HANDLER_IMPL() {
 
   const auto& str = input.StdString();
   if (str.find(kAuto) != std::string::npos) {
-    output.emplace_or_assign(key, lepus::Value(kAutoValue),
-                             CSSValuePattern::NUMBER);
+    output.emplace_or_assign(key, kAutoValue, CSSValuePattern::NUMBER);
     return true;
   }
 
@@ -40,8 +39,7 @@ HANDLER_IMPL() {
       UnitHandler::Process(kPropertyIDGridRowSpan, value, output, configs);
     }
   } else {
-    output.emplace_or_assign(key, lepus::Value(atoi(str.c_str())),
-                             CSSValuePattern::NUMBER);
+    output.emplace_or_assign(key, atoi(str.c_str()), CSSValuePattern::NUMBER);
   }
   return true;
 }

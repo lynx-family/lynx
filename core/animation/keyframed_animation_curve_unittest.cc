@@ -74,15 +74,15 @@ TEST_F(KeyframedAnimationCurveTest, TwoLayoutKeyframe) {
 
   auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
   test_frame1->SetLayout(starlight::NLength::MakeUnitNLength(2.f));
-  test_frame1->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(2.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame1->css_value_ =
+      ::lynx::tasm::CSSValue(2.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
   test_frame2->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
-  test_frame2->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(4.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame2->css_value_ =
+      ::lynx::tasm::CSSValue(4.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame2));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -103,22 +103,22 @@ TEST_F(KeyframedAnimationCurveTest, ThreeLayoutKeyframe) {
 
   auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
   test_frame1->SetLayout(starlight::NLength::MakeUnitNLength(2.f));
-  test_frame1->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(2.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame1->css_value_ =
+      ::lynx::tasm::CSSValue(2.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
   test_frame2->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
-  test_frame2->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(4.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame2->css_value_ =
+      ::lynx::tasm::CSSValue(4.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
   test_frame3->SetLayout(starlight::NLength::MakeUnitNLength(8.f));
-  test_frame3->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(8.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame3->css_value_ =
+      ::lynx::tasm::CSSValue(8.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame3));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -144,29 +144,29 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedLayoutKeyTimes) {
 
   auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
   test_frame1->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
-  test_frame1->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(4.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame1->css_value_ =
+      ::lynx::tasm::CSSValue(4.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
   test_frame2->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
-  test_frame2->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(4.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame2->css_value_ =
+      ::lynx::tasm::CSSValue(4.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
   test_frame3->SetLayout(starlight::NLength::MakeUnitNLength(6.f));
-  test_frame3->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(6.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame3->css_value_ =
+      ::lynx::tasm::CSSValue(6.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame3));
 
   auto test_frame4 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
   test_frame4->SetLayout(starlight::NLength::MakeUnitNLength(6.f));
-  test_frame4->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(6.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame4->css_value_ =
+      ::lynx::tasm::CSSValue(6.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame4));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -298,13 +298,13 @@ TEST_F(KeyframedAnimationCurveTest, TwoColorKeyFrame) {
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
   fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(0.5f);
   fml::TimeDelta value3 = fml::TimeDelta::FromSecondsF(1.f);
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4294901760)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4294901760u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value1));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4290427392)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4290427392u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value2));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4278255360)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4278255360u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value3));
 }
@@ -334,19 +334,19 @@ TEST_F(KeyframedAnimationCurveTest, ThreeColorKeyFrame) {
   fml::TimeDelta value3 = fml::TimeDelta::FromSecondsF(1.f);
   fml::TimeDelta value4 = fml::TimeDelta::FromSecondsF(1.5f);
   fml::TimeDelta value5 = fml::TimeDelta::FromSecondsF(2.f);
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4294901760)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4294901760u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value1));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4290427392)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4290427392u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value2));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4278255360)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4278255360u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value3));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4278237882)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4278237882u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value4));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4278190335)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4278190335u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value5));
 }
@@ -380,17 +380,17 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedColorKeyFrame) {
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
   fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(0.5f);
 
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4282384384)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4282384384u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value1));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4282384384)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4282384384u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value2));
 
   fml::TimeDelta value3 = fml::TimeDelta::FromSecondsF(1.0f);
 
   auto mid_value = curve->GetValue(value3);
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4290772992)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4290772992u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             mid_value);
   auto alpha_value = uint32_t(mid_value.AsNumber()) >> 24;
@@ -401,10 +401,10 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedColorKeyFrame) {
 
   fml::TimeDelta value4 = fml::TimeDelta::FromSecondsF(1.5f);
   fml::TimeDelta value5 = fml::TimeDelta::FromSecondsF(2.f);
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4290772992)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4290772992u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value4));
-  EXPECT_EQ(::lynx::tasm::CSSValue(lepus_value(uint32_t(4290772992)),
+  EXPECT_EQ(::lynx::tasm::CSSValue(4290772992u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value5));
 }
@@ -420,21 +420,21 @@ TEST_F(KeyframedAnimationCurveTest, UnsortedKeyframes) {
   auto test_frame1 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(2.f), nullptr);
   test_frame1->SetLayout(starlight::NLength::MakeUnitNLength(8.f));
-  test_frame1->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(8.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame1->css_value_ =
+      ::lynx::tasm::CSSValue(8.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
   test_frame2->SetLayout(starlight::NLength::MakeUnitNLength(2.f));
-  test_frame2->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(2.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame2->css_value_ =
+      ::lynx::tasm::CSSValue(2.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
       LayoutKeyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
   test_frame3->SetLayout(starlight::NLength::MakeUnitNLength(4.f));
-  test_frame3->css_value_ = ::lynx::tasm::CSSValue(
-      lepus::Value(4.f), ::lynx::tasm::CSSValuePattern::NUMBER);
+  test_frame3->css_value_ =
+      ::lynx::tasm::CSSValue(4.f, ::lynx::tasm::CSSValuePattern::NUMBER);
   curve->AddKeyframe(std::move(test_frame3));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -531,9 +531,8 @@ TEST_F(KeyframedAnimationCurveTest, HandleCSSVariableValueIfNeed) {
 
   test_element->SetAttribute(base::String("enable-new-animator"),
                              lepus::Value("true"));
-  auto test_value = ::lynx::tasm::CSSValue(
-      lepus_value(0.8), ::lynx::tasm::CSSValuePattern::NUMBER,
-      ::lynx::tasm::CSSValueType::DEFAULT);
+  auto test_value =
+      ::lynx::tasm::CSSValue(0.8, ::lynx::tasm::CSSValuePattern::NUMBER);
   auto test_pair_1 =
       std::make_pair(::lynx::tasm::kPropertyIDOpacity, test_value);
   auto result_value_1 =

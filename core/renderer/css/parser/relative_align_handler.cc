@@ -43,7 +43,7 @@ HANDLER_IMPL() {
   CSS_HANDLER_FAIL_IF_NOT(valid, configs.enable_css_strict_mode,
                           kRelativeAlignErrorMessage,
                           CSSProperty::GetPropertyNameCStr(key))
-  output.emplace_or_assign(key, lepus::Value(result), CSSValuePattern::NUMBER);
+  output.emplace_or_assign(key, result, CSSValuePattern::NUMBER);
   return true;
 }
 
