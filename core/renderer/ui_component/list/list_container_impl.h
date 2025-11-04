@@ -127,8 +127,6 @@ class ListContainerImpl : public ListContainerDelegateInternal {
 
   ListContainerAnimationManager* AnimationManager() const;
 
-  bool UpdateAnimation() const;
-
   void UpdateBatchRenderStrategy(list::BatchRenderStrategy strategy) override;
 
   list::BatchRenderStrategy GetBatchRenderStrategy() override;
@@ -140,6 +138,9 @@ class ListContainerImpl : public ListContainerDelegateInternal {
   void UpdateListLayoutManager(list::LayoutType layout_type);
   void RecycleAllChildren();
   fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
+
+ private:
+  void ResolveAnimationAttr();
 
  private:
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
