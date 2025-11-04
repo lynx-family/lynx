@@ -166,9 +166,8 @@ MessageLoopTaskQueues::GetNextTaskToRun(
     return std::nullopt;
   }
   base::closure invocation = top.task.GetTask();
-  queue_entries_.at(top.task_queue_id)
-      ->task_source->PopTask(top.task.GetTaskSourceGrade());
   const auto task_source_grade = top.task.GetTaskSourceGrade();
+  queue_entries_.at(top.task_queue_id)->task_source->PopTask(task_source_grade);
   GetThreadLocalGradeHolder().reset(
       new TaskSourceGradeHolder{task_source_grade});
 
