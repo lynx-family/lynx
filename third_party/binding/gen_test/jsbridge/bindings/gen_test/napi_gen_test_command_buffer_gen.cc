@@ -18,6 +18,7 @@
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"
+#include <algorithm>
 #endif
 
 namespace lynx {

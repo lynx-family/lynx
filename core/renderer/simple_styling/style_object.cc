@@ -4,6 +4,7 @@
 
 #include "core/renderer/simple_styling/style_object.h"
 
+#include <cstdlib>
 #include <mutex>
 #include <utility>
 

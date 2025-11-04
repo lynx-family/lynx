@@ -7,6 +7,7 @@
 
 #include "core/renderer/dom/fiber/fiber_element.h"
 
+#include <cmath>
 #include <memory>
 #include <mutex>
 #include <tuple>

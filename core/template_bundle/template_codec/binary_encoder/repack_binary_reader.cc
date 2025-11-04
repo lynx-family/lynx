@@ -4,6 +4,8 @@
 
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_reader.h"
 
+#include <cstring>
+
 #include "core/runtime/vm/lepus/base_binary_reader.h"
 #include "core/runtime/vm/lepus/context.h"
 #include "core/runtime/vm/lepus/function.h"

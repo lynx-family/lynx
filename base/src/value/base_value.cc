@@ -6,6 +6,7 @@
 
 #include <math.h>
 
+#include <cmath>
 #include <memory>
 #include <utility>
 

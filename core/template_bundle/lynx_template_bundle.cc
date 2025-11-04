@@ -4,6 +4,8 @@
 
 #include "core/template_bundle/lynx_template_bundle.h"
 
+#include <algorithm>
+
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
 

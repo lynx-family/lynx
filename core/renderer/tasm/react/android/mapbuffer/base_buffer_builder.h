@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_TASM_REACT_ANDROID_MAPBUFFER_BASE_BUFFER_BUILDER_H_
 #define CORE_RENDERER_TASM_REACT_ANDROID_MAPBUFFER_BASE_BUFFER_BUILDER_H_
 
+#include <cstring>
 #include <utility>
 #include <vector>
 

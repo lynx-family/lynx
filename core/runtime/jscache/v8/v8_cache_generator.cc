@@ -4,6 +4,7 @@
 
 #include "core/runtime/jscache/v8/v8_cache_generator.h"
 
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>

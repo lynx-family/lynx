@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/transform.h"
 
+#include <cmath>
 #include <limits>
 
 #include "base/include/value/array.h"

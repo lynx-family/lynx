@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include <chrono>
+#include <cmath>
 #include <memory>
 
 #include "base/include/log/logging.h"

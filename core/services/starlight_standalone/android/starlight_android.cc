@@ -6,6 +6,7 @@
 
 #include <jni.h>
 
+#include <cstring>
 #include <string>
 
 #include "core/base/android/jni_helper.h"

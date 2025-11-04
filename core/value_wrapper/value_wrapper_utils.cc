@@ -4,6 +4,8 @@
 
 #include "core/value_wrapper/value_wrapper_utils.h"
 
+#include <cstring>
+
 #include "core/base/js_constants.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/common/utils.h"

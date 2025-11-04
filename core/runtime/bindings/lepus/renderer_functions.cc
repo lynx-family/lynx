@@ -6,6 +6,7 @@
 
 #include <assert.h>
 
+#include <cstdlib>
 #include <deque>
 #include <memory>
 #include <sstream>

@@ -15,6 +15,8 @@
 
 #define CAPTURE_COUNT_MAX 255
 extern "C" {
+#include <cstdlib>
+
 #include "quickjs/include/libregexp.h"
 }
 

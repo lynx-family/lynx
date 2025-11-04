@@ -8,6 +8,7 @@
 
 #include "core/animation/keyframed_animation_curve.h"
 
+#include <cmath>
 #include <limits>
 
 #include "base/include/float_comparison.h"

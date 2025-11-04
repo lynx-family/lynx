@@ -7,6 +7,7 @@
 #include <array>
 #include <cinttypes>
 #include <cstdarg>
+#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <string>

@@ -5,6 +5,7 @@
 #include "core/renderer/dom/android/lepus_message_consumer.h"
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>

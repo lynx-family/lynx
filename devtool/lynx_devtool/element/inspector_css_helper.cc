@@ -28,6 +28,7 @@
 
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"
 
+#include <cmath>
 #include <unordered_map>
 #include <unordered_set>
 

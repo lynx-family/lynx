@@ -8,6 +8,7 @@
 
 #include "core/animation/transform_animation_curve.h"
 
+#include <cmath>
 #include <limits>
 
 #include "base/include/log/logging.h"

@@ -13,6 +13,8 @@
 #include <windows.h>
 #else
 #include <pthread.h>
+
+#include <algorithm>
 #endif
 
 namespace lynx {

@@ -28,6 +28,9 @@
 #include "v8.h"
 
 #if defined(OS_ANDROID)
+#include <cstdlib>
+#include <cstring>
+
 #include "core/runtime/jscache/v8/v8_cache_generator.h"
 #endif
 

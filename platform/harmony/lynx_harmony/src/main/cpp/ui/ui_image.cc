@@ -16,6 +16,7 @@
 #include <native_drawing/drawing_sampling_options.h>
 #include <native_drawing/drawing_shader_effect.h>
 
+#include <cstdlib>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"

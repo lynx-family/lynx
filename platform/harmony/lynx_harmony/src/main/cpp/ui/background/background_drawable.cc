@@ -12,6 +12,7 @@
 #include <native_drawing/drawing_rect.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 
 #include "base/include/float_comparison.h"

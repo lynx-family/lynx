@@ -4,6 +4,7 @@
 
 #include "core/services/replay/lynx_module_testbench.h"
 
+#include <cmath>
 #include <limits>
 #include <utility>
 #include <vector>

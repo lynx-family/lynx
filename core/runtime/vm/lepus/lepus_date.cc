@@ -11,6 +11,7 @@
 #if defined(OS_WIN)
 #include <time.h>
 
+#include <cstring>
 #include <iomanip>
 #include <sstream>
 #endif

@@ -7,6 +7,7 @@
 #include <math.h>
 #include <time.h>
 
+#include <cmath>
 #include <utility>
 
 namespace lynx {

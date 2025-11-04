@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/unicode_decode_utils.h"
 
+#include <cstring>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"

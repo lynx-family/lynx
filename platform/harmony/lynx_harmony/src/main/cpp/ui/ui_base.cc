@@ -8,6 +8,7 @@
 #include <multimedia/image_framework/image/image_packer_native.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <string>
 #include <unordered_map>

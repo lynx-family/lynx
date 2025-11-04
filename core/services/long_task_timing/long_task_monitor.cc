@@ -4,6 +4,7 @@
 
 #include "core/services/long_task_timing/long_task_monitor.h"
 
+#include <cmath>
 #include <utility>
 #include <vector>
 

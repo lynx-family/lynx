@@ -7,6 +7,8 @@
 
 #include "base/include/fml/platform/win/task_runner_win32.h"
 
+#include <algorithm>
+
 #include "base/include/fml/message_loop_impl.h"
 
 namespace lynx {

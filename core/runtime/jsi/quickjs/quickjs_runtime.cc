@@ -38,6 +38,8 @@ extern "C" {
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else
+#include <cstring>
+
 #include "quickjs/include/trace-gc.h"
 #endif
 

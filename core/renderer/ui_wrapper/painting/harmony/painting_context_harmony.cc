@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
 
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>

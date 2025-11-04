@@ -4,6 +4,8 @@
 
 #include "core/services/replay/lynx_replay_helper.h"
 
+#include <cmath>
+
 #include "core/runtime/jsi/jsi.h"
 #include "testing/utils/make_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

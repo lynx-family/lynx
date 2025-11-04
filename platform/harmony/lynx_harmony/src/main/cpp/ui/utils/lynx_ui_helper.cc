@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 
+#include <cstring>
 #include <limits>
 #include <vector>
 

@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/recorder/test_bench_utils.h"
 
+#include <cstring>
+
 #include "base/include/log/logging.h"
 #include "third_party/zlib/zlib.h"
 

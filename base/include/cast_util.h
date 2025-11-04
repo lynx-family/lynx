@@ -4,6 +4,8 @@
 #ifndef BASE_INCLUDE_CAST_UTIL_H_
 #define BASE_INCLUDE_CAST_UTIL_H_
 
+#include <cstring>
+
 namespace lynx {
 namespace base {
 

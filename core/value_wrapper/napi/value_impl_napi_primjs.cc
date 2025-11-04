@@ -9,6 +9,8 @@
 #include "core/value_wrapper/napi/napi_util_primjs.h"
 
 #ifdef USE_PRIMJS_NAPI
+#include <cstring>
+
 #include "third_party/napi/include/primjs_napi_defines.h"
 #endif
 

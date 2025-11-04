@@ -69,6 +69,8 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #if ENABLE_LEPUSNG_WORKLET
+#include <cmath>
+
 #include "core/renderer/worklet/lepus_element.h"
 #endif  // ENABLE_LEPUSNG_WORKLET
 

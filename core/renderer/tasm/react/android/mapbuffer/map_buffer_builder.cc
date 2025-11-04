@@ -11,6 +11,7 @@
 #include "core/renderer/tasm/react/android/mapbuffer/map_buffer_builder.h"
 
 #include <algorithm>
+#include <cstring>
 #include <utility>
 
 #include "base/include/log/logging.h"

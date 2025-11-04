@@ -5,6 +5,7 @@
 #include "core/renderer/ui_component/list/staggered_grid_layout_manager.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_component/list/list_container_impl.h"

@@ -6,6 +6,7 @@
 #include <ark_runtime/jsvm.h>
 #include <ark_runtime/jsvm_types.h>
 
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <string>

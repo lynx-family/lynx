@@ -13,6 +13,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+#include <cstring>
+
 #include "quickjs/include/quickjs.h"
 #ifdef __cplusplus
 }

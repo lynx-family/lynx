@@ -10,6 +10,8 @@
 #include "core/runtime/jsi/jsc/jsc_runtime.h"
 
 #include <atomic>
+#include <cstdlib>
+#include <cstring>
 #include <mutex>
 #include <unordered_set>
 #include <utility>

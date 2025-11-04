@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_intersection_observer.h"
 
+#include <cstring>
 #include <memory>
 #include <utility>
 

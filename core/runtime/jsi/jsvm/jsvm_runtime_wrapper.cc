@@ -4,6 +4,7 @@
 
 #include "core/runtime/jsi/jsvm/jsvm_runtime_wrapper.h"
 
+#include <cstring>
 #include <mutex>
 
 #include "core/runtime/jsi/jsvm/jsvm_util.h"

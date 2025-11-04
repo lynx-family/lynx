@@ -8,6 +8,7 @@
 #include <resourcemanager/ohresmgr.h>
 
 #include <cstdint>
+#include <cstdlib>
 #include <utility>
 #include <vector>
 

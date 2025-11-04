@@ -5,6 +5,7 @@
 #include "core/renderer/ui_component/list/animation_item_holder.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "base/include/float_comparison.h"
 #include "core/renderer/dom/element.h"

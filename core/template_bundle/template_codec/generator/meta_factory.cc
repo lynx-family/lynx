@@ -4,6 +4,8 @@
 
 #include "core/template_bundle/template_codec/generator/meta_factory.h"
 
+#include <cstring>
+
 #include "base/include/sorted_for_each.h"
 #include "core/base/json/json_util.h"
 #include "core/renderer/utils/base/tasm_constants.h"

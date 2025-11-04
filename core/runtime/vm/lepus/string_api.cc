@@ -15,6 +15,9 @@
 
 #define CAPTURE_COUNT_MAX 255
 extern "C" {
+#include <cstdlib>
+#include <cstring>
+
 #include "quickjs/include/cutils.h"
 #include "quickjs/include/libregexp.h"
 }

@@ -5,6 +5,7 @@
 #include "base/include/log/log_stream.h"
 
 #include <algorithm>
+#include <cstring>
 #include <ctime>
 #include <sstream>
 #include <string>

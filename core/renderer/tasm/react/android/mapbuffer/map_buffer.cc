@@ -11,6 +11,7 @@
 
 #include "core/renderer/tasm/react/android/mapbuffer/map_buffer.h"
 
+#include <cstring>
 #include <utility>
 
 namespace lynx {

@@ -7,6 +7,8 @@
 
 #include <math.h>
 
+#include <cmath>
+
 namespace lynx {
 namespace base {
 

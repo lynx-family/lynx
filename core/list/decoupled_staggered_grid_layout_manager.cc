@@ -5,6 +5,7 @@
 #include "core/list/decoupled_staggered_grid_layout_manager.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "core/list/decoupled_list_container_impl.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"

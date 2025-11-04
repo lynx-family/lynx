@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
+
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/scroll/base/lynx_base_scroll_view.h"
 

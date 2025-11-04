@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstdarg>
+#include <cstring>
 #include <string>
 #include <unordered_map>
 #include <variant>

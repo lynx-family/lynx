@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/basic_shape.h"
 
+#include <cmath>
+
 #include "base/include/float_comparison.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"

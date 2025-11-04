@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_SIMPLE_STYLING_STYLE_OBJECT_H_
 #define CORE_RENDERER_SIMPLE_STYLING_STYLE_OBJECT_H_
 
+#include <cstdlib>
 #include <list>
 #include <memory>
 #include <mutex>

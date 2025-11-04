@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/android/painting_context_android.h"
 
+#include <cmath>
 #include <future>
 #include <memory>
 #include <utility>

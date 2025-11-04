@@ -4,6 +4,7 @@
 
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "core/renderer/starlight/layout/layout_object.h"

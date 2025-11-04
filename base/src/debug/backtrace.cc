@@ -4,6 +4,7 @@
 
 #include "base/include/debug/backtrace.h"
 
+#include <cstdlib>
 #include <utility>
 
 namespace lynx {

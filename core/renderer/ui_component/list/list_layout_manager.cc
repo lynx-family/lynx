@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_component/list/list_layout_manager.h"
 
+#include <algorithm>
 #include <vector>
 
 #include "base/include/log/logging.h"

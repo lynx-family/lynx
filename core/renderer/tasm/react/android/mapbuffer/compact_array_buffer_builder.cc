@@ -4,6 +4,7 @@
 
 #include "core/renderer/tasm/react/android/mapbuffer/compact_array_buffer_builder.h"
 
+#include <cstring>
 #include <utility>
 
 namespace lynx {

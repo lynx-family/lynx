@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <list>
 #include <map>
 #include <memory>

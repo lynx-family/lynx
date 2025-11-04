@@ -6,6 +6,7 @@
 
 #include <jni.h>
 
+#include <cstring>
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"

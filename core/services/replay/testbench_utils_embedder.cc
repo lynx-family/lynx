@@ -5,6 +5,7 @@
 #include "core/services/replay/testbench_utils_embedder.h"
 
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <sstream>
