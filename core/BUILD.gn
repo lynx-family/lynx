@@ -15,7 +15,7 @@ config("lynx_public_config") {
   cflags = []
   defines = []
   include_dirs += [
-    "//lynx",
+    "..",
     "../platform",
     "../core",
     "build/gen",
@@ -111,10 +111,10 @@ config("lynx_public_config") {
   if (enable_lynx_clang_plugin) {
     if (host_os == "linux") {
       plugin_dylib = rebase_path(
-              "//tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.so")
+              "../../tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.so")
     } else if (host_os == "mac") {
       plugin_dylib = rebase_path(
-              "//tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.dylib")
+              "../../tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.dylib")
     } else {
       print(
           "Unable to turn on Lynx Clang plugin on platforms other than MacOS or Linux.")
@@ -131,11 +131,12 @@ config("lynx_public_config") {
     # Arguments for plugin.
     plugin_args = [
       "-config",
-      rebase_path("//tools/clang/lynx_clang_plugin/release/lynx_config.json"),
+      rebase_path(
+          "../../tools/clang/lynx_clang_plugin/release/lynx_config.json"),
       "-on_path",
       rebase_path("//"),
       "-output_dir",
-      rebase_path("//lynx_clang_plugin_output"),
+      rebase_path("../../lynx_clang_plugin_output"),
     ]
 
     # Forward all plugin arguments with plugin prefix.

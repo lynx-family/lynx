@@ -138,7 +138,7 @@ config("lynx_android_public_config") {
   if (enable_inspector) {
     defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
   }
-  include_dirs = [ "//core" ]
+  include_dirs = []
   cflags = []
   cflags += [
     "-fno-short-enums",

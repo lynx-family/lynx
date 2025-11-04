@@ -89,18 +89,8 @@ starlight_event_sources = [
   "event/layout_event_handler.h",
 ]
 
-config("starlight_public_config") {
-  include_dirs = [
-    "//core",
-    "../../../core",
-  ]
-}
-
 config("starlight_private_config") {
-  include_dirs = [
-    "//core",
-    "../../../third_party",
-  ]
+  include_dirs = []
   defines = []
   cflags = []
   cflags_c = []
@@ -141,7 +131,6 @@ source_set("starlight") {
   }
   public_deps = []
 
-  public_configs = [ ":starlight_public_config" ]
   configs += [ ":starlight_private_config" ]
 
   deps = [ "../../../third_party/rapidjson" ]

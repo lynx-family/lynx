@@ -11,6 +11,8 @@ if (target_cpu == "arm" || target_cpu == "arm64") {
   import("//build/config/arm.gni")
 }
 
+import("//build_overrides/oliver.gni")
+
 # global configs
 declare_args() {
   # Whether to enable trace
@@ -68,7 +70,7 @@ declare_args() {
   enable_primjs_prebuilt_lib = false
 
   # Which directory the Node header will be copied into
-  node_headers_dst_dir = "//oliver/lynx-tasm"
+  node_headers_dst_dir = node_headers_dst
 
   # enable lynx clang static checker plugin
   enable_lynx_clang_plugin = false

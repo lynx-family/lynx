@@ -504,7 +504,6 @@ subspec_target("Inspector") {
   deps = [ "../../../../core/inspector" ]
   pod_target_xcconfig = {
     GCC_PREPROCESSOR_DEFINITIONS = [ "INSPECTOR_TEST=1" ]
-    HEADER_SEARCH_PATHS = [ "//core" ]
   }
 }
 

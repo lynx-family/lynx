@@ -2,7 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("//testing/test.gni")
+import("../../../testing/test.gni")
 benchmark_test("base_benchmark") {
   testonly = true
   sources = [ "./vector_benchmark_ci.cc" ]

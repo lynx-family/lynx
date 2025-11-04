@@ -23,8 +23,6 @@ lynx_core_source_set("jsi") {
 }
 
 config("jsi_unittest_config") {
-  include_dirs = [ "//core" ]
-
   if (is_mac) {
     # For IS_OSX marco that enables JSCRuntime tests
     configs = darwin_config

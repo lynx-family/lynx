@@ -22,8 +22,6 @@ lynx_core_source_set("quickjs") {
 }
 
 unittest_set("quickjs_unittests_testset") {
-  include_dirs = [ "//core" ]
-
   sources = [
     "../../jscache/js_cache_manager_unittest.cc",
     "../../jscache/js_cache_tracker_unittest.cc",

@@ -7,10 +7,7 @@ import("starlight.gni")
 config("starlight_config") {
   include_dirs = [
     ".",
-    "//core",
     "core",
-    "../../../third_party",
-    "../../../core",
   ]
 }
 

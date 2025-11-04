@@ -223,14 +223,14 @@ subspec_target("test_subspec") {
     ":test_sources",
     ":test_subspec_subspec",
   ]
-  vendored_frameworks = [ "//tools/gn_tools/Lynx/Help.framework" ]
-  vendored_libraries = [ "//tools/gn_tools/Lynx/help.a" ]
+  vendored_frameworks = [ "../../../../tools/gn_tools/Lynx/Help.framework" ]
+  vendored_libraries = [ "../../../../tools/gn_tools/Lynx/help.a" ]
   compiler_flags = [
     "-Wall",
     "-Wextra",
     "-Wno-unused-parameter",
   ]
-  public_header_files = [ "//tools/gn_tools/test/gn_test_shared.h" ]
+  public_header_files = [ "../../../../tools/gn_tools/test/gn_test_shared.h" ]
   header_mappings_dir = "tools/gn_tools"
   frameworks = [ "Accelerate" ]
   framework = "AVFoundation"
@@ -259,7 +259,7 @@ subspec_target("test_subspec") {
       "//PODS_ROOT/tools/gn_tools",
       "//TARGET_BUILD_DIR/tools/gn_tools",
       "//PODS_TARGET_SRCROOT/tools/gn_tools",
-      "//tools/gn_tools",
+      "../../../../tools/gn_tools",
     ]
   }
   flatten_deps = [ ":test_subspec_flatten_subspec" ]
@@ -294,7 +294,7 @@ subspec_target("test_subspec_condition_subspec") {
   ]
   pod_target_xcconfig = {
     GCC_PREPROCESSOR_DEFINITIONS = [ "IS_DEBUG=#{\$is_debug}" ]
-    HEADER_SEARCH_PATHS = [ "//tools/gn_tools" ]
+    HEADER_SEARCH_PATHS = [ "../../../../tools/gn_tools" ]
   }
 }
 
@@ -305,7 +305,7 @@ subspec_target("test_subspec_flatten_subspec") {
   ]
   pod_target_xcconfig = {
     GCC_PREPROCESSOR_DEFINITIONS = [ "IS_FLATTEN=true" ]
-    HEADER_SEARCH_PATHS = [ "//tools/gn_tools/flatten" ]
+    HEADER_SEARCH_PATHS = [ "../../../../tools/gn_tools/flatten" ]
   }
   dependency = [
     [
@@ -324,14 +324,14 @@ subspec_target("test_subspec_condition_subspec_top") {
   ]
   pod_target_xcconfig = {
     GCC_PREPROCESSOR_DEFINITIONS = [ "IS_FLATTEN=false" ]
-    HEADER_SEARCH_PATHS = [ "//tools/gn_tools/top/flatten" ]
+    HEADER_SEARCH_PATHS = [ "../../../../tools/gn_tools/top/flatten" ]
   }
 }
 
 bundle_data("LynxResources") {
   sources = [
-    "//darwin/ios/JSAssets/release/lepus_bridge.js",
-    "//darwin/ios/JSAssets/release/lynx_core.js",
+    "../../../../darwin/ios/JSAssets/release/lepus_bridge.js",
+    "../../../../darwin/ios/JSAssets/release/lynx_core.js",
   ]
   outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
 }

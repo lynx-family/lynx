@@ -291,7 +291,7 @@ subspec_target("js_debug") {
 
 subspec_target("LogBoxFramework") {
   pod_target_xcconfig = {
-    HEADER_SEARCH_PATHS = [ "//devtool/lynx_devtool" ]
+    HEADER_SEARCH_PATHS = [ "//PODS_TARGET_SRCROOT/devtool/lynx_devtool" ]
   }
   deps = [ "../../common/lynx_devtool:logbox" ]
   if (!use_flatten_deps) {
@@ -314,12 +314,12 @@ subspec_target("ThirdParty") {
   libraries = [ "stdc++" ]
   pod_target_xcconfig = {
     HEADER_SEARCH_PATHS = [
-      "//devtool/lynx_devtool",
-      "//core",
+      "../../../../../devtool/lynx_devtool",
+      "../../../../../core",
       "../../../../third_party/jsoncpp/include",
       "//PODS_ROOT/Lynx",
       "//PODS_ROOT/Lynx/lynx",
-      "//lynx",
+      "../../../..",
     ]
   }
 }

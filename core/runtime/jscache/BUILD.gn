@@ -52,8 +52,6 @@ lynx_core_source_set("jscache") {
 unittest_set("jscache_unittests_testset") {
   public_configs = [ ":jscache_config" ]
 
-  include_dirs = [ "//core" ]
-
   sources = [
     "js_cache_manager_facade_unittest.cc",
     "meta_data_unittest.cc",

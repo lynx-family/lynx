@@ -108,7 +108,7 @@ subspec_target("framework") {
   pod_target_xcconfig = {
     HEADER_SEARCH_PATHS = [
       "//",
-      "//lynx",
+      "../../../..",
       "../../../../third_party/jsoncpp/include/",
       "//PODS_ROOT/Lynx/lynx",
       "//PODS_ROOT/LynxBase/lynx",
@@ -154,7 +154,7 @@ subspec_target("fml") {
     HEADER_SEARCH_PATHS = [
       "//PODS_ROOT/LynxBase/lynx",
       "//PODS_ROOT/LynxBase",
-      "//lynx",
+      "../../../..",
     ]
   }
   deps = [ "../../../../base/src:base_log_headers" ]
@@ -168,7 +168,7 @@ subspec_target("zlib") {
     HEADER_SEARCH_PATHS = [
       "//PODS_ROOT/Lynx/lynx",
       "//PODS_ROOT/Lynx",
-      "//lynx",
+      "../../../..",
     ]
   }
   if (!use_flatten_deps) {
@@ -181,7 +181,7 @@ subspec_target("modp64") {
     HEADER_SEARCH_PATHS = [
       "//PODS_ROOT/Lynx/lynx",
       "//PODS_ROOT/Lynx",
-      "//lynx",
+      "../../../..",
     ]
   }
   if (!use_flatten_deps) {
@@ -194,7 +194,7 @@ subspec_target("rapidjson") {
     HEADER_SEARCH_PATHS = [
       "//PODS_ROOT/Lynx/lynx",
       "//PODS_ROOT/Lynx",
-      "//lynx",
+      "../../../..",
     ]
   }
   if (!use_flatten_deps) {

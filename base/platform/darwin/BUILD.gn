@@ -67,7 +67,7 @@ subspec_target("Framework") {
     HEADER_SEARCH_PATHS = [
       "//PODS_ROOT/LynxBase/lynx",
       "//PODS_ROOT/LynxBase",
-      "//lynx",
+      "../../..",
       "//",
     ]
     OTHER_CPLUSPLUSFLAGS = "-std=gnu++17"

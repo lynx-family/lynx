@@ -67,23 +67,24 @@ Native_includes = rebase_path([
                                 "//PODS_ROOT/LynxBase",
                                 "//TARGET_BUILD_DIR/Lynx/gen/Lynx",
                                 "../core",
-                                "//lynx",
+                                "..",
                                 "../platform",
                               ]) + PRIMJS_includes
 
-Devtool_Native_includes = rebase_path([
-                                        "//",
-                                        "//PODS_ROOT/BaseDevtool/",
-                                        "//PODS_ROOT/BaseDevtool/lynx/",
-                                        "//PODS_ROOT/Lynx/lynx",
-                                        "//core",
-                                        "//devtool/lynx_devtool",
-                                        "//lynx",
-                                        "//TARGET_BUILD_DIR/Devtool/gen/Lynx",
-                                        "../devtool/lynx_devtool",
-                                        "//PODS_ROOT/LynxBase/lynx",
-                                        "//PODS_ROOT/LynxBase",
-                                      ]) + PRIMJS_includes
+Devtool_Native_includes =
+    rebase_path([
+                  "//",
+                  "//PODS_ROOT/BaseDevtool/",
+                  "//PODS_ROOT/BaseDevtool/lynx/",
+                  "//PODS_ROOT/Lynx/lynx",
+                  "//PODS_TARGET_SRCROOT/core",
+                  "//PODS_TARGET_SRCROOT/devtool/lynx_devtool",
+                  "..",
+                  "//TARGET_BUILD_DIR/Devtool/gen/Lynx",
+                  "../devtool/lynx_devtool",
+                  "//PODS_ROOT/LynxBase/lynx",
+                  "//PODS_ROOT/LynxBase",
+                ]) + PRIMJS_includes
 
 PrimJS_Qjs_Dep = [
   "PrimJS/quickjs",

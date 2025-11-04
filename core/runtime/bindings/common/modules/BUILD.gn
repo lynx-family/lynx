@@ -20,5 +20,5 @@ lynx_core_source_set("native_modules") {
 
 unittest_set("mock_native_module_testset") {
   sources = [ "mock_tasm_delegate.h" ]
-  public_configs = [ "//core:lynx_public_config" ]
+  public_configs = [ "../../../../../core:lynx_public_config" ]
 }

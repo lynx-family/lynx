@@ -26,8 +26,6 @@ lynx_core_source_set("css_encoder") {
 }
 
 unittest_set("css_encoder_testset") {
-  include_dirs = [ "//core/" ]
-
   public_deps = [
     ":css_encoder",
     "../../../../renderer:tasm",

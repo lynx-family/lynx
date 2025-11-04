@@ -2,7 +2,15 @@
 
 # This target defines a source_set which contains some common configs and deps needed by
 # all targets in the source tree of Starlight
-starlight_config = rebase_path(":starlight_config")
+starlight_source_set_configs = rebase_path([ ":starlight_config" ])
+if (is_android) {
+  starlight_source_set_configs += rebase_path(
+          [
+            "//$lynx_dir/platform/android/lynx_starlight:starlight_private_config",
+            "//$lynx_dir/platform/android/lynx_starlight:starlight_public_include",
+          ])
+}
+
 template("starlight_source_set") {
   source_set(target_name) {
     forward_variables_from(invoker, "*", [ "configs" ])
@@ -14,14 +22,8 @@ template("starlight_source_set") {
       configs += invoker.configs
     }
 
-    configs += [ starlight_config ]
+    configs += starlight_source_set_configs
 
-    if (is_android) {
-      configs += [
-        "//platform/android/lynx_starlight:starlight_private_config",
-        "//platform/android/lynx_starlight:starlight_public_include",
-      ]
-    }
     if (defined(exclude_configs)) {
       configs -= exclude_configs
     }
