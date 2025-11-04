@@ -5,9 +5,14 @@ system = platform.system().lower()
 machine = platform.machine().lower()
 machine = "x86_64" if machine == "amd64" else machine
 
+use_uv = os.environ.get("LYNX_USE_UV", "0") in ["1", "true"]
+
 python_path = "python3"
 if system == "windows":
     python_path = "python"
+
+if use_uv:
+    python_path = f"buildtools/uv/uv{'.exe' if system == 'windows' else ''} run"
 
 deps = {
     'platform/android/gradle/wrapper/gradle-6.7.1-all.zip': {
@@ -71,6 +76,18 @@ deps = {
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
     },
+    "buildtools/uv": {
+        "type": "http",
+        "url": {
+            "linux-x86_64": "https://github.com/astral-sh/uv/releases/download/0.9.7/uv-x86_64-unknown-linux-gnu.tar.gz",
+            "linux-arm64": "https://github.com/astral-sh/uv/releases/download/0.9.7/uv-aarch64-unknown-linux-gnu.tar.gz",
+            "darwin-x86_64": "https://github.com/astral-sh/uv/releases/download/0.9.7/uv-x86_64-apple-darwin.tar.gz",
+            "darwin-arm64": "https://github.com/astral-sh/uv/releases/download/0.9.7/uv-aarch64-apple-darwin.tar.gz",
+            "windows-x86_64": "https://github.com/astral-sh/uv/releases/download/0.9.7/uv-x86_64-pc-windows-msvc.zip"
+        }.get(f'{system}-{machine}', None),
+        "condition": system in ['linux', 'darwin', 'windows'] and use_uv,
+        "ignore_in_git": True,
+    },
     "third_party/xhook": {
         'type': 'git',
         'url': 'https://github.com/iqiyi/xHook.git',
@@ -83,6 +100,7 @@ deps = {
         "commands": [
             python_path + " tools/vpython_tools/vpython_env_setup.py --root_dir " + root_dir,
         ],
+        "condition": not use_uv,
     },
     'change_executable_permission': {
         "type": "action",
@@ -118,7 +136,8 @@ deps = {
             f'sdk.dir={os.environ.get("ANDROID_HOME", "")} '
             f'cmake.dir={os.path.join(root_dir, "buildtools", "cmake")}'
         ],
-        "condition": system in ['linux', 'darwin', 'windows']
+        "condition": system in ['linux', 'darwin', 'windows'],
+        "require": ["buildtools/uv"] if use_uv else [],
     },
     'buildtools/cmake': {
         "type": "http",
@@ -311,21 +330,24 @@ deps = {
         "cwd": root_dir,
         "commands": [
             python_path + " tools/feature_count/generate_feature_count.py",
-        ]
+        ],
+        "require": ["buildtools/uv"] if use_uv else [],
     },
     'gen_error_code': {
         "type": "action",
         "cwd": root_dir,
         "commands": [
             python_path + " tools/error_code/gen_error_code.py",
-        ]
+        ],
+        "require": ["buildtools/uv"] if use_uv else [],
     },
     'gen_lynx_perfromance_entry': {
         "type": "action",
         "cwd": root_dir,
         "commands": [
             python_path + " tools/performance/performance_observer/generate_performance_entry.py",
-        ]
+        ],
+        "require": ["buildtools/uv"] if use_uv else [],
     },
     ### AUTO GENERATED SCRIPT END
     'explorer/darwin/ios/lynx_explorer/xctestrunner': {

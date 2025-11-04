@@ -24,6 +24,8 @@ lynx_envsetup() {
   export PATH="${BUILDTOOLS_DIR}/llvm/bin:${BUILDTOOLS_DIR}/gn:${BUILDTOOLS_DIR}/ninja:${TOOLS_ABSOLUTE_PATH}/gn_tools:$PATH"
   # setup node version
   export PATH=${BUILDTOOLS_DIR}/node/bin:$PATH
+  # setup uv for later migration
+  export PATH=${BUILDTOOLS_DIR}/uv:$PATH
   # setup corepack
   export COREPACK_HOME="${BUILDTOOLS_DIR}/corepack"
 
@@ -51,4 +53,10 @@ function python_env_setup() {
 
 lynx_envsetup "${BASH_SOURCE:-$0}"
 android_env_setup "${BASH_SOURCE:-$0}"
-python_env_setup
+if [ "$LYNX_USE_UV" = "1" ]; then
+  echo "[experimental] use uv instead of vpython"
+  uv sync
+  source $LYNX_DIR/.venv/bin/activate
+else
+  python_env_setup
+fi

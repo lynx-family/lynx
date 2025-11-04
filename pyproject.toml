@@ -1,0 +1,13 @@
+[project]
+name = "lynx-workspace"
+version = "0.1.0"
+requires-python = ">= 3.12"
+dependencies = ["tools", "testing"]
+
+[tool.uv.sources]
+tools = { workspace = true }
+testing = { workspace = true }
+
+
+[tool.uv.workspace]
+members = ["tools", "testing"]

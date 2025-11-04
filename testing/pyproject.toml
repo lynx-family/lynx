@@ -1,0 +1,19 @@
+[project]
+name = "testing"
+version = "0.1.0"
+description = "dependencies for scripts in testing/"
+dependencies = [
+    "opencv-python~=4.12.0",
+    "requests>=2.25.1",
+    "lynx-e2e-appium==0.0.8",
+    "PyYAML~=6.0.2",
+    "retrying~=1.4.2",
+    "appium-python-client==3.1.1",
+    "selenium==4.17.2",
+    "ujson~=5.11.0",
+    "six>=1.16.0",
+    "setuptools>=75.6.0",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["*"]

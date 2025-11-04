@@ -44,30 +44,6 @@ runs:
         restore-keys: |
           hab-${{ runner.os }}-
 
-    - name: Get Python Cache Directory
-      id: pip
-      shell: bash
-      if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      run: echo "PIP_CACHE_DIR=$(python3 -m pip cache dir)" >> $GITHUB_OUTPUT
-
-    - name: Python Requirements Cache
-      if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-      with:
-        path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
-        key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}
-
-    - name: install Python dependencies
-      shell: bash
-      run: |
-        if [ "$RUNNER_OS" == "macOS" ]; then
-          python3 -m pip install PyYAML==6.0.2 --break-system-packages
-          python3 -m pip install requests==2.32.5 --break-system-packages
-        else
-          python3 -m pip install PyYAML==6.0.2
-          python3 -m pip install requests==2.32.5
-        fi
-
     - name: run habitat sync
       shell: bash
       working-directory: lynx
@@ -80,3 +56,24 @@ runs:
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
         GIT_LFS_SKIP_SMUDGE: 1
+
+    - name: Get Python Cache Directory
+      id: uv
+      shell: bash
+      working-directory: lynx
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      run: echo "UV_CACHE_DIR=$(buildtools/uv/uv cache dir)" >> $GITHUB_OUTPUT
+
+    - name: Python Requirements Cache
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: ${{ steps.uv.outputs.UV_CACHE_DIR }}
+        key: uv${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/uv.lock') }}
+        restore-keys: |
+          uv${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+
+    - name: install Python dependencies
+      shell: bash
+      working-directory: lynx
+      run: buildtools/uv/uv sync

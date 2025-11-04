@@ -10,6 +10,8 @@ defaults:
   run:
     working-directory: lynx
 
+env:
+  LYNX_USE_UV: 1
 jobs:
   static-check:
     runs-on: lynx-ubuntu-22.04-medium
@@ -30,35 +32,35 @@ jobs:
       - name: Run file type check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers file-type
+          uv run tools_shared/git_lynx.py check --checkers file-type
       - name: Run cpplint check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers cpplint
+          uv run tools_shared/git_lynx.py check --checkers cpplint
       - name: Run java-lint check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers java-lint
+          uv run tools_shared/git_lynx.py check --checkers java-lint
       - name: Run commit-message check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers commit-message
+          uv run tools_shared/git_lynx.py check --checkers commit-message
       - name: Run coding-style check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers coding-style
+          uv run tools_shared/git_lynx.py check --checkers coding-style
       - name: Run android-check-style check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers android-check-style
+          uv run tools_shared/git_lynx.py check --checkers android-check-style
       - name: Run api check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers api-check --all
+          uv run tools_shared/git_lynx.py check --checkers api-check --all
       - name: Run gn relative path check
         run: |
           source tools/envsetup.sh
-          python3 tools/gn_tools/gn_relative_path_checker.py
+          uv run tools/gn_tools/gn_relative_path_checker.py
 
   darwin-native-unittests-check:
     timeout-minutes: 60
@@ -189,7 +191,7 @@ jobs:
       - name: Build Darwin Tasm
         run: |
           source tools/envsetup.sh
-          python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
+          uv run tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
           pushd oliver/lynx-tasm
           npm install
           ../../buildtools/cmake/bin/cmake .
@@ -437,8 +439,8 @@ jobs:
             pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
             export server_port=$APPIUM_TEST_SERVER_PORT
             export platform=android
-            pip3 install -r requirements.txt
-            python3 manage.py runtest android_test.core
+            source $GITHUB_WORKSPACE/lynx/tools/envsetup.sh
+            uv run manage.py runtest android_test.core
             echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
         id: run_test
       - name: Collect Lynx-E2E execution logs
@@ -603,14 +605,14 @@ jobs:
         run: |-
           source tools/envsetup.sh
           export LANG=en_US.UTF-8
-          python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
+          uv run tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
       - name: Publish to Local Pod Source
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           git config --global user.name "lynx.authors"
           git config --global user.email "lynx.authors@users.noreply.github.com"
-          python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
+          uv run tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
       - name: Download the Demo Project
         uses: actions/checkout@v4.2.2
         with:
@@ -620,10 +622,11 @@ jobs:
       - name: Build the Demo Project
         run: |-
           cd $GITHUB_WORKSPACE
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
+          source lynx/tools/envsetup.sh
+          uv run --no-project lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          uv run --no-project lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          uv run --no-project lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          uv run --no-project lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
           cd demo/ios/HelloLynxObjc
           export LANG=en_US.UTF-8
           BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
