@@ -14,6 +14,7 @@
 #include "core/public/layout_node_value.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
+#include "core/public/platform_renderer_type.h"
 #include "core/public/prop_bundle.h"
 #include "core/public/text_layout_impl.h"
 #include "core/public/timing_key.h"
@@ -90,7 +91,8 @@ class PaintingCtxPlatformImpl {
                                   const fml::RefPtr<PropBundle>& painting_data,
                                   bool flatten, bool create_node_async,
                                   uint32_t node_index = 0) = 0;
-  virtual void InsertPaintingNode(int parent, int child, int index){};
+  virtual void CreatePaintingNode(int id, PlatformRendererType type) {}
+  virtual void InsertPaintingNode(int parent, int child, int index) {}
   virtual void RemovePaintingNode(int parent, int child, int index,
                                   bool is_move){};
   virtual void DestroyPaintingNode(int parent, int child, int index){};

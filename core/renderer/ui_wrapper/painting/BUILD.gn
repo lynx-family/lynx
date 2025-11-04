@@ -27,7 +27,6 @@ if (!enable_unittests) {
       "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
       "android/platform_renderer_context.h",
-      "android/platform_renderer_type.h",
 
       # platform_renderer_impl class and its common iterface in header file can
       # be moved to common sources to share with other platforms.

@@ -25,6 +25,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     public static final int kView = 1;
     public static final int kPage = 2;
     public static final int kScroll = 3;
+    public static final int kText = 4;
+    public static final int kImage = 5;
   }
 
   WeakReference<UIBody.UIBodyView> mRootView = null;

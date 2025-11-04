@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "core/base/android/jni_helper.h"
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer_type.h"
+#include "core/public/platform_renderer_type.h"
 
 namespace lynx::tasm {
 
@@ -84,7 +84,7 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
 
   bool NeedAnimationProps() override;
 
-  void CreatePaintingNode(int id, PlatformRendererType type);
+  void CreatePaintingNode(int id, PlatformRendererType type) override;
 
  private:
   void Enqueue(shell::UIOperation op) {

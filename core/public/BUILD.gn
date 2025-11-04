@@ -30,6 +30,7 @@ lynx_core_source_set("public") {
     "performance_controller_platform_impl.h",
     "pipeline_option.h",
     "platform_extra_bundle.h",
+    "platform_renderer_type.h",
     "prop_bundle.h",
     "pub_value.h",
     "runtime_lifecycle_observer.h",

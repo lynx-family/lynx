@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer_type.h"
+#include "core/public/platform_renderer_type.h"
 
 namespace lynx::tasm {
 

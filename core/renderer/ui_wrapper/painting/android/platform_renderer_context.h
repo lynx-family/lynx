@@ -6,7 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
 #include "base/include/platform/android/scoped_java_ref.h"
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer_type.h"
+#include "core/public/platform_renderer_type.h"
 namespace lynx::tasm {
 
 class PlatformRendererContext {

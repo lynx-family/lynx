@@ -16,6 +16,7 @@
 #include "core/public/performance_controller_platform_impl.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
+#include "core/public/platform_renderer_type.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_font_face_token.h"
 #include "core/renderer/css/css_fragment.h"
@@ -61,6 +62,10 @@ class PaintingContext {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_CREATE_NODE, "tag", tag);
     platform_impl_->CreatePaintingNode(id, tag, painting_data, flatten,
                                        create_node_async, node_index);
+  }
+
+  inline void CreatePaintingNode(int id, PlatformRendererType type) {
+    platform_impl_->CreatePaintingNode(id, type);
   }
 
   void EnableUIOperationBatching() {

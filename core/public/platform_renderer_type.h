@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_TYPE_H_
-#define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_TYPE_H_
+#ifndef CORE_PUBLIC_PLATFORM_RENDERER_TYPE_H_
+#define CORE_PUBLIC_PLATFORM_RENDERER_TYPE_H_
 #include <cstdint>
 
 enum class PlatformRendererType : uint8_t {
@@ -11,6 +11,8 @@ enum class PlatformRendererType : uint8_t {
   kView = 1,
   kPage = 2,
   kScroll = 3,
+  kText = 4,
+  kImage = 5,
 };
 
-#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_TYPE_H_
+#endif  // CORE_PUBLIC_PLATFORM_RENDERER_TYPE_H_
