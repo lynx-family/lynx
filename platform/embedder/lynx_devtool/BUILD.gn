@@ -32,7 +32,7 @@ devtool_source_set("lynx_devtool") {
     "../../../devtool/lynx_devtool/tracing",
     "../../../third_party/debug_router/src/debug_router/common:debug_router_source",
     "../../../third_party/jsoncpp:jsoncpp",
-    "../../../third_party/modp_b64:modp_b64",
+    "//third_party/modp_b64:modp_b64",
   ]
   public_configs = [ ":lynx_devtool_config" ]
 }

@@ -98,8 +98,8 @@ base_devtool_source_set("base_devtool") {
   public_deps = [
     "../../../core/base:json_utils",
     "../../../third_party/jsoncpp:jsoncpp",
-    "../../../third_party/modp_b64:modp_b64",
     "js_inspect:base_devtool_js_inspect",
+    "//third_party/modp_b64:modp_b64",
   ]
 
   if (!defined(deps)) {

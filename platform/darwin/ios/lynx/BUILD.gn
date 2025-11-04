@@ -834,7 +834,7 @@ subspec_target("third_party") {
 }
 
 subspec_target("modp64") {
-  deps = [ "../../../../third_party/modp_b64" ]
+  deps = [ "//third_party/modp_b64" ]
   libraries = [ "stdc++" ]
 }
 

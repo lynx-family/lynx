@@ -34,7 +34,6 @@ lynx_core_source_set("recorder") {
 
   deps = [
     "../../../base/src:base_log_headers",
-    "../../../third_party/modp_b64:modp_b64",
     "../../../third_party/rapidjson:rapidjson",
     "../../base:base",
     "../../renderer:tasm",
@@ -44,6 +43,7 @@ lynx_core_source_set("recorder") {
     "../../runtime",
     "../../runtime/bindings/lepus",
     "../../runtime/vm/lepus",
+    "//third_party/modp_b64:modp_b64",
   ]
   deps += [ "//third_party/zlib" ]
 }
