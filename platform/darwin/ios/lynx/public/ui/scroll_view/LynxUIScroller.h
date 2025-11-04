@@ -46,7 +46,7 @@ typedef NS_ENUM(NSInteger, HoverPosition) {
 // Controls scrollToBounce event. Set to true before users' dragging ends.
 @property(nonatomic, assign) BOOL isTransferring;
 // List native storage
-@property(nonatomic, assign) NSString *currentItemKey;
+@property(nonatomic, strong) NSString *currentItemKey;
 @property(nonatomic, strong, readonly) LynxScrollEventManager *scrollEventManager;
 
 - (float)scrollLeftLimit;
