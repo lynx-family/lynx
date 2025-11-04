@@ -271,8 +271,6 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
     list_layout_manager_ = std::make_unique<GridLayoutManager>(this);
   } else if (layout_type == list::LayoutType::kWaterFall) {
     list_layout_manager_ = std::make_unique<StaggeredGridLayoutManager>(this);
-    // TODO(dongjiajian): support update animation in waterfall.
-    list_animation_manager_->SetUpdateAnimation(false);
   }
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           orientation);
@@ -530,19 +528,8 @@ bool ListContainerImpl::ShouldGenerateDebugInfo(
          debug_info_level_ >= targetLevel;
 }
 
-bool ListContainerImpl::UpdateAnimation() const {
-  return list_animation_manager_->UpdateAnimation();
-}
-
 void ListContainerImpl::PropsUpdateFinish() {
-  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
-    list_animation_manager_->SetUpdateAnimation(update_animation_);
-  }
-  if (list_animation_manager_->UpdateAnimation() &&
-      animation_diff_result_ != list::ListAdapterDiffResult::kNone) {
-    list_animation_manager_->UpdateDiffResult(animation_diff_result_);
-  }
-  animation_diff_result_ = list::ListAdapterDiffResult::kNone;
+  ResolveAnimationAttr();
   if (span_count_changed_) {
     span_count_changed_ = false;
     if (!enable_dynamic_span_count_) {
@@ -592,6 +579,23 @@ void ListContainerImpl::PropsUpdateFinish() {
   }
   list_children_helper_->SetRecycleStickyItem(recycle_sticky_item_);
   list_adapter()->list_adapter_helper()->ClearDiffInfo();
+}
+
+void ListContainerImpl::ResolveAnimationAttr() {
+  if (layout_type_ == list::LayoutType::kWaterFall) {
+    // Consider the order of resolving list-type and update-animation is not
+    // fixed, we should move this logic in PropsUpdateFinish().
+    // TODO(dongjiajian): support update animation in waterfall.
+    update_animation_ = false;
+  }
+  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
+    list_animation_manager_->SetUpdateAnimation(update_animation_);
+  }
+  if (list_animation_manager_->UpdateAnimation() &&
+      animation_diff_result_ != list::ListAdapterDiffResult::kNone) {
+    list_animation_manager_->UpdateDiffResult(animation_diff_result_);
+  }
+  animation_diff_result_ = list::ListAdapterDiffResult::kNone;
 }
 
 void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
