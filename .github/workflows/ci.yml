@@ -62,7 +62,7 @@ jobs:
 
   darwin-native-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -73,6 +73,7 @@ jobs:
       - name: Run Unittests
         run: |
           set -e
+          git lfs version
           source tools/envsetup.sh
           tools/rtf/rtf native-ut run --names lynx
 
@@ -118,7 +119,7 @@ jobs:
 
   ios-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -136,6 +137,7 @@ jobs:
           command: |
             set -e
             cd $GITHUB_WORKSPACE/lynx
+            git lfs version
             source tools/envsetup.sh
             pushd explorer/darwin/ios/lynx_explorer
             git config --global url."https://github.com/".insteadOf "git@github.com:"
@@ -178,7 +180,7 @@ jobs:
 
   tasm-darwin-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -188,6 +190,7 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
       - name: Build Darwin Tasm
         run: |
+          git lfs version
           source tools/envsetup.sh
           python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
           pushd oliver/lynx-tasm
@@ -201,7 +204,7 @@ jobs:
 
   tasm-wasm-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -561,7 +564,7 @@ jobs:
 
   ios-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -584,7 +587,7 @@ jobs:
 
   ios-integration-test:
     timeout-minutes: 15
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     env:
       LOCAL_POD_NAME: 'local_pod'
       POD_VERSION: '0.0.1-alpha.1'
