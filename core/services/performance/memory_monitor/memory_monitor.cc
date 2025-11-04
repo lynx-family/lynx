@@ -108,41 +108,38 @@ inline MemoryRecord BuildMemoryRecord(
 }
 
 enum BoolValue : uint8_t { Unset = 0, False = 1, True = 2 };
-// Highest priority setting
-static std::atomic<BoolValue> g_force_enable_{Unset};
-// Environment-based setting
-static std::atomic<BoolValue> g_env_enable_{Unset};
+struct MemoryMonitorArgs {
+  MemoryMonitorArgs() {
+    force_enable_ = Unset;
+    env_enable_ = LynxEnv::GetInstance().EnableMemoryMonitor();
+    threshold_mb_ = LynxEnv::GetInstance().GetMemoryChangeThresholdMb();
+  }
+  // Highest priority setting
+  BoolValue force_enable_ = Unset;
+  // Environment-based setting
+  bool env_enable_;
+  uint32_t threshold_mb_;
+};
+
+MemoryMonitorArgs& GetMemoryMonitorArgs() {
+  static MemoryMonitorArgs args;
+  return args;
+}
 
 bool MemoryMonitor::Enable() {
+  auto& args = GetMemoryMonitorArgs();
   // [Priority 1] Check force-enable setting first (explicit override)
-  const auto force_val = g_force_enable_.load(std::memory_order_acquire);
-  if (force_val != Unset) {
-    return force_val == True;  // Force setting takes absolute precedence
+  if (args.force_enable_ != Unset) {
+    return args.force_enable_ ==
+           True;  // Force setting takes absolute precedence
   }
-
-  // [Priority 2] Check cached environment setting
-  const auto env_val = g_env_enable_.load(std::memory_order_acquire);
-  if (env_val != Unset) {
-    return env_val == True;  // Use cached environment value if available
-  }
-
-  // [Initialization] Both unset - fetch from environment (once)
-  static std::once_flag init_flag;
-  bool ret = false;
-  std::call_once(init_flag, [&] {
-    // Fetch actual value from environment source
-    ret = LynxEnv::GetInstance().EnableMemoryMonitor();
-
-    // Cache environment result for future calls
-    g_env_enable_.store(ret ? True : False, std::memory_order_release);
-  });
-  return ret;
+  return args.env_enable_;
 }
 
 // External control interface (sets highest priority flag)
 void MemoryMonitor::SetForceEnable(bool enable) {
-  // This override takes precedence over environment settings
-  g_force_enable_.store(enable ? True : False, std::memory_order_release);
+  auto& args = GetMemoryMonitorArgs();
+  args.force_enable_ = enable ? True : False;
 }
 
 uint32_t MemoryMonitor::MemoryChangeThresholdMb() {
