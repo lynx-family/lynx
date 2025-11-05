@@ -654,7 +654,11 @@ void PageProxy::OnReactComponentCreated(RadonComponent *component,
                                         const lepus::Value &props,
                                         const lepus::Value &data,
                                         const std::string &parent_id) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_CREATED);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_CREATED,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   if (!component->IsEmpty() &&
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
@@ -677,6 +681,7 @@ void PageProxy::OnReactComponentCreated(RadonComponent *component,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
@@ -685,7 +690,11 @@ void PageProxy::OnReactComponentRender(RadonComponent *component,
                                        const lepus::Value &props,
                                        const lepus::Value &data,
                                        bool should_component_update) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_RENDER);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_RENDER,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   if (!component->IsEmpty() &&
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
@@ -701,12 +710,17 @@ void PageProxy::OnReactComponentRender(RadonComponent *component,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
 
 void PageProxy::OnReactComponentDidUpdate(RadonComponent *component) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_DID_UPDATE);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_DID_UPDATE,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   if (!component->IsEmpty() &&
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
@@ -717,13 +731,18 @@ void PageProxy::OnReactComponentDidUpdate(RadonComponent *component) {
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(
             lepus::Value(component->ComponentStrId())));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
 
 void PageProxy::OnReactComponentDidCatch(RadonComponent *component,
                                          const lepus::Value &error) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_DID_CATCH);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_DID_CATCH,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   if (!component->IsEmpty() &&
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
@@ -737,12 +756,17 @@ void PageProxy::OnReactComponentDidCatch(RadonComponent *component,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
 
 void PageProxy::OnReactComponentUnmount(RadonComponent *component) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_UNMOUNT);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_COMPONENT_UNMOUNT,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   if (!component->IsEmpty() &&
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
@@ -753,13 +777,19 @@ void PageProxy::OnReactComponentUnmount(RadonComponent *component) {
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(
             lepus::Value(component->ComponentStrId())));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
 
 void PageProxy::OnReactCardRender(const lepus::Value &data,
                                   bool should_component_update) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_CARD_RENDER);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_CARD_RENDER,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+
   if (pre_painting_stage_ != PrePaintingStage::kStartPrePainting &&
       context_proxy_delegate_ != nullptr &&
       tasm_delegate_->SupportComponentJS()) {
@@ -776,12 +806,17 @@ void PageProxy::OnReactCardRender(const lepus::Value &data,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
 
 void PageProxy::OnReactCardDidUpdate() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_CARD_DID_UPDATE);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_CARD_DID_UPDATE,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   if (pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ && tasm_delegate_->SupportComponentJS()) {
     runtime::MessageEvent event(
@@ -789,6 +824,7 @@ void PageProxy::OnReactCardDidUpdate() {
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplLepus>(lepus::Value()));
+    event.SetTraceFlowId(trace_flow_id);
     context_proxy_delegate_->DispatchMessageEvent(std::move(event));
   }
 }
