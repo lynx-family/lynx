@@ -50,8 +50,9 @@ class LepusInspectorNGImpl : public LepusInspectorNG {
   LepusInspectorSessionNGImpl* GetSession() { return session_; }
   void RemoveSession() { session_ = nullptr; }
 
-  void SetDebugInfo(const std::string& url, const std::string& debug_info,
-                    int debug_info_id) override;
+  void SetDebugInfo(const std::string& filename, const std::string& debug_info,
+                    int debug_info_id,
+                    const std::string& debug_info_url) override;
 
  private:
   friend class LepusInspectorNG;

@@ -85,10 +85,11 @@ void LepusInspectorClientImpl::InitInspector(lepus::Context *context,
   inspector_ = lepus_inspector::LepusInspectorNG::Create(context, this, name);
 }
 
-void LepusInspectorClientImpl::SetDebugInfo(const std::string &url,
+void LepusInspectorClientImpl::SetDebugInfo(const std::string &filename,
                                             const std::string &debug_info,
-                                            int debug_info_id) {
-  inspector_->SetDebugInfo(url, debug_info, debug_info_id);
+                                            int debug_info_id,
+                                            const std::string &debug_info_url) {
+  inspector_->SetDebugInfo(filename, debug_info, debug_info_id, debug_info_url);
 }
 
 void LepusInspectorClientImpl::ConnectSession() {
