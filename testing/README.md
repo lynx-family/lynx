@@ -15,3 +15,4 @@ For the specific methods of running and adding unit tests, please refer to: [Usa
 Integration Tests is a self-driving testing for Lynx on devices and emulators. It is driven by the [Lynx-E2E](https://pypi.org/project/lynx-e2e-appium/) framework which is a self-developed UI automation framework of Lynx.
 
 For more detailed introductions and usage guides, please refer to the documentation [Integration Test Guide](./integration_test/README.md)
+
