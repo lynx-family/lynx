@@ -27,10 +27,11 @@ class LynxExtensionModule : public LynxNativeModule {
  public:
   virtual void SetLynxViewCreatedState(tasm::UIDelegate* ui_delegate) = 0;
   virtual void SetLynxViewDestroyedState() = 0;
+  virtual void SetRuntimeInitState(
+      const fml::RefPtr<fml::TaskRunner>& task_runner) = 0;
   virtual void SetRuntimeAttachedState(
       napi_env env,
-      const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer,
-      const fml::RefPtr<fml::TaskRunner>& task_runner) = 0;
+      const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) = 0;
   virtual void SetRuntimeReadyState(napi_env env, napi_value lynx,
                                     const std::string& url) = 0;
   virtual void SetRuntimeDetachedState() = 0;

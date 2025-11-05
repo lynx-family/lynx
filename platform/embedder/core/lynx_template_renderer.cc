@@ -164,7 +164,8 @@ void LynxTemplateRenderer::Reset() {
       // There's cases that need to inject runtime life cycle before JSRuntime
       // creating, so add an early callback here.
       // e.g. inject JSB `LynxRecorderReplayDataModule` for testbench.
-      runtime_proxy_callback_(engine_proxy_, runtime_proxy_, module_manager_);
+      runtime_proxy_callback_(engine_proxy_, runtime_proxy_, module_manager_,
+                              shell_->GetRunners()->GetJSTaskRunner());
     }
   };
 

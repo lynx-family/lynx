@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "capi/lynx_extension_module_capi.h"
 
@@ -15,12 +16,6 @@ namespace lynx {
 namespace pub {
 
 using VSyncObserverCallback = std::function<void(int64_t, int64_t)>;
-
-struct VSyncObserverCallbackInfo {
-  VSyncObserverCallbackInfo(VSyncObserverCallback cb)
-      : callback(std::move(cb)) {}
-  VSyncObserverCallback callback;
-};
 
 class VSyncObserver {
  public:
@@ -36,7 +31,8 @@ class VSyncObserver {
    */
   void RequestAnimationFrame(uintptr_t id, VSyncObserverCallback callback) {
     if (!c_observer_) return;
-    auto* user_data = new VSyncObserverCallbackInfo(std::move(callback));
+    auto* user_data =
+        new std::function<void(int64_t, int64_t)>(std::move(callback));
     lynx_vsync_observer_request_animation_frame(
         c_observer_, id, &RequestAnimationFrameCallback, user_data);
   }
@@ -67,7 +63,8 @@ class VSyncObserver {
   void RequestBeforeAnimationFrame(uintptr_t id,
                                    VSyncObserverCallback callback) {
     if (!c_observer_) return;
-    auto* user_data = new VSyncObserverCallback(std::move(callback));
+    auto* user_data =
+        new std::function<void(int64_t, int64_t)>(std::move(callback));
     lynx_vsync_observer_request_before_animation_frame(
         c_observer_, id, &RequestAnimationFrameCallback, user_data);
   }
@@ -90,46 +87,66 @@ class VSyncObserver {
 
   /**
    * @apidoc
-   * @brief Set a callback to synchronize with a given VSync.
+   * @brief Set a callback to synchronize with a given VSync. It should be
+   * called in the BTS thread.
    * @param callback A functional callback. It is called when the next VSync
-   * signal arrives. It will be called after any normal callback.
+   * signal arrives. It will be called after each VSync occurs.
    */
-  void RequestAfterAnimationFrame(VSyncObserverCallback callback) {
+  void RegisterAfterAnimationFrameListener(VSyncObserverCallback callback) {
     if (!c_observer_) return;
-    auto* user_data = new VSyncObserverCallback(std::move(callback));
-    lynx_vsync_observer_request_after_animation_frame(
-        c_observer_, &RequestAnimationFrameCallback, user_data);
+    after_animation_frame_callbacks_.emplace_back(std::move(callback));
+    if (has_registered_) return;
+    lynx_vsync_observer_register_after_animation_frame_listener(
+        c_observer_, &AfterAnimationFrameListenerCallback, this);
+    has_registered_ = true;
   }
 
   /**
    * @apidoc
    * @brief Set a callback to synchronize with a given VSync.
    * @param callback A C-function callback. It is called when the next VSync
-   * signal arrives. It will be called after any normal callback.
+   * signal arrives. It will be called after each VSync occurs.
    * @param user_data The pass-through context.
    */
-  inline void RequestBeforeAnimationFrame(vsync_observer_callback callback,
-                                          void* user_data) {
+  inline void RegisterAfterAnimationFrameListener(
+      vsync_observer_callback callback, void* user_data) {
     if (!c_observer_) return;
-    lynx_vsync_observer_request_after_animation_frame(c_observer_, callback,
-                                                      user_data);
+    lynx_vsync_observer_register_after_animation_frame_listener(
+        c_observer_, callback, user_data);
   }
 
  private:
   static void RequestAnimationFrameCallback(void* user_data,
                                             int64_t frame_start_time,
                                             int64_t frame_end_time) {
-    VSyncObserverCallbackInfo* cb =
-        static_cast<VSyncObserverCallbackInfo*>(user_data);
+    auto* callback =
+        reinterpret_cast<std::function<void(int64_t, int64_t)>*>(user_data);
     if (frame_start_time == 0 || frame_end_time == 0) {
-      delete cb;
+      delete callback;
     } else {
-      cb->callback(frame_start_time, frame_end_time);
-      delete cb;
+      (*callback)(frame_start_time, frame_end_time);
+      delete callback;
+    }
+  }
+
+  static void AfterAnimationFrameListenerCallback(void* user_data,
+                                                  int64_t frame_start_time,
+                                                  int64_t frame_end_time) {
+    auto* observer = reinterpret_cast<VSyncObserver*>(user_data);
+    observer->CallAfterAnimationFrameListenerCallback(frame_start_time,
+                                                      frame_end_time);
+  }
+
+  void CallAfterAnimationFrameListenerCallback(int64_t frame_start_time,
+                                               int64_t frame_end_time) {
+    for (auto& cb : after_animation_frame_callbacks_) {
+      cb(frame_start_time, frame_end_time);
     }
   }
 
   lynx_vsync_observer_t* c_observer_;
+  std::vector<VSyncObserverCallback> after_animation_frame_callbacks_;
+  bool has_registered_ = false;
 };
 
 class LynxExtensionModule {
@@ -160,6 +177,12 @@ class LynxExtensionModule {
    * on the UI thread.
    */
   virtual void OnLynxViewDestroy() {}
+  /**
+   * @apidoc
+   * @brief Called when BTS Runtime instance is created. It is always called
+   * on the UI thread.
+   */
+  virtual void OnRuntimeInit() {}
   /**
    * @apidoc
    * @brief Called when BTS runtime is attached. It is always called on the
@@ -228,12 +251,23 @@ class LynxExtensionModule {
 
   /**
    * @apidoc
+   * @brief Is running tasks on current thread.
+   */
+  inline bool IsRunningTasksOnBTSThread() {
+    return lynx_extension_module_is_running_on_bts_thread(c_module_);
+  }
+
+  /**
+   * @apidoc
    * @brief Set a napi_module creator to bind custom native methods.
    * @param creator napi module creator.
    */
   inline void SetNapiModuleCreator(napi_module_creator creator) {
     lynx_extension_module_set_napi_module_creator(c_module_, creator);
   }
+
+  inline void Retain() { lynx_extension_module_ref(c_module_); }
+  inline void Release() { lynx_extension_module_unref(c_module_); }
 
  protected:
   lynx_extension_module_t* c_module_ = nullptr;
@@ -262,6 +296,17 @@ class LynxExtensionModule {
           auto* extension_module =
               reinterpret_cast<LynxExtensionModule*>(user_data);
           extension_module->OnLynxViewDestroy();
+        });
+    // on runtime init
+    lynx_extension_module_bind_runtime_init(
+        c_module_, [](lynx_extension_module_t* c_module) {
+          auto* user_data = lynx_extension_module_get_user_data(c_module);
+          if (!user_data) {
+            return;
+          }
+          auto* extension_module =
+              reinterpret_cast<LynxExtensionModule*>(user_data);
+          extension_module->OnRuntimeInit();
         });
     // on runtime attach
     lynx_extension_module_bind_runtime_attach(

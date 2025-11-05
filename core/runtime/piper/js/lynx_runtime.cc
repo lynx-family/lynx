@@ -367,7 +367,7 @@ void LynxRuntime::RegisterNapiModules() {
   if (factory) {
     factory->OnRuntimeAttach(
         static_cast<napi_env>(napi_environment_->proxy()->Env()),
-        delegate_->GetVSyncObserver(), delegate_->GetJSRunner());
+        delegate_->GetVSyncObserver());
   }
 }
 #endif

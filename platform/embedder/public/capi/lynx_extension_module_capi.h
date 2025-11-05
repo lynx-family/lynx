@@ -37,12 +37,15 @@ LYNX_CAPI_EXPORT void lynx_vsync_observer_request_animation_frame(
 // To synchronize with a given VSync, a callback is set, which is called back
 // when the next VSync signal arrives. This callback will be called after any
 // normal callback.
-LYNX_CAPI_EXPORT void lynx_vsync_observer_request_after_animation_frame(
+LYNX_CAPI_EXPORT void
+lynx_vsync_observer_register_after_animation_frame_listener(
     lynx_vsync_observer_t*, vsync_observer_callback callback, void* user_data);
 
 typedef void (*lynx_extension_module_on_lynx_view_create_func)(
     lynx_extension_module_t*, lynx_view_t*);
 typedef void (*lynx_extension_module_on_lynx_view_destroy_func)(
+    lynx_extension_module_t*);
+typedef void (*lynx_extension_module_on_runtime_init_func)(
     lynx_extension_module_t*);
 typedef void (*lynx_extension_module_on_runtime_attach_func)(
     lynx_extension_module_t*, napi_env, lynx_vsync_observer_t*);
@@ -85,6 +88,11 @@ LYNX_CAPI_EXPORT void lynx_extension_module_bind_lynx_view_create(
 LYNX_CAPI_EXPORT void lynx_extension_module_bind_lynx_view_destroy(
     lynx_extension_module_t*,
     lynx_extension_module_on_lynx_view_destroy_func func);
+// Binds a runtime_init state function to lynx_extension_module_t. This
+// function will be invoked on runtime init. It is always called on the main
+// thread.
+LYNX_CAPI_EXPORT void lynx_extension_module_bind_runtime_init(
+    lynx_extension_module_t*, lynx_extension_module_on_runtime_init_func func);
 // Binds a runtime_attach state function to lynx_extension_module_t. This
 // function will be invoked on runtime attached. It is always called on the BTS
 // thread.
@@ -124,6 +132,12 @@ LYNX_CAPI_EXPORT void lynx_extension_module_set_napi_module_creator(
 LYNX_CAPI_EXPORT void lynx_extension_module_post_task_to_runtime(
     lynx_extension_module_t*, lynx_extension_module_post_task_func func,
     void* user_data);
+// Is running tasks on current thread.
+LYNX_CAPI_EXPORT bool lynx_extension_module_is_running_on_bts_thread(
+    lynx_extension_module_t*);
+
+LYNX_CAPI_EXPORT void lynx_extension_module_ref(lynx_extension_module_t*);
+LYNX_CAPI_EXPORT void lynx_extension_module_unref(lynx_extension_module_t*);
 
 LYNX_EXTERN_C_END
 

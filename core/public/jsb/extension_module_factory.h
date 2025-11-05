@@ -51,17 +51,22 @@ class ExtensionModuleFactory : public NativeModuleFactory {
     ui_delegate_ = nullptr;
   }
 
+  void OnRuntimeInit(const fml::RefPtr<fml::TaskRunner>& task_runner) {
+    for (const auto& pair : module_map_) {
+      pair.second->SetRuntimeInitState(task_runner);
+    }
+    task_runner_ = task_runner;
+  }
+
   // Called on the BTS thread
   void OnRuntimeAttach(
       napi_env env,
-      const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer,
-      const fml::RefPtr<fml::TaskRunner>& task_runner) {
+      const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) {
     for (const auto& pair : module_map_) {
-      pair.second->SetRuntimeAttachedState(env, vsync_observer, task_runner);
+      pair.second->SetRuntimeAttachedState(env, vsync_observer);
     }
     env_ = env;
     vsync_observer_ = vsync_observer;
-    task_runner_ = task_runner;
   }
 
   // Called on the BTS thread

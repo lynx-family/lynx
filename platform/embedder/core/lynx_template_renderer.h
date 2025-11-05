@@ -83,7 +83,8 @@ using TemplateVerification =
 using RuntimeProxyCallback =
     std::function<void(std::shared_ptr<shell::LynxEngineProxy>,
                        std::shared_ptr<shell::LynxRuntimeProxy>,
-                       std::shared_ptr<piper::LynxModuleManager>)>;
+                       std::shared_ptr<piper::LynxModuleManager>,
+                       const fml::RefPtr<fml::TaskRunner>&)>;
 
 class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
  public:
