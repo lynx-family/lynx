@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.11
+- Fix `AppearanceEvent` type being deprecated.
+
 ## 3.5.10
 - Fix list-type to avoid incompatible type error.
 
