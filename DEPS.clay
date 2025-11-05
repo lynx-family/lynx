@@ -36,18 +36,13 @@ deps = {
         'condition': system == "linux"
     },
     'third_party/expat': {
-        'type': 'http',
-        'url': 'https://chromium.googlesource.com/chromium/src/+archive/430307ef971c7bb91ac0b9f6ac80e511e6418c13/third_party/expat.tar.gz',
-        "ignore_in_git": True,
-    },
-    'patch_for_expat': {
-        "type": "action",
-        "cwd": os.path.join(root_dir, "third_party/expat/"),
-        "commands": [
-            "git init",
-            "git apply ../../patches/expat/*.patch"
+        "type": "git",
+        "url": "https://flutter.googlesource.com/third_party/expat.git",
+        "commit": "1441fc5252746e53b285d15be7e65e4cd74d97eb",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'expat', '*.patch')
         ],
-        "require": ['third_party/expat']
+        "ignore_in_git": True,
     },
     "third_party/glfw": {
         "type": "git",
