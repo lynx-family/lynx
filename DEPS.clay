@@ -36,18 +36,13 @@ deps = {
         'condition': system == "linux"
     },
     'third_party/expat': {
-        'type': 'http',
-        'url': 'https://chromium.googlesource.com/chromium/src/+archive/430307ef971c7bb91ac0b9f6ac80e511e6418c13/third_party/expat.tar.gz',
-        "ignore_in_git": True,
-    },
-    'patch_for_expat': {
-        "type": "action",
-        "cwd": os.path.join(root_dir, "third_party/expat/"),
-        "commands": [
-            "git init",
-            "git apply ../../patches/expat/*.patch"
+        "type": "git",
+        "url": "https://flutter.googlesource.com/third_party/expat.git",
+        "commit": "1441fc5252746e53b285d15be7e65e4cd74d97eb",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'expat', '*.patch')
         ],
-        "require": ['third_party/expat']
+        "ignore_in_git": True,
     },
     "third_party/glfw": {
         "type": "git",
@@ -58,6 +53,21 @@ deps = {
         "type": "git",
         "url": "https://github.com/google/gtest-parallel.git",
         "commit": "96f4f904922f9bf66689e749c40f314845baaac8",
+        "ignore_in_git": True,
+    },
+    'third_party/gyp': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/gyp.git",
+        "commit": "9d09418933ea2f75cc416e5ce38d15f62acd5c9a",
+        "ignore_in_git": True,
+    },
+    'third_party/harfbuzz': {
+        'type': 'git',
+        'url': 'https://flutter.googlesource.com/third_party/harfbuzz.git',
+        'commit': '05ef75c55340400d4b318bd24d742653bbf825d9',
+        "patches": [
+            os.path.join(root_dir, 'patches', 'harfbuzz', '*.patch')
+        ],
         "ignore_in_git": True,
     },
     "third_party/icu": {

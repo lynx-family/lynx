@@ -1,0 +1,987 @@
+From 40345e720d6059b8129f31f22c599043dbe3a458 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Wed, 5 Nov 2025 11:42:29 +0800
+Subject: [PATCH] Adaption for lynx.
+
+---
+ BUILD.gn                           | 421 +++++++++++++++++++++++++++++
+ src/hb-blob.cc                     |  15 +
+ src/hb-blob.h                      |   4 +
+ src/hb-blob.hh                     |   1 +
+ src/hb-coretext.cc                 |   4 +-
+ src/hb-ft.cc                       |  12 +-
+ src/hb-ot-layout-gpos-table.hh     |  12 +-
+ src/hb-ot-layout.cc                |   2 +
+ src/hb-ot-shape-complex-default.cc |   3 +
+ src/hb-ot-shape-complex-use.cc     |  17 +-
+ src/hb-ot-shape-complex.hh         | 127 +++++++--
+ src/hb-ot-shape.cc                 |   7 +-
+ src/hb-ot-shape.hh                 |   1 +
+ src/hb-subset-cff1.cc              |   4 +-
+ 14 files changed, 578 insertions(+), 52 deletions(-)
+ create mode 100644 BUILD.gn
+
+diff --git a/BUILD.gn b/BUILD.gn
+new file mode 100644
+index 000000000..370463b99
+--- /dev/null
++++ b/BUILD.gn
+@@ -0,0 +1,421 @@
++# Copyright 2016 The Fuchsia Authors. All rights reserved.
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++import("//config.gni")
++
++declare_args() {
++  hb_disable_dumber = false
++  hb_disable_arabic = false
++  hb_disable_hangul = false
++  hb_disable_hebrew = false
++  hb_disable_indic = false
++  hb_disable_myanmar = false
++  hb_disable_khmer = false
++  hb_disable_thai = false
++  hb_disable_use = false
++  hb_disable_all_lang = false
++  hb_disable_aat = false
++}
++
++config("harfbuzz_config") {
++  include_dirs = [ "src" ]
++}
++
++config("harfbuzz_warnings") {
++  cflags = []
++  if (is_clang) {
++    cflags += [
++      "-Wno-missing-field-initializers",
++      "-Wno-unused-variable",
++      "-Wno-sign-compare",
++    ]
++  }
++}
++
++source_set("harfbuzz_sources") {
++  sources = [
++    "src/hb-aat-layout-ankr-table.hh",
++    "src/hb-aat-layout-bsln-table.hh",
++    "src/hb-aat-layout-common.hh",
++    "src/hb-aat-layout-feat-table.hh",
++    "src/hb-aat-layout-just-table.hh",
++    "src/hb-aat-layout-kerx-table.hh",
++    "src/hb-aat-layout-morx-table.hh",
++    "src/hb-aat-layout-opbd-table.hh",
++    "src/hb-aat-layout-trak-table.hh",
++    "src/hb-aat-layout.cc",
++    "src/hb-aat-layout.h",
++    "src/hb-aat-layout.hh",
++    "src/hb-aat-ltag-table.hh",
++    "src/hb-aat-map.cc",
++    "src/hb-aat-map.hh",
++    "src/hb-aat.h",
++    "src/hb-algs.hh",
++    "src/hb-array.hh",
++    "src/hb-atomic.hh",
++    "src/hb-bimap.hh",
++    "src/hb-blob.cc",
++    "src/hb-blob.h",
++    "src/hb-blob.hh",
++    "src/hb-buffer-deserialize-json.hh",
++    "src/hb-buffer-deserialize-text.hh",
++    "src/hb-buffer-serialize.cc",
++    "src/hb-buffer.cc",
++    "src/hb-buffer.h",
++    "src/hb-buffer.hh",
++    "src/hb-cache.hh",
++    "src/hb-cff-interp-common.hh",
++    "src/hb-cff-interp-cs-common.hh",
++    "src/hb-cff-interp-dict-common.hh",
++    "src/hb-cff1-interp-cs.hh",
++    "src/hb-cff2-interp-cs.hh",
++    "src/hb-common.cc",
++    "src/hb-common.h",
++    "src/hb-config.hh",
++    "src/hb-debug.hh",
++    "src/hb-deprecated.h",
++    "src/hb-directwrite.cc",
++    "src/hb-directwrite.h",
++    "src/hb-dispatch.hh",
++    "src/hb-draw.cc",
++    "src/hb-draw.h",
++    "src/hb-draw.hh",
++    "src/hb-face.cc",
++    "src/hb-face.h",
++    "src/hb-face.hh",
++    "src/hb-fallback-shape.cc",
++    "src/hb-font.cc",
++    "src/hb-font.h",
++    "src/hb-font.hh",
++    "src/hb-ft.cc",
++    "src/hb-ft.h",
++    "src/hb-gdi.cc",
++    "src/hb-gdi.h",
++    "src/hb-graphite2.cc",
++    "src/hb-graphite2.h",
++    "src/hb-icu.cc",
++    "src/hb-icu.h",
++    "src/hb-iter.hh",
++    "src/hb-kern.hh",
++    "src/hb-machinery.hh",
++    "src/hb-map.cc",
++    "src/hb-map.h",
++    "src/hb-map.hh",
++    "src/hb-meta.hh",
++    "src/hb-mutex.hh",
++    "src/hb-null.hh",
++    "src/hb-number-parser.hh",
++    "src/hb-number.cc",
++    "src/hb-number.hh",
++    "src/hb-object.hh",
++    "src/hb-open-file.hh",
++    "src/hb-open-type.hh",
++    "src/hb-ot-cff-common.hh",
++    "src/hb-ot-cff1-std-str.hh",
++    "src/hb-ot-cff1-table.cc",
++    "src/hb-ot-cff1-table.hh",
++    "src/hb-ot-cff2-table.cc",
++    "src/hb-ot-cff2-table.hh",
++    "src/hb-ot-cmap-table.hh",
++    "src/hb-ot-color-cbdt-table.hh",
++    "src/hb-ot-color-colr-table.hh",
++    "src/hb-ot-color-cpal-table.hh",
++    "src/hb-ot-color-sbix-table.hh",
++    "src/hb-ot-color-svg-table.hh",
++    "src/hb-ot-color.cc",
++    "src/hb-ot-color.h",
++    "src/hb-ot-deprecated.h",
++    "src/hb-ot-face-table-list.hh",
++    "src/hb-ot-face.cc",
++    "src/hb-ot-face.hh",
++    "src/hb-ot-font.cc",
++    "src/hb-ot-font.h",
++    "src/hb-ot-gasp-table.hh",
++    "src/hb-ot-glyf-table.hh",
++    "src/hb-ot-hdmx-table.hh",
++    "src/hb-ot-head-table.hh",
++    "src/hb-ot-hhea-table.hh",
++    "src/hb-ot-hmtx-table.hh",
++    "src/hb-ot-kern-table.hh",
++    "src/hb-ot-layout-base-table.hh",
++    "src/hb-ot-layout-common.hh",
++    "src/hb-ot-layout-gdef-table.hh",
++    "src/hb-ot-layout-gpos-table.hh",
++    "src/hb-ot-layout-gsub-table.hh",
++    "src/hb-ot-layout-gsubgpos.hh",
++    "src/hb-ot-layout-jstf-table.hh",
++    "src/hb-ot-layout.cc",
++    "src/hb-ot-layout.h",
++    "src/hb-ot-layout.hh",
++    "src/hb-ot-map.cc",
++    "src/hb-ot-map.hh",
++    "src/hb-ot-math-table.hh",
++    "src/hb-ot-math.cc",
++    "src/hb-ot-math.h",
++    "src/hb-ot-maxp-table.hh",
++    "src/hb-ot-meta-table.hh",
++    "src/hb-ot-meta.cc",
++    "src/hb-ot-meta.h",
++    "src/hb-ot-metrics.cc",
++    "src/hb-ot-metrics.h",
++    "src/hb-ot-metrics.hh",
++    "src/hb-ot-name-language-static.hh",
++    "src/hb-ot-name-language.hh",
++    "src/hb-ot-name-table.hh",
++    "src/hb-ot-name.cc",
++    "src/hb-ot-name.h",
++    "src/hb-ot-os2-table.hh",
++    "src/hb-ot-os2-unicode-ranges.hh",
++    "src/hb-ot-post-macroman.hh",
++    "src/hb-ot-post-table.hh",
++    "src/hb-ot-shape-complex-arabic-fallback.hh",
++    "src/hb-ot-shape-complex-arabic-joining-list.hh",
++    "src/hb-ot-shape-complex-arabic-table.hh",
++    "src/hb-ot-shape-complex-arabic-win1256.hh",
++    "src/hb-ot-shape-complex-arabic.cc",
++    "src/hb-ot-shape-complex-arabic.hh",
++    "src/hb-ot-shape-complex-default.cc",
++    "src/hb-ot-shape-complex-hangul.cc",
++    "src/hb-ot-shape-complex-hebrew.cc",
++    "src/hb-ot-shape-complex-indic-machine.hh",
++    "src/hb-ot-shape-complex-indic-table.cc",
++    "src/hb-ot-shape-complex-indic.cc",
++    "src/hb-ot-shape-complex-indic.hh",
++    "src/hb-ot-shape-complex-khmer-machine.hh",
++    "src/hb-ot-shape-complex-khmer.cc",
++    "src/hb-ot-shape-complex-khmer.hh",
++    "src/hb-ot-shape-complex-myanmar-machine.hh",
++    "src/hb-ot-shape-complex-myanmar.cc",
++    "src/hb-ot-shape-complex-myanmar.hh",
++    "src/hb-ot-shape-complex-thai.cc",
++    "src/hb-ot-shape-complex-use-machine.hh",
++    "src/hb-ot-shape-complex-use-table.cc",
++    "src/hb-ot-shape-complex-use.cc",
++    "src/hb-ot-shape-complex-use.hh",
++    "src/hb-ot-shape-complex-vowel-constraints.cc",
++    "src/hb-ot-shape-complex-vowel-constraints.hh",
++    "src/hb-ot-shape-complex.hh",
++    "src/hb-ot-shape-fallback.cc",
++    "src/hb-ot-shape-fallback.hh",
++    "src/hb-ot-shape-normalize.cc",
++    "src/hb-ot-shape-normalize.hh",
++    "src/hb-ot-shape.cc",
++    "src/hb-ot-shape.h",
++    "src/hb-ot-shape.hh",
++    "src/hb-ot-stat-table.hh",
++    "src/hb-ot-tag-table.hh",
++    "src/hb-ot-tag.cc",
++    "src/hb-ot-var-avar-table.hh",
++    "src/hb-ot-var-fvar-table.hh",
++    "src/hb-ot-var-gvar-table.hh",
++    "src/hb-ot-var-hvar-table.hh",
++    "src/hb-ot-var-mvar-table.hh",
++    "src/hb-ot-var.cc",
++    "src/hb-ot-var.h",
++    "src/hb-ot-vorg-table.hh",
++    "src/hb-ot.h",
++    "src/hb-pool.hh",
++    "src/hb-sanitize.hh",
++    "src/hb-serialize.hh",
++    "src/hb-set-digest.hh",
++    "src/hb-set.cc",
++    "src/hb-set.h",
++    "src/hb-set.hh",
++    "src/hb-shape-plan.cc",
++    "src/hb-shape-plan.h",
++    "src/hb-shape-plan.hh",
++    "src/hb-shape.cc",
++    "src/hb-shape.h",
++    "src/hb-shaper-impl.hh",
++    "src/hb-shaper-list.hh",
++    "src/hb-shaper.cc",
++    "src/hb-shaper.hh",
++    "src/hb-static.cc",
++    "src/hb-string-array.hh",
++    "src/hb-style.cc",
++    "src/hb-style.h",
++    "src/hb-subset-cff-common.cc",
++    "src/hb-subset-cff-common.hh",
++    "src/hb-subset-cff1.cc",
++    "src/hb-subset-cff1.hh",
++    "src/hb-subset-cff2.cc",
++    "src/hb-subset-cff2.hh",
++    "src/hb-subset-input.cc",
++    "src/hb-subset-input.hh",
++    "src/hb-subset-plan.cc",
++    "src/hb-subset-plan.hh",
++    "src/hb-subset.cc",
++    "src/hb-subset.h",
++    "src/hb-subset.hh",
++    "src/hb-ucd-table.hh",
++    "src/hb-ucd.cc",
++    "src/hb-unicode-emoji-table.hh",
++    "src/hb-unicode.cc",
++    "src/hb-unicode.h",
++    "src/hb-unicode.hh",
++    "src/hb-uniscribe.cc",
++    "src/hb-uniscribe.h",
++    "src/hb-utf.hh",
++    "src/hb-vector.hh",
++    "src/hb-version.h",
++    "src/hb.h",
++    "src/hb.hh",
++  ]
++
++
++  unused_sources = [
++    "src/hb-icu.cc",
++    "src/hb-icu.h",
++  ]
++
++  sources -= unused_sources
++
++  defines = [
++    "HAVE_OT",
++    # "HAVE_ICU",
++    # "HAVE_ICU_BUILTIN",
++  ]
++
++  if (hb_disable_arabic || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-arabic-fallback.hh",
++      "src/hb-ot-shape-complex-arabic-table.hh",
++      "src/hb-ot-shape-complex-arabic-win1256.hh",
++      "src/hb-ot-shape-complex-arabic.cc",
++      "src/hb-ot-shape-complex-arabic.hh",
++    ]
++    defines += [
++      "HB_DISABLE_ARABIC",
++    ]
++  }
++
++  if (hb_disable_dumber || hb_disable_all_lang) {
++    defines += [
++      "HB_DISABLE_DUMBER",
++    ]
++  }
++
++  if (hb_disable_use || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-use-machine.hh",
++      "src/hb-ot-shape-complex-use-table.cc",
++      "src/hb-ot-shape-complex-use.cc",
++      "src/hb-ot-shape-complex-use.hh",
++    ]
++    defines += [
++      "HB_DISABLE_USE",
++    ]
++  }
++
++  if (hb_disable_hangul || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-hangul.cc",
++    ]
++    defines += [
++      "HB_DISABLE_HANGUL",
++    ]
++  }
++
++  if (hb_disable_hebrew || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-hebrew.cc",
++    ]
++    defines += [
++      "HB_DISABLE_HEBREW",
++    ]
++  }
++
++  if (hb_disable_indic || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-indic-machine.hh",
++      "src/hb-ot-shape-complex-indic-table.cc",
++      "src/hb-ot-shape-complex-indic.cc",
++      "src/hb-ot-shape-complex-indic.hh",
++    ]
++    defines += [
++      "HB_DISABLE_INDIC",
++    ]
++  }
++
++  if (hb_disable_myanmar || hb_disable_indic || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-myanmar-machine.hh",
++      "src/hb-ot-shape-complex-myanmar.cc",
++      "src/hb-ot-shape-complex-myanmar.hh",
++    ]
++    defines += [
++      "HB_DISABLE_MYANMAR",
++    ]
++  }
++
++  if (hb_disable_khmer || hb_disable_indic || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-khmer-machine.hh",
++      "src/hb-ot-shape-complex-khmer.cc",
++      "src/hb-ot-shape-complex-khmer.hh",
++    ]
++    defines += [
++      "HB_DISABLE_KHMER",
++    ]
++  }
++
++  if (hb_disable_thai || hb_disable_all_lang) {
++    sources -= [
++      "src/hb-ot-shape-complex-thai.cc",
++    ]
++    defines += [
++      "HB_DISABLE_THAI",
++    ]
++  }
++
++  # disable apple advance type
++  if (hb_disable_aat) {
++     defines += [
++      "HB_NO_AAT_SHAPE"
++    ]
++  }
++  # END
++
++
++  if (is_mac) {
++    sources += [
++      "src/hb-coretext.cc",
++      "src/hb-coretext.h",
++    ]
++    defines += [ "HAVE_CORETEXT" ]
++  }
++
++  if (is_linux || is_android || is_fuchsia || is_harmony) {
++    defines += [ "HAVE_PTHREAD" ]
++  }
++
++  configs += [ ":harfbuzz_warnings" ]
++
++  # Without this modification, almost everything ends up hidden in the shared library, making it
++  # useless for linking.
++  if (current_toolchain == shlib_toolchain) {
++    # Avoid failure when subtracting if not already present.
++    configs += [ "//build/config:symbol_visibility_hidden" ]
++    configs -= [ "//build/config:symbol_visibility_hidden" ]
++  }
++
++  public_configs = [ ":harfbuzz_config" ]
++  deps = []
++  if (defined(enable_trim) && enable_trim && is_android) {
++    deps += [ "//third_party/freetype2:freetypelite" ]
++  } else {
++    deps += [ "//third_party/freetype2" ]
++  }
++  defines += [ "HAVE_FREETYPE" ]
++}
++
++source_set("harfbuzz") {
++  output_name = "harfbuzz"
++  public_deps = [ ":harfbuzz_sources" ]
++}
++
++shared_library("harfbuzz_shared") {
++  output_name = "harfbuzz"
++  public_deps = [ ":harfbuzz_sources" ]
++}
+diff --git a/src/hb-blob.cc b/src/hb-blob.cc
+index 94ed50fd3..cec4bc782 100644
+--- a/src/hb-blob.cc
++++ b/src/hb-blob.cc
+@@ -100,9 +100,24 @@ hb_blob_create (const char        *data,
+     }
+   }
+ 
++  addFontMemoryUsage(length);
+   return blob;
+ }
+ 
++void addFontMemoryUsage(unsigned int size) {
++  if (size > 0)
++    FONT_SIZE_MEM += size;
++}
++
++void subFontMemoryUsage(unsigned int size) {
++  if (size > 0)
++    FONT_SIZE_MEM -= size;
++}
++
++unsigned int getHbFontMemoryUsage() {
++  return FONT_SIZE_MEM >= 0 ? FONT_SIZE_MEM : 0;
++}
++
+ static void
+ _hb_blob_destroy (void *data)
+ {
+diff --git a/src/hb-blob.h b/src/hb-blob.h
+index f80e9af2d..f3965f400 100644
+--- a/src/hb-blob.h
++++ b/src/hb-blob.h
+@@ -126,6 +126,10 @@ hb_blob_get_data (hb_blob_t *blob, unsigned int *length);
+ HB_EXTERN char *
+ hb_blob_get_data_writable (hb_blob_t *blob, unsigned int *length);
+ 
++static unsigned int FONT_SIZE_MEM = 0;
++void addFontMemoryUsage(unsigned int size);
++void subFontMemoryUsage(unsigned int size);
++HB_EXTERN unsigned int getHbFontMemoryUsage();
+ HB_END_DECLS
+ 
+ #endif /* HB_BLOB_H */
+diff --git a/src/hb-blob.hh b/src/hb-blob.hh
+index d85bd823b..16b0cd94e 100644
+--- a/src/hb-blob.hh
++++ b/src/hb-blob.hh
+@@ -47,6 +47,7 @@ struct hb_blob_t
+       destroy (user_data);
+       user_data = nullptr;
+       destroy = nullptr;
++      subFontMemoryUsage(length);
+     }
+   }
+ 
+diff --git a/src/hb-coretext.cc b/src/hb-coretext.cc
+index 7b6b2bd5e..067af007d 100644
+--- a/src/hb-coretext.cc
++++ b/src/hb-coretext.cc
+@@ -857,7 +857,7 @@ resize_and_retry:
+     DEBUG_MSG (CORETEXT, nullptr, "Num runs: %d", num_runs);
+ 
+     buffer->len = 0;
+-    uint32_t status_and = ~0, status_or = 0;
++    uint32_t status_or = 0;
+     double advances_so_far = 0;
+     /* For right-to-left runs, CoreText returns the glyphs positioned such that
+      * any trailing whitespace is to the left of (0,0).  Adjust coordinate system
+@@ -878,7 +878,6 @@ resize_and_retry:
+       CTRunRef run = static_cast<CTRunRef>(CFArrayGetValueAtIndex (glyph_runs, i));
+       CTRunStatus run_status = CTRunGetStatus (run);
+       status_or  |= run_status;
+-      status_and &= run_status;
+       DEBUG_MSG (CORETEXT, run, "CTRunStatus: %x", run_status);
+       double run_advance = CTRunGetTypographicBounds (run, range_all, nullptr, nullptr, nullptr);
+       if (HB_DIRECTION_IS_VERTICAL (buffer->props.direction))
+@@ -1111,7 +1110,6 @@ resize_and_retry:
+     {
+       /* Make sure all runs had the expected direction. */
+       HB_UNUSED bool backward = HB_DIRECTION_IS_BACKWARD (buffer->props.direction);
+-      assert (bool (status_and & kCTRunStatusRightToLeft) == backward);
+       assert (bool (status_or  & kCTRunStatusRightToLeft) == backward);
+     }
+ 
+diff --git a/src/hb-ft.cc b/src/hb-ft.cc
+index 2680873c2..255341e95 100644
+--- a/src/hb-ft.cc
++++ b/src/hb-ft.cc
+@@ -728,10 +728,8 @@ hb_ft_face_create_referenced (FT_Face ft_face)
+   return hb_ft_face_create (ft_face, _hb_ft_face_destroy);
+ }
+ 
+-static void
+-hb_ft_face_finalize (FT_Face ft_face)
+-{
+-  hb_face_destroy ((hb_face_t *) ft_face->generic.data);
++static void hb_ft_face_finalize(void *ft_face) {
++  hb_face_destroy((hb_face_t *)static_cast<FT_Face>(ft_face)->generic.data);
+ }
+ 
+ /**
+@@ -948,10 +946,8 @@ get_ft_library ()
+   return static_ft_library.get_unconst ();
+ }
+ 
+-static void
+-_release_blob (FT_Face ft_face)
+-{
+-  hb_blob_destroy ((hb_blob_t *) ft_face->generic.data);
++static void _release_blob(void *ft_face) {
++  hb_blob_destroy((hb_blob_t *)static_cast<FT_Face>(ft_face)->generic.data);
+ }
+ 
+ /**
+diff --git a/src/hb-ot-layout-gpos-table.hh b/src/hb-ot-layout-gpos-table.hh
+index 2217d298f..7d63c7cfb 100644
+--- a/src/hb-ot-layout-gpos-table.hh
++++ b/src/hb-ot-layout-gpos-table.hh
+@@ -1107,9 +1107,9 @@ struct PairSet
+ 						record_size);
+     if (record)
+     {
+-      /* Note the intentional use of "|" instead of short-circuit "||". */
+-      if (valueFormats[0].apply_value (c, this, &record->values[0], buffer->cur_pos()) |
+-	  valueFormats[1].apply_value (c, this, &record->values[len1], buffer->pos[pos]))
++      bool applied_first = valueFormats[0].apply_value (c, this, &record->values[0], buffer->cur_pos());
++      bool applied_second = valueFormats[1].apply_value (c, this, &record->values[len1], buffer->pos[pos]);
++      if (applied_first || applied_second)
+ 	buffer->unsafe_to_break (buffer->idx, pos + 1);
+       if (len2)
+ 	pos++;
+@@ -1393,9 +1393,9 @@ struct PairPosFormat2
+     if (unlikely (klass1 >= class1Count || klass2 >= class2Count)) return_trace (false);
+ 
+     const Value *v = &values[record_len * (klass1 * class2Count + klass2)];
+-    /* Note the intentional use of "|" instead of short-circuit "||". */
+-    if (valueFormat1.apply_value (c, this, v, buffer->cur_pos()) |
+-	valueFormat2.apply_value (c, this, v + len1, buffer->pos[skippy_iter.idx]))
++    bool applied_first = valueFormat1.apply_value (c, this, v, buffer->cur_pos());
++    bool applied_second = valueFormat2.apply_value (c, this, v + len1, buffer->pos[skippy_iter.idx]);
++    if (applied_first || applied_second)
+       buffer->unsafe_to_break (buffer->idx, skippy_iter.idx + 1);
+ 
+     buffer->idx = skippy_iter.idx;
+diff --git a/src/hb-ot-layout.cc b/src/hb-ot-layout.cc
+index 46408bb9d..23cee0a92 100644
+--- a/src/hb-ot-layout.cc
++++ b/src/hb-ot-layout.cc
+@@ -126,12 +126,14 @@ hb_ot_layout_kern (const hb_ot_shape_plan_t *plan,
+ 		   hb_font_t *font,
+ 		   hb_buffer_t  *buffer)
+ {
++#ifndef HB_DISABLE_AAT
+   hb_blob_t *blob = font->face->table.kern.get_blob ();
+   const AAT::kern& kern = *blob->as<AAT::kern> ();
+ 
+   AAT::hb_aat_apply_context_t c (plan, font, buffer, blob);
+ 
+   kern.apply (&c);
++#endif
+ }
+ #endif
+ 
+diff --git a/src/hb-ot-shape-complex-default.cc b/src/hb-ot-shape-complex-default.cc
+index a755aea09..9a78697d3 100644
+--- a/src/hb-ot-shape-complex-default.cc
++++ b/src/hb-ot-shape-complex-default.cc
+@@ -49,6 +49,8 @@ const hb_ot_complex_shaper_t _hb_ot_complex_shaper_default =
+   true, /* fallback_position */
+ };
+ 
++#ifndef HB_DISABLE_DUMBER
++
+ /* Same as default but no mark advance zeroing / fallback positioning.
+  * Dumbest shaper ever, basically. */
+ const hb_ot_complex_shaper_t _hb_ot_complex_shaper_dumber =
+@@ -69,5 +71,6 @@ const hb_ot_complex_shaper_t _hb_ot_complex_shaper_dumber =
+   false, /* fallback_position */
+ };
+ 
++#endif
+ 
+ #endif
+diff --git a/src/hb-ot-shape-complex-use.cc b/src/hb-ot-shape-complex-use.cc
+index 981df2d59..78d426fe3 100644
+--- a/src/hb-ot-shape-complex-use.cc
++++ b/src/hb-ot-shape-complex-use.cc
+@@ -31,8 +31,10 @@
+ #ifndef HB_NO_OT_SHAPE
+ 
+ #include "hb-ot-shape-complex-use.hh"
++#ifndef HB_DISABLE_ARABIC
+ #include "hb-ot-shape-complex-arabic.hh"
+ #include "hb-ot-shape-complex-arabic-joining-list.hh"
++#endif
+ #include "hb-ot-shape-complex-vowel-constraints.hh"
+ 
+ /* buffer var allocations */
+@@ -149,8 +151,9 @@ collect_features_use (hb_ot_shape_planner_t *plan)
+ struct use_shape_plan_t
+ {
+   hb_mask_t rphf_mask;
+-
++#ifndef HB_DISABLE_ARABIC
+   arabic_shape_plan_t *arabic_plan;
++#endif
+ };
+ 
+ static void *
+@@ -162,6 +165,7 @@ data_create_use (const hb_ot_shape_plan_t *plan)
+ 
+   use_plan->rphf_mask = plan->map.get_1_mask (HB_TAG('r','p','h','f'));
+ 
++#ifndef HB_DISABLE_ARABIC
+   if (has_arabic_joining (plan->props.script))
+   {
+     use_plan->arabic_plan = (arabic_shape_plan_t *) data_create_arabic (plan);
+@@ -171,6 +175,7 @@ data_create_use (const hb_ot_shape_plan_t *plan)
+       return nullptr;
+     }
+   }
++#endif
+ 
+   return use_plan;
+ }
+@@ -179,10 +184,10 @@ static void
+ data_destroy_use (void *data)
+ {
+   use_shape_plan_t *use_plan = (use_shape_plan_t *) data;
+-
++#ifndef HB_DISABLE_ARABIC
+   if (use_plan->arabic_plan)
+     data_destroy_arabic (use_plan->arabic_plan);
+-
++#endif
+   free (data);
+ }
+ 
+@@ -207,12 +212,13 @@ setup_masks_use (const hb_ot_shape_plan_t *plan,
+ 		 hb_font_t                *font HB_UNUSED)
+ {
+   const use_shape_plan_t *use_plan = (const use_shape_plan_t *) plan->data;
+-
++#ifndef HB_DISABLE_ARABIC
+   /* Do this before allocating use_category(). */
+   if (use_plan->arabic_plan)
+   {
+     setup_masks_arabic_plan (use_plan->arabic_plan, buffer, plan->props.script);
+   }
++#endif
+ 
+   HB_BUFFER_ALLOCATE_VAR (buffer, use_category);
+ 
+@@ -249,9 +255,10 @@ setup_topographical_masks (const hb_ot_shape_plan_t *plan,
+ 			   hb_buffer_t *buffer)
+ {
+   const use_shape_plan_t *use_plan = (const use_shape_plan_t *) plan->data;
++#ifndef HB_DISABLE_ARABIC
+   if (use_plan->arabic_plan)
+     return;
+-
++#endif
+   static_assert ((USE_INIT < 4 && USE_ISOL < 4 && USE_MEDI < 4 && USE_FINA < 4), "");
+   hb_mask_t masks[4], all_masks = 0;
+   for (unsigned int i = 0; i < 4; i++)
+diff --git a/src/hb-ot-shape-complex.hh b/src/hb-ot-shape-complex.hh
+index 61f4c0e15..2ee3e3f1f 100644
+--- a/src/hb-ot-shape-complex.hh
++++ b/src/hb-ot-shape-complex.hh
+@@ -47,21 +47,20 @@ enum hb_ot_shape_zero_width_marks_type_t {
+   HB_OT_SHAPE_ZERO_WIDTH_MARKS_BY_GDEF_LATE
+ };
+ 
+-
+-/* Master OT shaper list */
+-#define HB_COMPLEX_SHAPERS_IMPLEMENT_SHAPERS \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (arabic) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (default) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (dumber) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (hangul) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (hebrew) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (indic) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (khmer) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (myanmar) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (myanmar_zawgyi) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (thai) \
+-  HB_COMPLEX_SHAPER_IMPLEMENT (use) \
+-  /* ^--- Add new shapers here; keep sorted. */
++///* Master OT shaper list */
++//#define HB_COMPLEX_SHAPERS_IMPLEMENT_SHAPERS \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (arabic) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (default) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (dumber) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (hangul) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (hebrew) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (indic) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (khmer) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (myanmar) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (myanmar_zawgyi) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (thai) \
++//  HB_COMPLEX_SHAPER_IMPLEMENT (use) \
++//  /* ^--- Add new shapers here; keep sorted. */
+ 
+ 
+ struct hb_ot_complex_shaper_t
+@@ -169,7 +168,38 @@ struct hb_ot_complex_shaper_t
+ };
+ 
+ #define HB_COMPLEX_SHAPER_IMPLEMENT(name) extern HB_INTERNAL const hb_ot_complex_shaper_t _hb_ot_complex_shaper_##name;
+-HB_COMPLEX_SHAPERS_IMPLEMENT_SHAPERS
++// HB_COMPLEX_SHAPERS_IMPLEMENT_SHAPERS
++HB_COMPLEX_SHAPER_IMPLEMENT (default) /* should be first */
++#ifndef HB_DISABLE_DUMBER
++HB_COMPLEX_SHAPER_IMPLEMENT (dumber)
++#endif
++#ifndef HB_DISABLE_ARABIC
++HB_COMPLEX_SHAPER_IMPLEMENT (arabic)
++#endif
++#ifndef HB_DISABLE_HANGUL
++HB_COMPLEX_SHAPER_IMPLEMENT (hangul)
++#endif
++#ifndef HB_DISABLE_HEBREW
++HB_COMPLEX_SHAPER_IMPLEMENT (hebrew)
++#endif
++#ifndef HB_DISABLE_INDIC
++HB_COMPLEX_SHAPER_IMPLEMENT (indic)
++#endif
++#ifndef HB_DISABLE_KHMER
++HB_COMPLEX_SHAPER_IMPLEMENT (khmer)
++#endif
++#ifndef HB_DISABLE_MYNAMAR
++HB_COMPLEX_SHAPER_IMPLEMENT (myanmar)
++HB_COMPLEX_SHAPER_IMPLEMENT (myanmar_old)
++HB_COMPLEX_SHAPER_IMPLEMENT (myanmar_zawgyi)
++#endif
++#ifndef HB_DISABLE_THAI
++HB_COMPLEX_SHAPER_IMPLEMENT (thai)
++#endif
++#ifndef HB_DISABLE_USE
++HB_COMPLEX_SHAPER_IMPLEMENT (use)
++#endif
++// END
+ #undef HB_COMPLEX_SHAPER_IMPLEMENT
+ 
+ 
+@@ -214,7 +244,12 @@ hb_ot_shape_complex_categorize (const hb_ot_shape_planner_t *planner)
+       if ((planner->map.chosen_script[0] != HB_OT_TAG_DEFAULT_SCRIPT ||
+ 	   planner->props.script == HB_SCRIPT_ARABIC) &&
+ 	  HB_DIRECTION_IS_HORIZONTAL(planner->props.direction))
+-	return &_hb_ot_complex_shaper_arabic;
++//  return &_hb_ot_complex_shaper_arabic;
++#ifndef HB_DISABLE_ARABIC
++        return &_hb_ot_complex_shaper_arabic;
++#else
++        return &_hb_ot_complex_shaper_default;
++#endif
+       else
+ 	return &_hb_ot_complex_shaper_default;
+ 
+@@ -223,19 +258,34 @@ hb_ot_shape_complex_categorize (const hb_ot_shape_planner_t *planner)
+     case HB_SCRIPT_THAI:
+     case HB_SCRIPT_LAO:
+ 
++//      return &_hb_ot_complex_shaper_hangul;
++#ifndef HB_DISABLE_THAI
+       return &_hb_ot_complex_shaper_thai;
++#else
++      return &_hb_ot_complex_shaper_default;
++#endif
+ 
+ 
+     /* Unicode-1.1 additions */
+     case HB_SCRIPT_HANGUL:
+ 
++//      return &_hb_ot_complex_shaper_hangul;
++#ifndef HB_DISABLE_HANGUL
+       return &_hb_ot_complex_shaper_hangul;
++#else
++      return &_hb_ot_complex_shaper_default;
++#endif
+ 
+ 
+     /* Unicode-1.1 additions */
+     case HB_SCRIPT_HEBREW:
+ 
++//      return &_hb_ot_complex_shaper_hebrew;
++#ifndef HB_DISABLE_HEBREW
+       return &_hb_ot_complex_shaper_hebrew;
++#else
++      return &_hb_ot_complex_shaper_default;
++#endif
+ 
+ 
+     /* Unicode-1.1 additions */
+@@ -261,12 +311,27 @@ hb_ot_shape_complex_categorize (const hb_ot_shape_planner_t *planner)
+ 	  planner->map.chosen_script[0] == HB_TAG ('l','a','t','n'))
+ 	return &_hb_ot_complex_shaper_default;
+       else if ((planner->map.chosen_script[0] & 0x000000FF) == '3')
+-	return &_hb_ot_complex_shaper_use;
++//	return &_hb_ot_complex_shaper_use;
++#ifndef HB_DISABLE_USE
++        return &_hb_ot_complex_shaper_use;
++#else
++        return &_hb_ot_complex_shaper_default;
++#endif
+       else
+-	return &_hb_ot_complex_shaper_indic;
++//      return &_hb_ot_complex_shaper_indic;
++#ifndef HB_DISABLE_INDIC
++      return &_hb_ot_complex_shaper_indic;
++#else
++      return &_hb_ot_complex_shaper_default;
++#endif
+ 
+     case HB_SCRIPT_KHMER:
+-	return &_hb_ot_complex_shaper_khmer;
++//      return &_hb_ot_complex_shaper_khmer;
++#ifndef HB_DISABLE_KHMER
++      return &_hb_ot_complex_shaper_khmer;
++#else
++      return &_hb_ot_complex_shaper_default;
++#endif
+ 
+     case HB_SCRIPT_MYANMAR:
+       /* If the designer designed the font for the 'DFLT' script,
+@@ -276,18 +341,24 @@ hb_ot_shape_complex_categorize (const hb_ot_shape_planner_t *planner)
+        * If designer designed for 'mymr' tag, also send to default
+        * shaper.  That's tag used from before Myanmar shaping spec
+        * was developed.  The shaping spec uses 'mym2' tag. */
++#ifndef HB_DISABLE_MYANMAR
+       if (planner->map.chosen_script[0] == HB_TAG ('D','F','L','T') ||
+ 	  planner->map.chosen_script[0] == HB_TAG ('l','a','t','n') ||
+ 	  planner->map.chosen_script[0] == HB_TAG ('m','y','m','r'))
+ 	return &_hb_ot_complex_shaper_default;
+       else
+ 	return &_hb_ot_complex_shaper_myanmar;
+-
+-
++#else
++    return &_hb_ot_complex_shaper_default;
++#endif
+     /* https://github.com/harfbuzz/harfbuzz/issues/1162 */
+     case HB_SCRIPT_MYANMAR_ZAWGYI:
+-
+-      return &_hb_ot_complex_shaper_myanmar_zawgyi;
++//      return &_hb_ot_complex_shaper_myanmar_zawgyi;
++#ifndef HB_DISABLE_MYANMAR
++          return &_hb_ot_complex_shaper_myanmar_zawgyi;
++#else
++          return &_hb_ot_complex_shaper_default;
++#endif
+ 
+ 
+     /* Unicode-2.0 additions */
+@@ -385,6 +456,7 @@ hb_ot_shape_complex_categorize (const hb_ot_shape_planner_t *planner)
+     case HB_SCRIPT_CHORASMIAN:
+     case HB_SCRIPT_DIVES_AKURU:
+ 
++#ifndef HB_DISABLE_USE
+       /* If the designer designed the font for the 'DFLT' script,
+        * (or we ended up arbitrarily pick 'latn'), use the default shaper.
+        * Otherwise, use the specific shaper.
+@@ -392,9 +464,12 @@ hb_ot_shape_complex_categorize (const hb_ot_shape_planner_t *planner)
+        * GSUB/GPOS needed, so there may be no scripts found! */
+       if (planner->map.chosen_script[0] == HB_TAG ('D','F','L','T') ||
+ 	  planner->map.chosen_script[0] == HB_TAG ('l','a','t','n'))
+-	return &_hb_ot_complex_shaper_default;
++	    return &_hb_ot_complex_shaper_default;
+       else
+-	return &_hb_ot_complex_shaper_use;
++	    return &_hb_ot_complex_shaper_use;
++#else
++    return &_hb_ot_complex_shaper_default;
++#endif
+   }
+ }
+ 
+diff --git a/src/hb-ot-shape.cc b/src/hb-ot-shape.cc
+index fe0444987..1ce5de603 100644
+--- a/src/hb-ot-shape.cc
++++ b/src/hb-ot-shape.cc
+@@ -90,7 +90,12 @@ hb_ot_shape_planner_t::hb_ot_shape_planner_t (hb_face_t                     *fac
+ 
+   /* https://github.com/harfbuzz/harfbuzz/issues/1528 */
+   if (apply_morx && shaper != &_hb_ot_complex_shaper_default)
+-    shaper = &_hb_ot_complex_shaper_dumber;
++    // shaper = &_hb_ot_complex_shaper_dumber;
++    #ifndef HB_DISABLE_DUMBER
++        shaper = &_hb_ot_complex_shaper_dumber;
++    #else
++        shaper = &_hb_ot_complex_shaper_default;
++    #endif
+ }
+ 
+ void
+diff --git a/src/hb-ot-shape.hh b/src/hb-ot-shape.hh
+index acc98772a..2f9a09db8 100644
+--- a/src/hb-ot-shape.hh
++++ b/src/hb-ot-shape.hh
+@@ -168,3 +168,4 @@ struct hb_ot_shape_planner_t
+ 
+ 
+ #endif /* HB_OT_SHAPE_HH */
++
+diff --git a/src/hb-subset-cff1.cc b/src/hb-subset-cff1.cc
+index df322f845..35dae7b1f 100644
+--- a/src/hb-subset-cff1.cc
++++ b/src/hb-subset-cff1.cc
+@@ -402,7 +402,7 @@ struct cff_subset_plan {
+   void plan_subset_encoding (const OT::cff1::accelerator_subset_t &acc, hb_subset_plan_t *plan)
+   {
+     const Encoding *encoding = acc.encoding;
+-    unsigned int  size0, size1, supp_size;
++    unsigned int  size0, size1;
+     hb_codepoint_t  code, last_code = CFF_UNDEF_CODE;
+     hb_vector_t<hb_codepoint_t> supp_codes;
+ 
+@@ -412,7 +412,6 @@ struct cff_subset_plan {
+       return;
+     }
+ 
+-    supp_size = 0;
+     supp_codes.init ();
+ 
+     subset_enc_num_codes = plan->num_output_glyphs () - 1;
+@@ -448,7 +447,6 @@ struct cff_subset_plan {
+ 	  code_pair_t pair = { supp_codes[i], sid };
+ 	  subset_enc_supp_codes.push (pair);
+ 	}
+-	supp_size += SuppEncoding::static_size * supp_codes.length;
+       }
+     }
+     supp_codes.fini ();
+-- 
+2.49.0
+
