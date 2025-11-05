@@ -39,12 +39,12 @@ source_set("common") {
   } else if (is_android) {
     deps += [ "//third_party/boringssl:boringssl_asm" ]
     sources += [
-      "//third_party/boringssl/src/crypto/cpu-aarch64-linux.c",
-      "//third_party/boringssl/src/crypto/cpu-arm-linux.c",
-      "//third_party/boringssl/src/crypto/cpu-arm.c",
-      "//third_party/boringssl/src/crypto/cpu-intel.c",
-      "//third_party/boringssl/src/crypto/crypto.c",
-      "//third_party/boringssl/src/crypto/fipsmodule/sha/sha1.c",
+      "//third_party/boringssl/src/crypto/cpu_aarch64_linux.cc",
+      "//third_party/boringssl/src/crypto/cpu_arm_linux.cc",
+      "//third_party/boringssl/src/crypto/cpu_intel.cc",
+      "//third_party/boringssl/src/crypto/crypto.cc",
+      "//third_party/boringssl/src/crypto/sha/sha1.cc",
+      "sha1_include.cc",
     ]
   }
 
