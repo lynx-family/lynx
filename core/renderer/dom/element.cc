@@ -201,6 +201,14 @@ void Element::AttachToElementManager(
 }
 
 void Element::PushStyleToBundle() {
+  if (EnableFragmentLayerRender()) {
+    // TODO(renzhongyue): After EnableFragmentLayerRender(), style changes do
+    // not need to be written to the PropBundle. computed_css_style() remains
+    // dirty, and the Fragment determines whether to repaint based on whether
+    // computed_css_style() is dirty.
+    return;
+  }
+
   if (computed_css_style() && computed_css_style()->IsDirty()) {
     PreparePropBundleIfNeed();
     PropBundleStyleWriter::PushStyleToBundle(prop_bundle_.get(),
@@ -1559,8 +1567,8 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
 void Element::FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value) {
   auto style = std::make_pair(id, std::move(value));
 
-  if (WriteRenderStyleToBundle(id, style.second) && prop_bundle_ == nullptr &&
-      computed_css_style()->IsClean()) {
+  if (computed_css_style()->IsClean() && prop_bundle_ == nullptr &&
+      WriteRenderStyleToBundle(id, style.second)) {
     auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
     PropBundleStyleWriter::PushStyleToBundle(bundle.get(),
                                              computed_css_style());
