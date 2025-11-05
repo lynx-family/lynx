@@ -212,6 +212,9 @@ void LazyBundleLoader::PreloadTemplates(const std::vector<std::string>& urls) {
 
 void LazyBundleLoader::FetchBundle(
     lazy_bundle::LynxLazyBundleRequest bundle_request) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_FETCH_BUNDLE, "url",
+              bundle_request.url);
+
   if (!resource_loader_) {
     LOGE("LazyBundleLoader::FetchBundle fails, error: no resource loader, url: "
          << bundle_request.url);

@@ -7,13 +7,30 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
 namespace tasm {
+struct FrameElementData {
+  FrameElementData(const std::string& src,
+                   std::shared_ptr<LynxTemplateBundle>&& bundle,
+                   int32_t error_code, const std::string& error_message)
+      : src(src),
+        bundle(std::move(bundle)),
+        error_code(error_code),
+        error_message(error_message) {}
+  ~FrameElementData() = default;
+  std::string src;
+  std::shared_ptr<LynxTemplateBundle> bundle;
+  int32_t error_code;
+  std::string error_message;
+};
+
 class FrameElement : public FiberElement {
  public:
   explicit FrameElement(ElementManager* element_manager);
@@ -22,22 +39,23 @@ class FrameElement : public FiberElement {
   void SetAttribute(const base::String& key, const lepus::Value& value,
                     bool need_update_data_model = true) override;
 
-  bool DidBundleLoaded(const std::string& src,
-                       const std::shared_ptr<LynxTemplateBundle>& bundle);
+  bool DidBundleLoaded(const std::shared_ptr<FrameElementData>& data);
 
   void FlushProps() override;
+
+  const std::string& GetSrc() const;
 
  protected:
   void OnNodeAdded(FiberElement* child) override;
 
  private:
-  // post bundle to UI node
-  void PostBundle(const std::shared_ptr<LynxTemplateBundle>& bundle);
-
   // load bundle if src is set
   void OnSetSrc(const base::String& key, const lepus::Value& value);
 
-  std::shared_ptr<LynxTemplateBundle> template_bundle_{nullptr};
+  // send load event for `bindload` callback
+  void SendLoadEvent(const std::shared_ptr<FrameElementData>& data);
+
+  std::shared_ptr<FrameElementData> bundle_data_{nullptr};
   std::string src_{};
 };
 }  // namespace tasm

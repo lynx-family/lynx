@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
@@ -33,8 +34,8 @@ class ElementManagerDelegate {
   virtual void LoadFrameBundle(const std::string &src,
                                FrameElement *element) = 0;
   // callback for frame bundle loaded
-  virtual void DidFrameBundleLoaded(const std::string &src,
-                                    LynxTemplateBundle bundle) = 0;
+  virtual void DidFrameBundleLoaded(
+      const LazyBundleLoader::CallBackInfo &callback_info) = 0;
   // Call for frame removed.
   virtual void OnFrameRemoved(FrameElement *element) = 0;
 
