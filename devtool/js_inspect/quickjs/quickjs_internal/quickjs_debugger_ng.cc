@@ -138,26 +138,6 @@ void QuickjsDebugger::DebuggerQuitMessageLoopOnPause() {
   inspector_->GetClient()->QuitMessageLoopOnPause();
 }
 
-void QuickjsDebugger::InspectorCheck() {
-  DoInspectorCheck(context_->GetContext());
-}
-
-void QuickjsDebugger::DebuggerException() {
-  HandleDebuggerException(context_->GetContext());
-}
-
-void QuickjsDebugger::ConsoleAPICalled(LEPUSValue *message) {
-  SendConsoleAPICalledNotification(context_->GetContext(), message);
-}
-
-void QuickjsDebugger::ScriptParsed(LEPUSScriptSource *script) {
-  SendScriptParsedNotification(context_->GetContext(), script);
-}
-
-void QuickjsDebugger::ScriptFailToParse(LEPUSScriptSource *script) {
-  SendScriptFailToParseNotification(context_->GetContext(), script);
-}
-
 void QuickjsDebugger::ProcessPausedMessages(const std::string &message,
                                             int32_t session_id) {
   LEPUSDebuggerInfo *info = GetDebuggerInfo(context_->GetContext());
@@ -175,22 +155,6 @@ void QuickjsDebugger::DebuggerSendResponseWithViewID(int32_t message_id,
   if (session) {
     session->SendProtocolResponse(message_id, message);
   }
-}
-
-void QuickjsDebugger::ScriptParsedWithViewID(LEPUSScriptSource *script,
-                                             int32_t session_id) {
-  SendScriptParsedNotificationWithViewID(context_->GetContext(), script,
-                                         session_id);
-}
-
-void QuickjsDebugger::ScriptFailToParseWithViewID(LEPUSScriptSource *script,
-                                                  int32_t session_id) {
-  SendScriptFailToParseNotificationWithViewID(context_->GetContext(), script,
-                                              session_id);
-}
-
-void QuickjsDebugger::DebuggerPauseOnDebuggerKeyword(const uint8_t *pc) {
-  PauseOnDebuggerKeyword(GetDebuggerInfo(context_->GetContext()), pc);
 }
 
 void QuickjsDebugger::OnConsoleMessage(const std::string &message,

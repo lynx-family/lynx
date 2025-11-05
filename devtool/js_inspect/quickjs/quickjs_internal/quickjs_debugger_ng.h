@@ -56,21 +56,6 @@ class QuickjsDebugger {
   // quit pause and run the vm
   void DebuggerQuitMessageLoopOnPause();
 
-  // for each pc, first call this function for debugging
-  void InspectorCheck();
-
-  // when there is an exception, call this function for debugger
-  void DebuggerException();
-
-  // send console messages
-  void ConsoleAPICalled(LEPUSValue* message);
-
-  // send script parsed notification
-  void ScriptParsed(LEPUSScriptSource* script);
-
-  // send script fail to parse notification
-  void ScriptFailToParse(LEPUSScriptSource* script);
-
   // process protocol message sent here when paused
   void ProcessPausedMessages(const std::string& message, int32_t session_id);
 
@@ -78,18 +63,8 @@ class QuickjsDebugger {
   void DebuggerSendResponseWithViewID(int32_t message_id, const char* message,
                                       int32_t session_id);
 
-  // send script parsed event with view id
-  void ScriptParsedWithViewID(LEPUSScriptSource* script, int32_t session_id);
-
-  // send script fail to parse event with view id
-  void ScriptFailToParseWithViewID(LEPUSScriptSource* script,
-                                   int32_t session_id);
-
   // get session paused state
   bool IsPaused() { return paused_; }
-
-  // pause on debugger keyword
-  void DebuggerPauseOnDebuggerKeyword(const uint8_t* pc);
 
   void OnConsoleMessage(const std::string& message, const std::string& url);
 

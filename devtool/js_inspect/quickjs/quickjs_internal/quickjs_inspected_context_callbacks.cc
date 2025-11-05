@@ -16,29 +16,29 @@
 
 namespace quickjs_inspector {
 
-#define QJSDebuggerCallBack(V)         \
-  V(0, RunMessageLoopOnPauseCB)        \
-  V(1, QuitMessageLoopOnPauseCB)       \
-  V(2, NULL)                           \
-  V(3, SendResponseCB)                 \
-  V(4, SendNotificationCB)             \
-  V(5, NULL)                           \
-  V(6, DebuggerExceptionCB)            \
-  V(7, InspectorCheckCB)               \
-  V(8, ConsoleMessageCB)               \
-  V(9, ScriptParsedCB)                 \
-  V(10, SendConsoleAPICalledCB)        \
-  V(11, ScriptFailToParsedCB)          \
-  V(12, DebuggerPauseCB)               \
-  V(13, NULL)                          \
-  V(14, SendResponseWithViewIDCB)      \
-  V(15, SendNotificationWithViewIDCB)  \
-  V(16, ScriptParsedWithViewIDCB)      \
-  V(17, ScriptFailToParseWithViewIDCB) \
-  V(18, SetSessionEnableStateCB)       \
-  V(19, GetSessionStateCB)             \
-  V(20, GetSessionEnableStateCB)       \
-  V(21, NULL)                          \
+#define QJSDebuggerCallBack(V)        \
+  V(0, RunMessageLoopOnPauseCB)       \
+  V(1, QuitMessageLoopOnPauseCB)      \
+  V(2, NULL)                          \
+  V(3, SendResponseCB)                \
+  V(4, SendNotificationCB)            \
+  V(5, NULL)                          \
+  V(6, NULL)                          \
+  V(7, NULL)                          \
+  V(8, ConsoleMessageCB)              \
+  V(9, NULL)                          \
+  V(10, NULL)                         \
+  V(11, NULL)                         \
+  V(12, NULL)                         \
+  V(13, NULL)                         \
+  V(14, SendResponseWithViewIDCB)     \
+  V(15, SendNotificationWithViewIDCB) \
+  V(16, NULL)                         \
+  V(17, NULL)                         \
+  V(18, SetSessionEnableStateCB)      \
+  V(19, GetSessionStateCB)            \
+  V(20, GetSessionEnableStateCB)      \
+  V(21, NULL)                         \
   V(22, OnConsoleMessageCB)
 
 typedef enum ProtocolType {
@@ -104,22 +104,6 @@ static void SendNotificationCB(LEPUSContext *ctx, const char *message) {
   }
 }
 
-// for each opcode, do debugger related check
-static void InspectorCheckCB(LEPUSContext *ctx) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->InspectorCheck();
-  }
-}
-
-// call this function to handle exception
-static void DebuggerExceptionCB(LEPUSContext *ctx) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->DebuggerException();
-  }
-}
-
 // print console.xxx messages
 static void ConsoleMessageCB(LEPUSContext *ctx, int tag, LEPUSValueConst *argv,
                              int argc) {
@@ -134,60 +118,6 @@ static void ConsoleMessageCB(LEPUSContext *ctx, int tag, LEPUSValueConst *argv,
     if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, str);
   }
   putchar('\n');
-}
-
-// send Runtime.consoleAPICalled event for console.xxx
-static void SendConsoleAPICalledCB(LEPUSContext *ctx, LEPUSValue *console_msg) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->ConsoleAPICalled(console_msg);
-  }
-}
-
-// send Debugger.scriptFailedToParse when vm fail to parse the script
-static void ScriptFailToParseWithViewIDCB(LEPUSContext *ctx,
-                                          LEPUSScriptSource *script,
-                                          int32_t session_id) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->ScriptFailToParseWithViewID(script,
-                                                                  session_id);
-  }
-}
-
-// send Debugger.scriptParsed event when vm parses script
-static void ScriptParsedWithViewIDCB(LEPUSContext *ctx,
-                                     LEPUSScriptSource *script,
-                                     int32_t session_id) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->ScriptParsedWithViewID(script,
-                                                             session_id);
-  }
-}
-
-// send Debugger.scriptFailedToParse when vm fail to parse the script
-static void ScriptFailToParsedCB(LEPUSContext *ctx, LEPUSScriptSource *script) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->ScriptFailToParse(script);
-  }
-}
-
-// pause on debugger keyword
-static void DebuggerPauseCB(LEPUSContext *ctx, const uint8_t *pc) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->DebuggerPauseOnDebuggerKeyword(pc);
-  }
-}
-
-// send Debugger.scriptParsed event when vm parses script
-static void ScriptParsedCB(LEPUSContext *ctx, LEPUSScriptSource *script) {
-  auto *inspected_context = QJSInspectedContext::GetFromJsContext(ctx);
-  if (inspected_context != nullptr) {
-    inspected_context->GetDebugger()->ScriptParsed(script);
-  }
 }
 
 // set session enable state given session_id
