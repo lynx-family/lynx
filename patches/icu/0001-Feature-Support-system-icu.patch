@@ -1,23 +1,23 @@
-From d2982cdd9c3b83b755d13c8d9fb290ea32fa25e9 Mon Sep 17 00:00:00 2001
-From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
-Date: Fri, 19 Sep 2025 15:54:54 +0800
+From 0ce36971d00a0acc2df1d09a044b29c30a20948a Mon Sep 17 00:00:00 2001
+From: tangyongjie <80395553+yongjieTang@users.noreply.github.com>
+Date: Wed, 5 Nov 2025 19:33:47 +0800
 Subject: [PATCH] [Feature] Support system icu.
 
 ---
- BUILD.gn               |   8 +-
+ BUILD.gn               |  18 +-
  android/system_icu.cpp | 416 +++++++++++++++++++++++++++++++++++++++++
  config.gni             |   3 +
  sources.gni            |   9 +
- 4 files changed, 435 insertions(+), 1 deletion(-)
+ 4 files changed, 444 insertions(+), 2 deletions(-)
  create mode 100644 android/system_icu.cpp
 
 diff --git a/BUILD.gn b/BUILD.gn
-index 5814a585..a4c74d1e 100644
+index dad59595..37bc6d4b 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -64,6 +64,10 @@ config("icu_config") {
-   if (is_win) {
-     defines += [ "UCHAR_TYPE=wchar_t" ]
+@@ -68,6 +68,10 @@ config("icu_config") {
+   } else {
+     defines += [ "ICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_STATIC" ]
    }
 +
 +  if (use_system_icu) {
@@ -26,8 +26,30 @@ index 5814a585..a4c74d1e 100644
  }
  
  # Config used only by ICU code.
-@@ -276,7 +280,9 @@ template("generate_icuuc") {
-     public = icuuc_public
+@@ -130,6 +134,7 @@ config("icu_code") {
+       # stable API.
+       "-Wno-ambiguous-reversed-operator",
+     ]
++
+   }
+   if (is_clang || is_linux || is_chromeos || is_android || icu_is_in_fuchsia) {
+     cflags += [
+@@ -171,6 +176,13 @@ config("icu_code") {
+     # double-conversion-utils.h doesn't know how to operate.
+     defines += [ "__i386__" ]
+   }
++
++  cflags += [
++    # Options from higher version toolchains should be
++    # ignored by lower version toolchains.
++    "-Wno-unknown-warning-option",
++  ]
++
+ }
+ 
+ # Config used to set default visibility to hidden.
+@@ -361,7 +373,9 @@ template("generate_icuuc") {
+     public_deps = [ ":icuuc_public" ]
  
      defines = [ "U_COMMON_IMPLEMENTATION" ]
 -    deps = [ ":icudata" ]
@@ -35,11 +57,20 @@ index 5814a585..a4c74d1e 100644
 +      deps = [ ":icudata" ]
 +    }
  
-     if (icu_use_data_file) {
+     if (icu_use_data_file && icu_use_stub_data) {
        sources += [ "source/stubdata/stubdata.cpp" ]
+@@ -433,7 +447,7 @@ if (is_android && enable_java_templates) {
+ 
+ if (is_android) {
+   data_dir = "android"
+-} else if (is_ios && !use_blink) {
++} else if (is_ios) {
+   data_dir = "ios"
+ } else if (is_chromeos) {
+   data_dir = "chromeos"
 diff --git a/android/system_icu.cpp b/android/system_icu.cpp
 new file mode 100644
-index 00000000..0a652f81
+index 00000000..75575150
 --- /dev/null
 +++ b/android/system_icu.cpp
 @@ -0,0 +1,416 @@
@@ -460,21 +491,21 @@ index 00000000..0a652f81
 +  __resolve_libicuuc(dlopen2, dlsym2);
 +}
 diff --git a/config.gni b/config.gni
-index 5bb6e4e6..c0de5958 100644
+index 52630042..12c693ff 100644
 --- a/config.gni
 +++ b/config.gni
-@@ -10,6 +10,9 @@ declare_args() {
-   # If true, compile icu into a standalone static library. Currently this is
-   # only useful on Chrome OS.
-   icu_disable_thin_archive = false
-+
-+    # Whether use system icu
-+  use_system_icu = false
- }
+@@ -23,6 +23,9 @@ if (defined(is_fuchsia_tree) && is_fuchsia_tree) {
+     # only useful on Chrome OS.
+     icu_disable_thin_archive = false
  
- # Set to true if icu is being built from the Fuchsia tree.
++    # Whether use system icu
++    use_system_icu = false
++
+     # If set to nonempty, this is the label of the directory to be used to pull
+     # the ICU data files content.  The setting has effect only when building
+     # inside the Fuchsia source tree.
 diff --git a/sources.gni b/sources.gni
-index 9af6b477..0822e77e 100644
+index ba7c67ab..211073db 100644
 --- a/sources.gni
 +++ b/sources.gni
 @@ -1,9 +1,13 @@
@@ -491,7 +522,7 @@ index 9af6b477..0822e77e 100644
  icu18n_sources = [
    # I18N_SRC_START
    "source/i18n/alphaindex.cpp",
-@@ -424,6 +428,7 @@ icu18n_sources = [
+@@ -428,6 +432,7 @@ icu18n_sources = [
    "source/i18n/ztrans.h",
    # I18N_SRC_END
  ]
@@ -499,7 +530,7 @@ index 9af6b477..0822e77e 100644
  
  # ls source/i18n/unicode/*h | sort | sed 's/^\(.*\)$/  "\1",/'
  icu18n_public = [
-@@ -522,6 +527,9 @@ icu18n_public = [
+@@ -533,6 +538,9 @@ icu18n_public = [
  
  # find  source/common -maxdepth 1  ! -type d  | egrep  '\.(c|cpp|h)$' |\
  # sort | sed 's/^\(.*\)$/  "\1",/'
@@ -509,7 +540,7 @@ index 9af6b477..0822e77e 100644
  icuuc_sources = [
    # COMMON_SRC_START
    "source/common/appendable.cpp",
-@@ -836,6 +844,7 @@ icuuc_sources = [
+@@ -856,6 +864,7 @@ icuuc_sources = [
    "source/common/wintz.h",
    # COMMON_SRC_END
  ]
@@ -518,5 +549,5 @@ index 9af6b477..0822e77e 100644
  # ls  source/common/unicode/*h | sort | sed 's/^\(.*\)$/  "\1",/'
  icuuc_public = [
 -- 
-2.49.0
+2.50.1 (Apple Git-155)
 
