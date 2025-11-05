@@ -26,8 +26,9 @@ class LepusNGInspectedContextImpl
 
   void Init() override;
 
-  void SetDebugInfo(const std::string& url, const std::string& debug_info,
-                    int debug_info_id) override;
+  void SetDebugInfo(const std::string& filename, const std::string& debug_info,
+                    int debug_info_id,
+                    const std::string& debug_info_url) override;
   void ProcessMessage(const std::string& message) override;
 
   void OnTopLevelFunctionReady() override;

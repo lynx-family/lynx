@@ -46,15 +46,16 @@ void LepusNGDebugger::DebuggerSendResponse(int32_t message_id,
   inspector_->GetSession()->SendProtocolResponse(message_id, message);
 }
 
-void LepusNGDebugger::SetDebugInfo(const std::string& url,
+void LepusNGDebugger::SetDebugInfo(const std::string& filename,
                                    const std::string& debug_info_str,
-                                   int debug_info_id) {
+                                   int debug_info_id,
+                                   const std::string& debug_info_url) {
   auto it = debug_info_details_map_.find(debug_info_id);
   if (it == debug_info_details_map_.end()) {
-    DebugInfoDetail item = {debug_info_id, debug_info_str};
+    DebugInfoDetail item = {debug_info_id, debug_info_url, debug_info_str};
     it = debug_info_details_map_.emplace(debug_info_id, item).first;
   }
-  it->second.url_parsed_pairs_.emplace_back(url, false);
+  it->second.filename_parsed_pairs_.emplace_back(filename, false);
 }
 
 static void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx,
@@ -126,18 +127,23 @@ static void FillFunctionBytecodeDebugInfo(LEPUSContext* ctx,
 }
 
 void LepusNGDebugger::ParseDebugInfo(const LEPUSValue& top_level_function,
-                                     const std::string& url,
+                                     const std::string& filename,
                                      const std::string& debug_info,
+                                     const std::string& debug_info_url,
                                      bool is_default) {
   if (LEPUS_IsUndefined(top_level_function)) {
+    HandleInvalidDebugInfo(MTSDebugInfoError{
+        "Failed to get top-level function!",
+        "The top-level function is undefined.", filename, debug_info_url});
     return;
   }
 
   rapidjson::Document document;
   document.Parse(debug_info.c_str());
   if (document.HasParseError()) {
-    LOGE("lepusng debug: failed to parse debug info, "
-         << document.GetParseErrorMsg());
+    HandleInvalidDebugInfo(MTSDebugInfoError{"Failed to parse debug-info!",
+                                             document.GetParseErrorMsg(),
+                                             filename, debug_info_url});
     return;
   }
 
@@ -146,16 +152,23 @@ void LepusNGDebugger::ParseDebugInfo(const LEPUSValue& top_level_function,
   LEPUSFunctionBytecode** function_list =
       GetDebuggerAllFunction(ctx, top_level_function, &func_size);
   if (function_list == nullptr) {
-    LOGE("lepusng debug: failed to get all functions");
+    HandleInvalidDebugInfo(MTSDebugInfoError{"Failed to get all functions!",
+                                             "The function list is empty.",
+                                             filename, debug_info_url});
     return;
   }
 
   Scope scope(ctx, function_list);
   rapidjson::Value debug_info_entry;
   bool has_function_info = false;
-  bool res = GetDebugInfoEntry(document, url, func_size, is_default,
-                               debug_info_entry, has_function_info);
+  std::string error_message;
+  bool res =
+      GetDebugInfoEntry(document, filename, func_size, is_default,
+                        debug_info_entry, has_function_info, error_message);
   if (!res) {
+    HandleInvalidDebugInfo(MTSDebugInfoError{"Failed to parse debug-info!",
+                                             error_message, filename,
+                                             debug_info_url});
     return;
   }
 
@@ -168,12 +181,16 @@ void LepusNGDebugger::ParseDebugInfo(const LEPUSValue& top_level_function,
     int32_t end_line_num = debug_info_entry[kKeyEndLineNumber].GetInt();
     SetDebuggerEndLineNum(ctx, end_line_num);
     script =
-        AddDebuggerScript(ctx, source_str, const_cast<char*>(url.c_str()),
+        AddDebuggerScript(ctx, source_str, const_cast<char*>(filename.c_str()),
                           static_cast<int32_t>(source.length()), end_line_num);
   }
 
   if (script == nullptr) {
-    LOGE("lepusng debug: failed to parse function_source");
+    HandleInvalidDebugInfo(MTSDebugInfoError{
+        "Failed to get `function_source`!",
+        "The debug-info does not contain `function_source` or "
+        "`end_line_number`.",
+        filename, debug_info_url});
     return;
   }
 
@@ -193,7 +210,8 @@ bool LepusNGDebugger::GetDebugInfoEntry(rapidjson::Document& document,
                                         const std::string& url,
                                         uint32_t func_size, bool is_default,
                                         rapidjson::Value& entry,
-                                        bool& has_function_info) {
+                                        bool& has_function_info,
+                                        std::string& error_message) {
   uint32_t function_num = 0;
   if (is_default) {
     if (document.HasMember(kKeyLepusNGDebugInfo)) {
@@ -219,11 +237,15 @@ bool LepusNGDebugger::GetDebugInfoEntry(rapidjson::Document& document,
     }
   }
   if (!entry.IsObject() || entry.MemberCount() == 0) {
-    LOGE("lepusng debug: cannot find target entry in debug info, url: " << url);
+    error_message = "Cannot find the target entry in debug-info.";
     return false;
   }
   if (has_function_info && function_num != func_size) {
-    LOGE("lepusng debug: function number error");
+    std::stringstream error_message_stream;
+    error_message_stream << "The `function_number` in debug-info does not "
+                            "match the actual function number: expected "
+                         << func_size << ", but got " << function_num;
+    error_message = error_message_stream.str();
     return false;
   }
   return true;
@@ -236,13 +258,14 @@ void LepusNGDebugger::PrepareDebugInfo() {
     return;
   }
   for (auto& debug_info : debug_info_details_map_) {
-    auto& vec = debug_info.second.url_parsed_pairs_;
+    auto& vec = debug_info.second.filename_parsed_pairs_;
     auto it = std::find_if(vec.begin(), vec.end(),
                            [](const auto& pair) { return !pair.second; });
     if (it != vec.end()) {
       it->second = true;
       PrepareDebugInfo(top_level_function, it->first,
-                       debug_info.second.debug_info_str_, it == vec.begin());
+                       debug_info.second.debug_info_str_,
+                       debug_info.second.debug_info_url_, it == vec.begin());
       break;
     }
   }
@@ -289,19 +312,30 @@ void LepusNGDebugger::DebuggerSendScriptFailToParseMessage(
 }
 
 void LepusNGDebugger::PrepareDebugInfo(const LEPUSValue& top_level_function,
-                                       const std::string& url,
+                                       const std::string& filename,
                                        const std::string& debug_info,
+                                       const std::string& debug_info_url,
                                        bool is_default) {
   if (debug_info.empty()) {
-    const std::string source = "debug-info.json download fail, please check!";
-    AddDebuggerScript(context_->GetLepusContext(),
-                      const_cast<char*>(source.c_str()),
-                      const_cast<char*>(url.c_str()),
-                      static_cast<int32_t>(source.length()), 0);
+    HandleInvalidDebugInfo(MTSDebugInfoError{
+        "Failed to download debug-info.json!",
+        "The content of debug-info.json is empty, or the MTS Debug switch is "
+        "not enabled.",
+        filename, debug_info_url});
     return;
   }
 
-  ParseDebugInfo(top_level_function, url, debug_info, is_default);
+  ParseDebugInfo(top_level_function, filename, debug_info, debug_info_url,
+                 is_default);
+}
+
+void LepusNGDebugger::HandleInvalidDebugInfo(const MTSDebugInfoError& error) {
+  const std::string source = error.GetFormattedErrorMessage();
+  LOGE("lepusng debug: " << source);
+  AddDebuggerScript(context_->GetLepusContext(),
+                    const_cast<char*>(source.c_str()),
+                    const_cast<char*>(error.file_name_.c_str()),
+                    static_cast<int32_t>(source.length()), 0);
 }
 
 }  // namespace debug

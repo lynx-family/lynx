@@ -4,6 +4,7 @@
 #ifndef DEVTOOL_JS_INSPECT_LEPUS_LEPUS_INTERNAL_LEPUSNG_LEPUSNG_DEBUGGER_H_
 #define DEVTOOL_JS_INSPECT_LEPUS_LEPUS_INTERNAL_LEPUSNG_LEPUSNG_DEBUGGER_H_
 
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -35,9 +36,26 @@ namespace debug {  // TODO(lqy): change namespace to lepus_inspector
 
 struct DebugInfoDetail {
   int id_{-1};
+  std::string debug_info_url_;
   std::string debug_info_str_;
   // file name -> has been parsed
-  std::vector<std::pair<std::string, bool>> url_parsed_pairs_;
+  std::vector<std::pair<std::string, bool>> filename_parsed_pairs_;
+};
+
+struct MTSDebugInfoError {
+  std::string GetFormattedErrorMessage() const {
+    std::stringstream error_message;
+    error_message << "MTS debug-info error!\nReason: " << reason_ << " "
+                  << "\nDetail: " << detail_ << " "
+                  << "\nFile name: " << file_name_ << " "
+                  << "\nDebug-info URL: " << debug_info_url_;
+    return error_message.str();
+  }
+
+  std::string reason_;
+  std::string detail_;
+  std::string file_name_;
+  std::string debug_info_url_;
 };
 
 // for lepusNG debugger
@@ -62,9 +80,10 @@ class LepusNGDebugger {
                   const std::string& name);
   ~LepusNGDebugger();
 
-  // get debugger info for lepusNG
-  void SetDebugInfo(const std::string& url, const std::string& debug_info_str,
-                    int debug_info_id);
+  // set debugger info for lepusNG
+  void SetDebugInfo(const std::string& filename,
+                    const std::string& debug_info_str, int debug_info_id,
+                    const std::string& debug_info_url);
 
   void PrepareDebugInfo();
 
@@ -95,14 +114,19 @@ class LepusNGDebugger {
 
  private:
   void PrepareDebugInfo(const LEPUSValue& top_level_function,
-                        const std::string& url, const std::string& debug_info,
-                        bool is_default);
+                        const std::string& filename,
+                        const std::string& debug_info,
+                        const std::string& debug_info_url, bool is_default);
   void ParseDebugInfo(const LEPUSValue& top_level_function,
-                      const std::string& url, const std::string& debug_info,
-                      bool is_default);
-  bool GetDebugInfoEntry(rapidjson::Document& document, const std::string& url,
-                         uint32_t func_size, bool is_default,
-                         rapidjson::Value& entry, bool& has_function_info);
+                      const std::string& filename,
+                      const std::string& debug_info,
+                      const std::string& debug_info_url, bool is_default);
+  bool GetDebugInfoEntry(rapidjson::Document& document,
+                         const std::string& filename, uint32_t func_size,
+                         bool is_default, rapidjson::Value& entry,
+                         bool& has_function_info, std::string& error_message);
+
+  void HandleInvalidDebugInfo(const MTSDebugInfoError& error);
 
   lepus_inspector::LepusNGInspectedContextImpl* context_;
   lepus_inspector::LepusInspectorNGImpl* inspector_;

@@ -23,10 +23,10 @@ void LepusNGInspectedContextImpl::Init() {
           shared_from_this()));
 }
 
-void LepusNGInspectedContextImpl::SetDebugInfo(const std::string& url,
-                                               const std::string& debug_info,
-                                               int debug_info_id) {
-  debugger_->SetDebugInfo(url, debug_info, debug_info_id);
+void LepusNGInspectedContextImpl::SetDebugInfo(
+    const std::string& filename, const std::string& debug_info,
+    int debug_info_id, const std::string& debug_info_url) {
+  debugger_->SetDebugInfo(filename, debug_info, debug_info_id, debug_info_url);
 }
 
 void LepusNGInspectedContextImpl::ProcessMessage(const std::string& message) {

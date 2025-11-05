@@ -55,7 +55,8 @@ void LepusInspectorManagerImpl::SetDebugInfo(const std::string& debug_info_url,
   } else {
     debug_info_id = it->second;
   }
-  inspector_client_->SetDebugInfo(file_name, debug_info, debug_info_id);
+  inspector_client_->SetDebugInfo(file_name, debug_info, debug_info_id,
+                                  debug_info_url);
   sp->PrepareForScriptEval(inspector_name_);
   // Associate and record the file name with the corresponding debug-info.json
   // URL.
