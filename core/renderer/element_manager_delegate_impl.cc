@@ -4,11 +4,15 @@
 
 #include "core/renderer/element_manager_delegate_impl.h"
 
+#include <memory>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/renderer/template_assembler.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
 namespace tasm {
@@ -19,7 +23,7 @@ void ElementManagerDelegateImpl::LoadFrameBundle(const std::string &src,
   // rendering phase timing from degrading
   auto bundle = frame_bundles_.find(src);
   if (bundle != frame_bundles_.end()) {
-    element->DidBundleLoaded(src, bundle->second);
+    element->DidBundleLoaded(bundle->second);
     return;
   }
   if (bundle_loader_) {
@@ -29,16 +33,23 @@ void ElementManagerDelegateImpl::LoadFrameBundle(const std::string &src,
 }
 
 void ElementManagerDelegateImpl::DidFrameBundleLoaded(
-    const std::string &src, LynxTemplateBundle bundle) {
-  auto bundle_ptr = std::make_shared<LynxTemplateBundle>(std::move(bundle));
+    const LazyBundleLoader::CallBackInfo &callback_info) {
+  auto bundle = callback_info.bundle ? std::make_shared<LynxTemplateBundle>(
+                                           std::move(*callback_info.bundle))
+                                     : nullptr;
+  auto frame_element_data = std::make_shared<FrameElementData>(
+      callback_info.component_url, std::move(bundle), callback_info.error_code,
+      callback_info.error_msg);
   for (FrameElement *element : frame_element_set_) {
-    if (element->DidBundleLoaded(src, bundle_ptr)) {
+    if (element->DidBundleLoaded(frame_element_data)) {
       frame_element_set_.erase(element);
       break;
     }
   }
-
-  frame_bundles_.try_emplace(src, std::move(bundle_ptr));
+  if (callback_info.Success() && callback_info.bundle) {
+    frame_bundles_.try_emplace(frame_element_data->src,
+                               std::move(frame_element_data));
+  }
 }
 
 void ElementManagerDelegateImpl::OnFrameRemoved(FrameElement *element) {

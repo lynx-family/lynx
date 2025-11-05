@@ -11,12 +11,13 @@
 #include <unordered_set>
 
 #include "core/renderer/dom/element_manager_delegate.h"
-#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 
 namespace lynx {
 namespace tasm {
 
 class PipelineContext;
+class TemplateAssembler;
+struct FrameElementData;
 
 /**
  * Member of TemplateAssembler, provided to ElementManager.
@@ -28,8 +29,8 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
 
   void LoadFrameBundle(const std::string &src, FrameElement *element) override;
 
-  void DidFrameBundleLoaded(const std::string &src,
-                            LynxTemplateBundle bundle) override;
+  void DidFrameBundleLoaded(
+      const LazyBundleLoader::CallBackInfo &callback_info) override;
 
   void OnFrameRemoved(FrameElement *element) override;
 
@@ -50,7 +51,7 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
 
  private:
   std::unordered_set<FrameElement *> frame_element_set_;
-  std::unordered_map<std::string, std::shared_ptr<LynxTemplateBundle>>
+  std::unordered_map<std::string, std::shared_ptr<FrameElementData>>
       frame_bundles_{};
   std::shared_ptr<LazyBundleLoader> bundle_loader_{nullptr};
   TemplateAssembler *tasm_{nullptr};

@@ -1,11 +1,14 @@
 # CHANGELOG
-# 3.6.5
+## 3.6.6
+- Support `bindload` on `frame` element.
+
+## 3.6.5
 - Introduce `enable-scroll-bar` property for `<textarea>` element.
 
-# 3.6.4
+## 3.6.4
 - Introduce `item-key` on `list.scrollToPosition`.
 
-# 3.6.3
+## 3.6.3
 - Fix list-type to avoid incompatible type error.
  
 ## 3.6.2

@@ -21,6 +21,7 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_selector_constants.h"
 #include "core/renderer/dom/attribute_holder.h"
+#include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/page_proxy.h"

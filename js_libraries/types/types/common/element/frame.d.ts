@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 import { StandardProps } from '../props';
+import { BaseEvent, BaseEventOrig, Target } from '../events';
 
 export interface FrameProps extends StandardProps {
   /**
    * Sets the loading path for the frame resource.
-   * @defaultValue undefined
    * @iOS
    * @Android
    * @since 3.4
@@ -16,10 +16,46 @@ export interface FrameProps extends StandardProps {
 
   /**
    * Passes data to the nested Lynx page within the frame.
-   * @defaultValue undefined
    * @iOS
    * @Android
    * @since 3.4
    */
   data?: Record<string, unknown> | undefined;
+
+  /**
+   * Bind frame load event callback.
+   * @iOS
+   * @Android
+   * @since 3.6
+   */
+  bindload?: (e: FrameLoadEvent) => void;
 }
+
+interface BaseFrameLoadEvent<T> extends BaseEventOrig<{}, T> {
+  /**
+   * The loaded url of the frame.
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  url: string;
+
+  /**
+   * Frame loaded status code.
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  status_code: number;
+
+  /**
+   * Frame loaded status message.
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  status_message: string;
+}
+
+interface FrameLoadInfo extends BaseFrameLoadEvent<Target> {}
+export type FrameLoadEvent = BaseEvent<'load', FrameLoadInfo>;

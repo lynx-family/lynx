@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { assertType, it } from 'vitest';
-import { IntrinsicElements } from '../../types';
+import { IntrinsicElements, FrameLoadEvent } from '../../types';
 
 // Props Types Check
 let a;
@@ -31,4 +31,17 @@ let a;
   <frame src={'1'} data={1} />;
   // @ts-expect-error: data shoudl be object not array
   <frame src={'1'} data={[1, 2, 3]} />;
+}
+
+// Events types check
+function noop() {}
+{
+  <frame
+    src={'1'}
+    bindload={(e: FrameLoadEvent) => {
+      assertType<string>(e.detail.url);
+      assertType<number>(e.detail.status_code);
+      assertType<string>(e.detail.status_message);
+    }}
+  />;
 }
