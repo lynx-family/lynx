@@ -1,0 +1,72 @@
+From d325226e62cd92ff5cfb2c5c7dc78cb36714e7f1 Mon Sep 17 00:00:00 2001
+From: tangyongjie <80395553+yongjieTang@users.noreply.github.com>
+Date: Fri, 14 Nov 2025 16:47:11 +0800
+Subject: [PATCH] delete depfile arg
+
+---
+ BUILD.gn          | 8 ++++----
+ nasm_assemble.gni | 1 -
+ nasm_sources.gni  | 2 +-
+ 3 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 4fdc2938..da98277b 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -7,7 +7,7 @@ import("nasm_sources.gni")
+ 
+ configs_to_delete = [
+   # Don't enable sanitizers for build tools. They slow down the overall build.
+-  "//build/config/sanitizers:default_sanitizer_flags",
++  # "//build/config/sanitizers:default_sanitizer_flags",
+ ]
+ 
+ configs_to_add = []
+@@ -30,8 +30,8 @@ if (is_debug) {
+   if (is_win) {
+     # This switches to using the release CRT. For yasm debug component builds
+     # of highbd_sad4d_sse2.asm on Windows this saved about 15 s.
+-    configs_to_delete += [ "//build/config/win:default_crt" ]
+-    configs_to_add += [ "//build/config/win:release_crt" ]
++    # configs_to_delete += [ "//build/config/win:default_crt" ]
++    # configs_to_add += [ "//build/config/win:release_crt" ]
+   }
+ }
+ 
+@@ -99,7 +99,7 @@ if (current_toolchain == host_toolchain) {
+ 
+     deps = [
+       # Default manifest on Windows (a no-op elsewhere).
+-      "//build/win:default_exe_manifest",
++      # "//build/win:default_exe_manifest",
+     ]
+   }
+ }
+diff --git a/nasm_assemble.gni b/nasm_assemble.gni
+index 902a6320..4f07a287 100644
+--- a/nasm_assemble.gni
++++ b/nasm_assemble.gni
+@@ -145,7 +145,6 @@ template("nasm_assemble") {
+       "{{source}}",
+     ]
+ 
+-    depfile = outputs[0] + ".d"
+   }
+ 
+   # Gather the .o files into a linkable thing. This doesn't actually link
+diff --git a/nasm_sources.gni b/nasm_sources.gni
+index 93742d82..81f853ec 100644
+--- a/nasm_sources.gni
++++ b/nasm_sources.gni
+@@ -37,7 +37,7 @@ nasmlib_sources = [
+   "nasmlib/file.c",
+   "nasmlib/filename.c",
+   "nasmlib/hashtbl.c",
+-  "nasmlib/ilog2.c",
++  # "nasmlib/ilog2.c",
+   "nasmlib/malloc.c",
+   "nasmlib/md5c.c",
+   "nasmlib/mmap.c",
+-- 
+2.50.1 (Apple Git-155)
+

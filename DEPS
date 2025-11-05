@@ -253,21 +253,19 @@ deps = {
         "ignore_in_git": True,
         "enable_lfs": False,
     },
-    "third_party/boringssl":{
-        "type": "git",
-        "url": "https://github.com/dart-lang/boringssl_gen.git",
-        "commit": "7322fc15cc065d8d2957fccce6b62a509dc4d641",
-        "patches": [
-            os.path.join(root_dir, 'patches', 'boringssl', '*.patch')
-        ],
-        "ignore_in_git": True,
-    },
     "third_party/boringssl/src":{
         "type": "git",
-        "url": "https://boringssl.googlesource.com/boringssl.git",
-        "commit": "1607f54fed72c6589d560254626909a64124f091",
-        "require": ['third_party/boringssl'],
+        "url": "https://github.com/google/boringssl.git",
+        "commit": "71147d3763466094df692df97afef42e4ce26a4f",
         "ignore_in_git": True,
+    },
+    'third_party/nasm': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/chromium/deps/nasm",
+        "commit": "7268fcfbd10140026d1f27fb562e0fc4954d2af9",
+        "ignore_in_git": True,
+        "condition": system in ['windows'],
+        "patches": os.path.join(root_dir, 'patches', 'nasm', '*.patch'),
     },
     "third_party/httplib": {
         'type': 'git',
