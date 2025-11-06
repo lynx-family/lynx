@@ -15,6 +15,7 @@ public class DevToolSlot implements DebugRouterSlotDelegate {
   private long mNativeHandler = STATUS_UNINITIALIZED;
   private DebugRouterSlot mDebugRouterSlot = null;
   private String mTemplateUrl = "";
+  private final Object mNativeHandlerLock = new Object();
 
   static {
     BaseDevToolLoadSoUtils.loadSo();
@@ -41,10 +42,26 @@ public class DevToolSlot implements DebugRouterSlotDelegate {
    */
   @Override
   public void onMessage(String type, String message) {
-    nativeOnSlotMessage(mNativeHandler, type, message);
+    synchronized (mNativeHandlerLock) {
+      if (mNativeHandler == STATUS_UNINITIALIZED) {
+        return;
+      }
+      nativeOnSlotMessage(mNativeHandler, type, message);
+    }
   }
 
   private native void nativeOnSlotMessage(long nativeHandler, String type, String message);
+
+  @CalledByNative
+  public void onNativeDestroyed() {
+    synchronized (mNativeHandlerLock) {
+      mNativeHandler = STATUS_UNINITIALIZED;
+    }
+    if (mDebugRouterSlot != null) {
+      mDebugRouterSlot.pull();
+      mDebugRouterSlot = null;
+    }
+  }
 
   @CalledByNative
   public int plug(String url) {
