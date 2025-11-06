@@ -5,23 +5,26 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UTILS_BASE_SCROLL_CONTAINER_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UTILS_BASE_SCROLL_CONTAINER_H_
 
+#include <arkui/native_type.h>
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <arkui/native_type.h>
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
-static constexpr const char* const kNestedScrollForwardOptions = "temporary-nested-scroll-forward";
+static constexpr const char* const kNestedScrollForwardOptions =
+    "temporary-nested-scroll-forward";
 static constexpr const char* const kNestedScrollBackWardOptions =
     "temporary-nested-scroll-backward";
 static constexpr const char* const kScrollOrientation = "scroll-orientation";
-static constexpr const char* const kScrollEdgeEffect = "harmony-scroll-edge-effect";
+static constexpr const char* const kScrollEdgeEffect =
+    "harmony-scroll-edge-effect";
 
-class BaseScrollContainer : public UIView {
+class BaseScrollContainer : public UIBase {
  public:
   void OnNodeReady() override;
   void ScrollTo(float x, float y, bool smooth);
@@ -37,7 +40,8 @@ class BaseScrollContainer : public UIView {
   bool IsScrollable() override;
   std::vector<float> ScrollBy(float delta_x, float delta_y) override;
   virtual void AutoScrollStopped(){};
-  void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
+  void OnPropUpdate(const std::string& name,
+                    const lepus::Value& value) override;
   bool IsAtBorder(bool isStart) override;
   int8_t GetScrollContainerDirection() override;
 

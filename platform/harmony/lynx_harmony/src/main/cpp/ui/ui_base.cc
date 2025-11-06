@@ -739,14 +739,13 @@ void UIBase::ApplyOverflowClipRectangle(float left, float top, float width,
 void UIBase::ApplyOverflowClip() {
   if (!overflow_.overflow_x && !overflow_.overflow_y) {
     // overflow: hidden
-    need_clip_ = true;
     if (background_drawable_ && background_drawable_->GetBorderRadius() &&
         !background_drawable_->GetBorderRadius()->IsZero()) {
       ApplyOverflowClipPath(width_, height_,
                             background_drawable_->GetClipPath());
-    } else {
-      NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
     }
+    need_clip_ = true;
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
   } else if (overflow_.overflow_x && overflow_.overflow_y) {
     // overflow: visible
     need_clip_ = false;
@@ -755,6 +754,7 @@ void UIBase::ApplyOverflowClip() {
   } else {
     // overflow-x or overflow-y
     need_clip_ = true;
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
     float screen_size[2] = {};
     context_->ScreenSize(screen_size);
     int w = width_;

@@ -13,7 +13,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
-class UIBounce : public UIView {
+class UIBounce : public UIBase {
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag) {
     return new UIBounce(context, sign, tag);
@@ -22,7 +22,8 @@ class UIBounce : public UIView {
 
  protected:
   UIBounce(LynxContext* context, int sign, const std::string& tag);
-  void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
+  void OnPropUpdate(const std::string& name,
+                    const lepus::Value& value) override;
   bool DefaultOverflowValue() override { return false; }
 };
 

@@ -266,6 +266,10 @@ class LynxContext {
     return layout_task_runner_;
   }
 
+  void SetDefaultOverflowVisible(bool visible) {
+    default_overflow_visible_ = visible;
+  }
+  bool DefaultOverflowVisible() const { return default_overflow_visible_; }
   bool EventThrough();
   bool ShouldBlockNativeEvent();
   void AttachGesturesToRoot(UIBase* root);
@@ -322,7 +326,7 @@ class LynxContext {
   std::shared_ptr<PubLynxContextDelegate> delegate_{nullptr};
   pub::LynxExtensionDelegate* extension_delegate_{nullptr};
   napi_env env_;
-
+  bool default_overflow_visible_{false};
   bool enable_event_through_{false};
   bool enable_harmony_visible_area_change_for_exposure_{false};
   bool enable_exposure_when_reload_{false};

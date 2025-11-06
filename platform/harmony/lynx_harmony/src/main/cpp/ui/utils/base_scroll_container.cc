@@ -11,7 +11,7 @@ namespace tasm {
 namespace harmony {
 BaseScrollContainer::BaseScrollContainer(LynxContext* context, int sign,
                                          const std::string& tag)
-    : UIView(context, ARKUI_NODE_SCROLL, sign, tag) {
+    : UIBase(context, ARKUI_NODE_SCROLL, sign, tag) {
   SetNestedScroll(ARKUI_SCROLL_NESTED_MODE_SELF_FIRST);
   SetScrollbar(false);
   SetBounces(false, true);
@@ -156,7 +156,7 @@ void BaseScrollContainer::OnPropUpdate(const std::string& name,
     auto data = value.Bool();
     SetBounces(data, data);
   } else {
-    UIView::OnPropUpdate(name, value);
+    UIBase::OnPropUpdate(name, value);
   }
 }
 

@@ -6,13 +6,14 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_ROOT_H_
 
 #include <string>
+
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
 
-class UIRoot : public UIView {
+class UIRoot : public UIBase {
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag) {
     return new UIRoot(context, sign, tag);
@@ -21,8 +22,9 @@ class UIRoot : public UIView {
 
   void AttachToNodeContent(NativeNodeContent* content) override;
 
-  void UpdateLayout(float left, float top, float width, float height, const float* paddings,
-                    const float* margins, const float* sticky, float max_height,
+  void UpdateLayout(float left, float top, float width, float height,
+                    const float* paddings, const float* margins,
+                    const float* sticky, float max_height,
                     uint32_t node_index) override;
   void OnNodeEvent(ArkUI_NodeEvent* event) override;
   ArkUI_NodeHandle GetProxyNode();

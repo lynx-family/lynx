@@ -68,6 +68,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     const std::shared_ptr<PageConfig>& config) {
   auto lynx_context = lynx_context_.lock();
   if (lynx_context) {
+    lynx_context->SetDefaultOverflowVisible(
+        config->GetDefaultOverflowVisible());
     lynx_context->GetFluencyTraceHelper().SetPageConfigProbability(
         config->GetEnableScrollFluencyMonitor());
     lynx_context->SetEnableTextOverflow(config->GetEnableTextOverflow());
