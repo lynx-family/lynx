@@ -979,6 +979,8 @@ export abstract class LynxBackgroundRuntimeClient {
 
 export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher: LynxGenericResourceFetcher | undefined, mediaResourceFetcher: LynxMediaResourceFetcher | undefined, templateResourceFetcher: LynxTemplateResourceFetcher | undefined, modules: Map<string, ModuleClassWrapper> | undefined, sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined);
+  addLifecycleClient(client: LynxBackgroundRuntimeClient): void;
+  removeLifecycleClient(client: LynxBackgroundRuntimeClient): void;
   onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string, customInfo: Record<string, string>, logboxOnly: boolean): void;
   onModuleMethodInvoked(module: string, method: string, error_code: number): void;
   onEvaluateJavaScriptEnd(url: string): void;

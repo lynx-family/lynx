@@ -25,7 +25,7 @@ export abstract class LynxBackgroundRuntimeClient {
 }
 
 export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
-  private clients: LynxBackgroundRuntimeClient[] = [];
+  private clients: Set<LynxBackgroundRuntimeClient> = new Set<LynxBackgroundRuntimeClient>();
   private providers: (LynxResourceProvider | undefined)[];
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
   private lynxDevTool?: LynxDevTool;
@@ -53,6 +53,14 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,  convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), data?.templateData?.processor, data?.templateData?.data, data?.templateData?.readOnly,
       data?.globalProps?.data);
+  }
+
+  addLifecycleClient(client: LynxBackgroundRuntimeClient) {
+    this.clients.add(client);
+  }
+  
+  removeLifecycleClient(client: LynxBackgroundRuntimeClient) {
+    this.clients.delete(client);
   }
 
   // client callback
