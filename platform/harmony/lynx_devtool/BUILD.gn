@@ -35,7 +35,7 @@ devtool_source_set("lynx_devtool_lib") {
     "../../../devtool/base_devtool/common:base_devtool_common_sources",
     "../../../devtool/lynx_devtool/js_debug",
     "../../../devtool/lynx_devtool/tracing",
-    "../../../third_party/jsoncpp:jsoncpp",
+    "//third_party/jsoncpp:jsoncpp",
     "//third_party/modp_b64:modp_b64",
   ]
 }

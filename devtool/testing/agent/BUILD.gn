@@ -23,7 +23,6 @@ unittest_set("devtool_agent_testset") {
     "../../../core/runtime/bindings/lepus",
     "../../../core/services/recorder:recorder",
     "../../../core/services/replay:replay",
-    "../../../third_party/jsoncpp",
     "../../lynx_devtool/agent:agent",
     "../../lynx_devtool/base:base",
     "../../lynx_devtool/config:config",
@@ -31,6 +30,7 @@ unittest_set("devtool_agent_testset") {
     "../../lynx_devtool/js_debug:js_debug",
     "../../lynx_devtool/message_handler:message_handler",
     "../../lynx_devtool/shared_data:shared_data",
+    "//third_party/jsoncpp",
     "//third_party/zlib",
   ]
 
@@ -42,7 +42,7 @@ unittest_set("devtool_agent_testset") {
 
   include_dirs = [
     "//third_party/googletest/googletest/include",
-    "../../../third_party/jsoncpp/include/",
+    "//third_party/jsoncpp/include/",
   ]
   public_configs = [
     "../../../core:lynx_public_config",
