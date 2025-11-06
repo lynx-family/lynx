@@ -54,6 +54,14 @@
   return NO;
 }
 
+- (BOOL)valueChangedForKey:(NSString *)key setTo:(NSObject *_Nullable __strong *_Nonnull)owner {
+  *owner = [_backingMap objectForKey:key];
+  if ([_dirtyPropertiesSet containsObject:key]) {
+    return YES;
+  }
+  return NO;
+}
+
 - (BOOL)isValueForKeyUpdated:(NSString *)key {
   return [_dirtyPropertiesSet containsObject:key];
 }

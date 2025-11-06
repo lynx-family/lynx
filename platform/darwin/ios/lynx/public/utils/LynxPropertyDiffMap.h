@@ -24,6 +24,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)valueChangedForKey:(NSString *)key updateTo:(NSObject *_Nullable __strong *_Nonnull)owner;
 
+- (BOOL)valueChangedForKey:(NSString *)key setTo:(NSObject *_Nullable __strong *_Nonnull)owner;
+
 - (BOOL)isValueForKeyUpdated:(NSString *)key;
 
 - (NSSet<NSString *> *)getUpdatedKeys;
