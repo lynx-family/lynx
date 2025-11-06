@@ -255,11 +255,11 @@ jobs:
           python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
-      - name: Gradle Wrapper Cache
+      - name: Setup gradle cache
         uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
         with:
-          path: ~/.gradle/wrapper/dists
-          key: gradle-${{ runner.os }}
+          path: ~/.gradle/caches/modules-2
+          key: gradle-android-unittests-check
       - name: Build Example App
         run: |
           source tools/envsetup.sh
@@ -273,6 +273,11 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
+      - name: Setup gradle cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/caches/modules-2
+          key: gradle-android-explorer-build
       - name: Build Explorer App
         uses: ./lynx/.github/actions/android-explorer-build
         with:
@@ -295,6 +300,11 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: 'lynx-infra'
+      - name: Setup gradle cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/caches/modules-2
+          key: gradle-android-sdk-release
       - name: Build Android SDK
         uses: ./lynx/.github/actions/android-sdk-release
         with:
@@ -340,11 +350,6 @@ jobs:
         with:
           java-version: 17
           distribution: 'zulu'
-      - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-        with:
-          path: ~/.gradle/wrapper/dists
-          key: gradle-${{ runner.os }}
       - name: Start Android 28 emulator
         run: |
           set -x
@@ -531,7 +536,12 @@ jobs:
         uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
         with:
           path: ~/.gradle/wrapper/dists
-          key: gradle-${{ runner.os }}
+          key: gradle-wrapper-${{ runner.os }}
+      - name: Setup cache action
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/caches/modules-2
+          key: gradle-integration-deps-${{ runner.os }}
       - name: Build With Local AAR
         id: build_apk
         run: |
