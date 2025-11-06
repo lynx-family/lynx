@@ -2973,6 +2973,7 @@ public class LynxPropertyDiffMap : NSObject {
   public id _Nullable LynxPropertyDiffMap::getValueForKey:defaultValue:(NSString *key,[defaultValue] id _Nullable defaultValue);
   public id _Nullable LynxPropertyDiffMap::getUpdatedValueForKey:(NSString *key);
   public BOOL LynxPropertyDiffMap::valueChangedForKey:updateTo:(NSString *key,[updateTo] NSObject *_Nullable __strong *_Nonnull owner);
+  public BOOL LynxPropertyDiffMap::valueChangedForKey:setTo:(NSString *key,[setTo] NSObject *_Nullable __strong *_Nonnull owner);
   public BOOL LynxPropertyDiffMap::isValueForKeyUpdated:(NSString *key);
   public NSSet< NSString * > * LynxPropertyDiffMap::getUpdatedKeys();
   public void LynxPropertyDiffMap::clearDirtyRecords();
