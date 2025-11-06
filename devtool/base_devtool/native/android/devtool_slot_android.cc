@@ -21,11 +21,12 @@ static void OnSlotMessage(JNIEnv* env, jobject jcaller, jlong nativeHandler,
                           jstring type, jstring message) {
   lynx::devtool::DevToolSlotDelegate* devtool_slot =
       reinterpret_cast<lynx::devtool::DevToolSlotDelegate*>(nativeHandler);
-  if (devtool_slot) {
-    devtool_slot->OnMessage(
-        lynx::base::android::JNIConvertHelper::ConvertToString(env, type),
-        lynx::base::android::JNIConvertHelper::ConvertToString(env, message));
+  if (!devtool_slot) {
+    return;
   }
+  devtool_slot->OnMessage(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, type),
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, message));
 }
 namespace lynx {
 namespace devtool {
@@ -45,6 +46,11 @@ DevToolSlotDelegate::DevToolSlotDelegate(
       std::make_unique<lynx::base::android::ScopedGlobalJavaRef<jobject>>(
           env, jobj.Get());
 }
+DevToolSlotDelegate::~DevToolSlotDelegate() {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_DevToolSlot_onNativeDestroyed(env, jobj_ptr_->Get());
+}
+
 int32_t DevToolSlotDelegate::Plug(const std::string& url) {
   JNIEnv* env = base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jstring> urlJStr =
