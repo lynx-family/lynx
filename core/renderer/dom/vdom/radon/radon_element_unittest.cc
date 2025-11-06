@@ -1,6 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #define private public
 #define protected public
 
@@ -68,16 +69,12 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
 
   auto element = manager->CreateNode("view", comp.get()->attribute_holder());
 
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value("30px"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDWidth,
+                            tasm::CSSValue::MakePlainString("30px"));
   EXPECT_TRUE(element->has_layout_only_props_ == true);
 
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDFilter,
-      tasm::CSSValue(lepus::Value("grey"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDFilter,
+                            tasm::CSSValue::MakePlainString("grey"));
   EXPECT_TRUE(element->has_layout_only_props_ == false);
 
   EXPECT_TRUE(element->has_transition_props_changed_ == false);
@@ -92,22 +89,17 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
   EXPECT_TRUE(element->computed_css_style()->IsOverflowXY());
   EXPECT_TRUE(element->has_non_flatten_attrs_ == false);
 
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDTransition,
-      tasm::CSSValue(lepus::Value("test"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDTransition,
+                            tasm::CSSValue::MakePlainString("test"));
   EXPECT_TRUE(element->has_transition_props_changed_ == true);
   EXPECT_TRUE(element->has_non_flatten_attrs_ == true);
 
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDAnimation,
-      tasm::CSSValue(lepus::Value("test"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDAnimation,
+                            tasm::CSSValue::MakePlainString("test"));
 
   EXPECT_TRUE(element->has_keyframe_props_changed_ == true);
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                            tasm::CSSValue::MakePlainString("3"));
   EXPECT_TRUE(element->has_z_props());
 
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDTransition);
@@ -148,10 +140,8 @@ TEST_F(RadonElementTest, CheckShouldFlushGestureDetector) {
   auto element = manager->CreateNode("view", comp.get()->attribute_holder());
 
   // Set an internal style property for the element's width.
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value("40px"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDWidth,
+                            tasm::CSSValue::MakePlainString("40px"));
 
   // Validate that the element has layout-only properties.
   EXPECT_TRUE(element->has_layout_only_props_ == true);

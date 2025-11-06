@@ -1,18 +1,18 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#define private public
-#include "core/renderer/dom/air/air_element/air_element.h"
 
-#include "core/renderer/dom/air/air_element/air_component_element.h"
-#include "core/renderer/dom/air/air_element/air_page_element.h"
-#undef private
+#define private public
+#define protected public
+
+#include "core/renderer/dom/air/air_element/air_element.h"
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/air/air_element/air_component_element.h"
 #include "core/renderer/dom/air/air_element/air_for_element.h"
+#include "core/renderer/dom/air/air_element/air_page_element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/utils/value_utils.h"
@@ -188,7 +188,7 @@ TEST_F(AirElementTest, InsertNode) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto element = CreateAirNode("view", lepus_id++)->Get();
-  tasm::CSSValue css_value(lepus::Value("visible"));
+  auto css_value = tasm::CSSValue::MakePlainString("visible");
   element->SetStyle(CSSPropertyID::kPropertyIDOverflow, css_value);
   parent->InsertNode(element);
 
@@ -202,7 +202,7 @@ TEST_F(AirElementTest, SetStyle) {
   manager->SetConfig(config);
 
   auto element = CreateAirNode("view", 1)->Get();
-  tasm::CSSValue css_value_visible(lepus::Value("visible"));
+  auto css_value_visible = tasm::CSSValue::MakePlainString("visible");
   EXPECT_CALL(
       tasm_mediator,
       UpdateLayoutNodeStyle(element->impl_id(),
@@ -230,8 +230,7 @@ TEST_F(AirElementTest, InsertNodeBefore) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto element = CreateAirNode("view", lepus_id++)->Get();
-  tasm::CSSValue style(lepus::Value("visible"),
-                       lynx::tasm::CSSValuePattern::STRING);
+  auto style = tasm::CSSValue::MakePlainString("visible");
   element->SetStyle(CSSPropertyID::kPropertyIDOverflow, style);
   parent->InsertNode(element);
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 1);
@@ -283,8 +282,7 @@ TEST_F(AirElementTest, RemoveNodeAndFlush) {
 
   // insert first_element to parent
   auto first_element = CreateAirNode("view", lepus_id++)->Get();
-  tasm::CSSValue style(lepus::Value("visible"),
-                       lynx::tasm::CSSValuePattern::STRING);
+  auto style = tasm::CSSValue::MakePlainString("visible");
   first_element->SetStyle(CSSPropertyID::kPropertyIDOverflow, style);
   parent->InsertNode(first_element);
   EXPECT_CALL(tasm_mediator,
@@ -848,15 +846,15 @@ TEST_F(AirElementTest, UpdateInlineStyleAndFlush) {
   auto parent = CreateAirNode("view", 1)->Get();
   auto child = CreateAirNode("view", 2)->Get();
   parent->InsertNode(child);
-  tasm::CSSValue css_value_border_width(lepus::Value("2px"));
+  auto css_value_border_width = tasm::CSSValue::MakePlainString("2px");
   child->SetInlineStyle(CSSPropertyID::kPropertyIDBorderTopWidth,
                         css_value_border_width);
-  tasm::CSSValue css_value_border_color(lepus::Value("#fe002b"));
+  auto css_value_border_color = tasm::CSSValue::MakePlainString("#fe002b");
   child->SetInlineStyle(CSSPropertyID::kPropertyIDBorderTopColor,
                         css_value_border_color);
   parent->FlushRecursively();
 
-  tasm::CSSValue css_value_update_border_width(lepus::Value("2px"));
+  auto css_value_update_border_width = tasm::CSSValue::MakePlainString("2px");
   child->SetInlineStyle(CSSPropertyID::kPropertyIDBorderTopWidth,
                         css_value_update_border_width);
   AirElement::StylePatch style_patch;
@@ -888,7 +886,8 @@ TEST_F(AirElementTest, CheckFlattenStylesAndAttributes) {
   parent->InsertNode(child_5);
   parent->InsertNode(child_6);
 
-  tasm::CSSValue animation(lepus::Value("translateShow 0.3s linear forwards"));
+  auto animation =
+      tasm::CSSValue::MakePlainString("translateShow 0.3s linear forwards");
   child_1->SetStyle(CSSPropertyID::kPropertyIDAnimation, animation);
   EXPECT_TRUE(child_1->has_animate_props_);
 

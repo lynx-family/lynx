@@ -220,7 +220,7 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithoutOptimization) {
   EXPECT_TRUE(element->is_view());
   EXPECT_TRUE(element->CanBeLayoutOnly());
   element->SetStyleInternal(CSSPropertyID::kPropertyIDDirection,
-                            tasm::CSSValue(lepus::Value("lynx-rtl")));
+                            tasm::CSSValue::MakePlainString("lynx-rtl"));
   EXPECT_FALSE(element->CanBeLayoutOnly());
 }
 
@@ -238,9 +238,9 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithOptimization) {
   // With enable_extended_layout_only_opt_, "text-align,direction" shall not
   // make the layout only optimization invalid
   element->SetStyleInternal(CSSPropertyID::kPropertyIDDirection,
-                            tasm::CSSValue(lepus::Value("lynx-rtl")));
+                            tasm::CSSValue::MakePlainString("lynx-rtl"));
   element->SetStyleInternal(CSSPropertyID::kPropertyIDTextAlign,
-                            tasm::CSSValue(lepus::Value("center")));
+                            tasm::CSSValue::MakePlainString("center"));
   // view can be layout only by default.
   EXPECT_TRUE(element->CanBeLayoutOnly());
   // Other style will make layout only false.

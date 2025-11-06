@@ -1464,10 +1464,8 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   page->InsertNode(parent);
 
   auto element = manager->CreateFiberNode("view");
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue::MakePlainString("visible"));
   parent->InsertNode(element);
 
   auto element0 = manager->CreateFiberNode("view");
@@ -1503,10 +1501,8 @@ TEST_P(FiberElementTest, InsertNode) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto element = manager->CreateFiberNode("view");
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue::MakePlainString("visible"));
   parent->InsertNode(element);
 
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 1);
@@ -1519,10 +1515,8 @@ TEST_P(FiberElementTest, TestAttachedState) {
   EXPECT_TRUE(parent->IsDetached());
 
   auto element = manager->CreateFiberNode("view");
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue::MakePlainString("visible"));
   parent->InsertNode(element);
   EXPECT_TRUE(parent->IsDetached());
   EXPECT_TRUE(element->IsDetached());
@@ -1572,10 +1566,8 @@ TEST_P(FiberElementTest, InsertNodeBefore) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto element = manager->CreateFiberNode("view");
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue::MakePlainString("visible"));
   parent->InsertNode(element);
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 1);
   auto second_element = manager->CreateFiberNode("view");
@@ -1661,10 +1653,8 @@ TEST_P(FiberElementTest, RemoveNodeAndFlush) {
 
   // insert first_element to parent
   auto first_element = manager->CreateFiberNode("view");
-  first_element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  first_element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                                  tasm::CSSValue::MakePlainString("visible"));
   parent->InsertNode(first_element);
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 1);
 
@@ -3826,19 +3816,19 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDTextAlign] =
-        CSSValue(lepus::Value("center"));
+        CSSValue::MakePlainString("center");
     tokens.get()
         ->raw_attributes_[CSSPropertyID::kPropertyIDBorderEndEndRadius] =
-        CSSValue(lepus::Value("30px"));
+        CSSValue::MakePlainString("30px");
     tokens.get()
         ->raw_attributes_[CSSPropertyID::kPropertyIDBorderStartEndRadius] =
-        CSSValue(lepus::Value("20px"));
+        CSSValue::MakePlainString("20px");
     tokens.get()
         ->raw_attributes_[CSSPropertyID::kPropertyIDBorderEndStartRadius] =
-        CSSValue(lepus::Value("10px"));
+        CSSValue::MakePlainString("10px");
     tokens.get()
         ->raw_attributes_[CSSPropertyID::kPropertyIDBorderStartStartRadius] =
-        CSSValue(lepus::Value("5px"));
+        CSSValue::MakePlainString("5px");
 
     std::string key = ".title";
     auto& sheets = tokens->sheets();
@@ -4125,7 +4115,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase03) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDMarginRight] =
-        CSSValue(lepus::Value("12px"));
+        CSSValue::MakePlainString("12px");
 
     std::string key = ".title";
     auto& sheets = tokens->sheets();
@@ -4210,7 +4200,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase04) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDMarginRight] =
-        CSSValue(lepus::Value("12px"));
+        CSSValue::MakePlainString("12px");
 
     std::string key = ".title";
     auto& sheets = tokens->sheets();
@@ -5121,23 +5111,18 @@ TEST_P(FiberElementTest, CheckFlags) {
 TEST_P(FiberElementTest, CheckFlattenRelatedFlags) {
   auto element = manager->CreateFiberNode("view");
   EXPECT_TRUE(element->has_non_flatten_attrs_ == false);
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDTransition,
-      tasm::CSSValue(lepus::Value("test"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDTransition,
+                            tasm::CSSValue::MakePlainString("test"));
   EXPECT_TRUE(element->has_transition_props_changed_ == true);
   EXPECT_TRUE(element->has_non_flatten_attrs_ == true);
 
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDAnimation,
-      tasm::CSSValue(lepus::Value("test"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDAnimation,
+                            tasm::CSSValue::MakePlainString("test"));
 
   element->has_non_flatten_attrs_ = false;
   EXPECT_TRUE(element->has_keyframe_props_changed_ == true);
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                            tasm::CSSValue::MakePlainString("3"));
   EXPECT_TRUE(element->has_z_props());
 
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDTransition);
@@ -5474,11 +5459,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables_0) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("300px"));
+        CSSValue::MakePlainString("300px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "yellow");
     tokens->style_variables_.insert_or_assign("--main-height", "300px");
     std::string key = ".one";
@@ -5492,15 +5477,14 @@ TEST_P(FiberElementTest, UpdateCSSVariables_0) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("50%"));
-    tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("{{--main-height}}"), CSSValuePattern::STRING,
-                 CSSValueType::VARIABLE);
+        CSSValue::MakePlainString("50%");
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] = CSSValue(
+        "{{--main-height}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
     std::string key = ".three";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -5574,11 +5558,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables_1) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("300px"));
+        CSSValue::MakePlainString("300px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "yellow");
     std::string key = ".one";
     auto& sheets = tokens->sheets();
@@ -5591,11 +5575,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables_1) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("300px"));
+        CSSValue::MakePlainString("300px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "green");
     std::string key = ".two";
     auto& sheets = tokens->sheets();
@@ -5608,14 +5592,14 @@ TEST_P(FiberElementTest, UpdateCSSVariables_1) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("50%"));
+        CSSValue::MakePlainString("50%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("50%"));
+        CSSValue::MakePlainString("50%");
     std::string key = ".three";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -5697,11 +5681,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables_CSS_NG_1) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("300px"));
+        CSSValue::MakePlainString("300px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "yellow");
     std::string key = ".one";
     auto& sheets = tokens->sheets();
@@ -5714,11 +5698,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables_CSS_NG_1) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("300px"));
+        CSSValue::MakePlainString("300px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "green");
     std::string key = ".two";
     auto& sheets = tokens->sheets();
@@ -5731,14 +5715,14 @@ TEST_P(FiberElementTest, UpdateCSSVariables_CSS_NG_1) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("50%"));
+        CSSValue::MakePlainString("50%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("50%"));
+        CSSValue::MakePlainString("50%");
     std::string key = ".three";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -5879,11 +5863,10 @@ TEST_P(FiberElementTest, UpdateMultipleCSSVariables) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
-    tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("{{--main-height}}"), CSSValuePattern::STRING,
-                 CSSValueType::VARIABLE);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] = CSSValue(
+        "{{--main-height}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
     std::string key = ".three";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -6008,11 +5991,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("300px"));
+        CSSValue::MakePlainString("300px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "yellow");
     tokens->style_variables_.insert_or_assign("--main-height", "300px");
     std::string key = ".one";
@@ -6028,13 +6011,13 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
     tokens->style_variables_.insert_or_assign("--main-height", "100px");
     tokens->style_variables_.insert_or_assign("--main-bg-color", "pink");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("black"));
+        CSSValue::MakePlainString("black");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("100%"));
+        CSSValue::MakePlainString("100%");
     std::string key = ".two";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -6046,15 +6029,14 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("white"));
+        CSSValue::MakePlainString("white");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("50%"));
-    tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("{{--main-height}}"), CSSValuePattern::STRING,
-                 CSSValueType::VARIABLE);
+        CSSValue::MakePlainString("50%");
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] = CSSValue(
+        "{{--main-height}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
     std::string key = ".three";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -6066,13 +6048,13 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("25%"));
+        CSSValue::MakePlainString("25%");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("calc({{--main-height}} - 50px)"),
-                 CSSValuePattern::STRING, CSSValueType::VARIABLE);
+        CSSValue("calc({{--main-height}} - 50px)", CSSValuePattern::STRING,
+                 CSSValueType::VARIABLE);
     std::string key = ".four";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -6124,11 +6106,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
     // class .test
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDWidth] =
-        CSSValue(lepus::Value("30px"));
+        CSSValue::MakePlainString("30px");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDHeight] =
-        CSSValue(lepus::Value("40px"));
+        CSSValue::MakePlainString("40px");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--main-bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--main-bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -6249,9 +6231,8 @@ TEST_P(FiberElementTest, CSSVariableShorthandProcess) {
   // class .child
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
-    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBorderRadius] =
-        CSSValue(lepus::Value("{{--radius-max}}"), CSSValuePattern::STRING,
-                 CSSValueType::VARIABLE);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBorderRadius] = CSSValue(
+        "{{--radius-max}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
     std::string key = ".child";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -6348,7 +6329,7 @@ TEST_P(FiberElementTest, SetKeyframes) {
   CSSRawKeyframesContent raw_keyframes;
   RawStyleMap* raw_attrs_0 = new RawStyleMap();
   raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                CSSValue(lepus::Value("translate(0%, 0%)")));
+                                CSSValue::MakePlainString("translate(0%, 0%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -6356,7 +6337,7 @@ TEST_P(FiberElementTest, SetKeyframes) {
   RawStyleMap* raw_attrs_1 = new RawStyleMap();
   raw_attrs_1->insert_or_assign(
       CSSPropertyID::kPropertyIDTransform,
-      CSSValue(lepus::Value("translate(100%, 100%)")));
+      CSSValue::MakePlainString("translate(100%, 100%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -6527,7 +6508,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
   CSSRawKeyframesContent raw_keyframes;
   RawStyleMap* raw_attrs_0 = new RawStyleMap();
   raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                CSSValue(lepus::Value("translate(0%, 0%)")));
+                                CSSValue::MakePlainString("translate(0%, 0%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -6535,7 +6516,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
   RawStyleMap* raw_attrs_1 = new RawStyleMap();
   raw_attrs_1->insert_or_assign(
       CSSPropertyID::kPropertyIDTransform,
-      CSSValue(lepus::Value("translate(100%, 100%)")));
+      CSSValue::MakePlainString("translate(100%, 100%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -6732,7 +6713,7 @@ TEST_P(FiberElementTest, SetKeyframes_new_animator) {
   CSSRawKeyframesContent raw_keyframes;
   RawStyleMap* raw_attrs_0 = new RawStyleMap();
   raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                CSSValue(lepus::Value("translate(0%, 0%)")));
+                                CSSValue::MakePlainString("translate(0%, 0%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -6740,7 +6721,7 @@ TEST_P(FiberElementTest, SetKeyframes_new_animator) {
   RawStyleMap* raw_attrs_1 = new RawStyleMap();
   raw_attrs_1->insert_or_assign(
       CSSPropertyID::kPropertyIDTransform,
-      CSSValue(lepus::Value("translate(100%, 100%)")));
+      CSSValue::MakePlainString("translate(100%, 100%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -6864,7 +6845,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
   CSSRawKeyframesContent raw_keyframes;
   RawStyleMap* raw_attrs_0 = new RawStyleMap();
   raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                CSSValue(lepus::Value("translate(0%, 0%)")));
+                                CSSValue::MakePlainString("translate(0%, 0%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -6872,7 +6853,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
   RawStyleMap* raw_attrs_1 = new RawStyleMap();
   raw_attrs_1->insert_or_assign(
       CSSPropertyID::kPropertyIDTransform,
-      CSSValue(lepus::Value("translate(100%, 100%)")));
+      CSSValue::MakePlainString("translate(100%, 100%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -6999,7 +6980,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {
   {
     RawStyleMap* raw_attrs_0 = new RawStyleMap();
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                  CSSValue(lepus::Value("scale(0, 0))")));
+                                  CSSValue::MakePlainString("scale(0, 0)"));
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
                                   CSSValue(0.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
@@ -7008,7 +6989,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {
 
     RawStyleMap* raw_attrs_1 = new RawStyleMap();
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                  CSSValue(lepus::Value("scale(1, 1))")));
+                                  CSSValue::MakePlainString("scale(1, 1)"));
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
                                   CSSValue(1.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
@@ -7105,7 +7086,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle_new_animator) {
   {
     RawStyleMap* raw_attrs_0 = new RawStyleMap();
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                  CSSValue(lepus::Value("scale(0, 0))")));
+                                  CSSValue::MakePlainString("scale(0, 0)"));
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
                                   CSSValue(0.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
@@ -7114,7 +7095,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle_new_animator) {
 
     RawStyleMap* raw_attrs_1 = new RawStyleMap();
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                  CSSValue(lepus::Value("scale(1, 1))")));
+                                  CSSValue::MakePlainString("scale(1, 1)"));
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
                                   CSSValue(1.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
@@ -7876,7 +7857,7 @@ TEST_P(FiberElementTest, GetCSSKeyframesToken) {
   CSSRawKeyframesContent raw_keyframes;
   RawStyleMap* raw_attrs_0 = new RawStyleMap();
   raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                CSSValue(lepus::Value("translate(0%, 0%)")));
+                                CSSValue::MakePlainString("translate(0%, 0%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
@@ -7884,7 +7865,7 @@ TEST_P(FiberElementTest, GetCSSKeyframesToken) {
   RawStyleMap* raw_attrs_1 = new RawStyleMap();
   raw_attrs_1->insert_or_assign(
       CSSPropertyID::kPropertyIDTransform,
-      CSSValue(lepus::Value("translate(100%, 100%)")));
+      CSSValue::MakePlainString("translate(100%, 100%)"));
   std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
   raw_keyframes.insert(
       std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
@@ -8329,7 +8310,7 @@ TEST_P(FiberElementTest, CSSVariableOrderTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBorder] =
-        CSSValue(lepus::Value("1px solid red"));
+        CSSValue::MakePlainString("1px solid red");
     tokens->style_variables_["--bg-color"] = "yellow";
     std::string key = ".container";
     auto& sheets = tokens->sheets();
@@ -8342,10 +8323,10 @@ TEST_P(FiberElementTest, CSSVariableOrderTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackground] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = ".text";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -8357,9 +8338,9 @@ TEST_P(FiberElementTest, CSSVariableOrderTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackground] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("{{--bg-color}}"), CSSValuePattern::STRING,
+        CSSValue("{{--bg-color}}", CSSValuePattern::STRING,
                  CSSValueType::VARIABLE);
     std::string key = ".text1";
     auto& sheets = tokens->sheets();
@@ -8372,10 +8353,9 @@ TEST_P(FiberElementTest, CSSVariableOrderTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
-    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackground] =
-        CSSValue(lepus::Value("{{--bg-color}}"), CSSValuePattern::STRING,
-                 CSSValueType::VARIABLE);
+        CSSValue::MakePlainString("red");
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackground] = CSSValue(
+        "{{--bg-color}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
     std::string key = ".text2";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -8386,11 +8366,10 @@ TEST_P(FiberElementTest, CSSVariableOrderTest) {
   // class .text3
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
-    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackground] =
-        CSSValue(lepus::Value("{{--bg-color}}"), CSSValuePattern::STRING,
-                 CSSValueType::VARIABLE);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackground] = CSSValue(
+        "{{--bg-color}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = ".text3";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -9916,10 +9895,8 @@ TEST_P(FiberElementTest, CopyInsertNode) {
   element->AttachToElementManager(
       manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
 
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue::MakePlainString("visible"));
   parent->InsertNode(element);
 
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 1);
@@ -10294,7 +10271,7 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
   {
     RawStyleMap* raw_attrs_0 = new RawStyleMap();
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                  CSSValue(lepus::Value("scale(0, 0))")));
+                                  CSSValue::MakePlainString("scale(0, 0)"));
     raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
                                   CSSValue(0.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
@@ -10303,7 +10280,7 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
 
     RawStyleMap* raw_attrs_1 = new RawStyleMap();
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
-                                  CSSValue(lepus::Value("scale(1, 1))")));
+                                  CSSValue::MakePlainString("scale(1, 1)"));
     raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
                                   CSSValue(1.0, CSSValuePattern::NUMBER));
     std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
@@ -11301,7 +11278,7 @@ TEST_P(FiberElementTest, ClassChildSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11319,7 +11296,7 @@ TEST_P(FiberElementTest, ClassChildSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("green"));
+        CSSValue::MakePlainString("green");
     std::string key = ".A:first-child";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11332,7 +11309,7 @@ TEST_P(FiberElementTest, ClassChildSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = ".A:last-child";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11413,7 +11390,7 @@ TEST_P(FiberElementTest, TagNotSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11431,7 +11408,7 @@ TEST_P(FiberElementTest, TagNotSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = ".C:not(view)";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11501,7 +11478,7 @@ TEST_P(FiberElementTest, ClassNotSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".C";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11519,7 +11496,7 @@ TEST_P(FiberElementTest, ClassNotSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = ".C:not(.B)";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11597,7 +11574,7 @@ TEST_P(FiberElementTest, IdNotSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".C";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11615,7 +11592,7 @@ TEST_P(FiberElementTest, IdNotSelectorTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = ".C:not(#B)";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11693,7 +11670,7 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11705,7 +11682,7 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("green"));
+        CSSValue::MakePlainString("green");
     std::string key = ".B";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11717,7 +11694,7 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("black"));
+        CSSValue::MakePlainString("black");
     std::string key = ".C";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11735,7 +11712,7 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = ".C.A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11747,7 +11724,7 @@ TEST_P(FiberElementTest, Class_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = ".C.B";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11817,7 +11794,7 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11835,7 +11812,7 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = "#C#A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11847,7 +11824,7 @@ TEST_P(FiberElementTest, ID_IDCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = "#C#B";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11917,7 +11894,7 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11935,7 +11912,7 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = ".C#A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -11947,7 +11924,7 @@ TEST_P(FiberElementTest, Class_IDCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = ".C#B";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -12017,7 +11994,7 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("blue"));
+        CSSValue::MakePlainString("blue");
     std::string key = ".A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -12035,7 +12012,7 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("yellow"));
+        CSSValue::MakePlainString("yellow");
     std::string key = "#C.A";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -12047,7 +12024,7 @@ TEST_P(FiberElementTest, ID_ClassCascadeForceFlushTest) {
   {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
     tokens->raw_attributes_[CSSPropertyID::kPropertyIDBackgroundColor] =
-        CSSValue(lepus::Value("red"));
+        CSSValue::MakePlainString("red");
     std::string key = "#C.B";
     auto& sheets = tokens->sheets();
     auto shared_css_sheet = std::make_shared<CSSSheet>(key);
@@ -14367,9 +14344,9 @@ TEST_P(FiberElementTest, TestCanBeLayoutOnly) {
   // With enable_extended_layout_only_opt_, "text-align,direction" shall not
   // make the layout only optimization invalid
   fiber_element->SetStyleInternal(CSSPropertyID::kPropertyIDDirection,
-                                  tasm::CSSValue(lepus::Value("lynx-rtl")));
+                                  tasm::CSSValue::MakePlainString("lynx-rtl"));
   fiber_element->SetStyleInternal(CSSPropertyID::kPropertyIDTextAlign,
-                                  tasm::CSSValue(lepus::Value("center")));
+                                  tasm::CSSValue::MakePlainString("center"));
   // view can be layout only by default.
   EXPECT_TRUE(fiber_element->CanBeLayoutOnly());
   // Other style will make layout only false.
@@ -14896,9 +14873,9 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
       tokens.get()->raw_attributes_[id] = CSSValue(impl);
 
       tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-          CSSValue(lepus::Value("var(--main-color)"));
+          CSSValue::MakePlainString("var(--main-color)");
       tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
-          CSSValue(lepus::Value("var(--font-size)"));
+          CSSValue::MakePlainString("var(--font-size)");
 
       std::string key = ".view0-class";
       auto& sheets = tokens->sheets();
@@ -14915,9 +14892,9 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
       tokens.get()->raw_attributes_[id] = CSSValue(impl);
 
       tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
-          CSSValue(lepus::Value("var(--main-color)"));
+          CSSValue::MakePlainString("var(--main-color)");
       tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
-          CSSValue(lepus::Value("var(--font-size)"));
+          CSSValue::MakePlainString("var(--font-size)");
 
       std::string key = ".view1-class";
       auto& sheets = tokens->sheets();

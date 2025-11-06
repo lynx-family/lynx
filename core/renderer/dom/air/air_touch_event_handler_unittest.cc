@@ -1,7 +1,9 @@
 // Copyright 2022 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #define private public
+#define protected public
 
 #include "core/renderer/dom/air/air_touch_event_handler.h"
 
@@ -65,8 +67,7 @@ TEST_F(AirTouchEventHandlerTest, GenerateResponseChain) {
   manager->SetConfig(config);
   uint32_t lepus_id = 1;
   auto parent = CreateAirNode("view", lepus_id++)->Get();
-  CSSValue css_value(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING);
+  auto css_value = CSSValue::MakePlainString("visible");
   parent->SetStyle(CSSPropertyID::kPropertyIDOverflow, css_value);
 
   auto element1 = CreateAirNode("view", lepus_id++)->Get();
@@ -165,7 +166,7 @@ TEST_F(AirTouchEventHandlerTest, TriggerComponentEvent) {
   uint32_t lepus_id = 1;
   auto parent = CreateAirNode("view", lepus_id++)->Get();
 
-  CSSValue style(lepus::Value("visible"), lynx::tasm::CSSValuePattern::STRING);
+  auto style = CSSValue::MakePlainString("visible");
   parent->SetStyle(CSSPropertyID::kPropertyIDOverflow, style);
 
   auto element1 = CreateAirNode("view", lepus_id++)->Get();

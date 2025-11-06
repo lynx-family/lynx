@@ -24,7 +24,7 @@ TEST(CSSParseToken, GetAttributes) {
   CSSParserConfigs parser_configs;
   auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
   tokens->raw_attributes().insert_or_assign(CSSPropertyID::kPropertyIDFontSize,
-                                            CSSValue(lepus::Value("18px")));
+                                            CSSValue::MakePlainString("18px"));
 
   EXPECT_FALSE(tokens->raw_attributes().empty());
 
@@ -93,11 +93,11 @@ TEST(CSSParseToken, ParallelProcessAttributes) {
 
   RawStyleMap raw_attributes;
   raw_attributes.insert_or_assign(CSSPropertyID::kPropertyIDFontSize,
-                                  CSSValue(lepus::Value("18px")));
+                                  CSSValue::MakePlainString("18px"));
   raw_attributes.insert_or_assign(CSSPropertyID::kPropertyIDHeight,
-                                  CSSValue(lepus::Value("18px")));
+                                  CSSValue::MakePlainString("18px"));
   raw_attributes.insert_or_assign(CSSPropertyID::kPropertyIDWidth,
-                                  CSSValue(lepus::Value("18px")));
+                                  CSSValue::MakePlainString("18px"));
 
   auto tokens = fml::MakeRefCounted<CSSParseToken>(parser_configs);
   tokens->raw_attributes_ = std::move(raw_attributes);

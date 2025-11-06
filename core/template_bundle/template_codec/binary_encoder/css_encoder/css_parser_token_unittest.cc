@@ -23,7 +23,7 @@ TEST(EncodeCSSParseToken, GetAttributes) {
   auto tokens = std::make_shared<encoder::CSSParseToken>(parser_configs);
   tokens->raw_attributes().insert_or_assign(
       tasm::CSSPropertyID::kPropertyIDFontSize,
-      tasm::CSSValue(lepus::Value("18px")));
+      tasm::CSSValue::MakePlainString("18px"));
 
   EXPECT_FALSE(tokens->raw_attributes().empty());
 

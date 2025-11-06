@@ -1,9 +1,11 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #define private public
+#define protected public
+
 #include "core/renderer/dom/air/air_element/air_block_element.h"
-#undef private
 
 #include "core/renderer/dom/air/air_element/air_page_element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -72,7 +74,7 @@ TEST_F(AirBlockElementTest, InsertNode) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto block_element = CreateAirBlockNode(lepus_id++);
-  CSSValue css_value(lepus::Value("visible"), CSSValuePattern::STRING);
+  auto css_value = CSSValue::MakePlainString("visible");
   block_element->SetStyle(CSSPropertyID::kPropertyIDOverflow, css_value);
   parent->InsertNode(block_element);
 
@@ -93,7 +95,7 @@ TEST_F(AirBlockElementTest, RemoveNode) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto block_element = CreateAirBlockNode(lepus_id++);
-  CSSValue css_value(lepus::Value("visible"), CSSValuePattern::STRING);
+  auto css_value = CSSValue::MakePlainString("visible");
   block_element->SetStyle(CSSPropertyID::kPropertyIDOverflow, css_value);
   parent->InsertNode(block_element);
 
@@ -119,7 +121,7 @@ TEST_F(AirBlockElementTest, NonVirtualNodeCountInParent) {
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
 
   auto block_element = CreateAirBlockNode(lepus_id++);
-  tasm::CSSValue css_value(lepus::Value("visible"), CSSValuePattern::STRING);
+  auto css_value = tasm::CSSValue::MakePlainString("visible");
   block_element->SetStyle(CSSPropertyID::kPropertyIDOverflow, css_value);
   parent->InsertNode(block_element);
 
