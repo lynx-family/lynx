@@ -64,7 +64,7 @@ class EventTarget {
     return fml::WeakPtr<EventTarget>();
   }
 
-  virtual DispatchEventResult DispatchEvent(Event&);
+  virtual DispatchEventResult DispatchEvent(fml::RefPtr<Event>);
   virtual bool AddEventListener(const std::string& type,
                                 std::shared_ptr<EventListener> listener);
   virtual bool RemoveEventListener(const std::string& type,
@@ -81,12 +81,6 @@ class EventTarget {
 
   EventTargetType target_type() { return target_type_; }
 
-  // Check whether catch the event when capture.
-  virtual bool IsEventCaptureCatch(const std::string& event) { return false; }
-
-  // Check whether catch the event when bubble.
-  virtual bool IsEventBubbleCatch(const std::string& event) { return false; }
-
   // Check whether catch the event path.
   virtual bool IsEventPathCatch() { return false; }
 
@@ -97,13 +91,12 @@ class EventTarget {
 
   // Get information used to control event sending, compatible with events
   // bound through __AddEvent.
-  virtual lepus::Value GetEventControlInfo(const std::string& event_type,
-                                           bool is_global = false) {
+  virtual lepus::Value GetEventControlInfo(bool is_core_event = false) {
     return lepus::Value();
   }
 
   // Handle the trigger-global-event attribute and the global-bind event.
-  virtual void HandleGlobalEvent(Event& event) {}
+  virtual void HandleGlobalEvent(fml::RefPtr<Event> event) {}
   // Get the switch which controls whether compatible multi touch params.
   virtual bool GetEnableMultiTouchParamsCompatible() { return false; }
   // Get unit to calculate the position.

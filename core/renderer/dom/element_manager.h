@@ -237,6 +237,7 @@ class ElementManager : public ElementContextDelegate {
 
     virtual void ReportElementMemoryInfo(int64_t mem_size_bytes,
                                          int element_count) = 0;
+    virtual TemplateAssembler *GetTasm() = 0;
   };
 
   ElementManager(
@@ -1075,6 +1076,8 @@ class ElementManager : public ElementContextDelegate {
   ElementManagerDelegate *element_manager_delegate() {
     return element_manager_delegate_;
   }
+
+  Delegate *delegate() { return delegate_; }
 
   void LegacyHandleLayoutTask(FiberElement *target,
                               base::MoveOnlyClosure<void> operation);

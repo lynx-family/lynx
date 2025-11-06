@@ -30,9 +30,10 @@ TEST_F(EventTargetTest, TestEventTargetTest0) {
       "test", std::make_unique<MockEventListener>(
                   EventListener::Type::kJSClosureEventListener, "1")));
 
-  Event mock_event("test", Event::EventType::kTouchEvent, Event::Capture::kNo,
-                   Event::Bubbles::kNo, Event::Cancelable::kYes,
-                   Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  auto mock_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kTouchEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
 
   // add {"test": "1"}
   mock_target_->AddEventListener(
@@ -128,9 +129,10 @@ TEST_F(EventTargetTest, TestEventTargetEraseBefore) {
       "test", std::make_unique<MockEventListener>(
                   EventListener::Type::kJSClosureEventListener, "1")));
 
-  Event mock_event("test", Event::EventType::kTouchEvent, Event::Capture::kNo,
-                   Event::Bubbles::kNo, Event::Cancelable::kYes,
-                   Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  auto mock_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kTouchEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
 
   // add {"test": "1"}
   mock_target_->AddEventListener(
@@ -188,9 +190,10 @@ TEST_F(EventTargetTest, TestEventTargetEraseCurrent) {
       "test", std::make_unique<MockEventListener>(
                   EventListener::Type::kJSClosureEventListener, "1")));
 
-  Event mock_event("test", Event::EventType::kTouchEvent, Event::Capture::kNo,
-                   Event::Bubbles::kNo, Event::Cancelable::kYes,
-                   Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  auto mock_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kTouchEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
 
   // add {"test": "1"}
   mock_target_->AddEventListener(
@@ -247,9 +250,10 @@ TEST_F(EventTargetTest, TestEventTargetEraseAfter) {
       "test", std::make_unique<MockEventListener>(
                   EventListener::Type::kJSClosureEventListener, "1")));
 
-  Event mock_event("test", Event::EventType::kTouchEvent, Event::Capture::kNo,
-                   Event::Bubbles::kNo, Event::Cancelable::kYes,
-                   Event::ComposedMode::kComposed, Event::PhaseType::kNone);
+  auto mock_event = fml::MakeRefCounted<Event>(
+      "test", Event::EventType::kTouchEvent, Event::Capture::kNo,
+      Event::Bubbles::kNo, Event::Cancelable::kYes,
+      Event::ComposedMode::kComposed, Event::PhaseType::kNone);
 
   // add {"test": "1"}
   mock_target_->AddEventListener(

@@ -309,6 +309,13 @@ void TasmMediator::ReportElementMemoryInfo(int64_t mem_size_bytes,
   });
 }
 
+tasm::TemplateAssembler* TasmMediator::GetTasm() {
+  if (!engine_actor_) {
+    return nullptr;
+  }
+  return engine_actor_->Impl()->GetTasm();
+}
+
 void TasmMediator::OnRuntimeGC(
     std::unordered_map<std::string, std::string> mem_info) {
   if (!perf_actor_) {

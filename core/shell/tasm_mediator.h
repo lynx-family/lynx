@@ -161,6 +161,8 @@ class TasmMediator : public LynxEngine::Delegate {
   void ReportElementMemoryInfo(int64_t memory_size_bytes,
                                int element_count) override;
 
+  tasm::TemplateAssembler* GetTasm() override;
+
   void OnRuntimeGC(
       std::unordered_map<std::string, std::string> mem_info) override;
 

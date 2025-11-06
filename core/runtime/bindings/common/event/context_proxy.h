@@ -63,7 +63,7 @@ class ContextProxy : public event::EventTarget {
   event::EventListener* GetListenerBeforePublishEvent();
 
   virtual event::DispatchEventResult DispatchEvent(
-      event::Event& event) override;
+      fml::RefPtr<event::Event> event) override;
 
   virtual EventTarget* GetParentTarget() override { return nullptr; };
 

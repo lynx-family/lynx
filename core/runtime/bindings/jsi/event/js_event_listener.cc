@@ -32,7 +32,7 @@ JSClosureEventListener::JSClosureEventListener(
   closure_ = piper::Value(*rt, closure);
 }
 
-void JSClosureEventListener::Invoke(event::Event* event) {
+void JSClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, JS_CLOSURE_EVENT_LISTENER_INVOKE, "name",
               event ? event->type() : "");
   LOGI("JSClosureEventListener::Invoke name: " << (event ? event->type() : ""));
@@ -108,7 +108,7 @@ piper::Value JSClosureEventListener::GetClosure() {
 }
 
 piper::Value JSClosureEventListener::ConvertEventToPiperValue(
-    event::Event* event) {
+    fml::RefPtr<event::Event> event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               CLOSURE_EVENT_LISTENER_CONVERT_TO_PIPER_VALUE);
   auto app = native_app_.lock();
@@ -121,8 +121,7 @@ piper::Value JSClosureEventListener::ConvertEventToPiperValue(
   }
   piper::Object obj(*rt);
   if (event->event_type() == event::Event::EventType::kMessageEvent) {
-    runtime::MessageEvent* message_event =
-        static_cast<runtime::MessageEvent*>(event);
+    auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
     obj.setProperty(*rt, runtime::kType,
                     piper::String::createFromUtf8(*rt, message_event->type()));
     obj.setProperty(

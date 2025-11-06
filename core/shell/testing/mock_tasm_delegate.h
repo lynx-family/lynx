@@ -53,6 +53,9 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
 
   void ReportElementMemoryInfo(int64_t mem_size_bytes,
                                int element_count) override{};
+
+  TemplateAssembler* GetTasm() override { return nullptr; }
+
   void OnRuntimeGC(
       std::unordered_map<std::string, std::string> mem_info) override{};
 

@@ -3358,7 +3358,7 @@ void TemplateAssembler::OnReceiveMessageEvent(
   if (proxy == nullptr) {
     return;
   }
-  proxy->DispatchEvent(*event);
+  proxy->DispatchEvent(std::move(event));
 }
 
 ContextProxyInLepus* TemplateAssembler::GetContextProxy(

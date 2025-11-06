@@ -1730,30 +1730,27 @@ bool Element::GetEnableFixedNew() const {
   return element_manager()->GetEnableFixedNew();
 }
 
-bool Element::IsEventCaptureCatch(const std::string& event) {
-  auto event_bind = bind_event_catch_map_.find(event);
-  if (event_bind != bind_event_catch_map_.end() &&
-      event_bind->second.capture_catch != 0) {
-    return true;
-  }
-  return false;
-}
-
-bool Element::IsEventBubbleCatch(const std::string& event) {
-  auto event_bind = bind_event_catch_map_.find(event);
-  if (event_bind != bind_event_catch_map_.end() &&
-      event_bind->second.bubble_catch != 0) {
-    return true;
+bool Element::IsEventPathCatch() {
+  // Compatible with the previous logic that position:fixed will modify
+  // the structure of the element tree.
+  bool enable_fiber_element_for_radon_diff =
+      element_manager()->GetEnableFiberElementForRadonDiff();
+  if (enable_fiber_element_for_radon_diff && IsRadonArch() && is_fixed()) {
+    auto root = element_manager()->root();
+    if (this != root) {
+      LOGI("Element::IsEventPathCatch fixed target.");
+      return true;
+    }
   }
   return false;
 }
 
 // TODO(hexionghui): move this to EventDispatcher
-void Element::HandleGlobalEvent(event::Event& event) {
+void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
   // handle the trigger-global-event attribute
-  auto path = event.event_path();
+  auto path = event->event_path();
   auto delegate = element_manager_->element_manager_delegate();
-  event.set_event_phase(event::Event::PhaseType::kGlobal);
+  event->set_event_phase(event::Event::PhaseType::kGlobal);
   for (const auto& item : path) {
     auto current_target = static_cast<Element*>(item.get());
     if (!current_target) {
@@ -1763,9 +1760,9 @@ void Element::HandleGlobalEvent(event::Event& event) {
       continue;
     }
     if (current_target->EnableTriggerGlobalEvent()) {
-      event.set_current_target(current_target->GetWeakTarget());
-      event.HandleEventBaseDetail();
-      delegate->SendGlobalEvent(event.type(), event.detail());
+      event->set_current_target(current_target->GetWeakTarget());
+      event->HandleEventBaseDetail();
+      delegate->SendGlobalEvent(event->type(), event->detail());
     }
   }
 
@@ -1776,7 +1773,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
     return;
   }
   const auto& global_bind_ids =
-      element_manager_->GetGlobalBindElementIds(event.type());
+      element_manager_->GetGlobalBindElementIds(event->type());
   if (global_bind_ids.size() > 0) {
     for (const auto& id : global_bind_ids) {
       auto current_target = node_manager->Get(id);
@@ -1786,7 +1783,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
             "is null.");
         continue;
       }
-      event.set_current_target(current_target->GetWeakTarget());
+      event->set_current_target(current_target->GetWeakTarget());
       const auto& global_bind_target_set = current_target->GlobalBindTarget();
       // If set is empty, means the target is all other elements.
       if (!global_bind_target_set.has_value() ||
@@ -1794,7 +1791,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
         current_target->DispatchEvent(event);
       } else {
         // event can bubble
-        if (event.bubbles()) {
+        if (event->bubbles()) {
           for (const auto& item : path) {
             Element* bubble_target = static_cast<Element*>(item.get());
             if (!bubble_target) {
@@ -1812,12 +1809,12 @@ void Element::HandleGlobalEvent(event::Event& event) {
                                    ->idSelector()
                                    .str();
             if (global_bind_target_set->contains(id_selector)) {
-              event.set_target(bubble_target->GetWeakTarget());
+              event->set_target(bubble_target->GetWeakTarget());
               current_target->DispatchEvent(event);
             }
           }
           // reset target for event
-          event.set_target(GetWeakTarget());
+          event->set_target(GetWeakTarget());
         }
         // event can't bubble
         else {
@@ -1831,6 +1828,49 @@ void Element::HandleGlobalEvent(event::Event& event) {
       }
     }
   }
+}
+
+lepus::Value Element::GetEventTargetInfo(bool is_core_event) {
+  auto dict = lepus::Dictionary::Create();
+  if (data_model_ != nullptr) {
+    BASE_STATIC_STRING_DECL(kId, "id");
+    BASE_STATIC_STRING_DECL(kDataset, "dataset");
+    BASE_STATIC_STRING_DECL(kUid, "uid");
+
+    dict.get()->SetValue(kId, data_model_->idSelector());
+    auto dataset = lepus::Dictionary::Create();
+    for (const auto& [key, value] : data_model_->dataset()) {
+      dataset.get()->SetValue(key, value);
+    }
+    dict.get()->SetValue(kDataset, std::move(dataset));
+    dict.get()->SetValue(kUid, id_);
+  }
+
+  // element ref needed in fiber element worklet
+  if (is_core_event && is_fiber_element()) {
+    BASE_STATIC_STRING_DECL(kElementRefptr, "elementRefptr");
+    dict.get()->SetValue(kElementRefptr, fml::RefPtr<tasm::Element>(this));
+  }
+
+  return lepus::Value(std::move(dict));
+}
+
+lepus::Value Element::GetEventControlInfo(bool is_core_event) {
+  auto array = lepus::CArray::Create();
+  if (is_core_event) {
+    array->emplace_back(ParentComponentId());
+    array->emplace_back(ParentComponentEntryName());
+    array->emplace_back(impl_id());
+  } else {
+    if (InComponent()) {
+      array->emplace_back(false);
+      array->emplace_back(ParentComponentIdString());
+    } else {
+      array->emplace_back(true);
+      array->emplace_back("");
+    }
+  }
+  return lepus::Value(std::move(array));
 }
 
 bool Element::GetEnableMultiTouchParamsCompatible() {

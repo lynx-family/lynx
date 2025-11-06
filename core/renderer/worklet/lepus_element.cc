@@ -135,7 +135,7 @@ tasm::Element* LepusElement::GetElement() {
 
 tasm::EventResult LepusElement::FireElementWorklet(
     const std::string& component_id, const std::string& entry_name,
-    tasm::TemplateAssembler* tasm, lepus::Value& func_val,
+    tasm::TemplateAssembler* tasm, const lepus::Value& func_val,
     const lepus::Value& func_obj, const lepus::Value& value,
     const std::shared_ptr<worklet::LepusApiHandler>& task_handler,
     int element_id, tasm::EventType type) {
