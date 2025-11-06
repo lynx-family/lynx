@@ -94,6 +94,13 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   [attributedString beginEditing];
   GenerateAttributedString(attributedString, element, baseAttributes, inlineElementSigns,
                            &hasViewOrImage);
+  // Apply NSParagraphStyle to entire attributed string to prevent line-height from not working.
+  NSParagraphStyle* paragraphStyle = [textStyle genParagraphStyle];
+  if (paragraphStyle != nil && attributedString.length > 0) {
+    [attributedString addAttribute:NSParagraphStyleAttributeName
+                             value:paragraphStyle
+                             range:NSMakeRange(0, attributedString.length)];
+  }
   [attributedString endEditing];
   text_element->set_need_layout_children(hasViewOrImage);
 
