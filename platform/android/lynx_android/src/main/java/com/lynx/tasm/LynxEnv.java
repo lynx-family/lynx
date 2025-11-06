@@ -955,6 +955,22 @@ public class LynxEnv {
     return delay;
   }
 
+  public int getGlobalMemoryReportThresholdMB() {
+    return getIntFromExternalEnv(LynxEnvKey.GLOBAL_MEMORY_REPORT_THRESHOLD_MB, 30);
+  }
+
+  public static int getIntFromExternalEnv(LynxEnvKey key, int defaultValue) {
+    final String value = getStringFromExternalEnv(key.getDescription());
+    if (value != null && !value.isEmpty()) {
+      try {
+        return Integer.parseInt(value);
+      } catch (NumberFormatException e) {
+        // ignore
+      }
+    }
+    return defaultValue;
+  }
+
   public boolean getVsyncAlignedFlushGlobalSwitch() {
     return mVsyncAlignedFlushGlobalSwitch;
   }

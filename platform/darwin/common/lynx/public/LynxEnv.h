@@ -147,6 +147,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (int)memoryReportIntervalSec;
 
+- (int)globalMemoryReportThresholdMB;
+
 - (NSDictionary<NSString *, NSString *> *)cppEnvDebugDescription;
 
 - (NSDictionary<NSString *, NSString *> *)platformEnvDebugDescription;

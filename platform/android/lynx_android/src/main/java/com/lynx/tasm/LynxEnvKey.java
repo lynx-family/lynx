@@ -42,6 +42,7 @@ public enum LynxEnvKey {
   ENABLE_MEMORY_MONITOR("enable_memory_monitor"),
   MEMORY_ACQUISITION_DELAY_SEC("memory_acquisition_delay_second"),
   MEMORY_REPORT_INTERVAL_SEC("memory_report_interval_sec"),
+  GLOBAL_MEMORY_REPORT_THRESHOLD_MB("global_memory_report_threshold_mb"),
   ENABLE_DATA_LIST_FIX("enable_data_list_fix");
 
   private final String description;

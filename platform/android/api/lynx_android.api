@@ -4678,6 +4678,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public final String com.lynx.tasm.LynxEnv.SP_NAME SP_NAME;
   public static LynxEnv com.lynx.tasm.LynxEnv.inst();
   public static void com.lynx.tasm.LynxEnv.setLazyInitializer(Initializer initializer);
+  public static int com.lynx.tasm.LynxEnv.getIntFromExternalEnv(LynxEnvKey key, int defaultValue);
   public static void com.lynx.tasm.LynxEnv.reportPiperInvoked(String moduleName, String methodName, String paramStr, String url);
   public static String com.lynx.tasm.LynxEnv.getStringFromExternalEnv(LynxEnvKey key);
   public static boolean com.lynx.tasm.LynxEnv.getBooleanFromExternalEnv(LynxEnvKey key, boolean defaultValue);
@@ -4745,6 +4746,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public Boolean com.lynx.tasm.LynxEnv.getEnableMemoryMonitor();
   public String com.lynx.tasm.LynxEnv.getMemoryAcquisitionDelaySec();
   public long com.lynx.tasm.LynxEnv.getMemoryReportIntervalSec();
+  public int com.lynx.tasm.LynxEnv.getGlobalMemoryReportThresholdMB();
   public boolean com.lynx.tasm.LynxEnv.getVsyncAlignedFlushGlobalSwitch();
   public boolean com.lynx.tasm.LynxEnv.isSettingsEnableNewImage();
   public void com.lynx.tasm.LynxEnv.setDebug(boolean debug);
@@ -4853,6 +4855,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_MEMORY_MONITOR ENABLE_MEMORY_MONITOR;
   public com.lynx.tasm.LynxEnvKey.MEMORY_ACQUISITION_DELAY_SEC MEMORY_ACQUISITION_DELAY_SEC;
   public com.lynx.tasm.LynxEnvKey.MEMORY_REPORT_INTERVAL_SEC MEMORY_REPORT_INTERVAL_SEC;
+  public com.lynx.tasm.LynxEnvKey.GLOBAL_MEMORY_REPORT_THRESHOLD_MB GLOBAL_MEMORY_REPORT_THRESHOLD_MB;
   public com.lynx.tasm.LynxEnvKey.ENABLE_DATA_LIST_FIX ENABLE_DATA_LIST_FIX;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE SP_KEY_ENABLE_DEBUG_MODE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;

@@ -165,6 +165,18 @@
   return [self _stringFromExternalEnv:keyString];
 }
 
+- (int)intFromExternalEnv:(LynxEnvKey)key defaultValue:(int)defaultValue {
+  NSString *value = [self stringFromExternalEnv:key];
+  if (value && value.length > 0) {
+    NSScanner *scanner = [NSScanner scannerWithString:value];
+    int result = defaultValue;
+    if ([scanner scanInt:&result] && scanner.isAtEnd) {
+      return result;
+    }
+  }
+  return defaultValue;
+}
+
 - (BOOL)boolFromExternalEnv:(LynxEnvKey)key defaultValue:(BOOL)defaultValue {
   return [LynxEnv stringValueToBool:[self stringFromExternalEnv:key] defaultValue:defaultValue];
 }
@@ -525,6 +537,15 @@
   return delayMin;
 }
 
+- (int)globalMemoryReportThresholdMB {
+  static dispatch_once_t onceToken;
+  static int thresholdMB = 0;
+  dispatch_once(&onceToken, ^{
+    thresholdMB = [self intFromExternalEnv:LynxEnvGlobalMemoryReportThresholdMB defaultValue:30];
+  });
+  return thresholdMB;
+}
+
 - (BOOL)enableGenericResourceFetcher {
   static dispatch_once_t onceToken;
   static BOOL enableGenericResourceFetcher = NO;
@@ -637,6 +658,7 @@
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
+    @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb"
   };
   NSString *keyString = envKeyBinding[@(key)];
   NSAssert(keyString.length > 0, @"LynxEnv key string should not be nill.");

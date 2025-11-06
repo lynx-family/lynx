@@ -1424,6 +1424,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableTextGradientOpt();
   public int LynxEnv::memoryAcquisitionDelaySec();
   public int LynxEnv::memoryReportIntervalSec();
+  public int LynxEnv::globalMemoryReportThresholdMB();
   public NSDictionary< NSString *, NSString * > * LynxEnv::cppEnvDebugDescription();
   public NSDictionary< NSString *, NSString * > * LynxEnv::platformEnvDebugDescription();
   public BOOL LynxEnv()::enableCreateUIAsync();
@@ -5932,6 +5933,7 @@ public enum LynxEnvKey {
   LynxEnvEnableTextLayoutCache
   LynxEnvEnableForceMemoryMonitorOnOom
   LynxEnvEnableTextGradientOpt
+  LynxEnvGlobalMemoryReportThresholdMB
   LynxEnvKeyEndMark
 }
 
