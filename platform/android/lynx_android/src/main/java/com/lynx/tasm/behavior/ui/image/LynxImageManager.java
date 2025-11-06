@@ -368,7 +368,8 @@ public class LynxImageManager implements Drawable.Callback {
     @Override
     public void onSuccess(
         @Nullable ImageContent imageContent, ImageRequestInfo requestInfo, ImageInfo imageInfo) {
-      if (!TextUtils.equals(requestInfo.getUrl(), mCurPlaceholderRequest.getUrl())) {
+      if (!TextUtils.equals(requestInfo.getUrl(),
+              mCurPlaceholderRequest != null ? mCurPlaceholderRequest.getUrl() : null)) {
         return;
       }
       mPlaceholderDrawable = new LynxScaleTypeDrawable(imageContent, mMode);
