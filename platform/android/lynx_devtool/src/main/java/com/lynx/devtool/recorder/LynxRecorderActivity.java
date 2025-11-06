@@ -68,15 +68,15 @@ public class LynxRecorderActivity
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
     } else {
       setContentView(R.layout.recorder_activity);
-      findViewById(R.id.action_refresh).setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
+      View refresh = findViewById(R.id.action_refresh);
+      if (refresh != null) {
+        refresh.setOnClickListener(v -> {
           mActionManager.load();
           if (mLynxView != null) {
             mLynxView.onEnterForeground();
           }
-        }
-      });
+        });
+      }
     }
     if (queryMap.getBoolean("landscape", false)) {
       setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
