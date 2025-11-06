@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#define private public
+#define protected public
+
 #include "core/renderer/css/css_value.h"
 
 #include <gtest/gtest.h>
@@ -31,7 +34,7 @@ class CSSValueToVarReferenceTest : public ::testing::Test {
 
 TEST_F(CSSValueSubstitutionTest, SimpleVariableSubstitution) {
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));
 
   lepus::Value variable = lepus::Value("var(--color)");
   CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
@@ -56,7 +59,7 @@ TEST_F(CSSValueSubstitutionTest, VariableWithFallback) {
 
 TEST_F(CSSValueSubstitutionTest, NestedVariableReferences) {
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--primary", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--primary", CSSValue::MakePlainString("red"));
 
   {
     lepus::Value variable = lepus::Value("var(--primary)");
@@ -77,7 +80,7 @@ TEST_F(CSSValueSubstitutionTest, NestedVariableReferences) {
 
 TEST_F(CSSValueSubstitutionTest, DeepNestedVariableReferences) {
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--a", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--a", CSSValue::MakePlainString("red"));
 
   {
     lepus::Value variable = lepus::Value("var(--a)");
@@ -181,7 +184,7 @@ TEST_F(CSSValueSubstitutionTest, DepthLimit) {
     variables.insert_or_assign("--a5", ref_to_a6);
   }
 
-  variables.insert_or_assign("--a6", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--a6", CSSValue::MakePlainString("red"));
 
   lepus::Value variable = lepus::Value("var(--a1)");
   CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
@@ -198,8 +201,8 @@ TEST_F(CSSValueSubstitutionTest, DepthLimit) {
 
 TEST_F(CSSValueSubstitutionTest, MultipleVariablesInOneString) {
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
-  variables.insert_or_assign("--size", CSSValue(lepus::Value("16px")));
+  variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));
+  variables.insert_or_assign("--size", CSSValue::MakePlainString("16px"));
 
   lepus::Value variable =
       lepus::Value("color: var(--color); font-size: var(--size)");
@@ -213,7 +216,7 @@ TEST_F(CSSValueSubstitutionTest, MultipleVariablesInOneString) {
 TEST_F(CSSValueSubstitutionTest, NonVariableValue) {
   CustomPropertiesMap variables;
 
-  CSSValue css_value(lepus::Value("red"));
+  auto css_value = CSSValue::MakePlainString("red");
   std::string result = CSSValue::Substitution(css_value, variables);
   EXPECT_EQ(result, "red");
 }
@@ -288,7 +291,7 @@ TEST_F(CSSValueSubstitutionTest, MultipleVariablesWithCycle) {
   CustomPropertiesMap variables;
 
   // Create variables with a cycle
-  variables.insert_or_assign("--valid", CSSValue(lepus::Value("blue")));
+  variables.insert_or_assign("--valid", CSSValue::MakePlainString("blue"));
 
   {
     lepus::Value variable = lepus::Value("var(--cycle1)");
@@ -425,7 +428,7 @@ TEST_F(CSSValueSubstitutionTest, CycleWithFallbackCorrectBehavior) {
   EXPECT_EQ(result_c, "");  // Should return empty due to cycle, not fallback
 
   // Test that non-cyclic variables can use fallback correctly
-  variables.insert_or_assign("--valid", CSSValue(lepus::Value("blue")));
+  variables.insert_or_assign("--valid", CSSValue::MakePlainString("blue"));
 
   lepus::Value variable_d = lepus::Value("var(--nonexistent, fallback-value)");
   CSSStringParser parser_d =
@@ -438,7 +441,7 @@ TEST_F(CSSValueSubstitutionTest, CycleWithFallbackCorrectBehavior) {
 
 TEST_F(CSSValueSubstitutionTest, NonCycleFallbackBehavior) {
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--valid", CSSValue(lepus::Value("blue")));
+  variables.insert_or_assign("--valid", CSSValue::MakePlainString("blue"));
 
   // Test that variables not in cycles can use fallback correctly
   lepus::Value variable = lepus::Value("var(--undefined, fallback)");
@@ -453,7 +456,7 @@ TEST_F(CSSValueSubstitutionTest, NonCycleFallbackBehavior) {
 
 TEST_F(CSSValueSubstitutionTest, MixedCycleAndValidVariables) {
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--valid", CSSValue(lepus::Value("green")));
+  variables.insert_or_assign("--valid", CSSValue::MakePlainString("green"));
 
   // Create a cycle
   {
@@ -657,9 +660,9 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
 TEST_F(CSSValueToVarReferenceTest, SimpleVariableToVarReference) {
   // Test simple {{--variable}} format conversion
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));
 
-  CSSValue css_value(lepus::Value("{{--color}}"), CSSValuePattern::STRING,
+  CSSValue css_value("{{--color}}", CSSValuePattern::STRING,
                      CSSValueType::VARIABLE);
   css_value.SetDefaultValue("blue");
 
@@ -676,11 +679,11 @@ TEST_F(CSSValueToVarReferenceTest, SimpleVariableToVarReference) {
 TEST_F(CSSValueToVarReferenceTest, MultipleVariablesToVarReference) {
   // Test multiple variables in one value: {{--color}} {{--size}}
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
-  variables.insert_or_assign("--size", CSSValue(lepus::Value("16px")));
+  variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));
+  variables.insert_or_assign("--size", CSSValue::MakePlainString("16px"));
 
-  CSSValue css_value(lepus::Value("{{--color}} {{--size}}"),
-                     CSSValuePattern::STRING, CSSValueType::VARIABLE);
+  CSSValue css_value("{{--color}} {{--size}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
 
   EXPECT_TRUE(css_value.ToVarReference());
   EXPECT_TRUE(css_value.NeedsVariableResolution());
@@ -699,7 +702,7 @@ TEST_F(CSSValueToVarReferenceTest, VariableWithFallbackMapToVarReference) {
   lepus::Value default_map(lepus::Dictionary::Create());
   default_map.Table()->SetValue("--primary", lepus::Value("red"));
 
-  CSSValue css_value(lepus::Value("{{--primary}}"), CSSValuePattern::STRING,
+  CSSValue css_value("{{--primary}}", CSSValuePattern::STRING,
                      CSSValueType::VARIABLE);
   css_value.SetDefaultValueMap(default_map);
 
@@ -712,8 +715,7 @@ TEST_F(CSSValueToVarReferenceTest, VariableWithFallbackMapToVarReference) {
 
 TEST_F(CSSValueToVarReferenceTest, NoVariableConversionForNonVariable) {
   // Test that non-variable CSS values are not converted
-  CSSValue css_value(lepus::Value("red"), CSSValuePattern::STRING,
-                     CSSValueType::DEFAULT);
+  auto css_value = CSSValue::MakePlainString("red");
 
   EXPECT_FALSE(css_value.ToVarReference());
   EXPECT_FALSE(css_value.NeedsVariableResolution());
@@ -723,9 +725,9 @@ TEST_F(CSSValueToVarReferenceTest, NoVariableConversionForNonVariable) {
 TEST_F(CSSValueToVarReferenceTest, NoDoubleConversion) {
   // Test that already converted variables are not converted again
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));
 
-  CSSValue css_value(lepus::Value("{{--color}}"), CSSValuePattern::STRING,
+  CSSValue css_value("{{--color}}", CSSValuePattern::STRING,
                      CSSValueType::VARIABLE);
 
   // First conversion
@@ -744,8 +746,7 @@ TEST_F(CSSValueToVarReferenceTest, EmptyVariableName) {
   // Test edge case with empty variable name: {{}}
   CustomPropertiesMap variables;
 
-  CSSValue css_value(lepus::Value("{{}}"), CSSValuePattern::STRING,
-                     CSSValueType::VARIABLE);
+  CSSValue css_value("{{}}", CSSValuePattern::STRING, CSSValueType::VARIABLE);
 
   EXPECT_TRUE(css_value.ToVarReference());
 
@@ -757,10 +758,10 @@ TEST_F(CSSValueToVarReferenceTest, EmptyVariableName) {
 TEST_F(CSSValueToVarReferenceTest, ComplexVariableWithCalc) {
   // Test complex variable usage: calc({{--size}} * 2)
   CustomPropertiesMap variables;
-  variables.insert_or_assign("--size", CSSValue(lepus::Value("10px")));
+  variables.insert_or_assign("--size", CSSValue::MakePlainString("10px"));
 
-  CSSValue css_value(lepus::Value("calc({{--size}} * 2)"),
-                     CSSValuePattern::STRING, CSSValueType::VARIABLE);
+  CSSValue css_value("calc({{--size}} * 2)", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
 
   EXPECT_TRUE(css_value.ToVarReference());
 
@@ -775,8 +776,8 @@ TEST_F(CSSValueToVarReferenceTest, VariableWithSimpleFallback) {
   CustomPropertiesMap variables;
   // --undefined-color is not in variables, should use fallback
 
-  CSSValue css_value(lepus::Value("{{--undefined-color}}"),
-                     CSSValuePattern::STRING, CSSValueType::VARIABLE);
+  CSSValue css_value("{{--undefined-color}}", CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
   css_value.SetDefaultValue("black");
 
   EXPECT_TRUE(css_value.ToVarReference());

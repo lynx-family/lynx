@@ -148,7 +148,8 @@ void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
     if (value.NeedsVariableResolution()) {
       auto property = CSSValue::Substitution(value, custom_properties, detector,
                                              max_depth, handle_func);
-      custom_properties[name] = CSSValue(lepus::Value(std::move(property)));
+      custom_properties[name] = CSSValue(
+          std::move(property), CSSValuePattern::STRING, CSSValueType::DEFAULT);
     }
   }
 }

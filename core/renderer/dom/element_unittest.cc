@@ -1,6 +1,7 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #define private public
 #define protected public
 
@@ -127,10 +128,8 @@ TEST_F(ElementTest, CheckWillDestroy) {
   page->FlushProps();
 
   auto element = manager->CreateFiberNode("view");
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(lepus::Value("visible"),
-                     lynx::tasm::CSSValuePattern::STRING));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue::MakePlainString("visible"));
   element->FlushProps();
 
   EXPECT_FALSE(element->will_destroy());

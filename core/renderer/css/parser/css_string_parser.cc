@@ -2973,8 +2973,8 @@ CSSValue CSSStringParser::ParseVariable() {
   }
 
   // Create a CSSValue to store the result
-  CSSValue result(
-      lepus::Value(base::String(scanner_.content(), scanner_.Length())));
+  CSSValue result(base::String(scanner_.content(), scanner_.Length()),
+                  CSSValuePattern::STRING, CSSValueType::DEFAULT);
 
   auto references = std::make_unique<base::InlineVector<VarReference, 1>>();
   Token token;
@@ -3862,8 +3862,8 @@ bool CSSStringParser::ParseAnimationName(bool single, CSSValue &ret) {
   return ParseNumberOrArray(
       single, &CSSStringParser::AnimationNameValue,
       [](const Token &t) {
-        return CSSValue(lepus::Value(std::string(t.start, t.length)),
-                        CSSValuePattern::STRING);
+        return CSSValue(std::string(t.start, t.length), CSSValuePattern::STRING,
+                        CSSValueType::DEFAULT);
       },
       ret);
 }

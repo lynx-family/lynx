@@ -1,6 +1,7 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #define private public
 #define protected public
 
@@ -82,22 +83,19 @@ TEST_F(PseudoElementTest, UpdateStyleMap) {
   PseudoElement pseudo_element(state, text_element);
 
   StyleMap new_style_map;
-  new_style_map.insert_or_assign(
-      kPropertyIDBackgroundColor,
-      tasm::CSSValue(lepus::Value("red"), lynx::tasm::CSSValuePattern::STRING));
+  new_style_map.insert_or_assign(kPropertyIDBackgroundColor,
+                                 tasm::CSSValue::MakePlainString("red"));
   pseudo_element.UpdateStyleMap(new_style_map);
   EXPECT_TRUE(pseudo_element.style_map_.size() == 1);
   EXPECT_TRUE(pseudo_element.style_map_.find(kPropertyIDBackgroundColor) !=
               pseudo_element.style_map_.end());
 
   new_style_map.clear();
-  tasm::CSSValue new_background_color_value(
-      lepus::Value("blue"), lynx::tasm::CSSValuePattern::STRING);
+  auto new_background_color_value = tasm::CSSValue::MakePlainString("blue");
   new_style_map.insert_or_assign(kPropertyIDBackgroundColor,
                                  new_background_color_value);
-  new_style_map.insert_or_assign(
-      kPropertyIDColor, tasm::CSSValue(lepus::Value("green"),
-                                       lynx::tasm::CSSValuePattern::STRING));
+  new_style_map.insert_or_assign(kPropertyIDColor,
+                                 tasm::CSSValue::MakePlainString("green"));
   pseudo_element.UpdateStyleMap(new_style_map);
   EXPECT_TRUE(pseudo_element.style_map_.size() == 2);
   EXPECT_TRUE(
@@ -113,7 +111,7 @@ TEST_F(PseudoElementTest, UpdateStyleMap) {
   PseudoElement placeholder_pseudo_element(kPseudoStatePlaceHolder,
                                            view_element);
   new_style_map.insert_or_assign(kPropertyIDFontSize,
-                                 tasm::CSSValue(lepus::Value("30px")));
+                                 tasm::CSSValue::MakePlainString("30px"));
   placeholder_pseudo_element.UpdateStyleMap(new_style_map);
   EXPECT_TRUE(placeholder_pseudo_element.style_map_.size() == 1);
   EXPECT_TRUE(placeholder_pseudo_element.style_map_.find(kPropertyIDFontSize) !=

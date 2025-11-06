@@ -1,6 +1,7 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #define private public
 #define protected public
 
@@ -358,7 +359,7 @@ TEST_F(CSSPatchingTest, CSSSelectorDescendantSelectorScope) {
   constexpr CSSPropertyID key = CSSPropertyID::kPropertyIDWidth;
   CSSParserConfigs configs;
   auto token = fml::MakeRefCounted<CSSParseToken>(configs);
-  token.get()->raw_attributes_[key] = CSSValue(lepus::Value("20px"));
+  token.get()->raw_attributes_[key] = CSSValue::MakePlainString("20px");
 
   SharedCSSFragment fragment;
   // Create RuleSet

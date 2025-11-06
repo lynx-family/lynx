@@ -74,13 +74,25 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   explicit CSSValue(CSSValuePattern pattern = CSSValuePattern::STRING)
       : pattern_(pattern), type_(CSSValueType::DEFAULT) {}
 
+  CSSValue(const base::String& value, CSSValuePattern pattern,
+           CSSValueType type)
+      : value_(value), pattern_(pattern), type_(type) {}
+  CSSValue(base::String&& value, CSSValuePattern pattern, CSSValueType type)
+      : value_(std::move(value)), pattern_(pattern), type_(type) {}
+  CSSValue(const char* value, CSSValuePattern pattern, CSSValueType type)
+      : value_(value), pattern_(pattern), type_(type) {}
+  CSSValue(const std::string& value, CSSValuePattern pattern, CSSValueType type)
+      : value_(value), pattern_(pattern), type_(type) {}
+  CSSValue(std::string&& value, CSSValuePattern pattern, CSSValueType type)
+      : value_(std::move(value)), pattern_(pattern), type_(type) {}
+
   explicit CSSValue(bool value)
       : value_(value),
         pattern_(CSSValuePattern::BOOLEAN),
         type_(CSSValueType::DEFAULT) {}
 
-#define NumberConstructor(name, type)                    \
-  explicit CSSValue(type value, CSSValuePattern pattern) \
+#define NumberConstructor(name, type)           \
+  CSSValue(type value, CSSValuePattern pattern) \
       : value_(value), pattern_(pattern), type_(CSSValueType::DEFAULT) {}
 
   NumberType(NumberConstructor)
@@ -334,6 +346,11 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  private:
   class CycleDetector;
   friend class Unsafe;
+
+  // Make a CSSValue of default type and string value. Normally for unit-tests.
+  static CSSValue MakePlainString(const char* value) {
+    return CSSValue(value, CSSValuePattern::STRING, CSSValueType::DEFAULT);
+  }
 
   static std::string Substitution(
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,

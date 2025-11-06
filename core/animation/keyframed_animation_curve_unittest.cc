@@ -543,13 +543,13 @@ TEST_F(KeyframedAnimationCurveTest, HandleCSSVariableValueIfNeed) {
   node.UpdateCSSVariable("--height", "20px");
 
   auto test_value_2 =
-      ::lynx::tasm::CSSValue(lepus_value("calc({{--height}} + {{--height}})"),
+      ::lynx::tasm::CSSValue("calc({{--height}} + {{--height}})",
                              ::lynx::tasm::CSSValuePattern::STRING,
                              ::lynx::tasm::CSSValueType::VARIABLE);
   auto test_pair_2 =
       std::make_pair(::lynx::tasm::kPropertyIDLeft, test_value_2);
 
-  auto var_value = ::lynx::tasm::CSSValue(lepus_value("calc(20px + 20px)"),
+  auto var_value = ::lynx::tasm::CSSValue("calc(20px + 20px)",
                                           ::lynx::tasm::CSSValuePattern::CALC,
                                           ::lynx::tasm::CSSValueType::VARIABLE);
   auto result_value_2 =
