@@ -11,7 +11,7 @@ deps = {
         'type': 'git',
         'url': 'https://flutter.googlesource.com/third_party/abseil-cpp',
         'ignore_in_git': True,
-        'commit': '61833f2c057a2b1993d871e8c51156aed1dd4354',
+        'commit': '1e18dc54a045a632de52d420e9636072662841b4',
         'condition': system in [ 'darwin', 'windows', 'linux' ],
     },
     'third_party/angle': {
