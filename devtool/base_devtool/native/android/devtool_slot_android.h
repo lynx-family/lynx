@@ -16,6 +16,7 @@ class DevToolSlotDelegate : public DevToolSlot {
  public:
   explicit DevToolSlotDelegate(
       const std::shared_ptr<DebugRouterMessageSubscriber>& delegate);
+  ~DevToolSlotDelegate() override;
   int32_t Plug(const std::string& url) override;
   void Pull() override;
   void SendMessage(const std::string& type, const std::string& msg) override;
