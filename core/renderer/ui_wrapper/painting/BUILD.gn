@@ -9,6 +9,7 @@ import("../../../Lynx.gni")
 ui_wrapper_painting_shared_sources = [
   "catalyzer.cc",
   "catalyzer.h",
+  "native_painting_context.h",
   "painting_context.cc",
   "painting_context.h",
 ]

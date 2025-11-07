@@ -172,8 +172,8 @@ bool NativePaintingCtxAndroid::IsFlatten(
 
 bool NativePaintingCtxAndroid::NeedAnimationProps() { return false; }
 
-void NativePaintingCtxAndroid::CreatePaintingNode(int id,
-                                                  PlatformRendererType type) {
+void NativePaintingCtxAndroid::CreatePlatformRenderer(
+    int id, PlatformRendererType type) {
   Enqueue([ref = platform_ref_, id, type]() {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
         ->CreatePaintingNode(id, type);

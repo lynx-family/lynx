@@ -2,24 +2,27 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/ui_wrapper/painting/painting_context.h"
-
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_NATIVE_PAINTING_CONTEXT_ANDROID_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_NATIVE_PAINTING_CONTEXT_ANDROID_H_
+
+#include <jni.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "core/base/android/jni_helper.h"
+#include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
+#include "core/shell/dynamic_ui_operation_queue.h"
 
 namespace lynx::tasm {
 
 class PlatformRendererContext;
 
-class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
+class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
+                                 public NativePaintingContext {
  public:
   NativePaintingCtxAndroid(JNIEnv *env, jobject text_layout,
                            PlatformRendererContext *view_manager);
@@ -84,7 +87,15 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl {
 
   bool NeedAnimationProps() override;
 
-  void CreatePaintingNode(int id, PlatformRendererType type) override;
+  NativePaintingContext *CastToNativeCtx() override {
+    return static_cast<NativePaintingContext *>(this);
+  }
+
+#pragma region NativePaintingContext
+
+  void CreatePlatformRenderer(int id, PlatformRendererType type) override;
+
+#pragma endregion  // NativePaintingContext
 
  private:
   void Enqueue(shell::UIOperation op) {
