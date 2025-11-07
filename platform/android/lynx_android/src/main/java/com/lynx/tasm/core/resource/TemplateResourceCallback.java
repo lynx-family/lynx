@@ -54,7 +54,7 @@ class TemplateResourceCallback extends GuardedResourceCallback {
             mResourceType == LynxResourceType.LYNX_RESOURCE_TYPE_FRAME
             ? ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE
             : ILynxSecurityService.LynxTasmType.TYPE_DYNAMIC_COMPONENT;
-        SecurityResult result = securityService.verifyTASM(null, data, mUrl, tasmType);
+        SecurityResult result = securityService.verifyTASM(null, data, buffer, mUrl, tasmType);
         if (!result.isVerified()) {
           success = false;
           errorMsg = "tasm verify failed, url: " + mUrl;

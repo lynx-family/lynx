@@ -8,6 +8,7 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.service.IServiceProvider;
+import java.nio.ByteBuffer;
 
 @Keep
 public interface ILynxSecurityService extends IServiceProvider {
@@ -28,5 +29,6 @@ public interface ILynxSecurityService extends IServiceProvider {
    *
    * @return result of the verification.
    */
-  SecurityResult verifyTASM(LynxView lynxView, byte[] template, String url, LynxTasmType type);
+  SecurityResult verifyTASM(
+      LynxView lynxView, byte[] template, ByteBuffer buffer, String url, LynxTasmType type);
 }
