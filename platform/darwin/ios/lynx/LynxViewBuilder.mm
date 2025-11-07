@@ -262,10 +262,16 @@
 - (NSMutableDictionary<NSString *, id> *)getModuleWrapper {
   NSMutableDictionary<NSString *, id> *module_wrapper = [[NSMutableDictionary alloc] init];
   if (self.lynxViewGroup) {
-    [module_wrapper
-        addEntriesFromDictionary:self.lynxViewGroup.config.moduleFactoryPtr->getModuleClasses()];
+    if (self.lynxViewGroup.config.moduleFactoryPtr != nullptr) {
+      [module_wrapper
+          addEntriesFromDictionary:self.lynxViewGroup.config.moduleFactoryPtr->getModuleClasses()];
+    }
   }
-  [module_wrapper addEntriesFromDictionary:[super config].moduleFactoryPtr->getModuleClasses()];
+
+  LynxConfig *superConfig = [super config];
+  if (superConfig && superConfig.moduleFactoryPtr != nullptr) {
+    [module_wrapper addEntriesFromDictionary:superConfig.moduleFactoryPtr->getModuleClasses()];
+  }
   return module_wrapper;
 }
 
