@@ -21,7 +21,7 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
  public:
   ~PlatformRenderer() override = default;
   // Update the display list for this renderer
-  virtual void UpdateDisplayList(const DisplayList& display_list) = 0;
+  virtual void UpdateDisplayList(DisplayList display_list) = 0;
 
   // Add a child renderer
   virtual void AddChild(fml::RefPtr<PlatformRenderer> child) = 0;

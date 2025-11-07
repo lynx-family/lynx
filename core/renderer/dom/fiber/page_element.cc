@@ -9,6 +9,7 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/services/event_report/event_tracker.h"
@@ -173,6 +174,10 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   element_container()->UpdateNodeReadyPatching();
 
   element_container()->FinishLayoutOperation(options);
+
+  if (EnableFragmentLayerRender()) {
+    static_cast<Fragment*>(element_container())->Draw();
+  }
 
   if (!options->enable_unified_pixel_pipeline) {
     element_container()->Flush();

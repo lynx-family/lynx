@@ -14,6 +14,7 @@
 
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
@@ -94,6 +95,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 #pragma region NativePaintingContext
 
   void CreatePlatformRenderer(int id, PlatformRendererType type) override;
+
+  void UpdateDisplayList(int id, DisplayList display_list) override;
 
 #pragma endregion  // NativePaintingContext
 

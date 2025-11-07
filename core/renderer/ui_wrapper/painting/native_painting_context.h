@@ -9,10 +9,12 @@
 #include "core/public/platform_renderer_type.h"
 
 namespace lynx::tasm {
+class DisplayList;
 class NativePaintingContext {
  public:
   virtual ~NativePaintingContext() = default;
   virtual void CreatePlatformRenderer(int id, PlatformRendererType type) = 0;
+  virtual void UpdateDisplayList(int id, DisplayList list) = 0;
 };
 
 }  // namespace lynx::tasm

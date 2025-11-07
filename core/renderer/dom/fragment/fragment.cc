@@ -9,6 +9,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 
 namespace lynx {
@@ -20,10 +21,10 @@ Fragment::Fragment(Element* element)
       style_(element->computed_css_style()),
       tag_(element->GetTag()) {}
 
-void Fragment::CreateLayerIfNeeded() const {
-  // TODO(zhongyr): CreatePlatformRenderer according to result of layerize.
-  if (behavior_) {
+void Fragment::CreateLayerIfNeeded() {
+  if (element()->TendToFlatten() && !has_platform_renderer_ && behavior_) {
     behavior_->CreatePlatformRenderer();
+    has_platform_renderer_ = true;
   }
 }
 
@@ -43,6 +44,47 @@ void Fragment::UpdateLayout(
 
 void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
   behavior_ = std::move(behavior);
+}
+
+void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
+  display_list_builder.Begin(layout_result_for_rendering_.offset_.X(),
+                             layout_result_for_rendering_.offset_.Y(),
+                             layout_result_for_rendering_.size_.width_,
+                             layout_result_for_rendering_.size_.height_);
+
+  if (behavior_) {
+    behavior_->OnDraw(display_list_builder);
+  }
+
+  for (const auto& child : children_) {
+    child->Draw(display_list_builder);
+  }
+
+  display_list_builder.End();
+}
+
+void Fragment::Draw() {
+  // XXX: Maybe this part could run parallely with parent displayList
+  // generation. The shared totally different context.
+
+  //  Collect own displayList.
+  DisplayListBuilder builder;
+
+  OnDraw(builder);
+
+  painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
+      id(), builder.Build());
+}
+
+void Fragment::Draw(DisplayListBuilder& display_list_builder) {
+  if (has_platform_renderer_) {
+    display_list_builder.DrawView(id());
+    // The view got its own display list.
+    Draw();
+    return;
+  }
+
+  OnDraw(display_list_builder);
 }
 
 }  // namespace tasm

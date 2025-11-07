@@ -4,14 +4,15 @@
 
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
+#include <forward_list>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
-#include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_register_jni.h"
 
@@ -44,6 +45,12 @@ class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
 
   void CreatePaintingNode(int id, PlatformRendererType type) {
     renderers_.insert_or_assign(id, view_factory_.CreateRenderer(id, type));
+  }
+
+  void UpdateDisplayList(int id, DisplayList &&display_list) {
+    if (auto it = renderers_.find(id); it != renderers_.end()) {
+      it->second->UpdateDisplayList(std::move(display_list));
+    }
   }
 
   void InsertPaintingNode(int parent, int child, int index) override {
@@ -177,6 +184,14 @@ void NativePaintingCtxAndroid::CreatePlatformRenderer(
   Enqueue([ref = platform_ref_, id, type]() {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
         ->CreatePaintingNode(id, type);
+  });
+}
+
+void NativePaintingCtxAndroid::UpdateDisplayList(int id,
+                                                 DisplayList display_list) {
+  Enqueue([ref = platform_ref_, id, dl = std::move(display_list)]() mutable {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+        ->UpdateDisplayList(id, std::move(dl));
   });
 }
 }  // namespace tasm

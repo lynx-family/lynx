@@ -5,10 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
 
-#include <memory>
-#include <vector>
-
-#include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer.h"
 #include "core/renderer/utils/base/base_def.h"
@@ -27,7 +24,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   ~PlatformRendererImpl() override = default;
 
   // PlatformRenderer interface
-  void UpdateDisplayList(const DisplayList& display_list) override;
+  void UpdateDisplayList(DisplayList display_list) override;
 
   void RemoveFromParent() override;
   void AddChild(fml::RefPtr<PlatformRenderer> child) override;
@@ -38,7 +35,7 @@ class PlatformRendererImpl : public PlatformRenderer {
 
  protected:
   // Platform-specific operations to be implemented by derived classes
-  virtual void OnUpdateDisplayList(const DisplayList& display_list) = 0;
+  virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
   virtual void OnAddChild(PlatformRenderer* child) = 0;
   virtual void OnRemoveFromParent() = 0;
 

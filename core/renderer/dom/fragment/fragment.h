@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "core/renderer/dom/element_container.h"
+#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/starlight/types/layout_result.h"
 
@@ -29,12 +30,18 @@ class Fragment : public ElementContainer {
   void CreatePaintingNode(
       bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) override;
 
-  void CreateLayerIfNeeded() const;
+  void CreateLayerIfNeeded();
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;
 
   void UpdateLayout(LayoutResultForRendering layout_result_for_rendering);
 
   void SetBehavior(std::unique_ptr<FragmentBehavior> behavior);
+
+  void Draw();
+
+  void Draw(DisplayListBuilder& display_list_builder);
+
+  void OnDraw(DisplayListBuilder& display_list_builder);
 
  private:
   const base::String& Tag() const { return tag_; };
@@ -43,9 +50,11 @@ class Fragment : public ElementContainer {
 
   // TODO(zhongyr): children management methods.
   base::InlineVector<Fragment*, kChildrenInlineVectorSize> children_;
+
   // Sign is used to identify the fragment in the tree. Same to the sign in
   // element.
   const int sign_;
+  bool has_platform_renderer_ = false;
 
   LayoutResultForRendering layout_result_for_rendering_;
 

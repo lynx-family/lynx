@@ -33,8 +33,8 @@ TEST_F(DisplayListTest, EmptyDisplayList) {
 }
 
 TEST_F(DisplayListTest, AddSingleOperation) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
 
   // single operation, content_int_data_.size() == 3, content_float_data_.size()
   // == 0
@@ -62,8 +62,7 @@ TEST_F(DisplayListTest, AddSingleOperation) {
 }
 
 TEST_F(DisplayListTest, AddOperationWithFloatData) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kDrawView, 123, 3.14f);
+  display_list_->AddOperation(DisplayListOpType::kDrawView, 123, 3.14f);
 
   const int32_t* op_types_data = display_list_->GetContentOpTypesData();
   const int32_t* int_data_data = display_list_->GetContentIntData();
@@ -90,10 +89,9 @@ TEST_F(DisplayListTest, AddOperationWithFloatData) {
 TEST_F(DisplayListTest, AddOperationWithMixedParams) {
   // Test AddOperation with both int and float parameters (equivalent to old
   // AddOperationWithData)
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kBegin, 1, 2, 3,
-      4,                        // int params
-      1.1f, 2.2f, 3.3f, 4.4f);  // float params
+  display_list_->AddOperation(DisplayListOpType::kBegin, 1, 2, 3,
+                              4,                        // int params
+                              1.1f, 2.2f, 3.3f, 4.4f);  // float params
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 1u);
   EXPECT_EQ(display_list_->GetContentIntDataSize(), 6u);  // 2 counts + 4 params
@@ -125,12 +123,10 @@ TEST_F(DisplayListTest, AddOperationWithMixedParams) {
 }
 
 TEST_F(DisplayListTest, AddMultipleOperations) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kEnd, 0);
+  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kEnd, 0);
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
   EXPECT_EQ(display_list_->GetContentIntDataSize(),
@@ -147,10 +143,9 @@ TEST_F(DisplayListTest, AddMultipleOperations) {
 }
 
 TEST_F(DisplayListTest, ClearDisplayList) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kDrawView, 123);
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
 
   display_list_->Clear();
 
@@ -163,10 +158,9 @@ TEST_F(DisplayListTest, ClearDisplayList) {
 }
 
 TEST_F(DisplayListTest, DirectArrayAccess) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kDrawView, 123);
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
 
   const int32_t* op_types_data = display_list_->GetContentOpTypesData();
   const int32_t* int_data_data = display_list_->GetContentIntData();
@@ -192,8 +186,9 @@ TEST_F(DisplayListTest, DirectArrayAccess) {
 }
 
 TEST_F(DisplayListTest, MoveSemantics) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
 
   DisplayList moved_list = std::move(*display_list_);
 
@@ -201,21 +196,7 @@ TEST_F(DisplayListTest, MoveSemantics) {
   EXPECT_NE(moved_op_types_data, nullptr);
   EXPECT_EQ(moved_op_types_data[0],
             static_cast<int32_t>(DisplayListOpType::kFill));
-}
-
-TEST_F(DisplayListTest, CopySemantics) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kDrawView, 123);
-
-  DisplayList copied_list = *display_list_;
-
-  const int32_t* copied_op_types_data = copied_list.GetContentOpTypesData();
-  EXPECT_NE(copied_op_types_data, nullptr);
-  EXPECT_EQ(copied_op_types_data[0],
-            static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(copied_op_types_data[1],
+  EXPECT_EQ(moved_op_types_data[1],
             static_cast<int32_t>(DisplayListOpType::kDrawView));
 }
 
@@ -223,8 +204,8 @@ TEST_F(DisplayListTest, LargeDataOperations) {
   const size_t kLargeSize = 1000;
 
   for (size_t i = 0; i < kLargeSize; ++i) {
-    display_list_->AddOperation<DisplayListOpCategory::kContent>(
-        DisplayListOpType::kFill, static_cast<int32_t>(i));
+    display_list_->AddOperation(DisplayListOpType::kFill,
+                                static_cast<int32_t>(i));
   }
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), kLargeSize);
@@ -253,20 +234,14 @@ TEST_F(DisplayListTest, LargeDataOperations) {
 }
 
 TEST_F(DisplayListTest, MixedOperationTypes) {
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kTransform, 0, 0.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kClip, 1, 0.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kText, 2, 0.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kImage, 3, 0.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kCustom, 4, 0.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kEnd, 5);
+  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform, 0,
+                              0.0f);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip, 1, 0.0f);
+  display_list_->AddOperation(DisplayListOpType::kText, 2, 0.0f);
+  display_list_->AddOperation(DisplayListOpType::kImage, 3, 0.0f);
+  display_list_->AddOperation(DisplayListOpType::kCustom, 4, 0.0f);
+  display_list_->AddOperation(DisplayListOpType::kEnd, 5);
 
   // Content operations: kBegin, kText, kImage, kCustom, kEnd (5 operations)
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 5u);
@@ -299,20 +274,16 @@ TEST_F(DisplayListTest, MixedOperationTypes) {
 
 TEST_F(DisplayListTest, SubtreePropertySeparation) {
   // Add content operations
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kEnd, 0);
+  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListOpType::kEnd, 0);
 
   // Add subtree property operations
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kTransform, static_cast<int32_t>(1),
-      2.0f, 3.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kClip, static_cast<int32_t>(4), 5.0f,
-      6.0f, 7.0f, 8.0f);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
+                              static_cast<int32_t>(1), 2.0f, 3.0f);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip,
+                              static_cast<int32_t>(4), 5.0f, 6.0f, 7.0f, 8.0f);
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 3u);
   EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);
@@ -338,8 +309,8 @@ TEST_F(DisplayListTest, SubtreePropertySeparation) {
 
   // Test fast update of subtree properties by clearing and re-adding
   display_list_->ClearSubtreeProperties();
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kTransform, 1.0f, 2.0f, 3.0f, 4.0f);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
+                              1.0f, 2.0f, 3.0f, 4.0f);
 
   EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 1u);
   const int32_t* new_subtree_op_types_data =
@@ -356,15 +327,12 @@ TEST_F(DisplayListTest, SubtreePropertySeparation) {
 
 TEST_F(DisplayListTest, ClearSubtreeProperties) {
   // Add mixed operations
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kBegin, 0);
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kTransform, static_cast<int32_t>(1),
-      2.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kClip, static_cast<int32_t>(3), 4.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kEnd, 0);
+  display_list_->AddOperation(DisplayListOpType::kBegin, 0);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
+                              static_cast<int32_t>(1), 2.0f);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip,
+                              static_cast<int32_t>(3), 4.0f);
+  display_list_->AddOperation(DisplayListOpType::kEnd, 0);
 
   EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);
 
@@ -385,15 +353,13 @@ TEST_F(DisplayListTest, ClearSubtreeProperties) {
 
 TEST_F(DisplayListTest, TemplateCategorySelection) {
   // Test explicit template category specification
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kFill, static_cast<int32_t>(0xFF0000FF));
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kTransform, 1.0f, 2.0f, 3.0f, 4.0f,
-      5.0f, 6.0f);
-  display_list_->AddOperation<DisplayListOpCategory::kContent>(
-      DisplayListOpType::kDrawView, 123);
-  display_list_->AddOperation<DisplayListOpCategory::kSubtreeProperty>(
-      DisplayListSubtreePropertyOpType::kClip, 10.0f, 20.0f, 30.0f, 40.0f);
+  display_list_->AddOperation(DisplayListOpType::kFill,
+                              static_cast<int32_t>(0xFF0000FF));
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kTransform,
+                              1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f);
+  display_list_->AddOperation(DisplayListOpType::kDrawView, 123);
+  display_list_->AddOperation(DisplayListSubtreePropertyOpType::kClip, 10.0f,
+                              20.0f, 30.0f, 40.0f);
 
   EXPECT_EQ(display_list_->GetContentOpTypesSize(), 2u);
   EXPECT_EQ(display_list_->GetSubtreePropertyOpTypesSize(), 2u);

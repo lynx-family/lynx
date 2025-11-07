@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <type_traits>
-#include <vector>
 
 #include "base/include/auto_create_optional.h"
 #include "base/include/vector.h"
@@ -79,8 +78,11 @@ class DisplayList {
   DisplayList() = default;
   ~DisplayList() = default;
 
-  DisplayList(const DisplayList&) = default;
-  DisplayList& operator=(const DisplayList&) = default;
+  // Once the display list is built up by display list builder, it should be
+  // move only.
+  DisplayList(const DisplayList&) = delete;
+  DisplayList& operator=(const DisplayList&) = delete;
+
   DisplayList(DisplayList&&) = default;
   DisplayList& operator=(DisplayList&&) = default;
 
@@ -143,9 +145,22 @@ class DisplayList {
 
   void ClearSubtreeProperties();
 
-  template <DisplayListOpCategory category, typename... Args>
-  void AddOperation(typename DisplayListOpCategoryTraits<category>::OpType type,
-                    Args... args);
+  template <typename OpType, typename... Args>
+  auto AddOperation(OpType type, Args... args) -> std::enable_if_t<
+      std::is_same_v<OpType, DisplayListOpType> ||
+      std::is_same_v<OpType, DisplayListSubtreePropertyOpType>> {
+    if constexpr (std::is_same_v<OpType, DisplayListOpType>) {
+      AddOperationToData(content_data_, type, args...);
+    } else if constexpr (std::is_same_v<OpType,
+                                        DisplayListSubtreePropertyOpType>) {
+      AddOperationToData(subtree_property_data_, type, args...);
+    }
+  }
+
+ private:
+  template <typename OpType, typename... Args>
+  void AddOperationToData(base::auto_create_optional<OpData>& data_store,
+                          OpType type, Args... args);
 
  private:
   // Content operations (stable during animations) - lazy allocated
@@ -157,26 +172,15 @@ class DisplayList {
   base::auto_create_optional<OpData> subtree_property_data_;
 };
 
-// Template implementation for AddOperation - uses appropriate vector based on
-// category
-template <DisplayListOpCategory category, typename... Args>
-void DisplayList::AddOperation(
-    typename DisplayListOpCategoryTraits<category>::OpType type, Args... args) {
+template <typename OpType, typename... Args>
+void DisplayList::AddOperationToData(
+    base::auto_create_optional<OpData>& data_store, OpType type, Args... args) {
   static_assert((... && (std::is_same_v<std::decay_t<Args>, int32_t> ||
                          std::is_same_v<std::decay_t<Args>, float>)),
                 "AddOperation only accepts int32_t and float parameters");
 
-  // Select appropriate data based on category - auto_create_optional will
-  // create if needed
-  OpData* op_data;
-
-  if constexpr (category == DisplayListOpCategory::kContent) {
-    op_data =
-        &(*content_data_);  // auto_create_optional creates on first access
-  } else if constexpr (category == DisplayListOpCategory::kSubtreeProperty) {
-    op_data = &(*subtree_property_data_);  // auto_create_optional creates on
-                                           // first access
-  }
+  OpData* op_data =
+      &(*data_store);  // auto_create_optional creates on first access
 
   op_data->ops.push_back(static_cast<int32_t>(type));
 

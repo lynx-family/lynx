@@ -39,6 +39,12 @@ class DisplayListBuilder {
   // Apply clip
   DisplayListBuilder& Clip(float x, float y, float width, float height);
 
+  // Retrieve Image source and draw
+  DisplayListBuilder& DrawImage(int image_id);
+
+  // Retrieve text source and draw
+  DisplayListBuilder& DrawText(int text_id);
+
   // Build the final display list
   DisplayList Build();
 

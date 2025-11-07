@@ -20,6 +20,7 @@ class FragmentBehavior {
   virtual void CreatePlatformRenderer();
   // TODO(zhongyr): TO be implemented for basic <view>.
   virtual void OnAttributeUpdate(const fml::RefPtr<PropBundle>& attributes){};
+
   virtual void OnDraw(DisplayListBuilder& display_list_builder){};
 
  protected:

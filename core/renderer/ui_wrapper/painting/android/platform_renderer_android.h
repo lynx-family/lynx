@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_impl.h"
 
@@ -21,13 +22,14 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
 
  protected:
   // PlatformRendererImpl interface
-  void OnUpdateDisplayList(const DisplayList& display_list) override;
+  void OnUpdateDisplayList(DisplayList display_list) override;
   void OnAddChild(PlatformRenderer* child) override;
   void OnRemoveFromParent() override;
 
  private:
   // Android-specific context for managing native views via JNI
   PlatformRendererContext* context_;
+  DisplayList display_list_;
 
   [[maybe_unused]] PlatformRendererType type_;
 

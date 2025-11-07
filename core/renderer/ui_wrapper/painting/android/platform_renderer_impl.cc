@@ -10,9 +10,9 @@
 
 namespace lynx::tasm {
 
-void PlatformRendererImpl::UpdateDisplayList(const DisplayList& display_list) {
+void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
   // Call platform-specific implementation
-  OnUpdateDisplayList(display_list);
+  OnUpdateDisplayList(std::move(display_list));
 }
 
 void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child) {

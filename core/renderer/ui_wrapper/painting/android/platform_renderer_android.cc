@@ -4,7 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 
-#include <memory>
+#include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
 
@@ -12,12 +12,8 @@ namespace lynx::tasm {
 
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
-void PlatformRendererAndroid::OnUpdateDisplayList(
-    const DisplayList& display_list) {
-  if (context_) {
-    // TODO: Implement display list update via JNI
-    // context_->UpdateDisplayList(display_list);
-  }
+void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
+  display_list_ = std::move(display_list);
 }
 
 void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child) {
