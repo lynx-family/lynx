@@ -29,6 +29,7 @@ class DynamicUIOperationQueue;
 namespace tasm {
 
 class LynxTemplateBundle;
+class NativePaintingContext;
 
 // painting context platform object ref.
 class PaintingCtxPlatformRef {
@@ -91,7 +92,6 @@ class PaintingCtxPlatformImpl {
                                   const fml::RefPtr<PropBundle>& painting_data,
                                   bool flatten, bool create_node_async,
                                   uint32_t node_index = 0) = 0;
-  virtual void CreatePaintingNode(int id, PlatformRendererType type) {}
   virtual void InsertPaintingNode(int parent, int child, int index) {}
   virtual void RemovePaintingNode(int parent, int child, int index,
                                   bool is_move){};
@@ -196,6 +196,8 @@ class PaintingCtxPlatformImpl {
     text_layout_impl_->Align(element);
   }
 
+  virtual NativePaintingContext* CastToNativeCtx() { return nullptr; }
+
   void MarkUIOperationQueueFlushForRecreateEngine(bool enable);
 
  protected:
@@ -203,6 +205,7 @@ class PaintingCtxPlatformImpl {
   std::unique_ptr<TextLayoutImpl> text_layout_impl_;
   PaintingCtxPlatformImplConfig config_;
 };
+
 }  // namespace tasm
 }  // namespace lynx
 

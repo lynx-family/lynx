@@ -64,10 +64,6 @@ class PaintingContext {
                                        create_node_async, node_index);
   }
 
-  inline void CreatePaintingNode(int id, PlatformRendererType type) {
-    platform_impl_->CreatePaintingNode(id, type);
-  }
-
   void EnableUIOperationBatching() {
     platform_impl_->EnableUIOperationBatching();
   }
