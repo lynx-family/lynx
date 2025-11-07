@@ -5,7 +5,7 @@
 import { LynxResourceRequest } from './LynxResourceRequest';
 import { AsyncCallback, BusinessError } from '@ohos.base';
 import { LynxResourceProvider } from './LynxResourceProvider';
-import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from '../tasm/service/Index';
 import { ILynxSecurityService, LynxTasmType, SecurityResult } from '../tasm/service/ILynxSecurityService';
 import { LLog } from '../base/LLog';
 import { LynxSubErrorCode } from '../tasm/gen/LynxSubErrorCode';

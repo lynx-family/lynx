@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LynxContext } from '../../tasm/LynxContext';
+import { LynxServiceCenter } from './Index';
 import { IServiceProvider } from './IServiceProvider';
 
 export enum LynxTasmType {
@@ -27,3 +28,5 @@ export interface ILynxSecurityService extends IServiceProvider {
   verifyTASM(template: ArrayBuffer, url: string | undefined, type: LynxTasmType,
     lynxContext?: LynxContext): SecurityResult;
 }
+
+export const LynxSecurityServiceType = LynxServiceCenter.defineServiceType<ILynxSecurityService>();

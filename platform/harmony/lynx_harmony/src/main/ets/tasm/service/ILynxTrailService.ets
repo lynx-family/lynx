@@ -3,15 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 
 import { IServiceProvider } from './IServiceProvider';
-import common from '@ohos.app.ability.common';
 import { LynxView } from '../LynxView';
+import { LynxServiceCenter } from '../../Index';
+import { IServiceExtension } from './IServiceExtension';
 
 export interface ILynxTrailService extends IServiceProvider {
-  /**
-   * initialize LynxTrailService
-   * @param context
-   */
-  initialize(context: common.ApplicationContext): void
+}
+
+export const LynxTrailServiceType = LynxServiceCenter.defineServiceType<ILynxTrailService>();
+
+export interface ILynxTrailServiceExtension extends IServiceExtension {
 
   /**
    * Parse LynxView
@@ -19,3 +20,5 @@ export interface ILynxTrailService extends IServiceProvider {
    */
   parseLynxView(view: LynxView): void;
 }
+
+export const LynxTrailServiceExtensionType = LynxServiceCenter.defineServiceExtensionType<ILynxTrailServiceExtension>();

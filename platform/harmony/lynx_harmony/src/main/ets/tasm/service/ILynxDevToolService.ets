@@ -7,6 +7,7 @@ import { LynxBaseInspectorOwner } from '../../devtool_wrapper/LynxBaseInspectorO
 import { GetJSSourceCallback, ILogBox, OnErrorCallback } from '../../devtool_wrapper/ILogBox';
 import { NodeController } from '@kit.ArkUI';
 import { LynxModuleManager } from '../../jsbridge/LynxModuleManager';
+import { LynxServiceCenter } from './Index';
 
 export interface ILynxDevToolService extends IServiceProvider {
   isDevToolModuleLoaded(): boolean
@@ -29,3 +30,5 @@ export interface ILynxDevToolService extends IServiceProvider {
 
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
 }
+
+export const LynxDevToolServiceType = LynxServiceCenter.defineServiceType<ILynxDevToolService>();

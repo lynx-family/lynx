@@ -4,7 +4,7 @@
 
 import { LynxBaseInspectorOwner } from './LynxBaseInspectorOwner';
 import { LynxEnv } from '../tasm/LynxEnv';
-import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from '../tasm/service/Index';
 import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
 import { LynxView } from '../tasm/LynxView';
 import { GetJSSourceCallback, ILogBox, OnErrorCallback } from './ILogBox';

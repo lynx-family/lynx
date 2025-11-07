@@ -16,8 +16,8 @@ import { LynxInfoReporterHelper } from './eventreport/LynxInfoReporterHelper';
 import { DisplayInfo } from './DisplayInfo';
 import { LynxTrailHub } from './LynxTrailHub';
 import { LynxDebugger } from '../devtool_wrapper/LynxDebugger';
-import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
 import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
+import { LynxServiceCenter, LynxServiceType } from './service/Index';
 
 const TAG = 'LynxEnv';
 
@@ -42,7 +42,7 @@ class LynxEnvironment {
     lynx.initGlobalEnv(context.resourceManager);
     LynxInfoReporterHelper.initialize();
     LynxEventReporter.initialize();
-    LynxTrailHub.getInstance().init(context.getApplicationContext());
+    LynxServiceCenter.initialize(context.getApplicationContext());
     LynxEnvironment.setCacheDirPath(context.cacheDir);
     LLog.i(TAG, 'LynxEnv initialize with version ' + BuildProfile.HAR_VERSION);
     this.initialized = true;

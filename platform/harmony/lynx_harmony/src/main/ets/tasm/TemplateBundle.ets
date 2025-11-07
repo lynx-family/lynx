@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import lynx from 'liblynx.so';
-import { LynxServiceCenter, LynxServiceType } from './service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from './service/Index';
 import { ILynxSecurityService, LynxTasmType, SecurityResult } from './service/ILynxSecurityService';
 
 import { TemplateBundleOption } from './TemplateBundleOption';

@@ -10,11 +10,13 @@ import {
   LynxBaseInspectorOwner,
   LynxModuleManager,
   LynxEnv,
-  OnErrorCallback
+  OnErrorCallback,
+  ServiceExtensionType,
 } from '@lynx/lynx';
 import { NodeController } from '@kit.ArkUI';
 
 export class LynxDevToolService implements ILynxDevToolService {
+  extensions?: Set<ServiceExtensionType>;
   private static TAG = 'LynxDevToolService';
   private static devtoolModule?: ESObject;
   static instance = new LynxDevToolService();

@@ -5,5 +5,8 @@
 import { IServiceProvider } from './IServiceProvider';
 import { ILynxEventReportObserver } from '../eventreport/ILynxEventReportObserver';
 import { IPerformanceObserver } from '../performance/IPerformanceObserver';
+import { LynxServiceCenter } from '../../Index';
 
 export interface ILynxEventReporterService extends IServiceProvider, ILynxEventReportObserver, IPerformanceObserver {}
+
+export const LynxEventReporterServiceType = LynxServiceCenter.defineServiceType<ILynxEventReporterService>();

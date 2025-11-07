@@ -4,7 +4,7 @@
 
 import lynx from 'liblynx.so';
 import { LLog } from '../base/LLog';
-import { LynxServiceCenter, LynxServiceType } from './service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from './service/Index';
 import { ILynxTrailService } from '../tasm/service/ILynxTrailService';
 import common from '@ohos.app.ability.common';
 
@@ -79,10 +79,6 @@ export class LynxTrailHub {
       LynxTrailHub.instance = new LynxTrailHub();
     }
     return LynxTrailHub.instance;
-  }
-
-  public init(context: common.ApplicationContext): void {
-    LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.initialize(context);
   }
 
   public stringValueForTrailKey(key: LynxTrailKey): string | undefined {
