@@ -244,7 +244,7 @@ LYNX_REGISTER_UI("image")
   float sizeKB = [super memoryUsageKB];
   UIImage* image = self.image;
   if (image) {
-    sizeKB += (image.size.height * image.size.width * image.scale * 4) / 1024.f;
+    sizeKB += (image.size.height * image.scale * image.size.width * image.scale * 4) / 1024.f;
   }
   return sizeKB;
 }
