@@ -25,7 +25,7 @@ ClosureEventListener::ClosureEventListener(
       closure_type_(closure_type),
       lepus_object_(lepus_object) {}
 
-void ClosureEventListener::Invoke(event::Event* event) {
+void ClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_INVOKE,
       [&event, listener = this](lynx::perfetto::EventContext ctx) {
@@ -37,8 +37,7 @@ void ClosureEventListener::Invoke(event::Event* event) {
        << (event ? event->type() : "")
        << ", type: " << static_cast<int>(closure_type_));
   if (event->event_type() == event::Event::EventType::kMessageEvent) {
-    runtime::MessageEvent* message_event =
-        static_cast<runtime::MessageEvent*>(event);
+    auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
     closure_(
         pub::ValueUtils::ConvertValueToLepusValue(*message_event->message()));
   }
@@ -54,7 +53,10 @@ void ClosureEventListener::Invoke(event::Event* event) {
     auto args = lepus::CArray::Create();
     args->emplace_back(event->current_target()->GetEventControlInfo(
         event->type(), options_.IsGlobal()));
-    args->emplace_back(event->detail());
+    auto event_detail = event->detail();
+    BASE_STATIC_STRING_DECL(kEventRef, "ref");
+    event_detail.Table()->SetValue(kEventRef, event);
+    args->emplace_back(event_detail);
     closure_(lepus::Value(std::move(args)));
   }
 }

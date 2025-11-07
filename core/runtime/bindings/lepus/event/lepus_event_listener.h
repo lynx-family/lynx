@@ -20,12 +20,12 @@ class LepusClosureEventListener : public event::EventListener {
       const EventListener::Options& options = EventListener::Options());
   virtual ~LepusClosureEventListener() override = default;
 
-  virtual void Invoke(event::Event* event) override;
+  virtual void Invoke(fml::RefPtr<event::Event> event) override;
 
   virtual bool Matches(EventListener* listener) override;
 
  private:
-  lepus::Value ConvertEventToLepusValue(event::Event* event);
+  lepus::Value ConvertEventToLepusValue(fml::RefPtr<event::Event> event);
 
   lepus::Context* context_;
   lepus::Value closure_;

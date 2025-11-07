@@ -31,7 +31,7 @@ class ClosureEventListener : public event::EventListener {
       const lepus::Value& lepus_object = lepus::Value());
   ~ClosureEventListener() override = default;
 
-  void Invoke(event::Event* event) override;
+  void Invoke(fml::RefPtr<event::Event> event) override;
 
   bool Matches(EventListener* listener) override;
 

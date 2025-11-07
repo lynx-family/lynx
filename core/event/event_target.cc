@@ -47,8 +47,8 @@ namespace event {
 EventTarget::EventTarget()
     : event_listener_map_(std::make_unique<EventListenerMap>()) {}
 
-DispatchEventResult EventTarget::DispatchEvent(Event& event) {
-  auto vector = event_listener_map_->Find(event.type());
+DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
+  auto vector = event_listener_map_->Find(event->type());
   if (vector == nullptr) {
     return {EventCancelType::kNotCanceled, false};
   }
@@ -56,14 +56,14 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, EVENT_TARGET_DISPATCHEVENT,
       [&event, target = this](lynx::perfetto::EventContext ctx) {
-        ctx.event()->add_debug_annotations("name", event.type());
+        ctx.event()->add_debug_annotations("name", event->type());
         ctx.event()->add_debug_annotations(
-            "phase", std::to_string(static_cast<int>(event.event_phase())));
+            "phase", std::to_string(static_cast<int>(event->event_phase())));
         ctx.event()->add_debug_annotations("target", target->GetUniqueID());
-        ctx.event()->add_flow_ids(event.TraceFlowId());
+        ctx.event()->add_flow_ids(event->TraceFlowId());
       });
   LOGI("EventTarget::DispatchEvent name: "
-       << event.type() << ", phase: " << static_cast<int>(event.event_phase())
+       << event->type() << ", phase: " << static_cast<int>(event->event_phase())
        << ", target: " << GetUniqueID());
 
   // Fire all listeners registered for this event. Don't fire listeners removed
@@ -75,7 +75,7 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   bool consumed = false;
   // When in the target phase, the listeners need to be sorted in a stable order
   // based on the capture order.
-  if (event.event_phase() == Event::PhaseType::kAtTarget) {
+  if (event->event_phase() == Event::PhaseType::kAtTarget) {
     std::stable_sort(copy.begin(), copy.end(),
                      [](const std::shared_ptr<EventListener>& a,
                         const std::shared_ptr<EventListener>& b) {
@@ -84,47 +84,47 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
                      });
   }
   for (auto& listener : copy) {
-    if (event.event_phase() == Event::PhaseType::kCapturingPhase &&
+    if (event->event_phase() == Event::PhaseType::kCapturingPhase &&
         !listener->GetOptions().IsCapture()) {
       continue;
     }
     // Align the logic of capturePhase:false of miniapp.
-    if ((event.event_phase() == Event::PhaseType::kAtTarget) &&
-        !event.capture() && listener->GetOptions().IsCapture()) {
+    if ((event->event_phase() == Event::PhaseType::kAtTarget) &&
+        !event->capture() && listener->GetOptions().IsCapture()) {
       continue;
     }
-    if ((event.event_phase() == Event::PhaseType::kBubblingPhase) &&
+    if ((event->event_phase() == Event::PhaseType::kBubblingPhase) &&
         listener->GetOptions().IsCapture()) {
       continue;
     }
-    if ((event.event_phase() != Event::PhaseType::kGlobal) &&
+    if ((event->event_phase() != Event::PhaseType::kGlobal) &&
         listener->GetOptions().IsGlobal()) {
       continue;
     }
     if (listener->removed()) {
       continue;
     }
-    listener->Invoke(&event);
+    listener->Invoke(event);
     consumed = true;
-    if (event.is_stop_immediate_propagation()) {
+    if (event->is_stop_immediate_propagation()) {
       break;
     }
   }
 
-  if (consumed && event.event_type() == Event::EventType::kTouchEvent &&
-      event.type() == EVENT_LONG_PRESS) {
+  if (consumed && event->event_type() == Event::EventType::kTouchEvent &&
+      event->type() == EVENT_LONG_PRESS) {
     TouchEvent::long_press_consumed_ = consumed;
   }
 
   bool is_catch_in_capture =
-      (event.event_phase() == Event::PhaseType::kCapturingPhase ||
-       event.event_phase() == Event::PhaseType::kAtTarget) &&
-      IsEventCaptureCatch(event.type());
+      (event->event_phase() == Event::PhaseType::kCapturingPhase ||
+       event->event_phase() == Event::PhaseType::kAtTarget) &&
+      IsEventCaptureCatch(event->type());
   bool is_catch_in_bubble =
-      (event.event_phase() == Event::PhaseType::kBubblingPhase ||
-       event.event_phase() == Event::PhaseType::kAtTarget) &&
-      IsEventBubbleCatch(event.type());
-  if (event.is_stop_propagation() || event.is_stop_immediate_propagation() ||
+      (event->event_phase() == Event::PhaseType::kBubblingPhase ||
+       event->event_phase() == Event::PhaseType::kAtTarget) &&
+      IsEventBubbleCatch(event->type());
+  if (event->is_stop_propagation() || event->is_stop_immediate_propagation() ||
       is_catch_in_capture || is_catch_in_bubble) {
     return {EventCancelType::kCanceledByEventHandler, consumed};
   } else {

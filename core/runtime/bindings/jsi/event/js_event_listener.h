@@ -23,14 +23,14 @@ class JSClosureEventListener : public event::EventListener {
       const EventListener::Options& options = EventListener::Options());
   ~JSClosureEventListener() override = default;
 
-  void Invoke(event::Event* event) override;
+  void Invoke(fml::RefPtr<event::Event> event) override;
 
   bool Matches(EventListener* listener) override;
 
   piper::Value GetClosure();
 
  private:
-  piper::Value ConvertEventToPiperValue(event::Event* event);
+  piper::Value ConvertEventToPiperValue(fml::RefPtr<event::Event> event);
 
   std::weak_ptr<App> native_app_;
   piper::Value closure_;

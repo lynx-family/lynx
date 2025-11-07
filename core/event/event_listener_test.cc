@@ -21,7 +21,7 @@ MockEventListener::MockEventListener(EventListener::Type type,
       erase_content_(erase_content),
       target_(target) {}
 
-void MockEventListener::Invoke(Event* event) {
+void MockEventListener::Invoke(fml::RefPtr<Event> event) {
   count_++;
   if (target_ != nullptr) {
     target_->RemoveEventListener(

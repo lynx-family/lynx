@@ -1749,11 +1749,11 @@ bool Element::IsEventBubbleCatch(const std::string& event) {
 }
 
 // TODO(hexionghui): move this to EventDispatcher
-void Element::HandleGlobalEvent(event::Event& event) {
+void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
   // handle the trigger-global-event attribute
-  auto path = event.event_path();
+  auto path = event->event_path();
   auto delegate = element_manager_->element_manager_delegate();
-  event.set_event_phase(event::Event::PhaseType::kGlobal);
+  event->set_event_phase(event::Event::PhaseType::kGlobal);
   for (const auto& item : path) {
     auto current_target = static_cast<Element*>(item.get());
     if (!current_target) {
@@ -1763,9 +1763,9 @@ void Element::HandleGlobalEvent(event::Event& event) {
       continue;
     }
     if (current_target->EnableTriggerGlobalEvent()) {
-      event.set_current_target(current_target->GetWeakTarget());
-      event.HandleEventBaseDetail();
-      delegate->SendGlobalEvent(event.type(), event.detail());
+      event->set_current_target(current_target->GetWeakTarget());
+      event->HandleEventBaseDetail();
+      delegate->SendGlobalEvent(event->type(), event->detail());
     }
   }
 
@@ -1776,7 +1776,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
     return;
   }
   const auto& global_bind_ids =
-      element_manager_->GetGlobalBindElementIds(event.type());
+      element_manager_->GetGlobalBindElementIds(event->type());
   if (global_bind_ids.size() > 0) {
     for (const auto& id : global_bind_ids) {
       auto current_target = node_manager->Get(id);
@@ -1786,7 +1786,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
             "is null.");
         continue;
       }
-      event.set_current_target(current_target->GetWeakTarget());
+      event->set_current_target(current_target->GetWeakTarget());
       const auto& global_bind_target_set = current_target->GlobalBindTarget();
       // If set is empty, means the target is all other elements.
       if (!global_bind_target_set.has_value() ||
@@ -1794,7 +1794,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
         current_target->DispatchEvent(event);
       } else {
         // event can bubble
-        if (event.bubbles()) {
+        if (event->bubbles()) {
           for (const auto& item : path) {
             Element* bubble_target = static_cast<Element*>(item.get());
             if (!bubble_target) {
@@ -1812,12 +1812,12 @@ void Element::HandleGlobalEvent(event::Event& event) {
                                    ->idSelector()
                                    .str();
             if (global_bind_target_set->contains(id_selector)) {
-              event.set_target(bubble_target->GetWeakTarget());
+              event->set_target(bubble_target->GetWeakTarget());
               current_target->DispatchEvent(event);
             }
           }
           // reset target for event
-          event.set_target(GetWeakTarget());
+          event->set_target(GetWeakTarget());
         }
         // event can't bubble
         else {

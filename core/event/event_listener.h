@@ -27,6 +27,8 @@
 
 #include <string>
 
+#include "base/include/fml/memory/ref_ptr.h"
+
 namespace lynx {
 namespace event {
 
@@ -84,7 +86,7 @@ class EventListener {
 
   const Options& GetOptions() const { return options_; }
 
-  virtual void Invoke(Event* event) = 0;
+  virtual void Invoke(fml::RefPtr<Event> event) = 0;
 
   virtual bool Matches(EventListener* listener) = 0;
 

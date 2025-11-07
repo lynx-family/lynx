@@ -966,12 +966,12 @@ class TemplateAssembler final : public TemplateEntryHolder,
       for (size_t i = 0; i < n_args; ++i) {
         event_args->push_back(*(p_args[i]));
       }
-      runtime::MessageEvent event(event_name,
-                                  runtime::ContextProxy::Type::kEngine,
-                                  runtime::ContextProxy::Type::kCoreContext,
-                                  std::make_unique<pub::ValueImplLepus>(
-                                      lepus::Value(std::move(event_args))));
-      engine_context_proxy->DispatchEvent(event);
+      auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+          event_name, runtime::ContextProxy::Type::kEngine,
+          runtime::ContextProxy::Type::kCoreContext,
+          std::make_unique<pub::ValueImplLepus>(
+              lepus::Value(std::move(event_args))));
+      engine_context_proxy->DispatchEvent(std::move(event));
     } else {
       context->Call(func_name, args...);
     }
