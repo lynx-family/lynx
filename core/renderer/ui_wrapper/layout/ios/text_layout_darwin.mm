@@ -262,10 +262,11 @@ void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* 
               convertLynxTextDecorationStyle:static_cast<int>(
                                                  text_attributes->text_decoration_style)];
 
-          textStyle.textDecorationColor = [LynxConverter
-              toUIColor:@(static_cast<int>(text_attributes->text_decoration_color.has_value()
-                                               ? *text_attributes->text_decoration_color
-                                               : starlight::DefaultColor::DEFAULT_TEXT_COLOR))];
+          if (text_attributes->text_decoration_color.has_value() &&
+              text_attributes->text_decoration_color != 0) {
+            textStyle.textDecorationColor = [LynxConverter
+                toUIColor:@(static_cast<int>(*text_attributes->text_decoration_color))];
+          }
           break;
         default:
           break;
