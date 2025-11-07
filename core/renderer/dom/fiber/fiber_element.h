@@ -714,7 +714,8 @@ class FiberElement : public Element,
 
   void HandleDelayTask(base::MoveOnlyClosure<void> operation) override;
 
-  void HandleBeforeFlushActionsTask(base::MoveOnlyClosure<void> operation);
+  void HandleBeforeFlushActionsTask(base::MoveOnlyClosure<void> operation,
+                                    int32_t predicate_parallel_flush_bitset);
 
   void HandleKeyframePropsChange();
 
@@ -907,8 +908,12 @@ class FiberElement : public Element,
   }
 
   inline bool ShouldProcessParallelTasks() {
-    return parallel_flush_ ||
+    return is_parallel_flush() ||
            resolve_status_ == AsyncResolveStatus::kSyncResolving;
+  }
+
+  inline bool ShouldResolveStyle() {
+    return !IsAsyncResolveResolving() && ((dirty_ & ~kDirtyTree) != 0);
   }
 
   inline void EnqueueReduceTask(base::MoveOnlyClosure<void> operation) {
@@ -938,6 +943,12 @@ class FiberElement : public Element,
   lepus::Value GetComputedStyleByKey(const base::String& key);
 
   bool CollectCustomProperties(AttributeHolder* holder);
+
+  void PrepareSelfForThreadedElementResolution();
+
+  bool NeedPropagateInheritedDirtyFlag(bool force_propagate);
+
+  void InvalidateChildrenIfNeeded();
 
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);

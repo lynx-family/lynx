@@ -5538,6 +5538,9 @@ TEST_P(FiberElementTest, UpdateCSSVariables_0) {
       manager->painting_context()->impl());
   painting_context->Flush();
 
+  EXPECT_TRUE(painting_context->node_map_.find(fiber_element_4->impl_id()) !=
+              painting_context->node_map_.end());
+
   auto* painting_node_4 =
       painting_context->node_map_.at(fiber_element_4->impl_id()).get();
   std::string background_color_key = "background-color";
@@ -9951,9 +9954,11 @@ TEST_P(FiberElementTest, CopySetStyle) {
     manager_1->SetThreadStrategy(
         base::ThreadStrategyForRendering::MULTI_THREADS);
   }
-  if (enable_parallel_element_flush) {
-    manager_1->SetEnableParallelElement(true);
-  }
+  manager_1->SetEnableParallelElement(enable_parallel_element_flush_strategy >
+                                      0);
+  manager_1->enable_level_order_traversing_ =
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0;
 
   auto page = manager->CreateFiberPage("page", 11);
   page = fml::AdoptRef<PageElement>(
@@ -10024,9 +10029,11 @@ TEST_P(FiberElementTest, CloneAPITest) {
     manager_1->SetThreadStrategy(
         base::ThreadStrategyForRendering::MULTI_THREADS);
   }
-  if (enable_parallel_element_flush) {
-    manager_1->SetEnableParallelElement(true);
-  }
+  manager_1->SetEnableParallelElement(enable_parallel_element_flush_strategy >
+                                      0);
+  manager_1->enable_level_order_traversing_ =
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0;
 
   {
     base::String component_id("21");
@@ -10164,9 +10171,12 @@ TEST_P(FiberElementTest, ElementBundleTest00) {
     manager_1->SetThreadStrategy(
         base::ThreadStrategyForRendering::MULTI_THREADS);
   }
-  if (enable_parallel_element_flush) {
-    manager_1->SetEnableParallelElement(true);
-  }
+
+  manager_1->SetEnableParallelElement(enable_parallel_element_flush_strategy >
+                                      0);
+  manager_1->enable_level_order_traversing_ =
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0;
 
   auto config = lepus::Value(lepus::Dictionary::Create());
   config.SetProperty(base::String("hydrateID"), lepus::Value("hydrateID"));
@@ -10238,9 +10248,11 @@ TEST_P(FiberElementTest, ElementBundleTest01) {
     manager_1->SetThreadStrategy(
         base::ThreadStrategyForRendering::MULTI_THREADS);
   }
-  if (enable_parallel_element_flush) {
-    manager_1->SetEnableParallelElement(true);
-  }
+  manager_1->SetEnableParallelElement(enable_parallel_element_flush_strategy >
+                                      0);
+  manager_1->enable_level_order_traversing_ =
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0;
 
   auto config = lepus::Value(lepus::Dictionary::Create());
   config.SetProperty(base::String("hydrateID"), lepus::Value("hydrateID"));
@@ -10402,9 +10414,11 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
     manager_1->SetThreadStrategy(
         base::ThreadStrategyForRendering::MULTI_THREADS);
   }
-  if (enable_parallel_element_flush) {
-    manager_1->SetEnableParallelElement(true);
-  }
+  manager_1->SetEnableParallelElement(enable_parallel_element_flush_strategy >
+                                      0);
+  manager_1->enable_level_order_traversing_ =
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0;
 
   auto cloned_page_node = lepus::Value(
       TreeResolver::CloneElementRecursively(current_page.get(), true));
@@ -13245,7 +13259,9 @@ TEST_P(FiberElementTest, TestPageElementPostResolveTaskToThreadPool) {
 }
 
 TEST_P(FiberElementTest, TestAsyncResolveProperty) {
-  if (!enable_parallel_element_flush) {
+  if (enable_parallel_element_flush_strategy == 0 ||
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0) {
     GTEST_SKIP();
   }
   // css related
@@ -13293,7 +13309,9 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty) {
 }
 
 TEST_P(FiberElementTest, TestAsyncResolveProperty_ReplaceElements) {
-  if (!enable_parallel_element_flush) {
+  if (enable_parallel_element_flush_strategy == 0 ||
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0) {
     GTEST_SKIP();
   }
   // css related
@@ -13386,7 +13404,9 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus) {
 }
 
 TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus02) {
-  if (!enable_parallel_element_flush) {
+  if (enable_parallel_element_flush_strategy == 0 ||
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0) {
     GTEST_SKIP();
   }
 

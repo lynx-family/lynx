@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_FIBER_TREE_RESOLVER_H_
 #define CORE_RENDERER_DOM_FIBER_TREE_RESOLVER_H_
 
+#include <list>
 #include <memory>
 #include <utility>
 
@@ -26,6 +27,10 @@ class TreeResolver {
     kTemplateScope,  // Clone the current template scope.
     kTree,           // Clone the entire subtree.
   };
+
+  static constexpr uint32_t kWorkUnitSize = 16;
+  static constexpr uint32_t kLocalQueueSizeInMainThread = 32;
+  static constexpr uint32_t kLocalQueueSizeInWorker = 0;
 
   static void NotifyNodeInserted(FiberElement* insertion_point,
                                  FiberElement* node);
@@ -98,6 +103,8 @@ class TreeResolver {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
+  static void TraverseDom(FiberElement* root, uint32_t work_unit_size);
+
  protected:
   static void GetPartsRecursively(const fml::RefPtr<FiberElement>& root,
                                   fml::RefPtr<lepus::Dictionary>& parts_map);
@@ -105,6 +112,16 @@ class TreeResolver {
   // Construct element according to the element info.
   static fml::RefPtr<FiberElement> FromElementInfo(int64_t parent_component_id,
                                                    const ElementInfo& info);
+
+ private:
+  static std::list<ParallelFlushReturn> StyleTrees(
+      std::list<FiberElement*>& discovered, uint32_t work_unit_size);
+
+  static void DistributeStyleTreesTask(std::list<FiberElement*> discovered,
+                                       uint32_t work_unit_size);
+
+  static void DistributeOneChunkStyleTreesTask(
+      std::list<FiberElement*> discovered, uint32_t work_unit_size);
 };
 
 }  // namespace tasm

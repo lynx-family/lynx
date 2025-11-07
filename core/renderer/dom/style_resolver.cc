@@ -278,7 +278,7 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
   bool is_fiber_arch = element_->is_fiber_element();
 
   CSSVariableHandler handler(is_fiber_arch);
-  if (is_fiber_arch && element_->is_parallel_flush()) {
+  if (is_fiber_arch && element_->is_greedy_parallel_flush()) {
     if (handler.HasCSSVariableInStyleMap(styles) ||
         (manager()->GetDynamicCSSConfigs().enable_css_inline_variables_ &&
          handler.HasCSSVariableInHolder(element_->data_model()))) {

@@ -280,7 +280,7 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
 }
 
 TEST_P(TextElementTest, TestMeasureCase0) {
-  if (enable_parallel_element_flush) {
+  if (enable_parallel_element_flush_strategy > 0) {
     GTEST_SKIP();
   }
   auto config = std::make_shared<PageConfig>();
@@ -393,7 +393,7 @@ TEST_P(TextElementTest, TestMeasureCase0) {
 }
 
 TEST_P(TextElementTest, LayoutInElementFontScale) {
-  if (enable_parallel_element_flush) {
+  if (enable_parallel_element_flush_strategy > 0) {
     GTEST_SKIP();
   }
   auto config = std::make_shared<PageConfig>();

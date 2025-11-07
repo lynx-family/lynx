@@ -126,6 +126,9 @@ class Element : public lepus::RefCounted,
     kDetached,
   };
 
+  static const uint32_t kFlagGreedyParallel = 0x01 << 0;
+  static const uint32_t kFlagLevelOrderParallel = 0x01 << 1;
+
   lepus::RefType GetRefType() const override {
     return lepus::RefType::kElement;
   };
@@ -141,7 +144,14 @@ class Element : public lepus::RefCounted,
   virtual bool is_fiber_element() const { return false; }
 
   bool is_fixed() { return is_fixed_; }
-  bool is_parallel_flush() { return parallel_flush_; }
+  // TODO(ZHOUZHITAO): Move parallel_flush_ flag from element to
+  // ParallelResolver
+  bool is_parallel_flush() { return parallel_flush_ > 0; }
+  bool is_greedy_parallel_flush() {
+    return (parallel_flush_ & kFlagGreedyParallel) > 0;
+  }
+  void MarkParallelFlushFlag(uint32_t flag) { parallel_flush_ |= flag; }
+  void ResetParallelFlushFlag() { parallel_flush_ = 0; }
 
   int32_t impl_id() const { return id_; }
 
@@ -762,6 +772,8 @@ class Element : public lepus::RefCounted,
   // Used to record the LayoutNodeType corresponding to the current tag, init
   // with LayoutNodeType::UNKNOWN.
   int32_t layout_node_type_{kLayoutNodeTypeNotInit};
+  // Indicate element is flush in parallel
+  int32_t parallel_flush_{0};
 
   int pseudo_type_{0};
 
@@ -775,8 +787,6 @@ class Element : public lepus::RefCounted,
   bool is_sticky_{false};
   // indicate the element's position:fixed style has changed
   bool fixed_changed_{false};
-  // Indicate element is flush in parallel
-  bool parallel_flush_{false};
 
   bool has_event_listener_{false};
 

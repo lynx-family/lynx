@@ -39,8 +39,17 @@ void FiberElementTest::SetUp() {
   } else {
     manager->SetThreadStrategy(base::ThreadStrategyForRendering::MULTI_THREADS);
   }
-  enable_parallel_element_flush = std::get<0>(current_parameter_);
-  manager->SetEnableParallelElement(enable_parallel_element_flush);
+  enable_parallel_element_flush_strategy = std::get<0>(current_parameter_);
+  manager->SetEnableParallelElement(enable_parallel_element_flush_strategy > 0);
+  manager->enable_level_order_traversing_ =
+      (enable_parallel_element_flush_strategy &
+       Element::kFlagLevelOrderParallel) > 0;
+  if (manager->enable_level_order_traversing_) {
+    LynxEnv::GetInstance()
+        .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] =
+        "true";
+  }
+
   enable_batch_layout_operation = std::get<2>(current_parameter_);
   if (enable_batch_layout_operation) {
     LynxEnv::GetInstance().external_env_map_
@@ -58,6 +67,9 @@ void FiberElementTest::SetUp() {
 void FiberElementTest::TearDown() {
   LynxEnv::GetInstance().external_env_map_
       [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "false";
+  LynxEnv::GetInstance()
+      .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] = "false";
+  manager->enable_level_order_traversing_ = false;
   manager->enable_batch_layout_task_with_sync_layout_ = false;
 }
 

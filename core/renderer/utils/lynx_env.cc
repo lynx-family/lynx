@@ -546,5 +546,9 @@ bool LynxEnv::EnableQuickJsThreadChecker() {
       GetBoolEnv(Key::ENABLE_QUICKJS_THREAD_CHECKER, false);
   return enable_quickjs_thread_checker || IsDevToolEnabled();
 }
+
+bool LynxEnv::EnableLevelOrderTraversing() {
+  return GetBoolEnv(Key::ENABLE_LEVEL_ORDER_TRAVERSING, false);
+}
 }  // namespace tasm
 }  // namespace lynx

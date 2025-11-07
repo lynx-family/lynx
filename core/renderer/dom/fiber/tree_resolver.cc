@@ -4,7 +4,10 @@
 
 #include "core/renderer/dom/fiber/tree_resolver.h"
 
+#include <algorithm>
+
 #include "base/include/log/logging.h"
+#include "core/base/thread/once_task.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -445,6 +448,130 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
   }
 
   return res;
+}
+
+// TODO(ZHOUZHITA0): Merge with greedy threaded element resolution later
+void TreeResolver::TraverseDom(FiberElement* root, uint32_t work_unit_size) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_TRAVERSE_DOM);
+  std::list<FiberElement*> discovered;
+  discovered.emplace_back(root);
+  root->ApplyFunctionRecursive([](FiberElement* element) {
+    if (element->ShouldResolveStyle()) {
+      element->PrepareSelfForThreadedElementResolution();
+    }
+  });
+  std::list<ParallelFlushReturn> engine_thread_tasks =
+      TreeResolver::StyleTrees(discovered, work_unit_size);
+  for (auto& reduce_task : engine_thread_tasks) {
+    reduce_task();
+  }
+}
+
+std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
+    std::list<FiberElement*>& discovered, uint32_t work_unit_size) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_STYLE_TREES);
+  auto element_manager = discovered.front()->element_manager();
+  auto optional_engine_thread_id = element_manager->GetCurrentEngineThreadId();
+  auto is_engine_thread =
+      optional_engine_thread_id.has_value() &&
+      *optional_engine_thread_id == std::this_thread::get_id();
+  auto local_queue_size =
+      is_engine_thread ? kLocalQueueSizeInMainThread : kLocalQueueSizeInWorker;
+  uint32_t node_remaining_at_current_depth =
+      static_cast<uint32_t>(discovered.size());
+  std::list<ParallelFlushReturn> resolve_returns;
+  while (!discovered.empty()) {
+    auto* target = discovered.front();
+    discovered.pop_front();
+
+    // FIXME(zhouzhitao): Level order traversing is not compatible with async
+    // resolving api right now.
+    if (target->ShouldResolveStyle()) {
+      target->UpdateResolveStatus(FiberElement::AsyncResolveStatus::kResolving);
+      target->MarkParallelFlushFlag(FiberElement::kFlagLevelOrderParallel);
+      resolve_returns.emplace_back(target->PrepareForCreateOrUpdate());
+      DCHECK((target->dirty() & ~FiberElement::kDirtyTree) == 0);
+    }
+
+    target->InvalidateChildrenIfNeeded();
+    for (auto& child : target->children()) {
+      if (target->NeedPropagateInheritedDirtyFlag(true)) {
+        child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
+      }
+      discovered.emplace_back(child.get());
+    }
+
+    node_remaining_at_current_depth--;
+    uint32_t discovered_children = static_cast<uint32_t>(discovered.size()) -
+                                   node_remaining_at_current_depth;
+    if (discovered_children >= work_unit_size &&
+        discovered.size() >= local_queue_size + work_unit_size) {
+      // could use shared_ptr to avoid copy
+      uint32_t kept_work = node_remaining_at_current_depth > local_queue_size
+                               ? node_remaining_at_current_depth
+                               : local_queue_size;
+      std::list<FiberElement*> distribute_work_list;
+      auto split_point = discovered.begin();
+      std::advance(split_point, kept_work);
+
+      distribute_work_list.splice(distribute_work_list.end(), discovered,
+                                  split_point, discovered.end());
+      TreeResolver::DistributeStyleTreesTask(std::move(distribute_work_list),
+                                             work_unit_size);
+    }
+
+    if (node_remaining_at_current_depth == 0) {
+      node_remaining_at_current_depth =
+          static_cast<uint32_t>(discovered.size());
+    }
+  }
+  return resolve_returns;
+}
+
+void TreeResolver::DistributeStyleTreesTask(std::list<FiberElement*> discovered,
+                                            uint32_t work_unit_size) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_DISTRIBUTE_STYLE_TREES_TASK);
+  auto element_manager = discovered.front()->element_manager();
+  while (!discovered.empty()) {
+    size_t transfer_count =
+        std::min(static_cast<size_t>(work_unit_size), discovered.size());
+    auto end_iter = discovered.begin();
+    std::advance(end_iter, transfer_count);
+
+    std::list<FiberElement*> work_slice;
+    work_slice.splice(work_slice.end(), discovered, discovered.begin(),
+                      end_iter);
+
+    element_manager->IncrementLevelOrderResolveTaskCounter();
+    TreeResolver::DistributeOneChunkStyleTreesTask(std::move(work_slice),
+                                                   work_unit_size);
+  }
+}
+
+void TreeResolver::DistributeOneChunkStyleTreesTask(
+    std::list<FiberElement*> discovered, uint32_t work_unit_size) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              TREE_RESOLVER_DISTRIBUTE_ONE_CHUNK_STYLE_TREES_TASK);
+  auto element_manager = discovered.front()->element_manager();
+  std::promise<std::list<ParallelFlushReturn>> promise;
+  std::future<std::list<ParallelFlushReturn>> future = promise.get_future();
+
+  auto task_info_ptr =
+      fml::MakeRefCounted<base::OnceTask<std::list<ParallelFlushReturn>>>(
+          [promise = std::move(promise), discovered = std::move(discovered),
+           work_unit_size]() mutable {
+            auto element_manager = discovered.front()->element_manager();
+            auto style_trees_result =
+                TreeResolver::StyleTrees(discovered, work_unit_size);
+            element_manager->DecrementLevelOrderResolveTaskCounter();
+            promise.set_value(std::move(style_trees_result));
+          },
+          std::move(future));
+
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [task_info_ptr]() { task_info_ptr->Run(); },
+      base::ConcurrentTaskType::HIGH_PRIORITY);
+  element_manager->EnqueueLevelOrderTask(std::move(task_info_ptr));
 }
 
 }  // namespace tasm

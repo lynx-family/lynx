@@ -1026,7 +1026,7 @@ bool Element::TendToFlatten() {
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }
 
 double Element::GetParentFontSize() {
-  if (IsCSSInheritanceEnabled() && is_parallel_flush() == false &&
+  if (IsCSSInheritanceEnabled() && !is_greedy_parallel_flush() &&
       parent() != nullptr) {
     record_parent_font_size_ = parent()->GetFontSize();
   }

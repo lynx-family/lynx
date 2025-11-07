@@ -263,7 +263,7 @@ FiberElement::GetParentInheritedProperty() {
   // If in a parallel flush process or if the parent is null, return
   // empty InheritedProperty indicating that it is not necessary to consider the
   // inheritance logic at this time.
-  if (this->is_parallel_flush()) {
+  if (this->is_greedy_parallel_flush()) {
     return {false, nullptr, nullptr, custom_properties_.get()};
   }
 
@@ -1024,7 +1024,7 @@ void FiberElement::HandleKeyframePropsChange() {
 }
 
 void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
-  if (this->parallel_flush_) {
+  if (this->is_parallel_flush()) {
     parallel_reduce_tasks_->emplace_back(std::move(operation));
   } else {
     operation();
@@ -1032,8 +1032,9 @@ void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
 }
 
 void FiberElement::HandleBeforeFlushActionsTask(
-    base::MoveOnlyClosure<void> operation) {
-  if (this->parallel_flush_) {
+    base::MoveOnlyClosure<void> operation,
+    int32_t predicate_parallel_flush_flag) {
+  if ((this->parallel_flush_ & predicate_parallel_flush_flag) > 0) {
     parallel_before_flush_action_tasks_->emplace_back(std::move(operation));
   } else {
     operation();
@@ -1064,7 +1065,7 @@ void FiberElement::ResolveCSSStyles(
     dirty_ &= ~kDirtyRefreshCSSVariables;
   }
 
-  if (!this->parallel_flush_ && IsCSSInheritanceEnabled()) {
+  if (!this->is_greedy_parallel_flush() && IsCSSInheritanceEnabled()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_PROPAGATE_INHERITED,
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
@@ -1468,7 +1469,7 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   StyleMap parsed_styles;
   base::InlineVector<CSSPropertyID, 16> reset_style_ids;
 
-  if (this->parallel_flush_ && IsCSSInheritanceEnabled()) {
+  if (this->is_greedy_parallel_flush() && IsCSSInheritanceEnabled()) {
     MarkDirtyLite(kDirtyPropagateInherited);
   }
 
@@ -1603,6 +1604,7 @@ void FiberElement::FlushActionsAsRoot() {
     return;
   }
 
+  element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   ParallelFlushAsRoot();
   FlushActions();
   if (element_manager()->GetEnableBatchLayoutTaskWithSyncLayout()) {
@@ -1653,14 +1655,11 @@ void FiberElement::FlushActions() {
   // Throw exception on purpose to catch logic flaw
   DCHECK(dirty_ == 0);
 
-  for (auto *invalidation_set : invalidation_lists_.descendants) {
-    InvalidateChildren(invalidation_set);
-  }
-  invalidation_lists_.descendants.clear_and_shrink();
+  InvalidateChildrenIfNeeded();
 
   // Step III: recursively call FlushActions for each child
   for (const auto &child : scoped_children_) {
-    if (children_propagate_inherited_styles_flag_) {
+    if (NeedPropagateInheritedDirtyFlag(false)) {
       child->MarkDirtyLite(kDirtyPropagateInherited);
     }
     child->FlushActions();
@@ -1679,9 +1678,26 @@ void FiberElement::OnParallelFlushAsRoot(PerfStatistic &stats) {
   stats.total_processing_start_ = base::CurrentTimeMicroseconds();
 }
 
+void FiberElement::PrepareSelfForThreadedElementResolution() {
+  // Get Tag info
+  EnsureTagInfo();
+  // Decode first
+  GetRelatedCSSFragment();
+  if (is_component()) {
+    static_cast<ComponentElement *>(this)->GetCSSFragment();
+  }
+}
+
 void FiberElement::ParallelFlushAsRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARALLEL_FLUSH_AS_ROOT);
   if (!element_manager()->GetEnableParallelElement()) {
+    return;
+  }
+  if (element_manager()->GetEnableParallelElement() &&
+      element_manager()->EnableLevelOrderTraversing()) {
+    TreeResolver::TraverseDom(this, TreeResolver::kWorkUnitSize);
+    element_manager()->FlushLevelOrderTasks();
+    element_manager()->WaitForAllLevelOrderResolveTasks();
     return;
   }
   {
@@ -1756,13 +1772,8 @@ void FiberElement::DidParallelFlushAsRoot(PerfStatistic &stats) {
 
 void FiberElement::PostResolveTaskToThreadPool(
     bool is_engine_thread, ParallelReduceTaskQueue &task_queue) {
-  // Get Tag Info
-  EnsureTagInfo();
-  // Decode first
-  GetRelatedCSSFragment();
-  if (is_component()) {
-    static_cast<ComponentElement *>(this)->GetCSSFragment();
-  }
+  UpdateResolveStatus(AsyncResolveStatus::kPreparing);
+  PrepareSelfForThreadedElementResolution();
 
   std::promise<ParallelFlushReturn> promise;
   std::future<ParallelFlushReturn> future = promise.get_future();
@@ -1781,7 +1792,7 @@ void FiberElement::PostResolveTaskToThreadPool(
             });
 
         target->UpdateResolveStatus(AsyncResolveStatus::kResolving);
-        target->parallel_flush_ = true;
+        target->MarkParallelFlushFlag(kFlagGreedyParallel);
         promise.set_value(target->PrepareForCreateOrUpdate());
       },
       std::move(future));
@@ -1798,7 +1809,7 @@ void FiberElement::ParallelFlushRecursively() {
     return;
   }
 
-  if (!IsAsyncResolveResolving() && ((dirty_ & ~kDirtyTree) != 0)) {
+  if (ShouldResolveStyle()) {
     PostResolveTaskToThreadPool(true, element_manager()->ParallelTasks());
   }
 
@@ -1813,7 +1824,7 @@ void FiberElement::PrepareChildren() {
                 UpdateTraceDebugInfo(ctx.event());
               });
   for (const auto &child : scoped_children_) {
-    if (children_propagate_inherited_styles_flag_) {
+    if (NeedPropagateInheritedDirtyFlag(false)) {
       // mark propagateInherited when necessary
       child->MarkDirtyLite(kDirtyPropagateInherited);
     }
@@ -1831,7 +1842,7 @@ void FiberElement::PrepareChildren() {
 void FiberElement::PrepareChildForInsertion(FiberElement *child) {
   if (child->dirty() & FiberElement::kDirtyCreated) {
     // make sure the child has been created,before insert op
-    if (children_propagate_inherited_styles_flag_) {
+    if (NeedPropagateInheritedDirtyFlag(false)) {
       child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
     }
     child->PrepareForCreateOrUpdate();
@@ -2338,7 +2349,8 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
     // based on whether ComputedCSSStyle is dirty.
     if (element_manager() && element_manager()->FixZIndexCrash()) {
       HandleBeforeFlushActionsTask(
-          [this]() { element_container()->StyleChanged(); });
+          [this]() { element_container()->StyleChanged(); },
+          kFlagGreedyParallel | kFlagLevelOrderParallel);
     } else {
       HandleDelayTask([this]() { element_container()->StyleChanged(); });
     }
@@ -2355,7 +2367,7 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
 ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
   // Remaining Layout Task should be returned to be executed in threaded flush
   // or sync resolving(i.e. PageElement) scenario
-  this->parallel_flush_ = false;
+  this->ResetParallelFlushFlag();
   this->UpdateResolveStatus(AsyncResolveStatus::kResolved);
   return [this]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -2917,10 +2929,12 @@ void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
 
 void FiberElement::RequestLayout() {
   if (EnableLayoutInElementMode()) {
-    HandleBeforeFlushActionsTask([manager = element_manager(), this]() {
-      MarkLayoutDirty();
-      manager->SetNeedsLayout();
-    });
+    HandleBeforeFlushActionsTask(
+        [manager = element_manager(), this]() {
+          MarkLayoutDirty();
+          manager->SetNeedsLayout();
+        },
+        kFlagGreedyParallel | kFlagLevelOrderParallel);
     return;
   }
 
@@ -3050,14 +3064,16 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value) {
               .c_str(),
           *result);
     }
-    if (is_page() && !parallel_flush_) {
-      // TODO(zhouzhitao): to find a better way to make this work
-      MarkFontSizeInvalidateRecursively();
-    } else {
+    // TODO(ZHOUZHITAO): Figure out why need to determine whether it is a page
+    if (is_page() && !is_greedy_parallel_flush()) {
       // FIXME(linxs): if parent's font-size changed, we need to invalidate all
       // descendant‘ style, otherwise the descendant em pattern values will not
       // be updated dynamically. But it may cause perf issue, we can support it
       // later.
+      MarkFontSizeInvalidateRecursively();
+    } else {
+      // TODO(zhouzhitao): to find a better way to make this work
+      // TODO(zhouzhitao): Check whether really need to RequireFlush
       MarkDirty(kDirtyFontSize);
     }
   }
@@ -3242,7 +3258,8 @@ void FiberElement::DoFullCSSResolving() {
     HandleBeforeFlushActionsTask(
         [this, css_var_table_clone = lepus::Value::Clone(css_var_table)]() {
           RecursivelyMarkChildrenCSSVariableDirty(css_var_table_clone);
-        });
+        },
+        kFlagGreedyParallel);
   }
 }
 
@@ -4292,6 +4309,22 @@ bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
 }
 
 void FiberElement::MarkCustomPropertiesDirty() { custom_properties_.reset(); }
+
+bool FiberElement::NeedPropagateInheritedDirtyFlag(bool force_propagate) {
+  // When level order traversing is enabled, mark kDirtyPropagateInherited is
+  // performed before FlushActions.
+  return children_propagate_inherited_styles_flag_ &&
+         (force_propagate ||
+          (!element_manager()->GetEnableParallelElement() ||
+           !element_manager()->EnableLevelOrderTraversing()));
+}
+
+void FiberElement::InvalidateChildrenIfNeeded() {
+  for (auto *invalidation_set : invalidation_lists_.descendants) {
+    InvalidateChildren(invalidation_set);
+  }
+  invalidation_lists_.descendants.clear_and_shrink();
+}
 
 }  // namespace tasm
 }  // namespace lynx

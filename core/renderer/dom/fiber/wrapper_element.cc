@@ -38,7 +38,7 @@ ParallelFlushReturn WrapperElement::PrepareForCreateOrUpdate() {
   }
 
   dirty_ &= kDirtyTree;
-  this->parallel_flush_ = false;
+  this->ResetParallelFlushFlag();
   return [this]() { this->UpdateResolveStatus(AsyncResolveStatus::kUpdated); };
 }
 

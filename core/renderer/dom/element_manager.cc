@@ -100,6 +100,8 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_NEW_ANIMATOR_FLUSH_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
+  enable_level_order_traversing_ =
+      LynxEnv::GetInstance().EnableLevelOrderTraversing();
   if (platform_layout_context_) {
     layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());
@@ -1465,6 +1467,26 @@ void ElementManager::OnPatchFinishForFiber(
   }
 
   DidPatchFinishForFiber();
+}
+
+void ElementManager::EnqueueLevelOrderTask(
+    base::OnceTaskRefptr<std::list<ParallelFlushReturn>> task) {
+  level_order_task_queue_.Push(std::move(task));
+}
+
+void ElementManager::FlushLevelOrderTasks() {
+  while (!level_order_task_queue_.Empty()) {
+    auto iter = level_order_task_queue_.ReversePopAll();
+    for (auto &task : iter) {
+      task->Run();
+      {
+        std::list<ParallelFlushReturn> future_tasks = task->GetFuture().get();
+        for (auto &future_task : future_tasks) {
+          future_task();
+        }
+      }
+    }
+  }
 }
 
 int32_t ElementManager::GenerateElementID() { return element_id_++; }

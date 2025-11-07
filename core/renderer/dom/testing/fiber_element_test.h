@@ -28,24 +28,37 @@ static constexpr int64_t kFrameDuration = 16;  // ms
 
 static constexpr double COMPARE_EPSILON = 0.00001;
 
-const std::tuple<bool, int, bool> fiber_element_generation_params[] = {
-    std::make_tuple(false, 0,
+const std::tuple<int, int, bool> fiber_element_generation_params[] = {
+    std::make_tuple(0, 0,
                     false),  // disable parallel flush/ALL_ON_UI thread
                              // strategy/disable batch layout operation
-    std::make_tuple(false, 3,
+    std::make_tuple(0, 3,
                     false),  // disable parellel flush/MULTI_THREADS thread
                              // strategy/disable batch layout operation
-    std::make_tuple(true, 0,
-                    false),  // enable parallel flush/ALL_ON_UI thread strategy
-                             // /disable batch layout operation
-    std::make_tuple(true, 0, true),  // enable parallel flush/ALL_ON_UI thread
-                                     // strategy /enable batch layout operation
-    std::make_tuple(true, 3,
-                    true),  // enable parallel flush/MULTI_THREADS thread
-                            // strategy/disable batch layout operation
-    std::make_tuple(true, 3,
-                    false),  // enable parallel flush/MULTI_THREADS thread
-                             // strategy/disable batch layout operation
+    std::make_tuple(1, 0,
+                    false),  // enable greedy parallel flush/ALL_ON_UI thread
+                             // strategy /disable batch layout operation
+    std::make_tuple(1, 0,
+                    true),  // enable greedy parallel flush/ALL_ON_UI thread
+                            // strategy /enable batch layout operation
+    std::make_tuple(1, 3,
+                    true),  // enable greedy parallel flush/MULTI_THREADS thread
+                            // strategy/enable batch layout operation
+    std::make_tuple(1, 3,
+                    false),  // enable greedy parallel flush/MULTI_THREADS
+                             // thread strategy/disable batch layout operation
+    std::make_tuple(2, 0,
+                    true),  // enable level-order parallel flush/ALL_ON_UI
+                            // thread strategy /enable batch layout operation
+    std::make_tuple(2, 3,
+                    true),  // enable level-order parallel flush/MULTI_THREADS
+                            // thread strategy/enable batch layout operation
+    std::make_tuple(2, 0,
+                    false),  // enable level-order parallel flush/ALL_ON_UI
+                             // thread strategy /disable batch layout operation
+    std::make_tuple(2, 3,
+                    false),  // enable level-order parallel flush/MULTI_THREADS
+                             // thread strategy/disable batch layout operation
 };
 
 class TestVSyncMonitor : public base::VSyncMonitor {
@@ -79,7 +92,7 @@ class FiberElementMockTasmDelegate : public test::MockTasmDelegate {
 };
 
 class FiberElementTest
-    : public ::testing::TestWithParam<std::tuple<bool, int, bool>> {
+    : public ::testing::TestWithParam<std::tuple<int, int, bool>> {
  public:
   FiberElementTest() { current_parameter_ = GetParam(); }
   ~FiberElementTest() override {}
@@ -135,7 +148,7 @@ class FiberElementTest
  protected:
   std::tuple<bool, int, bool> current_parameter_;
   int32_t thread_strategy;
-  bool enable_parallel_element_flush;
+  int32_t enable_parallel_element_flush_strategy;
   bool enable_batch_layout_operation;
 };
 

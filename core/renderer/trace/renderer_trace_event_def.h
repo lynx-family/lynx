@@ -637,6 +637,15 @@ inline constexpr const char* const TREE_RESOLVER_ATTACH_TO_ELEMENT_MANAGER =
     "TreeResolver::AttachRootToElementManager";
 inline constexpr const char* const TREE_RESOLVER_FROM_ELEMENT_INFO =
     "TreeResolver::FromElementInfo";
+inline constexpr const char* const TREE_RESOLVER_TRAVERSE_DOM =
+    "TreeResolver::TraverseDom";
+inline constexpr const char* const TREE_RESOLVER_STYLE_TREES =
+    "TreeResolver::StyleTrees";
+inline constexpr const char* const TREE_RESOLVER_DISTRIBUTE_STYLE_TREES_TASK =
+    "TreeResolver::DistributeStyleTreesTask";
+inline constexpr const char* const
+    TREE_RESOLVER_DISTRIBUTE_ONE_CHUNK_STYLE_TREES_TASK =
+        "TreeResolver::DistributeOneChunkStyleTreesTask";
 inline constexpr const char* const FIBER_ELEMENT_SELECTOR_SELECT =
     "FiberElementSelector::Select";
 

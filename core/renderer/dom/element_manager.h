@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_ELEMENT_MANAGER_H_
 #define CORE_RENDERER_DOM_ELEMENT_MANAGER_H_
 
+#include <atomic>
 #include <functional>
 #include <limits>
 #include <list>
@@ -12,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -1028,6 +1030,11 @@ class ElementManager : public ElementContextDelegate {
     return parallel_resolve_tree_tasks_queue_;
   }
 
+  void EnqueueLevelOrderTask(
+      base::OnceTaskRefptr<std::list<ParallelFlushReturn>> task);
+
+  void FlushLevelOrderTasks();
+
   std::shared_ptr<tasm::TasmWorkerTaskRunner> GetTasmWorkerTaskRunner() const {
     return task_runner_;
   }
@@ -1115,6 +1122,26 @@ class ElementManager : public ElementContextDelegate {
     css_fragment_parsing_tasm_worker_thread_ = enable;
   }
 
+  void IncrementLevelOrderResolveTaskCounter() {
+    pending_level_order_tasks_.fetch_add(1);
+  }
+
+  void DecrementLevelOrderResolveTaskCounter() {
+    pending_level_order_tasks_.fetch_sub(1);
+  }
+
+  void WaitForAllLevelOrderResolveTasks() {
+    int expected = 0;
+    while (!pending_level_order_tasks_.compare_exchange_weak(
+        expected, 0, std::memory_order_acquire, std::memory_order_relaxed)) {
+      expected = 0;
+    }
+  }
+
+  bool EnableLevelOrderTraversing() const {
+    return enable_level_order_traversing_;
+  }
+
   void RegisterVMUpdateOuterObjSizeCallback(
       base::MoveOnlyClosure<void, int> closure);
 
@@ -1154,6 +1181,14 @@ class ElementManager : public ElementContextDelegate {
 
   void SetRequestLayoutCallback(base::MoveOnlyClosure<void> callback) {
     request_layout_callback_ = std::move(callback);
+  }
+
+  std::optional<std::thread::id> GetCurrentEngineThreadId() {
+    return engine_thread_id_;
+  }
+
+  void SetCurrentEngineThreadId(std::thread::id engine_id) {
+    engine_thread_id_ = engine_id;
   }
 
  protected:
@@ -1264,6 +1299,9 @@ class ElementManager : public ElementContextDelegate {
   bool fix_stacking_context_dirty_flag_{true};
   bool fix_new_animator_flush_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
+  bool enable_level_order_traversing_{false};
+  std::atomic_int pending_level_order_tasks_{0};
+  std::optional<std::thread::id> engine_thread_id_{std::nullopt};
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_layout_in_element_mode_{false};
@@ -1315,6 +1353,8 @@ class ElementManager : public ElementContextDelegate {
       paused_animation_element_set_;  // paused
 
   std::list<base::OnceTaskRefptr<ParallelFlushReturn>> parallel_task_queue_;
+  base::ConcurrentQueue<base::OnceTaskRefptr<std::list<ParallelFlushReturn>>>
+      level_order_task_queue_;
 
   std::list<base::OnceTaskRefptr<ParallelFlushReturn>>
       parallel_resolve_tree_tasks_queue_;

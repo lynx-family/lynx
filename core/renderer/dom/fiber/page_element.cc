@@ -89,6 +89,7 @@ void PageElement::FlushActionsAsRoot() {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+  element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   FiberElement::ParallelFlushAsRoot();
   FiberElement::FlushActions();
   FiberElement::TraversalInsertFixedElementOfTree();
@@ -103,12 +104,8 @@ void PageElement::PostResolveTaskToThreadPool(
   // should be performed in the TASM thread before dispatching the
   // PrepareForCreateOrUpdate for all the children FiberElement, thus the rem
   // pattern value will be guaranteed to be calculated precisely.
-
-  // Get Tag Info
-  EnsureTagInfo();
-  // Decode first
-  GetRelatedCSSFragment();
-  GetCSSFragment();
+  UpdateResolveStatus(AsyncResolveStatus::kPreparing);
+  FiberElement::PrepareSelfForThreadedElementResolution();
 
   UpdateResolveStatus(AsyncResolveStatus::kSyncResolving);
   ParallelFlushReturn remaining_task = PrepareForCreateOrUpdate();
