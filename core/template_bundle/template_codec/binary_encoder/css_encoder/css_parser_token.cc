@@ -112,22 +112,21 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
                                         FEATURE_CSS_STYLE_VARIABLES) &&
           compile_options_.enable_css_variable_ &&
           type == tasm::CSSValueType::VARIABLE) {
+        auto& target_css_value =
+            attributes_
+                .insert_or_assign(
+                    id, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING,
+                                       tasm::CSSValueType::VARIABLE))
+                .first->second;
         if (tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                           LYNX_VERSION_2_14)) {
-          lepus::Value default_value_map;
           if (value.HasMember("defaultValueMap")) {
-            default_value_map =
+            lepus::Value default_value_map =
                 lepus::jsonValueTolepusValue(value["defaultValueMap"]);
+            target_css_value.SetDefaultValueMap(default_value_map);
           }
-          attributes_.insert_or_assign(
-              id, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING,
-                                 tasm::CSSValueType::VARIABLE, default_value,
-                                 default_value_map));
-        } else {
-          attributes_.insert_or_assign(
-              id, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING,
-                                 tasm::CSSValueType::VARIABLE, default_value));
         }
+        target_css_value.SetDefaultValue(default_value);
         return;
       }
       if (tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
@@ -138,7 +137,8 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
                 compile_options_);
         tasm::UnitHandler::Process(id, css_value, attributes_, configs);
       } else {
-        attributes_.insert_or_assign(id, tasm::CSSValue(css_value));
+        attributes_.insert_or_assign(
+            id, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING));
       }
     };
     if (value.IsObject()) {

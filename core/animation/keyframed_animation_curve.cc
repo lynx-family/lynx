@@ -88,7 +88,7 @@ tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
                                  tasm::Element* element) {
   std::optional<tasm::CSSValue> value_opt = element->GetElementStyle(id);
   if (!value_opt) {
-    return tasm::CSSValue::Empty();
+    return tasm::CSSValue();
   }
   return std::move(*value_opt);
 }
@@ -567,7 +567,7 @@ FilterKeyframe::FilterKeyframe(fml::TimeDelta time,
 tasm::CSSValue FilterKeyframe::GetFilterKeyframeValue(FilterKeyframe* keyframe,
                                                       tasm::CSSPropertyID id,
                                                       tasm::Element* element) {
-  tasm::CSSValue filter = tasm::CSSValue::Empty();
+  tasm::CSSValue filter = tasm::CSSValue();
   if (keyframe->IsEmpty()) {
     filter = GetStyleInElement(id, element);
   } else {
@@ -613,8 +613,7 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
       keyframe, tasm::kPropertyIDFilter, element_);
   tasm::CSSValue end_filter = FilterKeyframe::GetFilterKeyframeValue(
       keyframe_next, tasm::kPropertyIDFilter, element_);
-  if (start_filter == tasm::CSSValue::Empty() ||
-      end_filter == tasm::CSSValue::Empty()) {
+  if (start_filter == tasm::CSSValue() || end_filter == tasm::CSSValue()) {
     return start_filter;
   }
   double start_filter_value = start_filter.GetArray()->get(1).Double();
@@ -649,7 +648,7 @@ tasm::CSSValue BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
   if (keyframe && !keyframe->IsEmpty()) {
     return keyframe->GetBackgroundPosition();
   }
-  return tasm::CSSValue::Empty();
+  return tasm::CSSValue();
 }
 
 std::unique_ptr<BackgroundPositionKeyframe> BackgroundPositionKeyframe::Create(
@@ -735,8 +734,8 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
       BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
           keyframe_next, tasm::kPropertyIDBackgroundPosition, element_);
 
-  if (start_background_position == tasm::CSSValue::Empty() ||
-      end_background_position == tasm::CSSValue::Empty()) {
+  if (start_background_position == tasm::CSSValue() ||
+      end_background_position == tasm::CSSValue()) {
     return start_background_position;
   }
 
@@ -779,10 +778,7 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
   auto inner_lepus_value = lepus::Value(std::move(inner_array));
   auto outer_array = lepus::CArray::Create();
   outer_array->emplace_back(std::move(inner_lepus_value));
-  auto outer_lepus_value = lepus::Value(std::move(outer_array));
-
-  return tasm::CSSValue(std::move(outer_lepus_value),
-                        tasm::CSSValuePattern::ARRAY);
+  return tasm::CSSValue(std::move(outer_array));
 }
 
 }  // namespace animation

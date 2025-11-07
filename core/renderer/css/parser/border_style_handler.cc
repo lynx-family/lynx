@@ -18,7 +18,7 @@ HANDLER_IMPL() {
                           STRING_TYPE)
 
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
-  CSSValue ret = CSSValue::Empty();
+  CSSValue ret;
   parser.ParseBorderStyle(ret);
   if (ret.IsEmpty()) {
     CSS_HANDLER_FAIL_IF_NOT(

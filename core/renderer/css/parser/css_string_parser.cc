@@ -112,7 +112,7 @@ CSSValue CSSStringParser::ParseBackgroundOrMask(bool mask) {
     bool valid = BackgroundLayer(layer, mask);
     // Must be a valid layer and a color is only allowed in the final layer
     if (!valid || (layer.color.has_value() && !AtEnd())) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
     color = layer.color;
     // FIXME: If the background layer does not have an image, we should update
@@ -158,7 +158,7 @@ CSSValue CSSStringParser::ParseBackgroundImage() {
       }
     } else {
       // parse failed
-      return CSSValue::Empty();
+      return CSSValue();
     }
     if (Consume(TokenType::COMMA)) {
       // ','
@@ -167,7 +167,7 @@ CSSValue CSSStringParser::ParseBackgroundImage() {
   }
 
   if (!AtEnd()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
 
   return CSSValue(std::move(result));
@@ -200,16 +200,16 @@ void CSSStringParser::ParseLengthTo(CSSValue &target) {
   Advance();
   LengthTo(target);
   if (!AtEnd()) {
-    target = CSSValue::Empty();
+    target = CSSValue();
   }
 }
 
 CSSValue CSSStringParser::ParseSingleBorderRadius() {
   Advance();
-  CSSValue radii[2] = {CSSValue::Empty(), CSSValue::Empty()};
+  CSSValue radii[2] = {CSSValue(), CSSValue()};
   radii[0] = Length();
   if (radii[0].IsEmpty()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   // Single value should not have slash, for compatibility
   Consume(TokenType::SLASH);
@@ -288,10 +288,10 @@ CSSValue CSSStringParser::ParseBackgroundPosition() {
   Advance();
   auto result = lepus::CArray::Create();
   do {
-    CSSValue pos_x = CSSValue::Empty();
-    CSSValue pos_y = CSSValue::Empty();
+    CSSValue pos_x;
+    CSSValue pos_y;
     if (!BackgroundPosition(pos_x, pos_y)) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
 
     auto array = lepus::CArray::Create();
@@ -301,7 +301,7 @@ CSSValue CSSStringParser::ParseBackgroundPosition() {
   } while (Consume(TokenType::COMMA));
 
   if (!AtEnd()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return CSSValue(std::move(result));
 }
@@ -310,10 +310,10 @@ CSSValue CSSStringParser::ParseBackgroundSize() {
   Advance();
   auto result = lepus::CArray::Create();
   do {
-    CSSValue size_x = CSSValue::Empty();
-    CSSValue size_y = CSSValue::Empty();
+    CSSValue size_x;
+    CSSValue size_y;
     if (!BackgroundSize(size_x, size_y)) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
 
     if (legacy_parser_ && size_x.GetNumber() == SIZE_AUTO &&
@@ -331,7 +331,7 @@ CSSValue CSSStringParser::ParseBackgroundSize() {
   } while (Consume(TokenType::COMMA));
 
   if (!AtEnd()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return CSSValue(std::move(result));
 }
@@ -354,7 +354,7 @@ CSSValue CSSStringParser::ParseBackgroundRepeat() {
     uint32_t repeat_x;
     uint32_t repeat_y;
     if (!BackgroundRepeatStyle(repeat_x, repeat_y)) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
     auto repeat = lepus::CArray::Create();
     repeat->emplace_back(repeat_x);
@@ -363,7 +363,7 @@ CSSValue CSSStringParser::ParseBackgroundRepeat() {
   } while (Consume(TokenType::COMMA));
 
   if (!AtEnd()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return CSSValue(std::move(arr));
 }
@@ -396,7 +396,7 @@ void CSSStringParser::ParseTextColorTo(CSSValue &target) {
     // For compatibility, don't check if it's finished
     target.SetArray(std::move(arr));
   } else {
-    target = CSSValue::Empty();
+    target = CSSValue();
   }
 }
 
@@ -434,10 +434,10 @@ CSSValue CSSStringParser::ParseTextDecoration() {
       }
       temp_flag |= 1 << 2;
     } else {
-      return CSSValue(lepus::CArray::Create(), CSSValuePattern::EMPTY);
+      return CSSValue();
     }
     if ((temp_flag & flag) != 0) {
-      return CSSValue(lepus::CArray::Create(), CSSValuePattern::EMPTY);
+      return CSSValue();
     }
     flag |= temp_flag;
   }
@@ -530,12 +530,12 @@ CSSValue CSSStringParser::ParseFontWeight() {
 CSSValue CSSStringParser::ParseFontLength() {
   Advance();
   if (Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
-  auto res = CSSValue::Empty();
+  auto res = CSSValue();
   LengthTo(res);
   if (!Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return res;
 }
@@ -543,9 +543,9 @@ CSSValue CSSStringParser::ParseFontLength() {
 CSSValue CSSStringParser::ParseListGap() {
   Advance();
   if (Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
-  auto res = CSSValue::Empty();
+  auto res = CSSValue();
   LengthTo(res);
   auto css_value_pattern = res.GetPattern();
   if (!(css_value_pattern == CSSValuePattern::PX ||
@@ -553,10 +553,10 @@ CSSValue CSSStringParser::ParseListGap() {
         css_value_pattern == CSSValuePattern::PPX ||
         css_value_pattern == CSSValuePattern::REM ||
         css_value_pattern == CSSValuePattern::EM)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   if (!Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return res;
 }
@@ -650,7 +650,7 @@ CSSValue CSSStringParser::Length() {
 void CSSStringParser::LengthTo(CSSValue &target) {
   Token token;
   if (!LengthOrPercentageValue(token)) {
-    target = CSSValue::Empty();
+    target = CSSValue();
   } else {
     TokenToLengthTarget(token, target);
   }
@@ -684,7 +684,7 @@ void CSSStringParser::TokenToLengthTarget(const Token &token,
                             parser_configs_.enable_css_strict_mode,
                             "invalid length: %s", scanner_.content());
   } else {
-    css_value = CSSValue::Empty();
+    css_value = CSSValue();
   }
 }
 
@@ -800,8 +800,7 @@ bool CSSStringParser::BasicShapeInset() {
   }
   auto arr = lepus::CArray::Create();
   arr->emplace_back(static_cast<uint32_t>(starlight::BasicShapeType::kInset));
-  CSSValue insets[4] = {CSSValue::Empty(), CSSValue::Empty(), CSSValue::Empty(),
-                        CSSValue::Empty()};
+  CSSValue insets[4] = {CSSValue(), CSSValue(), CSSValue(), CSSValue()};
   unsigned int length_value_num = 0;
   while (length_value_num < 4 && !Check(TokenType::TOKEN_EOF) &&
          !Check(TokenType::RIGHT_PAREN) && !Check(TokenType::ROUND) &&
@@ -840,10 +839,8 @@ bool CSSStringParser::BasicShapeInset() {
     }
     case TokenType::ROUND: {
       Consume(TokenType::ROUND);
-      CSSValue x_radii[4] = {CSSValue::Empty(), CSSValue::Empty(),
-                             CSSValue::Empty(), CSSValue::Empty()};
-      CSSValue y_radii[4] = {CSSValue::Empty(), CSSValue::Empty(),
-                             CSSValue::Empty(), CSSValue::Empty()};
+      CSSValue x_radii[4] = {CSSValue(), CSSValue(), CSSValue(), CSSValue()};
+      CSSValue y_radii[4] = {CSSValue(), CSSValue(), CSSValue(), CSSValue()};
       if (!BorderRadius(x_radii, y_radii)) {
         return false;
       }
@@ -1382,8 +1379,8 @@ bool CSSStringParser::RadialGradient() {
 
   CSSValue pos_x = CSSValue(50.f, CSSValuePattern::PERCENT);
   CSSValue pos_y = CSSValue(50.f, CSSValuePattern::PERCENT);
-  CSSValue size_x = CSSValue::Empty();
-  CSSValue size_y = CSSValue::Empty();
+  CSSValue size_x;
+  CSSValue size_y;
 
   bool shape_valid = false;
   bool has_shape = false;
@@ -1665,7 +1662,7 @@ bool CSSStringParser::TimingFunctionValue(Token &token) {
 
 CSSValue CSSStringParser::ConsumeTimingFunction(
     const Token &token, const CSSParserConfigs &configs) {
-  CSSValue css_value = CSSValue::Empty();
+  CSSValue css_value;
   auto type = TokenToTimingFunctionType(token);
   if (token.type >= TokenType::LINEAR & token.type <= TokenType::EASE_IN_OUT) {
     css_value.SetEnum(static_cast<int>(type));
@@ -1685,7 +1682,7 @@ CSSValue CSSStringParser::ConsumeTimingFunction(
     auto arr = lepus::CArray::Create();
     CSSStringParser params_parser{token.start, token.length, configs};
     if (!params_parser.ParseTimingFunctionParams(token, arr)) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
     css_value.SetArray(std::move(arr));
   }
@@ -1807,7 +1804,7 @@ void CSSStringParser::ConsumeColor(CSSValue &result) {
       result.SetValueAndPattern(*stack_value.value, CSSValuePattern::NUMBER);
     }
   } else {
-    result = CSSValue::Empty();
+    result = CSSValue();
   }
 }
 
@@ -1825,12 +1822,12 @@ CSSValue CSSStringParser::ConsumeCommaSeparatedList(Func callback,
   do {
     lepus::Value value = (this->*callback)(std::forward<Args>(args)...);
     if (value.IsEmpty()) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
     list->emplace_back(std::move(value));
   } while (Consume(TokenType::COMMA));
   if (!AtEnd()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return CSSValue(std::move(list));
 }
@@ -2768,8 +2765,8 @@ bool CSSStringParser::AtPositionAndSetValue(fml::RefPtr<lepus::CArray> &arr) {
 
 bool CSSStringParser::ConsumePositionAndSetValue(
     fml::RefPtr<lepus::CArray> &arr) {
-  CSSValue pos_x = CSSValue::Empty();
-  CSSValue pos_y = CSSValue::Empty();
+  CSSValue pos_x;
+  CSSValue pos_y;
   if (!BackgroundPosition(pos_x, pos_y)) {
     return false;
   }
@@ -2922,7 +2919,7 @@ CSSValue CSSStringParser::ParseGrayscale() {
   Token grayscale;
   Advance();
   if (!ConsumeGrayscale(grayscale) || !Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   double value = TokenToDouble(grayscale);
 
@@ -2969,7 +2966,7 @@ CSSValue CSSStringParser::ParseVariable() {
   Advance();
 
   if (scanner_.Length() == 0) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
 
   // Create a CSSValue to store the result
@@ -3008,7 +3005,7 @@ CSSValue CSSStringParser::ParseBlur() {
   Token blur;
   Advance();
   if (!ConsumeBlur(blur) || !Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return CSSValue(TokenToDouble(blur),
                   static_cast<CSSValuePattern>(TokenTypeToENUM(blur.type)));
@@ -3031,7 +3028,7 @@ CSSValue CSSStringParser::ParseFilter() {
   } else if (ConsumeAndSave(TokenType::BLUR, function_token)) {
     return FilterBlurValue(function_token);
   }
-  return CSSValue::Empty();
+  return CSSValue();
 }
 
 /**
@@ -3058,7 +3055,7 @@ CSSValue CSSStringParser::FilterBlurValue(const Token &function_token) {
     result->emplace_back(static_cast<uint32_t>(blur.GetPattern()));
     return CSSValue(std::move(result));
   }
-  return CSSValue::Empty();
+  return CSSValue();
 }
 
 /**
@@ -3084,7 +3081,7 @@ CSSValue CSSStringParser::FilterGrayscaleValue(const Token &function_token) {
     result->emplace_back(static_cast<uint32_t>(CSSValuePattern::PERCENT));
     return CSSValue(std::move(result));
   }
-  return CSSValue::Empty();
+  return CSSValue();
 }
 
 bool CSSStringParser::ParseBorderLineWidth(CSSValue &result_width) {
@@ -3179,13 +3176,13 @@ lepus::Value CSSStringParser::ParseSingleShadow(bool inset_and_spread) {
   // Shadow item
   auto dict = lepus::Dictionary::Create();
 
-  CSSValue color = CSSValue::Empty();
+  CSSValue color;
   std::optional<int> option;
   CSSValue lengths[4] = {
-      CSSValue::Empty(),  // horizontal_offset
-      CSSValue::Empty(),  // vertical_offset
-      CSSValue::Empty(),  // blur_radius
-      CSSValue::Empty(),  // spread_distance
+      CSSValue(),  // horizontal_offset
+      CSSValue(),  // vertical_offset
+      CSSValue(),  // blur_radius
+      CSSValue(),  // spread_distance
   };
   ConsumeColor(color);
 
@@ -3283,32 +3280,32 @@ CSSValue CSSStringParser::ParseTransformOrigin() {
   if (ConsumePositionAndSetValue(result) && Check(TokenType::TOKEN_EOF)) {
     return CSSValue(std::move(result));
   }
-  return CSSValue::Empty();
+  return CSSValue();
 }
 
 CSSValue CSSStringParser::ParseAspectRatio() {
   Advance();
   if (Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   if (Consume(TokenType::NONE) && Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   auto param1 = NumberOnly(false);
   if (param1.IsEmpty()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   if (Consume(TokenType::SLASH)) {
     auto param2 = NumberOnly(false);
     if (param2.IsEmpty() || base::IsZero(param2.Number())) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
     return CSSValue(param1.Number() / param2.Number(), CSSValuePattern::NUMBER);
   } else if (Check(TokenType::TOKEN_EOF)) {
     auto result = CSSValue(std::move(param1), CSSValuePattern::NUMBER);
     return result;
   }
-  return CSSValue::Empty();
+  return CSSValue();
 }
 
 std::pair<CSSValue, CSSValue> CSSStringParser::ParseGap() {
@@ -3378,7 +3375,7 @@ CSSValue CSSStringParser::ParseBool() {
   if (Consume(TokenType::TOKEN_TRUE) || Consume(TokenType::TOKEN_FALSE)) {
     return CSSValue(previous_token_.type == TokenType::TOKEN_TRUE);
   }
-  return CSSValue::Empty();
+  return CSSValue();
 }
 
 bool CSSStringParser::ParseAutoFontSize(
@@ -3451,7 +3448,7 @@ CSSValue CSSStringParser::ParseTransform() {
   enable_transform_legacy_ = !parser_configs_.enable_new_transform_handler;
   Advance();
   if (Check(TokenType::TOKEN_EOF)) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   if (Consume(TokenType::NONE) && Check(TokenType::TOKEN_EOF)) {
     return CSSValue(lepus::CArray::Create());
@@ -3462,7 +3459,7 @@ CSSValue CSSStringParser::ParseTransform() {
     auto arr = lepus::CArray::Create();
     Token function_token;
     if (!TransformFunctionIdent(function_token)) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
     arr->emplace_back(
         static_cast<int>(TokenToTransformFunction(function_token)));
@@ -3470,14 +3467,14 @@ CSSValue CSSStringParser::ParseTransform() {
     CSSStringParser params_parser{function_token.start, function_token.length,
                                   parser_configs_};
     if (!params_parser.ParseTransformParams(function_token, arr)) {
-      return CSSValue::Empty();
+      return CSSValue();
     }
 
     result->emplace_back(std::move(arr));
   }
 
   if (!AtEnd()) {
-    return CSSValue::Empty();
+    return CSSValue();
   }
   return CSSValue(std::move(result));
 }
@@ -3706,7 +3703,7 @@ bool CSSStringParser::ParseTime(bool single, bool no_negative, CSSValue &ret) {
       [no_negative](const Token &t) {
         double number = TimeToNumber(t);
         if (no_negative && number < 0) {
-          return CSSValue::Empty();
+          return CSSValue();
         }
         return CSSValue(number, CSSValuePattern::NUMBER);
       },
@@ -3814,7 +3811,7 @@ bool CSSStringParser::ParseAnimationIterCount(bool single, CSSValue &ret) {
       [](const Token &t) {
         double num = TokenToAnimationIterCount(t);
         if (num < 0) {
-          return CSSValue::Empty();
+          return CSSValue();
         }
         return CSSValue(num, CSSValuePattern::NUMBER);
       },

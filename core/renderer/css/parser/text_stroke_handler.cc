@@ -24,13 +24,13 @@ HANDLER_IMPL() {
                           STRING_TYPE)
 
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
-  CSSValue result_width = CSSValue::Empty();
-  CSSValue result_color = CSSValue::Empty();
+  CSSValue result_width;
+  CSSValue result_color;
   bool ret = parser.ParseTextStroke(result_width, result_color);
   output.insert_or_assign(kPropertyIDTextStrokeWidth,
-                          ret ? std::move(result_width) : CSSValue::Empty());
+                          ret ? std::move(result_width) : CSSValue());
   output.insert_or_assign(kPropertyIDTextStrokeColor,
-                          ret ? std::move(result_color) : CSSValue::Empty());
+                          ret ? std::move(result_color) : CSSValue());
   return ret;
 }
 

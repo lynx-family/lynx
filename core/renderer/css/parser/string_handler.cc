@@ -14,7 +14,7 @@ HANDLER_IMPL() {
   CSS_HANDLER_FAIL_IF_NOT(input.IsString(), configs.enable_css_strict_mode,
                           "id:%d value must be string.",
                           CSSProperty::GetPropertyNameCStr(key))
-  output.emplace_or_assign(key, input);
+  output.emplace_or_assign(key, input, CSSValuePattern::STRING);
   return true;
 }
 

@@ -590,7 +590,7 @@ TEST_F(TransformOperationsTest,
 
   EXPECT_FALSE(ret);
   EXPECT_TRUE(output.empty());
-  raw_value = tasm::CSSValue::Empty();
+  raw_value = tasm::CSSValue();
   {
     TransformOperations operations(element.get(), raw_value);
     EXPECT_EQ(operations.size(), static_cast<size_t>(0));

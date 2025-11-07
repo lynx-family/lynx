@@ -71,8 +71,7 @@ using CustomPropertiesMap = base::LinearFlatMap<base::String, CSSValue>;
 
 class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:
-  explicit CSSValue(CSSValuePattern pattern = CSSValuePattern::STRING)
-      : pattern_(pattern), type_(CSSValueType::DEFAULT) {}
+  CSSValue() : pattern_(CSSValuePattern::EMPTY), type_(CSSValueType::DEFAULT) {}
 
   CSSValue(const base::String& value, CSSValuePattern pattern,
            CSSValueType type)
@@ -98,36 +97,26 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   NumberType(NumberConstructor)
 #undef NumberConstructor
 
-      // deprecated, @yuyang, avoid constructors from lepus::Value
-      explicit CSSValue(const lepus::Value& value,
-                        CSSValuePattern pattern = CSSValuePattern::STRING,
-                        CSSValueType type = CSSValueType::DEFAULT)
-      : value_(value), pattern_(pattern), type_(type) {
+      explicit CSSValue(const fml::RefPtr<lepus::CArray>& array)
+      : value_(array),
+        pattern_(CSSValuePattern::ARRAY),
+        type_(CSSValueType::DEFAULT) {
   }
 
-  // deprecated, @yuyang, avoid constructors from lepus::Value
-  CSSValue(const lepus::Value& value, CSSValuePattern pattern,
-           CSSValueType type, const base::String& default_val)
-      : value_(value),
-        default_value_(default_val),
-        pattern_(pattern),
-        type_(type) {}
-
-  // deprecated, @yuyang, avoid constructors from lepus::Value
-  CSSValue(const lepus::Value& value, CSSValuePattern pattern,
-           CSSValueType type, const base::String& default_val,
-           const lepus::Value& default_value_map_opt)
-      : value_(value),
-        default_value_(default_val),
-        default_value_map_opt_(new lepus::Value(default_value_map_opt)),
-        pattern_(pattern),
-        type_(type) {}
-
-  explicit CSSValue(fml::RefPtr<lepus::CArray>&& array,
-                    CSSValuePattern pattern = CSSValuePattern::ARRAY)
+  explicit CSSValue(fml::RefPtr<lepus::CArray>&& array)
       : value_(std::move(array)),
-        pattern_(pattern),
+        pattern_(CSSValuePattern::ARRAY),
         type_(CSSValueType::DEFAULT) {}
+
+  // It is not recommended to construct CSSValue from opaque lepus::Value,
+  // prefer other constructors.
+  CSSValue(const lepus::Value& value, CSSValuePattern pattern,
+           CSSValueType type = CSSValueType::DEFAULT)
+      : value_(value), pattern_(pattern), type_(type) {}
+
+  CSSValue(lepus::Value&& value, CSSValuePattern pattern,
+           CSSValueType type = CSSValueType::DEFAULT)
+      : value_(std::move(value)), pattern_(pattern), type_(type) {}
 
   CSSValue(const CSSValue& other)
       : value_(other.value_),
@@ -171,8 +160,6 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   CSSValue(CSSValue&& other) = default;
   CSSValue& operator=(CSSValue&& other) = default;
-
-  static CSSValue Empty() { return CSSValue(CSSValuePattern::EMPTY); }
 
   static CSSValue MakeEnum(int enumType) {
     return CSSValue(enumType, CSSValuePattern::ENUM);

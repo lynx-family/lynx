@@ -461,7 +461,7 @@ void Element::ResetStyleInternal(CSSPropertyID css_id) {
 }
 
 bool Element::ResetCSSValue(CSSPropertyID css_id) {
-  CheckDynamicUnit(css_id, CSSValue::Empty(), true);
+  CheckDynamicUnit(css_id, CSSValue(), true);
 
   if (css_id == kPropertyIDFontSize) {
     // font-size has been reset to default value in WillResetCSSValue
@@ -542,8 +542,8 @@ void Element::ResetStyle(const base::Vector<CSSPropertyID>& css_names) {
     }
     // #3. Review each property to determine whether the reset should be
     // intercepted.
-    if (css_transition_manager_ && css_transition_manager_->ConsumeCSSProperty(
-                                       css_id, CSSValue::Empty())) {
+    if (css_transition_manager_ &&
+        css_transition_manager_->ConsumeCSSProperty(css_id, CSSValue())) {
       continue;
     }
     // Since the previous element styles cannot be accessed in element, we
@@ -1536,7 +1536,7 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
 
   for (const auto& style : *final_animator_map_) {
     // Record previous before rtl-converter for transition.
-    if (style.second != CSSValue::Empty()) {
+    if (style.second != CSSValue()) {
       RecordElementPreviousStyle(style.first, style.second);
     } else {
       ResetElementPreviousStyle(style.first);

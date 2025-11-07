@@ -360,6 +360,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSValue(
     result->SetPattern(static_cast<tasm::CSSValuePattern>(pattern));
   } else {
     DECODE_VALUE_INTO(tasm::CSSValue::Unsafe::GetValueStorage(*result));
+    result->SetPattern(CSSValuePattern::STRING);
   }
   if (enable_css_variable) {
     DECODE_COMPACT_U32(value_type);

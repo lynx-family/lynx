@@ -350,11 +350,11 @@ void RadonElement::ResetStyle(const base::Vector<CSSPropertyID>& style_names) {
   for (auto& css_id : style_names) {
     // TODO: zhixuan
     if (css_id == kPropertyIDFontSize) {
-      auto empty = CSSValue::Empty();
+      auto empty = CSSValue();
       styles_manager_.UpdateFontSizeStyle(&empty);
       continue;
     } else if (css_id == kPropertyIDDirection) {
-      styles_manager_.UpdateDirectionStyle(CSSValue::Empty());
+      styles_manager_.UpdateDirectionStyle(CSSValue());
     } else if (css_id == kPropertyIDPosition) {
       is_fixed_ = false;
       // #2. If these transition styles have been reset beforehand, skip them
@@ -365,15 +365,15 @@ void RadonElement::ResetStyle(const base::Vector<CSSPropertyID>& style_names) {
     }
     // #3. Review each property to determine whether the reset should be
     // intercepted.
-    if (css_transition_manager_ && css_transition_manager_->ConsumeCSSProperty(
-                                       css_id, CSSValue::Empty())) {
+    if (css_transition_manager_ &&
+        css_transition_manager_->ConsumeCSSProperty(css_id, CSSValue())) {
       continue;
     }
     // Since the previous element styles cannot be accessed in element, we
     // need to record some necessary styles which New Animator transition needs,
     // and it needs to be saved before rtl converted logic.
     ResetElementPreviousStyle(css_id);
-    styles_manager_.AdoptStyle(css_id, CSSValue::Empty());
+    styles_manager_.AdoptStyle(css_id, CSSValue());
   }
   for (auto& css_id : style_names) {
     // record styles, used for worklet
@@ -815,7 +815,7 @@ void RadonElement::ResetTransitionStylesInAdvanceInternal(
     CSSPropertyID css_id) {
   // record styles, used for worklet
   styles_.erase(css_id);
-  StylesManager().AdoptStyle(css_id, CSSValue::Empty());
+  StylesManager().AdoptStyle(css_id, CSSValue());
 }
 
 void RadonElement::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {

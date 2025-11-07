@@ -1186,7 +1186,7 @@ void FiberElement::ResolveCSSStyles(
     // #3. Review each property to determine whether the reset should be
     // intercepted.
     if (css_transition_manager_ &&
-        css_transition_manager_->ConsumeCSSProperty(id, CSSValue::Empty())) {
+        css_transition_manager_->ConsumeCSSProperty(id, CSSValue())) {
       continue;
     }
 
@@ -1254,7 +1254,7 @@ void FiberElement::ResolveCSSStyles(
                     updated_inherited_map_it->second.GetNumber()));
           }
         }
-        return std::make_pair(CSSValue::Empty(), pre_direction);
+        return std::make_pair(CSSValue(), pre_direction);
       };
 
       auto new_direction =
@@ -2224,7 +2224,7 @@ void FiberElement::ConsumeStyleInternal(
   // Handle font-size first. Other css may use this to calc rem or em.
   const auto it = parsed_styles_map_.find(CSSPropertyID::kPropertyIDFontSize);
   CSSValue font_value =
-      (it != parsed_styles_map_.end()) ? it->second : CSSValue::Empty();
+      (it != parsed_styles_map_.end()) ? it->second : CSSValue();
   SetFontSize(font_value);
 
   auto consume_func = [this, should_skip = std::move(should_skip)](
@@ -3064,7 +3064,7 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value) {
 }
 
 void FiberElement::ResetFontSize() {
-  CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue::Empty(), true);
+  CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue(), true);
   // root_font_size_&font_size_ here are used to computed rem&rem
   auto font_size = element_manager()->GetLynxEnvConfig().PageDefaultFontSize();
   auto root_font_size = is_page() ? font_size : GetCurrentRootFontSize();
@@ -3676,7 +3676,7 @@ void FiberElement::FlushAnimatedStyleInternal(tasm::CSSPropertyID id,
                                               const tasm::CSSValue &value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_ANIMATED_STYLE);
   auto trans_id = ConvertRtlCSSPropertyID(id).second;
-  if (value != CSSValue::Empty()) {
+  if (value != CSSValue()) {
     SetStyleInternal(trans_id, value);
   } else {
     ResetStyleInternal(trans_id);

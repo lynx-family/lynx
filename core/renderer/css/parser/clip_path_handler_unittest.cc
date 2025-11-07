@@ -59,7 +59,7 @@ TEST(ClipPathHandler, Handle) {
 
   // Input is string
   // Test parse path
-  CSSValue value = CSSValue::Empty();
+  CSSValue value;
   input = lepus::Value(R"(path("M 0 0 L 100 100 L 30 30 Z"))");
   EXPECT_TRUE(UnitHandler::Process(kPropertyIDClipPath, input, out, configs));
   CSSValue path = out[kPropertyIDClipPath];

@@ -392,7 +392,7 @@ TEST_P(FiberElementTest, ListItemTest) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -406,7 +406,7 @@ TEST_P(FiberElementTest, ListItemTest) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDWidth;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test01";
     auto& sheets = tokens->sheets();
@@ -1323,7 +1323,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle8) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDLineHeight;
     auto impl = lepus::Value("18px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -2062,7 +2062,7 @@ TEST_P(FiberElementTest, TestSetAndRemoveClass) {
   {
     auto id = CSSPropertyID::kPropertyIDVisibility;
     auto impl = lepus::Value("hidden");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test-class";
     auto& sheets = tokens->sheets();
@@ -2247,7 +2247,7 @@ TEST_P(FiberElementTest, TestCSSResolveCase01) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -2261,7 +2261,7 @@ TEST_P(FiberElementTest, TestCSSResolveCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.6);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test01";
     auto& sheets = tokens->sheets();
@@ -2275,11 +2275,12 @@ TEST_P(FiberElementTest, TestCSSResolveCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);  // the same as .test
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     auto id2 = CSSPropertyID::kPropertyIDZIndex;
     auto impl2 = lepus::Value("10");
-    tokens.get()->raw_attributes_[id2] = CSSValue(impl2);
+    tokens.get()->raw_attributes_[id2] =
+        CSSValue(impl2, CSSValuePattern::STRING);
 
     std::string key = ".test02";
     auto& sheets = tokens->sheets();
@@ -2436,7 +2437,7 @@ TEST_P(FiberElementTest, TestCSSResolveCase02) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -2593,7 +2594,7 @@ TEST_P(FiberElementTest, TestOverflowAndLayoutOnly) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -2607,7 +2608,7 @@ TEST_P(FiberElementTest, TestOverflowAndLayoutOnly) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDWidth;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test01";
     auto& sheets = tokens->sheets();
@@ -2712,7 +2713,7 @@ TEST_P(FiberElementTest, TestIsLayoutOnlyUpdate) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -2792,7 +2793,7 @@ TEST_P(FiberElementTest, TestZIndexRemovedRelated) {
   {
     auto id = CSSPropertyID::kPropertyIDZIndex;
     auto impl = lepus::Value(2);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -2974,11 +2975,11 @@ TEST_P(FiberElementTest, FiberElementInheritCase00) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     id = CSSPropertyID::kPropertyIDFontSize;
     impl = lepus::Value("2em");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -2992,11 +2993,11 @@ TEST_P(FiberElementTest, FiberElementInheritCase00) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     id = CSSPropertyID::kPropertyIDLineHeight;
     impl = lepus::Value("2");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -3111,7 +3112,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -3125,7 +3126,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -3217,7 +3218,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase02) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -3306,7 +3307,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase03) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -3320,7 +3321,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase03) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("yellow");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani2";
     auto& sheets = tokens->sheets();
@@ -3411,7 +3412,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase04) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("lynx-rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -3425,7 +3426,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase04) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani2";
     auto& sheets = tokens->sheets();
@@ -3518,7 +3519,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase05) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("lynx-rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -3532,7 +3533,7 @@ TEST_P(FiberElementTest, FiberElementInheritCase05) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani2";
     auto& sheets = tokens->sheets();
@@ -3630,7 +3631,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDTextAlign;
     auto impl = lepus::Value("center");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".title";
     auto& sheets = tokens->sheets();
@@ -3644,7 +3645,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("ltr");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -3712,7 +3713,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDTextAlign;
     auto impl = lepus::Value("center");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".title";
     auto& sheets = tokens->sheets();
@@ -3726,7 +3727,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("ltr");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root-ltr";
     auto& sheets = tokens->sheets();
@@ -3740,7 +3741,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase01) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root-rtl";
     auto& sheets = tokens->sheets();
@@ -3842,7 +3843,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("ltr");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root-ltr";
     auto& sheets = tokens->sheets();
@@ -3856,7 +3857,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root-rtl";
     auto& sheets = tokens->sheets();
@@ -4040,12 +4041,12 @@ TEST_P(FiberElementTest, FiberElementDirectionCase02) {
         CSSPropertyID::kPropertyIDBorderTopLeftRadius;
     auto impl_border_top_left_radius = lepus::Value("12rpx");
     tokens.get()->raw_attributes_[id_border_top_left_radius] =
-        CSSValue(impl_border_top_left_radius);
+        CSSValue(impl_border_top_left_radius, CSSValuePattern::STRING);
     auto id_border_top_right_radius =
         CSSPropertyID::kPropertyIDBorderTopRightRadius;
     auto impl_border_top_right_radius = lepus::Value("1rpx");
     tokens.get()->raw_attributes_[id_border_top_right_radius] =
-        CSSValue(impl_border_top_right_radius);
+        CSSValue(impl_border_top_right_radius, CSSValuePattern::STRING);
 
     std::string key = ".left";
     auto& sheets = tokens->sheets();
@@ -4129,7 +4130,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase03) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("lynx-rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root-rtl";
     auto& sheets = tokens->sheets();
@@ -4214,7 +4215,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase04) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDDirection;
     auto impl = lepus::Value("lynx-rtl");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root-rtl";
     auto& sheets = tokens->sheets();
@@ -5164,10 +5165,10 @@ TEST_P(FiberElementTest, DynamicViewportUpdate) {
   EXPECT_TRUE(HasCaptureSignWithTag(page->impl_id(), "page"));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      CSSValue(CSSValuePattern::VH)));
+      CSSValue(0.f, CSSValuePattern::VH)));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::VW)));
+      CSSValue(0.f, CSSValuePattern::VW)));
 
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
@@ -5175,10 +5176,10 @@ TEST_P(FiberElementTest, DynamicViewportUpdate) {
                           SLMeasureModeDefinite, false);
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      CSSValue(CSSValuePattern::VH), 1));
+      CSSValue(0.f, CSSValuePattern::VH), 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::VW), 1));
+      CSSValue(0.f, CSSValuePattern::VW), 1));
 
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
@@ -5187,7 +5188,7 @@ TEST_P(FiberElementTest, DynamicViewportUpdate) {
   page->FlushActionsAsRoot();
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::CALC)));
+      CSSValue(0.f, CSSValuePattern::CALC)));
 
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
@@ -5195,10 +5196,10 @@ TEST_P(FiberElementTest, DynamicViewportUpdate) {
                           SLMeasureModeDefinite, false);
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDWidth,
-      CSSValue(CSSValuePattern::VH), 1));
+      CSSValue(0.f, CSSValuePattern::VH), 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::CALC), 1));
+      CSSValue(0.f, CSSValuePattern::CALC), 1));
 }
 
 TEST_P(FiberElementTest, DynamicFontScaleUpdate) {
@@ -5254,7 +5255,7 @@ TEST_P(FiberElementTest, DynamicScreenMetricsUpdate) {
       HasCaptureSignWithFontSize(element->impl_id(), 20, root_font_size, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::RPX)));
+      CSSValue(0.f, CSSValuePattern::RPX)));
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->platform_impl_.get());
@@ -5276,7 +5277,7 @@ TEST_P(FiberElementTest, DynamicScreenMetricsUpdate) {
   EXPECT_TRUE(HasCaptureSignWithFontSize(element->impl_id(), 10, 14, 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::RPX), 1));
+      CSSValue(0.f, CSSValuePattern::RPX), 1));
 }
 
 TEST_P(FiberElementTest, DynamicViewportUpdateAndRTL) {
@@ -5356,7 +5357,7 @@ TEST_P(FiberElementTest, TestREMPattern) {
   EXPECT_TRUE(HasCaptureSignWithFontSize(element->impl_id(), 15, 10, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::REM)));
+      CSSValue(0.f, CSSValuePattern::REM)));
 
   auto painting_context = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->platform_impl_.get());
@@ -5380,7 +5381,7 @@ TEST_P(FiberElementTest, TestREMPattern) {
       HasCaptureSignWithFontSize(element->impl_id(), 30, root_font_size, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
-      CSSValue(CSSValuePattern::REM), 2));
+      CSSValue(0.f, CSSValuePattern::REM), 2));
 }
 
 TEST_P(FiberElementTest, GetParentComponentCSSFragment) {
@@ -5394,7 +5395,7 @@ TEST_P(FiberElementTest, GetParentComponentCSSFragment) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -6309,7 +6310,7 @@ TEST_P(FiberElementTest, SetKeyframes) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -6488,7 +6489,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -6693,7 +6694,7 @@ TEST_P(FiberElementTest, SetKeyframes_new_animator) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -6825,7 +6826,7 @@ TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -7016,7 +7017,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {
   {
     auto id = CSSPropertyID::kPropertyIDAnimation;
     auto impl = lepus::Value("ani-img-in 100ms linear 0.08ms normal both");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".recommend-ani-image-in";
     auto& sheets = tokens->sheets();
@@ -7122,7 +7123,7 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle_new_animator) {
   {
     auto id = CSSPropertyID::kPropertyIDAnimation;
     auto impl = lepus::Value("ani-img-in 100ms linear 0.08ms normal both");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".recommend-ani-image-in";
     auto& sheets = tokens->sheets();
@@ -7249,7 +7250,7 @@ TEST_P(FiberElementTest, TestOnPseudoStatusChanged) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -7264,7 +7265,7 @@ TEST_P(FiberElementTest, TestOnPseudoStatusChanged) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.8);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test:active";
     auto& sheets = tokens->sheets();
@@ -7750,7 +7751,7 @@ TEST_P(FiberElementTest, DumpStyleClass) {
   {
     auto id = CSSPropertyID::kPropertyIDVisibility;
     auto impl = lepus::Value("hidden");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test-class";
     auto& sheets = tokens->sheets();
@@ -7838,7 +7839,7 @@ TEST_P(FiberElementTest, GetCSSKeyframesToken) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -8003,7 +8004,7 @@ TEST_P(FiberElementTest, TestTagSelectorCase) {
     auto token = fml::MakeRefCounted<CSSParseToken>(parser_config);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto color = lepus::Value("red");
-    token->raw_attributes_[id] = CSSValue(color);
+    token->raw_attributes_[id] = CSSValue(color, CSSValuePattern::STRING);
 
     std::string key = "text";
     auto& sheets = token->sheets();
@@ -9696,7 +9697,7 @@ TEST_P(FiberElementTest, CopyListItemTest) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -9710,7 +9711,7 @@ TEST_P(FiberElementTest, CopyListItemTest) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDWidth;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test01";
     auto& sheets = tokens->sheets();
@@ -10307,7 +10308,7 @@ TEST_P(FiberElementTest, ElementBundleTest02) {
   {
     auto id = CSSPropertyID::kPropertyIDAnimation;
     auto impl = lepus::Value("ani-img-in 100ms linear 0.08ms normal both");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".recommend-ani-image-in";
     auto& sheets = tokens->sheets();
@@ -10483,7 +10484,7 @@ TEST_P(FiberElementTest, EventTest1) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -10497,7 +10498,7 @@ TEST_P(FiberElementTest, EventTest1) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -10607,7 +10608,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain0) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -10621,7 +10622,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain0) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".ani";
     auto& sheets = tokens->sheets();
@@ -10713,7 +10714,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -10727,7 +10728,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDWidth;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test01";
     auto& sheets = tokens->sheets();
@@ -10832,7 +10833,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test";
     auto& sheets = tokens->sheets();
@@ -10846,7 +10847,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDWidth;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".test01";
     auto& sheets = tokens->sheets();
@@ -13089,7 +13090,7 @@ TEST_P(FiberElementTest, TestFlushRequiredPropagateWithInheritance) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -13103,7 +13104,7 @@ TEST_P(FiberElementTest, TestFlushRequiredPropagateWithInheritance) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".component-parent-class-1";
     auto& sheets = tokens->sheets();
@@ -13117,7 +13118,7 @@ TEST_P(FiberElementTest, TestFlushRequiredPropagateWithInheritance) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".component-parent-class-2";
     auto& sheets = tokens->sheets();
@@ -13131,7 +13132,7 @@ TEST_P(FiberElementTest, TestFlushRequiredPropagateWithInheritance) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("red");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".component-class-1";
     auto& sheets = tokens->sheets();
@@ -13145,7 +13146,7 @@ TEST_P(FiberElementTest, TestFlushRequiredPropagateWithInheritance) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDWidth;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".component-class-2";
     auto& sheets = tokens->sheets();
@@ -13236,7 +13237,7 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -13284,7 +13285,7 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_ReplaceElements) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -13378,7 +13379,7 @@ TEST_P(FiberElementTest, TestAsyncResolveProperty_CheckElementResolveStatus02) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDColor;
     auto impl = lepus::Value("blue");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".root";
     auto& sheets = tokens->sheets();
@@ -13603,7 +13604,7 @@ TEST_P(FiberElementTest, TestTransitionInResetMapAndUpdateMap) {
   {
     auto id = CSSPropertyID::kPropertyIDOpacity;
     auto impl = lepus::Value(0.3);
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".a";
     auto& sheets = tokens->sheets();
@@ -13617,7 +13618,7 @@ TEST_P(FiberElementTest, TestTransitionInResetMapAndUpdateMap) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDTransition;
     auto impl = lepus::Value("opacity 10s");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".b";
     auto& sheets = tokens->sheets();
@@ -14485,7 +14486,7 @@ TEST_P(FiberElementTest, TestBackgroundToLepus) {
     auto impl = lepus::Value(
         "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, 0) "
         "15%, rgba(239, 155, 255, 0.3) 56.35%, #ff6448 100%)");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".background";
     auto& sheets = tokens->sheets();
@@ -14501,7 +14502,7 @@ TEST_P(FiberElementTest, TestBackgroundToLepus) {
     auto impl = lepus::Value(
         "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, 0) "
         "15%, rgba(239, 155, 255, 0.3) 56.35%, #ff6448 100%)");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".mask";
     auto& sheets = tokens->sheets();
@@ -14827,7 +14828,8 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
     {
       auto id = CSSPropertyID::kPropertyIDOpacity;
       auto impl = lepus::Value(0.3);
-      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+      tokens.get()->raw_attributes_[id] =
+          CSSValue(impl, CSSValuePattern::STRING);
 
       tokens.get()->style_variables_["--main-color"] = "#ff0000";
       tokens.get()->style_variables_["--font-size"] = "20px";
@@ -14848,7 +14850,8 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
     {
       auto id = CSSPropertyID::kPropertyIDOpacity;
       auto impl = lepus::Value(0.3);
-      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+      tokens.get()->raw_attributes_[id] =
+          CSSValue(impl, CSSValuePattern::STRING);
 
       tokens.get()->style_variables_["--main-color"] = "#ff0000";
       tokens.get()->style_variables_["--font-size"] = "20px";
@@ -14870,7 +14873,8 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
       auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
       auto id = CSSPropertyID::kPropertyIDWidth;
       auto impl = lepus::Value("20px");
-      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+      tokens.get()->raw_attributes_[id] =
+          CSSValue(impl, CSSValuePattern::STRING);
 
       tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
           CSSValue::MakePlainString("var(--main-color)");
@@ -14889,7 +14893,8 @@ TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
       auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
       auto id = CSSPropertyID::kPropertyIDWidth;
       auto impl = lepus::Value("20px");
-      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+      tokens.get()->raw_attributes_[id] =
+          CSSValue(impl, CSSValuePattern::STRING);
 
       tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
           CSSValue::MakePlainString("var(--main-color)");

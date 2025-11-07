@@ -69,7 +69,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   {
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("18px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".text-c";
     auto& sheets = tokens->sheets();
@@ -82,7 +82,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   {
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = "*";
     auto& sheets = tokens->sheets();
@@ -95,7 +95,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   {
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("21px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = "text";
     auto& sheets = tokens->sheets();
@@ -108,7 +108,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   {
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("22px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = "#text-id";
     auto& sheets = tokens->sheets();
@@ -165,7 +165,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiberDescendantSelector) {
   {
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("18px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".b";
     auto& sheets = tokens->sheets();
@@ -196,7 +196,7 @@ TEST_F(CSSPatchingTest, GetCSSStyleForFiberDescendantSelector) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     // the key encoded as .b.a
     std::string key = ".b.a";
@@ -261,7 +261,7 @@ TEST_F(CSSPatchingTest, FiberDescendantSelectorScope) {
   {
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("18px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     std::string key = ".b";
     auto& sheets = tokens->sheets();
@@ -292,7 +292,7 @@ TEST_F(CSSPatchingTest, FiberDescendantSelectorScope) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDFontSize;
     auto impl = lepus::Value("20px");
-    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
     // the key encoded as .b.a
     std::string key = ".b.a";

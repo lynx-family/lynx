@@ -232,7 +232,7 @@ class DynamicCSSStylesManager {
   std::map<CSSPropertyID, InheritablePropsState> inheritable_props_;
   PropertiesResolvingStatus resolving_data_;
   RadonElement* element_;
-  CSSValue font_size_ = CSSValue::Empty();
+  CSSValue font_size_;
   StyleUpdateFlags font_size_flags_ = kNoUpdate;
   bool font_size_need_update_ = false;
   bool dirty_ = true;
@@ -240,7 +240,7 @@ class DynamicCSSStylesManager {
 
   // direction aware style
   bool direction_need_update_ = false;
-  CSSValue direction_ = CSSValue::Empty();
+  CSSValue direction_;
   PseudoPlaceHolderStyles placeholder_styles_;
   bool force_reapply_inheritance_ = true;
 

@@ -164,7 +164,7 @@ bool UnitHandler::Process(const CSSPropertyID key, const lepus::Value& input,
               });
   auto maybe_handler = Instance().interceptors_[key];
   if (!maybe_handler) {
-    output[key] = CSSValue(input);
+    output[key] = CSSValue(input, CSSValuePattern::STRING);
     return true;
   }
 

@@ -41,7 +41,7 @@ HANDLER_IMPL() {
 
   double flex_grow = -1;
   double flex_shrink = -1;
-  CSSValue flex_basis = CSSValue::Empty();
+  CSSValue flex_basis;
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
   auto ret = parser.ParseFlex(flex_grow, flex_shrink, flex_basis);
   if (ret) {

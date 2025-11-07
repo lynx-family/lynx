@@ -23,10 +23,8 @@ HANDLER_IMPL() {
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
   switch (key) {
     case kPropertyIDBorderRadius: {
-      CSSValue x_radii[4] = {CSSValue::Empty(), CSSValue::Empty(),
-                             CSSValue::Empty(), CSSValue::Empty()};
-      CSSValue y_radii[4] = {CSSValue::Empty(), CSSValue::Empty(),
-                             CSSValue::Empty(), CSSValue::Empty()};
+      CSSValue x_radii[4] = {CSSValue(), CSSValue(), CSSValue(), CSSValue()};
+      CSSValue y_radii[4] = {CSSValue(), CSSValue(), CSSValue(), CSSValue()};
       if (!parser.ParseBorderRadius(x_radii, y_radii)) {
         return false;
       }

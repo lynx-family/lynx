@@ -30,9 +30,9 @@ HANDLER_IMPL() {
                           STRING_TYPE)
 
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
-  CSSValue result_width = CSSValue::Empty();
-  CSSValue result_style = CSSValue::Empty();
-  CSSValue result_color = CSSValue::Empty();
+  CSSValue result_width;
+  CSSValue result_style;
+  CSSValue result_color;
   bool ret = parser.ParseBorder(result_width, result_style, result_color);
   if (!ret) {
     return false;

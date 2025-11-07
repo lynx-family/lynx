@@ -257,8 +257,7 @@ TEST_F(CSSTransitionManagerTest, ClearEffect) {
     test_manager->ConsumeCSSProperty(
         tasm::kPropertyIDLeft, tasm::CSSValue(1, CSSValuePattern::NUMBER));
     EXPECT_TRUE(test_manager->animations_map().count(base::String("left")));
-    test_manager->ConsumeCSSProperty(tasm::kPropertyIDLeft,
-                                     tasm::CSSValue::Empty());
+    test_manager->ConsumeCSSProperty(tasm::kPropertyIDLeft, tasm::CSSValue());
     EXPECT_TRUE(!test_manager->animations_map().count(base::String("left")));
     // If a transition animation is replaced by another identical transition
     // animation (both animate the same properties), then this transition

@@ -223,7 +223,7 @@ TEST_F(CSSKeyframeManagerTest, GetDefaultValue) {
   auto test_manager = InitTestKeyframeManager(test_element.get());
   auto default_value1 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kLeft);
-  EXPECT_EQ(default_value1, tasm::CSSValue::Empty());
+  EXPECT_EQ(default_value1, tasm::CSSValue());
 
   auto default_value2 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kOpacity);
@@ -239,7 +239,7 @@ TEST_F(CSSKeyframeManagerTest, GetDefaultValue) {
 
   auto default_value4 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kNone);
-  EXPECT_EQ(default_value4, tasm::CSSValue::Empty());
+  EXPECT_EQ(default_value4, tasm::CSSValue());
 }
 
 TEST_F(CSSKeyframeManagerTest, HasTwoSameAnimation) {

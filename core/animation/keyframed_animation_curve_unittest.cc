@@ -569,13 +569,13 @@ TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
   start_arr->emplace_back(20.f);
   start_arr->emplace_back(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PX));
-  auto start_value = ::lynx::tasm::CSSValue(lepus::Value(start_arr));
+  auto start_value = ::lynx::tasm::CSSValue(std::move(start_arr));
 
   auto end_arr = lepus::CArray::Create();
   end_arr->emplace_back(static_cast<uint32_t>(starlight::FilterType::kBlur));
   end_arr->emplace_back(60.f);
   end_arr->emplace_back(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PX));
-  auto end_value = ::lynx::tasm::CSSValue(lepus::Value(end_arr));
+  auto end_value = ::lynx::tasm::CSSValue(std::move(end_arr));
 
   auto test_frame1 = FilterKeyframe::Create(fml::TimeDelta(), nullptr);
   test_frame1->SetFilter(start_value);

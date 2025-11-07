@@ -47,7 +47,7 @@ class MockKeyframedLayoutAnimationCurve : public LayoutAnimationCurve {
   }
 
   lynx::tasm::CSSValue GetValue(fml::TimeDelta& t) const override {
-    return lynx::tasm::CSSValue::Empty();
+    return lynx::tasm::CSSValue();
   };
 
   std::vector<std::unique_ptr<Keyframe>> GetKeyframes() {
@@ -65,7 +65,7 @@ class MockKeyframedTransformAnimationCurve : public TransformAnimationCurve {
   }
 
   lynx::tasm::CSSValue GetValue(fml::TimeDelta& t) const override {
-    return lynx::tasm::CSSValue::Empty();
+    return lynx::tasm::CSSValue();
   }
 
   std::vector<std::unique_ptr<Keyframe>> GetKeyframes() {
@@ -195,7 +195,7 @@ TEST_F(TransformAnimationCurveTest, GetStyleInElement) {
   EXPECT_EQ(test_frame1->IsEmpty(), false);
   auto w_id = lynx::tasm::CSSPropertyID::kPropertyIDTop;
   auto result_value2 = GetStyleInElement(w_id, test_element);
-  EXPECT_EQ(result_value2, lynx::tasm::CSSValue::Empty());
+  EXPECT_EQ(result_value2, lynx::tasm::CSSValue());
 }
 
 TEST_F(TransformAnimationCurveTest, GetActiveKeyframe) {

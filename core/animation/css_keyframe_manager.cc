@@ -345,7 +345,7 @@ void CSSKeyframeManager::SetNeedsAnimationStyleRecalc(
         std::optional<tasm::CSSValue> value_opt =
             element_->GetElementStyle(key);
         if (!value_opt) {
-          reset_origin_css_styles[key] = tasm::CSSValue::Empty();
+          reset_origin_css_styles[key] = tasm::CSSValue();
         } else {
           reset_origin_css_styles[key] = std::move(*value_opt);
         }
@@ -391,7 +391,7 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     starlight::AnimationPropertyType type) {
   if (GetLayoutPropertyTypeSet().count(type) != 0) {
     // the default values of layout properties are 'auto'.
-    return tasm::CSSValue::Empty();
+    return tasm::CSSValue();
   } else if (type == starlight::AnimationPropertyType::kOpacity) {
     return tasm::CSSValue(OpacityKeyframe::kDefaultOpacity,
                           tasm::CSSValuePattern::NUMBER);
@@ -416,7 +416,7 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     return tasm::CSSValue(FloatKeyframe::kDefaultFloatValue,
                           tasm::CSSValuePattern::NUMBER);
   }
-  return tasm::CSSValue::Empty();
+  return tasm::CSSValue();
 }
 
 // TODO:(wujintian) Remove AnimationPropertyType, it is redundant code. Only use

@@ -15,7 +15,7 @@ namespace BorderWidthHandler {
 
 HANDLER_IMPL() {
   if (input.IsString()) {
-    CSSValue result = CSSValue::Empty();
+    CSSValue result;
     CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
     auto ret = parser.ParseBorderLineWidth(result);
     if (ret && !result.IsEmpty()) {

@@ -372,7 +372,7 @@ void LayoutContext::ResetLayoutNodeStyleInner(
     UpdateFixedNodeSet(node, false);
     node->slnode()->SetIsFixedBefore(false);
   }
-  node->ConsumeStyle(css_id, CSSValue::Empty(), true);
+  node->ConsumeStyle(css_id, CSSValue(), true);
 }
 
 void LayoutContext::UpdateLayoutNodeAttribute(int32_t id,
