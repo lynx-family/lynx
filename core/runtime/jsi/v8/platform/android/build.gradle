@@ -1,0 +1,119 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply from: '../../../../../../platform/android/publish.gradle'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 32
+        versionCode 1
+        versionName "1.0"
+        missingDimensionStrategy 'lynx', 'noasan'
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        asan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-fsanitize=address',
+                            '-fsanitize-address-use-after-scope',
+                            '-fPIE',
+                            '-Wl,-ldl',
+                            '-Wl,-llog',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_ARM_MODE=arm', '-DFLAVOR_NAME=asan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+        noasan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    arguments '-DFLAVOR_NAME=noasan'
+                }
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DBUILD_LEPUS_COMPILE=false',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DCMAKE_BUILD_TYPE=Release',
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=release',
+                            '-LH'// Show compile parameters.
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DBUILD_LEPUS_COMPILE=false',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=debug',
+                            '-LH'// Show compile parameters.
+
+                    // Symbol table with line numbers.
+                    cppFlags "-g",
+                            '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            
+            debuggable true
+        }
+    }
+
+    externalNativeBuild {
+       cmake {
+           path "CMakeLists.txt"
+           version CMAKE_VERSION
+       }
+   }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+            java.srcDirs = ['src/main/java']
+        }
+    }
+}
+
+dependencies {
+    implementation project(':LynxBase')
+    implementation project(':LynxAndroid')
+    implementation 'org.lynxsdk.lynx:v8so:11.1.277.4'
+    implementation 'org.lynxsdk.lynx:primjs-v8:2.16.0-alpha.2'
+}

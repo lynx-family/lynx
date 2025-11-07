@@ -78,6 +78,7 @@ explorer/android/local.properties
 explorer/android/lynx_explorer/src/main/assets/*
 !explorer/android/lynx_explorer/src/main/assets/testBench/
 core/runtime/jsi/v8/CMakeLists_impl/
+core/runtime/jsi/v8/platform/android/CMakeLists_impl/
 
 explorer/darwin/ios/lynx_explorer/Podfile.lock
 explorer/darwin/ios/lynx_explorer/Pods
