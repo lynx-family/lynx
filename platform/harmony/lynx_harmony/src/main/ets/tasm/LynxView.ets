@@ -318,6 +318,7 @@ export struct LynxView {
     } catch (e) {
       LLog.e(TAG, `Failed to remove the keyboardHeightChange listener. Code: ${e.code}, message: ${e.message}`);
     }
+    this.keyboardHeightChangeCallback = undefined;
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);
     if (!this.enableAirStrictMode && extensionService != undefined) {
