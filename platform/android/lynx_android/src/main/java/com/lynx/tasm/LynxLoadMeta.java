@@ -80,7 +80,7 @@ public final class LynxLoadMeta {
   }
 
   public boolean isGlobalPropsValid() {
-    return this.globalProps != null && !this.globalProps.isEmpty();
+    return this.globalProps != null;
   }
 
   public Map<String, String> getLynxViewConfig() {
