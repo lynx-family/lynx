@@ -2360,7 +2360,7 @@ public interface com::lynx::tasm::service::ILynxResourceServiceResponse {
 
 public interface com::lynx::tasm::service::security::ILynxSecurityService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.security.ILynxSecurityService.getServiceClass();
-  public SecurityResult com.lynx.tasm.service.security.ILynxSecurityService.verifyTASM(LynxView lynxView, byte[] template, String url, LynxTasmType type);
+  public SecurityResult com.lynx.tasm.service.security.ILynxSecurityService.verifyTASM(LynxView lynxView, byte[] template, ByteBuffer buffer, String url, LynxTasmType type);
 }
 
 public interface com::lynx::tasm::service::ILynxSystemInvokeService {

@@ -71,7 +71,7 @@ public final class TemplateBundle {
         if (securityService != null) {
           // Do Security Check;
           SecurityResult securityResult = securityService.verifyTASM(
-              null, template, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
+              null, template, null, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
           if (!securityResult.isVerified()) {
             result = new TemplateBundle(0, template.length, url,
                 "template verify failed, error message: " + securityResult.getErrorMsg(), null);

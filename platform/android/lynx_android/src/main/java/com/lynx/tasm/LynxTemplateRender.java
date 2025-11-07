@@ -3497,9 +3497,9 @@ public class LynxTemplateRender
     if (mDevTool != null) {
       mDevTool.attachToDebugBridge(url);
     }
-    nativeLoadTemplateBufferByPreParsedData(mNativePtr, mNativeLifecycle, url, template,
-        isPrePainting ? 1 : 0, enableRecycleTemplateBundle, nativePtr, read_only, processorName,
-        initData, options, timingOption.toJavaOnlyMap());
+
+    nativeLoadTemplate(url, null, template, isPrePainting ? 1 : 0, enableRecycleTemplateBundle,
+        read_only, processorName, initData, options, timingOption);
   }
 
   private void loadTemplate(byte[] template, TemplateData initData, String url,
@@ -3532,8 +3532,8 @@ public class LynxTemplateRender
     if (mDevTool != null) {
       mDevTool.attachToDebugBridge(url);
     }
-    nativeLoadTemplate(url, template, isPrePainting ? 1 : 0, enableRecycleTemplateBundle, read_only,
-        processorName, initData, 0, timingOption);
+    nativeLoadTemplate(url, template, null, isPrePainting ? 1 : 0, enableRecycleTemplateBundle,
+        read_only, processorName, initData, 0, timingOption);
   }
 
   private void loadTemplateBundle(TemplateBundle bundle, String url, TemplateData initData,
@@ -3620,7 +3620,7 @@ public class LynxTemplateRender
     templateData.flush();
     templateData.markConsumed();
 
-    nativeLoadTemplate(url, template, 0, false, true, "", templateData, 0, timingOption);
+    nativeLoadTemplate(url, template, null, 0, false, true, "", templateData, 0, timingOption);
   }
 
   private void loadTemplate(byte[] template, Map<String, Object> initData, String url,
@@ -3640,10 +3640,10 @@ public class LynxTemplateRender
     templateData.flush();
     templateData.markConsumed();
 
-    nativeLoadTemplate(url, template, 0, false, true, "", templateData, 0, timingOption);
+    nativeLoadTemplate(url, template, null, 0, false, true, "", templateData, 0, timingOption);
   }
 
-  private void nativeLoadTemplate(String url, byte[] template, int isPrePainting,
+  private void nativeLoadTemplate(String url, byte[] template, ByteBuffer buffer, int isPrePainting,
       boolean enableRecycleTemplateBundle, boolean readOnly, String processorName,
       TemplateData templateData, int options, TimingOption timingOption) {
     ILynxSecurityService securityService =
@@ -3652,7 +3652,7 @@ public class LynxTemplateRender
       // Do Security Check;
       timingOption.markTiming(TimingConstants.VERIFY_TASM_START);
       SecurityResult result = securityService.verifyTASM(
-          getLynxView(), template, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
+          getLynxView(), template, buffer, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
       timingOption.markTiming(TimingConstants.VERIFY_TASM_END);
       if (!result.isVerified()) {
         mNativeFacade.reportError(new LynxError(
@@ -3664,9 +3664,18 @@ public class LynxTemplateRender
     // SecurityService is null, or Verified;
     timingOption.markTiming(TimingConstants.FFI_START);
     long nativePtr = templateData == null ? 0 : templateData.getNativePtr();
-    nativeLoadTemplateByPreParsedData(mNativePtr, mNativeLifecycle, url, template, isPrePainting,
-        enableRecycleTemplateBundle, nativePtr, readOnly, processorName, templateData, options,
-        timingOption.toJavaOnlyMap());
+
+    if (buffer != null) {
+      nativeLoadTemplateBufferByPreParsedData(mNativePtr, mNativeLifecycle, url, buffer,
+          isPrePainting, enableRecycleTemplateBundle, nativePtr, readOnly, processorName,
+          templateData, options, timingOption.toJavaOnlyMap());
+    } else if (template != null) {
+      nativeLoadTemplateByPreParsedData(mNativePtr, mNativeLifecycle, url, template, isPrePainting,
+          enableRecycleTemplateBundle, nativePtr, readOnly, processorName, templateData, options,
+          timingOption.toJavaOnlyMap());
+    } else {
+      LLog.e(TAG, "loadTemplate with empty template or buffer.");
+    }
   }
 
   public boolean registerLazyBundle(String url, TemplateBundle bundle) {
