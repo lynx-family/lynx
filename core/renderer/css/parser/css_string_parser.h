@@ -93,8 +93,7 @@ class CSSStringParser final {
 
     // The default value of Lynx's timing function is linear
     CSSTransitionLayer() {
-      timing_function.SetEnum(
-          static_cast<int>(starlight::TimingFunctionType::kLinear));
+      timing_function.SetEnum(starlight::TimingFunctionType::kLinear);
     }
   };
 
@@ -113,8 +112,7 @@ class CSSStringParser final {
 
     // The default value of Lynx's timing function is linear
     CSSAnimationLayer() {
-      timing_function.SetEnum(
-          static_cast<int>(starlight::TimingFunctionType::kLinear));
+      timing_function.SetEnum(starlight::TimingFunctionType::kLinear);
     }
   };
 
@@ -240,7 +238,8 @@ class CSSStringParser final {
 
   bool ParseFlex(double& flex_grow, double& flex_shrink, CSSValue& flex_basis);
 
-  static int32_t TokenTypeToBorderStyle(TokenType token_type);
+  static starlight::BorderStyleType TokenTypeToBorderStyle(
+      TokenType token_type);
 
   static uint32_t LerpColor(uint32_t start_color, uint32_t end_color,
                             float start_pos, float end_pos, float current_pos);

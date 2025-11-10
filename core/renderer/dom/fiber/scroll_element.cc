@@ -24,26 +24,23 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
   if (key.IsEquals(kScrollX) && value_str == kTrue) {
     CacheStyleFromAttributes(
         kPropertyIDLinearOrientation,
-        CSSValue::MakeEnum(
-            static_cast<int>(starlight::LinearOrientationType::kHorizontal)));
+        CSSValue(starlight::LinearOrientationType::kHorizontal));
     HandleLayoutNodeAttributeUpdate();
   } else if (key.IsEquals(kScrollY) && value_str == kTrue) {
-    CacheStyleFromAttributes(kPropertyIDLinearOrientation,
-                             CSSValue::MakeEnum(static_cast<int>(
-                                 starlight::LinearOrientationType::kVertical)));
+    CacheStyleFromAttributes(
+        kPropertyIDLinearOrientation,
+        CSSValue(starlight::LinearOrientationType::kVertical));
     HandleLayoutNodeAttributeUpdate();
   } else if (key.IsEquals(kScrollOrientation)) {
     if (value_str == kHorizontal) {
       CacheStyleFromAttributes(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kHorizontal)));
+          CSSValue(starlight::LinearOrientationType::kHorizontal));
       HandleLayoutNodeAttributeUpdate();
     } else if (value_str == kVertical) {
       CacheStyleFromAttributes(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kVertical)));
+          CSSValue(starlight::LinearOrientationType::kVertical));
       HandleLayoutNodeAttributeUpdate();
     }
     //(TODO)fangzhou.fz: If it becomes necessary in the future, extend the
@@ -51,14 +48,12 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
   } else if (key.IsEquals(kScrollXReverse) && value_str == kTrue) {
     CacheStyleFromAttributes(
         kPropertyIDLinearOrientation,
-        CSSValue::MakeEnum(static_cast<int>(
-            starlight::LinearOrientationType::kHorizontalReverse)));
+        CSSValue(starlight::LinearOrientationType::kHorizontalReverse));
     HandleLayoutNodeAttributeUpdate();
   } else if (key.IsEquals(kScrollYReverse) && value_str == kTrue) {
     CacheStyleFromAttributes(
         kPropertyIDLinearOrientation,
-        CSSValue::MakeEnum(static_cast<int>(
-            starlight::LinearOrientationType::kVerticalReverse)));
+        CSSValue(starlight::LinearOrientationType::kVerticalReverse));
     HandleLayoutNodeAttributeUpdate();
   } else if (key.IsEquals(kScrollNewArch) && value_str == kTrue) {
     platform_node_tag_ = BASE_STATIC_STRING(kScrollNewArch);

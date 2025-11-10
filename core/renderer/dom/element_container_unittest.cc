@@ -257,10 +257,8 @@ TEST_F(ElementContainerTest, TransitionToNativeView) {
   ASSERT_TRUE(element->IsLayoutOnly());
 
   element = manager->CreateNode("view", nullptr);
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue(static_cast<int32_t>(starlight::OverflowType::kVisible),
-                     lynx::tasm::CSSValuePattern::ENUM));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue(starlight::OverflowType::kVisible));
   element->FlushProps();
   ASSERT_TRUE(element->IsLayoutOnly());
   element->TransitionToNativeView();

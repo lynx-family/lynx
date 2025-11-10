@@ -397,15 +397,13 @@ void ListElement::SetAttributeInternal(const base::String& key,
     if (value_str == kVertical) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kVertical)));
+          CSSValue(starlight::LinearOrientationType::kVertical));
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                                 lepus::Value(true));
     } else if (value_str == kHorizontal) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kHorizontal)));
+          CSSValue(starlight::LinearOrientationType::kHorizontal));
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                                 lepus::Value(true));
     }
@@ -414,15 +412,13 @@ void ListElement::SetAttributeInternal(const base::String& key,
     if (value_str == kTrue) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kVertical)));
+          CSSValue(starlight::LinearOrientationType::kVertical));
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                                 lepus::Value(true));
     } else if (value_str == kFalse) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kHorizontal)));
+          CSSValue(starlight::LinearOrientationType::kHorizontal));
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                                 lepus::Value(true));
     }

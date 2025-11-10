@@ -260,30 +260,26 @@ void RadonElement::SetAttribute(const base::String& key,
     if (key.IsEquals(kScrollX) && value_str == kTrue) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kHorizontal)));
+          CSSValue(starlight::LinearOrientationType::kHorizontal));
       element_manager_->UpdateLayoutNodeAttribute(
           id_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEquals(kScrollY) && value_str == kTrue) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(
-              static_cast<int>(starlight::LinearOrientationType::kVertical)));
+          CSSValue(starlight::LinearOrientationType::kVertical));
       element_manager_->UpdateLayoutNodeAttribute(
           id_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEquals(kScrollOrientation)) {
       if (value_str == kHorizontal) {
         attr_styles.insert_or_assign(
             kPropertyIDLinearOrientation,
-            CSSValue::MakeEnum(static_cast<int>(
-                starlight::LinearOrientationType::kHorizontal)));
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
         element_manager_->UpdateLayoutNodeAttribute(
             id_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
       } else if (value_str == kVertical) {
         attr_styles.insert_or_assign(
             kPropertyIDLinearOrientation,
-            CSSValue::MakeEnum(
-                static_cast<int>(starlight::LinearOrientationType::kVertical)));
+            CSSValue(starlight::LinearOrientationType::kVertical));
         element_manager_->UpdateLayoutNodeAttribute(
             id_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
       }
@@ -292,15 +288,13 @@ void RadonElement::SetAttribute(const base::String& key,
     } else if (key.IsEquals(kScrollXReverse) && value_str == kTrue) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(static_cast<int>(
-              starlight::LinearOrientationType::kHorizontalReverse)));
+          CSSValue(starlight::LinearOrientationType::kHorizontalReverse));
       element_manager_->UpdateLayoutNodeAttribute(
           id_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEquals(kScrollYReverse) && value_str == kTrue) {
       attr_styles.insert_or_assign(
           kPropertyIDLinearOrientation,
-          CSSValue::MakeEnum(static_cast<int>(
-              starlight::LinearOrientationType::kVerticalReverse)));
+          CSSValue(starlight::LinearOrientationType::kVerticalReverse));
       element_manager_->UpdateLayoutNodeAttribute(
           id_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEqual(kColumnCount) || key.IsEqual(kSpanCount)) {
@@ -313,15 +307,13 @@ void RadonElement::SetAttribute(const base::String& key,
       if (value_str == kTrue) {
         attr_styles.insert_or_assign(
             kPropertyIDLinearOrientation,
-            CSSValue::MakeEnum(
-                static_cast<int>(starlight::LinearOrientationType::kVertical)));
+            CSSValue(starlight::LinearOrientationType::kVertical));
         UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                                   lepus::Value(true));
       } else if (value_str == kFalse) {
         attr_styles.insert_or_assign(
             kPropertyIDLinearOrientation,
-            CSSValue::MakeEnum(static_cast<int>(
-                starlight::LinearOrientationType::kHorizontal)));
+            CSSValue(starlight::LinearOrientationType::kHorizontal));
         UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                                   lepus::Value(true));
       }

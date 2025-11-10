@@ -672,7 +672,7 @@ void CSSStringParser::TokenToLengthTarget(const Token &token,
                         static_cast<CSSValuePattern>(pattern));
   } else if (pattern == static_cast<uint32_t>(CSSValuePattern::ENUM)) {
     // We know the enum pattern is auto
-    css_value.SetEnum(static_cast<int>(starlight::LengthValueType::kAuto));
+    css_value.SetEnum(starlight::LengthValueType::kAuto);
   } else if (pattern < static_cast<uint32_t>(CSSValuePattern::COUNT)) {
     auto dest = TokenToDouble(token);
     css_value.SetNumber(dest, static_cast<CSSValuePattern>(pattern));
@@ -1665,7 +1665,7 @@ CSSValue CSSStringParser::ConsumeTimingFunction(
   CSSValue css_value;
   auto type = TokenToTimingFunctionType(token);
   if (token.type >= TokenType::LINEAR & token.type <= TokenType::EASE_IN_OUT) {
-    css_value.SetEnum(static_cast<int>(type));
+    css_value.SetEnum(type);
   } else if (token.type == TokenType::STEP_START ||
              token.type == TokenType::STEP_END) {
     auto arr = lepus::CArray::Create();
@@ -2271,29 +2271,30 @@ uint32_t CSSStringParser::TokenTypeToENUM(TokenType token_type) {
 }
 
 // For compatibility with old type
-int32_t CSSStringParser::TokenTypeToBorderStyle(TokenType token_type) {
+starlight::BorderStyleType CSSStringParser::TokenTypeToBorderStyle(
+    TokenType token_type) {
   switch (token_type) {
     case TokenType::HIDDEN:
-      return static_cast<int32_t>(starlight::BorderStyleType::kHide);
+      return starlight::BorderStyleType::kHide;
     case TokenType::DOTTED:
-      return static_cast<int32_t>(starlight::BorderStyleType::kDotted);
+      return starlight::BorderStyleType::kDotted;
     case TokenType::DASHED:
-      return static_cast<int32_t>(starlight::BorderStyleType::kDashed);
+      return starlight::BorderStyleType::kDashed;
     case TokenType::SOLID:
-      return static_cast<int32_t>(starlight::BorderStyleType::kSolid);
+      return starlight::BorderStyleType::kSolid;
     case TokenType::DOUBLE:
-      return static_cast<int32_t>(starlight::BorderStyleType::kDouble);
+      return starlight::BorderStyleType::kDouble;
     case TokenType::GROOVE:
-      return static_cast<int32_t>(starlight::BorderStyleType::kGroove);
+      return starlight::BorderStyleType::kGroove;
     case TokenType::RIDGE:
-      return static_cast<int32_t>(starlight::BorderStyleType::kRidge);
+      return starlight::BorderStyleType::kRidge;
     case TokenType::INSET:
-      return static_cast<int32_t>(starlight::BorderStyleType::kInset);
+      return starlight::BorderStyleType::kInset;
     case TokenType::OUTSET:
-      return static_cast<int32_t>(starlight::BorderStyleType::kOutset);
+      return starlight::BorderStyleType::kOutset;
     case TokenType::NONE:
     default:
-      return static_cast<int32_t>(starlight::BorderStyleType::kNone);
+      return starlight::BorderStyleType::kNone;
   }
 }
 
@@ -3147,8 +3148,7 @@ bool CSSStringParser::ParseBorder(CSSValue &result_width,
       result_width = CSSValue(0, CSSValuePattern::NUMBER);
     }
     if (result_style.IsEmpty()) {
-      result_style = CSSValue(TokenTypeToBorderStyle(TokenType::SOLID),
-                              CSSValuePattern::ENUM);
+      result_style = CSSValue(TokenTypeToBorderStyle(TokenType::SOLID));
     }
     if (result_color.IsEmpty()) {
       result_color = CSSValue(CSSColor::Black, CSSValuePattern::NUMBER);
@@ -3599,7 +3599,7 @@ bool CSSStringParser::ParseFlex(double &flex_grow, double &flex_shrink,
     // For compatibility, none is equivalent to setting '0 1 auto'.
     // In fact, this should be '0 0 auto'
     flex_shrink = parser_configs_.enable_new_flex_handler ? 0 : 1;
-    flex_basis.SetEnum(static_cast<int>(starlight::LengthValueType::kAuto));
+    flex_basis.SetEnum(starlight::LengthValueType::kAuto);
     return true;
   }
 
@@ -3747,10 +3747,7 @@ CSSStringParser::TokenToAnimationDirectionType(const Token &token) {
 bool CSSStringParser::ParseAnimationDirection(bool single, CSSValue &ret) {
   return ParseNumberOrArray(
       single, &CSSStringParser::AnimationDirectionValue,
-      [](const Token &t) {
-        return CSSValue(static_cast<int>(TokenToAnimationDirectionType(t)),
-                        CSSValuePattern::ENUM);
-      },
+      [](const Token &t) { return CSSValue(TokenToAnimationDirectionType(t)); },
       ret);
 }
 
@@ -3782,10 +3779,7 @@ starlight::AnimationFillModeType CSSStringParser::TokenToAnimationFillModeType(
 bool CSSStringParser::ParseAnimationFillMode(bool single, CSSValue &ret) {
   return ParseNumberOrArray(
       single, &CSSStringParser::AnimationFillModeValue,
-      [](const Token &t) {
-        return CSSValue(static_cast<int>(TokenToAnimationFillModeType(t)),
-                        CSSValuePattern::ENUM);
-      },
+      [](const Token &t) { return CSSValue(TokenToAnimationFillModeType(t)); },
       ret);
 }
 
@@ -3848,10 +3842,7 @@ starlight::AnimationPlayStateType CSSStringParser::TokenToAnimationPlayState(
 bool CSSStringParser::ParseAnimationPlayState(bool single, CSSValue &ret) {
   return ParseNumberOrArray(
       single, &CSSStringParser::AnimationPlayStateValue,
-      [](const Token &t) {
-        return CSSValue(static_cast<int>(TokenToAnimationPlayState(t)),
-                        CSSValuePattern::ENUM);
-      },
+      [](const Token &t) { return CSSValue(TokenToAnimationPlayState(t)); },
       ret);
 }
 
@@ -3869,8 +3860,7 @@ bool CSSStringParser::ParseTransitionProperty(bool single, CSSValue &ret) {
   return ParseNumberOrArray(
       single, &CSSStringParser::TransitionProperty,
       [&config = parser_configs_](const Token &t) {
-        return CSSValue(static_cast<int>(TokenToTransitionType(t, config)),
-                        CSSValuePattern::ENUM);
+        return CSSValue(TokenToTransitionType(t, config));
       },
       ret);
 }

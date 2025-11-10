@@ -82,10 +82,8 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
   EXPECT_FALSE(element->has_z_props());
 
   EXPECT_TRUE(element->computed_css_style()->IsOverflowHidden());
-  element->SetStyleInternal(
-      CSSPropertyID::kPropertyIDOverflow,
-      tasm::CSSValue((int)starlight::OverflowType::kVisible,
-                     lynx::tasm::CSSValuePattern::ENUM));
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue(starlight::OverflowType::kVisible));
   EXPECT_TRUE(element->computed_css_style()->IsOverflowXY());
   EXPECT_TRUE(element->has_non_flatten_attrs_ == false);
 

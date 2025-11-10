@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -85,6 +86,12 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   CSSValue(std::string&& value, CSSValuePattern pattern, CSSValueType type)
       : value_(std::move(value)), pattern_(pattern), type_(type) {}
 
+  template <typename EnumT, typename = std::enable_if_t<std::is_enum_v<EnumT>>>
+  explicit CSSValue(EnumT value)
+      : value_(static_cast<int32_t>(value)),
+        pattern_(CSSValuePattern::ENUM),
+        type_(CSSValueType::DEFAULT) {}
+
   explicit CSSValue(bool value)
       : value_(value),
         pattern_(CSSValuePattern::BOOLEAN),
@@ -160,10 +167,6 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   CSSValue(CSSValue&& other) = default;
   CSSValue& operator=(CSSValue&& other) = default;
-
-  static CSSValue MakeEnum(int enumType) {
-    return CSSValue(enumType, CSSValuePattern::ENUM);
-  }
 
   // TODO(yuyang), The `value_` variable in `CSSValue` will no longer be of type
   // `lepus::Value`.
@@ -269,8 +272,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     type_ = CSSValueType::DEFAULT;
   }
 
-  void SetEnum(int value) {
-    value_.SetNumber(value);
+  template <typename EnumT, typename = std::enable_if_t<std::is_enum_v<EnumT>>>
+  void SetEnum(EnumT value) {
+    value_.SetNumber(static_cast<int32_t>(value));
     pattern_ = CSSValuePattern::ENUM;
     type_ = CSSValueType::DEFAULT;
   }

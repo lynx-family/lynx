@@ -1276,10 +1276,7 @@ void FiberElement::ResolveCSSStyles(
         }
       }
       if (is_text() || NeedProcessDirection()) {
-        auto current_text_align = CSSValue(
-
-            static_cast<int32_t>(starlight::TextAlignType::kStart),
-            CSSValuePattern::ENUM);
+        auto current_text_align = CSSValue(starlight::TextAlignType::kStart);
         current_text_align =
             ResolveCurrentStyleValue(kPropertyIDTextAlign, current_text_align);
         DynamicCSSStylesManager::UpdateDirectionAwareDefaultStyles(
@@ -2444,29 +2441,27 @@ void FiberElement::SetAttributeInternal(const base::String &key,
     if (key.IsEquals("scroll-x") && value.String().IsEqual("true")) {
         attr_styles.insert_or_assign(
                                      kPropertyIDLinearOrientation,
-                                     CSSValue::MakeEnum((int) starlight::LinearOrientationType::kHorizontal));
+                                     CSSValue(starlight::LinearOrientationType::kHorizontal));
         element_manager()->UpdateLayoutNodeAttribute(
                                                      layout_node_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEquals("scroll-y") && value.String().IsEqual("true")) {
         attr_styles.insert_or_assign(
                                      kPropertyIDLinearOrientation,
-                                     CSSValue::MakeEnum((int) starlight::LinearOrientationType::kVertical));
+                                     CSSValue(starlight::LinearOrientationType::kVertical));
         element_manager()->UpdateLayoutNodeAttribute(
                                                      layout_node_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEquals("scroll-x-reverse") &&
                value.String().IsEqual("true")) {
         attr_styles.insert_or_assign(
                                      kPropertyIDLinearOrientation,
-                                     CSSValue::MakeEnum(
-                                                        (int) starlight::LinearOrientationType::kHorizontalReverse));
+                                     CSSValue(starlight::LinearOrientationType::kHorizontalReverse));
         element_manager()->UpdateLayoutNodeAttribute(
                                                      layout_node_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEquals("scroll-y-reverse") &&
                value.String().IsEqual("true")) {
         attr_styles.insert_or_assign(
                                      kPropertyIDLinearOrientation,
-                                     CSSValue::MakeEnum(
-                                                        (int) starlight::LinearOrientationType::kVerticalReverse));
+                                     CSSValue(starlight::LinearOrientationType::kVerticalReverse));
         element_manager()->UpdateLayoutNodeAttribute(
                                                      layout_node_, starlight::LayoutAttribute::kScroll, lepus::Value(true));
     } else if (key.IsEqual("column-count")) {
@@ -3476,8 +3471,7 @@ void FiberElement::ResetTextAlign(StyleMap &update_map,
   // set kPropertyIDTextAlign to kStart only when direction is not changed.
   if (!direction_changed) {
     update_map[CSSPropertyID::kPropertyIDTextAlign] =
-        CSSValue(static_cast<int32_t>(starlight::TextAlignType::kStart),
-                 CSSValuePattern::ENUM);
+        CSSValue(starlight::TextAlignType::kStart);
   }
 }
 

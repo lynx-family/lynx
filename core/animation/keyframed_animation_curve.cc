@@ -142,9 +142,7 @@ LayoutKeyframe::GetLayoutKeyframeValue(LayoutKeyframe* keyframe,
                                        tasm::Element* element) {
   // Layout length default value : auto
   starlight::NLength length = starlight::NLength::MakeAutoNLength();
-  tasm::CSSValue css_value =
-      tasm::CSSValue(static_cast<int>(starlight::LengthValueType::kAuto),
-                     tasm::CSSValuePattern::ENUM);
+  tasm::CSSValue css_value = tasm::CSSValue(starlight::LengthValueType::kAuto);
   if (keyframe->IsEmpty()) {
     std::optional<tasm::CSSValue> value_opt = element->GetElementStyle(id);
     if (!value_opt) {

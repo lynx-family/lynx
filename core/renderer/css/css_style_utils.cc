@@ -643,9 +643,8 @@ bool CSSStyleUtils::ComputeGridTrackSizing(
       // (CSSFunctionType::MINMAX, CSSValuePattern::ENUM),
       // (10, CSSValuePattern::PX),
       // ("max-content", CSSValuePattern::INTRINSIC)
-      if (css_value.GetPattern() == tasm::CSSValuePattern::ENUM &&
-          css_value.GetEnum<tasm::CSSFunctionType>() ==
-              tasm::CSSFunctionType::MINMAX) {
+      if (css_value.IsEnum() && css_value.GetEnum<tasm::CSSFunctionType>() ==
+                                    tasm::CSSFunctionType::MINMAX) {
         idx += 2;
         if (idx + 3 >= length_array->size()) {
           return false;

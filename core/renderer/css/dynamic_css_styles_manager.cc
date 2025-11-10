@@ -328,8 +328,7 @@ void DynamicCSSStylesManager::ApplyDirection(
 
   if (direction_need_update_ || (current_updates & kUpdateDirectionStyle)) {
     UpdateDirectionAwareDefaultStyles(element_, new_direction_type);
-    element_->SetDirectionInternal(
-        CSSValue(static_cast<int>(new_direction_type), CSSValuePattern::ENUM));
+    element_->SetDirectionInternal(CSSValue(new_direction_type));
   }
 
   if (configs_.enable_css_inheritance_ && IsInheritable(kPropertyIDDirection)) {
@@ -620,11 +619,8 @@ CSSPropertyID DynamicCSSStylesManager::ResolveDirectionRelatedPropertyID(
 void DynamicCSSStylesManager::UpdateDirectionAwareDefaultStyles(
     Element* element, starlight::DirectionType direction) {
   // Currently, only text-align has direction aware default property.
-  const auto default_align =
-      ResolveTextAlign(kPropertyIDTextAlign,
-                       CSSValue(static_cast<int32_t>(TextAlignType::kStart),
-                                CSSValuePattern::ENUM),
-                       direction);
+  const auto default_align = ResolveTextAlign(
+      kPropertyIDTextAlign, CSSValue(TextAlignType::kStart), direction);
   element->SetStyleInternal(default_align.first, default_align.second);
 }
 
@@ -638,8 +634,7 @@ void DynamicCSSStylesManager::UpdateDirectionAwareDefaultStyles(
   auto default_align_value = text_align_value;
 
   if (default_align_value.IsEmpty()) {
-    default_align_value = CSSValue(static_cast<int32_t>(TextAlignType::kStart),
-                                   CSSValuePattern::ENUM);
+    default_align_value = CSSValue(TextAlignType::kStart);
   }
   const auto default_align =
       ResolveTextAlign(kPropertyIDTextAlign, default_align_value, direction);
