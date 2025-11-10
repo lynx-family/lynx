@@ -233,7 +233,6 @@ export enum LynxOptionalBool {
 export abstract class LynxTemplateResourceFetcher implements LynxResourceProvider {
   abstract fetchTemplate(request: LynxResourceRequest, callback: AsyncCallback<TemplateProviderResult>): void;
   abstract fetchSSRData(request: LynxResourceRequest, callback: AsyncCallback<ArrayBuffer>): void;
-  public fetchTemplateAndVerify(request: LynxResourceRequest, callback: AsyncCallback<TemplateProviderResult>): void;
 }
 
 export interface TemplateProviderResult {

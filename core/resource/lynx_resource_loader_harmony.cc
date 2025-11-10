@@ -475,23 +475,23 @@ LynxResourceLoaderHarmony::CallbackHandler::HandleTemplateRequestCallback(
   callback_handler->timing_.response_received_from_fetcher =
       receive_response_time_point;
 
-  napi_valuetype error_type;
-  napi_typeof(env, argv[0], &error_type);
   pub::LynxResourceResponse response;
   response.timing = std::move(callback_handler->timing_);
-  if (error_type == napi_valuetype::napi_object) {
-    napi_value code_value;
-    napi_get_named_property(env, argv[0], "code", &code_value);
-    int32_t err_code = base::NapiUtil::ConvertToInt32(env, code_value);
+  napi_value code_value;
+  napi_get_named_property(env, argv[0], "code", &code_value);
+  int32_t err_code = base::NapiUtil::ConvertToInt32(env, code_value);
+
+  if (err_code != lynx::error::E_SUCCESS) {
+    napi_value message_value;
+    napi_get_named_property(env, argv[0], "data", &message_value);
+    std::string err_msg = base::NapiUtil::ConvertToString(env, message_value);
     if (err_code == lynx::error::E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE) {
       response.err_code = err_code;
-      response.err_msg = "verify template bundle failed";
-
+      response.err_msg = std::move(err_msg);
     } else {
       response.err_code = -1;
       response.err_msg = "error response";
     }
-
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);
   } else {
