@@ -63,23 +63,10 @@ class LynxNativeView {
           static_cast<LynxNativeView*>(user_data)->OnPropertiesChanged(
               LynxValue(attrs), LynxValue(events));
         });
-    lynx_native_view_bind_on_mouse_click(
-        native_view_, [](lynx_native_view_t* self, void* user_data, int x,
-                         int y, int buttons, bool mouse_up) {
-          static_cast<LynxNativeView*>(user_data)->OnMouseClickEvent(
-              x, y, buttons, mouse_up);
-        });
-    lynx_native_view_bind_on_mouse_move(
-        native_view_, [](lynx_native_view_t* self, void* user_data, int x,
-                         int y, int modifiers, bool mouse_up) {
-          static_cast<LynxNativeView*>(user_data)->OnMouseMoveEvent(
-              x, y, modifiers, mouse_up);
-        });
-    lynx_native_view_bind_on_mouse_wheel(
-        native_view_, [](lynx_native_view_t* self, void* user_data, int x,
-                         int y, int modifiers, double delta_x, double delta_y) {
-          static_cast<LynxNativeView*>(user_data)->OnMouseWheelEvent(
-              x, y, modifiers, delta_x, delta_y);
+    lynx_native_view_bind_on_motion_event(
+        native_view_, [](lynx_native_view_t* self, void* user_data,
+                         native_view_motion_event_t* event) {
+          static_cast<LynxNativeView*>(user_data)->OnMotionEvent(event);
         });
     lynx_native_view_bind_on_focus_changed(
         native_view_, [](lynx_native_view_t* self, void* user_data,
@@ -129,11 +116,7 @@ class LynxNativeView {
                                float pixel_ratio) {}
   virtual void OnPropertiesChanged(const LynxValue& attrs,
                                    const LynxValue& events) {}
-  virtual void OnMouseClickEvent(int x, int y, int buttons, bool mouse_up) {}
-  virtual void OnMouseMoveEvent(int x, int y, int modifiers, bool mouse_leave) {
-  }
-  virtual void OnMouseWheelEvent(int x, int y, int modifiers, double delta_x,
-                                 double delta_y) {}
+  virtual void OnMotionEvent(native_view_motion_event_t*) {}
   virtual void OnFocusChanged(bool focused, bool is_leaf) {}
   virtual void OnMethodInvoked(const char* method, const LynxValue& attrs,
                                std::function<void(int, LynxValue&&)> callback) {
