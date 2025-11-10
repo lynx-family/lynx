@@ -61,7 +61,8 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
 
   piper::Object global = js_runtime_->global();
   Object console_obj = Object::createFromHostObject(
-      *js_runtime_, std::make_shared<Console>(post_man, page_options));
+      *js_runtime_,
+      std::make_shared<Console>(post_man, page_options.GetDebuggable()));
   global.setProperty(*js_runtime_, "nativeConsole", console_obj);
 
   piper::Value system_info = GetSystemInfo(*js_runtime_);
@@ -97,7 +98,8 @@ void Global::EnsureConsole(
   auto console = global.getProperty(*js_runtime, "console");
   if (console && !console->isObject()) {
     Object console_obj = Object::createFromHostObject(
-        *js_runtime, std::make_shared<Console>(post_man, page_options));
+        *js_runtime,
+        std::make_shared<Console>(post_man, page_options.GetDebuggable()));
     global.setProperty(*js_runtime, "console", console_obj);
   }
 }
