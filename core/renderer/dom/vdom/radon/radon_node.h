@@ -350,7 +350,7 @@ class RadonNode : public RadonBase {
 
   Element* GetParentWithFixed(Element* parent_element);
 
-  void MarkChildStyleDirtyRecursively(bool is_root) override;
+  void MarkChildStyleDirtyRecursively(bool mark_whole_tree) override;
 
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) override {

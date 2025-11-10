@@ -437,6 +437,35 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
   child_element->dirty_ = 0;
   EXPECT_FALSE(child_element->StyleDirty());
 
+  parent->MarkChildStyleDirtyRecursively(false);
+  EXPECT_TRUE(child_element->StyleDirty());
+}
+
+TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiberComponent) {
+  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
+      TernaryBool::TRUE_VALUE);
+
+  auto parent = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  parent->CreateElementIfNeeded();
+  auto* parent_element = static_cast<FiberElement*>(parent->element());
+
+  auto comp = new RadonComponent(page_proxy.get(), 0, nullptr, nullptr, nullptr,
+                                 nullptr, 123, "component");
+  parent->AddChild(std::unique_ptr<RadonBase>(comp));
+
+  auto child = new RadonNode(page_proxy.get(), "view", 0);
+  child->CreateElementIfNeeded();
+  auto* child_element = static_cast<FiberElement*>(child->element());
+  comp->AddChild(std::unique_ptr<RadonBase>(child));
+
+  child_element->dirty_ = 0;
+  EXPECT_FALSE(child_element->StyleDirty());
+
+  parent->MarkChildStyleDirtyRecursively(false);
+  EXPECT_FALSE(child_element->StyleDirty());
+  child_element->dirty_ = 0;
+  parent_element->dirty_ = 0;
+
   parent->MarkChildStyleDirtyRecursively(true);
   EXPECT_TRUE(child_element->StyleDirty());
 }

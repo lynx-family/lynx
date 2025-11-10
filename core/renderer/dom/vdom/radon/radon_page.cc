@@ -336,6 +336,10 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
   ResetComponentDispatchOrder();
   bool should_component_update = PrePageRender(table, update_page_option);
   DispatchOption option(page_proxy_);
+  ClassList old_class_list;
+  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
+    old_class_list = this->attribute_holder()->ReleaseClasses();
+  }
   this->attribute_holder()->Reset();
   {
     // using radon diff
@@ -426,6 +430,13 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       PreHandlerCSSVariable();
       if (pipeline_options->need_timestamps) {
         tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
+      }
+
+      if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff() &&
+          old_class_list != classes()) {
+        for (auto &child : original_radon_children) {
+          child->MarkChildStyleDirtyRecursively(option.ShouldForceUpdate());
+        }
       }
       RadonMyersDiff(original_radon_children, option);
       // In RadonDiff-Fiber arch, we should mark resolve end after
