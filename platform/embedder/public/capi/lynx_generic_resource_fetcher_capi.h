@@ -27,6 +27,15 @@ typedef void (*fetch_resource_func)(lynx_generic_resource_fetcher_t*,
 typedef void (*cancel_fetch_func)(lynx_generic_resource_fetcher_t*,
                                   lynx_resource_request_id request_id);
 
+// Function pointer type for the URL interception callback. This type defines a
+// callback function used to intercept and potentially redirect a resource URL
+// before it is fetched. The callback receives the original URL and returns a
+// new URL. The caller is responsible for freeing the returned string using
+// `free()`.
+typedef char* (*lynx_resource_intercept_func)(const char* url,
+                                              bool should_decode,
+                                              void* user_data);
+
 // Creates a new generic resource fetcher instance. This function allocates and
 // initializes a new generic resource fetcher object. It associates the provided
 // user data with the fetcher, which can be retrieved later using
@@ -67,6 +76,14 @@ LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_bind_fetch_resource_path(
 LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_bind_cancel_fetch(
     lynx_generic_resource_fetcher_t*, cancel_fetch_func f);
 
+// Binds a URL interception callback to a generic resource fetcher. This
+// function sets the URL interception callback for the given fetcher instance.
+// The callback will be invoked to transform a URL before a resource request is
+// made, using the generic `user_data` provided during the fetcher's creation.
+LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_bind_intercept_func(
+    lynx_generic_resource_fetcher_t* fetcher,
+    lynx_resource_intercept_func func);
+
 // Releases a generic resource fetcher instance. This function deallocates the
 // memory used by the given generic resource fetcher instance and calls the
 // finalizer function if one was set during creation. After calling this
@@ -93,6 +110,12 @@ LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_fetch_resource_path(
 // Invokes the cancel fetch function bound to the generic resource fetcher.
 LYNX_CAPI_EXPORT void lynx_generic_resource_fetcher_cancel_fetch(
     lynx_generic_resource_fetcher_t*, lynx_resource_request_id);
+
+// Invokes the intercept function bound to the generic resource fetcher.
+// The caller is responsible for freeing the returned string using
+// `lynx_free()`.
+LYNX_CAPI_EXPORT char* lynx_generic_resource_fetcher_intercept(
+    lynx_generic_resource_fetcher_t*, const char* url, bool should_decode);
 
 // -----------------------------------------------------------------------------
 
