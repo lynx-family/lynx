@@ -782,19 +782,20 @@ bool RadonNode::OptimizedShouldFlushStyle(RadonNode* old_radon_node,
   return style_updated;
 }
 
-void RadonNode::MarkChildStyleDirtyRecursively(bool is_root) {
-  if (!is_root) {
-    if (IsRadonComponent()) {
+void RadonNode::MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
+  // When mark_whole_tree is false, should stop marking when we meet component.
+  if (IsRadonComponent() && !mark_whole_tree) {
+    return;
+  }
+  auto* fiber_ele = fiber_element();
+  if (fiber_ele) {
+    if (fiber_ele->StyleDirty()) {
       return;
     }
-    auto* fiber_ele = fiber_element();
-    if (!fiber_ele || fiber_ele->StyleDirty()) {
-      return;
-    }
-    fiber_ele->MarkStyleDirty(false);
+    fiber_ele->MarkStyleDirty(mark_whole_tree);
   }
   for (auto& child : radon_children_) {
-    child->MarkChildStyleDirtyRecursively(false);
+    child->MarkChildStyleDirtyRecursively(mark_whole_tree);
   }
 }
 
@@ -816,7 +817,9 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
     if (class_dirty_) {
       style_updated = true;
       fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
-      old_radon_node->MarkChildStyleDirtyRecursively(true);
+      for (auto& child : old_radon_node->radon_children_) {
+        child->MarkChildStyleDirtyRecursively(option.ShouldForceUpdate());
+      }
     }
     if (has_dynamic_inline_style_) {
       style_updated |= DiffRawStyleForFiber(old_radon_node->raw_inline_styles(),
