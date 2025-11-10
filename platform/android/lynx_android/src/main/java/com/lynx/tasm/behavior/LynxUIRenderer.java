@@ -54,6 +54,7 @@ import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
+import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -626,11 +627,36 @@ public class LynxUIRenderer implements ILynxUIRenderer {
         }
         Surface surface = (Surface) field.get(view.getRootView().getParent());
 
+        // Compute intersection with the screen to avoid out-of-bounds requests
+        DisplayMetrics dm = DisplayMetricsHolder.getRealScreenDisplayMetrics(view.getContext());
+        int surfaceWidth = dm.widthPixels;
+        int surfaceHeight = dm.heightPixels;
+
+        // When LynxView size is unrestricted and the parent supports scrolling,
+        // scrolling upward can make its position relative to the screen negative.
+        // PixelCopy only copies pixels from the on-screen visible viewport, so we
+        // clamp the copy region to the screen bounds to avoid out-of-range and
+        // negative coordinates.
+        int left = Math.max(0, location[0]);
+        int top = Math.max(0, location[1]);
+        int right = Math.min(location[0] + view.getWidth(), surfaceWidth);
+        int bottom = Math.min(location[1] + view.getHeight(), surfaceHeight);
+        Rect srcRect = new Rect(left, top, right, bottom);
+
+        int copyWidth = Math.max(0, srcRect.width());
+        int copyHeight = Math.max(0, srcRect.height());
+        if (copyWidth <= 0 || copyHeight <= 0) {
+          // Fully invisible: clear and return
+          canvas.drawColor(Color.TRANSPARENT);
+          return;
+        }
+
+        // PixelCopy destination must match srcRect size: use a temporary bitmap
+        Bitmap copyBitmap = Bitmap.createBitmap(copyWidth, copyHeight, Bitmap.Config.ARGB_8888);
+
         synchronized (mSyncObject) {
-          PixelCopy.request(surface,
-              new Rect(location[0], location[1], location[0] + view.getWidth(),
-                  location[1] + view.getHeight()),
-              bitmap, new PixelCopy.OnPixelCopyFinishedListener() {
+          PixelCopy.request(
+              surface, srcRect, copyBitmap, new PixelCopy.OnPixelCopyFinishedListener() {
                 @Override
                 public void onPixelCopyFinished(int copyResult) {
                   synchronized (mSyncObject) {
@@ -646,6 +672,11 @@ public class LynxUIRenderer implements ILynxUIRenderer {
             LLog.e("DevTool Screenshot", e.toString());
           }
         }
+        // Draw visible region onto the large bitmap at the correct offset; leave other areas blank
+        int drawX = left - location[0];
+        int drawY = top - location[1];
+        canvas.drawBitmap(copyBitmap, drawX, drawY, null);
+        copyBitmap.recycle();
       } else {
         view.draw(canvas);
       }
