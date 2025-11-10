@@ -905,6 +905,24 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   [self eventDidSet];
 }
 
+#pragma mark - LynxUIMeaningfulContentProtocol
+- (LynxUIMeaningfulContentStatus)meaningfulContentStatus {
+  return kLynxUIMeaningfulContentStatusIrrelevant;
+}
+
+- (CGRect)meaningfulContentRect {
+  return [self getBoundingClientRect];
+}
+
+/**
+ * @abstract Subclasses can override this method to provide a precise timestamp
+ * when the first meaningful content is presented.
+ * @discussion The default implementation returns -1.
+ */
+- (int64_t)firstMeaningfulContentPresentedTimestampMicros {
+  return -1;
+}
+
 #pragma mark - LynxNewGesture
 
 - (void)setGestureDetectorState:(NSInteger)gestureId state:(LynxGestureState)state {

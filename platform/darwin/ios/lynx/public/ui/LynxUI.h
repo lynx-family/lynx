@@ -12,6 +12,7 @@
 #import <Lynx/LynxKeyframeManager.h>
 #import <Lynx/LynxNewGestureDelegate.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIMeaningfulContentProtocol.h>
 #import <Lynx/LynxUITarget.h>
 #import <Lynx/UIScrollView+Nested.h>
 
@@ -42,8 +43,9 @@ enum LynxPropStatus {
 
 typedef void (^LynxNodeReadyBlock)(LynxUI*);
 
-@interface LynxUI<__covariant V : UIView*> : LynxComponent <LynxUI*>
-                                             <LynxEventTarget, LynxUITarget, LynxNewGestureDelegate>
+@interface LynxUI<__covariant V : UIView*>
+    : LynxComponent <LynxUI*>
+      <LynxEventTarget, LynxUITarget, LynxNewGestureDelegate, LynxUIMeaningfulContentProtocol>
 
 @property(nonatomic, assign) NSInteger sign;
 @property(nonatomic, readonly) NSString* name;

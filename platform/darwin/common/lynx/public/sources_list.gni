@@ -97,6 +97,7 @@ common_lynx_public_headers =
                     "recorder/LynxDebugInfoRecorderProtocol.h",
                     "performance/LynxExtraTiming.h",
                     "performance/LynxPerformanceObserverProtocol.h",
+                    "performance/LynxUIMeaningfulContentProtocol.h",
                     "event/LynxEvent.h",
                     "event/LynxEventTarget.h",
                     "event/LynxEventTargetBase.h",

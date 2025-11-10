@@ -1590,6 +1590,13 @@ LYNX_UI_METHOD(stopAnimation) {
                                 withDefaultPt:0];
 }
 
+- (LynxUIMeaningfulContentStatus)meaningfulContentStatus {
+  if (self.view.image) {
+    return kLynxUIMeaningfulContentStatusPresented;
+  }
+  return kLynxUIMeaningfulContentStatusPending;
+}
+
 - (CGSize)frameSize {
   return CGRectIntegral(self.frame).size;
 }

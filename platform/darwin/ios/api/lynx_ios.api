@@ -3994,7 +3994,7 @@ public class LynxTransitionAnimationManager : NSObject {
 }
 
 public class LynxUI : <__covariant V UIView> {
-  public LynxNewGestureDelegate NSInteger LynxUI::sign sign;
+  public LynxUIMeaningfulContentProtocol NSInteger LynxUI::sign sign;
   public NSString* LynxUI::name name;
   public NSString* LynxUI::idSelector idSelector;
   public NSString* LynxUI::refId refId;
@@ -4674,6 +4674,12 @@ public class LynxUIListScrollThresholds : NSObject {
   public NSNumber* LynxUIListScrollThresholds::scrollToStartItemCount scrollToStartItemCount;
   public NSNumber* LynxUIListScrollThresholds::scrollToEndItemCount scrollToEndItemCount;
   public NSNumber* LynxUIListScrollThresholds::throttle throttle;
+}
+
+public protocol LynxUIMeaningfulContentProtocol-p : <NSObject> {
+  public LynxUIMeaningfulContentStatus LynxUIMeaningfulContentProtocol-p::meaningfulContentStatus();
+  public CGRect LynxUIMeaningfulContentProtocol-p::meaningfulContentRect();
+  public int64_t LynxUIMeaningfulContentProtocol-p::firstMeaningfulContentPresentedTimestampMicros();
 }
 
 public class LynxUIMethodModule : NSObject, <LynxContextModule> {
@@ -6178,6 +6184,13 @@ public enum LynxThreadStrategyForRender {
 
   typedef LynxView *(^ LynxViewReCreateBlock) (LynxRoute *)
   typedef void(^ LynxViewEvictedBlock) (LynxView *)
+
+public enum LynxUIMeaningfulContentStatus {
+  kLynxUIMeaningfulContentStatusIrrelevant
+  kLynxUIMeaningfulContentStatusPending
+  kLynxUIMeaningfulContentStatusPresented
+}
+
 
   typedef void(^ LynxGenericResourcePathCompletionBlock) (NSString *_Nullable path, NSError *_Nullable error)
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxGenericResourceCompletionBlock) (NSData *_Nullable data, NSError *_Nullable error) LynxGenericResourceCompletionBlock;

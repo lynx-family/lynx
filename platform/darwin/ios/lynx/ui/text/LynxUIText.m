@@ -104,6 +104,14 @@ LYNX_PROPS_GROUP_DECLARE(
   [self requestDisplay];
 }
 
+- (LynxUIMeaningfulContentStatus)meaningfulContentStatus {
+  if (self.view.textRenderer) {
+    // TODO(@zhouzhuangzhuang): Criteria for determining when text drawing is complete.
+    return kLynxUIMeaningfulContentStatusPresented;
+  }
+  return kLynxUIMeaningfulContentStatusPending;
+}
+
 - (void)updateFrame:(CGRect)frame
             withPadding:(UIEdgeInsets)padding
                  border:(UIEdgeInsets)border

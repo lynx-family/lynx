@@ -210,6 +210,13 @@ LYNX_REGISTER_UI("filter-image")
                  }];
 }
 
+- (LynxUIMeaningfulContentStatus)meaningfulContentStatus {
+  if (self.view.image) {
+    return kLynxUIMeaningfulContentStatusPresented;
+  }
+  return kLynxUIMeaningfulContentStatusPending;
+}
+
 LYNX_PROP_SETTER("src", setSrc, NSString*) {
   if (requestReset) {
     self.view.image = nil;
