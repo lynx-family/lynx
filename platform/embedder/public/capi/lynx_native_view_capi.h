@@ -12,6 +12,77 @@ LYNX_EXTERN_C_BEGIN
 typedef struct lynx_native_view_ lynx_native_view_t;
 typedef struct lynx_surface_ lynx_surface_handle_t;
 
+typedef enum lynx_native_event_type {
+  kNativeEventUnkown = 0,
+  kNativeEventDown,
+  kNativeEventUp,
+  kNativeEventMove,
+  kNativeEventHover,
+  kNativeEventSignal,
+  kNativeEventCancel,
+  kNativeEventPanZoomStart,
+  kNativeEventPanZoomUpdate,
+  kNativeEventPanZoomEnd,
+} lynx_native_event_type_t;
+
+typedef enum lynx_native_device_type {
+  kNativeDeviceTouch,
+  kNativeDeviceMouse,
+  kNativeDeviceStylus,
+  kNativeDeviceInvertedStylus,
+  kNativeDeviceTrackpad,
+} lynx_native_device_type_t;
+
+typedef enum lynx_native_signal_kind {
+  kNativeSignalNone,
+  kNativeSignalStartScroll,
+  kNativeSignalScroll,
+  kNativeSignalEndScroll,
+} lynx_native_signal_kind_t;
+
+enum lynx_native_mouse_button {
+  kNativeMouseButtonPrimary = 1 << 0,
+  kNativeMouseButtonSecondary = 1 << 1,
+  kNativeMouseButtonMiddle = 1 << 2,
+  kNativeMouseButtonBack = 1 << 3,
+  kNativeMouseButtonForward = 1 << 4,
+};
+
+typedef struct native_view_motion_event {
+  // Time of event dispatch, relative to an arbitrary timeline.
+  uint64_t timestamp;
+  // The type of event
+  lynx_native_event_type_t type;
+  lynx_native_device_type_t device;
+  lynx_native_signal_kind_t signal_kind;
+  // Unique identifier for the pointer, not reused. Changes for each new pointer
+  // down event.
+  int pointer_id;
+  // Unique identifier for the pointing device, reused across interactions.
+  int device_id;
+  // Bit field to indicate which buttons are pressed
+  uint32_t buttons;
+  // The coordinate of the event relative to the origin of the native view.
+  float x;
+  float y;
+  // The coordinate of the event in viewport coordinates.
+  float pageX;
+  float pageY;
+  // Distance in logical pixels that the pointer moved since the last events.
+  float deltaX;
+  float deltaY;
+  // The scale (zoom factor) of the pan/zoom.
+  double scale;
+  // True if the alt key was down when the mouse event was fired.
+  uint8_t altKey;
+  // True if the control key was down when the mouse event was fired.
+  uint8_t ctrlKey;
+  // True if the shift key was down when the mouse event was fired.
+  uint8_t shiftKey;
+  // True if the meta key was down when the mouse event was fired.
+  uint8_t metaKey;
+} native_view_motion_event_t;
+
 typedef enum lynx_surface_buffer_mode {
   kSingleBuffer,
   kDoubleBuffer,
@@ -45,16 +116,9 @@ LYNX_CAPI_EXPORT void lynx_native_view_bind_on_layout_changed(
 LYNX_CAPI_EXPORT void lynx_native_view_bind_on_properties_changed(
     lynx_native_view_t*, void (*)(lynx_native_view_t*, void* user_data,
                                   lynx_value attrs, lynx_value events));
-LYNX_CAPI_EXPORT void lynx_native_view_bind_on_mouse_click(
-    lynx_native_view_t*, void (*)(lynx_native_view_t*, void* user_data, int x,
-                                  int y, int buttons, bool mouse_up));
-LYNX_CAPI_EXPORT void lynx_native_view_bind_on_mouse_move(
-    lynx_native_view_t*, void (*)(lynx_native_view_t*, void* user_data, int x,
-                                  int y, int modifiers, bool mouse_up));
-LYNX_CAPI_EXPORT void lynx_native_view_bind_on_mouse_wheel(
-    lynx_native_view_t*,
-    void (*)(lynx_native_view_t*, void* user_data, int x, int y, int modifiers,
-             double delta_x, double delta_y));
+LYNX_CAPI_EXPORT void lynx_native_view_bind_on_motion_event(
+    lynx_native_view_t*, void (*)(lynx_native_view_t*, void* user_data,
+                                  native_view_motion_event_t*));
 LYNX_CAPI_EXPORT void lynx_native_view_bind_on_focus_changed(
     lynx_native_view_t*,
     void (*)(lynx_native_view_t*, void* user_data, bool focused, bool is_leaf));
