@@ -13,6 +13,7 @@ namespace lynx {
 namespace tasm {
 
 class ElementManager;
+class Fragment;
 
 class PageElement : public ComponentElement {
  public:
@@ -42,6 +43,7 @@ class PageElement : public ComponentElement {
   void SetCSSID(int32_t id) override;
 
   void Layout(const std::shared_ptr<PipelineOptions>& options);
+  void SetupFragmentBehavior(Fragment* fragment) override;
 
  protected:
   PageElement(const PageElement& element, bool clone_resolved_props);
