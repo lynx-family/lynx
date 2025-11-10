@@ -11,13 +11,18 @@
 @implementation LynxServiceHelper
 + (nullable id<LynxServiceTrailExtensionProtocol>)getLynxTrailExtensionService {
   static id<LynxServiceTrailExtensionProtocol> extensionService = nil;
+  static dispatch_once_t sTrailOnceToken;
   if (extensionService != nil) {
     return extensionService;
   }
-  id<LynxServiceTrailProtocol> service = LynxService(LynxServiceTrailProtocol);
-  if (service != nil && [service conformsToProtocol:@protocol(LynxServiceTrailExtensionProtocol)]) {
-    extensionService = (id<LynxServiceTrailExtensionProtocol>)service;
-  }
+  dispatch_once(&sTrailOnceToken, ^{
+    id<LynxServiceTrailProtocol> service = LynxService(LynxServiceTrailProtocol);
+    if (service != nil &&
+        [service conformsToProtocol:@protocol(LynxServiceTrailExtensionProtocol)]) {
+      extensionService = (id<LynxServiceTrailExtensionProtocol>)service;
+    }
+  });
+
   return extensionService;
 }
 @end
