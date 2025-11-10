@@ -181,7 +181,7 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   ERROR_UNLESS(DecodeStyleObjectRoute(font_face_route));
   size_t font_face_size = font_face_route.style_object_ranges.size();
   if (font_face_size > 0) {
-    auto font_faces = template_bundle().InitFontFacesMap(font_face_size);
+    auto& font_faces = template_bundle().InitFontFacesMap(font_face_size);
     for (const auto& range : font_face_route.style_object_ranges) {
       stream_->Seek(style_objects_section_range_.start + range.start);
       DECODE_STDSTR(name);
