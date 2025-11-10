@@ -5,8 +5,10 @@
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 
 #include <cstdint>
+#include <sstream>
 #include <string>
 
+#include "base/include/value/base_string.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/transforms/transform_operations.h"
@@ -14,6 +16,11 @@
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+constexpr const char kDefaultZIndex[] = "0";
+constexpr const char kDefaultFilter[] = "none";
+}  // namespace
 
 const ComputedCSSStyleCssTextHelper::StyleStringValueGetter*
 ComputedCSSStyleCssTextHelper::GetterFuncMap() {
@@ -133,6 +140,45 @@ base::String ComputedCSSStyleCssTextHelper::OpacityCSSText(
     starlight::ComputedCSSStyle* computed_css_style,
     starlight::LayoutResultForRendering ref_layout_result) {
   return base::String(CSSDecoder::NumberToString(computed_css_style->opacity_));
+}
+
+base::String ComputedCSSStyleCssTextHelper::ZIndexCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->HasZIndex()) {
+    return base::String(
+        CSSDecoder::NumberToString(computed_css_style->GetZIndex()));
+  }
+  return BASE_STATIC_STRING(kDefaultZIndex);
+}
+
+base::String ComputedCSSStyleCssTextHelper::FilterCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (!computed_css_style->filter_.has_value()) {
+    return BASE_STATIC_STRING(kDefaultFilter);
+  }
+
+  std::ostringstream filter_sstream;
+  if (computed_css_style->filter_->type == starlight::FilterType::kBlur) {
+    filter_sstream << "blur(";
+    filter_sstream << CSSDecoder::NumberToString(
+        starlight::NLengthToLayoutUnit(computed_css_style->filter_->amount,
+                                       starlight::LayoutUnit::Indefinite())
+            .ToFloat());
+    filter_sstream << "px)";
+  } else if (computed_css_style->filter_->type ==
+             starlight::FilterType::kGrayscale) {
+    filter_sstream << "grayscale(";
+    filter_sstream << computed_css_style->filter_->amount.NumericLength()
+                              .GetPercentagePart() /
+                          100;
+    filter_sstream << ")";
+  } else {
+    filter_sstream << "none";
+  }
+
+  return base::String(filter_sstream.str());
 }
 
 base::String ComputedCSSStyleCssTextHelper::FloatToPixelString(float value) {

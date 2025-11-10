@@ -134,6 +134,61 @@ TEST(ComputedCSSStyleCssTextHelperTest, GetComputedStyleByPropertyID) {
             "0.5");
 }
 
+TEST(ComputedCSSStyleCssTextHelperTest, ZIndexCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  computed_css_style.SetEnableZIndex(true);
+  computed_css_style.SetZIndex(
+      CSSValue(lepus::Value(100), CSSValuePattern::NUMBER,
+               CSSValueType::DEFAULT),
+      false);
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                tasm::CSSPropertyID::kPropertyIDZIndex, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "100");
+
+  computed_css_style.SetZIndex(
+      CSSValue(lepus::Value(0), CSSValuePattern::NUMBER, CSSValueType::DEFAULT),
+      true);
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                tasm::CSSPropertyID::kPropertyIDZIndex, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "0");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, FilterCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                tasm::CSSPropertyID::kPropertyIDFilter, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "none");
+
+  starlight::CSSStyleUtils::PrepareOptional(computed_css_style.filter_);
+  (*(computed_css_style.filter_)).type = starlight::FilterType::kBlur;
+  (*(computed_css_style.filter_)).amount =
+      starlight::NLength::MakeUnitNLength(10);
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                tasm::CSSPropertyID::kPropertyIDFilter, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "blur(10px)");
+
+  (*(computed_css_style.filter_)).type = starlight::FilterType::kGrayscale;
+  (*(computed_css_style.filter_)).amount =
+      starlight::NLength::MakePercentageNLength(28);
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                tasm::CSSPropertyID::kPropertyIDFilter, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "grayscale(0.28)");
+
+  computed_css_style.SetFilter(
+      CSSValue(lepus::Value(0), CSSValuePattern::NUMBER, CSSValueType::DEFAULT),
+      true);
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                tasm::CSSPropertyID::kPropertyIDFilter, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "none");
+}
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

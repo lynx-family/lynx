@@ -50,7 +50,9 @@ class ComputedCSSStyleCssTextHelper {
   V(TransformOrigin)                                     \
   V(Opacity)                                             \
   V(Color)                                               \
-  V(BackgroundColor)
+  V(BackgroundColor)                                     \
+  V(ZIndex)                                              \
+  V(Filter)
 
 #define GETTER_STYLE_STRING_VALUE(name)                \
   base::String name##CSSText(                          \
