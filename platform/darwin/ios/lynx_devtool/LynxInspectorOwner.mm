@@ -152,7 +152,7 @@
 }
 
 - (void)reloadLynxView:(BOOL)ignoreCache {
-  [self reloadLynxView:ignoreCache withTemplate:nil fromFragments:NO withSize:0];
+  [self reloadLynxView:ignoreCache withTemplate:nil fromFragments:NO withSize:0 withReloadUrl:@""];
 }
 
 - (void)reloadLynxView:(BOOL)ignoreCache
