@@ -44,10 +44,12 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
    */
   abstract fetchSSRData(request: LynxResourceRequest, callback: AsyncCallback<ArrayBuffer>);
 
-  public fetchTemplateAndVerify(request: LynxResourceRequest,
-    callback: AsyncCallback<TemplateProviderResult>) {
+  private fetchTemplateAndVerify(request: LynxResourceRequest,
+    callback: AsyncCallback<TemplateProviderResult, string>) {
     let fetchCallback: AsyncCallback<TemplateProviderResult> =
       (fetchError: BusinessError, fetchResult: TemplateProviderResult) => {
+        let fetchAndVerifyError: BusinessError<string> =
+          { code: LynxSubErrorCode.E_SUCCESS, data: "" } as BusinessError<string>;
         if (fetchResult.binary) {
           let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
           let securityResult: SecurityResult = { verified: true };
@@ -57,11 +59,16 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
                 undefined);
           }
           if (!securityResult.verified) {
-            LLog.e(TAG, `verify template failed, errMsg: ${securityResult?.errMsg}`);
-            fetchError.code = LynxSubErrorCode.E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE;
+            LLog.e(TAG, `verify template failed, errMsg: ${securityResult.errMsg}`);
+            fetchAndVerifyError.code = LynxSubErrorCode.E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE;
+            fetchAndVerifyError.data = securityResult.errMsg;
           }
+        } else {
+          LLog.e(TAG, "fetch template failed, the binary is undefined");
+          fetchAndVerifyError.code = LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE;
+          fetchAndVerifyError.data = "fetch binary is undefined";
         }
-        callback(fetchError, fetchResult);
+        callback(fetchAndVerifyError, fetchResult);
       }
     this.fetchTemplate(request, fetchCallback);
   }
