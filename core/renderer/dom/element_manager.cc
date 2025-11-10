@@ -898,6 +898,11 @@ void ElementManager::UpdateLayoutNodeAttribute(int32_t id,
 }
 
 void ElementManager::SetFontFaces(const tasm::CSSFontFaceRuleMap &fontfaces) {
+  if (IsLayoutInElementModeOn()) {
+    platform_layout_context_->SetFontFaces(fontfaces);
+    return;
+  }
+
   delegate_->SetFontFaces(fontfaces);
 }
 

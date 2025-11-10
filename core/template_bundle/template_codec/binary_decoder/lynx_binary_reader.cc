@@ -148,7 +148,7 @@ bool LynxBinaryReader::DecodeStyleObjects() {
 
   StyleObjectRoute font_face_route;
   ERROR_UNLESS(DecodeStyleObjectRoute(font_face_route));
-  auto font_faces = template_bundle().InitFontFacesMap(
+  auto& font_faces = template_bundle().InitFontFacesMap(
       font_face_route.style_object_ranges.size());
   for (const auto& range : font_face_route.style_object_ranges) {
     stream_->Seek(style_objects_section_range_.start + range.start);
