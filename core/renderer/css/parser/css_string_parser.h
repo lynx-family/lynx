@@ -59,11 +59,11 @@ class CSSStringParser final {
   };
 
   struct CSSBackgroundLayer {
-    CSSValue position_x;
-    CSSValue position_y;
+    CSSValue position_x{0, CSSValuePattern::PERCENT};
+    CSSValue position_y{0, CSSValuePattern::PERCENT};
     // [-enum, number] | length
-    CSSValue size_x;
-    CSSValue size_y;
+    CSSValue size_x{SIZE_AUTO, CSSValuePattern::NUMBER};
+    CSSValue size_y{SIZE_AUTO, CSSValuePattern::NUMBER};
     uint32_t repeat_x =
         static_cast<uint32_t>(starlight::BackgroundRepeatType::kRepeat);
     uint32_t repeat_y =
@@ -75,13 +75,6 @@ class CSSStringParser final {
 
     std::optional<StackValue> image;
     std::optional<uint32_t> color;
-
-    CSSBackgroundLayer() {
-      position_x.SetNumber(0, CSSValuePattern::PERCENT);
-      position_y.SetNumber(0, CSSValuePattern::PERCENT);
-      size_x.SetNumber(SIZE_AUTO, CSSValuePattern::NUMBER);
-      size_y.SetNumber(SIZE_AUTO, CSSValuePattern::NUMBER);
-    }
   };
 
   struct CSSTransitionLayer {
@@ -89,12 +82,7 @@ class CSSStringParser final {
     double duration = 0;
     starlight::AnimationPropertyType property =
         starlight::AnimationPropertyType::kAll;
-    CSSValue timing_function;
-
-    // The default value of Lynx's timing function is linear
-    CSSTransitionLayer() {
-      timing_function.SetEnum(starlight::TimingFunctionType::kLinear);
-    }
+    CSSValue timing_function{starlight::TimingFunctionType::kLinear};
   };
 
   struct CSSAnimationLayer {
@@ -108,12 +96,7 @@ class CSSStringParser final {
         starlight::AnimationFillModeType::kNone;
     starlight::AnimationPlayStateType play_state =
         starlight::AnimationPlayStateType::kRunning;
-    CSSValue timing_function;
-
-    // The default value of Lynx's timing function is linear
-    CSSAnimationLayer() {
-      timing_function.SetEnum(starlight::TimingFunctionType::kLinear);
-    }
+    CSSValue timing_function{starlight::TimingFunctionType::kLinear};
   };
 
   enum {

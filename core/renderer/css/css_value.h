@@ -246,12 +246,6 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     type_ = CSSValueType::DEFAULT;
   }
 
-  void SetNumber(double num) {
-    value_.SetNumber(num);
-    pattern_ = CSSValuePattern::NUMBER;
-    type_ = CSSValueType::DEFAULT;
-  }
-
   template <typename NumType>
   void SetNumber(NumType num, CSSValuePattern pattern) {
     DCHECK(pattern != CSSValuePattern::ENUM);  // Use SetEnum instead
