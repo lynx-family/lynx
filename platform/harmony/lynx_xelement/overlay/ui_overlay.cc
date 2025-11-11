@@ -34,23 +34,31 @@ void UIOverlay::OnPropUpdate(const std::string& name,
                              const lepus::Value& value) {
   UIBase::OnPropUpdate(name, value);
   if (name == "visible") {
-    if (value.Bool()) {
-      NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
-      NodeManager::DialogInstance()->show(native_dialog_, false);
-      CustomEvent event{Sign(), "showoverlay", "detail", lepus_value()};
-      context_->SendEvent(event);
-      is_visible_ = true;
-
-    } else {
-      if (is_visible_) {
-        CustomEvent event{Sign(), "dismissoverlay", "detail", lepus_value()};
-        context_->SendEvent(event);
-        NodeManager::DialogInstance()->close(native_dialog_);
-      }
-      is_visible_ = false;
-    }
+    ShowDialog(value.Bool());
   } else if (name == "events-pass-through") {
     is_event_pass_through_ = value.Bool();
+  }
+}
+
+void UIOverlay::ShowDialog(bool is_show) {
+  if (is_show) {
+    NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
+    NodeManager::DialogInstance()->show(native_dialog_, false);
+    CustomEvent event{Sign(), "showoverlay", "detail", lepus_value()};
+    context_->SendEvent(event);
+    is_visible_ = true;
+  } else {
+    CustomEvent event{Sign(), "dismissoverlay", "detail", lepus_value()};
+    context_->SendEvent(event);
+    NodeManager::DialogInstance()->close(native_dialog_);
+    is_visible_ = false;
+  }
+}
+
+void UIOverlay::SetParent(UIBase* parent) {
+  UIBase::SetParent(parent);
+  if (parent == nullptr) {
+    ShowDialog(false);
   }
 }
 

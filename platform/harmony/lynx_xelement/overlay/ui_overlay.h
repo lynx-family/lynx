@@ -32,6 +32,8 @@ class UIOverlay : public UIBase {
 
   ~UIOverlay() override;
 
+  void SetParent(UIBase* parent) override;
+
   void UpdateLayout(float left, float top, float width, float height,
                     const float* paddings, const float* margins,
                     const float* sticky, float max_height,
@@ -62,6 +64,8 @@ class UIOverlay : public UIBase {
   bool child_event_through_{false};
   ArkUI_NodeHandle stack_{nullptr};
   ArkUI_NativeDialog* native_dialog_{nullptr};
+
+  void ShowDialog(bool is_show);
 };
 }  // namespace harmony
 }  // namespace tasm
