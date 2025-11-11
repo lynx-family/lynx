@@ -111,7 +111,7 @@ class JsCacheManager {
    * url == template_url
    * If template_url_key is empty. this will remove all cache.
    */
-  void ClearCache(std::string_view template_url_key);
+  void ClearCache(const std::string &template_url_key);
 
   /**
    * Clear expired cache.
@@ -208,13 +208,12 @@ UNITTEST_PUBLIC:
    * Update last access time. Metadata will be updated in memory in all cases,
    * but will be written to storage only when (now - last_accessed) >=
    * MIN_ACCESS_TIME_UPDATE_INTERVAL.
-   * @param locked_meta_data the meta file of cache
+   * @param locked_meta_data the meta data
    * @param info Info containing the time when this file was
    * accessed.
-   * @return If this operation succeed.
    */
-  bool UpdateLastAccessTime(LockedMetaData &locked_meta_data,
-                            const CacheFileInfo &info);
+  void UpdateLastAccessTime(JsCacheManager::LockedMetaData &locked_meta_data,
+                            const CacheFileInfo info);
 
   /**
    * enumerate files in cache directory.
@@ -256,6 +255,7 @@ UNITTEST_PUBLIC:
   std::string CacheDirName();
   std::string GetPlatformCacheDir();
   UNITTEST_VIRTUAL std::string GetBytecodeGenerateEngineVersion();
+  void DoPostTask(base::closure task);
 
   JSRuntimeType engine_type_;
   std::unordered_set<std::string> task_set_;

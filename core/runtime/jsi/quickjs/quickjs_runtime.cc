@@ -67,11 +67,7 @@ QuickjsRuntime::QuickjsRuntime() : quickjs_runtime_wrapper_(nullptr) {
     defined(QUICKJS_CACHE_UNITTEST)
   static std::once_flag clear_cache_flag;
   std::call_once(clear_cache_flag, []() {
-    base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-        []() {
-          cache::JsCacheManager::GetQuickjsInstance().ClearInvalidCache();
-        },
-        base::ConcurrentTaskType::NORMAL_PRIORITY);
+    cache::JsCacheManager::GetQuickjsInstance().ClearInvalidCache();
   });
 #endif
 };

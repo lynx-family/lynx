@@ -316,26 +316,8 @@ void JsCacheManager::RequestCacheGeneration(
  * Post task into threadpool.
  */
 void JsCacheManager::PostTaskBackground(TaskInfo task) {
-#ifdef QUICKJS_CACHE_UNITTEST
-  fml::AutoResetWaitableEvent latch;
-#endif
-  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-      [this, task = std::move(task)
-#ifdef QUICKJS_CACHE_UNITTEST
-                 ,
-       &latch
-#endif
-  ]() mutable {
-        RunTask(std::move(task));
-#ifdef QUICKJS_CACHE_UNITTEST
-        latch.Signal();
-#endif
-      },
-      base::ConcurrentTaskType::NORMAL_PRIORITY);
-
-#ifdef QUICKJS_CACHE_UNITTEST
-  latch.Wait();
-#endif
+  DoPostTask(
+      [this, task = std::move(task)]() mutable { RunTask(std::move(task)); });
 }
 
 //
@@ -460,7 +442,7 @@ std::shared_ptr<Buffer> JsCacheManager::LoadCacheFromStorage(
     return nullptr;
   }
 
-  UpdateLastAccessTime(locked_meta_data, file_info);
+  UpdateLastAccessTime(locked_meta_data, std::move(file_info));
   return std::make_shared<StringBuffer>(std::move(cache));
 }
 
@@ -490,117 +472,130 @@ bool JsCacheManager::SaveCacheContentToStorage(
 }
 
 // update only when (now - last_accessed) >= MIN_ACCESS_TIME_UPDATE_INTERVAL.
-bool JsCacheManager::UpdateLastAccessTime(LockedMetaData &locked_meta_data,
-                                          const CacheFileInfo &info) {
+void JsCacheManager::UpdateLastAccessTime(
+    JsCacheManager::LockedMetaData &locked_meta_data,
+    const CacheFileInfo info) {
   auto now = std::chrono::system_clock::now();
   auto last_accessed = std::chrono::time_point<std::chrono::system_clock>(
       std::chrono::seconds(info.last_accessed));
-
   locked_meta_data->UpdateLastAccessTimeIfExists(info.identifier);
   if (now - last_accessed < MIN_ACCESS_TIME_UPDATE_INTERVAL) {
-    return true;
+    return;
   }
 
   LOGI("UpdateLastAccessTime: " << info.identifier.template_url << " "
                                 << info.identifier.url);
-  std::string json = locked_meta_data->ToJson();
-  LOGV("metadata: " << json);
-  if (!WriteFile(METADATA_FILE_NAME, reinterpret_cast<uint8_t *>(json.data()),
-                 json.size())) {
-    LOGE("Write Metadata failed!");
-    return false;
+  auto task = [this](std::string json) {
+    LOGV("metadata: " << json);
+    if (!WriteFile(METADATA_FILE_NAME, reinterpret_cast<uint8_t *>(json.data()),
+                   json.size())) {
+      LOGE("Write Metadata failed!");
+    }
+  };
+  if (base::TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+          base::ConcurrentTaskType::NORMAL_PRIORITY)) {
+    task(locked_meta_data->ToJson());
+  } else {
+    DoPostTask([this, task = std::move(task)]() {
+      auto locked_meta_data = GetLockedMetaData();
+      task(locked_meta_data->ToJson());
+    });
   }
-  return true;
 }
 
-void JsCacheManager::ClearCache(std::string_view template_url_key) {
-  auto begin = base::CurrentTimeMilliseconds();
-  auto locked_meta_data = GetLockedMetaData();
-  auto removed_cfi = locked_meta_data->GetAllCacheFileInfo(template_url_key);
-  size_t cleaned_size = 0;
-  for (auto &info : removed_cfi) {
-    cleaned_size += info.cache_size;
-    auto file_name = MakeFilename(info.md5);
-    unlink(MakePath(file_name).c_str());
-    locked_meta_data->RemoveFileInfo(info.identifier);
-  }
-  std::string json = locked_meta_data->ToJson();
-  LOGV("metadata: " << json);
-  JsCacheErrorCode error_code = JsCacheErrorCode::NO_ERROR;
-  if (!WriteFile(METADATA_FILE_NAME, reinterpret_cast<uint8_t *>(json.data()),
-                 json.size())) {
-    LOGE("Write Metadata failed!");
-    error_code = JsCacheErrorCode::META_FILE_WRITE_ERROR;
-  }
-  auto cost = base::CurrentTimeMilliseconds() - begin;
-  JsCacheTracker::OnCleanUp(engine_type_, static_cast<int>(removed_cfi.size()),
-                            -1, cleaned_size, cost, error_code);
-  LOGI("ClearCache time spent: " << cost << " ms");
+void JsCacheManager::ClearCache(const std::string &template_url_key) {
+  DoPostTask([this, template_url_key]() {
+    auto begin = base::CurrentTimeMilliseconds();
+    auto locked_meta_data = GetLockedMetaData();
+    auto removed_cfi = locked_meta_data->GetAllCacheFileInfo(template_url_key);
+    size_t cleaned_size = 0;
+    for (auto &info : removed_cfi) {
+      cleaned_size += info.cache_size;
+      auto file_name = MakeFilename(info.md5);
+      unlink(MakePath(file_name).c_str());
+      locked_meta_data->RemoveFileInfo(info.identifier);
+    }
+    std::string json = locked_meta_data->ToJson();
+    LOGV("metadata: " << json);
+    JsCacheErrorCode error_code = JsCacheErrorCode::NO_ERROR;
+    if (!WriteFile(METADATA_FILE_NAME, reinterpret_cast<uint8_t *>(json.data()),
+                   json.size())) {
+      LOGE("Write Metadata failed!");
+      error_code = JsCacheErrorCode::META_FILE_WRITE_ERROR;
+    }
+    auto cost = base::CurrentTimeMilliseconds() - begin;
+    JsCacheTracker::OnCleanUp(engine_type_,
+                              static_cast<int>(removed_cfi.size()), -1,
+                              cleaned_size, cost, error_code);
+    LOGI("ClearCache time spent: " << cost << " ms");
+  });
 }
 
 void JsCacheManager::ClearInvalidCache() {
-  auto begin = base::CurrentTimeMilliseconds();
-  auto locked_meta_data = GetLockedMetaData();
-  const auto expired_time_seconds = ExpiredSeconds();
-  const auto max_cache_size = MaxCacheSize();
-  // for calc expired time.
-  int64_t now = std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
-  auto all_cache_file_info = locked_meta_data->GetAllCacheFileInfo();
-  // record total size
-  size_t total_size = 0;
-  size_t cleaned_size = 0;
-  // record expired cache_file_info's index.
-  std::vector<CacheFileInfo> removed_cfi;
-  // keeped cache_file_info
-  std::vector<CacheFileInfo> temp_keep_cfi;
-  // find expired cache_file_info
-  for (auto &cfi : all_cache_file_info) {
-    if (cfi.last_accessed + expired_time_seconds < now) {
-      cleaned_size += cfi.cache_size;
-      removed_cfi.push_back(std::move(cfi));
-    } else {
-      total_size += cfi.cache_size;
-      temp_keep_cfi.push_back(std::move(cfi));
-    }
-  }
-  int file_count = static_cast<int>(temp_keep_cfi.size());
-  // When the specified maximum value is exceeded, the files are sorted by
-  // last_accessed, and the one with the oldest last_accessed is deleted.
-  if (total_size > max_cache_size) {
-    std::sort(temp_keep_cfi.begin(), temp_keep_cfi.end(),
-              [](const CacheFileInfo &l, const CacheFileInfo &r) {
-                return l.last_accessed > r.last_accessed;
-              });
-    for (auto it = temp_keep_cfi.rbegin(); it != temp_keep_cfi.rend(); it++) {
-      total_size -= it->cache_size;
-      cleaned_size += it->cache_size;
-      removed_cfi.push_back(std::move(*it));
-      file_count--;
-      if (total_size < max_cache_size) {
-        break;
+  DoPostTask([this]() {
+    auto begin = base::CurrentTimeMilliseconds();
+    auto locked_meta_data = GetLockedMetaData();
+    const auto expired_time_seconds = ExpiredSeconds();
+    const auto max_cache_size = MaxCacheSize();
+    // for calc expired time.
+    int64_t now = std::chrono::duration_cast<std::chrono::seconds>(
+                      std::chrono::system_clock::now().time_since_epoch())
+                      .count();
+    auto all_cache_file_info = locked_meta_data->GetAllCacheFileInfo();
+    // record total size
+    size_t total_size = 0;
+    size_t cleaned_size = 0;
+    // record expired cache_file_info's index.
+    std::vector<CacheFileInfo> removed_cfi;
+    // keeped cache_file_info
+    std::vector<CacheFileInfo> temp_keep_cfi;
+    // find expired cache_file_info
+    for (auto &cfi : all_cache_file_info) {
+      if (cfi.last_accessed + expired_time_seconds < now) {
+        cleaned_size += cfi.cache_size;
+        removed_cfi.push_back(std::move(cfi));
+      } else {
+        total_size += cfi.cache_size;
+        temp_keep_cfi.push_back(std::move(cfi));
       }
     }
-  }
+    int file_count = static_cast<int>(temp_keep_cfi.size());
+    // When the specified maximum value is exceeded, the files are sorted by
+    // last_accessed, and the one with the oldest last_accessed is deleted.
+    if (total_size > max_cache_size) {
+      std::sort(temp_keep_cfi.begin(), temp_keep_cfi.end(),
+                [](const CacheFileInfo &l, const CacheFileInfo &r) {
+                  return l.last_accessed > r.last_accessed;
+                });
+      for (auto it = temp_keep_cfi.rbegin(); it != temp_keep_cfi.rend(); it++) {
+        total_size -= it->cache_size;
+        cleaned_size += it->cache_size;
+        removed_cfi.push_back(std::move(*it));
+        file_count--;
+        if (total_size < max_cache_size) {
+          break;
+        }
+      }
+    }
 
-  for (auto &info : removed_cfi) {
-    auto file_name = MakeFilename(info.md5);
-    unlink(MakePath(file_name).c_str());
-    locked_meta_data->RemoveFileInfo(info.identifier);
-  }
-  std::string json = locked_meta_data->ToJson();
-  LOGV("metadata: " << json);
-  JsCacheErrorCode error_code = JsCacheErrorCode::NO_ERROR;
-  if (!WriteFile(METADATA_FILE_NAME, reinterpret_cast<uint8_t *>(json.data()),
-                 json.size())) {
-    LOGE("Write Metadata failed!");
-    error_code = JsCacheErrorCode::META_FILE_WRITE_ERROR;
-  }
-  auto cost = base::CurrentTimeMilliseconds() - begin;
-  JsCacheTracker::OnCleanUp(engine_type_, file_count, total_size, cleaned_size,
-                            cost, error_code);
-  LOGI("ClearExpiredCache time spent: " << cost << " ms");
+    for (auto &info : removed_cfi) {
+      auto file_name = MakeFilename(info.md5);
+      unlink(MakePath(file_name).c_str());
+      locked_meta_data->RemoveFileInfo(info.identifier);
+    }
+    std::string json = locked_meta_data->ToJson();
+    LOGV("metadata: " << json);
+    JsCacheErrorCode error_code = JsCacheErrorCode::NO_ERROR;
+    if (!WriteFile(METADATA_FILE_NAME, reinterpret_cast<uint8_t *>(json.data()),
+                   json.size())) {
+      LOGE("Write Metadata failed!");
+      error_code = JsCacheErrorCode::META_FILE_WRITE_ERROR;
+    }
+    auto cost = base::CurrentTimeMilliseconds() - begin;
+    JsCacheTracker::OnCleanUp(engine_type_, file_count, total_size,
+                              cleaned_size, cost, error_code);
+    LOGI("ClearExpiredCache time spent: " << cost << " ms");
+  });
 }
 
 //
@@ -734,6 +729,16 @@ std::string JsCacheManager::CacheDirName() {
 
 std::string JsCacheManager::GetBytecodeGenerateEngineVersion() {
   return std::to_string(LEPUS_GetPrimjsVersion());
+}
+
+void JsCacheManager::DoPostTask(base::closure task) {
+  if (base::TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+          base::ConcurrentTaskType::NORMAL_PRIORITY)) {
+    task();
+  }
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [task = std::move(task)] { task(); },
+      base::ConcurrentTaskType::NORMAL_PRIORITY);
 }
 
 // Use for v8
