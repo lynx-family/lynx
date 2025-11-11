@@ -369,7 +369,7 @@ static CGFloat imageMargin = 3.0;
 }
 
 - (void)close {
-  __strong typeof(_manager) manager = _manager;
+  __strong __typeof__(_manager) manager = _manager;
   [manager closeNotification:_level];
 }
 
@@ -415,7 +415,7 @@ static CGFloat imageMargin = 3.0;
 
 - (void)hideOnMainThread {
   [self setHidden:YES];
-  __strong typeof(_manager) manager = _manager;
+  __strong __typeof__(_manager) manager = _manager;
   [manager hideNotificationOfIndex:_layoutIndex];
 }
 
@@ -570,12 +570,12 @@ static CGFloat imageMargin = 3.0;
 }
 
 - (void)tapWarnNotification {
-  __strong typeof(_manager) manager = _manager;
+  __strong __typeof__(_manager) manager = _manager;
   [manager showLogBoxWithLevel:DevToolLogBoxLevelWarn];
 }
 
 - (void)tapErrorNotification {
-  __strong typeof(_manager) manager = _manager;
+  __strong __typeof__(_manager) manager = _manager;
   [manager showLogBoxWithLevel:DevToolLogBoxLevelError];
 }
 
@@ -587,7 +587,7 @@ static CGFloat imageMargin = 3.0;
 }
 
 - (void)closeNotification:(NSString *)level {
-  __strong typeof(_manager) manager = _manager;
+  __strong __typeof__(_manager) manager = _manager;
   [manager removeLogsWithLevel:level];
   [self removeNotificationWithLevel:level];
 }

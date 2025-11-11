@@ -180,11 +180,6 @@ class TouchEventHandler {
     int64_t event_id;
     std::unordered_map<int64_t, ResponseChainVector> event_chain_map;
     std::unordered_map<int64_t, EventOpsVector> event_ops_map;
-
-    EventContext(const EventContext &info) = delete;
-    EventContext &operator=(const EventContext &info) = delete;
-    EventContext(EventContext &&info) noexcept = default;
-    EventContext &operator=(EventContext &&info) noexcept = default;
   };
 
   ResponseChainVector GenerateResponseChain(PageProxy *proxy, int tag,

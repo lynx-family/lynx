@@ -21,7 +21,7 @@
     __weak __typeof(self) weakSelf = self;
     _lruCache = [[LynxLruCache alloc] initWithCapacity:capacity
         recreate:^(LynxRoute* route) {
-          __strong typeof(self) strongSelf = weakSelf;
+          __strong __typeof__(self) strongSelf = weakSelf;
           if (!strongSelf) {
             LynxView* lynxView = nil;
             return lynxView;
@@ -29,7 +29,7 @@
           return [strongSelf buildLynxView:route];
         }
         viewEvicted:^(LynxView* lynxView) {
-          __strong typeof(self) strongSelf = weakSelf;
+          __strong __typeof__(self) strongSelf = weakSelf;
           if (!strongSelf) {
             return;
           }

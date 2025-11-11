@@ -36,6 +36,10 @@ lynx_core_source_set("lepus") {
   ]
   deps += [ ":lepus_ng" ]
 
+  if (is_mac) {
+    exclude_configs = [ "//build/config/compiler:no_exceptions" ]
+  }
+
   # The following macro is used for local debugging and prints the log to the console. please don't delete
   # if(is_test) {
   #   sources += [
