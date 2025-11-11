@@ -147,7 +147,6 @@ Element::Element(const Element& element, bool clone_resolved_props)
           element.enable_extended_layout_only_opt_),
       enable_component_layout_only_(element.enable_component_layout_only_),
       enable_layout_in_element_mode_(element.enable_layout_in_element_mode_),
-      direction_(element.direction_),
       width_(element.width_),
       height_(element.height_),
       top_(element.top_),
@@ -555,7 +554,7 @@ void Element::ResetStyle(const base::Vector<CSSPropertyID>& css_names) {
       element_manager()->SetNeedsLayout();
     }
     ResetStyleInternal(DynamicCSSStylesManager::ResolveDirectionAwarePropertyID(
-        css_id, Direction()));
+        css_id, computed_css_style()->GetDirection()));
   }
 }
 

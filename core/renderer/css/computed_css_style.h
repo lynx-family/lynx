@@ -361,6 +361,8 @@ class ComputedCSSStyle {
 
   PointerEventsType GetPointerEvents() { return pointer_events_; }
 
+  DirectionType GetDirection() { return layout_computed_style_.GetDirection(); }
+
   static bool IsPlatformInheritableProperty(const tasm::CSSPropertyID id) {
     return GetPlatformInheritableProperty().contains(id);
   }
