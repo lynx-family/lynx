@@ -76,9 +76,10 @@ class ListContainerImpl : public ListContainerDelegateInternal {
     return list_children_helper_.get();
   }
   bool IsRTL() const {
-    return element_ &&
-           (element_->Direction() == starlight::DirectionType::kRtl ||
-            element_->Direction() == starlight::DirectionType::kLynxRtl);
+    return element_ && (element_->computed_css_style()->GetDirection() ==
+                            starlight::DirectionType::kRtl ||
+                        element_->computed_css_style()->GetDirection() ==
+                            starlight::DirectionType::kLynxRtl);
   }
   int intercept_depth() const { return intercept_depth_; }
   Element* element() const { return element_; }

@@ -317,7 +317,8 @@ void DynamicCSSStylesManager::ApplyDirection(
     new_direction_type = direction_.GetEnum<DirectionType>();
   }
 
-  DirectionType old_direction_type = element_->Direction();
+  DirectionType old_direction_type =
+      element_->computed_css_style()->GetDirection();
   // clear flag
   current_updates &= ~kUpdateDirectionStyle;
   if (old_direction_type != new_direction_type) {
@@ -568,11 +569,11 @@ void DynamicCSSStylesManager::ResetAllDirectionAwareProperty() {
 void DynamicCSSStylesManager::SetStyleToElement(CSSPropertyID id,
                                                 const CSSValue& css_value) {
   CSSPropertyID trans_id = id;
-
+  auto current_direction = element_->computed_css_style()->GetDirection();
   // special case.
   if (trans_id == kPropertyIDTextAlign) {
     CSSStyleValue style_type =
-        ResolveTextAlign(trans_id, css_value, element_->Direction());
+        ResolveTextAlign(trans_id, css_value, current_direction);
     element_->SetStyleInternal(style_type.first, style_type.second);
     return;
   }
@@ -580,14 +581,15 @@ void DynamicCSSStylesManager::SetStyleToElement(CSSPropertyID id,
   element_->RecordElementPreviousStyle(id, css_value);
   // 1.start ---> left/right
   // 2.rtl:left/right ---> right/left
-  trans_id = ResolveDirectionAwareProperty(id, element_->Direction());
+  trans_id = ResolveDirectionAwareProperty(id, current_direction);
   element_->SetStyleInternal(trans_id, css_value);
 }
 
 void DynamicCSSStylesManager::ResetStyleToElement(CSSPropertyID id) {
   element_->ResetElementPreviousStyle(id);
   CSSPropertyID trans_id = id;
-  trans_id = ResolveDirectionAwareProperty(id, element_->Direction());
+  trans_id = ResolveDirectionAwareProperty(
+      id, element_->computed_css_style()->GetDirection());
   element_->ResetStyleInternal(trans_id);
 }
 

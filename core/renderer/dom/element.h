@@ -331,8 +331,6 @@ class Element : public lepus::RefCounted,
    */
   double GetCurrentRootFontSize();
 
-  starlight::DirectionType Direction() { return direction_; }
-
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
                                      PseudoState current_status) {}
 
@@ -424,7 +422,6 @@ class Element : public lepus::RefCounted,
 
   void ResetStyleInternal(CSSPropertyID id);
   void SetDirectionInternal(const tasm::CSSValue& value) {
-    direction_ = value.GetEnum<starlight::DirectionType>();
     SetStyleInternal(kPropertyIDDirection, value);
   }
 
@@ -849,9 +846,6 @@ class Element : public lepus::RefCounted,
 
   bool enable_layout_in_element_mode_{false};
   bool enable_fragment_layer_render_{false};
-
-  starlight::DirectionType direction_ =
-      starlight::DefaultLayoutStyle::SL_DEFAULT_DIRECTION;
 
   /**
    StyleResolver has no member variables and its size is 1 byte. Put it here

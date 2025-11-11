@@ -1000,10 +1000,12 @@ void FiberElement::ResetDirectionAwareProperty(const CSSPropertyID &id,
       direction_mapping.rtl_property_ != kPropertyStart ||
       direction_mapping.ltr_property_ != kPropertyStart;
   if (is_direction_aware_property) {
-    auto tran_css_id = (IsRTL(direction_) && direction_mapping.is_logic_) ||
-                               IsLynxRTL(direction_)
-                           ? direction_mapping.rtl_property_
-                           : direction_mapping.ltr_property_;
+    auto current_direction = computed_css_style()->GetDirection();
+    auto tran_css_id =
+        (IsRTL(current_direction) && direction_mapping.is_logic_) ||
+                IsLynxRTL(current_direction)
+            ? direction_mapping.rtl_property_
+            : direction_mapping.ltr_property_;
     ResetCSSValue(tran_css_id);
     (*pending_updated_direction_related_styles_)[css_id] = {
         value, direction_mapping.is_logic_};
@@ -1258,15 +1260,16 @@ void FiberElement::ResolveCSSStyles(
         return std::make_pair(CSSValue(), pre_direction);
       };
 
-      auto new_direction =
-          get_direction(update_map, updated_inherited_styles_, direction_);
-      if (new_direction.second == direction_) {
+      auto previous_direction = computed_css_style()->GetDirection();
+      auto new_direction = get_direction(update_map, updated_inherited_styles_,
+                                         previous_direction);
+      if (new_direction.second == previous_direction) {
         break;
       }
 
       // Reset all direction related styles when not switching between normal
       // and ltr
-      if (IsAnyRTL(new_direction.second) || IsAnyRTL(direction_)) {
+      if (IsAnyRTL(new_direction.second) || IsAnyRTL(previous_direction)) {
         if (updated_inherited_styles_.has_value()) {
           for (const auto &css_pair : *updated_inherited_styles_) {
             ResetDirectionAwareProperty(css_pair.first, css_pair.second);
@@ -1283,7 +1286,6 @@ void FiberElement::ResolveCSSStyles(
         DynamicCSSStylesManager::UpdateDirectionAwareDefaultStyles(
             this, new_direction.second, current_text_align);
       }
-      direction_ = new_direction.second;
       SetStyleInternal(kPropertyIDDirection, new_direction.first);
     } while (false);
   }
@@ -3424,7 +3426,8 @@ bool FiberElement::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
   }
   // special case.
   if (id == kPropertyIDTextAlign) {
-    CSSStyleValue style_type = ResolveTextAlign(id, value, direction_);
+    CSSStyleValue style_type =
+        ResolveTextAlign(id, value, computed_css_style()->GetDirection());
     SetStyleInternal(style_type.first, style_type.second);
     return true;
   }
@@ -3454,8 +3457,9 @@ std::pair<bool, CSSPropertyID> FiberElement::ConvertRtlCSSPropertyID(
   if (is_direction_aware_property) {
     // When in LynxRTL mode or RTL mode with current property is a logic
     // property, use RTL CSSPropertyID, other wise use LTR CSSPropertyID
-    bool use_rtl_value =
-        (IsRTL(direction_) && is_logic_property) || IsLynxRTL(direction_);
+    auto current_direction = computed_css_style()->GetDirection();
+    bool use_rtl_value = (IsRTL(current_direction) && is_logic_property) ||
+                         IsLynxRTL(current_direction);
     return std::make_pair(true, use_rtl_value
                                     ? direction_mapping.rtl_property_
                                     : direction_mapping.ltr_property_);
@@ -3468,7 +3472,9 @@ void FiberElement::TryDoDirectionRelatedCSSChange(CSSPropertyID id,
                                                   const CSSValue &value,
                                                   IsLogic is_logic_style) {
   CSSPropertyID trans_id = id;
-  if ((IsRTL(direction_) && is_logic_style) || IsLynxRTL(direction_)) {
+  auto current_direction = computed_css_style()->GetDirection();
+  if ((IsRTL(current_direction) && is_logic_style) ||
+      IsLynxRTL(current_direction)) {
     auto direction_mapping = CheckDirectionMapping(id);
     trans_id = direction_mapping.rtl_property_;
   } else if (is_logic_style) {
