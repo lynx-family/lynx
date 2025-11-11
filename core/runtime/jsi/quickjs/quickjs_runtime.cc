@@ -63,8 +63,6 @@ void reportLepusToCStringError(Runtime &rt, const std::string &func_name,
 }  // namespace
 
 QuickjsRuntime::QuickjsRuntime() : quickjs_runtime_wrapper_(nullptr) {
-#if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
-    defined(QUICKJS_CACHE_UNITTEST)
   static std::once_flag clear_cache_flag;
   std::call_once(clear_cache_flag, []() {
     base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
@@ -73,7 +71,6 @@ QuickjsRuntime::QuickjsRuntime() : quickjs_runtime_wrapper_(nullptr) {
         },
         base::ConcurrentTaskType::NORMAL_PRIORITY);
   });
-#endif
 };
 
 lynx::piper::QuickjsRuntime::~QuickjsRuntime() {
@@ -204,8 +201,6 @@ std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
     const std::shared_ptr<const Buffer> &buffer, std::string source_url,
     int start_line_offset) {
   std::shared_ptr<Buffer> cache;
-#if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
-    defined(QUICKJS_CACHE_UNITTEST)
   const auto cost_start = base::CurrentTimeMilliseconds();
   cache::JsCacheErrorCode error_code = cache::JsCacheErrorCode::NO_ERROR;
   if (IsJavaScriptBytecode(buffer)) {
@@ -222,7 +217,6 @@ std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
       JSRuntimeType::quickjs, source_url, false,
       cache ? cache::JsScriptType::LOCAL_BINARY : cache::JsScriptType::SOURCE,
       base::CurrentTimeMilliseconds() - cost_start, error_code);
-#endif
   return std::make_shared<QuickjsJavaScriptPreparation>(
       buffer, cache, std::move(source_url), start_line_offset);
 }
@@ -249,8 +243,6 @@ QuickjsRuntime::evaluatePreparedJavaScript(
     if (eval_res.has_value()) {
       return eval_res;
     }
-#if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
-    defined(QUICKJS_CACHE_UNITTEST)
     const auto source = preparation->Source();
     if (enable_user_bytecode_ && source) {
       std::vector<std::unique_ptr<cache::CacheGenerator>> generators;
@@ -259,7 +251,6 @@ QuickjsRuntime::evaluatePreparedJavaScript(
       cache::JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
           bytecode_source_url_, std::move(generators), true);
     }
-#endif
   }
 
   if (const auto source = preparation->Source()) {
@@ -901,8 +892,6 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
     const std::shared_ptr<const Buffer> &buffer,
     const std::string &source_url) const {
   std::shared_ptr<Buffer> cache;
-#if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
-    defined(QUICKJS_CACHE_UNITTEST)
   if (runtime::IsKernelJs(source_url) || enable_user_bytecode_) {
     LOGI("using new bytecode");
     auto &instance = cache::JsCacheManager::GetQuickjsInstance();
@@ -915,7 +904,6 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
     cache::JsCacheTracker::OnGetBytecodeDisable(
         getRuntimeId(), JSRuntimeType::quickjs, source_url, false, false);
   }
-#endif
   return cache;
 }
 

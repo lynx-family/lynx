@@ -160,8 +160,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
                          .timing_collector = timing_collector,
                          .has_error = false};
   InvokeScope invoke_scope(invoke_scopes_, &invoke_info);
-#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
-    (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
+#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID)
   // TODO(liyanbo.monster): after remove native promise, delete this.
   native_module_->EnterInvokeScope(rt, delegate_);
 #endif
@@ -187,8 +186,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
                                             count, callback_map);
     // TODO(liyanbo.monster): after remove native promise, delete this.
     std::optional<piper::Value> promise_res;
-#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
-    (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
+#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID)
     native_module_->ExitInvokeScope();
     // hack here, this will be deleted later.
     if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {
