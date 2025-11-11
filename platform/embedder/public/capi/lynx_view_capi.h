@@ -10,6 +10,7 @@
 #include "lynx_update_meta_capi.h"
 #include "lynx_view_builder_capi.h"
 #include "lynx_view_client_capi.h"
+#include "lynx_vsync_monitor_capi.h"
 
 LYNX_EXTERN_C_BEGIN
 
@@ -120,6 +121,10 @@ LYNX_CAPI_EXPORT void lynx_view_inject_bubble_event(lynx_view_t*,
 LYNX_CAPI_EXPORT void lynx_view_register_native_view(
     lynx_view_t*, const char* name, lynx_native_view_creator creator,
     void* opaque);
+
+// Set a custom vsync monitor to request a synchronous vsync signal
+LYNX_CAPI_EXPORT void lynx_view_set_custom_vsync_monitor(
+    lynx_view_t*, lynx_vsync_monitor_t* monitor);
 
 // Users should call lynx_view_release() to release the LynxView when it is no
 // longer needed.

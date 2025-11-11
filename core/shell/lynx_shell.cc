@@ -236,7 +236,9 @@ void LynxShell::InitRuntime(
         void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
-    const std::string& code_cache_source_url) {
+    const std::string& code_cache_source_url,
+    const std::shared_ptr<base::VSyncMonitorPlatformImpl>&
+        vsync_monitor_platform_impl) {
   [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME,
               [flow_id](lynx::perfetto::EventContext ctx) {
@@ -258,8 +260,13 @@ void LynxShell::InitRuntime(
   tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
       static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 #endif
-  std::shared_ptr<base::VSyncMonitor> vsync_monitor =
-      base::VSyncMonitor::Create();
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor;
+  if (vsync_monitor_platform_impl) {
+    vsync_monitor =
+        std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl);
+  } else {
+    vsync_monitor = base::VSyncMonitor::Create();
+  }
   if (!enable_runtime_) {
     InitRuntimeWithRuntimeDisabled(vsync_monitor);
     return;

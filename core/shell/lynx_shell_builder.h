@@ -9,6 +9,7 @@
 #include <string>
 
 #include "core/public/layout_ctx_platform_impl.h"
+#include "core/public/vsync_monitor_platform_impl.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/lynx_shell.h"
@@ -102,6 +103,9 @@ class LynxShellBuilder {
       std::unique_ptr<lynx::pub::LynxNativeModuleManager>
           native_module_factory);
 
+  LynxShellBuilder& SetVSyncMonitorPlatformImpl(
+      const std::shared_ptr<base::VSyncMonitorPlatformImpl>& monitor);
+
   LynxShell* build();
 
  private:
@@ -165,6 +169,9 @@ class LynxShellBuilder {
   tasm::PageOptions page_options_;
 
   std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager_;
+
+  std::shared_ptr<base::VSyncMonitorPlatformImpl>
+      vsync_monitor_platform_impl_{};
 };
 
 }  // namespace shell

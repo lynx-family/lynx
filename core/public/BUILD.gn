@@ -39,6 +39,7 @@ lynx_core_source_set("public") {
     "timing_key.h",
     "ui_delegate.h",
     "ui_operation_queue_interface.h",
+    "vsync_monitor_platform_impl.h",
     "vsync_observer_interface.h",
   ]
 }

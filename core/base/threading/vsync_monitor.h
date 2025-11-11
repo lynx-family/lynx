@@ -11,6 +11,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
+#include "core/public/vsync_monitor_platform_impl.h"
 
 namespace lynx {
 namespace base {
@@ -21,6 +22,10 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
 
   VSyncMonitor(bool is_on_ui_thread = false,
                bool is_vsync_post_task_by_emergency = true);
+  explicit VSyncMonitor(
+      const std::shared_ptr<VSyncMonitorPlatformImpl> &platform_impl,
+      bool is_on_ui_thread = false,
+      bool is_vsync_post_task_by_emergency = true);
   virtual ~VSyncMonitor() = default;
 
   static std::shared_ptr<VSyncMonitor> Create(bool is_on_ui_thread = false);
@@ -52,7 +57,7 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
   virtual void RequestVSyncOnUIThread(){};
 
  protected:
-  virtual void RequestVSync() = 0;
+  virtual void RequestVSync();
 
   Callback callback_;
 
@@ -67,6 +72,7 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
   bool stop_vsync_{false};
   // additional callbacks required to invoke when VSync is requested
   std::unordered_map<uintptr_t, Callback> secondary_callbacks_;
+  std::shared_ptr<VSyncMonitorPlatformImpl> platform_impl_;
 
   // disallow copy&assign
   VSyncMonitor(const VSyncMonitor &) = delete;

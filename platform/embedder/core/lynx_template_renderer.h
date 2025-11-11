@@ -16,6 +16,7 @@
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/performance_controller_platform_impl.h"
 #include "core/public/ui_delegate.h"
+#include "core/public/vsync_monitor_platform_impl.h"
 #include "core/renderer/data/template_data.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
@@ -105,6 +106,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     bool enable_bytecode = false;
     std::string bytecode_source_url = "";
     bool enable_js = true;
+    std::shared_ptr<base::VSyncMonitorPlatformImpl>
+        vsync_monitor_platform_impl = nullptr;
   };
 
   LynxTemplateRenderer(

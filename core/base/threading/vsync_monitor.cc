@@ -17,7 +17,18 @@ namespace base {
 VSyncMonitor::VSyncMonitor(bool is_on_ui_thread,
                            bool is_vsync_post_task_by_emergency)
     : is_vsync_post_task_by_emergency_(is_vsync_post_task_by_emergency),
-      is_on_ui_thread_(is_on_ui_thread) {
+      is_on_ui_thread_(is_on_ui_thread),
+      platform_impl_(nullptr) {
+  LOGI("VSyncMonitor created with is_vsync_post_task_by_emergency_ "
+       << is_vsync_post_task_by_emergency_);
+}
+
+VSyncMonitor::VSyncMonitor(
+    const std::shared_ptr<VSyncMonitorPlatformImpl> &platform_impl,
+    bool is_on_ui_thread, bool is_vsync_post_task_by_emergency)
+    : is_vsync_post_task_by_emergency_(is_vsync_post_task_by_emergency),
+      is_on_ui_thread_(is_on_ui_thread),
+      platform_impl_(platform_impl) {
   LOGI("VSyncMonitor created with is_vsync_post_task_by_emergency_ "
        << is_vsync_post_task_by_emergency_);
 }
@@ -140,6 +151,21 @@ void VSyncMonitor::BindToCurrentThread() {
 #endif
 
   runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
+}
+
+void VSyncMonitor::RequestVSync() {
+  if (!platform_impl_) {
+    LOGE("VSyncMonitorPlatformImpl is null, skip RequestVSync");
+    return;
+  }
+  platform_impl_->RequestVSync(
+      [weak_self = weak_from_this()](int64_t frame_start_time,
+                                     int64_t frame_target_time) {
+        auto self = weak_self.lock();
+        if (self != nullptr) {
+          self->OnVSync(frame_start_time, frame_target_time);
+        }
+      });
 }
 
 }  // namespace base

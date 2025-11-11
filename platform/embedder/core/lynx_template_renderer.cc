@@ -114,6 +114,7 @@ void LynxTemplateRenderer::Reset() {
           .SetUseInvokeUIMethodFunction(true)
           .SetPaintingContextPlatformImpl(ui_delegate_->CreatePaintingContext())
           .SetLynxEnvConfig(lynx_env_config)
+          .SetVSyncMonitorPlatformImpl(settings_.vsync_monitor_platform_impl)
           .SetEnableElementManagerVsyncMonitor(true)
           .SetEnableNewAnimator(settings_.enable_new_animator)
           .SetEnableNativeList(settings_.enable_native_list)
@@ -178,7 +179,8 @@ void LynxTemplateRenderer::Reset() {
   shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
                       module_manager_, std::move(on_runtime_actor_created),
                       std::move(settings_.preload_js_paths), runtime_flags,
-                      settings_.bytecode_source_url);
+                      settings_.bytecode_source_url,
+                      settings_.vsync_monitor_platform_impl);
 
   ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
                              runtime_proxy_, perf_controller_proxy_,

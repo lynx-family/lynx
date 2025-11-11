@@ -74,11 +74,20 @@ LynxShellBuilder& LynxShellBuilder::SetWhiteBoard(
 
 LynxShellBuilder& LynxShellBuilder::SetEnableElementManagerVsyncMonitor(
     bool enable_element_manager_vsync_monitor) {
-  this->element_manager_vsync_monitor_ =
-      enable_element_manager_vsync_monitor
-          ? base::VSyncMonitor::Create(lynx::tasm::LynxEnv::GetInstance()
-                                           .EnableAnimationVsyncOnUIThread())
-          : nullptr;
+  if (enable_element_manager_vsync_monitor) {
+    if (this->vsync_monitor_platform_impl_) {
+      this->element_manager_vsync_monitor_ =
+          std::make_shared<base::VSyncMonitor>(
+              this->vsync_monitor_platform_impl_,
+              lynx::tasm::LynxEnv::GetInstance()
+                  .EnableAnimationVsyncOnUIThread());
+    } else {
+      this->element_manager_vsync_monitor_ = base::VSyncMonitor::Create(
+          lynx::tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
+    }
+  } else {
+    this->element_manager_vsync_monitor_ = nullptr;
+  }
   return *this;
 }
 
@@ -456,6 +465,12 @@ LynxShellBuilder& LynxShellBuilder::SetTasmPlatformInvoker(
 LynxShellBuilder& LynxShellBuilder::SetNativeModuleManager(
     std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager) {
   this->native_module_manager_ = std::move(native_module_manager);
+  return *this;
+}
+
+LynxShellBuilder& LynxShellBuilder::SetVSyncMonitorPlatformImpl(
+    const std::shared_ptr<base::VSyncMonitorPlatformImpl>& monitor) {
+  this->vsync_monitor_platform_impl_ = monitor;
   return *this;
 }
 
