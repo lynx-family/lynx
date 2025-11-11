@@ -91,10 +91,10 @@ subspec_target("framework") {
     "../common/utils/DevToolFileLoadUtils.h",
   ]
   deps = [
-    "../../../../third_party/jsoncpp:jsoncpp",
     "../../../fundamentals/js_inspect:js_inspect_interface",
     "../../../js_inspect:inspector_const",
     "../../native/js_inspect:base_devtool_js_inspect",
+    "//third_party/jsoncpp:jsoncpp",
   ]
   flatten_deps = [ "../../native:base_devtool_subspec" ]
   if (use_flatten_deps) {
@@ -109,7 +109,8 @@ subspec_target("framework") {
     HEADER_SEARCH_PATHS = [
       "//",
       "../../../..",
-      "../../../../third_party/jsoncpp/include/",
+      "//third_party/jsoncpp/include/",
+      "//third_party/jsoncpp/src/lib_json",
       "//PODS_ROOT/Lynx/lynx",
       "//PODS_ROOT/LynxBase/lynx",
     ]

@@ -23,7 +23,7 @@ group("lynx_devtool_group") {
 
   if (!is_ios) {
     # DebugRouter for iOS provides jsoncpp
-    deps += [ "../../third_party/jsoncpp" ]
+    deps += [ "//third_party/jsoncpp" ]
   }
 }
 

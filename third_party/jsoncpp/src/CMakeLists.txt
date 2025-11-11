@@ -1,5 +1,0 @@
-ADD_SUBDIRECTORY(lib_json)
-IF(JSONCPP_WITH_TESTS)
-    ADD_SUBDIRECTORY(jsontestrunner)
-    ADD_SUBDIRECTORY(test_lib_json)
-ENDIF()

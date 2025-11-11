@@ -155,7 +155,7 @@ deps = {
     'build': {
         "type": "git",
         "url": "https://github.com/lynx-family/buildroot.git",
-        "commit": "12dce89c7f39cd1a922c6402e08441adc72036ec",
+        "commit": "c415d367d23ca227418dc9a160f7d715e8c92bf3",
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
     },
@@ -197,6 +197,12 @@ deps = {
         'url': 'https://chromium.googlesource.com/chromium/src/third_party/zlib',
         'commit': 'f5fd0ad2663e239a31184ad4c9919991dda16f46',
         "patches": os.path.join(root_dir, 'patches', 'zlib', '*.patch'),
+        "ignore_in_git": True,
+    },
+    "third_party/jsoncpp":{
+        "type": "git",
+        "url": "git@github.com:open-source-parsers/jsoncpp.git",
+        "commit": "42e892d96e47b1f6e29844cc705e148ec4856448",
         "ignore_in_git": True,
     },
     'third_party/NativeScript/include': {
@@ -249,7 +255,7 @@ deps = {
     "third_party/debug_router/src": {
         'type': 'git',
         'url': 'https://github.com/lynx-family/debug-router.git',
-        'commit': '031a44bc1b1fffc6a001a1245dda41b977316062',
+        'commit': '496d54c51d1f5d7332594d4d7621b75011b624df',
         "ignore_in_git": True,
         "enable_lfs": False,
     },

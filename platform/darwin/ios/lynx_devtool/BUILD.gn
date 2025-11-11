@@ -316,7 +316,7 @@ subspec_target("ThirdParty") {
     HEADER_SEARCH_PATHS = [
       "../../../../../devtool/lynx_devtool",
       "../../../../../core",
-      "../../../../third_party/jsoncpp/include",
+      "//third_party/jsoncpp/include",
       "//PODS_ROOT/Lynx",
       "//PODS_ROOT/Lynx/lynx",
       "../../../..",

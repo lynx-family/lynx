@@ -27,7 +27,6 @@ source_set("devtool_mock") {
     "../../../base/trace/native:trace",
     "../../../core/inspector:inspector",
     "../../../core/renderer/dom:dom",
-    "../../../third_party/jsoncpp",
     "../../lynx_devtool/agent:agent",
     "../../lynx_devtool/base:base",
     "../../lynx_devtool/config:config",
@@ -35,6 +34,7 @@ source_set("devtool_mock") {
     "../../lynx_devtool/js_debug:js_debug",
     "../../lynx_devtool/message_handler:message_handler",
     "../../lynx_devtool/shared_data:shared_data",
+    "//third_party/jsoncpp",
     "//third_party/zlib",
   ]
 

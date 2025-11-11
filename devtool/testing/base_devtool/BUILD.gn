@@ -16,7 +16,7 @@ unittest_set("devtool_base_devtool_testset") {
 
   include_dirs = [
     "//third_party/googletest/googletest/include",
-    "../../../third_party/jsoncpp/include/",
+    "//third_party/jsoncpp/include/",
   ]
   public_configs = [
     "../../../core:lynx_public_config",
