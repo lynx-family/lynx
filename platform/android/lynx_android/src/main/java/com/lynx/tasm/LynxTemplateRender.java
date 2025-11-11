@@ -3732,6 +3732,13 @@ public class LynxTemplateRender
     }
     mEngineProxy = new LynxEngineProxy(mNativePtr);
     mNativeFacade.setEngineProxy(mEngineProxy);
+
+    if (mLynxContext == null) {
+      LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
+    } else {
+      mLayoutProxy = new LynxLayoutProxy(mNativePtr);
+      mLynxContext.setLayoutProxy(mLayoutProxy);
+    }
   }
 
   public LynxEngineProxy getEngineProxy() {
