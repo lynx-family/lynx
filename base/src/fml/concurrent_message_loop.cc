@@ -23,6 +23,13 @@ extern "C" void objc_autoreleasePoolPop(void*);
 namespace lynx {
 namespace fml {
 
+namespace {
+// A thread-local pointer to the message loop instance this worker thread
+// belongs to. This allows for checking if the current thread is a worker
+// of a *specific* ConcurrentMessageLoop instance.
+thread_local ConcurrentMessageLoop* g_current_message_loop_worker = nullptr;
+}  // namespace
+
 static constexpr uint32_t kWorkerSleepMultipleMicroseconds = 340;
 static constexpr uint32_t kWorkerMaxIdleMicroseconds = 34000;
 
@@ -75,6 +82,10 @@ ConcurrentMessageLoop::~ConcurrentMessageLoop() {
   }
 }
 
+bool ConcurrentMessageLoop::RunsTasksOnCurrentThreadWorker() const {
+  return g_current_message_loop_worker == this;
+}
+
 size_t ConcurrentMessageLoop::GetWorkerCount() const { return workers_.size(); }
 
 void ConcurrentMessageLoop::PostTask(base::closure task) {
@@ -106,6 +117,8 @@ void ConcurrentMessageLoop::PostTask(base::closure task) {
 }
 
 void ConcurrentMessageLoop::WorkerMain(uint32_t index) {
+  g_current_message_loop_worker = this;
+
   const uint32_t sleep_microseconds =
       kWorkerSleepMultipleMicroseconds * (index + 1);
   const uint32_t max_sleep_count =
@@ -163,6 +176,8 @@ void ConcurrentMessageLoop::WorkerMain(uint32_t index) {
           std::chrono::microseconds(sleep_microseconds));
     }
   }
+
+  g_current_message_loop_worker = nullptr;
 }
 
 std::shared_ptr<ConcurrentTaskRunner> ConcurrentMessageLoop::GetTaskRunner() {

@@ -47,6 +47,10 @@ class BASE_EXPORT ConcurrentMessageLoop
 
   void PostTask(base::closure task);
 
+  // Returns true if the calling thread is one of the worker threads owned by
+  // this concurrent message loop.
+  bool RunsTasksOnCurrentThreadWorker() const;
+
   size_t GetWorkerCount() const;
 
   std::shared_ptr<ConcurrentTaskRunner> GetTaskRunner();

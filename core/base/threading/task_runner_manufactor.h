@@ -97,6 +97,10 @@ class TaskRunnerManufactor {
 
   static void PostTaskToConcurrentLoop(base::closure, ConcurrentTaskType type);
 
+  // Returns true if the calling thread is one of the worker threads owned by
+  // the concurrent message loop of the specified priority type.
+  static bool IsOnConcurrentLoopWorker(ConcurrentTaskType type);
+
  private:
   void StartUIThread(bool enable_vsync_aligned_msg_loop);
 
@@ -109,7 +113,7 @@ class TaskRunnerManufactor {
   void CreateTASMRunner(fml::RefPtr<fml::MessageLoopImpl> loop,
                         bool enable_vsync_aligned_msg_loop);
 
-  static fml::ConcurrentMessageLoop& GetNormalPriorityLoop();
+  static fml::ConcurrentMessageLoop& GetConcurrentLoop(ConcurrentTaskType type);
 
   fml::RefPtr<fml::TaskRunner> tasm_task_runner_;
   fml::RefPtr<fml::TaskRunner> layout_task_runner_;

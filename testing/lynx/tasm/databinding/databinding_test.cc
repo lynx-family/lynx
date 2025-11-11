@@ -412,7 +412,9 @@ void DataBindingLoadTemplateBundleShell::TasmLoadTemplate(
   // Some tasks of ContextPool will be executed in background threads. In
   // order to prevent affecting the stability of the unit test, the background
   // thread needs to be terminated in advance.
-  base::TaskRunnerManufactor::GetNormalPriorityLoop().Terminate();
+  base::TaskRunnerManufactor::GetConcurrentLoop(
+      base::ConcurrentTaskType::NORMAL_PRIORITY)
+      .Terminate();
   template_bundle.PrepareVMByConfigs();
   template_bundle.PrepareLepusContext(1);
 

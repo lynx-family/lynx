@@ -17,7 +17,9 @@ TEST(QuickContextPoolTest, QuickContextPoolTest) {
   // Some tasks of QuickContextPool will be executed in background threads. In
   // order to prevent affecting the stability of the unit test, the background
   // thread needs to be terminated in advance.
-  base::TaskRunnerManufactor::GetNormalPriorityLoop().Terminate();
+  base::TaskRunnerManufactor::GetConcurrentLoop(
+      base::ConcurrentTaskType::NORMAL_PRIORITY)
+      .Terminate();
 
   auto& context_pool =
       tasm::LynxGlobalPool::GetInstance().GetQuickContextPool();

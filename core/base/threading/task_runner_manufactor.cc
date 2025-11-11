@@ -411,26 +411,32 @@ fml::Thread TaskRunnerManufactor::CreateJSWorkerThread(
 
 void TaskRunnerManufactor::PostTaskToConcurrentLoop(base::closure task,
                                                     ConcurrentTaskType type) {
+  GetConcurrentLoop(type).PostTask(std::move(task));
+}
+
+bool TaskRunnerManufactor::IsOnConcurrentLoopWorker(ConcurrentTaskType type) {
+  return GetConcurrentLoop(type).RunsTasksOnCurrentThreadWorker();
+}
+
+fml::ConcurrentMessageLoop& TaskRunnerManufactor::GetConcurrentLoop(
+    ConcurrentTaskType type) {
   switch (type) {
     case ConcurrentTaskType::HIGH_PRIORITY: {
       static base::NoDestructor<fml::ConcurrentMessageLoop> high_priority_loop(
           "LynxHighTask", fml::Thread::ThreadPriority::HIGH,
           GetConcurrentLoopHighPriorityWorkerCount());
-      high_priority_loop->PostTask(std::move(task));
-    } break;
+      return *high_priority_loop;
+    }
     case ConcurrentTaskType::NORMAL_PRIORITY: {
-      GetNormalPriorityLoop().PostTask(std::move(task));
-    } break;
+      constexpr size_t normal_worker_count = 1;
+      static base::NoDestructor<fml::ConcurrentMessageLoop>
+          normal_priority_loop("LynxNormalTask",
+                               fml::Thread::ThreadPriority::NORMAL,
+                               normal_worker_count);
+      return *normal_priority_loop;
+    }
   }
-}
-
-fml::ConcurrentMessageLoop& TaskRunnerManufactor::GetNormalPriorityLoop() {
-  // TODO(zhoupeng.z): merge with thread pool in LynxThreadPool.java
-  constexpr size_t normal_worker_count = 1;
-  static base::NoDestructor<fml::ConcurrentMessageLoop> normal_priority_loop(
-      "LynxNormalTask", fml::Thread::ThreadPriority::NORMAL,
-      normal_worker_count);
-  return *normal_priority_loop;
+  LOGF("Unknown concurrent task type: " << static_cast<int>(type));
 }
 
 }  // namespace base

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/base/threading/task_runner_manufactor.h"
 
+#include "base/include/fml/synchronization/count_down_latch.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -108,6 +109,39 @@ TEST_F(TaskRunnerManufactorTest, MultiJSGroupThreadMode) {
             TaskRunnerManufactor::GetJSRunner("Group1")->GetLoop());
   ASSERT_EQ(multi_js_thread_1.GetJSTaskRunner()->GetLoop(),
             multi_js_thread_temp_1.GetJSTaskRunner()->GetLoop());
+}
+
+TEST_F(TaskRunnerManufactorTest, IsOnConcurrentLoopWorker) {
+  EXPECT_FALSE(TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+      ConcurrentTaskType::HIGH_PRIORITY));
+  EXPECT_FALSE(TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+      ConcurrentTaskType::NORMAL_PRIORITY));
+
+  fml::CountDownLatch high_priority_latch(1);
+  fml::CountDownLatch normal_priority_latch(1);
+
+  TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [&]() {
+        EXPECT_TRUE(TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+            ConcurrentTaskType::HIGH_PRIORITY));
+        EXPECT_FALSE(TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+            ConcurrentTaskType::NORMAL_PRIORITY));
+        high_priority_latch.CountDown();
+      },
+      ConcurrentTaskType::HIGH_PRIORITY);
+
+  TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [&]() {
+        EXPECT_TRUE(TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+            ConcurrentTaskType::NORMAL_PRIORITY));
+        EXPECT_FALSE(TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+            ConcurrentTaskType::HIGH_PRIORITY));
+        normal_priority_latch.CountDown();
+      },
+      ConcurrentTaskType::NORMAL_PRIORITY);
+
+  high_priority_latch.Wait();
+  normal_priority_latch.Wait();
 }
 
 }  // namespace base
