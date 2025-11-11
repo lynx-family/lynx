@@ -151,8 +151,29 @@ class JsCacheManagerTest : public ::testing::Test {
     // clean first.
     JsCacheManager::GetQuickjsInstance().ClearCacheDir();
     JsCacheManager::GetQuickjsInstance().cache_path_.clear();
+    JsCacheManager::GetQuickjsInstance().task_set_.clear();
     JsCacheManager::GetV8Instance().ClearCacheDir();
     JsCacheManager::GetV8Instance().cache_path_.clear();
+    JsCacheManager::GetV8Instance().task_set_.clear();
+    QuickjsCacheManagerForTesting::GetInstance().ClearCacheDir();
+    QuickjsCacheManagerForTesting::GetInstance().cache_path_.clear();
+    QuickjsCacheManagerForTesting::GetInstance().task_set_.clear();
+    QuickjsCacheManagerForTestingCleanCache::GetInstance().ClearCacheDir();
+    QuickjsCacheManagerForTestingCleanCache::GetInstance().cache_path_.clear();
+    QuickjsCacheManagerForTestingCleanCache::GetInstance().task_set_.clear();
+    QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance()
+        .ClearCacheDir();
+    QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance()
+        .cache_path_.clear();
+    QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance()
+        .task_set_.clear();
+    ;
+    QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance()
+        .ClearCacheDir();
+    QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance()
+        .cache_path_.clear();
+    QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance()
+        .task_set_.clear();
     JsCacheTracker::s_test_intercept_event_ = &SetTestInterceptEvent;
   }
 
@@ -456,7 +477,7 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationApp) {
                              std::make_unique<TestingCacheGenerator>(
                                  k_source_url, js_file_buffer, js_file));
     EXPECT_TRUE(buffer);
-    EXPECT_EQ(std::string((char *)buffer->data()), std::string(mock_cache));
+    EXPECT_EQ(std::string((char *)buffer->data()), std::string(js_file));
   }
 }
 
@@ -490,7 +511,7 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationCallback) {
   auto &instance = QuickjsCacheManagerForTesting::GetInstance();
   bool called = false;
   std::vector<std::unique_ptr<CacheGenerator>> generators;
-  const std::string cache_key = "RequestCacheGeneration.js";
+  const std::string cache_key = "RequestCacheGenerationCallback.js";
   const std::string package_url = "lynx://external.js";
   const std::string external_url = "http://external.js";
   generators.push_back(std::make_unique<TestingCacheGenerator>(

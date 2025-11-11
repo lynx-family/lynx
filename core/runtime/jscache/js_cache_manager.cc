@@ -313,104 +313,36 @@ void JsCacheManager::RequestCacheGeneration(
 }
 
 /*
- * 1. Check if the task is already inserted into the task list. If yes,
- * return.
- * 2. Insert the task into the list.
- * 3. If make_cache_thread is not running, start it.
+ * Post task into threadpool.
  */
 void JsCacheManager::PostTaskBackground(TaskInfo task) {
-  std::scoped_lock<std::mutex> lock(task_lock_);
-
-  AdjustTaskListWithNewTask(std::move(task));
-
-  if (task_list_.empty()) {
-    return;
-  }
-
-  // start background thread if not started
-  if (!background_thread_working_) {
-    LOGI("start background thread to make cache");
-    background_thread_working_ = true;
+#ifdef QUICKJS_CACHE_UNITTEST
+  fml::AutoResetWaitableEvent latch;
+#endif
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [this, task = std::move(task)
+#ifdef QUICKJS_CACHE_UNITTEST
+                 ,
+       &latch
+#endif
+  ]() mutable {
+        RunTask(std::move(task));
+#ifdef QUICKJS_CACHE_UNITTEST
+        latch.Signal();
+#endif
+      },
+      base::ConcurrentTaskType::NORMAL_PRIORITY);
 
 #ifdef QUICKJS_CACHE_UNITTEST
-    fml::AutoResetWaitableEvent latch;
+  latch.Wait();
 #endif
-    base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-        [this
-#ifdef QUICKJS_CACHE_UNITTEST
-         ,
-         &latch
-#endif
-    ] {
-          RunTasks();
-#ifdef QUICKJS_CACHE_UNITTEST
-          latch.Signal();
-#endif
-        },
-        base::ConcurrentTaskType::NORMAL_PRIORITY);
-
-#ifdef QUICKJS_CACHE_UNITTEST
-    task_lock_.unlock();
-    cache_lock_.unlock();
-    latch.Wait();
-#endif
-  }
-}
-
-void JsCacheManager::AdjustTaskListWithNewTask(TaskInfo task) {
-  auto iter =
-      std::find_if(task_list_.begin(), task_list_.end(),
-                   [&task](const TaskInfo &existed_task) {
-                     return existed_task.template_key == task.template_key;
-                   });
-
-  // no task with same identifier exists, insert it
-  if (iter == task_list_.end()) {
-    task_list_.push_back(std::move(task));
-    return;
-  }
-
-  // task with same identifier exists, replace it if the new task is more
-  // promising. Otherwise ignore it.
-  if (iter->type == TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED &&
-      task.type == TaskInfo::TaskType::GENERATE_CACHE) {
-    *iter = std::move(task);
-  } else {
-    LOGI("task already exists, ignore");
-  }
 }
 
 //
 // background thread
 //
 
-void JsCacheManager::RunTasks() {
-#if defined(OS_ANDROID)
-  base::android::AttachCurrentThread();
-#endif
-
-  while (true) {
-    // 1. get task
-    std::optional<TaskInfo> task;
-    {
-      std::scoped_lock<std::mutex> lock(task_lock_);
-      if (task_list_.empty()) {
-        background_thread_working_ = false;
-#if defined(OS_ANDROID)
-        base::android::DetachFromVM();
-#endif
-        return;
-      }
-      task = std::move(task_list_.front());
-      task_list_.pop_front();
-    }
-
-    // 2. run task
-    RunTask(*task);
-  }
-}
-
-void JsCacheManager::RunTask(TaskInfo &task) {
+void JsCacheManager::RunTask(TaskInfo task) {
   auto start = base::CurrentTimeMilliseconds();
 
   auto &[type, template_key, generators, callback] = task;
@@ -419,8 +351,20 @@ void JsCacheManager::RunTask(TaskInfo &task) {
       callback ? callback.get() : g_bytecode_generate_callback.get();
 
   for (const auto &generator : generators) {
-    auto identifier = BuildIdentifier(generator->SourceUrl(), template_key);
     std::string file_md5 = EnsureMd5(generator->SrcBuffer(), generator->Md5());
+    // check if task is already inserted into the task set.
+    std::string task_id = template_key + generator->SourceUrl() + file_md5;
+    {
+      std::lock_guard<std::mutex> guard(task_set_lock_);
+      if (task_set_.find(task_id) != task_set_.end()) {
+        LOGI("task already exists, ignore:" << template_key << " source_url:"
+                                            << generator->SourceUrl()
+                                            << " md5:" << file_md5);
+        continue;
+      }
+      task_set_.insert(task_id);
+    }
+    auto identifier = BuildIdentifier(generator->SourceUrl(), template_key);
     std::string cache_url;
     if (callback_ptr) {
       cache_url = GetCacheUrlFromIdentifier(identifier);
@@ -452,6 +396,11 @@ void JsCacheManager::RunTask(TaskInfo &task) {
           JsCacheErrorCode::RUNTIME_GENERATE_FAILED);
       if (callback_ptr) {
         (*callback_ptr)(std::move(error_msg), {});
+      }
+      // when generate failed, remove it from task set.
+      {
+        std::lock_guard<std::mutex> guard(task_set_lock_);
+        task_set_.erase(task_id);
       }
       continue;
     } else if (!cache_url.empty()) {

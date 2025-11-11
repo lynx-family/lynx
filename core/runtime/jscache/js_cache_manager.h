@@ -7,11 +7,11 @@
 
 #include <stdint.h>
 
-#include <list>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -161,30 +161,17 @@ UNITTEST_PUBLIC:
   bool IsCacheEnabled();
 
   /**
-   * Post a task into background thread. If the background thread is not
-   * running, start a new background task.
+   * Post a task into background thread.
    *
    * @param task the task to run.
    */
   void PostTaskBackground(TaskInfo task);
 
   /**
-   * Adjust the task list with a new task.
-   *
-   * @param task the new task to run.
-   */
-  void AdjustTaskListWithNewTask(TaskInfo task);
-
-  /**
-   * Run the tasks in task queue.
-   */
-  void RunTasks();
-
-  /**
    * Generate cache file and save to storage.
    * @param task info of the cache generation task.
    */
-  void RunTask(TaskInfo &task);
+  void RunTask(TaskInfo task);
 
   /**
    * Try to load cache file from storage.
@@ -271,9 +258,8 @@ UNITTEST_PUBLIC:
   UNITTEST_VIRTUAL std::string GetBytecodeGenerateEngineVersion();
 
   JSRuntimeType engine_type_;
-  std::list<TaskInfo> task_list_;
-  std::mutex task_lock_;  // lock for task_list_
-  bool background_thread_working_ = false;
+  std::unordered_set<std::string> task_set_;
+  std::mutex task_set_lock_;  // lock for task_list_
   std::unordered_map<std::string, std::shared_ptr<Buffer>> cache_;
   std::recursive_mutex cache_lock_;
   std::once_flag meta_data_init_flag_;
