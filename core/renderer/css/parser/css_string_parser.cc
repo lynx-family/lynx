@@ -3624,7 +3624,7 @@ bool CSSStringParser::ParseFlex(double &flex_grow, double &flex_shrink,
         } else if (!num || !parser_configs_.enable_length_unit_check) {
           // flex only allows a basis of 0
           // If disable unit check the last number can be basis
-          flex_basis.SetNumber(num);
+          flex_basis.SetNumber(num, CSSValuePattern::NUMBER);
         } else {
           return false;
         }
@@ -3656,7 +3656,7 @@ bool CSSStringParser::ParseFlex(double &flex_grow, double &flex_shrink,
     flex_shrink = 1;
   }
   if (flex_basis.IsEmpty()) {
-    flex_basis.SetNumber(0.f);
+    flex_basis.SetNumber(0.f, CSSValuePattern::NUMBER);
   }
   return AtEnd();
 }
