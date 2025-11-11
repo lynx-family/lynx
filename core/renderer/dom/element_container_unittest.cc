@@ -13,6 +13,7 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -923,6 +924,48 @@ TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
   manager->OnPatchFinish(pipeline_options);
 
   EXPECT_TRUE(page->element_container()->children().size() == 0);
+}
+
+TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->enable_fragment_layer_render_ = true;
+  manager->enable_layout_in_element_mode_ = true;
+  manager->SetConfig(config);
+
+  auto element = manager->CreateNode("view", nullptr);
+  auto fragment = static_cast<Fragment*>(element->element_container());
+  EXPECT_FALSE(fragment->need_redraw_);
+
+  element->CreateElementContainer(false);
+  EXPECT_TRUE(fragment->need_redraw_);
+
+  fragment->need_redraw_ = false;
+  fragment->UpdateLayout(starlight::LayoutResultForRendering());
+  EXPECT_TRUE(fragment->need_redraw_);
+
+  fragment->need_redraw_ = false;
+  EXPECT_FALSE(fragment->need_redraw_);
+
+  auto child_element = manager->CreateNode("view", nullptr);
+  child_element->CreateElementContainer(false);
+  auto child_fragment =
+      static_cast<Fragment*>(child_element->element_container());
+  fragment->AddChild(child_fragment, 0);
+  EXPECT_TRUE(fragment->need_redraw_);
+
+  fragment->need_redraw_ = false;
+
+  child_fragment->RemoveSelf(false);
+  EXPECT_TRUE(fragment->need_redraw_);
+
+  fragment->need_redraw_ = false;
+  fragment->CreatePaintingNode(false, nullptr);
+  EXPECT_TRUE(fragment->need_redraw_);
+
+  fragment->need_redraw_ = false;
+  fragment->UpdatePaintingNode(false, nullptr);
+  EXPECT_TRUE(fragment->need_redraw_);
 }
 
 }  // namespace testing

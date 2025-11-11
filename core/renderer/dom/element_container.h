@@ -39,11 +39,10 @@ class ElementContainer {
   PaintingContext* painting_context();
   int id() const;
 
-  void AddChild(ElementContainer* child, int index);
-  void RemoveFromParent(bool is_move);
-  void Destroy();
-  void RemoveSelf(bool destroy);
-  void InsertSelf();
+  virtual void AddChild(ElementContainer* child, int index);
+  virtual void RemoveSelf(bool destroy);
+  virtual void Destroy();
+
   void UpdateLayout(float left, float top, bool transition_view = false);
   void UpdateLayoutWithoutChange();
   /**
@@ -111,8 +110,12 @@ class ElementContainer {
  private:
   void ZIndexChanged();
   void PositionFixedChanged();
+
   // Use RemoveFromParent/Destroy
   void RemoveChild(ElementContainer* child);
+  void InsertSelf();
+  void RemoveFromParent(bool is_move);
+
   // below helper functions to calculate the correct parent and UI index for
   // fiber element
   static std::pair<ElementContainer*, int> FindParentAndIndexForChildForFiber(

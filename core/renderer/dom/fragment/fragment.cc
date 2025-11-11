@@ -15,11 +15,21 @@
 namespace lynx {
 namespace tasm {
 
-Fragment::Fragment(Element* element)
-    : ElementContainer(element),
-      sign_(element->impl_id()),
-      style_(element->computed_css_style()),
-      tag_(element->GetTag()) {}
+Fragment::Fragment(Element* element) : ElementContainer(element) {}
+
+void Fragment::AddChild(ElementContainer* child, int index) {
+  MarkNeedRedraw();
+  ElementContainer::AddChild(child, index);
+}
+
+void Fragment::RemoveSelf(bool destroy) {
+  auto* fragment_parent = static_cast<Fragment*>(parent());
+
+  if (fragment_parent != nullptr) {
+    fragment_parent->MarkNeedRedraw();
+  }
+  ElementContainer::RemoveSelf(destroy);
+}
 
 void Fragment::CreateLayerIfNeeded() {
   if (element()->TendToFlatten() && !has_platform_renderer_ && behavior_) {
@@ -30,8 +40,15 @@ void Fragment::CreateLayerIfNeeded() {
 
 void Fragment::CreatePaintingNode(
     bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) {
+  MarkNeedRedraw();
   element()->SetupFragmentBehavior(this);
   CreateLayerIfNeeded();
+}
+
+void Fragment::UpdatePaintingNode(
+    bool tend_to_flatten, const fml::RefPtr<PropBundle>& painting_data) {
+  MarkNeedRedraw();
+  // TODO(zhongyr): handle update or tend to flatten here.
 }
 
 // TODO(zhongyr): Finish Update attributes Fragment tree related operations.
@@ -39,6 +56,7 @@ void Fragment::CreatePaintingNode(
 
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
+  MarkNeedRedraw();
   layout_result_for_rendering_ = std::move(layout_result_for_rendering);
 }
 
@@ -86,6 +104,8 @@ void Fragment::Draw(DisplayListBuilder& display_list_builder) {
 
   OnDraw(display_list_builder);
 }
+
+void Fragment::MarkNeedRedraw() { need_redraw_ = true; }
 
 }  // namespace tasm
 }  // namespace lynx

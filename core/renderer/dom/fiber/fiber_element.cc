@@ -42,6 +42,7 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
@@ -4121,6 +4122,9 @@ void FiberElement::UpdateLayoutInfo() {
 
   if (IsShadowNodeCustom()) {
     customized_layout_node_->OnLayoutAfter();
+  }
+  if (EnableFragmentLayerRender()) {
+    static_cast<Fragment *>(element_container())->MarkNeedRedraw();
   }
   frame_changed_ = true;
 }

@@ -27,8 +27,14 @@ class Fragment : public ElementContainer {
 
   ~Fragment() override = default;
 
+  void AddChild(ElementContainer* child, int index) override;
+  void RemoveSelf(bool destroy) override;
+
   void CreatePaintingNode(
       bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) override;
+  void UpdatePaintingNode(
+      bool tend_to_flatten,
+      const fml::RefPtr<PropBundle>& painting_data) override;
 
   void CreateLayerIfNeeded();
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;
@@ -43,26 +49,19 @@ class Fragment : public ElementContainer {
 
   void OnDraw(DisplayListBuilder& display_list_builder);
 
+  void MarkNeedRedraw();
+
  private:
-  const base::String& Tag() const { return tag_; };
+  bool has_platform_renderer_;
+  bool need_redraw_{false};
 
   base::MoveOnlyClosure<bool> should_create_layer_;
 
   // TODO(zhongyr): children management methods.
   base::InlineVector<Fragment*, kChildrenInlineVectorSize> children_;
 
-  // Sign is used to identify the fragment in the tree. Same to the sign in
-  // element.
-  const int sign_;
-  bool has_platform_renderer_ = false;
-
   LayoutResultForRendering layout_result_for_rendering_;
 
-  // XXX(zhongyr): Do we need a refCounted style? Fragment's lifetime should not
-  // exceed the element who owns it.
-  // TODO(songshourui.null): remove maybe_unused later.
-  [[maybe_unused]] const starlight::ComputedCSSStyle* style_;
-  const base::String tag_;
   std::unique_ptr<FragmentBehavior> behavior_;
 };
 
