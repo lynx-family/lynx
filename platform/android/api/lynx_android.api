@@ -1414,6 +1414,13 @@ public class com::lynx::tasm::behavior::render::DisplayList :  {
   public float [] com.lynx.tasm.behavior.render.DisplayList.fArgv fArgv;
 }
 
+public class com::lynx::tasm::behavior::render::DisplayListApplier :  {
+  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(DisplayList displayList, TextMeasurer textMeasurer);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.reset();
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.drawTillNextView(Canvas canvas);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.setDisplayList(DisplayList displayList);
+}
+
 public class com::lynx::tasm::utils::DisplayMetricsHolder :  {
   public final int com.lynx.tasm.utils.DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE UNDEFINE_SCREEN_SIZE_VALUE;
   public final float com.lynx.tasm.utils.DisplayMetricsHolder.DEFAULT_SCREEN_SCALE DEFAULT_SCREEN_SCALE;
