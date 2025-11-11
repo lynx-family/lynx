@@ -759,8 +759,11 @@ class ElementManager {
   // Element notify element_manager to regist itself to set.
   void RequestNextFrame(Element *element);
 
-  // Element notify element_manager to logout itself from set.
+  // Element notify element_manager destroy.
   void NotifyElementDestroy(Element *element);
+
+  // Notify element_manager to logout itself from set.
+  void RemoveFromAnimationSet(Element *element);
 
   // Tick all element need to animated.
   void TickAllElement(fml::TimePoint &time);

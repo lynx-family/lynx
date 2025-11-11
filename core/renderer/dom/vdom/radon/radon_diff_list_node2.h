@@ -27,6 +27,7 @@ class RadonDiffListNode2 : public RadonListBase {
   int32_t ComponentAtIndex(uint32_t index, int64_t operationId,
                            bool enable_reuse_notification) final;
   void EnqueueComponent(int32_t sign) final;
+  void EnqueueComponent(int32_t sign, bool notify_item_removed) final;
   bool DisablePlatformImplementation() override;
 
  protected:

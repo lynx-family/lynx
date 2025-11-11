@@ -80,6 +80,8 @@ static constexpr const char* const kStickyOffset = "sticky-offset";
 static constexpr const char* const kEnablePreloadSection =
     "experimental-enable-preload-section";
 static constexpr const char* const kScrollOrientation = "scroll-orientation";
+static constexpr const char* const kExperimentalPauseRemovedItemAnimation =
+    "experimental-pause-removed-item-animation";
 static constexpr const char* const kPreloadBufferCount = "preload-buffer-count";
 
 // constant value

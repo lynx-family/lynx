@@ -195,7 +195,9 @@ void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
     list_container_->list_event_manager()->OnViewDetach(item_holder);
   }
   int32_t comp_id = item_holder->element()->impl_id();
-  list_node->EnqueueComponent(comp_id);
+  list_node->EnqueueComponent(
+      comp_id, (list_container_->pause_removed_item_animation() &&
+                IsRemoved(item_holder)));
   list_element_->element_manager()
       ->painting_context()
       ->RemoveListItemPaintingNode(list_element_->impl_id(), comp_id);

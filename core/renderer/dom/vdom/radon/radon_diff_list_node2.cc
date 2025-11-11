@@ -551,10 +551,10 @@ int32_t RadonDiffListNode2::ComponentAtIndex(uint32_t index,
   return component->element()->impl_id();
 }
 
-void RadonDiffListNode2::EnqueueComponent(int32_t sign) {
+void RadonDiffListNode2::EnqueueComponent(int32_t sign,
+                                          bool notify_item_removed) {
   // EnqueueComponent is a public API which might be called without care
   // Rigorous checks must be done to avoid crash.
-
   if (!tasm_ || !tasm_->page_proxy() ||
       !tasm_->page_proxy()->element_manager() ||
       !tasm_->page_proxy()->element_manager()->node_manager()) {
@@ -570,12 +570,22 @@ void RadonDiffListNode2::EnqueueComponent(int32_t sign) {
   if (!component) {
     return;
   }
-
   LOGI("EnqueueComponent component, component name: "
        << component->name().str()
        << ", component item_key_: " << component->GetListItemKey().str());
+  if (notify_item_removed) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                "RadonDiffListNode2::RemoveAnimationRecursive");
+    element->ApplyFunctionRecursive([this](Element* element) {
+      page_proxy_->element_manager()->RemoveFromAnimationSet(element);
+    });
+  }
   tasm_->page_proxy()->EraseFromEmptyComponentMap(component);
   reuse_pool_->Enqueue(component->GetListItemKey(), component->name());
+}
+
+void RadonDiffListNode2::EnqueueComponent(int32_t sign) {
+  EnqueueComponent(sign, false);
 }
 
 // helper function; It's essentially a wrapper of UpdateRadonComponent().

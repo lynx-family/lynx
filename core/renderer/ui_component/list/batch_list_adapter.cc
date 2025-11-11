@@ -237,7 +237,10 @@ int BatchListAdapter::OnFinishBindInternal(Element* list_item,
       } else {
         // operation_id is not the latest one in item_status_map_, the component
         // can be recycled.
-        list_node->EnqueueComponent(list_item->impl_id());
+        list_node->EnqueueComponent(
+            list_item->impl_id(),
+            (it == item_status_map_->end() &&
+             list_container_->pause_removed_item_animation()));
       }
       binding_key_map_->erase(binding_key_it);
     } else {
@@ -289,7 +292,7 @@ void BatchListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
   const std::string& item_key = item_holder->item_key();
   auto it = item_status_map_->find(item_key);
   if (it != item_status_map_->end()) {
-    const auto& item_status = it->second;
+    list::ItemStatus item_status = it->second;
     if (IsRemoved(item_status)) {
       // If the data is removed, we need erase it from item_status_map_.
       item_status_map_->erase(item_key);
@@ -304,7 +307,10 @@ void BatchListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
           ->painting_context()
           ->RemoveListItemPaintingNode(list_element_->impl_id(),
                                        list_item->impl_id());
-      list_node->EnqueueComponent(list_item->impl_id());
+      list_node->EnqueueComponent(
+          list_item->impl_id(),
+          (IsRemoved(item_status) &&
+           list_container_->pause_removed_item_animation()));
       if (list_container_->list_children_helper()) {
         list_container_->list_children_helper()->DetachChild(item_holder,
                                                              list_item);

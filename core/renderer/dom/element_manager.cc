@@ -866,6 +866,10 @@ void ElementManager::RequestNextFrame(Element *element) {
 }
 
 void ElementManager::NotifyElementDestroy(Element *element) {
+  RemoveFromAnimationSet(element);
+}
+
+void ElementManager::RemoveFromAnimationSet(Element *element) {
   animation_element_set_.erase(element);
   paused_animation_element_set_.erase(element);
 }
