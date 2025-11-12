@@ -155,6 +155,18 @@ class LynxNativeView {
 
   /**
    * @apidoc
+   * @brief Acquire the latest back buffer
+   * @param config The custom surface config.
+   * @param out The result of surface.
+   */
+  inline bool AcquireSurface(lynx_surface_config_t config,
+                             lynx_surface_result_t* out) {
+    return lynx_native_view_acquire_surface_with_config(native_view_, config,
+                                                        out);
+  }
+
+  /**
+   * @apidoc
    * @brief Swap the current back buffer to pending front
    */
   inline bool SwapBack() { return lynx_native_view_swap_back(native_view_); }

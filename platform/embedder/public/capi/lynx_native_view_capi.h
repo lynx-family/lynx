@@ -94,6 +94,60 @@ typedef struct lynx_native_view_callback_info {
   int64_t callback_id;
 } lynx_native_view_callback_info_t;
 
+typedef enum {
+  kSurfaceGL,
+  kSurfaceMetal,
+  kSurfaceD3D,
+  kSurfaceVulkan,
+  kSurfaceShm,
+} lynx_surface_config_type;
+
+/// ID3D11Device* in D3D
+typedef void* lynx_surface_d3d_device_handle_t;
+
+typedef struct lynx_surface_config_d3d_config {
+  /// The size of this struct. Must be
+  /// sizeof(lynx_surface_config_d3d_config_t).
+  size_t struct_size;
+  lynx_surface_d3d_device_handle_t device;
+} lynx_surface_config_d3d_config_t;
+
+typedef struct lynx_surface_config {
+  size_t struct_size;
+  int width;
+  int height;
+  lynx_surface_config_type type;
+  union {
+    lynx_surface_config_d3d_config d3d_config;
+  };
+} lynx_surface_config_t;
+
+typedef void* lynx_surface_d3d_texture_handle_t;
+typedef void (*lynx_surface_void_callback)(void*);
+typedef struct lynx_surface_result_d3d_texture {
+  /// The size of this struct. Must be
+  /// sizeof(lynx_surface_result_d3d_texture_t).
+  size_t struct_size;
+  /// ID3D11Texture2D* in D3D
+  /// The value is owned by engine, user must retain to persist it.
+  lynx_surface_d3d_texture_handle_t texture;
+  /// User data to be returned on the invocation of the destruction callback.
+  void* user_data;
+  /// The callback invoked by the engine when it no longer needs this backing
+  /// store.
+  lynx_surface_void_callback destruction_callback;
+} lynx_surface_result_d3d_texture_t;
+
+typedef struct lynx_surface_result {
+  /// The size of this struct. Must be sizeof(lynx_surface_result_t).
+  size_t struct_size;
+  lynx_surface_config_type type;
+  lynx_surface_handle_t* handle;
+  union {
+    lynx_surface_result_d3d_texture_t d3d_texture;
+  };
+} lynx_surface_result_t;
+
 typedef lynx_native_view_t* (*lynx_native_view_creator)(void* opaque);
 typedef void (*lynx_native_view_callback)(lynx_native_view_callback_info_t, int,
                                           lynx_value);
@@ -140,6 +194,9 @@ LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
     lynx_surface_handle_t* handle);
 LYNX_CAPI_EXPORT lynx_surface_handle_t* lynx_native_view_acquire_surface(
     lynx_native_view_t*, int width, int height);
+LYNX_CAPI_EXPORT bool lynx_native_view_acquire_surface_with_config(
+    lynx_native_view_t*, lynx_surface_config_t config,
+    lynx_surface_result_t* out);
 LYNX_CAPI_EXPORT bool lynx_native_view_swap_back(lynx_native_view_t*);
 LYNX_CAPI_EXPORT void lynx_native_view_trigger_event(lynx_native_view_t*,
                                                      const char* name,
