@@ -1377,7 +1377,9 @@ public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExe
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_LOAD LIFECYCLE_EVENT_ON_LOAD;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED LIFECYCLE_EVENT_ON_DATA_CHANGED;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY LIFECYCLE_EVENT_ON_DESTROY;
+  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor();
   public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup, boolean debuggable);
+  public void com.lynx.tasm.DefaultLogicExecutor.init(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup, boolean debuggable);
   public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
   public void com.lynx.tasm.DefaultLogicExecutor.destroy();
 }

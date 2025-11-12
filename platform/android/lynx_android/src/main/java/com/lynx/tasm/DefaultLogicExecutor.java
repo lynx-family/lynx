@@ -14,6 +14,7 @@ import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.group.ILynxViewGroup;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -42,15 +43,22 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
 
   private final Object mInitLock = new Object();
   private volatile LynxBackgroundRuntime mRuntime;
-  private final WeakReference<Context> mContextRef;
-  private final WeakReference<TemplateBundle> mTemplateBundleRef;
-  private final WeakReference<LynxBackgroundRuntimeOptions> mRuntimeOptionsRef;
-  private final WeakReference<ILynxViewGroup> mLynxViewGroupRef;
-  private final boolean mDebuggable;
+  private WeakReference<Context> mContextRef;
+  private WeakReference<TemplateBundle> mTemplateBundleRef;
+  private WeakReference<LynxBackgroundRuntimeOptions> mRuntimeOptionsRef;
+  private WeakReference<ILynxViewGroup> mLynxViewGroupRef;
+  private boolean mDebuggable;
+
+  public DefaultLogicExecutor() {}
 
   public DefaultLogicExecutor(TemplateBundle bundle,
       LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context,
       ILynxViewGroup lynxViewGroup, boolean debuggable) {
+    init(bundle, backgroundRuntimeOptions, context, lynxViewGroup, debuggable);
+  }
+
+  public void init(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions,
+      Context context, ILynxViewGroup lynxViewGroup, boolean debuggable) {
     mTemplateBundleRef = new WeakReference<>(bundle);
     mRuntimeOptionsRef = new WeakReference<>(backgroundRuntimeOptions);
     mContextRef = new WeakReference<>(context);
@@ -58,7 +66,7 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
     mDebuggable = debuggable;
   }
 
-  private void initLynxBackgroundRuntimeIfNeeded() {
+  private void initLynxBackgroundRuntimeIfNeeded(LynxContext lynxContext) {
     if (mRuntime == null) {
       synchronized (mInitLock) {
         if (mRuntime == null) {
@@ -73,7 +81,7 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
             return;
           }
           options.registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, viewGroup);
-          mRuntime = new LynxBackgroundRuntime(context, options, mDebuggable);
+          mRuntime = new LynxBackgroundRuntime(lynxContext, options, mDebuggable);
           String url = LOGIC_JS_PATH;
           String bundleUrl = bundle.getUrl();
           if (bundleUrl != null) {
@@ -93,7 +101,7 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
     if (!event.hasKey(EVENT_METHOD)) {
       return;
     }
-    initLynxBackgroundRuntimeIfNeeded();
+    initLynxBackgroundRuntimeIfNeeded(lynxView.getLynxContext());
     if (mRuntime == null) {
       return;
     }
