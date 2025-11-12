@@ -59,7 +59,8 @@ typedef LynxInspectorOwner DevToolAgentDispatcher;
 - (instancetype)init {
   self = [super init];
   if (self) {
-    agent_dispatcher_ = [[DevToolAgentDispatcher alloc] init];
+    // LynxDebugBridge always operates in debuggable mode
+    agent_dispatcher_ = [[DevToolAgentDispatcher alloc] initWithDebuggable:YES];
     open_card_callbacks = [[NSMutableArray alloc] init];
     [[DebugRouter instance] addGlobalHandler:self];
     [[DebugRouter instance] addStateListener:self];
