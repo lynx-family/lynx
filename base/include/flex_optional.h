@@ -5,6 +5,7 @@
 #ifndef BASE_INCLUDE_FLEX_OPTIONAL_H_
 #define BASE_INCLUDE_FLEX_OPTIONAL_H_
 
+#include <cstdlib>
 #include <memory>
 #include <optional>
 #include <type_traits>

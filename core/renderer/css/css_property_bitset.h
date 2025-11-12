@@ -36,16 +36,21 @@
 #define UNSAFE_TODO(...) UNSAFE_BUFFERS(__VA_ARGS__)
 #endif
 
+#if __cplusplus >= 202002L
+#include <bit>
+#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
 namespace lynx {
 namespace tasm {
 
 #if __cplusplus >= 202002L
-#include <bit>
 inline int CountrZero(uint64_t n) { return std::countr_zero(n); }
 #elif defined(__GNUC__) || defined(__clang__)
 inline int CountrZero(uint64_t n) { return __builtin_ctzll(n); }
 #elif defined(_MSC_VER)
-#include <intrin.h>
 inline int CountrZero(uint64_t n) {
   unsigned long index;
   _BitScanForward64(&index, n);
