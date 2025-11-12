@@ -192,6 +192,12 @@ public final class TemplateData {
     if (!mEnableJSData) {
       return null;
     }
+    // methods to copy updateActions with jsNativeData considered, it may be called from
+    // multiple threads.
+    // synchronized with the same lock with `getDataForJSThreadInner` is important.
+    // making sure the getUpdateActionsWithJsNativeData takes all updateActions stored
+    // or after consumed by `getDataForJSThreadInner` method, this method will takes a
+    // UpdateAction with jsNativeData and type NATIVE_DATA.
     List<UpdateAction> actions = new ArrayList<>();
 
     // Use mJsNativeDataLock when accessing mJsNativeData
@@ -326,11 +332,11 @@ public final class TemplateData {
 
   public void updateData(Map<String, Object> diff) {
     if (readOnly) {
-      LLog.e("Lynx", "can not update readOnly TemplateData");
+      LLog.e(TAG, "can not update readOnly TemplateData");
       return;
     }
     if (mConsumed.get()) {
-      LLog.w("Lynx", "updateData to consumed TemplateData, diff:" + diff.keySet());
+      LLog.w(TAG, "updateData to consumed TemplateData, diff:" + diff.keySet());
     }
     putSafely(diff);
   }
@@ -777,6 +783,18 @@ public final class TemplateData {
   @CalledByNative
   long getDataForJSThread() {
     return getDataForJSThreadInner();
+  }
+
+  // Used to copy a new templateData that contains updateActions only.
+  @CalledByNative
+  TemplateData getTemplateDataForJSThread() {
+    TemplateData data = TemplateData.empty();
+    data.mEnableJSData = true;
+    if (mJsNativeData != 0) {
+      data.mJsNativeData = nativeClone(mJsNativeData);
+    }
+    data.addUpdateActions(getUpdateActionsWithJsNativeData());
+    return data;
   }
 
   @CalledByNative
