@@ -354,14 +354,20 @@ bool LynxBinaryBaseCSSReader::DecodeCSSValue(tasm::CSSValue* result) {
 bool LynxBinaryBaseCSSReader::DecodeCSSValue(
     tasm::CSSValue* result, bool enable_css_parser, bool enable_css_variable,
     bool enable_css_variable_multi_default_value) {
+  CSSValuePattern pattern;
   if (enable_css_parser) {
-    DECODE_COMPACT_U32(pattern);
-    DECODE_VALUE_INTO(tasm::CSSValue::Unsafe::GetValueStorage(*result));
-    result->SetPattern(static_cast<tasm::CSSValuePattern>(pattern));
+    DECODE_COMPACT_U32(pattern_value);
+    pattern = static_cast<tasm::CSSValuePattern>(pattern_value);
   } else {
-    DECODE_VALUE_INTO(tasm::CSSValue::Unsafe::GetValueStorage(*result));
-    result->SetPattern(CSSValuePattern::STRING);
+    pattern = CSSValuePattern::STRING;
   }
+
+  lynx_value buffer;
+  DecodeRawLynxValue(buffer);
+  result->val_uint64 = buffer.val_uint64;
+  result->type_ = buffer.type;
+  result->SetPattern(pattern);
+
   if (enable_css_variable) {
     DECODE_COMPACT_U32(value_type);
     DECODE_STR(default_value);

@@ -58,7 +58,7 @@ void AttributeHolder::OnPseudoStateChanged(PseudoState prev, PseudoState curr) {
 }
 
 void AttributeHolder::PresetInlineStyleMapCapacity(size_t count) {
-  inline_styles_.reserve(count);
+  inline_styles_.reserve(std::max(count, kCSSStyleMapFuzzyAllocationSize));
 }
 
 bool AttributeHolder::ContainsIdSelector(const std::string& selector) const {

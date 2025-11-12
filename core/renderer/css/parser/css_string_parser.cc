@@ -3018,7 +3018,7 @@ CSSValue CSSStringParser::ParseVariable() {
   CSSValue result(base::String(scanner_.content(), scanner_.Length()),
                   CSSValuePattern::STRING, CSSValueType::DEFAULT);
 
-  auto references = std::make_unique<base::InlineVector<VarReference, 1>>();
+  base::Vector<VarReference> references;
   Token token;
 
   while (!Check(TokenType::TOKEN_EOF)) {
@@ -3034,7 +3034,7 @@ CSSValue CSSStringParser::ParseVariable() {
       if (args_parser_.ParseVarReference(ref)) {
         ref.parser_configs = parser_configs_;
         // Add reference to the vector
-        references->push_back(std::move(ref));
+        references.push_back(std::move(ref));
       }
     }
     Advance();

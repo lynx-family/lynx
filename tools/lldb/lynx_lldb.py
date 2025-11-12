@@ -33,6 +33,7 @@ def __lldb_init_module(debugger, internal_dict):
         'base/include/vector_lldb.py',
         'base/include/value/lynx_value_lldb.py',
         'base/include/value/base_string_lldb.py',
+        'core/renderer/css/css_value_lldb.py',
     ]
 
     for f in scripts:

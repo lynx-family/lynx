@@ -113,11 +113,12 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
           compile_options_.enable_css_variable_ &&
           type == tasm::CSSValueType::VARIABLE) {
         auto& target_css_value =
-            attributes_
-                .insert_or_assign(
-                    id, tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING,
-                                       tasm::CSSValueType::VARIABLE))
-                .first->second;
+            *attributes_
+                 .insert_or_assign(
+                     id,
+                     tasm::CSSValue(css_value, tasm::CSSValuePattern::STRING,
+                                    tasm::CSSValueType::VARIABLE))
+                 .first;
         if (tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                           LYNX_VERSION_2_14)) {
           if (value.HasMember("defaultValueMap")) {

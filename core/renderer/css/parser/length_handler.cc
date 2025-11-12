@@ -58,7 +58,7 @@ HANDLER_IMPL() {
     // Insertion happened, key is not found in output but a default CSSValue is
     // constructed in output map and pointed to by existing.first iterator.
     // We parse directly to the value instance in map.
-    if (UNLIKELY(!Process(input, existing.first->second, configs))) {
+    if (UNLIKELY(!Process(input, *existing.first, configs))) {
       // Erase the inserted one to restore output map to original state.
       output.erase(key);
       goto fail;
@@ -71,9 +71,9 @@ HANDLER_IMPL() {
     if (UNLIKELY(!Process(input, css_value, configs))) {
       goto fail;
     }
-    existing.first->second = css_value;
+    *existing.first = css_value;
   }
-  CheckLengthUnitValid(key, input, existing.first->second, configs);
+  CheckLengthUnitValid(key, input, *existing.first, configs);
   return true;
 
 fail:

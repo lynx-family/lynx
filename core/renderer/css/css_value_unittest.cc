@@ -32,6 +32,92 @@ class CSSValueToVarReferenceTest : public ::testing::Test {
   CSSParserConfigs configs_;
 };
 
+TEST(CSSValueTest, DefaultConstruct) {
+  CSSValue v;
+  EXPECT_TRUE(v.type_ == lynx_value_null);
+  EXPECT_TRUE(v.IsEmpty());
+  EXPECT_TRUE(v.GetValueType() == CSSValueType::DEFAULT);
+}
+
+TEST(CSSValueTest, ConstructFromEnum) {
+  enum TempEnum { e1, e2, e3 = 1000, e4 = 9999 };
+  CSSValue v1(e1);
+  CSSValue v3(e3);
+  CSSValue v4(e4);
+  EXPECT_TRUE(v1.IsEnum());
+  EXPECT_TRUE(v3.IsEnum());
+  EXPECT_TRUE(v4.IsEnum());
+  EXPECT_TRUE(v1.GetEnum<TempEnum>() == e1);
+  EXPECT_TRUE(v3.GetEnum<TempEnum>() == e3);
+  EXPECT_TRUE(v4.GetEnum<TempEnum>() == e4);
+}
+
+TEST(CSSValueTest, ConstructFromNumber) {
+  {
+    bool b = true;
+    CSSValue v(b);
+    EXPECT_TRUE(v.IsBoolean());
+    EXPECT_TRUE(v.GetBool());
+    EXPECT_TRUE(v.GetValue().IsBool());
+    EXPECT_TRUE(v.GetValue().Bool());
+  }
+
+  {
+    double d = 3.14;
+    CSSValue v(d, CSSValuePattern::PX);
+    EXPECT_TRUE(v.GetPattern() == CSSValuePattern::PX);
+    EXPECT_TRUE(v.IsPx());
+    EXPECT_TRUE(v.GetNumber() == d);
+    EXPECT_TRUE(v.GetValue().IsNumber());
+    EXPECT_TRUE(v.GetValue().IsDouble());
+    EXPECT_TRUE(v.GetValue().Number() == d);
+  }
+
+  {
+    int32_t i = 99;
+    CSSValue v(i, CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.GetPattern() == CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.IsPercent());
+    EXPECT_TRUE(v.GetNumber() == (double)i);
+    EXPECT_TRUE(v.GetValue().IsNumber());
+    EXPECT_TRUE(v.GetValue().IsInt32());
+    EXPECT_TRUE(v.GetValue().Number() == (double)i);
+  }
+
+  {
+    uint32_t i = 99;
+    CSSValue v(i, CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.GetPattern() == CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.IsPercent());
+    EXPECT_TRUE(v.GetNumber() == (double)i);
+    EXPECT_TRUE(v.GetValue().IsNumber());
+    EXPECT_TRUE(v.GetValue().IsUInt32());
+    EXPECT_TRUE(v.GetValue().Number() == (double)i);
+  }
+
+  {
+    int64_t i = 99;
+    CSSValue v(i, CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.GetPattern() == CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.IsPercent());
+    EXPECT_TRUE(v.GetNumber() == (double)i);
+    EXPECT_TRUE(v.GetValue().IsNumber());
+    EXPECT_TRUE(v.GetValue().IsInt64());
+    EXPECT_TRUE(v.GetValue().Number() == (double)i);
+  }
+
+  {
+    uint64_t i = 99;
+    CSSValue v(i, CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.GetPattern() == CSSValuePattern::PERCENT);
+    EXPECT_TRUE(v.IsPercent());
+    EXPECT_TRUE(v.GetNumber() == (double)i);
+    EXPECT_TRUE(v.GetValue().IsNumber());
+    EXPECT_TRUE(v.GetValue().IsUInt64());
+    EXPECT_TRUE(v.GetValue().Number() == (double)i);
+  }
+}
+
 TEST_F(CSSValueSubstitutionTest, SimpleVariableSubstitution) {
   CustomPropertiesMap variables;
   variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));

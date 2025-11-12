@@ -25,7 +25,7 @@ HANDLER_IMPL() {
 
   CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
   return !(output.insert_or_assign(key, parser.ParseTextDecoration())
-               .first->second.IsEmpty());
+               .first->IsEmpty());
 }
 
 HANDLER_REGISTER_IMPL() { array[kPropertyIDTextDecoration] = &Handle; }
