@@ -644,6 +644,43 @@ public class TemplateDataTest {
     }
   }
 
+  @Test
+  public void testGetTemplateDataForJSThread() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.put("key3", 3);
+    templateData.put("key4", 4);
+    templateData.flush();
+
+    TemplateData copiedJsTemplateData = templateData.getTemplateDataForJSThread();
+    Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
+
+    Object jsData = TemplateData.nativeGetData(templateData.getDataForJSThread());
+    assertEquals(copiedJsData, jsData);
+
+    templateData.put("key5", 5);
+    templateData.flush();
+    Object updatedJsData = TemplateData.nativeGetData(templateData.getDataForJSThread());
+    assertEquals(updatedJsData, templateData.toMap());
+  }
+
+  @Test
+  public void testDeepCloneBeforeGetTemplateDataForJSThread() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.put("key3", 3);
+    templateData.put("key4", 4);
+    templateData.flush();
+    TemplateData clonedData = templateData.deepClone();
+
+    TemplateData copiedJsTemplateData = templateData.getTemplateDataForJSThread();
+    Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
+    assertEquals(copiedJsData, clonedData.toMap());
+  }
+
+  @Test
   public void testRemoveData() {
     TemplateData templateData = TemplateData.fromMap(new HashMap<>());
     templateData.put("key1", 1);

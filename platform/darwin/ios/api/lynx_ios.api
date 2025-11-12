@@ -3529,6 +3529,7 @@ public class LynxTemplateData : NSObject {
   public NSArray * LynxTemplateData()::obtainUpdateActions();
   public NSArray * LynxTemplateData()::copyUpdateActions();
   public lynx::lepus::Value LynxTemplateData()::getDataForJSThread();
+  public LynxTemplateData * LynxTemplateData()::getTemplateDataForJSThread();
   public NSString* LynxTemplateData()::processorName processorName;
 }
 

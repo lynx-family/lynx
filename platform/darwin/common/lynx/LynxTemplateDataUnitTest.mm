@@ -382,6 +382,20 @@
   XCTAssertTrue(*value == [data getDataForJSThread]);
 }
 
+- (void)testGetTemplateDataForJSThread {
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{}];
+  [data updateDouble:1 forKey:@"key1"];
+  [data updateDouble:2 forKey:@"key2"];
+  [data updateDouble:3.0 forKey:@"key3"];
+  [data updateDouble:4.0 forKey:@"key4"];
+
+  LynxTemplateData* copiedTemplateData = [data getTemplateDataForJSThread];
+  lynx::lepus::Value copiedValue = [copiedTemplateData getDataForJSThread];
+
+  lynx::lepus::Value value = [data getDataForJSThread];
+  XCTAssertEqual(value, copiedValue);
+}
+
 - (void)testRemoveData {
   LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{}];
   [data updateDouble:1 forKey:@"key1"];

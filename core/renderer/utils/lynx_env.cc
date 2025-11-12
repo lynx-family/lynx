@@ -549,6 +549,12 @@ bool LynxEnv::DisableJSModeStrip() {
   return disable_js_mode_strip;
 }
 
+bool LynxEnv::EnablePlatformDataFix() {
+  static bool enable_platform_data_fix =
+      GetBoolEnv(Key::ENABLE_PLATFORM_DATA_FIX, false);
+  return enable_platform_data_fix;
+}
+
 bool LynxEnv::EnableQuickJsThreadChecker() {
   static bool enable_quickjs_thread_checker =
       GetBoolEnv(Key::ENABLE_QUICKJS_THREAD_CHECKER, false);
