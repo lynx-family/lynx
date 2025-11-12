@@ -1708,6 +1708,7 @@ public class com::lynx::tasm::behavior::ui::list::FactoredPagerSnapHelper : Page
 public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tasm.behavior.ui.LynxFlattenUI {
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context, Object params);
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMeaningfulContentStatus();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
@@ -1739,6 +1740,7 @@ public class com::lynx::tasm::behavior::ui::text::FlattenUIText : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.setColor(int color);
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.setColor(Dynamic color);
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.onDraw(final Canvas canvas);
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.text.FlattenUIText.getMeaningfulContentStatus();
   public int com.lynx.tasm.behavior.ui.text.FlattenUIText.getDrawOffsetLeft();
   public int com.lynx.tasm.behavior.ui.text.FlattenUIText.getDrawOffsetTop();
   public CharSequence com.lynx.tasm.behavior.ui.text.FlattenUIText.getAccessibilityLabel();
@@ -2389,6 +2391,12 @@ public interface com::lynx::tasm::service::ILynxTrailService {
 
 public interface com::lynx::tasm::service::ILynxTrailServiceExtension {
   public void com.lynx.tasm.service.ILynxTrailServiceExtension.parseLynxViewBuilder(@NonNull LynxViewBuilder builder);
+}
+
+public interface com::lynx::tasm::behavior::ui::ILynxUIMeaningfulContent {
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.getMeaningfulContentStatus();
+  public Rect com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.getMeaningfulContentRect();
+  public long com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.getFirstMeaningfulContentPresentedTimestampMicros();
 }
 
 public interface com::lynx::tasm::behavior::ILynxUIRenderer {
@@ -3893,7 +3901,7 @@ public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollView
   public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.canScrollBackwardsVertically();
 }
 
-public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.behavior.ui.UIParent, com.lynx.tasm.behavior.event.EventTarget, com.lynx.tasm.behavior.PropertiesDispatcher, Cloneable, com.lynx.tasm.gesture.GestureArenaMember, com.lynx.tasm.gesture.LynxNewGestureDelegate {
+public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.behavior.ui.UIParent, com.lynx.tasm.behavior.event.EventTarget, com.lynx.tasm.behavior.PropertiesDispatcher, Cloneable, com.lynx.tasm.gesture.GestureArenaMember, com.lynx.tasm.gesture.LynxNewGestureDelegate, com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent {
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAccessibilityExclusiveFocus(boolean value);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAccessibilityValue(String value);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAccessibilityHeading(boolean value);
@@ -4127,6 +4135,9 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.recognizeGesturere();
   public CSSPropertySetter.UIPaintStyles com.lynx.tasm.behavior.ui.LynxBaseUI.getOrCreateUIPaintStyles();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.applyUIPaintStylesToTarget(LynxBaseUI targetUI);
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentStatus();
+  public Rect com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentRect();
+  public long com.lynx.tasm.behavior.ui.LynxBaseUI.getFirstMeaningfulContentPresentedTimestampMicros();
   public long com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageBytes();
   public Map< String, String > com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageDetail();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.getVisibility();
@@ -7207,6 +7218,12 @@ public class com::lynx::tasm::utils::MatrixMathUtils :  {
   public static double com.lynx.tasm.utils.MatrixMathUtils.degreesToRadians(double degrees);
 }
 
+public enum com::lynx::tasm::behavior::ui::ILynxUIMeaningfulContent::MeaningfulContentStatus {
+  public com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.MeaningfulContentStatus.IRRELEVANT IRRELEVANT;
+  public com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.MeaningfulContentStatus.PENDING PENDING;
+  public com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED PRESENTED;
+}
+
 public class com::lynx::tasm::behavior::ui::MeaningfulPaintingArea :  {
   public com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.MeaningfulPaintingArea(int offsetX, int offsetY, int width, int height, boolean isValid);
   public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getOffsetX();
@@ -10094,6 +10111,7 @@ public class abstract com::lynx::tasm::behavior::ui::UIGroup : com.lynx.tasm.beh
 public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behavior.ui.view.UIView {
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context, Object params);
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.UIImage.getMeaningfulContentStatus();
   public void com.lynx.tasm.behavior.ui.image.UIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
@@ -10495,6 +10513,7 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
   public com.lynx.tasm.behavior.ui.text.UIText.UIText(Context context);
   public com.lynx.tasm.behavior.ui.text.UIText.UIText(LynxContext context);
   public com.lynx.tasm.behavior.ui.text.UIText.UIText(LynxContext context, Object params);
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.text.UIText.getMeaningfulContentStatus();
   public EventTarget com.lynx.tasm.behavior.ui.text.UIText.hitTest(float x, float y);
   public EventTarget com.lynx.tasm.behavior.ui.text.UIText.hitTest(float x, float y, boolean ignoreUserInteraction);
   public void com.lynx.tasm.behavior.ui.text.UIText.updateExtraData(Object data);

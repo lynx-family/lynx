@@ -212,6 +212,14 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
   }
 
+  @Override
+  public MeaningfulContentStatus getMeaningfulContentStatus() {
+    if (mTextLayout != null) {
+      return MeaningfulContentStatus.PRESENTED;
+    }
+    return MeaningfulContentStatus.PENDING;
+  }
+
   public int getDrawOffsetLeft() {
     return mPaddingLeft + mBorderLeftWidth
         + (mTextTranslateOffset != null ? (int) mTextTranslateOffset.x : 0);

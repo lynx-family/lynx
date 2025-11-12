@@ -63,6 +63,14 @@ public class UIImage extends UIView {
     return area;
   }
 
+  @Override
+  public MeaningfulContentStatus getMeaningfulContentStatus() {
+    if (mLynxImageManager != null && mLynxImageManager.getHasContent()) {
+      return MeaningfulContentStatus.PRESENTED;
+    }
+    return MeaningfulContentStatus.PENDING;
+  }
+
   private void ensureLynxImageManager() {
     if (mLynxImageManager != null) {
       return;

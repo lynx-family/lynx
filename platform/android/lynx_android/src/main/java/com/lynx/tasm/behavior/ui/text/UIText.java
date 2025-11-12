@@ -84,6 +84,14 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   }
 
   @Override
+  public MeaningfulContentStatus getMeaningfulContentStatus() {
+    if (mView != null && mView.getTextLayout() != null) {
+      return MeaningfulContentStatus.PRESENTED;
+    }
+    return MeaningfulContentStatus.PENDING;
+  }
+
+  @Override
   public EventTarget hitTest(float x, float y) {
     return hitTest(x, y, false);
   }

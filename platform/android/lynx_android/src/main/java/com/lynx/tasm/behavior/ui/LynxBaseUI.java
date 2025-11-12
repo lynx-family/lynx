@@ -90,8 +90,9 @@ import org.json.JSONObject;
 
 @LynxUIMethodsHolder
 @LynxPropsHolder
-public abstract class LynxBaseUI implements UIParent, EventTarget, PropertiesDispatcher, Cloneable,
-                                            GestureArenaMember, LynxNewGestureDelegate {
+public abstract class LynxBaseUI
+    implements UIParent, EventTarget, PropertiesDispatcher, Cloneable, GestureArenaMember,
+               LynxNewGestureDelegate, ILynxUIMeaningfulContent {
   public final static int[] SPACING_TYPES = {
       Spacing.ALL,
       Spacing.LEFT,
@@ -493,6 +494,26 @@ public abstract class LynxBaseUI implements UIParent, EventTarget, PropertiesDis
 
   public void applyUIPaintStylesToTarget(LynxBaseUI targetUI) {
     updateUIPaintStyle(targetUI, mUIPaintStyles);
+  }
+
+  @Override
+  public MeaningfulContentStatus getMeaningfulContentStatus() {
+    return MeaningfulContentStatus.IRRELEVANT;
+  }
+
+  @Override
+  public Rect getMeaningfulContentRect() {
+    return this.getBoundingClientRect();
+  }
+
+  @Override
+  public long getFirstMeaningfulContentPresentedTimestampMicros() {
+    /**
+     * @abstract Subclasses can override this method to provide a precise timestamp
+     * when the first meaningful content is presented.
+     * @discussion The default implementation returns -1.
+     */
+    return -1;
   }
 
   /**
