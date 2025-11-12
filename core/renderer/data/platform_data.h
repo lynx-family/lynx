@@ -22,6 +22,13 @@ class PlatformData {
     return value_converted_from_platform_data_;
   }
 
+  // there may be case that value_converted_from_platform_data_ is already exist
+  // before post to js, make a shallowCopy to make it safe.
+  virtual void ShallowCopy() {
+    value_converted_from_platform_data_ =
+        lepus::Value::ShallowCopy(value_converted_from_platform_data_);
+  }
+
  protected:
   virtual void EnsureConvertData() = 0;
 
