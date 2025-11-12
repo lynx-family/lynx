@@ -18,8 +18,8 @@ public class DevToolOverlayDelegate {
     return SingletonHelper.INSTANCE;
   }
 
-  public ArrayList<Dialog> getGlobalOverlayNGView() {
-    return mService != null ? mService.getGlobalOverlayNGView() : null;
+  public ArrayList<Dialog> getGlobalOverlayView() {
+    return mService != null ? mService.getGlobalOverlayView() : null;
   }
 
   public ArrayList<Integer> getAllVisibleOverlaySign() {

@@ -1397,7 +1397,7 @@ public class com::lynx::tasm::utils::DeviceUtils :  {
 
 public class com::lynx::devtoolwrapper::DevToolOverlayDelegate :  {
   public static DevToolOverlayDelegate com.lynx.devtoolwrapper.DevToolOverlayDelegate.getInstance();
-  public ArrayList< Dialog > com.lynx.devtoolwrapper.DevToolOverlayDelegate.getGlobalOverlayNGView();
+  public ArrayList< Dialog > com.lynx.devtoolwrapper.DevToolOverlayDelegate.getGlobalOverlayView();
   public ArrayList< Integer > com.lynx.devtoolwrapper.DevToolOverlayDelegate.getAllVisibleOverlaySign();
   public void com.lynx.devtoolwrapper.DevToolOverlayDelegate.init(OverlayService service);
 }
@@ -7680,7 +7680,7 @@ public interface com::lynx::tasm::behavior::StyleConstants::OverflowType {
 }
 
 public interface com::lynx::devtoolwrapper::OverlayService {
-  public ArrayList< Dialog > com.lynx.devtoolwrapper.OverlayService.getGlobalOverlayNGView();
+  public ArrayList< Dialog > com.lynx.devtoolwrapper.OverlayService.getGlobalOverlayView();
   public ArrayList< Integer > com.lynx.devtoolwrapper.OverlayService.getAllVisibleOverlaySign();
 }
 

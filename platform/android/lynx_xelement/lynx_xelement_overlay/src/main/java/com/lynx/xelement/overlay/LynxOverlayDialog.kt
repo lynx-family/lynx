@@ -51,7 +51,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     }
 
     // Override dialog's dispatchTouchEvent, if dialog needs to consume,
-    // call super.dispatchTouchEvent. Otherwise, call LynxOverlayManagerNG.dispatchTouchEvent.
+    // call super.dispatchTouchEvent. Otherwise, call LynxOverlayManager.dispatchTouchEvent.
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (touchEventListener?.dispatchTouchEvent(ev) == true) {
             innerDispatchTouchEvent(ev)
@@ -60,7 +60,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
 
         if(innerDispatchTouchEvent(ev)) {
             // If consumed, call super.dispatchTouchEvent rather
-            // than call LynxOverlayManagerNG.dispatchTouchEvent
+            // than call LynxOverlayManager.dispatchTouchEvent
             return super.dispatchTouchEvent(ev);
         }
         return LynxOverlayManager.dispatchTouchEvent(ev, this)

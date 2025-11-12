@@ -7,7 +7,7 @@ import android.app.Dialog;
 import java.util.ArrayList;
 
 public interface OverlayService {
-  public ArrayList<Dialog> getGlobalOverlayNGView();
+  public ArrayList<Dialog> getGlobalOverlayView();
 
   public ArrayList<Integer> getAllVisibleOverlaySign();
 }

@@ -276,7 +276,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     /**
      * @name: android-full-screen
      * @description: On the Android system, when the bottom navigation bar is opened,
-     * if the content is at the bottom of the screen, it will block the content in overlay-ng,
+     * if the content is at the bottom of the screen, it will block the content in overlay,
      * so use this attribute to hide the bottom navigation bar
      * @category: different
      * @standardAction: keep
@@ -690,7 +690,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             hide()
         } else {
             if (mVisible) {
-                // when re-attach x-overlay-ng, show component when visible property is true
+                // when re-attach overlay, show component when visible property is true
                 show()
             }
         }

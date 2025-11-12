@@ -730,7 +730,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     final Canvas screenCanvas = new Canvas(screenBitmap);
     screenCanvas.drawColor(getParentBackgroundColor(lynxDecoderView));
     // get overlay view
-    ArrayList<Dialog> array = DevToolOverlayDelegate.getInstance().getGlobalOverlayNGView();
+    ArrayList<Dialog> array = DevToolOverlayDelegate.getInstance().getGlobalOverlayView();
     ArrayList<View> overlayDecoderView = new ArrayList<View>();
     if (array != null) {
       for (int i = array.size() - 1; i >= 0; i--) {

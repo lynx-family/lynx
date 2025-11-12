@@ -26,8 +26,8 @@ object LynxOverlayManager {
     }
 
     private class LynxOverlayServiceImpl : OverlayService {
-        override fun getGlobalOverlayNGView(): ArrayList<Dialog> {
-            return LynxOverlayManager.getGlobalOverlayNGView();
+        override fun getGlobalOverlayView(): ArrayList<Dialog> {
+            return LynxOverlayManager.getGlobalOverlayView();
         }
 
         override fun getAllVisibleOverlaySign(): ArrayList<Int> {
@@ -47,8 +47,8 @@ object LynxOverlayManager {
         }
     }
 
-    // Returns arr where Dialogs at smaller indices correspond to dialogNGs positioned above those at larger indices.
-    fun getGlobalOverlayNGView():ArrayList<Dialog>{
+    // Returns arr where Dialogs at smaller indices correspond to dialogs positioned above those at larger indices.
+    fun getGlobalOverlayView():ArrayList<Dialog>{
         val arr =  ArrayList<Dialog>();
         GLOBAL_OVERLAYS.forEach{
             arr.add(it.dialog);
