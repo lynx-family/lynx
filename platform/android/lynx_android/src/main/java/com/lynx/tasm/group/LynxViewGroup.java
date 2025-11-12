@@ -150,11 +150,15 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     if (this.lynxRuntimeOptions != null) {
       this.lynxRuntimeOptions.setGlobalProps(this.globalProps);
     }
+
     if (templateBundle == null) {
       this.fetchTemplate();
-    } else if (this.logicExecutor == null && EmbeddedMode.isEnginePoolEnable(embeddedMode)) {
-      this.logicExecutor = new DefaultLogicExecutor(
-          templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this, debuggable);
+    } else {
+      if (logicExecutor instanceof DefaultLogicExecutor) {
+        // init DefaultLogicExecutor if needed.
+        ((DefaultLogicExecutor) logicExecutor)
+            .init(templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this, debuggable);
+      }
     }
 
     if (this.logicExecutor == null) {
@@ -474,11 +478,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
                     templateBundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
                   }
                   if (templateBundle != null) {
-                    if (logicExecutor == null && EmbeddedMode.isEnginePoolEnable(embeddedMode)) {
-                      // it's a workaround, temporarily we use isEnginePoolEnable to check if need
-                      // to create this DefaultLogicExecutor!
-                      logicExecutor = new DefaultLogicExecutor(templateBundle, lynxRuntimeOptions,
-                          mContext, LynxViewGroup.this, debuggable);
+                    if (logicExecutor instanceof DefaultLogicExecutor) {
+                      ((DefaultLogicExecutor) logicExecutor)
+                          .init(templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this,
+                              debuggable);
                     }
                   }
 
