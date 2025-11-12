@@ -103,7 +103,7 @@ void ValueImplDarwin::ForeachArray(pub::ForeachArrayFunc func) const {
   }
   @autoreleasepool {
     NSArray* array = [(NSArray*)backend_value_ copy];
-    for (NSUInteger i = 0; i < [backend_value_ count]; i++) {
+    for (NSUInteger i = 0; i < [array count]; i++) {
       id value = array[i];
       ValueImplDarwin result(value);
       func(static_cast<int64_t>(i), result);
