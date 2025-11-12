@@ -19,6 +19,8 @@ class PlatformDataDarwin : public PlatformData {
  public:
   PlatformDataDarwin(LynxTemplateData* data) : _data(data) {}
 
+  virtual void ShallowCopy() override;
+
   virtual ~PlatformDataDarwin() override = default;
 
  private:

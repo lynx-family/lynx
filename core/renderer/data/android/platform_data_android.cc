@@ -20,6 +20,14 @@ void PlatformDataAndroid::EnsureConvertData() {
   }
 }
 
+void PlatformDataAndroid::ShallowCopy() {
+  PlatformData::ShallowCopy();
+  JNIEnv* env = base::android::AttachCurrentThread();
+  template_data_.Reset(env,
+                       LynxViewDataManagerAndroid::GetTemplateDataForJSThread(
+                           env, template_data_.Get()));
+}
+
 PlatformDataAndroid::~PlatformDataAndroid() {
   JNIEnv* env = base::android::AttachCurrentThread();
   LynxViewDataManagerAndroid::ConsumeTemplateDataActions(env,
