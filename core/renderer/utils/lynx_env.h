@@ -123,6 +123,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     DISABLE_JS_MODE_STRIP,
+    ENABLE_PLATFORM_DATA_FIX,
     ENABLE_QUICKJS_THREAD_CHECKER,
     LYNX_DEBUG_ENABLED,
     ENABLE_JS_CALLBACK_MANAGER,
@@ -264,6 +265,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_global_font_collection"},
             {Key::ENABLE_GC_ONCE_ON_IDLE, "enable_gc_once_on_idle"},
             {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
+            {Key::ENABLE_PLATFORM_DATA_FIX, "enable_platform_data_fix"},
             {Key::ENABLE_QUICKJS_THREAD_CHECKER,
              "enable_quickjs_thread_checker"},
             {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
@@ -409,6 +411,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableGlobalFontCollection();
   uint32_t EnableGCOnceOnIdle();
   bool DisableJSModeStrip();
+  bool EnablePlatformDataFix();
   bool EnableQuickJsThreadChecker();
 
   LynxEnv(const LynxEnv&) = delete;

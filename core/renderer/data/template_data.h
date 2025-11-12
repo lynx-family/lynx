@@ -12,6 +12,7 @@
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
 #include "core/renderer/data/platform_data.h"
+#include "core/renderer/utils/lynx_env.h"
 
 namespace lynx {
 
@@ -69,6 +70,12 @@ class TemplateData {
 
   // Will be called when execute CopyPlatformData
   virtual std::unique_ptr<PlatformData> ObtainPlatformData() {
+    if (LynxEnv::GetInstance().EnablePlatformDataFix()) {
+      if (platform_data_) {
+        platform_data_->ShallowCopy();
+      }
+    }
+
     return std::move(platform_data_);
   }
 
