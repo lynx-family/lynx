@@ -326,8 +326,8 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   data->value_ = lynx::lepus::Value::Clone(base_value);
   data->_processerName = self.processorName;
   data->_readOnly = self.isReadOnly;
-  [data addObjectToUpdateActions:[self copyUpdateActions]];
   data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
+  [data addObjectToUpdateActions:[self copyUpdateActions]];
   return data;
 }
 
@@ -337,6 +337,14 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 
 - (NSString*)processorName {
   return _processerName;
+}
+
+// GetTemplateDataForJSThread just needs to copy the updateActions.
+- (LynxTemplateData*)getTemplateDataForJSThread {
+  LynxTemplateData* data = [[LynxTemplateData alloc] init];
+  data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
+  [data addObjectToUpdateActions:[self copyUpdateActions]];
+  return data;
 }
 
 - (lynx::lepus::Value)getDataForJSThread {

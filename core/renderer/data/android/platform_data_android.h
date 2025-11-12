@@ -19,6 +19,8 @@ class PlatformDataAndroid : public PlatformData {
       const base::android::ScopedGlobalJavaRef<jobject>& template_data)
       : template_data_(template_data) {}
 
+  virtual void ShallowCopy() override;
+
   virtual ~PlatformDataAndroid() override;
 
  private:

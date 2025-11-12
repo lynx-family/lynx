@@ -189,6 +189,16 @@ lepus::Value LynxViewDataManagerAndroid::GetJsThreadDataFromTemplateData(
   return value;
 }
 
+lynx::base::android::ScopedLocalJavaRef<jobject>
+LynxViewDataManagerAndroid::GetTemplateDataForJSThread(JNIEnv* env,
+                                                       jobject jni_object) {
+  if (jni_object == nullptr) {
+    return lynx::base::android::ScopedLocalJavaRef<jobject>(env, nullptr);
+  }
+
+  return Java_TemplateData_getTemplateDataForJSThread(env, jni_object);
+}
+
 lepus::Value LynxViewDataManagerAndroid::GetTemplateDataNativeData(
     JNIEnv* env, jobject jni_object) {
   if (jni_object == nullptr) {
