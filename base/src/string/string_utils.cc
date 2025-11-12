@@ -683,10 +683,14 @@ std::u32string U16StringToU32(std::u16string_view u16_string) {
         } else {
           // TODO(zhengsenyao): Uncomment LOG code when LOG available
           // LOGE("Invalid UTF-16 encoding");
+          i++;
+          continue;
         }
       } else {
         // TODO(zhengsenyao): Uncomment LOG code when LOG available
         // LOGE("Invalid UTF-16 encoding");
+        i++;
+        continue;
       }
     } else {
       i++;

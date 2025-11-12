@@ -199,8 +199,8 @@ BASE_EXPORT std::u16string U8StringToU16(std::string_view u8_string);
 BASE_EXPORT std::string U16StringToU8(std::u16string_view u16_string);
 BASE_EXPORT std::u32string U8StringToU32(std::string_view u8_string);
 BASE_EXPORT std::string U32StringToU8(std::u32string_view u32_string);
-std::u32string U16StringToU32(std::u16string_view u16_string);
-std::u16string U32StringToU16(std::u32string_view u32_string);
+BASE_EXPORT std::u32string U16StringToU32(std::u16string_view u16_string);
+BASE_EXPORT std::u16string U32StringToU16(std::u32string_view u32_string);
 
 BASE_EXPORT std::string FormatStringWithVaList(const char* format,
                                                va_list args);
