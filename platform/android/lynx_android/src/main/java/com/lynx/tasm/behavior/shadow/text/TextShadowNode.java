@@ -369,17 +369,19 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
       float width, MeasureMode widthMode, float height, MeasureMode heightMode) {
     if (mTruncationShadowNode != null) {
       resetNativeNodeIndex(mTruncationShadowNode);
+
+      if (mTruncationSpannableString != null && mMeasureContext != null && mMeasureParam != null) {
+        mTruncationShadowNode.measureNativeNode(
+            (SpannableStringBuilder) mTruncationSpannableString, mMeasureParam, mMeasureContext);
+      }
     }
+
     if (mTruncationSpannableString != null && mRenderer.isTextContentOverflow()
         && widthMode != MeasureMode.UNDEFINED) {
       TextRendererKey truncationKey =
           new TextRendererKey(mTruncationSpannableString, getTextAttributes().copy(),
               MeasureMode.AT_MOST, heightMode, width, height, mWordBreakStrategy,
               mEnableTailColorConvert, isTextRefactorEnabled(), isTextBoringLayoutEnabled());
-      if (mMeasureContext != null && mMeasureParam != null) {
-        mTruncationShadowNode.measureNativeNode(
-            (SpannableStringBuilder) mTruncationSpannableString, mMeasureParam, mMeasureContext);
-      }
       TextRenderer truncationTextRender =
           TextRendererCache.cache().getRenderer(getContext(), truncationKey);
       if (isTruncationWidthSmallerThanConstraintWidth(truncationTextRender.getTextLayout())) {
