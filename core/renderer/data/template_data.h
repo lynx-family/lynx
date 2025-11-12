@@ -69,6 +69,7 @@ class TemplateData {
 
   // Will be called when execute CopyPlatformData
   virtual std::unique_ptr<PlatformData> ObtainPlatformData() {
+    platform_data_->ShallowCopy();
     return std::move(platform_data_);
   }
 
