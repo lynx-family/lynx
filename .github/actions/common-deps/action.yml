@@ -55,9 +55,7 @@ runs:
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
         path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
-        key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/tools/vpython_tools/requirements.txt', 'lynx/testing/integration_test/test_script/requirements.txt') }}
-        restore-keys: |
-          pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+        key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}
 
     - name: Cache pnpm Dependencies
       if: ${{ inputs.cache-backend == 'lynx-infra' && inputs.cache-key-prefix == '' }}
@@ -73,11 +71,11 @@ runs:
       shell: bash
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
-          python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages
-          python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages
+          python3 -m pip install PyYAML==6.0.2 --break-system-packages
+          python3 -m pip install requests==2.32.5 --break-system-packages
         else
-          python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt
-          python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
+          python3 -m pip install PyYAML==6.0.2
+          python3 -m pip install requests==2.32.5
         fi
 
     - name: run habitat sync

@@ -1,32 +1,7 @@
-beautifulsoup4==4.14.2
-    # via bs4
-bs4==0.0.2
-    # via -r tools/vpython_tools/requirements.in
-certifi==2025.10.5
-    # via requests
-charset-normalizer==3.4.4
-    # via requests
-doxmlparser==1.14.0
-    # via -r tools/vpython_tools/requirements.in
-idna==3.11
-    # via requests
-jinja2==3.1.6
-    # via -r tools/vpython_tools/requirements.in
-json5==0.9.28
-    # via -r tools/vpython_tools/requirements.in
-lxml==6.0.2
-    # via doxmlparser
-markupsafe==3.0.3
-    # via jinja2
-pyyaml==6.0.3
-    # via -r tools/vpython_tools/requirements.in
-requests==2.32.5
-    # via -r tools/vpython_tools/requirements.in
-six==1.17.0
-    # via doxmlparser
-soupsieve==2.8
-    # via beautifulsoup4
-typing-extensions==4.15.0
-    # via beautifulsoup4
-urllib3==2.5.0
-    # via requests
+PyYAML~=6.0.2
+requests~=2.32.3
+json5~=0.9.10
+qrcode~=8.1
+Jinja2~=3.1.3
+doxmlparser~=1.14.0
+bs4~=0.0.1

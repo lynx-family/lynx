@@ -12,8 +12,6 @@ packages:
   # base devtool
   - 'lynx/devtool/base_devtool/js_libraries/logbox'
   - tools/api/parser/ts_morph
-  # e2e dependencies
-  - testing/integration_test/test_script
 
 catalog:
   '@lynx-js/qrcode-rsbuild-plugin': '0.3.6'

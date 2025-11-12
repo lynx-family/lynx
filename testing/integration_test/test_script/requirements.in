@@ -1,4 +1,0 @@
-lynx-e2e-appium==0.0.8
-retrying~=1.4.2
-# temporarily declare setuptools here
-setuptools==80.9.0

@@ -1,52 +1,10 @@
-appium-python-client==3.1.1
-    # via lynx-e2e-appium
-attrs==25.4.0
-    # via
-    #   outcome
-    #   trio
-certifi==2025.10.5
-    # via selenium
-h11==0.16.0
-    # via wsproto
-idna==3.11
-    # via trio
+opencv-python
+requests>=2.25.1
 lynx-e2e-appium==0.0.8
-    # via -r testing/integration_test/test_script/requirements.in
-numpy==2.2.6
-    # via opencv-python
-opencv-python==4.12.0.88
-    # via lynx-e2e-appium
-outcome==1.3.0.post0
-    # via
-    #   trio
-    #   trio-websocket
-pysocks==1.7.1
-    # via urllib3
-retrying==1.4.2
-    # via -r testing/integration_test/test_script/requirements.in
+pyyaml
+retrying
+appium-python-client==3.1.1
 selenium==4.17.2
-    # via
-    #   appium-python-client
-    #   lynx-e2e-appium
-sniffio==1.3.1
-    # via trio
-sortedcontainers==2.4.0
-    # via trio
-trio==0.32.0
-    # via
-    #   selenium
-    #   trio-websocket
-trio-websocket==0.12.2
-    # via selenium
-typing-extensions==4.15.0
-    # via selenium
-ujson==5.11.0
-    # via lynx-e2e-appium
-urllib3[socks]==2.5.0
-    # via selenium
-wsproto==1.2.0
-    # via trio-websocket
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==80.9.0
-    # via -r testing/integration_test/test_script/requirements.in
+ujson
+six>=1.16.0
+setuptools>=75.6.0
