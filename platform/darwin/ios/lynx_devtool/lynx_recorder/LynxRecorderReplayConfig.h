@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxViewEnum.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -41,6 +42,8 @@ NS_ASSUME_NONNULL_BEGIN
 // Record file and source file requestCachePolicy, default is
 // NSURLRequestReloadIgnoringLocalCacheData
 @property(nonatomic) NSURLRequestCachePolicy requestCachePolicy;
+
+@property(nonatomic, readonly) LynxEmbeddedMode embeddedMode;
 @end
 
 NS_ASSUME_NONNULL_END

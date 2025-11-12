@@ -22,6 +22,7 @@ import com.google.gson.Gson;
 import com.lynx.BuildConfig;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.recorder.LynxDebugInfoRecorder;
+import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxGroup.LynxGroupBuilder;
@@ -240,6 +241,7 @@ public class LynxRecorderActionManager {
   private TemplateBundleOption mTemplateBundleOptions;
   private LynxRecorderReplayDataProviderInternal mDataProvider;
   private LynxDebugInfoRecorderDelegate mLynxDebugInfoRecorderDelegate;
+  private int mEmbeddedMode = EmbeddedMode.UNSET;
 
   public static final int sEndForFirstScreen = 0;
   public static final int sEndForAll = 1;
@@ -567,6 +569,8 @@ public class LynxRecorderActionManager {
 
     mEnableNativeScheduleCreateViewAsync =
         queryMap.getInt("enable_native_schedule_create_view_async", 0) == 1;
+
+    mEmbeddedMode = queryMap.getInt("embedded_mode", 0);
 
     int[] colorValues = {255, 255, 255, 255};
 
@@ -1048,6 +1052,8 @@ public class LynxRecorderActionManager {
           builder.setThreadStrategyForRendering(
               getThreadStrategy(mThreadMode, mThreadStrategyData.getInt("threadStrategy")));
         }
+
+        builder.setEmbeddedMode(mEmbeddedMode);
 
         LynxRecorderSourceProvider provider = new LynxRecorderSourceProvider();
         if (mConfig != null && mConfig.has("urlRedirect")) {

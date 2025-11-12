@@ -60,6 +60,9 @@
 
     _url = [LynxRecorderURLAnalyzer getQueryStringParameter:baseURL forKey:@"url"];
     _sourceUrl = [LynxRecorderURLAnalyzer getQueryStringParameter:baseURL forKey:@"source"];
+    _embeddedMode =
+        [[LynxRecorderURLAnalyzer getQueryStringParameter:baseURL
+                                                   forKey:@"embedded_mode"] integerValue];
     if (_url == nil || [_url isEqualToString:@""]) {
       [NSException raise:@"Invalid url" format:@"%@ is invalid", url];
     }
