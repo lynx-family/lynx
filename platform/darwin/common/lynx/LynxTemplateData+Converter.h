@@ -36,6 +36,8 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertLynxTemplateDataToTemplateData(
 
 - (lynx::lepus::Value)getDataForJSThread;
 
+- (LynxTemplateData *)getTemplateDataForJSThread;
+
 @end
 
 #endif  // DARWIN_COMMON_LYNX_LYNXTEMPLATEDATA_CONVERTER_H_
