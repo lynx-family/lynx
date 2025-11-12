@@ -604,6 +604,8 @@ static const int kVirtual = 1 << 2;
       [builder setFrame:CGRectMake(strongSelf->_origin.x, strongSelf->_origin.y,
                                    strongSelf->_screenSize.width, strongSelf->_screenSize.height)];
       NSInteger schema_thread_strategy = [self.replayConfig thread_mode];
+      LynxEmbeddedMode embedded_mode = [self.replayConfig embeddedMode];
+      [builder setEmbeddedMode:embedded_mode];
       [builder setThreadStrategyForRender:
                    [self getThreadStrategy:(int32_t)schema_thread_strategy
                        testBenchThreadStrategy:[strongSelf->_threadStrategyData[@"threadStrategy"]
