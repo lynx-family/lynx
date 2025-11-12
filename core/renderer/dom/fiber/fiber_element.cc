@@ -1057,6 +1057,16 @@ void FiberElement::ResolveCSSStyles(
     RefreshStyle(parsed_styles, reset_style_ids,
                  force_use_current_parsed_style_map);
 
+    // TODO(songshourui.null): This tricky logic can be removed after
+    // hierarchical parallel full-update is implemented. Currently, a situation
+    // like this might occur: <parent class="a1"> <child class="b1"> changes to
+    // <parent class="a1 a2"> <child class="b1 b2">. If the style for 'b1 b2' is
+    // affected by both a descendant selector (from 'a1 a2') and a CSS variable,
+    // the child will be marked with both kDirtyStyle and
+    // kDirtyRefreshCSSVariables.
+    if (!this->is_greedy_parallel_flush()) {
+      dirty_ &= ~kDirtyRefreshCSSVariables;
+    }
     dirty_ &= ~kDirtyStyle;
   } else if (dirty_ & kDirtyRefreshCSSVariables) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_STYLE,
