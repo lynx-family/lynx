@@ -18,6 +18,8 @@ class LynxViewDataManagerAndroid : public LynxViewDataManager {
  public:
   static lepus::Value GetJsThreadDataFromTemplateData(JNIEnv* env,
                                                       jobject jni_object);
+  static lynx::base::android::ScopedLocalJavaRef<jobject>
+  GetTemplateDataForJSThread(JNIEnv* env, jobject jni_object);
   static void ConsumeTemplateDataActions(JNIEnv* env, jobject jni_object);
 
   static lepus::Value GetTemplateDataNativeData(JNIEnv* env,
