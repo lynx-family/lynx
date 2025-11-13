@@ -52,7 +52,7 @@ void ClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
     event->HandleEventBaseDetail(closure_type_ == ClosureType::kCore);
     auto args = lepus::CArray::Create();
     args->emplace_back(event->current_target()->GetEventControlInfo(
-        event->type(), options_.IsGlobal()));
+        closure_type_ == ClosureType::kCore));
     auto event_detail = event->detail();
     BASE_STATIC_STRING_DECL(kEventRef, "ref");
     event_detail.Table()->SetValue(kEventRef, event);

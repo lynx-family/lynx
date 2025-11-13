@@ -700,15 +700,13 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   EventTarget* GetParentTarget() override { return parent_; }
 
-  std::unordered_map<std::string, BindEventCatch>& GetBindEventCatchMap() {
-    return bind_event_catch_map_;
-  }
-
-  bool IsEventCaptureCatch(const std::string& event) override;
-
-  bool IsEventBubbleCatch(const std::string& event) override;
+  bool IsEventPathCatch() override;
 
   virtual void HandleGlobalEvent(fml::RefPtr<event::Event> event) override;
+
+  virtual lepus::Value GetEventTargetInfo(bool is_core_event = false) override;
+
+  virtual lepus::Value GetEventControlInfo(bool is_core_event = false) override;
 
   virtual bool GetEnableMultiTouchParamsCompatible() override;
 
@@ -894,9 +892,6 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   // for devtool
   std::unique_ptr<InspectorAttribute> inspector_attribute_;
 
-  // Save the bind event information on the target, compatible with bind event
-  // interception. eg. capture-bindtap, catchtap
-  std::unordered_map<std::string, BindEventCatch> bind_event_catch_map_;
   fml::WeakPtrFactory<Element> weak_factory_{this};
 
  private:
