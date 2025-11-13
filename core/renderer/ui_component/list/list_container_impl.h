@@ -141,9 +141,6 @@ class ListContainerImpl : public ListContainerDelegateInternal {
   fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
-  void ResolveAnimationAttr();
-
- private:
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
   bool enable_dynamic_span_count_{true};
   bool span_count_changed_{false};
