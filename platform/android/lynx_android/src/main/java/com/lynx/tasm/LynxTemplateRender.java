@@ -948,6 +948,12 @@ public class LynxTemplateRender
         mLynxContext.setJSProxy(mJSProxy);
       } else {
         mEngineProxy = new LynxEngineProxy(mNativePtr);
+        if (mLynxContext == null) {
+          LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
+        } else {
+          mLayoutProxy = new LynxLayoutProxy(mNativePtr);
+          mLynxContext.setLayoutProxy(mLayoutProxy);
+        }
       }
       mLynxContext.setEventEmitter(new LynxEventEmitter(mEngineProxy));
     }
