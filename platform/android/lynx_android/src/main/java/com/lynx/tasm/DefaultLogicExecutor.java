@@ -49,7 +49,12 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
   private WeakReference<ILynxViewGroup> mLynxViewGroupRef;
   private boolean mDebuggable;
 
-  public DefaultLogicExecutor() {}
+  public DefaultLogicExecutor() {
+    mContextRef = new WeakReference<Context>(null);
+    mTemplateBundleRef = new WeakReference<TemplateBundle>(null);
+    mRuntimeOptionsRef = new WeakReference<LynxBackgroundRuntimeOptions>(null);
+    mLynxViewGroupRef = new WeakReference<ILynxViewGroup>(null);
+  }
 
   public DefaultLogicExecutor(TemplateBundle bundle,
       LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context,
