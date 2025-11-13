@@ -42,6 +42,10 @@ PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type)
     : PlatformRendererImpl(id), context_(context), type_(type) {
   InitializeAndroidView();
+  // Register this renderer with the context
+  if (context_) {
+    context_->RegisterPlatformRenderer(id, this);
+  }
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererAndroidFactory::CreateRenderer(

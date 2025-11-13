@@ -5,8 +5,6 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_ANDROID_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_ANDROID_H_
 
-#include <memory>
-
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_impl.h"
@@ -20,6 +18,8 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
                                    PlatformRendererType type);
   ~PlatformRendererAndroid() override;
 
+  const DisplayList& GetDisplayList() const { return display_list_; }
+
  protected:
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
@@ -31,13 +31,15 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   PlatformRendererContext* context_;
   DisplayList display_list_;
 
-  [[maybe_unused]] PlatformRendererType type_;
+  PlatformRendererType type_;
 
   // Initialize the Android view
   void InitializeAndroidView();
 
   // Clean up Android resources
   void CleanupAndroidView();
+
+  // Get the display list
 };
 
 // Android-specific factory

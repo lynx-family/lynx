@@ -129,8 +129,28 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  public void getDrawingList(int id, DisplayList drawingList) {
-    // TODO: Implement it
+  public void getDisplayList(int id, DisplayList displayList) {
+    if (drawingList == null) {
+      return;
+    }
+
+    // Get the display list lengths first
+    int[] lengths = nativeGetDisplayListLengths(id);
+    if (lengths == null || lengths.length != 3) {
+      return;
+    }
+
+    int opsLength = lengths[0];
+    int iArgvLength = lengths[1];
+    int fArgvLength = lengths[2];
+
+    // Allocate arrays
+    drawingList.ops = new int[opsLength];
+    drawingList.iArgv = new int[iArgvLength];
+    drawingList.fArgv = new float[fArgvLength];
+
+    // Fill the arrays with actual data
+    nativeGetDisplayListData(id, drawingList.ops, drawingList.iArgv, drawingList.fArgv);
   }
 
   public TextLayout getTextLayout() {
@@ -172,6 +192,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
+
+  native int[] nativeGetDisplayListLengths(int id);
+
+  /**
+   * Fills the provided arrays with display list data.
+   * The arrays must be pre-allocated with lengths obtained from nativeGetDisplayListLengths().
+   */
+  native void nativeGetDisplayListData(int id, int[] ops, int[] iArgv, float[] fArgv);
 
   public void destroy() {
     mDestroyed = true;

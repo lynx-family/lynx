@@ -7956,7 +7956,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDrawingList(int id, DisplayList drawingList);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDisplayList(int id, DisplayList displayList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);

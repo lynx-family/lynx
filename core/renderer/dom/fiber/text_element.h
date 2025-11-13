@@ -6,7 +6,6 @@
 #define CORE_RENDERER_DOM_FIBER_TEXT_ELEMENT_H_
 
 #include <memory>
-#include <string>
 
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_property_bitset.h"
