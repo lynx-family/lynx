@@ -66,9 +66,13 @@ lepus::Value TextUtils::GetTextInfo(const std::string& content,
   if (info.Contains(kFontFamily)) {
     const std::string& font_family = info.GetValueForKey(kFontFamily)->str();
     if (!font_family.empty()) {
-      auto family_vec =
-          font_face_manager->GetCustomFamiliesFromRawString(font_family);
-      text_style.SetCustomFontFamilyVector(std::move(family_vec));
+      if (font_face_manager) {
+        auto family_vec =
+            font_face_manager->GetCustomFamiliesFromRawString(font_family);
+        text_style.SetCustomFontFamilyVector(std::move(family_vec));
+      } else {
+        text_style.SetRawFontFamiliesToStyle(font_family);
+      }
     }
   }
 
