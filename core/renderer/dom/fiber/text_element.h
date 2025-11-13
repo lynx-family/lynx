@@ -6,7 +6,6 @@
 #define CORE_RENDERER_DOM_FIBER_TEXT_ELEMENT_H_
 
 #include <memory>
-#include <string>
 
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_property_bitset.h"
@@ -15,6 +14,8 @@
 
 namespace lynx {
 namespace tasm {
+
+class Fragment;
 
 class TextElement : public FiberElement {
  public:
@@ -87,6 +88,8 @@ class TextElement : public FiberElement {
 
   TextElement(const TextElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
+
+  void SetupFragmentBehavior(Fragment* fragment) override;
 
  private:
   void ResolveAndFlushFontFaces(const base::String& font_family);

@@ -13,6 +13,8 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/text_fragment_behavior.h"
 
 namespace lynx {
 namespace tasm {
@@ -278,6 +280,10 @@ void TextElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
     FiberElement::UpdateLayoutNodeFontSize(cur_node_font_size,
                                            root_node_font_size);
   }
+}
+
+void TextElement::SetupFragmentBehavior(Fragment* fragment) {
+  fragment->SetBehavior(std::make_unique<TextFragmentBehavior>(fragment));
 }
 
 }  // namespace tasm

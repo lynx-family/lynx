@@ -114,6 +114,46 @@ TEST_F(DisplayListBuilderTest, DrawViewOperation) {
   EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
 }
 
+TEST_F(DisplayListBuilderTest, DrawImageOperation) {
+  int image_id = 123;
+  builder_->DrawImage(image_id);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+
+  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
+  // With optimized AddOperation: [int_count, float_count, param]
+  EXPECT_EQ(int_data_data[0], 1);                         // int_count
+  EXPECT_EQ(int_data_data[1], 0);                         // float_count
+  EXPECT_EQ(int_data_data[2], image_id);                  // actual param
+  EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
+}
+
+TEST_F(DisplayListBuilderTest, DrawTextOperation) {
+  int text_id = 456;
+  builder_->DrawText(text_id);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+
+  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kText));
+  // With optimized AddOperation: [int_count, float_count, param]
+  EXPECT_EQ(int_data_data[0], 1);                         // int_count
+  EXPECT_EQ(int_data_data[1], 0);                         // float_count
+  EXPECT_EQ(int_data_data[2], text_id);                   // actual param
+  EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
+}
+
 TEST_F(DisplayListBuilderTest, TransformOperation) {
   float a = 1.0f, b = 0.0f, c = 0.0f, d = 1.0f, e = 50.0f, f = 100.0f;
   builder_->Transform(a, b, c, d, e, f);
@@ -180,13 +220,15 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
   builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF0000FF)
       .DrawView(123)
+      .DrawImage(456)
+      .DrawText(789)
       .Transform(1.0f, 0.0f, 0.0f, 1.0f, 50.0f, 50.0f)
       .Clip(10.0f, 10.0f, 80.0f, 80.0f)
       .End();
 
   DisplayList display_list = builder_->Build();
 
-  // Verify content operations (Begin, Fill, DrawView, End)
+  // Verify content operations (Begin, Fill, DrawView, DrawImage, DrawText, End)
   const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
   const int32_t* subtree_op_types_data =
       display_list.GetSubtreePropertyOpTypesData();
@@ -201,6 +243,10 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
   EXPECT_EQ(content_op_types_data[2],
             static_cast<int32_t>(DisplayListOpType::kDrawView));
   EXPECT_EQ(content_op_types_data[3],
+            static_cast<int32_t>(DisplayListOpType::kImage));
+  EXPECT_EQ(content_op_types_data[4],
+            static_cast<int32_t>(DisplayListOpType::kText));
+  EXPECT_EQ(content_op_types_data[5],
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
   // Verify subtree property operations (Transform, Clip)
@@ -244,6 +290,12 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
 
   for (size_t i = 0; i < kNumOperations; ++i) {
     builder_->Fill(static_cast<uint32_t>(i));
+    if (i % 3 == 0) {
+      builder_->DrawImage(static_cast<int>(i));
+    }
+    if (i % 5 == 0) {
+      builder_->DrawText(static_cast<int>(i * 2));
+    }
   }
 
   builder_->End();
@@ -257,37 +309,96 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
   EXPECT_EQ(op_types_data[display_list.GetContentOpTypesSize() - 1],
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
-  // Find the first Fill operation data
-  // Begin operation: 2 elements [int_count=0, float_count=4] + 4 float params
-  // Each Fill operation: 3 elements [int_count=1, float_count=0, 1 int param]
-  const int32_t* int_data_data = display_list.GetContentIntData();
-  EXPECT_NE(int_data_data, nullptr);
-  size_t current_data_index = 2;  // After Begin operation counts
+  // Verify some DrawImage and DrawText operations exist
+  bool found_draw_image = false;
+  bool found_draw_text = false;
+  int draw_image_count = 0;
+  int draw_text_count = 0;
 
-  // Verify first fill operation
-  EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(int_data_data[current_data_index], 1);      // int_count
-  EXPECT_EQ(int_data_data[current_data_index + 1], 0);  // float_count
-  EXPECT_EQ(int_data_data[current_data_index + 2],
-            0);  // First fill color (param)
-
-  // Find the 50th fill operation (index 50 in OpTypes, but 49th Fill)
-  current_data_index += 3;  // Skip first Fill
-  for (size_t i = 2; i < 50; ++i) {
-    current_data_index += 3;  // Skip each Fill operation data
+  for (size_t i = 0; i < display_list.GetContentOpTypesSize(); ++i) {
+    if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kImage)) {
+      found_draw_image = true;
+      draw_image_count++;
+    }
+    if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kText)) {
+      found_draw_text = true;
+      draw_text_count++;
+    }
   }
 
-  EXPECT_EQ(op_types_data[50], static_cast<int32_t>(DisplayListOpType::kFill));
-  EXPECT_EQ(int_data_data[current_data_index], 1);      // int_count
-  EXPECT_EQ(int_data_data[current_data_index + 1], 0);  // float_count
-  EXPECT_EQ(int_data_data[current_data_index + 2],
-            49);  // 50th fill color (index 49)
+  EXPECT_TRUE(found_draw_image);
+  EXPECT_TRUE(found_draw_text);
+
+  // Verify expected counts (i % 3 == 0 and i % 5 == 0 patterns)
+  // DrawImage should appear for i = 0, 3, 6, 9, ..., 99 (34 times)
+  // DrawText should appear for i = 0, 5, 10, 15, ..., 95 (20 times)
+  EXPECT_EQ(draw_image_count, 34);
+  EXPECT_EQ(draw_text_count, 20);
+
+  // Verify first DrawImage and DrawText operations specifically
+  bool found_first_draw_image = false;
+  bool found_first_draw_text = false;
+  const int32_t* int_data_data = display_list.GetContentIntData();
+
+  // Find first DrawImage (should be at i=0, so image_id=0)
+  for (size_t i = 0; i < display_list.GetContentOpTypesSize(); ++i) {
+    if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kImage)) {
+      // Find corresponding data - need to calculate data index based on
+      // position
+      size_t data_index = 2;            // Skip Begin operation data
+      for (size_t j = 1; j < i; ++j) {  // Skip Begin operation
+        if (op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kFill) ||
+            op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kDrawView) ||
+            op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kImage) ||
+            op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kText)) {
+          data_index += 3;  // Each content operation uses 3 data elements
+        }
+      }
+      EXPECT_EQ(int_data_data[data_index + 2],
+                0);  // First DrawImage should have image_id=0
+      found_first_draw_image = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found_first_draw_image);
+
+  // Find first DrawText (should be at i=0, so text_id=0)
+  for (size_t i = 0; i < display_list.GetContentOpTypesSize(); ++i) {
+    if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kText)) {
+      // Find corresponding data - need to calculate data index based on
+      // position
+      size_t data_index = 2;            // Skip Begin operation data
+      for (size_t j = 1; j < i; ++j) {  // Skip Begin operation
+        if (op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kFill) ||
+            op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kDrawView) ||
+            op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kImage) ||
+            op_types_data[j] ==
+                static_cast<int32_t>(DisplayListOpType::kText)) {
+          data_index += 3;  // Each content operation uses 3 data elements
+        }
+      }
+      EXPECT_EQ(int_data_data[data_index + 2],
+                0);  // First DrawText should have text_id=0
+      found_first_draw_text = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found_first_draw_text);
 }
 
 TEST_F(DisplayListBuilderTest, ZeroValues) {
   builder_->Begin(0.0f, 0.0f, 0.0f, 0.0f)
       .Fill(0)
       .DrawView(0)
+      .DrawImage(0)
+      .DrawText(0)
       .Transform(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
       .Clip(0.0f, 0.0f, 0.0f, 0.0f)
       .End();
@@ -302,6 +413,10 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_EQ(display_list.GetContentOpTypesData()[2],
             static_cast<int32_t>(DisplayListOpType::kDrawView));
   EXPECT_EQ(display_list.GetContentOpTypesData()[3],
+            static_cast<int32_t>(DisplayListOpType::kImage));
+  EXPECT_EQ(display_list.GetContentOpTypesData()[4],
+            static_cast<int32_t>(DisplayListOpType::kText));
+  EXPECT_EQ(display_list.GetContentOpTypesData()[5],
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
   // Verify subtree property operations
@@ -329,6 +444,16 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_EQ(display_list.GetContentIntData()[6], 0);  // float_count
   EXPECT_EQ(display_list.GetContentIntData()[7], 0);  // DrawView param
 
+  // DrawImage operation: [int_count=1, float_count=0, 1 int param]
+  EXPECT_EQ(display_list.GetContentIntData()[8], 1);   // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[9], 0);   // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[10], 0);  // DrawImage param
+
+  // DrawText operation: [int_count=1, float_count=0, 1 int param]
+  EXPECT_EQ(display_list.GetContentIntData()[11], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[12], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[13], 0);  // DrawText param
+
   // Transform operation: [int_count=0, float_count=6, 6 float params]
   EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);  // int_count
   EXPECT_EQ(display_list.GetSubtreePropertyIntData()[1], 6);  // float_count
@@ -346,6 +471,56 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[7], 0.0f);
   EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[8], 0.0f);
   EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[9], 0.0f);
+}
+
+TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
+  builder_->DrawImage(0);
+  builder_->DrawText(0);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+
+  // Check DrawImage operation
+  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
+  EXPECT_EQ(int_data_data[0], 1);  // int_count
+  EXPECT_EQ(int_data_data[1], 0);  // float_count
+  EXPECT_EQ(int_data_data[2], 0);  // image_id param
+
+  // Check DrawText operation
+  EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kText));
+  EXPECT_EQ(int_data_data[3], 1);  // int_count
+  EXPECT_EQ(int_data_data[4], 0);  // float_count
+  EXPECT_EQ(int_data_data[5], 0);  // text_id param
+}
+
+TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
+  builder_->DrawImage(-123);
+  builder_->DrawText(-456);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+
+  // Check DrawImage operation with negative value
+  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
+  EXPECT_EQ(int_data_data[0], 1);     // int_count
+  EXPECT_EQ(int_data_data[1], 0);     // float_count
+  EXPECT_EQ(int_data_data[2], -123);  // image_id param
+
+  // Check DrawText operation with negative value
+  EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kText));
+  EXPECT_EQ(int_data_data[3], 1);     // int_count
+  EXPECT_EQ(int_data_data[4], 0);     // float_count
+  EXPECT_EQ(int_data_data[5], -456);  // text_id param
 }
 
 TEST_F(DisplayListBuilderTest, NegativeValues) {

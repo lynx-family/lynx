@@ -7,9 +7,10 @@
 #include <memory>
 #include <utility>
 
-#include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/page_fragment_behavior.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/services/event_report/event_tracker.h"
@@ -182,6 +183,10 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   if (!options->enable_unified_pixel_pipeline) {
     element_container()->Flush();
   }
+}
+
+void PageElement::SetupFragmentBehavior(Fragment* fragment) {
+  fragment->SetBehavior(std::make_unique<PageFragmentBehavior>(fragment));
 }
 
 }  // namespace tasm

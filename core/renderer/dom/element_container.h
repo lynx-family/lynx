@@ -51,7 +51,8 @@ class ElementContainer {
    * @param ref the ref node ,which the child will be inserted before(currently
    * only for fiber)
    */
-  void AttachChildToTargetContainer(Element* child, Element* ref = nullptr);
+  virtual void AttachChildToTargetContainer(Element* child,
+                                            Element* ref = nullptr);
   void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle);
   void StyleChanged();

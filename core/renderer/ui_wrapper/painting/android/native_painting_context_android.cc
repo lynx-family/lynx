@@ -92,9 +92,9 @@ class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
 
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
     JNIEnv *env, jobject text_layout, PlatformRendererContext *view_manager)
-    : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)),
-      text_layout_impl_(std::make_unique<TextLayoutAndroid>(env, text_layout)) {
+    : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)) {
   platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(view_manager);
+  text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
 }
 
 void NativePaintingCtxAndroid::SetUIOperationQueue(

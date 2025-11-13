@@ -51,6 +51,9 @@ class Fragment : public ElementContainer {
 
   void MarkNeedRedraw();
 
+  void AddChildBefore(Fragment* child, Fragment* sibling);
+  void AttachChildToTargetContainer(Element* child, Element* ref) override;
+
  private:
   bool has_platform_renderer_;
   bool need_redraw_{false};

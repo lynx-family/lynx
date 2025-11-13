@@ -7948,6 +7948,7 @@ public class com::lynx::tasm::behavior::ui::utils::PlatformLength :  {
 }
 
 public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.lynx.tasm.behavior.shadow.TextMeasurerProvider {
+  public TextMeasurer com.lynx.tasm.behavior.render.PlatformRendererContext.getTextMeasurer();
   public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
@@ -7956,7 +7957,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDrawingList(int id, DisplayList drawingList);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDisplayList(int id, DisplayList displayList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
@@ -9960,6 +9961,7 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
 
 public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
   public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.mSign mSign;
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setPlatformRendererContext(PlatformRendererContext context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.cacheLayoutInfo(int width, int height);

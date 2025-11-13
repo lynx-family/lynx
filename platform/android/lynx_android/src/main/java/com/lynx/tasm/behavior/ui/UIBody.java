@@ -29,6 +29,9 @@ import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
+import com.lynx.tasm.behavior.render.DisplayList;
+import com.lynx.tasm.behavior.render.DisplayListApplier;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
@@ -36,6 +39,7 @@ import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.performance.timing.ITimingCollector;
 import com.lynx.tasm.utils.SizeValue;
+import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -94,6 +98,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
   /**
    * when async render, we should attach LynxView
+   *
    * @param view
    */
   synchronized public void attachUIBodyView(UIBodyView view, LynxContext context) {
@@ -403,7 +408,10 @@ public class UIBody extends UIGroup<UIBodyView> {
       extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
     private ConcurrentHashMap<Integer, View> mViewMap = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Integer, LynxImageManager> mImageMap = new ConcurrentHashMap<>();
+
     public int mSign;
+    private DisplayListApplier mDisplayListApplier = null;
+    DisplayList mDisplayList = new DisplayList();
 
     private IDrawChildHook mDrawChildHook;
     private long mMeaningfulPaintTiming;
@@ -426,6 +434,12 @@ public class UIBody extends UIGroup<UIBodyView> {
     private int mCacheWidth;
     private int mCacheHeight;
     boolean mIsMeaningfulPaintingAreaInvalidate = false;
+
+    private PlatformRendererContext mPlatformRendererContext = null;
+
+    public void setPlatformRendererContext(PlatformRendererContext context) {
+      mPlatformRendererContext = context;
+    }
 
     // assign with the uiRenderer instance on TemplateRender
     @RestrictTo(RestrictTo.Scope.LIBRARY) protected ILynxUIRenderer mLynxUIRender;
@@ -544,10 +558,19 @@ public class UIBody extends UIGroup<UIBodyView> {
       super.requestLayout();
     }
 
+    private boolean shouldDrawWithDisplayList() {
+      return mPlatformRendererContext != null && mDisplayListApplier != null;
+    }
+
     @Override
     protected void dispatchDraw(final Canvas canvas) {
-      mIsMeaningfulPaintingAreaInvalidate = false;
+      if (shouldDrawWithDisplayList()) {
+        super.dispatchDraw(canvas);
+        mDisplayListApplier.drawTillNextView(canvas);
+        return;
+      }
 
+      mIsMeaningfulPaintingAreaInvalidate = false;
       ITimingCollector timingCollector = mTimingCollector.get();
       if (timingCollector != null) {
         timingCollector.markHostPlatformTiming(HOST_PLATFORM_DRAW_START);
@@ -602,7 +625,26 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     @Override
+    protected void onDraw(Canvas canvas) {
+      // TODO(zhongyr): to be optimized. Not every draw has to retrieve the DL from native.
+      super.onDraw(canvas);
+      if (mPlatformRendererContext != null) {
+        mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
+        if (mDisplayListApplier == null) {
+          mDisplayListApplier =
+              new DisplayListApplier(mDisplayList, mPlatformRendererContext.getTextMeasurer());
+        } else {
+          mDisplayListApplier.setDisplayList(mDisplayList);
+        }
+      }
+    }
+
+    @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+      if (shouldDrawWithDisplayList()) {
+        mDisplayListApplier.drawTillNextView(canvas);
+        return super.drawChild(canvas, child, drawingTime);
+      }
       Rect bound = null;
       if (mDrawChildHook != null) {
         bound = mDrawChildHook.beforeDrawChild(canvas, child, drawingTime);
@@ -710,10 +752,10 @@ public class UIBody extends UIGroup<UIBodyView> {
     public void runOnTasmThread(Runnable runnable) {}
 
     /**
+     * @return internal UIRenderer
      * @brief To be combative with different kinds of UIRenders, UIRender has to be built in
      * BodyView ahead of TemplateRender. So we must provide this method for TemplateRender to get
      * UIRenderer.
-     * @return internal UIRenderer
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public ILynxUIRenderer getLynxUIRendererInternal() {
@@ -738,8 +780,8 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     /**
-     * @brief to build frame view
      * @return LynxViewBuilder for FrameView
+     * @brief to build frame view
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public LynxViewBuilder getLynxViewBuilder() {

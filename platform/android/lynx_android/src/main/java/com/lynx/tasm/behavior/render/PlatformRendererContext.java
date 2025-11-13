@@ -41,6 +41,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   // TextMeasurer instance for text measurement functionality
   private TextMeasurer mTextMeasurer = null;
 
+  public TextMeasurer getTextMeasurer() {
+    return mTextMeasurer;
+  }
+
   public PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context) {
     if (rootView != null) {
       this.mRootView = new WeakReference<>(rootView);
@@ -75,6 +79,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         UIBody.UIBodyView view = mRootView.get();
         if (view != null) {
           view.mSign = sign;
+          view.setPlatformRendererContext(this);
+          view.setWillNotDraw(false);
+
+          view.invalidate();
           mViewHolder.put(sign, view);
         }
         break;
@@ -129,8 +137,28 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  public void getDrawingList(int id, DisplayList drawingList) {
-    // TODO: Implement it
+  public void getDisplayList(int id, DisplayList displayList) {
+    if (displayList == null) {
+      return;
+    }
+
+    // Get the display list lengths first
+    int[] lengths = nativeGetDisplayListLengths(id);
+    if (lengths == null || lengths.length != 3) {
+      return;
+    }
+
+    int opsLength = lengths[0];
+    int iArgvLength = lengths[1];
+    int fArgvLength = lengths[2];
+
+    // Allocate arrays
+    displayList.ops = new int[opsLength];
+    displayList.iArgv = new int[iArgvLength];
+    displayList.fArgv = new float[fArgvLength];
+
+    // Fill the arrays with actual data
+    nativeGetDisplayListData(id, displayList.ops, displayList.iArgv, displayList.fArgv);
   }
 
   public TextLayout getTextLayout() {
@@ -172,6 +200,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
+
+  native int[] nativeGetDisplayListLengths(int id);
+
+  /**
+   * Fills the provided arrays with display list data.
+   * The arrays must be pre-allocated with lengths obtained from nativeGetDisplayListLengths().
+   */
+  native void nativeGetDisplayListData(int id, int[] ops, int[] iArgv, float[] fArgv);
 
   public void destroy() {
     mDestroyed = true;

@@ -65,5 +65,10 @@ DisplayListBuilder& DisplayListBuilder::DrawImage(int image_id) {
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::DrawText(int text_id) {
+  display_list_.AddOperation(DisplayListOpType::kText, text_id);
+  return *this;
+}
+
 }  // namespace tasm
 }  // namespace lynx

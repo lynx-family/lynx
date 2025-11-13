@@ -106,7 +106,6 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   }
 
   std::unique_ptr<PlatformRendererContext> view_manager_;
-  std::unique_ptr<TextLayoutImpl> text_layout_impl_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 };
 

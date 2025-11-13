@@ -32,7 +32,9 @@ void Fragment::RemoveSelf(bool destroy) {
 }
 
 void Fragment::CreateLayerIfNeeded() {
-  if (element()->TendToFlatten() && !has_platform_renderer_ && behavior_) {
+  // TODO(zhongyr): abstract one behavior for layerize.
+  if ((!element()->TendToFlatten() && !has_platform_renderer_ && behavior_) ||
+      element()->is_page()) {
     behavior_->CreatePlatformRenderer();
     has_platform_renderer_ = true;
   }
@@ -106,6 +108,23 @@ void Fragment::Draw(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::MarkNeedRedraw() { need_redraw_ = true; }
+
+void Fragment::AttachChildToTargetContainer(Element* child, Element* ref) {
+  AddChildBefore(
+      static_cast<Fragment*>(child->element_container()),
+      static_cast<Fragment*>(ref ? ref->element_container() : nullptr));
+}
+void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
+  if (!sibling) {
+    children_.emplace_back(child);
+    return;
+  }
+
+  if (auto it = std::find(children_.begin(), children_.end(), sibling);
+      it != children_.end()) {
+    children_.insert(it, child);
+  }
+}
 
 }  // namespace tasm
 }  // namespace lynx

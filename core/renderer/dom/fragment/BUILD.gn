@@ -11,6 +11,10 @@ lynx_core_source_set("fragment") {
     "fragment.h",
     "fragment_behavior.cc",
     "fragment_behavior.h",
+    "page_fragment_behavior.cc",
+    "page_fragment_behavior.h",
+    "text_fragment_behavior.cc",
+    "text_fragment_behavior.h",
   ]
   public_deps = [
     ":display_list",
