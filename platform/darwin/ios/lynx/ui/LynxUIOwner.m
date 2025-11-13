@@ -7,6 +7,7 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxFSPTracer.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
@@ -1162,6 +1163,13 @@ extern NSString* const kDefaultComponentID;
     }
   }];
   return [uiMemUsage copy];
+}
+
+- (NSArray<LynxMeaningfulContentInfo*>*)getMeaningfulPaintingContents {
+  NSMutableArray<LynxMeaningfulContentInfo*>* contentsArray =
+      [NSMutableArray arrayWithCapacity:[_uiHolder count]];
+  [self.rootUI getMeaningfulPaintingContentRecursive:contentsArray offsetX:0 offsetY:0];
+  return contentsArray.copy;
 }
 
 - (void)pauseRootLayoutAnimation {

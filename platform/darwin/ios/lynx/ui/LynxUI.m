@@ -16,6 +16,7 @@
 #import <Lynx/LynxConverter+Transform.h>
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxEvent.h>
+#import <Lynx/LynxFSPTracer.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
@@ -300,6 +301,32 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 
 - (NSDictionary<NSString*, NSString*>*)memoryUsageDetail {
   return nil;
+}
+
+- (void)getMeaningfulPaintingContentRecursive:
+            (NSMutableArray<LynxMeaningfulContentInfo*>*)contentsArray
+                                      offsetX:(CGFloat)offsetX
+                                      offsetY:(CGFloat)offsetY {
+  LynxUIMeaningfulContentStatus status = [self meaningfulContentStatus];
+  if (status != kLynxUIMeaningfulContentStatusIrrelevant) {
+    LynxMeaningfulContentInfo* content = [[LynxMeaningfulContentInfo alloc] init];
+    content.status = status;
+    content.firstPresentedTimestampMicros = [self firstMeaningfulContentPresentedTimestampMicros];
+    content.rect = CGRectOffset(self.frame, offsetX, offsetY);
+    [contentsArray addObject:content];
+  }
+  if ([self.children count] <= 0) {
+    return;
+  }
+  CGFloat newOffsetX = offsetX + self.frame.origin.x;
+  CGFloat newOffsetY = offsetY + self.frame.origin.y;
+  for (LynxUI* ui in self.children) {
+    if (ui) {
+      [ui getMeaningfulPaintingContentRecursive:contentsArray
+                                        offsetX:newOffsetX
+                                        offsetY:newOffsetY];
+    }
+  }
 }
 
 /**

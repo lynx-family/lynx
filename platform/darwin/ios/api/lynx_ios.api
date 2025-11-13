@@ -1839,6 +1839,19 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
 }
 
+public class LynxFSPConfigOC : NSObject {
+  public double LynxFSPConfigOC::minCompletionRateX minCompletionRateX;
+  public double LynxFSPConfigOC::minCompletionRateY minCompletionRateY;
+  public double LynxFSPConfigOC::acceptablePixelDiffPerMs acceptablePixelDiffPerMs;
+  public double LynxFSPConfigOC::minDiffIntervalMs minDiffIntervalMs;
+}
+
+public class LynxFSPTracer : NSObject {
+  public instancetype LynxFSPTracer::initWithConfig:(LynxFSPConfigOC *config);
+  public void LynxFSPTracer::Start();
+  public void LynxFSPTracer::fill:containerSize:(NSArray< LynxMeaningfulContentInfo * > *contentsArray,[containerSize] CGSize containerSize);
+}
+
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResource:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResourcePath:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourcePathCompletionBlock _Nonnull callback);
@@ -2717,6 +2730,12 @@ public class LynxLRUMap : NSObject {
   public NSString * LynxLRUMap::description();
 }
 
+public class LynxMeaningfulContentInfo : NSObject {
+  public LynxUIMeaningfulContentStatus LynxMeaningfulContentInfo::status status;
+  public CGRect LynxMeaningfulContentInfo::rect rect;
+  public int64_t LynxMeaningfulContentInfo::firstPresentedTimestampMicros firstPresentedTimestampMicros;
+}
+
 public protocol LynxMeasureDelegate-p : <NSObject> {
   public CGSize LynxMeasureDelegate-p::measureNode:withWidth:widthMode:height:heightMode:(LynxLayoutNode *node,[withWidth] CGFloat width,[widthMode] LynxMeasureMode widthMode,[height] CGFloat height,[heightMode] LynxMeasureMode heightMode);
 }
@@ -2900,6 +2919,7 @@ public class LynxPerformance : NSObject {
 
 public class LynxPerformanceController : NSObject, <LynxTimingCollectorProtocol>, <LynxMemoryMonitorProtocol>, <LynxPerformanceObserverProtocol> {
   public id<LynxPerformanceObserverProtocol> LynxPerformanceController::observer observer;
+  public LynxFSPTracer* LynxPerformanceController::fspTracer fspTracer;
   public instancetype LynxPerformanceController::initWithObserver:(id< LynxPerformanceObserverProtocol > observer);
   public void LynxPerformanceController()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
 }
@@ -4179,6 +4199,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI(AsyncDisplay)::displayAsyncWithCompletionBlock:(lynx_async_display_completion_block_t block);
   public id LynxUI(AsyncDisplay)::drawParameter();
   public void LynxUI(AsyncDisplay)::displayComplexBackgroundAsynchronouslyWithDisplay:completion:(lynx_async_get_background_image_block_t displayBlock, [completion] lynx_async_display_completion_block_t completionBlock);
+  public void LynxUI(AsyncDisplay)::getMeaningfulPaintingContentRecursive:offsetX:offsetY:(NSMutableArray< LynxMeaningfulContentInfo * > *contentsArray, [offsetX] CGFloat offsetX, [offsetY] CGFloat offsetY);
   public void LynxUI(Fluency)::postFluencyEventWithInfo:(LynxScrollInfo *info);
   public LynxScrollInfo * LynxUI(Fluency)::infoWithScrollView:selector:(UIScrollView *view, [selector] SEL selector);
   public void LynxUI(Gesture)::consumeInternalGesture:(BOOL consume);
@@ -4203,6 +4224,7 @@ public interface LynxUI(AsyncDisplay) {
   public void LynxUI(AsyncDisplay)::displayAsyncWithCompletionBlock:(lynx_async_display_completion_block_t block);
   public id LynxUI(AsyncDisplay)::drawParameter();
   public void LynxUI(AsyncDisplay)::displayComplexBackgroundAsynchronouslyWithDisplay:completion:(lynx_async_get_background_image_block_t displayBlock,[completion] lynx_async_display_completion_block_t completionBlock);
+  public void LynxUI(AsyncDisplay)::getMeaningfulPaintingContentRecursive:offsetX:offsetY:(NSMutableArray< LynxMeaningfulContentInfo * > *contentsArray,[offsetX] CGFloat offsetX,[offsetY] CGFloat offsetY);
   public void LynxUI(AsyncDisplay)::drawRect:withParameters:(CGRect bounds,[withParameters] id drawParameters);
   public UIImage * LynxUI(AsyncDisplay)::imageWithActionBlock:opaque:scale:size:(LynxCGContextImageDrawingActions action,[opaque] BOOL opaque,[scale] CGFloat scale,[size] CGSize size);
 }
@@ -4760,6 +4782,7 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner::didMoveToWindow:(BOOL windowIsNil);
   public void LynxUIOwner::updateAnimationKeyframes:(NSDictionary *keyframesDict);
   public NSDictionary< NSString *, LynxMemoryRecord * > * LynxUIOwner::getMemoryUsage();
+  public NSArray< LynxMeaningfulContentInfo * > * LynxUIOwner::getMeaningfulPaintingContents();
   public Boolean LynxUIOwner::isLayoutInElementModeOn();
   public NSArray< LynxUI * > * LynxUIOwner::uiWithA11yID:(NSString *a11yID);
   public NSArray< UIView * > * LynxUIOwner::viewsWithA11yID:(NSString *a11yID);
