@@ -20,6 +20,28 @@ namespace tasm {
 namespace {
 constexpr const char kDefaultZIndex[] = "0";
 constexpr const char kDefaultFilter[] = "none";
+constexpr const char kDirectionLtr[] = "ltr";
+constexpr const char kDirectionRtl[] = "rtl";
+constexpr const char kDefaultBackgroundPosition[] = "0% 0%";
+constexpr const char kDefaultBackgroundPositionDimensionValue[] = "50%";
+constexpr const char* kPxMark = "px";
+constexpr const char* kPercentageMark = "%";
+
+std::string NumericLengthToString(
+    const starlight::NLength::BaseLength& length) {
+  if (!length.HasValue()) {
+    return std::string("0px");
+  } else if (length.ContainsFixedValue() && !length.ContainsPercentage()) {
+    return CSSDecoder::NumberToString(length.GetFixedPart()) + kPxMark;
+  } else if (!length.ContainsFixedValue() && length.ContainsPercentage()) {
+    return CSSDecoder::NumberToString(length.GetPercentagePart()) +
+           kPercentageMark;
+  } else {
+    // Ignore scenario when both fixed part and percentage part exists.
+  }
+
+  return "0px";
+}
 }  // namespace
 
 const ComputedCSSStyleCssTextHelper::StyleStringValueGetter*
@@ -179,6 +201,98 @@ base::String ComputedCSSStyleCssTextHelper::FilterCSSText(
   }
 
   return base::String(filter_sstream.str());
+}
+
+base::String ComputedCSSStyleCssTextHelper::DirectionCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return computed_css_style->GetDirection() == starlight::DirectionType::kRtl ||
+                 computed_css_style->GetDirection() ==
+                     starlight::DirectionType::kLynxRtl
+             ? BASE_STATIC_STRING(kDirectionRtl)
+             : BASE_STATIC_STRING(kDirectionLtr);
+}
+
+base::Vector<base::String>
+ComputedCSSStyleCssTextHelper::ParseBackgroundPositionArray(
+    starlight::ComputedCSSStyle* computed_css_style) {
+  base::Vector<base::String> position_tokens;
+  const auto& position =
+      computed_css_style->background_data_->image_data->position;
+  uint32_t token_count = static_cast<uint32_t>(position.size()) / 2;
+  position_tokens.reserve(token_count);
+
+  for (uint32_t idx = 0; idx < token_count; idx++) {
+    base::Vector<base::String> tokens;
+    const auto& x_length = position[idx * 2];
+    const auto& y_length = position[idx * 2 + 1];
+
+    if (x_length.IsUnit() || x_length.IsPercent()) {
+      tokens.emplace_back(
+          base::String(NumericLengthToString(x_length.NumericLength())));
+    } else {
+      tokens.emplace_back(
+          BASE_STATIC_STRING(kDefaultBackgroundPositionDimensionValue));
+    }
+
+    if (y_length.IsUnit() || y_length.IsPercent()) {
+      tokens.emplace_back(
+          base::String(NumericLengthToString(y_length.NumericLength())));
+    } else {
+      tokens.emplace_back(
+          BASE_STATIC_STRING(kDefaultBackgroundPositionDimensionValue));
+    }
+
+    position_tokens.emplace_back(ConcatStringsWithWhitespace(tokens));
+  }
+
+  return position_tokens;
+}
+
+base::String ComputedCSSStyleCssTextHelper::BackgroundPositionCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (!computed_css_style->background_data_.has_value() ||
+      !computed_css_style->background_data_->image_data.has_value() ||
+      computed_css_style->background_data_->image_data->image_count == 0) {
+    return BASE_STATIC_STRING(kDefaultBackgroundPosition);
+  }
+
+  const auto& image_data = *computed_css_style->background_data_->image_data;
+  auto image_count = image_data.image_count;
+
+  if (image_data.position.empty()) {
+    std::ostringstream position_stream;
+    for (uint32_t idx = 0; idx < image_count; idx++) {
+      position_stream << kDefaultBackgroundPosition;
+      if (idx < image_count - 1) {
+        position_stream << ", ";
+      }
+    }
+    return base::String(position_stream.str());
+  }
+
+  auto position_tokens = ParseBackgroundPositionArray(computed_css_style);
+  std::ostringstream position_stream;
+  const size_t token_count = position_tokens.size();
+
+  if (token_count == 0) {
+    for (uint32_t idx = 0; idx < image_count; idx++) {
+      position_stream << kDefaultBackgroundPosition;
+      if (idx < image_count - 1) {
+        position_stream << ", ";
+      }
+    }
+  } else {
+    for (uint32_t idx = 0; idx < image_count; idx++) {
+      position_stream << position_tokens[idx % token_count].str();
+      if (idx < image_count - 1) {
+        position_stream << ", ";
+      }
+    }
+  }
+
+  return base::String(position_stream.str());
 }
 
 base::String ComputedCSSStyleCssTextHelper::FloatToPixelString(float value) {

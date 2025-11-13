@@ -9,6 +9,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/style/text_attributes.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -16,6 +17,14 @@
 namespace lynx {
 namespace tasm {
 namespace test {
+
+namespace {
+CSSValue parseBackgroundPositionStringValue(const lepus::Value& value_str,
+                                            const CSSParserConfigs& configs) {
+  CSSStringParser parser = CSSStringParser::FromLepusString(value_str, configs);
+  return parser.ParseBackgroundPosition();
+}
+}  // namespace
 
 TEST(ComputedCSSStyleCssTextHelperTest, floatToPixelString) {
   auto helper = ComputedCSSStyleCssTextHelper();
@@ -189,6 +198,457 @@ TEST(ComputedCSSStyleCssTextHelperTest, FilterCSSText) {
                 starlight::LayoutResultForRendering()),
             "none");
 }
+
+TEST(ComputedCSSStyleCssTextHelperTest, DirectionCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+
+  // Test kNormal (should return "ltr")
+  computed_css_style.SetValue(tasm::CSSPropertyID::kPropertyIDDirection,
+                              CSSValue(starlight::DirectionType::kNormal),
+                              false);
+  EXPECT_EQ(helper.DirectionCSSText(&computed_css_style,
+                                    starlight::LayoutResultForRendering()),
+            "ltr");
+
+  // Test kLtr (should return "ltr")
+  computed_css_style.SetValue(tasm::CSSPropertyID::kPropertyIDDirection,
+                              CSSValue(starlight::DirectionType::kLtr), false);
+  EXPECT_EQ(helper.DirectionCSSText(&computed_css_style,
+                                    starlight::LayoutResultForRendering()),
+            "ltr");
+
+  // Test kLynxRtl (should return "rtl")
+  computed_css_style.SetValue(tasm::CSSPropertyID::kPropertyIDDirection,
+                              CSSValue(starlight::DirectionType::kLynxRtl),
+                              false);
+  EXPECT_EQ(helper.DirectionCSSText(&computed_css_style,
+                                    starlight::LayoutResultForRendering()),
+            "rtl");
+
+  // Test kRtl (should return "rtl")
+  computed_css_style.SetValue(tasm::CSSPropertyID::kPropertyIDDirection,
+                              CSSValue(starlight::DirectionType::kRtl), false);
+  EXPECT_EQ(helper.DirectionCSSText(&computed_css_style,
+                                    starlight::LayoutResultForRendering()),
+            "rtl");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest,
+     BackgroundPositionCSSTextOneValueSyntax) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+  CSSParserConfigs configs;
+
+  // Prepare background data and image data
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_);
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_->image_data);
+  auto& image_data = computed_css_style.background_data_->image_data.value();
+
+  // Default value as center
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 0%");
+
+  image_data.image_count = 1;
+
+  // Test 1-value syntax with `top` keyword (x should default to 50%, y = 0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("top"), configs), false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 0%");
+
+  // Test 1-value syntax with `bottom` keyword (x=should default to 50%, y =
+  // 100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("bottom"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 100%");
+
+  // Test 1-value syntax with `left` keyword (x=0%, y should default to 50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("left"), configs), false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 50%");
+
+  // Test 1-value syntax with `right` keyword (x=100%, y should default to 50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("right"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 50%");
+
+  // Test 1-value syntax with `center` keyword
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 50%");
+
+  // Test 1-value syntax with percentage value(x = assigned percentage value, y
+  // should default to 50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25%"), configs), false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25% 50%");
+
+  // Test 1-value syntax with numeric value(x = assigned numeric value, y should
+  // default to 50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25px"), configs), false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25px 50%");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest,
+     BackgroundPositionCSSTextTwoValuesSyntax) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+  CSSParserConfigs configs;
+
+  // Prepare background data and image data
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_);
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_->image_data);
+  auto& image_data = computed_css_style.background_data_->image_data.value();
+
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 0%");
+
+  image_data.image_count = 1;
+
+  // Test 2-value syntax: top left (x=0%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("top left"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 0%");
+
+  // Test 2-value syntax: left top (x=0%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("left top"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 0%");
+
+  // Test 2-value syntax: bottom left (x=0%, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("bottom left"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 100%");
+
+  // Test 2-value syntax: left bottom (x=0%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("left bottom"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 100%");
+
+  // Test 2-value syntax: top right (x=100%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("top right"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 0%");
+
+  // Test 2-value syntax: right top (x=100%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("right top"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 0%");
+
+  // Test 2-value syntax: bottom right (x=100%, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("bottom right"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 100%");
+
+  // Test 2-value syntax: right bottom (x=100%, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("right bottom"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 100%");
+
+  // Test 2-value syntax: center center (x=50%, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center center"),
+                                         configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 50%");
+
+  // Test 2-value syntax: center top (x=50%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center top"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 0%");
+
+  // Test 2-value syntax: top center (x=50%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("top center"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 0%");
+
+  // Test 2-value syntax: center bottom (x=50%, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center bottom"),
+                                         configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 100%");
+
+  // Test 2-value syntax: bottom center (x=50%, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("bottom center"),
+                                         configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 100%");
+
+  // Test 2-value syntax: center right (x=100%, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center right"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 50%");
+
+  // Test 2-value syntax: right center (x=100%, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("right center"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 50%");
+
+  // Test 2-value syntax: center left (x=0%, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center left"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 50%");
+
+  // Test 2-value syntax: left center (x=0%, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("left center"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 50%");
+
+  // Test 2-value syntax: 25% center (x=25%, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25% center"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25% 50%");
+
+  // Test 2-value syntax: 25px center (x=25px, y=50%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25px center"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25px 50%");
+
+  // Test 2-value syntax: 25% top (x=25%, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25% top"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25% 0%");
+
+  // Test 2-value syntax: 25px top (x=25px, y=0%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25px top"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25px 0%");
+
+  // Test 2-value syntax: 25% bottom (x=25%, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25% bottom"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25% 100%");
+
+  // Test 2-value syntax: 25px bottom (x=25px, y=100%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25px bottom"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25px 100%");
+
+  // Test 2-value syntax: center 25% (x=50%, y=25%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center 25%"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 25%");
+
+  // Test 2-value syntax: center 25px (x=50%, y=25px)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("center 25px"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "50% 25px");
+
+  // Test 2-value syntax: left 25% (x=0%, y=25%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("left 25%"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 25%");
+
+  // Test 2-value syntax: left 25px (x=0%, y=25px)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("left 25px"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 25px");
+
+  // Test 2-value syntax: right 25% (x=100%, y=25%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("right 25%"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 25%");
+
+  // Test 2-value syntax: right 25px (x=100%, y=25px)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("right 25px"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "100% 25px");
+
+  // Test 2-value syntax: 25px 25% (x=25px, y=25%)
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("25px 25%"), configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "25px 25%");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest,
+     BackgroundPositionCSSTextMultiBackgroundImages) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+  CSSParserConfigs configs;
+
+  // Prepare background data and image data
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_);
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_->image_data);
+  auto& image_data = computed_css_style.background_data_->image_data.value();
+
+  // Set multiple images
+  image_data.image_count = 4;
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("top left, right bottom"),
+                                         configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 0%, 100% 100%, 0% 0%, 100% 100%");
+
+  image_data.image_count = 3;
+
+  image_data.position.clear();
+  computed_css_style.SetBackgroundPosition(
+      parseBackgroundPositionStringValue(lepus::Value("top left, right bottom"),
+                                         configs),
+      false);
+  EXPECT_EQ(
+      helper.BackgroundPositionCSSText(&computed_css_style, layout_result),
+      "0% 0%, 100% 100%, 0% 0%");
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

@@ -52,7 +52,9 @@ class ComputedCSSStyleCssTextHelper {
   V(Color)                                               \
   V(BackgroundColor)                                     \
   V(ZIndex)                                              \
-  V(Filter)
+  V(Filter)                                              \
+  V(Direction)                                           \
+  V(BackgroundPosition)
 
 #define GETTER_STYLE_STRING_VALUE(name)                \
   base::String name##CSSText(                          \
@@ -60,6 +62,9 @@ class ComputedCSSStyleCssTextHelper {
       starlight::LayoutResultForRendering ref_layout_result);
   FOREACH_GET_COMPUTED_VALUE_SUPPORTED_PROPERTY(GETTER_STYLE_STRING_VALUE)
 #undef GETTER_STYLE_STRING_VALUE
+
+  base::Vector<base::String> ParseBackgroundPositionArray(
+      starlight::ComputedCSSStyle* computed_css_style);
 
   base::String FloatToPixelString(float value);
 
