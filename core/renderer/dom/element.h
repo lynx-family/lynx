@@ -726,13 +726,13 @@ class Element : public lepus::RefCounted,
 
   EventTarget* GetParentTarget() override { return parent_; }
 
-  auto& GetBindEventCatchMap() { return bind_event_catch_map_; }
-
-  bool IsEventCaptureCatch(const std::string& event) override;
-
-  bool IsEventBubbleCatch(const std::string& event) override;
+  bool IsEventPathCatch() override;
 
   virtual void HandleGlobalEvent(fml::RefPtr<event::Event> event) override;
+
+  virtual lepus::Value GetEventTargetInfo(bool is_core_event = false) override;
+
+  virtual lepus::Value GetEventControlInfo(bool is_core_event = false) override;
 
   virtual bool GetEnableMultiTouchParamsCompatible() override;
 
@@ -916,10 +916,6 @@ class Element : public lepus::RefCounted,
 
   // for devtool
   std::unique_ptr<InspectorAttribute> inspector_attribute_;
-
-  // Save the bind event information on the target, compatible with bind event
-  // interception. eg. capture-bindtap, catchtap
-  base::LinearFlatMap<std::string, BindEventCatch> bind_event_catch_map_;
 
  private:
   // Element state, used to identify whether the current Element is on the root

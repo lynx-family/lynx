@@ -73,6 +73,7 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
   // excludes new event listeners.
   EventListenerVector copy = *vector;
   bool consumed = false;
+  bool is_catch = false;
   // When in the target phase, the listeners need to be sorted in a stable order
   // based on the capture order.
   if (event->event_phase() == Event::PhaseType::kAtTarget) {
@@ -104,6 +105,7 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
     if (listener->removed()) {
       continue;
     }
+    is_catch |= listener->GetOptions().IsCatch();
     listener->Invoke(event);
     consumed = true;
     if (event->is_stop_immediate_propagation()) {
@@ -116,16 +118,8 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
     TouchEvent::long_press_consumed_ = consumed;
   }
 
-  bool is_catch_in_capture =
-      (event->event_phase() == Event::PhaseType::kCapturingPhase ||
-       event->event_phase() == Event::PhaseType::kAtTarget) &&
-      IsEventCaptureCatch(event->type());
-  bool is_catch_in_bubble =
-      (event->event_phase() == Event::PhaseType::kBubblingPhase ||
-       event->event_phase() == Event::PhaseType::kAtTarget) &&
-      IsEventBubbleCatch(event->type());
   if (event->is_stop_propagation() || event->is_stop_immediate_propagation() ||
-      is_catch_in_capture || is_catch_in_bubble) {
+      is_catch) {
     return {EventCancelType::kCanceledByEventHandler, consumed};
   } else {
     return {EventCancelType::kNotCanceled, consumed};

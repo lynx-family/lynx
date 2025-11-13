@@ -58,6 +58,7 @@
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/events/touch_event_handler.h"
+#include "core/renderer/pipeline/pipeline_scope.h"
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/signal/lynx_signal.h"
 #include "core/renderer/signal/memo.h"
@@ -88,6 +89,11 @@
 #include "core/shared_data/white_board_delegate.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/modp_b64/modp_b64.h"
+
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/worklet/lepus_element.h"
+#include "core/renderer/worklet/lepus_raf_handler.h"
+#endif  // ENABLE_LEPUSNG_WORKLET
 
 #if defined(OS_WIN)
 #ifdef SetProp
@@ -876,10 +882,6 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
   // for bind or main-thread:bind
   if (callback->IsCallable() &&
       closure_type == event::ClosureEventListener::ClosureType::kCore) {
-    auto& event_bind_catch_map = element->GetBindEventCatchMap();
-    event_bind_catch_map[name->StdString()].capture_catch += is_capture_catch;
-    event_bind_catch_map[name->StdString()].bubble_catch += is_bubble_catch;
-
     element->AddEventListener(
         name->StdString(),
         std::make_unique<LepusClosureEventListener>(
@@ -893,11 +895,7 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
   // for native:bind
   if (callback->IsString() &&
       closure_type == event::ClosureEventListener::ClosureType::kClient) {
-    auto& event_bind_catch_map = element->GetBindEventCatchMap();
-    event_bind_catch_map[name->StdString()].capture_catch += is_capture_catch;
-    event_bind_catch_map[name->StdString()].bubble_catch += is_bubble_catch;
     auto handler_name = callback->StdString();
-
     element->AddEventListener(
         name->StdString(),
         std::make_unique<event::ClosureEventListener>(
@@ -975,10 +973,6 @@ RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
 
   // for bind or main-thread:bind
   if (closure_type == event::ClosureEventListener::ClosureType::kCore) {
-    auto& event_bind_catch_map = element->GetBindEventCatchMap();
-    event_bind_catch_map[name->StdString()].capture_catch -= is_capture_catch;
-    event_bind_catch_map[name->StdString()].bubble_catch -= is_bubble_catch;
-
     element->RemoveEventListener(
         name->StdString(),
         std::make_unique<LepusClosureEventListener>(
@@ -990,10 +984,6 @@ RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
 
   // for native:bind
   if (closure_type == event::ClosureEventListener::ClosureType::kClient) {
-    auto& event_bind_catch_map = element->GetBindEventCatchMap();
-    event_bind_catch_map[name->StdString()].capture_catch -= is_capture_catch;
-    event_bind_catch_map[name->StdString()].bubble_catch -= is_bubble_catch;
-
     element->RemoveEventListener(
         name->StdString(),
         std::make_unique<event::ClosureEventListener>(
@@ -3822,23 +3812,14 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   bool is_capture_catch = type->StdString() == EVENT_TYPE_CAPTURE_CATCH;
   bool is_bubble_catch = type->StdString() == EVENT_TYPE_CATCH;
   bool is_global_bind = type->StdString() == EVENT_TYPE_GLOBAL;
+  auto event_options = event::EventListener::Options(
+      is_capture || is_capture_catch, false, false, false,
+      is_capture_catch || is_bubble_catch, is_global_bind);
 
   if (callback->IsEmpty()) {
     // If callback is undefined, remove event.
     element->RemoveEvent(name->String(), type->String());
     if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
-      auto& event_bind_catch_map = element->GetBindEventCatchMap();
-      if (is_capture_catch) {
-        event_bind_catch_map[name->StdString()].capture_catch = 0;
-      }
-      if (is_bubble_catch) {
-        event_bind_catch_map[name->StdString()].bubble_catch = 0;
-      }
-      auto handler_name = callback->StdString();
-
-      auto event_options = event::EventListener::Options(
-          is_capture || is_capture_catch, false, false, false,
-          is_capture_catch || is_bubble_catch, is_global_bind);
       element->RemoveEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
@@ -3849,19 +3830,8 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
     element->SetJSEventHandler(name->String(), type->String(),
                                callback->String());
     if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
-      auto& event_bind_catch_map = element->GetBindEventCatchMap();
-      if (is_capture_catch) {
-        event_bind_catch_map[name->StdString()].capture_catch = 1;
-      }
-      if (is_bubble_catch) {
-        event_bind_catch_map[name->StdString()].bubble_catch = 1;
-      }
       auto handler_name = callback->StdString();
-
       // remove the listener firstly to adapt rebind
-      auto event_options = event::EventListener::Options(
-          is_capture || is_capture_catch, false, false, false,
-          is_capture_catch || is_bubble_catch, is_global_bind);
       element->RemoveEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
@@ -3904,6 +3874,69 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   } else if (callback->IsCallable()) {
     element->SetLepusEventHandler(name->String(), type->String(),
                                   lepus::Value(), *callback);
+#if ENABLE_LEPUSNG_WORKLET
+    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+      // remove the listener firstly to adapt rebind
+      element->RemoveEventListener(
+          name->StdString(),
+          std::make_unique<event::ClosureEventListener>(
+              [](lepus::Value args) {}, event_options,
+              event::ClosureEventListener::ClosureType::kCore));
+      element->AddEventListener(
+          name->StdString(),
+          std::make_unique<event::ClosureEventListener>(
+              [tasm, callback](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (args.IsArray() && args_array->size() == 2) {
+                  const auto& event_info = args_array->get(0);
+                  const auto& event_detail = args_array->get(1);
+                  const auto& event_info_array = event_info.Array();
+                  if (event_info.IsArray() && event_info_array->size() == 3) {
+                    const auto& component_id =
+                        event_info_array->get(0).StdString();
+                    const auto& entry_name =
+                        event_info_array->get(1).StdString();
+                    int32_t element_id = event_info_array->get(2).Int32();
+                    BASE_STATIC_STRING_DECL(kEventRef, "ref");
+
+                    auto task_handler =
+                        std::make_shared<worklet::LepusApiHandler>();
+                    std::shared_ptr<PipelineOptions> current_option =
+                        std::make_shared<PipelineOptions>();
+                    tasm::PipelineScope pipeline_scope(tasm, current_option);
+                    EventResult result = EventResult::kDefault;
+                    auto event = fml::static_ref_ptr_cast<event::Event>(
+                        event_detail.Table()
+                            ->GetValue(kEventRef)
+                            ->RefCounted());
+
+                    result = lynx::worklet::LepusElement::FireElementWorklet(
+                        component_id, entry_name, tasm, *callback,
+                        lepus::Value(), event_detail, task_handler, element_id,
+                        static_cast<EventType>(1));
+                    // trigger patch finish when a worklet operation is
+                    // completed
+                    tasm->page_proxy()->element_manager()->SetNeedsLayout();
+                    tasm->page_proxy()->element_manager()->RequestResolve(
+                        current_option);
+                    if (event == nullptr) {
+                      return;
+                    }
+                    if (static_cast<int>(result) &
+                        static_cast<int>(
+                            EventResult::kStopImmediatePropagationBit)) {
+                      event->set_is_stop_immediate_propagation(true);
+                    } else if (static_cast<int>(result) &
+                               static_cast<int>(
+                                   EventResult::kStopPropagationBit)) {
+                      event->set_is_stop_propagation(true);
+                    }
+                  }
+                }
+              },
+              event_options, event::ClosureEventListener::ClosureType::kCore));
+    }
+#endif  // ENABLE_LEPUSNG_WORKLET
   } else if (callback->IsObject()) {
     BASE_STATIC_STRING_DECL(kType, "type");
     BASE_STATIC_STRING_DECL(kValue, "value");
@@ -3917,18 +3950,6 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                                       context);
     }
     if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
-      auto& event_bind_catch_map = element->GetBindEventCatchMap();
-      if (is_capture_catch) {
-        event_bind_catch_map[name->StdString()].capture_catch = 1;
-      }
-      if (is_bubble_catch) {
-        event_bind_catch_map[name->StdString()].bubble_catch = 1;
-      }
-
-      // remove the listener firstly to adapt rebind
-      auto event_options = event::EventListener::Options(
-          is_capture || is_capture_catch, false, false, false,
-          is_capture_catch || is_bubble_catch, is_global_bind);
       // Because the framework will repeatedly add different callbacks for the
       // same MTS callback, callback should not be passed in as the only flag of
       // the listener.
@@ -3949,7 +3970,10 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                   const auto& event_detail = args_array->get(1);
                   BASE_STATIC_STRING_DECL(kEntryFunction, "runWorklet");
                   BASE_STATIC_STRING_DECL(kRunWorkletSource, "source");
+                  BASE_STATIC_STRING_DECL(kEventRef, "ref");
 
+                  auto event = fml::static_ref_ptr_cast<event::Event>(
+                      event_detail.Table()->GetValue(kEventRef)->RefCounted());
                   const auto worklet_function_value =
                       context->GetGlobalData(kEntryFunction);
                   auto param_array = lepus::CArray::Create();
@@ -3961,9 +3985,28 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                       static_cast<int>(tasm::RunWorkletType::kEvents));
 
                   // Call the worklet function with closure.
-                  context->CallClosure(worklet_function_value, value,
-                                       lepus::Value(std::move(param_array)),
-                                       lepus::Value(std::move(options)));
+                  EventResult result = EventResult::kDefault;
+                  auto call_result_value =
+                      context->CallClosure(worklet_function_value, value,
+                                           lepus::Value(std::move(param_array)),
+                                           lepus::Value(std::move(options)));
+                  BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
+                  if (call_result_value.IsObject()) {
+                    result = static_cast<EventResult>(
+                        call_result_value.GetProperty(kEventResult).Number());
+                  }
+                  if (event == nullptr) {
+                    return;
+                  }
+                  if (static_cast<int>(result) &
+                      static_cast<int>(
+                          EventResult::kStopImmediatePropagationBit)) {
+                    event->set_is_stop_immediate_propagation(true);
+                  } else if (static_cast<int>(result) &
+                             static_cast<int>(
+                                 EventResult::kStopPropagationBit)) {
+                    event->set_is_stop_propagation(true);
+                  }
                 }
               },
               event_options, event::ClosureEventListener::ClosureType::kCore));

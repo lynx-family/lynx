@@ -934,10 +934,6 @@ class FiberElement : public Element,
 
   bool IsEventPathCatch() override;
 
-  lepus::Value GetEventTargetInfo(bool is_core_event = false) override;
-
-  lepus::Value GetEventControlInfo(const std::string& event_type,
-                                   bool is_global = false) override;
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 
   lepus::Value GetComputedStyleByKey(const base::String& key);
