@@ -1,0 +1,92 @@
+From dac32ac77923f13014b32c043ee6cfb2cf7e41aa Mon Sep 17 00:00:00 2001
+From: Christopher Cameron <ccameron@chromium.org>
+Date: Fri, 18 Aug 2023 23:35:14 -0400
+Subject: [PATCH] SkXMLParser::parse: Optimize memory-backed streams
+
+Parsing XML in small chunks can hit some O(n^2) paths in libexpat
+that can result in extremely slow JPEG loading. See root cause analysis
+from Snild Dolkow (snild@sony.com) in the skia issue.
+
+All XMP metadata sent to SkXMLParser is memory-backed.
+
+Bug: b/295364874, skia:296854546
+Change-Id: I802da43faa87d298157e36aa5e45ad01b1310455
+Reviewed-on: https://skia-review.googlesource.com/c/skia/+/745020
+Commit-Queue: Christopher Cameron <ccameron@google.com>
+Reviewed-by: Brian Osman <brianosman@google.com>
+---
+ src/xml/SkXMLParser.cpp | 58 +++++++++++++++++++++++++----------------
+ 1 file changed, 35 insertions(+), 23 deletions(-)
+
+diff --git a/src/xml/SkXMLParser.cpp b/src/xml/SkXMLParser.cpp
+index eab28cb9f6..5d3526a7c9 100644
+--- a/src/xml/SkXMLParser.cpp
++++ b/src/xml/SkXMLParser.cpp
+@@ -154,29 +154,41 @@ bool SkXMLParser::parse(SkStream& docStream)
+     // Disable entity processing, to inhibit internal entity expansion. See expat CVE-2013-0340.
+     XML_SetEntityDeclHandler(ctx.fXMLParser, entity_decl_handler);
+ 
+-    static constexpr int kBufferSize = 4096;
+-    bool done = false;
+-    do {
+-        void* buffer = XML_GetBuffer(ctx.fXMLParser, kBufferSize);
+-        if (!buffer) {
+-            SkDEBUGF("could not buffer enough to continue\n");
+-            return false;
+-        }
+-
+-        size_t len = docStream.read(buffer, kBufferSize);
+-        done = docStream.isAtEnd();
+-        XML_Status status = XML_ParseBuffer(ctx.fXMLParser, SkToS32(len), done);
+-        if (XML_STATUS_ERROR == status) {
+-        #if defined(SK_DEBUG)
+-            XML_Error error = XML_GetErrorCode(ctx.fXMLParser);
+-            int line = XML_GetCurrentLineNumber(ctx.fXMLParser);
+-            int column = XML_GetCurrentColumnNumber(ctx.fXMLParser);
+-            const XML_LChar* errorString = XML_ErrorString(error);
+-            SkDEBUGF("parse error @%d:%d: %d (%s).\n", line, column, error, errorString);
+-        #endif
+-            return false;
+-        }
+-    } while (!done);
++    XML_Status status = XML_STATUS_OK;
++    if (docStream.getMemoryBase() && docStream.hasLength()) {
++        const char* base = reinterpret_cast<const char*>(docStream.getMemoryBase());
++        status = XML_Parse(ctx.fXMLParser,
++                           base + docStream.getPosition(),
++                           docStream.getLength() - docStream.getPosition(),
++                           true);
++    } else {
++        static constexpr int kBufferSize = 4096;
++        bool done = false;
++        do {
++            void* buffer = XML_GetBuffer(ctx.fXMLParser, kBufferSize);
++            if (!buffer) {
++                SkDEBUGF("could not buffer enough to continue\n");
++                return false;
++            }
++
++            size_t len = docStream.read(buffer, kBufferSize);
++            done = docStream.isAtEnd();
++            status = XML_ParseBuffer(ctx.fXMLParser, SkToS32(len), done);
++            if (XML_STATUS_ERROR == status) {
++                break;
++            }
++        } while (!done);
++    }
++    if (XML_STATUS_ERROR == status) {
++#if defined(SK_DEBUG)
++        XML_Error error = XML_GetErrorCode(ctx.fXMLParser);
++        int line = XML_GetCurrentLineNumber(ctx.fXMLParser);
++        int column = XML_GetCurrentColumnNumber(ctx.fXMLParser);
++        const XML_LChar* errorString = XML_ErrorString(error);
++        SkDEBUGF("parse error @%d:%d: %d (%s).\n", line, column, error, errorString);
++#endif
++        return false;
++    }
+ 
+     return true;
+ }
+-- 
+2.51.1
+
