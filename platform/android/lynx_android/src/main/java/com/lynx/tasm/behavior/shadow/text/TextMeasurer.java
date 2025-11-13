@@ -153,10 +153,6 @@ public class TextMeasurer {
           text = iterator.next().getString();
           textAttributes =
               ensureTextAttributes(textAttributes); // by default, we need a para textAttributes...
-          if (textAttributes.mFontSize == MeasureUtils.UNDEFINED) {
-            textAttributes.setFontSize(
-                Math.round(PixelUtils.dipToPx(14, mContext.getScreenMetrics().density)));
-          }
 
           // TODO(linxs): it's better to move the decode logic to C++ size
           int wordBreakStyle = UnicodeFontUtils.DECODE_DEFAULT;
@@ -466,8 +462,9 @@ public class TextMeasurer {
   }
 
   private boolean needSetLineHeightSpan(TextAttributes attributes) {
-    return attributes.getWhiteSpace() == WHITESPACE_NOWRAP && !attributes.hasImageSpan()
-        && !attributes.hasInlineViewSpan();
+    return !MeasureUtils.isUndefined(attributes.mLineHeight)
+        && !(attributes.getWhiteSpace() == WHITESPACE_NOWRAP && !attributes.hasImageSpan()
+            && !attributes.hasInlineViewSpan());
   }
 
   private void buildStyledSpanIfNeeded(int start, int end,
@@ -479,8 +476,7 @@ public class TextMeasurer {
 
     // para attributes which need span
     //  Set text line-height
-    if (isParaAttr && needSetLineHeightSpan(attributes)
-        && !MeasureUtils.isUndefined(attributes.mLineHeight)) {
+    if (isParaAttr && needSetLineHeightSpan(attributes)) {
       ops.add(new BaseTextShadowNode.SetSpanOperation(
           start, end, new CustomLineHeightSpan(attributes.mLineHeight, true, 0, false)));
     }
@@ -516,10 +512,8 @@ public class TextMeasurer {
 
     // paragraph attributes do not need to handle below attributes
 
-    if (attributes.mFontSize != MeasureUtils.UNDEFINED) {
-      ops.add(new BaseTextShadowNode.SetSpanOperation(
-          start, end, new AbsoluteSizeSpan(Math.round(attributes.mFontSize))));
-    }
+    ops.add(new BaseTextShadowNode.SetSpanOperation(
+        start, end, new AbsoluteSizeSpan(Math.round(attributes.mFontSize))));
 
     if (attributes.mFontColor != null) {
       ops.add(new BaseTextShadowNode.SetSpanOperation(
@@ -643,7 +637,7 @@ public class TextMeasurer {
 
   private TextAttributes buildTextAttributes() {
     TextAttributes attr = new TextAttributes();
-    attr.setFontSize(MeasureUtils.UNDEFINED);
+    attr.setFontSize(Math.round(PixelUtils.dipToPx(14, mContext.getScreenMetrics().density)));
     return attr;
   }
 
