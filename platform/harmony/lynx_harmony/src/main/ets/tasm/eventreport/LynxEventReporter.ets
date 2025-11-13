@@ -161,6 +161,7 @@ export class LynxEventReporter {
       let extraParams = reporter.mAllExtraParams.get(instanceId);
       if (!extraParams) {
         extraParams = new Map();
+        reporter.mAllExtraParams.set(instanceId, extraParams);
       }
       reporter.setAll(params, extraParams);
     });
