@@ -81,12 +81,6 @@ class EventTarget {
 
   EventTargetType target_type() { return target_type_; }
 
-  // Check whether catch the event when capture.
-  virtual bool IsEventCaptureCatch(const std::string& event) { return false; }
-
-  // Check whether catch the event when bubble.
-  virtual bool IsEventBubbleCatch(const std::string& event) { return false; }
-
   // Check whether catch the event path.
   virtual bool IsEventPathCatch() { return false; }
 
@@ -97,8 +91,7 @@ class EventTarget {
 
   // Get information used to control event sending, compatible with events
   // bound through __AddEvent.
-  virtual lepus::Value GetEventControlInfo(const std::string& event_type,
-                                           bool is_global = false) {
+  virtual lepus::Value GetEventControlInfo(bool is_core_event = false) {
     return lepus::Value();
   }
 
