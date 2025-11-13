@@ -45,8 +45,7 @@ bool Process(const lepus::Value& input, CSSValue& css_value,
   }
 
   if (input.IsNumber()) {
-    css_value.SetValue(input);
-    css_value.SetPattern(CSSValuePattern::NUMBER);
+    css_value.SetValueAndPattern(input, CSSValuePattern::NUMBER);
     return true;
   }
 

@@ -194,8 +194,6 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return default_value_map_opt_;
   }
 
-  void SetValue(const lepus::Value& value) { value_ = value; }
-  void SetValue(lepus::Value&& value) { value_ = std::move(value); }
   void SetPattern(CSSValuePattern pattern) { pattern_ = pattern; }
   void SetValueAndPattern(const lepus::Value& value, CSSValuePattern pattern) {
     value_ = value;
