@@ -96,10 +96,11 @@ SERVICE_LOAD_LAZY(static dispatch_once_t onceToken; dispatch_once(&onceToken, ^{
 }
 
 - (id)getInstanceWithProtocol:(Protocol *)protocol {
+  [self.recLock lock];
   if ([self.protocolToClassMap count] == 0) {
+    [self.recLock unlock];
     return nil;
   }
-  [self.recLock lock];
   NSString *protocolName = NSStringFromProtocol(protocol);
   id object = [self.protocolToInstanceMap objectForKey:protocolName];
   if (object == nil) {
