@@ -244,7 +244,9 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   @Override
   public void destroy() {
     super.destroy();
-    mView.release();
+    if (mView != null) {
+      mView.release();
+    }
   }
 
   @Override
