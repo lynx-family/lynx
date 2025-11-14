@@ -15,6 +15,7 @@ import static androidx.core.view.ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_
 import static com.lynx.tasm.behavior.StyleConstants.DIRECTION_RTL;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BLUR;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BRIGHTNESS;
+import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_CONTRAST;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_GRAYSCALE;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_NONE;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_LENGTH_UNIT_NUMBER;
@@ -1367,6 +1368,21 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
           filterPaint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
           mView.setLayerType(View.LAYER_TYPE_HARDWARE, filterPaint);
           mBrightnessAmount = (float) amount;
+        }
+        break;
+      case FILTER_TYPE_CONTRAST:
+        amount = UnitUtils.clamp(amount, 0.0, 3.0);
+        if (!FloatUtils.floatsEqual(mContrastAmount, (float) amount)) {
+          ColorMatrix colorMatrix = new ColorMatrix();
+          float scale = (float) amount;
+          float[] contrastMatrix = {scale, 0, 0, 0, 128 * (1 - scale), 0, scale, 0, 0,
+              128 * (1 - scale), 0, 0, scale, 0, 128 * (1 - scale), 0, 0, 0, 1, 0};
+          colorMatrix.set(contrastMatrix);
+
+          Paint filterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+          filterPaint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+          mView.setLayerType(View.LAYER_TYPE_HARDWARE, filterPaint);
+          mContrastAmount = (float) amount;
         }
         break;
       default:

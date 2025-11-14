@@ -3193,6 +3193,9 @@ LYNX_PROP_SETTER("filter", setFilter, NSArray*) {
     case LynxFilterTypeBrightness:
       _filter_amount = [LynxUnitUtils clamp:amount min:0.0f max:2.0f];
       break;
+    case LynxFilterTypeContrast:
+      _filter_amount = [LynxUnitUtils clamp:amount min:0.0f max:3.0f];
+      break;
     case LynxFilterTypeBlur:
     default:
       _filter_amount = amount;

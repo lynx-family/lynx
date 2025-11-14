@@ -909,6 +909,8 @@ void UIBase::SetFilter(const lepus::Value& value) {
   if (value.IsNil()) {
     NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
     NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
+    NodeManager::Instance().ResetAttribute(node_, NODE_BRIGHTNESS);
+    NodeManager::Instance().ResetAttribute(node_, NODE_CONTRAST);
     return;
   }
   const auto& val_array = value.Array();
@@ -936,6 +938,12 @@ void UIBase::SetFilter(const lepus::Value& value) {
       amount = val_array->get(1).Number();
       NodeManager::Instance().SetAttributeWithNumberValue(
           node_, NODE_BRIGHTNESS, amount);
+      break;
+    case starlight::FilterType::kContrast:
+      amount = val_array->get(1).Number();
+      amount = std::clamp(amount, 0.0, 3.0);
+      NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_CONTRAST,
+                                                          amount);
       break;
     default:
       break;

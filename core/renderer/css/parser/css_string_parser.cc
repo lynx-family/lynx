@@ -2995,6 +2995,8 @@ CSSValue CSSStringParser::ParseFilter() {
     return FilterValue(function_token, starlight::FilterType::kBlur);
   } else if (ConsumeAndSave(TokenType::BRIGHTNESS, function_token)) {
     return FilterValue(function_token, starlight::FilterType::kBrightness);
+  } else if (ConsumeAndSave(TokenType::CONTRAST, function_token)) {
+    return FilterValue(function_token, starlight::FilterType::kContrast);
   }
   return CSSValue();
 }
@@ -3027,7 +3029,8 @@ CSSValue CSSStringParser::ParseFilterValue(starlight::FilterType filter_type) {
       value *= 100;
     }
     pattern_type = CSSValuePattern::PERCENT;
-  } else if (filter_type == starlight::FilterType::kBrightness) {
+  } else if (filter_type == starlight::FilterType::kBrightness ||
+             filter_type == starlight::FilterType::kContrast) {
     if (token.type == TokenType::PERCENTAGE) {
       value /= 100.0;
     }
@@ -3046,6 +3049,7 @@ bool CSSStringParser::ConsumeFilter(Token &token, starlight::FilterType type) {
              token.type != TokenType::PERCENTAGE;
     case starlight::FilterType::kGrayscale:
     case starlight::FilterType::kBrightness:
+    case starlight::FilterType::kContrast:
       return NumberOrPercentValue(token);
     default:
       return false;

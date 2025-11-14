@@ -30,6 +30,10 @@
         filter_amount -= 1.0f;
         keyPath = @"inputAmount";
         break;
+      case LynxFilterTypeContrast:
+        filterName = @"colorContrast";
+        keyPath = @"inputAmount";
+        break;
       default:
         // No such filter
         return nil;

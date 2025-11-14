@@ -763,7 +763,8 @@ bool CSSStyleUtils::ComputeFilter(const tasm::CSSValue& value, bool reset,
         item.type == FilterType::kNone || attributes->size() == 3,
         configs.enable_css_strict_mode, "filter function should has a param")
     // Compose unit and number value into NLength.
-    if (item.type == FilterType::kBrightness) {
+    if (item.type == FilterType::kBrightness ||
+        item.type == FilterType::kContrast) {
       item.amount = NLength(NLength::MakeUnitNLength(
           attributes->get(FilterData::kIndexAmount).Number()));
     } else if (item.type == FilterType::kGrayscale ||
