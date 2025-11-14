@@ -38,6 +38,14 @@ class ComponentElement : public WrapperElement, public BaseComponent {
 
   bool is_component() const override { return true; }
 
+  virtual void ConvertToInlineElement() override {
+    if (IsRadonArch()) {
+      MarkAsInline();
+    } else {
+      FiberElement::ConvertToInlineElement();
+    }
+  };
+
   bool is_wrapper() const override { return is_wrapper_component_; }
 
   void set_component_id(const base::String& component_id);
