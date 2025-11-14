@@ -121,6 +121,8 @@ export struct LynxView {
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
+  @StorageLink('lynxWindowStage') windowStage: window.WindowStage | undefined = undefined;
+
   /**
    * URL for LynxView, which will be parsed by ILynxTrailService in building LynxView.
    */
@@ -266,7 +268,7 @@ export struct LynxView {
     if (this.onCreate) {
       this.onCreate(this.context)
     }
-    window.getLastWindow(getContext(this)).then((win) => {
+    (this.windowStage ? this.windowStage.getMainWindow() : window.getLastWindow(getContext(this))).then((win) => {
       this.currentWindow = win;
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
