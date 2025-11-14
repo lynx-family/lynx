@@ -1,0 +1,34 @@
+From 6da3c36af9b592f78b795305ce29b4fb6446649d Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Tue, 16 Sep 2025 18:01:12 +0800
+Subject: [PATCH] [Infra] Export gn target boringssl_asm.
+
+---
+ BUILD.gn | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 670224d..39549c1 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -49,8 +49,6 @@ config("no_asm_config") {
+ 
+ # This has no sources on some platforms so must be a source_set.
+ source_set("boringssl_asm") {
+-  visibility = [ ":*" ]  # Only targets in this file can depend on this.
+-
+   defines = []
+   sources = []
+   include_dirs = [ "src/include" ]
+@@ -63,7 +61,7 @@ source_set("boringssl_asm") {
+           rebase_path(android_toolchain_root, root_build_dir)
+       asmflags += [
+         "-fno-integrated-as",
+-        "-B${rebased_android_toolchain_root}/bin",
++        "-B${rebased_android_toolchain_root}/${android_target_triple}/bin",
+       ]
+     }
+     if (current_cpu == "arm64") {
+-- 
+2.49.0
+
