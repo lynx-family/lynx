@@ -15029,6 +15029,41 @@ TEST_P(FiberElementTest, TestRemovePaintingNodeIsMoveFlag) {
   EXPECT_FALSE(painting_context->HasCapturedRemoveSign(leaf->impl_id()));
 }
 
+TEST_P(FiberElementTest, ConvertToInlineForView) {
+  auto parent_element = manager->CreateFiberView();
+  auto child_element = manager->CreateFiberView();
+  parent_element->InsertNode(child_element);
+
+  EXPECT_FALSE(parent_element->is_inline_element());
+  EXPECT_FALSE(child_element->is_inline_element());
+
+  parent_element->ConvertToInlineElement();
+
+  EXPECT_TRUE(parent_element->is_inline_element());
+  EXPECT_FALSE(child_element->is_inline_element());
+}
+
+TEST_P(FiberElementTest, ConvertToInlineForComponent) {
+  base::String component_id("comp-1");
+  int32_t css_id = 101;
+  base::String entry_name("TestEntry");
+  base::String component_name("TestComponent");
+  base::String path("/test/path");
+  auto component_element = manager->CreateFiberComponent(
+      component_id, css_id, entry_name, component_name, path);
+
+  auto child_element = manager->CreateFiberView();
+  component_element->InsertNode(child_element);
+
+  EXPECT_FALSE(component_element->is_inline_element());
+  EXPECT_FALSE(child_element->is_inline_element());
+
+  component_element->ConvertToInlineElement();
+
+  EXPECT_TRUE(component_element->is_inline_element());
+  EXPECT_FALSE(child_element->is_inline_element());
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
