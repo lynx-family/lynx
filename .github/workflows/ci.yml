@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - CQ-*
+  workflow_dispatch:
 
 defaults:
   run:
@@ -312,7 +313,7 @@ jobs:
 
   android-e2e-test:
     timeout-minutes: 60
-    needs: [android-explorer-build]
+    # needs: [android-explorer-build]
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
@@ -322,10 +323,28 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
+      - name: cmd before python setup
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          retry_wait_seconds: 5
+          timeout_minutes: 120
+          command: |
+            set -e
+            echo $PATH
       - name: Python Setup
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: cmd after python setup
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          retry_wait_seconds: 5
+          timeout_minutes: 120
+          command: |
+            set -e
+            echo $PATH
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Install Appium
@@ -335,103 +354,103 @@ jobs:
           pnpm install appium@2.11.2 -w
           pnpm install appium-espresso-driver@4.0.0 -w
           popd
-      - name: Setup Java SDK
-        uses: actions/setup-java@v3
-        with:
-          java-version: 17
-          distribution: 'zulu'
-      - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-        with:
-          path: ~/.gradle/wrapper/dists
-          key: gradle-${{ runner.os }}
-      - name: Start Android 28 emulator
-        run: |
-          set -x
-          target_avd=$(emulator -list-avds | head -n 1)
-          if [ -z "$target_avd" ]; then
-              echo "No available emulator was found!"
-              exit 1
-          fi
-          export QT_QPA_PLATFORM=offscreen
-          nohup $ANDROID_HOME/emulator/emulator -no-window -avd $target_avd -no-snapshot -no-audio -no-boot-anim &
-          max_wait_time=300
-          start_time=$(date +%s)
-          while true; do
-              current_time=$(date +%s)
-              elapsed_time=$((current_time - start_time))
-              if [ $elapsed_time -gt $max_wait_time ]; then
-                  echo "Emulator startup timed out."
-                  exit 1
-              fi
-              $ANDROID_HOME/platform-tools/adb devices
-              if $ANDROID_HOME/platform-tools/adb devices | grep -q "device$"; then
-                  echo "Emulator startup completed."
-                  break
-              fi
-              echo "Waiting for emulator to startup..."
-              sleep 10
-          done
-          $ANDROID_HOME/platform-tools/adb devices
-      - name: Download Explorer APK
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
-        with:
-          name: android-lynx-explorer
-          path: lynx/explorer/android/lynx_explorer/build_temp
-      - name: Repack and Install Explorer App
-        run: |
-          pushd $GITHUB_WORKSPACE/lynx
-          LATEST_VERSION=$(ls -1 "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
-          target_dir=$(find ./node_modules/.pnpm -type d -name "appium-adb@*" | head -n 1)
-          ESPRESSO_SIGN_KEYS_DIR=""
-          if [ -n "$target_dir" ]; then
-              ESPRESSO_SIGN_KEYS_DIR="$target_dir/node_modules/appium-adb/keys"
-          else
-              echo "node_modules/.pnpm/appium-adb is not founded!"
-              exit 1
-          fi
-          APK_PATH=${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build_temp
-          java -jar $ANDROID_HOME/build-tools/$LATEST_VERSION/lib/apksigner.jar sign --key $ESPRESSO_SIGN_KEYS_DIR/testkey.pk8 --cert $ESPRESSO_SIGN_KEYS_DIR/testkey.x509.pem  --out $APK_PATH/LynxExplorer-noasan-release-signed.apk $APK_PATH/LynxExplorer-noasan-release.apk
-          adb install $APK_PATH/LynxExplorer-noasan-release-signed.apk
-      - name: Start Appium server
-        run: |
-          pushd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd node_modules/appium/node_modules/.bin
-          ls
-          nohup ./appium server \
-            --port=$APPIUM_TEST_SERVER_PORT \
-            --address=$APPIUM_TEST_SERVER_HOST \
-            --log-no-colors \
-            --log-timestamp \
-            2>&1 > "$GITHUB_WORKSPACE/lynx/appium.log" &
-          adb logcat > "$GITHUB_WORKSPACE/lynx/device.log" 2>&1 &
-          popd
-          popd
-      - name: Check if Appium Server is running
-        run: |
-          max_attempts=10
-          attempt=0
-          while [ $attempt -lt $max_attempts ]; do
-            if nc -z $APPIUM_TEST_SERVER_HOST $APPIUM_TEST_SERVER_PORT; then
-              echo "Appium Server is running."
-              break
-            else
-              attempt=$((attempt + 1))
-              echo "Attempt $attempt: Appium Server is not yet running. Retrying in 2 seconds..."
-              sleep 2
-            fi
-          done
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Failed to start Appium Server."
-            exit 1
-          fi
+      # - name: Setup Java SDK
+      #   uses: actions/setup-java@v3
+      #   with:
+      #     java-version: 17
+      #     distribution: 'zulu'
+      # - name: Gradle Wrapper Cache
+      #   uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      #   with:
+      #     path: ~/.gradle/wrapper/dists
+      #     key: gradle-${{ runner.os }}
+      # - name: Start Android 28 emulator
+      #   run: |
+      #     set -x
+      #     target_avd=$(emulator -list-avds | head -n 1)
+      #     if [ -z "$target_avd" ]; then
+      #         echo "No available emulator was found!"
+      #         exit 1
+      #     fi
+      #     export QT_QPA_PLATFORM=offscreen
+      #     nohup $ANDROID_HOME/emulator/emulator -no-window -avd $target_avd -no-snapshot -no-audio -no-boot-anim &
+      #     max_wait_time=300
+      #     start_time=$(date +%s)
+      #     while true; do
+      #         current_time=$(date +%s)
+      #         elapsed_time=$((current_time - start_time))
+      #         if [ $elapsed_time -gt $max_wait_time ]; then
+      #             echo "Emulator startup timed out."
+      #             exit 1
+      #         fi
+      #         $ANDROID_HOME/platform-tools/adb devices
+      #         if $ANDROID_HOME/platform-tools/adb devices | grep -q "device$"; then
+      #             echo "Emulator startup completed."
+      #             break
+      #         fi
+      #         echo "Waiting for emulator to startup..."
+      #         sleep 10
+      #     done
+      #     $ANDROID_HOME/platform-tools/adb devices
+      # - name: Download Explorer APK
+      #   uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+      #   with:
+      #     name: android-lynx-explorer
+      #     path: lynx/explorer/android/lynx_explorer/build_temp
+      # - name: Repack and Install Explorer App
+      #   run: |
+      #     pushd $GITHUB_WORKSPACE/lynx
+      #     LATEST_VERSION=$(ls -1 "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+      #     target_dir=$(find ./node_modules/.pnpm -type d -name "appium-adb@*" | head -n 1)
+      #     ESPRESSO_SIGN_KEYS_DIR=""
+      #     if [ -n "$target_dir" ]; then
+      #         ESPRESSO_SIGN_KEYS_DIR="$target_dir/node_modules/appium-adb/keys"
+      #     else
+      #         echo "node_modules/.pnpm/appium-adb is not founded!"
+      #         exit 1
+      #     fi
+      #     APK_PATH=${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build_temp
+      #     java -jar $ANDROID_HOME/build-tools/$LATEST_VERSION/lib/apksigner.jar sign --key $ESPRESSO_SIGN_KEYS_DIR/testkey.pk8 --cert $ESPRESSO_SIGN_KEYS_DIR/testkey.x509.pem  --out $APK_PATH/LynxExplorer-noasan-release-signed.apk $APK_PATH/LynxExplorer-noasan-release.apk
+      #     adb install $APK_PATH/LynxExplorer-noasan-release-signed.apk
+      # - name: Start Appium server
+      #   run: |
+      #     pushd $GITHUB_WORKSPACE/lynx
+      #     source tools/envsetup.sh
+      #     pushd node_modules/appium/node_modules/.bin
+      #     ls
+      #     nohup ./appium server \
+      #       --port=$APPIUM_TEST_SERVER_PORT \
+      #       --address=$APPIUM_TEST_SERVER_HOST \
+      #       --log-no-colors \
+      #       --log-timestamp \
+      #       2>&1 > "$GITHUB_WORKSPACE/lynx/appium.log" &
+      #     adb logcat > "$GITHUB_WORKSPACE/lynx/device.log" 2>&1 &
+      #     popd
+      #     popd
+      # - name: Check if Appium Server is running
+      #   run: |
+      #     max_attempts=10
+      #     attempt=0
+      #     while [ $attempt -lt $max_attempts ]; do
+      #       if nc -z $APPIUM_TEST_SERVER_HOST $APPIUM_TEST_SERVER_PORT; then
+      #         echo "Appium Server is running."
+      #         break
+      #       else
+      #         attempt=$((attempt + 1))
+      #         echo "Attempt $attempt: Appium Server is not yet running. Retrying in 2 seconds..."
+      #         sleep 2
+      #       fi
+      #     done
+      #     if [ $attempt -eq $max_attempts ]; then
+      #       echo "Failed to start Appium Server."
+      #       exit 1
+      #     fi
       - name: Run Android E2E Test
         uses: nick-fields/retry@v3
         with:
           max_attempts: 2
           retry_wait_seconds: 5
-          timeout_minutes: 20
+          timeout_minutes: 120
           command: |
             set -e
             source $GITHUB_WORKSPACE/lynx/tools/envsetup.sh

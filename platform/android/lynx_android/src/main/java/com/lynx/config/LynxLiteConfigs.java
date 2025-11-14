@@ -9,7 +9,7 @@ import com.lynx.BuildConfig;
 /**
  * The LynxLiteConfig class stores a series of configuration switches that limit certain behaviors
  * of Lynx. These switches ensure that certain parts of the code are surrounded by dead branches in
- * the produced Android AAR, with the goal of creating a more lightweight Android product.
+ * the produced Android AAR, with the goal of creating a more lightweight Android product. xxx
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public class LynxLiteConfigs {
