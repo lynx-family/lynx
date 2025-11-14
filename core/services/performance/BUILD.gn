@@ -25,6 +25,15 @@ if (!is_encoder_ut) {
   ]
 }
 
+if (is_apple) {
+  performance_shared_sources += [
+    "fsp_tracing/fsp_snapshot.cc",
+    "fsp_tracing/fsp_snapshot.h",
+    "fsp_tracing/fsp_tracer.cc",
+    "fsp_tracing/fsp_tracer.h",
+  ]
+}
+
 if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests &&
     !is_encoder_ut) {
   if (is_apple) {
