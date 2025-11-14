@@ -16,6 +16,7 @@ import { ViewProps } from './view';
 import { InputProps, InputUIMethods } from './input';
 import { TextAreaProps, TextAreaUIMethods } from './textarea';
 import { FrameProps } from './frame';
+import { OverlayProps} from './overlay';
 
 
 export interface UIMethods {
@@ -48,6 +49,7 @@ export interface IntrinsicElements {
   'input': InputProps;
   'textarea': TextAreaProps;
   'frame': FrameProps;
+  'overlay': OverlayProps;
 }
 
 declare module 'react' {
@@ -71,6 +73,7 @@ declare module 'react' {
       'input': InputProps;
       'textarea': TextAreaProps;
       'frame': FrameProps;
+      'overlay': OverlayProps;
     }
   }
 }

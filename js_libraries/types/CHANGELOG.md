@@ -1,4 +1,7 @@
 # CHANGELOG
+# 3.6.7
+- Introduce `<overlay>` element.
+
 ## 3.6.6
 - Support `bindload` on `frame` element.
 

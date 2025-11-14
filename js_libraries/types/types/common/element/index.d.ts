@@ -18,3 +18,4 @@ export * from './methods';
 export * from './attributes';
 export * from './common';
 export * from './frame';
+export * from './overlay';
