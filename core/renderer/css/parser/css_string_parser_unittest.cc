@@ -872,13 +872,13 @@ TEST(CSSStringParser, parse_variable_multiple_and_malformed) {
 
     EXPECT_EQ(refs[0].start, first_idx);
     EXPECT_EQ(refs[0].end, first_idx + std::string("var(--a)").size());
-    EXPECT_EQ(refs[0].Name(result.value_.StdString()), "--a");
+    EXPECT_EQ(refs[0].Name(result.AsStdString()), "--a");
     EXPECT_TRUE(refs[0].fallback.empty());
 
     EXPECT_EQ(refs[1].start, second_idx);
     EXPECT_EQ(refs[1].end,
               second_idx + std::string("var(--b, fallback)").size());
-    EXPECT_EQ(refs[1].Name(result.value_.StdString()), "--b");
+    EXPECT_EQ(refs[1].Name(result.AsStdString()), "--b");
     ASSERT_FALSE(refs[1].fallback.empty());
     EXPECT_EQ(refs[1].fallback.str(), " fallback");
   }
@@ -907,7 +907,7 @@ TEST(CSSStringParser, parse_variable_nested_fallback) {
 
   auto& refs = *result.var_references_;
   ASSERT_EQ(refs.size(), 1u);
-  EXPECT_EQ(refs[0].Name(result.value_.StdString()), "--a");
+  EXPECT_EQ(refs[0].Name(result.AsStdString()), "--a");
   ASSERT_FALSE(refs[0].fallback.empty());
   // fallback should include the nested var text
   EXPECT_NE(refs[0].fallback.str().find("var(--b)"), std::string::npos);
