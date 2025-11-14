@@ -19,7 +19,7 @@
 
 typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_ref) * lynx_value_ref;
 
-typedef enum {
+typedef enum : uint8_t {
   lynx_value_null,
   lynx_value_undefined,
   lynx_value_bool,
@@ -40,18 +40,21 @@ typedef enum {
   lynx_value_extended,
 } lynx_value_type;
 
-struct lynx_value {
-  union {
-    bool val_bool;
-    double val_double;
-    int32_t val_int32;
-    uint32_t val_uint32;
-    int64_t val_int64;
-    uint64_t val_uint64;
-    lynx_value_ptr val_ptr;
-  };
-
+#define LYNX_VALUE_BASE_STORAGE_DEFINITION \
+  union {                                  \
+    bool val_bool;                         \
+    double val_double;                     \
+    int32_t val_int32;                     \
+    uint32_t val_uint32;                   \
+    int64_t val_int64;                     \
+    uint64_t val_uint64;                   \
+    lynx_value_ptr val_ptr;                \
+  };                                       \
   lynx_value_type type;
+
+struct lynx_value {
+  LYNX_VALUE_BASE_STORAGE_DEFINITION
+
   int32_t tag;
 };
 

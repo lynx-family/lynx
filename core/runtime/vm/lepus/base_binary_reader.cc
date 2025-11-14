@@ -185,6 +185,16 @@ bool BaseBinaryReader::DecodeUtf8Str(std::string* result) {
   return true;
 }
 
+bool BaseBinaryReader::DecodeUtf8Str(lynx_value& result) {
+  base::String tmp;
+  ReadStringDirectly(tmp);
+  auto* ptr = base::String::Unsafe::GetUntaggedStringRawRef(tmp);
+  result.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
+  result.type = lynx_value_string;
+  base::String::Unsafe::SetStringToEmpty(tmp);
+  return true;
+}
+
 bool BaseBinaryReader::DecodeTable(fml::RefPtr<Dictionary>& out_value,
                                    bool is_header) {
   DCHECK(out_value->empty());
@@ -269,6 +279,7 @@ bool BaseBinaryReader::DecodeValue(Value* result, bool is_header) {
     case ValueType::Value_RefCounted:
       break;
     case ValueType::Value_Nil:
+      result->SetNil();
       break;
     case ValueType::Value_Undefined:
       result->SetUndefined();
@@ -286,6 +297,88 @@ bool BaseBinaryReader::DecodeValue(Value* result, bool is_header) {
     case ValueType::Value_NaN: {
       DECODE_BOOL(NaaN);
       result->SetNan(NaaN);
+      break;
+    }
+#endif
+    default:
+      break;
+  }
+  return true;
+}
+
+bool BaseBinaryReader::DecodeRawLynxValue(lynx_value& result) {
+  DECODE_U8(type);
+  switch (type) {
+    case lepus::ValueType::Value_Int32: {
+      DECODE_COMPACT_S32(number);
+      result.val_int32 = number;
+      result.type = lynx_value_int32;
+    } break;
+    case lepus::ValueType::Value_UInt32: {
+      DECODE_COMPACT_U32(number);
+      result.val_uint32 = number;
+      result.type = lynx_value_uint32;
+    } break;
+    case lepus::ValueType::Value_Int64: {
+      DECODE_COMPACT_U64(number);
+      result.val_int64 = static_cast<int64_t>(number);
+      result.type = lynx_value_int64;
+    } break;
+    case lepus::ValueType::Value_Double: {
+      DECODE_DOUBLE(number);
+      result.val_double = number;
+      result.type = lynx_value_double;
+    } break;
+    case lepus::ValueType::Value_Bool: {
+      DECODE_BOOL(boolean);
+      result.val_bool = boolean;
+      result.type = lynx_value_bool;
+    } break;
+    case lepus::ValueType::Value_String: {
+      ERROR_UNLESS(DecodeUtf8Str(result));
+    } break;
+    case lepus::ValueType::Value_Table: {
+      DECODE_DICTIONARY(table, false);
+      result.val_ptr = reinterpret_cast<lynx_value_ptr>(table.AbandonRef());
+      result.type = lynx_value_map;
+    } break;
+    case lepus::ValueType::Value_Array: {
+      DECODE_ARRAY(ary);
+      result.val_ptr = reinterpret_cast<lynx_value_ptr>(ary.AbandonRef());
+      result.type = lynx_value_array;
+    } break;
+#if !ENABLE_JUST_LEPUSNG
+    case lepus::ValueType::Value_Closure: {
+      DECODE_CLOSURE(closure);
+      result.tag = static_cast<int32_t>(closure->GetRefType());
+      result.val_ptr = reinterpret_cast<lynx_value_ptr>(closure.AbandonRef());
+      result.type = lynx_value_object;
+    } break;
+    case lepus::ValueType::Value_CFunction:
+    case lepus::ValueType::Value_CPointer:
+    case lepus::ValueType::Value_RefCounted:
+    case lepus::ValueType::Value_Nil:
+      result.type = lynx_value_null;
+      break;
+    case lepus::ValueType::Value_Undefined:
+      result.type = lynx_value_undefined;
+      break;
+    case lepus::ValueType::Value_CDate: {
+      DECODE_DATE(date);
+      result.tag = static_cast<int32_t>(date->GetRefType());
+      result.val_ptr = reinterpret_cast<lynx_value_ptr>(date.AbandonRef());
+      result.type = lynx_value_object;
+    } break;
+    case lepus::ValueType::Value_RegExp: {
+      DECODE_REGEXP(reg);
+      result.tag = static_cast<int32_t>(reg->GetRefType());
+      result.val_ptr = reinterpret_cast<lynx_value_ptr>(reg.AbandonRef());
+      result.type = lynx_value_object;
+    } break;
+    case lepus::ValueType::Value_NaN: {
+      DECODE_BOOL(NaaN);
+      result.val_bool = NaaN;
+      result.type = lynx_value_nan;
       break;
     }
 #endif

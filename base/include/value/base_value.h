@@ -644,7 +644,8 @@ class BASE_EXPORT Value {
   }
 
   void IteratorJSValue(const LepusValueIterator& callback) const;
-  const lynx_value& value() const { return value_; }
+  const lynx_value& value() const& { return value_; }
+  lynx_value& value() && { return value_; }
   static ValueType LegacyTypeFromLynxValue(const lynx_value& value);
   static lynx_value_type ToLynxValueType(ValueType type);
 

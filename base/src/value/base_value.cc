@@ -887,7 +887,8 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
     case lynx_value_external:
       break;
     default:
-      LOGE("!! Value::Clone unknow type: " << src.value_.type);
+      LOGE("!! Value::Clone unknown type: "
+           << static_cast<uint32_t>(src.value_.type));
       break;
   }
   return Value();
@@ -1346,7 +1347,7 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
       return empty_value;
     }
     default:
-      LOGE("not support type:" << type);
+      LOGE("not support type:" << static_cast<uint32_t>(type));
       break;
   }
 

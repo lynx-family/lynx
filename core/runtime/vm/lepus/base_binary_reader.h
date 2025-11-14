@@ -45,24 +45,24 @@ namespace lepus {
   std::string name;         \
   ERROR_UNLESS(DecodeUtf8Str(&name))
 
-#define DECODE_DICTIONARY(name, is_header)                    \
-  fml::RefPtr<lepus::Dictionary> name = Dictionary::Create(); \
+#define DECODE_DICTIONARY(name, is_header)                           \
+  fml::RefPtr<lepus::Dictionary> name = lepus::Dictionary::Create(); \
   ERROR_UNLESS(DecodeTable(name, is_header))
 
-#define DECODE_CLOSURE(name)                                   \
-  fml::RefPtr<lepus::Closure> name = Closure::Create(nullptr); \
+#define DECODE_CLOSURE(name)                                          \
+  fml::RefPtr<lepus::Closure> name = lepus::Closure::Create(nullptr); \
   ERROR_UNLESS(DecodeClosure(name))
 
-#define DECODE_ARRAY(name)                            \
-  fml::RefPtr<lepus::CArray> name = CArray::Create(); \
+#define DECODE_ARRAY(name)                                   \
+  fml::RefPtr<lepus::CArray> name = lepus::CArray::Create(); \
   ERROR_UNLESS(DecodeArray(name))
 
-#define DECODE_DATE(name)                           \
-  fml::RefPtr<lepus::CDate> name = CDate::Create(); \
+#define DECODE_DATE(name)                                  \
+  fml::RefPtr<lepus::CDate> name = lepus::CDate::Create(); \
   ERROR_UNLESS(DecodeDate(name))
 
-#define DECODE_REGEXP(name)                           \
-  fml::RefPtr<lepus::RegExp> name = RegExp::Create(); \
+#define DECODE_REGEXP(name)                                  \
+  fml::RefPtr<lepus::RegExp> name = lepus::RegExp::Create(); \
   ERROR_UNLESS(DecodeRegExp(name))
 
 #define DECODE_COMPACT_U32(name) \
@@ -146,9 +146,11 @@ class BaseBinaryReader : public BinaryReader {
 
   bool DecodeUtf8Str(base::String&);
   bool DecodeUtf8Str(std::string*);
+  bool DecodeUtf8Str(lynx_value&);
   bool DecodeTable(fml::RefPtr<Dictionary>&, bool = false);
   bool DecodeArray(fml::RefPtr<CArray>&);
   bool DecodeValue(Value*, bool = false);
+  bool DecodeRawLynxValue(lynx_value&);
 
   bool DecodeContextBundle(ContextBundle* bundle);
 
