@@ -187,6 +187,7 @@ typedef NS_ENUM(NSUInteger, LynxBackgroundImageType) {
   LynxBackgroundImageURL = 1,
   LynxBackgroundImageLinearGradient = 2,
   LynxBackgroundImageRadialGradient = 3,
+  LynxBackgroundImageConicGradient = 4,
 };
 
 typedef NS_ENUM(NSUInteger, LynxRadialGradientShapeType) {

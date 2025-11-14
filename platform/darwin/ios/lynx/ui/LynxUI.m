@@ -1730,6 +1730,9 @@ LYNX_PROP_DEFINE("clip-radius", enableClipOnCornerRadius, NSString*) {
     } else if (type == LynxBackgroundImageRadialGradient) {
       i++;
       [drawable addObject:[[LynxBackgroundRadialGradientDrawable alloc] initWithArray:value[i]]];
+    } else if (type == LynxBackgroundImageConicGradient) {
+      i++;
+      [drawable addObject:[[LynxBackgroundConicGradientDrawable alloc] initWithArray:value[i]]];
     } else if (type == LynxBackgroundImageNone) {
       i++;
       [drawable addObject:[LynxBackgroundNoneDrawable new]];

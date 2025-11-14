@@ -677,9 +677,49 @@ NSUInteger gcd(NSUInteger a, NSUInteger b) {
     if (array == nil) {
       LOGE("radial gradient native parse error, array is null");
     } else if ([array count] < 3) {
-      LOGE("radial gradient native parse error, array must have 3 element");
+      LOGE("radial gradient native parse error, array must have 3 elements");
     } else {
       self.gradient = [[LynxRadialGradient alloc] initWithArray:array];
+    }
+  }
+  return self;
+}
+@end
+
+@implementation LynxBackgroundConicGradientDrawable
+- (LynxBackgroundImageType)type {
+  return LynxBackgroundImageConicGradient;
+}
+
+- (void)onPrepareGradientWithSize:(CGSize)gradientSize {
+  if (ABS(gradientSize.width) < FLT_EPSILON || ABS(gradientSize.height) < FLT_EPSILON) {
+    return;
+  }
+
+  CGPoint start, end;
+  [((LynxConicGradient *)self.gradient) computeStartPoint:&start
+                                              andEndPoint:&end
+                                                 withSize:&gradientSize];
+
+  self.gradientLayer.startPoint = start;
+  self.gradientLayer.endPoint = end;
+
+  if (@available(iOS 12.0, *)) {
+    self.gradientLayer.type = kCAGradientLayerConic;
+  } else {
+    self.gradientLayer.type = kCAGradientLayerRadial;
+  }
+}
+
+- (instancetype)initWithArray:(NSArray *)array {
+  self = [super init];
+  if (self) {
+    if (array == nil) {
+      LOGE("conic gradient native parse error, array is null");
+    } else if ([array count] < 4) {
+      LOGE("conic gradient native parse error, array must have 4 elements");
+    } else {
+      self.gradient = [[LynxConicGradient alloc] initWithArray:array];
     }
   }
   return self;

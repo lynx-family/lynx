@@ -251,7 +251,6 @@
 
   CGPoint center = [self calculateCenterWithWidth:w andHeight:h];
   CGPoint radius = [self calculateRadiusWithCenter:&center sizeX:w sizeY:h];
-
   bool hasZero = !radius.x || !radius.y;
   float aspectRatio = hasZero ? 1 : radius.x / radius.y;
 
@@ -308,6 +307,73 @@
       // TODO handle REM RPX or other length type
       return value;
   }
+}
+
+@end
+
+#pragma mark LynxBackgroundConicGradient
+@implementation LynxConicGradient {
+}
+
+- (instancetype)initWithArray:(NSArray*)arr {
+  self = [super initWithColors:arr[2] stops:arr[3]];
+  if (self) {
+    self.angle = [arr[0] doubleValue] * M_PI / 180.0;
+    NSArray* center = arr[1];
+
+    LynxPlatformLengthUnit typeX =
+        (LynxPlatformLengthUnit)[LynxConverter toNSUInteger:[center objectAtIndex:1]];
+    self.centerX = [[LynxPlatformLength alloc] initWithValue:[center objectAtIndex:0] type:typeX];
+    LynxPlatformLengthUnit typeY =
+        (LynxPlatformLengthUnit)[LynxConverter toNSUInteger:[center objectAtIndex:3]];
+    self.centerY = [[LynxPlatformLength alloc] initWithValue:[center objectAtIndex:2] type:typeY];
+  }
+  return self;
+}
+
+- (void)computeStartPoint:(CGPoint* _Nonnull)startPoint
+              andEndPoint:(CGPoint* _Nonnull)endPoint
+                 withSize:(const CGSize* _Nonnull)size {
+  const float w = MAX(size->width, 1), h = MAX(size->height, 1);
+  float startX = [self.centerX valueWithParentValue:w] / w;
+  float startY = [self.centerY valueWithParentValue:h] / h;
+  *startPoint = CGPointMake(startX, startY);
+
+  CGFloat radianAngle = _angle - M_PI_2;
+  CGFloat radius = 0.5;
+
+  CGFloat endX = startPoint->x + radius * cos(radianAngle);
+  CGFloat endY = startPoint->y + radius * sin(radianAngle);
+
+  *endPoint = CGPointMake(endX, endY);
+}
+
+- (void)draw:(CGContextRef)context withRect:(CGRect)pathRect {
+  NSMutableArray* ar = [NSMutableArray array];
+  for (UIColor* c in self.colors) {
+    [ar addObject:(id)c.CGColor];
+  }
+  CGColorSpaceRef colorSpace = CGColorGetColorSpace([[self.colors lastObject] CGColor]);
+  CGGradientRef gradient = CGGradientCreateWithColors(colorSpace, (CFArrayRef)ar, self.positions);
+
+  int w = pathRect.size.width, h = pathRect.size.height;
+  float startX = [self.centerX valueWithParentValue:w];
+  float startY = [self.centerY valueWithParentValue:h];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+  if (@available(iOS 12.0, *)) {
+    CGContextDrawConicGradient(context, gradient, CGPointMake(startX, startY), _angle - M_PI_2);
+  }
+#pragma clang diagnostic pop
+
+  CGGradientRelease(gradient);
+}
+
+- (void)draw:(CGContextRef)context withPath:(CGPathRef)path {
+  CGContextAddPath(context, path);
+  CGContextClip(context);
+  CGRect pathRect = CGPathGetBoundingBox(path);
+  [self draw:context withRect:pathRect];
 }
 
 @end

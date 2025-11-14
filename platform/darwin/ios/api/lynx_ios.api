@@ -249,6 +249,10 @@ public class LynxBackgroundCapInsets : NSObject {
   public void LynxBackgroundCapInsets::reset();
 }
 
+public class LynxBackgroundConicGradientDrawable : LynxBackgroundGradientDrawable {
+  public instancetype _Nullable LynxBackgroundConicGradientDrawable::initWithArray:(NSArray *_Nonnull array);
+}
+
 public class LynxBackgroundDrawable : NSObject {
   public LynxBackgroundImageType LynxBackgroundDrawable::type type;
   public LynxBackgroundRepeatType LynxBackgroundDrawable::repeatX repeatX;
@@ -1081,6 +1085,14 @@ public class LynxConfigInfoBuilder : NSObject {
   public NSString* LynxConfigInfoBuilder::reactVersion reactVersion;
   public instancetype LynxConfigInfoBuilder::init();
   public LynxConfigInfo * LynxConfigInfoBuilder::build();
+}
+
+public class LynxConicGradient : LynxGradient {
+  public double LynxConicGradient::angle angle;
+  public LynxPlatformLength* LynxConicGradient::centerX centerX;
+  public LynxPlatformLength* LynxConicGradient::centerY centerY;
+  public instancetype LynxConicGradient::initWithArray:(NSArray *arr);
+  public void LynxConicGradient::computeStartPoint:andEndPoint:withSize:(CGPoint *_Nonnull startPoint,[andEndPoint] CGPoint *_Nonnull endPoint,[withSize] const CGSize *_Nonnull size);
 }
 
 public class LynxContext : NSObject {
@@ -5758,6 +5770,7 @@ public enum LynxBackgroundImageType {
   LynxBackgroundImageURL
   LynxBackgroundImageLinearGradient
   LynxBackgroundImageRadialGradient
+  LynxBackgroundImageConicGradient
 }
 
 public enum LynxRadialGradientShapeType {

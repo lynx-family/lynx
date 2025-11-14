@@ -394,6 +394,8 @@ LYNX_PROP_SETTER("color", setColor, id) {
       _textStyle.textGradient = [[LynxLinearGradient alloc] initWithArray:args];
     } else if (type == LynxBackgroundImageRadialGradient) {
       _textStyle.textGradient = [[LynxRadialGradient alloc] initWithArray:args];
+    } else if (type == LynxBackgroundImageConicGradient) {
+      _textStyle.textGradient = [[LynxConicGradient alloc] initWithArray:args];
     }
   }
 }

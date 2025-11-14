@@ -5,6 +5,7 @@
 #import <Foundation/Foundation.h>
 
 #import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxUIUnitUtils.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -70,6 +71,17 @@ typedef NS_ENUM(NSInteger, LynxRadialCenterType) {
 - (CGPoint)calculateRadiusWithCenter:(const CGPoint* _Nonnull)center
                                sizeX:(CGFloat)width
                                sizeY:(CGFloat)height;
+
+@end
+
+@interface LynxConicGradient : LynxGradient
+@property(nonatomic, assign) double angle;
+@property(nonatomic, strong) LynxPlatformLength* centerX;
+@property(nonatomic, strong) LynxPlatformLength* centerY;
+- (instancetype)initWithArray:(NSArray*)arr;
+- (void)computeStartPoint:(CGPoint* _Nonnull)startPoint
+              andEndPoint:(CGPoint* _Nonnull)endPoint
+                 withSize:(const CGSize* _Nonnull)size;
 @end
 
 BOOL LynxSameLynxGradient(LynxGradient* _Nullable left, LynxGradient* _Nullable right);

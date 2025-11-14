@@ -111,5 +111,9 @@
 - (instancetype _Nullable)initWithArray:(NSArray* _Nonnull)array;
 @end
 
+@interface LynxBackgroundConicGradientDrawable : LynxBackgroundGradientDrawable
+- (instancetype _Nullable)initWithArray:(NSArray* _Nonnull)array;
+@end
+
 @interface LynxBackgroundNoneDrawable : LynxBackgroundDrawable
 @end
