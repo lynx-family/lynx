@@ -125,7 +125,10 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
 
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_PREPARED_JAVA_SCRIPT, "url",
                       origin_url, "runtime_id", getRuntimeId());
-#if V8_MAJOR_VERSION >= 9
+#if V8_MAJOR_VERSION >= 14
+  auto origin = std::make_unique<v8::ScriptOrigin>(
+      V8Helper::ConvertToV8String(isolate_, origin_url), start_line_offset);
+#elif V8_MAJOR_VERSION >= 9
   auto origin = std::make_unique<v8::ScriptOrigin>(
       isolate_, V8Helper::ConvertToV8String(isolate_, origin_url),
       start_line_offset);

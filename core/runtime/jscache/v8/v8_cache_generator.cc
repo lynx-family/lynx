@@ -44,7 +44,10 @@ bool V8CacheGenerator::GenerateCacheImpl(
   v8::Context::Scope context_scope(context_wrapper.getContext());
   v8::TryCatch block(isolate);
 
-#if V8_MAJOR_VERSION >= 9
+#if V8_MAJOR_VERSION >= 14
+  auto origin = std::make_unique<v8::ScriptOrigin>(
+      detail::V8Helper::ConvertToV8String(isolate, origin_url));
+#elif V8_MAJOR_VERSION >= 9
   auto origin = std::make_unique<v8::ScriptOrigin>(
       isolate, detail::V8Helper::ConvertToV8String(isolate, origin_url));
 #else

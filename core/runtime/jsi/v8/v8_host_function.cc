@@ -81,7 +81,7 @@ std::weak_ptr<piper::HostFunctionType> getHostFunction(
 
 void V8HostFunctionProxy::FunctionCallback(
     const v8::FunctionCallbackInfo<v8::Value>& info) {
-  v8::Local<v8::Object> obj = info.Holder();
+  v8::Local<v8::Object> obj = info.This();
   V8HostFunctionProxy* proxy = static_cast<V8HostFunctionProxy*>(
       obj->GetAlignedPointerFromInternalField(0));
   V8Runtime* rt = nullptr;
@@ -101,7 +101,7 @@ void V8HostFunctionProxy::FunctionCallback(
   auto ret =
       (*host_func)(*rt,
                    V8Helper::createValue(
-                       info.Holder(), info.GetIsolate()->GetCurrentContext()),
+                       info.This(), info.GetIsolate()->GetCurrentContext()),
                    converter, count);
   const auto& exception =
       JSINativeExceptionCollector::Instance()->GetException();

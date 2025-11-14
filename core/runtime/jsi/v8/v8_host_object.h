@@ -18,6 +18,12 @@ namespace lynx {
 namespace piper {
 class V8Runtime;
 
+#if V8_MAJOR_VERSION >= 14
+using v8_property_result = v8::Intercepted;
+#else
+using v8_property_result = void;
+#endif
+
 namespace detail {
 
 // HostObject details
@@ -26,12 +32,17 @@ struct V8HostObjectProxy : public HostObjectWrapperBase<V8Runtime, HostObject> {
   V8HostObjectProxy(V8Runtime* rt, std::shared_ptr<piper::HostObject> sho);
   ~V8HostObjectProxy() override = default;
 
-  static void getProperty(v8::Local<v8::Name> property,
-                          const v8::PropertyCallbackInfo<v8::Value>& info);
+  static v8_property_result getProperty(
+      v8::Local<v8::Name> property,
+      const v8::PropertyCallbackInfo<v8::Value>& info);
 
-  static void setProperty(v8::Local<v8::Name> property,
-                          v8::Local<v8::Value> value,
-                          const v8::PropertyCallbackInfo<v8::Value>& info);
+  static v8_property_result setProperty(
+      v8::Local<v8::Name> property, v8::Local<v8::Value> value,
+#if V8_MAJOR_VERSION >= 14
+      const v8::PropertyCallbackInfo<void>& info);
+#else
+      const v8::PropertyCallbackInfo<v8::Value>& info);
+#endif
 
   static void getPropertyNames(const v8::PropertyCallbackInfo<v8::Array>& info);
 

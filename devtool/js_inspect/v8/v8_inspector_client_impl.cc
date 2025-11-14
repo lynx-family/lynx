@@ -10,6 +10,8 @@
 #include "base/include/string/string_utils.h"
 #include "devtool/fundamentals/js_inspect/inspector_client_delegate.h"
 #include "devtool/js_inspect/inspector_const.h"
+#include "v8-context.h"
+#include "v8-version.h"
 
 namespace lynx {
 namespace devtool {
@@ -237,10 +239,7 @@ void V8InspectorClientImpl::ContextCreated(v8::Local<v8::Context> context,
   if (contexts_.find(group_id) != contexts_.end()) {
     return;
   }
-  contexts_.emplace(
-      group_id,
-      v8::Persistent<v8::Context, v8::CopyablePersistentTraits<v8::Context>>(
-          isolate_, context));
+  contexts_.emplace(group_id, v8::Global<v8::Context>(isolate_, context));
   v8_inspector::V8ContextInfo info(context, group_id, Utf8ToStringView(name));
   inspector_->contextCreated(info);
   LOGI("js debug: ContextCreated, group_id: " << group_id);

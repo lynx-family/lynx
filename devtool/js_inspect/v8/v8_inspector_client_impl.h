@@ -97,10 +97,7 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient,
   std::unique_ptr<v8_inspector::V8Inspector> inspector_;
 
   std::unordered_map<int, std::shared_ptr<V8ChannelImpl>> channels_;
-  std::unordered_map<
-      int,
-      v8::Persistent<v8::Context, v8::CopyablePersistentTraits<v8::Context>>>
-      contexts_;
+  std::unordered_map<int, v8::Global<v8::Context>> contexts_;
 
   std::unordered_map<std::string, int> group_string_to_number_;
   std::unordered_map<int, std::string> group_number_to_string_;
