@@ -57,6 +57,7 @@ export abstract class LynxNodeController extends NodeController {
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
   backgroundRuntime?: LynxBackgroundRuntime;
+  @StorageLink('lynxWindowStage') windowStage: window.WindowStage | undefined; = undefined
   uri?: url.URL;
   platformConfig?: string;
   logBox: ILogBox | null; = null
