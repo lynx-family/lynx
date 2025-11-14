@@ -30,3 +30,7 @@ source_set("jsoncpp") {
     cflags = [ "/EHsc" ]
   }
 }
+
+config("jsoncpp_config") {
+  include_dirs = [ "include" ]
+}

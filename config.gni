@@ -93,7 +93,12 @@ declare_args() {
 }
 
 declare_args() {
-  v8_headers_search_path = rebase_path("third_party/v8/11.1.277/include")
+  v8_deps = [ "//third_party/NativeScript:NativeScript" ]
+  if (is_ios || is_mac) {
+    v8_headers_search_path = "//$lynx_dir/third_party/NativeScript/include"
+  } else {
+    v8_headers_search_path = rebase_path("third_party/v8/11.1.277/include")
+  }
 }
 
 if (is_android) {
@@ -101,7 +106,6 @@ if (is_android) {
   enable_inspector_test = !enable_lite_production
 } else if (is_ios || is_mac) {
   enable_inspector_test = true
-  v8_headers_search_path = "//$lynx_dir/third_party/NativeScript/include"
 }
 
 if (enable_lite) {

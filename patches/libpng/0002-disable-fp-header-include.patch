@@ -1,0 +1,28 @@
+From 0537af5aaef57fb5ca57ee0cfdc308bf6cd48b99 Mon Sep 17 00:00:00 2001
+From: tangyongjie <80395553+yongjieTang@users.noreply.github.com>
+Date: Wed, 29 Oct 2025 17:24:09 +0800
+Subject: [PATCH] disable fp header include
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ pngpriv.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pngpriv.h b/pngpriv.h
+index 43b00b1c8..2f4b1a5fa 100644
+--- a/pngpriv.h
++++ b/pngpriv.h
+@@ -525,7 +525,7 @@
+     * <fp.h> if possible.
+     */
+ #    if !defined(__MATH_H__) && !defined(__MATH_H) && !defined(__cmath__)
+-#      include <fp.h>
++// #      include <fp.h>
+ #    endif
+ #  else
+ #    include <math.h>
+-- 
+2.50.1 (Apple Git-155)
+

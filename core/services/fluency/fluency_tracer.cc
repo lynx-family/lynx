@@ -20,30 +20,30 @@ std::atomic<bool> FluencyTracer::force_enable_{false};
 std::atomic<bool> FluencyTracer::enable_{false};
 
 void FluencyTracer::SetForceEnable(bool b) {
-  force_enable_.store(b, std::memory_order::memory_order_relaxed);
+  force_enable_.store(b, std::memory_order_relaxed);
 }
 
 // FluencyTracer frequently retrieves settings. Therefore, for better
 // performance, we persistently save the toggle values when there are no updates
 // to the settings.
 void FluencyTracer::SetNeedCheck() {
-  need_check_.store(true, std::memory_order::memory_order_relaxed);
+  need_check_.store(true, std::memory_order_relaxed);
 }
 
 bool FluencyTracer::IsEnable() {
-  if (force_enable_.load(std::memory_order::memory_order_relaxed)) {
+  if (force_enable_.load(std::memory_order_relaxed)) {
     return true;
   }
   bool expected = true;
-  if (need_check_.compare_exchange_weak(
-          expected, false, std::memory_order::memory_order_relaxed,
-          std::memory_order::memory_order_relaxed)) {
+  if (need_check_.compare_exchange_weak(expected, false,
+                                        std::memory_order_relaxed,
+                                        std::memory_order_relaxed)) {
     bool enable = lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
         lynx::tasm::LynxEnv::Key::ENABLE_FLUENCY_TRACE, false);
     enable_.store(enable);
     return enable;
   }
-  return enable_.load(std::memory_order::memory_order_relaxed);
+  return enable_.load(std::memory_order_relaxed);
 }
 
 void FluencyTracer::Trigger(int64_t time_stamp) {
