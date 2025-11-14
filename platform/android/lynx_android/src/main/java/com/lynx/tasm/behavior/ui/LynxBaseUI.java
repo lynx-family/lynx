@@ -2799,18 +2799,7 @@ public abstract class LynxBaseUI implements UIParent, EventTarget, PropertiesDis
     float height = getHeight() * getScaleY();
     float rectX = centerX - width / 2.0f + getTranslationX();
     float rectY = centerY - height / 2.0f + getTranslationY();
-    Rect transRect =
-        new Rect((int) rectX, (int) rectY, (int) (rectX + width), (int) (rectY + height));
-
-    if (transRect.width() + mHitSlopLeft + mHitSlopRight >= Float.MIN_VALUE
-        && transRect.height() + mHitSlopTop + mHitSlopBottom >= Float.MIN_VALUE) {
-      transRect.top -= mHitSlopTop;
-      transRect.bottom += mHitSlopBottom;
-      transRect.left -= mHitSlopLeft;
-      transRect.right += mHitSlopRight;
-    }
-
-    return transRect;
+    return new Rect((int) rectX, (int) rectY, (int) (rectX + width), (int) (rectY + height));
   }
 
   // TODO(hexionghui): change the name to getHitTestRectWithoutTransform
@@ -3185,16 +3174,18 @@ public abstract class LynxBaseUI implements UIParent, EventTarget, PropertiesDis
     boolean contain = false;
     if (mContext.getEnableEventRefactor()) {
       // If EnableEventRefactor, the point is converted according to the child's origin.
-      Rect rect = getRectWithoutTransform();
-      contain = -slop - mHitSlopLeft <= x && rect.right - rect.left + slop + mHitSlopRight >= x
-          && -slop - mHitSlopTop <= y && rect.bottom - rect.top + slop + mHitSlopBottom >= y;
+      float left = -slop - mHitSlopLeft;
+      float right = mWidth + slop + mHitSlopRight;
+      float top = -slop - mHitSlopTop;
+      float bottom = mHeight + slop + mHitSlopBottom;
+      contain = left <= x && right >= x && top <= y && bottom >= y;
       if (!contain && getOverflow() != 0) {
         if (getOverflow() == OVERFLOW_X) {
-          if (y < rect.top || y > rect.bottom) {
+          if (y < top || y > bottom) {
             return contain;
           }
         } else if (getOverflow() == OVERFLOW_Y) {
-          if (x < rect.left || x > rect.right) {
+          if (x < left || x > right) {
             return contain;
           }
         }

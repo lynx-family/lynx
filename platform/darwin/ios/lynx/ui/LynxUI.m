@@ -3436,19 +3436,19 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 - (BOOL)containsPoint:(CGPoint)point inHitTestFrame:(CGRect)frame {
   bool contain = NO;
   if (_context.enableEventRefactor) {
-    frame =
-        CGRectMake(frame.origin.x - self.touchSlop, frame.origin.y - self.touchSlop,
-                   frame.size.width + 2 * self.touchSlop, frame.size.height + 2 * self.touchSlop);
+    CGFloat left = frame.origin.x - self.touchSlop;
+    CGFloat width = frame.size.width + 2 * self.touchSlop;
+    CGFloat top = frame.origin.y - self.touchSlop;
+    CGFloat height = frame.size.height + 2 * self.touchSlop;
+    frame = CGRectMake(left, top, width, height);
     contain = CGRectContainsPoint(frame, point);
     if (!contain && _overflow != 0) {
       if (_overflow == OVERFLOW_X_VAL) {
-        if (!(frame.origin.y - self.touchSlop < point.y &&
-              frame.origin.y + frame.size.height + self.touchSlop > point.y)) {
+        if (!(top < point.y && height + top > point.y)) {
           return contain;
         }
       } else if (_overflow == OVERFLOW_Y_VAL) {
-        if (!(frame.origin.x - self.touchSlop < point.x &&
-              frame.origin.x + frame.size.width + self.touchSlop > point.x)) {
+        if (!(left < point.x && width + left > point.x)) {
           return contain;
         }
       }
@@ -3462,11 +3462,13 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   contain = CGRectContainsPoint(frame, point);
   if (!contain && _overflow != 0) {
     if (_overflow == OVERFLOW_X_VAL) {
-      if (!(frame.origin.y < point.y && frame.origin.y + frame.size.height > point.y)) {
+      if (!(frame.origin.y - self.touchSlop < point.y &&
+            frame.origin.y + frame.size.height + self.touchSlop > point.y)) {
         return contain;
       }
     } else if (_overflow == OVERFLOW_Y_VAL) {
-      if (!(frame.origin.x < point.x && frame.origin.x + frame.size.width > point.x)) {
+      if (!(frame.origin.x - self.touchSlop < point.x &&
+            frame.origin.x + frame.size.width + self.touchSlop > point.x)) {
         return contain;
       }
     }

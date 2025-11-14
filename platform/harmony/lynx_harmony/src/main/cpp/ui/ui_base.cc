@@ -1734,11 +1734,6 @@ bool UIBase::ContainsPoint(float point[2]) {
                  base::FloatsLargerOrEqual(y, -hit_slop_top_) &&
                  base::FloatsLargerOrEqual(height_ + hit_slop_bottom_, y);
   if (!contain) {
-    if (overflow_.overflow_x && overflow_.overflow_y) {
-      // TODO(hexionghui): need to optimize to avoid redundant hit-test when
-      // HitTest(point) != this
-      return HitTest(point) != this;
-    }
     if (overflow_.overflow_x &&
         (base::FloatsLarger(hit_slop_top_, y) ||
          base::FloatsLarger(y, height_ + hit_slop_bottom_))) {
@@ -1748,6 +1743,11 @@ bool UIBase::ContainsPoint(float point[2]) {
         (base::FloatsLarger(hit_slop_left_, x) ||
          base::FloatsLarger(x, width_ + hit_slop_right_))) {
       return contain;
+    }
+    if (overflow_.overflow_x || overflow_.overflow_y) {
+      // TODO(hexionghui): need to optimize to avoid redundant hit-test when
+      // HitTest(point) != this
+      return HitTest(point) != this;
     }
   }
   return contain;
