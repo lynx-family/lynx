@@ -16,6 +16,7 @@
   NSMapTable<NSNumber *, LynxView *> *_viewMap;
   pthread_rwlock_t _viewMapLock;
   dispatch_group_t _fetch_task;
+  std::atomic_bool _hasTimeout;
 }
 
 - (instancetype)init:(nonnull NSString *)url
@@ -85,7 +86,8 @@
     return;
   }
 
-  LynxResourceRequest *request = [[LynxResourceRequest alloc] initWithUrl:self.url];
+  LynxResourceRequest *request = [[LynxResourceRequest alloc] initWithUrl:self.url
+                                                                     type:LynxResourceTypeTemplate];
   __weak typeof(self) weakSelf = self;
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     [self.templateResourceFetcher
@@ -119,9 +121,15 @@
   if (_templateBundle) {
     return _templateBundle;
   }
+  if (_hasTimeout) {
+    // If waiting timeout has occurred previously, return early to avoid redundant waits
+    return nil;
+  }
   dispatch_time_t wait = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-  dispatch_group_wait(_fetch_task, wait);
-  return self->_templateBundle;
+  if (dispatch_group_wait(_fetch_task, wait) != 0) {
+    _hasTimeout = true;
+  }
+  return _templateBundle;
 }
 
 - (void)setTemplateBundle:(LynxTemplateBundle *_Nullable)templateBundle {
