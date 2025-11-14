@@ -11,3 +11,11 @@ MetricFspEntry:
           $ref: 'PerformanceMetric.yml#/PerformanceMetric'
         totalFsp:
           $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        status:
+          type: string
+        contentFillRatioX:
+          type: number
+        contentFillRatioY:
+          type: number
+        contentFillRatioTotalArea:
+          type: number
