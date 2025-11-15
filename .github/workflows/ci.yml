@@ -438,7 +438,7 @@ jobs:
             pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
             export server_port=$APPIUM_TEST_SERVER_PORT
             export platform=android
-            pip3 install -r requirements.txt
+            python3 -m pip install -r requirements.txt
             python3 manage.py runtest android_test.core
             echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
         id: run_test
