@@ -682,6 +682,26 @@ TEST_F(LepusValueTest, LepusValueToBaseValue) {
         (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_obj);
     ASSERT_TRUE(p3->ref_count == 1);
 
+    LEPUSValue js_arr = LEPUS_NewArray(quick_ctx_.context());
+    lepus::Value js_arr_val = MK_JS_LEPUS_VALUE(quick_ctx_.context(), js_arr);
+    js_arr_val.SetProperty(0, v1);
+    {
+      lepus::Value ret_arr_val1 = js_arr_val.ToLepusValue();
+      ASSERT_TRUE(ret_arr_val1.IsArray());
+      lepus::Value element1 = ret_arr_val1.GetProperty(0);
+      ASSERT_TRUE(element1.IsTable());
+      ASSERT_TRUE(element1.GetLength() == 9);
+      auto property1 = element1.GetProperty("key1");
+      ASSERT_FALSE(property1.IsJSValue());
+      ASSERT_TRUE(property1.StdString() == "test_val");
+    }
+    {
+      lepus::Value ret_arr_val2 = js_arr_val.ToLepusValue(true);
+      auto property1 = ret_arr_val2.GetProperty(0).GetProperty("key1");
+      ASSERT_FALSE(property1.IsJSValue());
+      ASSERT_TRUE(property1.StdString() == "test_val");
+    }
+
     // free
     LEPUS_FreeValue(quick_ctx_.context(), val_str1);
     LEPUS_FreeValue(quick_ctx_.context(), val_str2);
@@ -690,6 +710,7 @@ TEST_F(LepusValueTest, LepusValueToBaseValue) {
     LEPUS_FreeValue(quick_ctx_.context(), val_arr);
     LEPUS_FreeValue(quick_ctx_.context(), val_obj);
     LEPUS_FreeValue(quick_ctx_.context(), val_double);
+    LEPUS_FreeValue(quick_ctx_.context(), js_arr);
   }
   {
     LEPUSValue val_str1 =
