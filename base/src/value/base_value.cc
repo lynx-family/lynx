@@ -1286,7 +1286,7 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
   }
   if (val.type != lynx_value_extended) {
     if (likely(flag == 0)) {
-      return Value(env, val);
+      return Value(env, val).ToLepusValue();
     } else if (flag == 1) {
       return Value::Clone(Value(env, val));
     } else {
