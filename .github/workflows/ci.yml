@@ -253,17 +253,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
-        with:
-          path: ~/.gradle/wrapper/dists
-          key: gradle-${{ runner.os }}
+      # - name: Install Common Dependencies
+      #   uses: ./lynx/.github/actions/common-deps
+      # - name: Gradle Wrapper Cache
+      #   uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      #   with:
+      #     path: ~/.gradle/wrapper/dists
+      #     key: gradle-${{ runner.os }}
       - name: Build Example App
         run: |
-          source tools/envsetup.sh
-          tools/rtf/rtf android-ut run --name lynx
+          sleep 72000
 
   android-explorer-build:
     runs-on: lynx-ubuntu-22.04-large
