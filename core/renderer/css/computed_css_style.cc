@@ -432,7 +432,7 @@ lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskImageToLepus(
     const tasm::CssMeasureContext& context,
     const tasm::CSSParserConfigs& configs) {
   if (data && data->image_data && data->image_data->image.IsArray()) {
-    std::vector<size_t> indexs;
+    std::vector<std::pair<size_t, BackgroundImageType>> items;
     {
       auto array = data->image_data->image.Array();
       // TODO(renzhongyue): optimize the background's parse logic later, wuch
@@ -447,15 +447,14 @@ lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskImageToLepus(
         if (!img.IsNumber()) {
           continue;
         }
-        if (img.Number() ==
-            static_cast<uint32_t>(
-                starlight::BackgroundImageType::kRadialGradient)) {
-          indexs.emplace_back(i);
+        if (img.Number() >=
+            static_cast<uint32_t>(BackgroundImageType::kRadialGradient)) {
+          items.emplace_back(i, static_cast<BackgroundImageType>(img.Number()));
         }
       }
     }
 
-    if (!indexs.empty()) {
+    if (!items.empty()) {
       // Clone the image data to avoid modifying the original data during
       // computation.
       if (!data->image_data->clone_image) {
@@ -466,12 +465,16 @@ lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskImageToLepus(
       // For each radial-gradient type, the next element in the array is the
       // gradient data. Use `ComputeRadialGradient` to process the gradient
       // data.
-      for (auto index : indexs) {
-        if (index + 1 >= new_array->size()) {
+      for (const auto& item : items) {
+        if (item.first + 1 >= new_array->size()) {
           continue;
         }
-        const auto& gradient_data = new_array->get(index + 1);
-        CSSStyleUtils::ComputeRadialGradient(gradient_data, context, configs);
+        const auto& gradient_data = new_array->get(item.first + 1);
+        if (item.second == BackgroundImageType::kRadialGradient) {
+          CSSStyleUtils::ComputeRadialGradient(gradient_data, context, configs);
+        } else if ((item.second == BackgroundImageType::kConicGradient)) {
+          CSSStyleUtils::ComputeConicGradient(gradient_data, context, configs);
+        }
       }
     }
 

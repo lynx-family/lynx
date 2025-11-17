@@ -1254,6 +1254,45 @@ std::string BackgroundRadialGradientToString(const lynx::lepus::Value &value) {
   return res;
 }
 
+std::string BackgroundConicGradientToString(const lynx::lepus::Value &value) {
+  if (!value.IsArray()) {
+    return "";
+  }
+
+  auto arr = value.Array();
+  if (arr->size() != 4) {
+    return "";
+  }
+
+  auto angle = arr->get(0);
+  auto center = arr->get(1).Array();
+  auto colors = arr->get(2);
+  auto pos = arr->get(3);
+
+  std::string res = "conic-gradient(from ";
+
+  // parse angle
+  res += CSSDecoder::NumberToString(angle.Number());
+  res += "deg at ";
+
+  auto pos_x_value = center->get(0);
+  auto pos_x_type = center->get(1).UInt32();
+  res +=
+      ToLengthWithUnit(pos_x_value, static_cast<CSSValuePattern>(pos_x_type));
+  res += " ";
+
+  auto pos_y_value = center->get(2);
+  auto pos_y_type = center->get(3).UInt32();
+  res +=
+      ToLengthWithUnit(pos_y_value, static_cast<CSSValuePattern>(pos_y_type));
+  res += ",";
+
+  res += GradientColorStopToString(colors.Array().get(), pos.Array().get());
+
+  res += ")";
+  return res;
+}
+
 std::string ToBackgroundImageProperty(const lynx::tasm::CSSValue &value) {
   std::string res = "";
 
@@ -1283,6 +1322,9 @@ std::string ToBackgroundImageProperty(const lynx::tasm::CSSValue &value) {
         break;
       case starlight::BackgroundImageType::kRadialGradient:
         res += BackgroundRadialGradientToString(image_value);
+        break;
+      case starlight::BackgroundImageType::kConicGradient:
+        res += BackgroundConicGradientToString(image_value);
         break;
     }
 

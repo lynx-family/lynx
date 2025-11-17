@@ -488,6 +488,83 @@ TEST(BackgroundImageHandler, linear_gradient_value_invalid) {
   }
 }
 
+TEST(BackgroundImageHandler, parse_conic_gradient) {
+  std::string bg_image = "conic-gradient(red, blue);";
+  CSSParserConfigs configs;
+  CSSStringParser parser{bg_image.c_str(),
+                         static_cast<uint32_t>(bg_image.size()), configs};
+
+  CSSValue result = parser.ParseBackgroundImage();
+
+  EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
+  auto array = result.GetArray();
+  EXPECT_EQ(array->size(), static_cast<size_t>(2));
+
+  LepusCheckFunc(array->get(0), starlight::BackgroundImageType::kConicGradient);
+
+  LepusCheckEach(array->get(1), 0.f,
+                 std::make_tuple(50.f, CSSValuePattern::PERCENT, 50.f,
+                                 CSSValuePattern::PERCENT),
+                 std::vector<uint32_t>{0xffff0000, 0xff0000ff},
+                 std::vector<float>{});
+}
+
+TEST(BackgroundImageHandler, parse_conic_gradient_angle) {
+  std::string bg_image = "conic-gradient(from 30deg, red, blue);";
+  CSSParserConfigs configs;
+  CSSStringParser parser{bg_image.c_str(),
+                         static_cast<uint32_t>(bg_image.size()), configs};
+
+  CSSValue result = parser.ParseBackgroundImage();
+
+  EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
+  auto array = result.GetArray();
+  EXPECT_EQ(array->size(), static_cast<size_t>(2));
+
+  LepusCheckFunc(array->get(0), starlight::BackgroundImageType::kConicGradient);
+
+  LepusCheckEach(array->get(1), 30.f,
+                 std::make_tuple(50.f, CSSValuePattern::PERCENT, 50.f,
+                                 CSSValuePattern::PERCENT),
+                 std::vector<uint32_t>{0xffff0000, 0xff0000ff},
+                 std::vector<float>{});
+}
+
+TEST(BackgroundImageHandler, parse_conic_gradient_angle_at) {
+  std::string bg_image =
+      "conic-gradient(from 50deg at top right, red 0%, blue 90%);";
+  CSSParserConfigs configs;
+  CSSStringParser parser{bg_image.c_str(),
+                         static_cast<uint32_t>(bg_image.size()), configs};
+
+  CSSValue result = parser.ParseBackgroundImage();
+
+  EXPECT_EQ(result.GetPattern(), CSSValuePattern::ARRAY);
+  auto array = result.GetArray();
+  EXPECT_EQ(array->size(), static_cast<size_t>(2));
+
+  LepusCheckFunc(array->get(0), starlight::BackgroundImageType::kConicGradient);
+
+  LepusCheckEach(array->get(1), 50.f,
+                 std::make_tuple(100.f, CSSValuePattern::PERCENT, 0.f,
+                                 CSSValuePattern::PERCENT),
+                 std::vector<uint32_t>{0xffff0000, 0xff0000ff},
+                 std::vector<float>{0.f, 90.f});
+}
+
+TEST(BackgroundImageHandler, conic_gradient_value_invalid) {
+  const char* invalid_values[] = {"conic-gradient(90deg, red, red)",
+                                  "conic-gradient(from 90deg at red, red)",
+                                  "conic-gradient(at, red, red)",
+                                  "conic-gradient(at 10px red, red)", nullptr};
+  CSSParserConfigs configs;
+  for (const char** it = invalid_values; *it; it++) {
+    CSSStringParser parser{*it, static_cast<uint32_t>(strlen(*it)), configs};
+    CSSValue gradient = parser.ParseBackgroundImage();
+    EXPECT_TRUE(gradient.IsEmpty());
+  }
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

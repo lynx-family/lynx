@@ -55,6 +55,7 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"border-area", TokenType::BORDER_AREA},
       {"linear-gradient", TokenType::LINEAR_GRADIENT},
       {"radial-gradient", TokenType::RADIAL_GRADIENT},
+      {"conic-gradient", TokenType::CONIC_GRADIENT},
       {"closest-side", TokenType::CLOSEST_SIDE},
       {"closest-corner", TokenType::CLOSEST_CORNER},
       {"farthest-side", TokenType::FARTHEST_SIDE},
@@ -326,11 +327,14 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"running", TokenType::RUNNING},
       {"true", TokenType::TOKEN_TRUE},
       {"false", TokenType::TOKEN_FALSE},
+      {"on", TokenType::ON},
+      {"off", TokenType::OFF},
+      {"from", TokenType::FROM},
   };
 
-  EXPECT_EQ(static_cast<int>(TokenType::TOKEN_FALSE) -
-                static_cast<int>(TokenType::UNKNOWN),
-            ret.size());
+  EXPECT_EQ(
+      static_cast<int>(TokenType::FROM) - static_cast<int>(TokenType::UNKNOWN),
+      ret.size());
   for (const auto& [s, t] : ret) {
     EXPECT_EQ(GetTokenValue(s.c_str(), s.length())->type, t);
   }

@@ -1230,6 +1230,8 @@ bool CSSStringParser::Gradient() {
     return LinearGradient();
   } else if (Check(TokenType::RADIAL_GRADIENT)) {
     return RadialGradient();
+  } else if (Check(TokenType::CONIC_GRADIENT)) {
+    return ConicGradient();
   } else {
     return false;
   }
@@ -1477,6 +1479,66 @@ bool CSSStringParser::RadialGradient() {
   return true;
 }
 
+bool CSSStringParser::ConicGradient() {
+  if (!Consume(TokenType::CONIC_GRADIENT)) {
+    return false;
+  }
+  if (!Consume(TokenType::LEFT_PAREN)) {  // '('
+    return false;
+  }
+
+  float angle = 0.f;
+  bool need_comma = false;
+  if (Consume(TokenType::FROM)) {
+    need_comma = true;
+    if (Check(TokenType::NUMBER) || Check(TokenType::DIMENSION)) {
+      Token angle_token;
+      if (!AngleValue(angle_token)) {
+        return false;
+      }
+      angle = TokenToAngleValue(angle_token);
+    } else {
+      return false;
+    }
+  }
+
+  CSSValue pos_x = CSSValue(50.f, CSSValuePattern::PERCENT);
+  CSSValue pos_y = CSSValue(50.f, CSSValuePattern::PERCENT);
+  if (Consume(TokenType::AT)) {
+    need_comma = true;
+    if (!BackgroundPosition(pos_x, pos_y)) {
+      return false;
+    }
+  }
+  if (need_comma && !Consume(TokenType::COMMA)) {
+    return false;
+  }
+
+  auto color_array = lepus::CArray::Create();
+  auto position_array = lepus::CArray::Create();
+
+  if (!ColorStopList(color_array, position_array)) {
+    return false;
+  }
+
+  if (color_array->size() == 0) {
+    return false;
+  }
+
+  auto conic_gradient_obj = lepus::CArray::Create();
+  conic_gradient_obj->emplace_back(angle);
+  auto array = lepus::CArray::Create();
+  PositionAddValue(array, pos_x);
+  PositionAddValue(array, pos_y);
+  conic_gradient_obj->emplace_back(std::move(array));
+  conic_gradient_obj->emplace_back(std::move(color_array));
+  conic_gradient_obj->emplace_back(std::move(position_array));
+
+  PushValue(
+      StackValue(TokenType::CONIC_GRADIENT, std::move(conic_gradient_obj)));
+  return true;
+}
+
 bool CSSStringParser::EndingShape() {
   if (Consume(TokenType::ELLIPSE)) {
     PushValue(StackValue(TokenType::ELLIPSE));
@@ -1664,7 +1726,7 @@ CSSValue CSSStringParser::ConsumeTimingFunction(
     const Token &token, const CSSParserConfigs &configs) {
   CSSValue css_value;
   auto type = TokenToTimingFunctionType(token);
-  if (token.type >= TokenType::LINEAR & token.type <= TokenType::EASE_IN_OUT) {
+  if (token.type >= TokenType::LINEAR && token.type <= TokenType::EASE_IN_OUT) {
     css_value.SetEnum(type);
   } else if (token.type == TokenType::STEP_START ||
              token.type == TokenType::STEP_END) {
@@ -2181,6 +2243,9 @@ uint32_t CSSStringParser::TokenTypeToENUM(TokenType token_type) {
     case TokenType::RADIAL_GRADIENT:
       return static_cast<uint32_t>(
           starlight::BackgroundImageType::kRadialGradient);
+    case TokenType::CONIC_GRADIENT:
+      return static_cast<uint32_t>(
+          starlight::BackgroundImageType::kConicGradient);
     case TokenType::ELLIPSE:
       return static_cast<uint32_t>(
           starlight::RadialGradientShapeType::kEllipse);

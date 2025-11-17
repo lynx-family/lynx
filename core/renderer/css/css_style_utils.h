@@ -275,6 +275,10 @@ class CSSStyleUtils {
                                     const tasm::CssMeasureContext& context,
                                     const tasm::CSSParserConfigs& configs);
 
+  static void ComputeConicGradient(const lepus::Value& gradient_data,
+                                   const tasm::CssMeasureContext& context,
+                                   const tasm::CSSParserConfigs& configs);
+
   static lepus::Value GetGradientArrayFromString(
       const char* gradient_def, size_t gradient_def_length,
       const tasm::CssMeasureContext& context,

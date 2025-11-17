@@ -72,6 +72,7 @@ enum class TokenType {
   BORDER_AREA,      // border-area
   LINEAR_GRADIENT,  // linear-gradient
   RADIAL_GRADIENT,  // radial-gradient
+  CONIC_GRADIENT,   // conic-gradient
   CLOSEST_SIDE,     // closest-side
   CLOSEST_CORNER,   // closest-corner
   FARTHEST_SIDE,    // farthest-side
@@ -381,6 +382,7 @@ enum class TokenType {
 
   ON,
   OFF,
+  FROM,
 };
 
 struct TokenValue {

@@ -260,7 +260,8 @@ enum class BackgroundImageType : uint8_t {
   kNone = 0,
   kUrl,
   kLinearGradient,
-  kRadialGradient
+  kRadialGradient,
+  kConicGradient,
 };
 
 enum class CursorType : uint8_t {
