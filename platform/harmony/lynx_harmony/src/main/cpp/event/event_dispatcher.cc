@@ -300,6 +300,55 @@ void EventDispatcher::ResetTouchEnv(const ArkUI_UIInputEvent* event) {
   has_touch_moved_ = false;
 }
 
+void EventDispatcher::InitClickEnv() {
+  click_target_chain_.clear();
+  if (first_active_target_.expired()) {
+    return;
+  }
+  auto active_target = first_active_target_.lock().get();
+  while (active_target != nullptr &&
+         active_target->ParentTarget() != active_target) {
+    click_target_chain_.push_back(active_target->WeakTarget());
+    active_target = active_target->ParentTarget();
+  }
+
+  while (!click_target_chain_.empty()) {
+    auto& last_target = click_target_chain_.front();
+    if (last_target.expired()) {
+      click_target_chain_.pop_front();
+      continue;
+    }
+    bool has_click_event = false;
+    for (const auto& event : last_target.lock()->EventSet()) {
+      if (event == "click") {
+        has_click_event = true;
+        break;
+      }
+    }
+    if (has_click_event) {
+      break;
+    } else {
+      click_target_chain_.pop_front();
+    }
+  }
+
+  for (const auto& target : click_target_chain_) {
+    if (target.expired()) {
+      continue;
+    }
+    target.lock()->OnResponseChain();
+  }
+}
+
+void EventDispatcher::ResetClickEnv() {
+  for (const auto& target : click_target_chain_) {
+    if (target.expired()) {
+      continue;
+    }
+    target.lock()->OffResponseChain();
+  }
+}
+
 void EventDispatcher::OnTouchDown(const ArkUI_UIInputEvent* event) {
   size_t num = OH_ArkUI_PointerEvent_GetPointerCount(event);
   for (size_t i = 0; i < num; ++i) {
@@ -312,6 +361,10 @@ void EventDispatcher::OnTouchDown(const ArkUI_UIInputEvent* event) {
       first_touch_outside_ = false;
       gesture_recognized_target_set_.clear();
       event_target_chain_.clear();
+      InitClickEnv();
+      if (!enable_multi_touch_) {
+        DispatchSingleTouchEvent(TouchEvent::START, event);
+      }
       ActivePseudoStatus();
       break;
     }
@@ -358,9 +411,18 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
     if (auto first_touch_target = active_target_finger_map_.find(0);
         first_touch_target != active_target_finger_map_.end()) {
       first_touch_target->second.GetPrePoint(pre_page_point);
-      first_touch_outside_ = first_touch_outside_ ||
-                             IsTouchMoveOutside(FindTarget(pre_page_point));
-      if (first_touch_moved_ || first_touch_outside_ || CanRespondTap()) {
+      if (!click_target_chain_.empty()) {
+        auto active_target = FindTarget(pre_page_point);
+        auto click_target = click_target_chain_.front();
+        first_touch_outside_ =
+            first_touch_outside_ || IsTouchMoveOutside(active_target) ||
+            !CanRespondTap(!click_target.expired() ? click_target.lock().get()
+                                                   : nullptr);
+      }
+      if (first_touch_moved_ ||
+          !CanRespondTap(!first_active_target_.expired()
+                             ? first_active_target_.lock().get()
+                             : nullptr)) {
         DeactivatePseudoStatus(PseudoStatus::kActive);
       }
     }
@@ -378,6 +440,11 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+      if (!enable_multi_touch_) {
+        DispatchSingleTouchEvent(TouchEvent::UP, event);
+      }
+      OnClickEvent(event);
+      ResetClickEnv();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;
@@ -393,6 +460,7 @@ void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+      ResetClickEnv();
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;
@@ -407,21 +475,21 @@ EventTarget* EventDispatcher::FindTarget(float point[2]) {
   return root_target_.lock()->HitTest(point);
 }
 
-bool EventDispatcher::CanRespondTap() {
-  if (first_active_target_.expired()) {
+bool EventDispatcher::CanRespondTap(EventTarget* active_target) {
+  if (active_target == nullptr) {
     return false;
   }
   if (gesture_recognized_target_set_.empty()) {
     return true;
   }
 
-  auto target = first_active_target_.lock().get();
-  while (target != nullptr && target->ParentTarget() != target) {
-    if (gesture_recognized_target_set_.find(target->Sign()) !=
+  while (active_target != nullptr &&
+         active_target->ParentTarget() != active_target) {
+    if (gesture_recognized_target_set_.find(active_target->Sign()) !=
         gesture_recognized_target_set_.end()) {
       return false;
     }
-    target = target->ParentTarget();
+    active_target = active_target->ParentTarget();
   }
   return true;
 }
@@ -584,7 +652,6 @@ void EventDispatcher::HandleTouchDown(const ArkUI_UIInputEvent* event) {
   if (enable_multi_touch_) {
     DispatchMultiTouchEvent(TouchEvent::START, target_touch_map, event);
   }
-  DispatchSingleTouchEvent(TouchEvent::START, event);
   OnTouchDown(event);
 }
 
@@ -597,8 +664,9 @@ void EventDispatcher::HandleTouchMove(const ArkUI_UIInputEvent* event) {
   AddTargetTouchMap(target_touch_map, event);
   if (enable_multi_touch_) {
     DispatchMultiTouchEvent(TouchEvent::MOVE, target_touch_map, event);
+  } else {
+    DispatchSingleTouchEvent(TouchEvent::MOVE, event);
   }
-  DispatchSingleTouchEvent(TouchEvent::MOVE, event);
 }
 
 void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
@@ -607,7 +675,6 @@ void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
   if (enable_multi_touch_) {
     DispatchMultiTouchEvent(TouchEvent::UP, target_touch_map, event);
   }
-  DispatchSingleTouchEvent(TouchEvent::UP, event);
   OnTouchUp(event);
   ResetTouchEnv(event);
 }
@@ -617,8 +684,9 @@ void EventDispatcher::HandleTouchCancel(const ArkUI_UIInputEvent* event) {
   AddTargetTouchMap(target_touch_map, event);
   if (enable_multi_touch_) {
     DispatchMultiTouchEvent(TouchEvent::CANCEL, target_touch_map, event);
+  } else {
+    DispatchSingleTouchEvent(TouchEvent::CANCEL, event);
   }
-  DispatchSingleTouchEvent(TouchEvent::CANCEL, event);
   OnTouchCancel(event);
   ResetTouchEnv(event);
 }
@@ -679,13 +747,13 @@ bool EventDispatcher::IsTouchMoveOutside(EventTarget* target) {
     target_chain.push_back(target);
     target = target->ParentTarget();
   }
-  if (target_chain.size() < event_target_chain_.size()) {
+  if (target_chain.size() < click_target_chain_.size()) {
     return true;
   }
 
-  for (size_t i = 0; i < event_target_chain_.size(); ++i) {
-    if (event_target_chain_[i].expired() ||
-        event_target_chain_[i].lock().get() != target_chain[i]) {
+  for (size_t i = 0; i < click_target_chain_.size(); ++i) {
+    if (click_target_chain_[i].expired() ||
+        click_target_chain_[i].lock().get() != target_chain[i]) {
       return true;
     }
   }
@@ -821,7 +889,9 @@ void EventDispatcher::OnLongPressEvent(const ArkUI_UIInputEvent* event) {
 }
 
 void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
-  bool can_respond_tap = CanRespondTap();
+  bool can_respond_tap = !first_active_target_.expired()
+                             ? CanRespondTap(first_active_target_.lock().get())
+                             : false;
   if (first_active_target_.expired() || first_touch_moved_ ||
       !can_respond_tap) {
     LOGI("EventDispatcher OnTapEvent tap failed: "
@@ -830,6 +900,24 @@ void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
     return;
   }
   DispatchSingleTouchEvent(TouchEvent::TAP, event);
+}
+
+void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
+  if (click_target_chain_.empty()) {
+    return;
+  }
+  auto first_click_target = click_target_chain_.front();
+  bool can_respond_tap = !first_click_target.expired()
+                             ? CanRespondTap(first_click_target.lock().get())
+                             : false;
+  if (first_click_target.expired() || first_touch_outside_ ||
+      !can_respond_tap) {
+    LOGI("EventDispatcher OnClickEvent click failed: "
+         << first_click_target.expired() << ", " << first_touch_outside_ << ", "
+         << can_respond_tap);
+    return;
+  }
+  DispatchSingleTouchEvent(TouchEvent::CLICK, event);
 }
 
 bool EventDispatcher::EventThrough() {

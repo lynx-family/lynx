@@ -1764,8 +1764,6 @@ bool UIBase::ShouldHitTest() {
   return user_interaction_enabled_;
 }
 
-bool UIBase::IsOnResponseChain() { return false; }
-
 EventTarget* UIBase::HitTest(float point[2]) {
   float origin_point[2]{point[0], point[1]};
   EventTarget* target = nullptr;

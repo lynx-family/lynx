@@ -94,8 +94,6 @@ bool TextEventTarget::ContainsPoint(float point[2]) {
   return false;
 }
 
-bool TextEventTarget::IsOnResponseChain() { return false; }
-
 void TextEventTarget::AddRect(float left, float top, float right,
                               float bottom) {
   text_rects_.emplace_back(left, top, right, bottom);
