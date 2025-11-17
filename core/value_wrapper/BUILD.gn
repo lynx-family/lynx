@@ -33,7 +33,7 @@ if (is_android) {
     "harmony/value_impl_napi.cc",
     "harmony/value_impl_napi.h",
   ]
-} else if (is_apple && !enable_unittests) {
+} else if (is_apple && !enable_unittests && !is_oliver_node_lynx) {
   value_wrapper_platform_sources += [
     "darwin/value_impl_darwin.h",
     "darwin/value_impl_darwin.mm",

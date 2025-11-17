@@ -36,7 +36,7 @@ group("base_for_oliver") {
     ":string_utils",
     ":time_utils",
   ]
-  if (is_oliver_ssr) {
+  if (is_oliver_ssr || is_oliver_node_lynx) {
     public_deps += [
       ":base_core",
       ":base_trace",
