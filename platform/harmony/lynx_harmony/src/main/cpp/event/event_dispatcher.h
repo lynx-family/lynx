@@ -8,6 +8,7 @@
 #include <arkui/native_gesture.h>
 #include <arkui/native_node.h>
 
+#include <deque>
 #include <limits>
 #include <memory>
 #include <string>
@@ -66,6 +67,7 @@ class EventDispatcher {
   void SetLongPressDuration(int32_t long_press_duration);
 
   void OnGestureRecognized(UIBase* ui);
+
   void OnGestureRecognizedWithSign(int sign);
 
   void SetFocusedTarget(const std::weak_ptr<EventTarget>& focused_target) {
@@ -84,6 +86,8 @@ class EventDispatcher {
   void OnLongPressEvent(const ArkUI_UIInputEvent* event);
 
   void OnTapEvent(const ArkUI_UIInputEvent* event);
+
+  void OnClickEvent(const ArkUI_UIInputEvent* event);
 
   void OnGetVelocity(const ArkUI_GestureEvent* event);
 
@@ -114,6 +118,10 @@ class EventDispatcher {
 
   void ResetTouchEnv(const ArkUI_UIInputEvent* event);
 
+  void InitClickEnv();
+
+  void ResetClickEnv();
+
   void OnTouchDown(const ArkUI_UIInputEvent* event);
 
   void OnTouchMove(const ArkUI_UIInputEvent* event);
@@ -126,7 +134,7 @@ class EventDispatcher {
 
   EventTarget* FindTarget(float point[2]);
 
-  bool CanRespondTap();
+  bool CanRespondTap(EventTarget* active_target);
 
   void GetTargetPoint(EventTarget* active_target, float target_point[2],
                       float page_point[2]);
@@ -163,6 +171,7 @@ class EventDispatcher {
   std::weak_ptr<EventTarget> focused_target_;
   std::unordered_map<int, EventTargetDetail> active_target_finger_map_;
   std::vector<std::weak_ptr<EventTarget>> event_target_chain_;
+  std::deque<std::weak_ptr<EventTarget>> click_target_chain_;
   std::unordered_set<int> gesture_recognized_target_set_;
   std::shared_ptr<TouchEvent> last_touch_event_;
   bool has_touch_moved_{false};

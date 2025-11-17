@@ -24,6 +24,7 @@ class TouchEvent : public LynxEvent {
   static constexpr const char* const UP = "touchend";
   static constexpr const char* const CANCEL = "touchcancel";
   static constexpr const char* const TAP = "tap";
+  static constexpr const char* const CLICK = "click";
   static constexpr const char* const LONGPRESS = "longpress";
 
   TouchEvent(int id, std::string name)
