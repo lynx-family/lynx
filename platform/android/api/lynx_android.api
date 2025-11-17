@@ -4040,6 +4040,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setSkipRedirection(boolean skipRedirection);
   public Dynamic com.lynx.tasm.behavior.ui.LynxBaseUI.getEnableLocalCache();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.getSkipRedirection();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setDisableDefaultResize(boolean disableDefaultResize);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.getDisableDefaultResize();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getImageRendering();
   public final boolean com.lynx.tasm.behavior.ui.LynxBaseUI.shouldDoTransform();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.updateLayout(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, Rect bound);
