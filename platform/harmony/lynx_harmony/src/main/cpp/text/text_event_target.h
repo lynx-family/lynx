@@ -56,7 +56,9 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   EventTarget* HitTest(float point[2]) override;
   bool ShouldHitTest() override;
   bool ContainsPoint(float point[2]) override;
-  bool IsOnResponseChain() override;
+  void OnResponseChain() override {}
+  void OffResponseChain() override {}
+  bool IsOnResponseChain() override { return false; };
   bool IsInterceptGesture() override { return false; }
   void SetParent(EventTarget* parent);
   void AddRect(float left, float top, float right, float bottom);

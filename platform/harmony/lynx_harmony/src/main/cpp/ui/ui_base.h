@@ -124,7 +124,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   EventTarget* HitTest(float point[2]) override;
   bool ShouldHitTest() override;
   bool ContainsPoint(float point[2]) override;
-  bool IsOnResponseChain() override;
+  bool IsOnResponseChain() override { return is_on_response_chain_; };
   virtual void GetOriginRect(float origin_rect[4]);
   void GetTargetPoint(float target_point[2], float point[2], float scroll[2],
                       float target_origin_rect[4], Transform* target_transform);
@@ -196,6 +196,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                              PseudoStatus current_status) override;
   PseudoStatus GetPseudoStatus() override;
   bool HasUI() override { return true; };
+  std::vector<std::string> EventSet() override { return events_; };
+  void OnResponseChain() override { is_on_response_chain_ = true; };
+  void OffResponseChain() override { is_on_response_chain_ = false; };
   starlight::ImageRenderingType RenderingType();
 
   float left_{0};
@@ -408,6 +411,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float hit_slop_bottom_{0};
   bool enable_touch_pseudo_propagation_{true};
   PseudoStatus pseudo_status_{PseudoStatus::kNone};
+  bool is_on_response_chain_{false};
   const bool has_customized_layout_;
   std::string exposure_id_;
   std::string exposure_scene_;
