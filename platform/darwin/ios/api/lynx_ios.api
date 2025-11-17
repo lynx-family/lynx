@@ -1842,6 +1842,7 @@ public class LynxFrameView : UIView, <LUIBodyView> {
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResource:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResourcePath:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourcePathCompletionBlock _Nonnull callback);
+  public dispatch_block_t LynxGenericResourceFetcher-p::fetchBytecode:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchStream:withStream:(nonnull LynxResourceRequest *request,[withStream] nonnull id< LynxResourceStreamLoadDelegate > delegate);
 }
 
