@@ -499,6 +499,58 @@ TEST_F(ElementTest, Animate_v2_Table) {
   EXPECT_EQ(static_cast<int>(ani_iter->play_state), 1);
 }
 
+TEST_F(ElementTest, LayoutResult) {
+  auto element = manager->CreateNode("view", nullptr);
+
+  const float width = 200.0f;
+  const float height = 150.0f;
+  const float left = 50.0f;
+  const float top = 30.0f;
+
+  element->width_ = width;
+  element->height_ = height;
+  element->left_ = left;
+  element->top_ = top;
+
+  element->paddings_[0] = 10.0f;  // left
+  element->paddings_[1] = 20.0f;  // top
+  element->paddings_[2] = 15.0f;  // right
+  element->paddings_[3] = 25.0f;  // bottom
+
+  element->margins_[0] = 5.0f;  // left
+  element->margins_[1] = 8.0f;  // top
+  element->margins_[2] = 6.0f;  // right
+  element->margins_[3] = 7.0f;  // bottom
+
+  element->borders_[0] = 1.0f;  // left
+  element->borders_[1] = 2.0f;  // top
+  element->borders_[2] = 3.0f;  // right
+  element->borders_[3] = 4.0f;  // bottom
+
+  auto result = element->layout_result();
+
+  EXPECT_EQ(result.size_.width_, width);
+  EXPECT_EQ(result.size_.height_, height);
+
+  EXPECT_EQ(result.offset_.x_, left);
+  EXPECT_EQ(result.offset_.y_, top);
+
+  EXPECT_EQ(result.padding_[starlight::Direction::kLeft], 10.0f);
+  EXPECT_EQ(result.padding_[starlight::Direction::kRight], 15.0f);
+  EXPECT_EQ(result.padding_[starlight::Direction::kTop], 20.0f);
+  EXPECT_EQ(result.padding_[starlight::Direction::kBottom], 25.0f);
+
+  EXPECT_EQ(result.margin_[starlight::Direction::kLeft], 5.0f);
+  EXPECT_EQ(result.margin_[starlight::Direction::kRight], 6.0f);
+  EXPECT_EQ(result.margin_[starlight::Direction::kTop], 8.0f);
+  EXPECT_EQ(result.margin_[starlight::Direction::kBottom], 7.0f);
+
+  EXPECT_EQ(result.border_[starlight::Direction::kLeft], 1.0f);
+  EXPECT_EQ(result.border_[starlight::Direction::kRight], 3.0f);
+  EXPECT_EQ(result.border_[starlight::Direction::kTop], 2.0f);
+  EXPECT_EQ(result.border_[starlight::Direction::kBottom], 4.0f);
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx
