@@ -237,7 +237,9 @@ public class UIText
   @Override
   public void destroy() {
     super.destroy();
-    mView.release();
+    if (mView != null) {
+      mView.release();
+    }
   }
 
   @Override
