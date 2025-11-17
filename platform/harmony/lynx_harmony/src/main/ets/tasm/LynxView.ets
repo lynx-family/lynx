@@ -123,7 +123,6 @@ export struct LynxView {
   uiRendererCreator?: LynxUIRendererCreator;
   backgroundRuntime?: LynxBackgroundRuntime;
   @StorageLink('lynxWindowStage') windowStage: window.WindowStage | undefined = undefined;
-
   /**
    * URL for LynxView, which will be parsed by ILynxTrailService in building LynxView.
    */
@@ -174,7 +173,7 @@ export struct LynxView {
       LLog.d(TAG, 'Destroy templateRender before re-init template renderer, url: ' + this.url);
       this.templateRenderer.aboutToDisappear();
     }
-
+    const initStartTiming = new Date().getTime();
     if (this.backgroundRuntime) {
       this.backgroundRuntime.moduleFactory.setContext(this.context);
       this.moduleManager = this.backgroundRuntime.moduleFactory;
@@ -215,6 +214,10 @@ export struct LynxView {
     this.beforeLoadTemplate(this.context);
     this.loadingID++;
 
+    this.prepareForLoadTemplate();
+    const initEndTiming = new Date().getTime();
+    this.templateRenderer.setTiming(initStartTiming * 1000, TimingConstants.CREATE_LYNX_START);
+    this.templateRenderer.setTiming(initEndTiming * 1000, TimingConstants.CREATE_LYNX_END);
     this.loadTemplate();
   }
 
@@ -228,7 +231,6 @@ export struct LynxView {
       this.uiRenderer.aboutToDisappear();
     }
 
-    const initStartTiming = new Date().getTime();
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.perfController = new PerformanceController();
     if (this.uiRendererCreator) {
@@ -250,16 +252,12 @@ export struct LynxView {
 
     this.templateRenderer.reset(uiDelegate, this.perfController);
 
-
-    const initEndTiming = new Date().getTime();
     this.uiRenderer.updateRefreshRate(LynxEnv.getDisplayInfo().refreshRate);
     this.context.setRenderer(this.templateRenderer);
     if (this.fontScale != 1.0) {
       this.context.updateFontScale(this.fontScale);
     }
 
-    this.templateRenderer.setTiming(initStartTiming * 1000, TimingConstants.CREATE_LYNX_START);
-    this.templateRenderer.setTiming(initEndTiming * 1000, TimingConstants.CREATE_LYNX_END);
     this.nodeController?.updateNode(this.uiRenderer, this.fitContentHeight && !!this.experimentalFixFitContent);
 
     if (!this.enableAirStrictMode) {
@@ -291,7 +289,7 @@ export struct LynxView {
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
         this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
-        this.uiRenderer.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1: 0)
+        this.uiRenderer.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0)
       };
       this.currentWindow.on('keyboardHeightChange', this.keyboardHeightChangeCallback);
       this.uiRenderer.setAvoidKeyboardListener((translateY: number) => {
@@ -506,7 +504,6 @@ export struct LynxView {
   }
 
   loadTemplate() {
-    this.prepareForLoadTemplate();
     let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
     let loadBundleStartTimestamp = Date.now();
     timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);

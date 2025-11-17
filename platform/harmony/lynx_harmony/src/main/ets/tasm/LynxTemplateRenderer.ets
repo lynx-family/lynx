@@ -90,6 +90,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   onReloadTemplate() {
+    this.lynxView.prepareForLoadTemplate();
     this.lynxView.loadTemplate();
   }
 
