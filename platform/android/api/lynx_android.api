@@ -5253,6 +5253,7 @@ public interface com::lynx::tasm::behavior::LynxGeneratorName {
 public class abstract com::lynx::tasm::resourceprovider::generic::LynxGenericResourceFetcher :  {
   public abstract void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.fetchResource(LynxResourceRequest request, LynxResourceCallback< byte[]> callback);
   public abstract void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.fetchResourcePath(LynxResourceRequest request, LynxResourceCallback< String > callback);
+  public void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.fetchBytecode(LynxResourceRequest request, LynxResourceCallback< byte[]> callback);
   public void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.fetchStream(LynxResourceRequest request, StreamDelegate delegate);
   public void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.cancel(LynxResourceRequest request);
 }

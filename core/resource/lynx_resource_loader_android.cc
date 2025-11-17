@@ -32,6 +32,9 @@ void InvokeCallback(JNIEnv* env, jclass jcaller, jlong response_handler,
   auto* handler = reinterpret_cast<
       lynx::shell::LynxResourceLoaderAndroid::ResponseHandler*>(
       response_handler);
+  if (handler == nullptr) {
+    return;
+  }
   std::vector<uint8_t> vec;
   auto* buffer_ptr =
       bufferPtr != nullptr
@@ -80,6 +83,29 @@ void LynxResourceLoaderAndroid::LoadResource(
       env, local_ref.Get(), reinterpret_cast<jlong>(response_handler),
       j_url.Get(), static_cast<int>(request.type),
       request.request_in_current_thread);
+}
+
+void LynxResourceLoaderAndroid::LoadBytecode(
+    const pub::LynxResourceRequest& request,
+    base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_BYTE_CODE,
+              [&request](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", request.url);
+              });
+  JNIEnv* env = AttachCurrentThread();
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) {
+    pub::LynxResourceResponse response{
+        .err_code = -1, .err_msg = std::string("Can not find local ref")};
+    callback(response);
+    return;
+  }
+
+  auto* response_handler = new ResponseHandler(std::move(callback));
+  auto j_url = JNIConvertHelper::ConvertToJNIStringUTF(env, request.url);
+  Java_LynxResourceLoader_loadBytecode(
+      env, local_ref.Get(), reinterpret_cast<jlong>(response_handler),
+      j_url.Get(), static_cast<int>(request.type));
 }
 
 void LynxResourceLoaderAndroid::ResponseHandler::HandleResponse(

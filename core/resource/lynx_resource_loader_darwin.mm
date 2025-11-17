@@ -263,20 +263,6 @@ void LynxResourceLoaderDarwin::LoadResource(
     return;
   }
 
-  if (request.type == pub::LynxResourceType::kExternalByteCode) {
-    auto copyable_callback = fml::MakeCopyable(std::move(callback));
-    // 1. try to use LynxGenericResourceFetcher
-    if (FetchResourceByGenericFetcher(request.url, LynxResourceTypeExternalByteCode,
-                                      copyable_callback)) {
-      return;
-    }
-
-    // invoke callback directly if no provider or fetcher set;
-    pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "No available provider or fetcher."};
-    copyable_callback(resp);
-    return;
-  }
-
   // fetch ExternalJS
   if (request.type == pub::LynxResourceType::kExternalJs) {
     auto copyable_callback = fml::MakeCopyable(std::move(callback));
@@ -346,6 +332,42 @@ void LynxResourceLoaderDarwin::LoadResource(
   }
 
   pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "Unsupported type."};
+  callback(resp);
+}
+
+void LynxResourceLoaderDarwin::LoadBytecode(
+    const pub::LynxResourceRequest& request,
+    base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
+  if (request.type == pub::LynxResourceType::kExternalByteCode) {
+    auto copyable_callback = fml::MakeCopyable(std::move(callback));
+    // 1. try to use LynxGenericResourceFetcher
+    if (_genericResourceFetcher != nil) {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_RESOURCE_BY_GENERIC_FETCHER, "url", request.url);
+      NSString* nsUrl = [NSString stringWithUTF8String:request.url.c_str()];
+      LynxResourceRequestType requestType =
+          LynxResourceRequestType::LynxResourceTypeExternalByteCode;
+      LynxResourceRequest* resourceRequest = [[LynxResourceRequest alloc] initWithUrl:nsUrl
+                                                                                 type:requestType];
+      __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
+      if ([_genericResourceFetcher respondsToSelector:@selector(fetchBytecode:onComplete:)]) {
+        [_genericResourceFetcher
+            fetchBytecode:resourceRequest
+               onComplete:^(NSData* _Nullable data, NSError* _Nullable error) {
+                 FetchExternalResourceComplete(data, error, nsUrl, weakErrorReceiver,
+                                               std::move(copyable_callback));
+               }];
+        return;
+      }
+    }
+
+    // invoke callback directly if no provider or fetcher set;
+    pub::LynxResourceResponse resp{
+        .err_code = -1, .err_msg = "No available provider or fetcher when loadBytecode."};
+    copyable_callback(resp);
+    return;
+  }
+  pub::LynxResourceResponse resp{.err_code = -1,
+                                 .err_msg = "LoadBytecode with wrong resource type."};
   callback(resp);
 }
 

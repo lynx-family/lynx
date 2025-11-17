@@ -45,7 +45,7 @@ typedef void (^LynxGenericResourcePathCompletionBlock)(NSString *_Nullable path,
 /**
  * @apidoc
  * @brief `LynxEngine` internally calls this method to obtain the general
- * resource content, and the return result is required to be the resource content `byte[]` type.
+ * resource content, and the return result is required to be the resource content `NSData*` type.
  *
  * @param request Request for the requiring resource.
  * @param callback Contents of the requiring resource.
@@ -67,6 +67,21 @@ typedef void (^LynxGenericResourcePathCompletionBlock)(NSString *_Nullable path,
 @required
 - (dispatch_block_t)fetchResourcePath:(nonnull LynxResourceRequest *)request
                            onComplete:(LynxGenericResourcePathCompletionBlock _Nonnull)callback;
+
+/**
+ * @apidoc
+ * @brief `LynxEngine` internally calls this method to acquire the bytecode content of the
+ * input request, and the return result is required to be the resource content `NSData*` type.
+ *
+ * @param request Request for the requiring resource.
+ * @param callback Contents of the requiring resource.
+ * @note This method is optional to be implemented.
+ *
+ * @Since 3.6
+ */
+@optional
+- (dispatch_block_t)fetchBytecode:(nonnull LynxResourceRequest *)request
+                       onComplete:(LynxGenericResourceCompletionBlock _Nonnull)callback;
 
 /**
  * @apidoc

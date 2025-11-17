@@ -106,6 +106,14 @@ class LynxResourceLoader
       const LynxResourceRequest& request,
       const std::shared_ptr<LynxStreamDelegate>& stream_delegate) {}
 
+  virtual void LoadBytecode(
+      const LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, LynxResourceResponse&> callback) {
+    pub::LynxResourceResponse resp{.err_code = -1,
+                                   .err_msg = "LoadBytecode is not supported."};
+    callback(resp);
+  }
+
   virtual bool IsLocalResource(const std::string& url) { return false; }
 
   virtual std::string ShouldRedirectUrl(const LynxResourceRequest& request) {
