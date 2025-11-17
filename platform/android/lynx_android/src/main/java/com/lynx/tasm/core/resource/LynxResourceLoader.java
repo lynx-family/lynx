@@ -96,13 +96,6 @@ public class LynxResourceLoader {
         byte[] data = loadJSSource(url);
         InvokeNativeCallbackWithBytes(responseHandler, data, RESOURCE_LOADER_SUCCESS, null);
       } break;
-      case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE: {
-        if (fetchExternalByteCodeByGenericFetcher(responseHandler, url)) {
-          break;
-        }
-        InvokeNativeCallbackWithBytes(
-            responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
-      } break;
       case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_JS: {
         // 1. try to use GenericResourceFetcher
         if (fetchScriptByGenericFetcher(responseHandler, url)) {
@@ -150,6 +143,36 @@ public class LynxResourceLoader {
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "Unsupported type" + type);
       } break;
+    }
+  }
+
+  @CalledByNative
+  void loadBytecode(long responseHandler, String url, int type) {
+    if (type == LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE) {
+      if (mGenericResourceFetcher != null) {
+        com.lynx.tasm.resourceprovider.LynxResourceRequest request =
+            new com.lynx.tasm.resourceprovider.LynxResourceRequest(url,
+                com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType
+                    .LynxResourceTypeExternalByteCode);
+        mGenericResourceFetcher.fetchBytecode(
+            request, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
+              private final GenericResourceCallback callback =
+                  new GenericResourceCallback(LynxResourceLoader.this, url, responseHandler);
+
+              @Override
+              public void onResponse(
+                  com.lynx.tasm.resourceprovider.LynxResourceResponse<byte[]> response) {
+                boolean success = response.getState()
+                    == com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS;
+                Throwable error = response.getError();
+                callback.onResourceLoaded(
+                    success, response.getData(), error != null ? error.getMessage() : "");
+              }
+            });
+        return;
+      }
+      InvokeNativeCallbackWithBytes(
+          responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
     }
   }
 

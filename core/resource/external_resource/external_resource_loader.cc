@@ -10,6 +10,7 @@
 
 #include "base/include/log/logging.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/resource/trace/resource_trace_event_def.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
@@ -79,6 +80,7 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
 
 ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
     const std::string& url, long timeout) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_BYTE_CODE, "source", url);
   if (!resource_loader_) {
     auto error_msg = "LoadByteCode: resource_loader_ is null.";
     return ExternalResourceInfo(
@@ -90,7 +92,7 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
   std::future<ExternalResourceInfo> future = promise.get_future();
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalByteCode};
-  resource_loader_->LoadResource(
+  resource_loader_->LoadBytecode(
       request, [promise = std::move(promise)](
                    pub::LynxResourceResponse& response) mutable {
         promise.set_value(ExternalResourceInfo(std::move(response.data),
