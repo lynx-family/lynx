@@ -9320,8 +9320,8 @@ public class com::lynx::tasm::TemplateData :  {
   public void com.lynx.tasm.TemplateData.remove(String key);
   public void com.lynx.tasm.TemplateData.updateData(Map< String, Object > diff);
   public void com.lynx.tasm.TemplateData.updateData(String key, Object value);
-  public synchronized void com.lynx.tasm.TemplateData.flush();
-  public synchronized void com.lynx.tasm.TemplateData.recycle();
+  public void com.lynx.tasm.TemplateData.flush();
+  public void com.lynx.tasm.TemplateData.recycle();
   public boolean com.lynx.tasm.TemplateData.checkIsLegalData();
   public void com.lynx.tasm.TemplateData.markState(String name);
   public String com.lynx.tasm.TemplateData.processorName();

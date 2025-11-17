@@ -17,6 +17,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -641,5 +644,36 @@ public class TemplateDataTest {
     assertEquals(map.get("key2"), 2);
     assertEquals(map.get("key3"), 3);
     assertFalse(map.containsKey("key4"));
+  }
+
+  @Test
+  public void testConcurrentPut() throws Exception {
+    TemplateData data = TemplateData.empty();
+    data.markConcurrent();
+
+    int threadCount = 10;
+    int perThreadOps = 1000;
+    ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+
+    CountDownLatch latch = new CountDownLatch(threadCount);
+
+    for (int t = 0; t < threadCount; t++) {
+      final int threadId = t;
+      pool.submit(() -> {
+        for (int i = 0; i < perThreadOps; i++) {
+          data.put("key-" + threadId + "-" + i, i);
+        }
+        latch.countDown();
+      });
+    }
+
+    latch.await();
+    Map<Object, Object> map = data.toMap();
+
+    for (int t = 0; t < threadCount; t++) {
+      for (int i = 0; i < perThreadOps; i++) {
+        assertEquals(i, map.get("key-" + t + "-" + i));
+      }
+    }
   }
 }

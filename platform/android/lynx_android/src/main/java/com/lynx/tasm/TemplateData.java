@@ -105,14 +105,19 @@ public final class TemplateData {
   private volatile long mNativeData;
   private volatile Map<String, Object> mData;
   private String mProcessorName;
-  private volatile boolean mIsConcurrent;
-  private boolean readOnly = false;
+  private final AtomicBoolean mIsConcurrent = new AtomicBoolean(false);
+  private volatile boolean readOnly = false; // volatile ensures visibility
   // To garantee multi-thread safety, any access of mJsNativeData must
   // by synchronized.
   volatile long mJsNativeData;
-  private boolean mEnableJSData = true;
+  private volatile boolean mEnableJSData = true; // volatile ensures visibility
   private final AtomicBoolean mConsumed = new AtomicBoolean(false);
   private WeakReference<LynxContext> weakContext;
+
+  private final Object mUpdateActionsLock = new Object();
+  private final Object mDataLock = new Object();
+  private final Object mJsNativeDataLock = new Object();
+  private final Object mNativeDataLock = new Object();
 
   enum ActionType {
     STRING_DATA,
@@ -158,41 +163,48 @@ public final class TemplateData {
     return result;
   }
 
-  private synchronized void addUpdateActions(List<UpdateAction> actions) {
+  private void addUpdateActions(List<UpdateAction> actions) {
     if (actions == null) {
       return;
     }
     if (!mEnableJSData) {
       return;
     }
-    if (mUpdateActions == null) {
-      mUpdateActions = new ArrayList<>();
+    synchronized (mUpdateActionsLock) {
+      mUpdateActions.addAll(actions);
     }
-    mUpdateActions.addAll(actions);
   }
 
-  private synchronized void addUpdateAction(UpdateAction action) {
+  private void addUpdateAction(UpdateAction action) {
     if (action == null) {
       return;
     }
+
     if (!mEnableJSData) {
       return;
     }
-    if (mUpdateActions == null) {
-      mUpdateActions = new ArrayList<>();
+    synchronized (mUpdateActionsLock) {
+      mUpdateActions.add(action);
     }
-    mUpdateActions.add(action);
   }
 
-  private synchronized List<UpdateAction> getUpdateActionsWithJsNativeData() {
+  private List<UpdateAction> getUpdateActionsWithJsNativeData() {
     if (!mEnableJSData) {
       return null;
     }
     List<UpdateAction> actions = new ArrayList<>();
-    if (mJsNativeData != 0) {
-      actions.add(UpdateAction.buildNativeAction(nativeShallowCopy(mJsNativeData)));
+
+    // Use mJsNativeDataLock when accessing mJsNativeData
+    synchronized (mJsNativeDataLock) {
+      if (mJsNativeData != 0) {
+        actions.add(UpdateAction.buildNativeAction(nativeShallowCopy(mJsNativeData)));
+      }
     }
-    actions.addAll(mUpdateActions);
+
+    synchronized (mUpdateActionsLock) {
+      actions.addAll(mUpdateActions);
+    }
+
     // When `getUpdateActionsWithNativeData` is called, it indicates that the current `TemplateData`
     // has been deep cloned or updated to another `TemplateData`. At this point, it is highly likely
     // that the current `TemplateData` will not be consumed by `LynxView`. Therefore, it is
@@ -201,14 +213,16 @@ public final class TemplateData {
     return actions;
   }
 
-  private synchronized List<UpdateAction> obtainUpdateActions() {
-    List<UpdateAction> actions = new ArrayList<>(mUpdateActions);
-    mUpdateActions.clear();
-    return actions;
+  private List<UpdateAction> obtainUpdateActions() {
+    synchronized (mUpdateActionsLock) {
+      List<UpdateAction> actions = new ArrayList<>(mUpdateActions);
+      mUpdateActions.clear();
+      return actions;
+    }
   }
 
   public void markConcurrent() {
-    mIsConcurrent = true;
+    mIsConcurrent.set(true);
   }
 
   public long getNativePtr() {
@@ -330,29 +344,45 @@ public final class TemplateData {
     put(key, value);
   }
 
-  public synchronized void flush() {
+  public void flush() {
     if (!checkIfEnvPrepared()) {
       LLog.w(TAG, "Env not ready!");
       return;
     }
 
-    if (mData == null || mData.isEmpty()) {
-      if (mNativeData == 0) {
-        mNativeData = nativeCreateObject();
+    Map<String, Object> dataToFlush;
+    ByteBuffer buffer = null;
+
+    // First get and clear data under mDataLock protection
+    synchronized (mDataLock) {
+      if (mData == null || mData.isEmpty()) {
+        synchronized (mNativeDataLock) {
+          if (mNativeData == 0) {
+            mNativeData = nativeCreateObject();
+          }
+        }
+        return;
       }
-      return;
+
+      dataToFlush = new HashMap<>(mData);
+      mData.clear();
     }
 
-    ByteBuffer buffer = LepusBuffer.INSTANCE.encodeMessage(mData);
-    mData.clear();
+    // Perform time-consuming operations outside the lock
+    buffer = LepusBuffer.INSTANCE.encodeMessage(dataToFlush);
 
     if (buffer != null && buffer.position() > 0) {
       LLog.i(TAG, "flush data." + this);
+      // Need mUpdateActionsLock to add update actions
       addUpdateAction(UpdateAction.buildBufferAction(buffer));
-      if (mNativeData == 0) {
-        mNativeData = nativeParseData(buffer, buffer.position());
-      } else {
-        nativeUpdateData(mNativeData, buffer, buffer.position());
+
+      // Need mNativeDataLock to update native data
+      synchronized (mNativeDataLock) {
+        if (mNativeData == 0) {
+          mNativeData = nativeParseData(buffer, buffer.position());
+        } else {
+          nativeUpdateData(mNativeData, buffer, buffer.position());
+        }
       }
     }
   }
@@ -368,7 +398,7 @@ public final class TemplateData {
   // getDataForJSThread() will be executed in the JS thread at this time, it is uncertain whether it
   // is completed. Therefore, to avoid thread safety issues, js data is not released in recycle()
   // and let js data be released in finalize().
-  public synchronized void recycle() {
+  public void recycle() {
     // Try making sure that the native pointer
     // is released on engine thread.
     if (weakContext != null) {
@@ -377,47 +407,63 @@ public final class TemplateData {
         context.runOnTasmThread(new Runnable() {
           @Override
           public void run() {
-            if (checkIfEnvPrepared() && mNativeData != 0) {
-              nativeReleaseData(mNativeData);
-              mNativeData = 0;
-            }
+            releaseNativeData();
           }
         });
         return;
       }
     }
-    if (checkIfEnvPrepared() && mNativeData != 0) {
-      nativeReleaseData(mNativeData);
-      mNativeData = 0;
+    releaseNativeData();
+  }
+
+  private void releaseNativeData() {
+    if (mNativeData == 0) {
+      return;
+    }
+    synchronized (mNativeDataLock) {
+      if (checkIfEnvPrepared() && mNativeData != 0) {
+        nativeReleaseData(mNativeData);
+        mNativeData = 0;
+      }
     }
   }
 
-  synchronized void recycleJsData() {
+  private void releaseJsData() {
+    if (mJsNativeData == 0) {
+      return;
+    }
+    synchronized (mJsNativeDataLock) {
+      if (checkIfEnvPrepared() && mJsNativeData != 0) {
+        nativeReleaseData(mJsNativeData);
+        mJsNativeData = 0;
+      }
+    }
+  }
+
+  void recycleJsData() {
     if (weakContext != null) {
       LynxContext context = weakContext.get();
       if (context != null) {
         context.runOnTasmThread(new Runnable() {
           @Override
           public void run() {
-            if (checkIfEnvPrepared() && mJsNativeData != 0) {
-              nativeReleaseData(mJsNativeData);
-              mJsNativeData = 0;
-            }
+            releaseJsData();
           }
         });
         return;
       }
     }
-    if (checkIfEnvPrepared() && mJsNativeData != 0) {
-      nativeReleaseData(mJsNativeData);
-      mJsNativeData = 0;
-    }
+    releaseJsData();
   }
 
-  private synchronized void ensureInternalMap() {
+  private void ensureInternalMap() {
     if (mData == null) {
-      mData = mIsConcurrent ? new NullableConcurrentHashMap<String, Object>()
-                            : new HashMap<String, Object>();
+      synchronized (mDataLock) {
+        if (mData == null) {
+          mData = mIsConcurrent.get() ? new NullableConcurrentHashMap<String, Object>()
+                                      : new HashMap<String, Object>();
+        }
+      }
     }
   }
 
@@ -575,7 +621,7 @@ public final class TemplateData {
     // copied.
     data.mProcessorName = this.mProcessorName;
     data.readOnly = this.readOnly;
-    data.mIsConcurrent = this.mIsConcurrent;
+    data.mIsConcurrent.set(this.mIsConcurrent.get());
 
     // clone data actions
     data.addUpdateActions(this.getUpdateActionsWithJsNativeData());
@@ -606,7 +652,7 @@ public final class TemplateData {
     // copied.
     data.mProcessorName = this.mProcessorName;
     data.readOnly = this.readOnly;
-    data.mIsConcurrent = this.mIsConcurrent;
+    data.mIsConcurrent.set(this.mIsConcurrent.get());
 
     // clone data actions
     data.addUpdateActions(this.getUpdateActionsWithJsNativeData());
@@ -666,51 +712,66 @@ public final class TemplateData {
     });
   }
 
-  synchronized long getDataForJSThreadInner() {
+  long getDataForJSThreadInner() {
     if (!mEnableJSData) {
       return 0;
     }
-    // Init mJsNativeData or update mUpdateActions to mJsNativeData
+
     List<UpdateAction> actions = obtainUpdateActions();
     if (actions.isEmpty()) {
-      return mJsNativeData;
-    }
-
-    if (mJsNativeData == 0) {
-      mJsNativeData = nativeCreateObject();
-    }
-
-    for (UpdateAction action : actions) {
-      switch (action.getType()) {
-        case STRING_DATA: {
-          String jsonString = action.getJsonString();
-          if (TextUtils.isEmpty(jsonString)) {
-            continue;
-          }
-          long mergePtr = nativeParseStringData(jsonString);
-          nativeMergeTemplateData(mJsNativeData, mergePtr);
-          nativeReleaseData(mergePtr);
-        } break;
-        case NATIVE_DATA: {
-          nativeMergeTemplateData(mJsNativeData, action.getNativeData());
-        } break;
-        case BYTE_BUFFER: {
-          ByteBuffer buffer = action.getByteBuffer();
-          if (buffer == null || buffer.position() == 0) {
-            continue;
-          }
-          nativeUpdateData(
-              mJsNativeData, action.getByteBuffer(), action.getByteBuffer().position());
-        } break;
-        case REMOVE_DATA: {
-          nativeRemoveData(mJsNativeData, action.mKey);
-        } break;
-        default: {
-          LLog.e(TAG, "undefined action type: " + action.getType());
-        } break;
+      // If there are no update actions, check and return mJsNativeData
+      synchronized (mJsNativeDataLock) {
+        return mJsNativeData;
       }
     }
-    return mJsNativeData;
+
+    // Update mJsNativeData inside the lock, but minimize operations within the lock
+    synchronized (mJsNativeDataLock) {
+      if (mJsNativeData == 0) {
+        mJsNativeData = nativeCreateObject();
+      }
+
+      for (UpdateAction action : actions) {
+        switch (action.getType()) {
+          case STRING_DATA: {
+            String jsonString = action.getJsonString();
+            if (TextUtils.isEmpty(jsonString)) {
+              continue;
+            }
+            // Perform native operations inside the lock, but create temporary objects outside the
+            // lock
+            long mergePtr = 0;
+            try {
+              mergePtr = nativeParseStringData(jsonString);
+              nativeMergeTemplateData(mJsNativeData, mergePtr);
+            } finally {
+              if (mergePtr != 0) {
+                nativeReleaseData(mergePtr);
+              }
+            }
+          } break;
+          case NATIVE_DATA: {
+            nativeMergeTemplateData(mJsNativeData, action.getNativeData());
+          } break;
+          case BYTE_BUFFER: {
+            ByteBuffer buffer = action.getByteBuffer();
+            if (buffer == null || buffer.position() == 0) {
+              continue;
+            }
+            // Cache position to avoid multiple method calls
+            int position = buffer.position();
+            nativeUpdateData(mJsNativeData, buffer, position);
+          } break;
+          case REMOVE_DATA: {
+            nativeRemoveData(mJsNativeData, action.mKey);
+          } break;
+          default: {
+            LLog.e(TAG, "undefined action type: " + action.getType());
+          } break;
+        }
+      }
+      return mJsNativeData;
+    }
   }
 
   @CalledByNative
