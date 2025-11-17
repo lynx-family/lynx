@@ -1,4 +1,5 @@
 import { Lynx } from '@lynx-js/types';
+import { BaseEventOrig, Target } from '../../../../types/types/common/events';
 
 type EventSourceEvent = {
   data: string;
@@ -6,6 +7,7 @@ type EventSourceEvent = {
   id?: string;
   [key: string]: any;
 };
+type Event = BaseEventOrig<any>;
 
 interface FetchEventSourceOptions extends RequestInit {}
 
@@ -31,15 +33,25 @@ export function createEventSource(fetch: Lynx['fetch']): any {
     }
 
     private _dispatchEvent(type: string, event: EventSourceEvent): void {
+      const eventToDispatch: Event = {
+        type: type,
+        detail: event,
+        timestamp: Date.now(),
+        target: {} as Target,
+        currentTarget: {} as Target,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      };
+
       if (type === 'message' && this.onmessage) {
         this.onmessage(event);
       } else if (type === 'error' && this.onerror) {
-        this.onerror(new Event('SSE error'));
+        this.onerror(eventToDispatch);
       } else if (type === 'open' && this.onopen) {
-        this.onopen(new Event('SSE open'));
+        this.onopen(eventToDispatch);
       }
       const listeners = this.listeners[type] || [];
-      listeners.forEach((listener) => listener((event as any) as Event));
+      listeners.forEach((listener) => listener(event as any));
     }
 
     public addEventListener(type: string, listener: EventListener): void {
