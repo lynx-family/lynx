@@ -1394,16 +1394,19 @@ LYNX_PROPS_GROUP_DECLARE(
     LYNX_PROP_DECLARE("border-bottom-left-radius", setBorderBottomLeftRadius, NSArray*),
     LYNX_PROP_DECLARE("border-top-right-radius", setBorderTopRightRadius, NSArray*),
     LYNX_PROP_DECLARE("border-bottom-right-radius", setBorderBottomRightRadius, NSArray*),
+    LYNX_PROP_DECLARE("border-width", setBorderWidth, CGFloat),
     LYNX_PROP_DECLARE("border-top-width", setBorderTopWidth, CGFloat),
     LYNX_PROP_DECLARE("border-left-width", setBorderLeftWidth, CGFloat),
     LYNX_PROP_DECLARE("border-bottom-width", setBorderBottomWidth, CGFloat),
     LYNX_PROP_DECLARE("border-right-width", setBorderRightWidth, CGFloat),
     LYNX_PROP_DECLARE("outline-width", setOutlineWidth, CGFloat),
+    LYNX_PROP_DECLARE("border-color", setBorderColor, UIColor*),
     LYNX_PROP_DECLARE("border-top-color", setBorderTopColor, UIColor*),
     LYNX_PROP_DECLARE("border-left-color", setBorderLeftColor, UIColor*),
     LYNX_PROP_DECLARE("border-bottom-color", setBorderBottomColor, UIColor*),
     LYNX_PROP_DECLARE("border-right-color", setBorderRightColor, UIColor*),
     LYNX_PROP_DECLARE("outline-color", setOutlineColor, UIColor*),
+    LYNX_PROP_DECLARE("border-style", setBorderStyle, LynxBorderStyle),
     LYNX_PROP_DECLARE("border-left-style", setBorderLeftStyle, LynxBorderStyle),
     LYNX_PROP_DECLARE("border-right-style", setBorderRightStyle, LynxBorderStyle),
     LYNX_PROP_DECLARE("border-top-style", setBorderTopStyle, LynxBorderStyle),
@@ -2079,6 +2082,27 @@ LYNX_PROP_DEFINE("border-bottom-right-radius", setBorderBottomRightRadius, NSArr
     [self markNeedDisplay];                                  \
   }
 
+LYNX_PROP_DEFINE("border-width", setBorderWidth, CGFloat) {
+  UIEdgeInsets borderWidth = UIEdgeInsetsZero;
+  if (!requestReset) {
+    borderWidth = _backgroundManager.borderWidth;
+    if (value != borderWidth.left) {
+      borderWidth.left = value;
+    }
+    if (value != borderWidth.top) {
+      borderWidth.top = value;
+    }
+    if (value != borderWidth.right) {
+      borderWidth.right = value;
+    }
+    if (value != borderWidth.bottom) {
+      borderWidth.bottom = value;
+    }
+  }
+  _backgroundManager.borderWidth = borderWidth;
+  [self markNeedDisplay];
+}
+
 LYNX_PROP_DEFINE("border-top-width", setBorderTopWidth, CGFloat){LYNX_PROP_SET_BORDER_WIDTH(top)}
 
 LYNX_PROP_DEFINE("border-left-width", setBorderLeftWidth, CGFloat){LYNX_PROP_SET_BORDER_WIDTH(left)}
@@ -2090,6 +2114,16 @@ LYNX_PROP_DEFINE("border-right-width", setBorderRightWidth,
                  CGFloat){LYNX_PROP_SET_BORDER_WIDTH(right)}
 #define LYNX_PROP_TOUICOLOR(colorStr) \
   [LynxConverter toUIColor:[NSNumber numberWithInt:[colorStr intValue]]]
+
+LYNX_PROP_DEFINE("border-color", setBorderColor, UIColor*) {
+  if (requestReset) {
+    value = nil;
+  }
+  [_backgroundManager updateBorderColor:LynxBorderLeft value:value];
+  [_backgroundManager updateBorderColor:LynxBorderTop value:value];
+  [_backgroundManager updateBorderColor:LynxBorderRight value:value];
+  [_backgroundManager updateBorderColor:LynxBorderBottom value:value];
+}
 
 LYNX_PROP_DEFINE("border-top-color", setBorderTopColor, UIColor*) {
   if (requestReset) {
@@ -2117,6 +2151,19 @@ LYNX_PROP_DEFINE("border-right-color", setBorderRightColor, UIColor*) {
     value = nil;
   }
   [_backgroundManager updateBorderColor:LynxBorderRight value:value];
+}
+
+LYNX_PROP_DEFINE("border-style", setBorderStyle, LynxBorderStyle) {
+  if (requestReset) {
+    value = LynxBorderStyleSolid;
+  }
+  bool res = [_backgroundManager updateBorderStyle:LynxBorderLeft value:value] ||
+             [_backgroundManager updateBorderStyle:LynxBorderTop value:value] ||
+             [_backgroundManager updateBorderStyle:LynxBorderRight value:value] ||
+             [_backgroundManager updateBorderStyle:LynxBorderBottom value:value];
+  if (res) {
+    [self markNeedDisplay];
+  }
 }
 
 LYNX_PROP_DEFINE("border-left-style", setBorderLeftStyle, LynxBorderStyle) {
