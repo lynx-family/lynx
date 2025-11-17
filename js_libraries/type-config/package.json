@@ -25,6 +25,7 @@
   ],
   "dependencies": {},
   "devDependencies": {
+    "typescript": "5.8.3",
     "tsd": "0.30.4",
     "vitest": "2.1.9"
   }
