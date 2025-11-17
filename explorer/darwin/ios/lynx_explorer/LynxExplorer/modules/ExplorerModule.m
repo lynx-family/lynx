@@ -40,6 +40,8 @@ NSString *const DEVTOOL_SWITCH_URL __attribute__((deprecated)) =
     @"openDevtoolSwitchPage" : NSStringFromSelector(@selector(openDevToolSwitchPage)),
     @"navigateBack" : NSStringFromSelector(@selector(navigateBack)),
     @"saveThemePreferences" : NSStringFromSelector(@selector(saveThemePreferences:value:)),
+    @"saveToLocalStorage" : NSStringFromSelector(@selector(saveToLocalStorage:value:)),
+    @"readFromLocalStorage" : NSStringFromSelector(@selector(readFromLocalStorage:)),
   };
 }
 
@@ -97,6 +99,17 @@ NSString *const DEVTOOL_SWITCH_URL __attribute__((deprecated)) =
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   [defaults setObject:value forKey:theme];
   [defaults synchronize];
+}
+
+- (void)saveToLocalStorage:(NSString *)key value:(NSString *)value {
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  [defaults setObject:value forKey:key];
+  [defaults synchronize];
+}
+
+- (NSString *)readFromLocalStorage:(NSString *)key {
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  return [defaults objectForKey:key];
 }
 
 @end
