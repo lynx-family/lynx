@@ -9,7 +9,8 @@
 #import "TasmDispatcher.h"
 
 NSString *const LOCAL_URL_PREFIX = @"file://lynx?local://";
-NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullscreen=true";
+NSString *const HOMEPAGE_URL =
+    @"file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
 
 @interface AppDelegate ()
 

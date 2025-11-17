@@ -73,6 +73,43 @@ NSString *const kBackButtonImageDark = @"back_dark";
   [self.navigationController setNavigationBarHidden:YES animated:NO];
 }
 
+- (LynxTemplateData *)getGlobalPropsFromParams {
+  NSMutableDictionary *params = [NSMutableDictionary dictionary];
+  for (NSString *key in self.params) {
+    id value = self.params[key];
+
+    // 1. remove redundant '_'
+    NSUInteger leadingUnderline = 0;
+    while (leadingUnderline < key.length && [key characterAtIndex:leadingUnderline] == '_') {
+      leadingUnderline++;
+    }
+    NSString *trimmedKey = [key substringFromIndex:leadingUnderline];
+    if (trimmedKey.length == 0) {
+      [params setObject:value forKey:key];
+      continue;
+    }
+
+    // 2. split by underscores and convert to camel case
+    NSArray<NSString *> *parts = [trimmedKey componentsSeparatedByString:@"_"];
+    NSMutableString *propsKey = [NSMutableString stringWithString:parts[0]];
+
+    for (NSUInteger i = 1; i < parts.count; i++) {
+      NSString *part = parts[i];
+      if (part.length == 0) {
+        continue;
+      }
+      NSString *capitalizedPart =
+          [part stringByReplacingCharactersInRange:NSMakeRange(0, 1)
+                                        withString:[part substringToIndex:1].uppercaseString];
+      [propsKey appendString:capitalizedPart];
+    }
+    [params setObject:value forKey:propsKey];
+  }
+
+  LynxTemplateData *globalProps = [[LynxTemplateData alloc] initWithDictionary:params];
+  return globalProps;
+}
+
 - (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
   CGRect screenFrame = self.view.frame;
   CGRect statusRect = [[UIApplication sharedApplication] statusBarFrame];
@@ -124,7 +161,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
   CGRect screenRect = [[UIScreen mainScreen] bounds];
   CGFloat screenWidth = screenRect.size.width;
   CGFloat screenHeight = screenRect.size.height;
-  LynxTemplateData *globalProps = [[LynxTemplateData alloc] initWithDictionary:nil];
+  LynxTemplateData *globalProps = [self getGlobalPropsFromParams];
   [globalProps updateBool:[self isNotchScreen] forKey:@"isNotchScreen"];
   [globalProps updateDouble:screenHeight forKey:@"screenHeight"];
   [globalProps updateDouble:screenWidth forKey:@"screenWidth"];
@@ -250,6 +287,22 @@ NSString *const kBackButtonImageDark = @"back_dark";
   [barView addSubview:goBackButton];
   [barView addSubview:titleLabel];
   [self.view addSubview:barView];
+}
+
+- (BOOL)shouldAutorotate {
+  return NO;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+  if ([self.params.allKeys containsObject:@"orientation"]) {
+    NSString *orientation = self.params[@"orientation"];
+    if ([orientation isEqualToString:@"portrait"]) {
+      return UIInterfaceOrientationMaskPortrait;
+    } else if ([orientation isEqualToString:@"landscape"]) {
+      return UIInterfaceOrientationMaskLandscape;
+    }
+  }
+  return UIInterfaceOrientationMaskAllButUpsideDown;
 }
 
 - (void)viewWillLayoutSubviews {
