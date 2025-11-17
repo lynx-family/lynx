@@ -26,6 +26,12 @@ constexpr const char kDefaultBackgroundPosition[] = "0% 0%";
 constexpr const char kDefaultBackgroundPositionDimensionValue[] = "50%";
 constexpr const char* kPxMark = "px";
 constexpr const char* kPercentageMark = "%";
+constexpr CSSPropertyID kMarginIDs[] = {
+    kPropertyIDMarginTop, kPropertyIDMarginRight, kPropertyIDMarginBottom,
+    kPropertyIDMarginLeft};
+constexpr CSSPropertyID kPaddingsIDs[] = {
+    kPropertyIDPaddingTop, kPropertyIDPaddingRight, kPropertyIDPaddingBottom,
+    kPropertyIDPaddingLeft};
 
 std::string NumericLengthToString(
     const starlight::NLength::BaseLength& length) {
@@ -293,6 +299,86 @@ base::String ComputedCSSStyleCssTextHelper::BackgroundPositionCSSText(
   }
 
   return base::String(position_stream.str());
+}
+
+base::String ComputedCSSStyleCssTextHelper::PaddingCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  base::Vector<base::String> padding_tokens;
+  padding_tokens.reserve(4);
+  for (auto id : kPaddingsIDs) {
+    padding_tokens.emplace_back(GetComputedStyleByPropertyID(
+        id, computed_css_style, ref_layout_result));
+  }
+  return ConcatStringsWithWhitespace(padding_tokens);
+}
+
+base::String ComputedCSSStyleCssTextHelper::PaddingLeftCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.padding_[starlight::Direction::kLeft]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::PaddingRightCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.padding_[starlight::Direction::kRight]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::PaddingTopCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.padding_[starlight::Direction::kTop]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::PaddingBottomCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.padding_[starlight::Direction::kBottom]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::MarginCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  base::Vector<base::String> margin_tokens;
+  margin_tokens.reserve(4);
+  for (auto id : kMarginIDs) {
+    margin_tokens.emplace_back(GetComputedStyleByPropertyID(
+        id, computed_css_style, ref_layout_result));
+  }
+  return ConcatStringsWithWhitespace(margin_tokens);
+}
+
+base::String ComputedCSSStyleCssTextHelper::MarginTopCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.margin_[starlight::Direction::kTop]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::MarginBottomCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.margin_[starlight::Direction::kBottom]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::MarginLeftCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.margin_[starlight::Direction::kLeft]);
+}
+
+base::String ComputedCSSStyleCssTextHelper::MarginRightCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return FloatToPixelString(
+      ref_layout_result.margin_[starlight::Direction::kRight]);
 }
 
 base::String ComputedCSSStyleCssTextHelper::FloatToPixelString(float value) {

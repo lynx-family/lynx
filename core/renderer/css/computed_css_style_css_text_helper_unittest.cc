@@ -649,6 +649,75 @@ TEST(ComputedCSSStyleCssTextHelperTest,
       "0% 0%, 100% 100%, 0% 0%");
 }
 
+TEST(ComputedCSSStyleCssTextHelperTest, PaddingCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  layout_result.padding_[starlight::Direction::kLeft] = 10.0f;
+  layout_result.padding_[starlight::Direction::kRight] = 20.0f;
+  layout_result.padding_[starlight::Direction::kTop] = 5.0f;
+  layout_result.padding_[starlight::Direction::kBottom] = 15.0f;
+
+  EXPECT_EQ(helper.PaddingLeftCSSText(&computed_css_style, layout_result),
+            "10px");
+  EXPECT_EQ(helper.PaddingRightCSSText(&computed_css_style, layout_result),
+            "20px");
+  EXPECT_EQ(helper.PaddingTopCSSText(&computed_css_style, layout_result),
+            "5px");
+  EXPECT_EQ(helper.PaddingBottomCSSText(&computed_css_style, layout_result),
+            "15px");
+
+  // top right bottom left order
+  EXPECT_EQ(helper.PaddingCSSText(&computed_css_style, layout_result),
+            "5px 20px 15px 10px");
+
+  layout_result.padding_[starlight::Direction::kLeft] = 10.0f;
+  layout_result.padding_[starlight::Direction::kRight] = 10.0f;
+  layout_result.padding_[starlight::Direction::kTop] = 10.0f;
+  layout_result.padding_[starlight::Direction::kBottom] = 10.0f;
+  EXPECT_EQ(helper.PaddingCSSText(&computed_css_style, layout_result),
+            "10px 10px 10px 10px");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, MarginCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  layout_result.margin_[starlight::Direction::kLeft] = 10.0f;
+  layout_result.margin_[starlight::Direction::kRight] = 20.0f;
+  layout_result.margin_[starlight::Direction::kTop] = 5.0f;
+  layout_result.margin_[starlight::Direction::kBottom] = 15.0f;
+
+  EXPECT_EQ(helper.MarginLeftCSSText(&computed_css_style, layout_result),
+            "10px");
+  EXPECT_EQ(helper.MarginRightCSSText(&computed_css_style, layout_result),
+            "20px");
+  EXPECT_EQ(helper.MarginTopCSSText(&computed_css_style, layout_result), "5px");
+  EXPECT_EQ(helper.MarginBottomCSSText(&computed_css_style, layout_result),
+            "15px");
+
+  // top right bottom left order
+  EXPECT_EQ(helper.MarginCSSText(&computed_css_style, layout_result),
+            "5px 20px 15px 10px");
+
+  layout_result.margin_[starlight::Direction::kLeft] = -10.0f;
+  layout_result.margin_[starlight::Direction::kRight] = -20.0f;
+  layout_result.margin_[starlight::Direction::kTop] = -5.0f;
+  layout_result.margin_[starlight::Direction::kBottom] = -15.0f;
+  EXPECT_EQ(helper.MarginLeftCSSText(&computed_css_style, layout_result),
+            "-10px");
+  EXPECT_EQ(helper.MarginCSSText(&computed_css_style, layout_result),
+            "-5px -20px -15px -10px");
+
+  layout_result.margin_[starlight::Direction::kLeft] = 0.0f;
+  layout_result.margin_[starlight::Direction::kRight] = 0.0f;
+  layout_result.margin_[starlight::Direction::kTop] = 0.0f;
+  layout_result.margin_[starlight::Direction::kBottom] = 0.0f;
+  EXPECT_EQ(helper.MarginCSSText(&computed_css_style, layout_result),
+            "0px 0px 0px 0px");
+}
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx
