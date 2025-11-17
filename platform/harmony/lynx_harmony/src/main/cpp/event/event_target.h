@@ -9,6 +9,7 @@
 #include <arkui/ui_input_event.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace lynx {
@@ -56,6 +57,10 @@ class EventTarget {
 
   virtual bool ContainsPoint(float point[2]) = 0;
 
+  virtual void OnResponseChain() = 0;
+
+  virtual void OffResponseChain() = 0;
+
   virtual bool IsOnResponseChain() = 0;
 
   virtual void OnFocusChange(bool has_focus, bool is_focus_transition){};
@@ -100,6 +105,8 @@ class EventTarget {
     }
     return current_target;
   }
+
+  virtual std::vector<std::string> EventSet() { return {}; };
 
   virtual ~EventTarget() = default;
 };
