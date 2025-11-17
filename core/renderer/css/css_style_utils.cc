@@ -1591,6 +1591,27 @@ void CSSStyleUtils::ComputeRadialGradient(
   }
 }
 
+void CSSStyleUtils::ComputeConicGradient(
+    const lepus::Value& gradient_data, const tasm::CssMeasureContext& context,
+    const tasm::CSSParserConfigs& configs) {
+  // [center_x, center_x_unit, center_y, center_y_unit]
+  auto center_arr = gradient_data.Array()->get(1).Array();
+  auto center_result = lepus::CArray::Create();
+  AddLengthToArray(center_result,
+                   ToLength(tasm::CSSValue(center_arr->get(0),
+                                           static_cast<tasm::CSSValuePattern>(
+                                               center_arr->get(1).Number())),
+                            context, configs)
+                       .first);
+  AddLengthToArray(center_result,
+                   ToLength(tasm::CSSValue(center_arr->get(2),
+                                           static_cast<tasm::CSSValuePattern>(
+                                               center_arr->get(3).Number())),
+                            context, configs)
+                       .first);
+  gradient_data.Array()->set(1, lepus::Value(center_result));
+}
+
 lepus::Value CSSStyleUtils::GetGradientArrayFromString(
     const char* gradient_def, size_t gradient_def_length,
     const tasm::CssMeasureContext& context,
@@ -1601,14 +1622,14 @@ lepus::Value CSSStyleUtils::GetGradientArrayFromString(
   if (!value.IsArray()) {
     return lepus::Value();
   }
-  const auto& defArray = value.GetArray();
-  auto type = defArray->get(0).Number();
+  const auto& arr = value.GetArray();
+  auto type = arr->get(0).Number();
 
-  if (type ==
-      static_cast<int32_t>(starlight::BackgroundImageType::kRadialGradient)) {
-    const auto& gradientData = defArray->get(1);
-    lynx::starlight::CSSStyleUtils::ComputeRadialGradient(gradientData, context,
-                                                          configs);
+  if (type == static_cast<int32_t>(BackgroundImageType::kRadialGradient)) {
+    ComputeRadialGradient(arr->get(1), context, configs);
+  } else if (type ==
+             static_cast<int32_t>(BackgroundImageType::kConicGradient)) {
+    ComputeConicGradient(arr->get(1), context, configs);
   }
   return value.GetValue();
 }

@@ -60,6 +60,7 @@ text, TokenType::TEXT
 border-area, TokenType::BORDER_AREA
 linear-gradient, TokenType::LINEAR_GRADIENT
 radial-gradient, TokenType::RADIAL_GRADIENT
+conic-gradient, TokenType::CONIC_GRADIENT
 closest-side, TokenType::CLOSEST_SIDE
 closest-corner, TokenType::CLOSEST_CORNER
 farthest-side, TokenType::FARTHEST_SIDE
@@ -334,6 +335,7 @@ false, TokenType::TOKEN_FALSE
 fr, TokenType::FR
 on, TokenType::ON
 off, TokenType::OFF
+from, TokenType::FROM
 %%
 const struct TokenValue* GetTokenValue(const char *str, unsigned len) {
   return CSSKeywordsHash::GetTokenValue(str, len);

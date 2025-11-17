@@ -329,6 +329,7 @@ class CSSStringParser final {
   /// <radial-gradient> = radial-gradient( [ <ending-shape> || <size> ] ? [ at
   /// <position> ] ?, <color-stop-list>)
   bool RadialGradient();
+  bool ConicGradient();
   /// <ending-shape> = ellipse | circle
   bool EndingShape();
   /// <size> = closest-side | closest-corner | farthest-side | farthest-corner
