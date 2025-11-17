@@ -73,14 +73,17 @@ class BackgroundDrawable {
   void SetBorderTopRightRadius(const lepus::Value& value);
   void SetBorderBottomRightRadius(const lepus::Value& value);
   void SetBorderBottomLeftRadius(const lepus::Value& value);
+  void SetBorderStyle(const lepus::Value& value);
   void SetBorderLeftStyle(const lepus::Value& value);
   void SetBorderRightStyle(const lepus::Value& value);
   void SetBorderTopStyle(const lepus::Value& value);
   void SetBorderBottomStyle(const lepus::Value& value);
+  void SetBorderColor(const lepus::Value& value);
   void SetBorderLeftColor(const lepus::Value& value);
   void SetBorderRightColor(const lepus::Value& value);
   void SetBorderTopColor(const lepus::Value& value);
   void SetBorderBottomColor(const lepus::Value& value);
+  void SetBorderWidth(const lepus::Value& value);
   void SetBorderLeftWidth(const lepus::Value& value);
   void SetBorderRightWidth(const lepus::Value& value);
   void SetBorderTopWidth(const lepus::Value& value);

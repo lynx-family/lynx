@@ -79,14 +79,17 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"opacity", &UIBase::SetOpacity},
     {"visibility", &UIBase::SetVisibility},
     {"image-rendering", &UIBase::SetImageRendering},
+    {"border-width", &UIBase::SetBorderWidth},
     {"border-left-width", &UIBase::SetBorderLeftWidth},
     {"border-right-width", &UIBase::SetBorderRightWidth},
     {"border-top-width", &UIBase::SetBorderTopWidth},
     {"border-bottom-width", &UIBase::SetBorderBottomWidth},
+    {"border-style", &UIBase::SetBorderStyle},
     {"border-left-style", &UIBase::SetBorderLeftStyle},
     {"border-top-style", &UIBase::SetBorderTopStyle},
     {"border-bottom-style", &UIBase::SetBorderBottomStyle},
     {"border-right-style", &UIBase::SetBorderRightStyle},
+    {"border-color", &UIBase::SetBorderColor},
     {"border-top-color", &UIBase::SetBorderTopColor},
     {"border-right-color", &UIBase::SetBorderRightColor},
     {"border-bottom-color", &UIBase::SetBorderBottomColor},
@@ -810,6 +813,11 @@ void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   }
 }
 
+void UIBase::SetBorderStyle(const lepus::Value& value) {
+  CreateOrUpdateBackground();
+  background_drawable_->SetBorderStyle(value);
+}
+
 void UIBase::SetBorderLeftStyle(const lepus::Value& value) {
   CreateOrUpdateBackground();
   background_drawable_->SetBorderLeftStyle(value);
@@ -830,6 +838,11 @@ void UIBase::SetBorderBottomStyle(const lepus::Value& value) {
   background_drawable_->SetBorderBottomStyle(value);
 }
 
+void UIBase::SetBorderColor(const lepus::Value& value) {
+  CreateOrUpdateBackground();
+  background_drawable_->SetBorderColor(value);
+}
+
 void UIBase::SetBorderLeftColor(const lepus::Value& value) {
   CreateOrUpdateBackground();
   background_drawable_->SetBorderLeftColor(value);
@@ -848,6 +861,11 @@ void UIBase::SetBorderTopColor(const lepus::Value& value) {
 void UIBase::SetBorderBottomColor(const lepus::Value& value) {
   CreateOrUpdateBackground();
   background_drawable_->SetBorderBottomColor(value);
+}
+
+void UIBase::SetBorderWidth(const lepus::Value& value) {
+  CreateOrUpdateBackground();
+  background_drawable_->SetBorderWidth(value);
 }
 
 void UIBase::SetBorderLeftWidth(const lepus::Value& value) {

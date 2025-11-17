@@ -278,22 +278,22 @@ public class CSSPropertySetter {
         // TODO(nihao.royal) case BorderColor
         case BorderLeftColor:
           int borderLeftColor = entry.getInt();
-          lynxUI.setBorderColor(0, borderLeftColor);
+          lynxUI.setBorderColor(1, borderLeftColor);
           uiPaintStyles.mBorderLeftColor = borderLeftColor;
           break;
         case BorderRightColor:
           int borderRightColor = entry.getInt();
-          lynxUI.setBorderColor(1, borderRightColor);
+          lynxUI.setBorderColor(2, borderRightColor);
           uiPaintStyles.mBorderRightColor = borderRightColor;
           break;
         case BorderTopColor:
           int borderTopColor = entry.getInt();
-          lynxUI.setBorderColor(2, borderTopColor);
+          lynxUI.setBorderColor(3, borderTopColor);
           uiPaintStyles.mBorderTopColor = borderTopColor;
           break;
         case BorderBottomColor:
           int borderBottomColor = entry.getInt();
-          lynxUI.setBorderColor(3, borderBottomColor);
+          lynxUI.setBorderColor(4, borderBottomColor);
           uiPaintStyles.mBorderBottomColor = borderBottomColor;
           break;
         case OutlineColor:

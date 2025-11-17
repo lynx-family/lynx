@@ -1138,6 +1138,17 @@ void BackgroundDrawable::SetBorderBottomLeftRadius(const lepus::Value& value) {
   border_radius_->SetRadius(BorderRadius::CornerPosition::kBottomLeft, value);
 }
 
+void BackgroundDrawable::SetBorderStyle(const lepus::Value& value) {
+  border_info_->border_left_style =
+      static_cast<starlight::BorderStyleType>(value.Number());
+  border_info_->border_right_style =
+      static_cast<starlight::BorderStyleType>(value.Number());
+  border_info_->border_top_style =
+      static_cast<starlight::BorderStyleType>(value.Number());
+  border_info_->border_bottom_style =
+      static_cast<starlight::BorderStyleType>(value.Number());
+}
+
 void BackgroundDrawable::SetBorderLeftStyle(const lepus::Value& value) {
   border_info_->border_left_style =
       static_cast<starlight::BorderStyleType>(value.Number());
@@ -1158,6 +1169,13 @@ void BackgroundDrawable::SetBorderBottomStyle(const lepus::Value& value) {
       static_cast<starlight::BorderStyleType>(value.Number());
 }
 
+void BackgroundDrawable::SetBorderColor(const lepus::Value& value) {
+  border_info_->border_left_color = static_cast<uint32_t>(value.Number());
+  border_info_->border_right_color = static_cast<uint32_t>(value.Number());
+  border_info_->border_top_color = static_cast<uint32_t>(value.Number());
+  border_info_->border_bottom_color = static_cast<uint32_t>(value.Number());
+}
+
 void BackgroundDrawable::SetBorderLeftColor(const lepus::Value& value) {
   border_info_->border_left_color = static_cast<uint32_t>(value.Number());
 }
@@ -1172,6 +1190,13 @@ void BackgroundDrawable::SetBorderTopColor(const lepus::Value& value) {
 
 void BackgroundDrawable::SetBorderBottomColor(const lepus::Value& value) {
   border_info_->border_bottom_color = static_cast<uint32_t>(value.Number());
+}
+
+void BackgroundDrawable::SetBorderWidth(const lepus::Value& value) {
+  border_info_->border_left_origin_width = static_cast<float>(value.Number());
+  border_info_->border_right_origin_width = static_cast<float>(value.Number());
+  border_info_->border_top_origin_width = static_cast<float>(value.Number());
+  border_info_->border_bottom_origin_width = static_cast<float>(value.Number());
 }
 
 void BackgroundDrawable::SetBorderLeftWidth(const lepus::Value& value) {

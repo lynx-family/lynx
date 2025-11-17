@@ -1893,6 +1893,7 @@ public abstract class LynxBaseUI
 
   @LynxPropGroup(names =
                      {
+                         PropsConstants.BORDER_COLOR,
                          PropsConstants.BORDER_LEFT_COLOR,
                          PropsConstants.BORDER_RIGHT_COLOR,
                          PropsConstants.BORDER_TOP_COLOR,
@@ -1902,7 +1903,7 @@ public abstract class LynxBaseUI
   public void
   setBorderColor(int index, Integer color) {
     ensureLynxBackground();
-    mLynxBackground.setBorderColorForSpacingIndex(SPACING_TYPES[index + 1], color);
+    mLynxBackground.setBorderColorForSpacingIndex(SPACING_TYPES[index], color);
   }
 
   @LynxProp(name = PropsConstants.OUTLINE_COLOR, defaultInt = Color.BLACK)
