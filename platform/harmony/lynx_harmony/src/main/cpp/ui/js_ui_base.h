@@ -63,6 +63,7 @@ class JSUIBase : public UIBase {
   static napi_value UnsetFocusedUI(napi_env env, napi_callback_info info);
   static napi_value SetChildrenManagementFuncs(napi_env env,
                                                napi_callback_info);
+  static napi_value AttachGestureToNode(napi_env env, napi_callback_info info);
 
   static napi_value GetUIFromNativeContent(napi_env env,
                                            napi_callback_info info);

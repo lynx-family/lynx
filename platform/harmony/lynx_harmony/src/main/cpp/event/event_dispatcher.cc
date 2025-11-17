@@ -205,7 +205,7 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
   if (ui_owner_->Destroyed() || !root->RootNode()) {
     return;
   }
-  root_target_ = root->WeakTarget();
+  root_target_ = root->weak_from_this();
   NodeManager::Instance().SetUserData(root->RootNode(), this);
   if (long_press_gesture_) {
     NodeManager::Instance().AddGestureToNode(
@@ -791,7 +791,7 @@ void EventDispatcher::EventDispatcher::OnTouchEvent(
     LOGI("EventDispatcher OnTouchEvent down x:" << active_x
                                                 << ", y:" << active_y)
     from_overlay_ = from_overlay;
-    root_target_ = root->WeakTarget();
+    root_target_ = root->weak_from_this();
     HandleTouchDown(event);
   } else if (!first_active_target_.expired() &&
              !active_target_finger_map_.empty()) {
@@ -987,17 +987,26 @@ ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
   return ConsumeSlideDirection::kNone;
 }
 
+void EventDispatcher::UpdateRootTarget(UIBase* root) {
+  if (root) {
+    root_target_ = root->weak_from_this();
+  }
+}
+
 bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
-  if (ui_owner_->Destroyed()) {
+  if (root_target_.expired() || ui_owner_->Destroyed()) {
     return false;
   }
-  auto root = ui_owner_->Root();
 
+  auto root = root_target_.lock();
+  if (!root || !root->RootNode()) {
+    return false;
+  }
   ArkUI_IntOffset page_offset;
-  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->GetProxyNode(),
+  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->RootNode(),
                                                       &page_offset);
   float node_point_x = point[0], node_point_y = point[1];
-  float scaled_density = root->GetContext()->ScaledDensity();
+  float scaled_density = ui_owner_->Context()->ScaledDensity();
   float page_x = page_offset.x / scaled_density;
   float page_y = page_offset.y / scaled_density;
 
@@ -1020,7 +1029,7 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
       active_target->HasUI()
           ? static_cast<UIBase*>(active_target)
           : static_cast<UIBase*>(active_target->FirstUITarget());
-  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root,
+  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root.get(),
                                                      target_ui, point);
   return !active_target->EventThrough(target_point);
 }

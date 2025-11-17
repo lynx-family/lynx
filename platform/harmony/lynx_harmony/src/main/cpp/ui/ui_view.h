@@ -19,9 +19,19 @@ class LYNX_EXPORT UIView : public UIBase {
 
   void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
 
+  void OnNodeReady() override;
+
+  void OnNodeEvent(ArkUI_NodeEvent* event) override;
+
  protected:
   bool DefaultOverflowValue() override { return true; }
   UIView(LynxContext* context, ArkUI_NodeType type, int sign, const std::string& tag);
+  ~UIView() override;
+
+ private:
+  bool is_consume_event_{false};
+
+  bool is_root_attached_{false};
 };
 
 }  // namespace harmony

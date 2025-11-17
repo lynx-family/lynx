@@ -45,6 +45,7 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("keyboardStatusChanged", KeyboardStatusChanged),
 
       DECLARE_NAPI_FUNCTION("canConsumeTouchEvent", CanConsumeTouchEvent),
+      DECLARE_NAPI_FUNCTION("updateRootTarget", UpdateRootTarget),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -97,6 +98,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   if ((tag == "image") && (painting_data->Contains("autoplay") ||
                            painting_data->Contains("loop-count"))) {
     ui = UIFlattenImage::Make(context_.get(), sign, tag);
+  } else if (tag == "x-overlay-ng" && context_->GetEnableHarmonyNewOverlay()) {
+    ui = CreateJSUI(sign, tag);
   } else if (auto* node_info = context_->GetNodeInfo(tag);
              node_info && node_info->ui_creator) {
     ui = node_info->ui_creator(context_.get(), sign, tag);
@@ -514,9 +517,33 @@ napi_value UIOwner::CanConsumeTouchEvent(napi_env env,
   return consumed_touch_event;
 }
 
+napi_value UIOwner::UpdateRootTarget(napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value argv[argc];
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  UIOwner* owner = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&owner));
+  if (!owner) {
+    return nullptr;
+  }
+  NativeNodeContent* content{nullptr};
+  napi_unwrap(env, argv[0], reinterpret_cast<void**>(&content));
+
+  auto* node = content;
+  if (node && node->UI()) {
+    owner->UpdateRootTarget(node->UI());
+  }
+  return nullptr;
+}
+
 bool UIOwner::CanConsumeTouchEvent(float point[2]) {
   return event_dispatcher_->CanConsumeTouchEvent(point);
 }
+
+void UIOwner::UpdateRootTarget(UIBase* root) {
+  event_dispatcher_->UpdateRootTarget(root);
+};
 
 void UIOwner::InvokeUIMethod(int32_t id, const std::string& method,
                              PropBundleHarmony* args, int32_t callback_id) {

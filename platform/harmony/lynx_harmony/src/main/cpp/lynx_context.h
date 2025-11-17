@@ -103,6 +103,10 @@ class LynxContext {
 
   ArkUI_ContextHandle ArkUIContext() const { return ark_ui_context_; }
 
+  void SetEnableHarmonyNewOverlay(bool enable_new_overlay);
+
+  bool GetEnableHarmonyNewOverlay() { return enable_harmony_new_overlay_; }
+
   void SetEnableMultiTouch(bool enable_multi_touch);
 
   void SetTapSlop(const std::string& tap_slop);
@@ -307,6 +311,7 @@ class LynxContext {
   ArkUI_ContextHandle ark_ui_context_{nullptr};
   std::unordered_map<std::string, NodeInfo> dynamic_node_info_map_;
   bool enable_text_overflow_{false};
+  bool enable_harmony_new_overlay_{false};
 
   std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_{nullptr};
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_{nullptr};

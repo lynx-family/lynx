@@ -310,6 +310,10 @@ bool LynxEnv::IsDevToolConnected() {
   return GetBoolEnv(Key::DEVTOOL_CONNECTED, false, EnvType::LOCAL);
 }
 
+bool LynxEnv::EnableHarmonyNewOverlay() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_NEW_OVERLAY, false);
+}
+
 bool LynxEnv::IsTableDeepCheckEnabled() {
   return GetBoolEnv(Key::ENABLE_TABLE_DEEP_CHECK, false, EnvType::LOCAL);
 }

@@ -1202,6 +1202,14 @@ enablePlatformGesture:
   supportPlatform:
     - Android
     - iOS
+enableHarmonyNewOverlay:
+  description: Enable harmony new overlay based overlayManager to handle events pass through.
+  defaultValue: 'false'
+  valueType: bool
+  since: '3.6'
+  author: AdrianLCA
+  supportPlatform:
+    - Harmony
 enableCheckLocalImage:
   description: Determine whether redirection is needed for local image resources.
   defaultValue: 'true'

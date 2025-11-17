@@ -1880,7 +1880,7 @@ bool UIBase::IsVisible() {
     return false;
   }
 
-  if (!IsOverlay() &&
+  if (!IsOverlayContent() &&
       ((base::FloatsEqual(width_, 0.0f) && !overflow_.overflow_x) ||
        (base::FloatsEqual(height_, 0.0f) && !overflow_.overflow_y))) {
     return false;
@@ -1942,7 +1942,7 @@ bool UIBase::IsVisibleForExposure(
     if (!current->IsVisible()) {
       return false;
     }
-    if (current->IsOverlay()) {
+    if (current->IsOverlayContent()) {
       break;
     }
     if (current->EnableExposureUIClip() == LynxEventPropStatus::kEnable ||

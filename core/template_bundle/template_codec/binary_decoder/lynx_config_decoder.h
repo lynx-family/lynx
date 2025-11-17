@@ -580,6 +580,12 @@ class LynxConfigDecoder final {
           doc[config::kEnablePlatformGesture].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableHarmonyNewOverlay) &&
+        doc[config::kEnableHarmonyNewOverlay].IsBool()) {
+      page_config->SetEnableHarmonyNewOverlay(
+          doc[config::kEnableHarmonyNewOverlay].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableCheckLocalImage) &&
         doc[config::kEnableCheckLocalImage].IsBool()) {
       page_config->SetEnableCheckLocalImage(

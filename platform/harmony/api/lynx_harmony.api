@@ -127,6 +127,7 @@ export class LynxContext implements IContext {
   public getDensity(): number;
   public getRectangleById(id: string): void;
   public canConsumeTouchEvent(x: number, y: number): boolean;
+  public updateRootTarget(content: NativeContent): void;
   public getPageDataByKey(keys: string[]): void;
   public setExtensionModule(module: LynxExtensionModule): void;
   public getExtensionModule(): LynxExtensionModule | undefined;
@@ -387,6 +388,7 @@ export class UIOwner {
   requestLayout(): void;
   keyboardStatusChanged(height: number): void;
   canConsumeTouchEvent(x: number, y: number): boolean;
+  updateRootTarget(node: NativeContent): void;
 }
 
 export class UIBase {
@@ -402,6 +404,7 @@ export class UIBase {
   setFocusedUI(): void;
   unsetFocusedUI(): void;
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
+  attachGestureToNode(node: NativeContent): void;
 }
 
 export class NativeContent {
@@ -847,9 +850,12 @@ export interface IContext {
   findJSShadowNodeBySign(sign: number): Object | undefined;
   sendGlobalEvent(name: string, params: Object[]): void;
   measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): [number, number, number] | undefined;
+  alignNativeNode(sign: number, left: number, top: number): void;
   getGenericResourceFetcher(): LynxGenericResourceFetcher | undefined;
   getMediaResourceFetcher(): LynxMediaResourceFetcher | undefined;
   getDensity(): number;
+  canConsumeTouchEvent(x: number, y: number): boolean;
+  updateRootTarget(content: NativeContent): void;
 }
 
 export class LynxTrailHub {

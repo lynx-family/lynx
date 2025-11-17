@@ -74,6 +74,9 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->SetTapSlop(config->GetTapSlop());
     lynx_context->SetHasTouchPseudo(config->GetEnableFiberArch());
     lynx_context->SetLongPressDuration(config->GetLongPressDuration());
+    lynx_context->SetEnableHarmonyNewOverlay(
+        config->GetEnableHarmonyNewOverlay() ||
+        LynxEnv::GetInstance().EnableHarmonyNewOverlay());
     if (config->GetEnableNewGesture() && ui_owner_) {
       ui_owner_->InitGestureArenaManager(lynx_context.get());
     }

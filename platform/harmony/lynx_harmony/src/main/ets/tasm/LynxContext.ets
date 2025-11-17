@@ -20,6 +20,7 @@ import { LynxExtensionModule } from '../extension/LynxExtensionModule';
 import { TimingOption } from './performance/timing/TimingOption';
 import { TimingConstants } from './performance/timing/TimingConstants';
 import { LynxBaseInspectorOwner } from '../devtool_wrapper/LynxBaseInspectorOwner'
+import { NativeContent } from '../Index';
 
 const TAG = 'LynxContext'
 
@@ -274,6 +275,12 @@ export class LynxContext implements IContext {
       return this.uiOwner.canConsumeTouchEvent(x, y);
     }
     return false;
+  }
+
+  public updateRootTarget(content: NativeContent) {
+    if (this.uiOwner) {
+      this.uiOwner.updateRootTarget(content);
+    }
   }
 
   /**

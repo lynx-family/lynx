@@ -113,6 +113,8 @@ class EventDispatcher {
   // TODO(hexionghui): replace it with HitTestMode.BLOCK_DESCENDANTS
   void UpdateNativeInteractionEnabledForTree(UIBase* root);
 
+  void UpdateRootTarget(UIBase* root);
+
  private:
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
 
@@ -166,7 +168,7 @@ class EventDispatcher {
                                         bool has_disabled_ancestor);
 
   UIOwner* ui_owner_{nullptr};
-  std::weak_ptr<EventTarget> root_target_;
+  std::weak_ptr<UIBase> root_target_;
   std::weak_ptr<EventTarget> first_active_target_;
   std::weak_ptr<EventTarget> focused_target_;
   std::unordered_map<int, EventTargetDetail> active_target_finger_map_;

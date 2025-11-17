@@ -53,7 +53,7 @@ class UIOverlay : public UIBase {
 
   ArkUI_NodeHandle RootNode() override { return stack_; }
 
-  bool IsOverlay() const override { return true; }
+  bool IsOverlayContent() const override { return true; }
 
  private:
   bool are_gestures_attached_{false};

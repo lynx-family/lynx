@@ -48,9 +48,11 @@ void UIOverlay::ShowDialog(bool is_show) {
     context_->SendEvent(event);
     is_visible_ = true;
   } else {
-    CustomEvent event{Sign(), "dismissoverlay", "detail", lepus_value()};
-    context_->SendEvent(event);
-    NodeManager::DialogInstance()->close(native_dialog_);
+    if (is_visible_) {
+      CustomEvent event{Sign(), "dismissoverlay", "detail", lepus_value()};
+      context_->SendEvent(event);
+      NodeManager::DialogInstance()->close(native_dialog_);
+    }
     is_visible_ = false;
   }
 }
@@ -63,10 +65,10 @@ void UIOverlay::SetParent(UIBase* parent) {
 }
 
 UIOverlay::~UIOverlay() {
-  LOGE("overlay destruction sign=" << Sign() << " this="
+  LOGI("overlay destruction sign=" << Sign() << " this="
                                    << static_cast<const void*>(this));
   if (native_dialog_ != nullptr) {
-    LOGE("overlay destruction close dialog sign="
+    LOGI("overlay destruction close dialog sign="
          << Sign() << " this=" << static_cast<const void*>(this)
          << " dialog=" << static_cast<const void*>(native_dialog_));
     NodeManager::DialogInstance()->close(native_dialog_);
@@ -91,7 +93,7 @@ UIOverlay::~UIOverlay() {
 
 UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
     : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag) {
-  LOGE("overlay construction sign=" << Sign() << " tag=" << tag << " this="
+  LOGI("overlay construction sign=" << Sign() << " tag=" << tag << " this="
                                     << static_cast<const void*>(this));
   stack_ = NodeManager::Instance().CreateNode(ARKUI_NODE_STACK);
   NodeManager::Instance().SetAttributeWithNumberValue(
@@ -109,7 +111,7 @@ UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT, 0,
                                             this);
   native_dialog_ = NodeManager::DialogInstance()->create();
-  LOGE("overlay construction create dialog sign="
+  LOGI("overlay construction create dialog sign="
        << Sign() << " tag=" << tag << " this=" << static_cast<const void*>(this)
        << " dialog=" << static_cast<const void*>(native_dialog_));
   NodeManager::DialogInstance()->enableCustomStyle(native_dialog_, true);

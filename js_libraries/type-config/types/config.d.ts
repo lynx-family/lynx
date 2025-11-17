@@ -384,6 +384,17 @@ export interface Config {
   enableFixedNew?: boolean
 
   /**
+   * Enable harmony new overlay based overlayManager to handle events pass through.
+   *
+   * Supported platform: Harmony
+   *
+   * Since: 3.6
+   *
+   * @defaultValue undefined
+   */
+  enableHarmonyNewOverlay?: boolean
+
+  /**
    * Enable Harmony to detect exposure with visible area change event.
    *
    * Supported platform: HarmonyOS

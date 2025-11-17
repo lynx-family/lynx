@@ -201,6 +201,8 @@ export class UIOwner {
   keyboardStatusChanged(height: number): void;
 
   canConsumeTouchEvent(x: number, y: number): boolean;
+
+  updateRootTarget(node: NativeContent): void;
 }
 
 export class UIBase {
@@ -235,6 +237,8 @@ export class UIBase {
   unsetFocusedUI(): void;
 
   setChildrenManagementFuncs(insertChild: Function, removeChild: Function): void;
+
+  attachGestureToNode(node: NativeContent): void;
 }
 
 export class NativeContent {

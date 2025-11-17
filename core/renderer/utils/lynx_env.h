@@ -107,6 +107,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_REPORT_BTS_CONTEXT_EVENT,
     ENABLE_FIBER_ELEMENT_MEMORY_REPORT,
     FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
+    ENABLE_HARMONY_NEW_OVERLAY,
     // FIXME(linxs): remove this config in the next version(remove in 3.5)
     FIX_NEGATIVE_Z_INDEX_INSERT_BUG,
     // FIXME(linxs): remove this config int the next version
@@ -248,6 +249,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_fiber_element_memory_report"},
             {Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
              "fix_font_size_override_direction_change_bug"},
+            {Key::ENABLE_HARMONY_NEW_OVERLAY, "enable_harmony_new_overlay"},
             {Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, "fix_negative_z_index_bug"},
             {Key::FIX_FIXED_Z_INDEX_SWITCH_BUG, "fix_fixed_z_index_switch_bug"},
             {Key::FIX_STACKING_CONTEXT_FLAG_BUG,
@@ -404,6 +406,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableReportMTSContextEvent();
   bool EnableFiberElementMemoryReport();
   bool FixFontSizeOverrideDirectionChangeBug();
+  bool EnableHarmonyNewOverlay();
   bool EnableNewAnimatorOnPatchFinishOpt();
   bool EnableEventHandleRefactor();
   bool EnableDecoupledList();

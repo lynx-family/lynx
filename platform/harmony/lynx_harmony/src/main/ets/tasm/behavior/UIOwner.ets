@@ -119,4 +119,8 @@ export class UIOwner {
     canConsumeTouchEvent(x: number, y: number): boolean {
     return this.native.canConsumeTouchEvent(x, y);
   }
+
+  updateRootTarget(content: NativeContent): void {
+    this.native.updateRootTarget(content);
+  }
 }
