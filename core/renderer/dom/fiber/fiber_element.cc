@@ -1937,7 +1937,8 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
                   param.child_.get());
             } else {
               // node with z-index only needs remove its element container.
-              param.child_->element_container()->RemoveSelf(false);
+              element_container()->RemoveElementContainerAccordingToElement(
+                  param.child_.get(), false);
             }
           }
         } break;
@@ -2062,7 +2063,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
     RemoveLayoutNode(child);
   }
 
-  child->element_container()->RemoveSelf(false);
+  element_container()->RemoveElementContainerAccordingToElement(child, false);
 }
 
 void FiberElement::HandleContainerInsertion(FiberElement *parent,
@@ -2086,7 +2087,8 @@ void FiberElement::HandleContainerInsertion(FiberElement *parent,
   if (!child->element_container()->parent()) {
     // the child has been inserted to parent in
     // AttachChildToTargetContainerRecursive, just ignore it
-    parent->element_container()->AttachChildToTargetContainer(child, ref_node);
+    parent->element_container()->InsertElementContainerAccordingToElement(
+        child, ref_node);
   }
 }
 

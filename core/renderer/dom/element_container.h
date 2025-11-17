@@ -39,26 +39,24 @@ class ElementContainer {
   PaintingContext* painting_context();
   int id() const;
 
-  virtual void AddChild(ElementContainer* child, int index);
-  virtual void RemoveSelf(bool destroy);
-  virtual void Destroy();
-
-  void UpdateLayout(float left, float top, bool transition_view = false);
-  void UpdateLayoutWithoutChange();
   /**
    * Add element container to correct parent(if layout_only contained)
    * @param child the child to be added
    * @param ref the ref node ,which the child will be inserted before(currently
    * only for fiber)
    */
-  virtual void AttachChildToTargetContainer(Element* child,
-                                            Element* ref = nullptr);
-  void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
+  virtual void InsertElementContainerAccordingToElement(Element* child,
+                                                        Element* ref = nullptr);
+  virtual void RemoveElementContainerAccordingToElement(Element* child,
+                                                        bool destroy);
+  virtual void Destroy();
+
+  void UpdateLayout(float left, float top, bool transition_view = false);
+  void UpdateLayoutWithoutChange();
+
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle);
   void StyleChanged();
   void UpdateZIndexList();
-  ElementContainer* EnclosingStackingContextNode();
-  bool IsStackingContextNode();
 
   virtual void CreatePaintingNode(bool is_flatten,
                                   const fml::RefPtr<PropBundle>& painting_data);
@@ -108,11 +106,21 @@ class ElementContainer {
       const std::shared_ptr<PipelineOptions>& options);
   virtual void MarkLayoutUIOperationQueueFlushStartIfNeed();
 
- private:
+ protected:
+  void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
+
+  ElementContainer* EnclosingStackingContextNode();
+
+  bool IsStackingContextNode();
+
   void ZIndexChanged();
   void PositionFixedChanged();
 
-  // Use RemoveFromParent/Destroy
+  void AttachChildToTargetContainerRecursive(ElementContainer* parent,
+                                             Element* child, int& index);
+
+  virtual void AddChild(ElementContainer* child, int index);
+  void RemoveSelf(bool destroy);
   void RemoveChild(ElementContainer* child);
   void InsertSelf();
   void RemoveFromParent(bool is_move);
