@@ -24,6 +24,7 @@
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/events/gesture.h"
+#include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/runtime/vm/lepus/lepus_date.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
@@ -944,6 +945,12 @@ void UIBase::SetFilter(const lepus::Value& value) {
       amount = std::clamp(amount, 0.0, 3.0);
       NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_CONTRAST,
                                                           amount);
+      break;
+    case starlight::FilterType::kSaturate:
+      amount = val_array->get(1).Number();
+      amount = (amount < 0.0) ? 1.0 : ((amount > 3.0) ? 3.0 : amount);
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          node_, NODE_SATURATION, amount);
       break;
     default:
       break;

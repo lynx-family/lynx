@@ -34,6 +34,10 @@
         filterName = @"colorContrast";
         keyPath = @"inputAmount";
         break;
+      case LynxFilterTypeSaturate:
+        filterName = @"colorSaturate";
+        keyPath = @"inputAmount";
+        break;
       default:
         // No such filter
         return nil;
