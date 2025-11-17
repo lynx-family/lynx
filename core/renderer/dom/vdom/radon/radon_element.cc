@@ -396,7 +396,8 @@ void RadonElement::InsertNode(RadonElement* child, int32_t index) {
   AddChildAt(child, index);
 
   if (element_container()) {
-    element_container()->AttachChildToTargetContainer(GetChildAt(index));
+    element_container()->InsertElementContainerAccordingToElement(
+        GetChildAt(index));
   }
 }
 
@@ -415,7 +416,8 @@ void RadonElement::RemoveNode(RadonElement* child, int32_t index,
   bool destroy_platform_node = destroy && child->HasPaintingNode();
   element_manager()->RemoveLayoutNodeAtIndex(impl_id(), index);
   RemoveChildAt(index);
-  child->element_container()->RemoveSelf(destroy_platform_node);
+  element_container()->RemoveElementContainerAccordingToElement(
+      child, destroy_platform_node);
   if (destroy_platform_node) child->MarkPlatformNodeDestroyedRecursively();
 }
 

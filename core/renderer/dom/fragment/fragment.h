@@ -27,8 +27,8 @@ class Fragment : public ElementContainer {
 
   ~Fragment() override = default;
 
-  void AddChild(ElementContainer* child, int index) override;
-  void RemoveSelf(bool destroy) override;
+  void InsertElementContainerAccordingToElement(Element* child,
+                                                Element* ref) override;
 
   void CreatePaintingNode(
       bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) override;
@@ -52,7 +52,6 @@ class Fragment : public ElementContainer {
   void MarkNeedRedraw();
 
   void AddChildBefore(Fragment* child, Fragment* sibling);
-  void AttachChildToTargetContainer(Element* child, Element* ref) override;
 
  private:
   bool has_platform_renderer_;

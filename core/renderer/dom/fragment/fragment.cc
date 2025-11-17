@@ -17,20 +17,6 @@ namespace tasm {
 
 Fragment::Fragment(Element* element) : ElementContainer(element) {}
 
-void Fragment::AddChild(ElementContainer* child, int index) {
-  MarkNeedRedraw();
-  ElementContainer::AddChild(child, index);
-}
-
-void Fragment::RemoveSelf(bool destroy) {
-  auto* fragment_parent = static_cast<Fragment*>(parent());
-
-  if (fragment_parent != nullptr) {
-    fragment_parent->MarkNeedRedraw();
-  }
-  ElementContainer::RemoveSelf(destroy);
-}
-
 void Fragment::CreateLayerIfNeeded() {
   // TODO(zhongyr): abstract one behavior for layerize.
   if ((!element()->TendToFlatten() && !has_platform_renderer_ && behavior_) ||
@@ -109,7 +95,8 @@ void Fragment::Draw(DisplayListBuilder& display_list_builder) {
 
 void Fragment::MarkNeedRedraw() { need_redraw_ = true; }
 
-void Fragment::AttachChildToTargetContainer(Element* child, Element* ref) {
+void Fragment::InsertElementContainerAccordingToElement(Element* child,
+                                                        Element* ref) {
   AddChildBefore(
       static_cast<Fragment*>(child->element_container()),
       static_cast<Fragment*>(ref ? ref->element_container() : nullptr));

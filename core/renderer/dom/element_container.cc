@@ -161,13 +161,10 @@ void ElementContainer::Destroy() {
   if (!element()->IsLayoutOnly()) {
     painting_context()->DestroyPaintingNode(parent() ? parent()->id() : -1,
                                             id(), 0);
-  } else {
-    if (element_->is_radon_element()) {
-      // fiber element's layout only children handle Destroy in self Destructor
-      for (int i = static_cast<int>(element_->GetChildCount()) - 1; i >= 0;
-           --i) {
-        element_->GetChildAt(i)->element_container()->Destroy();
-      }
+  } else if (element_->is_radon_element()) {
+    // fiber element's layout only children handle Destroy in self Destructor
+    for (int i = static_cast<int>(element_->GetChildCount()) - 1; i >= 0; --i) {
+      element_->GetChildAt(i)->element_container()->Destroy();
     }
   }
   if (parent()) {
@@ -175,8 +172,19 @@ void ElementContainer::Destroy() {
   }
 }
 
+void ElementContainer::RemoveElementContainerAccordingToElement(Element* child,
+                                                                bool destroy) {
+  if (child == nullptr || child->element_container() == nullptr) {
+    return;
+  }
+
+  child->element_container()->RemoveSelf(destroy);
+}
+
 void ElementContainer::RemoveSelf(bool destroy) {
-  if (!parent_) return;
+  if (parent_ == nullptr) {
+    return;
+  }
 
   if (destroy) {
     Destroy();
@@ -191,8 +199,11 @@ void ElementContainer::RemoveSelf(bool destroy) {
 
 void ElementContainer::InsertSelf() {
   if (!parent_ && element()->parent()) {
-    element()->parent()->element_container()->AttachChildToTargetContainer(
-        element(), element()->next_render_sibling());
+    element()
+        ->parent()
+        ->element_container()
+        ->InsertElementContainerAccordingToElement(
+            element(), element()->next_render_sibling());
   }
 }
 
@@ -216,8 +227,8 @@ std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
   return {node->element_container(), ui_index};
 }
 
-void AttachChildToTargetContainerRecursive(ElementContainer* parent,
-                                           Element* child, int& index) {
+void ElementContainer::AttachChildToTargetContainerRecursive(
+    ElementContainer* parent, Element* child, int& index) {
   if (child->ZIndex() != 0 || child->IsNewFixed()) {
     if (child->IsNewFixed()) {
       // fixed node should attach to page root.
@@ -270,8 +281,8 @@ void ElementContainer::ReInsertChildForLayoutOnlyTransition(Element* child,
   child->element_container()->UpdateLayout(child->left(), child->top(), true);
 }
 
-void ElementContainer::AttachChildToTargetContainer(Element* child,
-                                                    Element* ref) {
+void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
+                                                                Element* ref) {
   if (child->IsNewFixed()) {
     element_manager()->root()->element_container()->AddChild(
         child->element_container(), -1);
@@ -536,8 +547,9 @@ void ElementContainer::ZIndexChanged() {
   if ((z == 0 && old_index_ != 0) || (old_index_ == 0 && z != 0)) {
     RemoveFromParent(true);
     // Use the parent of element to find the ui parent
-    element_parent->element_container()->AttachChildToTargetContainer(
-        element(), element()->next_render_sibling());
+    element_parent->element_container()
+        ->InsertElementContainerAccordingToElement(
+            element(), element()->next_render_sibling());
     parent_stacking_context->MarkDirty();
   } else if (old_index_ != z) {  // Just mark the stacking context is dirty
     parent_stacking_context->MarkDirty();
@@ -842,8 +854,10 @@ void ElementContainer::PositionFixedChanged() {
   bool is_position_fixed = element()->is_fixed();
   if (was_position_fixed_ != is_position_fixed) {
     RemoveFromParent(true);
-    element()->parent()->element_container()->AttachChildToTargetContainer(
-        element());
+    element()
+        ->parent()
+        ->element_container()
+        ->InsertElementContainerAccordingToElement(element());
   }
   was_position_fixed_ = is_position_fixed;
 }
