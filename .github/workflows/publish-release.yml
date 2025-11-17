@@ -207,7 +207,7 @@ jobs:
             build_param: ''
             label: 'formal'
           - version_suffix: '-dev'
-            modules: 'lynx lynx_devtool'
+            modules: 'lynx lynx_devtool lynx_base'
             build_param: '--dev'
             label: 'dev'
     steps:
