@@ -47,6 +47,26 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+constexpr std::array<starlight::Direction,
+                     starlight::Direction::kDirectionCount>
+    kDefaultDirectionValueOrder =
+        std::array<starlight::Direction, starlight::Direction::kDirectionCount>{
+            starlight::Direction::kLeft, starlight::Direction::kTop,
+            starlight::Direction::kRight, starlight::Direction::kBottom};
+starlight::DirectionValue<float> ConvertToDirectionValue(
+    const std::array<float, starlight::Direction::kDirectionCount>& values) {
+  std::array<float, starlight::Direction::kDirectionCount> result_values = {
+      0.0f, 0.0f, 0.0f, 0.0f};
+
+  for (size_t i = 0; i < starlight::Direction::kDirectionCount; ++i) {
+    result_values[kDefaultDirectionValueOrder[i]] = values[i];
+  }
+
+  return starlight::DirectionValue<float>(result_values);
+}
+}  // namespace
+
 #define FOREACH_EXTENDED_LAYOUT_ONLY_PROPERTY(V) \
   V(Direction, true)                             \
   V(TextAlign, true)
@@ -1845,6 +1865,9 @@ starlight::LayoutResultForRendering Element::layout_result() {
   auto layout_result = starlight::LayoutResultForRendering();
   layout_result.size_ = FloatSize(width(), height());
   layout_result.offset_ = starlight::FloatPoint(left(), top());
+  layout_result.padding_ = ConvertToDirectionValue(paddings_);
+  layout_result.margin_ = ConvertToDirectionValue(margins_);
+  layout_result.border_ = ConvertToDirectionValue(borders_);
   return layout_result;
 }
 

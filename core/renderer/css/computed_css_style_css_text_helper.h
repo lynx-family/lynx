@@ -54,7 +54,17 @@ class ComputedCSSStyleCssTextHelper {
   V(ZIndex)                                              \
   V(Filter)                                              \
   V(Direction)                                           \
-  V(BackgroundPosition)
+  V(BackgroundPosition)                                  \
+  V(Padding)                                             \
+  V(PaddingTop)                                          \
+  V(PaddingBottom)                                       \
+  V(PaddingLeft)                                         \
+  V(PaddingRight)                                        \
+  V(Margin)                                              \
+  V(MarginTop)                                           \
+  V(MarginBottom)                                        \
+  V(MarginLeft)                                          \
+  V(MarginRight)
 
 #define GETTER_STYLE_STRING_VALUE(name)                \
   base::String name##CSSText(                          \
