@@ -18,6 +18,7 @@ import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_BRIGHTNESS;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_CONTRAST;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_GRAYSCALE;
 import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_NONE;
+import static com.lynx.tasm.behavior.StyleConstants.FILTER_TYPE_SATURATE;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_LENGTH_UNIT_NUMBER;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_DEFAULT;
 import static com.lynx.tasm.behavior.StyleConstants.PLATFORM_PERSPECTIVE_UNIT_NUMBER;
@@ -1383,6 +1384,17 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
           filterPaint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
           mView.setLayerType(View.LAYER_TYPE_HARDWARE, filterPaint);
           mContrastAmount = (float) amount;
+        }
+        break;
+      case FILTER_TYPE_SATURATE:
+        amount = (amount < 0.0) ? 1.0 : ((amount > 3.0) ? 3.0 : amount);
+        if (!FloatUtils.floatsEqual(mSaturateAmount, (float) amount)) {
+          ColorMatrix colorMatrix = new ColorMatrix();
+          colorMatrix.setSaturation((float) amount);
+          Paint filterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+          filterPaint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+          mView.setLayerType(View.LAYER_TYPE_HARDWARE, filterPaint);
+          mSaturateAmount = (float) amount;
         }
         break;
       default:
