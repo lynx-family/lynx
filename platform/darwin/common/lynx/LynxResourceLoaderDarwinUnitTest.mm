@@ -17,9 +17,28 @@
 #import "LynxTemplateRender+Protected.h"
 #import "LynxUnitTestUtils.h"
 
+#include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime_mediator.h"
 #include "core/shell/runtime_standalone_helper.h"
+
+@interface Mock2GenericResourceFetcher : NSObject <LynxGenericResourceFetcher>
+
+@end
+
+@implementation Mock2GenericResourceFetcher
+
+- (dispatch_block_t)fetchResource:(LynxResourceRequest*)request
+                       onComplete:(LynxGenericResourceCompletionBlock)callback {
+  return nil;
+}
+
+- (dispatch_block_t)fetchResourcePath:(LynxResourceRequest*)request
+                           onComplete:(LynxGenericResourcePathCompletionBlock)callback {
+  return nil;
+}
+
+@end
 
 @interface MockLynxViewClient : NSObject <LynxViewLifecycle, LynxBackgroundRuntimeLifecycle>
 
@@ -73,6 +92,25 @@
 @end
 
 @implementation LynxResourceLoaderDarwinUnitTest
+
+- (void)testLoadBytecode {
+  Mock2GenericResourceFetcher* genericFetcher = [[Mock2GenericResourceFetcher alloc] init];
+  auto loader =
+      std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, nil, nil, nil, genericFetcher);
+  auto request = lynx::pub::LynxResourceRequest{"bytecode_url",
+                                                lynx::pub::LynxResourceType::kExternalByteCode};
+  std::promise<std::string> promise;
+  std::future<std::string> future = promise.get_future();
+  loader->LoadBytecode(
+      request, [promise = std::move(promise)](lynx::pub::LynxResourceResponse& response) mutable {
+        promise.set_value(response.err_msg);
+      });
+
+  if (future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+    XCTAssertTrue(false);
+  }
+  XCTAssertTrue(future.get().length() > 0);
+}
 
 - (void)testReportErrorToLynxView {
   // create a LynxView and LynxViewClient
