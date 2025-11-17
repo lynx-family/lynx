@@ -5,6 +5,7 @@
 # /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import glob
 import os
 import yaml
 import re
@@ -199,7 +200,8 @@ class Config:
             return False
 
 
-_binary_decoder_path = os.path.abspath(
+_compile_options: list[Config] = None
+_template_codec_path = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         os.pardir,
@@ -207,10 +209,32 @@ _binary_decoder_path = os.path.abspath(
         "core",
         "template_bundle",
         "template_codec",
-        "binary_decoder",
     )
 )
+_binary_decoder_path = os.path.join(_template_codec_path, "binary_decoder")
 _config_yaml_path = os.path.join(_binary_decoder_path, "lynx_config.yml")
+
+
+def _construct_config_object(key: str, value: dict) -> Config:
+    return Config(
+        name=key,
+        desc=value.get("description", None),
+        default_value=value.get("defaultValue", None),
+        js_default_value=value.get("jsDefaultValue", "undefined"),
+        value_type=value.get("valueType", None),
+        js_value_type=value.get("jsValueType", "undefined"),
+        since=value.get("since", None),
+        deprecated=value.get("deprecated", ""),
+        support_platform=value.get("supportPlatform", ["Android", "iOS", "HarmonyOS"]),
+        sync_to=value.get("syncTo", []),
+        version_overrides=value.get("versionOverrides", []),
+        author=value.get("author", None),
+        code_gen=value.get("codeGen", ["ALL"]),
+        name_as=value.get("nameAs", {}),
+        bind_member_to=value.get("bindMemberTo", ""),
+        read_settings=value.get("readSettings", False),
+        read_native=value.get("readNative", False),
+    )
 
 
 def parse_config() -> list[Config]:
@@ -218,29 +242,13 @@ def parse_config() -> list[Config]:
         config = yaml.safe_load(f)
     configs: list[Config] = []
     for key, value in config.items():
-        configs.append(
-            Config(
-                name=key,
-                desc=value.get("description", None),
-                default_value=value.get("defaultValue", None),
-                js_default_value=value.get("jsDefaultValue", "undefined"),
-                value_type=value.get("valueType", None),
-                js_value_type=value.get("jsValueType", "undefined"),
-                since=value.get("since", None),
-                deprecated=value.get("deprecated", ""),
-                support_platform=value.get(
-                    "supportPlatform", ["Android", "iOS", "HarmonyOS"]
-                ),
-                sync_to=value.get("syncTo", []),
-                version_overrides=value.get("versionOverrides", []),
-                author=value.get("author", None),
-                code_gen=value.get("codeGen", ["ALL"]),
-                name_as=value.get("nameAs", {}),
-                bind_member_to=value.get("bindMemberTo", ""),
-                read_settings=value.get("readSettings", False),
-                read_native=value.get("readNative", False),
-            )
-        )
+        if key == "compileOptions":
+            global _compile_options
+            _compile_options = [
+                _construct_config_object(key, value) for key, value in value.items()
+            ]
+            continue
+        configs.append(_construct_config_object(key, value))
     for config in configs:
         if not config.is_invalid():
             return []
@@ -347,6 +355,74 @@ def gen_config_types(configs: list[Config]):
     )
 
 
+def gen_compile_options():
+    compile_options_header_path = os.path.join(
+        _template_codec_path, "compile_options.h"
+    )
+
+    template_content = """{% for option in options %}
+    {% if "NONE" not in option.codeGen %}
+      {{ option.value_type }} {{ option.member_name }}{{ '{' }}{{ option.default_value }}{{ '}' }};
+    {% endif %}
+    {% endfor %}
+    """
+
+    global _compile_options
+    if _compile_options is None:
+        print("Compile options not parsed. Run parse_config first.", file=sys.stderr)
+        return
+
+    rendered_content = Template(
+        template_content, trim_blocks=True, lstrip_blocks=True
+    ).render(options=_compile_options)
+
+    with open(compile_options_header_path, "r") as f:
+        header_content = f.read()
+
+    pattern = r"(\s*// Compile options auto generated start\s*)(.*?)(^\s*// Compile options auto generated end\s*)"
+    replacement = r"\1" + rendered_content + r"\3"
+    new_header_content, num_replacements = re.subn(
+        pattern, replacement, header_content, flags=re.DOTALL | re.MULTILINE
+    )
+
+    if num_replacements == 0:
+        print(f"Markers not found in {compile_options_header_path}", file=sys.stderr)
+        return
+
+    new_header_content = clang_format(new_header_content, file_extension=".h")
+    if new_header_content != header_content:
+        with open(compile_options_header_path, "w") as f:
+            f.write(new_header_content)
+    else:
+        print(f"No need to update {compile_options_header_path}")
+
+
+def gen_compile_options_types():
+    compile_options_types_tmpl_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "compile_options_types.tmpl",
+    )
+
+    config_types_header_path = os.path.normpath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            os.path.pardir,
+            os.path.pardir,
+            "js_libraries",
+            "type-config",
+            "types",
+            "compile-options.d.ts",
+        )
+    )
+
+    global _compile_options
+    render_code_content(
+        compile_options_types_tmpl_path,
+        config_types_header_path,
+        sort_by_deprecated_and_alphabetical(_compile_options),
+    )
+
+
 def gen_config_doc(configs: list[Config]):
     config_doc_tmpl_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -380,8 +456,12 @@ def main():
         gen_page_config_decode(configs)
         # gen lynx config constants
         gen_lynx_config(configs)
+        # gen compile options
+        gen_compile_options()
         # gen config types
         gen_config_types(configs)
+        # gen compile options types
+        gen_compile_options_types()
     if args.gen_config_doc:
         # gen config doc
         gen_config_doc(configs)

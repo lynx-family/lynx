@@ -19,6 +19,8 @@ def check_and_run():
             gen_lynx_config,
             parse_config,
             gen_config_types,
+            gen_compile_options,
+            gen_compile_options_types,
         )
 
         configs = parse_config()
@@ -27,7 +29,9 @@ def check_and_run():
 
         gen_page_config_decode(configs)
         gen_lynx_config(configs)
+        gen_compile_options()
         gen_config_types(configs)
+        gen_compile_options_types()
         sys.exit(0)
     except ImportError:
         print("Required dependencies not found. Running gen_config.py...")

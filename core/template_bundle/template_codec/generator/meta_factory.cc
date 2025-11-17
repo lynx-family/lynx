@@ -755,27 +755,29 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
   }
 
   CompileOptions compile_options{
+      enable_css_parser,
+      encoder_options.compile_options_.enable_trial_options_,
+      encoder_options.generator_options_.enable_radon_ ? RADON_MODE_RADON
+                                                       : RADON_MODE_DOM_DIFF,
+      encoder_options.generator_options_.dsl_ == DSL_TYPE_TT
+          ? FRON_END_DSL_MINI_APP
+          : FRON_END_DSL_REACT,
+      CONFIG_TYPE_EXPERIMENT_SETTINGS,
+      arch,
       encoder_options.compile_options_.target_sdk_version_,
       std::string(template_debug_url),
-      enable_css_parser,
       enableCSSExternalClass,
       use_lepusng,
       enableCSSClassMerge,
       enableRemoveCSSScope,
       disableMultipleCascadeCSS,
       remove_css_parser_log,
-      encoder_options.compile_options_.enable_trial_options_,
       encoder_options.compile_options_.lepusng_debuginfo_outside_,
       enableDynamicComponent,
       enable_css_strict_mode,
       defaultOverflowVisible,
       enableCSSVariable,
       defaultImplicitAnimation,
-      encoder_options.generator_options_.enable_radon_ ? RADON_MODE_RADON
-                                                       : RADON_MODE_DOM_DIFF,
-      encoder_options.generator_options_.dsl_ == DSL_TYPE_TT
-          ? FRON_END_DSL_MINI_APP
-          : FRON_END_DSL_REACT,
       enableKeepPageData,
       defaultDisplayLinear,
       enable_lynx_air,
@@ -786,10 +788,8 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
       enable_css_engine,
       enable_component_config,
       lynx_air_mode,
-      CONFIG_TYPE_EXPERIMENT_SETTINGS,
       enable_fiber_arch,
       enable_flexible_template,
-      arch,
       enable_css_selector,
       enable_reuse_context,
       enable_css_invalidation,
