@@ -396,7 +396,10 @@ public abstract class LynxBaseUI
 
   private Dynamic mUseLocalCache = null;
 
+  // for background image
   private boolean mSkipRedirection = false;
+
+  private boolean mDisableDefaultResize = false;
 
   protected int mImageRendering = -1;
 
@@ -2479,6 +2482,15 @@ public abstract class LynxBaseUI
 
   public boolean getSkipRedirection() {
     return mSkipRedirection;
+  }
+
+  @LynxProp(name = PropsConstants.DISABLE_DEFAULT_RESIZE)
+  public void setDisableDefaultResize(boolean disableDefaultResize) {
+    mDisableDefaultResize = disableDefaultResize;
+  }
+
+  public boolean getDisableDefaultResize() {
+    return mDisableDefaultResize;
   }
 
   public int getImageRendering() {
