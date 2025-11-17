@@ -10,6 +10,7 @@
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 inline constexpr const char* const LOAD_RESOURCE = "LoadResource";
+inline constexpr const char* const LOAD_BYTE_CODE = "LoadExternalBytecode";
 inline constexpr const char* const DYNAMIC_COMPONENT_DID_LOAD_COMPONENT =
     "DynamicComponent::DidLoadComponent";
 inline constexpr const char* const DYNAMIC_COMPONENT_REQUIRE_TEMPLATE =

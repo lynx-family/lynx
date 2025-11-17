@@ -37,6 +37,9 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
   void LoadResource(const pub::LynxResourceRequest& request,
                     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) override;
 
+  void LoadBytecode(const pub::LynxResourceRequest& request,
+                    base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) override;
+
  private:
   using CopyableClosure =
       fml::internal::CopyableLambda<base::MoveOnlyClosure<void, pub::LynxResourceResponse&>>;

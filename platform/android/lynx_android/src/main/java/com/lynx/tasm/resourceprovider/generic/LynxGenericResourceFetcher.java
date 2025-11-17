@@ -40,6 +40,22 @@ public abstract class LynxGenericResourceFetcher {
 
   /**
    * @apidoc
+   * @brief `LynxEngine` internally calls this method to obtain the bytecode content,
+   * and the return result is required to be the resource content `byte[]` type.
+   *
+   * @param request Request for the requiring resource.
+   * @param callback Contents of the requiring resource.
+   * @note This method is optional to be implemented.
+   *
+   * @Since 3.6
+   */
+  public void fetchBytecode(LynxResourceRequest request, LynxResourceCallback<byte[]> callback) {
+    callback.onResponse(
+        LynxResourceResponse.onFailed(new Throwable("fetchBytecode is not implemented.")));
+  }
+
+  /**
+   * @apidoc
    * @brief `LynxEngine` internally calls this method to obtain resource content in a streaming
    * manner.
    *
