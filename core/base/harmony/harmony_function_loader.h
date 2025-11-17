@@ -12,6 +12,11 @@ namespace lynx {
 namespace base {
 namespace harmony {
 
+constexpr char kAceNdkSoName[] = "libace_ndk.z.so";
+constexpr char kNativeDrawingSoName[] = "libnative_drawing.so";
+
+void* GetSharedObjectHandler(const char* so_name);
+
 #define HARMONY_COMPAT_FUNCTIONS                                               \
   X(ArkUI_SnapshotOptions*, oh_create_snapshot_option_func, (),                \
     "OH_ArkUI_CreateSnapshotOptions")                                          \

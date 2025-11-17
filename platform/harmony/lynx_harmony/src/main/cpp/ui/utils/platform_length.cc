@@ -12,12 +12,12 @@ namespace harmony {
 
 static float GetValueInternal(const fml::RefPtr<lepus::CArray>& calc_array,
                               float value, const PlatformLengthType unit,
-                              float parent_value) {
+                              float parent_value, float density) {
   if (unit == PlatformLengthType::kPercentage) {
     return value * parent_value;
   }
   if (unit == PlatformLengthType::kNumber) {
-    return value;
+    return value * density;
   }
   if (unit == PlatformLengthType::kCalc) {
     float ret = 0;
@@ -32,7 +32,8 @@ static float GetValueInternal(const fml::RefPtr<lepus::CArray>& calc_array,
                  item_type == PlatformLengthType::kPercentage) {
         item_value = calc_array->get(i).Number();
       }
-      ret += GetValueInternal(item_array, item_value, item_type, parent_value);
+      ret += GetValueInternal(item_array, item_value, item_type, parent_value,
+                              density);
     }
     return ret;
   }
@@ -52,8 +53,8 @@ PlatformLength::PlatformLength(const lepus::Value& value,
   }
 }
 
-float PlatformLength::GetValue(float parent) const {
-  return GetValueInternal(calc_array_, val_, type_, parent);
+float PlatformLength::GetValue(float parent, float density) const {
+  return GetValueInternal(calc_array_, val_, type_, parent, density);
 }
 
 }  // namespace harmony

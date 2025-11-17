@@ -17,6 +17,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/raw_text_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/unicode_decode_utils.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_conic_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_linear_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_radial_gradient_layer.h"
 
@@ -297,6 +298,9 @@ void BaseTextShadowNode::SetColor(const lepus::Value& color) {
     } else if (type == starlight::BackgroundImageType::kRadialGradient) {
       style_.SetGradientColor(std::unique_ptr<BackgroundGradientLayer>(
           new BackgroundRadialGradientLayer(val_array->get(1))));
+    } else if (type == starlight::BackgroundImageType::kConicGradient) {
+      style_.SetGradientColor(std::unique_ptr<BackgroundGradientLayer>(
+          new BackgroundConicGradientLayer(val_array->get(1))));
     }
     text_props_->gradient_color = style_.GradientColor();
   }

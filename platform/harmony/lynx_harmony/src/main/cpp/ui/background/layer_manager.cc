@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "base/include/float_comparison.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_conic_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_image_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_linear_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_none_layer.h"
@@ -290,6 +291,9 @@ void LayerManager::SetLayerImage(const lepus::Value& data) {
     } else if (type == starlight::BackgroundImageType::kRadialGradient) {
       image_layer_list_.emplace_back(
           std::make_unique<BackgroundRadialGradientLayer>(items->get(i)));
+    } else if (type == starlight::BackgroundImageType::kConicGradient) {
+      image_layer_list_.emplace_back(
+          std::make_unique<BackgroundConicGradientLayer>(items->get(i)));
     } else if (type == starlight::BackgroundImageType::kNone) {
       image_layer_list_.emplace_back(std::make_unique<BackgroundNoneLayer>());
     }

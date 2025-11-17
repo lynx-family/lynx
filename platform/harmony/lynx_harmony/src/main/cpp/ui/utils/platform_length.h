@@ -24,7 +24,7 @@ class PlatformLength {
   explicit PlatformLength(const lepus::Value& value, PlatformLengthType type);
   PlatformLength(const float value, const PlatformLengthType unit)
       : type_(unit), val_(value) {}
-  float GetValue(float parent) const;
+  float GetValue(float parent, float density = 1.f) const;
 
   float AsNumber() const {
     return type_ == PlatformLengthType::kNumber ? val_ : .0f;

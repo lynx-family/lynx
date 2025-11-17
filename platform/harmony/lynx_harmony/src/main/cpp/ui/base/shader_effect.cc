@@ -4,12 +4,36 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/shader_effect.h"
 
+#include <deviceinfo.h>
+#include <dlfcn.h>
 #include <native_drawing/drawing_matrix.h>
 #include <native_drawing/drawing_point.h>
+
+#include "core/base/harmony/harmony_function_loader.h"
+
 namespace lynx {
 namespace tasm {
 namespace harmony {
-ShaderEffect::ShaderEffect() = default;
+
+static constexpr int kSweepLocalMatrixSupportVersion = 20;
+
+static void* GetSweepGradientWithLocalMatrixFunc() {
+  if (OH_GetSdkApiVersion() < kSweepLocalMatrixSupportVersion) {
+    return nullptr;
+  }
+  void* handle = base::harmony::GetSharedObjectHandler(
+      base::harmony::kNativeDrawingSoName);
+  if (handle == nullptr) {
+    return nullptr;
+  }
+  return dlsym(handle,
+               "OH_Drawing_ShaderEffectCreateSweepGradientWithLocalMatrix");
+}
+
+void* ShaderEffect::SweepGradientWithLocalMatrixHandle() {
+  static void* handle = GetSweepGradientWithLocalMatrixFunc();
+  return handle;
+}
 
 fml::RefPtr<ShaderEffect> ShaderEffect::CreateLinearGradientEffect(
     float start_x, float start_y, float end_x, float end_y,
@@ -33,6 +57,29 @@ fml::RefPtr<ShaderEffect> ShaderEffect::CreateRadialGradientEffect(
   effect->shader_effect_ =
       OH_Drawing_ShaderEffectCreateRadialGradientWithLocalMatrix(
           &center, radius, colors, pos, size, mode, gradient_transform);
+  return effect;
+}
+
+fml::RefPtr<ShaderEffect> ShaderEffect::CreateConicGradientEffect(
+    float center_x, float center_y, const uint32_t* colors, const float* pos,
+    uint32_t size, OH_Drawing_TileMode mode, OH_Drawing_Matrix* matrix) {
+  auto effect = fml::MakeRefCounted<ShaderEffect>();
+  effect->start_point_ = OH_Drawing_PointCreate(center_x, center_y);
+  effect->gradient_transform_ = matrix;
+  void* handle = SweepGradientWithLocalMatrixHandle();
+  if (matrix && handle) {
+    using OH_Drawing_ShaderEffectCreateSweepGradientWithLocalMatrix =
+        OH_Drawing_ShaderEffect* (*)(const OH_Drawing_Point*, const uint32_t*,
+                                     const float*, uint32_t,
+                                     OH_Drawing_TileMode,
+                                     const OH_Drawing_Matrix*);
+    effect->shader_effect_ = reinterpret_cast<
+        OH_Drawing_ShaderEffectCreateSweepGradientWithLocalMatrix>(handle)(
+        effect->start_point_, colors, pos, size, mode, matrix);
+  } else {
+    effect->shader_effect_ = OH_Drawing_ShaderEffectCreateSweepGradient(
+        effect->start_point_, colors, pos, size, mode);
+  }
   return effect;
 }
 

@@ -16,6 +16,8 @@ namespace harmony {
 
 class ShaderEffect : public fml::RefCountedThreadSafeStorage {
  public:
+  static void* SweepGradientWithLocalMatrixHandle();
+
   static fml::RefPtr<ShaderEffect> CreateLinearGradientEffect(
       float start_x, float start_y, float end_x, float end_y,
       const uint32_t* colors, const float* pos, uint32_t size,
@@ -23,10 +25,13 @@ class ShaderEffect : public fml::RefCountedThreadSafeStorage {
   static fml::RefPtr<ShaderEffect> CreateRadialGradientEffect(
       float center_x, float center_y, float radius, const uint32_t* colors,
       const float* pos, uint32_t size, OH_Drawing_TileMode, OH_Drawing_Matrix*);
+  static fml::RefPtr<ShaderEffect> CreateConicGradientEffect(
+      float center_x, float center_y, const uint32_t* colors, const float* pos,
+      uint32_t size, OH_Drawing_TileMode, OH_Drawing_Matrix*);
   OH_Drawing_ShaderEffect* HarmonyShaderEffect() const {
     return shader_effect_;
   }
-  ShaderEffect();
+  ShaderEffect() = default;
   ~ShaderEffect() override;
 
  protected:

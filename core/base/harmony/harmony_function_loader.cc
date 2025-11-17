@@ -14,12 +14,7 @@ namespace lynx {
 namespace base {
 namespace harmony {
 
-namespace {
-
-constexpr const char kAceNdkSoName[] = "libace_ndk.z.so";
-constexpr const char kNativeDrawingSoName[] = "libnative_drawing.so";
-
-void* TryGetSharedObjectHandler(const char* so_name) {
+void* GetSharedObjectHandler(const char* so_name) {
   if (strcmp(so_name, kAceNdkSoName) == 0) {
     static void* shared_object_handler = nullptr;
     static std::once_flag once_flag;
@@ -62,13 +57,12 @@ HarmonyCompatFunctionsHandler* DlSymAllSymbolNeeded(void* handler) {
   }
   return funcs;
 }
-}  // namespace
 
 HarmonyCompatFunctionsHandler* GetHarmonyCompatFunctionsHandler() {
   static std::once_flag once_flag;
   static HarmonyCompatFunctionsHandler* harmony_compat_handler = nullptr;
   std::call_once(once_flag, []() {
-    void* handle = TryGetSharedObjectHandler(kAceNdkSoName);
+    void* handle = GetSharedObjectHandler(kAceNdkSoName);
     if (handle == nullptr) {
       return;
     }
@@ -107,7 +101,7 @@ NativeDrawingFunctionsHandler* GetNativeDrawingFunctionsHandler() {
   static std::once_flag once_flag;
   static NativeDrawingFunctionsHandler* native_drawing_handler = nullptr;
   std::call_once(once_flag, []() {
-    void* handler = TryGetSharedObjectHandler(kNativeDrawingSoName);
+    void* handler = GetSharedObjectHandler(kNativeDrawingSoName);
     if (handler == nullptr) {
       return;
     }

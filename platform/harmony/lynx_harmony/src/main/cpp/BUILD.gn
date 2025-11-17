@@ -119,6 +119,8 @@ lynx_core_source_set("cpp") {
     "text/utils/text_utils.h",
     "text/utils/unicode_decode_utils.cc",
     "text/utils/unicode_decode_utils.h",
+    "ui/background/background_conic_gradient_layer.cc",
+    "ui/background/background_conic_gradient_layer.h",
     "ui/background/background_drawable.cc",
     "ui/background/background_drawable.h",
     "ui/background/background_gradient_layer.cc",
