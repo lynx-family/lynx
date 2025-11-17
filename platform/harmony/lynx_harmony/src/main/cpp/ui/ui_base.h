@@ -71,7 +71,7 @@ class BASE_EXPORT
                             const float* sticky, float max_height,
                             uint32_t node_index);
   virtual void OnLayoutUpdated() {}
-  void SetParent(UIBase* parent);
+  virtual void SetParent(UIBase* parent);
   UIBase* Parent() const { return parent_; };
   virtual void AddChild(UIBase* child, int index);
   virtual void RemoveChild(UIBase* child);
