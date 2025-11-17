@@ -1,0 +1,41 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+/**
+ * The Lynx compile options to set.
+ *
+ * @public
+ */
+
+export enum CompileOptionAirMode {
+  AIR_MODE_OFF = 0,
+  AIR_MODE_TTML_WITHOUT_JS,
+  AIR_MODE_NATIVE_SCRIPT,
+  AIR_MODE_STRICT,
+  AIR_MODE_FIBER,
+}
+
+export interface CompileOptions {
+{% for option in configs %}
+  /**
+   {% if option.desc %}
+   * {{ option.desc }}
+   *
+   {% endif %}
+   {% if option.since %}
+   * Since: {{ option.since }}
+   *
+   {% endif %}
+   {% if option.js_default_value %}
+   * @defaultValue {{ option.js_default_value }}
+   *
+   {% endif %}
+   {% if option.deprecated %}
+   * @deprecated {{ option.deprecated }}
+   {% endif %}
+   */
+  {{ option.name }}?: {{ option.js_value_type }}
+
+{% endfor %}
+}

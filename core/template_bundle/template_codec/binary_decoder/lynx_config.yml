@@ -1,7 +1,177 @@
 # Copyright 2025 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
+compileOptions:
+  targetSdkVersion:
+    defaultValue: ''
+    valueType: string
+  templateDebugUrl:
+    defaultValue: ''
+    valueType: string
+  enableCssExternalClass:
+    defaultValue: 'true'
+    valueType: boolean
+    since: '1.6'
+  useLepusNG:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.1'
+    nameAs:
+      member: enable_lepus_ng
+  enableCSSClassMerge:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.1'
+  enableRemoveCSSScope:
+    defaultValue: 'false'
+    valueType: boolean
+  disableMultipleCascadeCSS:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.0'
+    versionOverrides:
+      - minSDKVersion: LYNX_VERSION_2_0
+        value: 'true'
+  removeCSSParserLog:
+    defaultValue: 'false'
+    valueType: boolean
+  trialOptions:
+    defaultValue: ''
+    valueType: lepus::Value
+    jsValueType: Record<string, unknown>
+    codeGen:
+      - NONE
+  debugInfoOutside:
+    defaultValue: 'false'
+    valueType: boolean
+    nameAs:
+      member: lepusng_debuginfo_outside
+  enableDynamicComponent:
+    defaultValue: 'true'
+    valueType: boolean
+    since: '1.6'
+  enableCSSStrictMode:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '1.6'
+  defaultOverflowVisible:
+    defaultValue: 'true'
+    valueType: boolean
+    since: '1.6'
+  enableCSSVariable:
+    defaultValue: 'true'
+    valueType: boolean
+    since: '2.0'
+  implicitAnimation:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '1.4'
+    nameAs:
+      member: default_implicit_animation
+  enableRadon:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+  enableKeepPageData:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.1'
+    versionOverrides:
+      - minSDKVersion: LYNX_VERSION_2_3
+        value: 'true'
+    bindMemberTo: enable_keep_page_data
+  defaultDisplayLinear:
+    defaultValue: 'true'
+    valueType: boolean
+    since: '2.2'
+  enableLynxAir:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.3'
+  enableCSSLazyDecode:
+    defaultValue: FE_OPTION_UNDEFINED
+    valueType: FeOption
+    jsValueType: boolean
+    nameAs:
+      member: enable_lazy_css_decode
+  enableEventRefactor:
+    defaultValue: FE_OPTION_UNDEFINED
+    valueType: FeOption
+    jsValueType: boolean
+    since: '2.5'
+  forceCalcNewStyle:
+    defaultValue: FE_OPTION_UNDEFINED
+    valueType: FeOption
+    jsValueType: boolean
+    since: '2.6'
+  enableCSSAsyncDecode:
+    defaultValue: FE_OPTION_UNDEFINED
+    valueType: FeOption
+    jsValueType: boolean
+    nameAs:
+      member: enable_async_css_decode
+  enableCSSEngine:
+    defaultValue: 'true'
+    valueType: boolean
+    bindMemberTo: enable_css_engine
+  enableComponentConfig:
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.6'
+  lynxAirMode:
+    defaultValue: AIR_MODE_OFF
+    valueType: uint8_t
+    jsValueType: CompileOptionAirMode
+    since: '2.11'
+  enableFiberArch:
+    defaultValue: 'false'
+    valueType: boolean
+  enableFlexibleTemplate:
+    description: If enable this value, the template will be encoded as flexible template.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.8'
+  enableCSSSelector:
+    description: This switch will enable the css module in blink standard mode.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.8'
+  enableReuseContext:
+    description: Enable this switch to reuse lepus::Context between DynamicComponent and page can only be used in lepusng.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.18'
+    bindMemberTo: enable_reuse_context
+  enableCSSInvalidation:
+    description: If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.10'
+  enableAirRawCSS:
+    description: Enable this switch to use all raw css styles(no parse in encode), not used in runtime.
+    defaultValue: 'true'
+    valueType: boolean
+  experimental_encodeQuickjsBytecode:
+    description: Allow encoding quickjs bytecode instead of source code in template.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '2.12'
+    bindMemberTo: encode_quickjs_bytecode_
+  enableLepusChunkAsyncDecode:
+    description: Allow async decode lepus chunk.
+    defaultValue: 'false'
+    valueType: boolean
+    nameAs:
+      member: enable_async_lepus_chunk_decode
+  enableSimpleStyling:
+    description: Using the simplified styling module.
+    defaultValue: 'false'
+    valueType: boolean
+    since: '3.3'
+# compile options end here
 
+# PageConfig start here
 extraInfo:
   description: user defined extraInfo.
   defaultValue: ''
