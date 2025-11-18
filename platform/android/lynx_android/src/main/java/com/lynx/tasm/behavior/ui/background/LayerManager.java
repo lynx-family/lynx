@@ -346,6 +346,9 @@ public abstract class LayerManager implements Drawable.Callback {
       } else if (type == StyleConstants.BACKGROUND_IMAGE_RADIAL_GRADIENT) {
         i++;
         mImageLayerDrawableList.add(new BackgroundRadialGradientLayer(bgImage.getArray(i)));
+      } else if (type == StyleConstants.BACKGROUND_IMAGE_CONIC_GRADIENT) {
+        i++;
+        mImageLayerDrawableList.add(new BackgroundConicGradientLayer(bgImage.getArray(i)));
       } else if (type == StyleConstants.BACKGROUND_IMAGE_NONE) {
         i++;
         mImageLayerDrawableList.add(new BackgroundNoneLayer());

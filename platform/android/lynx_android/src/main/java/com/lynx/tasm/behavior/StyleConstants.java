@@ -111,6 +111,7 @@ public final class StyleConstants implements AutoGenStyleConstants {
   public static final int BACKGROUND_IMAGE_URL = 1;
   public static final int BACKGROUND_IMAGE_LINEAR_GRADIENT = 2;
   public static final int BACKGROUND_IMAGE_RADIAL_GRADIENT = 3;
+  public static final int BACKGROUND_IMAGE_CONIC_GRADIENT = 4;
 
   // BackgroundPositionType
   public static final int BACKGROUND_POSITION_TOP = -(1 << 5);

@@ -635,6 +635,11 @@ public class com::lynx::tasm::behavior::shadow::text::BackgroundColorSpan : andr
   public int com.lynx.tasm.behavior.shadow.text.BackgroundColorSpan.hashCode();
 }
 
+public class com::lynx::tasm::behavior::ui::background::BackgroundConicGradientLayer : com.lynx.tasm.behavior.ui.background.BackgroundGradientLayer {
+  public com.lynx.tasm.behavior.ui.background.BackgroundConicGradientLayer.BackgroundConicGradientLayer(ReadableArray array);
+  public void com.lynx.tasm.behavior.ui.background.BackgroundConicGradientLayer.setBounds(Rect bounds);
+}
+
 public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable : com.lynx.tasm.behavior.ui.utils.LayerDrawable< BackgroundLayerManager > {
   public com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.BackgroundDrawable(LynxContext lynxContext, float curFontSize);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.draw(Canvas canvas);
@@ -9127,6 +9132,7 @@ public class com::lynx::tasm::behavior::StyleConstants : com.lynx.tasm.behavior.
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_IMAGE_URL BACKGROUND_IMAGE_URL;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_IMAGE_LINEAR_GRADIENT BACKGROUND_IMAGE_LINEAR_GRADIENT;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_IMAGE_RADIAL_GRADIENT BACKGROUND_IMAGE_RADIAL_GRADIENT;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_IMAGE_CONIC_GRADIENT BACKGROUND_IMAGE_CONIC_GRADIENT;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_POSITION_TOP BACKGROUND_POSITION_TOP;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_POSITION_RIGHT BACKGROUND_POSITION_RIGHT;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_POSITION_BOTTOM BACKGROUND_POSITION_BOTTOM;

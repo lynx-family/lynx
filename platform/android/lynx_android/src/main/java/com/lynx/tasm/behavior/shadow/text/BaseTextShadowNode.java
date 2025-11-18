@@ -65,6 +65,7 @@ import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.shadow.NativeLayoutNodeRef;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.ShadowData;
+import com.lynx.tasm.behavior.ui.background.BackgroundConicGradientLayer;
 import com.lynx.tasm.behavior.ui.background.BackgroundLinearGradientLayer;
 import com.lynx.tasm.behavior.ui.background.BackgroundRadialGradientLayer;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
@@ -318,6 +319,8 @@ public class BaseTextShadowNode extends ShadowNode {
       }
     } else if (type == StyleConstants.BACKGROUND_IMAGE_RADIAL_GRADIENT) {
       mTextAttributes.mTextGradient = new BackgroundRadialGradientLayer(args.getArray(1));
+    } else if (type == StyleConstants.BACKGROUND_IMAGE_CONIC_GRADIENT) {
+      mTextAttributes.mTextGradient = new BackgroundConicGradientLayer(args.getArray(1));
     } else {
       mTextAttributes.mTextGradient = null;
     }
