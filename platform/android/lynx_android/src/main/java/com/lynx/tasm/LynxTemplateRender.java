@@ -80,7 +80,6 @@ import com.lynx.tasm.resourceprovider.LynxResourceCallback;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
-import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import com.lynx.tasm.service.ILynxExtensionService;
 import com.lynx.tasm.service.ILynxTrailService;
 import com.lynx.tasm.service.ILynxTrailServiceExtension;
@@ -1218,7 +1217,10 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mLynxContext.getTemplateResourceFetcher() != null) {
+    if (mLynxViewGroup != null) {
+      // if we have attached to a LynxViewGroup, use it to fetch template
+      loadTemplateWithLynxViewGroup(callback);
+    } else if (mLynxContext.getTemplateResourceFetcher() != null) {
       loadTemplateWithGenericResourceFetcher(templateUrl, callback);
     } else {
       legacyLoadTemplateWithProvider(templateUrl, callback);
@@ -1227,32 +1229,43 @@ public class LynxTemplateRender
     onTraceEventEnd("LynxTemplateRender.renderTemplate");
   }
 
+  private void loadTemplateWithLynxViewGroup(InnerLoadedCallback callback) {
+    mLynxViewGroup.fetchTemplateBundle(resp -> {
+      switch (resp.getState()) {
+        case SUCCESS:
+          TemplateBundle bundle = resp.getData();
+          callback.onSuccess(bundle);
+          break;
+        case FAILED:
+          callback.onFailed(resp.getError().getMessage());
+          break;
+      }
+    });
+  }
+
   private void loadTemplateWithGenericResourceFetcher(
       @NonNull String templateUrl, InnerLoadedCallback callback) {
     LynxTemplateResourceFetcher templateFetcher = mLynxContext.getTemplateResourceFetcher();
     if (templateFetcher != null) {
       LynxResourceRequest request = new LynxResourceRequest(
           templateUrl, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate);
-      templateFetcher.fetchTemplate(request, new LynxResourceCallback<TemplateProviderResult>() {
-        @Override
-        public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
-          switch (response.getState()) {
-            case SUCCESS:
-              TemplateBundle templateBundle = response.getData().getTemplateBundle();
-              if (templateBundle != null && templateBundle.isValid()) {
-                callback.onSuccess(templateBundle);
-              } else if (response.getData().getTemplateBuffer() != null) {
-                callback.onSuccess(response.getData().getTemplateBuffer());
-              } else {
-                callback.onSuccess(response.getData().getTemplateBinary());
-              }
-              break;
-            case FAILED:
-              callback.onFailed(response.getError().getMessage());
-              break;
-            default:
-              break;
-          }
+      templateFetcher.fetchTemplate(request, response -> {
+        switch (response.getState()) {
+          case SUCCESS:
+            TemplateBundle templateBundle = response.getData().getTemplateBundle();
+            if (templateBundle != null && templateBundle.isValid()) {
+              callback.onSuccess(templateBundle);
+            } else if (response.getData().getTemplateBuffer() != null) {
+              callback.onSuccess(response.getData().getTemplateBuffer());
+            } else {
+              callback.onSuccess(response.getData().getTemplateBinary());
+            }
+            break;
+          case FAILED:
+            callback.onFailed(response.getError().getMessage());
+            break;
+          default:
+            break;
         }
       });
     }
