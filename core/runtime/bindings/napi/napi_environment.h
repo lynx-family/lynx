@@ -60,6 +60,8 @@ class NapiEnvironment {
     virtual Module* GetModule(const std::string& name) { return nullptr; }
 
     virtual void LoadInstantModules(Napi::Object& lynx) {}
+
+    virtual void NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {}
   };
   LYNX_EXPORT static NapiEnvironment* From(Napi::Env env);
 

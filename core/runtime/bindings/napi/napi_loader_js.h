@@ -12,11 +12,14 @@
 #include "core/runtime/bindings/napi/napi_environment.h"
 
 namespace lynx {
+namespace runtime {
+class LynxRuntime;
+}
 namespace piper {
 
 class NapiLoaderJS : public NapiEnvironment::Delegate {
  public:
-  NapiLoaderJS(const std::string& id);
+  NapiLoaderJS(const std::string& id, runtime::LynxRuntime& runtime);
   void OnAttach(Napi::Env env) override;
   void OnDetach(Napi::Env env) override;
 
@@ -24,6 +27,8 @@ class NapiLoaderJS : public NapiEnvironment::Delegate {
                       std::unique_ptr<NapiEnvironment::Module> module) override;
   NapiEnvironment::Module* GetModule(const std::string& name) override;
   void LoadInstantModules(Napi::Object& lynx) override;
+
+  void NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) override;
 
  private:
   // With shared context, we want each env has one corresponding install hook,
@@ -33,6 +38,10 @@ class NapiLoaderJS : public NapiEnvironment::Delegate {
 
   std::map<std::string, std::unique_ptr<NapiEnvironment::Module>> modules_;
   bool loaded_ = false;
+  // Since the NapiLoaderJS instance is indirectly held by LynxRuntime,
+  // NapiLoaderJS is guaranteed to be destroyed before LynxRuntime, so it is
+  // safe to hold a reference to LynxRuntime here.
+  runtime::LynxRuntime& runtime_;
 };
 
 }  // namespace piper
