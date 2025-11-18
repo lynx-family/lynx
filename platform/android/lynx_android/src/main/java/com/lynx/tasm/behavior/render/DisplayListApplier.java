@@ -6,11 +6,19 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
+import android.text.Layout;
+import android.text.Spanned;
+import android.view.View;
+import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
+import java.lang.ref.WeakReference;
 import java.util.Stack;
 
-public class DisplayListApplier {
+public class DisplayListApplier implements Drawable.Callback {
   // Operation type constants matching C++ DisplayListOpType and DisplayListSubtreePropertyOpType
   private static final int OP_BEGIN = 0;
   private static final int OP_END = 1;
@@ -25,18 +33,24 @@ public class DisplayListApplier {
   private Paint mPaint;
   private Stack<RectF> mBounds;
 
+  private PlatformRendererContext mContext;
   // Separate indices for content and subtree property operations
   private int mContentOpIndex;
   private int mContentIntIndex;
   private int mContentFloatIndex;
 
-  public DisplayListApplier(DisplayList displayList, TextMeasurer textMeasurer) {
+  private WeakReference<View> mHostLayer;
+
+  public DisplayListApplier(
+      DisplayList displayList, PlatformRendererContext platformRendererContext, View hostLayer) {
     mDisplayList = displayList;
     mPaint = new Paint();
     mPaint.setAntiAlias(true);
     mBounds = new Stack<>();
-    mTextMeasurer = textMeasurer;
     reset();
+    mTextMeasurer = platformRendererContext.getTextMeasurer();
+    mContext = platformRendererContext;
+    mHostLayer = new WeakReference<>(hostLayer);
   }
 
   public void reset() {
@@ -54,6 +68,43 @@ public class DisplayListApplier {
 
     // Process content operations
     processContentOperations(canvas);
+  }
+
+  private void drawImage(Canvas canvas, int id) {
+    LynxImageManager imageManager = mContext.getImage(id);
+    if (imageManager == null) {
+      return;
+    }
+    imageManager.setView(mHostLayer.get());
+    imageManager.onDraw(canvas);
+  }
+
+  private void drawText(Canvas canvas, int textId) {
+    TextUpdateBundle textBundle = (TextUpdateBundle) mTextMeasurer.takeTextLayout(textId);
+    if (textBundle == null) {
+      return;
+    }
+
+    if (textBundle.hasImages()) {
+      updateInlineImageSpans(textBundle);
+    }
+
+    Layout textLayout = textBundle.getTextLayout();
+    if (textLayout != null) {
+      textLayout.draw(canvas);
+    }
+  }
+
+  private void updateInlineImageSpans(TextUpdateBundle textBundle) {
+    Layout layout = textBundle.getTextLayout();
+    if (layout == null) {
+      return;
+    }
+
+    CharSequence text = layout.getText();
+    if (text instanceof Spanned) {
+      AbsInlineImageSpan.possiblyUpdateInlineImageSpans((Spanned) text, this);
+    }
   }
 
   private void processContentOperations(Canvas canvas) {
@@ -116,10 +167,7 @@ public class DisplayListApplier {
           // Text: id (1 int)
           if (intParamCount >= 1) {
             int textId = nextContentInt();
-            TextUpdateBundle textLayout = (TextUpdateBundle) (mTextMeasurer.takeTextLayout(textId));
-            if (textLayout != null) {
-              textLayout.getTextLayout().draw(canvas);
-            }
+            drawText(canvas, textId);
           }
           break;
 
@@ -127,10 +175,9 @@ public class DisplayListApplier {
           // Image: image_id (1 int)
           if (intParamCount >= 1 && floatParamCount >= 4) {
             int imageId = nextContentInt();
-            // Image drawing would use the imageId to look up bitmap data
+            drawImage(canvas, imageId);
           }
           break;
-
         case OP_CUSTOM:
         default:
           break;
@@ -157,4 +204,18 @@ public class DisplayListApplier {
     mDisplayList = displayList;
     reset();
   }
+
+  @Override
+  public void invalidateDrawable(@NonNull Drawable who) {
+    View hostLayer = mHostLayer.get();
+    if (hostLayer != null) {
+      hostLayer.invalidate();
+    }
+  }
+
+  @Override
+  public void scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when) {}
+
+  @Override
+  public void unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what) {}
 }

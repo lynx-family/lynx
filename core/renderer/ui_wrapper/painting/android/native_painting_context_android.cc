@@ -194,5 +194,11 @@ void NativePaintingCtxAndroid::UpdateDisplayList(int id,
         ->UpdateDisplayList(id, std::move(dl));
   });
 }
+
+void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
+                                           float width, float height) {
+  view_manager_->CreateImage(id, src, width, height);
+}
+
 }  // namespace tasm
 }  // namespace lynx

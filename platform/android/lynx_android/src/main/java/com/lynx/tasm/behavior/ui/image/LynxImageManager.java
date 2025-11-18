@@ -15,6 +15,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Callback;
@@ -186,6 +187,8 @@ public class LynxImageManager implements Drawable.Callback {
   private LynxBaseUI mUI;
 
   private ViewInfo mViewInfo;
+
+  private View mView = null;
 
   private final boolean mAsyncRedirect;
 
@@ -553,6 +556,7 @@ public class LynxImageManager implements Drawable.Callback {
     mUseLocalCache = state.mUseLocalCache;
     mAwaitLocalCache = state.mAwaitLocalCache;
   }
+
   public void setDisableDefaultResize(boolean disable) {
     mDisableDefaultResize = disable;
   }
@@ -563,6 +567,10 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void setViewInfo(ViewInfo viewInfo) {
     mViewInfo = viewInfo;
+  }
+
+  public void setView(View view) {
+    mView = view;
   }
 
   void setIsPixelated(boolean isPixelated) {
@@ -856,7 +864,7 @@ public class LynxImageManager implements Drawable.Callback {
       if (!mDeferInvalidation) {
         releaseImage(mCurImageRequest); // TODO(linxs:) to be removed!
         releaseDrawable(mImageDrawable); // TODO(linxs:) it's better to move to ImageContent to do
-                                         // release drawable?
+        // release drawable?
         if (mImageDrawable != null) {
           mImageDrawable.releaseImageSource();
           mImageDrawable = null;
@@ -1045,6 +1053,10 @@ public class LynxImageManager implements Drawable.Callback {
 
     if (mViewInfo != null) {
       mViewInfo.invalidate();
+    }
+
+    if (mView != null) {
+      mView.invalidate();
     }
   }
 

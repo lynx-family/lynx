@@ -98,6 +98,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
 
+  void CreateImage(int id, base::String src, float width,
+                   float height) override;
+
 #pragma endregion  // NativePaintingContext
 
  private:

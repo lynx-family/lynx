@@ -1416,11 +1416,14 @@ public class com::lynx::tasm::behavior::render::DisplayList :  {
   public float [] com.lynx.tasm.behavior.render.DisplayList.fArgv fArgv;
 }
 
-public class com::lynx::tasm::behavior::render::DisplayListApplier :  {
-  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(DisplayList displayList, TextMeasurer textMeasurer);
+public class com::lynx::tasm::behavior::render::DisplayListApplier : Drawable.Callback {
+  public com.lynx.tasm.behavior.render.DisplayListApplier.DisplayListApplier(DisplayList displayList, PlatformRendererContext platformRendererContext, View hostLayer);
   public void com.lynx.tasm.behavior.render.DisplayListApplier.reset();
   public void com.lynx.tasm.behavior.render.DisplayListApplier.drawTillNextView(Canvas canvas);
   public void com.lynx.tasm.behavior.render.DisplayListApplier.setDisplayList(DisplayList displayList);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.invalidateDrawable(@NonNull Drawable who);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when);
+  public void com.lynx.tasm.behavior.render.DisplayListApplier.unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what);
 }
 
 public class com::lynx::tasm::utils::DisplayMetricsHolder :  {
@@ -5358,6 +5361,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setDisableDefaultResize(boolean disable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setLynxBaseUI(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setViewInfo(ViewInfo viewInfo);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setView(View view);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updatePropertiesInterval(ReadableMap props);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.pauseAnimation(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.resumeAnimation(ReadableMap params, Callback callback);
@@ -7975,6 +7979,9 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
+  public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDisplayList(int id, DisplayList displayList);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();

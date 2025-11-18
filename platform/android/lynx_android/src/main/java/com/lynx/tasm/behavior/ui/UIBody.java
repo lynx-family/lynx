@@ -435,6 +435,9 @@ public class UIBody extends UIGroup<UIBodyView> {
     private int mCacheHeight;
     boolean mIsMeaningfulPaintingAreaInvalidate = false;
 
+    // XXX(zhongyr): The following methods can be better abstracted, since they are common methods
+    // for PlatformRender layer. Have to design a better way to compose the DisplayList based
+    // pipeline with legacy pipeline.
     private PlatformRendererContext mPlatformRendererContext = null;
 
     public void setPlatformRendererContext(PlatformRendererContext context) {
@@ -632,7 +635,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
         if (mDisplayListApplier == null) {
           mDisplayListApplier =
-              new DisplayListApplier(mDisplayList, mPlatformRendererContext.getTextMeasurer());
+              new DisplayListApplier(mDisplayList, mPlatformRendererContext, this);
         } else {
           mDisplayListApplier.setDisplayList(mDisplayList);
         }

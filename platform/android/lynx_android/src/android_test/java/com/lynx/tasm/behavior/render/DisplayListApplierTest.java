@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
@@ -61,8 +62,10 @@ import org.mockito.MockitoAnnotations;
 public class DisplayListApplierTest {
   @Mock private Canvas mockCanvas;
   @Mock private TextMeasurer mockTextMeasurer;
+  @Mock private PlatformRendererContext mockPlatformRendererContext;
   @Mock private TextUpdateBundle mockTextUpdateBundle;
   @Mock private android.text.Layout mockTextLayout;
+  @Mock private View mockHostView;
 
   private DisplayListApplier displayListApplier;
   private DisplayList testDisplayList;
@@ -70,7 +73,9 @@ public class DisplayListApplierTest {
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks(this);
-    displayListApplier = new DisplayListApplier(null, mockTextMeasurer);
+    // Set up PlatformRendererContext to return our mock TextMeasurer
+    when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
+    displayListApplier = new DisplayListApplier(null, mockPlatformRendererContext, mockHostView);
     testDisplayList = new DisplayList();
   }
 
@@ -80,7 +85,9 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testConstructor() {
-    DisplayListApplier applier = new DisplayListApplier(testDisplayList, mockTextMeasurer);
+    when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
+    DisplayListApplier applier =
+        new DisplayListApplier(testDisplayList, mockPlatformRendererContext, mockHostView);
     assertNotNull(applier);
   }
 

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "base/include/platform/android/jni_convert_helper.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_register_jni.h"
@@ -67,6 +68,29 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
 
   // Unregister the renderer
   UnregisterPlatformRenderer(target);
+}
+
+void PlatformRendererContext::CreateImage(int32_t id, base::String src,
+                                          float width, float height) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto j_src =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
+  Java_PlatformRendererContext_createImage(env, local_ref.Get(), id,
+                                           j_src.Get(), static_cast<int>(width),
+                                           static_cast<int>(height));
+}
+
+void PlatformRendererContext::DestroyImage(int32_t id) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_destroyImage(env, local_ref.Get(), id);
 }
 
 PlatformRendererAndroid* PlatformRendererContext::GetPlatformRenderer(

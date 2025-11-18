@@ -33,6 +33,8 @@ class PlatformRendererContext {
   // Register/unregister PlatformRendererAndroid instances
   void RegisterPlatformRenderer(int32_t id, PlatformRendererAndroid* renderer);
   void UnregisterPlatformRenderer(int32_t id);
+  void CreateImage(int32_t id, base::String src, float width, float height);
+  void DestroyImage(int32_t id);
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;

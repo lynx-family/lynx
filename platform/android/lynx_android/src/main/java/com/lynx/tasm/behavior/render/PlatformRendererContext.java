@@ -13,6 +13,7 @@ import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
@@ -126,6 +127,36 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
+  public LynxImageManager getImage(int sign) {
+    UIBody.UIBodyView rootView = mRootView.get();
+    if (rootView != null) {
+      return rootView.obtainImageAccordingToNodeIndex(sign);
+    }
+    return null;
+  }
+
+  @CalledByNative
+  public void createImage(int sign, String src, int width, int height) {
+    // Create Image managed by LynxImageManager and register to UIBodyView
+    LynxImageManager imageManager = new LynxImageManager(mContext);
+    imageManager.setSrc(src);
+    imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
+    UIBody.UIBodyView rootView = mRootView.get();
+    if (rootView != null) {
+      rootView.registerImageAccordingToNodeIndex(sign, imageManager);
+    }
+    imageManager.onNodeReady();
+  }
+
+  @CalledByNative
+  public void destroyImage(int sign) {
+    // Remove and release the image source from UIBodyView
+    UIBody.UIBodyView rootView = mRootView.get();
+    if (rootView != null) {
+      rootView.obtainImageAccordingToNodeIndex(sign);
+    }
+  }
+
   @CalledByNative
   public void removePlatformRendererFromParent(int sign) {
     ViewGroup view = mViewHolder.get(sign);
@@ -214,5 +245,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     mViewHolder.clear();
     mTextMeasurer = null;
     mTextLayout = null;
+    UIBody.UIBodyView root = mRootView.get();
+    if (root != null) {
+      root.clearNodeIndexImageMap();
+    }
   }
 }

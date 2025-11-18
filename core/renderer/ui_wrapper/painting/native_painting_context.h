@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 
+#include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
 
@@ -15,6 +16,8 @@ class NativePaintingContext {
   virtual ~NativePaintingContext() = default;
   virtual void CreatePlatformRenderer(int id, PlatformRendererType type) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
+  virtual void CreateImage(int id, base::String src, float width,
+                           float height) = 0;
 };
 
 }  // namespace lynx::tasm
