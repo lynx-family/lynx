@@ -1867,6 +1867,30 @@ public interface com::lynx::tasm::behavior::ForegroundListener {
   public void com.lynx.tasm.behavior.ForegroundListener.onLynxViewEnterBackground();
 }
 
+public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
+  public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs);
+  public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.fillContentToSnapshot(boolean isPresented, Rect rect, long firstPresentedTimestampUs);
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContainerWidth();
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContainerHeight();
+  public long com.lynx.tasm.performance.fsp.FSPSnapshot.getTotalPresentedContentArea();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setTotalPresentedContentArea(long totalPresentedContentArea);
+  public long com.lynx.tasm.performance.fsp.FSPSnapshot.getTotalContentArea();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setTotalContentArea(long totalContentArea);
+  public long com.lynx.tasm.performance.fsp.FSPSnapshot.getLastChangeTimestampUs();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setLastChangeTimestampUs(long lastChangeTimestampUs);
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContentFillPercentageX();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setContentFillPercentageX(int contentFillPercentageX);
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContentFillPercentageY();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setContentFillPercentageY(int contentFillPercentageY);
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContentFillPercentageTotalArea();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setContentFillPercentageTotalArea(int contentFillPercentageTotalArea);
+  public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getXProjections();
+  public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYProjections();
+  public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getXTotalContentProjections();
+  public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYTotalContentProjections();
+}
+
 public class com::lynx::tasm::behavior::ui::list::GapItemDecoration : RecyclerView.ItemDecoration {
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state);
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.setIsRTL(boolean isRTL);
