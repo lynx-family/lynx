@@ -11,7 +11,6 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
-#include "core/renderer/starlight/style/borders_data.h"
 
 namespace lynx {
 namespace tasm {
@@ -40,12 +39,13 @@ void Fragment::UpdatePaintingNode(
   // TODO(zhongyr): handle update or tend to flatten here.
 }
 
-// TODO(zhongyr): Finish Update attributes Fragment tree related operations.
-// Should create displayList and update it to platform renderer.
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
   MarkNeedRedraw();
   layout_result_for_rendering_ = std::move(layout_result_for_rendering);
+  if (behavior_) {
+    behavior_->OnUpdateLayout(layout_result_for_rendering_);
+  }
 }
 
 void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {

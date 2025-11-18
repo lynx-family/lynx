@@ -4,8 +4,12 @@
 
 #include "core/renderer/dom/fiber/image_element.h"
 
+#include <memory>
+
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/text_props.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/image_fragment_behavior.h"
 
 namespace lynx {
 namespace tasm {
@@ -62,6 +66,10 @@ void ImageElement::ResetAttribute(const base::String& key) {
 
 int32_t ImageElement::GetBuiltInNodeInfo() const {
   return GetImageNodeInfo<GetOSType()>();
+}
+
+void ImageElement::SetupFragmentBehavior(Fragment* fragment) {
+  fragment->SetBehavior(std::make_unique<ImageFragmentBehavior>(fragment));
 }
 
 }  // namespace tasm

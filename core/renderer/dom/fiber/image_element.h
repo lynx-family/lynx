@@ -50,6 +50,10 @@ class ImageElement : public FiberElement {
   void ProcessAttributeForLayoutInElement(const base::String& key,
                                           const lepus::Value& value);
 
+ public:
+  void SetupFragmentBehavior(Fragment* fragment) override;
+
+ protected:
   AttrUMap attr_map_;
   bool has_auto_size_{false};
 
