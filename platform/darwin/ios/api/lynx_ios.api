@@ -3771,6 +3771,7 @@ public class LynxTextRenderManager : NSObject {
   public id LynxTextRenderManager::takeTextRender:(NSInteger sign);
   public void LynxTextRenderManager::putAttributedTextBundle:textBundle:(NSInteger sign,[textBundle] LynxAttributedTextBundle *textBundle);
   public NSDictionary * LynxTextRenderManager::getInlineElementOffsetDic:(NSInteger sign);
+  public void LynxTextRenderManager::releaseTextRender:(NSInteger sign);
 }
 
 public class LynxTextShadowNode : LynxBaseTextShadowNode, <LynxCustomMeasureDelegate> {

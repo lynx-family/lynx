@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSDictionary*)getInlineElementOffsetDic:(NSInteger)sign;
 
+- (void)releaseTextRender:(NSInteger)sign;
+
 @end
 
 NS_ASSUME_NONNULL_END
