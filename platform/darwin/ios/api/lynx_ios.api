@@ -584,6 +584,7 @@ public class LynxBaseConfigurator : NSObject {
   public id<LynxGenericResourceFetcher> LynxBaseConfigurator::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxBaseConfigurator::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxBaseConfigurator::templateResourceFetcher templateResourceFetcher;
+  public id<LynxResourceListener> LynxBaseConfigurator::lynxImageListener lynxImageListener;
   public CGSize LynxBaseConfigurator::screenSize screenSize;
   public BOOL LynxBaseConfigurator::debuggable debuggable;
   public BOOL LynxBaseConfigurator::enablePreUpdateData enablePreUpdateData;
@@ -2143,6 +2144,26 @@ public class LynxImageLoader : NSObject {
   public dispatch_block_t LynxImageLoader::loadImageFromURL:size:contextInfo:processors:imageFetcher:completed:(NSURL *url,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[processors] NSArray *processors,[imageFetcher] id< LynxImageFetcher > imageFetcher,[completed] LynxImageLoadCompletionBlock completed);
 }
 
+public class LynxImageLoadSuccessInfo : LynxResourceLoadSuccessInfo {
+  public CGFloat LynxImageLoadSuccessInfo::width width;
+  public CGFloat LynxImageLoadSuccessInfo::height height;
+  public CGFloat LynxImageLoadSuccessInfo::viewWidth viewWidth;
+  public CGFloat LynxImageLoadSuccessInfo::viewHeight viewHeight;
+  public CGFloat LynxImageLoadSuccessInfo::memoryCost memoryCost;
+  public NSInteger LynxImageLoadSuccessInfo::origin origin;
+  public NSInteger LynxImageLoadSuccessInfo::scale scale;
+  public double LynxImageLoadSuccessInfo::loadStart loadStart;
+  public double LynxImageLoadSuccessInfo::loadFinish loadFinish;
+  public double LynxImageLoadSuccessInfo::loadCost loadCost;
+  public NSDictionary* LynxImageLoadSuccessInfo::customInfo customInfo;
+  public BOOL LynxImageLoadSuccessInfo::downsampling downsampling;
+  public double LynxImageLoadSuccessInfo::downloadDuration downloadDuration;
+  public double LynxImageLoadSuccessInfo::decodeDuration decodeDuration;
+  public NSString* LynxImageLoadSuccessInfo::mimeType mimeType;
+  public NSString* LynxImageLoadSuccessInfo::isHitCDNCache isHitCDNCache;
+  public instancetype LynxImageLoadSuccessInfo::initWithURL:(NSString *url);
+}
+
 public protocol LynxImageProcessor-p : <NSObject> {
   public UIImage * LynxImageProcessor-p::processImage:(UIImage *image);
   public NSString * LynxImageProcessor-p::cacheKey();
@@ -3058,11 +3079,29 @@ public protocol LynxResourceFetcher-p : <NSObject> {
   public nonnull LynxResourceResponse * LynxResourceFetcher-p::requestSyncWithResourceRequest:type:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type);
 }
 
+public protocol LynxResourceListener-p : <NSObjectNSObject> {
+  public void LynxResourceListener-p::onResourceLoadStart:type:(NSString *url,[type] LynxResourceRequestType type);
+  public void LynxResourceListener-p::onResourceLoadSuccess:type:reportInfo:(NSString *url,[type] LynxResourceRequestType type,[reportInfo] LynxResourceLoadSuccessInfo *reportInfo);
+  public void LynxResourceListener-p::onResourceLoadFailed:type:errorInfo:(NSString *url,[type] LynxResourceRequestType type,[errorInfo] LynxResourceLoadFailedInfo *errorInfo);
+}
+
 public protocol LynxResourceLoadDelegate-p : <NSObject> {
   public void LynxResourceLoadDelegate-p::onStart:(NSInteger contentLength);
   public void LynxResourceLoadDelegate-p::onData:(NSData *data);
   public void LynxResourceLoadDelegate-p::onEnd();
   public void LynxResourceLoadDelegate-p::onError:(NSString *msg);
+}
+
+public class LynxResourceLoadFailedInfo : NSObject {
+  public NSString* LynxResourceLoadFailedInfo::errorMessage errorMessage;
+  public NSInteger LynxResourceLoadFailedInfo::errorCode errorCode;
+  public NSInteger LynxResourceLoadFailedInfo::categorizedCode categorizedCode;
+  public instancetype LynxResourceLoadFailedInfo::initWithErrorMessage:errorCode:categorizedCode:(NSString *errorMessage,[errorCode] NSInteger errorCode,[categorizedCode] NSInteger categorizedCode);
+}
+
+public class LynxResourceLoadSuccessInfo : NSObject {
+  public NSString* LynxResourceLoadSuccessInfo::url url;
+  public instancetype LynxResourceLoadSuccessInfo::initWithURL:(NSString *url);
 }
 
 public class LynxResourceModule : NSObject, <LynxContextModule> {
@@ -4338,6 +4377,7 @@ public class LynxUIContext : NSObject {
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
   public BOOL LynxUIContext::enableFetchUIImage enableFetchUIImage;
   public NSString* LynxUIContext::imagePreviewHashMetadata imagePreviewHashMetadata;
+  public id<LynxResourceListener> LynxUIContext::lynxUIImageListener lynxUIImageListener;
   public BOOL LynxUIContext::defaultOverflowVisible defaultOverflowVisible;
   public BOOL LynxUIContext::defaultImplicitAnimation defaultImplicitAnimation;
   public BOOL LynxUIContext::enableTextRefactor enableTextRefactor;

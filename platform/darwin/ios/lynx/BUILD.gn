@@ -303,6 +303,7 @@ subspec_target("lynx") {
     "ui/image/LynxBlurImageProcessor.m",
     "ui/image/LynxFatImageProcessor.m",
     "ui/image/LynxImageBlurUtils.m",
+    "ui/image/LynxImageLoadSuccessInfo.mm",
     "ui/image/LynxImageLoader.mm",
     "ui/image/LynxNinePatchImageProcessor.m",
     "ui/image/LynxUIFilterImage.m",

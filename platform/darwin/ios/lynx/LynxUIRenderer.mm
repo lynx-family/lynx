@@ -113,6 +113,7 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
       _uiOwner.uiContext.enableFetchUIImage =
           [[builder.lynxViewConfig objectForKey:KEY_LYNX_ENABLE_FETCH_UIIMAGE] boolValue];
     }
+    _uiOwner.uiContext.lynxUIImageListener = [builder lynxImageListener];
   }
 }
 

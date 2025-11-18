@@ -7,12 +7,14 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxImageBlurUtils.h>
+#import <Lynx/LynxImageLoadSuccessInfo.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageProcessor.h>
 #import <Lynx/LynxMeasureDelegate.h>
 #import <Lynx/LynxMemoryListener.h>
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxResourceListener.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -176,6 +178,7 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic, strong) NSMutableDictionary* placeholder_hash_config;
 @property(nonatomic) LynxBooleanOption frameCacheAutomatically;
 @property(nonatomic) CGFloat superResolutionScale;
+@property(nonatomic, strong) id<LynxResourceListener> loadListener;
 @end
 
 @implementation LynxUIImage {
@@ -209,6 +212,7 @@ LYNX_REGISTER_UI("image")
   _frameCacheAutomatically = LynxBooleanOptionUnset;
   _superResolutionScale = 0.0;
   _enableReportInfo = false;
+  _loadListener = nil;
 }
 
 - (void)dealloc {
@@ -267,6 +271,7 @@ LYNX_REGISTER_UI("image")
   [super setContext:context];
   _enableGenericFetcher = self.context.mediaResourceFetcher != nil;
   _enableFetchUIImage = self.context.enableFetchUIImage;
+  _loadListener = self.context.lynxUIImageListener;
 }
 
 - (void)targetOffScreen {
@@ -767,15 +772,26 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
           [strongSelf addReportInfo:requestUrl];
         }
       }
+      if (strongSelf.loadListener != nil) {
+        [[LynxImageLoader imageService] appendExtraImageLoadDetailForEvent:image
+                                                            originalDetail:requestUrl.reportInfo];
+        [strongSelf sendImageLoadSuccess:requestUrl isNewImage:[strongSelf shouldUseNewImage]];
+      }
     } else {
       [strongSelf addErrorInfo:requestUrl];
       [requestUrl updateTimeStamp:getImageTime startRequestTime:strongSelf.startRequestTime];
       [strongSelf reportURLSrcError:error type:requestUrl.type source:url];
+      if (strongSelf.loadListener != nil) {
+        [strongSelf sendImageLoadFailed:error type:requestUrl.type source:url];
+      }
     }
 
     [strongSelf monitorReporter:requestUrl];
   };
   _startRequestTime = [NSDate date];
+  if (_loadListener != nil) {
+    [self sendImageLoadStart:url type:requestUrl.type];
+  }
   BOOL downsampling = (_downsampling || self.getEnableImageDownsampling) && !_autoSize;
   requestUrl.lastRequestUrl = url;
   [self initResourceLoaderInformation];
@@ -1000,8 +1016,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 
   reportInfo[@"load_start"] = [NSNumber numberWithDouble:loadStartTime];
   reportInfo[@"load_finish"] = [NSNumber numberWithDouble:loadFinishTime];
-  reportInfo[@"cost"] = [NSNumber
-      numberWithDouble:[completeRequestTime timeIntervalSinceDate:self.startRequestTime]];  // ms
+  reportInfo[@"cost"] = [NSNumber numberWithDouble:(loadFinishTime - loadStartTime)];  // ms
   reportInfo[@"src"] = reportUrl.url.absoluteString ?: @"";
   reportInfo[@"origin"] = [NSNumber numberWithInteger:origin];
   reportInfo[@"width"] = @(self.image.size.width);
@@ -1011,6 +1026,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   reportInfo[@"memory_cost"] = @(reportUrl.memoryCost) ?: @"";
   reportInfo[@"scale"] = @(self.image.scale);
   reportInfo[@"downsampled"] = reportUrl.reportInfo[@"isDownsampled"] ?: @"";
+  reportInfo[@"hit_CDN_cache"] = reportUrl.resourceInfo[@"isHitCDNCache"] ?: @"";
   return reportInfo;
 }
 
@@ -1761,6 +1777,66 @@ LYNX_UI_METHOD(stopAnimation) {
 
 + (BOOL)isAnimatedImage:(UIImage*)image {
   return [[LynxImageLoader imageService] isAnimatedImage:image] || (image.images != nil);
+}
+
+- (void)sendImageLoadStart:(NSURL*)url type:(LynxImageRequestType)requestType {
+  if ((requestType == LynxImageRequestSrc) &&
+      [self.loadListener respondsToSelector:@selector(onResourceLoadStart:type:)]) {
+    [self.loadListener onResourceLoadStart:url.absoluteString type:LynxResourceTypeImage];
+  }
+}
+
+- (void)sendImageLoadSuccess:(LynxURL*)reportUrl isNewImage:(BOOL)newImage {
+  if ((reportUrl.type == LynxImageRequestSrc) &&
+      [self.loadListener respondsToSelector:@selector(onResourceLoadSuccess:type:reportInfo:)]) {
+    LynxImageOrigin origin = [self getImageOrigin:reportUrl isNewImage:newImage];
+    LynxImageLoadSuccessInfo* successInfo =
+        [[LynxImageLoadSuccessInfo alloc] initWithURL:reportUrl.url.absoluteString];
+    NSDate* completeRequestTime = [NSDate date];
+    double loadStartTime = self.startRequestTime.timeIntervalSince1970 * 1000;  // ms
+    double loadFinishTime = completeRequestTime.timeIntervalSince1970 * 1000;   // ms
+    successInfo.width = self.image.size.width;
+    successInfo.height = self.image.size.height;
+    successInfo.viewWidth = self.view.frame.size.width;
+    successInfo.viewHeight = self.view.frame.size.height;
+    successInfo.scale = self.image.scale;
+    successInfo.memoryCost = reportUrl.memoryCost;
+    successInfo.loadStart = loadStartTime;
+    successInfo.loadFinish = loadFinishTime;
+    successInfo.loadCost = loadFinishTime - loadStartTime;
+    successInfo.origin = origin;
+    successInfo.downsampling = [reportUrl.reportInfo[@"isDownsampled"] boolValue];
+    successInfo.customInfo = self.additional_custom_info;
+    successInfo.downloadDuration = [reportUrl.resourceInfo[@"downloadDuration"] doubleValue];
+    successInfo.decodeDuration = [reportUrl.resourceInfo[@"decodeDuration"] doubleValue];
+    successInfo.mimeType = reportUrl.resourceInfo[@"mimeType"];
+    successInfo.isHitCDNCache = reportUrl.resourceInfo[@"isHitCDNCache"];
+    [self.loadListener onResourceLoadSuccess:reportUrl.url.absoluteString
+                                        type:LynxResourceTypeImage
+                                  reportInfo:successInfo];
+  }
+}
+
+- (void)sendImageLoadFailed:(NSError*)error
+                       type:(LynxImageRequestType)requestType
+                     source:(NSURL*)url {
+  if ((requestType == LynxImageRequestSrc) &&
+      [self.loadListener respondsToSelector:@selector(onResourceLoadFailed:type:errorInfo:)]) {
+    NSString* errorDetail = [NSString stringWithFormat:@"url:%@,%@", url, [error description]];
+    NSNumber* errorCode = [self shouldUseNewImage]
+                              ? [NSNumber numberWithInteger:error.code]
+                              : ([error.userInfo valueForKey:@"error_num"]
+                                     ?: [NSNumber numberWithInteger:error.code]);
+    NSNumber* categorizedErrorCode =
+        [[LynxImageLoader imageService] getMappedCategorizedPicErrorCode:errorCode];
+    LynxResourceLoadFailedInfo* failedInfo = [[LynxResourceLoadFailedInfo alloc]
+        initWithErrorMessage:errorDetail ?: @""
+                   errorCode:[errorCode integerValue]
+             categorizedCode:[categorizedErrorCode integerValue] ?: -1];
+    [self.loadListener onResourceLoadFailed:url.absoluteString
+                                       type:LynxResourceTypeImage
+                                  errorInfo:failedInfo];
+  }
 }
 
 @end

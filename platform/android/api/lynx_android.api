@@ -2341,6 +2341,12 @@ public interface com::lynx::tasm::service::ILynxMonitorService {
   public void com.lynx.tasm.service.ILynxMonitorService.reportImageInfo(@NonNull LynxImageInfo imageInfo);
 }
 
+public interface com::lynx::tasm::resourcelistener::ILynxResourceListener {
+  public void com.lynx.tasm.resourcelistener.ILynxResourceListener.onResourceLoadStart(String url, LynxResourceRequest.LynxResourceType type);
+  public void com.lynx.tasm.resourcelistener.ILynxResourceListener.onResourceLoadSuccess(String url, LynxResourceRequest.LynxResourceType type, LynxResourceLoadSuccessInfo reportInfo);
+  public void com.lynx.tasm.resourcelistener.ILynxResourceListener.onResourceLoadFailed(String url, LynxResourceRequest.LynxResourceType type, LynxResourceLoadFailedInfo errorInfo);
+}
+
 public interface com::lynx::tasm::provider::ILynxResourceRequestOperation {
   public void com.lynx.tasm.provider.ILynxResourceRequestOperation.cancel();
 }
@@ -4579,6 +4585,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableVSyncAligned();
   public boolean com.lynx.tasm.behavior.LynxContext.hasLayoutThreadChanged();
   public void com.lynx.tasm.behavior.LynxContext.setLayoutThreadChanged(boolean layoutThreadChanged);
+  public void com.lynx.tasm.behavior.LynxContext.setLynxResourceListener(@NonNull ILynxResourceListener listener);
+  public ILynxResourceListener com.lynx.tasm.behavior.LynxContext.getLynxImageListener();
 }
 
 public class com::lynx::jsbridge::LynxContextModule : com.lynx.jsbridge.LynxModule {
@@ -5896,6 +5904,18 @@ public class abstract com::lynx::tasm::provider::LynxResourceFetcher :  {
 public class com::lynx::tasm::core::resource::LynxResourceLoader :  {
   public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
   public byte[] com.lynx.tasm.core.resource.LynxResourceLoader.loadLynxJSAsset(String name);
+}
+
+public class com::lynx::tasm::resourcelistener::LynxResourceLoadFailedInfo :  {
+  public com.lynx.tasm.resourcelistener.LynxResourceLoadFailedInfo.LynxResourceLoadFailedInfo(String errMsg, int errCode, int categorizedCode);
+  public String com.lynx.tasm.resourcelistener.LynxResourceLoadFailedInfo.getErrorMsg();
+  public int com.lynx.tasm.resourcelistener.LynxResourceLoadFailedInfo.getErrorCode();
+  public int com.lynx.tasm.resourcelistener.LynxResourceLoadFailedInfo.getCategorizedCode();
+}
+
+public class com::lynx::tasm::resourcelistener::LynxResourceLoadSuccessInfo :  {
+  public com.lynx.tasm.resourcelistener.LynxResourceLoadSuccessInfo.LynxResourceLoadSuccessInfo(String url);
+  public String com.lynx.tasm.resourcelistener.LynxResourceLoadSuccessInfo.getUrl();
 }
 
 public class com::lynx::jsbridge::LynxResourceModule : com.lynx.jsbridge.LynxContextModule {
