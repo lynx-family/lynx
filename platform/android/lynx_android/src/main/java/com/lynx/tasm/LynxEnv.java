@@ -195,6 +195,10 @@ public class LynxEnv {
 
   private boolean mEnableTextLayoutCache = true;
 
+  // FSP related fields
+  protected boolean mEnableFSP = false;
+  protected HashMap<String, String> mFSPConfig = null;
+
   protected LynxEnv() {}
 
   public static LynxEnv inst() {
@@ -322,6 +326,9 @@ public class LynxEnv {
     initEnableLazyInitA11y();
     initEnableTextLayoutCache();
     initEnableDataListFix();
+
+    // FSP related initializations
+    initFSPConfig();
 
     ICURegister.loadLibrary(mLibraryLoader);
     // notify LynxEnv prepared
@@ -1401,6 +1408,32 @@ public class LynxEnv {
 
   boolean enableDataListFix() {
     return mEnableDataListFix;
+  }
+
+  // FSP related getter methods
+  public boolean enableFSP() {
+    return mEnableFSP;
+  }
+
+  public HashMap<String, String> getFSPConfig() {
+    return mFSPConfig;
+  }
+
+  /**
+   * Initialize all FSP related configurations in one method
+   */
+  private void initFSPConfig() {
+    mEnableFSP = getBooleanFromExternalEnv(LynxEnvKey.FSP_ENABLE, false);
+    if (mEnableFSP) {
+      String jsonStr = getStringFromExternalEnv(LynxEnvKey.FSP_CONFIG_JSON_STRING);
+      if (jsonStr != null) {
+        try {
+          Gson gson = new Gson();
+          mFSPConfig = gson.fromJson(jsonStr, HashMap.class);
+        } catch (Exception e) {
+        }
+      }
+    }
   }
 
   private void initEnableDataListFix() {

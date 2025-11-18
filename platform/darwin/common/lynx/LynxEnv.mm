@@ -546,6 +546,40 @@
   return thresholdMB;
 }
 
+#pragma mark - FSP Config
+- (BOOL)enableFSP {
+  static dispatch_once_t onceToken;
+  static BOOL enableFSP = NO;
+  dispatch_once(&onceToken, ^{
+    enableFSP = [self boolFromExternalEnv:LynxEnvFSPEnable defaultValue:NO];
+  });
+  return enableFSP;
+}
+
+- (NSDictionary<NSString *, id> *_Nullable)fspConfig {
+  if (![self enableFSP]) {
+    return nil;
+  }
+  static dispatch_once_t onceToken;
+  static NSDictionary<NSString *, id> *fspConfig = nil;
+  dispatch_once(&onceToken, ^{
+    NSString *jsonStr = [self stringFromExternalEnv:LynxEnvFSPConfigJsonString];
+    if (!jsonStr) {
+      return;
+    }
+    NSData *jsonData = [jsonStr dataUsingEncoding:NSUTF8StringEncoding];
+    if (!jsonData) {
+      return;
+    }
+    NSError *error = nil;
+    fspConfig = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:&error];
+    if (error) {
+      LLogError(@"Convert FSP config json string failed, error: %@", error.description);
+    }
+  });
+  return fspConfig;
+}
+
 - (BOOL)enableGenericResourceFetcher {
   static dispatch_once_t onceToken;
   static BOOL enableGenericResourceFetcher = NO;
@@ -658,7 +692,9 @@
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
-    @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb"
+    @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
+    @(LynxEnvFSPEnable) : @"enable_fsp",
+    @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string"
   };
   NSString *keyString = envKeyBinding[@(key)];
   NSAssert(keyString.length > 0, @"LynxEnv key string should not be nill.");

@@ -4833,6 +4833,8 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.enableCheckAccessFromNonUIThread();
   public boolean com.lynx.tasm.LynxEnv.enableTextLayoutCache();
   public boolean com.lynx.tasm.LynxEnv.enableLazyInitA11y();
+  public boolean com.lynx.tasm.LynxEnv.enableFSP();
+  public HashMap< String, String > com.lynx.tasm.LynxEnv.getFSPConfig();
   public void com.lynx.tasm.LynxEnv.initNativeUIThread();
   public boolean com.lynx.tasm.LynxEnv.tryToLoadV8Bridge(boolean unused);
   public void com.lynx.tasm.LynxEnv.forceDisableQuickJsCache();
@@ -4878,6 +4880,8 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.MEMORY_REPORT_INTERVAL_SEC MEMORY_REPORT_INTERVAL_SEC;
   public com.lynx.tasm.LynxEnvKey.GLOBAL_MEMORY_REPORT_THRESHOLD_MB GLOBAL_MEMORY_REPORT_THRESHOLD_MB;
   public com.lynx.tasm.LynxEnvKey.ENABLE_DATA_LIST_FIX ENABLE_DATA_LIST_FIX;
+  public com.lynx.tasm.LynxEnvKey.FSP_ENABLE FSP_ENABLE;
+  public com.lynx.tasm.LynxEnvKey.FSP_CONFIG_JSON_STRING FSP_CONFIG_JSON_STRING;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE SP_KEY_ENABLE_DEBUG_MODE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_FORCE_DISABLE_QUICKJS_CACHE SP_KEY_FORCE_DISABLE_QUICKJS_CACHE;

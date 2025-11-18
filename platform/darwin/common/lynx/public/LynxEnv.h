@@ -148,6 +148,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (int)memoryReportIntervalSec;
 
 - (int)globalMemoryReportThresholdMB;
+#pragma mark - FSP Config
+- (BOOL)enableFSP;
+
+- (NSDictionary<NSString *, id> *_Nullable)fspConfig;
 
 - (NSDictionary<NSString *, NSString *> *)cppEnvDebugDescription;
 
