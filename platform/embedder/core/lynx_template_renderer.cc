@@ -22,9 +22,9 @@ namespace embedder {
 
 namespace {
 void PrepareEnvWidthScreenSize(int width, int height, float density,
-                               float ratio, float device_density) {
+                               float ratio) {
   tasm::Config::InitializeVersion("1.0");
-  tasm::Config::InitPixelValues(width * ratio, height * ratio, device_density);
+  tasm::Config::InitPixelValues(width * ratio, height * ratio, ratio);
 
   starlight::ComputedCSSStyle::SAFE_AREA_INSET_TOP_ = 0;
   starlight::ComputedCSSStyle::SAFE_AREA_INSET_BOTTOM_ = 0;
@@ -86,8 +86,7 @@ void LynxTemplateRenderer::Reset() {
   const float ratio =
       ui_delegate_->UsesLogicalPixels() ? settings_.device_pixel_ratio : 1;
   auto screen_size = settings_.screen_size;
-  PrepareEnvWidthScreenSize(screen_size.cx, screen_size.cy, density, ratio,
-                            ui_delegate_->GetScreenScaleFactor());
+  PrepareEnvWidthScreenSize(screen_size.cx, screen_size.cy, density, ratio);
 
   auto view_size = settings_.viewport_size;
   auto lynx_env_config =
