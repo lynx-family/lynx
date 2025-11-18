@@ -92,6 +92,7 @@ unittest_set("lepus_testset") {
     "quickjs_promise_unittest.cc",
     "quickjs_stack_size_unittest.cc",
     "string_api_unittest.cc",
+    "value_deep_check_unittest.cc",
     "value_utils_unittest.cc",
   ]
 
