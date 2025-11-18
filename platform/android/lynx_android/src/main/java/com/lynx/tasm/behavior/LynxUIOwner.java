@@ -38,6 +38,7 @@ import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
@@ -55,6 +56,7 @@ import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot;
 import com.lynx.tasm.performance.memory.MemoryRecord;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -338,6 +340,19 @@ public class LynxUIOwner {
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);
     }
+  }
+
+  public MeaningfulContentSnapshot getMeaningfulPaintingAreas() {
+    UIBody rootUI = getRootUI();
+    if (rootUI == null) {
+      return null;
+    }
+    List<MeaningfulPaintingArea> list = rootUI.getMeaningfulPaintingAreas();
+
+    if (list == null || list.size() <= 0) {
+      return null;
+    }
+    return new MeaningfulContentSnapshot(rootUI.getWidth(), rootUI.getHeight(), list);
   }
 
   public void updateLayout(int tag, int x, int y, int width, int height, int paddingLeft,

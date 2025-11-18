@@ -42,27 +42,6 @@ public class FlattenUIImage extends LynxFlattenUI {
   }
 
   @Override
-  protected boolean needGenerateMeaningfulPaintingArea() {
-    return true;
-  }
-
-  @Override
-  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
-    if (mLynxImageManager != null) {
-      mLynxImageManager.tryHandleResult();
-    }
-
-    MeaningfulPaintingArea area =
-        new MeaningfulPaintingArea(offsetX + getOriginLeft(), offsetY + getOriginTop(), getWidth(),
-            getHeight(), mLynxImageManager != null ? mLynxImageManager.getHasContent() : false);
-    area.setAlpha(getAlpha());
-    area.setScaleX(getScaleX());
-    area.setScaleY(getScaleY());
-
-    return area;
-  }
-
-  @Override
   public MeaningfulContentStatus getMeaningfulContentStatus() {
     if (mLynxImageManager != null && mLynxImageManager.getHasContent()) {
       return MeaningfulContentStatus.PRESENTED;

@@ -21,6 +21,25 @@ public class MeaningfulPaintingArea {
   float mAlpha = 1;
   float mScaleX = 1;
   float mScaleY = 1;
+  ILynxUIMeaningfulContent.MeaningfulContentStatus mMeaningfulContentStatus =
+      ILynxUIMeaningfulContent.MeaningfulContentStatus.IRRELEVANT;
+  long mFirstMeaningfulContentPresentedTimestampMicros = -1;
+
+  public void setMeaningfulContentStatus(ILynxUIMeaningfulContent.MeaningfulContentStatus status) {
+    mMeaningfulContentStatus = status;
+  }
+
+  public ILynxUIMeaningfulContent.MeaningfulContentStatus getMeaningfulContentStatus() {
+    return mMeaningfulContentStatus;
+  }
+
+  public long getFirstMeaningfulContentPresentedTimestampMicros() {
+    return mFirstMeaningfulContentPresentedTimestampMicros;
+  }
+
+  public void setFirstMeaningfulContentPresentedTimestampMicros(long timestampMicros) {
+    mFirstMeaningfulContentPresentedTimestampMicros = timestampMicros;
+  }
 
   public MeaningfulPaintingArea(int offsetX, int offsetY, int width, int height, boolean isValid) {
     mOffsetX = offsetX;

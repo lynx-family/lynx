@@ -63,13 +63,8 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
   }
 
   @Override
-  protected boolean needGenerateMeaningfulPaintingArea() {
-    return true;
-  }
-
-  @Override
   protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
-    if (getTextLayout() == null) {
+    if (getMeaningfulContentStatus() == MeaningfulContentStatus.IRRELEVANT) {
       return null;
     }
 
@@ -80,6 +75,9 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
     area.setScaleY(mView != null ? mView.getScaleY() : getScaleY());
     area.setVisibleStatus(
         mView != null ? mView.getVisibility() : (getVisibility() ? View.VISIBLE : View.INVISIBLE));
+    area.setMeaningfulContentStatus(getMeaningfulContentStatus());
+    area.setFirstMeaningfulContentPresentedTimestampMicros(
+        getFirstMeaningfulContentPresentedTimestampMicros());
     return area;
   }
 

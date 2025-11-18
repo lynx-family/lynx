@@ -35,12 +35,6 @@ public interface ILynxUIMeaningfulContent {
   MeaningfulContentStatus getMeaningfulContentStatus();
 
   /**
-   * Optionally provides a custom rect to be considered as the "meaningful content" for FSP
-   * tracing. If not provided, the view's bounds will be used.
-   */
-  Rect getMeaningfulContentRect();
-
-  /**
    * Optionally provides the timestamp in microseconds when the first meaningful content was
    * presented.
    *

@@ -2404,7 +2404,6 @@ public interface com::lynx::tasm::service::ILynxTrailServiceExtension {
 
 public interface com::lynx::tasm::behavior::ui::ILynxUIMeaningfulContent {
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.getMeaningfulContentStatus();
-  public Rect com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.getMeaningfulContentRect();
   public long com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.getFirstMeaningfulContentPresentedTimestampMicros();
 }
 
@@ -4145,7 +4144,6 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public CSSPropertySetter.UIPaintStyles com.lynx.tasm.behavior.ui.LynxBaseUI.getOrCreateUIPaintStyles();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.applyUIPaintStylesToTarget(LynxBaseUI targetUI);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentStatus();
-  public Rect com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentRect();
   public long com.lynx.tasm.behavior.ui.LynxBaseUI.getFirstMeaningfulContentPresentedTimestampMicros();
   public long com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageBytes();
   public Map< String, String > com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageDetail();
@@ -6635,6 +6633,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.pauseRootLayoutAnimation();
   public void com.lynx.tasm.behavior.LynxUIOwner.resumeRootLayoutAnimation();
   public void com.lynx.tasm.behavior.LynxUIOwner.rebuildViewTree();
+  public MeaningfulContentSnapshot com.lynx.tasm.behavior.LynxUIOwner.getMeaningfulPaintingAreas();
   public void com.lynx.tasm.behavior.LynxUIOwner.updateLayout(int tag, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky, float maxHeight, int nodeIndex);
   public void com.lynx.tasm.behavior.LynxUIOwner.setFirstLayout();
   public void com.lynx.tasm.behavior.LynxUIOwner.onNodeReady(int tag);
@@ -7227,6 +7226,13 @@ public class com::lynx::tasm::utils::MatrixMathUtils :  {
   public static double com.lynx.tasm.utils.MatrixMathUtils.degreesToRadians(double degrees);
 }
 
+public class com::lynx::tasm::performance::fsp::MeaningfulContentSnapshot :  {
+  public com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.MeaningfulContentSnapshot(int containerWidth, int containerHeight, List< MeaningfulPaintingArea > meaningfulPaintingAreas);
+  public int com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getContainerWidth();
+  public int com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getContainerHeight();
+  public List< MeaningfulPaintingArea > com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getMeaningfulPaintingAreas();
+}
+
 public enum com::lynx::tasm::behavior::ui::ILynxUIMeaningfulContent::MeaningfulContentStatus {
   public com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.MeaningfulContentStatus.IRRELEVANT IRRELEVANT;
   public com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent.MeaningfulContentStatus.PENDING PENDING;
@@ -7234,6 +7240,10 @@ public enum com::lynx::tasm::behavior::ui::ILynxUIMeaningfulContent::MeaningfulC
 }
 
 public class com::lynx::tasm::behavior::ui::MeaningfulPaintingArea :  {
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setMeaningfulContentStatus(ILynxUIMeaningfulContent.MeaningfulContentStatus status);
+  public ILynxUIMeaningfulContent.MeaningfulContentStatus com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getMeaningfulContentStatus();
+  public long com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getFirstMeaningfulContentPresentedTimestampMicros();
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setFirstMeaningfulContentPresentedTimestampMicros(long timestampMicros);
   public com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.MeaningfulPaintingArea(int offsetX, int offsetY, int width, int height, boolean isValid);
   public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getOffsetX();
   public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getOffsetY();

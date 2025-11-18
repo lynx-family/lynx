@@ -58,25 +58,6 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     }
   }
 
-  @Override
-  protected boolean needGenerateMeaningfulPaintingArea() {
-    return true;
-  }
-
-  @Override
-  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
-    if (getTextLayout() == null) {
-      return null;
-    }
-
-    MeaningfulPaintingArea area = new MeaningfulPaintingArea(
-        offsetX + getOriginLeft(), offsetY + getOriginTop(), getWidth(), getHeight(), true);
-    area.setAlpha(getAlpha());
-    area.setScaleX(getScaleX());
-    area.setScaleY(getScaleY());
-
-    return area;
-  }
   public void updateExtraData(Object data) {
     if (data instanceof TextUpdateBundle) {
       setTextBundle((TextUpdateBundle) data);

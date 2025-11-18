@@ -289,26 +289,43 @@ public abstract class LynxBaseUI
   }
 
   protected boolean needGenerateMeaningfulPaintingArea() {
-    return false;
+    return getMeaningfulContentStatus() != MeaningfulContentStatus.IRRELEVANT;
   }
 
-  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
-    return null;
+  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int x, int y) {
+    if (!needGenerateMeaningfulPaintingArea()) {
+      return null;
+    }
+    MeaningfulPaintingArea area = new MeaningfulPaintingArea(x, y, getWidth(), getHeight(), true);
+    area.setAlpha(getAlpha());
+    area.setScaleX(getScaleX());
+    area.setScaleY(getScaleY());
+    area.setMeaningfulContentStatus(getMeaningfulContentStatus());
+    area.setFirstMeaningfulContentPresentedTimestampMicros(
+        getFirstMeaningfulContentPresentedTimestampMicros());
+    return area;
   }
 
   protected void convertToMeaningfulPaintingAreaRecursive(
-      int offsetX, int offsetY, ArrayList<MeaningfulPaintingArea> areas) {
-    MeaningfulPaintingArea area = convertToMeaningfulPaintingArea(offsetX, offsetY);
+      int offsetX, int offsetY, int maxX, int maxY, ArrayList<MeaningfulPaintingArea> areas) {
+    int newOffsetX = offsetX + getOriginLeft();
+    int newOffsetY = offsetY + getOriginTop();
+    if (newOffsetX >= maxX || newOffsetY >= maxY) {
+      /// Out of the visible area.
+      return;
+    }
+    MeaningfulPaintingArea area = convertToMeaningfulPaintingArea(newOffsetX, newOffsetY);
     if (area != null) {
       areas.add(area);
     }
-    int newOffsetX = offsetX + getOriginLeft();
-    int newOffsetY = offsetY + getOriginTop();
+    if (mChildren == null || mChildren.size() <= 0) {
+      return;
+    }
     for (LynxBaseUI ui : mChildren) {
       if (ui == null) {
         continue;
       }
-      ui.convertToMeaningfulPaintingAreaRecursive(newOffsetX, newOffsetY, areas);
+      ui.convertToMeaningfulPaintingAreaRecursive(newOffsetX, newOffsetY, maxX, maxY, areas);
     }
   }
 
@@ -499,11 +516,6 @@ public abstract class LynxBaseUI
   @Override
   public MeaningfulContentStatus getMeaningfulContentStatus() {
     return MeaningfulContentStatus.IRRELEVANT;
-  }
-
-  @Override
-  public Rect getMeaningfulContentRect() {
-    return this.getBoundingClientRect();
   }
 
   @Override

@@ -41,12 +41,10 @@ public class UIImage extends UIView {
   }
 
   @Override
-  protected boolean needGenerateMeaningfulPaintingArea() {
-    return true;
-  }
-
-  @Override
   protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
+    if (getMeaningfulContentStatus() == MeaningfulContentStatus.IRRELEVANT) {
+      return null;
+    }
     if (mLynxImageManager != null) {
       mLynxImageManager.tryHandleResult();
     }
@@ -59,7 +57,9 @@ public class UIImage extends UIView {
     area.setScaleY(mView != null ? mView.getScaleY() : getScaleY());
     area.setVisibleStatus(
         mView != null ? mView.getVisibility() : (getVisibility() ? View.VISIBLE : View.INVISIBLE));
-
+    area.setMeaningfulContentStatus(getMeaningfulContentStatus());
+    area.setFirstMeaningfulContentPresentedTimestampMicros(
+        getFirstMeaningfulContentPresentedTimestampMicros());
     return area;
   }
 
