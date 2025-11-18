@@ -16,6 +16,7 @@
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/color_source.h"
 #include "clay/gfx/style/tile_mode.h"
+#include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/painter/text_painter.h"
 #include "clay/ui/rendering/renderer.h"
@@ -152,39 +153,18 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
   }
 }
 
-void RenderText::SetSelection(const FloatPoint& select_start_position,
-                              const FloatPoint& select_end_position) {
-  // Because we offset the drawing, clicks also need to be processed.
-  float x_offset = 0;
-  if (text_paint_align_ == TextAlignment::kCenter) {
-    x_offset = std::max(
-        0.0, (ContentWidth() - painter_->GetParagraph()->GetLongestLine()) / 2);
-  } else if (text_paint_align_ == TextAlignment::kRight) {
-    x_offset = std::max(
-        0.0, ContentWidth() - painter_->GetParagraph()->GetLongestLine());
-  }
-  auto start_position = painter_->GetGlyphPositionAtCoordinate(
-      select_start_position.x() - x_offset, select_start_position.y());
-  auto end_position = painter_->GetGlyphPositionAtCoordinate(
-      select_end_position.x() - x_offset, select_end_position.y());
-  select_start_ = start_position.first;
-  select_end_ = end_position.first;
-
+void RenderText::SetSelection(const TextRange& range) {
+  select_start_ = range.start();
+  select_end_ = range.end();
   if (selection_changed_callback_) {
-    auto text_box = GetEndTextPositionTopAndBottom();
-    if (text_box.has_value()) {
-      selection_changed_callback_(&text_box.value(), select_start_,
-                                  select_end_);
-    }
+    selection_changed_callback_(select_start_, select_end_);
   }
   pre_select_end_ = select_end_;
   MarkNeedsPaint();
 }
 
 void RenderText::SetAllSelection() {
-  select_start_ = 0;
-  select_end_ = text_.length();
-  MarkNeedsPaint();
+  SetSelection(TextRange(0, text_.length()));
 }
 
 void RenderText::PaintSelection(GraphicsContext* context) {
@@ -223,20 +203,51 @@ std::vector<Point> RenderText::GetPointsFromRangeSelection(
   }
 }
 
-std::optional<TextBox> RenderText::GetEndTextPositionTopAndBottom() const {
-  auto boxes = painter_->GetRectsForRange(select_end_, select_end_ + 1);
+TextBox RenderText::GetEndTextPositionTopAndBottom() const {
+  std::vector<TextBox> boxes;
+  if (select_start_ <= select_end_) {
+    boxes = painter_->GetRectsForRange(select_end_ - 1, select_end_);
+  } else {
+    boxes = painter_->GetRectsForRange(select_end_, select_end_ + 1);
+  }
+
   if (boxes.empty()) {
-    return std::nullopt;
+    return TextBox(FloatRect());
   }
   return boxes.front();
 }
 
-std::optional<TextBox> RenderText::GetStartTextPositionTopAndBottom() const {
-  auto boxes = painter_->GetRectsForRange(select_start_, select_start_ + 1);
+TextBox RenderText::GetStartTextPositionTopAndBottom() const {
+  std::vector<TextBox> boxes;
+  if (select_start_ <= select_end_) {
+    boxes = painter_->GetRectsForRange(select_start_, select_start_ + 1);
+  } else {
+    boxes = painter_->GetRectsForRange(select_start_ - 1, select_start_);
+  }
   if (boxes.empty()) {
-    return std::nullopt;
+    TextBox(FloatRect());
   }
   return boxes.front();
+}
+
+TextBox RenderText::GetLeftTextBox() {
+  std::vector<TextBox> boxes;
+  boxes = painter_->GetRectsForRange(std::min(select_start_, select_end_),
+                                     std::min(select_start_, select_end_) + 1);
+  if (boxes.empty()) {
+    TextBox(FloatRect());
+  }
+  return boxes.front();
+}
+
+TextBox RenderText::GetRightTextBox() {
+  std::vector<TextBox> boxes;
+  boxes = painter_->GetRectsForRange(std::max(select_start_, select_end_) - 1,
+                                     std::max(select_start_, select_end_));
+  if (boxes.empty()) {
+    TextBox(FloatRect());
+  }
+  return boxes.back();
 }
 
 std::vector<FloatRect> RenderText::GetTextLineRects(int start, int end) {

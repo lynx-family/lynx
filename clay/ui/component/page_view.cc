@@ -39,6 +39,7 @@
 #include "clay/public/timing_collector_delegate.h"
 #include "clay/shell/common/services/raster_frame_service.h"
 #include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/common/utils/watch_dog.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
@@ -206,7 +207,12 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
       keyboard_bridge_(this),
       unref_queue_(unref_queue),
       service_manager_(service_manager),
-      page_unique_id_(render_object()->element_id().unique_id()) {
+      page_unique_id_(render_object()->element_id().unique_id())
+#if !defined(ENABLE_CLAY_LITE)
+      ,
+      overlay_manager_(std::make_unique<OverlayManager>(this))
+#endif
+{
   SetupIsolatedGestures();
   frame_builder_ = std::make_unique<FrameBuilder>(
       skity::Vec2{static_cast<int32_t>(metrics_.physical_width),
@@ -251,6 +257,9 @@ void PageView::OnDestroy() {
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
+#if !defined(ENABLE_CLAY_LITE)
+  overlay_manager_ = nullptr;
+#endif
 }
 
 void PageView::CleanForRecycle() { ResetPageView(true); }
@@ -952,16 +961,47 @@ void PageView::SetupIsolatedGestures() {
 }
 
 bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
-  return BaseView::HitTest(event, result);
+  PointerEvent converted_event = event;
+  bool is_pass_through_from_overlay = false;
+#if !defined(ENABLE_CLAY_LITE)
+  auto overlay_result = overlay_manager_->HitTest(
+      event, result, is_pass_through_from_overlay, converted_event);
+  if (overlay_result) {
+    return true;
+  }
+#endif
+  if (is_pass_through_from_overlay) {
+    return BaseView::HitTest(converted_event, result);
+  } else {
+    return BaseView::HitTest(event, result);
+  }
 }
 
 BaseView* PageView::GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position) {
-  return BaseView::GetTopViewToAcceptEvent(position, relative_position);
+  FloatPoint converted_position = position;
+  bool is_pass_through_from_overlay = false;
+#ifndef ENABLE_CLAY_LITE
+  auto overlay_result = overlay_manager_->GetTopViewToAcceptEvent(
+      position, relative_position, is_pass_through_from_overlay,
+      converted_position);
+  if (overlay_result) {
+    return overlay_result;
+  }
+#endif
+  if (is_pass_through_from_overlay) {
+    return BaseView::GetTopViewToAcceptEvent(converted_position,
+                                             relative_position);
+  } else {
+    return BaseView::GetTopViewToAcceptEvent(position, relative_position);
+  }
 }
 
 void PageView::ReportTopViewEvent(const PointerEvent& event,
                                   ClayEventType type) {
+#ifndef ENABLE_CLAY_LITE
+  overlay_manager_->OnReportTopViewEvent(event, type);
+#endif
   auto position = event.position;
   BaseView* top_view = nullptr;
   FloatPoint transformed_position;
@@ -1166,12 +1206,18 @@ void PageView::DispatchKeyEvent(
     std::unique_ptr<KeyEvent> event,
     std::function<void(bool /* handled */)> callback) {
   FML_DCHECK(event);
+  bool keyevent_handled = false;
+#ifndef ENABLE_CLAY_LITE
+  if (overlay_manager_->DispatchKeyEvent(event.get())) {
+    keyevent_handled = true;
+  }
+#endif
 
   // We need to first report the keyevent then handle the focus change
   ReportKeyEvent(*event);
 
-  if (!keyevent_handled_ && focus_manager_.DispatchKeyEvent(event.get())) {
-    keyevent_handled_ = true;
+  if (!keyevent_handled && focus_manager_.DispatchKeyEvent(event.get())) {
+    keyevent_handled = true;
   }
 
 #ifndef NDEBUG
@@ -1184,13 +1230,13 @@ void PageView::DispatchKeyEvent(
 #endif
 
   if (intercept_back_key_once_ && IsBackOrEscapeKey(event->GetLogical())) {
-    keyevent_handled_ = true;
+    keyevent_handled = true;
     if (event->GetType() != KeyEventType::kDown) {
       intercept_back_key_once_ = false;
     }
   }
-  callback(keyevent_handled_);
-  keyevent_handled_ = false;
+  callback(keyevent_handled);
+  keyevent_handled = false;
 }
 
 GrDataPtr PageView::TakeScreenshotHardware(

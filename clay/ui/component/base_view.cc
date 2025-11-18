@@ -2097,6 +2097,13 @@ FloatPoint BaseView::AbsoluteLocationWithScroll() const {
   return FloatPoint(left, top);
 }
 
+void BaseView::OnViewPostionUpdate(FloatPoint scroll_offset) {
+  scroll_offset += FloatPoint(LeftWithScroll(), TopWithScroll());
+  for (auto child : GetChildren()) {
+    child->OnViewPostionUpdate(scroll_offset);
+  }
+}
+
 float BaseView::BorderLeft() const {
   if (render_object()) {
     return render_object()->BorderLeft();
@@ -2581,32 +2588,6 @@ Transform BaseView::LocalToGlobalTransform() const {
   }
   transform.Translate(point.x(), point.y());
   // TODO(wangchen): Consider the transform case
-  return transform;
-}
-
-void BaseView::LocalToGlobal(FloatPoint& point) {
-  auto transform = getTransformTo();
-  transform.TransformPoint(&point);
-}
-
-Transform BaseView::getTransformTo(BaseView* ancestor) {
-  std::vector<BaseView*> views;
-  BaseView* view = this;
-
-  while (view != ancestor) {
-    views.push_back(view);
-    view = static_cast<BaseView*>(view->Parent());
-  }
-  if (ancestor != nullptr) {
-    views.push_back(ancestor);
-  } else {
-    views.pop_back();
-  }
-
-  Transform transform = Transform(skity::Matrix());
-  for (int index = views.size() - 1; index > 0; --index) {
-    views[index]->ApplyPaintTransform(views[index - 1], &transform);
-  }
   return transform;
 }
 

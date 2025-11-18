@@ -23,6 +23,8 @@ ui_rendering_sources = [
   "render_object.h",
   "render_object_child_list.cc",
   "render_object_child_list.h",
+  "render_overlay.cc",
+  "render_overlay.h",
   "render_page.cc",
   "render_page.h",
   "render_scroll.cc",

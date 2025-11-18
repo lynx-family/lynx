@@ -5,20 +5,28 @@
 #include "clay/ui/component/text/text_view.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/task_runner.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_point.h"
+#include "clay/gfx/geometry/float_rect.h"
 #include "clay/public/value.h"
 #include "clay/ui/common/attribute_utils.h"
+#include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/keywords.h"
+#include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/selection_handle_view.h"
 #include "clay/ui/component/text/inline_text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
+#include "clay/ui/gesture/multi_tap_gesture_recognizer.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/rendering/render_scroll.h"
 
@@ -28,6 +36,8 @@ namespace {
 
 LYNX_UI_METHOD_BEGIN(TextView) {
   LYNX_UI_METHOD(TextView, getTextBoundingRect);
+  LYNX_UI_METHOD(TextView, setTextSelection);
+  LYNX_UI_METHOD(TextView, getSelectedText);
 }
 LYNX_UI_METHOD_END(TextView);
 
@@ -54,6 +64,14 @@ static clay::Value::Map CreateRectMap(const FloatRect& rect) {
   return map;
 }
 
+static clay::Value::Map CreateHandleMap(float x, float y, float radius) {
+  clay::Value::Map map;
+  map["x"] = clay::Value(x);
+  map["y"] = clay::Value(y);
+  map["radius"] = clay::Value(radius);
+  return map;
+}
+
 TextView::TextView(int id, PageView* page_view)
     : TextView(id, "text", std::make_unique<RenderText>(), page_view) {}
 
@@ -70,15 +88,20 @@ void TextView::SetAttribute(const char* attr, const clay::Value& value) {
   if (kw == KeywordID::kTextSelection) {
     if ((is_text_selection_ = attribute_utils::GetBool(value))) {
       SetFocusable(true);
-      ResetGestureRecognizers();
+      if (!custom_text_selection_) {
+        ResetGestureRecognizers();
+      }
       GetRenderText()->SetSelectionChangedListener(
-          [this](TextBox* text_box, int selection_start, int selection_end) {
-            BringIntoView(text_box);
+          [this](int selection_start, int selection_end) {
             OnSelectionChanged(selection_start, selection_end);
           });
     } else {
       ClearGestureRecognizers();
     }
+  } else if (kw == KeywordID::kCustomContextMenu) {
+    custom_context_menu_ = attribute_utils::GetBool(value);
+  } else if (kw == KeywordID::kCustomTextSelection) {
+    custom_text_selection_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kColor) {
     if (value.IsUint()) {
       SetColor(Color(attribute_utils::GetUint(value, 0xff000000)));
@@ -171,6 +194,8 @@ void TextView::UpdateHotKeyTag(LogicalKeyboardKey key_code, bool is_up) {
 void TextView::ClearGestureRecognizers() {
 #if defined(OS_ANDROID) || defined(OS_IOS)
   RemoveGestureRecognizer(long_press_recognizer_);
+  RemoveGestureRecognizer(double_tap_recognizer_);
+  double_tap_recognizer_ = nullptr;
   long_press_recognizer_ = nullptr;
 #else
   RemoveGestureRecognizer(drag_recognizer_);
@@ -211,23 +236,48 @@ void TextView::HandleWinCtrlAndMacCommandHotKey(LogicalKeyboardKey key_code) {
 void TextView::ResetGestureRecognizers() {
   ClearGestureRecognizers();
 #if defined(OS_ANDROID) || defined(OS_IOS)
+#ifndef ENABLE_CLAY_LITE
+  auto double_tap_recognizer = std::make_unique<MultiTapGestureRecognizer>(
+      page_view()->gesture_manager());
+  double_tap_recognizer_ = double_tap_recognizer.get();
+  double_tap_recognizer->SetMultiTapCallback(
+      [this](const PointerEvent& up_event, int tap_counts) {
+        if (tap_counts == 2) {
+          auto point = up_event.position - BoundsRelativeTo(nullptr).location();
+          RequestFocus();
+          auto render_text = GetRenderText();
+          auto glyph_pos =
+              render_text->GetPainter()->GetGlyphPositionAtCoordinate(
+                  point.x(), point.y());
+          auto word = SelectWord(glyph_pos.first);
+          render_text->SetSelection(word);
+          auto range = GetRenderText()->GetSelection();
+          selection_start_pos_ = range.start();
+          selection_end_pos_ = range.end();
+          ShowSelectionHandle();
+          if (!custom_context_menu_) {
+            ShowSelectionPopup();
+          }
+        }
+      });
   auto long_press_recognizer = std::make_unique<LongPressGestureRecognizer>(
       page_view()->gesture_manager());
   long_press_recognizer_ = long_press_recognizer.get();
-  long_press_recognizer->SetLongPressDownCallback(
+  long_press_recognizer->SetLongPressStartCallback(
       [this](const PointerEvent& event) {
-        PerformBeginSelection(event.position);
+        RequestFocus();
+        GetRenderText()->SetAllSelection();
+        auto range = GetRenderText()->GetSelection();
+        selection_start_pos_ = range.start();
+        selection_end_pos_ = range.end();
+        ShowSelectionHandle();
+        if (!custom_context_menu_) {
+          ShowSelectionPopup();
+        }
       });
-  long_press_recognizer->SetLongPressMoveCallback(
-      [this](const PointerEvent& event) {
-        PerformMoveSelection(event.position);
-      });
-  long_press_recognizer->SetLongPressCancelCallback(
-      [this]() { PerformCancelSelection(); });
-  long_press_recognizer->SetLongPressEndCallback(
-      [this](const PointerEvent&) { ShowSelectionPopup(); });
-  long_press_recognizer->SetDriftTolerance(10000);
   AddGestureRecognizer(std::move(long_press_recognizer));
+  AddGestureRecognizer(std::move(double_tap_recognizer));
+#endif
 #else
   auto drag_recognizer =
       std::make_unique<DragGestureRecognizer>(page_view()->gesture_manager());
@@ -248,26 +298,47 @@ void TextView::ResetGestureRecognizers() {
 #endif
 }
 
+TextRange TextView::SelectWord(size_t pos) {
+  auto painter = GetRenderText()->GetPainter();
+  auto word_range = painter->GetWordBoundary(pos);
+  GetRenderText()->SetSelection(word_range);
+  return word_range;
+}
+
 void TextView::PerformBeginSelection(FloatPoint point) {
 #ifndef ENABLE_CLAY_LITE
   point -= BoundsRelativeTo(nullptr).location();
-  selection_start_pos_ = point;
-  selection_end_pos_ = point;
+  selection_start_pos_ =
+      GetRenderText()
+          ->GetPainter()
+          ->GetGlyphPositionAtCoordinate(point.x(), point.y())
+          .first;
+  selection_end_pos_ = selection_start_pos_;
   static_cast<RenderText*>(render_object())
-      ->SetSelection(selection_start_pos_, selection_end_pos_);
+      ->SetSelection(TextRange(selection_start_pos_, selection_end_pos_));
 #endif
 }
 
-void TextView::PerformMoveSelection(FloatPoint point) {
+void TextView::PerformMoveSelection(FloatPoint point,
+                                    SelectionHandleView* handle_bar) {
 #ifndef ENABLE_CLAY_LITE
   point -= BoundsRelativeTo(nullptr).location();
-  selection_end_pos_ = point;
-  static_cast<RenderText*>(render_object())
-      ->SetSelection(selection_start_pos_, selection_end_pos_);
+  selection_end_pos_ = GetRenderText()
+                           ->GetPainter()
+                           ->GetGlyphPositionAtCoordinate(point.x(), point.y())
+                           .first;
+  auto render_text = GetRenderText();
+  render_text->SetSelection(
+      TextRange(selection_start_pos_, selection_end_pos_));
+  auto text_box = render_text->GetEndTextPositionTopAndBottom();
+  BringIntoView(&text_box);
 #endif
 }
 
-void TextView::PerformCancelSelection() { HideSelectionPopup(); }
+void TextView::PerformCancelSelection() {
+  HideSelectionPopup();
+  HideSelectionHandle();
+}
 
 void TextView::OnSelectionChanged(int selection_start, int selection_end) {
   std::string direction;
@@ -280,6 +351,60 @@ void TextView::OnSelectionChanged(int selection_start, int selection_end) {
       id(), event_attr::kEventEditSelectionChange,
       {"start", "end", "direction"}, std::min(selection_start, selection_end),
       std::max(selection_start, selection_end), direction.c_str());
+}
+
+void TextView::setTextSelection(const LynxModuleValues& args,
+                                const LynxUIMethodCallback& callback) {
+  int start_x = 0, start_y = 0, end_x = 0, end_y = 0;
+  bool show_start_handle = true, show_end_handle = true;
+  CastNamedLynxModuleArgs(
+      {"startX", "startY", "endX", "endY", "showStartHandle", "showEndHandle"},
+      args, start_x, start_y, end_x, end_y, show_start_handle, show_end_handle);
+  auto render_text = GetRenderText();
+  auto start_index = render_text->GetPainter()
+                         ->GetGlyphPositionAtCoordinate(start_x, start_y)
+                         .first;
+  auto end_index = render_text->GetPainter()
+                       ->GetGlyphPositionAtCoordinate(end_x, end_y)
+                       .first;
+  render_text->SetSelection(TextRange(start_index, end_index));
+  ShowSelectionHandle(show_start_handle, show_end_handle);
+
+  const auto& line_rects =
+      GetRenderText()->GetTextLineRects(start_index, end_index);
+  const auto& bounding_rect = page_view()->ConvertTo<kPixelTypeLogical>(
+      GetRenderText()->GetTextBoundingRect(start_index, end_index, line_rects));
+  clay::Value::Map result;
+  result["boundingRect"] = clay::Value(CreateRectMap(bounding_rect));
+  clay::Value::Array box_array(line_rects.size());
+  for (size_t i = 0; i < line_rects.size(); i++) {
+    box_array[i] = clay::Value(CreateRectMap(
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects[i])));
+  }
+  clay::Value::Array handle_array(2);
+  if (!line_rects.empty()) {
+    auto start_handle_x =
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().left()) -
+        -1;
+    auto start_handle_y =
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().top()) - 6;
+    auto end_handle_x =
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().right()) +
+        1;
+    auto end_handle_y =
+        page_view()->ConvertTo<kPixelTypeLogical>(line_rects.front().bottom()) +
+        6;
+    handle_array[0] =
+        clay::Value(CreateHandleMap(start_handle_x, start_handle_y, 6));
+    handle_array[1] =
+        clay::Value(CreateHandleMap(end_handle_x, end_handle_y, 6));
+  } else {
+    handle_array[0] = clay::Value();
+    handle_array[1] = clay::Value();
+  }
+  result["boxes"] = clay::Value(std::move(box_array));
+  result["handles"] = clay::Value(std::move(handle_array));
+  callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(result)));
 }
 
 void TextView::getTextBoundingRect(const LynxModuleValues& args,
@@ -307,6 +432,11 @@ void TextView::getTextBoundingRect(const LynxModuleValues& args,
   callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(result)));
 }
 
+void TextView::getSelectedText(const LynxUIMethodCallback& callback) {
+  auto text = lynx::base::U16StringToU8(GetRenderText()->GetSelectionString());
+  callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(text)));
+}
+
 RenderText* TextView::GetRenderText() {
   return static_cast<RenderText*>(render_object_.get());
 }
@@ -328,9 +458,12 @@ void TextView::OnBoundsChanged(const FloatRect& old_bounds,
 
 void TextView::FocusHasChanged(bool focused, bool is_leaf) {
 #ifndef ENABLE_CLAY_LITE
-  GetRenderText()->SetSelection(selection_end_pos_, selection_end_pos_);
+  GetRenderText()->SetSelection(
+      TextRange(selection_end_pos_, selection_end_pos_));
 #endif
   BaseView::FocusHasChanged(focused, is_leaf);
+  HideSelectionPopup();
+  HideSelectionHandle();
 }
 
 BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
@@ -449,33 +582,23 @@ bool TextView::ClickOnText(size_t glyph_index,
   return false;
 }
 
-void TextView::ApplyPaintTransform(BaseView* child, Transform* transform) {
-  FloatPoint point(Left(), Top());
-  auto parent = Parent();
-  FloatSize offset = parent->GetScrollOffset();
-  point.Move(-offset.width(), -offset.height());
-
-  point.Move(parent->Left(), parent->Top());
-  transform->Translate(point.x(), point.y());
-}
-
 std::vector<FloatPoint> TextView::GetAnchorPosition() {
+#ifndef ENABLE_CLAY_LITE
   RenderText* render_text = GetRenderText();
-  auto select_position = render_text->GetSelectPosition();
+  auto select_range = render_text->GetSelectionRange();
   std::vector<Point> end_points = render_text->GetPointsFromRangeSelection(
-      select_position[0], select_position[1]);
+      select_range[0], select_range[1]);
   if (end_points.empty()) {
     return std::vector<FloatPoint>();
   }
-  ScrollView* scroll_view = FindScrollView();
-  FloatSize scroll_offset;
-  if (scroll_view != nullptr) {
-    scroll_offset = scroll_view->GetScrollOffset();
-  }
-  auto start_point = FloatPoint(0, 0);
-  auto end_point = FloatPoint(width_, height_);
-  LocalToGlobal(start_point);
-  LocalToGlobal(end_point);
+  FML_DCHECK(selection_handle_container_);
+  auto container_bounds_rect =
+      selection_handle_container_->BoundsRelativeTo(nullptr);
+  auto bounds_rect = BoundsRelativeTo(nullptr);
+  auto start_point = FloatPoint(0 + bounds_rect.left(), 0 + bounds_rect.top());
+  auto end_point =
+      FloatPoint(width_ + bounds_rect.left(),
+                 std::min(height_ + bounds_rect.top(), bounds_rect.bottom()));
   auto left = std::min(start_point.x(), end_point.x());
   auto top = std::min(start_point.y(), end_point.y());
   auto right = std::max(start_point.x(), end_point.x());
@@ -483,30 +606,28 @@ std::vector<FloatPoint> TextView::GetAnchorPosition() {
   FloatRect editing_region = FloatRect(left, top, right - left, bottom - top);
   bool is_multiline =
       end_points.back().y() - end_points.front().y() >
-      render_text->GetPainter()->GetLineHeightForPosition(select_position[1]) /
-          2;
+      render_text->GetPainter()->GetLineHeightForPosition(select_range[1]) / 2;
   double mid_x = is_multiline
                      ? editing_region.width() / 2
-                     : (end_points.front().x() + end_points.back().x()) / 2 -
-                           scroll_offset.width();
-  FloatPoint mid_point =
-      FloatPoint(mid_x, end_points[0].y() - scroll_offset.height() -
-                            render_text->GetPainter()->GetLineHeightForPosition(
-                                select_position[1]));
+                     : (end_points.front().x() + end_points.back().x()) / 2;
   // TODO(wangyanyi) now just not consider the iOS, because in iOS there is a
   // safe area concept
   double anchor_x =
-      std::clamp(static_cast<double>(mid_point.x() + editing_region.x()), 8.0,
+      std::clamp(static_cast<double>(mid_x + editing_region.x()), 8.0,
                  static_cast<double>(page_view()->Width()) - 8.0);
   FloatPoint anchor_above = FloatPoint(
-      anchor_x, end_points.front().y() - scroll_offset.height() -
-                    render_text->GetPainter()->GetLineHeightForPosition(
-                        select_position[1]) +
-                    editing_region.y());
+      anchor_x,
+      std::max<float>(end_points.front().y() -
+                          render_text->GetPainter()->GetLineHeightForPosition(
+                              select_range[1]) +
+                          editing_region.y(),
+                      container_bounds_rect.top()));
   FloatPoint anchor_blow =
-      FloatPoint(anchor_x, end_points.back().y() - scroll_offset.height() +
-                               editing_region.y());
+      FloatPoint(anchor_x, end_points.back().y() + editing_region.y());
   return std::vector<FloatPoint>{anchor_above, anchor_blow};
+#else
+  return std::vector<FloatPoint>();
+#endif
 }
 
 void TextView::ShowSelectionPopup() {
@@ -514,30 +635,27 @@ void TextView::ShowSelectionPopup() {
   if (GetRenderText()->IsCollapsed()) {
     return;
   }
-#if OS_ANDROID || OS_IOS
   HideSelectionPopup();
-  selection_popup_ = new SelectionPopupView(page_view());
-  selection_popup_->SetCopyFunction([weak = weak_factory_.GetWeakPtr()]() {
-    if (weak) {
-      weak->HandleCopy();
-    }
-  });
-  selection_popup_->SetSelectAllFunction([weak = weak_factory_.GetWeakPtr()]() {
-    if (weak) {
-      weak->HandleSelectAll();
-    }
-  });
+  if (!selection_popup_) {
+    selection_popup_ = new SelectionPopupView(page_view());
+    selection_popup_->SetCopyFunction([weak = weak_factory_.GetWeakPtr()]() {
+      if (weak) {
+        weak->HandleCopy();
+      }
+    });
+    selection_popup_->SetSelectAllFunction(
+        [weak = weak_factory_.GetWeakPtr()]() {
+          if (weak) {
+            weak->HandleSelectAll();
+          }
+        });
+  }
   selection_popup_->SetAnchorOffset(GetAnchorPosition());
-  auto scroll_view = FindScrollView();
-  selection_popup_->SetBoundsHeightAndWidth(
-      scroll_view ? std::min(scroll_view->Width(), this->Width())
-                  : std::min(this->Width(), page_view()->Width()),
-      scroll_view ? std::min(scroll_view->Height(), this->Height())
-                  : std::min(this->Height(), page_view()->Height()));
+  selection_popup_->SetBoundsHeightAndWidth(page_view()->Width(),
+                                            page_view()->Height());
   selection_popup_->BuildSelectionPopup(
       std::vector<ActionType>{ActionType::kCopy, ActionType::kSelectAll});
   page_view()->AddChild(selection_popup_);
-#endif
 #endif
 }
 
@@ -551,11 +669,176 @@ void TextView::HideSelectionPopup() {
 #endif
 }
 
+FloatRect TextView::GetDisplayRect() {
+  FloatRect result = BoundsRelativeTo(nullptr);
+  auto parent = Parent();
+  while (parent) {
+    auto parent_rect = parent->BoundsRelativeTo(nullptr);
+    result.Intersect(parent_rect);
+    parent = parent->Parent();
+  }
+  return result;
+}
+
+void TextView::ShowSelectionHandle(bool show_start_handle,
+                                   bool show_end_handle) {
+#ifndef ENABLE_CLAY_LITE
+  if (GetRenderText()->IsCollapsed()) {
+    return;
+  }
+  HideSelectionHandle();
+  auto stroke_width = page_view()->ConvertFrom<kPixelTypeLogical>(2);
+  if (!start_selection_handle_ && show_start_handle) {
+    start_selection_handle_ =
+        new SelectionHandleView(page_view(), TextSelectionHandleType::kLeft);
+    start_selection_handle_->SetHandleMove(
+        [this](const FloatPoint& position, SelectionHandleView* view) {
+          UpdateSelectionHandle(position, view);
+          if (!custom_context_menu_) {
+            ShowSelectionPopup();
+          }
+        });
+    auto text_box = GetRenderText()->GetStartTextPositionTopAndBottom();
+    auto offset =
+        FloatPoint(text_box.GetLeft() + scroll_offset_.x() + stroke_width,
+                   text_box.GetTop() + scroll_offset_.y() + stroke_width);
+    start_selection_handle_->BuildSelectionHandle(text_box.rect.height(),
+                                                  offset);
+  }
+  if (!end_selection_handle_ && show_end_handle) {
+    end_selection_handle_ =
+        new SelectionHandleView(page_view(), TextSelectionHandleType::kRight);
+    end_selection_handle_->SetHandleMove(
+        [this](const FloatPoint& position, SelectionHandleView* view) {
+          UpdateSelectionHandle(position, view);
+          if (!custom_context_menu_) {
+            ShowSelectionPopup();
+          }
+        });
+    auto text_box = GetRenderText()->GetEndTextPositionTopAndBottom();
+    auto offset =
+        FloatPoint(text_box.GetRight() + scroll_offset_.x() + stroke_width,
+                   text_box.GetTop() + scroll_offset_.y() + stroke_width);
+    end_selection_handle_->BuildSelectionHandle(text_box.rect.height(), offset);
+  }
+  if (!selection_handle_container_) {
+    selection_handle_container_ =
+        new OverlayView(-1, "handle_container", page_view());
+    selection_handle_container_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+    page_view()->AddChild(selection_handle_container_);
+    auto display_rect = GetDisplayRect();
+    selection_handle_container_->SetBound(
+        display_rect.left() - stroke_width, display_rect.top() - stroke_width,
+        display_rect.width() + 2 * stroke_width,
+        display_rect.height() + 2 * stroke_width);
+    selection_handle_container_->AddChild(start_selection_handle_);
+    selection_handle_container_->AddChild(end_selection_handle_);
+  }
+#endif
+}
+
+void TextView::UpdateSelectionHandle(FloatPoint point,
+                                     SelectionHandleView* handle_bar) {
+#ifndef ENABLE_CLAY_LITE
+  if (!handle_bar) {
+    ShowSelectionHandle();
+  }
+  auto stroke_width = page_view()->ConvertFrom<kPixelTypeLogical>(2);
+  auto render_text = GetRenderText();
+  auto handle_point = BoundsRelativeTo(this).location();
+  float delta =
+      handle_bar->ProcessHandlePos(handle_point, render_text->GetLeftTextBox(),
+                                   render_text->GetRightTextBox());
+  point -= BoundsRelativeTo(nullptr).location();
+  point.SetY(point.y() - delta);
+  auto end_pos = render_text->GetPainter()->GetGlyphPositionAtCoordinate(
+      point.x(), point.y());
+  auto selection_range = render_text->GetSelectionRange();
+  if (handle_bar->GetHandleType() == TextSelectionHandleType::kLeft) {
+    render_text->SetSelection(TextRange(selection_range[1], end_pos.first));
+    selection_start_pos_ = selection_range[1];
+  } else {
+    render_text->SetSelection(TextRange(selection_range[0], end_pos.first));
+    selection_start_pos_ = selection_range[0];
+  }
+  selection_end_pos_ = end_pos.first;
+  TextBox end_box = GetRenderText()->GetEndTextPositionTopAndBottom();
+  BringIntoView(&end_box);
+
+  FloatPoint left_offset;
+  FloatPoint right_offset;
+  if (selection_end_pos_ > selection_start_pos_) {
+    auto left_box = render_text->GetLeftTextBox();
+    auto right_box = render_text->GetRightTextBox();
+    left_offset =
+        FloatPoint(left_box.GetLeft() + scroll_offset_.x() + stroke_width,
+                   left_box.GetTop() + scroll_offset_.y() + stroke_width);
+    right_offset =
+        FloatPoint(right_box.GetRight() + scroll_offset_.x() + stroke_width,
+                   right_box.GetTop() + scroll_offset_.y() + stroke_width);
+    handle_bar->SetHandleType(TextSelectionHandleType::kRight);
+    handle_bar->BuildSelectionHandle(right_box.rect.height(), right_offset);
+    if (handle_bar == start_selection_handle_ && end_selection_handle_) {
+      end_selection_handle_->SetHandleType(TextSelectionHandleType::kLeft);
+      end_selection_handle_->BuildSelectionHandle(left_box.rect.height(),
+                                                  left_offset);
+    } else if (handle_bar == end_selection_handle_ && start_selection_handle_) {
+      start_selection_handle_->SetHandleType(TextSelectionHandleType::kLeft);
+      start_selection_handle_->BuildSelectionHandle(left_box.rect.height(),
+                                                    left_offset);
+    }
+
+  } else if (selection_end_pos_ < selection_start_pos_) {
+    auto left_box = render_text->GetLeftTextBox();
+    auto right_box = render_text->GetRightTextBox();
+    left_offset =
+        FloatPoint(left_box.GetLeft() + scroll_offset_.x() + stroke_width,
+                   left_box.GetTop() + scroll_offset_.y() + stroke_width);
+    right_offset =
+        FloatPoint(right_box.GetRight() + scroll_offset_.x() + stroke_width,
+                   right_box.GetTop() + scroll_offset_.y() + stroke_width);
+    handle_bar->SetHandleType(TextSelectionHandleType::kLeft);
+    handle_bar->BuildSelectionHandle(left_box.rect.height(), left_offset);
+    if (handle_bar == start_selection_handle_ && end_selection_handle_) {
+      end_selection_handle_->SetHandleType(TextSelectionHandleType::kRight);
+      end_selection_handle_->BuildSelectionHandle(right_box.rect.height(),
+                                                  right_offset);
+    } else if (handle_bar == end_selection_handle_ && start_selection_handle_) {
+      start_selection_handle_->SetHandleType(TextSelectionHandleType::kRight);
+      start_selection_handle_->BuildSelectionHandle(right_box.rect.height(),
+                                                    right_offset);
+    }
+  } else {
+    HideSelectionHandle();
+    HideSelectionPopup();
+  }
+#endif
+}
+
+void TextView::HideSelectionHandle() {
+#ifndef ENABLE_CLAY_LITE
+  page_view()->RemoveChild(selection_handle_container_);
+  if (start_selection_handle_) {
+    selection_handle_container_->RemoveChild(start_selection_handle_);
+    delete start_selection_handle_;
+    start_selection_handle_ = nullptr;
+  }
+  if (end_selection_handle_) {
+    selection_handle_container_->RemoveChild(end_selection_handle_);
+    delete end_selection_handle_;
+    end_selection_handle_ = nullptr;
+  }
+  delete selection_handle_container_;
+  selection_handle_container_ = nullptr;
+#endif
+}
+
 void TextView::HandleCopy() {
 #ifndef ENABLE_CLAY_LITE
   auto editing_text = GetRenderText()->GetSelectionString();
   page_view()->SetClipboardData(editing_text);
-  GetRenderText()->SetSelection(selection_end_pos_, selection_end_pos_);
+  GetRenderText()->SetSelection(
+      TextRange(selection_end_pos_, selection_end_pos_));
   page_view()->GetTaskRunner()->PostTask([weak = weak_factory_.GetWeakPtr()]() {
     if (weak) {
       weak->HideSelectionPopup();
@@ -595,6 +878,14 @@ void TextView::BringIntoView(TextBox* text_box) {
         (additional_offset + scroll_view->GetScrollOffset().height()), 0.f,
         static_cast<RenderScroll*>(scroll_view->render_object())
             ->MaxScrollHeight());
+#ifndef ENABLE_CLAY_LITE
+    if (start_selection_handle_) {
+      start_selection_handle_->SetScrollOffset(FloatPoint(0, target_offset));
+    }
+    if (end_selection_handle_) {
+      end_selection_handle_->SetScrollOffset(FloatPoint(0, target_offset));
+    }
+#endif
   } else if (scroll_view->CanScrollX()) {
     auto additional_offset = std::clamp(
         static_cast<float>(0.0),
@@ -605,9 +896,17 @@ void TextView::BringIntoView(TextBox* text_box) {
         (additional_offset + scroll_view->GetScrollOffset().width()), 0.f,
         static_cast<RenderScroll*>(scroll_view->render_object())
             ->MaxScrollWidth());
+#ifndef ENABLE_CLAY_LITE
+    if (start_selection_handle_) {
+      start_selection_handle_->SetScrollOffset(FloatPoint(target_offset, 0));
+    }
+    if (end_selection_handle_) {
+      end_selection_handle_->SetScrollOffset(FloatPoint(target_offset, 0));
+    }
+#endif
   }
   scroll_view->StopAnimation();
-  scroll_view->ScrollTo(true, target_offset);
+  scroll_view->ScrollTo(false, target_offset);
 }
 
 ScrollView* TextView::FindScrollView() {
@@ -635,6 +934,24 @@ bool TextView::IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
   } else {
     return true;
   }
+}
+
+void TextView::OnViewPostionUpdate(FloatPoint scroll_offset) {
+#ifndef ENABLE_CLAY_LITE
+  if (start_selection_handle_) {
+    start_selection_handle_->UpdatePosWithScroll(scroll_offset -
+                                                 scroll_offset_);
+  }
+  if (end_selection_handle_) {
+    end_selection_handle_->UpdatePosWithScroll(scroll_offset - scroll_offset_);
+  }
+  if (selection_popup_) {
+    selection_popup_->UpdatePosWithScroll(
+        scroll_offset, selection_handle_container_->BoundsRelativeTo(nullptr));
+  }
+  scroll_offset_ = scroll_offset;
+#endif
+  BaseView::OnViewPostionUpdate(scroll_offset);
 }
 
 }  // namespace clay

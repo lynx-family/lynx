@@ -13,6 +13,7 @@
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/viscous_fluid_interpolator.h"
+#include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -877,6 +878,13 @@ bool ScrollView::CanInvokeScrollImmediately() const {
     return view_size != 0 &&
            content_size > GetRenderScroll()->PaddingBoxRect().width();
   }
+}
+
+FloatPoint ScrollView::DoScroll(FloatPoint delta, bool by_user_input,
+                                bool ignore_repaint) {
+  auto point = NestedScrollable::DoScroll(delta, by_user_input, ignore_repaint);
+  OnViewPostionUpdate(FloatPoint(0, 0));
+  return point;
 }
 
 }  // namespace clay

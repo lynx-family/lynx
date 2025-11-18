@@ -115,6 +115,9 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   std::string ToString() const override;
 #endif
 
+  FloatPoint DoScroll(FloatPoint delta, bool by_user_input = true,
+                      bool ignore_repaint = false) override;
+
  protected:
   virtual void CalculateOverFlow();
 

@@ -33,3 +33,10 @@ ui_common_sources = [
   "value_utils.cc",
   "value_utils.h",
 ]
+
+if (!enable_clay_lite) {
+  ui_common_sources += [
+    "overlay_manager.cc",
+    "overlay_manager.h",
+  ]
+}

@@ -5,8 +5,10 @@
 #ifndef CLAY_UI_RENDERING_RENDER_BOX_H_
 #define CLAY_UI_RENDERING_RENDER_BOX_H_
 
+#include <optional>
 #include <string>
 
+#include "clay/gfx/geometry/float_rect.h"
 #include "clay/ui/component/css_property.h"
 #include "clay/ui/painter/painting_context.h"
 #include "clay/ui/rendering/render_object.h"
@@ -134,6 +136,7 @@ class RenderBox : public RenderObject {
   float scroll_top_ = 0.f;
 
   FloatRect overflow_rect_;
+  std::optional<FloatRect> clip_rect_;
   DirectionType layout_direction_ = DirectionType::kLtr;
 };
 

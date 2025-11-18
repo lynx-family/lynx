@@ -5,7 +5,10 @@
 #ifndef CLAY_UI_PAINTER_BOX_PAINTER_H_
 #define CLAY_UI_PAINTER_BOX_PAINTER_H_
 
+#include <optional>
+
 #include "clay/gfx/geometry/float_point.h"
+#include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/rendering_backend.h"

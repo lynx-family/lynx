@@ -13,17 +13,14 @@
 #include "clay/ui/component/text/raw_text_view.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/rendering/render_container.h"
-#include "clay/ui/shadow/inner_text_shadow_node.h"
 #include "clay/ui/shadow/raw_text_shadow_node.h"
 
 namespace clay {
 
 namespace {
 
-#if OS_ANDROID
 constexpr double kDefaultBorderWidth = 1.0;
-constexpr double kAndroidDefaultRadius = 10.0;
-#endif
+constexpr double kDefaultRadius = 10.0;
 constexpr double kDefaultEndPadding = 14.5;
 constexpr double kDefaultMidPadding = 9.5;
 constexpr double kDefaultAbovePadding = 20.0;
@@ -47,8 +44,7 @@ SelectionPopupView::~SelectionPopupView() {
 void SelectionPopupView::BuildSelectionPopup(
     const std::vector<ActionType>& types) {
   FML_DCHECK(this->child_count() == 0);
-#if OS_ANDROID
-  this->SetBorderRadius(FromLogical(kAndroidDefaultRadius));
+  this->SetBorderRadius(FromLogical(kDefaultRadius));
   this->SetBorderColor(Color::kBlack(), Color::kBlack(), Color::kBlack(),
                        Color::kBlack());
   auto border_width = FromLogical(kDefaultBorderWidth);
@@ -56,9 +52,6 @@ void SelectionPopupView::BuildSelectionPopup(
   this->SetBorderStyle(BorderStyleType::kSolid, BorderStyleType::kSolid,
                        BorderStyleType::kSolid, BorderStyleType::kSolid);
   this->SetBackgroundColor(Color::kWhite());
-#elif OS_IOS
-  // TODO(wangyanyi)
-#endif
   float menu_width = 0;
   float menu_height = 0;
   for (auto type : types) {
@@ -95,6 +88,8 @@ void SelectionPopupView::BuildSelectionPopup(
                                     menu_height + kPopupContentDistance));
   this->SetX(offset.x());
   this->SetY(offset.y());
+  origin_top_ = Top();
+  origin_left_ = Left();
   this->SetContentWidth(menu_width);
   this->SetContentHeight(menu_height);
 }
@@ -144,11 +139,11 @@ FloatPoint SelectionPopupView::GetPositionForChild(FloatSize size,
   } else {
     anchor = fits_above ? anchor_above : anchor_below;
   }
-  return FloatPoint(CenterOn(anchor.x(), child_size.width(), size.width()),
-                    fits_above
-                        ? std::max(0.0, anchor.y() - child_size.height() -
-                                            kPopupContentDistance)
-                        : anchor.y() + kPopupContentDistance);
+  return FloatPoint(
+      CenterOn(anchor.x(), child_size.width(), size.width()),
+      fits_above ? std::max<float>(0.0, anchor.y() - child_size.height() -
+                                            FromLogical(kPopupContentDistance))
+                 : anchor.y() + FromLogical(kPopupContentDistance));
 }
 
 double SelectionPopupView::CenterOn(double position, double width, double max) {
@@ -159,6 +154,16 @@ double SelectionPopupView::CenterOn(double position, double width, double max) {
     return max - width;
   }
   return position - width / 2.0;
+}
+
+void SelectionPopupView::UpdatePosWithScroll(FloatPoint scroll_offset,
+                                             FloatRect bounding_rect) {
+  SetY(scroll_offset.y() < 0
+           ? std::max(scroll_offset.y() + origin_top_,
+                      bounding_rect.top() - height_ -
+                          FromLogical(kPopupContentDistance))
+           : std::min(scroll_offset.y() + origin_top_, bounding_rect.bottom()));
+  SetX(scroll_offset.x() + origin_left_);
 }
 
 }  // namespace clay

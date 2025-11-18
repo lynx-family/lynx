@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "clay/gfx/geometry/float_rect.h"
 #include "clay/ui/component/base_view.h"
 
 namespace clay {
@@ -58,6 +59,8 @@ class SelectionPopupView : public WithTypeInfo<SelectionPopupView, BaseView> {
     bounds_height_ = height;
   }
 
+  void UpdatePosWithScroll(FloatPoint scroll_offset, FloatRect bounding_rect);
+
  private:
   InternalTextView* CreateTextViewByText(const std::string& text, int left,
                                          int top, MenuIndex index) const;
@@ -68,6 +71,9 @@ class SelectionPopupView : public WithTypeInfo<SelectionPopupView, BaseView> {
 
   int bounds_width_ = 0;
   int bounds_height_ = 0;
+
+  float origin_top_ = 0;
+  float origin_left_ = 0;
 };
 
 }  // namespace clay

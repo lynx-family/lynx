@@ -105,6 +105,8 @@ enum class KeywordID {
   kTextDecoration,
   kTextShadow,
   kTextSelection,
+  kCustomContextMenu,
+  kCustomTextSelection,
   kTextStrokeColor,
   kTextStrokeWidth,
   kTextIndent,

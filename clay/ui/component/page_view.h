@@ -67,6 +67,7 @@ class ServiceManager;
 class ViewContext;
 class NativeView;
 class TimingCollectorDelegate;
+class OverlayManager;
 
 class PageView : public BaseView,
                  public RendererClient,
@@ -433,6 +434,10 @@ class PageView : public BaseView,
 
   uint64_t PageUniqueId() const { return page_unique_id_; }
 
+#if !defined(ENABLE_CLAY_LITE)
+  OverlayManager* overlay_manager() { return overlay_manager_.get(); }
+#endif
+
  protected:
   void OnDestroy() override;
 
@@ -462,8 +467,7 @@ class PageView : public BaseView,
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
   // Report pointer event with specified type
-  virtual void ReportTopViewEvent(const PointerEvent& event,
-                                  ClayEventType type);
+  void ReportTopViewEvent(const PointerEvent& event, ClayEventType type);
   // Report pointer event with the type deduced by event.device and
   // event.type
   void ReportTopViewEvent(const PointerEvent& event);
@@ -547,7 +551,6 @@ class PageView : public BaseView,
   std::vector<fml::WeakPtr<BaseView>> exposure_event_data_set_;
   std::vector<fml::WeakPtr<BaseView>> disexposure_event_data_set_;
 
-  bool keyevent_handled_ = false;
   bool use_texture_backend_ = true;
   EventDelegate* event_delegate_ = nullptr;
   UIComponentDelegate* ui_component_delegate_ = nullptr;
@@ -568,6 +571,9 @@ class PageView : public BaseView,
   const uint64_t page_unique_id_;
   BaseView* pan_zoom_target_ = nullptr;
   BaseView* wheel_target_ = nullptr;
+#if !defined(ENABLE_CLAY_LITE)
+  std::unique_ptr<OverlayManager> overlay_manager_;
+#endif
 };
 
 }  // namespace clay

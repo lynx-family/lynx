@@ -160,6 +160,7 @@ if (enable_unittests) {
       "component/list/list_item_length_cache_unittests.cc",
       "component/native_view_unittests.cc",
       "component/nested_scroll/nested_scrollable_unittests.cc",
+      "component/overlay_view_unittests.cc",
       "component/page_view_unittests.cc",
       "component/scroll_view_unittests.cc",
       "compositing/frame_builder_unittests.cc",

@@ -353,9 +353,8 @@ TextRange TextPainter::GetWordBoundary(size_t offset) {
 }
 
 std::vector<FloatRect> TextPainter::GetTextLineRects(int start, int end) {
-  FML_DCHECK(start < end);
   std::vector<FloatRect> line_rects;
-  if (!paragraph_) {
+  if (start < end || !paragraph_) {
     return line_rects;
   }
   auto line_metrics = paragraph_->GetLineMetrics();

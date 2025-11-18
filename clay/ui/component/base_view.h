@@ -280,6 +280,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
     // updates.
     Invalidate();
   }
+  virtual void OnViewPostionUpdate(FloatPoint scroll_offset);
   virtual void NotifyLowMemory() {}
 
   virtual void SetAttribute(const char* attr, const clay::Value& value);
@@ -377,10 +378,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   FloatPoint GetPointBySelf(const FloatPoint& point_by_page) const;
   Transform LocalToGlobalTransform() const;
-
-  virtual void ApplyPaintTransform(BaseView* child, Transform* transform) {}
-  Transform getTransformTo(BaseView* ancestor = nullptr);
-  void LocalToGlobal(FloatPoint& point);
 
   // FocusNode
   FocusManager* GetParentFocusManager() override;

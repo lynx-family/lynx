@@ -88,6 +88,8 @@ direction
 text-decoration
 text-shadow
 text-selection
+custom-context-menu
+custom-text-selection
 text-stroke-color
 text-stroke-width
 text-indent

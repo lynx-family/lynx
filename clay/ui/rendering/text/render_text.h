@@ -27,7 +27,7 @@ namespace clay {
 
 class TextPainter;
 
-using SelectionChangedCallback = std::function<void(TextBox*, int, int)>;
+using SelectionChangedCallback = std::function<void(int, int)>;
 
 class RenderText : public RenderBox {
  public:
@@ -49,8 +49,7 @@ class RenderText : public RenderBox {
 
   TextPainter* GetPainter() { return painter_.get(); }
 
-  void SetSelection(const FloatPoint& select_start_position,
-                    const FloatPoint& select_end_position);
+  void SetSelection(const TextRange& range);
   void SetAllSelection();
 
   void PaintSelection(GraphicsContext* context);
@@ -62,10 +61,11 @@ class RenderText : public RenderBox {
   std::vector<Point> GetPointsFromRangeSelection(int select_start,
                                                  int select_end) const;
 
-  std::vector<int> GetSelectPosition() const {
+  std::vector<int> GetSelectionRange() const {
     return std::vector<int>{std::min(select_start_, select_end_),
                             std::max(select_start_, select_end_)};
   }
+  TextRange GetSelection() { return TextRange(select_start_, select_end_); }
 
   std::vector<FloatRect> GetTextLineRects(int start, int end);
   FloatRect GetTextBoundingRect(int start, int end,
@@ -78,8 +78,10 @@ class RenderText : public RenderBox {
 
   bool IsCollapsed() { return select_start_ == select_end_; }
 
-  std::optional<TextBox> GetEndTextPositionTopAndBottom() const;
-  std::optional<TextBox> GetStartTextPositionTopAndBottom() const;
+  TextBox GetLeftTextBox();
+  TextBox GetRightTextBox();
+  TextBox GetEndTextPositionTopAndBottom() const;
+  TextBox GetStartTextPositionTopAndBottom() const;
 
   void SetLineSpacingOffset(double offset) { line_spacing_offset_ = offset; }
   void SetTextPaintAlign(TextAlignment align) { text_paint_align_ = align; }

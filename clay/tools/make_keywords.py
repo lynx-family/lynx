@@ -79,7 +79,7 @@ def camelcase_name(name):
     return ''.join(w.capitalize() for w in name.split('-'))
 
 def main():
-    base_dir = os.path.join('oss','clay', 'ui', 'component')
+    base_dir = os.path.join('lynx','clay', 'ui', 'component')
     keywords_in = os.path.join(base_dir, 'keywords.in')
     keywords_h = os.path.join(base_dir, 'keywords.h')
     keywords_cc = os.path.join(base_dir, 'keywords.cc')

@@ -14,12 +14,16 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/common/measure_constraint.h"
+#include "clay/ui/common/text_input_type_traits.h"
+#include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/selection_handle_view.h"
 #include "clay/ui/component/selection_popup_view.h"
 #include "clay/ui/component/text/base_text_view.h"
 #include "clay/ui/component/text/layout_client.h"
 #include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
+#include "clay/ui/gesture/multi_tap_gesture_recognizer.h"
 #include "clay/ui/rendering/text/render_text.h"
 
 namespace clay {
@@ -64,14 +68,22 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void ClearGestureRecognizers();
 
   void FocusHasChanged(bool focused, bool is_leaf) override;
+  bool OnScrollToVisible() override { return false; }
 
   void PerformBeginSelection(FloatPoint point);
-  void PerformMoveSelection(FloatPoint point);
+  void PerformMoveSelection(FloatPoint point,
+                            SelectionHandleView* handle_bar = nullptr);
   void PerformCancelSelection();
 
+  TextRange SelectWord(size_t pos);
+
   void OnSelectionChanged(int selection_start, int selection_end);
+
+  void setTextSelection(const LynxModuleValues& args,
+                        const LynxUIMethodCallback& callback);
   void getTextBoundingRect(const LynxModuleValues& args,
                            const LynxUIMethodCallback& callback);
+  void getSelectedText(const LynxUIMethodCallback& callback);
 
   void OnContentSizeChanged(const FloatRect& old_rect,
                             const FloatRect& new_rect) override;
@@ -94,12 +106,17 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 
   RenderText* GetRenderText();
 
-  void ApplyPaintTransform(BaseView* child, Transform* transform) override;
-
   std::vector<FloatPoint> GetAnchorPosition();
 
   void ShowSelectionPopup();
   void HideSelectionPopup();
+  void ShowSelectionHandle(bool show_start_handle = true,
+                           bool show_end_handle = true);
+  void HideSelectionHandle();
+  void UpdateSelectionHandle(FloatPoint point,
+                             SelectionHandleView* handle_bar = nullptr);
+
+  FloatRect GetDisplayRect();
 
   void HandleCopy() override;
   void HandleSelectAll() override;
@@ -111,6 +128,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   bool IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
                         const PointerEvent& event) override;
 
+  void OnViewPostionUpdate(FloatPoint scroll_offset) override;
+
  private:
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                     FloatPoint* relative_position) override;
@@ -120,15 +139,23 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
                    txt::Paragraph* paragraph);
   bool is_text_selection_ = false;
 #if defined(OS_ANDROID) || defined(OS_IOS)
+  MultiTapGestureRecognizer* double_tap_recognizer_ = nullptr;
   LongPressGestureRecognizer* long_press_recognizer_ = nullptr;
 #else
   DragGestureRecognizer* drag_recognizer_ = nullptr;
 #endif
 #ifndef ENABLE_CLAY_LITE
-  FloatPoint selection_start_pos_ = FloatPoint(-1.0, -1.0);
-  FloatPoint selection_end_pos_ = FloatPoint(-1.0, -1.0);
   SelectionPopupView* selection_popup_ = nullptr;
+  OverlayView* selection_handle_container_ = nullptr;
+  SelectionHandleView* start_selection_handle_ = nullptr;
+  SelectionHandleView* end_selection_handle_ = nullptr;
+  int selection_start_pos_ = -1;
+  int selection_end_pos_ = -1;
+  FloatPoint scroll_offset_;
 #endif
+
+  bool custom_text_selection_ = false;
+  bool custom_context_menu_ = false;
   uint32_t hot_key_tag_ = 0;
 
   fml::WeakPtrFactory<TextView> weak_factory_;

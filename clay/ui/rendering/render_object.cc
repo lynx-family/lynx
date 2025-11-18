@@ -840,7 +840,7 @@ void RenderObject::SetClipPath(const GrPath& path) {
 }
 
 void RenderObject::ClearClipPath() {
-  if (auto ptr = std::get_if<std::monostate>(&clip_shape_)) {
+  if (std::get_if<std::monostate>(&clip_shape_)) {
     return;
   }
   clip_shape_ = std::monostate{};
