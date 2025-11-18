@@ -2717,6 +2717,17 @@ public class LynxLRUMap : NSObject {
   public NSString * LynxLRUMap::description();
 }
 
+public class LynxMeaningfulContentInfo : NSObject {
+  public LynxUIMeaningfulContentStatus LynxMeaningfulContentInfo::status status;
+  public CGRect LynxMeaningfulContentInfo::rect rect;
+  public int64_t LynxMeaningfulContentInfo::firstPresentedTimestampMicros firstPresentedTimestampMicros;
+}
+
+public class LynxMeaningfulContentSnapshot : NSObject {
+  public NSArray<LynxMeaningfulContentInfo *>* LynxMeaningfulContentSnapshot::contentsArray contentsArray;
+  public CGSize LynxMeaningfulContentSnapshot::containerSize containerSize;
+}
+
 public protocol LynxMeasureDelegate-p : <NSObject> {
   public CGSize LynxMeasureDelegate-p::measureNode:withWidth:widthMode:height:heightMode:(LynxLayoutNode *node,[withWidth] CGFloat width,[widthMode] LynxMeasureMode widthMode,[height] CGFloat height,[heightMode] LynxMeasureMode heightMode);
 }
@@ -4166,6 +4177,7 @@ public class LynxUI : <__covariant V UIView> {
   public BOOL LynxUI()::isVisible();
   public LynxGestureArenaManager * LynxUI()::getGestureArenaManager();
   public void LynxUI()::markNeedDisplay();
+  public void LynxUI()::getMeaningfulPaintingContentRecursive:offsetX:offsetY:maxX:maxY:(NSMutableArray< LynxMeaningfulContentInfo * > *contentsArray, [offsetX] CGFloat offsetX, [offsetY] CGFloat offsetY, [maxX] CGFloat maxX, [maxY] CGFloat maxY);
   public instancetype LynxUI()::NS_DESIGNATED_INITIALIZER();
   public void LynxUI()::setView:(UIView *view);
   public void LynxUI()::initProperties();
@@ -4761,6 +4773,7 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner::didMoveToWindow:(BOOL windowIsNil);
   public void LynxUIOwner::updateAnimationKeyframes:(NSDictionary *keyframesDict);
   public NSDictionary< NSString *, LynxMemoryRecord * > * LynxUIOwner::getMemoryUsage();
+  public LynxMeaningfulContentSnapshot *_Nullable LynxUIOwner::getMeaningfulPaintingContents();
   public Boolean LynxUIOwner::isLayoutInElementModeOn();
   public NSArray< LynxUI * > * LynxUIOwner::uiWithA11yID:(NSString *a11yID);
   public NSArray< UIView * > * LynxUIOwner::viewsWithA11yID:(NSString *a11yID);

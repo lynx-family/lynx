@@ -10,6 +10,7 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
+#import <Lynx/LynxMeaningfulContentSnapshot.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxService.h>
@@ -1162,6 +1163,25 @@ extern NSString* const kDefaultComponentID;
     }
   }];
   return [uiMemUsage copy];
+}
+
+- (LynxMeaningfulContentSnapshot*)getMeaningfulPaintingContents {
+  NSUInteger uiCount = [_uiHolder count];
+  CGSize rootSize = self.rootUI.frameSize;
+  if (uiCount <= 0 || !self.rootUI || CGSizeEqualToSize(rootSize, CGSizeZero)) {
+    return nil;
+  }
+  LynxMeaningfulContentSnapshot* snapshot = [[LynxMeaningfulContentSnapshot alloc] init];
+  NSMutableArray<LynxMeaningfulContentInfo*>* contentsArray =
+      [NSMutableArray arrayWithCapacity:uiCount];
+  [self.rootUI getMeaningfulPaintingContentRecursive:contentsArray
+                                             offsetX:0
+                                             offsetY:0
+                                                maxX:rootSize.width
+                                                maxY:rootSize.height];
+  snapshot.contentsArray = contentsArray.copy;
+  snapshot.containerSize = rootSize;
+  return snapshot;
 }
 
 - (void)pauseRootLayoutAnimation {

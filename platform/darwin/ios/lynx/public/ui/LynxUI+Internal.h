@@ -17,6 +17,7 @@ FOUNDATION_EXPORT short const OVERFLOW_XY_VAL;
 FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 @class LynxGestureArenaManager;
 @class LynxSizeValue;
+@class LynxMeaningfulContentInfo;
 
 @interface LynxUI () {
  @package
@@ -115,6 +116,13 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 - (LynxGestureArenaManager *)getGestureArenaManager;
 
 - (void)markNeedDisplay;
+
+- (void)getMeaningfulPaintingContentRecursive:
+            (NSMutableArray<LynxMeaningfulContentInfo *> *)contentsArray
+                                      offsetX:(CGFloat)offsetX
+                                      offsetY:(CGFloat)offsetY
+                                         maxX:(CGFloat)maxX
+                                         maxY:(CGFloat)maxY;
 
 // accessibility-related
 @property(nonatomic, assign) BOOL useDefaultAccessibilityLabel;

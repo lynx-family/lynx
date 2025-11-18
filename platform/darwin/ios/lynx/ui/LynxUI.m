@@ -23,6 +23,7 @@
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxLayoutAnimationManager.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxMeaningfulContentSnapshot.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxService.h>
@@ -300,6 +301,41 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 
 - (NSDictionary<NSString*, NSString*>*)memoryUsageDetail {
   return nil;
+}
+
+- (void)getMeaningfulPaintingContentRecursive:
+            (NSMutableArray<LynxMeaningfulContentInfo*>*)contentsArray
+                                      offsetX:(CGFloat)offsetX
+                                      offsetY:(CGFloat)offsetY
+                                         maxX:(CGFloat)maxX
+                                         maxY:(CGFloat)maxY {
+  CGFloat newOffsetX = offsetX + self.frame.origin.x;
+  CGFloat newOffsetY = offsetY + self.frame.origin.y;
+  if (newOffsetX >= maxX || newOffsetY >= maxY) {
+    /// Out of the visible area.
+    return;
+  }
+  LynxUIMeaningfulContentStatus status = [self meaningfulContentStatus];
+  if (status != kLynxUIMeaningfulContentStatusIrrelevant) {
+    LynxMeaningfulContentInfo* content = [[LynxMeaningfulContentInfo alloc] init];
+    content.status = status;
+    content.firstPresentedTimestampMicros = [self firstMeaningfulContentPresentedTimestampMicros];
+    content.rect =
+        CGRectMake(newOffsetX, newOffsetY, self.frame.size.width, self.frame.size.height);
+    [contentsArray addObject:content];
+  }
+  if ([self.children count] <= 0) {
+    return;
+  }
+  for (LynxUI* ui in self.children) {
+    if (ui) {
+      [ui getMeaningfulPaintingContentRecursive:contentsArray
+                                        offsetX:newOffsetX
+                                        offsetY:newOffsetY
+                                           maxX:maxX
+                                           maxY:maxY];
+    }
+  }
 }
 
 /**

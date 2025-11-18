@@ -20,6 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxGestureDetectorDarwin;
 @class LynxGestureArenaManager;
 @class LynxMemoryRecord;
+@class LynxMeaningfulContentSnapshot;
 @class LynxTextRenderManager;
 
 @protocol LynxBaseInspectorOwner;
@@ -175,6 +176,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateAnimationKeyframes:(NSDictionary*)keyframesDict;
 
 - (NSDictionary<NSString*, LynxMemoryRecord*>*)getMemoryUsage;
+
+- (LynxMeaningfulContentSnapshot* _Nullable)getMeaningfulPaintingContents;
 
 - (Boolean)isLayoutInElementModeOn;
 

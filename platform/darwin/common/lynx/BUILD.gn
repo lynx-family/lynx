@@ -90,6 +90,8 @@ common_lynx_shared_sources = [
   "performance/LynxPerformanceController+Native.h",
   "performance/LynxPerformanceController.h",
   "performance/LynxPerformanceController.mm",
+  "performance/fsp/LynxMeaningfulContentSnapshot.h",
+  "performance/fsp/LynxMeaningfulContentSnapshot.mm",
   "performance/memory/LynxMemoryMonitorProtocol.h",
   "performance/memory/LynxMemoryRecord.h",
   "performance/memory/LynxMemoryRecord.m",
