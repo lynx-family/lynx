@@ -596,8 +596,17 @@
 }
 
 - (void)ensureTextRenderLayoutAfterTruncated:(NSUInteger)truncationPositionIndex {
-  NSRange tokenRange =
-      NSMakeRange(truncationPositionIndex, self.textStorage.length - truncationPositionIndex);
+  // Defensive check to prevent NSRangeException.
+  // If the calculated range exceeds the actual length of the text storage,
+  // it indicates an inconsistency in the truncation logic. Adjust to bounds.
+  NSUInteger length = self.textStorage.length;
+  if (truncationPositionIndex > length) {
+    truncationPositionIndex = length;
+  }
+  NSRange tokenRange = NSMakeRange(truncationPositionIndex, length - truncationPositionIndex);
+  if (NSMaxRange(tokenRange) > length) {
+    tokenRange.length = length - tokenRange.location;
+  }
   if (tokenRange.length > 0) {
     [self.layoutManager invalidateDisplayForCharacterRange:tokenRange];
     [self.textStorage beginEditing];
