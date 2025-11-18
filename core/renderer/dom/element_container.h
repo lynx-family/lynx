@@ -21,12 +21,6 @@ namespace tasm {
 class Element;
 class ElementManager;
 
-struct FixedContainer {
-  struct FixedContainer* parent{nullptr};
-  struct FixedContainer* next{nullptr};
-  struct FixedContainer* pre{nullptr};
-};
-
 class ElementContainer {
  public:
   explicit ElementContainer(Element* element);
@@ -147,7 +141,6 @@ class ElementContainer {
   // beginning after onPatchFinish
   base::Vector<ElementContainer*> negative_z_children_;
   base::Vector<ElementContainer*> children_;
-  std::unique_ptr<FixedContainer> fixed_node_;
   Element* element_{nullptr};
   ElementManager* manager_{nullptr};
 
