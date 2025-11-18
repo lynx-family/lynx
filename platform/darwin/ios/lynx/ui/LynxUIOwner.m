@@ -871,6 +871,8 @@ extern NSString* const kDefaultComponentID;
 
   [[node getGestureArenaManager] removeMember:(id<LynxGestureArenaMember>)node
                                   detectorMap:node.gestureMap];
+
+  [_textRenderManager releaseTextRender:node.sign];
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
 }
 

@@ -122,10 +122,12 @@
 }
 
 - (id)takeTextRender:(NSInteger)sign {
-  id renderer = [_textRenderDic objectForKey:@(sign)];
+  return [_textRenderDic objectForKey:@(sign)];
+}
+
+- (void)releaseTextRender:(NSInteger)sign {
   [_textRenderDic removeObjectForKey:@(sign)];
   [_attributedTextBundleDic removeObjectForKey:@(sign)];
-  return renderer;
 }
 
 - (void)putAttributedTextBundle:(NSInteger)sign textBundle:(LynxAttributedTextBundle *)textBundle {
