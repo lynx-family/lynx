@@ -1378,8 +1378,8 @@ public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExe
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED LIFECYCLE_EVENT_ON_DATA_CHANGED;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY LIFECYCLE_EVENT_ON_DESTROY;
   public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor();
-  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup, boolean debuggable);
-  public void com.lynx.tasm.DefaultLogicExecutor.init(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup, boolean debuggable);
+  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(ILynxViewGroup lynxViewGroup);
+  public void com.lynx.tasm.DefaultLogicExecutor.init(ILynxViewGroup viewGroup);
   public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
   public void com.lynx.tasm.DefaultLogicExecutor.destroy();
 }
@@ -2487,6 +2487,8 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
   public String com.lynx.tasm.group.ILynxViewGroup.getUrl();
   public TemplateData com.lynx.tasm.group.ILynxViewGroup.getGlobalProps();
   public TemplateBundle com.lynx.tasm.group.ILynxViewGroup.getTemplateBundle();
+  public TemplateBundle com.lynx.tasm.group.ILynxViewGroup.getTemplateBundleNonBlocking();
+  public void com.lynx.tasm.group.ILynxViewGroup.fetchTemplateBundle(LynxResourceCallback< TemplateBundle > callback);
   public boolean com.lynx.tasm.group.ILynxViewGroup.isTemplateBundleReady();
 }
 

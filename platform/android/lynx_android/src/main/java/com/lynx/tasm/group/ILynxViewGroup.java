@@ -3,10 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.group;
 
+import androidx.annotation.Nullable;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
+import com.lynx.tasm.resourceprovider.LynxResourceCallback;
 
 /**
  * Interface provider for accessing LynxViewGroup prop getter;
@@ -28,6 +30,15 @@ public interface ILynxViewGroup extends ILynxViewConfigProvider {
    * @return The Associated TemplateBundle
    */
   TemplateBundle getTemplateBundle();
+
+  @Nullable TemplateBundle getTemplateBundleNonBlocking();
+
+  /**
+   * - If the TemplateBundle is ready, immediately invoke the callback (in-place)
+   * - If the TemplateBundle is being fetched, trigger the callback once the fetch completes
+   * - If the TemplateBundle failed to fetch, pass the failure error to the callback
+   */
+  void fetchTemplateBundle(LynxResourceCallback<TemplateBundle> callback);
 
   /**
    * Check if the bundle in LynxViewGroup is ready yet.
