@@ -2157,6 +2157,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
   [_delegate templateRender:self onPageChanged:isFirstScreen];
   [self updateMemoryUsage];
+  [[[self performanceController] fspTracer]];
+  [[self uiOwner] getMeaningfulPaintingContents];
 }
 
 - (void)onTasmFinishByNative {

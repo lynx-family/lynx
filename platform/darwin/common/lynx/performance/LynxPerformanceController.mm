@@ -38,6 +38,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
   if (self = [super init]) {
     _observer = observer;
+    _fspTracer = [[LynxFSPTracer alloc] initWithConfig:[LynxFSPConfigOC new]];
   }
   return self;
 }
