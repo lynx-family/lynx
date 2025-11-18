@@ -116,8 +116,14 @@ export interface BaseMouseEvent<T> extends BaseEventOrig<{}, T> {
    * @PC
    */
   buttons: number;
-  /** 
-   * clientX 
+
+  /**
+   * Current scale factor. Greater than 1 means zoom in. Less than 1 means zoom out.
+   * @PC
+   */
+  scale: number;
+  /**
+   * clientX
    * @PC
    */
   x: number;
@@ -781,7 +787,13 @@ export interface LynxEvent<T> {
    */
   Wheel?: EventHandler<BaseWheelEvent<T>>;
 
-  /** 
+  /**
+   * Zoom gesture in the trackpaad
+   * @PC
+   */
+  Zoom?: EventHandler<BaseMouseEvent<T>>;
+
+  /**
    * Keyboard (or remote control) button pressed.
    * @PC
    */
@@ -896,6 +908,7 @@ interface MouseClickProps<T> { bindmouseclick?: LynxEvent<T>['MouseClick']; catc
 interface MouseDblClickProps<T> { bindmousedblclick?: LynxEvent<T>['MouseDblClick']; catchmousedblclick?: LynxEvent<T>['MouseDblClick']; 'capture-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'capture-catchmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'global-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; }
 interface MouseLongPressProps<T> { bindmouselongpress?: LynxEvent<T>['MouseLongPress']; catchmouselongpress?: LynxEvent<T>['MouseLongPress']; 'capture-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'capture-catchmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'global-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; }
 interface WheelProps<T> { bindwheel?: LynxEvent<T>['Wheel']; catchwheel?: LynxEvent<T>['Wheel']; 'capture-bindwheel'?: LynxEvent<T>['Wheel']; 'capture-catchwheel'?: LynxEvent<T>['Wheel']; 'global-bindwheel'?: LynxEvent<T>['Wheel']; }
+interface ZoomProps<T> { bindzoom?: LynxEvent<T>['Zoom']; catchzoom?: LynxEvent<T>['Zoom']; 'capture-bindzoom'?: LynxEvent<T>['Zoom']; 'capture-catchzoom'?: LynxEvent<T>['Zoom']; 'global-bindzoom'?: LynxEvent<T>['Zoom']; }
 interface KeyDownProps<T> { bindkeydown?: LynxEvent<T>['KeyDown']; catchkeydown?: LynxEvent<T>['KeyDown']; 'capture-bindkeydown'?: LynxEvent<T>['KeyDown']; 'capture-catchkeydown'?: LynxEvent<T>['KeyDown']; 'global-bindkeydown'?: LynxEvent<T>['KeyDown']; }
 interface KeyUpProps<T> { bindkeyup?: LynxEvent<T>['KeyUp']; catchkeyup?: LynxEvent<T>['KeyUp']; 'capture-bindkeyup'?: LynxEvent<T>['KeyUp']; 'capture-catchkeyup'?: LynxEvent<T>['KeyUp']; 'global-bindkeyup'?: LynxEvent<T>['KeyUp']; }
 interface FocusProps<T> { bindfocus?: LynxEvent<T>['Focus']; catchfocus?: LynxEvent<T>['Focus']; 'capture-bindfocus'?: LynxEvent<T>['Focus']; 'capture-catchfocus'?: LynxEvent<T>['Focus']; 'global-bindfocus'?: LynxEvent<T>['Focus']; }
@@ -932,6 +945,7 @@ export type LynxEventPropsBase<T> = BGLoadProps<T> &
   MouseDblClickProps<T> &
   MouseLongPressProps<T> &
   WheelProps<T> &
+  ZoomProps<T> &
   KeyDownProps<T> &
   KeyUpProps<T> &
   FocusProps<T> &
