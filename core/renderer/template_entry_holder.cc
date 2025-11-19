@@ -78,7 +78,8 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
    * items in template_entries_ do not need to be inserted.
    */
   if (template_entries_.find(url) == template_entries_.end()) {
-    TryPostJSBundle(url, bundle);
+    // TODD(yangguangzhao.solace): JS query component should use preloaded
+    // bundle too.
     preload_template_bundles_.try_emplace(url, bundle);
   }
 
