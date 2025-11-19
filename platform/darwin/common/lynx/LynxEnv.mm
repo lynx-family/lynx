@@ -126,6 +126,8 @@
       self->_devtoolComponentAttach = YES;
       lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv([KEY_DEVTOOL_COMPONENT_ATTACH UTF8String],
                                                          true);
+      lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv([KEY_LYNX_DEBUG UTF8String],
+                                                         [self lynxDebugEnabled]);
     } else {
       self->_devtoolComponentAttach = NO;
     }
@@ -223,7 +225,7 @@
 // 2. The environment flag 'SP_KEY_ENABLE_LOGBOX' is true (defaults to true if not set).
 // 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
 - (BOOL)logBoxEnabled {
-  return [self devtoolComponentAttach] &&
+  return [self lynxDebugEnabled] &&
          [self getDevtoolEnv:SP_KEY_ENABLE_LOGBOX withDefaultValue:YES] &&
          [LynxService(LynxServiceDevToolProtocol) logBoxPresetValue];
 }
