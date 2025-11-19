@@ -5,6 +5,8 @@
 import("../../../config.gni")
 
 lynx_dom_core_sources = [
+  "base_element_container.cc",
+  "base_element_container.h",
   "element_container.cc",
   "element_container.h",
   "element_layout_node_manager.cc",

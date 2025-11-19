@@ -30,7 +30,9 @@
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
 #include "core/renderer/dom/attribute_holder.h"
+#include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/element_container.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
@@ -367,7 +369,14 @@ class Element : public lepus::RefCounted,
 
   bool IsCSSInlineVariablesEnabled() const;
 
-  ElementContainer* element_container() { return element_container_.get(); }
+  BaseElementContainer* element_container() { return element_container_.get(); }
+  ElementContainer* element_container_impl() {
+    return static_cast<ElementContainer*>(element_container());
+  }
+  Fragment* fragment_impl() {
+    return static_cast<Fragment*>(element_container());
+  }
+
   void CreateElementContainer(bool platform_is_flatten);
 
   virtual void EnqueueLayoutTask(base::MoveOnlyClosure<void> operation);
@@ -870,7 +879,7 @@ class Element : public lepus::RefCounted,
 
   std::unique_ptr<ContentData> content_data_;
 
-  std::unique_ptr<ElementContainer> element_container_;
+  std::unique_ptr<BaseElementContainer> element_container_;
 
   fml::RefPtr<AttributeHolder> data_model_;
 

@@ -128,9 +128,11 @@ Element::Element(const base::String& tag, ElementManager* manager,
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 
-  element_container_ = EnableFragmentLayerRender()
-                           ? std::make_unique<Fragment>(this)
-                           : std::make_unique<ElementContainer>(this);
+  if (EnableFragmentLayerRender()) {
+    element_container_ = std::make_unique<Fragment>(this);
+  } else {
+    element_container_ = std::make_unique<ElementContainer>(this);
+  }
 }
 
 // The copy constructor of the element is now only used for copying fiber
@@ -217,9 +219,11 @@ void Element::AttachToElementManager(
   enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 
-  element_container_ = EnableFragmentLayerRender()
-                           ? std::make_unique<Fragment>(this)
-                           : std::make_unique<ElementContainer>(this);
+  if (EnableFragmentLayerRender()) {
+    element_container_ = std::make_unique<Fragment>(this);
+  } else {
+    element_container_ = std::make_unique<ElementContainer>(this);
+  }
 }
 
 void Element::PushStyleToBundle() {

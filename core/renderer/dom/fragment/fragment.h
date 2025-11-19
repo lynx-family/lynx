@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "core/renderer/dom/element_container.h"
+#include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/starlight/types/layout_result.h"
@@ -21,7 +21,7 @@ using starlight::LayoutResultForRendering;
 
 // Combines layout results and rendering styles to generate display content
 // via DisplayList. Owned by an element; lifetime must not exceed that element.
-class Fragment : public ElementContainer {
+class Fragment : public BaseElementContainer {
  public:
   explicit Fragment(Element* element);
 
@@ -29,6 +29,18 @@ class Fragment : public ElementContainer {
 
   void InsertElementContainerAccordingToElement(Element* child,
                                                 Element* ref) override;
+
+  void RemoveElementContainerAccordingToElement(Element* child,
+                                                bool destroy) override{};
+  void Destroy() override{};
+
+  void UpdateLayout(float left, float top,
+                    bool transition_view = false) override{};
+  void UpdateLayoutWithoutChange() override{};
+
+  void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override{};
+  void StyleChanged() override{};
+  void UpdateZIndexList() override{};
 
   void CreatePaintingNode(
       bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) override;
