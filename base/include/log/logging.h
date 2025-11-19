@@ -72,6 +72,16 @@ using LogChannel = int32_t;
 constexpr LogChannel LOG_CHANNEL_LYNX_INTERNAL = 0;
 constexpr LogChannel LOG_CHANNEL_LYNX_EXTERNAL = 1;
 
+// A lightweight class that consumes and discards all stream inputs.
+class NullLogStream {
+ public:
+  NullLogStream() {}
+  template <typename T>
+  NullLogStream& operator<<(T) {
+    return *this;
+  }
+};
+
 // This class is used to explicitly ignore values in the conditional
 // logging macros.  This avoids compiler warnings like "value computed
 // is not used" and "statement has no effect".
@@ -81,6 +91,7 @@ class LogMessageVoidify {
   // This has to be an operator with a precedence lower than << but
   // higher than ?:
   void operator&(LogStream&) {}
+  void operator&(const NullLogStream&) {}
 };
 
 #ifdef __FILE_NAME__
@@ -122,6 +133,10 @@ class LogMessageVoidify {
 
 #define LAZY_STREAM(stream, condition) \
   !(condition) ? (void)0 : lynx::base::logging::LogMessageVoidify() & (stream)
+
+// Add a new FML-style LOG macro
+#define BASE_LOG(severity) \
+  LAZY_STREAM(LOG_STREAM(severity), LOG_IS_ON(severity))
 
 // Use this macro to suppress warning if the variable in log is not used.
 #define UNUSED_LOG_VARIABLE __attribute__((unused))
@@ -202,18 +217,39 @@ class LogMessageVoidify {
 #ifndef NDEBUG
 #define DCHECK(condition) CHECK(condition)
 #else
-// for release, do nothing
-#define DCHECK(condition)                                                \
-  true || (condition) ? (void)0                                          \
-                      : lynx::base::logging::LogMessageVoidify() &       \
-                            lynx::base::logging::LogMessage(             \
-                                "", 0, lynx::base::logging::LOG_VERBOSE) \
-                                .stream()
+// In release builds, DCHECK is a no-op that still consumes the stream.
+#define DCHECK(condition)                                          \
+  true || (condition) ? (void)0                                    \
+                      : lynx::base::logging::LogMessageVoidify() & \
+                            lynx::base::logging::NullLogStream()
 #endif
 #endif
 
-#define NOTREACHED() LOGF("Abort here!!!")
 #define DCHECK_EQ(v1, v2) DCHECK((v1) == (v2))
+
+#if defined(__clang__) || defined(__GNUC__)
+#define LYNX_BUILTIN_UNREACHABLE() __builtin_unreachable()
+#elif defined(_MSC_VER)
+#define LYNX_BUILTIN_UNREACHABLE() __assume(false)
+#else
+#define LYNX_BUILTIN_UNREACHABLE() abort()
+#endif
+
+#undef NOTREACHED
+#define NOTREACHED()            \
+  do {                          \
+    LOGF("Abort here!!!");      \
+    LYNX_BUILTIN_UNREACHABLE(); \
+  } while (0);
+
+// A macro to provide a stream for logging a function that is not implemented.
+// In debug builds, it will log an ERROR. In release builds, it's a no-op.
+#ifndef NDEBUG
+#define UNIMPLEMENTED() \
+  BASE_LOG(ERROR) << "Not implemented in " << __FUNCTION__ << "() ";
+#else
+#define UNIMPLEMENTED() (void)0;
+#endif
 
 class BASE_EXPORT LogMessage {
  public:
