@@ -718,6 +718,258 @@ TEST(ComputedCSSStyleCssTextHelperTest, MarginCSSText) {
   EXPECT_EQ(helper.MarginCSSText(&computed_css_style, layout_result),
             "0px 0px 0px 0px");
 }
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderWidthCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  // Test case: no border data, should return default values
+  EXPECT_EQ(helper.BorderTopWidthCSSText(&computed_css_style, layout_result),
+            "0px");
+  EXPECT_EQ(helper.BorderBottomWidthCSSText(&computed_css_style, layout_result),
+            "0px");
+  EXPECT_EQ(helper.BorderLeftWidthCSSText(&computed_css_style, layout_result),
+            "0px");
+  EXPECT_EQ(helper.BorderRightWidthCSSText(&computed_css_style, layout_result),
+            "0px");
+  EXPECT_EQ(helper.BorderWidthCSSText(&computed_css_style, layout_result),
+            "0px 0px 0px 0px");
+
+  computed_css_style.css_align_with_legacy_w3c_ = true;
+  // Test case: no border data, should return default values
+  EXPECT_EQ(helper.BorderTopWidthCSSText(&computed_css_style, layout_result),
+            "3px");
+  EXPECT_EQ(helper.BorderBottomWidthCSSText(&computed_css_style, layout_result),
+            "3px");
+  EXPECT_EQ(helper.BorderLeftWidthCSSText(&computed_css_style, layout_result),
+            "3px");
+  EXPECT_EQ(helper.BorderRightWidthCSSText(&computed_css_style, layout_result),
+            "3px");
+  EXPECT_EQ(helper.BorderWidthCSSText(&computed_css_style, layout_result),
+            "3px 3px 3px 3px");
+
+  // Test case: with border data
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  auto& border_data = computed_css_style.layout_computed_style_.surround_data_
+                          .border_data_.value();
+
+  border_data.width_top = 10.0f;
+  border_data.width_right = 20.0f;
+  border_data.width_bottom = 30.0f;
+  border_data.width_left = 40.0f;
+
+  EXPECT_EQ(helper.BorderTopWidthCSSText(&computed_css_style, layout_result),
+            "10px");
+  EXPECT_EQ(helper.BorderRightWidthCSSText(&computed_css_style, layout_result),
+            "20px");
+  EXPECT_EQ(helper.BorderBottomWidthCSSText(&computed_css_style, layout_result),
+            "30px");
+  EXPECT_EQ(helper.BorderLeftWidthCSSText(&computed_css_style, layout_result),
+            "40px");
+  EXPECT_EQ(helper.BorderWidthCSSText(&computed_css_style, layout_result),
+            "10px 20px 30px 40px");
+
+  // Test case: equal border widths
+  border_data.width_top = 5.0f;
+  border_data.width_right = 5.0f;
+  border_data.width_bottom = 5.0f;
+  border_data.width_left = 5.0f;
+
+  EXPECT_EQ(helper.BorderWidthCSSText(&computed_css_style, layout_result),
+            "5px 5px 5px 5px");
+
+  // Test case: floating point values
+  border_data.width_top = 2.5f;
+  border_data.width_right = 3.75f;
+  border_data.width_bottom = 1.25f;
+  border_data.width_left = 0.5f;
+
+  EXPECT_EQ(helper.BorderTopWidthCSSText(&computed_css_style, layout_result),
+            "2.5px");
+  EXPECT_EQ(helper.BorderRightWidthCSSText(&computed_css_style, layout_result),
+            "3.75px");
+  EXPECT_EQ(helper.BorderBottomWidthCSSText(&computed_css_style, layout_result),
+            "1.25px");
+  EXPECT_EQ(helper.BorderLeftWidthCSSText(&computed_css_style, layout_result),
+            "0.5px");
+  EXPECT_EQ(helper.BorderWidthCSSText(&computed_css_style, layout_result),
+            "2.5px 3.75px 1.25px 0.5px");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderCornerRadiusCSSText_Defaults) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+  layout_result.size_ = FloatSize(200.f, 100.f);
+
+  EXPECT_EQ(
+      helper.BorderTopLeftRadiusCSSText(&computed_css_style, layout_result),
+      "0px 0px");
+  EXPECT_EQ(
+      helper.BorderTopRightRadiusCSSText(&computed_css_style, layout_result),
+      "0px 0px");
+  EXPECT_EQ(
+      helper.BorderBottomRightRadiusCSSText(&computed_css_style, layout_result),
+      "0px 0px");
+  EXPECT_EQ(
+      helper.BorderBottomLeftRadiusCSSText(&computed_css_style, layout_result),
+      "0px 0px");
+  EXPECT_EQ(helper.BorderRadiusCSSText(&computed_css_style, layout_result),
+            "0px 0px 0px 0px / 0px 0px 0px 0px");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest,
+     BorderCornerRadiusCSSText_ValuesAndSlashCombine) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+  layout_result.size_ = FloatSize(200.f, 100.f);
+
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  auto& border_data = computed_css_style.layout_computed_style_.surround_data_
+                          .border_data_.value();
+
+  border_data.radius_x_top_left = starlight::NLength::MakeUnitNLength(10.f);
+  border_data.radius_y_top_left = starlight::NLength::MakeUnitNLength(5.f);
+
+  border_data.radius_x_top_right =
+      starlight::NLength::MakePercentageNLength(25.f);
+  border_data.radius_y_top_right = starlight::NLength::MakeUnitNLength(6.f);
+
+  border_data.radius_x_bottom_right = starlight::NLength::MakeUnitNLength(30.f);
+  border_data.radius_y_bottom_right =
+      starlight::NLength::MakePercentageNLength(20.f);
+
+  border_data.radius_x_bottom_left =
+      starlight::NLength::MakePercentageNLength(11.f);
+  border_data.radius_y_bottom_left = starlight::NLength::MakeUnitNLength(11.f);
+
+  EXPECT_EQ(
+      helper.BorderTopLeftRadiusCSSText(&computed_css_style, layout_result),
+      "10px 5px");
+  EXPECT_EQ(
+      helper.BorderTopRightRadiusCSSText(&computed_css_style, layout_result),
+      "50px 6px");
+  EXPECT_EQ(
+      helper.BorderBottomRightRadiusCSSText(&computed_css_style, layout_result),
+      "30px 20px");
+  EXPECT_EQ(
+      helper.BorderBottomLeftRadiusCSSText(&computed_css_style, layout_result),
+      "22px 11px");
+
+  EXPECT_EQ(helper.BorderRadiusCSSText(&computed_css_style, layout_result),
+            "10px 50px 30px 22px / 5px 6px 20px 11px");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderRadiusPairCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::LayoutResultForRendering layout_result;
+  layout_result.size_ = FloatSize(100.f, 80.f);
+
+  auto rx = starlight::NLength::MakePercentageNLength(50.f);
+  auto ry = starlight::NLength::MakeUnitNLength(24.f);
+  EXPECT_EQ(helper.BorderRadiusPairCSSText(rx, ry, layout_result), "50px 24px");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderRadiusPairCSSTextComponents) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::LayoutResultForRendering layout_result;
+  layout_result.size_ = FloatSize(100.f, 80.f);
+
+  auto rx = starlight::NLength::MakePercentageNLength(50.f);
+  auto ry = starlight::NLength::MakeUnitNLength(24.f);
+  auto tuple = helper.BorderRadiusPairCSSTextComponents(rx, ry, layout_result);
+  EXPECT_EQ(std::get<0>(tuple), "50px");
+  EXPECT_EQ(std::get<1>(tuple), "24px");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderTopColorCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  EXPECT_EQ(helper.BorderTopColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 0, 0)");
+
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  computed_css_style.layout_computed_style_.surround_data_.border_data_
+      ->color_top = 0xFFFF0000;
+  EXPECT_EQ(helper.BorderTopColorCSSText(&computed_css_style, layout_result),
+            "rgb(255, 0, 0)");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderRightColorCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  EXPECT_EQ(helper.BorderRightColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 0, 0)");
+
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  computed_css_style.layout_computed_style_.surround_data_.border_data_
+      ->color_right = 0xFF0000FF;
+  EXPECT_EQ(helper.BorderRightColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 0, 255)");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderBottomColorCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  EXPECT_EQ(helper.BorderBottomColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 0, 0)");
+
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  computed_css_style.layout_computed_style_.surround_data_.border_data_
+      ->color_bottom = 0xFF00FF00;
+  EXPECT_EQ(helper.BorderBottomColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 255, 0)");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderLeftColorCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  EXPECT_EQ(helper.BorderLeftColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 0, 0)");
+
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  computed_css_style.layout_computed_style_.surround_data_.border_data_
+      ->color_left = 0xFFFFFFFF;
+  EXPECT_EQ(helper.BorderLeftColorCSSText(&computed_css_style, layout_result),
+            "rgb(255, 255, 255)");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, BorderColorCSSText) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::LayoutResultForRendering layout_result;
+
+  EXPECT_EQ(helper.BorderColorCSSText(&computed_css_style, layout_result),
+            "rgb(0, 0, 0) rgb(0, 0, 0) rgb(0, 0, 0) rgb(0, 0, 0)");
+
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  auto& border =
+      *computed_css_style.layout_computed_style_.surround_data_.border_data_;
+  border.color_top = 0xFFFF0000;
+  border.color_right = 0xFF0000FF;
+  border.color_bottom = 0xFF00FF00;
+  border.color_left = 0xFFFFFFFF;
+
+  EXPECT_EQ(helper.BorderColorCSSText(&computed_css_style, layout_result),
+            "rgb(255, 0, 0) rgb(0, 0, 255) rgb(0, 255, 0) rgb(255, 255, 255)");
+}
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

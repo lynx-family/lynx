@@ -6,11 +6,13 @@
 #define CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_CSS_TEXT_HELPER_H_
 
 #include <cstdint>
+#include <tuple>
 
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/starlight/types/nlength.h"
 
 namespace lynx {
 namespace tasm {
@@ -64,7 +66,22 @@ class ComputedCSSStyleCssTextHelper {
   V(MarginTop)                                           \
   V(MarginBottom)                                        \
   V(MarginLeft)                                          \
-  V(MarginRight)
+  V(MarginRight)                                         \
+  V(BorderWidth)                                         \
+  V(BorderTopWidth)                                      \
+  V(BorderBottomWidth)                                   \
+  V(BorderLeftWidth)                                     \
+  V(BorderRightWidth)                                    \
+  V(BorderRadius)                                        \
+  V(BorderTopLeftRadius)                                 \
+  V(BorderTopRightRadius)                                \
+  V(BorderBottomRightRadius)                             \
+  V(BorderBottomLeftRadius)                              \
+  V(BorderColor)                                         \
+  V(BorderTopColor)                                      \
+  V(BorderRightColor)                                    \
+  V(BorderBottomColor)                                   \
+  V(BorderLeftColor)
 
 #define GETTER_STYLE_STRING_VALUE(name)                \
   base::String name##CSSText(                          \
@@ -82,6 +99,16 @@ class ComputedCSSStyleCssTextHelper {
 
   base::String ConcatStringsWithWhitespace(
       const base::Vector<base::String>& strings);
+
+  base::String BorderRadiusPairCSSText(
+      const starlight::NLength& rx, const starlight::NLength& ry,
+      const starlight::LayoutResultForRendering& ref_layout_result);
+
+  std::tuple<base::String, base::String> BorderRadiusPairCSSTextComponents(
+      const starlight::NLength& rx, const starlight::NLength& ry,
+      const starlight::LayoutResultForRendering& ref_layout_result);
+
+  float GetDefaultBorderWidth(starlight::ComputedCSSStyle* computed_css_style);
 };
 
 }  // namespace tasm

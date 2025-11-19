@@ -12,7 +12,7 @@
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/transforms/transform_operations.h"
-#include "core/renderer/starlight/types/nlength.h"
+#include "core/renderer/starlight/style/default_layout_style.h"
 
 namespace lynx {
 namespace tasm {
@@ -26,12 +26,19 @@ constexpr const char kDefaultBackgroundPosition[] = "0% 0%";
 constexpr const char kDefaultBackgroundPositionDimensionValue[] = "50%";
 constexpr const char* kPxMark = "px";
 constexpr const char* kPercentageMark = "%";
+constexpr const char kDefaultBorderRadius[] = "0px 0px";
 constexpr CSSPropertyID kMarginIDs[] = {
     kPropertyIDMarginTop, kPropertyIDMarginRight, kPropertyIDMarginBottom,
     kPropertyIDMarginLeft};
 constexpr CSSPropertyID kPaddingsIDs[] = {
     kPropertyIDPaddingTop, kPropertyIDPaddingRight, kPropertyIDPaddingBottom,
     kPropertyIDPaddingLeft};
+constexpr CSSPropertyID kBorderWidthIDs[] = {
+    kPropertyIDBorderTopWidth, kPropertyIDBorderRightWidth,
+    kPropertyIDBorderBottomWidth, kPropertyIDBorderLeftWidth};
+constexpr CSSPropertyID kBorderColorIDs[] = {
+    kPropertyIDBorderTopColor, kPropertyIDBorderRightColor,
+    kPropertyIDBorderBottomColor, kPropertyIDBorderLeftColor};
 
 std::string NumericLengthToString(
     const starlight::NLength::BaseLength& length) {
@@ -94,6 +101,64 @@ base::String ComputedCSSStyleCssTextHelper::BackgroundColorCSSText(
   } else {
     return base::String();
   }
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderColorCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  base::Vector<base::String> border_colors;
+  border_colors.reserve(4);
+  for (auto border_color_id : kBorderColorIDs) {
+    border_colors.emplace_back(
+        ComputedCSSStyleCssTextHelper::GetComputedStyleByPropertyID(
+            border_color_id, computed_css_style, ref_layout_result));
+  }
+
+  return ConcatStringsWithWhitespace(border_colors);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderTopColorCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return Uint32ToRGBString(computed_css_style->layout_computed_style_
+                                 .surround_data_.border_data_->color_top);
+  }
+  return Uint32ToRGBString(starlight::DefaultColor::DEFAULT_BORDER_COLOR);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderRightColorCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return Uint32ToRGBString(computed_css_style->layout_computed_style_
+                                 .surround_data_.border_data_->color_right);
+  }
+  return Uint32ToRGBString(starlight::DefaultColor::DEFAULT_BORDER_COLOR);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderBottomColorCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return Uint32ToRGBString(computed_css_style->layout_computed_style_
+                                 .surround_data_.border_data_->color_bottom);
+  }
+  return Uint32ToRGBString(starlight::DefaultColor::DEFAULT_BORDER_COLOR);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderLeftColorCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return Uint32ToRGBString(computed_css_style->layout_computed_style_
+                                 .surround_data_.border_data_->color_left);
+  }
+  return Uint32ToRGBString(starlight::DefaultColor::DEFAULT_BORDER_COLOR);
 }
 
 base::String ComputedCSSStyleCssTextHelper::LeftCSSText(
@@ -381,6 +446,196 @@ base::String ComputedCSSStyleCssTextHelper::MarginRightCSSText(
       ref_layout_result.margin_[starlight::Direction::kRight]);
 }
 
+base::String ComputedCSSStyleCssTextHelper::BorderWidthCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  base::Vector<base::String> border_width_tokens;
+  border_width_tokens.reserve(4);
+  for (auto id : kBorderWidthIDs) {
+    border_width_tokens.emplace_back(GetComputedStyleByPropertyID(
+        id, computed_css_style, ref_layout_result));
+  }
+  return ConcatStringsWithWhitespace(border_width_tokens);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderLeftWidthCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return FloatToPixelString(computed_css_style->layout_computed_style_
+                                  .surround_data_.border_data_->width_left);
+  }
+  return FloatToPixelString(GetDefaultBorderWidth(computed_css_style));
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderRightWidthCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return FloatToPixelString(computed_css_style->layout_computed_style_
+                                  .surround_data_.border_data_->width_right);
+  }
+  return FloatToPixelString(GetDefaultBorderWidth(computed_css_style));
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderTopWidthCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return FloatToPixelString(computed_css_style->layout_computed_style_
+                                  .surround_data_.border_data_->width_top);
+  }
+  return FloatToPixelString(GetDefaultBorderWidth(computed_css_style));
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderBottomWidthCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return FloatToPixelString(computed_css_style->layout_computed_style_
+                                  .surround_data_.border_data_->width_bottom);
+  }
+  return FloatToPixelString(GetDefaultBorderWidth(computed_css_style));
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderRadiusCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  std::ostringstream border_radius_stream;
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    auto [top_left_rx, top_left_ry] = BorderRadiusPairCSSTextComponents(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_top_left,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_top_left,
+        ref_layout_result);
+    auto [top_right_rx, top_right_ry] = BorderRadiusPairCSSTextComponents(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_top_right,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_top_right,
+        ref_layout_result);
+    auto [bottom_right_rx, bottom_right_ry] = BorderRadiusPairCSSTextComponents(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_bottom_right,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_bottom_right,
+        ref_layout_result);
+    auto [bottom_left_rx, bottom_left_ry] = BorderRadiusPairCSSTextComponents(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_bottom_left,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_bottom_left,
+        ref_layout_result);
+    border_radius_stream << top_left_rx.str() << " " << top_right_rx.str()
+                         << " " << bottom_right_rx.str() << " "
+                         << bottom_left_rx.str() << " / " << top_left_ry.str()
+                         << " " << top_right_ry.str() << " "
+                         << bottom_right_ry.str() << " "
+                         << bottom_left_ry.str();
+  } else {
+    border_radius_stream << "0px 0px 0px 0px / 0px 0px 0px 0px";
+  }
+
+  return border_radius_stream.str();
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderTopRightRadiusCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return BorderRadiusPairCSSText(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_top_right,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_top_right,
+        ref_layout_result);
+  }
+
+  return BASE_STATIC_STRING(kDefaultBorderRadius);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderTopLeftRadiusCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return BorderRadiusPairCSSText(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_top_left,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_top_left,
+        ref_layout_result);
+  }
+
+  return BASE_STATIC_STRING(kDefaultBorderRadius);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderBottomLeftRadiusCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return BorderRadiusPairCSSText(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_bottom_left,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_bottom_left,
+        ref_layout_result);
+  }
+
+  return BASE_STATIC_STRING(kDefaultBorderRadius);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderBottomRightRadiusCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  if (computed_css_style->layout_computed_style_.surround_data_.border_data_
+          .has_value()) {
+    return BorderRadiusPairCSSText(
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_x_bottom_right,
+        computed_css_style->layout_computed_style_.surround_data_.border_data_
+            ->radius_y_bottom_right,
+        ref_layout_result);
+  }
+
+  return BASE_STATIC_STRING(kDefaultBorderRadius);
+}
+
+base::String ComputedCSSStyleCssTextHelper::BorderRadiusPairCSSText(
+    const starlight::NLength& rx, const starlight::NLength& ry,
+    const starlight::LayoutResultForRendering& ref_layout_result) {
+  base::Vector<base::String> tokens;
+  tokens.reserve(2);
+  auto [rx_str, ry_str] =
+      BorderRadiusPairCSSTextComponents(rx, ry, ref_layout_result);
+  tokens.emplace_back(rx_str);
+  tokens.emplace_back(ry_str);
+  return ConcatStringsWithWhitespace(tokens);
+}
+
+std::tuple<base::String, base::String>
+ComputedCSSStyleCssTextHelper::BorderRadiusPairCSSTextComponents(
+    const starlight::NLength& rx, const starlight::NLength& ry,
+    const starlight::LayoutResultForRendering& ref_layout_result) {
+  return std::make_tuple(
+      FloatToPixelString(
+          starlight::NLengthToLayoutUnit(
+              rx, starlight::LayoutUnit(ref_layout_result.size_.width_))
+              .ToFloat()),
+      FloatToPixelString(
+          starlight::NLengthToLayoutUnit(
+              ry, starlight::LayoutUnit(ref_layout_result.size_.height_))
+              .ToFloat()));
+}
+
 base::String ComputedCSSStyleCssTextHelper::FloatToPixelString(float value) {
   std::string num_value = CSSDecoder::NumberToString(value);
 
@@ -436,6 +691,13 @@ base::String ComputedCSSStyleCssTextHelper::ConcatStringsWithWhitespace(
     result += strings[i].c_str();
   }
   return base::String(result);
+}
+
+float ComputedCSSStyleCssTextHelper::GetDefaultBorderWidth(
+    starlight::ComputedCSSStyle* computed_css_style) {
+  return computed_css_style->css_align_with_legacy_w3c_
+             ? starlight::DefaultLayoutStyle::W3C_DEFAULT_BORDER
+             : starlight::DefaultLayoutStyle::SL_DEFAULT_BORDER;
 }
 
 }  // namespace tasm
