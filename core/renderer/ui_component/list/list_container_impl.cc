@@ -259,9 +259,6 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
   float cross_axis_gap = list_layout_manager_->cross_axis_gap();
   float preload_buffer_count = list_layout_manager_->preload_buffer_count();
   float content_size = list_layout_manager_->content_size();
-  int initial_scroll_index = list_layout_manager_->GetInitialScrollIndex();
-  list::InitialScrollIndexStatus initial_scroll_status =
-      list_layout_manager_->GetInitialScrollIndexStatus();
   // Store the previous content_offset_ or the delta calculation may be
   // incorrect
   float content_offset = list_layout_manager_->content_offset();
@@ -274,8 +271,6 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
   }
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           orientation);
-  list_layout_manager_->SetInitialScrollIndex(initial_scroll_index);
-  list_layout_manager_->SetInitialScrollStatus(initial_scroll_status);
   list_layout_manager_->SetSpanCount(span_count);
   list_layout_manager_->SetMainAxisGap(main_axis_gap);
   list_layout_manager_->SetCrossAxisGap(cross_axis_gap);
@@ -401,8 +396,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
   } else if (key.IsEqual(list::kInitialScrollIndex)) {
     // initial-scroll-index
-    list_layout_manager_->SetInitialScrollIndex(
-        static_cast<int>(value.Number()));
+
+    initial_scroll_index_ = static_cast<int>(value.Number());
+
   } else if (key.IsEqual(list::kUpperThresholdItemCount)) {
     // upper-threshold-item-count
     if (list_event_manager_) {
@@ -537,6 +533,12 @@ bool ListContainerImpl::ShouldGenerateDebugInfo(
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
+  if ((initial_scroll_index_ >= 0 && initial_scroll_index_ < GetDataCount()) &&
+      initial_scroll_index_status_ == list::InitialScrollIndexStatus::kUnset) {
+    initial_scroll_index_status_ = list::InitialScrollIndexStatus::kSet;
+    list_layout_manager_->SetInitialScrollIndex(initial_scroll_index_);
+  }
+
   if (layout_type_ == list::LayoutType::kWaterFall) {
     // Consider the order of resolving list-type and update-animation is not
     // fixed, we should move this logic in PropsUpdateFinish().

@@ -99,7 +99,6 @@ class ListAnchorManager {
 
   void SetInitialScrollIndex(int initial_scroll_index) {
     initial_scroll_index_ = initial_scroll_index;
-    initial_scroll_index_status_ = list::InitialScrollIndexStatus::kSet;
   }
   void SetListContainer(ListContainerImpl* list_container) {
     list_container_ = list_container;
@@ -111,12 +110,7 @@ class ListAnchorManager {
     list_children_helper_ = children_helper;
   }
   bool IsValidInitialScrollIndex();
-  void SetInitialScrollIndexStatus(list::InitialScrollIndexStatus status) {
-    initial_scroll_index_status_ = status;
-  }
-  list::InitialScrollIndexStatus initial_scroll_index_status() const {
-    return initial_scroll_index_status_;
-  }
+
   void InitScrollToPositionParam(ItemHolder* item_holder, int index,
                                  float offset, int align, bool smooth);
   float CalculateTargetScrollingOffset(ItemHolder* item_holder);
@@ -146,7 +140,6 @@ class ListAnchorManager {
  private:
   int initial_scroll_index_{-1};
   ScrollingInfo scrolling_info_;
-  list::InitialScrollIndexStatus initial_scroll_index_status_;
   ListChildrenHelper* list_children_helper_{nullptr};
   ListAdapter* list_adapter_{nullptr};
   ItemHolder* first_valid_item_holder_below_screen_{nullptr};

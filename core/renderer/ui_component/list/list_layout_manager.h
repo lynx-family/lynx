@@ -69,12 +69,6 @@ class ListLayoutManager {
   int GetInitialScrollIndex() const {
     return list_anchor_manager_->initial_scroll_index();
   }
-  list::InitialScrollIndexStatus GetInitialScrollIndexStatus() const {
-    return list_anchor_manager_->initial_scroll_index_status();
-  }
-  void SetInitialScrollStatus(list::InitialScrollIndexStatus status) {
-    list_anchor_manager_->SetInitialScrollIndexStatus(status);
-  }
   void SetInitialScrollIndex(int initial_scroll_index) {
     list_anchor_manager_->SetInitialScrollIndex(initial_scroll_index);
   }

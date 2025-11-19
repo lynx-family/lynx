@@ -255,8 +255,7 @@ void ListLayoutManager::FlushContentSizeAndOffsetToPlatform(
   if (list_container_) {
     list_container_->UpdateContentOffsetAndSizeToPlatform(
         content_size_, delta_x, delta_y,
-        list_anchor_manager_->initial_scroll_index_status() ==
-            list::InitialScrollIndexStatus::kSet,
+        list_anchor_manager_->IsValidInitialScrollIndex(),
         is_non_smooth_scroll_ || from_layout);
   }
   FlushScrollInfoToPlatformIfNeeded();

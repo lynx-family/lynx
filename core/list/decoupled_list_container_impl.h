@@ -123,6 +123,9 @@ class ListContainerImpl : public list::ContainerDelegate {
   float sticky_offset_{0.f};
   int intercept_depth_{0};
   float physical_pixels_per_layout_unit_{1.f};
+  int initial_scroll_index_{-1};
+  list::InitialScrollIndexStatus initial_scroll_index_status_{
+      list::InitialScrollIndexStatus::kUnset};
   list::LayoutType layout_type_{list::LayoutType::kSingle};
   list::ElementDelegate* list_delegate_{nullptr};
   std::unique_ptr<ListLayoutManager> list_layout_manager_;

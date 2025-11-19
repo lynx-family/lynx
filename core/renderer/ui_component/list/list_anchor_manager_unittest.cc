@@ -170,16 +170,12 @@ TEST_F(ListAnchorManagerTest, RetrieveAnchorInfoBeforeLayout1) {
   ListAnchorManager::AnchorInfo anchor_info;
   int scroll_index = 1;
   anchor_manager->SetInitialScrollIndex(scroll_index);
-  EXPECT_TRUE(anchor_manager->initial_scroll_index_status_ ==
-              list::InitialScrollIndexStatus::kSet);
   anchor_manager->RetrieveAnchorInfoBeforeLayout(anchor_info,
                                                  list::kInvalidIndex);
   EXPECT_TRUE(anchor_info.valid_);
   EXPECT_EQ(anchor_info.index_, scroll_index);
   EXPECT_EQ(anchor_info.start_alignment_delta_, 0);
   anchor_manager->MarkScrolledInitialScrollIndex();
-  EXPECT_TRUE(anchor_manager->initial_scroll_index_status_ ==
-              list::InitialScrollIndexStatus::kScrolled);
 }
 
 TEST_F(ListAnchorManagerTest, RetrieveAnchorInfoBeforeLayout2) {

@@ -127,9 +127,6 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
   float cross_axis_gap = list_layout_manager_->cross_axis_gap();
   float preload_buffer_count = list_layout_manager_->preload_buffer_count();
   float content_size = list_layout_manager_->content_size();
-  int initial_scroll_index = list_layout_manager_->initial_scroll_index();
-  list::InitialScrollIndexStatus initial_scroll_status =
-      list_layout_manager_->initial_scroll_index_status();
   // Store the previous content_offset_ or the delta calculation may be
   // incorrect
   float content_offset = list_layout_manager_->content_offset();
@@ -142,8 +139,6 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
   }
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           orientation);
-  list_layout_manager_->SetInitialScrollIndex(initial_scroll_index);
-  list_layout_manager_->SetInitialScrollStatus(initial_scroll_status);
   list_layout_manager_->SetSpanCount(span_count);
   list_layout_manager_->SetMainAxisGap(main_axis_gap);
   list_layout_manager_->SetCrossAxisGap(cross_axis_gap);
@@ -233,8 +228,7 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     should_set_props = false;
   } else if (key_str == list::kPropInitialScrollIndex && value.IsNumber()) {
     // initial-scroll-index
-    list_layout_manager_->SetInitialScrollIndex(
-        static_cast<int>(value.Number()));
+    initial_scroll_index_ = static_cast<int>(value.Number());
   } else if (key_str == list::kPropUpperThresholdItemCount &&
              value.IsNumber()) {
     // upper-threshold-item-count
@@ -332,6 +326,12 @@ void ListContainerImpl::OnLayoutChildren(
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
+  if ((initial_scroll_index_ >= 0 && initial_scroll_index_ < GetDataCount()) &&
+      initial_scroll_index_status_ == list::InitialScrollIndexStatus::kUnset) {
+    initial_scroll_index_status_ = list::InitialScrollIndexStatus::kSet;
+    list_layout_manager_->SetInitialScrollIndex(initial_scroll_index_);
+  }
+
   if (span_count_changed_) {
     span_count_changed_ = false;
     if (!enable_dynamic_span_count_) {

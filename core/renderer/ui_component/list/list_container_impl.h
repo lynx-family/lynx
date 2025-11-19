@@ -156,6 +156,9 @@ class ListContainerImpl : public ListContainerDelegateInternal {
   Element* element_{nullptr};
   float physical_pixels_per_layout_unit_{1.f};
   std::unique_ptr<ListLayoutManager> list_layout_manager_;
+  int initial_scroll_index_{-1};
+  list::InitialScrollIndexStatus initial_scroll_index_status_{
+      list::InitialScrollIndexStatus::kUnset};
   std::unique_ptr<ListAdapter> list_adapter_;
   std::unique_ptr<ListChildrenHelper> list_children_helper_;
   std::unique_ptr<ListEventManager> list_event_manager_;

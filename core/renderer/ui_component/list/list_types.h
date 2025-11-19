@@ -230,7 +230,6 @@ enum class Direction { kNormal = 0, kRTL };
 enum class InitialScrollIndexStatus {
   kUnset = 0,
   kSet,
-  kScrolled,
 };
 
 // DiffStatus

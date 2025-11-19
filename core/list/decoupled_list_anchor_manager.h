@@ -99,7 +99,6 @@ class ListAnchorManager {
   }
   void SetInitialScrollIndex(int initial_scroll_index) {
     initial_scroll_index_ = initial_scroll_index;
-    initial_scroll_index_status_ = list::InitialScrollIndexStatus::kSet;
   }
   void MarkScrolledInitialScrollIndex();
   void RetrieveAnchorInfoBeforeLayout(AnchorInfo& anchor_info,
@@ -107,13 +106,7 @@ class ListAnchorManager {
   void AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info);
   //  void UpdateDiffAnchorReference();
   bool IsValidInitialScrollIndex() const;
-  void SetInitialScrollIndexStatus(list::InitialScrollIndexStatus status) {
-    initial_scroll_index_status_ = status;
-  }
   int initial_scroll_index() const { return initial_scroll_index_; }
-  list::InitialScrollIndexStatus initial_scroll_index_status() const {
-    return initial_scroll_index_status_;
-  }
   void InitScrollToPositionParam(ItemHolder* item_holder, int index,
                                  float offset, int align, bool smooth);
   float CalculateTargetScrollingOffset(ItemHolder* item_holder);
@@ -142,7 +135,6 @@ class ListAnchorManager {
   list::AnchorVisibility anchor_visibility_{
       list::AnchorVisibility::kAnchorVisibilityNoAdjustment};
   int initial_scroll_index_{-1};
-  list::InitialScrollIndexStatus initial_scroll_index_status_;
   ItemHolder* first_valid_item_holder_below_screen_{nullptr};
   ItemHolder* last_valid_item_holder_up_screen_{nullptr};
   ListContainerImpl* list_container_{nullptr};

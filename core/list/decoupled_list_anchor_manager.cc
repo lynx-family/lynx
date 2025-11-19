@@ -283,13 +283,12 @@ void ListAnchorManager::AdjustAnchorAlignment(AnchorInfo& anchor_info) {
 
 bool ListAnchorManager::IsValidInitialScrollIndex() const {
   return initial_scroll_index_ >= 0 &&
-         initial_scroll_index_ < list_adapter_->GetDataCount() &&
-         initial_scroll_index_status_ == list::InitialScrollIndexStatus::kSet;
+         initial_scroll_index_ < list_adapter_->GetDataCount();
 }
 
 void ListAnchorManager::MarkScrolledInitialScrollIndex() {
   if (IsValidInitialScrollIndex()) {
-    initial_scroll_index_status_ = list::InitialScrollIndexStatus::kScrolled;
+    initial_scroll_index_ = -1;
   }
 }
 

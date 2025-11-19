@@ -67,14 +67,8 @@ class ListLayoutManager {
   void SetInitialScrollIndex(int initial_scroll_index) {
     list_anchor_manager_->SetInitialScrollIndex(initial_scroll_index);
   }
-  void SetInitialScrollStatus(list::InitialScrollIndexStatus status) {
-    list_anchor_manager_->SetInitialScrollIndexStatus(status);
-  }
   int initial_scroll_index() const {
     return list_anchor_manager_->initial_scroll_index();
-  }
-  list::InitialScrollIndexStatus initial_scroll_index_status() const {
-    return list_anchor_manager_->initial_scroll_index_status();
   }
   bool SetPreloadBufferCount(int count) {
     bool count_changed = false;
