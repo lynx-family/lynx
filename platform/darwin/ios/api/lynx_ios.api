@@ -1103,6 +1103,7 @@ public class LynxContext : NSObject {
   public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
   public id<LUIBodyView> _Nullable LynxContext()::containerView containerView;
   public LynxKeyboardEventDispatcher* _Nullable LynxContext()::keyboardEventDispatcher keyboardEventDispatcher;
+  public LynxPerformanceController* _Nullable LynxContext()::perfController perfController;
   public int32_t LynxContext()::instanceId instanceId;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
@@ -1851,6 +1852,14 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public void LynxFrameView::updateMetaData:(LynxUpdateMeta *meta);
   public void LynxFrameView::setUrl:(NSString *url);
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
+}
+
+public class LynxFSPTracer : NSObject, <LynxPerformanceObserverProtocol> {
+  public BOOL LynxFSPTracer::enable enable;
+  public void LynxFSPTracer::startWithCaptureHandler:(LynxMeaningfulContentSnapshot *(^ captureHandler)(void));
+  public void LynxFSPTracer::stop();
+  public void LynxFSPTracer::stopByUserInteraction();
+  public void LynxFSPTracer()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
 }
 
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
@@ -2930,6 +2939,7 @@ public class LynxPerformance : NSObject {
 
 public class LynxPerformanceController : NSObject, <LynxTimingCollectorProtocol>, <LynxMemoryMonitorProtocol>, <LynxPerformanceObserverProtocol> {
   public id<LynxPerformanceObserverProtocol> LynxPerformanceController::observer observer;
+  public LynxFSPTracer* LynxPerformanceController::fspTracer fspTracer;
   public instancetype LynxPerformanceController::initWithObserver:(id< LynxPerformanceObserverProtocol > observer);
   public void LynxPerformanceController()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
 }
@@ -5496,6 +5506,9 @@ public enum LynxFeature {
   public lynx::lepus::Value LynxConvertToLepusValue(id data, BOOL useBoolLiterals=NO);
   public lynx::lepus::Value * LynxGetLepusValueFromTemplateData(LynxTemplateData *data);
   public std::shared_ptr< lynx::tasm::TemplateData > ConvertLynxTemplateDataToTemplateData(LynxTemplateData *data);
+
+  using PerformanceControllerActor = 
+    lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>
 
   using PerformanceControllerActor = 
     lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>

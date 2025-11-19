@@ -35,7 +35,7 @@ struct FSPConfig {
   // Minimum time interval to determine stability, default is 300ms.
   int32_t min_diff_interval_ms_ = 300;
   // Hard timeout in milliseconds, default is 10 seconds.
-  int64_t hard_timeout_ms_ = 10 * 1000;
+  int32_t hard_timeout_ms_ = 10 * 1000;
 };
 
 struct FSPResult {
