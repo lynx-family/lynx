@@ -4916,6 +4916,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_DATA_LIST_FIX ENABLE_DATA_LIST_FIX;
   public com.lynx.tasm.LynxEnvKey.FSP_ENABLE FSP_ENABLE;
   public com.lynx.tasm.LynxEnvKey.FSP_CONFIG_JSON_STRING FSP_CONFIG_JSON_STRING;
+  public com.lynx.tasm.LynxEnvKey.LYNX_DEBUG_ENABLED LYNX_DEBUG_ENABLED;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE SP_KEY_ENABLE_DEBUG_MODE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_FORCE_DISABLE_QUICKJS_CACHE SP_KEY_FORCE_DISABLE_QUICKJS_CACHE;

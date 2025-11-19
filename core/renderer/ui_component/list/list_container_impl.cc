@@ -675,7 +675,7 @@ CreateListContainerDelegateInternal(Element* element) {
 }
 
 bool IsInDebugMode() {
-  return lynx::tasm::LynxEnv::GetInstance().IsDevToolComponentAttach();
+  return lynx::tasm::LynxEnv::GetInstance().IsLynxDebugEnabled();
 }
 
 }  // namespace list
