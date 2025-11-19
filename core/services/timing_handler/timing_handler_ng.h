@@ -79,6 +79,8 @@ class TimingHandlerNg {
    */
   void SetHostPlatformType(const std::string &type);
 
+  void SetFSPInfo(const std::string &key, const std::string &value);
+
  private:
   // Internal storage and delegate for timing information.
   TimingInfoNg timing_info_;
