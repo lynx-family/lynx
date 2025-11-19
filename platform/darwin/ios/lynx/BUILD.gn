@@ -116,7 +116,7 @@ subspec_target("lynx") {
     "LynxBaseConfigurator.mm",
     "LynxConfig+Internal.h",
     "LynxContext+Internal.h",
-    "LynxDefaultLogicExecutor.m",
+    "LynxDefaultLogicExecutor.mm",
     "LynxEngine.h",
     "LynxEngine.mm",
     "LynxEnginePool.h",

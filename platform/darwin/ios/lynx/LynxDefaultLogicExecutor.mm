@@ -2,22 +2,22 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxBaseConfigurator+Internal.h>
 #import <Lynx/LynxDefaultLogicExecutor.h>
 #import <Lynx/LynxDefines.h>
 #import <Lynx/LynxEmbeddedModule.h>
 #import <Lynx/LynxView.h>
+#import <Lynx/LynxViewGroup+Internal.h>
 #import <Lynx/LynxViewGroup.h>
+
 static NSString *const kLynxLogicScriptPath = @"/logic.js";
 static NSString *const kLynxAppServicePath = @"/app-service.js";
 
 @interface LynxDefaultLogicExecutor ()
 
 @property(nonatomic, strong) LynxBackgroundRuntime *runtime;
-@property(nonatomic, weak) id context;
-@property(nonatomic, weak) LynxTemplateBundle *templateBundle;
 @property(nonatomic, strong) LynxBackgroundRuntimeOptions *runtimeOptions;
 @property(nonatomic, weak) LynxViewGroup *lynxViewGroup;
-@property(nonatomic, assign) BOOL debuggable;
 @property(nonatomic, strong) NSObject *initLock;
 
 @end
@@ -26,21 +26,25 @@ static NSString *const kLynxAppServicePath = @"/app-service.js";
 - (instancetype)initWithRuntimeOptions:(LynxBackgroundRuntimeOptions *)backgroundRuntimeOptions
                          lynxViewGroup:(LynxViewGroup *)lynxViewGroup
                             debuggable:(BOOL)debuggable {
-  return [self initWithTemplateBundle:nil
-             backgroundRuntimeOptions:backgroundRuntimeOptions
-                        lynxViewGroup:lynxViewGroup
-                           debuggable:debuggable];
+  return [self init:lynxViewGroup runtimeOptions:backgroundRuntimeOptions];
 }
 
-- (instancetype)initWithTemplateBundle:(LynxTemplateBundle *)bundle
+- (instancetype)initWithTemplateBundle:(nullable LynxTemplateBundle *)bundle
               backgroundRuntimeOptions:(LynxBackgroundRuntimeOptions *)backgroundRuntimeOptions
                          lynxViewGroup:(LynxViewGroup *)lynxViewGroup
                             debuggable:(BOOL)debuggable {
+  return [self init:lynxViewGroup runtimeOptions:backgroundRuntimeOptions];
+}
+
+- (instancetype)initWithLynxViewGroup:(nonnull LynxViewGroup *)lynxViewGroup {
+  return [self init:lynxViewGroup runtimeOptions:nil];
+}
+
+- (instancetype)init:(nonnull LynxViewGroup *)lynxViewGroup
+      runtimeOptions:(nullable LynxBackgroundRuntimeOptions *)runtimeOptions {
   if (self = [super init]) {
-    _templateBundle = bundle;
-    _runtimeOptions = backgroundRuntimeOptions;
     _lynxViewGroup = lynxViewGroup;
-    _debuggable = debuggable;
+    _runtimeOptions = runtimeOptions;
     _initLock = [[NSObject alloc] init];
   }
   return self;
@@ -50,21 +54,25 @@ static NSString *const kLynxAppServicePath = @"/app-service.js";
   if (_runtime == nil) {
     @synchronized(_initLock) {
       if (_runtime == nil) {
-        if (_templateBundle == nil || _runtimeOptions == nil || _lynxViewGroup == nil) {
+        if (_lynxViewGroup == nil) {
           return;
         }
-        [_runtimeOptions registerModule:LynxEmbeddedModule.class param:_lynxViewGroup];
-        _runtime = [[LynxBackgroundRuntime alloc] initWithOptions:_runtimeOptions];
+        LynxTemplateBundle *bundle = [_lynxViewGroup getTemplateBundleNonBlocking];
+        LynxBackgroundRuntimeOptions *runtimeOptions =
+            _runtimeOptions ? _runtimeOptions : [_lynxViewGroup lynxBackgroundRuntimeOptions];
+        if (bundle == nil || runtimeOptions == nil) {
+          return;
+        }
+        [runtimeOptions registerModule:LynxEmbeddedModule.class param:_lynxViewGroup];
+        _runtime = [[LynxBackgroundRuntime alloc] initWithOptions:runtimeOptions];
         NSString *url = kLynxLogicScriptPath;
-        NSString *bundleUrl = [_templateBundle url];
+        NSString *bundleUrl = [bundle url];
         if (bundleUrl != nil) {
           if ([bundleUrl hasPrefix:@"/"] || [bundleUrl hasPrefix:@"http"]) {
             url = [bundleUrl stringByAppendingString:url];
           }
         }
-        [_runtime evaluateTemplateBundle:url
-                             widthBundle:_templateBundle
-                              withJSFile:kLynxAppServicePath];
+        [_runtime evaluateTemplateBundle:url widthBundle:bundle withJSFile:kLynxAppServicePath];
       }
     }
   }
@@ -99,10 +107,6 @@ static NSString *const kLynxAppServicePath = @"/app-service.js";
     [args addObject:@([lynxView lynxViewId])];
     [_runtime callFunction:@"embeddedModule" withMethod:methodName withParams:args];
   }
-}
-
-- (void)setTemplateBundle:(LynxTemplateBundle *)bundle {
-  _templateBundle = bundle;
 }
 
 - (void)destroy {
