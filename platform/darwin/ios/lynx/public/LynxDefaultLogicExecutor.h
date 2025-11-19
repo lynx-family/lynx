@@ -11,14 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxDefaultLogicExecutor : NSObject <LynxLogicExecutor>
-- (instancetype)initWithRuntimeOptions:(LynxBackgroundRuntimeOptions *)backgroundRuntimeOptions
-                         lynxViewGroup:(LynxViewGroup *)lynxViewGroup
-                            debuggable:(BOOL)debuggable;
-
-- (instancetype)initWithTemplateBundle:(nullable LynxTemplateBundle *)bundle
-              backgroundRuntimeOptions:(LynxBackgroundRuntimeOptions *)backgroundRuntimeOptions
-                         lynxViewGroup:(LynxViewGroup *)lynxViewGroup
-                            debuggable:(BOOL)debuggable;
+- (instancetype)initWithLynxViewGroup:(LynxViewGroup *)lynxViewGroup debuggable:(BOOL)debuggable;
 @end
 
 NS_ASSUME_NONNULL_END

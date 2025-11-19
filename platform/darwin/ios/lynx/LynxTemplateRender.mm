@@ -235,7 +235,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enableTextNonContiguousLayout = [builder enableTextNonContiguousLayout];
   _enableLayoutOnly = [LynxEnv.sharedInstance getEnableLayoutOnly];
   _embeddedMode = [builder getEmbeddedMode];
-  _templateBundle = builder.lynxViewGroup.templateBundle;
+  if (builder.lynxViewGroup.isTemplateBundleReady) {
+    _templateBundle = builder.lynxViewGroup.templateBundle;
+  }
   builder.config = builder.config ?: [LynxEnv sharedInstance].config;
   builder.config = builder.config ?: [[LynxConfig alloc] initWithProvider:nil];
   _config = builder.config;
@@ -487,7 +489,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   // bundle in meta is considered before bundle in lynxViewGroup.
   LynxTemplateBundle* templateBundle =
-      meta.templateBundle ? meta.templateBundle : _lynxViewGroup.templateBundle;
+      meta.templateBundle ? meta.templateBundle : self.templateBundle;
 
   if (templateBundle) {
     [self loadTemplateBundle:templateBundle withURL:meta.url initData:meta.initialData];
