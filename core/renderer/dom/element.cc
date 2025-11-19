@@ -128,9 +128,11 @@ Element::Element(const base::String& tag, ElementManager* manager,
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 
-  element_container_ = EnableFragmentLayerRender()
-                           ? std::make_unique<Fragment>(this)
-                           : std::make_unique<ElementContainer>(this);
+  if (EnableFragmentLayerRender()) {
+    element_container_ = std::make_unique<Fragment>(this);
+  } else {
+    element_container_ = std::make_unique<ElementContainer>(this);
+  }
 }
 
 // The copy constructor of the element is now only used for copying fiber
@@ -217,9 +219,11 @@ void Element::AttachToElementManager(
   enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
   enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 
-  element_container_ = EnableFragmentLayerRender()
-                           ? std::make_unique<Fragment>(this)
-                           : std::make_unique<ElementContainer>(this);
+  if (EnableFragmentLayerRender()) {
+    element_container_ = std::make_unique<Fragment>(this);
+  } else {
+    element_container_ = std::make_unique<ElementContainer>(this);
+  }
 }
 
 void Element::PushStyleToBundle() {
@@ -709,6 +713,13 @@ void Element::ResetEventHandlers() {
     prop_bundle_->ResetEventHandler();
   }
   has_event_listener_ = false;
+}
+
+ElementContainer* Element::element_container_impl() {
+  return static_cast<ElementContainer*>(element_container());
+}
+Fragment* Element::fragment_impl() {
+  return static_cast<Fragment*>(element_container());
 }
 
 void Element::CreateElementContainer(bool platform_is_flatten) {

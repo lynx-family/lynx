@@ -21,10 +21,10 @@ namespace tasm {
 static int CompareElementOrder(Element* left, Element* right);
 
 ElementContainer::ElementContainer(Element* element)
-    : element_(element), manager_(element->element_manager()) {}
+    : BaseElementContainer(element) {}
 
 ElementContainer::~ElementContainer() {
-  if (!element_->will_destroy()) {
+  if (!element()->will_destroy()) {
     if (element_manager()->FixStackingContextDirtyFlagBug() && dirty_) {
       element_manager()->RemoveDirtyContext(this);
     } else if (was_stacking_context_) {
@@ -33,21 +33,20 @@ ElementContainer::~ElementContainer() {
     }
   }
   // Remove self from parent's children.
-  if (parent_) {
-    auto it =
-        std::find(parent_->children_.begin(), parent_->children_.end(), this);
-    if (it != parent_->children_.end()) parent_->children_.erase(it);
-    parent_ = nullptr;
+  if (parent()) {
+    auto it = std::find(element_container_parent()->children_.begin(),
+                        element_container_parent()->children_.end(), this);
+    if (it != element_container_parent()->children_.end())
+      element_container_parent()->children_.erase(it);
+    set_parent(nullptr);
   }
   // Set children's parent to null.
   for (auto child : children_) {
     if (child) {
-      child->parent_ = nullptr;
+      child->set_parent(nullptr);
     }
   }
 }
-
-int ElementContainer::id() const { return element_->impl_id(); }
 
 void ElementContainer::AddChild(ElementContainer* child, int index) {
   if (child->parent()) {
@@ -64,11 +63,11 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
     index = index + static_cast<int>(negative_z_children_.size());
   }
 
-  if (child->element_->IsNewFixed() && child->ZIndex() == 0) {
+  if (child->element()->IsNewFixed() && child->ZIndex() == 0) {
     int fixed_node_offset = 0;
     for (const ElementContainer* el : children_) {
-      if (!el->element_->IsLayoutOnly() && el->ZIndex() == 0 &&
-          !el->element_->is_fixed()) {
+      if (!el->element()->IsLayoutOnly() && el->ZIndex() == 0 &&
+          !el->element()->is_fixed()) {
         fixed_node_offset++;
       }
     }
@@ -81,7 +80,7 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
       mid = left + (right - left) / 2;
       it = element_manager()->fixed_node_list_.begin();
       std::advance(it, mid);
-      if (CompareElementOrder(child->element_, (*it)->element_) > 0) {
+      if (CompareElementOrder(child->element(), (*it)->element()) > 0) {
         left = mid + 1;
         std::advance(it, 1);
       } else {
@@ -93,7 +92,7 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
     index = fixed_node_offset + index_of_fixed;
   }
 
-  child->parent_ = this;
+  child->set_parent(this);
   if ((child->ZIndex() != 0 || child->IsSticky()) && need_update_) {
     MarkDirty();
   }
@@ -106,7 +105,7 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
   auto it = std::find(children_.begin(), children_.end(), child);
   if (it != children_.end()) {
     children_.erase(it);
-    if (child->element_->ZIndex() < 0) {
+    if (child->element()->ZIndex() < 0) {
       auto z_it = std::find(negative_z_children_.begin(),
                             negative_z_children_.end(), child);
       if (z_it != negative_z_children_.end()) {
@@ -115,14 +114,14 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
     }
     if ((child->element()->IsNewFixed() || child->was_position_fixed_) &&
         child->ZIndex() == 0) {
-      element_->element_manager()->fixed_node_list_.remove(child);
+      element()->element_manager()->fixed_node_list_.remove(child);
     }
-    if (!child->element_->IsLayoutOnly()) {
+    if (!child->element()->IsLayoutOnly()) {
       none_layout_only_children_size_--;
     }
   }
 
-  child->parent_ = nullptr;
+  child->set_parent(nullptr);
   if (!need_update_) {
     return;
   }
@@ -133,27 +132,27 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
 }
 
 void ElementContainer::RemoveFromParent(bool is_move) {
-  if (!parent_) return;
+  if (!parent()) return;
   if (!element()->IsLayoutOnly()) {
-    painting_context()->RemovePaintingNode(parent_->id(), id(), 0, is_move);
+    painting_context()->RemovePaintingNode(parent()->id(), id(), 0, is_move);
   } else {
     // Layout only node remove children from parent recursively.
-    if (element_->is_radon_element()) {
-      for (int i = static_cast<int>(element_->GetChildCount()) - 1; i >= 0;
+    if (element()->is_radon_element()) {
+      for (int i = static_cast<int>(element()->GetChildCount()) - 1; i >= 0;
            --i) {
-        Element* child = element_->GetChildAt(i);
-        child->element_container()->RemoveFromParent(is_move);
+        Element* child = element()->GetChildAt(i);
+        child->element_container_impl()->RemoveFromParent(is_move);
       }
     } else {
       // fiber element;
       auto* child = static_cast<FiberElement*>(element())->first_render_child();
       while (child) {
-        child->element_container()->RemoveFromParent(is_move);
+        child->element_container_impl()->RemoveFromParent(is_move);
         child = child->next_render_sibling();
       }
     }
   }
-  parent_->RemoveChild(this);
+  element_container_parent()->RemoveChild(this);
 }
 
 void ElementContainer::Destroy() {
@@ -161,28 +160,29 @@ void ElementContainer::Destroy() {
   if (!element()->IsLayoutOnly()) {
     painting_context()->DestroyPaintingNode(parent() ? parent()->id() : -1,
                                             id(), 0);
-  } else if (element_->is_radon_element()) {
+  } else if (element()->is_radon_element()) {
     // fiber element's layout only children handle Destroy in self Destructor
-    for (int i = static_cast<int>(element_->GetChildCount()) - 1; i >= 0; --i) {
-      element_->GetChildAt(i)->element_container()->Destroy();
+    for (int i = static_cast<int>(element()->GetChildCount()) - 1; i >= 0;
+         --i) {
+      element()->GetChildAt(i)->element_container_impl()->Destroy();
     }
   }
-  if (parent()) {
-    parent()->RemoveChild(this);
+  if (element_container_parent()) {
+    element_container_parent()->RemoveChild(this);
   }
 }
 
 void ElementContainer::RemoveElementContainerAccordingToElement(Element* child,
                                                                 bool destroy) {
-  if (child == nullptr || child->element_container() == nullptr) {
+  if (child == nullptr || child->element_container_impl() == nullptr) {
     return;
   }
 
-  child->element_container()->RemoveSelf(destroy);
+  child->element_container_impl()->RemoveSelf(destroy);
 }
 
 void ElementContainer::RemoveSelf(bool destroy) {
-  if (parent_ == nullptr) {
+  if (parent() == nullptr) {
     return;
   }
 
@@ -192,30 +192,26 @@ void ElementContainer::RemoveSelf(bool destroy) {
     // When remove self from parent element container, attach state should be
     // considered. If internal element is still attached, it should be
     // considered as a move operation.
-    bool is_move = element_ == nullptr ? false : element_->IsAttached();
+    bool is_move = element() == nullptr ? false : element()->IsAttached();
     RemoveFromParent(is_move);
   }
 }
 
 void ElementContainer::InsertSelf() {
-  if (!parent_ && element()->parent()) {
+  if (!parent() && element()->parent()) {
     element()
         ->parent()
-        ->element_container()
+        ->element_container_impl()
         ->InsertElementContainerAccordingToElement(
             element(), element()->next_render_sibling());
   }
 }
 
-PaintingContext* ElementContainer::painting_context() {
-  return element_manager()->painting_context();
-}
-
 std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
     Element* child) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_FIND_PARENT);
-  Element* node = element_;
-  size_t ui_index = element_->GetUIIndexForChild(child);
+  Element* node = element();
+  size_t ui_index = element()->GetUIIndexForChild(child);
   while (node->IsLayoutOnly()) {
     Element* parent = node->parent();
     if (!parent) {
@@ -224,7 +220,7 @@ std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
     ui_index += static_cast<int>(parent->GetUIIndexForChild(node));
     node = parent;
   }
-  return {node->element_container(), ui_index};
+  return {node->element_container_impl(), ui_index};
 }
 
 void ElementContainer::AttachChildToTargetContainerRecursive(
@@ -232,11 +228,13 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
   if (child->ZIndex() != 0 || child->IsNewFixed()) {
     if (child->IsNewFixed()) {
       // fixed node should attach to page root.
-      parent =
-          parent->element()->element_manager()->root()->element_container();
+      parent = parent->element()
+                   ->element_manager()
+                   ->root()
+                   ->element_container_impl();
     }
     auto ui_parent = parent->EnclosingStackingContextNode();
-    ui_parent->AddChild(child->element_container(), -1);
+    ui_parent->AddChild(child->element_container_impl(), -1);
     return;
   }
   // In the case that a scroll-view has a child, which is a wrapper element and
@@ -249,7 +247,7 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
       !child->is_virtual()) {
     child->TransitionToNativeView();
   }
-  parent->AddChild(child->element_container(), index);
+  parent->AddChild(child->element_container_impl(), index);
   if (!child->IsLayoutOnly()) {
     ++index;
     return;
@@ -271,27 +269,28 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
 
 void ElementContainer::ReInsertChildForLayoutOnlyTransition(Element* child,
                                                             int& index) {
-  if (!child->element_container()) {
+  if (!child->element_container_impl()) {
     LOGE("re-insert the wrong element!");
     return;
   }
   AttachChildToTargetContainerRecursive(this, child, index);
 
   child->MarkFrameChanged();
-  child->element_container()->UpdateLayout(child->left(), child->top(), true);
+  child->element_container_impl()->UpdateLayout(child->left(), child->top(),
+                                                true);
 }
 
 void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
                                                                 Element* ref) {
   if (child->IsNewFixed()) {
-    element_manager()->root()->element_container()->AddChild(
-        child->element_container(), -1);
+    element_manager()->root()->element_container_impl()->AddChild(
+        child->element_container_impl(), -1);
     return;
   }
   if (child->ZIndex() != 0) {
     auto* enclosing_stacking_node = EnclosingStackingContextNode();
     if (enclosing_stacking_node) {
-      enclosing_stacking_node->AddChild(child->element_container(), -1);
+      enclosing_stacking_node->AddChild(child->element_container_impl(), -1);
     } else {
       LOGE(
           "AttachChildToTargetContainer got error: enclosing_stacking_node is "
@@ -300,10 +299,10 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
     return;
   }
   std::pair<ElementContainer*, int> result;
-  if (element_->is_radon_element()) {
+  if (element()->is_radon_element()) {
     result = FindParentForChild(child);
   } else {
-    result = FindParentAndIndexForChildForFiber(element_, child, ref);
+    result = FindParentAndIndexForChildForFiber(element(), child, ref);
   }
   if (result.first) {
     int index = result.second;
@@ -317,19 +316,19 @@ void ElementContainer::UpdateLayout(float left, float top,
   // Self is updated or self position is changed because of parent's frame
   // changing.
 
-  if (element_->IsNewFixed()) {
+  if (element()->IsNewFixed()) {
     // new fixed node's parent should always be root node. And layout params are
     // calculated by starlight.
-    left = element_->left();
-    top = element_->top();
-  } else if (element_->ZIndex() != 0) {
+    left = element()->left();
+    top = element()->top();
+  } else if (element()->ZIndex() != 0) {
     // The z-index child's parent may be different from ui parent,
     // and need to add the offset of the position
-    left = element_->left();
-    top = element_->top();
+    left = element()->left();
+    top = element()->top();
     auto* ui_parent = parent();
-    auto* parent = element_->is_radon_element() ? element_->parent()
-                                                : element_->render_parent();
+    auto* parent = element()->is_radon_element() ? element()->parent()
+                                                 : element()->render_parent();
     while (parent && ui_parent && ui_parent->element() != parent) {
       left += parent->left();
       top += parent->top();
@@ -338,7 +337,7 @@ void ElementContainer::UpdateLayout(float left, float top,
   }
   bool need_update_impl =
       (!transition_view || is_layouted_) &&
-      (element_->frame_changed() || left != last_left_ || top != last_top_);
+      (element()->frame_changed() || left != last_left_ || top != last_top_);
 
   last_left_ = left;
   last_top_ = top;
@@ -346,20 +345,21 @@ void ElementContainer::UpdateLayout(float left, float top,
   // The offset of child's position in its real parent's coordinator.
   float dx = left, dy = top;
 
-  if (!element_->IsLayoutOnly()) {
+  if (!element()->IsLayoutOnly()) {
     dx = 0;
     dy = 0;
 
     if (need_update_impl) {  // Update to impl layer
       painting_context()->UpdateLayout(
-          element_->impl_id(), left, top, element_->width(), element_->height(),
-          element_->paddings().data(), element_->margins().data(),
-          element_->borders().data(), nullptr,
-          element_->is_sticky() ? element_->sticky_positions().data() : nullptr,
-          element_->max_height(), element_->NodeIndex());
+          element()->impl_id(), left, top, element()->width(),
+          element()->height(), element()->paddings().data(),
+          element()->margins().data(), element()->borders().data(), nullptr,
+          element()->is_sticky() ? element()->sticky_positions().data()
+                                 : nullptr,
+          element()->max_height(), element()->NodeIndex());
     }
     if (need_update_impl || props_changed_) {
-      painting_context()->OnNodeReady(element_->impl_id());
+      painting_context()->OnNodeReady(element()->impl_id());
       props_changed_ = false;
     }
   }
@@ -367,50 +367,50 @@ void ElementContainer::UpdateLayout(float left, float top,
   // If the element is list, and use c++ implementation, we will block it's
   // children invoking UpdateLayout() to flush layout info to platform, because
   // the left and top's value of child element is incorrect.
-  if (!element_->DisableListPlatformImplementation()) {
+  if (!element()->DisableListPlatformImplementation()) {
     // Layout children
-    if (element_->is_radon_element()) {
-      for (size_t i = 0; i < element_->GetChildCount(); ++i) {
-        Element* child = element_->GetChildAt(i);
-        if (child->element_container()) {
-          child->element_container()->UpdateLayout(
+    if (element()->is_radon_element()) {
+      for (size_t i = 0; i < element()->GetChildCount(); ++i) {
+        Element* child = element()->GetChildAt(i);
+        if (child->element_container_impl()) {
+          child->element_container_impl()->UpdateLayout(
               child->left() + dx, child->top() + dy, transition_view);
         }
       }
     } else {
       // TDOO(linxs): need to uniform the usage for radonElement&FiberElement
-      auto* child = static_cast<FiberElement*>(element_)->first_render_child();
+      auto* child = static_cast<FiberElement*>(element())->first_render_child();
       while (child) {
-        if (child->element_container()) {
-          child->element_container()->UpdateLayout(
+        if (child->element_container_impl()) {
+          child->element_container_impl()->UpdateLayout(
               child->left() + dx, child->top() + dy, transition_view);
         }
         child = child->next_render_sibling();
       }
     }
   }
-  element_->MarkUpdated();
+  element()->MarkUpdated();
 
   is_layouted_ = true;
 }
 
 void ElementContainer::UpdateLayoutWithoutChange() {
   if (props_changed_) {
-    painting_context()->OnNodeReady(element_->impl_id());
+    painting_context()->OnNodeReady(element()->impl_id());
     props_changed_ = false;
   }
-  if (element_->is_radon_element()) {
-    for (size_t i = 0; i < element_->GetChildCount(); ++i) {
-      Element* child = element_->GetChildAt(i);
-      if (child->element_container()) {
-        child->element_container()->UpdateLayoutWithoutChange();
+  if (element()->is_radon_element()) {
+    for (size_t i = 0; i < element()->GetChildCount(); ++i) {
+      Element* child = element()->GetChildAt(i);
+      if (child->element_container_impl()) {
+        child->element_container_impl()->UpdateLayoutWithoutChange();
       }
     }
   } else {
     // TDOO(linxs): need to uniform the usage for radonElement&FiberElement
-    auto* child = static_cast<FiberElement*>(element_)->first_render_child();
+    auto* child = static_cast<FiberElement*>(element())->first_render_child();
     while (child) {
-      child->element_container()->UpdateLayoutWithoutChange();
+      child->element_container_impl()->UpdateLayoutWithoutChange();
       child = child->next_render_sibling();
     }
   }
@@ -423,43 +423,43 @@ void ElementContainer::TransitionToNativeView(
     return;
   }
 
-  element_->element_manager()->DecreaseLayoutOnlyElementCount();
-  element_->element_manager()->IncreaseLayoutOnlyTransitionCount();
+  element()->element_manager()->DecreaseLayoutOnlyElementCount();
+  element()->element_manager()->IncreaseLayoutOnlyTransitionCount();
 
   LOGI("[ElementContainer] TransitionToNativeView tag:"
-       << element_->GetTag().str() << ",id:" << element_->impl_id());
+       << element()->GetTag().str() << ",id:" << element()->impl_id());
 
   // Remove from current parent.
   RemoveFromParent(true);
 
   // Create LynxUI in impl layer.
-  element_->set_is_layout_only(false);
+  element()->set_is_layout_only(false);
 
   // Push painting related props into prop_bundle.
   PropBundleStyleWriter::PushStyleToBundle(
       prop_bundle.get(), kPropertyIDOverflow, element()->computed_css_style());
 
   painting_context()->CreatePaintingNode(
-      element_->impl_id(), element_->GetPlatformNodeTag().str(), prop_bundle,
-      element_->TendToFlatten(), element_->NeedCreateNodeAsync(),
-      element_->NodeIndex());
+      element()->impl_id(), element()->GetPlatformNodeTag().str(), prop_bundle,
+      element()->TendToFlatten(), element()->NeedCreateNodeAsync(),
+      element()->NodeIndex());
 
   // Insert children to this.
   InsertSelf();
 
   // Mark need update layout value to impl layer.
-  element_->MarkFrameChanged();
+  element()->MarkFrameChanged();
 
   UpdateLayout(last_left_, last_top_, true);
 
   int ui_index = 0;
-  if (element_->is_radon_element()) {
-    for (size_t i = 0; i < element_->GetChildCount(); ++i) {
-      Element* child = element_->GetChildAt(i);
+  if (element()->is_radon_element()) {
+    for (size_t i = 0; i < element()->GetChildCount(); ++i) {
+      Element* child = element()->GetChildAt(i);
       ReInsertChildForLayoutOnlyTransition(child, ui_index);
     }
   } else {
-    auto* child = static_cast<FiberElement*>(element_)->first_render_child();
+    auto* child = static_cast<FiberElement*>(element())->first_render_child();
     while (child) {
       ReInsertChildForLayoutOnlyTransition(child, ui_index);
       child = child->next_render_sibling();
@@ -484,7 +484,8 @@ void ElementContainer::MoveContainers(ElementContainer* old_parent,
 ElementContainer* ElementContainer::EnclosingStackingContextNode() {
   Element* current = element();
   for (; current != nullptr; current = current->parent()) {
-    if (current->IsStackingContextNode()) return current->element_container();
+    if (current->IsStackingContextNode())
+      return current->element_container_impl();
   }
   // Unreachable code
   return nullptr;
@@ -496,8 +497,9 @@ void ElementContainer::MoveZChildrenRecursively(Element* element,
     auto* child = element->GetChildAt(i);
     if (child->IsStackingContextNode()) {
       if (child->ZIndex() != 0) {
-        child->element_container()->MoveContainers(
-            child->element_container()->parent(), parent);
+        child->element_container_impl()->MoveContainers(
+            child->element_container_impl()->element_container_parent(),
+            parent);
       }
     } else {
       MoveZChildrenRecursively(child, parent);
@@ -528,7 +530,8 @@ void ElementContainer::ZIndexChanged() {
     element_parent = element()->parent();
   }
   bool is_stacking_context = IsStackingContextNode();
-  auto* parent_stacking_context = parent()->EnclosingStackingContextNode();
+  auto* parent_stacking_context =
+      element_container_parent()->EnclosingStackingContextNode();
   auto z = ZIndex();
   // The stacking context changed, need to move the z-index children
   if (was_stacking_context_ != is_stacking_context) {
@@ -547,7 +550,7 @@ void ElementContainer::ZIndexChanged() {
   if ((z == 0 && old_index_ != 0) || (old_index_ == 0 && z != 0)) {
     RemoveFromParent(true);
     // Use the parent of element to find the ui parent
-    element_parent->element_container()
+    element_parent->element_container_impl()
         ->InsertElementContainerAccordingToElement(
             element(), element()->next_render_sibling());
     parent_stacking_context->MarkDirty();
@@ -558,7 +561,7 @@ void ElementContainer::ZIndexChanged() {
   was_stacking_context_ = is_stacking_context;
 }
 
-int ElementContainer::ZIndex() const { return element_->ZIndex(); }
+int ElementContainer::ZIndex() const { return element()->ZIndex(); }
 
 void ElementContainer::MarkDirty() {
   if (dirty_) return;
@@ -568,8 +571,8 @@ void ElementContainer::MarkDirty() {
 }
 
 void ElementContainer::UpdateZIndexList() {
-  if (!dirty_ || (element_ && element_->is_list() &&
-                  element_->DisableListPlatformImplementation())) {
+  if (!dirty_ || (element() && element()->is_list() &&
+                  element()->DisableListPlatformImplementation())) {
     return;
   }
   dirty_ = false;
@@ -604,8 +607,6 @@ void ElementContainer::UpdateZIndexList() {
   SetNeedUpdate(true);
 }
 
-ElementManager* ElementContainer::element_manager() { return manager_; }
-
 bool ElementContainer::IsStackingContextNode() {
   return element()->IsStackingContextNode();
 }
@@ -627,129 +628,6 @@ void ElementContainer::UpdatePaintingNode(
     bool tend_to_flatten, const fml::RefPtr<PropBundle>& painting_data) {
   painting_context()->UpdatePaintingNode(element()->impl_id(), tend_to_flatten,
                                          painting_data);
-}
-
-void ElementContainer::UpdatePlatformExtraBundle(PlatformExtraBundle* bundle) {
-  // TODO(songshourui.null): Using a raw PlatformExtraBundle* may lead to
-  // dangling pointers during asynchronous rendering. Consider passing a
-  // unique_ptr<PlatformExtraBundle> instead.
-  painting_context()->UpdatePlatformExtraBundle(element()->impl_id(), bundle);
-}
-
-bool ElementContainer::CheckFlatten(base::MoveOnlyClosure<bool, bool> func) {
-  return painting_context()->IsFlatten(std::move(func));
-}
-
-void ElementContainer::SetKeyframes(fml::RefPtr<PropBundle> bundle) {
-  painting_context()->SetKeyframes(std::move(bundle));
-}
-
-void ElementContainer::SetFrameAppBundle(
-    const std::shared_ptr<LynxTemplateBundle>& bundle) {
-  painting_context()->SetFrameAppBundle(element()->impl_id(), bundle);
-}
-
-void ElementContainer::ListCellWillAppear(const std::string& item_key) {
-  painting_context()->ListCellWillAppear(element()->impl_id(), item_key);
-}
-
-void ElementContainer::ListCellDisappear(bool is_exist,
-                                         const base::String& item_key) {
-  painting_context()->ListCellDisappear(element()->impl_id(), is_exist,
-                                        item_key);
-}
-
-void ElementContainer::ListReusePaintingNode(int32_t child_id,
-                                             const std::string& item_key) {
-  painting_context()->ListReusePaintingNode(child_id, item_key);
-}
-
-void ElementContainer::InsertListItemPaintingNode(int32_t child_id) {
-  painting_context()->InsertListItemPaintingNode(element()->impl_id(),
-                                                 child_id);
-}
-
-void ElementContainer::RemoveListItemPaintingNode(int32_t child_id) {
-  painting_context()->RemoveListItemPaintingNode(element()->impl_id(),
-                                                 child_id);
-}
-
-std::vector<float> ElementContainer::ScrollBy(float width, float height) {
-  return painting_context()->ScrollBy(element()->impl_id(), width, height);
-}
-
-std::vector<float> ElementContainer::GetRectToLynxView() {
-  return painting_context()->GetRectToLynxView(element()->impl_id());
-}
-
-void ElementContainer::UpdateScrollInfo(float estimated_offset, bool smooth,
-                                        bool scrolling) {
-  painting_context()->UpdateScrollInfo(element()->impl_id(), smooth,
-                                       estimated_offset, scrolling);
-}
-
-void ElementContainer::Invoke(
-    const std::string& method, const pub::Value& params,
-    const std::function<void(int32_t code, const pub::Value& data)>& callback) {
-  return painting_context()->Invoke(element()->impl_id(), method, params,
-                                    callback);
-}
-
-void ElementContainer::UpdateContentOffsetForListContainer(
-    float content_size, float delta_x, float delta_y,
-    bool is_init_scroll_offset, bool from_layout) {
-  painting_context()->UpdateContentOffsetForListContainer(
-      element()->impl_id(), content_size, delta_x, delta_y,
-      is_init_scroll_offset, from_layout);
-}
-
-void ElementContainer::SetGestureDetectorState(int32_t gesture_id,
-                                               int32_t state) {
-  painting_context()->SetGestureDetectorState(element()->impl_id(), gesture_id,
-                                              state);
-}
-void ElementContainer::ConsumeGesture(int32_t gesture_id,
-                                      const lepus::Value& params) {
-  painting_context()->ConsumeGesture(element()->impl_id(), gesture_id,
-                                     pub::ValueImplLepus(params));
-}
-
-void ElementContainer::OnNodeReady() {
-  painting_context()->OnNodeReady(element()->impl_id());
-}
-
-void ElementContainer::OnNodeReload() {
-  painting_context()->OnNodeReload(element()->impl_id());
-}
-
-void ElementContainer::UpdateLayoutPatching() {
-  painting_context()->UpdateLayoutPatching();
-}
-
-void ElementContainer::UpdateNodeReadyPatching() {
-  painting_context()->UpdateNodeReadyPatching();
-}
-
-void ElementContainer::Flush() { painting_context()->Flush(); }
-
-void ElementContainer::FlushImmediately() {
-  painting_context()->FlushImmediately();
-}
-
-void ElementContainer::OnFirstScreen() { painting_context()->OnFirstScreen(); }
-
-void ElementContainer::AppendOptionsForTiming(
-    const std::shared_ptr<PipelineOptions>& options) {
-  painting_context()->AppendOptionsForTiming(options);
-}
-
-void ElementContainer::FinishLayoutOperation(
-    const std::shared_ptr<PipelineOptions>& options) {
-  painting_context()->FinishLayoutOperation(options);
-}
-
-void ElementContainer::MarkLayoutUIOperationQueueFlushStartIfNeed() {
-  painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
 }
 
 bool ElementContainer::IsSticky() { return element()->is_sticky(); }
@@ -775,18 +653,19 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   bool should_skip_index_calculation = false;
   if (parent->element_manager()->FixNegativeZIndexBug()) {
     should_skip_index_calculation =
-        (!real_parent->element_container()->HasZChild()) && !ref;
+        (!real_parent->element_container_impl()->HasZChild()) && !ref;
   } else {
     // FIXME (linxs): Remove this code in the next version！！！
     should_skip_index_calculation =
-        ((!real_parent->element_container()->HasZChild()) ||
-         real_parent->element_container()->dirty_) &&
+        ((!real_parent->element_container_impl()->HasZChild()) ||
+         real_parent->element_container_impl()->dirty_) &&
         !ref;
   }
 
   int index = 0;
   if (should_skip_index_calculation) {
-    index = real_parent->element_container()->none_layout_only_children_size_;
+    index =
+        real_parent->element_container_impl()->none_layout_only_children_size_;
   } else {
     // insert to the middle, child is already inserted in Element, just use
     // child to get index
@@ -801,7 +680,7 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
     }
   }
 
-  return {real_parent->element_container(), index};
+  return {real_parent->element_container_impl(), index};
 }
 
 // static
@@ -856,7 +735,7 @@ void ElementContainer::PositionFixedChanged() {
     RemoveFromParent(true);
     element()
         ->parent()
-        ->element_container()
+        ->element_container_impl()
         ->InsertElementContainerAccordingToElement(element());
   }
   was_position_fixed_ = is_position_fixed;

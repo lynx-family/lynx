@@ -23,9 +23,24 @@ BaseElementContainer::BaseElementContainer(Element* element)
 
 BaseElementContainer::~BaseElementContainer() {}
 
+Element* BaseElementContainer::element() const { return element_; }
+ElementManager* BaseElementContainer::element_manager() const {
+  return manager_;
+}
+PaintingContext* BaseElementContainer::painting_context() const {
+  return element_manager()->painting_context();
+}
+
+int BaseElementContainer::id() const { return element()->impl_id(); }
+
 bool BaseElementContainer::CheckFlatten(
     base::MoveOnlyClosure<bool, bool> func) {
   return painting_context()->IsFlatten(std::move(func));
+}
+
+void BaseElementContainer::UpdatePlatformExtraBundle(
+    PlatformExtraBundle* bundle) {
+  painting_context()->UpdatePlatformExtraBundle(element()->impl_id(), bundle);
 }
 
 void BaseElementContainer::SetKeyframes(fml::RefPtr<PropBundle> bundle) {

@@ -15,7 +15,7 @@
 namespace lynx {
 namespace tasm {
 
-Fragment::Fragment(Element* element) : ElementContainer(element) {}
+Fragment::Fragment(Element* element) : BaseElementContainer(element) {}
 
 void Fragment::CreateLayerIfNeeded() {
   // TODO(zhongyr): abstract one behavior for layerize.
@@ -41,7 +41,6 @@ void Fragment::UpdatePaintingNode(
 
 // TODO(zhongyr): Finish Update attributes Fragment tree related operations.
 // Should create displayList and update it to platform renderer.
-
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
   MarkNeedRedraw();
@@ -97,10 +96,9 @@ void Fragment::MarkNeedRedraw() { need_redraw_ = true; }
 
 void Fragment::InsertElementContainerAccordingToElement(Element* child,
                                                         Element* ref) {
-  AddChildBefore(
-      static_cast<Fragment*>(child->element_container()),
-      static_cast<Fragment*>(ref ? ref->element_container() : nullptr));
+  AddChildBefore(child->fragment_impl(), ref ? ref->fragment_impl() : nullptr);
 }
+
 void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
   if (!sibling) {
     children_.emplace_back(child);

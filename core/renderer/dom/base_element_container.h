@@ -24,13 +24,13 @@ class BaseElementContainer {
   explicit BaseElementContainer(Element* element);
   virtual ~BaseElementContainer();
 
-  Element* element() const { return element_; }
-  ElementManager* element_manager() const { return manager_; }
-  PaintingContext* painting_context() const {
-    return element_manager()->painting_context();
-  }
+  void set_parent(BaseElementContainer* parent) { parent_ = parent; }
+  BaseElementContainer* parent() const { return parent_; }
 
-  int id() const { return element()->impl_id(); }
+  Element* element() const;
+  ElementManager* element_manager() const;
+  PaintingContext* painting_context() const;
+  int id() const;
 
   /**
    * Add element container to correct parent(if layout_only contained)
@@ -100,7 +100,7 @@ class BaseElementContainer {
       const std::shared_ptr<PipelineOptions>& options);
   virtual void MarkLayoutUIOperationQueueFlushStartIfNeed();
 
- protected:
+ private:
   Element* element_{nullptr};
   ElementManager* manager_{nullptr};
 

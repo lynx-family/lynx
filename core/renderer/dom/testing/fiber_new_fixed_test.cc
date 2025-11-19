@@ -109,11 +109,11 @@ TEST_P(FiberElementTest, FiberElementUnderNewFixed) {
 
   // reset position:fixed style
   fixed_element->RemoveAllInlineStyles();
-  EXPECT_TRUE(fixed_element->element_container()->was_position_fixed_);
+  EXPECT_TRUE(fixed_element->element_container_impl()->was_position_fixed_);
 
   fixed_element->FlushActionsAsRoot();
   painting_context->Flush();
-  EXPECT_FALSE(fixed_element->element_container()->was_position_fixed_);
+  EXPECT_FALSE(fixed_element->element_container_impl()->was_position_fixed_);
 
   page_children = page_painting_node->children_;
   EXPECT_TRUE(page_children.size() == 2);
@@ -127,7 +127,7 @@ TEST_P(FiberElementTest, FiberElementUnderNewFixed) {
                           lepus::Value("fixed"));
   fixed_element->FlushActionsAsRoot();
   painting_context->Flush();
-  EXPECT_TRUE(fixed_element->element_container()->was_position_fixed_);
+  EXPECT_TRUE(fixed_element->element_container_impl()->was_position_fixed_);
 
   page_children = page_painting_node->children_;
   EXPECT_TRUE(page_children.size() == 3);

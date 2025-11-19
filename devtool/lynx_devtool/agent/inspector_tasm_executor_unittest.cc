@@ -117,7 +117,7 @@ TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
   element->CreateElementContainer(false);
-  auto element_container = element->element_container();
+  auto element_container = element->element_container_impl();
 
   auto child = manager_->CreateNode("view", nullptr);
   lynx::devtool::ElementInspector::InitForInspector(
@@ -126,7 +126,7 @@ TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), element_container);
   EXPECT_EQ(element_container->children().size(), static_cast<size_t>(1));
@@ -182,7 +182,7 @@ TEST_F(InspectorTasmExecutorTest, BuildLayerTreeFromElement) {
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
   element->CreateElementContainer(false);
-  auto element_container = element->element_container();
+  auto element_container = element->element_container_impl();
 
   auto child = manager_->CreateNode("view", nullptr);
   lynx::devtool::ElementInspector::InitForInspector(
@@ -191,7 +191,7 @@ TEST_F(InspectorTasmExecutorTest, BuildLayerTreeFromElement) {
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), element_container);
   EXPECT_EQ(element_container->children().size(), static_cast<size_t>(1));

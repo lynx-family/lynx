@@ -59,21 +59,21 @@ TEST_F(ElementContainerTest, Create) {
 
   auto child = manager->CreateNode("view", nullptr);
   child->CreateElementContainer(false);
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   EXPECT_EQ(child_container->element(), child.get());
 }
 
 TEST_F(ElementContainerTest, InsertAndDestroy) {
   auto element = manager->CreateNode("view", nullptr);
   element->CreateElementContainer(false);
-  auto element_container = element->element_container();
+  auto element_container = element->element_container_impl();
 
   auto child = manager->CreateNode("view", nullptr);
   element->AddChildAt(child.get(), 0);
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), element_container);
   EXPECT_EQ(element_container->children().size(), static_cast<size_t>(1));
@@ -86,12 +86,12 @@ TEST_F(ElementContainerTest, InsertAndDestroy) {
 TEST_F(ElementContainerTest, Children) {
   auto element = manager->CreateNode("view", nullptr);
   element->CreateElementContainer(false);
-  auto element_container = element->element_container();
+  auto element_container = element->element_container_impl();
 
   auto child = manager->CreateNode("view", nullptr);
   element->AddChildAt(child.get(), 0);
   child->CreateElementContainer(false);
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   child_container->InsertSelf();
   element_container->AddChild(child_container, 0);  // test insert again
 
@@ -107,7 +107,7 @@ TEST_F(ElementContainerTest, ZIndex) {
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
   auto parent_element = manager->CreateNode("view", nullptr);
@@ -115,7 +115,7 @@ TEST_F(ElementContainerTest, ZIndex) {
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
-  auto parent_container = parent_element->element_container();
+  auto parent_container = parent_element->element_container_impl();
   parent_container->InsertSelf();
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
@@ -130,7 +130,7 @@ TEST_F(ElementContainerTest, ZIndex) {
   ASSERT_TRUE(child->IsStackingContextNode());
   EXPECT_EQ(child->ZIndex(), static_cast<int>(1));
 
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   ASSERT_TRUE(child_container->IsStackingContextNode());
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), page_container);
@@ -151,7 +151,7 @@ TEST_F(ElementContainerTest, ZIndex) {
                             tasm::CSSValue(-1, CSSValuePattern::NUMBER));
     child->FlushProps();
 
-    auto child_container = child->element_container();
+    auto child_container = child->element_container_impl();
     child_container->InsertSelf();
     EXPECT_EQ(child_container->parent(), page_container);
     // 0 parent_container 1 out child_container
@@ -168,7 +168,7 @@ TEST_F(ElementContainerTest, ZIndexMove) {
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
   auto parent_element = manager->CreateNode("view", nullptr);
@@ -176,7 +176,7 @@ TEST_F(ElementContainerTest, ZIndexMove) {
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
-  auto parent_container = parent_element->element_container();
+  auto parent_container = parent_element->element_container_impl();
   parent_container->InsertSelf();
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
@@ -191,7 +191,7 @@ TEST_F(ElementContainerTest, ZIndexMove) {
   ASSERT_TRUE(child->IsStackingContextNode());
   EXPECT_EQ(child->ZIndex(), static_cast<int>(1));
 
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   ASSERT_TRUE(child_container->IsStackingContextNode());
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), page_container);
@@ -210,7 +210,7 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
   auto parent_element = manager->CreateNode("view", nullptr);
@@ -220,7 +220,7 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
-  auto parent_container = parent_element->element_container();
+  auto parent_container = parent_element->element_container_impl();
   parent_container->InsertSelf();
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
@@ -231,7 +231,7 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
   child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
                           tasm::CSSValue(1, CSSValuePattern::NUMBER));
   child->FlushProps();
-  auto child_container = child->element_container();
+  auto child_container = child->element_container_impl();
   ASSERT_TRUE(child_container->IsStackingContextNode());
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), parent_container);
@@ -297,7 +297,7 @@ TEST_F(ElementContainerTest, FiberElementCase0) {
 
   EXPECT_TRUE(ref->IsLayoutOnly());
 
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   auto page_container_children = page_container->children();
 
   EXPECT_TRUE(static_cast<int>(page_container_children.size()) == 5);
@@ -431,7 +431,7 @@ TEST_F(ElementContainerTest, FiberElementCase1) {
   EXPECT_TRUE(ref->IsLayoutOnly());
 
   // Check the element container tree!
-  auto* page_container = page->element_container();
+  auto* page_container = page->element_container_impl();
 
   auto page_container_children = page_container->children();
 
@@ -511,7 +511,7 @@ TEST_F(ElementContainerTest, FiberElementCase2) {
   EXPECT_TRUE(ref->IsLayoutOnly());
 
   // Check the element container tree!
-  auto* page_container = page->element_container();
+  auto* page_container = page->element_container_impl();
 
   auto page_container_children = page_container->children();
 
@@ -566,7 +566,7 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutForFixed) {
   element_fixed->UpdateLayout(0, 0, 200, 200, {0}, {0}, {0}, nullptr, 0);
 
   // mock to dispatch updateLayout to painting node!
-  page->element_container()->UpdateLayout(page->left(), page->top());
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
 
   auto painting_context =
       static_cast<MockPaintingContext*>(manager->painting_context()->impl());
@@ -616,7 +616,7 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutWithException) {
   element0->UpdateLayout(100, 100, 200, 200, {0}, {0}, {0}, nullptr, 0);
 
   // mock to dispatch updateLayout to painting node!
-  page->element_container()->UpdateLayout(page->left(), page->top());
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
 
   auto painting_context =
       static_cast<MockPaintingContext*>(manager->painting_context()->impl());
@@ -635,7 +635,7 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
   auto parent_element = manager->CreateNode("view", nullptr);
@@ -643,7 +643,7 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
-  auto parent_container = parent_element->element_container();
+  auto parent_container = parent_element->element_container_impl();
   parent_container->InsertSelf();
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
@@ -658,7 +658,7 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   ASSERT_TRUE(fixed_child->IsStackingContextNode());
   EXPECT_TRUE(fixed_child->IsNewFixed());
 
-  auto fixed_child_container = fixed_child->element_container();
+  auto fixed_child_container = fixed_child->element_container_impl();
   ASSERT_TRUE(fixed_child_container->IsStackingContextNode());
   fixed_child_container->InsertSelf();
   EXPECT_EQ(fixed_child_container->parent(), page_container);
@@ -679,7 +679,7 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
                                     tasm::CSSValue(2, CSSValuePattern::NUMBER));
     child_sibling->FlushProps();
 
-    auto child_sibling_container = child_sibling->element_container();
+    auto child_sibling_container = child_sibling->element_container_impl();
     child_sibling_container->InsertSelf();
     EXPECT_EQ(child_sibling_container->parent(), page_container);
     // 0 parent_container 1 out child_container
@@ -713,7 +713,7 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
   // parent0
@@ -734,7 +734,7 @@ TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
   auto pipeline_options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(pipeline_options);
 
-  auto parent0_container = parent0_element->element_container();
+  auto parent0_container = parent0_element->element_container_impl();
   EXPECT_EQ(parent0_container->parent(), page_container);
   EXPECT_EQ(parent0_container->children().size(), static_cast<size_t>(0));
 
@@ -804,7 +804,7 @@ TEST_F(ElementContainerTest, OldFixedZIndexSwitchCase) {
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
-  auto page_container = page->element_container();
+  auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
   // parent0
@@ -870,7 +870,7 @@ TEST_F(ElementContainerTest, OldFixedZIndexSwitchCase) {
   manager->OnPatchFinish(pipeline_options);
 
   EXPECT_TRUE(page_painting_children.size() == 3);
-  EXPECT_TRUE(parent1_0_element->element_container()->parent() ==
+  EXPECT_TRUE(parent1_0_element->element_container_impl()->parent() ==
               page_container);
 }
 
@@ -913,8 +913,8 @@ TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
   page->FlushActionsAsRoot();
   manager->OnPatchFinish(pipeline_options);
 
-  EXPECT_TRUE(element_0->element_container()->parent() ==
-              parent0_element->element_container());
+  EXPECT_TRUE(element_0->element_container_impl()->parent() ==
+              parent0_element->element_container_impl());
 
   parent0_element->RemoveNode(element_0);
   page->RemoveNode(parent0_element);
@@ -923,7 +923,7 @@ TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
   page->FlushActionsAsRoot();
   manager->OnPatchFinish(pipeline_options);
 
-  EXPECT_TRUE(page->element_container()->children().size() == 0);
+  EXPECT_TRUE(page->element_container_impl()->children().size() == 0);
 }
 
 TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
@@ -934,7 +934,7 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
   manager->SetConfig(config);
 
   auto element = manager->CreateNode("view", nullptr);
-  auto fragment = static_cast<Fragment*>(element->element_container());
+  auto fragment = element->fragment_impl();
   EXPECT_FALSE(fragment->need_redraw_);
 
   element->CreateElementContainer(false);
@@ -947,16 +947,15 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
   fragment->need_redraw_ = false;
   EXPECT_FALSE(fragment->need_redraw_);
 
-  auto child_element = manager->CreateNode("view", nullptr);
-  child_element->CreateElementContainer(false);
-  auto child_fragment =
-      static_cast<Fragment*>(child_element->element_container());
-  fragment->AddChild(child_fragment, 0);
+  // auto child_element = manager->CreateNode("view", nullptr);
+  // child_element->CreateElementContainer(false);
+  // auto child_fragment = child_element->fragment_impl();
+  // fragment->AddChild(child_fragment, 0);
   // EXPECT_TRUE(fragment->need_redraw_);
 
   fragment->need_redraw_ = false;
 
-  child_fragment->RemoveSelf(false);
+  // child_fragment->RemoveSelf(false);
   // EXPECT_TRUE(fragment->need_redraw_);
 
   fragment->need_redraw_ = false;
