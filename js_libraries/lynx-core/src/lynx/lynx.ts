@@ -165,7 +165,7 @@ export class Lynx {
       default:
         errorLevel = LynxErrorLevel.Error;
     }
-    this.getApp().handleUserError(errorObj, undefined, errorLevel);
+    this.getApp().handleUserError(errorObj, errorObj.cause, errorLevel);
   };
 
   registerModule = <Module extends object>(
