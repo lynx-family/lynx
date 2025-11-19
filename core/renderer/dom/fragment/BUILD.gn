@@ -38,7 +38,10 @@ unittest_set("display_list_testset") {
     "display_list_builder_unittest.cc",
     "display_list_unittest.cc",
   ]
-  public_deps = [ ":display_list" ]
+  public_deps = [
+    ":display_list",
+    "../../starlight:starlight",
+  ]
 }
 
 unittest_exec("fragment_test_exec") {

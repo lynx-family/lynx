@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include "core/renderer/starlight/style/borders_data.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -567,6 +568,117 @@ TEST_F(DisplayListBuilderTest, NegativeValues) {
   EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[7], -15.0f);
   EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[8], -50.0f);
   EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[9], -100.0f);
+}
+
+TEST_F(DisplayListBuilderTest, BorderOperation) {
+  // Create a BordersData object with test values
+  starlight::BordersData border_data;
+  border_data.width_top = 2.0f;
+  border_data.width_right = 3.0f;
+  border_data.width_bottom = 4.0f;
+  border_data.width_left = 5.0f;
+
+  border_data.color_top = 0xFF0000FF;     // Red
+  border_data.color_right = 0xFF00FF00;   // Green
+  border_data.color_bottom = 0xFFFF0000;  // Blue
+  border_data.color_left = 0xFF000000;    // Black
+
+  border_data.style_top = starlight::BorderStyleType::kSolid;
+  border_data.style_right = starlight::BorderStyleType::kDashed;
+  border_data.style_bottom = starlight::BorderStyleType::kDotted;
+  border_data.style_left = starlight::BorderStyleType::kDouble;
+
+  builder_->Border(border_data);
+
+  DisplayList display_list = builder_->Build();
+
+  // Verify that border operation was added to content operations
+  const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* content_int_data = display_list.GetContentIntData();
+  const float* content_float_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(content_op_types_data, nullptr);
+  EXPECT_NE(content_int_data, nullptr);
+  EXPECT_NE(content_float_data, nullptr);
+
+  // Check that border operation was added
+  EXPECT_EQ(content_op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kBorder));
+
+  // Verify data structure - border operation should have both int and float
+  // parameters Based on the implementation: 4 float widths + 4 int colors + 4
+  // int styles = 8 int, 4 float
+  EXPECT_EQ(content_int_data[0], 8);  // int_count
+  EXPECT_EQ(content_int_data[1], 4);  // float_count
+}
+
+TEST_F(DisplayListBuilderTest, BorderOperationWithZeroValues) {
+  // Create a BordersData object with zero values
+  starlight::BordersData border_data;
+  border_data.width_top = 0.0f;
+  border_data.width_right = 0.0f;
+  border_data.width_bottom = 0.0f;
+  border_data.width_left = 0.0f;
+
+  border_data.color_top = 0;
+  border_data.color_right = 0;
+  border_data.color_bottom = 0;
+  border_data.color_left = 0;
+
+  border_data.style_top = starlight::BorderStyleType::kNone;
+  border_data.style_right = starlight::BorderStyleType::kNone;
+  border_data.style_bottom = starlight::BorderStyleType::kNone;
+  border_data.style_left = starlight::BorderStyleType::kNone;
+
+  builder_->Border(border_data);
+
+  DisplayList display_list = builder_->Build();
+
+  // Verify that border operation was added even with zero values
+  const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* content_int_data = display_list.GetContentIntData();
+
+  EXPECT_NE(content_op_types_data, nullptr);
+  EXPECT_NE(content_int_data, nullptr);
+
+  EXPECT_EQ(content_op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kBorder));
+}
+
+TEST_F(DisplayListBuilderTest, BorderOperationInMethodChaining) {
+  // Test border operation in method chaining
+  starlight::BordersData border_data;
+  border_data.width_top = 1.0f;
+  border_data.width_right = 2.0f;
+  border_data.width_bottom = 3.0f;
+  border_data.width_left = 4.0f;
+  border_data.color_top = 0xFF0000FF;
+  border_data.style_top = starlight::BorderStyleType::kSolid;
+
+  builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f)
+      .Fill(0xFF00FF00)
+      .Border(border_data)
+      .DrawView(123)
+      .End();
+
+  DisplayList display_list = builder_->Build();
+
+  // Verify content operations
+  const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
+
+  EXPECT_NE(content_op_types_data, nullptr);
+
+  // Check content operations - border should be between Fill and DrawView
+  EXPECT_EQ(content_op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kBegin));
+  EXPECT_EQ(content_op_types_data[1],
+            static_cast<int32_t>(DisplayListOpType::kFill));
+  EXPECT_EQ(content_op_types_data[2],
+            static_cast<int32_t>(DisplayListOpType::kBorder));
+  EXPECT_EQ(content_op_types_data[3],
+            static_cast<int32_t>(DisplayListOpType::kDrawView));
+  EXPECT_EQ(content_op_types_data[4],
+            static_cast<int32_t>(DisplayListOpType::kEnd));
 }
 
 }  // namespace tasm

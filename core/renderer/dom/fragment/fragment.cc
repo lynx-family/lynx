@@ -11,6 +11,7 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
+#include "core/renderer/starlight/style/borders_data.h"
 
 namespace lynx {
 namespace tasm {
@@ -52,11 +53,25 @@ void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
   behavior_ = std::move(behavior);
 }
 
+void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
+  if (!element()->computed_css_style()->HasBorder()) {
+    return;
+  }
+
+  const auto& border = element()
+                           ->computed_css_style()
+                           ->GetLayoutComputedStyle()
+                           ->surround_data_.border_data_;
+  display_list_builder.Border(*border);
+}
+
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   display_list_builder.Begin(layout_result_for_rendering_.offset_.X(),
                              layout_result_for_rendering_.offset_.Y(),
                              layout_result_for_rendering_.size_.width_,
                              layout_result_for_rendering_.size_.height_);
+
+  DrawBorder(display_list_builder);
 
   if (behavior_) {
     behavior_->OnDraw(display_list_builder);

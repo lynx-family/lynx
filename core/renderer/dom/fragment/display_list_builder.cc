@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/starlight/style/borders_data.h"
 
 namespace lynx {
 namespace tasm {
@@ -67,6 +68,22 @@ DisplayListBuilder& DisplayListBuilder::DrawImage(int image_id) {
 
 DisplayListBuilder& DisplayListBuilder::DrawText(int text_id) {
   display_list_.AddOperation(DisplayListOpType::kText, text_id);
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::Border(
+    const starlight::BordersData& border) {
+  display_list_.AddOperation(DisplayListOpType::kBorder, border.width_top,
+                             border.width_right, border.width_bottom,
+                             border.width_left,
+                             static_cast<int32_t>(border.color_top),
+                             static_cast<int32_t>(border.color_right),
+                             static_cast<int32_t>(border.color_bottom),
+                             static_cast<int32_t>(border.color_left),
+                             static_cast<int32_t>(border.style_top),
+                             static_cast<int32_t>(border.style_right),
+                             static_cast<int32_t>(border.style_bottom),
+                             static_cast<int32_t>(border.style_left));
   return *this;
 }
 

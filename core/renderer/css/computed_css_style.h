@@ -160,6 +160,14 @@ class ComputedCSSStyle {
 
   bool HasTransition() const { return transition_data_.has_value(); }
 
+  bool HasBorder() const {
+    return layout_computed_style_.surround_data_.border_data_ &&
+           (layout_computed_style_.surround_data_.border_data_->width_top +
+            layout_computed_style_.surround_data_.border_data_->width_right +
+            layout_computed_style_.surround_data_.border_data_->width_bottom +
+            layout_computed_style_.surround_data_.border_data_->width_left) > 0;
+  }
+
   bool HasBorderRadius() const {
     return layout_computed_style_.surround_data_.border_data_ &&
            (layout_computed_style_.surround_data_.border_data_

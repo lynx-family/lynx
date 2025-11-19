@@ -8,6 +8,9 @@
 #include "core/renderer/dom/fragment/display_list.h"
 
 namespace lynx {
+namespace starlight {
+class BordersData;
+}
 namespace tasm {
 
 class DisplayListBuilder {
@@ -44,6 +47,9 @@ class DisplayListBuilder {
 
   // Retrieve text source and draw
   DisplayListBuilder& DrawText(int text_id);
+
+  // Set all border properties at once (color, width, style for all four sides)
+  DisplayListBuilder& Border(const starlight::BordersData& border);
 
   // Build the final display list
   DisplayList Build();
