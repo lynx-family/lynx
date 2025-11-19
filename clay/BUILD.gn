@@ -59,6 +59,10 @@ config("config") {
       "third_party/skity_geometry/include/",
       "third_party/txt/src",
     ]
+    if (is_linux) {
+      include_dirs -= [ "third_party/skity_geometry/include/" ]
+      include_dirs += [ "//third_party/skity/include" ]
+    }
   }
 
   cflags = []

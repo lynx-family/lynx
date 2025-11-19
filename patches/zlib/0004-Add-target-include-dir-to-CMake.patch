@@ -1,0 +1,28 @@
+From ad0f44e36d3c2565c5b3390d27c3ab65be9cb2aa Mon Sep 17 00:00:00 2001
+From: "KananSu" <149131467+KananSu@users.noreply.github.com>
+Date: Mon, 8 Dec 2025 20:22:29 +0800
+Subject: [PATCH] [BugFix] add STDC for zlib_internal_config
+
+---
+ BUILD.gn | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index dd626ff..a27fd11 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -27,7 +27,10 @@ config("zlib_config") {
+ }
+ 
+ config("zlib_internal_config") {
+-  defines = [ "ZLIB_IMPLEMENTATION" ]
++  defines = [ 
++    "ZLIB_IMPLEMENTATION",
++    "STDC"
++  ]
+ 
+   if (!is_debug) {
+     # Build code using -O3, see: crbug.com/1084371.
+-- 
+2.49.0
+

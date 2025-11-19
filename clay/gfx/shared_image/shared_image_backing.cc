@@ -98,7 +98,7 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
 #elif OS_LINUX
   if (type == BackingType::kShmImage) {
     return fml::MakeRefCounted<EpoxyShmImageBacking>(pixel_format, size,
-                                                     std::nullopt);
+                                                     gfx_handle);
   } else if (type == BackingType::kAngleShmImage) {
 #if defined(ENABLE_SOFTWARE_RENDERING)
     return fml::MakeRefCounted<AngleSoftwareShmImageBacking>(pixel_format,
