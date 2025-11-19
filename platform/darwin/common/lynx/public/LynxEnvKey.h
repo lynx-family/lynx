@@ -10,7 +10,7 @@
 static NSString *const SP_KEY_ENABLE_AUTOMATION = @"enable_automation";
 
 // Keys for devtool.
-static NSString *const KEY_LYNX_DEBUG = @"enable_lynx_debug";
+static NSString *const KEY_LYNX_DEBUG = @"lynx_debug_enabled";
 static NSString *const KEY_DEVTOOL_COMPONENT_ATTACH = @"devtool_component_attach";
 static NSString *const SP_KEY_ENABLE_DEVTOOL = @"enable_devtool";
 static NSString *const SP_KEY_ENABLE_LOGBOX = @"enable_logbox";

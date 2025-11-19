@@ -1023,7 +1023,7 @@ LEPUSValue QuickContext::ReportSetConstValueError(const LEPUSValue& val,
   LOGE(error_msg << ", the object content is "
                  << MK_JS_LEPUS_VALUE(lepus_context_, val));
   if (!gc_flag_) LEPUS_FreeCString(lepus_context_, prop_name);
-  if (lynx::tasm::LynxEnv::GetInstance().IsDevToolComponentAttach()) {
+  if (lynx::tasm::LynxEnv::GetInstance().IsLynxDebugEnabled()) {
     return LEPUS_ThrowTypeError(lepus_context_, "%s", error_msg.c_str());
   } else {
     return LEPUS_UNDEFINED;
