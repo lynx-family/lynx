@@ -1281,6 +1281,7 @@ public class LynxDefaultGestureHandler : LynxBaseGestureHandler {
 public class LynxDefaultLogicExecutor : NSObject, <LynxLogicExecutor> {
   public instancetype LynxDefaultLogicExecutor::initWithRuntimeOptions:lynxViewGroup:debuggable:(LynxBackgroundRuntimeOptions *backgroundRuntimeOptions,[lynxViewGroup] LynxViewGroup *lynxViewGroup,[debuggable] BOOL debuggable);
   public instancetype LynxDefaultLogicExecutor::initWithTemplateBundle:backgroundRuntimeOptions:lynxViewGroup:debuggable:(nullable LynxTemplateBundle *bundle,[backgroundRuntimeOptions] LynxBackgroundRuntimeOptions *backgroundRuntimeOptions,[lynxViewGroup] LynxViewGroup *lynxViewGroup,[debuggable] BOOL debuggable);
+  public instancetype LynxDefaultLogicExecutor::initWithLynxViewGroup:(LynxViewGroup *lynxViewGroup);
 }
 
 public class LynxDetailEvent : LynxCustomEvent {
@@ -2700,7 +2701,6 @@ public protocol LynxLogBoxProtocol-p : <NSObject> {
 
 public protocol LynxLogicExecutor-p : <NSObject> {
   public void LynxLogicExecutor-p::onLynxEvent:event:(LynxView *lynxView,[event] NSDictionary *event);
-  public void LynxLogicExecutor-p::setTemplateBundle:(LynxTemplateBundle *bundle);
   public void LynxLogicExecutor-p::destroy();
 }
 
@@ -5219,7 +5219,8 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public LynxView *_Nullable LynxViewGroup::getLynxViewById:(int lynxViewId);
   public void LynxViewGroup::setTemplateBundle:(LynxTemplateBundle *_Nullable templateBundle);
   public void LynxViewGroup::setLogicExecutor:(id< LynxLogicExecutor > logicExecutor);
-  public void LynxViewGroup()::addLynxView:(nonnull LynxView *view);
+  public void LynxViewGroup::fetchTemplate:(LynxTemplateBundleResultBlock callback);
+  public LynxTemplateBundle *_Nullable LynxViewGroup()::getTemplateBundleNonBlocking();
 }
 
 public protocol LynxViewLifecycle-p : <NSObject>, <LynxTimingListener>, <LynxJSBTimingListener>, <LynxViewBaseLifecycle> {
@@ -6611,6 +6612,8 @@ public enum LynxImageRequestType {
   public NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG KEY_LYNX_PLATFORM_CONFIG;
   public NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE KEY_LYNX_ENABLE_FETCH_UIIMAGE;
   public NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA;
+
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxTemplateBundleResultBlock) (LynxTemplateBundle *_Nullable data, NSError *_Nullable error) LynxTemplateBundleResultBlock;
 
   typedef struct MeasureResult MeasureResult
 

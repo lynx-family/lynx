@@ -235,7 +235,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enableTextNonContiguousLayout = [builder enableTextNonContiguousLayout];
   _enableLayoutOnly = [LynxEnv.sharedInstance getEnableLayoutOnly];
   _embeddedMode = [builder getEmbeddedMode];
-  _templateBundle = builder.lynxViewGroup.templateBundle;
+  if (builder.lynxViewGroup.isTemplateBundleReady) {
+    _templateBundle = builder.lynxViewGroup.templateBundle;
+  }
   builder.config = builder.config ?: [LynxEnv sharedInstance].config;
   builder.config = builder.config ?: [[LynxConfig alloc] initWithProvider:nil];
   _config = builder.config;
@@ -488,21 +490,23 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   // bundle in meta is considered before bundle in lynxViewGroup.
   LynxTemplateBundle* templateBundle =
-      meta.templateBundle ? meta.templateBundle : _lynxViewGroup.templateBundle;
+      meta.templateBundle ? meta.templateBundle : self.templateBundle;
 
+  if (_logicExecutor != nil) {
+    // if logicExecutor set, we need to keep _templateData
+    if (_templateData == nil) {
+      _templateData = [[LynxTemplateData alloc] initWithDictionary:@{}];
+    }
+    [_templateData updateWithTemplateData:meta.initialData];
+  }
   if (templateBundle) {
     [self loadTemplateBundle:templateBundle withURL:meta.url initData:meta.initialData];
-    if (_logicExecutor != nil) {
-      // if logicExecutor set, we need to keep _templateData
-      if (_templateData == nil) {
-        _templateData = [[LynxTemplateData alloc] initWithDictionary:@{}];
-      }
-      [_templateData updateWithTemplateData:meta.initialData];
-    }
   } else if (meta.binaryData) {
     [self loadTemplate:meta.binaryData withURL:meta.url initData:meta.initialData];
   } else if (meta.url) {
     [self loadTemplateFromURL:meta.url initData:meta.initialData];
+  } else if (_lynxViewGroup.url) {
+    [self loadTemplateFromURL:_lynxViewGroup.url initData:meta.initialData];
   }
 
   LOGI("loadTemplate preload:" << _enablePrePainting << " ,templateBundle:" << isTemplateBundleValid
@@ -542,7 +546,20 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   _LogI(@"LynxTemplateRender loadTemplate url after process is %@", url);
   [weakSelf markTiming:[kTimingPrepareTemplateStart UTF8String] pipelineID:[@"" UTF8String]];
-  if (_lynxUIRenderer.uiOwner.uiContext.templateResourceFetcher) {
+  if (_lynxViewGroup != nil) {
+    _LogI(@"loadTemplateFromURL with lynxViewGroup.");
+    [_lynxViewGroup fetchTemplate:^(LynxTemplateBundle* bundle, NSError* error) {
+      if (!error) {
+        [weakSelf.devTool onLoadFromBundle:bundle withURL:url initData:data];
+        // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
+        // Due to lynxDevTool UI session limitations, we cannot do this yet
+        [self->_devTool attachDebugBridge:url];
+        [weakSelf loadTemplateBundle:bundle withURL:url initData:data];
+      } else {
+        [weakSelf onFetchTemplateError:error];
+      }
+    }];
+  } else if (_lynxUIRenderer.uiOwner.uiContext.templateResourceFetcher) {
     _LogI(@"loadTemplateFromURL with templateResourceFetcher.");
     LynxResourceRequest* request =
         [[LynxResourceRequest alloc] initWithUrl:url type:LynxResourceTypeTemplate];

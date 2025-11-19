@@ -7,6 +7,6 @@
 
 @interface LynxViewGroup ()
 
-- (void)addLynxView:(nonnull LynxView *)view;
+- (LynxTemplateBundle *_Nullable)getTemplateBundleNonBlocking;
 
 @end
