@@ -105,7 +105,17 @@ function noop() {}
       offset: 0,
     },
   });
+  {
+    invoke<'scroll-view'>({
+      method: 'getScrollInfo',
+      success: (payload) => {
+        assertType<number>(payload.scrollX);
+        assertType<number>(payload.scrollY);
+        assertType<number>(payload.scrollRange);
+      },
+    });
+  }
 
   let a: unknown;
-  expectType<'scrollTo' | 'autoScroll' | 'scrollBy'>(a as UIMethods['scroll-view']['method']);
+  expectType<'scrollTo' | 'autoScroll' | 'scrollBy' | 'getScrollInfo'>(a as UIMethods['scroll-view']['method']);
 }

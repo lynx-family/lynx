@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { BaseEvent, BaseMethod, EventHandler } from '../events';
+import { BaseEvent, BaseMethod, EventHandler, Callback } from '../events';
 import { StandardProps } from '../props';
 import {
   ContentSizeChangedEvent,
@@ -232,4 +232,41 @@ export interface ScrollViewAutoScrollMethod extends BaseMethod {
   };
 }
 
-export type ScrollViewUIMethods = ScrollViewScrollToMethod | ScrollViewScrollByMethod | ScrollViewAutoScrollMethod;
+/**
+ * Get scroll info
+ * @Android
+ * @iOS
+ * @Harmony
+ * @PC
+ */
+export interface ScrollViewGetScrollInfoMethod extends BaseMethod {
+  method: 'getScrollInfo';
+  success?: Callback<{
+    /**
+     * Content offset on X-axis, in PX
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    scrollX: number;
+    /**
+     * Content offset on Y-axis, in PX
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    scrollY: number;
+    /**
+     * Total scrollable range along orientation, in PX
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    scrollRange: number;
+  }>;
+}
+
+export type ScrollViewUIMethods = ScrollViewScrollToMethod | ScrollViewScrollByMethod | ScrollViewAutoScrollMethod | ScrollViewGetScrollInfoMethod;
