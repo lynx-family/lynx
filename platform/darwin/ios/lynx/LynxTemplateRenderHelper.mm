@@ -123,6 +123,7 @@
         _performanceController =
             [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
         painting_context_ref->SetPerformanceController(_performanceController);
+        _context.perfController = _performanceController;
       }
     }
   }
@@ -197,11 +198,22 @@
 - (void)setUpEventHandler {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_SETUP_EVENT_HANDLER);
   __weak typeof(self) weakSelf = self;
-  [_lynxUIRenderer setupEventHandler:_lynxEngineProxy
-                            shellPtr:reinterpret_cast<int64_t>(shell_.get())
-                               block:^BOOL(LynxEvent* event) {
-                                 return [weakSelf onLynxEvent:event];
-                               }];
+  [_lynxUIRenderer
+      setupEventHandler:_lynxEngineProxy
+               shellPtr:reinterpret_cast<int64_t>(shell_.get())
+                  block:^BOOL(LynxEvent* event) {
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    if (strongSelf && strongSelf->_performanceController) {
+                      LynxFSPTracer* fsp = [strongSelf->_performanceController fspTracer];
+                      /// stop fsp by user interaction.
+                      if ([fsp enable] &&
+                          (event.eventType == kTouchEvent || event.eventType == kMouseEVent ||
+                           event.eventType == kKeyboardEvent)) {
+                        [fsp stopByUserInteraction];
+                      }
+                    }
+                    return [strongSelf onLynxEvent:event];
+                  }];
 }
 
 - (void)setUpRuntimeWithLastInstanceId:(int32_t)lastInstanceId {

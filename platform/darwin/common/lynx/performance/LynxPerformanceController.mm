@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxFSPTracer+Native.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
@@ -38,12 +39,14 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
   if (self = [super init]) {
     _observer = observer;
+    _fspTracer = [[LynxFSPTracer alloc] init];
   }
   return self;
 }
 
 - (void)setNativeActor:(const std::shared_ptr<PerformanceControllerActor>&)nativeActor {
   _nativeWeakActorPtr = nativeActor;
+  [_fspTracer setNativeActor:nativeActor];
 }
 
 #pragma mark - LynxMemoryMonitorProtocol

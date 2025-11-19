@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxError.h>
+#import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewEnum.h>
@@ -24,6 +25,7 @@
 @property(nonatomic, weak) LynxUIIntersectionObserverManager* _Nullable intersectionManager;
 @property(nonatomic, weak) id<LUIBodyView> _Nullable containerView;
 @property(nonatomic, weak) LynxKeyboardEventDispatcher* _Nullable keyboardEventDispatcher;
+@property(nonatomic, weak) LynxPerformanceController* _Nullable perfController;
 
 // Generated in the LynxShell, id of template instance.
 // instanceId is a value greater than or equal to 0, the initial value is -1.

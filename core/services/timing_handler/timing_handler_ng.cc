@@ -97,6 +97,15 @@ void TimingHandlerNg::SetTiming(const TimestampKey& timing_key,
   }
 }
 
+void TimingHandlerNg::SetFSPInfo(const std::string& key,
+                                 const std::string& value) {
+  if (key.empty() || value.empty()) {
+    LOGE("Invalid FSP info key or value");
+    return;
+  }
+  timing_info_.SetFSPInfo(key, value);
+}
+
 void TimingHandlerNg::ProcessInitTiming(
     const lynx::tasm::timing::TimestampKey& timing_key,
     const lynx::tasm::timing::TimestampUs us_timestamp) {
