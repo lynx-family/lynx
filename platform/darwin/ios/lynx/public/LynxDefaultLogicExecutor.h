@@ -11,6 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxDefaultLogicExecutor : NSObject <LynxLogicExecutor>
+// TODO @dangyingkai delete these two constructor
 - (instancetype)initWithRuntimeOptions:(LynxBackgroundRuntimeOptions *)backgroundRuntimeOptions
                          lynxViewGroup:(LynxViewGroup *)lynxViewGroup
                             debuggable:(BOOL)debuggable;
@@ -19,6 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
               backgroundRuntimeOptions:(LynxBackgroundRuntimeOptions *)backgroundRuntimeOptions
                          lynxViewGroup:(LynxViewGroup *)lynxViewGroup
                             debuggable:(BOOL)debuggable;
+
+- (instancetype)initWithLynxViewGroup:(LynxViewGroup *)lynxViewGroup;
 @end
 
 NS_ASSUME_NONNULL_END

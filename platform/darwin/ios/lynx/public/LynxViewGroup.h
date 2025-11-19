@@ -12,6 +12,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void (^LynxTemplateBundleResultBlock)(LynxTemplateBundle *_Nullable data,
+                                              NSError *_Nullable error);
+
 @protocol LynxLogicExecutor;
 @class LynxView;
 
@@ -60,6 +63,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setTemplateBundle:(LynxTemplateBundle *_Nullable)templateBundle;
 
 - (void)setLogicExecutor:(id<LynxLogicExecutor>)logicExecutor;
+
+/**
+ * - If the TemplateBundle is ready, immediately invoke the callback (in-place)
+ * - If the TemplateBundle is being fetched, trigger the callback once the fetch completes
+ * - If the TemplateBundle failed to fetch, pass the failure error to the callback
+ */
+- (void)fetchTemplate:(LynxTemplateBundleResultBlock)callback;
 @end
 
 NS_ASSUME_NONNULL_END

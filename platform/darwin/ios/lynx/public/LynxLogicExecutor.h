@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxViewGroup.h>
+
 @class LynxView;
 @class LynxTemplateBundle;
 NS_ASSUME_NONNULL_BEGIN
@@ -14,10 +16,6 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)onLynxEvent:(LynxView *)lynxView event:(NSDictionary *)event;
 
-/**
- * @param bundle The template bundle
- */
-- (void)setTemplateBundle:(LynxTemplateBundle *)bundle;
 - (void)destroy;
 @end
 NS_ASSUME_NONNULL_END
