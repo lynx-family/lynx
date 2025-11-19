@@ -96,6 +96,10 @@ class TimingHandler {
                                              const std::string& value) {
     handler_ng_.SetHostPlatformTimingExtraInfo(pipeline_id, key, value);
   }
+
+  inline void SetFSPInfo(const std::string& key, const std::string& value) {
+    handler_ng_.SetFSPInfo(key, value);
+  }
   // This logic is to ensure compatibility with the old js_app markTiming
   // API. The old js_app markTiming API takes TimingFlag as a parameter and
   // uses it as the dimension for marking.

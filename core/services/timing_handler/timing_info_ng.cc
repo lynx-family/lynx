@@ -25,6 +25,8 @@ void TimingInfoNg::ClearPipelineTimingInfo() {
   metrics_.clear();
   load_bundle_pipeline_id_ = "";
   pipeline_id_to_origin_map_.clear();
+  fsp_info_.clear();
+  fsp_end_timing_ = 0;
 }
 
 void TimingInfoNg::ClearContainerTimingInfo() {
@@ -97,6 +99,11 @@ bool TimingInfoNg::SetFSPTiming(const TimestampUs us_timestamp) {
   } else {
     return false;
   }
+}
+
+bool TimingInfoNg::SetFSPInfo(const std::string& key,
+                              const std::string& value) {
+  return fsp_info_.emplace(key, value).second;
 }
 
 std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetInitContainerEntry(
@@ -473,6 +480,9 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFspEntry(
     }
     entry->PushStringToMap(kEntryType, kEntryTypeMetric);
     entry->PushStringToMap(kEntryName, kEntryNameFSP);
+    for (const auto& [key, value] : fsp_info_) {
+      entry->PushStringToMap(key, value);
+    }
     return entry;
   }
   return nullptr;

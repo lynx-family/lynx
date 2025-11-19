@@ -410,6 +410,7 @@ subspec_target("UnitTests") {
     "../../common/lynx/event_report/LynxEventReporterUtilsUnitTest.m",
     "../../common/lynx/feature_count/LynxFeatureCounterUnitTest.mm",
     "../../common/lynx/performance/LynxPerformanceControllerUnitTest.mm",
+    "../../common/lynx/performance/fsp/LynxFSPTracerUnitTest.mm",
     "LynxModuleManagerDarwinUnitTest.mm",
     "LynxUnitTestUtils.h",
     "LynxUnitTestUtils.mm",

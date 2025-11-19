@@ -1841,6 +1841,14 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
 }
 
+public class LynxFSPTracer : NSObject, <LynxPerformanceObserverProtocol> {
+  public BOOL LynxFSPTracer::enable enable;
+  public void LynxFSPTracer::startWithCaptureHandler:(LynxMeaningfulContentSnapshot *(^ captureHandler)(void));
+  public void LynxFSPTracer::stop();
+  public void LynxFSPTracer::stopByUserInteraction();
+  public void LynxFSPTracer()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
+}
+
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResource:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResourcePath:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourcePathCompletionBlock _Nonnull callback);
@@ -5484,6 +5492,9 @@ public enum LynxFeature {
   public lynx::lepus::Value LynxConvertToLepusValue(id data, BOOL useBoolLiterals=NO);
   public lynx::lepus::Value * LynxGetLepusValueFromTemplateData(LynxTemplateData *data);
   public std::shared_ptr< lynx::tasm::TemplateData > ConvertLynxTemplateDataToTemplateData(LynxTemplateData *data);
+
+  using PerformanceControllerActor = 
+    lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>
 
   using PerformanceControllerActor = 
     lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>
