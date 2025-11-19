@@ -795,6 +795,7 @@ public class LynxEnv {
     // which can reduce native calls.
     if (isNativeLibraryLoaded() && mDevToolComponentAttach) {
       setBooleanLocalEnv(LynxEnvKey.DEVTOOL_COMPONENT_ATTACH, true);
+      setBooleanLocalEnv(LynxEnvKey.LYNX_DEBUG_ENABLED, isLynxDebugEnabled());
     }
   }
 
@@ -837,7 +838,7 @@ public class LynxEnv {
   public boolean isLogBoxEnabled() {
     ILynxDevToolService devToolService =
         LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-    return isDevtoolComponentAttach() && getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true)
+    return isLynxDebugEnabled() && getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true)
         && (devToolService != null && devToolService.getLogBoxPresetValue());
   }
 

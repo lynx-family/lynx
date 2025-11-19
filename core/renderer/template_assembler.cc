@@ -183,7 +183,7 @@ TemplateAssembler::Scope::~Scope() {
     if (error != nullptr) {
       // TODO(yuanzhiwen): handle LynxErrorLevel::Fatal in platform.
       if (error->should_abort_) {
-        if (LynxEnv::GetInstance().IsDevToolComponentAttach() &&
+        if (LynxEnv::GetInstance().IsLynxDebugEnabled() &&
             !LynxEnv::GetInstance().IsLogBoxEnabled()) {
           LOGF("error_message: " << error->error_message_ << " fix_suggestion: "
                                  << error->error_message_);

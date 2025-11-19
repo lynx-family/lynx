@@ -127,6 +127,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     DISABLE_JS_MODE_STRIP,
     ENABLE_QUICKJS_THREAD_CHECKER,
     ENABLE_LEVEL_ORDER_TRAVERSING,
+    LYNX_DEBUG_ENABLED,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -137,6 +138,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
         env_key_to_string_map({
             {Key::ENABLE_DEVTOOL, "enable_devtool"},
             {Key::DEVTOOL_COMPONENT_ATTACH, kLynxDevToolComponentAttach},
+            {Key::LYNX_DEBUG_ENABLED, kLynxDebugEnabled},
             {Key::ENABLE_LOGBOX, kLynxEnableLogBox},
             {Key::ENABLE_QUICKJS_CACHE, "enable_quickjs_cache"},
             {Key::ANDROID_DISABLE_QUICKJS_CODE_CACHE,
@@ -345,6 +347,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool ContainKey(const std::string& key);
 
   bool IsDevToolComponentAttach();
+  bool IsLynxDebugEnabled();
   bool IsDevToolEnabled();
   bool IsLogBoxEnabled();
   bool IsQuickjsCacheEnabled();
