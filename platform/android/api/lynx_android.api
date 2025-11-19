@@ -978,6 +978,10 @@ public class com::lynx::tasm::utils::BlurUtils :  {
   public static void com.lynx.tasm.utils.BlurUtils.iterativeBoxBlur(Bitmap bitmap, int blurRadius);
 }
 
+public class com::lynx::tasm::behavior::ui::utils::BorderDrawingUtil :  {
+  public static void com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil.drawRectangularBorders(Canvas canvas, Paint paint, Rect bounds, int[] borderWidths, int[] borderColors, @NonNull BorderStyle[] borderStyles);
+}
+
 public class com::lynx::tasm::behavior::ui::utils::BorderRadius :  {
   public void com.lynx.tasm.behavior.ui.utils.BorderRadius.clearCache();
   public boolean com.lynx.tasm.behavior.ui.utils.BorderRadius.updateSize(final float width, final float height);

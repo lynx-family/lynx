@@ -4142,6 +4142,7 @@ void FiberElement::UpdateLayoutInfo() {
   if (EnableFragmentLayerRender()) {
     static_cast<Fragment *>(element_container())
         ->MarkDirtyState(BaseElementContainer::kNeedRedraw);
+    static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
   }
   frame_changed_ = true;
 }

@@ -49,10 +49,6 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
   private static final int DEFAULT_BORDER_COLOR = Color.BLACK;
   private static final int DEFAULT_BORDER_RGB = 0x00FFFFFF & DEFAULT_BORDER_COLOR;
   private static final int DEFAULT_BORDER_ALPHA = (0xFF000000 & DEFAULT_BORDER_COLOR) >>> 24;
-  // ~0 == 0xFFFFFFFF, all bits set to 1.
-  private static final int ALL_BITS_SET = ~0;
-  // 0 == 0x00000000, all bits set to 0.
-  private static final int ALL_BITS_UNSET = 0;
   private boolean mPaddingWidthChanged = false;
   private boolean mBorderWidthChanged = false;
 
@@ -982,28 +978,6 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
     }
   }
 
-  /**
-   * Quickly determine if all the set border colors are equal. Bitwise AND all the
-   * set colors together, then OR them all together. If the AND and the OR are the
-   * same, then the colors are compatible, so return this color.
-   * <p>
-   * Used to avoid expensive path creation and expensive calls to canvas.drawPath
-   *
-   * @return A compatible border color, or zero if the border colors are not
-   * compatible.
-   */
-  private static int fastBorderCompatibleColorOrZero(int borderLeft, int borderTop, int borderRight,
-      int borderBottom, int colorLeft, int colorTop, int colorRight, int colorBottom) {
-    int andSmear = (borderLeft > 0 ? colorLeft : ALL_BITS_SET)
-        & (borderTop > 0 ? colorTop : ALL_BITS_SET) & (borderRight > 0 ? colorRight : ALL_BITS_SET)
-        & (borderBottom > 0 ? colorBottom : ALL_BITS_SET);
-    int orSmear = (borderLeft > 0 ? colorLeft : ALL_BITS_UNSET)
-        | (borderTop > 0 ? colorTop : ALL_BITS_UNSET)
-        | (borderRight > 0 ? colorRight : ALL_BITS_UNSET)
-        | (borderBottom > 0 ? colorBottom : ALL_BITS_UNSET);
-    return andSmear == orSmear ? andSmear : 0;
-  }
-
   private boolean toDrawBorderUseSameStyle() {
     if (mBorderStyle == null)
       return true;
@@ -1259,150 +1233,24 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
   private void drawRectangularBorders(Canvas canvas) {
     final RectF borderWidth = getDirectionAwareBorderInsets();
 
-    final int borderLeft = calcBorderMeasureWidth(borderWidth.left);
-    final int borderTop = calcBorderMeasureWidth(borderWidth.top);
-    final int borderRight = calcBorderMeasureWidth(borderWidth.right);
-    final int borderBottom = calcBorderMeasureWidth(borderWidth.bottom);
+    // Prepare pre-processed border data arrays
+    int[] borderWidths = new int[] {calcBorderMeasureWidth(borderWidth.left),
+        calcBorderMeasureWidth(borderWidth.top), calcBorderMeasureWidth(borderWidth.right),
+        calcBorderMeasureWidth(borderWidth.bottom)};
 
-    final boolean borderWidthToDraw =
-        (borderLeft > 0 || borderRight > 0 || borderTop > 0 || borderBottom > 0);
+    int[] borderColors = new int[] {getBorderColor(Spacing.LEFT), getBorderColor(Spacing.TOP),
+        getBorderColor(Spacing.RIGHT), getBorderColor(Spacing.BOTTOM)};
 
-    // maybe draw borders?
-    if (borderWidthToDraw) {
-      Rect bounds = getBounds();
+    // Prepare border styles array with default solid fallback
+    BorderStyle[] borderStyles = new BorderStyle[4];
+    borderStyles[0] = getBorderStyleWithDefaultSolid(Spacing.LEFT);
+    borderStyles[1] = getBorderStyleWithDefaultSolid(Spacing.TOP);
+    borderStyles[2] = getBorderStyleWithDefaultSolid(Spacing.RIGHT);
+    borderStyles[3] = getBorderStyleWithDefaultSolid(Spacing.BOTTOM);
 
-      int colorLeft = getBorderColor(Spacing.LEFT);
-      int colorTop = getBorderColor(Spacing.TOP);
-      int colorRight = getBorderColor(Spacing.RIGHT);
-      int colorBottom = getBorderColor(Spacing.BOTTOM);
-
-      int left = bounds.left;
-      int top = bounds.top;
-
-      mPaint.setAntiAlias(false);
-      mPaint.setStyle(Paint.Style.STROKE);
-
-      // Check for fast path to border drawing.
-      int fastBorderColor = fastBorderCompatibleColorOrZero(borderLeft, borderTop, borderRight,
-          borderBottom, colorLeft, colorTop, colorRight, colorBottom);
-
-      if (fastBorderColor != 0 && toDrawBorderUseSameStyle()) {
-        if (Color.alpha(fastBorderColor) != 0) {
-          final int right = bounds.right, bottom = bounds.bottom;
-          final BorderStyle borderStyle = getBorderStyleWithDefaultSolid(Spacing.LEFT);
-
-          if (borderTop > 0) {
-            final float topCenter = top + borderTop * 0.5f;
-            // should not cover start of the next section, or if alpha is not 255, the color
-            // will be darken
-            final float endTop = right - (borderRight > 0 ? borderRight : 0);
-            borderStyle.strokeBorderLine(canvas, mPaint, Spacing.TOP, borderWidth.top,
-                fastBorderColor, left, topCenter, endTop, topCenter, right - left, borderTop);
-          }
-          if (borderRight > 0) {
-            final float rightCenter = right - borderRight * 0.5f;
-            final float endRight = bottom - (borderBottom > 0 ? borderBottom : 0);
-            borderStyle.strokeBorderLine(canvas, mPaint, Spacing.RIGHT, borderWidth.right,
-                fastBorderColor, rightCenter, top, rightCenter, endRight, bottom - top,
-                borderRight);
-          }
-          if (borderBottom > 0) {
-            final float bottomCenter = bottom - borderBottom * 0.5f;
-            final float endBottom = left + (borderLeft > 0 ? borderLeft : 0);
-            borderStyle.strokeBorderLine(canvas, mPaint, Spacing.BOTTOM, borderWidth.bottom,
-                fastBorderColor, right, bottomCenter, endBottom, bottomCenter, right - left,
-                borderBottom);
-          }
-          if (borderLeft > 0) {
-            final float leftCenter = left + borderLeft * 0.5f;
-            final float endLeft = top + (borderTop > 0 ? borderTop : 0);
-            borderStyle.strokeBorderLine(canvas, mPaint, Spacing.LEFT, borderWidth.left,
-                fastBorderColor, leftCenter, bottom, leftCenter, endLeft, bottom - top, borderLeft);
-          }
-        }
-      } else {
-        // If the path drawn previously is of the same color,
-        // there would be a slight white space between borders
-        // with anti-alias set to true.
-        // Therefore we need to disable anti-alias, and
-        // after drawing is done, we will re-enable it.
-        int width = bounds.width();
-        int height = bounds.height();
-
-        if (borderTop > 0 && Color.alpha(colorTop) != 0) {
-          final float x1 = left;
-          final float y1 = top;
-          final float x2 = left + borderLeft;
-          final float y2 = top + borderTop;
-          final float x3 = left + width - borderRight;
-          final float y3 = top + borderTop;
-          final float x4 = left + width;
-          final float y4 = top;
-          final float y5 = top + borderTop * 0.5f;
-          canvas.save();
-          clipQuadrilateral(canvas, x1, y1, x2, y2, x3, y3, x4, y4, false);
-          getBorderStyleWithDefaultSolid(Spacing.TOP)
-              .strokeBorderLine(canvas, mPaint, Spacing.TOP, borderWidth.top, colorTop, x1, y5, x4,
-                  y5, width, borderTop);
-          canvas.restore();
-        }
-
-        if (borderRight > 0 && Color.alpha(colorRight) != 0) {
-          final float x1 = left + width;
-          final float y1 = top;
-          final float x2 = left + width;
-          final float y2 = top + height;
-          final float x3 = left + width - borderRight;
-          final float y3 = top + height - borderBottom;
-          final float x4 = left + width - borderRight;
-          final float y4 = top + borderTop;
-          final float x5 = left + width - borderRight * 0.5f;
-          canvas.save();
-          clipQuadrilateral(canvas, x1, y1, x2, y2, x3, y3, x4, y4, false);
-          getBorderStyleWithDefaultSolid(Spacing.RIGHT)
-              .strokeBorderLine(canvas, mPaint, Spacing.RIGHT, borderWidth.right, colorRight, x5,
-                  y1, x5, y2, height, borderRight);
-          canvas.restore();
-        }
-
-        if (borderBottom > 0 && Color.alpha(colorBottom) != 0) {
-          final float x1 = left;
-          final float y1 = top + height;
-          final float x2 = left + width;
-          final float y2 = top + height;
-          final float x3 = left + width - borderRight;
-          final float y3 = top + height - borderBottom;
-          final float x4 = left + borderLeft;
-          final float y4 = top + height - borderBottom;
-          final float y5 = top + height - borderBottom * 0.5f;
-          canvas.save();
-          clipQuadrilateral(canvas, x1, y1, x2, y2, x3, y3, x4, y4, false);
-          getBorderStyleWithDefaultSolid(Spacing.BOTTOM)
-              .strokeBorderLine(canvas, mPaint, Spacing.BOTTOM, borderWidth.bottom, colorBottom, x2,
-                  y5, x1, y5, width, borderBottom);
-          canvas.restore();
-        }
-
-        if (borderLeft > 0 && Color.alpha(colorLeft) != 0) {
-          final float x1 = left;
-          final float y1 = top;
-          final float x2 = left + borderLeft;
-          final float y2 = top + borderTop;
-          final float x3 = left + borderLeft;
-          final float y3 = top + height - borderBottom;
-          final float x4 = left;
-          final float y4 = top + height;
-          final float x5 = left + borderLeft * 0.5f;
-          canvas.save();
-          clipQuadrilateral(canvas, x1, y1, x2, y2, x3, y3, x4, y4, false);
-          getBorderStyleWithDefaultSolid(Spacing.LEFT)
-              .strokeBorderLine(canvas, mPaint, Spacing.LEFT, borderWidth.left, colorLeft, x5, y4,
-                  x5, y1, height, borderLeft);
-          canvas.restore();
-        }
-      }
-    }
-    mPaint.setAntiAlias(true);
+    // Use the utility function to draw rectangular borders
+    BorderDrawingUtil.drawRectangularBorders(
+        canvas, mPaint, getBounds(), borderWidths, borderColors, borderStyles);
   }
 
   private void clipQuadrilateral(Canvas canvas, float x1, float y1, float x2, float y2, float x3,

@@ -3,10 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,9 +21,12 @@ import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.utils.BorderStyle;
+import com.lynx.tasm.behavior.ui.utils.Spacing;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -49,6 +56,8 @@ import org.mockito.MockitoAnnotations;
  *   <li>{@code OP_TEXT (6)}: Draw text layout by ID</li>
  *   <li>{@code OP_IMAGE (7)}: Draw image by ID with bounds</li>
  *   <li>{@code OP_CUSTOM (8)}: Custom drawing operation</li>
+ *   <li>{@code OP_BORDER (9)}: Draw rectangular borders with specified widths, colors, and
+ * styles</li>
  * </ul>
  *
  * <p>Example Display List:
@@ -68,7 +77,14 @@ public class DisplayListApplierTest {
   @Mock private View mockHostView;
 
   private DisplayListApplier displayListApplier;
+  private DisplayListApplier spyDisplayListApplier;
   private DisplayList testDisplayList;
+
+  // ArgumentCaptors for verifying drawRectangularBorders calls
+  private ArgumentCaptor<android.graphics.Rect> boundsCaptor;
+  private ArgumentCaptor<int[]> borderWidthsCaptor;
+  private ArgumentCaptor<int[]> borderColorsCaptor;
+  private ArgumentCaptor<BorderStyle[]> borderStylesCaptor;
 
   @Before
   public void setUp() {
@@ -76,7 +92,14 @@ public class DisplayListApplierTest {
     // Set up PlatformRendererContext to return our mock TextMeasurer
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
     displayListApplier = new DisplayListApplier(null, mockPlatformRendererContext, mockHostView);
+    spyDisplayListApplier = spy(displayListApplier);
     testDisplayList = new DisplayList();
+
+    // Initialize ArgumentCaptors
+    boundsCaptor = forClass(android.graphics.Rect.class);
+    borderWidthsCaptor = forClass(int[].class);
+    borderColorsCaptor = forClass(int[].class);
+    borderStylesCaptor = forClass(BorderStyle[].class);
   }
 
   /**
@@ -487,5 +510,179 @@ public class DisplayListApplierTest {
     verify(mockCanvas).drawRect(any(RectF.class), any(Paint.class)); // OP_FILL creates rect
     verify(mockTextMeasurer).takeTextLayout(999);
     verify(mockCanvas).restore();
+  }
+
+  /**
+   * Tests OP_BORDER operation with uniform border (fast path).
+   * Verifies that OP_BORDER correctly draws uniform borders using single stroke operation.
+   *
+   * <p>Test Data Layout:
+   * <pre>
+   * ops = {0, 9, 1}                 // OP_BEGIN, OP_BORDER, OP_END
+   * iArgv = {0, 4, 8, 4, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0, 0, 0, 0, 0, 0} //
+   * colors + styles fArgv = {0f, 0f, 100f, 50f, 5f, 5f, 5f, 5f} // bounds + border widths (all 5)
+   * </pre>
+   *
+   * <p>Expected Behavior:
+   * <ul>
+   *   <li>Canvas.save() is called for OP_BEGIN</li>
+   *   <li>drawRectangularBorders is called with correct parameters</li>
+   *   <li>Canvas.restore() is called for OP_END</li>
+   * </ul>
+   */
+  @Test
+  public void testOpBorderUniform() {
+    testDisplayList.ops = new int[] {0, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.iArgv = new int[] {
+        0, 4, 8, 4, // OP_BEGIN: 0 int, 4 float params
+        0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
+        0, 0, 0, 0, // Border styles (solid)
+        0, 0 // OP_END, 0 int, 0 float params.
+    };
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
+        5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
+    };
+
+    spyDisplayListApplier.setDisplayList(testDisplayList);
+    spyDisplayListApplier.drawTillNextView(mockCanvas);
+
+    // Verify drawRectangularBorders is called with correct parameters
+    verify(spyDisplayListApplier)
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), boundsCaptor.capture(),
+            borderWidthsCaptor.capture(), borderColorsCaptor.capture(),
+            borderStylesCaptor.capture());
+
+    // Verify bounds
+    android.graphics.Rect capturedBounds = boundsCaptor.getValue();
+    assertEquals(0, capturedBounds.left);
+    assertEquals(0, capturedBounds.top);
+    assertEquals(100, capturedBounds.right);
+    assertEquals(50, capturedBounds.bottom);
+
+    // Verify border widths
+    int[] capturedWidths = borderWidthsCaptor.getValue();
+    assertEquals(5, capturedWidths[0]); // left
+    assertEquals(5, capturedWidths[1]); // top
+    assertEquals(5, capturedWidths[2]); // right
+    assertEquals(5, capturedWidths[3]); // bottom
+
+    // Verify border colors
+    int[] capturedColors = borderColorsCaptor.getValue();
+    assertEquals(0xFF0000FF, capturedColors[0]); // left
+    assertEquals(0xFF0000FF, capturedColors[1]); // top
+    assertEquals(0xFF0000FF, capturedColors[2]); // right
+    assertEquals(0xFF0000FF, capturedColors[3]); // bottom
+
+    // Verify border styles
+    BorderStyle[] capturedStyles = borderStylesCaptor.getValue();
+    assertEquals(BorderStyle.SOLID, capturedStyles[0]); // left
+    assertEquals(BorderStyle.SOLID, capturedStyles[1]); // top
+    assertEquals(BorderStyle.SOLID, capturedStyles[2]); // right
+    assertEquals(BorderStyle.SOLID, capturedStyles[3]); // bottom
+  }
+
+  @Test
+  public void testOpBorderComplex() {
+    testDisplayList.ops = new int[] {0, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.iArgv = new int[] {
+        0, 4, 8, 4, // OP_BEGIN: 0 int, 4 float params
+        0xFFFF00FF, 0xFF00FFFF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
+        0, 1, 2, 3, // Border styles (solid)
+        0, 0 // OP_END, 0 int, 0 float params.
+    };
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
+        5f, 6f, 5f, 0f // border widths: left=5, top=5, right=5, bottom=5
+    };
+
+    spyDisplayListApplier.setDisplayList(testDisplayList);
+    spyDisplayListApplier.drawTillNextView(mockCanvas);
+
+    // Verify drawRectangularBorders is called with correct parameters
+    verify(spyDisplayListApplier)
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), boundsCaptor.capture(),
+            borderWidthsCaptor.capture(), borderColorsCaptor.capture(),
+            borderStylesCaptor.capture());
+
+    // Verify bounds
+    android.graphics.Rect capturedBounds = boundsCaptor.getValue();
+    assertEquals(0, capturedBounds.left);
+    assertEquals(0, capturedBounds.top);
+    assertEquals(100, capturedBounds.right);
+    assertEquals(50, capturedBounds.bottom);
+
+    // Verify border widths
+    int[] capturedWidths = borderWidthsCaptor.getValue();
+    assertEquals(5, capturedWidths[Spacing.TOP]);
+    assertEquals(6, capturedWidths[Spacing.RIGHT]);
+    assertEquals(5, capturedWidths[Spacing.BOTTOM]);
+    assertEquals(0, capturedWidths[Spacing.LEFT]);
+
+    // Verify border colors
+    int[] capturedColors = borderColorsCaptor.getValue();
+    assertEquals(0xFFFF00FF, capturedColors[Spacing.TOP]);
+    assertEquals(0xFF00FFFF, capturedColors[Spacing.RIGHT]);
+    assertEquals(0xFF0000FF, capturedColors[Spacing.BOTTOM]);
+    assertEquals(0xFF0000FF, capturedColors[Spacing.LEFT]);
+
+    // Verify border styles
+    BorderStyle[] capturedStyles = borderStylesCaptor.getValue();
+    assertEquals(BorderStyle.SOLID, capturedStyles[Spacing.TOP]);
+    assertEquals(BorderStyle.DASHED, capturedStyles[Spacing.RIGHT]);
+    assertEquals(BorderStyle.DOTTED, capturedStyles[Spacing.BOTTOM]);
+    assertEquals(BorderStyle.DOUBLE, capturedStyles[Spacing.LEFT]);
+  }
+
+  @Test
+  public void testOpBorderDashedOrDotted() {
+    testDisplayList.ops = new int[] {0, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.iArgv = new int[] {
+        0, 4, 8, 4, // OP_BEGIN: 0 int, 4 float params
+        0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
+        1, 1, 1, 1, // Border styles (solid)
+        0, 0 // OP_END, 0 int, 0 float params.
+    };
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
+        5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
+    };
+
+    spyDisplayListApplier.setDisplayList(testDisplayList);
+    spyDisplayListApplier.drawTillNextView(mockCanvas);
+
+    // Verify drawRectangularBorders is called with correct parameters
+    verify(spyDisplayListApplier)
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), boundsCaptor.capture(),
+            borderWidthsCaptor.capture(), borderColorsCaptor.capture(),
+            borderStylesCaptor.capture());
+
+    // Verify bounds
+    android.graphics.Rect capturedBounds = boundsCaptor.getValue();
+    assertEquals(0, capturedBounds.left);
+    assertEquals(0, capturedBounds.top);
+    assertEquals(100, capturedBounds.right);
+    assertEquals(50, capturedBounds.bottom);
+
+    // Verify border widths
+    int[] capturedWidths = borderWidthsCaptor.getValue();
+    assertEquals(5, capturedWidths[0]); // left
+    assertEquals(5, capturedWidths[1]); // top
+    assertEquals(5, capturedWidths[2]); // right
+    assertEquals(5, capturedWidths[3]); // bottom
+
+    // Verify border colors
+    int[] capturedColors = borderColorsCaptor.getValue();
+    assertEquals(0xFF0000FF, capturedColors[0]); // left
+    assertEquals(0xFF0000FF, capturedColors[1]); // top
+    assertEquals(0xFF0000FF, capturedColors[2]); // right
+    assertEquals(0xFF0000FF, capturedColors[3]); // bottom
+
+    // Verify border styles
+    BorderStyle[] capturedStyles = borderStylesCaptor.getValue();
+    assertEquals(BorderStyle.DASHED, capturedStyles[0]); // left
+    assertEquals(BorderStyle.DASHED, capturedStyles[1]); // top
+    assertEquals(BorderStyle.DASHED, capturedStyles[2]); // right
+    assertEquals(BorderStyle.DASHED, capturedStyles[3]); // bottom
   }
 }

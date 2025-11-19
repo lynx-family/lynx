@@ -15,6 +15,9 @@ import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
+import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
+import com.lynx.tasm.behavior.ui.utils.BorderStyle;
+import com.lynx.tasm.behavior.ui.utils.Spacing;
 import java.lang.ref.WeakReference;
 import java.util.Stack;
 
@@ -27,6 +30,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_TEXT = 6;
   private static final int OP_IMAGE = 7;
   private static final int OP_CUSTOM = 8;
+  private static final int OP_BORDER = 9;
 
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
@@ -178,11 +182,64 @@ public class DisplayListApplier implements Drawable.Callback {
             drawImage(canvas, imageId);
           }
           break;
-        case OP_CUSTOM:
+        case OP_BORDER:
+          if (intParamCount == 8 && floatParamCount == 4) {
+            // Read border parameters
+            // 4 floats: border widths (left, top, right, bottom)
+            int[] borderWidths = new int[4];
+            borderWidths[Spacing.TOP] = Math.round(nextContentFloat()); // top
+            borderWidths[Spacing.RIGHT] = Math.round(nextContentFloat()); // right
+            borderWidths[Spacing.BOTTOM] = Math.round(nextContentFloat()); // bottom
+            borderWidths[Spacing.LEFT] = Math.round(nextContentFloat()); // left
+
+            // 8 ints: border colors (4) + border styles (4)
+            int[] borderColors = new int[4];
+
+            borderColors[Spacing.TOP] = nextContentInt(); // top color
+            borderColors[Spacing.RIGHT] = nextContentInt(); // right color
+            borderColors[Spacing.BOTTOM] = nextContentInt(); // bottom color
+            borderColors[Spacing.LEFT] = nextContentInt(); // left color
+
+            BorderStyle[] borderStyles = new BorderStyle[4];
+
+            borderStyles[Spacing.TOP] = BorderStyle.parse(nextContentInt()); // top style
+            borderStyles[Spacing.RIGHT] = BorderStyle.parse(nextContentInt()); // right style
+            borderStyles[Spacing.BOTTOM] = BorderStyle.parse(nextContentInt()); // bottom style
+            borderStyles[Spacing.LEFT] = BorderStyle.parse(nextContentInt()); // left style
+
+            // Get current bounds from the stack
+            if (!mBounds.isEmpty()) {
+              RectF bounds = mBounds.peek();
+
+              // Use the member function to draw the rectangular borders (verifiable in tests)
+              drawRectangularBorders(canvas, mPaint,
+                  new android.graphics.Rect(
+                      (int) bounds.left, (int) bounds.top, (int) bounds.right, (int) bounds.bottom),
+                  borderWidths, borderColors, borderStyles);
+            }
+          }
+          break;
         default:
           break;
       }
     }
+  }
+
+  /**
+   * Draws rectangular borders by delegating to BorderDrawingUtil.
+   * This method exists to make border drawing verifiable in unit tests.
+   *
+   * @param canvas The canvas to draw on
+   * @param paint The paint object to use for drawing
+   * @param bounds The bounds of the rectangle to draw borders around
+   * @param borderWidths Array of border widths for [left, top, right, bottom] in pixels
+   * @param borderColors Array of border colors for [left, top, right, bottom]
+   * @param borderStyles Array of border styles for [left, top, right, bottom]
+   */
+  void drawRectangularBorders(Canvas canvas, Paint paint, android.graphics.Rect bounds,
+      int[] borderWidths, int[] borderColors, BorderStyle[] borderStyles) {
+    BorderDrawingUtil.drawRectangularBorders(
+        canvas, paint, bounds, borderWidths, borderColors, borderStyles);
   }
 
   // Helper methods for reading content data
