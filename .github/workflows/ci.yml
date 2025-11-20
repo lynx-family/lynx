@@ -555,7 +555,7 @@ jobs:
   harmony-explorer-build:
     runs-on: lynx-custom-container
     container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8a27a41a94c6541b24dfa6c80386d2e9b0ee3cc8896b6cd7e8d98fe5b0854699
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:bf493c3710de3c44bfa84caf402c0727b9310c42497f6e52580ad441ea640ef1
       credentials:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
