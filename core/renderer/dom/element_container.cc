@@ -233,7 +233,8 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
                    ->root()
                    ->element_container_impl();
     }
-    auto ui_parent = parent->EnclosingStackingContextNode();
+    auto ui_parent =
+        parent->EnclosingStackingContextNode()->CastToElementContainer();
     ui_parent->AddChild(child->element_container_impl(), -1);
     return;
   }
@@ -288,14 +289,9 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
     return;
   }
   if (child->ZIndex() != 0) {
-    auto* enclosing_stacking_node = EnclosingStackingContextNode();
-    if (enclosing_stacking_node) {
-      enclosing_stacking_node->AddChild(child->element_container_impl(), -1);
-    } else {
-      LOGE(
-          "AttachChildToTargetContainer got error: enclosing_stacking_node is "
-          "nullptr!");
-    }
+    auto* enclosing_stacking_node =
+        EnclosingStackingContextNode()->CastToElementContainer();
+    enclosing_stacking_node->AddChild(child->element_container_impl(), -1);
     return;
   }
   std::pair<ElementContainer*, int> result;
@@ -481,16 +477,6 @@ void ElementContainer::MoveContainers(ElementContainer* old_parent,
   new_parent->AddChild(this, -1);
 }
 
-ElementContainer* ElementContainer::EnclosingStackingContextNode() {
-  Element* current = element();
-  for (; current != nullptr; current = current->parent()) {
-    if (current->IsStackingContextNode())
-      return current->element_container_impl();
-  }
-  // Unreachable code
-  return nullptr;
-}
-
 void ElementContainer::MoveZChildrenRecursively(Element* element,
                                                 ElementContainer* parent) {
   for (size_t i = 0; i < element->GetChildCount(); i++) {
@@ -530,8 +516,9 @@ void ElementContainer::ZIndexChanged() {
     element_parent = element()->parent();
   }
   bool is_stacking_context = IsStackingContextNode();
-  auto* parent_stacking_context =
-      element_container_parent()->EnclosingStackingContextNode();
+  auto* parent_stacking_context = element_container_parent()
+                                      ->EnclosingStackingContextNode()
+                                      ->CastToElementContainer();
   auto z = ZIndex();
   // The stacking context changed, need to move the z-index children
   if (was_stacking_context_ != is_stacking_context) {
@@ -547,18 +534,18 @@ void ElementContainer::ZIndexChanged() {
   }
   // If the state of z-index is 0 has changed, need to remount
   // Choose the parent container in the attach function
-  if ((z == 0 && old_index_ != 0) || (old_index_ == 0 && z != 0)) {
+  if ((z == 0 && old_z_index() != 0) || (old_z_index() == 0 && z != 0)) {
     RemoveFromParent(true);
     // Use the parent of element to find the ui parent
     element_parent->element_container_impl()
         ->InsertElementContainerAccordingToElement(
             element(), element()->next_render_sibling());
     parent_stacking_context->MarkDirty();
-  } else if (old_index_ != z) {  // Just mark the stacking context is dirty
+  } else if (old_z_index() != z) {  // Just mark the stacking context is dirty
     parent_stacking_context->MarkDirty();
   }
-  old_index_ = z;
-  was_stacking_context_ = is_stacking_context;
+  set_old_z_index(z);
+  set_was_stacking_context(is_stacking_context);
 }
 
 int ElementContainer::ZIndex() const { return element()->ZIndex(); }
@@ -613,9 +600,9 @@ bool ElementContainer::IsStackingContextNode() {
 
 void ElementContainer::CreatePaintingNode(
     bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) {
-  was_stacking_context_ = IsStackingContextNode();
-  was_position_fixed_ = element()->IsNewFixed();
-  old_index_ = ZIndex();
+  set_was_stacking_context(IsStackingContextNode());
+  set_was_position_fixed(element()->IsNewFixed());
+  set_old_z_index(ZIndex());
   if (element()->IsLayoutOnly()) {
     return;
   }

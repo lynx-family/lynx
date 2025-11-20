@@ -18,6 +18,8 @@ namespace tasm {
 
 class Element;
 class ElementManager;
+class ElementContainer;
+class Fragment;
 
 class BaseElementContainer {
  public:
@@ -31,6 +33,22 @@ class BaseElementContainer {
   ElementManager* element_manager() const;
   PaintingContext* painting_context() const;
   int id() const;
+
+  ElementContainer* CastToElementContainer();
+  Fragment* CastToFragment();
+
+  int32_t old_z_index() const { return old_z_index_; }
+  void set_old_z_index(int32_t old_z_index) { old_z_index_ = old_z_index; }
+
+  bool was_stacking_context() const { return was_stacking_context_; }
+  void set_was_stacking_context(bool was_stacking_context) {
+    was_stacking_context_ = was_stacking_context;
+  }
+
+  bool was_position_fixed() const { return was_position_fixed_; }
+  void set_was_position_fixed(bool was_position_fixed) {
+    was_position_fixed_ = was_position_fixed;
+  }
 
   /**
    * Add element container to correct parent(if layout_only contained)
@@ -99,6 +117,13 @@ class BaseElementContainer {
   virtual void FinishLayoutOperation(
       const std::shared_ptr<PipelineOptions>& options);
   virtual void MarkLayoutUIOperationQueueFlushStartIfNeed();
+
+ protected:
+  BaseElementContainer* EnclosingStackingContextNode();
+
+  int32_t old_z_index_{0};
+  bool was_stacking_context_{false};
+  bool was_position_fixed_{false};
 
  private:
   Element* element_{nullptr};

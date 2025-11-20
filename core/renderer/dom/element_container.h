@@ -27,6 +27,7 @@ class ElementContainer : public BaseElementContainer {
   ElementContainer* element_container_parent() {
     return static_cast<ElementContainer*>(parent());
   }
+
   const auto& children() const { return children_; }
   inline bool HasZChild() { return has_z_child_; }
 
@@ -58,8 +59,6 @@ class ElementContainer : public BaseElementContainer {
 
  protected:
   void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
-
-  ElementContainer* EnclosingStackingContextNode();
 
   bool IsStackingContextNode();
 
@@ -101,9 +100,7 @@ class ElementContainer : public BaseElementContainer {
   float last_top_{0};
   // the children size does not contain layout only nodes
   int32_t none_layout_only_children_size_{0};
-  int32_t old_index_{0};
-  bool was_stacking_context_{false};
-  bool was_position_fixed_{false};
+
   bool need_update_{true};
   bool dirty_{false};
   bool has_z_child_{false};

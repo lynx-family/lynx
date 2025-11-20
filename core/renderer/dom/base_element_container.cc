@@ -10,7 +10,9 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_container.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/value_wrapper/value_impl_lepus.h"
@@ -36,6 +38,14 @@ int BaseElementContainer::id() const { return element()->impl_id(); }
 bool BaseElementContainer::CheckFlatten(
     base::MoveOnlyClosure<bool, bool> func) {
   return painting_context()->IsFlatten(std::move(func));
+}
+
+ElementContainer* BaseElementContainer::CastToElementContainer() {
+  return static_cast<ElementContainer*>(this);
+}
+
+Fragment* BaseElementContainer::CastToFragment() {
+  return static_cast<Fragment*>(this);
 }
 
 void BaseElementContainer::UpdatePlatformExtraBundle(
@@ -155,6 +165,16 @@ void BaseElementContainer::FinishLayoutOperation(
 
 void BaseElementContainer::MarkLayoutUIOperationQueueFlushStartIfNeed() {
   painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
+}
+
+BaseElementContainer* BaseElementContainer::EnclosingStackingContextNode() {
+  Element* current = element();
+  for (; current != nullptr; current = current->parent()) {
+    if (current->IsStackingContextNode()) return current->element_container();
+  }
+  // Unreachable code
+  LOGE("EnclosingStackingContextNode: No stacking context found");
+  return this;
 }
 
 }  // namespace tasm
