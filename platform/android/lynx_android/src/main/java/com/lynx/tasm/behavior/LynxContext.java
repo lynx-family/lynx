@@ -47,6 +47,7 @@ import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
 import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.provider.LynxProviderRegistry;
+import com.lynx.tasm.resourcelistener.ILynxResourceListener;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
@@ -166,6 +167,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private boolean isFallbackProcess = false;
 
   private boolean mLayoutThreadChanged = false;
+
+  // for LynxImage listener
+  private ILynxResourceListener mLynxImageListener = null;
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
@@ -1581,5 +1585,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public void setLayoutThreadChanged(boolean layoutThreadChanged) {
     this.mLayoutThreadChanged = layoutThreadChanged;
+  }
+
+  public void setLynxImageResourceListener(@NonNull ILynxResourceListener listener) {
+    mLynxImageListener = listener;
+  }
+
+  public ILynxResourceListener getLynxImageResourceListener() {
+    return mLynxImageListener;
   }
 }

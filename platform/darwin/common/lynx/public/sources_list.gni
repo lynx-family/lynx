@@ -94,6 +94,7 @@ common_lynx_public_headers =
                     "resource/LynxTemplateResource.h",
                     "resource/LynxGenericResourceFetcher.h",
                     "resource/LynxResourceResponse.h",
+                    "resource/LynxResourceListener.h",
                     "recorder/LynxDebugInfoRecorderProtocol.h",
                     "performance/LynxExtraTiming.h",
                     "performance/LynxPerformanceObserverProtocol.h",

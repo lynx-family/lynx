@@ -12,6 +12,7 @@
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxGroup.h>
 #import <Lynx/LynxMediaResourceFetcher.h>
+#import <Lynx/LynxResourceListener.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
 #import <Lynx/LynxUIRendererCreatorProtocol.h>
 #import <Lynx/LynxViewEnum.h>
@@ -43,6 +44,9 @@
 @property(nonatomic, nonnull) id<LynxGenericResourceFetcher> genericResourceFetcher;
 @property(nonatomic, nonnull) id<LynxMediaResourceFetcher> mediaResourceFetcher;
 @property(nonatomic, nonnull) id<LynxTemplateResourceFetcher> templateResourceFetcher;
+
+// for resource listener
+@property(nonatomic, nonnull) id<LynxResourceListener> lynxImageListener;
 
 /**
  * You can set a virtual screen size to lynxview by this way.

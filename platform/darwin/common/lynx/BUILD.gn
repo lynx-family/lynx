@@ -100,6 +100,7 @@ common_lynx_shared_sources = [
   "performance/timing/LynxTimingConstants.h",
   "performance/timing/LynxTimingConstants.m",
   "resource/LynxProviderRegistry.m",
+  "resource/LynxResourceListener.m",
   "resource/LynxResourceRequest.m",
   "resource/LynxResourceResponse.m",
   "resource/LynxTemplateResource.m",

@@ -9,6 +9,7 @@
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxMediaResourceFetcher.h>
+#import <Lynx/LynxResourceListener.h>
 #import <Lynx/LynxScreenMetrics.h>
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
@@ -64,6 +65,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 // image global property
 @property(nonatomic, nullable) NSString* imagePreviewHashMetadata;
+
+// for lynximage listener
+@property(nonatomic, strong, nullable) id<LynxResourceListener> lynxUIImageListener;
 
 // settings
 @property(nonatomic, readonly) BOOL defaultOverflowVisible;
