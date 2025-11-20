@@ -2850,7 +2850,10 @@ RENDERER_FUNCTION_CC(FiberAddConfig) {
   CONVERT_ARG(arg2, 2);
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  element->AddConfig(arg1->String(), arg2->ToLepusValue());
+  auto self = GET_TASM_POINTER();
+  bool deep_convert =
+      self->page_proxy()->element_manager()->GetEnableParallelElement();
+  element->AddConfig(arg1->String(), arg2->ToLepusValue(deep_convert));
 
   RETURN_UNDEFINED();
 }
@@ -2866,7 +2869,10 @@ RENDERER_FUNCTION_CC(FiberSetConfig) {
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
   if (arg1->IsObject()) {
-    element->SetConfig(arg1->ToLepusValue());
+    auto self = GET_TASM_POINTER();
+    bool deep_convert =
+        self->page_proxy()->element_manager()->GetEnableParallelElement();
+    element->SetConfig(arg1->ToLepusValue(deep_convert));
   }
 
   RETURN_UNDEFINED();
@@ -3494,7 +3500,10 @@ RENDERER_FUNCTION_CC(FiberSetAttribute) {
       return RenderFatal(LEPUS_CONTEXT(), "bad type");
     }
     CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetAttribute);
-    element->SetAttribute(arg1->String(), arg2->ToLepusValue());
+    auto self = GET_TASM_POINTER();
+    bool deep_convert =
+        self->page_proxy()->element_manager()->GetEnableParallelElement();
+    element->SetAttribute(arg1->String(), arg2->ToLepusValue(deep_convert));
   } else {
     auto key = static_cast<ElementBuiltInAttributeEnum>(type);
     element->SetBuiltinAttribute(key, *arg2);
@@ -4393,7 +4402,10 @@ RENDERER_FUNCTION_CC(FiberAddDataset) {
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberAddDataset);
-  element->AddDataset(arg1->String(), arg2->ToLepusValue());
+  auto self = GET_TASM_POINTER();
+  bool deep_convert =
+      self->page_proxy()->element_manager()->GetEnableParallelElement();
+  element->AddDataset(arg1->String(), arg2->ToLepusValue(deep_convert));
 
   ON_NODE_MODIFIED(element);
   RETURN_UNDEFINED();
@@ -4410,7 +4422,10 @@ RENDERER_FUNCTION_CC(FiberSetDataset) {
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetDataset);
-  element->SetDataset(arg1->ToLepusValue());
+  auto self = GET_TASM_POINTER();
+  bool deep_convert =
+      self->page_proxy()->element_manager()->GetEnableParallelElement();
+  element->SetDataset(arg1->ToLepusValue(deep_convert));
 
   ON_NODE_MODIFIED(element);
   RETURN_UNDEFINED();
