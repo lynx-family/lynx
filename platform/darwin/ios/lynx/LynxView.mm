@@ -22,12 +22,12 @@
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxFeatureCounter.h"
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEventDef.h"
 #import "LynxUIRendererProtocol.h"
 #import "LynxView+Protected.h"
 

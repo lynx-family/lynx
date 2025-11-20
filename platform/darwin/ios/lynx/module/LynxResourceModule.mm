@@ -9,11 +9,11 @@
 #import <Lynx/LynxServiceResourceProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxView+Internal.h>
 #import "LynxContext+Internal.h"
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEventDef.h"
 
 static NSString* kDataKey = @"data";
 static NSString* kUriKey = @"uri";

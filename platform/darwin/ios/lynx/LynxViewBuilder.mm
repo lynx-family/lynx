@@ -8,10 +8,10 @@
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewGroup.h>
+#import "LynxTraceEventDef.h"
 #import "LynxUIRenderer.h"
 #import "LynxUIRendererCreator.h"
 

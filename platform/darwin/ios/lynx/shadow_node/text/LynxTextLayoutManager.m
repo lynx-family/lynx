@@ -6,10 +6,10 @@
 #import <Lynx/LynxTextLayoutManager.h>
 #import <Lynx/LynxTextStyle.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIUnitUtils.h>
+#import "LynxTraceEventDef.h"
 
 @implementation LynxTextLayoutManager
 

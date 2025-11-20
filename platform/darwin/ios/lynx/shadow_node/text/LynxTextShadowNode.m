@@ -13,8 +13,8 @@
 #import <Lynx/LynxTextShadowNode.h>
 #import <Lynx/LynxTextUtils.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
+#import "LynxTraceEventDef.h"
 
 // This is an adaptaion for one of the bug of line spacing in TextKit that
 // the last line will disappeare when both maxNumberOfLines and lineSpacing are set.

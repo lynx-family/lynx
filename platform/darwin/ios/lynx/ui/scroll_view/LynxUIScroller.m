@@ -20,7 +20,6 @@
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUnitUtils.h>
@@ -31,6 +30,7 @@
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import <Lynx/UIScrollView+Nested.h>
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEventDef.h"
 #import "LynxUI+Gesture.h"
 #import "LynxUIContext+Internal.h"
 

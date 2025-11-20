@@ -5,7 +5,7 @@
 #import "LynxEnginePool.h"
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxLog.h>
-#import <Lynx/LynxTraceEventDef.h>
+#import "LynxTraceEventDef.h"
 
 #import <Lynx/LynxTemplateRender.h>
 #import "LynxUIRendererProtocol.h"

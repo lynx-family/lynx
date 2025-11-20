@@ -10,7 +10,6 @@
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxViewClient.h>
 #import "JSModule+Internal.h"
 #import "LynxConfig+Internal.h"
@@ -19,6 +18,7 @@
 #import "LynxGroup+Internal.h"
 #import "LynxTemplateBundle+Converter.h"
 #import "LynxTemplateData+Converter.h"
+#import "LynxTraceEventDef.h"
 
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"

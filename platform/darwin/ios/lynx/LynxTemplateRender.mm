@@ -24,7 +24,6 @@
 #import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxView.h>
 #import "LynxAccessibilityModule.h"
 #import "LynxBackgroundRuntime+Internal.h"
@@ -48,6 +47,7 @@
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTextInfoModule.h"
 #import "LynxTimingConstants.h"
+#import "LynxTraceEventDef.h"
 #import "LynxUIIntersectionObserver+Internal.h"
 #import "LynxUILayoutTick.h"
 #import "LynxUIMethodModule.h"

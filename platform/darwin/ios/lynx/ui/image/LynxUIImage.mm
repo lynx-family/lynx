@@ -16,12 +16,12 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUIUnitUtils.h>
 #import <Lynx/LynxUnitUtils.h>
 #import "LynxConvertUtils.h"
+#import "LynxTraceEventDef.h"
 #import "LynxUI+Private.h"
 
 #import <Lynx/LynxBackgroundUtils.h>
