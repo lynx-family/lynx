@@ -812,7 +812,8 @@ void TemplateBinaryWriter::EncodeLepusSection() {
         stream_.get(), binary_info_, offset_map_, section_size_info_);
 
     auto error = lepus::BytecodeGenerator::GenerateBytecode(
-        context_, lepus_code_, compile_options_.target_sdk_version_);
+        context_, lepus_code_, compile_options_.target_sdk_version_,
+        lepus_code_filename_);
 
     if (context_->IsLepusNGContext()) {
       auto debug_info = GetDebugInfo();
@@ -849,7 +850,7 @@ void TemplateBinaryWriter::EncodeLepusChunkSection() {
         auto& chunk = it.second;
 
         auto error = lepus::BytecodeGenerator::GenerateBytecode(
-            context_, chunk, compile_options_.target_sdk_version_);
+            context_, chunk, compile_options_.target_sdk_version_, path);
 
         // if error occurred in Compile, terminate the encode process.
         if (!error.empty()) {

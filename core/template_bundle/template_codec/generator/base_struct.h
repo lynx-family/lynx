@@ -45,6 +45,7 @@ struct GeneratorOptions {
 
   // for dsl which generate code in fe without using native parser
   std::string lepus_code_{};
+  std::string lepus_code_filename_{};
   std::unordered_map<std::string, std::string> lepus_chunk_code_{};
 
   rapidjson::Document source_content_obj_{};

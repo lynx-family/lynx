@@ -1,3 +1,6 @@
+# 0.0.20
+* support LEPUS_Eval with filename for sourcemap.
+
 # 0.0.19
 * add renderer functions for exposure control `stopExposure` and `resumeExposure`.
 

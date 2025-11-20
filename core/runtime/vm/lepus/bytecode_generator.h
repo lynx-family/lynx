@@ -18,7 +18,8 @@ class BytecodeGenerator {
  public:
   static std::string GenerateBytecode(Context* context,
                                       const std::string& source,
-                                      const std::string& sdk_version);
+                                      const std::string& sdk_version,
+                                      const std::string& file_name = "");
 
  private:
   static std::string GenerateBytecodeForVMContext(
@@ -26,7 +27,7 @@ class BytecodeGenerator {
       const std::string& sdk_version);
   static std::string GenerateBytecodeForQuickContext(
       QuickContext* context, const std::string& source,
-      const std::string& sdk_version);
+      const std::string& sdk_version, const std::string& file_name);
 };
 
 }  // namespace lepus

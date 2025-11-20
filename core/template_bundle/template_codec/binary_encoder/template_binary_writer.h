@@ -52,6 +52,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
       rapidjson::Document* element_template, const char* lepus_version,
       const std::string& cli_version, const std::string& app_type,
       const std::string& config, const std::string& lepus_code,
+      const std::string& lepus_code_filename,
       const std::unordered_map<std::string, std::string>& lepus_chunk_code,
       const CompileOptions& compile_options, const lepus::Value& trial_options,
       const lepus::Value& template_info,
@@ -70,6 +71,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
         app_type_(app_type),
         config_(config),
         lepus_code_(lepus_code),
+        lepus_code_filename_(lepus_code_filename),
         lepus_chunk_code_(lepus_chunk_code),
         silence_(silence),
         template_info_(template_info),
@@ -187,6 +189,7 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   std::string app_type_;
   std::string config_;
   std::string lepus_code_;
+  std::string lepus_code_filename_;
   std::unordered_map<std::string, std::string> lepus_chunk_code_;
   lynx::lepus::QuickjsDebugInfoBuilder lepus_debug_info_;
 

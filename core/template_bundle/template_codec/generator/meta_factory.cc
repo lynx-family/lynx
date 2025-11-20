@@ -59,6 +59,7 @@ constexpr const char* kScripts = "scripts";
 constexpr const char* kTemplateDebugUrl = "templateDebugUrl";
 constexpr const char* kLepusCode = "lepusCode";
 constexpr const char* kRoot = "root";
+constexpr const char* kRootFileName = "filename";
 constexpr const char* kLepusChunk = "lepusChunk";
 constexpr const char* kEnableSSR = "enableSSR";
 constexpr const char* kEnableCursor = "enableCursor";
@@ -313,6 +314,13 @@ void MetaFactory::GetLepusCode(rapidjson::Document& document,
       encoder_options.generator_options_.lepus_code_ =
           lepus_code_obj[kRoot].GetString();
     }
+
+    if (lepus_code_obj.HasMember(kRootFileName) &&
+        lepus_code_obj[kRootFileName].IsString()) {
+      encoder_options.generator_options_.lepus_code_filename_ =
+          lepus_code_obj[kRootFileName].GetString();
+    }
+
     // Get lepus chunk code
     if (lepus_code_obj.HasMember(kLepusChunk) &&
         lepus_code_obj[kLepusChunk].IsObject()) {

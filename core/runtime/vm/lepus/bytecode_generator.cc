@@ -13,9 +13,10 @@
 namespace lynx {
 namespace lepus {
 
-std::string BytecodeGenerator::GenerateBytecode(
-    Context* context, const std::string& source,
-    const std::string& sdk_version) {
+std::string BytecodeGenerator::GenerateBytecode(Context* context,
+                                                const std::string& source,
+                                                const std::string& sdk_version,
+                                                const std::string& file_name) {
   if (!context) {
     return "Compile error: the context is nullptr.";
   }
@@ -25,7 +26,7 @@ std::string BytecodeGenerator::GenerateBytecode(
                                         source, sdk_version);
   }
   return GenerateBytecodeForQuickContext(static_cast<QuickContext*>(context),
-                                         source, sdk_version);
+                                         source, sdk_version, file_name);
 }
 
 std::string BytecodeGenerator::GenerateBytecodeForVMContext(
@@ -59,7 +60,7 @@ std::string BytecodeGenerator::GenerateBytecodeForVMContext(
 
 std::string BytecodeGenerator::GenerateBytecodeForQuickContext(
     QuickContext* context, const std::string& source,
-    const std::string& sdk_version) {
+    const std::string& sdk_version, const std::string& file_name) {
   if (context->GetDebuginfoOutside()) {
     SetLynxTargetSdkVersion(context->context(), sdk_version.c_str());
   }
@@ -70,8 +71,8 @@ std::string BytecodeGenerator::GenerateBytecodeForQuickContext(
   context->SetDebugSourceCode(source);
 
   eval_flags = LEPUS_EVAL_FLAG_COMPILE_ONLY | LEPUS_EVAL_TYPE_GLOBAL;
-  obj = LEPUS_Eval(context->context(), source.data(), source.length(), "",
-                   eval_flags);
+  obj = LEPUS_Eval(context->context(), source.data(), source.length(),
+                   file_name.c_str(), eval_flags);
   if (LEPUS_IsException(obj)) {
     std::string exception_message =
         "Compile error: " + context->GetExceptionMessage();

@@ -270,6 +270,7 @@ std::unique_ptr<TemplateBinaryWriter> EncodeTemplate(
       encoder_options.generator_options_.app_type_,
       encoder_options.generator_options_.config_,
       encoder_options.generator_options_.lepus_code_,
+      encoder_options.generator_options_.lepus_code_filename_,
       encoder_options.generator_options_.lepus_chunk_code_,
       encoder_options.compile_options_,
       encoder_options.generator_options_.trial_options_,
