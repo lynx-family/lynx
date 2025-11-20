@@ -295,14 +295,6 @@ class PageConfig final : public LynxConfig {
     return enable_scroll_fluency_monitor_;
   }
 
-  void SetEnableElementAPITypeCheckThrowWarning(bool enable) {
-    enable_element_api_type_check_throw_warning_ = enable;
-  }
-
-  bool GetEnableElementAPITypeCheckThrowWarning() {
-    return enable_element_api_type_check_throw_warning_;
-  }
-
   inline bool GetEnableCSSLazyImport() const {
     // pageConfig > Libra > Settings
     switch (enable_css_lazy_import_) {
@@ -423,10 +415,6 @@ class PageConfig final : public LynxConfig {
 
   // enable raster animation
   bool enable_raster_animation_{false};
-
-  // enable avoid throwing RenderFatal for element api when argument type
-  // checking failed
-  bool enable_element_api_type_check_throw_warning_{false};
 };
 }  // namespace tasm
 }  // namespace lynx

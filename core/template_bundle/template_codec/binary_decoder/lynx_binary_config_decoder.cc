@@ -201,10 +201,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     }
   }
 
-  page_config->SetEnableElementAPITypeCheckThrowWarning(
-      lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                          LYNX_VERSION_2_16));
-
   UpdateCSSConfigs(page_config);
 
   config_helper_.HandlePageConfig(doc, page_config);

@@ -120,17 +120,6 @@ void RenderWarning(const char* fmt, Args&&... a) {
   lynx::base::ErrorStorage::GetInstance().SetError(std::move(error));
 }
 
-lepus::Value ElementAPIFatal(lepus::Context* ctx, const std::string& msg) {
-  auto err_msg = std::string("\nerror code: ")
-                     .append(std::to_string(error::E_ELEMENT_API_FATAL))
-                     .append("\nerror message: ")
-                     .append(msg);
-  bool should_abort = tasm::LynxEnv::GetInstance().IsLynxDebugEnabled() &&
-                      !tasm::LynxEnv::GetInstance().IsLogBoxEnabled();
-  return ctx->ReportFatalError(err_msg, should_abort,
-                               error::E_ELEMENT_API_FATAL);
-}
-
 template <class... Args>
 void ElementAPIError(const char* fmt, Args&&... a) {
   auto msg = lynx::base::FormatString(fmt, std::forward<Args>(a)...);
@@ -186,25 +175,14 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
 #define GET_TASM_POINTER() \
   static_cast<TemplateAssembler*>(LEPUS_CONTEXT()->GetDelegate())
 
-#define CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, index, Type, FunName)      \
-  CONVERT_ARG(name, index);                                                    \
-  if (GET_TASM_POINTER()                                                       \
-          ->GetPageConfig()                                                    \
-          ->GetEnableElementAPITypeCheckThrowWarning()) {                      \
-    do {                                                                       \
-      if (!name->Is##Type()) {                                                 \
-        ElementAPIError(#FunName " param " #index " should be " #Type);        \
-        RETURN_UNDEFINED();                                                    \
-      }                                                                        \
-    } while (0);                                                               \
-  } else {                                                                     \
-    do {                                                                       \
-      if (!name->Is##Type()) {                                                 \
-        return ElementAPIFatal(ctx,                                            \
-                               #FunName " param " #index " should be " #Type); \
-      }                                                                        \
-    } while (0);                                                               \
-  }
+#define CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, index, Type, FunName) \
+  CONVERT_ARG(name, index);                                               \
+  do {                                                                    \
+    if (!name->Is##Type()) {                                              \
+      ElementAPIError(#FunName " param " #index " should be " #Type);     \
+      RETURN_UNDEFINED();                                                 \
+    }                                                                     \
+  } while (0);
 
 #define CHECK_ILLEGAL_ATTRIBUTE_CONFIG(name, FunName)                 \
   if (name->IsAsyncResolveInvoked()) {                                \
@@ -3491,7 +3469,8 @@ RENDERER_FUNCTION_CC(FiberSetAttribute) {
   if (type == 0) {
     auto string_type = arg1->StringView();
     if (string_type.empty()) {
-      return RenderFatal(LEPUS_CONTEXT(), "bad type");
+      ElementAPIError("FiberSetAttribute param 1 is empty string, bad type");
+      RETURN_UNDEFINED();
     }
     CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetAttribute);
     element->SetAttribute(arg1->String(), arg2->ToLepusValue());
@@ -3521,7 +3500,9 @@ RENDERER_FUNCTION_CC(FiberGetAttributeByName) {
   if (type == 0) {
     auto string_type = arg1->StringView();
     if (string_type.empty()) {
-      return RenderFatal(LEPUS_CONTEXT(), "bad type");
+      ElementAPIError(
+          "FiberGetAttributeByName param 1 is empty string, bad type");
+      RETURN_UNDEFINED();
     }
     const auto& attr_std_map = element->data_model()->attributes();
     auto iter = attr_std_map.find(arg1->String());
@@ -3736,10 +3717,10 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
           }
         });
   } else if (!arg1->IsEmpty()) {
-    // If arg1 is not string, not obejct and not empty, should crash like
-    // CONVERT_ARG_AND_CHECK
-    RenderFatal(ctx,
-                "FiberSetInlineStyles: params 1 should use String or Object");
+    // If arg1 is not string, not obejct and not empty
+    ElementAPIError(
+        "FiberSetInlineStyles: params 1 should use String or Object");
+    RETURN_UNDEFINED();
   }
 
   ON_NODE_MODIFIED(element);
@@ -4541,14 +4522,15 @@ RENDERER_FUNCTION_CC(FiberSetCSSId) {
 
   std::shared_ptr<CSSStyleSheetManager> style_sheet_manager =
       self->style_sheet_manager(entry_name);
-
-  auto looper = [style_sheet_manager, arg1, ctx](const lepus::Value& key,
-                                                 const lepus::Value& value) {
+  auto looper = [style_sheet_manager, arg1](const lepus::Value& key,
+                                            const lepus::Value& value) {
     if (!value.IsRefCounted()) {
-      RenderFatal(ctx,
-                  "FiberSetCSSId params 0 type should use RefCounted or "
-                  "array of RefCounted");
+      ElementAPIError(
+          "FiberSetCSSId params 0 type should use RefCounted or "
+          "array of RefCounted");
+      return;
     }
+
     auto element = fml::static_ref_ptr_cast<FiberElement>(value.RefCounted());
     element->set_style_sheet_manager(style_sheet_manager);
     // For Lynx SDK's version < 2.17, when `ComponentElement` executes
