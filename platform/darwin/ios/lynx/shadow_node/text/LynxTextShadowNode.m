@@ -118,17 +118,6 @@
                                minDescent = MIN(minDescent, font.descender);
                              }
                            }];
-      [textStorage
-          enumerateAttribute:NSAttachmentAttributeName
-                     inRange:characterRange
-                     options:NSAttributedStringEnumerationLongestEffectiveRangeNotRequired
-                  usingBlock:^(NSTextAttachment *attachment, NSRange range, __unused BOOL *stop) {
-                    if (attachment) {
-                      maxAscent = MAX(maxAscent,
-                                      attachment.bounds.size.height + attachment.bounds.origin.y);
-                      minDescent = MIN(minDescent, attachment.bounds.origin.y);
-                    }
-                  }];
       CGFloat lineHalfLeading = (_lineHeight - maxAscent + minDescent) * 0.5;
       usedBaselinePosition = maxAscent + lineHalfLeading;
       if (lineHalfLeading < 0) {
