@@ -91,6 +91,9 @@ class TimingInfoNg {
   // Mark the time point of first stable paint.
   bool SetFSPTiming(const TimestampUs us_timestamp);
 
+  // Set FSP info.
+  bool SetFSPInfo(const std::string& key, const std::string& value);
+
   // If your data comes from a front-end framework, you should use
   // SetFrameworkTiming to update this tracking point.
   bool SetFrameworkTiming(const TimestampKey& timing_key,
@@ -188,6 +191,7 @@ class TimingInfoNg {
   // fsp_end_timing_ stores the end time of fsp, which is used to calculate
   // MetricFspEntry.
   TimestampUs fsp_end_timing_{0};
+  std::unordered_map<std::string, std::string> fsp_info_;
 
   // Save all metric calculation results, because metrics depend on container
   // processing time, so some time calculations will be delayed. At this point,
