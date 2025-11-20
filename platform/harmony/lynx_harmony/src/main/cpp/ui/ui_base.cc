@@ -955,6 +955,7 @@ void UIBase::SetFilter(const lepus::Value& value) {
       break;
     case starlight::FilterType::kBrightness:
       amount = val_array->get(1).Number();
+      amount = std::clamp(amount, 0.0, 3.0);
       NodeManager::Instance().SetAttributeWithNumberValue(
           node_, NODE_BRIGHTNESS, amount);
       break;
