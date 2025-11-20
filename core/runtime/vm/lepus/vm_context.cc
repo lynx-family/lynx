@@ -77,6 +77,9 @@ void VMContext::Initialize() {
 }
 
 bool VMContext::Execute() {
+  if (HasPreExecuteSuccess()) {
+    return true;
+  }
   ScriptingScope scope(this);
   return ExecuteBinaryInternal(nullptr);
 }

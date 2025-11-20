@@ -1691,3 +1691,9 @@ enableCSSInlineVariables:
     - DECODE
   author: 'pilipala195'
   since: '3.6'
+enableMTSPreExecute:
+  description: Enable MTS VM pre execute code.
+  defaultValue: 'false'
+  valueType: bool
+  author: 'lybvinci'
+  since: '3.6'

@@ -557,6 +557,21 @@ Value Context::CallClosureArgs(const Value& closure,
   return CallClosureArgs(closure, p_args, args.size());
 }
 
+bool Context::TryExecute() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_TRY_EXECUTE);
+  has_pre_execute_success_ = Execute();
+  return has_pre_execute_success_;
+}
+
+bool Context::HasPreExecuteSuccess() {
+  if (has_pre_execute_success_) {
+    // can only use once.
+    has_pre_execute_success_ = false;
+    return true;
+  }
+  return false;
+}
+
 std::unique_ptr<ContextBundle> ContextBundle::Create(bool is_lepusng_binary) {
   if (is_lepusng_binary) {
     return std::make_unique<QuickContextBundle>();

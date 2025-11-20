@@ -404,6 +404,9 @@ void QuickContext::SetStackSize(uint32_t stack_size) {
 }
 
 bool QuickContext::Execute() {
+  if (HasPreExecuteSuccess()) {
+    return true;
+  }
   ScriptingScope scope(this);
 
   return ExecuteBinaryInternal(nullptr);

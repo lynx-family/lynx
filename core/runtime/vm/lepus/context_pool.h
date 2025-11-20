@@ -62,7 +62,9 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
             page_configs ? page_configs->GetEnableSignalAPIBoolValue() : false),
         target_sdk_version_(compile_options.target_sdk_version_),
         context_bundle_(context_bundle),
-        arch_option_(compile_options.arch_option_) {}
+        arch_option_(compile_options.arch_option_),
+        enable_mts_pre_execute_(
+            page_configs ? page_configs->GetEnableMTSPreExecute() : false) {}
 
   void AddContextSafely(int32_t count);
 
@@ -74,6 +76,7 @@ class LynxContextPool : public std::enable_shared_from_this<LynxContextPool> {
   const std::string target_sdk_version_;
   const std::shared_ptr<ContextBundle> context_bundle_{nullptr};
   const tasm::ArchOption arch_option_{tasm::RADON_ARCH};
+  const bool enable_mts_pre_execute_{false};
 
   std::mutex mtx_;
   base::InlineVector<std::shared_ptr<lepus::Context>, 8> contexts_;

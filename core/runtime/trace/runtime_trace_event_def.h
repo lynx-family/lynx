@@ -167,6 +167,7 @@ inline constexpr const char* const CONTEXT_CREATE_QUICK_CONTEXT =
     "Context::CreateQuickContext";
 inline constexpr const char* const CONTEXT_CREATE_VM_CONTEXT =
     "Context::CreateVMContext";
+inline constexpr const char* const CONTEXT_TRY_EXECUTE = "Context::TryExecute";
 
 inline constexpr const char* const DEVTOOL_ON_NODE_CREATE =
     "Devtool::ON_NODE_CREATE";

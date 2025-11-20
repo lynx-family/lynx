@@ -505,6 +505,17 @@ export interface Config {
   enableMicrotaskPromisePolyfill?: boolean
 
   /**
+   * Enable MTS VM pre execute code.
+   *
+   * Supported platform: Android, iOS, HarmonyOS
+   *
+   * Since: 3.6
+   *
+   * @defaultValue undefined
+   */
+  enableMTSPreExecute?: boolean
+
+  /**
    * Enable support multi-finger events so that event parameters can contain information about multiple fingers.
    *
    * Supported platform: Android, HarmonyOS, iOS
