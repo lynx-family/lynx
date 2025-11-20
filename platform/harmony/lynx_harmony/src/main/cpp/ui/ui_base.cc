@@ -1767,12 +1767,12 @@ bool UIBase::ContainsPoint(float point[2]) {
                  base::FloatsLargerOrEqual(y, -hit_slop_top_) &&
                  base::FloatsLargerOrEqual(height_ + hit_slop_bottom_, y);
   if (!contain) {
-    if (overflow_.overflow_x &&
+    if (overflow_.overflow_x && !overflow_.overflow_y &&
         (base::FloatsLarger(hit_slop_top_, y) ||
          base::FloatsLarger(y, height_ + hit_slop_bottom_))) {
       return contain;
     }
-    if (overflow_.overflow_y &&
+    if (overflow_.overflow_y && !overflow_.overflow_x &&
         (base::FloatsLarger(hit_slop_left_, x) ||
          base::FloatsLarger(x, width_ + hit_slop_right_))) {
       return contain;
