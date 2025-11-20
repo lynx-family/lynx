@@ -45,6 +45,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 #endif  // __FORCE_DEDICATED_GPU
 
+extern "C" void (*gReportDeviceLost)();
+
 namespace clay {
 
 namespace {
@@ -177,6 +179,52 @@ bool CreateD3DTextureSharedHandle(ID3D11Device* device,
   return false;
 }
 
+bool isDeviceLostError(ID3D11Device* device) {
+  FML_DCHECK(device);
+  HRESULT reason = device->GetDeviceRemovedReason();
+  switch (reason) {
+    case DXGI_ERROR_DEVICE_HUNG:
+    case DXGI_ERROR_DEVICE_REMOVED:
+    case DXGI_ERROR_DEVICE_RESET:
+    case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+    case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool TryCreateD3DTextureSharedHandle(
+    ID3D11Device** device_ptr, SharedImageBacking::PixelFormat pixel_format,
+    SkISize size, ID3D11Texture2D** out_texture, HANDLE* out_handle,
+    bool* is_nt_handle) {
+  bool ret = CreateD3DTextureSharedHandle(
+      device_ptr, pixel_format, size, out_texture, out_handle, is_nt_handle);
+  if (!ret) {
+    ID3D11Device* device = *device_ptr;
+    if (isDeviceLostError(device)) {
+      // Device lost occurred, rendering environment is unrecoverable. Reporting
+      // device lost event.
+      if (gReportDeviceLost != nullptr) {
+        gReportDeviceLost();
+        return false;
+      }
+      if (!D3DTextureFactory::Instance().ReinitializeD3DDevice()) {
+        LOGE("Failed to reinitialize D3D device.");
+        return false;
+      }
+
+      D3DTextureFactory::ScopedDevice scoped_device =
+          D3DTextureFactory::Instance().GetDeviceScoped();
+      device = scoped_device.GetDevice();
+      *device_ptr = device;
+    }
+    ret = CreateD3DTextureSharedHandle(device_ptr, pixel_format, size,
+                                       out_texture, out_handle, is_nt_handle);
+  }
+  return ret;
+}
+
 bool OpenD3DSharedHandle(ID3D11Device* device, HANDLE shared_handle,
                          ID3D11Texture2D** out_texture) {
   HRESULT hr =
@@ -214,15 +262,16 @@ D3DTextureImageBacking::D3DTextureImageBacking(
     owned_nt_handle_ = true;
     bool result =
         OpenD3DSharedHandle(d3d11_device, shared_handle_, &d3d11_texture_);
-    FML_CHECK(result);
   } else {
     bool result = CreateD3DTextureSharedHandle(d3d11_device, pixel_format, size,
                                                &d3d11_texture_, &shared_handle_,
                                                &owned_nt_handle_);
-    FML_CHECK(result);
+    LOGE("Failed to TryCreateD3DTextureSharedHandle.");
   }
-  FML_CHECK(d3d11_texture_);
-  d3d11_texture_->GetDesc(&d3d11_texture_desc_);
+  if (d3d11_texture_) {
+    d3d11_texture_->GetDesc(&d3d11_texture_desc_);
+  }
+
   if (gfx_handle && size_.x == 0 && size_.y == 0) {
     size_.x = d3d11_texture_desc_.Width;
     size_.y = d3d11_texture_desc_.Height;
@@ -280,8 +329,6 @@ GraphicsMemoryHandle D3DTextureImageBacking::GetGFXHandle() const {
 fml::RefPtr<SharedImageRepresentation>
 D3DTextureImageBacking::CreateRepresentation(
     const ClaySharedImageRepresentationConfig* config) {
-  FML_CHECK(config->struct_size == sizeof(ClaySharedImageRepresentationConfig));
-
   switch (config->type) {
     case kClaySharedImageRepresentationTypeGL: {
       PFNEGLGETPROCADDRESSPROC eglGetProcAddressProc =
@@ -294,8 +341,6 @@ D3DTextureImageBacking::CreateRepresentation(
           fml::Ref(this), eglGetProcAddressProc);
     }
     case kClaySharedImageRepresentationTypeD3D:
-      FML_CHECK(config->d3d_config.struct_size ==
-                sizeof(ClaySharedImageD3DRepresentationConfig));
       return fml::MakeRefCounted<D3DImageRepresentation>(
           static_cast<ID3D11Device*>(config->d3d_config.device),
           fml::Ref(this));
@@ -357,6 +402,14 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
   D3DTextureFactory::ScopedDevice scoped_device =
       D3DTextureFactory::Instance().GetDeviceScoped();
   ID3D11Device* d3d11_device = scoped_device.GetDevice();
+  // Device lost occurred, rendering environment is unrecoverable. Reporting
+  // device lost event.
+  if (isDeviceLostError(d3d11_device)) {
+    if (gReportDeviceLost != nullptr) {
+      gReportDeviceLost();
+      return false;
+    }
+  }
   Microsoft::WRL::ComPtr<ID3D11DeviceContext> device_context;
   d3d11_device->GetImmediateContext(&device_context);
 

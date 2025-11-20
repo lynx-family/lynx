@@ -6,6 +6,8 @@
 
 #include "clay/fml/logging.h"
 
+extern "C" __declspec(dllexport) void (*gReportDeviceLost)() = nullptr;
+
 namespace clay {
 ScopedDXGIKeyedMutex::ScopedDXGIKeyedMutex(IDXGIKeyedMutex* keyed_mutex)
     : keyed_mutex_(keyed_mutex) {
