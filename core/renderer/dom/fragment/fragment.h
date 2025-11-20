@@ -27,6 +27,8 @@ class Fragment : public BaseElementContainer {
 
   ~Fragment() override = default;
 
+  Fragment* fragment_parent() { return static_cast<Fragment*>(parent()); }
+
   void InsertElementContainerAccordingToElement(Element* child,
                                                 Element* ref) override;
 
