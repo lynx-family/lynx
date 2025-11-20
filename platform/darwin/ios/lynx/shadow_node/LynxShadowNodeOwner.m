@@ -14,8 +14,8 @@
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxThreadSafeDictionary.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
+#import "LynxTraceEventDef.h"
 
 @implementation LynxShadowNodeOwner {
   __weak LynxUIOwner* _uiOwner;

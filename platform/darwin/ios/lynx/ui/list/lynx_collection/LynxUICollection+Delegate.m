@@ -10,7 +10,6 @@
 #import <Lynx/LynxListScrollEventEmitter.h>
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Fluency.h>
 #import <Lynx/LynxUICollection+Delegate.h>
@@ -20,6 +19,7 @@
 #import <Lynx/UIScrollView+Lynx.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import "LynxFeatureCounter.h"
+#import "LynxTraceEventDef.h"
 #import "LynxUIContext+Internal.h"
 
 @implementation LynxUICollection (Delegate)

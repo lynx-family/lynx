@@ -15,10 +15,10 @@
 #import <Lynx/LynxServiceResourceRequestParameters.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxView+Internal.h>
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEventDef.h"
 
 typedef struct _LynxInnerFontInfo {
   BOOL isSystemFont, isBold, isItalic, isFontWeightBoldMatched, isItalicMatched;

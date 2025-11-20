@@ -10,8 +10,8 @@
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxUI.h>
+#import "LynxTraceEventDef.h"
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"

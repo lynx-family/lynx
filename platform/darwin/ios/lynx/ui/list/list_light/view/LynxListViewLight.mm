@@ -14,7 +14,6 @@
 #import <Lynx/LynxListViewLight.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIComponent.h>
@@ -22,6 +21,7 @@
 #import <Lynx/LynxUIListInvalidationContext.h>
 #import <Lynx/LynxUIListScrollManager.h>
 #import <objc/runtime.h>
+#import "LynxTraceEventDef.h"
 #import "LynxUIContext+Internal.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/shell/lynx_shell.h"

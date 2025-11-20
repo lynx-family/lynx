@@ -13,7 +13,7 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxPageReloadHelper+Internal.h>
 #import <Lynx/LynxPageReloadHelper.h>
-#import <Lynx/LynxTraceEventDef.h>
+#import "LynxTraceEventDef.h"
 
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxLogBoxProtocol.h>
