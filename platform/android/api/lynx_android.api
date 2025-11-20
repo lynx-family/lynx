@@ -1875,6 +1875,19 @@ public interface com::lynx::tasm::behavior::ForegroundListener {
   public void com.lynx.tasm.behavior.ForegroundListener.onLynxViewEnterBackground();
 }
 
+public class com::lynx::tasm::performance::fsp::FSPConfig :  {
+  public final boolean com.lynx.tasm.performance.fsp.FSPConfig.enable enable;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageX minContentFillPercentageX;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageY minContentFillPercentageY;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageTotalArea minContentFillPercentageTotalArea;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.acceptablePixelDiffPerSec acceptablePixelDiffPerSec;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.acceptableAreaDiffPerSec acceptableAreaDiffPerSec;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.minDiffIntervalMs minDiffIntervalMs;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.hardTimeoutMs hardTimeoutMs;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.snapshotIntervalMs snapshotIntervalMs;
+  public void com.lynx.tasm.performance.fsp.FSPConfig.parse();
+}
+
 public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
   public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs);
   public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot();
@@ -1897,6 +1910,16 @@ public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYProjections();
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getXTotalContentProjections();
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYTotalContentProjections();
+}
+
+public class com::lynx::tasm::performance::fsp::FSPTracer :  {
+  public com.lynx.tasm.performance.fsp.FSPTracer.FSPTracer(PerformanceController perfController);
+  public void com.lynx.tasm.performance.fsp.FSPTracer.start(IMeaningfulContentSnapshotCaptureHandler captureHandler);
+  public void com.lynx.tasm.performance.fsp.FSPTracer.stop();
+  public void com.lynx.tasm.performance.fsp.FSPTracer.cancelledByUserInteraction();
+  public void com.lynx.tasm.performance.fsp.FSPTracer.onCaptureSnapshot(FSPSnapshot snapshot);
+  public boolean com.lynx.tasm.performance.fsp.FSPTracer.isSnapshotValuable(FSPSnapshot snapshot, FSPConfig config);
+  public boolean com.lynx.tasm.performance.fsp.FSPTracer.isSnapshotStable(FSPSnapshot current, FSPSnapshot previous, FSPConfig config);
 }
 
 public class com::lynx::tasm::behavior::ui::list::GapItemDecoration : RecyclerView.ItemDecoration {
@@ -2706,6 +2729,10 @@ public class com::lynx::tasm::behavior::ui::image::ImageUrlRedirectUtils :  {
 
 public class com::lynx::tasm::image::ImageUtils :  {
   public static LocalCacheState com.lynx.tasm.image.ImageUtils.parseLocalCache(Dynamic localCache);
+}
+
+public interface com::lynx::tasm::performance::fsp::IMeaningfulContentSnapshotCaptureHandler {
+  public MeaningfulContentSnapshot com.lynx.tasm.performance.fsp.IMeaningfulContentSnapshotCaptureHandler.capture();
 }
 
 public interface com::lynx::tasm::behavior::ui::MeaningfulPaintingArea::IMeaningfulPaintingAreaInvalidateHook {
@@ -7933,6 +7960,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.markHostPlatformTiming(final String key);
   public void com.lynx.tasm.performance.PerformanceController.markPaintEndTimingIfNeeded();
   public void com.lynx.tasm.performance.PerformanceController.setNeedMarkPaintEndTiming(String pipelineId);
+  public void com.lynx.tasm.performance.PerformanceController.setFSPTimingInfo(long usTimestamp, Map< String, String > detail);
   public void com.lynx.tasm.performance.PerformanceController.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
   public JavaOnlyArray com.lynx.tasm.performance.PerformanceController.getPendingPaintEndPipelineIds();
 }
@@ -8790,6 +8818,17 @@ public enum com::lynx::tasm::resourceprovider::LynxResourceResponse::ResponseSta
 
 public interface com::lynx::tasm::provider::ResProvider {
   public void com.lynx.tasm.provider.ResProvider.request(@NonNull final LynxResRequest requestParams, final LynxResCallback callback);
+}
+
+public enum com::lynx::tasm::performance::fsp::FSPTracer::ResultStatus {
+  public com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.SUCCESS SUCCESS;
+  public com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.CANCEL_BY_USER_INTERACTION CANCEL_BY_USER_INTERACTION;
+  public com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.CANCEL_BY_TIMEOUT CANCEL_BY_TIMEOUT;
+  public com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.STOP STOP;
+  public com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.ERROR ERROR;
+  public com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.ResultStatus(String value);
+  public String com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.getValue();
+  public static ResultStatus com.lynx.tasm.performance.fsp.FSPTracer.ResultStatus.fromValue(String value);
 }
 
 public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable::RoundRectPath :  {

@@ -268,6 +268,10 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     mPendingPaintEndPipelineIds.add(pipelineId);
   }
 
+  public void setFSPTimingInfo(long usTimestamp, Map<String, String> detail) {
+    // TODO(limeng.amer): implemant by jni.
+  }
+
   public void setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming) {
     if (!mEnableController) {
       return;
