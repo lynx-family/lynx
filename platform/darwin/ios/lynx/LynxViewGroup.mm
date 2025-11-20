@@ -12,11 +12,15 @@
 
 @implementation LynxViewGroup {
   LynxTemplateBundle *_templateBundle;
+  NSError *_fetchError;
   std::atomic<int> _nextLynxViewId;
   NSMapTable<NSNumber *, LynxView *> *_viewMap;
   pthread_rwlock_t _viewMapLock;
-  dispatch_group_t _fetch_task;
+  dispatch_group_t _fetchTask;
   std::atomic_bool _hasTimeout;
+
+  NSMutableArray<LynxTemplateBundleResultBlock> *_callbacks;
+  pthread_mutex_t _callbacksLock;
 }
 
 - (instancetype)init:(nonnull NSString *)url
@@ -31,11 +35,13 @@
   _nextLynxViewId = 1;
   _viewMap = [NSMapTable strongToWeakObjectsMapTable];
   pthread_rwlock_init(&_viewMapLock, nil);
-  _fetch_task = dispatch_group_create();
+  _fetchTask = dispatch_group_create();
+  pthread_mutex_init(&_callbacksLock, NULL);
+  _callbacks = [[NSMutableArray alloc] init];
   if (bundle == nil) {
     // no template bundle provided, start a fetch task
-    dispatch_group_enter(_fetch_task);
-    [self fetchTemplate];
+    dispatch_group_enter(_fetchTask);
+    [self fetchTemplateInternal];
   }
   return self;
 }
@@ -76,7 +82,7 @@
   pthread_rwlock_unlock(&_viewMapLock);
 }
 
-- (void)fetchTemplate {
+- (void)fetchTemplateInternal {
   if (_templateBundle != nil) {
     NSAssert(false, @"template bundle has been assigned");
     return;
@@ -94,27 +100,82 @@
         fetchTemplate:request
            onComplete:^(LynxTemplateResource *_Nullable data, NSError *_Nullable error) {
              __strong typeof(weakSelf) strongSelf = weakSelf;
-             @try {
-               if (!strongSelf) {
-                 return;
-               }
-               if (error) {
-                 LLogError(@"failed to fetch template: %@, url=%@", error, strongSelf.url);
-                 return;
-               }
-               if (data.bundle) {
-                 strongSelf.templateBundle = data.bundle;
-               } else if (data.data) {
-                 strongSelf.templateBundle =
-                     [[LynxTemplateBundle alloc] initWithTemplate:data.data];
-               } else {
-                 LLogError(@"failed to fetch template: empty data, url=%@", strongSelf.url);
-               }
-             } @finally {
-               dispatch_group_leave(strongSelf->_fetch_task);
+             if (!strongSelf) {
+               return;
+             }
+             if (error) {
+               [strongSelf setFetchResult:nil error:error];
+               return;
+             }
+             if (data.bundle) {
+               [strongSelf setFetchResult:data.bundle error:nil];
+             } else if (data.data) {
+               [strongSelf setFetchResult:[[LynxTemplateBundle alloc] initWithTemplate:data.data]
+                                    error:nil];
+             } else {
+               LLogError(@"failed to fetch template: empty data, url=%@", strongSelf.url);
+               [strongSelf
+                   setFetchResult:nil
+                            error:[NSError errorWithDomain:@"unknown error"
+                                                      code:1
+                                                  userInfo:@{
+                                                    NSLocalizedFailureReasonErrorKey :
+                                                        @"failed to fetch template: empty data"
+                                                  }]];
              }
            }];
   });
+}
+
+- (void)setFetchResult:(nullable LynxTemplateBundle *)bundle error:(nullable NSError *)error {
+  __block NSArray<LynxTemplateBundleResultBlock> *callbacksCopy = nil;
+  @try {
+    pthread_mutex_lock(&_callbacksLock);
+    if (_templateBundle != nil || _fetchError != nil) {
+      LLogError(@"internal error: fetch result should be set once");
+      return;
+    }
+    if (error) {
+      LLogError(@"failed to fetch template: %@, url=%@", error, _url);
+      _fetchError = error;
+    } else {
+      [self setTemplateBundle:bundle];
+    }
+    callbacksCopy = [_callbacks copy];
+    [_callbacks removeAllObjects];
+    dispatch_group_leave(_fetchTask);
+  } @finally {
+    pthread_mutex_unlock(&_callbacksLock);
+  }
+  for (LynxTemplateBundleResultBlock cb in callbacksCopy) {
+    cb(bundle, error);
+  }
+}
+
+- (void)fetchTemplate:(LynxTemplateBundleResultBlock)callback {
+  if (_templateBundle != nil) {
+    callback(_templateBundle, nil);
+    return;
+  }
+  if (_fetchError != nil) {
+    callback(nil, _fetchError);
+    return;
+  }
+  @try {
+    pthread_mutex_lock(&_callbacksLock);
+    // double check
+    if (_templateBundle) {
+      callback(_templateBundle, nil);
+      return;
+    }
+    if (_fetchError != nil) {
+      callback(nil, _fetchError);
+      return;
+    }
+    [_callbacks addObject:[callback copy]];
+  } @finally {
+    pthread_mutex_unlock(&_callbacksLock);
+  }
 }
 
 - (nullable LynxTemplateBundle *)templateBundle {
@@ -126,7 +187,7 @@
     return nil;
   }
   dispatch_time_t wait = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-  if (dispatch_group_wait(_fetch_task, wait) != 0) {
+  if (dispatch_group_wait(_fetchTask, wait) != 0) {
     _hasTimeout = true;
   }
   return _templateBundle;
@@ -134,16 +195,14 @@
 
 - (void)setTemplateBundle:(LynxTemplateBundle *_Nullable)templateBundle {
   _templateBundle = templateBundle;
-  if (_logicExecutor) {
-    [_logicExecutor setTemplateBundle:_templateBundle];
-  }
 }
 
 - (void)setLogicExecutor:(id<LynxLogicExecutor>)logicExecutor {
   _logicExecutor = logicExecutor;
-  if (_templateBundle) {
-    [_logicExecutor setTemplateBundle:_templateBundle];
-  }
+}
+
+- (LynxTemplateBundle *_Nullable)getTemplateBundleNonBlocking {
+  return _templateBundle;
 }
 
 @end
