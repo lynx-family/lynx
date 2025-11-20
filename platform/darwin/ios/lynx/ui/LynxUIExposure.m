@@ -5,7 +5,6 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIExposure.h>
@@ -15,6 +14,7 @@
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxGlobalObserver+Internal.h"
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEventDef.h"
 
 @interface LynxUIExposureDetail : NSObject
 @property(nonatomic, copy) NSString *exposureScene;

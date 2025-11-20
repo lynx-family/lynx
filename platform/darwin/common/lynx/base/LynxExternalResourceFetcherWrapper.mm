@@ -6,7 +6,7 @@
 
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxSubErrorCode.h>
-#import <Lynx/LynxTraceEventDef.h>
+#import "LynxTraceEventDef.h"
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"

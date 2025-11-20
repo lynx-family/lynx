@@ -5,9 +5,9 @@
 #import <Lynx/LynxCustomMeasureDelegate+Internal.h>
 #import <Lynx/LynxLayoutNode.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import "LynxMeasureFuncDarwin.h"
+#import "LynxTraceEventDef.h"
 #include "core/public/layout_node_manager.h"
 
 #include "base/trace/native/trace_event.h"

@@ -15,11 +15,11 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxViewClient.h>
 #import <LynxBase/LynxLog.h>
 #import "LynxEnv+Internal.h"
+#import "LynxTraceEventDef.h"
 #if ENABLE_TRACE_PERFETTO
 #import <Lynx/LynxTraceController.h>
 #endif

@@ -8,10 +8,10 @@
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxView+Internal.h>
 #import "LynxFPSMonitor.h"
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEventDef.h"
 #include "core/services/fluency/fluency_tracer.h"
 
 typedef NS_ENUM(NSInteger, ForceStatus) {

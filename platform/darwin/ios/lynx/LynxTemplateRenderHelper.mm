@@ -31,12 +31,12 @@
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateRender+Protected.h>
 #import <Lynx/LynxTextInfoModule.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxUILayoutTick.h>
 #import <Lynx/LynxUIMethodModule.h>
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
+#import "LynxTraceEventDef.h"
 
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/public/lynx_extension_delegate.h"

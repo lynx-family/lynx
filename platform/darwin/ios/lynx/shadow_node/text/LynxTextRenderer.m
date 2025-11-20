@@ -13,8 +13,8 @@
 #import <Lynx/LynxTextShadowNode.h>
 #import <Lynx/LynxTextUtils.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
+#import "LynxTraceEventDef.h"
 #import "base/include/compiler_specific.h"
 
 @implementation LynxTextAttachmentInfo

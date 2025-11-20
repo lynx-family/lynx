@@ -16,7 +16,6 @@
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUICollection.h>
@@ -37,6 +36,7 @@
 #import "LynxFeatureCounter.h"
 #import "LynxGestureArenaManager.h"
 #import "LynxMemoryRecord.h"
+#import "LynxTraceEventDef.h"
 #import "LynxUI+Private.h"
 #import "LynxUIContext+Internal.h"
 #import "LynxUIIntersectionObserver.h"
