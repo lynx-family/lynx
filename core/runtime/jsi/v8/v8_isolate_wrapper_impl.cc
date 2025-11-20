@@ -20,6 +20,11 @@
 namespace lynx {
 namespace piper {
 
+std::shared_ptr<V8IsolateInstance>
+V8IsolateInstance::CreateV8IsolateInstance() {
+  return std::make_shared<V8IsolateInstanceImpl>();
+}
+
 V8IsolateInstanceImpl::V8IsolateInstanceImpl() = default;
 
 V8IsolateInstanceImpl::~V8IsolateInstanceImpl() {

@@ -32,6 +32,8 @@ void V8ContextWrapperImpl::Init() {
 
   auto context = v8::Context::New(isolate_, nullptr);
   v8::Context::Scope context_scope(context);
+  iso->AddExtensionDataToGlobal(context, context->Global());
+
   ctx_.Reset(isolate_, context);
 }
 

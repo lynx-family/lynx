@@ -1,3 +1,19 @@
+js_v8_bridge_platform_sources = []
+if (is_mac || is_win) {
+  js_v8_bridge_platform_sources +=
+      rebase_path([
+                    "v8_isolate_wrapper_node_impl.cc",
+                    "v8_isolate_wrapper_node_impl.h",
+                  ])
+} else {
+  js_v8_bridge_platform_sources +=
+      rebase_path(
+          [
+            "//$lynx_dir/core/runtime/jsi/v8/v8_isolate_wrapper_node_impl.cc",
+            "//$lynx_dir/core/runtime/jsi/v8/v8_isolate_wrapper_node_impl.h",
+          ])
+}
+
 js_v8_bridge_shared_sources =
     rebase_path([
                   "../../jscache/v8/v8_cache_generator.cc",
@@ -5,8 +21,6 @@ js_v8_bridge_shared_sources =
                   "../../profile/v8/v8_runtime_profiler_wrapper.h",
                   "../../profile/v8/v8_runtime_profiler_wrapper_impl.cc",
                   "../../profile/v8/v8_runtime_profiler_wrapper_impl.h",
-                  "//$lynx_dir/core/runtime/jsi/v8/v8_isolate_wrapper_impl.cc",
-                  "//$lynx_dir/core/runtime/jsi/v8/v8_isolate_wrapper_impl.h",
                   "v8_api.h",
                   "v8_context_wrapper.h",
                   "v8_context_wrapper_impl.cc",
@@ -23,4 +37,8 @@ js_v8_bridge_shared_sources =
                   "v8_isolate_wrapper.h",
                   "v8_runtime.cc",
                   "v8_runtime.h",
+                  "v8_platform_data.h",
+                  "v8_platform_data.cc",
                 ])
+
+js_v8_bridge_shared_sources += js_v8_bridge_platform_sources

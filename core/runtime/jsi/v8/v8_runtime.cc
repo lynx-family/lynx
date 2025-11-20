@@ -203,7 +203,7 @@ Object V8Runtime::global() {
 
 std::shared_ptr<V8IsolateInstance> V8Runtime::CreateVM_(
     const char* arg, bool useSnapshot) const {
-  auto isolate_wrapper = std::make_shared<V8IsolateInstanceImpl>();
+  auto isolate_wrapper = V8IsolateInstance::CreateV8IsolateInstance();
   isolate_wrapper->InitIsolate(arg, useSnapshot);
   return isolate_wrapper;
 }

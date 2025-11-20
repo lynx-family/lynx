@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_JSI_V8_V8_ISOLATE_WRAPPER_H_
 #define CORE_RUNTIME_JSI_V8_V8_ISOLATE_WRAPPER_H_
 
+#include <memory>
 #include <unordered_map>
 
 #include "core/base/observer/observer_list.h"
@@ -15,17 +16,21 @@ namespace piper {
 
 class V8IsolateInstance : public VMInstance {
  public:
-  V8IsolateInstance() = default;
+  static std::shared_ptr<V8IsolateInstance> CreateV8IsolateInstance();
+
   virtual ~V8IsolateInstance() = default;
 
   virtual void InitIsolate(const char* arg, bool useSnapshot) = 0;
 
-  // void AddObserver(base::Observer* obs) { observers_.AddObserver(obs); }
-  // void RemoveObserver(base::Observer* obs) {
-  // observers_.RemoveObserver(obs);
-  // }
   virtual v8::Isolate* Isolate() const = 0;
+
+  virtual void AddExtensionDataToGlobal(v8::Local<v8::Context> ctx,
+                                        v8::Local<v8::Object> data) {}
+
   JSRuntimeType GetRuntimeType() { return piper::JSRuntimeType::v8; }
+
+ protected:
+  V8IsolateInstance() = default;
 };
 
 }  // namespace piper
