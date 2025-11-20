@@ -640,6 +640,14 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
                                                      Element* ref) {
   auto* real_parent = parent;
   while (real_parent && real_parent->IsLayoutOnly()) {
+    // For element container tree a quick check for determine if need to append
+    // the container to the end(check ref is null) ref is null, find the first
+    // none-wrapper ancestor's next sibling as ref! ref_node: null means to
+    // append to the real parent!!
+    // FIXME(linxs): try to optimize the logic for wrapper element
+    if (ref == nullptr) {
+      ref = real_parent->next_render_sibling();
+    }
     real_parent = real_parent->render_parent();
   }
   if (!real_parent) {
@@ -649,7 +657,6 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   // We can skip index calculation if the target parent doesn't have any child
   // need adjust z order. And dirty_ context will sort its children. We don't
   // need to calculate the index here.
-
   bool should_skip_index_calculation = false;
   if (parent->element_manager()->FixNegativeZIndexBug()) {
     should_skip_index_calculation =

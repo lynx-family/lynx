@@ -2073,17 +2073,6 @@ void FiberElement::HandleContainerInsertion(FiberElement *parent,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  // for element container tree
-  // a quick check for determine if need to append the container to the
-  // end(check ref is null) ref is null, find the first none-wrapper ancestor's
-  // next sibling as ref! ref_node: null means to append to the real parent!!
-  // FIXME(linxs): for wrapper, we can merge the below logic
-  auto *temp_parent = parent;
-  while (!ref_node && temp_parent && temp_parent->is_layout_only_) {
-    ref_node = temp_parent->next_render_sibling_;
-    temp_parent = temp_parent->render_parent_;
-  }
-
   if (!child->element_container()->parent()) {
     // the child has been inserted to parent in
     // AttachChildToTargetContainerRecursive, just ignore it
