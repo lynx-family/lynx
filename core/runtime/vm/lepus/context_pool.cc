@@ -71,6 +71,10 @@ void LynxContextPool::AddContextSafely(int32_t count) {
       if (!context->DeSerialize(*context_bundle_, false, nullptr)) {
         return;
       }
+      // Try Execute
+      if (enable_mts_pre_execute_) {
+        context->TryExecute();
+      }
     }
     temp_contexts.emplace_back(std::move(context));
   }

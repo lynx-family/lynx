@@ -107,6 +107,9 @@ class Context {
   // entry point.
   virtual bool Execute() = 0;
 
+  bool TryExecute();
+  bool HasPreExecuteSuccess();
+
   virtual void UpdateGCTiming(bool is_start){};
 
   virtual void TriggerVmGC(){};
@@ -313,6 +316,7 @@ class Context {
   std::string sdk_version_{"null"};
   // debugger source code
   std::string debug_source_;
+  bool has_pre_execute_success_{false};
 
   std::unique_ptr<LepusInspectorManager> inspector_manager_;
 

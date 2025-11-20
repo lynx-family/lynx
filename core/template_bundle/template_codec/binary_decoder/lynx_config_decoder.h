@@ -814,6 +814,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableCSSInlineVariables(
           LynxEnv::GetInstance().EnableCSSInlineVariables());
     }
+
+    if (doc.HasMember(config::kEnableMTSPreExecute) &&
+        doc[config::kEnableMTSPreExecute].IsBool()) {
+      page_config->SetEnableMTSPreExecute(
+          doc[config::kEnableMTSPreExecute].GetBool());
+    }
   };
 };
 }  // namespace tasm
