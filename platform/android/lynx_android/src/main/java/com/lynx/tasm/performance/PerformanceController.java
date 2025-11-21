@@ -25,6 +25,8 @@ import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
+import com.lynx.tasm.performance.fsp.FSPTracer;
+import com.lynx.tasm.performance.fsp.IMeaningfulContentSnapshotCaptureHandler;
 import com.lynx.tasm.performance.memory.IMemoryMonitor;
 import com.lynx.tasm.performance.memory.IMemoryRecordBuilder;
 import com.lynx.tasm.performance.memory.MemoryRecord;
@@ -56,6 +58,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private JavaOnlyMap mHostPlatformTiming;
   private JavaOnlyArray mPendingPaintEndPipelineIds = new JavaOnlyArray();
   private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
+  private FSPTracer mFSPTracer = null;
 
   /**
    * Checks if memory monitoring is enabled.
@@ -166,6 +169,25 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     });
   }
 
+  @UiThread
+  public void startFSPTracer(IMeaningfulContentSnapshotCaptureHandler captureHandler) {
+    if (!LynxEnv.inst().enableFSP()) {
+      return;
+    }
+    if (mFSPTracer == null) {
+      mFSPTracer = new FSPTracer(this);
+    }
+    mFSPTracer.start(captureHandler);
+  }
+
+  @UiThread
+  public void stopFSPTracerByUserInteraction() {
+    if (!LynxEnv.inst().enableFSP() || mFSPTracer == null) {
+      return;
+    }
+    mFSPTracer.cancelledByUserInteraction();
+  }
+
   @Override
   public void updateMemoryUsage(Map<String, MemoryRecord> recordMap) {
     if (!mEnableController || recordMap == null) {
@@ -270,6 +292,15 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   public void setFSPTimingInfo(long usTimestamp, Map<String, String> detail) {
     // TODO(limeng.amer): implemant by jni.
+    if (!mEnableController) {
+      return;
+    }
+    runOnReportThread(() -> {
+      if (mNativePerformanceActorPtr == 0) {
+        return;
+      }
+      nativeSetFSPTimingInfo(mNativePerformanceActorPtr, usTimestamp, detail);
+    });
   }
 
   public void setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming) {
@@ -406,6 +437,8 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private native void nativeSetPaintEndTimingAndHostPlatformTiming(
       long nativePtr, long usTimestamp, JavaOnlyMap hostPlatformTiming, JavaOnlyArray pipelineIds);
   private static native boolean nativeIsMemoryMonitorEnabled();
+  private native void nativeSetFSPTimingInfo(
+      long nativePtr, long usTimestamp, Map<String, String> detail);
 
   private static native long nativeCurrentSystemTimeMicroseconds();
 }

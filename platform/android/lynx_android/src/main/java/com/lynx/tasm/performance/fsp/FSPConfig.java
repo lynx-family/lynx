@@ -61,14 +61,20 @@ public class FSPConfig {
     if (map == null) {
       return defaultValue;
     }
-    String valueStr = map.get(key);
-    if (valueStr == null) {
+    Object valueObj = map.get(key);
+    if (valueObj == null) {
       return defaultValue;
     }
     int value = defaultValue;
-    try {
-      value = Integer.parseInt(valueStr.trim());
-    } catch (NumberFormatException e) {
+    if (valueObj instanceof String) {
+      String valueStr = (String) valueObj;
+      try {
+        value = Integer.parseInt(valueStr.trim());
+      } catch (NumberFormatException e) {
+      }
+    } else if (valueObj instanceof Number) {
+      Number number = (Number) valueObj;
+      value = number.intValue();
     }
     return value;
   }

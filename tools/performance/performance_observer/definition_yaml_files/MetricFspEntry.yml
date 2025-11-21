@@ -11,7 +11,7 @@ MetricFspEntry:
           $ref: 'PerformanceMetric.yml#/PerformanceMetric'
         totalFsp:
           $ref: 'PerformanceMetric.yml#/PerformanceMetric'
-        status:
+        fspStatus:
           type: string
         contentFillRatioX:
           type: number

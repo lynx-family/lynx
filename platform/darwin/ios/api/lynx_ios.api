@@ -2828,7 +2828,7 @@ public class LynxMetricFspEntry : LynxPerformanceEntry {
   public LynxPerformanceMetric* LynxMetricFspEntry::fsp fsp;
   public LynxPerformanceMetric* LynxMetricFspEntry::lynxFsp lynxFsp;
   public LynxPerformanceMetric* LynxMetricFspEntry::totalFsp totalFsp;
-  public NSString* LynxMetricFspEntry::status status;
+  public NSString* LynxMetricFspEntry::fspStatus fspStatus;
   public NSNumber* LynxMetricFspEntry::contentFillRatioX contentFillRatioX;
   public NSNumber* LynxMetricFspEntry::contentFillRatioY contentFillRatioY;
   public NSNumber* LynxMetricFspEntry::contentFillRatioTotalArea contentFillRatioTotalArea;

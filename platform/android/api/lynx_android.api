@@ -7446,7 +7446,7 @@ public class com::lynx::tasm::performance::performanceobserver::MetricFspEntry :
   public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.fsp fsp;
   public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.lynxFsp lynxFsp;
   public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.totalFsp totalFsp;
-  public String com.lynx.tasm.performance.performanceobserver.MetricFspEntry.status status;
+  public String com.lynx.tasm.performance.performanceobserver.MetricFspEntry.fspStatus fspStatus;
   public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillRatioX contentFillRatioX;
   public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillRatioY contentFillRatioY;
   public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillRatioTotalArea contentFillRatioTotalArea;
@@ -7955,6 +7955,8 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.allocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(IMemoryRecordBuilder builder);
+  public void com.lynx.tasm.performance.PerformanceController.startFSPTracer(IMeaningfulContentSnapshotCaptureHandler captureHandler);
+  public void com.lynx.tasm.performance.PerformanceController.stopFSPTracerByUserInteraction();
   public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(Map< String, MemoryRecord > recordMap);
   public void com.lynx.tasm.performance.PerformanceController.setMsTiming(String key, long msTimestamp, String pipelineID);
   public void com.lynx.tasm.performance.PerformanceController.markTiming(final String key, final String pipelineID);

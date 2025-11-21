@@ -216,6 +216,41 @@ static void SetPaintEndTimingAndHostPlatformTiming(
   });
 }
 
+static void SetFSPTimingInfo(JNIEnv* env, jobject jcaller, jlong j_native_ptr,
+                             jlong j_us_timestamp, jobject j_detail) {
+  if (j_native_ptr == 0 || env == nullptr) {
+    return;
+  }
+  auto* wrapper =
+      reinterpret_cast<lynx::tasm::performance::PerformanceControllerAndroid*>(
+          j_native_ptr);
+  auto& nativeActorPtr = wrapper->GetActor();
+  if (!nativeActorPtr) {
+    return;
+  }
+  auto us_timestamp =
+      static_cast<lynx::tasm::timing::TimestampUs>(j_us_timestamp);
+  std::unique_ptr<std::unordered_map<std::string, std::string>> detail_ptr =
+      lynx::base::android::JNIConvertHelper::
+          ConvertJavaStringHashMapToSTLStringMap(env, j_detail);
+  nativeActorPtr->Act([us_timestamp,
+                       captured_detail_ptr =
+                           std::move(detail_ptr)](auto& performance) mutable {
+    // set fsp info
+    if (captured_detail_ptr != nullptr) {
+      auto& captured_detail = *captured_detail_ptr;
+      for (auto const& [k, v] : captured_detail) {
+        performance->GetTimingHandler().SetFSPInfo(k, v);
+      }
+    }
+    // set fsp
+    lynx::tasm::timing::TimestampKey timing_key(lynx::tasm::timing::kFSPEnd);
+    lynx::tasm::PipelineID pipeline_id;
+    performance->GetTimingHandler().SetTiming(timing_key, us_timestamp,
+                                              pipeline_id);
+  });
+}
+
 static jboolean IsMemoryMonitorEnabled(JNIEnv* env, jclass jcaller) {
   return lynx::tasm::performance::MemoryMonitor::Enable();
 }

@@ -2771,6 +2771,10 @@ public class LynxTemplateRender
 
   public boolean dispatchTouchEvent(MotionEvent ev) {
     checkEngineFallbackAndLoad(false);
+    // stop FSP tracer when user interaction happens.
+    if (mPerformanceController != null) {
+      mPerformanceController.stopFSPTracerByUserInteraction();
+    }
     return mLynxUIRender != null && mLynxUIRender.onTouchEvent(ev, null);
   }
 
@@ -3037,6 +3041,16 @@ public class LynxTemplateRender
       HeroTransitionManager.inst().executeEnterAnim(mBodyView, null);
       if (mClient != null) {
         dispatchLoadSuccess(templateSize);
+      }
+      LynxUIOwner uiOwner = mLynxUIRender.lynxUIOwner();
+      if (uiOwner != null && mPerformanceController != null) {
+        mPerformanceController.startFSPTracer(() -> {
+          // run on ui thread
+          if (uiOwner != null) {
+            return uiOwner.getMeaningfulPaintingAreas();
+          }
+          return null;
+        });
       }
       mRenderPhase = RENDER_PHASE_UPDATE;
       if (mDevTool != null) {
