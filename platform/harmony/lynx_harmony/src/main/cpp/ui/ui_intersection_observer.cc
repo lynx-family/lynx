@@ -328,12 +328,16 @@ void UIIntersectionObserver::CheckIntersectionWithTarget(
     return;
   }
 
+  UIRoot* root = ui->GetContext()->Root();
+  float offset_screen[2] = {0};
+  root->GetOffsetToScreen(offset_screen);
   float target_rect[4] = {0.f};
   float intersection_rect[4] = {0.f};
   auto time_stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now().time_since_epoch())
                         .count();
-  ui->GetBoundingClientRect(target_rect, true);
+  ui->GetBoundingClientRect(target_rect);
+  LynxUIHelper::OffsetRect(target_rect, offset_screen);
   ComputeTargetInteraction(ui, target_rect, intersection_rect);
   std::unique_ptr<UIIntersectionObserverTarget::UIIntersectionObserverEntry>
       new_entry = std::make_unique<
@@ -363,6 +367,9 @@ void UIIntersectionObserver::ComputeTargetInteraction(
     return;
   }
 
+  UIRoot* root = target->GetContext()->Root();
+  float offset_screen[2] = {0};
+  root->GetOffsetToScreen(offset_screen);
   auto current = target->Parent();
   memcpy(intersection_rect, target_rect, 4 * sizeof(float));
   while (current && current->Parent() != current) {
@@ -376,7 +383,8 @@ void UIIntersectionObserver::ComputeTargetInteraction(
     } else {
       if (!current->Overflow().overflow_x || !current->Overflow().overflow_y) {
         float current_rect[4] = {0.f};
-        current->GetBoundingClientRect(current_rect, true);
+        current->GetBoundingClientRect(current_rect);
+        LynxUIHelper::OffsetRect(current_rect, offset_screen);
         if (!GetRectIntersection(current_rect, intersection_rect,
                                  intersection_rect)) {
           return;
@@ -387,7 +395,8 @@ void UIIntersectionObserver::ComputeTargetInteraction(
   }
 
   if (ref_id_ == -1 && !ui_owner_->Destroyed()) {
-    ui_owner_->Root()->GetBoundingClientRect(intersection_rect, true);
+    root->GetBoundingClientRect(intersection_rect);
+    LynxUIHelper::OffsetRect(intersection_rect, offset_screen);
     GetRectIntersection(intersection_rect, ref_rect_, intersection_rect);
   }
 }

@@ -1280,9 +1280,23 @@ void UIBase::SetEnableTouchPseudoPropagation(const lepus::Value& value) {
 }
 
 void UIBase::SetExposureID(const lepus::Value& value) {
+  std::string exposure_id_value;
+  lepus::Value prop_value;
+  bool has_valid_value = false;
+
   if (value.IsString()) {
-    exposure_id_ = value.StdString();
-    new_exposure_props_["exposure-id"] = value;
+    exposure_id_value = value.StdString();
+    prop_value = value;
+    has_valid_value = true;
+  } else if (value.IsNumber()) {
+    exposure_id_value = std::to_string(value.Number());
+    prop_value = lepus::Value(exposure_id_value);
+    has_valid_value = true;
+  }
+
+  if (has_valid_value) {
+    exposure_id_ = exposure_id_value;
+    new_exposure_props_["exposure-id"] = prop_value;
   }
 }
 
@@ -1964,7 +1978,8 @@ bool UIBase::IsVisibleForExposure(
           parent_rect[2] = rect[2];
           parent_rect[3] = rect[3];
         } else {
-          current->GetBoundingClientRect(parent_rect, true);
+          current->GetBoundingClientRect(parent_rect);
+          LynxUIHelper::OffsetRect(parent_rect, offset_screen);
           auto& rect = it->second.ui_rect;
           rect[0] = parent_rect[0];
           rect[1] = parent_rect[1];
@@ -1973,7 +1988,8 @@ bool UIBase::IsVisibleForExposure(
           it->second.ui_rect_updated = true;
         }
       } else {
-        current->GetBoundingClientRect(parent_rect, true);
+        current->GetBoundingClientRect(parent_rect);
+        LynxUIHelper::OffsetRect(parent_rect, offset_screen);
         UIExposure::CommonAncestorUIRect rect = {.ui_count = 1,
                                                  .ui_rect_updated = true,
                                                  .ui_rect[0] = parent_rect[0],
@@ -1998,7 +2014,8 @@ bool UIBase::IsVisibleForExposure(
       parent_rect[2] = rect[2];
       parent_rect[3] = rect[3];
     } else {
-      parent->GetBoundingClientRect(parent_rect, true);
+      parent->GetBoundingClientRect(parent_rect);
+      LynxUIHelper::OffsetRect(parent_rect, offset_screen);
       UIExposure::CommonAncestorUIRect rect = {.ui_count = 1,
                                                .ui_rect_updated = true,
                                                .ui_rect[0] = parent_rect[0],
