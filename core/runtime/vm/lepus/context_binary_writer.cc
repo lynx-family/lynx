@@ -386,13 +386,8 @@ void ContextBinaryWriter::EncodeCSSValue(const tasm::CSSValue& css_value,
     EncodeUtf8Str(css_value.GetDefaultValue().c_str());
     if (lynx::tasm::Config::IsHigherOrEqual(
             compile_options_.target_sdk_version_, LYNX_VERSION_2_14)) {
-      // default_value_map
-      if (css_value.GetDefaultValueMapOpt()) {
-        EncodeValue(css_value.GetDefaultValueMapOpt().get());
-      } else {
-        auto empty_default_value_map = Value();
-        EncodeValue(&empty_default_value_map);
-      }
+      auto value_map = css_value.GetDefaultValueMapOpt();
+      EncodeValue(&value_map);
     }
   }
 }

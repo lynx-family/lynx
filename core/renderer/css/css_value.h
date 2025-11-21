@@ -190,8 +190,8 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   CSSValuePattern GetPattern() const { return pattern_; }
   CSSValueType GetValueType() const { return type_; }
   const base::String& GetDefaultValue() const { return default_value_; }
-  std::unique_ptr<lepus::Value>& GetDefaultValueMapOpt() const {
-    return default_value_map_opt_;
+  lepus::Value GetDefaultValueMapOpt() const {
+    return default_value_map_opt_ ? *default_value_map_opt_ : lepus::Value();
   }
 
   void SetPattern(CSSValuePattern pattern) { pattern_ = pattern; }

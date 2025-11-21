@@ -369,17 +369,10 @@ bool LynxBinaryBaseCSSReader::DecodeCSSValue(
     result->SetDefaultValue(std::move(default_value));
     if (enable_css_variable_multi_default_value) {
       DECODE_VALUE(default_value_map);
-      auto& target = result->GetDefaultValueMapOpt();
-
-      // Empty values ​​will be encoded in the current template. If not
-      // checked, the default value map will also be copied when the CSSValue is
-      // copied later. The default value map is dynamically created using
-      // unique_ptr, and creating and copying empty values ​​will waste
-      // memory.
-      if (default_value_map.IsNil()) {
-        target = nullptr;
-      } else {
-        target = std::make_unique<lepus::Value>(std::move(default_value_map));
+      if (!default_value_map.IsNil()) {
+        // Empty values will be encoded in the current template.
+        // Checking IsNil() in advance can slightly improve performance.
+        result->SetDefaultValueMap(std::move(default_value_map));
       }
     }
     if (enable_css_inline_variables_) {
