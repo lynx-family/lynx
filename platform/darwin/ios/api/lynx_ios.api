@@ -5071,6 +5071,7 @@ public class LynxView : UIView, <LUIBodyView> {
   public CGFloat LynxView::preferredMaxLayoutHeight preferredMaxLayoutHeight;
   public CGFloat LynxView::preferredLayoutWidth preferredLayoutWidth;
   public CGFloat LynxView::preferredLayoutHeight preferredLayoutHeight;
+  public bool LynxView::enableAutoLayout enableAutoLayout;
   public id<LynxImageFetcher> LynxView::imageFetcher imageFetcher;
   public id<LynxScrollListener> LynxView::scrollListener scrollListener;
   public id<LynxListLayoutProtocol> LynxView::customizedListLayout customizedListLayout;

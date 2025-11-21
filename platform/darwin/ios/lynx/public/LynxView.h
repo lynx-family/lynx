@@ -76,6 +76,11 @@
 @property(nonatomic, assign) CGFloat preferredLayoutWidth;
 @property(nonatomic, assign) CGFloat preferredLayoutHeight;
 
+// TODO(chennengshi):When
+// layoutWidthMode/layoutHeightMode/preferredLayoutWidth/preferredLayoutHeight properties are
+// migrated to LynxViewBuilder, enableAutoLayout will also be migrated to LynxViewBuilder
+@property(nonatomic, assign) bool enableAutoLayout;
+
 @property(nonatomic, weak, nullable) id<LynxImageFetcher> imageFetcher;
 @property(nonatomic, weak, nullable) id<LynxScrollListener> scrollListener;
 @property(nonatomic, weak, nullable) id<LynxListLayoutProtocol> customizedListLayout;
