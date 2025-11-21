@@ -113,7 +113,7 @@ class LEPUSValueHelper {
     if (val < MAX_SAFE_INTEGER && val > -MAX_SAFE_INTEGER) {
       return LEPUS_NewInt64(ctx, val);
     } else {
-      return LEPUS_NewBigUint64(ctx, static_cast<uint64_t>(val));  //
+      return LEPUS_NewBigInt64(ctx, val);  //
     }
   }
 
