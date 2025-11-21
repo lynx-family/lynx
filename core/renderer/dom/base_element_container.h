@@ -57,12 +57,6 @@ class BaseElementContainer {
     was_position_fixed_ = was_position_fixed;
   }
 
-  // Only the element container with z-index 0 and not position fixed is a
-  // reliable sibling.
-  bool IsReliableSibling() const {
-    return old_z_index() == 0 && !was_position_fixed();
-  }
-
   void MarkDirtyState(DirtyState state);
 
   /**
