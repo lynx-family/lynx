@@ -258,6 +258,11 @@ void ListAdapter::UpdateItemHolderToLatest(
   if (!list_children_helper) {
     return;
   }
+  // Update anchor ref for removed on screen children.
+  // Note: This logic should be invoked before latest diff info being updated to
+  // all ItemHolders, so here UpdateAnchorRefItem() is invoked in the begin of
+  // UpdateItemHolderToLatest()
+  UpdateAnchorRefItem(list_children_helper);
 
   const auto& children = list_children_helper->children();
   const auto& attached_children = list_children_helper->attached_children();
@@ -314,6 +319,88 @@ void ListAdapter::UpdateItemHolderToLatest(
       // Add item holder to last binding children.
       list_children_helper->AddChild(last_binding_children, item_holder);
     }
+  }
+}
+
+void ListAdapter::UpdateAnchorRefItem(
+    ListChildrenHelper* list_children_helper) {
+  const auto& children = list_children_helper->children();
+  const auto& on_screen_children = list_children_helper->on_screen_children();
+  bool has_valid_diff = list_adapter_helper()->HasValidDiff();
+  bool should_search_ref_anchor = list_container_->ShouldSearchRefAnchor();
+  list::SearchRefAnchorStrategy search_strategy =
+      list_container_->search_ref_anchor_strategy();
+  std::unordered_map<ItemHolder*, ItemHolder*> tmp_anchor_ref_map;
+  if (has_valid_diff && should_search_ref_anchor &&
+      !on_screen_children.empty() && !children.empty()) {
+    list_children_helper->ForEachChild(
+        on_screen_children,
+        [this, list_children_helper, &children, &tmp_anchor_ref_map,
+         search_strategy](ItemHolder* on_screen_child) {
+          // We only need to update removed on screen child.
+          if (IsRemoved(on_screen_child)) {
+            auto weak_anchor_ref = on_screen_child->weak_anchor_ref();
+            if (!weak_anchor_ref) {
+              // (1) Removed child's weak_anchor_ref is never set.
+              if (auto it = children.find(on_screen_child);
+                  it != children.end()) {
+                ItemHolder* anchor_ref_child =
+                    list_children_helper->GetFirstChildFrom(
+                        children, on_screen_child,
+                        [this, on_screen_child](const ItemHolder* item_holder) {
+                          return item_holder != on_screen_child &&
+                                 !IsRemoved(item_holder);
+                        },
+                        search_strategy ==
+                            list::SearchRefAnchorStrategy::kToStart);
+                on_screen_child->SetWeakAnchorRef(anchor_ref_child);
+              } else {
+                // Unexpected case: child is not in children set.
+                NLIST_LOGE(
+                    "ListAdapter::UpdateItemHolderToLatest: on_screen_child is "
+                    "not at children set and it's weak_anchor_ref is never "
+                    "set: "
+                    "index="
+                    << on_screen_child->index()
+                    << ", item-key=" << on_screen_child->item_key());
+                on_screen_child->SetWeakAnchorRef(nullptr);
+              }
+            } else if (weak_anchor_ref && (*weak_anchor_ref)) {
+              // (2) Update weak_anchor_ref if needed.
+              ItemHolder* current_anchor_ref_child = (*weak_anchor_ref).get();
+              if (IsRemoved(current_anchor_ref_child)) {
+                // Current anchor ref child is removed, need to find a new
+                // anchor ref.
+                if (auto it = tmp_anchor_ref_map.find(current_anchor_ref_child);
+                    it != tmp_anchor_ref_map.end()) {
+                  // Fast find new ref anchor child from tmp_anchor_ref_map
+                  on_screen_child->SetWeakAnchorRef(it->second);
+                } else {
+                  if (auto it = children.find(current_anchor_ref_child);
+                      it != children.end()) {
+                    ItemHolder* new_anchor_ref_child =
+                        list_children_helper->GetFirstChildFrom(
+                            children, current_anchor_ref_child,
+                            [this, current_anchor_ref_child](
+                                const ItemHolder* item_holder) {
+                              return item_holder != current_anchor_ref_child &&
+                                     !IsRemoved(item_holder);
+                            },
+                            search_strategy ==
+                                list::SearchRefAnchorStrategy::kToStart);
+                    tmp_anchor_ref_map[current_anchor_ref_child] =
+                        new_anchor_ref_child;
+                    on_screen_child->SetWeakAnchorRef(new_anchor_ref_child);
+                  } else {
+                    tmp_anchor_ref_map[current_anchor_ref_child] = nullptr;
+                    on_screen_child->SetWeakAnchorRef(nullptr);
+                  }
+                }
+              }
+            }
+          }
+          return false;
+        });
   }
 }
 

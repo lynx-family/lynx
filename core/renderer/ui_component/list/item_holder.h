@@ -8,6 +8,7 @@
 #include <array>
 #include <string>
 
+#include "base/include/flex_optional.h"
 #include "base/include/fml/memory/weak_ptr.h"
 #include "core/renderer/ui_component/list/list_types.h"
 
@@ -72,6 +73,15 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
     sticky_top_ = sticky_top;
     sticky_bottom_ = sticky_bottom;
   }
+  void SetWeakAnchorRef(ItemHolder* item_holder) {
+    weak_anchor_ref_ = base::make_flex_optional(
+        item_holder ? item_holder->WeakFromThis() : fml::WeakPtr<ItemHolder>());
+  }
+  void ResetWeakAnchorRef() { weak_anchor_ref_.reset(); }
+  ItemHolder* GetAnchorRefHolder() const {
+    return weak_anchor_ref_ && (*weak_anchor_ref_) ? (*weak_anchor_ref_).get()
+                                                   : nullptr;
+  }
   void SetRecyclable(bool recyclable) { recyclable_ = recyclable; }
 
   const std::string& item_key() const { return item_key_; }
@@ -87,6 +97,9 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   bool sticky() const { return sticky_top_ || sticky_bottom_; }
   bool sticky_top() const { return sticky_top_; }
   bool sticky_bottom() const { return sticky_bottom_; }
+  base::flex_optional<fml::WeakPtr<ItemHolder>> weak_anchor_ref() const {
+    return weak_anchor_ref_;
+  }
   bool recyclable() const { return recyclable_; }
 
   // Note: The comparator of ItemHolder should allow objects with the same
@@ -160,6 +173,7 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   // All layout Info of item holder.
   // The ItemHolder's index in data source.
   int index_{list::kInvalidIndex};
+  base::flex_optional<fml::WeakPtr<ItemHolder>> weak_anchor_ref_;
   // The ItemHold's key.
   std::string item_key_;
   // Whether the ItemHolder can be recycled.

@@ -36,6 +36,22 @@ export enum ListEventSource {
   SCROLL = 2,
 }
 
+/**
+ * The strategy to search the reference anchor for removed on-screen children.
+ * NONE: Do not search the reference anchor.
+ * TO_START: Search the reference anchor to the start of the list.
+ * TO_END: Search the reference anchor to the end of the list.
+ * @Android
+ * @iOS
+ * @Harmony
+ * @PC
+ */
+export enum ListSearchRefAnchorStrategy {
+  NONE = 0,
+  TO_START = 1,
+  TO_END = 2,
+}
+
 export interface ListAttachedCell {
   /**
    * id of list item
@@ -545,6 +561,16 @@ export interface ListProps extends StandardProps {
    * @PC
    */
   'preload-buffer-count'?: number;
+
+  /**
+   * Determine the strategy to search the reference anchor for removed on-screen children. If set to TO_START or TO_END, we will update reference anchor child for all removed on-screen children before consuming diff info. And in list layout pass, if no valid anchor child can be found from all on screen children, we use the reference anchor child in layout.
+   * @defaultValue ListSearchRefAnchorStrategy.NONE
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  'experimental-search-ref-anchor-strategy'?: ListSearchRefAnchorStrategy;
 
   /**
    * Whether to display the scroll bar of the list, with false on Harmony platform and true on other platforms.

@@ -71,6 +71,8 @@ static constexpr const char* const kLowerThresholdItemCount =
     "lower-threshold-item-count";
 static constexpr const char* const kUpperThresholdItemCount =
     "upper-threshold-item-count";
+static constexpr const char* const kExperimentalSearchRefAnchorStrategy =
+    "experimental-search-ref-anchor-strategy";
 static constexpr const char* const kScrollEventThrottle =
     "scroll-event-throttle";
 static constexpr const char kExperimentalBatchRenderStrategy[] =
@@ -290,6 +292,13 @@ enum class ScrollState {
   kDragging,
   kFling,
   kScrollAnimation
+};
+
+// Search ref anchor strategy
+enum class SearchRefAnchorStrategy {
+  kNone = 0,
+  kToStart,
+  kToEnd,
 };
 
 enum class ItemHolderAnimationType { kNone, kTransform, kOpacity };

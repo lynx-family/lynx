@@ -467,6 +467,11 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   } else if (key.IsEqual(list::kExperimentalRecycleAvailableItemBeforeLayout)) {
     recycle_available_item_before_layout_ = value.Bool();
     should_set_props = false;
+  } else if (key.IsEqual(list::kExperimentalSearchRefAnchorStrategy)) {
+    // experimental-search-ref-anchor-strategy
+    search_ref_anchor_strategy_ = static_cast<list::SearchRefAnchorStrategy>(
+        static_cast<int>(value.Number()));
+    should_set_props = false;
   }
   if (should_mark_layout_dirty) {
     element_->MarkLayoutDirty();

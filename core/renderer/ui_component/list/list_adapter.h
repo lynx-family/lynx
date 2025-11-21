@@ -212,6 +212,8 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   bool HasExpectedDiffAnimation() const;
 
+  void UpdateAnchorRefItem(ListChildrenHelper* list_children_helper);
+
  protected:
   Element* list_element_{nullptr};
   ListContainerImpl* list_container_{nullptr};

@@ -119,6 +119,14 @@ class ListContainerImpl : public ListContainerDelegateInternal {
   void SendDebugEvent(const fml::RefPtr<lepus::Dictionary>& detail) {
     list_event_manager_->SendDebugEvent(detail);
   }
+  list::SearchRefAnchorStrategy search_ref_anchor_strategy() const {
+    return search_ref_anchor_strategy_;
+  }
+  bool ShouldSearchRefAnchor() const {
+    return search_ref_anchor_strategy_ ==
+               list::SearchRefAnchorStrategy::kToStart ||
+           search_ref_anchor_strategy_ == list::SearchRefAnchorStrategy::kToEnd;
+  }
   void MarkShouldFlushFinishLayout(bool has_layout) {
     should_flush_finish_layout_ |= has_layout;
   }
@@ -148,6 +156,8 @@ class ListContainerImpl : public ListContainerDelegateInternal {
   bool recycle_available_item_before_layout_{false};
   bool sticky_enabled_{false};
   bool recycle_sticky_item_{true};
+  list::SearchRefAnchorStrategy search_ref_anchor_strategy_{
+      list::SearchRefAnchorStrategy::kNone};
   int sticky_buffer_count_{list::kInvalidItemCount};
   float sticky_offset_{0.f};
   int intercept_depth_{0};

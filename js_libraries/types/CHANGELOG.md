@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 3.7.0
+
+### Minor Changes
+
+- Add `experimental-search-ref-anchor-strategy` property for `<list>` element.
+
 ## 3.6.0
 
 ### Minor Changes

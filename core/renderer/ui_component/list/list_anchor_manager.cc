@@ -4,6 +4,8 @@
 
 #include "core/renderer/ui_component/list/list_anchor_manager.h"
 
+#include <algorithm>
+
 #include "core/renderer/ui_component/list/list_container_impl.h"
 #include "core/renderer/ui_component/list/list_layout_manager.h"
 
@@ -47,20 +49,30 @@ void ListAnchorManager::RetrieveAnchorInfoBeforeLayout(
 }
 
 void ListAnchorManager::AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info) {
-  if (IsValidInitialScrollIndex()) {
-    // initial-scroll-index
-    //      Use initial-scroll-index as anchor and fill a screen size area
+  if (IsValidInitialScrollIndex() ||
+      scrolling_info_.IsValidNonSmoothScrollTarget() ||
+      anchor_info.is_removed_child_ref_) {
+    // For cases:
+    // a. valid initial-scroll-index
+    // b. non-smooth scroll
+    // c. anchor is from removed child ref.
     float start =
         list_orientation_helper_->GetDecoratedStart(anchor_info.item_holder_);
     list_layout_manager_->SetContentOffset(start, false);
     anchor_info.start_offset_ = start;
-  } else if (scrolling_info_.IsValidNonSmoothScrollTarget()) {
-    // un-smoothed scroll
-    //      Use target index as anchor and fill a screen size area
-    float start =
-        list_orientation_helper_->GetDecoratedStart(anchor_info.item_holder_);
-    list_layout_manager_->SetContentOffset(start, false);
-    anchor_info.start_offset_ = start;
+    if (anchor_info.is_removed_child_ref_) {
+      if (anchor_info.align_start_) {
+        anchor_info.start_alignment_delta_ = 0;
+      } else {
+        anchor_info.start_alignment_delta_ =
+            list_orientation_helper_->GetMeasurement() +
+            anchor_info.item_holder_->top_inset();
+        float adjusted_content_offset =
+            list_orientation_helper_->GetStart(anchor_info.item_holder_) -
+            anchor_info.start_alignment_delta_;
+        list_layout_manager_->SetContentOffset(adjusted_content_offset, false);
+      }
+    }
   } else {
     // Note: The anchor_info.start_offset_ is firstly updated in FindAnchor()
     // which is invoked before LayoutInvalidItemHolder(). Here need update
@@ -114,8 +126,9 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
   ItemHolder* updated_item_holder = nullptr;
   ItemHolder* binding_item_holder = nullptr;
   ItemHolder* finishing_binding_item_holder = nullptr;
+  const auto& on_screen_children = list_children_helper_->on_screen_children();
   list_children_helper_->ForEachChild(
-      list_children_helper_->on_screen_children(),
+      on_screen_children,
       [this, &updated_item_holder, &binding_item_holder, &anchor_info,
        finishing_binding_index,
        &finishing_binding_item_holder](ItemHolder* item_holder) {
@@ -162,27 +175,107 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
     UpdateAnchorWithItemHolder(anchor_info, *updated_item_holder);
     return;
   }
-  // If all item_holders are invalid, find outside anchor.
-  ItemHolder* outside_bounds_item_holder =
-      from_end ? first_valid_item_holder_below_screen_
-               : last_valid_item_holder_up_screen_;
   if (!anchor_info.valid_) {
-    if (outside_bounds_item_holder) {
-      anchor_info.valid_ = true;
-      anchor_info.index_ = outside_bounds_item_holder->index();
-      anchor_info.item_holder_ = outside_bounds_item_holder;
-      anchor_info.start_offset_ = list_orientation_helper_->GetDecoratedStart(
-          outside_bounds_item_holder);
-      anchor_visibility_ = list::AnchorVisibility::kAnchorVisibilityHide;
-      AdjustAnchorAlignment(anchor_info);
+    if (list_container_->ShouldSearchRefAnchor()) {
+      FindAnchorFromRef(anchor_info);
     } else {
-      // no anchor found. layout from list padding top
-      anchor_info.valid_ = true;
-      anchor_info.index_ = 0;
-      anchor_info.item_holder_ = list_adapter_->GetItemHolderForIndex(0);
-      anchor_info.AssignCoordinateFromPadding(list_orientation_helper_);
-      anchor_info.start_alignment_delta_ = anchor_info.start_offset_;
+      ItemHolder* outside_bounds_item_holder =
+          from_end ? first_valid_item_holder_below_screen_
+                   : last_valid_item_holder_up_screen_;
+      if (outside_bounds_item_holder) {
+        anchor_info.valid_ = true;
+        anchor_info.index_ = outside_bounds_item_holder->index();
+        anchor_info.item_holder_ = outside_bounds_item_holder;
+        anchor_info.start_offset_ = list_orientation_helper_->GetDecoratedStart(
+            outside_bounds_item_holder);
+        anchor_visibility_ = list::AnchorVisibility::kAnchorVisibilityHide;
+        AdjustAnchorAlignment(anchor_info);
+      }
     }
+  }
+  // no anchor found. layout from list padding top
+  if (!anchor_info.valid_) {
+    anchor_info.valid_ = true;
+    anchor_info.index_ = 0;
+    anchor_info.item_holder_ = list_adapter_->GetItemHolderForIndex(0);
+    anchor_info.AssignCoordinateFromPadding(list_orientation_helper_);
+    anchor_info.start_alignment_delta_ = anchor_info.start_offset_;
+  }
+}
+
+void ListAnchorManager::FindAnchorFromRef(AnchorInfo& anchor_info) {
+  const auto& children = list_children_helper_->children();
+  const auto& on_screen_children = list_children_helper_->on_screen_children();
+  list::SearchRefAnchorStrategy search_strategy =
+      list_container_->search_ref_anchor_strategy();
+  if (!children.empty() && !on_screen_children.empty()) {
+    ItemHolder* target_ref_child = nullptr;
+    list_children_helper_->ForEachChild(
+        on_screen_children,
+        [this, &target_ref_child, &children](ItemHolder* on_screen_child) {
+          if (!list_adapter_->IsRemoved(on_screen_child)) {
+            return false;
+          }
+          if (ItemHolder* ref_holder = on_screen_child->GetAnchorRefHolder();
+              ref_holder && children.find(ref_holder) != children.end()) {
+            target_ref_child = ref_holder;
+            return true;
+          }
+          return false;
+        },
+        search_strategy == list::SearchRefAnchorStrategy::kToEnd);
+    // update anchor info.
+    anchor_info.valid_ = true;
+    anchor_info.is_removed_child_ref_ = true;
+    if (search_strategy == list::SearchRefAnchorStrategy::kToStart) {
+      anchor_info.align_start_ = true;
+      if (target_ref_child) {
+        //        col-0            col-1
+        //                   +______________+
+        //                   |              |
+        //   +--------------+|              |  ----- content offset
+        //   |              ||  target ref  |
+        //   |    Item1     ||              |
+        //   | (next fill)  |+______________+
+        //   |              |+______________+
+        //   +______________+|              |
+        //                   |    Item2     |
+        //                   |              |
+        //                   |              |
+        //                   +______________+
+        anchor_info.index_ =
+            std::min(target_ref_child->index() +
+                         static_cast<int>(list::LayoutDirection::kLayoutToEnd),
+                     static_cast<int>(children.size()) - 1);
+      } else {
+        anchor_info.index_ = 0;
+      }
+    } else if (search_strategy == list::SearchRefAnchorStrategy::kToEnd) {
+      anchor_info.align_start_ = false;
+      if (target_ref_child) {
+        //        col-0            col-1
+        //                   +______________+
+        //                   |              |
+        //   +--------------+|              |
+        //   |              ||    Item2     |
+        //   |    Item1     ||              |
+        //   | (next fill)  |+______________+
+        //   |              |+______________+
+        //   +______________+|              | ----- list end
+        //                   |  target ref  |
+        //                   |              |
+        //                   |              |
+        //                   +______________+
+        anchor_info.index_ = target_ref_child->index();
+      } else {
+        // Note: here we want to layout from the last one, so need to reset
+        // anchor_info.align_start_ to true.
+        anchor_info.align_start_ = true;
+        anchor_info.index_ = static_cast<int>(children.size()) - 1;
+      }
+    }
+    anchor_info.item_holder_ =
+        list_container_->GetItemHolderForIndex(anchor_info.index_);
   }
 }
 

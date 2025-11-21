@@ -41,6 +41,8 @@ class ListAnchorManager {
     // The delta between anchor item_holder's top and content_offset when this
     // anchor_info first generated.
     float start_alignment_delta_{0.f};
+    bool is_removed_child_ref_{false};
+    bool align_start_{true};
     ItemHolder* item_holder_{nullptr};
   };
 
@@ -132,6 +134,7 @@ class ListAnchorManager {
  private:
   void FindAnchor(AnchorInfo& anchor_info, bool from_begin,
                   int finishing_binding_index);
+  void FindAnchorFromRef(AnchorInfo& anchor_info);
   void UpdateAnchorInfoWithoutDiff(AnchorInfo& anchor_info,
                                    int component_index /* = -1 */);
   void UpdateAnchorWithItemHolder(AnchorInfo& anchor_info,
