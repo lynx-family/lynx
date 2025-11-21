@@ -25,6 +25,9 @@ PubLynxContext::PubLynxContext(
   node_owner->SetContext(this);
   context_->SetTapSlop("50px");
   context_->SetEnableTextOverflow(true);
+  if (delegate->gesture_event_callback) {
+    ui_owner->Owner()->InitGestureArenaManager(context_.get());
+  }
   // The ui_task_runner is created separately here. MessageLoopTaskQueues
   // maintains its own ui_task_runner to prevent the same ui_task_runner from
   // being used in external MessageLoopTaskQueues

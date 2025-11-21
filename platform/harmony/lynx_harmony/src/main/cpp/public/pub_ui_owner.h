@@ -66,6 +66,10 @@ class LYNX_EXPORT PubUIOwner {
   void TakeSnapshot(size_t max_width, size_t max_height, int quality,
                     const TakeSnapshotCompletedCallback& callback);
 
+  void SetGestures(int id, const pub::Value& gesture_array);
+  void SetGestureState(int id, int gesture_id, int32_t state);
+  void ConsumeGesture(int id, int gesture_id, const pub::Value& params);
+
  private:
   std::shared_ptr<UIOwner> ui_owner_;
   napi_env env_;
