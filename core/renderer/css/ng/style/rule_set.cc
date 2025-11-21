@@ -16,6 +16,7 @@
 #include "core/renderer/css/ng/invalidation/rule_invalidation_set.h"
 #include "core/renderer/css/ng/matcher/selector_matcher.h"
 #include "core/renderer/css/shared_css_fragment.h"
+#include "core/renderer/dom/attribute_holder.h"
 
 namespace lynx {
 namespace css {

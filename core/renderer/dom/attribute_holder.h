@@ -25,8 +25,7 @@ namespace tasm {
 class Element;
 class RadonNode;
 
-class AttributeHolder : public fml::RefCountedThreadSafeStorage,
-                        public css::StyleNode {
+class AttributeHolder : public fml::RefCountedThreadSafeStorage {
  public:
   explicit AttributeHolder(Element* element = nullptr) : element_(element) {}
 
@@ -54,7 +53,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void ReleaseSelf() const override { delete this; }
 
-  void OnStyleChange() override;
+  void OnStyleChange();
 
   void AddClass(const base::String& clazz) {
     classes_.push_back(clazz);
@@ -229,7 +228,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     }
   }
 
-  const base::String& idSelector() const override { return id_selector_; }
+  const base::String& idSelector() const { return id_selector_; }
 
   const StyleMap& inline_styles() const { return inline_styles_; }
 
@@ -310,7 +309,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   StyleMap ReleaseInlineStyles() { return std::move(inline_styles_); }
 
-  const ClassList& classes() const override { return classes_; }
+  const ClassList& classes() const { return classes_; }
 
   bool HasClass(const std::string& cls) const {
     return std::find_if(classes_.begin(), classes_.end(), [&cls](auto& s) {
@@ -339,24 +338,20 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void set_tag(const base::String& name) { tag_ = name; }
 
-  virtual const base::String& tag() const override { return tag_; };
+  const base::String& tag() const { return tag_; };
 
-  virtual css::StyleNode* SelectorMatchingParent() const override;
-  virtual css::StyleNode* HolderParent() const override;
-  virtual css::StyleNode* NextSibling() const override;
-  virtual css::StyleNode* PreviousSibling() const override;
-  virtual css::StyleNode* PseudoElementOwner() const override {
-    return pseudo_element_owner_;
-  }
+  css::StyleNode* SelectorMatchingParent() const;
+  virtual css::StyleNode* HolderParent() const;
+  virtual css::StyleNode* NextSibling() const;
+  virtual css::StyleNode* PreviousSibling() const;
+  css::StyleNode* PseudoElementOwner() const { return pseudo_element_owner_; }
 
-  virtual size_t ChildCount() const;
-  virtual CSSFragment* ParentStyleSheet() const;
+  size_t ChildCount() const;
+  CSSFragment* ParentStyleSheet() const;
 
   void SetPseudoElementOwner(AttributeHolder* owner) {
     pseudo_element_owner_ = owner;
   }
-
-  virtual CSSFragment* GetPageStyleSheet() { return nullptr; }
 
   bool GetRemoveCSSScopeEnabled() const;
   bool GetCascadePseudoEnabled() const;
@@ -388,11 +383,9 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     OnPseudoStateChanged(old, pseudo_state_);
   }
 
-  PseudoState GetPseudoState() const override { return pseudo_state_; }
+  PseudoState GetPseudoState() const { return pseudo_state_; }
 
-  bool HasPseudoState(PseudoState type) const override {
-    return pseudo_state_ & type;
-  }
+  bool HasPseudoState(PseudoState type) const { return pseudo_state_ & type; }
 
   bool HasID() const { return !id_selector_.empty(); };
 
@@ -407,9 +400,9 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     radon_node_ptr_ = radon_node_ptr;
   }
 
-  bool ContainsIdSelector(const std::string& selector) const override;
-  bool ContainsClassSelector(const std::string& selector) const override;
-  bool ContainsTagSelector(const std::string& selector) const override;
+  bool ContainsIdSelector(const std::string& selector) const;
+  bool ContainsClassSelector(const std::string& selector) const;
+  bool ContainsTagSelector(const std::string& selector) const;
   bool ContainsAttributeSelector(const std::string& selector) const;
   void SetElement(Element* element) { element_ = element; }
 

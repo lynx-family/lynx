@@ -10,6 +10,7 @@
 #include "base/include/string/string_utils.h"
 #include "core/renderer/css/ng/css_ng_utils.h"
 #include "core/renderer/css/ng/selector/lynx_css_selector_list.h"
+#include "core/renderer/dom/attribute_holder.h"
 
 namespace lynx {
 namespace css {
