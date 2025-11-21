@@ -1000,8 +1000,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 
   reportInfo[@"load_start"] = [NSNumber numberWithDouble:loadStartTime];
   reportInfo[@"load_finish"] = [NSNumber numberWithDouble:loadFinishTime];
-  reportInfo[@"cost"] = [NSNumber
-      numberWithDouble:[completeRequestTime timeIntervalSinceDate:self.startRequestTime]];  // ms
+  reportInfo[@"cost"] = [NSNumber numberWithDouble:(loadFinishTime - loadStartTime)];  // ms
   reportInfo[@"src"] = reportUrl.url.absoluteString ?: @"";
   reportInfo[@"origin"] = [NSNumber numberWithInteger:origin];
   reportInfo[@"width"] = @(self.image.size.width);
