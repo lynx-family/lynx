@@ -660,11 +660,11 @@ class ElementManager : public ElementContextDelegate {
   virtual bool IsDomTreeEnabled() { return dom_tree_enabled_; }
   bool GetEnableZIndex() { return config_ && config_->GetEnableZIndex(); }
 
-  void InsertDirtyContext(ElementContainer *stacking_context) {
+  void InsertDirtyContext(BaseElementContainer *stacking_context) {
     dirty_stacking_contexts_.insert(stacking_context);
   }
 
-  void RemoveDirtyContext(ElementContainer *stacking_context) {
+  void RemoveDirtyContext(BaseElementContainer *stacking_context) {
     auto it = dirty_stacking_contexts_.find(stacking_context);
     if (it != dirty_stacking_contexts_.end())
       dirty_stacking_contexts_.erase(it);
@@ -1338,7 +1338,7 @@ class ElementManager : public ElementContextDelegate {
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_ =
       std::make_shared<lynx::tasm::PropBundleCreatorDefault>();
 
-  base::InlineLinearFlatSet<ElementContainer *, 4> dirty_stacking_contexts_;
+  base::InlineLinearFlatSet<BaseElementContainer *, 4> dirty_stacking_contexts_;
 
   // TODO(yuyang), check this
   // This set holds the unique_id of the already flushed keyframes to ensure

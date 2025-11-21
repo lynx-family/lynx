@@ -73,6 +73,9 @@ bool RadonNode::CreateElementIfNeeded() {
     if (!page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
       element_ = page_proxy_->element_manager()->CreateNode(
           tag(), attribute_holder_, GetOriginalNodeIndex(), node_type_);
+      if (IsRadonPage()) {
+        static_cast<RadonElement*>(element_.get())->set_is_page(true);
+      }
     } else {
       element_ = CreateFiberElement();
       element_->SetNodeIndex(GetOriginalNodeIndex());

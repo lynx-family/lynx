@@ -29,7 +29,6 @@ class ElementContainer : public BaseElementContainer {
   }
 
   const auto& children() const { return children_; }
-  inline bool HasZChild() { return has_z_child_; }
 
   /**
    * Add element container to correct parent(if layout_only contained)
@@ -88,7 +87,7 @@ class ElementContainer : public BaseElementContainer {
                       ElementContainer* new_parent);
   int ZIndex() const;
   void SetNeedUpdate(bool update) { need_update_ = update; }
-  void MarkDirty();
+
   bool IsSticky();
 
   // children with zIndex<0, negative zIndex child will be re-inserted to the
@@ -102,8 +101,7 @@ class ElementContainer : public BaseElementContainer {
   int32_t none_layout_only_children_size_{0};
 
   bool need_update_{true};
-  bool dirty_{false};
-  bool has_z_child_{false};
+
   // indicate the ElementContainer has finished first layout
   bool is_layouted_{false};
   // true if the Element's props has changed during this patch

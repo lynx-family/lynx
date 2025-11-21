@@ -35,6 +35,10 @@ class RadonElement : public Element {
 
   bool is_list() const override { return is_list_; }
 
+  bool is_page() const override { return is_page_; }
+
+  void set_is_page(bool is_page) { is_page_ = is_page; }
+
   virtual std::optional<CSSValue> GetElementStyle(
       tasm::CSSPropertyID css_id) override;
 
@@ -220,6 +224,7 @@ class RadonElement : public Element {
   bool is_view_{false};
   bool is_image_{false};
   bool is_list_{false};
+  bool is_page_{false};
 
   // This field is reserved for list
   base::String platform_node_tag_{BASE_STATIC_STRING(kListNodeTag)};

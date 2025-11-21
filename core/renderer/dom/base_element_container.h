@@ -23,6 +23,13 @@ class Fragment;
 
 class BaseElementContainer {
  public:
+  enum DirtyState : uint8_t {
+    kClean = 0,
+    kNeedSortZChild = 1 << 0,
+    kNeedSortFixedChild = 1 << 1,
+    kNeedRedraw = 1 << 2,
+  };
+
   explicit BaseElementContainer(Element* element);
   virtual ~BaseElementContainer();
 
@@ -50,6 +57,14 @@ class BaseElementContainer {
     was_position_fixed_ = was_position_fixed;
   }
 
+  // Only the element container with z-index 0 and not position fixed is a
+  // reliable sibling.
+  bool IsReliableSibling() const {
+    return old_z_index() == 0 && !was_position_fixed();
+  }
+
+  void MarkDirtyState(DirtyState state);
+
   /**
    * Add element container to correct parent(if layout_only contained)
    * @param child the child to be added
@@ -58,6 +73,10 @@ class BaseElementContainer {
    */
   virtual void InsertElementContainerAccordingToElement(
       Element* child, Element* ref = nullptr) = 0;
+
+  // Remove element container from correct parent(if layout_only contained)
+  // @param child the child to be removed
+  // @param destroy whether destroy the element container, only used for radon
   virtual void RemoveElementContainerAccordingToElement(Element* child,
                                                         bool destroy) = 0;
   virtual void Destroy() = 0;
@@ -119,11 +138,40 @@ class BaseElementContainer {
   virtual void MarkLayoutUIOperationQueueFlushStartIfNeed();
 
  protected:
+  bool IsRootContainer() const;
+
+  bool has_z_child() const { return has_z_child_; }
+  void set_has_z_child(bool has_z_child) { has_z_child_ = has_z_child; }
+
+  bool has_fixed_child() const { return has_fixed_child_; }
+  void set_has_fixed_child(bool has_fixed_child) {
+    has_fixed_child_ = has_fixed_child;
+  }
+
+  void ResetDirtyState(DirtyState state);
+  bool NeedSortZChild() const {
+    return dirty_state_ & DirtyState::kNeedSortZChild;
+  }
+  bool NeedSortFixedChild() const {
+    return dirty_state_ & DirtyState::kNeedSortFixedChild;
+  }
+  bool NeedRedraw() const { return dirty_state_ & DirtyState::kNeedRedraw; }
+
   BaseElementContainer* EnclosingStackingContextNode();
+
+  static Element const* FindCommonAncestor(Element const** left_mark,
+                                           Element const** right_mark);
+  static int CompareElementOrder(Element* left, Element* right);
 
   int32_t old_z_index_{0};
   bool was_stacking_context_{false};
   bool was_position_fixed_{false};
+  bool is_root_{false};
+
+  bool has_z_child_{false};
+  bool has_fixed_child_{false};
+
+  DirtyState dirty_state_{0};
 
  private:
   Element* element_{nullptr};

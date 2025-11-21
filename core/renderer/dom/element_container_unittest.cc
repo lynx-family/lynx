@@ -967,6 +967,71 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
   EXPECT_TRUE(fragment->need_redraw_);
 }
 
+TEST_F(ElementContainerTest, TestIsRootContainer) {
+  auto config = std::make_shared<PageConfig>();
+  manager->SetConfig(config);
+
+  auto element = manager->CreateFiberElement("view");
+  auto container = element->element_container();
+  EXPECT_FALSE(container->IsRootContainer());
+
+  element = manager->CreateFiberElement("page");
+  container = element->element_container();
+  EXPECT_TRUE(container->IsRootContainer());
+}
+
+TEST_F(ElementContainerTest, TestMarkDirty) {
+  auto config = std::make_shared<PageConfig>();
+  manager->SetConfig(config);
+
+  auto element = manager->CreateFiberElement("view");
+  auto container = element->element_container();
+  EXPECT_FALSE(container->IsRootContainer());
+
+  container->MarkDirtyState(BaseElementContainer::kNeedSortZChild);
+  EXPECT_TRUE(container->NeedSortZChild());
+  EXPECT_TRUE(container->has_z_child());
+
+  container->ResetDirtyState(BaseElementContainer::kNeedSortZChild);
+  EXPECT_FALSE(container->NeedSortZChild());
+  EXPECT_TRUE(container->has_z_child());
+
+  container->MarkDirtyState(BaseElementContainer::kNeedSortFixedChild);
+  EXPECT_FALSE(container->NeedSortFixedChild());
+  EXPECT_FALSE(container->has_fixed_child());
+
+  container->MarkDirtyState(BaseElementContainer::kNeedRedraw);
+  EXPECT_TRUE(container->NeedRedraw());
+}
+
+TEST_F(ElementContainerTest, TestMarkDirty0) {
+  auto config = std::make_shared<PageConfig>();
+  manager->SetConfig(config);
+
+  auto element = manager->CreateFiberElement("page");
+  auto container = element->element_container();
+  EXPECT_TRUE(container->IsRootContainer());
+
+  container->MarkDirtyState(BaseElementContainer::kNeedSortZChild);
+  EXPECT_TRUE(container->NeedSortZChild());
+  EXPECT_TRUE(container->has_z_child());
+
+  container->ResetDirtyState(BaseElementContainer::kNeedSortZChild);
+  EXPECT_FALSE(container->NeedSortZChild());
+  EXPECT_TRUE(container->has_z_child());
+
+  container->MarkDirtyState(BaseElementContainer::kNeedSortFixedChild);
+  EXPECT_TRUE(container->NeedSortFixedChild());
+  EXPECT_TRUE(container->has_fixed_child());
+
+  container->ResetDirtyState(BaseElementContainer::kNeedSortFixedChild);
+  EXPECT_FALSE(container->NeedSortFixedChild());
+  EXPECT_TRUE(container->has_fixed_child());
+
+  container->MarkDirtyState(BaseElementContainer::kNeedRedraw);
+  EXPECT_TRUE(container->NeedRedraw());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

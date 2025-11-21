@@ -18,14 +18,13 @@
 namespace lynx {
 namespace tasm {
 
-static int CompareElementOrder(Element* left, Element* right);
-
 ElementContainer::ElementContainer(Element* element)
     : BaseElementContainer(element) {}
 
 ElementContainer::~ElementContainer() {
   if (!element()->will_destroy()) {
-    if (element_manager()->FixStackingContextDirtyFlagBug() && dirty_) {
+    if (element_manager()->FixStackingContextDirtyFlagBug() &&
+        NeedSortZChild()) {
       element_manager()->RemoveDirtyContext(this);
     } else if (was_stacking_context_) {
       // FIXME(linxs): to remove below code in next version!
@@ -94,7 +93,7 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
 
   child->set_parent(this);
   if ((child->ZIndex() != 0 || child->IsSticky()) && need_update_) {
-    MarkDirty();
+    MarkDirtyState(kNeedSortZChild);
   }
   if (!child->element()->IsLayoutOnly()) {
     painting_context()->InsertPaintingNode(id(), child->id(), index);
@@ -127,7 +126,7 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
   }
   if (child->ZIndex() != 0) {
     // The stacking context need update
-    MarkDirty();
+    MarkDirtyState(kNeedSortZChild);
   }
 }
 
@@ -540,9 +539,9 @@ void ElementContainer::ZIndexChanged() {
     element_parent->element_container_impl()
         ->InsertElementContainerAccordingToElement(
             element(), element()->next_render_sibling());
-    parent_stacking_context->MarkDirty();
+    parent_stacking_context->MarkDirtyState(kNeedSortZChild);
   } else if (old_z_index() != z) {  // Just mark the stacking context is dirty
-    parent_stacking_context->MarkDirty();
+    parent_stacking_context->MarkDirtyState(kNeedSortZChild);
   }
   set_old_z_index(z);
   set_was_stacking_context(is_stacking_context);
@@ -550,19 +549,12 @@ void ElementContainer::ZIndexChanged() {
 
 int ElementContainer::ZIndex() const { return element()->ZIndex(); }
 
-void ElementContainer::MarkDirty() {
-  if (dirty_) return;
-  dirty_ = true;
-  has_z_child_ = true;
-  element_manager()->InsertDirtyContext(this);
-}
-
 void ElementContainer::UpdateZIndexList() {
-  if (!dirty_ || (element() && element()->is_list() &&
-                  element()->DisableListPlatformImplementation())) {
+  if (!NeedSortZChild() || (element() && element()->is_list() &&
+                            element()->DisableListPlatformImplementation())) {
     return;
   }
-  dirty_ = false;
+  ResetDirtyState(kNeedSortZChild);
   negative_z_children_.clear();
   decltype(this->negative_z_children_) z_list;
   for (const auto& child : children_) {
@@ -647,12 +639,12 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   bool should_skip_index_calculation = false;
   if (parent->element_manager()->FixNegativeZIndexBug()) {
     should_skip_index_calculation =
-        (!real_parent->element_container_impl()->HasZChild()) && !ref;
+        (!real_parent->element_container_impl()->has_z_child()) && !ref;
   } else {
     // FIXME (linxs): Remove this code in the next version！！！
     should_skip_index_calculation =
-        ((!real_parent->element_container_impl()->HasZChild()) ||
-         real_parent->element_container_impl()->dirty_) &&
+        ((!real_parent->element_container_impl()->has_z_child()) ||
+         real_parent->element_container_impl()->NeedSortZChild()) &&
         !ref;
   }
 
@@ -733,81 +725,6 @@ void ElementContainer::PositionFixedChanged() {
         ->InsertElementContainerAccordingToElement(element());
   }
   was_position_fixed_ = is_position_fixed;
-}
-
-static Element const* FindCommonAncestor(Element const** left_mark,
-                                         Element const** right_mark) {
-  std::deque<const Element*> left_ancestors;
-  std::deque<const Element*> right_ancestors;
-  Element const* left = *left_mark;
-  Element const* right = *right_mark;
-  while (left != nullptr) {
-    left_ancestors.emplace_front(left);
-    left = left->parent();
-  }
-  while (right != nullptr) {
-    right_ancestors.emplace_front(right);
-    right = right->parent();
-  }
-  auto it_l = left_ancestors.begin();
-  auto it_r = left_ancestors.begin();
-  while (it_l != left_ancestors.end() && it_r != right_ancestors.end() &&
-         *it_l == *it_r) {
-    it_l++;
-    it_r++;
-  }
-  if (it_l == left_ancestors.end() || it_r == right_ancestors.end()) {
-    return nullptr;
-  }
-  *left_mark = *it_l;
-  *right_mark = *it_r;
-  return (*left_mark)->parent();
-}
-
-static int CompareElementOrder(Element* left, Element* right) {
-  if (left == right) {
-    return 0;
-  }
-  // left is right's ancestor
-  const Element* temp = right;
-  while (temp != nullptr) {
-    if (temp->parent() == left) {
-      // left is smaller
-      return -1;
-    }
-    temp = temp->parent();
-  }
-  // right is left's ancestor
-  temp = left;
-  while (temp != nullptr) {
-    if (temp->parent() == right) {
-      return 1;
-    }
-    temp = temp->parent();
-  }
-  // find the common ancestor
-  Element const* left_mark = left;
-  Element const* right_mark = right;
-  Element const* common_ancestor = FindCommonAncestor(&left_mark, &right_mark);
-  // compare the order in the common ancestor
-  if (common_ancestor) {
-    int i = 0;
-    size_t count = const_cast<Element*>(common_ancestor)->GetChildCount();
-    Element* child = nullptr;
-    while (i < static_cast<int>(count)) {
-      child = const_cast<Element*>(common_ancestor)->GetChildAt(i);
-      if (child == right_mark) {
-        // left is after right
-        return 1;
-      } else if (child == left_mark) {
-        // left is before right
-        return -1;
-      }
-      i++;
-    }
-    return 0;
-  }
-  return 0;
 }
 }  // namespace tasm
 }  // namespace lynx

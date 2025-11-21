@@ -177,5 +177,108 @@ BaseElementContainer* BaseElementContainer::EnclosingStackingContextNode() {
   return this;
 }
 
+void BaseElementContainer::MarkDirtyState(DirtyState state) {
+  if (dirty_state_ & state) {
+    return;
+  }
+
+  if (state == kNeedSortZChild) {
+    dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
+    set_has_z_child(true);
+    element_manager()->InsertDirtyContext(this);
+  }
+
+  if (IsRootContainer() && state == kNeedSortFixedChild) {
+    dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
+    set_has_fixed_child(true);
+    element_manager()->InsertDirtyContext(this);
+  }
+
+  if (state == kNeedRedraw) {
+    dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
+  }
+}
+
+bool BaseElementContainer::IsRootContainer() const {
+  return element()->is_page();
+}
+
+void BaseElementContainer::ResetDirtyState(DirtyState state) {
+  dirty_state_ = static_cast<DirtyState>(dirty_state_ & ~state);
+}
+
+Element const* BaseElementContainer::FindCommonAncestor(
+    Element const** left_mark, Element const** right_mark) {
+  std::deque<const Element*> left_ancestors;
+  std::deque<const Element*> right_ancestors;
+  Element const* left = *left_mark;
+  Element const* right = *right_mark;
+  while (left != nullptr) {
+    left_ancestors.emplace_front(left);
+    left = left->parent();
+  }
+  while (right != nullptr) {
+    right_ancestors.emplace_front(right);
+    right = right->parent();
+  }
+  auto it_l = left_ancestors.begin();
+  auto it_r = right_ancestors.begin();
+  while (it_l != left_ancestors.end() && it_r != right_ancestors.end() &&
+         *it_l == *it_r) {
+    it_l++;
+    it_r++;
+  }
+  if (it_l == left_ancestors.end() || it_r == right_ancestors.end()) {
+    return nullptr;
+  }
+  *left_mark = *it_l;
+  *right_mark = *it_r;
+  return (*left_mark)->parent();
+}
+
+int BaseElementContainer::CompareElementOrder(Element* left, Element* right) {
+  if (left == right) {
+    return 0;
+  }
+  // left is right's ancestor
+  const Element* temp = right;
+  while (temp != nullptr) {
+    if (temp->parent() == left) {
+      // left is smaller
+      return -1;
+    }
+    temp = temp->parent();
+  }
+  // right is left's ancestor
+  temp = left;
+  while (temp != nullptr) {
+    if (temp->parent() == right) {
+      return 1;
+    }
+    temp = temp->parent();
+  }
+  // find the common ancestor
+  Element const* left_mark = left;
+  Element const* right_mark = right;
+  Element const* common_ancestor = FindCommonAncestor(&left_mark, &right_mark);
+  // compare the order in the common ancestor
+  if (common_ancestor) {
+    int i = 0;
+    size_t count = const_cast<Element*>(common_ancestor)->GetChildCount();
+    Element* child = nullptr;
+    while (i < static_cast<int>(count)) {
+      child = const_cast<Element*>(common_ancestor)->GetChildAt(i);
+      if (child == right_mark) {
+        return 1;
+      }
+      if (child == left_mark) {
+        return -1;
+      }
+      i++;
+    }
+  }
+  return 0;
+}
+
 }  // namespace tasm
 }  // namespace lynx
