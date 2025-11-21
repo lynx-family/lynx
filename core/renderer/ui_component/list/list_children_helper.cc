@@ -184,6 +184,11 @@ void ListChildrenHelper::UpdateOnScreenChildren(
   if (!orientation_helper) {
     return;
   }
+  // Before clear on_screen_children, we need to reset all weak anchor ref.
+  ForEachChild(on_screen_children_, [](ItemHolder* item_holder) {
+    item_holder->ResetWeakAnchorRef();
+    return false;
+  });
   on_screen_children_.clear();
   ForEachChild(
       [this, content_offset, &orientation_helper](ItemHolder* item_holder) {
@@ -274,6 +279,34 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
   last_binding_children_.insert(new_binding_children.begin(),
                                 new_binding_children.end());
   ForEachChild(last_binding_children_, update_handler);
+}
+
+ItemHolder* ListChildrenHelper::GetFirstChildFrom(
+    const ItemHolderSet& children, ItemHolder* start_child,
+    const std::function<bool(const ItemHolder*)>& condition_func,
+    bool reverse /* = false */) const {
+  if (auto start_it = children.find(start_child); start_it != children.end()) {
+    if (!reverse) {
+      auto target_it =
+          std::find_if(start_it, children.end(),
+                       [&condition_func](const ItemHolder* item_holder) {
+                         return condition_func(item_holder);
+                       });
+      return target_it != children.end() ? *target_it : nullptr;
+    } else {
+      auto reverse_start_it = std::make_reverse_iterator(std::next(start_it));
+      auto reverse_target_it =
+          std::find_if(reverse_start_it, children.rend(),
+                       [&condition_func](const ItemHolder* item_holder) {
+                         return condition_func(item_holder);
+                       });
+      return reverse_target_it != children.rend() ? *reverse_target_it
+                                                  : nullptr;
+    }
+  } else {
+    // start_child is not in children or children is empty.
+    return nullptr;
+  }
 }
 
 #if ENABLE_TRACE_PERFETTO

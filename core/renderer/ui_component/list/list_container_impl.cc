@@ -467,6 +467,10 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   } else if (key.IsEqual(list::kExperimentalRecycleAvailableItemBeforeLayout)) {
     recycle_available_item_before_layout_ = value.Bool();
     should_set_props = false;
+  } else if (key.IsEqual(list::kExperimentalOptimizedSearchAnchor)) {
+    // experimental-optimized-search-anchor
+    optimized_search_anchor_ = value.Bool();
+    should_set_props = false;
   }
   if (should_mark_layout_dirty) {
     element_->MarkLayoutDirty();

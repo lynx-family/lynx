@@ -114,6 +114,10 @@ class ListChildrenHelper {
       const std::function<bool(ItemHolder*)>& insert_handler,
       const std::function<bool(ItemHolder*)>& recycle_handler,
       const std::function<bool(ItemHolder*)>& update_handler);
+  ItemHolder* GetFirstChildFrom(
+      const ItemHolderSet& children, ItemHolder* start_child,
+      const std::function<bool(const ItemHolder*)>& condition_func,
+      bool reverse = false) const;
   void InitStickyItemHolderSet(int thread_mode);
   bool AddToStickyItemHolderSet(ItemHolder* item_holder);
   bool InStickyItemHolderSet(const ItemHolder* item_holder) const;
