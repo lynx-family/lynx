@@ -12,9 +12,6 @@
 + (nullable id<LynxServiceTrailExtensionProtocol>)getLynxTrailExtensionService {
   static id<LynxServiceTrailExtensionProtocol> extensionService = nil;
   static dispatch_once_t sTrailOnceToken;
-  if (extensionService != nil) {
-    return extensionService;
-  }
   dispatch_once(&sTrailOnceToken, ^{
     id<LynxServiceTrailProtocol> service = LynxService(LynxServiceTrailProtocol);
     if (service != nil &&
