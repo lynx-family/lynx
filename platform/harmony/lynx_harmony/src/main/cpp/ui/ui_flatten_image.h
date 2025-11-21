@@ -35,7 +35,7 @@ class UIFlattenImage : public UIBase,
 
  protected:
   UIFlattenImage(LynxContext* context, int sign, const std::string& tag);
-  ~UIFlattenImage() = default;
+  ~UIFlattenImage() override = default;
   void UpdateLayout(float left, float top, float width, float height,
                     const float* paddings, const float* margins,
                     const float* sticky, float max_height,
@@ -47,6 +47,7 @@ class UIFlattenImage : public UIBase,
   void SetImageRendering(const lepus::Value& value) override;
   void OnNodeReady() override;
   void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
+  void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
   void InvokeMethod(const std::string& method, const lepus::Value& args,
                     base::MoveOnlyClosure<void, int32_t, const lepus::Value&>
                         callback) override;
@@ -131,6 +132,7 @@ class UIFlattenImage : public UIBase,
       const LynxImageEffectProcessor::EffectParams& params, bool is_src);
   void LoadImageFromURL(bool is_src);
   bool hasAnimationEvent();
+  void Render(OH_Drawing_Canvas* canvas) const;
 };
 
 }  // namespace harmony

@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 #include <arkui/native_node.h>
+#include <deviceinfo.h>
 #include <multimedia/image_framework/image/image_packer_native.h>
 
 #include <algorithm>
@@ -62,6 +63,7 @@ constexpr uint32_t kFlagBackgroundColor = 1 << 13;
 // to allow this value to be used in compile-time constants.
 // This value (~2.236068) is accurate enough for current use cases.
 static constexpr float kCameraDistanceNormalizationMultiplier = 2.236068;
+static constexpr int kDrawBehindVersion = 20;
 
 std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"idSelector", &UIBase::SetIdSelector},
@@ -152,7 +154,13 @@ UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
       tag_(tag),
       has_customized_layout_(has_customized_layout) {
   node_ = NodeManager::Instance().CreateNode(type);
-  if (node_type_ == ARKUI_NODE_CUSTOM) {
+  if (CanDrawBehind()) {
+    NodeManager::Instance().AddNodeCustomEventReceiver(
+        Node(), UIBase::CustomEventReceiver);
+    NodeManager::Instance().RegisterNodeCustomEvent(
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND,
+        ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND, this);
+  } else if (node_type_ == ARKUI_NODE_CUSTOM) {
     NodeManager::Instance().AddNodeCustomEventReceiver(
         Node(), UIBase::CustomEventReceiver);
     NodeManager::Instance().RegisterNodeCustomEvent(
@@ -178,7 +186,12 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
 }
 
 UIBase::~UIBase() {
-  if (node_type_ == ARKUI_NODE_CUSTOM) {
+  if (CanDrawBehind()) {
+    NodeManager::Instance().UnregisterNodeCustomEvent(
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND);
+    NodeManager::Instance().RemoveNodeCustomEventReceiver(
+        Node(), UIBase::CustomEventReceiver);
+  } else if (node_type_ == ARKUI_NODE_CUSTOM) {
     NodeManager::Instance().UnregisterNodeCustomEvent(
         Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW);
     NodeManager::Instance().RemoveNodeCustomEventReceiver(
@@ -196,6 +209,13 @@ UIBase::~UIBase() {
   }
   // clear gesture map if destroy
   gesture_handlers_.clear();
+}
+
+bool UIBase::CanDrawBehind() {
+  static bool can_draw_behind =
+      OH_GetSdkApiVersion() >= kDrawBehindVersion &&
+      LynxEnv::GetInstance().EnableHarmonyDrawBehind();
+  return can_draw_behind;
 }
 
 void UIBase::EventReceiver(ArkUI_NodeEvent* event) {
@@ -226,6 +246,13 @@ void UIBase::CustomEventReceiver(ArkUI_NodeCustomEvent* event) {
     ui->OnMeasure(layout_constraint);
   } else if (type == ARKUI_NODE_CUSTOM_EVENT_ON_LAYOUT) {
     ui->OnLayout();
+  } else if (type == ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND) {
+    auto event_node = OH_ArkUI_NodeCustomEvent_GetNodeHandle(event);
+    ArkUI_DrawContext* context =
+        OH_ArkUI_NodeCustomEvent_GetDrawContextInDraw(event);
+    ui->OnDrawBehind(reinterpret_cast<OH_Drawing_Canvas*>(
+                         OH_ArkUI_DrawContext_GetCanvas(context)),
+                     event_node);
   }
 }
 
@@ -464,11 +491,6 @@ void UIBase::OnNodeReady() {
     background_drawable_->AdjustBorder();
     Invalidate();
   }
-  if ((dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
-                       kFlagRadiusChanged | kFlagOverflowChanged)) != 0) {
-    ApplyOverflowClip();
-    Invalidate();
-  }
 
   if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
     if (background_drawable_) {
@@ -479,6 +501,12 @@ void UIBase::OnNodeReady() {
 
   if (NeedDrawNode()) {
     InitDrawNode();
+  }
+
+  if ((dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
+                       kFlagRadiusChanged | kFlagOverflowChanged)) != 0) {
+    ApplyOverflowClip();
+    Invalidate();
   }
 
   if (basic_shape_ &&
@@ -739,26 +767,30 @@ void UIBase::ApplyOverflowClipRectangle(float left, float top, float width,
   ApplyOverflowClipPath(width, height, oss.str());
 }
 
-// hidden is false and visible is true
 void UIBase::ApplyOverflowClip() {
   if (!overflow_.overflow_x && !overflow_.overflow_y) {
     // overflow: hidden
-    need_clip_ = true;
-    if (background_drawable_ && background_drawable_->GetBorderRadius() &&
+    if (CanDrawBehind() && !HasContent()) {
+      if (!background_drawable_ || !background_drawable_->UseClipPath()) {
+        NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
+                                                            1);
+      }
+      // Use canvas clip in BackgroundDrawable::Render
+      return;
+    }
+    if (background_drawable_ &&
         !background_drawable_->GetBorderRadius()->IsZero()) {
       ApplyOverflowClipPath(width_, height_,
                             background_drawable_->GetClipPath());
     } else {
       NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
     }
-  } else if (overflow_.overflow_x && overflow_.overflow_y) {
-    // overflow: visible
-    need_clip_ = false;
-    // overflow changed to visible.
-    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
   } else {
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
+    if (overflow_.overflow_x && overflow_.overflow_y) {
+      return;
+    }
     // overflow-x or overflow-y
-    need_clip_ = true;
     float screen_size[2] = {};
     context_->ScreenSize(screen_size);
     int w = width_;
@@ -802,15 +834,23 @@ void UIBase::Invalidate() {
 }
 
 void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_CREATE_ON_DRAW);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW);
+  if (!background_drawable_) {
+    return;
+  }
+  // The draw function in the UIBase might be triggered by receivers from two
+  // different nodes, so drawing is only required when the node returned in
+  // the event matches.
+  bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
+  if (need_draw) {
+    background_drawable_->Render(canvas);
+  }
+}
+
+void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW_BEHIND);
   if (background_drawable_) {
-    // The draw function in the UIBase might be triggered by receivers from two
-    // different nodes, so drawing is only required when the node returned in
-    // the event matches.
-    bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
-    if (need_draw) {
-      background_drawable_->Render(canvas);
-    }
+    background_drawable_->Render(canvas);
   }
 }
 
@@ -1637,12 +1677,37 @@ bool UIBase::NeedDrawNode() {
     return false;
   }
 
-  if (node_type_ == ARKUI_NODE_CUSTOM) {
+  if (CanDrawBehind()) {
+    if (!NeedClip()) {
+      // If clipping is not needed, a draw node is not required
+      return false;
+    }
     if (background_drawable_->HasShadow()) {
+      // When clipping is needed and there is a shadow, a draw node is required
+      // to render the shadow
       return true;
     }
-    if (!need_clip_) {
+    bool has_background =
+        background_drawable_->HasBorder() || background_drawable_->HasImage();
+    if (!has_background) {
+      // When there is neither background nor border, no draw node is needed;
+      // UIBase::ApplyOverflowClip's clip path can be used directly and works
+      // with or without border radius
       return false;
+    }
+    // When both background and content are drawn, and there is a border radius,
+    // draw the border and background on the outer layer, and use
+    // UIBase::ApplyOverflowClip's clip path inside
+    return HasContent() && !background_drawable_->GetBorderRadius()->IsZero();
+  }
+
+  if (node_type_ == ARKUI_NODE_CUSTOM) {
+    if (!NeedClip()) {
+      return false;
+    }
+
+    if (background_drawable_->HasShadow()) {
+      return true;
     }
 
     return background_drawable_->HasBorder() ||

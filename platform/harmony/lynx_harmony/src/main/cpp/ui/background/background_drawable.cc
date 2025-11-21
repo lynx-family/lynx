@@ -18,6 +18,7 @@
 #include "base/include/float_comparison.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/renderer/utils/value_utils.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/svg_path_utils.h"
 
 namespace lynx {
@@ -49,9 +50,20 @@ float BackgroundDrawable::GetLength(float length, int32_t unit,
 void BackgroundDrawable::Render(OH_Drawing_Canvas* canvas) {
   if (base::FloatsLarger(view_width_, 0) &&
       base::FloatsLarger(view_height_, 0)) {
-    BackgroundDrawable::DrawBackground(canvas);
-    BackgroundDrawable::DrawBorder(canvas);
-    BackgroundDrawable::DrawShadow(canvas);
+    DrawBackground(canvas);
+    DrawShadow(canvas);
+    DrawBorder(canvas);
+    if (!UIBase::CanDrawBehind()) {
+      return;
+    }
+    // When DrawBehind is available, nodes without content can be clipped using
+    // the clip-path, corresponding to the UIBase::ApplyOverflowClip
+    auto ui = ui_base_.lock();
+    if (ui && ui->NeedClip() && !ui->HasContent() && UseClipPath() &&
+        inner_clip_path_) {
+      OH_Drawing_CanvasClipPath(canvas, inner_clip_path_->path, INTERSECT,
+                                true);
+    }
   }
 }
 
@@ -75,9 +87,9 @@ void BackgroundDrawable::DrawBorder(OH_Drawing_Canvas* canvas) {
       OH_Drawing_BrushSetAntiAlias(brush_, true);
     }
     if (border_radius_->IsZero()) {
-      BackgroundDrawable::DrawRectBorders(canvas, pen_);
+      DrawRectBorders(canvas, pen_);
     } else {
-      BackgroundDrawable::DrawRoundedBorders(canvas, pen_);
+      DrawRoundedBorders(canvas, pen_);
     }
   }
 }
@@ -1051,10 +1063,7 @@ const std::string& BackgroundDrawable::GetClipPath() {
 }
 
 BorderRadius* BackgroundDrawable::GetBorderRadius() {
-  if (border_radius_) {
-    return border_radius_.get();
-  }
-  return nullptr;
+  return border_radius_.get();
 }
 
 float BackgroundDrawable::GetBorderLeftWidth() {

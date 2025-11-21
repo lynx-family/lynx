@@ -559,5 +559,9 @@ bool LynxEnv::EnableQuickJsThreadChecker() {
 bool LynxEnv::EnableLevelOrderTraversing() {
   return GetBoolEnv(Key::ENABLE_LEVEL_ORDER_TRAVERSING, false);
 }
+
+bool LynxEnv::EnableHarmonyDrawBehind() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_DRAW_BEHIND, true);
+}
 }  // namespace tasm
 }  // namespace lynx

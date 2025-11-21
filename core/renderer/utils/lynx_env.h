@@ -130,6 +130,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_LEVEL_ORDER_TRAVERSING,
     LYNX_DEBUG_ENABLED,
     ENABLE_JS_CALLBACK_MANAGER,
+    ENABLE_HARMONY_DRAW_BEHIND,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -275,6 +276,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_LEVEL_ORDER_TRAVERSING,
              "enable_level_order_traversing"},
             {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
+            {Key::ENABLE_HARMONY_DRAW_BEHIND, "enable_harmony_draw_behind"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -423,6 +425,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool DisableJSModeStrip();
   bool EnableQuickJsThreadChecker();
   bool EnableLevelOrderTraversing();
+  bool EnableHarmonyDrawBehind();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

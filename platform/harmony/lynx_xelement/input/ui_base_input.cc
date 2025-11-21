@@ -103,6 +103,14 @@ void UIBaseInput::UpdateLayout(float left, float top, float width, float height,
                                uint32_t node_index) {
   UIView::UpdateLayout(left, top, width, height, paddings, margins, sticky,
                        max_height, node_index);
+  if (background_drawable_) {
+    padding_top_ = background_drawable_->GetBorderTopWidth() + padding_top_;
+    padding_left_ = background_drawable_->GetBorderLeftWidth() + padding_left_;
+    padding_bottom_ =
+        background_drawable_->GetBorderBottomWidth() + padding_bottom_;
+    padding_right_ =
+        background_drawable_->GetBorderRightWidth() + padding_right_;
+  }
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_PADDING, padding_top_, padding_right_, padding_bottom_,
       padding_left_);

@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <utility>
 
+#include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
@@ -57,6 +58,24 @@ void UIImage::OnPropUpdate(const std::string& name, const lepus::Value& value) {
     ImagePropSetter setter = it->second;
     (this->*setter)(value);
   }
+}
+
+void UIImage::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
+  if (DrawNode() != Node()) {
+    // draw background in draw-node
+    return;
+  }
+  auto padding = NodeManager::Instance().GetAttribute(Node(), NODE_PADDING);
+  float left = padding->value[3].f32;
+  float top = padding->value[0].f32;
+  if (base::IsZero(left) && base::IsZero(top)) {
+    return UIBase::OnDrawBehind(canvas, node);
+  }
+  OH_Drawing_CanvasSave(canvas);
+  OH_Drawing_CanvasTranslate(canvas, -left * context_->ScaledDensity(),
+                             -top * context_->ScaledDensity());
+  UIBase::OnDrawBehind(canvas, node);
+  OH_Drawing_CanvasRestore(canvas);
 }
 
 UIImage::UIImage(LynxContext* context, int sign, const std::string& tag)

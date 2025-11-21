@@ -25,9 +25,13 @@ class UIImage : public UIBase {
 
   void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
 
-  const std::string& GetSrc() { return src_; };
+  const std::string& GetSrc() { return src_; }
 
-  const std::string& GetPlaceholder() { return place_holder_; };
+  const std::string& GetPlaceholder() { return place_holder_; }
+
+  void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
+
+  bool HasContent() override { return true; }
 
  protected:
   UIImage(LynxContext* context, int sign, const std::string& tag);

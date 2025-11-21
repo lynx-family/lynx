@@ -543,14 +543,14 @@ void UIFlattenImage::HandleImageWithProcessor(
 void UIFlattenImage::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   UIBase::OnDraw(canvas, node);
   if (node == Node()) {
-    if (placeholder_image_drawable_ &&
-        placeholder_image_drawable_->HasContent()) {
-      placeholder_image_drawable_->Render(canvas);
-    }
-    if (src_image_drawable_ && src_image_drawable_->HasContent()) {
-      src_image_drawable_->Render(canvas);
-    }
+    Render(canvas);
   }
+}
+
+void UIFlattenImage::OnDrawBehind(OH_Drawing_Canvas* canvas,
+                                  ArkUI_NodeHandle node) {
+  UIBase::OnDrawBehind(canvas, node);
+  Render(canvas);
 }
 
 void UIFlattenImage::UpdateAutoPlay(const lepus::Value& value) {
@@ -636,6 +636,16 @@ void UIFlattenImage::onAnimationStop() {
     CustomEvent event{Sign(), image::kFinalLoopEventName, "detail",
                       lepus_value()};
     context_->SendEvent(event);
+  }
+}
+
+void UIFlattenImage::Render(OH_Drawing_Canvas* canvas) const {
+  if (placeholder_image_drawable_ &&
+      placeholder_image_drawable_->HasContent()) {
+    placeholder_image_drawable_->Render(canvas);
+  }
+  if (src_image_drawable_ && src_image_drawable_->HasContent()) {
+    src_image_drawable_->Render(canvas);
   }
 }
 

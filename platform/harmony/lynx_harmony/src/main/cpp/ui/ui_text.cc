@@ -90,6 +90,11 @@ void UIText::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   }
 }
 
+void UIText::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
+  UIBase::OnDrawBehind(canvas, node);
+  Render(canvas);
+}
+
 void UIText::Render(OH_Drawing_Canvas* canvas) const {
   if (paragraph_) {
     paragraph_->Draw(canvas, translate_left_offset_, translate_top_offset_);

@@ -29,6 +29,7 @@ class UIText : public UIBase {
   void UpdateExtraData(
       const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) override;
   void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
+  void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
   void Render(OH_Drawing_Canvas* canvas) const;
   void FrameDidChanged() override;
   EventTarget* HitTest(float point[2]) override;

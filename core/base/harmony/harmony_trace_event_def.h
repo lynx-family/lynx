@@ -68,7 +68,9 @@ inline constexpr const char* const UIBASE_APPLY_TRANSFORM =
     "UIBase::ApplyTransform";
 inline constexpr const char* const UIBASE_CREATE_OR_UPDATE_BACKGROUND =
     "UIBase::CreateOrUpdateBackground";
-inline constexpr const char* const UIBASE_CREATE_ON_DRAW = "UIBase::OnDraw";
+inline constexpr const char* const UIBASE_ON_DRAW = "UIBase::OnDraw";
+inline constexpr const char* const UIBASE_ON_DRAW_BEHIND =
+    "UIBase::OnDrawBehind";
 inline constexpr const char* const UIBASE_INIT_DRAW_NODE =
     "UIBase::InitDrawNode";
 inline constexpr const char* const UI_EXPOSURE_EXEC = "UIExposure::Exec";

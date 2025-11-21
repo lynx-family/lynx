@@ -98,8 +98,11 @@ class BackgroundDrawable {
   void SetBoxShadow(const lepus::Value& value);
   void Render(OH_Drawing_Canvas* canvas);
   bool HasShadow();
-  bool HasBorder() { return has_border_; };
+  bool HasBorder() { return has_border_; }
   bool HasImage();
+  bool UseClipPath() {
+    return has_border_ || has_image_ || !border_radius_->IsZero();
+  }
   const std::string& GetClipPath();
   BorderRadius* GetBorderRadius();
   float GetBorderLeftWidth();

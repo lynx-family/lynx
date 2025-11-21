@@ -56,6 +56,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
          const std::string& tag, bool has_customized_layout = false);
   ~UIBase() override;
+  static bool CanDrawBehind();
   ArkUI_NodeHandle Node() const { return node_; }
   ArkUI_NodeHandle DrawNode() const { return draw_node_ ? draw_node_ : node_; }
   virtual void AttachToNodeContent(NativeNodeContent* content);
@@ -79,6 +80,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void OnLayout() {}
   virtual void FinishLayoutOperation() {}
   virtual void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
+  virtual void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
@@ -230,6 +232,10 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void ResetAccessibilityAttrs();
   virtual void OnKeyboardWillShow(float height) {}
   virtual void OnKeyboardWillHide() {}
+  bool NeedClip() const {
+    return !overflow_.overflow_x && !overflow_.overflow_y;
+  }
+  virtual bool HasContent() { return false; }
 
  protected:
   static void EventReceiver(ArkUI_NodeEvent* event);
@@ -244,7 +250,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                               const std::string& inline_value) {}
   virtual void EnableSticky() {}
   virtual void SetImageRendering(const lepus::Value& value);
-  virtual bool NeedDrawNode();
+  bool NeedDrawNode();
   bool NeedDraw(ArkUI_NodeHandle node);
   void SetAccessibilityLabelDirtyFlag();
   virtual const std::string& GetAccessibilityLabel() const {
@@ -256,7 +262,6 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::vector<UIBase*> children_;
   LynxContext* context_;
   OverflowValue overflow_ = {false, false};
-  bool need_clip_{false};
   std::unique_ptr<NativeNodeContent> node_content_{nullptr};
   LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
   bool block_native_event_{false};
