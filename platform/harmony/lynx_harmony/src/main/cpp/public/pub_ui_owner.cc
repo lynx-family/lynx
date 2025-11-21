@@ -7,6 +7,7 @@
 #include <node_api.h>
 
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -221,6 +222,74 @@ void PubUIOwner::TakeSnapshot(size_t max_width, size_t max_height, int quality,
       "Lynx_SnapshotThread");
   context->TakeScreenShot(max_width, max_height, quality,
                           screenshot_thread->GetTaskRunner(), callback);
+}
+
+void PubUIOwner::SetGestures(int id, const pub::Value& gesture_array) {
+  auto ui = ui_owner_->FindUIBySign(id);
+  if (!ui) {
+    return;
+  }
+  GestureMap gesture_map;
+  gesture_array.ForeachArray([&](int64_t index, const pub::Value& value) {
+    if (!value.IsMap()) {
+      return;
+    }
+    int32_t gesture_id = value.GetValueForKey("id")->Number();
+    int32_t gesture_type = value.GetValueForKey("type")->Number();
+
+    auto callback_names = value.GetValueForKey("callbackNames");
+    auto relation_map_value = value.GetValueForKey("relationMap");
+    auto config_map = value.GetValueForKey("configMap");
+
+    std::vector<GestureCallback> gesture_callback;
+    callback_names->ForeachArray(
+        [&](int64_t index, const pub::Value& callback_name) {
+          if (!callback_name.IsString()) {
+            return;
+          }
+          gesture_callback.emplace_back(callback_name.str(), lepus::Value(),
+                                        lepus::Value());
+        });
+    std::unordered_map<std::string, std::vector<uint32_t>> relation_map;
+    relation_map_value->ForeachMap(
+        [&](const pub::Value& key, const pub::Value& value) {
+          if (!key.IsString() || !value.IsArray()) {
+            return;
+          }
+          std::vector<uint32_t> relation_ids;
+          value.ForeachArray([&](int64_t index, const pub::Value& relation_id) {
+            if (!relation_id.IsNumber()) {
+              return;
+            }
+            relation_ids.push_back(static_cast<uint32_t>(relation_id.Number()));
+          });
+          relation_map[key.str()] = std::move(relation_ids);
+        });
+
+    gesture_map[gesture_id] = std::make_shared<GestureDetector>(
+        gesture_id, static_cast<GestureType>(gesture_type),
+        std::move(gesture_callback), std::move(relation_map),
+        pub::ValueUtils::ConvertValueToLepusValue(*config_map));
+  });
+  ui->SetGestureDetectors(gesture_map);
+}
+
+void PubUIOwner::SetGestureState(int id, int gesture_id, int32_t state) {
+  auto ui = ui_owner_->FindUIBySign(id);
+  if (!ui) {
+    return;
+  }
+  ui->SetGestureDetectorState(gesture_id, state);
+}
+
+void PubUIOwner::ConsumeGesture(int id, int gesture_id,
+                                const pub::Value& params) {
+  auto ui = ui_owner_->FindUIBySign(id);
+  if (!ui) {
+    return;
+  }
+  ui->ConsumeGesture(gesture_id,
+                     pub::ValueUtils::ConvertValueToLepusValue(params));
 }
 
 }  // namespace harmony

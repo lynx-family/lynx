@@ -52,6 +52,10 @@ struct LYNX_EXPORT PubLynxContextDelegate {
                                            int align, bool smooth,
                                            void* data) = nullptr;
   void (*list_scroll_stopped_callback)(int32_t tag, void* data) = nullptr;
+  void (*gesture_event_callback)(int32_t tag, int32_t gesture_id,
+                                 const std::string& name,
+                                 const pub::Value& params,
+                                 void* data) = nullptr;
 };
 
 class LYNX_EXPORT PubLynxContext {

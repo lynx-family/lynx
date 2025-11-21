@@ -193,6 +193,12 @@ void LynxContext::OnPseudoStatusChanged(int id, PseudoStatus pre_status,
 }
 
 void LynxContext::HandleGestureEvent(const GestureEvent& gesture_event) const {
+  if (delegate_ && delegate_->gesture_event_callback) {
+    delegate_->gesture_event_callback(
+        gesture_event.ID(), gesture_event.GestureId(), gesture_event.Name(),
+        PubLepusValue(gesture_event.ParamValue()), delegate_->data);
+    return;
+  }
   if (!engine_proxy_) {
     return;
   }
