@@ -10,6 +10,7 @@
 #include "base/include/value/base_value.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/template_assembler.h"
+#include "core/services/feature_count/global_feature_counter.h"
 
 namespace lynx {
 namespace tasm {
@@ -55,6 +56,9 @@ void FrameElement::OnSetSrc(const base::String& key,
       element_manager()->element_manager_delegate()->LoadFrameBundle(src_,
                                                                      this);
     }
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_USE_FRAME_ELEMENT,
+        element_manager()->GetInstanceId());
   }
 }
 

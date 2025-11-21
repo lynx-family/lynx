@@ -35,6 +35,7 @@ cpp:
   - disable_multi_touch_params_compatible
   - list_container
   - custom_list
+  - use_frame_element
 typescript:
   - bundle_support_load_script
 objc:
