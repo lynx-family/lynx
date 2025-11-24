@@ -61,23 +61,6 @@ void AttributeHolder::PresetInlineStyleMapCapacity(size_t count) {
   inline_styles_.reserve(count);
 }
 
-bool AttributeHolder::ContainsIdSelector(const std::string& selector) const {
-  return idSelector().str() == selector;
-}
-
-bool AttributeHolder::ContainsClassSelector(const std::string& selector) const {
-  for (const auto& c : classes()) {
-    if (c.str() == selector) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool AttributeHolder::ContainsTagSelector(const std::string& selector) const {
-  return tag().str() == selector;
-}
-
 // "[attribute]" or "[attribute=value]"
 bool AttributeHolder::ContainsAttributeSelector(
     const std::string& selector) const {

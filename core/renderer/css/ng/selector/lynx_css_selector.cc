@@ -32,8 +32,8 @@ void LynxCSSSelector::FromLepus(LynxCSSSelector& s, const lepus_value& value) {
   s.specificity_ = arr->get(1).UInt32();
   if (s.has_extra_data_) {
     const auto& extra_arr = arr->get(2).Array();
-    const auto& v = extra_arr->get(0).StdString();
-    s.extra_data_ = std::make_unique<LynxCSSSelectorExtraData>(v);
+    s.value_ = extra_arr->get(0).StdString();
+    s.extra_data_ = std::make_unique<LynxCSSSelectorExtraData>();
     s.extra_data_->match_type_ =
         static_cast<LynxCSSSelectorExtraData::MatchType>(
             extra_arr->get(1).UInt32());
@@ -86,7 +86,7 @@ lepus_value LynxCSSSelector::ToLepus() const {
   arr->emplace_back(specificity_);
   if (has_extra_data_) {
     auto extra_arr = lepus::CArray::Create();
-    extra_arr->emplace_back(extra_data_->value_);
+    extra_arr->emplace_back(value_);
     extra_arr->emplace_back(static_cast<uint32_t>(extra_data_->match_type_));
 
     {
@@ -137,8 +137,7 @@ lepus_value LynxCSSSelector::ToLepus() const {
 
 void LynxCSSSelector::CreateExtraData() {
   if (has_extra_data_) return;
-  extra_data_ = std::make_unique<LynxCSSSelectorExtraData>(value_);
-  value_.clear();
+  extra_data_ = std::make_unique<LynxCSSSelectorExtraData>();
   has_extra_data_ = true;
 }
 

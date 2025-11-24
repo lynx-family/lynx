@@ -12,9 +12,8 @@
 namespace lynx {
 namespace css {
 
-LynxCSSSelectorExtraData::LynxCSSSelectorExtraData(const std::string& value)
-    : value_(value),
-      match_type_(LynxCSSSelectorExtraData::MatchType::kUnknown),
+LynxCSSSelectorExtraData::LynxCSSSelectorExtraData()
+    : match_type_(LynxCSSSelectorExtraData::MatchType::kUnknown),
       bits_(),
       attribute_(CSSGlobalStarString()),
       argument_(CSSGlobalEmptyString()) {}

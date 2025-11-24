@@ -19,33 +19,41 @@ class StyleNode {
   StyleNode() = default;
   virtual ~StyleNode() = default;
 
-  virtual void OnStyleChange() = 0;
+  const base::String& tag() const { return tag_; };
 
-  virtual const base::String& tag() const = 0;
+  const base::String& idSelector() const { return id_selector_; }
 
-  virtual const base::String& idSelector() const = 0;
+  tasm::PseudoState GetPseudoState() const { return pseudo_state_; }
 
-  virtual tasm::PseudoState GetPseudoState() const = 0;
+  bool HasPseudoState(tasm::PseudoState type) const {
+    return pseudo_state_ & type;
+  }
 
-  virtual bool HasPseudoState(tasm::PseudoState type) const = 0;
+  const tasm::ClassList& classes() const { return classes_; }
 
-  virtual const tasm::ClassList& classes() const = 0;
+  virtual StyleNode* SelectorMatchingParent() const = 0;
 
-  virtual css::StyleNode* SelectorMatchingParent() const = 0;
+  virtual StyleNode* HolderParent() const = 0;
 
-  virtual css::StyleNode* HolderParent() const = 0;
+  virtual StyleNode* NextSibling() const = 0;
 
-  virtual css::StyleNode* NextSibling() const = 0;
+  virtual StyleNode* PreviousSibling() const = 0;
 
-  virtual css::StyleNode* PreviousSibling() const = 0;
+  virtual StyleNode* PseudoElementOwner() const = 0;
 
-  virtual css::StyleNode* PseudoElementOwner() const = 0;
+  bool ContainsIdSelector(const std::string& selector) const;
+  bool ContainsClassSelector(const std::string& selector) const;
+  bool ContainsTagSelector(const std::string& selector) const;
 
-  virtual bool ContainsIdSelector(const std::string& selector) const = 0;
+ protected:
+  base::String tag_;
 
-  virtual bool ContainsClassSelector(const std::string& selector) const = 0;
+  // Should be unique in component
+  base::String id_selector_;
 
-  virtual bool ContainsTagSelector(const std::string& selector) const = 0;
+  tasm::ClassList classes_;
+
+  tasm::PseudoState pseudo_state_{tasm::kPseudoStateNone};
 };
 
 }  // namespace css

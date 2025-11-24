@@ -129,7 +129,7 @@ class LynxCSSSelector {
     return is_last_in_tag_history_ ? nullptr : this + 1;
   }
 
-  const std::string& Value() const;
+  const std::string& Value() const { return value_; }
 
   const std::string& Attribute() const;
   LynxCSSSelectorExtraData::AttributeMatchType AttributeMatch() const;
@@ -140,7 +140,7 @@ class LynxCSSSelector {
 
   uint32_t Specificity() const { return specificity_; }
 
-  void SetValue(const std::string&);
+  void SetValue(const std::string& val) { value_ = val; }
   void SetAttribute(const std::string&, AttributeMatchType);
   void SetArgument(const std::string&);
   void SetSelectorList(std::unique_ptr<LynxCSSSelectorList>);
@@ -211,14 +211,6 @@ LynxCSSSelector::AttributeMatch() const {
   return extra_data_->bits_.attr_.attribute_match_;
 }
 
-inline void LynxCSSSelector::SetValue(const std::string& value) {
-  if (!has_extra_data_) {
-    value_ = value;
-    return;
-  }
-  extra_data_->value_ = value;
-}
-
 inline LynxCSSSelector::LynxCSSSelector()
     : relation_(kSubSelector),
       match_(kUnknown),
@@ -241,11 +233,6 @@ inline LynxCSSSelector::LynxCSSSelector(const std::string& tag_name,
       tag_is_implicit_(tag_is_implicit),
       specificity_(0),
       value_(tag_name) {}
-
-inline const std::string& LynxCSSSelector::Value() const {
-  if (has_extra_data_) return extra_data_->value_;
-  return value_;
-}
 
 }  // namespace css
 }  // namespace lynx

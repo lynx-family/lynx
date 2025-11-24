@@ -31,15 +31,13 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   explicit AttributeHolder(Element* element = nullptr) : element_(element) {}
 
   AttributeHolder(const AttributeHolder& holder)
-      : classes_(holder.classes_),
+      : css::StyleNode(holder),
         inline_styles_(holder.inline_styles_),
         attributes_(holder.attributes_),
-        id_selector_(holder.id_selector_),
-        is_ssr_attribute_holder_(holder.is_ssr_attribute_holder_),
-        pseudo_state_(holder.pseudo_state_),
         pseudo_element_owner_(holder.pseudo_element_owner_),
         element_(holder.element_),
-        radon_node_ptr_(holder.radon_node_ptr_) {
+        radon_node_ptr_(holder.radon_node_ptr_),
+        is_ssr_attribute_holder_(holder.is_ssr_attribute_holder_) {
     if (holder.data_set_.has_value()) {
       *data_set_ = *holder.data_set_;
     }
@@ -54,7 +52,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void ReleaseSelf() const override { delete this; }
 
-  void OnStyleChange() override;
+  void OnStyleChange();
 
   void AddClass(const base::String& clazz) {
     classes_.push_back(clazz);
@@ -229,8 +227,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     }
   }
 
-  const base::String& idSelector() const override { return id_selector_; }
-
   const StyleMap& inline_styles() const { return inline_styles_; }
 
   StyleMap& MutableInlineStyles() { return inline_styles_; }
@@ -310,8 +306,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   StyleMap ReleaseInlineStyles() { return std::move(inline_styles_); }
 
-  const ClassList& classes() const override { return classes_; }
-
   bool HasClass(const std::string& cls) const {
     return std::find_if(classes_.begin(), classes_.end(), [&cls](auto& s) {
              return s.str() == cls;
@@ -339,8 +333,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void set_tag(const base::String& name) { tag_ = name; }
 
-  virtual const base::String& tag() const override { return tag_; };
-
   virtual css::StyleNode* SelectorMatchingParent() const override;
   virtual css::StyleNode* HolderParent() const override;
   virtual css::StyleNode* NextSibling() const override;
@@ -349,14 +341,12 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     return pseudo_element_owner_;
   }
 
-  virtual size_t ChildCount() const;
-  virtual CSSFragment* ParentStyleSheet() const;
+  size_t ChildCount() const;
+  CSSFragment* ParentStyleSheet() const;
 
   void SetPseudoElementOwner(AttributeHolder* owner) {
     pseudo_element_owner_ = owner;
   }
-
-  virtual CSSFragment* GetPageStyleSheet() { return nullptr; }
 
   bool GetRemoveCSSScopeEnabled() const;
   bool GetCascadePseudoEnabled() const;
@@ -388,12 +378,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     OnPseudoStateChanged(old, pseudo_state_);
   }
 
-  PseudoState GetPseudoState() const override { return pseudo_state_; }
-
-  bool HasPseudoState(PseudoState type) const override {
-    return pseudo_state_ & type;
-  }
-
   bool HasID() const { return !id_selector_.empty(); };
 
   bool HasClass() const { return !classes_.empty(); }
@@ -407,9 +391,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     radon_node_ptr_ = radon_node_ptr;
   }
 
-  bool ContainsIdSelector(const std::string& selector) const override;
-  bool ContainsClassSelector(const std::string& selector) const override;
-  bool ContainsTagSelector(const std::string& selector) const override;
   bool ContainsAttributeSelector(const std::string& selector) const;
   void SetElement(Element* element) { element_ = element; }
 
@@ -465,7 +446,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   void UpdateInlineStyleChangedVars(CSSVariableMap* changed_css_vars);
 
  protected:
-  ClassList classes_;
   StyleMap inline_styles_{kCSSStyleMapFuzzyAllocationSize};
   AttrMap attributes_;
   base::auto_create_optional<DataMap> data_set_;
@@ -473,13 +453,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   base::auto_create_optional<EventBundle> events_;
   base::auto_create_optional<CSSVariableBundle> css_variables_;
 
-  base::String tag_;
-
-  // Should be unique in component
-  base::String id_selector_;
-
-  bool is_ssr_attribute_holder_{false};
-  PseudoState pseudo_state_{kPseudoStateNone};
   AttributeHolder* pseudo_element_owner_{nullptr};
 
   // Reference the element for sibling and parent
@@ -487,6 +460,8 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   // Save path to trail Element to RadonNode.
   RadonNode* radon_node_ptr_{nullptr};
+
+  bool is_ssr_attribute_holder_{false};
 };
 
 }  // namespace tasm

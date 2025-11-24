@@ -29,14 +29,13 @@ struct LynxCSSSelectorExtraData {
     kHas,
   };
 
-  explicit LynxCSSSelectorExtraData(const std::string& value);
+  LynxCSSSelectorExtraData();
   ~LynxCSSSelectorExtraData();
 
   bool MatchNth(unsigned count) const;
   int NthAValue() const { return bits_.nth_.a_; }
   int NthBValue() const { return bits_.nth_.b_; }
 
-  std::string value_;
   MatchType match_type_;
   union {
     struct {
