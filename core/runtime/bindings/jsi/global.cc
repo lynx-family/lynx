@@ -27,12 +27,16 @@ static piper::Value GetSystemInfo(Runtime& rt) {
   switch (rt.type()) {
     case JSRuntimeType::v8:
       runtime_type = "v8";
+      break;
     case JSRuntimeType::jsc:
       runtime_type = "jsc";
+      break;
     case JSRuntimeType::quickjs:
       runtime_type = "quickjs";
+      break;
     case JSRuntimeType::jsvm:
       runtime_type = "jsvm";
+      break;
   }
 
   lepus::Value system_info = tasm::GenerateSystemInfo(nullptr);
