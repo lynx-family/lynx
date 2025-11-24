@@ -6,6 +6,7 @@ solutions = [
         'url': '',
         'target_deps_files': {
             'clay': 'DEPS.clay',
+            'dev': 'DEPS.dev'
         },
     }
 ]
