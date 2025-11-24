@@ -40,7 +40,7 @@ class EntryConfig {
   inline bool GetDefaultDisplayLinear() { return default_display_linear_; }
 
  protected:
-  starlight::LayoutConfigs layout_configs_;
+  starlight::LayoutConfigs layout_configs_{};
 
  private:
   bool default_display_linear_{false};
