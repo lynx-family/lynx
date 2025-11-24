@@ -18,7 +18,8 @@
 
 namespace Napi {
 class Env;
-}
+class Object;
+}  // namespace Napi
 
 namespace lynx {
 namespace runtime {

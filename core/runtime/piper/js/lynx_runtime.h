@@ -190,6 +190,10 @@ class LynxRuntime final {
     }
   }
 
+#if ENABLE_NAPI_BINDING
+  void NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx);
+#endif
+
  private:
   enum class State {
     kNotStarted,       // only LynxRuntime created
@@ -273,9 +277,9 @@ class LynxRuntime final {
   lepus::Value init_global_props_;
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
       cached_native_factories_;
+  std::string template_url_;
 #if OS_IOS
   std::shared_ptr<bool> is_running_foreground_;
-  std::string template_url_;
 #endif  // OS_IOS
 };
 

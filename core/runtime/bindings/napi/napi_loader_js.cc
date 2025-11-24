@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
@@ -19,6 +20,11 @@ namespace piper {
 using Module = NapiEnvironment::Module;
 
 NapiLoaderJS::NapiLoaderJS(const std::string& id) : id_(id) {}
+
+#if ENABLE_NAPI_BINDING
+NapiLoaderJS::NapiLoaderJS(const std::string& id, runtime::LynxRuntime* runtime)
+    : id_(id), runtime_(runtime) {}
+#endif
 
 Napi::Value TriggerGC(const Napi::CallbackInfo& info) {
   auto runtime =
@@ -86,16 +92,35 @@ static Napi::Value LoadLazyModule(const Napi::CallbackInfo& info) {
   return Napi::Value();
 }
 
-static Napi::Value InstallNapiModules(const Napi::CallbackInfo& info) {
+static Napi::Value InstallNapiModules(Napi::Env env, NapiEnvironment* host_env,
+                                      Napi::Object& lynx) {
   // Install all instant modules on 'lynx' object.
-  DCHECK(info.Length() > 0);
-  Napi::Object lynx = info[0].As<Napi::Object>();
-  NapiEnvironment::From(info.Env())->delegate()->LoadInstantModules(lynx);
+  host_env->delegate()->LoadInstantModules(lynx);
 
   // Install lazy module hook.
-  lynx["loadModule"] =
-      Napi::Function::New(info.Env(), &LoadLazyModule, "loadModule");
-  lynx["_installGC"] = Napi::Function::New(info.Env(), &InstallGC, "installGC");
+  lynx["loadModule"] = Napi::Function::New(env, &LoadLazyModule, "loadModule");
+  lynx["_installGC"] = Napi::Function::New(env, &InstallGC, "installGC");
+
+  return Napi::Value();
+}
+
+static Napi::Value NotifyRuntimeReadyNapi(const Napi::CallbackInfo& info) {
+  DCHECK(info.Length() > 0);
+  NapiEnvironment* host_env = piper::NapiEnvironment::From(info.Env());
+
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(
+        info.Env(),
+        "Invalid arguments in notifyRuntimeReady, expecting: lynx object")
+        .ThrowAsJavaScriptException();
+    return Napi::Value();
+  }
+
+  Napi::Object lynx = info[0].As<Napi::Object>();
+
+  InstallNapiModules(info.Env(), host_env, lynx);
+
+  host_env->delegate()->NotifyRuntimeReady(info.Env(), lynx);
 
   return Napi::Value();
 }
@@ -106,10 +131,10 @@ void NapiLoaderJS::OnAttach(Napi::Env env) {
     LOGI("napi OnAttach env: " << raw_env << ", ctx: " << raw_env->ctx
                                << ", id: " << id_);
     Napi::HandleScope scope(env);
-    std::string hook_name("installNapiModulesOnRT");
+    std::string hook_name("notifyRuntimeReadyOnRT");
     hook_name += id_;
     env.Global()[hook_name.c_str()] =
-        Napi::Function::New(env, &InstallNapiModules, hook_name.c_str());
+        Napi::Function::New(env, &NotifyRuntimeReadyNapi, hook_name.c_str());
   }
 }
 
@@ -147,6 +172,14 @@ void NapiLoaderJS::LoadInstantModules(Napi::Object& lynx) {
     }
     m.second->OnLoad(lynx);
   }
+}
+
+void NapiLoaderJS::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
+#if ENABLE_NAPI_BINDING
+  if (runtime_) {
+    runtime_->NotifyRuntimeReady(env, lynx);
+  }
+#endif
 }
 
 }  // namespace piper

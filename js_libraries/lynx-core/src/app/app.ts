@@ -130,6 +130,9 @@ export abstract class BaseApp<
     this.clearTimeout = this.nativeApp.clearTimeout;
 
     this.addInternalEventListeners();
+
+    nativeGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId] &&
+      nativeGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId](this.lynx);
   }
 
   protected initExtra(options: AppProxyParams<NativeAppProxy>) {
