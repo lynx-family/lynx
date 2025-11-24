@@ -16,7 +16,11 @@
 #import <Lynx/LynxUIRendererCreatorProtocol.h>
 #import <Lynx/LynxViewEnum.h>
 
-@interface LynxBaseConfigurator : NSObject
+@interface LynxBaseConfigurator : NSObject {
+ @protected
+  LynxThreadStrategyForRender _threadStrategy;
+  BOOL _hasThreadStrategySet;
+}
 
 @property(nonatomic, nullable) LynxConfig* config;
 @property(nonatomic, nullable) LynxGroup* group;
