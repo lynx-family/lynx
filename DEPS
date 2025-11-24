@@ -129,15 +129,6 @@ deps = {
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin']
     },
-    '../buildtools/android_sdk_manager': {
-        "type": "http",
-        "url": {
-            "darwin": "https://dl.google.com/android/repository/commandlinetools-mac-8512546_latest.zip",
-            "linux": "https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip"
-        }.get(system, None),
-        "ignore_in_git": True,
-        "condition": system in ['linux', 'darwin']
-    },
     '../third_party/gyp': {
         "type": "git",
         "url": "https://chromium.googlesource.com/external/gyp",

@@ -24,13 +24,17 @@ if [ -z "$BUILDTOOLS_DIR" ]; then
   return 1
 fi
 
+ROOT_DIR="$(dirname "$BUILDTOOLS_DIR")"
+$ROOT_DIR/tools/hab sync . -f --target dev --target-only
+
 sdk_manager_dir=$BUILDTOOLS_DIR/android_sdk_manager
 
 sdk_manager_path=$sdk_manager_dir/bin
 if [ ! -d $sdk_manager_path ]; then
-  echo "sdk manager not found, please run \`tools/hab sync . -f\` first."
+  echo "sdk manager not found, please run \`tools/hab sync . -f --target dev --target-only\` first."
   return 1
 fi
+
 
 function install_sdk_component {
   local component_path=$sdk_path/$1/$2
