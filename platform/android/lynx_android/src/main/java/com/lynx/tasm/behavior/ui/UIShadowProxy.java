@@ -50,9 +50,11 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   private TransformProps mTransform;
   private Matrix mMatrix = new Matrix();
   private boolean mNeedUpdateShadow = false;
+
   public boolean isNeedUpdateShadow() {
     return mNeedUpdateShadow;
   }
+
   public void setNeedUpdateShadow(boolean needUpdateShadow) {
     mNeedUpdateShadow = needUpdateShadow;
   }
@@ -73,6 +75,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
     super.insertDrawList(null, mChild);
     super.insertView((LynxUI) mChild);
     updateTransform();
+    setVisibilityForView(mChild.getVisibility() ? View.VISIBLE : View.INVISIBLE);
   }
 
   // When enable new flatten, UIShadowProxy will replace its child, and UIShadowProxy overrides the
@@ -155,6 +158,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   public boolean isFlatten() {
     return mChild.isFlatten();
   }
+
   @Override
   public List<LynxBaseUI> getChildren() {
     return mChild.getChildren();
@@ -226,6 +230,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   public void onLayoutUpdated() {
     setNeedUpdateShadow(true);
   }
+
   @Override
   public void updateSticky(float[] sticky) {
     mChild.updateSticky(sticky);
@@ -380,6 +385,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   public void updateLayoutInfo(LynxBaseUI layout) {
     mChild.updateLayoutInfo(layout);
   }
+
   @Override
   public void setBoxShadow(@Nullable ReadableArray shadow) {
     // Fixme(liyun):workaround for spring. below 6.0 will crash sometimes.
@@ -393,6 +399,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   public float getAlpha() {
     return mChild instanceof LynxUI ? ((LynxUI) mChild).getView().getAlpha() : 1.0f;
   }
+
   public Matrix getMatrix() {
     mMatrix.reset();
     if (!(mChild instanceof LynxUI)) {
@@ -631,6 +638,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
 
   public static class ShadowView extends AndroidView {
     private boolean mHasInset;
+
     public ShadowView(UIShadowProxy proxy, Context context) {
       super(context);
       mShadowProxy = new WeakReference<UIShadowProxy>(proxy);
@@ -640,6 +648,7 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
     public boolean hasInset() {
       return mHasInset;
     }
+
     public void updateOutlineDrawer(Outline outline) {
       mOutlineDrawer = outline;
     }
