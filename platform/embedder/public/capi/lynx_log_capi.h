@@ -16,6 +16,7 @@ typedef enum lynx_log_level_e {
   LYNX_LOG_INFO,
   LYNX_LOG_WARNING,
   LYNX_LOG_ERROR,
+  LYNX_LOG_FATAL,
 } lynx_log_level_e;
 
 // Writes a log message to the Lynx logging system.
