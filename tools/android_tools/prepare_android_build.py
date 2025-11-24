@@ -7,11 +7,17 @@ import sys
 import os
 import subprocess
 import platform
-system = platform.system()
+system = platform.system().lower()
 
 ndk_version = '21.1.6352462'
 android_platform = 'android-33'
 sdk_build_tools_version = '33.0.1'
+
+def run_command(command):
+    command = 'set -e\n' + command
+
+    print(f'run command: {command}')
+    res = subprocess.run(command, shell=True, stderr=subprocess.STDOUT, check=True, text=True)
 
 def install_sdk_component(sdk_path, sdk_manager, component, version):
   component_path = os.path.join(sdk_path, component, version)
@@ -40,10 +46,11 @@ def install_android_sdk(root_path):
   sdk_manager_path = os.path.join(sdk_manager_dir, 'bin')
 
   if not os.path.exists(sdk_manager_path):
-    print("SDK manager not found, please run `tools/hab sync . -f` first.")
+    print("SDK manager not found, please run `tools/hab sync . -f --target dev --target-only` to check dependency.")
     return -1
 
-  sdk_manager = os.path.join(sdk_manager_path, 'sdkmanager.bat' if system == 'Windows' else 'sdkmanager')
+
+  sdk_manager = os.path.join(sdk_manager_path, 'sdkmanager.bat' if system == 'windows' else 'sdkmanager')
 
   r = 0
   r |= install_sdk_component(sdk_path, sdk_manager, "ndk", ndk_version)
@@ -57,6 +64,9 @@ def install_android_sdk(root_path):
 
 def main():
   root_path = os.path.join(os.path.dirname(__file__), '..', '..')
+  tools_dir = os.path.join(root_path, 'tools')
+  hab_path = os.path.join(tools_dir, 'hab') if system !='windows' else os.path.join(tools_dir, 'hab.ps1')
+  run_command(f'{hab_path} sync . -f --target dev --target-only')
   install_android_sdk(root_path)
 
 if __name__ == "__main__":
