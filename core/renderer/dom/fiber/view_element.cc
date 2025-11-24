@@ -7,7 +7,8 @@
 #include <memory>
 
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/text_props.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/view_fragment_behavior.h"
 
 namespace lynx {
 namespace tasm {
@@ -34,6 +35,10 @@ void ViewElement::AttachToElementManager(
     bool keep_element_id) {
   FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
   SetDefaultOverflow(element_manager_->GetDefaultOverflowVisible());
+}
+
+void ViewElement::SetupFragmentBehavior(Fragment* fragment) {
+  fragment->SetBehavior(std::make_unique<ViewFragmentBehavior>(fragment));
 }
 
 }  // namespace tasm

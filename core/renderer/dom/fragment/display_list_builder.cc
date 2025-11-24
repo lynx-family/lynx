@@ -37,6 +37,7 @@ DisplayListBuilder& DisplayListBuilder::Fill(uint32_t color) {
 
 DisplayListBuilder& DisplayListBuilder::DrawView(int view_id) {
   display_list_.AddOperation(DisplayListOpType::kDrawView, view_id);
+  display_list_.AddSubLayer(view_id);
   return *this;
 }
 

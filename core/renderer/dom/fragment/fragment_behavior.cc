@@ -5,7 +5,6 @@
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 

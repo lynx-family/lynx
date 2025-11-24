@@ -13,6 +13,7 @@ namespace lynx {
 namespace tasm {
 
 class ElementManager;
+class Fragment;
 
 class ViewElement : public FiberElement {
  public:
@@ -34,6 +35,7 @@ class ViewElement : public FiberElement {
       bool keep_element_id) override;
 
   int32_t GetBuiltInNodeInfo() const override { return kCommonBuiltInNodeInfo; }
+  void SetupFragmentBehavior(Fragment* fragment) override;
 
  protected:
   void OnNodeAdded(FiberElement* child) override;
