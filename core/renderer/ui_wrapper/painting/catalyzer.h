@@ -53,12 +53,6 @@ class Catalyzer {
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
   inline int32_t GetInstanceId() { return instance_id_; }
-#if ENABLE_TRACE_PERFETTO
-  int64_t last_dump_time_ = 0;
-  static constexpr int64_t kDumpThresholdMilliseconds = 16;
-  static constexpr size_t kMaxAttributeValueLength = 100;
-  void DumpElementTree();
-#endif
 
  private:
   std::unique_ptr<PaintingContext> painting_context_;
