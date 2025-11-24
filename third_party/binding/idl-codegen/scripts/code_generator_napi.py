@@ -459,7 +459,9 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 _, remote_js_text = self.render_templates(
                     include_paths, remote_js_template, remote_js_template, template_context,
                     component)
-                remote_js_path = self.js_output_path('remote' + dictionary_name)
+
+                remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
+                remote_js_path = self.js_output_path('remote' + dictionary_name, remote_js_outdir)
                 out.append((remote_js_path, remote_js_text))
 
         header_text, cpp_text = self.render_templates(
