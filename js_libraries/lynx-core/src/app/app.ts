@@ -8,6 +8,7 @@ import {
   EnvKey,
   LifeEvent,
   loadCardParams,
+  LynxSetTimeout2,
   NativeApp,
   requireParamObj,
 } from './interface';
@@ -48,6 +49,7 @@ import { getPromiseMaybePolyfill } from '../util/setup-promise';
 import { createReadableStreamClass, Request, Response } from '../modules/fetch';
 import { MessageEventType } from '../lynx';
 import { TraceEventDef } from '../util/TraceEventDef';
+import { CallbackManager } from '../common/callbackManager';
 
 export abstract class BaseApp<
   NativeAppProxy extends NativeApp = NativeApp,
@@ -84,8 +86,8 @@ export abstract class BaseApp<
 
   setTimeout: LynxSetTimeout;
   setInterval: LynxSetTimeout;
-  clearInterval: (intervalId: number) => void;
-  clearTimeout: (timeoutId: number) => void;
+  clearInterval: LynxClearTimeout;
+  clearTimeout: LynxClearTimeout;
 
   _createReadableStreamClass: (
     Promise: PromiseConstructor
@@ -109,6 +111,8 @@ export abstract class BaseApp<
   private contextProxyTypeToMethod: {};
   private removeInternalEventListenersCallbacks: (() => void)[] = [];
 
+  _callbackManager: CallbackManager;
+
   constructor(
     options: AppProxyParams<NativeAppProxy>,
     baseAppSingleData?: BaseAppSingletonData<NativeAppProxy, LynxImpl>
@@ -123,12 +127,6 @@ export abstract class BaseApp<
       this.initExtra(options);
     }
 
-    // init timeout function
-    this.setTimeout = this.nativeApp.setTimeout;
-    this.setInterval = this.nativeApp.setInterval;
-    this.clearInterval = this.nativeApp.clearInterval;
-    this.clearTimeout = this.nativeApp.clearTimeout;
-
     this.addInternalEventListeners();
 
     nativeGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId] &&
@@ -137,6 +135,17 @@ export abstract class BaseApp<
 
   protected initExtra(options: AppProxyParams<NativeAppProxy>) {
     const { lynx } = options;
+
+    this._callbackManager = new CallbackManager();
+    this.setTimeout = this.wrapCallbackMethod(this.nativeApp.setTimeout);
+    this.setInterval = this.wrapCallbackMethod(
+      this.nativeApp.setInterval,
+      false
+    );
+    this.clearInterval = this.wrapClearTimerMethod(
+      this.nativeApp.clearInterval
+    );
+    this.clearTimeout = this.wrapClearTimerMethod(this.nativeApp.clearTimeout);
 
     this.modules = {};
     this._lazyCallableModules = new Map();
@@ -169,9 +178,9 @@ export abstract class BaseApp<
     this.performance = new Performance(this.GlobalEventEmitter, this.nativeApp);
 
     const promiseCtor = this.setupPromise(
-      this.nativeApp.setTimeout,
-      this.nativeApp.clearTimeout,
-      lynx
+      this.setTimeout,
+      this.clearTimeout,
+      this.queueMicrotask
     );
 
     this.lynx = this.createLynx(lynx, promiseCtor);
@@ -245,8 +254,78 @@ export abstract class BaseApp<
     return this.Reporter.getSourceMapRelease(url);
   };
 
+  queueMicrotask(callback: () => void): void {
+    if (!callback) {
+      return;
+    }
+    if (!this.params?.pageConfigSubset?.enableJSCallbackManager) {
+      this.lynx.getNativeLynx().queueMicrotask(callback);
+    } else {
+      const id = this._callbackManager.addCallback(callback);
+      if (id === undefined) {
+        return;
+      }
+      this.lynx.getNativeLynx().queueMicrotask(id);
+    }
+  }
+
+  /**
+   * pass id instead of callback for native.
+   * for setTimeout、setInterval、queueMicrotask and other.
+   */
+  private wrapCallbackMethod(
+    nativeMethod: LynxSetTimeout2,
+    isTimeout: boolean = true
+  ): (callback: (...args: unknown[]) => unknown, delay: number) => number {
+    if (!this.params?.pageConfigSubset?.enableJSCallbackManager) {
+      return nativeMethod;
+    }
+    const that = this;
+    return function (
+      callback: (...args: unknown[]) => unknown,
+      delay: number
+    ): number {
+      if (!callback) {
+        return -1;
+      }
+      const taskInfo = { taskId: undefined };
+      const cb = () => {
+        try {
+          callback.apply(callback, undefined);
+        } finally {
+          if (isTimeout) {
+            that._callbackManager.removeTaskId(taskInfo.taskId);
+          }
+        }
+      };
+      const id = that._callbackManager.addCallback(cb);
+      if (id === undefined) {
+        return -1;
+      }
+      const taskId = nativeMethod.call(undefined, id, delay);
+      if (taskId !== undefined) {
+        that._callbackManager.addTaskIdAndCallbackId(taskId, id);
+        taskInfo.taskId = taskId;
+      }
+      return taskId;
+    };
+  }
+
+  private wrapClearTimerMethod = (
+    nativeMethod: LynxClearTimeout
+  ): LynxClearTimeout => {
+    if (!this.params?.pageConfigSubset?.enableJSCallbackManager) {
+      return nativeMethod;
+    }
+    return (taskId: number) => {
+      nativeMethod.call(undefined, taskId);
+      this._callbackManager.removeCallbackByTaskId(taskId);
+    };
+  };
+
   destroy() {
     this.__removeInternalEventListeners();
+    this._callbackManager.destroy();
     this._nativeApp = null;
     this._params = null;
     this._lazyCallableModules = null;
@@ -851,7 +930,7 @@ export abstract class BaseApp<
   setupPromise(
     setTimeout: LynxSetTimeout,
     clearTimeout: LynxClearTimeout,
-    lynx: NativeLynxProxy
+    queueMicrotask: (callback: () => void) => void
   ) {
     const PromiseConstructor = getPromiseMaybePolyfill(
       setTimeout,
@@ -869,7 +948,7 @@ export abstract class BaseApp<
         }
       },
       clearTimeout,
-      lynx.queueMicrotask,
+      queueMicrotask,
       this._params?.pageConfigSubset?.enableMicrotaskPromisePolyfill ?? false
     );
     this.resolvedPromise = PromiseConstructor.resolve();
@@ -881,6 +960,10 @@ export abstract class BaseApp<
 
   cancelAnimationFrame = (animationId: number) =>
     this._nativeApp.cancelAnimationFrame(animationId);
+
+  invokeCallback(once: boolean, callbackId: number, ...args: unknown[]): void {
+    this._callbackManager.invokeCallback(once, callbackId, ...args);
+  }
 
   protected addInternalEventListener(
     contextProxyType: ContextProxyType,
