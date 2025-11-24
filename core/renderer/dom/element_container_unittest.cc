@@ -935,36 +935,36 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
 
   auto element = manager->CreateNode("view", nullptr);
   auto fragment = element->fragment_impl();
-  EXPECT_FALSE(fragment->need_redraw_);
+  EXPECT_FALSE(fragment->NeedRedraw());
 
   element->CreateElementContainer(false);
-  EXPECT_TRUE(fragment->need_redraw_);
+  EXPECT_TRUE(fragment->NeedRedraw());
 
-  fragment->need_redraw_ = false;
+  fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
   fragment->UpdateLayout(starlight::LayoutResultForRendering());
-  EXPECT_TRUE(fragment->need_redraw_);
+  EXPECT_TRUE(fragment->NeedRedraw());
 
-  fragment->need_redraw_ = false;
-  EXPECT_FALSE(fragment->need_redraw_);
+  fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  EXPECT_FALSE(fragment->NeedRedraw());
 
   // auto child_element = manager->CreateNode("view", nullptr);
   // child_element->CreateElementContainer(false);
   // auto child_fragment = child_element->fragment_impl();
   // fragment->AddChild(child_fragment, 0);
-  // EXPECT_TRUE(fragment->need_redraw_);
+  // EXPECT_TRUE(fragment->NeedRedraw());
 
-  fragment->need_redraw_ = false;
+  fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
 
   // child_fragment->RemoveSelf(false);
-  // EXPECT_TRUE(fragment->need_redraw_);
+  // EXPECT_TRUE(fragment->NeedRedraw());
 
-  fragment->need_redraw_ = false;
+  fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
   fragment->CreatePaintingNode(false, nullptr);
-  EXPECT_TRUE(fragment->need_redraw_);
+  EXPECT_TRUE(fragment->NeedRedraw());
 
-  fragment->need_redraw_ = false;
+  fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
   fragment->UpdatePaintingNode(false, nullptr);
-  EXPECT_TRUE(fragment->need_redraw_);
+  EXPECT_TRUE(fragment->NeedRedraw());
 }
 
 TEST_F(ElementContainerTest, TestIsRootContainer) {

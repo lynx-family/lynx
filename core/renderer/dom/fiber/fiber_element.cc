@@ -689,7 +689,10 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
       return;
     }
 
-    if (!action_param_list_.empty()) {
+    // If EnableFragmentLayerRender(), we need to handle the removal and
+    // insertion of descendant nodes with z-index or fixed in Fragment, so
+    // should not check the action_param_list_ here.
+    if (!action_param_list_.empty() && !EnableFragmentLayerRender()) {
       auto iter = action_param_list_.begin();
       while (iter != action_param_list_.end()) {
         if (iter->type_ == Action::kRemoveIntergenerationAct ||
@@ -705,7 +708,11 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
     }
   }
 
-  if ((parent() != insertion_point) && (ZIndex() != 0 || is_fixed_)) {
+  // If EnableFragmentLayerRender(), we need to handle the removal and insertion
+  // of descendant nodes with z-index or fixed in Fragment, so should not check
+  // the action_param_list_ here.
+  if ((parent() != insertion_point) && (ZIndex() != 0 || is_fixed_) &&
+      !EnableFragmentLayerRender()) {
     insertion_point->action_param_list_.emplace_back(
         Action::kRemoveIntergenerationAct, insertion_point,
         fml::RefPtr<FiberElement>(this), 0, nullptr, is_fixed_);
@@ -4133,7 +4140,8 @@ void FiberElement::UpdateLayoutInfo() {
     customized_layout_node_->OnLayoutAfter();
   }
   if (EnableFragmentLayerRender()) {
-    static_cast<Fragment *>(element_container())->MarkNeedRedraw();
+    static_cast<Fragment *>(element_container())
+        ->MarkDirtyState(BaseElementContainer::kNeedRedraw);
   }
   frame_changed_ = true;
 }
