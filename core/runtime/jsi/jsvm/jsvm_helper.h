@@ -16,6 +16,7 @@ class JSVMRuntime;
 namespace detail {
 class JSVMSymbolValue final : public Runtime::PointerValue {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(JSVMSymbolValue);
   JSVMSymbolValue(JSVMRuntime* rt, JSVM_Value sym_val);
   void invalidate() override;
   std::string Name() override { return "JSVMSymbolValue"; }
@@ -26,6 +27,7 @@ class JSVMSymbolValue final : public Runtime::PointerValue {
 
 class JSVMStringValue final : public Runtime::PointerValue {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(JSVMStringValue);
   JSVMStringValue(JSVMRuntime* rt, JSVM_Value str_val);
   void invalidate() override;
   std::string Name() override { return "JSVMStringValue"; }

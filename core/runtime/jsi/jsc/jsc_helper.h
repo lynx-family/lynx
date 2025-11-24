@@ -45,6 +45,7 @@ class JSCObjectBase : public Runtime::PointerValue, public base::Observer {
 #endif
     key_ = jsc_runtime_->AddObjectObserver(this);
   }
+  BASE_DISALLOW_COPY_AND_ASSIGN(JSCObjectBase);
 
   ~JSCObjectBase() {
     if (jsc_runtime_) {
@@ -94,12 +95,14 @@ class JSCSymbolValue final : public JSCObjectBase<JSValueRef, JSCRuntime> {
  public:
   JSCSymbolValue(JSGlobalContextRef ctx, JSCRuntime* jsc_runtime,
                  std::atomic<intptr_t>& counter, JSValueRef sym);
+  BASE_DISALLOW_COPY_AND_ASSIGN(JSCSymbolValue);
   virtual std::string Name() override { return "JSCSymbolValue"; }
 };
 
 class JSCStringValue final : public Runtime::PointerValue {
  public:
   JSCStringValue(std::atomic<intptr_t>& counter, JSStringRef str);
+  BASE_DISALLOW_COPY_AND_ASSIGN(JSCStringValue);
   void invalidate() override;
   virtual std::string Name() override { return "JSCStringValue"; }
   JSStringRef str_;
@@ -112,6 +115,7 @@ class JSCObjectValue final : public JSCObjectBase<JSObjectRef, JSCRuntime> {
  public:
   JSCObjectValue(JSGlobalContextRef ctx, JSCRuntime* jsc_runtime,
                  std::atomic<intptr_t>& counter, JSObjectRef obj);
+  BASE_DISALLOW_COPY_AND_ASSIGN(JSCObjectValue);
   virtual std::string Name() override { return "JSCObjectValue"; }
 };
 

@@ -32,6 +32,7 @@ namespace detail {
 // TODO: is the symbol protected?
 class V8SymbolValue final : public Runtime::PointerValue {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(V8SymbolValue);
   V8SymbolValue(v8::Isolate* iso, v8::Local<v8::Symbol> sym);
   void invalidate() override;
   virtual std::string Name() override { return "V8SymbolValue"; }
@@ -47,6 +48,7 @@ class V8SymbolValue final : public Runtime::PointerValue {
 
 class V8StringValue final : public Runtime::PointerValue {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(V8StringValue);
   V8StringValue(v8::Isolate* iso, v8::Local<v8::String> str);
   void invalidate() override;
   virtual std::string Name() override { return "V8StringValue"; }
@@ -64,6 +66,7 @@ class V8StringValue final : public Runtime::PointerValue {
 // heap-allocated, since otherwise you may end up with an invalid reference.
 class V8ObjectValue final : public Runtime::PointerValue {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(V8ObjectValue);
   V8ObjectValue(v8::Isolate* iso, v8::Local<v8::Object> obj);
 
   void invalidate() override;

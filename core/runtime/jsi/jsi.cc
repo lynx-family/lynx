@@ -98,11 +98,13 @@ void Runtime::ClearHostContainers() {
 }
 
 Pointer& Pointer::operator=(Pointer&& other) {
-  if (ptr_) {
-    ptr_->invalidate();
+  if (this != &other) {
+    if (ptr_) {
+      ptr_->invalidate();
+    }
+    ptr_ = other.ptr_;
+    other.ptr_ = nullptr;
   }
-  ptr_ = other.ptr_;
-  other.ptr_ = nullptr;
   return *this;
 }
 

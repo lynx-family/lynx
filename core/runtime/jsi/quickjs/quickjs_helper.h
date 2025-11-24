@@ -28,6 +28,7 @@ namespace detail {
 
 class QuickjsJSValueValue : public Runtime::PointerValue {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(QuickjsJSValueValue);
   QuickjsJSValueValue(LEPUSContext* ctx, LEPUSValue val);
   ~QuickjsJSValueValue() = default;
 

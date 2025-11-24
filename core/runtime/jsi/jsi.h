@@ -26,6 +26,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/expected.h"
+#include "base/include/fml/macros.h"
 #include "base/include/log/logging.h"
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
@@ -478,6 +479,7 @@ class LYNX_EXPORT Runtime {
 
   struct PointerValue {
     PointerValue() {}
+    BASE_DISALLOW_COPY_AND_ASSIGN(PointerValue);
     virtual void invalidate(){
 
     };
@@ -648,6 +650,8 @@ class GCPauseSuppressionMode {
 // Base class for pointer-storing types.
 class Pointer {
  protected:
+  BASE_DISALLOW_COPY_AND_ASSIGN(Pointer);
+
   explicit Pointer(Pointer&& other) : ptr_(other.ptr_) { other.ptr_ = nullptr; }
 
   ~Pointer() {
@@ -739,6 +743,7 @@ class PropNameID : public Pointer {
 /// later.
 class Symbol : public Pointer {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(Symbol);
   using Pointer::Pointer;
 
   Symbol(Symbol&& other) = default;
@@ -762,6 +767,7 @@ class Symbol : public Pointer {
 /// Represents a JS String.  Movable, not copyable.
 class String : public Pointer {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(String);
   using Pointer::Pointer;
 
   String(String&& other) = default;
@@ -818,6 +824,7 @@ class Function;
 /// Represents a JS Object.  Movable, not copyable.
 class Object : public Pointer {
  public:
+  BASE_DISALLOW_COPY_AND_ASSIGN(Object);
   using Pointer::Pointer;
 
   Object(Object&& other) = default;
@@ -1274,8 +1281,10 @@ class Value {
   static bool strictEquals(Runtime& runtime, const Value& a, const Value& b);
 
   Value& operator=(Value&& other) {
-    this->~Value();
-    new (this) Value(std::move(other));
+    if (this != &other) {
+      this->~Value();
+      new (this) Value(std::move(other));
+    }
     return *this;
   }
 
