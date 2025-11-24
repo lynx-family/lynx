@@ -1503,6 +1503,12 @@ public class com::lynx::tasm::EmbeddedMode :  {
   public static boolean com.lynx.tasm.EmbeddedMode.isBaseModeEnable(@EmbeddedMode.Mode int mode);
 }
 
+public class com::lynx::tasm::performance::timing::EmbeddedTimingCollector :  {
+  public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setObserver(WeakReference< IPerformanceObserver > observer);
+  public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasEmitTimingEvent();
+  public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.markTiming(String key, long usTimestamp);
+}
+
 public enum com::lynx::tasm::behavior::event::EventTarget::EnableStatus {
   public com.lynx.tasm.behavior.event.EventTarget.EnableStatus.Enable Enable;
   public com.lynx.tasm.behavior.event.EventTarget.EnableStatus.Disable Disable;
@@ -7810,12 +7816,9 @@ public interface com::lynx::tasm::behavior::PatchFinishListener {
 }
 
 public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm.performance.memory.IMemoryMonitor, com.lynx.tasm.performance.timing.ITimingCollector {
-  public static boolean com.lynx.tasm.performance.PerformanceController.isMemoryMonitorEnabled();
-  public static long com.lynx.tasm.performance.PerformanceController.getMemoryAcquisitionDelaySec();
-  public static long com.lynx.tasm.performance.PerformanceController.currentSystemTimeMicroseconds();
+  public void com.lynx.tasm.performance.PerformanceController.setEmbeddedMode(boolean useEmbeddedMode);
+  public boolean com.lynx.tasm.performance.PerformanceController.isEmbeddedMode();
   public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
-  public boolean com.lynx.tasm.performance.PerformanceController.isEnableController();
-  public void com.lynx.tasm.performance.PerformanceController.setEnableController(boolean enableController);
   public void com.lynx.tasm.performance.PerformanceController.setInstanceId(int instanceId);
   public void com.lynx.tasm.performance.PerformanceController.allocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(IMemoryRecordBuilder builder);
@@ -7828,6 +7831,9 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.setNeedMarkPaintEndTiming(String pipelineId);
   public void com.lynx.tasm.performance.PerformanceController.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
   public JavaOnlyArray com.lynx.tasm.performance.PerformanceController.getPendingPaintEndPipelineIds();
+  public static boolean com.lynx.tasm.performance.PerformanceController.isMemoryMonitorEnabled();
+  public static long com.lynx.tasm.performance.PerformanceController.getMemoryAcquisitionDelaySec();
+  public static long com.lynx.tasm.performance.PerformanceController.currentSystemTimeMicroseconds();
 }
 
 public class com::lynx::tasm::performance::performanceobserver::PerformanceEntry :  {
@@ -9542,6 +9548,7 @@ public class com::lynx::tasm::performance::timing::TimingConstants :  {
   public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_START VERIFY_TASM_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_END VERIFY_TASM_END;
   public final String com.lynx.tasm.performance.timing.TimingConstants.FFI_START FFI_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.PAINT_END PAINT_END;
   public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_MEASURE_START HOST_PLATFORM_MEASURE_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_MEASURE_END HOST_PLATFORM_MEASURE_END;
   public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_LAYOUT_START HOST_PLATFORM_LAYOUT_START;
