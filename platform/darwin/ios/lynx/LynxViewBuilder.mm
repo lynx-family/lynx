@@ -233,10 +233,15 @@
 }
 
 - (LynxThreadStrategyForRender)getThreadStrategyForRender {
+  if (_hasThreadStrategySet) {
+    return _threadStrategy;
+  }
+
   if (_lynxViewGroup) {
     return [_lynxViewGroup getThreadStrategyForRender];
   }
-  return [super getThreadStrategyForRender];
+
+  return LynxThreadStrategyForRenderAllOnUI;
 }
 
 - (LynxEmbeddedMode)getEmbeddedMode {

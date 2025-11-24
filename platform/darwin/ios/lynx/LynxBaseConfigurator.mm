@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "Lynx/LynxBaseConfigurator.h"
+#import <Lynx/LynxBaseConfigurator.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLog.h>
@@ -13,7 +13,6 @@
 #import "LynxUIRendererCreator.h"
 
 @implementation LynxBaseConfigurator {
-  LynxThreadStrategyForRender _threadStrategy;
   LynxEmbeddedMode _embeddedMode;
   NSMutableDictionary<NSString*, LynxAliasFontInfo*>* _builderRegisteredAliasFontMap;
 }
@@ -32,6 +31,8 @@
     self.uiRendererCreator = [[LynxUIRendererCreator alloc] init];
     self.lynxBackgroundRuntimeOptions = [[LynxBackgroundRuntimeOptions alloc] init];
     _builderRegisteredAliasFontMap = [NSMutableDictionary dictionary];
+    _threadStrategy = LynxThreadStrategyForRenderAllOnUI;
+    _hasThreadStrategySet = NO;
   }
   return self;
 }
@@ -52,6 +53,7 @@
 }
 
 - (void)setThreadStrategyForRender:(LynxThreadStrategyForRender)threadStrategy {
+  _hasThreadStrategySet = YES;
   switch (threadStrategy) {
     case LynxThreadStrategyForRenderAllOnUI:
     case LynxThreadStrategyForRenderPartOnLayout:
