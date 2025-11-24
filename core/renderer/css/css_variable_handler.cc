@@ -24,7 +24,7 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
   }
 
   if (!HasCSSVariableInStyleMap(map)) {
-    return true;
+    return false;
   }
   // the CSSVariable order need to be kept.
   StyleMap style_map(CSSProperty::GetTotalParsedStyleCountFromMap(map));

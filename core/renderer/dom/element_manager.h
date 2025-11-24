@@ -1191,6 +1191,12 @@ class ElementManager : public ElementContextDelegate {
     engine_thread_id_ = engine_id;
   }
 
+  bool GetRequireCSSVariables() const { return require_css_variables_; }
+
+  void SetRequireCSSVariables(bool require_css_variables) {
+    require_css_variables_ = require_css_variables;
+  }
+
  protected:
   /**
    * call this function after exec OnPatchFinishForFiber
@@ -1302,6 +1308,7 @@ class ElementManager : public ElementContextDelegate {
   bool enable_level_order_traversing_{false};
   std::atomic_int pending_level_order_tasks_{0};
   std::optional<std::thread::id> engine_thread_id_{std::nullopt};
+  bool require_css_variables_{false};
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_layout_in_element_mode_{false};

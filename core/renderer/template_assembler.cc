@@ -581,14 +581,57 @@ void TemplateAssembler::RenderTemplate(
       page_proxy()->element_manager()->GetEnableParallelElement();
   bool enable_radon_fiber_arch =
       page_proxy()->element_manager()->GetEnableFiberElementForRadonDiff();
-  if (EnableFiberArch() && !enable_parallel_element) {
+  auto instance_id = page_proxy()->element_manager()->GetInstanceId();
+  if (!enable_parallel_element) {
+    if (EnableFiberArch()) {
+      report::GlobalFeatureCounter::Count(
+          report::LynxFeature::CPP_DISABLE_PARALLEL_FLUSH_FIBER_ARCH,
+          instance_id);
+    } else if (enable_radon_fiber_arch) {
+      report::GlobalFeatureCounter::Count(
+          report::LynxFeature::CPP_DISABLE_PARALLEL_FLUSH_FIBER_RADON_ARCH,
+          instance_id);
+    }
+  } else {
+    if (EnableFiberArch()) {
+      report::GlobalFeatureCounter::Count(
+          report::LynxFeature::CPP_ENABLE_PARALLEL_FLUSH_FIBER_ARCH,
+          instance_id);
+    } else if (enable_radon_fiber_arch) {
+      report::GlobalFeatureCounter::Count(
+          report::LynxFeature::CPP_ENABLE_PARALLEL_FLUSH_FIBER_RADON_ARCH,
+          instance_id);
+    }
+  }
+
+  bool enable_standard_css_selector =
+      page_proxy()->element_manager()->GetEnableStandardCSSSelector();
+  if (enable_standard_css_selector) {
     report::GlobalFeatureCounter::Count(
-        report::LynxFeature::CPP_DISABLE_PARALLEL_FLUSH_FIBER_ARCH,
-        page_proxy()->element_manager()->GetInstanceId());
-  } else if (enable_radon_fiber_arch && !enable_parallel_element) {
+        report::LynxFeature::CPP_ENABLE_STANDARD_CSS_SELECTOR, instance_id);
+  } else {
     report::GlobalFeatureCounter::Count(
-        report::LynxFeature::CPP_DISABLE_PARALLEL_FLUSH_FIBER_RADON_ARCH,
-        page_proxy()->element_manager()->GetInstanceId());
+        report::LynxFeature::CPP_DISABLE_STANDARD_CSS_SELECTOR, instance_id);
+  }
+
+  bool enable_css_inheritance =
+      page_proxy()->element_manager()->GetCSSInheritance();
+  if (enable_css_inheritance) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_ENABLE_CSS_INHERITANCE, instance_id);
+  } else {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_DISABLE_CSS_INHERITANCE, instance_id);
+  }
+
+  bool require_css_variables =
+      page_proxy()->element_manager()->GetRequireCSSVariables();
+  if (require_css_variables) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_ENABLE_CSS_VARIABLES, instance_id);
+  } else {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_DISABLE_CSS_VARIABLES, instance_id);
   }
 }
 

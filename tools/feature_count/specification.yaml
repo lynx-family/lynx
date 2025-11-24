@@ -36,6 +36,14 @@ cpp:
   - list_container
   - custom_list
   - use_frame_element
+  - enable_parallel_flush_fiber_arch
+  - enable_parallel_flush_fiber_radon_arch
+  - enable_css_inheritance
+  - disable_css_inheritance
+  - enable_css_variables
+  - disable_css_variables
+  - enable_standard_css_selector
+  - disable_standard_css_selector
 typescript:
   - bundle_support_load_script
 objc:

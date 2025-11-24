@@ -1336,8 +1336,7 @@ bool Element::IsStackingContextNode() {
 }
 
 bool Element::IsCSSInheritanceEnabled() const {
-  return element_manager_ &&
-         element_manager_->GetDynamicCSSConfigs().enable_css_inheritance_;
+  return element_manager_ && element_manager_->GetCSSInheritance();
 }
 
 bool Element::IsCSSInlineVariablesEnabled() const {

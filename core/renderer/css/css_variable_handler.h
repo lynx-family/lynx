@@ -20,6 +20,9 @@ class CSSVariableHandler {
   explicit CSSVariableHandler(bool enable_fiber_arch = false)
       : enable_fiber_arch_(enable_fiber_arch) {}
 
+  // method to handle css variables in style map.
+  // If no CSS variables are present in the style map, return false; otherwise,
+  // return true.
   bool HandleCSSVariables(StyleMap& map, AttributeHolder* holder,
                           const CSSParserConfigs& configs);
 
