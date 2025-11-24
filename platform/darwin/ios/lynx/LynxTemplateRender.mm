@@ -185,7 +185,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (LynxViewBuilder*)setUpBuilder {
   LynxViewBuilder* builder = [LynxViewBuilder new];
-  [builder setThreadStrategyForRender:LynxThreadStrategyForRenderAllOnUI];
   builder.enableJSRuntime = YES;
   builder.frame = CGRectZero;
   builder.screenSize = CGSizeZero;
