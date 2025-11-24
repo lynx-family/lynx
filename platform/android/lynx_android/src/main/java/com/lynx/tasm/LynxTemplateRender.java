@@ -317,6 +317,9 @@ public class LynxTemplateRender
 
     mEmbeddedMode = mLynxViewConfigProvider.getEmbeddedMode();
 
+    // Set embedded mode for PerformanceController
+    mPerformanceController.setEmbeddedMode(EmbeddedMode.isBaseModeEnable(mEmbeddedMode));
+
     mEnableReuseEngine = EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mTemplateBundle != null;
 
     mThreadStrategyForRendering = mLynxViewConfigProvider.getThreadStrategy();
@@ -338,7 +341,6 @@ public class LynxTemplateRender
 
     if (mBodyView != null) {
       mBodyView.setTimingCollector(mPerformanceController);
-      mPerformanceController.setEnableController(!EmbeddedMode.isBaseModeEnable(mEmbeddedMode));
     }
     mLynxRuntimeOptions = mLynxViewConfigProvider.getLynxRuntimeOptions();
 
@@ -858,7 +860,7 @@ public class LynxTemplateRender
         || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     setUpMainThreadModuleFactory();
     mNativePtr = nativeCreate(runtimeWrapperPtr, mNativeFacade,
-        mPerformanceController.isEnableController() ? mPerformanceController : null, mLoader,
+        mPerformanceController.isEmbeddedMode() ? null : mPerformanceController, mLoader,
         mThreadStrategyForRendering.id(), mLynxViewConfigProvider.isEnableLayoutSafepoint(),
         mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
         screenMetrics.density, LynxEnv.inst().getLocale(), mLynxViewBuilder.isEnableJSRuntime(),
@@ -1408,6 +1410,9 @@ public class LynxTemplateRender
 
     TimingOption timingOption = TimingOption.createTimingOption(
         TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+    if (mPerformanceController.isEmbeddedMode()) {
+      mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+    }
     this.prepareLynxEngineIfNeeded();
     if (mNativePtr != 0) {
       loadTemplate(template, initData, getTemplateUrl(), new TASMCallback(), timingOption);
@@ -1430,6 +1435,9 @@ public class LynxTemplateRender
 
     TimingOption timingOption = TimingOption.createTimingOption(
         TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+    if (mPerformanceController.isEmbeddedMode()) {
+      mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+    }
     this.prepareLynxEngineIfNeeded();
     if (mNativePtr != 0) {
       loadTemplate(template, templateData, getTemplateUrl(), new TASMCallback(), timingOption);
@@ -1488,6 +1496,9 @@ public class LynxTemplateRender
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE);
     TimingOption timingOption = TimingOption.createTimingOption(
         TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+    if (mPerformanceController.isEmbeddedMode()) {
+      mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+    }
     setUrl(baseUrl);
     this.prepareLynxEngineIfNeeded();
     LLog.i(TAG, formatLynxMessage("renderTemplate"));
@@ -1542,6 +1553,9 @@ public class LynxTemplateRender
 
     TimingOption timingOption = TimingOption.createTimingOption(
         TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+    if (mPerformanceController.isEmbeddedMode()) {
+      mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+    }
     setUrl(metaData.getUrl());
     renderWithLoadMeta(metaData, timingOption);
     LLog.i(TAG, formatLynxMessage("renderTemplate"));
@@ -2577,6 +2591,9 @@ public class LynxTemplateRender
             // if loading with LynxLoadMeta.
             TimingOption timingOption = TimingOption.createTimingOption(
                 TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+            if (mPerformanceController.isEmbeddedMode()) {
+              mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+            }
             metaData.binaryData = template;
             renderWithLoadMeta(metaData, timingOption);
           }
@@ -2611,6 +2628,9 @@ public class LynxTemplateRender
       }
       TimingOption timingOption = TimingOption.createTimingOption(
           TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+      if (mPerformanceController.isEmbeddedMode()) {
+        mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+      }
       meta.byteBuffer = buffer;
       renderWithLoadMeta(metaData, timingOption);
     }
@@ -2646,6 +2666,9 @@ public class LynxTemplateRender
         // if loading with LynxLoadMeta.
         TimingOption timingOption = TimingOption.createTimingOption(
             TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+        if (mPerformanceController.isEmbeddedMode()) {
+          mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+        }
         metaData.bundle = templateBundle;
         renderWithLoadMeta(metaData, timingOption);
       }
