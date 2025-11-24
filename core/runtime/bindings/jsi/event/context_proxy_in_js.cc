@@ -145,7 +145,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
             }
 
             auto message_event = CreateMessageEvent(rt, app, event);
-            auto result = DispatchEvent(*message_event);
+            auto result = DispatchEvent(std::move(message_event));
             return piper::Value(static_cast<int>(result.cancel_type));
           } else if (type == PropType::kAddEventListener) {
             if (count < 2) {

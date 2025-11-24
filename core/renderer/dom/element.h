@@ -732,7 +732,7 @@ class Element : public lepus::RefCounted,
 
   bool IsEventBubbleCatch(const std::string& event) override;
 
-  virtual void HandleGlobalEvent(event::Event& event) override;
+  virtual void HandleGlobalEvent(fml::RefPtr<event::Event> event) override;
 
   virtual bool GetEnableMultiTouchParamsCompatible() override;
 

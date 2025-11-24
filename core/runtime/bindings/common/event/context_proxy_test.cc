@@ -37,10 +37,10 @@ event::DispatchEventResult MockContextProxyDelegate::DispatchMessageEvent(
   event_vec_.emplace_back(MessageEvent::ShallowCopy(*event));
   if (event->GetTargetType() == ContextProxy::Type::kJSContext) {
     auto target = proxy_map_in_js_[event->GetOriginType()].get();
-    target->DispatchEvent(*event);
+    target->DispatchEvent(event);
   } else if (event->GetTargetType() == ContextProxy::Type::kCoreContext) {
     auto target = proxy_map_in_lepus_[event->GetOriginType()].get();
-    target->DispatchEvent(*event);
+    target->DispatchEvent(event);
   } else {
     return {event::EventCancelType::kCanceledBeforeDispatch, false};
   }

@@ -30,7 +30,7 @@ class ContextProxyInLepus : public runtime::ContextProxy {
   virtual void PostMessage(const lepus::Value& message) override;
 
   virtual event::DispatchEventResult DispatchEvent(
-      event::Event& event) override;
+      fml::RefPtr<event::Event> event) override;
 
  protected:
   void EnsureListenerBeforePublishEvent();

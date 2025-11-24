@@ -3360,7 +3360,7 @@ void TemplateAssembler::OnReceiveMessageEvent(
   if (proxy == nullptr) {
     return;
   }
-  proxy->DispatchEvent(*event);
+  proxy->DispatchEvent(event);
 }
 
 ContextProxyInLepus* TemplateAssembler::GetContextProxy(

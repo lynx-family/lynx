@@ -1182,7 +1182,7 @@ RENDERER_FUNCTION_CC(DispatchEvent) {
   }
 
   auto event = context_proxy->CreateMessageEvent(*arg0);
-  context_proxy->DispatchEvent(*event);
+  context_proxy->DispatchEvent(std::move(event));
 
   RETURN_UNDEFINED();
 }
@@ -1810,7 +1810,7 @@ RENDERER_FUNCTION_CC(SetDataSetTo) {
 
 RENDERER_FUNCTION_CC(SetStaticEventTo) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, SET_STATIC_EVENT_TO);
-  CHECK_ARGC_EQ(SetDataSetTo, 4);
+  CHECK_ARGC_EQ(SetStaticEventTo, 4);
   CONVERT_ARG_AND_CHECK(arg0, 0, CPointer, SetStaticEventTo);
   CONVERT_ARG_AND_CHECK(arg1, 1, String, SetStaticEventTo);
   CONVERT_ARG_AND_CHECK(arg2, 2, String, SetStaticEventTo);
@@ -2263,8 +2263,8 @@ RENDERER_FUNCTION_CC(RegisterDataProcessor) {
 RENDERER_FUNCTION_CC(AddEventListener) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADD_EVENT_LISTENER);
   DCHECK(ARGC() == 2);
-  CONVERT_ARG_AND_CHECK(arg0, 0, String, RegisterDataProcessor);
-  CONVERT_ARG_AND_CHECK(arg1, 1, Callable, RegisterDataProcessor);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, AddEventListener);
+  CONVERT_ARG_AND_CHECK(arg1, 1, Callable, AddEventListener);
   auto* tasm = GET_TASM_POINTER();
   tasm->SetLepusEventListener(arg0->StdString(), *arg1);
   RETURN_UNDEFINED();
