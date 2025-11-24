@@ -32,6 +32,7 @@ import com.lynx.tasm.performance.memory.IMemoryRecordBuilder;
 import com.lynx.tasm.performance.memory.MemoryRecord;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter;
+import com.lynx.tasm.performance.timing.EmbeddedTimingCollector;
 import com.lynx.tasm.performance.timing.ITimingCollector;
 import com.lynx.tasm.service.ILynxEventReporterService;
 import com.lynx.tasm.service.LynxServiceCenter;
@@ -51,14 +52,37 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private static volatile boolean sIsNativeLibraryLoaded = false;
   private static volatile LynxBooleanOption sIsMemoryMonitorEnabled = LynxBooleanOption.UNSET;
   private static volatile long sMemoryAcquisitionDelaySec = -1;
+  private EmbeddedTimingCollector mEmbeddedTimingCollector;
   private volatile long mNativePerformanceActorPtr = 0;
   private WeakReference<IPerformanceObserver> mObserver;
   private WeakReference<ILynxEventReporterService> mEventReporterService;
-  private boolean mEnableController = true;
+  private boolean mUseEmbeddedMode = false;
   private JavaOnlyMap mHostPlatformTiming;
   private JavaOnlyArray mPendingPaintEndPipelineIds = new JavaOnlyArray();
   private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
   private FSPTracer mFSPTracer = null;
+
+  /**
+   * Set embedded mode
+   * @param useEmbeddedMode true to use embedded mode, false for standard mode
+   */
+  public void setEmbeddedMode(boolean useEmbeddedMode) {
+    mUseEmbeddedMode = useEmbeddedMode;
+  }
+
+  public boolean isEmbeddedMode() {
+    return mUseEmbeddedMode;
+  }
+
+  /**
+   * Ensure embedded collector is initialized if in embedded mode
+   */
+  private void ensureEmbeddedCollectorInitialized() {
+    if (isEmbeddedMode() && mEmbeddedTimingCollector == null) {
+      mEmbeddedTimingCollector = new EmbeddedTimingCollector();
+      mEmbeddedTimingCollector.setObserver(mObserver);
+    }
+  }
 
   /**
    * Checks if memory monitoring is enabled.
@@ -98,17 +122,9 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   public void setPerformanceObserver(IPerformanceObserver observer) {
     mObserver = new WeakReference<>(observer);
-  }
-
-  public boolean isEnableController() {
-    return mEnableController;
-  }
-
-  /**
-   * Call this interface to disable performance monitoring only in Embedded Mode.
-   */
-  public void setEnableController(boolean enableController) {
-    mEnableController = enableController;
+    if (mEmbeddedTimingCollector != null) {
+      mEmbeddedTimingCollector.setObserver(mObserver);
+    }
   }
 
   public void setInstanceId(int instanceId) {
@@ -117,7 +133,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @Override
   public void allocateMemory(IMemoryRecordBuilder builder) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     if (builder == null) {
@@ -135,7 +151,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @Override
   public void deallocateMemory(IMemoryRecordBuilder builder) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     if (builder == null) {
@@ -153,7 +169,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @Override
   public void updateMemoryUsage(IMemoryRecordBuilder builder) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     if (builder == null) {
@@ -190,7 +206,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @Override
   public void updateMemoryUsage(Map<String, MemoryRecord> recordMap) {
-    if (!mEnableController || recordMap == null) {
+    if (isEmbeddedMode() || recordMap == null) {
       return;
     }
     runOnReportThread(() -> {
@@ -210,7 +226,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @Override
   public void setMsTiming(String key, long msTimestamp, String pipelineID) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     runOnReportThread(() -> {
@@ -223,11 +239,13 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @Override
   public void markTiming(final String key, final String pipelineID) {
-    if (!mEnableController) {
-      return;
-    }
     long usTimestamp = currentSystemTimeMicroseconds();
     makeTraceEventInstant(MARK_TIMING, key, usTimestamp, pipelineID);
+    if (isEmbeddedMode()) {
+      ensureEmbeddedCollectorInitialized();
+      mEmbeddedTimingCollector.markTiming(key, usTimestamp);
+      return;
+    }
     runOnReportThread(() -> {
       if (mNativePerformanceActorPtr == 0) {
         return;
@@ -239,7 +257,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   @Override
   @UiThread
   public void markHostPlatformTiming(final String key) {
-    if (!mEnableController || !UIThreadUtils.isOnUiThread() || mPendingPaintEndPipelineIds.isEmpty()
+    if (isEmbeddedMode() || !UIThreadUtils.isOnUiThread() || mPendingPaintEndPipelineIds.isEmpty()
         || key == null) {
       return;
     }
@@ -262,8 +280,17 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   @Override
   @UiThread
   public void markPaintEndTimingIfNeeded() {
-    if (!mEnableController || !UIThreadUtils.isOnUiThread()
-        || mPendingPaintEndPipelineIds.isEmpty()) {
+    if (isEmbeddedMode()) {
+      ensureEmbeddedCollectorInitialized();
+      if (mEmbeddedTimingCollector.hasEmitTimingEvent()) {
+        return;
+      }
+      long usTimestamp = currentSystemTimeMicroseconds();
+      makeTraceEventInstant(MARK_TIMING, TIMING_KEY_PAINT_END, usTimestamp, "");
+      mEmbeddedTimingCollector.markTiming(TIMING_KEY_PAINT_END, usTimestamp);
+      return;
+    }
+    if (!UIThreadUtils.isOnUiThread() || mPendingPaintEndPipelineIds.isEmpty()) {
       return;
     }
     long usTimestamp = currentSystemTimeMicroseconds();
@@ -284,7 +311,8 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   @Override
   @UiThread
   public void setNeedMarkPaintEndTiming(String pipelineId) {
-    if (!mEnableController || !UIThreadUtils.isOnUiThread()) {
+    if (isEmbeddedMode() || !UIThreadUtils.isOnUiThread()) {
+      // Embedded mode: no PaintEnd timing needed after fcp
       return;
     }
     mPendingPaintEndPipelineIds.add(pipelineId);
@@ -292,7 +320,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   public void setFSPTimingInfo(long usTimestamp, Map<String, String> detail) {
     // TODO(limeng.amer): implemant by jni.
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     runOnReportThread(() -> {
@@ -304,7 +332,8 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   }
 
   public void setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
+      // Embedded mode: no extra timing needed
       return;
     }
     runOnReportThread(() -> {
@@ -336,7 +365,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @CalledByNative
   protected void setNativePtr(long nativePtr) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     mNativePerformanceActorPtr = nativePtr;
@@ -344,7 +373,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @CalledByNative
   protected void onPerformanceEvent(ReadableMap entryMap) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     IPerformanceObserver observer = mObserver.get();
@@ -368,7 +397,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @AnyThread
   private void runOnReportThread(Runnable runnable) {
-    if (!mEnableController) {
+    if (isEmbeddedMode()) {
       return;
     }
     LynxEventReporter.runOnReportThread(runnable);

@@ -11,6 +11,7 @@ public class TimingConstants {
   public static final String VERIFY_TASM_START = "verifyTasmStart";
   public static final String VERIFY_TASM_END = "verifyTasmEnd";
   public static final String FFI_START = "ffiStart";
+  public static final String PAINT_END = "paintEnd";
   // Host Platform Timing Keys
   public static final String HOST_PLATFORM_MEASURE_START = "measureStart";
   public static final String HOST_PLATFORM_MEASURE_END = "measureEnd";
