@@ -326,6 +326,8 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   // reduce runtime overheads.
   bool ToVarReference();
 
+  using TriviallyRelocatable = bool;
+
  private:
   class CycleDetector;
   friend class Unsafe;

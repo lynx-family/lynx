@@ -51,8 +51,7 @@ HANDLER_IMPL() {
     // Insertion happened, key is not found in output but a default CSSValue is
     // constructed in output map and pointed to by existing.first iterator.
     // We parse directly to the value instance in map.
-    if (UNLIKELY(
-            !_Process(input, existing.first->second, configs, is_text_color))) {
+    if (UNLIKELY(!_Process(input, *existing.first, configs, is_text_color))) {
       // Erase the inserted one to restore output map to original state.
       output.erase(key);
       goto fail;
@@ -61,8 +60,7 @@ HANDLER_IMPL() {
     // Found existing key, but the parsing may fail and we should not changed
     // the existing value. So use Process it will not change
     // `existing.first->second` if parsing failed.
-    if (UNLIKELY(
-            !Process(input, existing.first->second, configs, is_text_color))) {
+    if (UNLIKELY(!Process(input, *existing.first, configs, is_text_color))) {
       goto fail;
     }
   }

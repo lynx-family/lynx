@@ -1589,6 +1589,7 @@ struct MapStatisticsBase<false> {
 
 BASE_VECTOR_HAS_MEMBER_OF_NAME(use_hash);
 BASE_VECTOR_HAS_MEMBER_OF_NAME(consecutive_key);
+BASE_VECTOR_HAS_MEMBER_OF_NAME(assign_existing_for_merge);
 BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(hash);
 BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal);
 BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal_when_hash_equal);
@@ -1736,6 +1737,94 @@ struct MapKeyPolicyConsecutiveIntegers {
   using hash = ReducedHash<K>;
   using equal = std::equal_to<K>;
   using equal_when_hash_equal = typename hash::AlwaysEqualWhenHashEqual;
+
+  template <class T, bool Const>
+  struct Reference {
+    using key_iterator = const KeyPolicyReducedHashValueType*;
+    using value_iterator = std::conditional_t<Const, const T*, T*>;
+    using value_reference = std::conditional_t<Const, const T&, T&>;
+
+    // Mimic the behavior of ordinary value type `std::pair<K, T>`.
+    const K& first;
+    value_reference second;
+
+    Reference(key_iterator key_it, value_iterator value_it)
+        : first(*reinterpret_cast<const K*>(key_it)), second(*value_it) {}
+  };
+
+  template <class T, bool Const>
+  struct RangeLoopIterator {
+    using key_iterator = const KeyPolicyReducedHashValueType*;
+    using value_iterator = std::conditional_t<Const, const T*, T*>;
+    using value_reference = std::conditional_t<Const, const T&, T&>;
+
+    struct PointerView {
+      key_iterator first;
+      value_iterator second;
+    };
+
+    // Mimic the behavior of ordinary value type `std::pair<K, T>`.
+    const K& first;
+    value_reference second;
+
+    RangeLoopIterator(key_iterator key_it, value_iterator value_it)
+        : first(*reinterpret_cast<const K*>(key_it)), second(*value_it) {}
+    RangeLoopIterator(const RangeLoopIterator& other)
+        : first(other.first), second(other.second) {}
+    RangeLoopIterator& operator=(const RangeLoopIterator& other) {
+      *reinterpret_cast<PointerView*>(this) =
+          *reinterpret_cast<const PointerView*>(&other);
+      return *this;
+    }
+
+    RangeLoopIterator& operator*() { return *this; }
+    const RangeLoopIterator& operator*() const { return *this; }
+
+    RangeLoopIterator* operator->() { return this; }
+    const RangeLoopIterator* operator->() const { return this; }
+
+    operator std::pair<const K, T>() const { return {first, second}; }
+
+    RangeLoopIterator& operator++() {
+      reinterpret_cast<PointerView*>(this)->first++;
+      reinterpret_cast<PointerView*>(this)->second++;
+      return *this;
+    }
+
+    RangeLoopIterator operator++(int) {
+      RangeLoopIterator t(*this);
+      ++(*this);
+      return t;
+    }
+
+    friend bool operator==(const RangeLoopIterator& x, const T* y) {
+      return &x.second == y;
+    }
+
+    friend bool operator==(const T* x, const RangeLoopIterator& y) {
+      return x == &y.second;
+    }
+
+    friend bool operator!=(const RangeLoopIterator& x, const T* y) {
+      return &x.second != y;
+    }
+
+    friend bool operator!=(const T* x, const RangeLoopIterator& y) {
+      return x != &y.second;
+    }
+
+    friend bool operator==(const RangeLoopIterator& x,
+                           const RangeLoopIterator& y) {
+      return &x.second == &y.second;
+    }
+
+    friend bool operator!=(const RangeLoopIterator& x,
+                           const RangeLoopIterator& y) {
+      return &x.second != &y.second;
+    }
+
+    value_iterator value_it() const { return &second; }
+  };
 };
 
 /**
@@ -1761,6 +1850,11 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
       return false;
     }
   }
+
+  template <typename AnyType>
+  struct type_identity {
+    using type = AnyType;
+  };
 
  public:
   static constexpr auto is_map = !std::is_void_v<T>;
@@ -1860,6 +1954,59 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
 
+ private:
+  // For maps with Consecutive-Key policy enabled, since the key and value are
+  // separate, special iterators are used for the begin() and end() methods, and
+  // access to the key and value is provided through it.first() and it.second().
+  template <bool Const>
+  struct RangeLoopIteratorHelper {
+    static auto select() {
+      if constexpr (is_map && consecutive_key) {
+        return type_identity<
+            typename KeyPolicy::template RangeLoopIterator<T, Const>>{};
+      } else {
+        return type_identity<
+            std::conditional_t<Const, const_iterator, iterator>>{};
+      }
+    }
+  };
+
+  template <bool Const>
+  struct ReferenceHelper {
+    static auto select() {
+      if constexpr (is_map) {
+        if constexpr (consecutive_key) {
+          return type_identity<
+              typename KeyPolicy::template Reference<T, Const>>{};
+        } else {
+          return type_identity<
+              std::conditional_t<Const, const value_type&, value_type&>>{};
+        }
+      } else {
+        return type_identity<const value_type&>{};
+      }
+    }
+  };
+
+ public:
+  using range_loop_iterator =
+      typename decltype(RangeLoopIteratorHelper<false>::select())::type;
+  using range_loop_const_iterator =
+      typename decltype(RangeLoopIteratorHelper<true>::select())::type;
+
+  using reference_type =
+      typename decltype(ReferenceHelper<false>::select())::type;
+  using const_reference_type =
+      typename decltype(ReferenceHelper<true>::select())::type;
+
+ protected:
+  // To accommodate the Consecutive-Key feature, the begin() and end() method
+  // return a range_loop_iterator.
+  iterator value_begin() { return array().begin(); }
+  const_iterator value_begin() const { return array().begin(); }
+  iterator value_end() { return array().end(); }
+  const_iterator value_end() const { return array().end(); }
+
  public:
   KeyValueArray() {}
 
@@ -1915,17 +2062,77 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
 
   bool reserve(size_t count) { return array_.reserve(count); }
 
-  iterator begin() { return array().begin(); }
+  reference_type front() {
+    if constexpr (is_map && consecutive_key) {
+      return reference_type(_key_hash_data(), array().begin());
+    } else {
+      return array().front();
+    }
+  }
 
-  const_iterator begin() const { return array().begin(); }
+  const_reference_type front() const {
+    if constexpr (is_map && consecutive_key) {
+      return const_reference_type(_key_hash_data(), array().begin());
+    } else {
+      return array().front();
+    }
+  }
+
+  reference_type back() {
+    if constexpr (is_map && consecutive_key) {
+      return reference_type(&_key_hash_data()[array().size() - 1],
+                            &array().back());
+    } else {
+      return array().back();
+    }
+  }
+
+  const_reference_type back() const {
+    if constexpr (is_map && consecutive_key) {
+      return const_reference_type(&_key_hash_data()[array().size() - 1],
+                                  &array().back());
+    } else {
+      return array().back();
+    }
+  }
+
+  range_loop_iterator begin() {
+    if constexpr (is_map && consecutive_key) {
+      return range_loop_iterator(_key_hash_data(), array().begin());
+    } else {
+      return array().begin();
+    }
+  }
+
+  range_loop_const_iterator begin() const {
+    if constexpr (is_map && consecutive_key) {
+      return range_loop_const_iterator(_key_hash_data(), array().begin());
+    } else {
+      return array().begin();
+    }
+  }
 
   const_iterator cbegin() const { return array().cbegin(); }
 
-  iterator end() { return array().end(); }
+  range_loop_iterator end() {
+    if constexpr (is_map && consecutive_key) {
+      // RangeLoopIterator only compares value iterator.
+      return range_loop_iterator(nullptr, array().end());
+    } else {
+      return array().end();
+    }
+  }
 
   const_iterator cend() const { return array().cend(); }
 
-  const_iterator end() const { return array().end(); }
+  range_loop_const_iterator end() const {
+    if constexpr (is_map && consecutive_key) {
+      // RangeLoopIterator only compares value iterator.
+      return range_loop_const_iterator(nullptr, array().end());
+    } else {
+      return array().end();
+    }
+  }
 
   reverse_iterator rbegin() { return array().rbegin(); }
 
@@ -1945,7 +2152,7 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
   iterator erase(It pos) {
     IncreaseEraseCount();
     if constexpr (is_key_hash) {
-      _erase_key_hash(pos - begin());
+      _erase_key_hash(pos - value_begin());
     }
     if constexpr (std::is_same_v<It, iterator>) {
       return reinterpret_cast<iterator>(
@@ -1953,6 +2160,26 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
     } else {
       return reinterpret_cast<iterator>(
           array_.erase(reinterpret_cast<const_store_iterator>(pos)));
+    }
+  }
+
+  // For usage of `map.erase(map.begin());` when map is using
+  // MapKeyPolicyConsecutiveIntegers.
+  template <typename It, typename = std::enable_if_t<
+                             (is_map && consecutive_key) &&
+                             (std::is_same_v<It, range_loop_iterator> ||
+                              std::is_same_v<It, range_loop_const_iterator>)>>
+  iterator erase(const It& pos) {
+    IncreaseEraseCount();
+    if constexpr (is_key_hash) {
+      _erase_key_hash(pos.value_it() - value_begin());
+    }
+    if constexpr (std::is_same_v<It, range_loop_iterator>) {
+      return reinterpret_cast<iterator>(
+          array_.erase(reinterpret_cast<store_iterator>(pos.value_it())));
+    } else {
+      return reinterpret_cast<iterator>(
+          array_.erase(reinterpret_cast<const_store_iterator>(pos.value_it())));
     }
   }
 
@@ -2292,6 +2519,14 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
     }
   };
 
+  static constexpr bool get_assign_existing_for_merge() {
+    if constexpr (has_assign_existing_for_merge_member_v<KeyPolicy>) {
+      return KeyPolicy::assign_existing_for_merge;
+    } else {
+      return false;
+    }
+  }
+
  protected:
   template <class K2, class T2, class KeyPolicy2, size_t N2, bool Stat2>
   friend struct LinearSearchArray;
@@ -2305,8 +2540,13 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::array_;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::_swap;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::_key_hash_data;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::value_begin;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::value_end;
 
  public:
+  static constexpr auto assign_existing_for_merge =
+      get_assign_existing_for_merge();
+
   using key_compare = void;
   using key_equal =
       typename decltype(KeyPolicyEqualHelper<
@@ -2316,6 +2556,7 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
                         has_equal_when_hash_equal_member_v<KeyPolicy>>::
                             select())::type;
   using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::key_extractor;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::value_extractor;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::is_key_hash;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::consecutive_key;
   using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::insert_value_type;
@@ -2326,9 +2567,13 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
   using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::iterator;
   using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::const_iterator;
   using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::store_iterator;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::range_loop_iterator;
+  using typename KeyValueArray<K, T, KeyPolicy, N,
+                               Stat>::range_loop_const_iterator;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::begin;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::end;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::erase;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::empty;
 
  protected:
   inline static KeyPolicyReducedHashValueType _reduced_key_hash(const K& key) {
@@ -2673,7 +2918,7 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
     }
   }
 
-  iterator find(const K& key) {
+  range_loop_iterator find(const K& key) {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     iterator pos;
     if constexpr (is_key_hash) {
@@ -2683,13 +2928,18 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
       pos = find_exact(key);
     }
     if (pos != nullptr) {
-      return pos;
+      if constexpr (is_map && consecutive_key) {
+        return range_loop_iterator(_key_hash_data() + (pos - value_begin()),
+                                   pos);
+      } else {
+        return pos;
+      }
     } else {
       return end();
     }
   }
 
-  const_iterator find(const K& key) const {
+  range_loop_const_iterator find(const K& key) const {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     iterator pos;
     if constexpr (is_key_hash) {
@@ -2699,7 +2949,12 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
       pos = find_exact(key);
     }
     if (pos != nullptr) {
-      return pos;
+      if constexpr (is_map && consecutive_key) {
+        return range_loop_const_iterator(
+            _key_hash_data() + (pos - value_begin()), pos);
+      } else {
+        return pos;
+      }
     } else {
       return end();
     }
@@ -2723,10 +2978,33 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
   }
 
   template <size_t N2>
+  void merge(const LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) {
+    merge(const_cast<LinearSearchArray<K, T, KeyPolicy, N2, Stat>&>(other));
+  }
+
+  template <size_t N2>
   void merge(LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) {
     auto& other_array = other.array_;
-    const auto* other_key_hash_data = other._key_hash_data();
-    for (intptr_t i = other_array.size() - 1; i >= 0; i--) {
+    if (empty()) {
+      // Fast path when self is empty.
+      if constexpr (assign_existing_for_merge) {
+        array_ = other_array;
+      } else {
+        array_ = std::move(other_array);
+      }
+      return;
+    }
+
+    [[maybe_unused]] const KeyPolicyReducedHashValueType* other_key_hash_data;
+    if constexpr (is_key_hash) {
+      other_key_hash_data = other._key_hash_data();
+    }
+    // LinearSearchArray has an implicit property: the iteration order is
+    // consistent with the data insertion order. To ensure this property is not
+    // violated, the `other` container must also be traversed from front to back
+    // during the `merge` operation.
+    size_t other_size = other_array.size();
+    for (size_t i = 0; i < other_size;) {
       auto& object = other_array[i];
       [[maybe_unused]] KeyPolicyReducedHashValueType hash;
       iterator pos;
@@ -2740,14 +3018,32 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
       } else {
         pos = find_exact(key_extractor()(object));
       }
-      if (pos == nullptr) {
-        array_.emplace_back(std::move(object));
-        if constexpr (is_key_hash) {
-          // Store hash value after array insertion because array may expand.
-          _key_hash_data()[array_.size() - 1] = hash;
+      if constexpr (assign_existing_for_merge) {
+        // If KeyPolicy specifies assign_existing_for_merge as true, for data
+        // that already exists in this, do assignment and do not modify other.
+        if (pos == nullptr) {
+          array_.emplace_back(object);
+          if constexpr (is_key_hash) {
+            // Store hash value after array insertion because array may expand.
+            _key_hash_data()[array_.size() - 1] = hash;
+          }
+        } else if constexpr (is_map) {
+          value_extractor()(*pos) = value_extractor()(object);
         }
-        other.erase(other.begin() + i);
+      } else {
+        // Behavior like std::unordered_map, splice from other.
+        if (pos == nullptr) {
+          array_.emplace_back(std::move(object));
+          if constexpr (is_key_hash) {
+            // Store hash value after array insertion because array may expand.
+            _key_hash_data()[array_.size() - 1] = hash;
+          }
+          other.erase(other.value_begin() + i);
+          other_size--;
+          continue;
+        }
       }
+      i++;
     }
   }
 
@@ -2915,25 +3211,17 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
 
   template <class U>
   T& operator[](U&& key) {
-    return try_insert(std::forward<U>(key))->second;
+    return try_insert(std::forward<U>(key)).first->second;
   }
 
-  T& at(const K& key) {
-    RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = lower_bound(key);
-    if (BASE_VECTOR_LIKELY(pos != end() && key_extractor()(*pos) == key)) {
-      return pos->second;
-    }
-    ::abort();  // Always nothrow
+  template <class U>
+  T& at(U&& key) {
+    return try_insert(std::forward<U>(key)).first->second;
   }
 
-  const T& at(const K& key) const {
-    RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = lower_bound(key);
-    if (BASE_VECTOR_LIKELY(pos != end() && key_extractor()(*pos) == key)) {
-      return pos->second;
-    }
-    ::abort();  // Always nothrow
+  template <class U>
+  std::pair<iterator, bool> insert_default_if_absent(U&& key) {
+    return try_insert(std::forward<U>(key));
   }
 
   template <class V>
@@ -3004,6 +3292,43 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
     }
   }
 
+  template <class... Args>
+  std::pair<iterator, bool> emplace_or_assign(const K& key, Args&&... args) {
+    auto pos = lower_bound(key);
+    if (pos != end() && key_extractor()(*pos) == key) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      pos->second.~T();
+      new (&(pos->second)) T(std::forward<Args>(args)...);
+      return {pos, false};
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      return {reinterpret_cast<iterator>(array_.emplace(
+                  reinterpret_cast<store_iterator>(pos),
+                  std::piecewise_construct, std::forward_as_tuple(key),
+                  std::forward_as_tuple(std::forward<Args>(args)...))),
+              true};
+    }
+  }
+
+  template <class... Args>
+  std::pair<iterator, bool> emplace_or_assign(K&& key, Args&&... args) {
+    auto pos = lower_bound(key);
+    if (pos != end() && key_extractor()(*pos) == key) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      pos->second.~T();
+      new (&(pos->second)) T(std::forward<Args>(args)...);
+      return {pos, false};
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      return {
+          reinterpret_cast<iterator>(array_.emplace(
+              reinterpret_cast<store_iterator>(pos), std::piecewise_construct,
+              std::forward_as_tuple(std::move(key)),
+              std::forward_as_tuple(std::forward<Args>(args)...))),
+          true};
+    }
+  }
+
   template <class U, class... Args>
   std::pair<iterator, bool> try_emplace(U&& key, Args&&... args) {
     return emplace(std::forward<U>(key), std::forward<Args>(args)...);
@@ -3042,30 +3367,38 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   }
 
  protected:
-  iterator try_insert(const K& key) {
+  std::pair<iterator, bool> try_insert(const K& key) {
+    std::pair<iterator, bool> result;
     auto pos = lower_bound(key);
     if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return pos;
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return reinterpret_cast<iterator>(array_.emplace(
-          reinterpret_cast<store_iterator>(pos), std::piecewise_construct,
-          std::forward_as_tuple(key), std::tuple<>()));
+      result = {
+          reinterpret_cast<iterator>(array_.emplace(
+              reinterpret_cast<store_iterator>(pos), std::piecewise_construct,
+              std::forward_as_tuple(key), std::tuple<>())),
+          true};
     }
+    return result;
   }
 
-  iterator try_insert(K&& key) {
+  std::pair<iterator, bool> try_insert(K&& key) {
+    std::pair<iterator, bool> result;
     auto pos = lower_bound(key);
     if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return pos;
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return reinterpret_cast<iterator>(array_.emplace(
-          reinterpret_cast<store_iterator>(pos), std::piecewise_construct,
-          std::forward_as_tuple(std::move(key)), std::tuple<>()));
+      result = {
+          reinterpret_cast<iterator>(array_.emplace(
+              reinterpret_cast<store_iterator>(pos), std::piecewise_construct,
+              std::forward_as_tuple(std::move(key)), std::tuple<>())),
+          true};
     }
+    return result;
   }
 };
 
@@ -3214,37 +3547,37 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
 
   template <class U>
   T& operator[](U&& key) {
-    return value_extractor()(*try_insert(std::forward<U>(key)));
+    return value_extractor()(*try_insert(std::forward<U>(key)).first);
   }
 
-  T& at(const K& key) {
-    RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    iterator pos;
-    if constexpr (is_key_hash) {
-      auto hash = _reduced_key_hash(key);
-      pos = find_exact(key, hash);  // find with hash value
-    } else {
-      pos = find_exact(key);
-    }
-    if (BASE_VECTOR_LIKELY(pos != nullptr)) {
-      return value_extractor()(*pos);
-    }
-    ::abort();  // Always nothrow
+  template <class U>
+  T& at(U&& key) {
+    return value_extractor()(*try_insert(std::forward<U>(key)).first);
   }
 
-  const T& at(const K& key) const {
-    RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    iterator pos;
-    if constexpr (is_key_hash) {
-      auto hash = _reduced_key_hash(key);
-      pos = find_exact(key, hash);  // find with hash value
-    } else {
-      pos = find_exact(key);
+  template <class U>
+  std::pair<iterator, bool> insert_default_if_absent(U&& key) {
+    return try_insert(std::forward<U>(key));
+  }
+
+  template <class U>
+  std::pair<iterator, bool> insert_if_absent(U&& key, const T& obj) {
+    auto result = try_insert(std::forward<U>(key));
+    if (result.second) {
+      // Insertion took place and that means key not exists before.
+      value_extractor()(*result.first) = obj;
     }
-    if (BASE_VECTOR_LIKELY(pos != nullptr)) {
-      return value_extractor()(*pos);
+    return result;
+  }
+
+  template <class U>
+  std::pair<iterator, bool> insert_if_absent(U&& key, T&& obj) {
+    auto result = try_insert(std::forward<U>(key));
+    if (result.second) {
+      // Insertion took place and that means key not exists before.
+      value_extractor()(*result.first) = std::move(obj);
     }
-    ::abort();  // Always nothrow
+    return result;
   }
 
   template <class V>
@@ -3471,6 +3804,83 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
     return result;
   }
 
+  template <class... Args>
+  std::pair<iterator, bool> emplace_or_assign(const K& key, Args&&... args) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      auto& v = value_extractor()(*pos);
+      v.~T();
+      new (&v) T(std::forward<Args>(args)...);
+      result = {pos, false};
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::forward<Args>(args)...)),
+                  true};
+      } else {
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct, std::forward_as_tuple(key),
+                      std::forward_as_tuple(std::forward<Args>(args)...))),
+                  true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
+    }
+    return result;
+  }
+
+  template <class... Args>
+  std::pair<iterator, bool> emplace_or_assign(K&& key, Args&&... args) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      auto& v = value_extractor()(*pos);
+      v.~T();
+      new (&v) T(std::forward<Args>(args)...);
+      result = {pos, false};
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::forward<Args>(args)...)),
+                  true};
+      } else {
+        result = {
+            reinterpret_cast<iterator>(&array_.emplace_back(
+                std::piecewise_construct, std::forward_as_tuple(std::move(key)),
+                std::forward_as_tuple(std::forward<Args>(args)...))),
+            true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
+    }
+    return result;
+  }
+
   template <class U, class... Args>
   std::pair<iterator, bool> try_emplace(U&& key, Args&&... args) {
     return emplace(std::forward<U>(key), std::forward<Args>(args)...);
@@ -3652,11 +4062,11 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
     bool equal = true;
     for_each([&](const K& k, const T& v) -> bool {
       auto it = other.find(k);
-      if (it == other.end()) {
+      if (it == other.value_end()) {
         equal = false;
         return true;  // stop
       }
-      if (value_extractor()(*it) != v) {
+      if (it->second != v) {
         equal = false;
         return true;  // stop
       }
@@ -3672,7 +4082,7 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
   }
 
  protected:
-  iterator try_insert(const K& key) {
+  std::pair<iterator, bool> try_insert(const K& key) {
     [[maybe_unused]] KeyPolicyReducedHashValueType hash;
     iterator pos;
     if constexpr (is_key_hash) {
@@ -3682,26 +4092,29 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
       pos = find_exact(key);
     }
 
+    std::pair<iterator, bool> result;
     if (pos != nullptr) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
       if constexpr (consecutive_key) {
-        pos = reinterpret_cast<iterator>(&array_.emplace_back());
+        result = {reinterpret_cast<iterator>(&array_.emplace_back()), true};
       } else {
-        pos = reinterpret_cast<iterator>(
-            &array_.emplace_back(std::piecewise_construct,
-                                 std::forward_as_tuple(key), std::tuple<>()));
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct, std::forward_as_tuple(key),
+                      std::tuple<>())),
+                  true};
       }
       if constexpr (is_key_hash) {
         // Store hash value after array insertion because array may expand.
         _key_hash_data()[array_.size() - 1] = hash;
       }
     }
-    return pos;
+    return result;
   }
 
-  iterator try_insert(K&& key) {
+  std::pair<iterator, bool> try_insert(K&& key) {
     [[maybe_unused]] KeyPolicyReducedHashValueType hash;
     iterator pos;
     if constexpr (is_key_hash) {
@@ -3711,23 +4124,26 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
       pos = find_exact(key);
     }
 
+    std::pair<iterator, bool> result;
     if (pos != nullptr) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
       if constexpr (consecutive_key) {
-        pos = reinterpret_cast<iterator>(&array_.emplace_back());
+        result = {reinterpret_cast<iterator>(&array_.emplace_back()), true};
       } else {
-        pos = reinterpret_cast<iterator>(&array_.emplace_back(
-            std::piecewise_construct, std::forward_as_tuple(std::move(key)),
-            std::tuple<>()));
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct,
+                      std::forward_as_tuple(std::move(key)), std::tuple<>())),
+                  true};
       }
       if constexpr (is_key_hash) {
         // Store hash value after array insertion because array may expand.
         _key_hash_data()[array_.size() - 1] = hash;
       }
     }
-    return pos;
+    return result;
   }
 };
 
