@@ -101,6 +101,16 @@ constexpr const char kEnableReuseLoadScriptExports[] =
     "enableReuseLoadScriptExports";
 
 /**
+ * @name: enableJSCallbackManager
+ * @description: use js callbackManager for setTimeout, setInterval and other.
+ * @platform: Both
+ * @supportVersion: 3.5
+ **/
+constexpr const char kEnableJSCallbackManager[] = "enableJSCallbackManager";
+
+constexpr const char kInvokeAppMethodName[] = "__invokeAppMethod";
+
+/**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
  * @return true if the given url indicates lynx_core.js.

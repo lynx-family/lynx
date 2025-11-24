@@ -390,18 +390,28 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
-          if (args[0].isObject()) {
+          if (args[0].isObject() || args[0].isNumber()) {
             int interval =
                 (count >= 2 && args[1].isNumber())
                     ? std::max(static_cast<int>(args[1].getNumber()), 0)
                     : 0;
 
-            auto callback = args[0].getObject(rt).asFunction(rt);
-            if (!callback) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "setTimeout args[0] isn't a function."));
+            std::variant<std::unique_ptr<piper::Function>, double>
+                id_or_callback;
+            if (args[0].isObject()) {
+              auto maybe_callback = args[0].getObject(rt);
+              if (!maybe_callback.isFunction(rt)) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "setTimeout args[0] isn't a function."));
+              }
+              auto callback = maybe_callback.getFunction(rt);
+              id_or_callback.emplace<std::unique_ptr<piper::Function>>(
+                  std::make_unique<piper::Function>(std::move(callback)));
+            } else {
+              // number is id
+              id_or_callback.emplace<double>(args[0].getNumber());
             }
-            return native_app->setTimeout(std::move(*callback), interval);
+            return native_app->setTimeout(std::move(id_or_callback), interval);
           } else {
             return piper::Value::undefined();
           }
@@ -422,14 +432,26 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
-          if (args[0].isObject() && args[1].isNumber()) {
-            auto callback = args[0].getObject(rt).asFunction(rt);
-            if (!callback) {
-              return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                  "setInterval args[0] isn't a function."));
+          std::variant<std::unique_ptr<piper::Function>, double> id_or_callback;
+          if ((args[0].isObject() || args[0].isNumber()) &&
+              args[1].isNumber()) {
+            std::variant<std::unique_ptr<piper::Function>, double>
+                id_or_callback;
+            if (args[0].isObject()) {
+              auto maybe_callback = args[0].getObject(rt);
+              if (!maybe_callback.isFunction(rt)) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "setInterval args[0] isn't a function."));
+              }
+              auto callback = maybe_callback.getFunction(rt);
+              id_or_callback.emplace<std::unique_ptr<piper::Function>>(
+                  std::make_unique<piper::Function>(std::move(callback)));
+            } else {
+              // number is id
+              id_or_callback.emplace<double>(args[0].getNumber());
             }
             int interval = std::max(static_cast<int>(args[1].getNumber()), 0);
-            return native_app->setInterval(std::move(*callback), interval);
+            return native_app->setInterval(std::move(id_or_callback), interval);
           } else {
             return piper::Value::undefined();
           }
@@ -2152,7 +2174,11 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
           card_bundle_.enable_microtask_promise_polyfill) ||
       !page_config_subset.setProperty(
           *rt, runtime::kEnableReuseLoadScriptExports,
-          card_bundle_.enable_reuse_load_script_exports)) {
+          card_bundle_.enable_reuse_load_script_exports) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableJSCallbackManager,
+          tasm::LynxEnv::GetInstance().GetBoolEnv(
+              tasm::LynxEnv::Key::ENABLE_JS_CALLBACK_MANAGER, true))) {
     handleLoadAppFailed(" App::loadApp error! page_config_subset init fail.");
     return;
   }
@@ -3052,7 +3078,9 @@ base::expected<Value, JSINativeException> App::readScript(
   }
 }
 
-piper::Value App::setTimeout(piper::Function func, int time) {
+piper::Value App::setTimeout(
+    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+    int time) {
   auto rt = rt_.lock();
   if (!rt || !js_task_adapter_) {
     return piper::Value::undefined();
@@ -3068,10 +3096,13 @@ piper::Value App::setTimeout(piper::Function func, int time) {
                                            std::to_string(instance_id));
         ctx.event()->add_debug_annotations("delay", std::to_string(time));
       });
-  return js_task_adapter_->SetTimeout(std::move(func), time, trace_flow_id);
+  return js_task_adapter_->SetTimeout(std::move(id_or_callback), time,
+                                      trace_flow_id);
 }
 
-piper::Value App::setInterval(piper::Function func, int time) {
+piper::Value App::setInterval(
+    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+    int time) {
   auto rt = rt_.lock();
   if (!rt || !js_task_adapter_) {
     return piper::Value::undefined();
@@ -3087,7 +3118,8 @@ piper::Value App::setInterval(piper::Function func, int time) {
         ctx.event()->add_debug_annotations("delay", std::to_string(time));
       });
 
-  return js_task_adapter_->SetInterval(std::move(func), time, trace_flow_id);
+  return js_task_adapter_->SetInterval(std::move(id_or_callback), time,
+                                       trace_flow_id);
 }
 
 void App::clearTimeout(double task) {
@@ -3096,7 +3128,8 @@ void App::clearTimeout(double task) {
   }
 }
 
-void App::QueueMicrotask(piper::Function func) {
+void App::QueueMicrotask(
+    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback) {
   auto rt = rt_.lock();
   if (!rt || !js_task_adapter_) {
     return;
@@ -3111,7 +3144,8 @@ void App::QueueMicrotask(piper::Function func) {
                                                    std::to_string(instance_id));
               });
 
-  return js_task_adapter_->QueueMicrotask(std::move(func), trace_flow_id);
+  return js_task_adapter_->QueueMicrotask(std::move(id_or_callback),
+                                          trace_flow_id);
 }
 
 void App::RunOnJSThreadWhenIdle(base::closure closure) {
