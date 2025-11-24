@@ -169,12 +169,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   public void getDisplayList(int id, DisplayList displayList) {
-    if (displayList == null) {
+    if (displayList == null || mDestroyed || mNativePtr == 0) {
       return;
     }
 
     // Get the display list lengths first
-    int[] lengths = nativeGetDisplayListLengths(id);
+    int[] lengths = nativeGetDisplayListLengths(mNativePtr, id);
     if (lengths == null || lengths.length != 3) {
       return;
     }
@@ -189,7 +189,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     displayList.fArgv = new float[fArgvLength];
 
     // Fill the arrays with actual data
-    nativeGetDisplayListData(id, displayList.ops, displayList.iArgv, displayList.fArgv);
+    nativeGetDisplayListData(mNativePtr, id, displayList.ops, displayList.iArgv, displayList.fArgv);
   }
 
   public TextLayout getTextLayout() {
@@ -232,16 +232,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
 
-  native int[] nativeGetDisplayListLengths(int id);
+  native int[] nativeGetDisplayListLengths(long nativePtr, int id);
 
   /**
    * Fills the provided arrays with display list data.
    * The arrays must be pre-allocated with lengths obtained from nativeGetDisplayListLengths().
    */
-  native void nativeGetDisplayListData(int id, int[] ops, int[] iArgv, float[] fArgv);
+  native void nativeGetDisplayListData(
+      long nativePtr, int id, int[] ops, int[] iArgv, float[] fArgv);
 
   public void destroy() {
     mDestroyed = true;
+    mNativePtr = 0; // Clear native pointer to indicate context is destroyed
     mViewHolder.clear();
     mTextMeasurer = null;
     mTextLayout = null;
