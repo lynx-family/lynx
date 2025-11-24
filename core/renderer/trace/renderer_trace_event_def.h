@@ -1252,6 +1252,7 @@ inline constexpr const char* const
         "UIOperationQueue::CreatePaintingNodeSyncTask";
 inline constexpr const char* const UI_OPERATION_QUEUE_UPDATE_LAYOUT_TASK =
     "UIOperationQueue::UpdateLayoutTask";
+inline constexpr const char* const DUMP_UI_TREE_LAYOUT = "DumpUITreeLayout";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 

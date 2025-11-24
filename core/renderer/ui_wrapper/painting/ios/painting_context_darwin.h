@@ -59,6 +59,7 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
   void SetPerformanceController(LynxPerformanceController* controller) {
     perf_controller_ = controller;
   }
+  void TraceUITreeLayout(LynxUIOwner* owner);
 
  private:
   __weak LynxUIOwner* uiOwner_;

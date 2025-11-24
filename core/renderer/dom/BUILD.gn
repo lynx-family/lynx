@@ -14,7 +14,6 @@ lynx_core_source_set("dom_headers") {
     "element_manager.h",
     "element_manager_delegate.h",
     "element_property.h",
-    "snapshot_element.h",
   ]
 }
 
@@ -76,14 +75,10 @@ lynx_core_source_set("renderer_dom") {
 group("dom_tests") {
   testonly = true
   deps = [
-    ":dom_trace_unittest_exec",
     ":dom_unittest_exec",
     "fragment:fragment_test_exec",
   ]
-  public_deps = [
-    ":dom_testset",
-    ":dom_trace_testset",
-  ]
+  public_deps = [ ":dom_testset" ]
 }
 
 unittest_set("dom_testset") {
@@ -126,21 +121,7 @@ unittest_set("dom_testset") {
   public_deps = [ ":dom" ]
 }
 
-unittest_set("dom_trace_testset") {
-  public_configs = [ "../../:lynx_public_config" ]
-  sources = [ "snapshot_element_unittest.cc" ]
-  deps = [ "../../shell/testing:mock_tasm_delegate_testset" ]
-  public_deps = [ ":dom" ]
-
-  defines = [ "ENABLE_TRACE_PERFETTO=1" ]
-}
-
 unittest_exec("dom_unittest_exec") {
   sources = []
   deps = [ ":dom_testset" ]
-}
-
-unittest_exec("dom_trace_unittest_exec") {
-  sources = []
-  deps = [ ":dom_trace_testset" ]
 }

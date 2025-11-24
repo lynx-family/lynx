@@ -43,10 +43,13 @@ import com.lynx.tasm.utils.SizeValue;
 import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class UIBody extends UIGroup<UIBodyView> {
   private final static String TAG = "UIBody";
@@ -620,12 +623,48 @@ public class UIBody extends UIGroup<UIBodyView> {
       }
 
       if (timingCollector != null) {
+        if (!timingCollector.getPendingPaintEndPipelineIds().isEmpty()) {
+          TraceUITreeLayout();
+        }
         timingCollector.markHostPlatformTiming(HOST_PLATFORM_DRAW_END);
         timingCollector.markPaintEndTimingIfNeeded();
       }
       if (needLongTaskMonitor) {
         LynxLongTaskMonitor.didProcessTask();
       }
+    }
+
+    private void TraceUITreeLayout() {
+      if (!TraceEvent.isTracingStarted() || mLynxUIRender == null) {
+        return;
+      }
+
+      UIGroup<UIBodyView> rootUI = mLynxUIRender.getLynxRootUI();
+      if (rootUI instanceof UIBody) {
+        TraceEvent.beginSection(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.DUMP_UI_TREE_LAYOUT);
+
+        JSONObject uiTree = getUITreeRecursively(rootUI);
+        HashMap<String, String> map = new HashMap<String, String>();
+        map.put("detail", uiTree.toString());
+        TraceEvent.endSection(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.DUMP_UI_TREE_LAYOUT, map);
+      }
+    }
+
+    private JSONObject getUITreeRecursively(@NonNull LynxBaseUI ui) {
+      JSONObject jsonData = new JSONObject();
+      try {
+        jsonData.put("name", ui.getClass().getName());
+        jsonData.put("frame",
+            new JSONArray(Arrays.asList(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight())));
+        List<Object> list = new ArrayList<>();
+        for (LynxBaseUI child : ui.getChildren()) {
+          list.add(getUITreeRecursively(child));
+        }
+        jsonData.put("children", new JSONArray(list));
+      } catch (Exception e) {
+        LLog.e(TAG, "getUITreeRecursively error: " + e.getMessage());
+      }
+      return jsonData;
     }
 
     void notifyMeaningfulLayout() {

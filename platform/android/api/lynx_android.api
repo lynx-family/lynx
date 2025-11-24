@@ -2924,6 +2924,7 @@ public interface com::lynx::tasm::performance::timing::ITimingCollector {
   public void com.lynx.tasm.performance.timing.ITimingCollector.markHostPlatformTiming(final String key);
   public void com.lynx.tasm.performance.timing.ITimingCollector.markPaintEndTimingIfNeeded();
   public void com.lynx.tasm.performance.timing.ITimingCollector.setNeedMarkPaintEndTiming(String pipelineId);
+  public JavaOnlyArray com.lynx.tasm.performance.timing.ITimingCollector.getPendingPaintEndPipelineIds();
 }
 
 public interface com::lynx::tasm::IUIRendererCreator {
@@ -9950,6 +9951,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.NEED_LAYOUT NEED_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PARAMS PARAMS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_IDS PIPELINE_IDS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.DUMP_UI_TREE_LAYOUT DUMP_UI_TREE_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_ID PIPELINE_ID;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY TIMING_KEY;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_TIMESTAMP TIMING_TIMESTAMP;
