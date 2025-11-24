@@ -107,12 +107,6 @@ targets({
         "enable_parallel":True,
         "args":["--gtest_filter=\"-*DISABLE*\""]
     },
-    "dom_trace_unittest_exec":{
-        "cwd": ".",
-        "owners":["ZhaoSongGOO"],
-        "coverage": True,
-        "enable_parallel":True
-    },
     "value_wrapper_unittest_exec":{
         "cwd": ".",
         "owners":["ZhaoSongGOO"],

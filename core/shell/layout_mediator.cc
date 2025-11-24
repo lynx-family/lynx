@@ -297,10 +297,6 @@ void LayoutMediator::HandlePendingLayoutTask(
   } else {
     catalyzer->painting_context()->Flush();
   }
-
-#if ENABLE_TRACE_PERFETTO
-  catalyzer->DumpElementTree();
-#endif
 }
 
 // @note: run on tasm thread
