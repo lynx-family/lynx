@@ -10,10 +10,6 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
-#if ENABLE_TRACE_PERFETTO
-#include "core/renderer/dom/snapshot_element.h"
-#include "core/services/event_report/event_tracker_platform_impl.h"
-#endif
 
 namespace lynx {
 namespace tasm {
@@ -85,52 +81,6 @@ void Catalyzer::Invoke(
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {
   return painting_context_->Invoke(id, method, params, callback);
 }
-
-#if ENABLE_TRACE_PERFETTO
-
-void Catalyzer::DumpElementTree() {
-  if (!TRACE_EVENT_CATEGORY_ENABLED("dom") || !root_) {
-    return;
-  }
-  int64_t now = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-  if (last_dump_time_ > 0 &&
-      now - last_dump_time_ < kDumpThresholdMilliseconds) {
-    return;
-  }
-  last_dump_time_ = now;
-
-  if (root_) {
-    uint64_t flow_id = TRACE_FLOW_ID();
-    TRACE_EVENT("dom", DOM_CONSTRUCT_ELEMENT_TREE,
-                [flow_id](lynx::perfetto::EventContext ctx) {
-                  ctx.event()->add_flow_ids(flow_id);
-                });
-
-    dom::SnapshotElement* new_root = dom::constructSnapshotElementTree(root_);
-
-    lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()
-        ->PostTask([instance_id = this->GetInstanceId(), new_root, flow_id]() {
-          rapidjson::Document dumped_document;
-          rapidjson::Value dumped_tree =
-              dom::DumpSnapshotElementTreeRecursively(new_root,
-                                                      dumped_document);
-          dumped_document.Swap(dumped_tree);
-          rapidjson::StringBuffer buffer;
-          rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-          dumped_document.Accept(writer);
-          TRACE_EVENT("dom", DOM_DUMP_ELEMENT_TREE,
-                      [instance_id, &buffer,
-                       flow_id](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_debug_annotations("content",
-                                                           buffer.GetString());
-                        ctx.event()->add_debug_annotations(
-                            INSTANCE_ID, std::to_string(instance_id));
-                        ctx.event()->add_terminating_flow_ids(flow_id);
-                      });
-        });
-  }
-}
-#endif
 
 }  // namespace tasm
 }  // namespace lynx

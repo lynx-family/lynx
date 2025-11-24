@@ -5,6 +5,7 @@
 package com.lynx.tasm.performance.timing;
 
 import androidx.annotation.UiThread;
+import com.lynx.react.bridge.JavaOnlyArray;
 
 /**
  * @brief The ITimingCollector defines the interface for timing collection.
@@ -47,4 +48,10 @@ public interface ITimingCollector {
    * @param pipelineId identifier of pipeline.
    */
   @UiThread public void setNeedMarkPaintEndTiming(String pipelineId);
+
+  /**
+   * @brief Get pending paint end pipeline ids.
+   * @return JavaOnlyArray of pending paint end pipeline ids.
+   */
+  public JavaOnlyArray getPendingPaintEndPipelineIds();
 }

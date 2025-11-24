@@ -450,6 +450,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     return reporter;
   }
 
+  @Override
   public JavaOnlyArray getPendingPaintEndPipelineIds() {
     return mPendingPaintEndPipelineIds;
   }

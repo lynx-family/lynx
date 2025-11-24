@@ -47,6 +47,12 @@
 #import "LynxUI+Gesture.h"
 #import "LynxUI+Private.h"
 #import "LynxUIOwner+Private.h"
+#if ENABLE_TRACE_PERFETTO
+#include "third_party/rapidjson/document.h"
+#include "third_party/rapidjson/reader.h"
+#include "third_party/rapidjson/stringbuffer.h"
+#include "third_party/rapidjson/writer.h"
+#endif
 
 namespace lynx {
 namespace tasm {
@@ -79,6 +85,35 @@ void ExecuteSafely(const F& func) {
     }
   }
 }
+
+#if ENABLE_TRACE_PERFETTO
+rapidjson::Value DumpUITreeLayoutRecursively(LynxUI* root, rapidjson::Document& doc) {
+  rapidjson::Document::AllocatorType& allocator = doc.GetAllocator();
+  rapidjson::Value value;
+  value.SetObject();
+
+  const char* className = class_getName([root class]);
+  value.AddMember("name", rapidjson::Value(className, allocator), allocator);
+
+  rapidjson::Value frame_array;
+  frame_array.SetArray();
+  frame_array.GetArray().PushBack(root.frame.origin.x, allocator);
+  frame_array.GetArray().PushBack(root.frame.origin.y, allocator);
+  frame_array.GetArray().PushBack(root.frame.size.width, allocator);
+  frame_array.GetArray().PushBack(root.frame.size.height, allocator);
+  value.AddMember("frame", frame_array, allocator);
+
+  rapidjson::Value children_array;
+  children_array.SetArray();
+  for (LynxUI* child in root.children) {
+    rapidjson::Value child_value = DumpUITreeLayoutRecursively(child, doc);
+    children_array.GetArray().PushBack(child_value, allocator);
+  }
+  value.AddMember("children", children_array, allocator);
+
+  return value;
+}
+#endif
 
 }  // namespace
 
@@ -205,12 +240,35 @@ void PaintingContextDarwinRef::SetNeedMarkPaintEndTiming(const tasm::PipelineID&
   // For Darwin, we mock the paint_end timing by dispatching a task to the main queue.
   LynxPerformanceController* performanceController = perf_controller_;
   NSString* pipelineId = [NSString stringWithUTF8String:pipeline_id.c_str()];
+  [[maybe_unused]] __weak LynxUIOwner* uiOwner = uiOwner_;
   dispatch_async(dispatch_get_main_queue(), ^{
     [performanceController markTiming:kTimingPaintEnd pipelineID:pipelineId];
     // The rendering pipeline is considerd to be complete after the kPaintEnd phase,
     // so we mark pipelineEnd here
     [performanceController markTiming:kTimingPipelineEnd pipelineID:pipelineId];
+
+    TraceUITreeLayout(uiOwner);
   });
+}
+
+void PaintingContextDarwinRef::TraceUITreeLayout(LynxUIOwner* uiOwner) {
+#if ENABLE_TRACE_PERFETTO
+  if (uiOwner) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, DUMP_UI_TREE_LAYOUT);
+    LynxUI* root = (LynxUI*)[uiOwner rootUI];
+    rapidjson::Document dumped_document;
+    rapidjson::Value dumped_value = DumpUITreeLayoutRecursively(root, dumped_document);
+    dumped_document.Swap(dumped_value);
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    dumped_document.Accept(writer);
+    const char* dump_str = buffer.GetString();
+
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY, [&dump_str](lynx::perfetto::EventContext ctx) {
+      ctx.event()->add_debug_annotations("detail", std::string(dump_str));
+    });
+  }
+#endif
 }
 
 void PaintingContextDarwin::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) {
