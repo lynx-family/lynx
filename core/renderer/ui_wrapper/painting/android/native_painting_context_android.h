@@ -92,6 +92,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
     return static_cast<NativePaintingContext *>(this);
   }
 
+  bool EnableUIOperationQueue() override { return true; }
+
 #pragma region NativePaintingContext
 
   void CreatePlatformRenderer(int id, PlatformRendererType type) override;

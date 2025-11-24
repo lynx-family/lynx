@@ -25,7 +25,8 @@ Fragment* Fragment::fragment_parent() const {
 
 void Fragment::CreateLayerIfNeeded() {
   // TODO(zhongyr): abstract one behavior for layerize.
-  if ((!element()->TendToFlatten() && !has_platform_renderer_ && behavior_) ||
+  if ((!element()->TendToFlatten() && !has_platform_renderer_ && behavior_ &&
+       !element()->IsShadowNodeVirtual()) ||
       element()->is_page()) {
     behavior_->CreatePlatformRenderer();
     has_platform_renderer_ = true;
@@ -236,6 +237,14 @@ void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
   display_list_builder.Border(*border);
 }
 
+void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
+  if (!element()->computed_css_style()->GetBackgroundData()) {
+    return;
+  }
+  display_list_builder.Fill(
+      element()->computed_css_style()->GetBackgroundData()->color);
+}
+
 // A non-null fragment_parent() indicates that the fragment has been added to
 // the fragment tree. A null fragment_from_element_parent() suggests that the
 // fragment is neither fixed nor has a z-index other than 0. Together, these
@@ -246,11 +255,17 @@ bool Fragment::IsReliableSibling() const {
 }
 
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
+  if (element()->IsShadowNodeVirtual()) {
+    // No contents to be rendererd.
+    return;
+  }
+
   display_list_builder.Begin(layout_result_for_rendering_.offset_.X(),
                              layout_result_for_rendering_.offset_.Y(),
                              layout_result_for_rendering_.size_.width_,
                              layout_result_for_rendering_.size_.height_);
 
+  DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
 
   if (behavior_) {
@@ -372,6 +387,19 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
   }
 
   child->set_parent(this);
+
+  // FIXME(songshourui): rebuild the layer tree according to DisplayList in
+  // PlatformRenderer::OnUpdateDisplayList.
+  if (child->has_platform_renderer_) {
+    auto* render_layer = this;
+    while (!render_layer->has_platform_renderer_ && render_layer->parent()) {
+      render_layer = static_cast<Fragment*>(render_layer->parent());
+    }
+    if (render_layer->has_platform_renderer_) {
+      painting_context()->InsertPaintingNode(render_layer->id(), child->id(),
+                                             -1);
+    }
+  }
 }
 
 void Fragment::RemoveSelf() {

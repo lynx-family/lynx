@@ -83,8 +83,12 @@ class Fragment : public BaseElementContainer {
 
   bool IsReliableSibling() const;
 
+  const auto& LayoutResult() const { return layout_result_for_rendering_; }
+
  private:
   void DrawBorder(DisplayListBuilder& display_list_builder);
+
+  void DrawBackground(DisplayListBuilder& display_list_builder);
 
   void ReinsertDescendantsToCorrectParent();
 
@@ -92,7 +96,7 @@ class Fragment : public BaseElementContainer {
 
   void MoveDirectStackingChildren(Fragment* parent, Fragment* child);
 
-  bool has_platform_renderer_;
+  bool has_platform_renderer_{false};
 
   // If the fragment has positon fixed or z-index != 0, store the fragment from
   // element parent using this pointer. Which means if the
