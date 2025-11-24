@@ -11,3 +11,4 @@ export * from './feature';
 export * from './log';
 export * from './version';
 export * from './subErrorCode';
+export * from './callbackManager';

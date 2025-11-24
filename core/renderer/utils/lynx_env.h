@@ -125,6 +125,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     DISABLE_JS_MODE_STRIP,
     ENABLE_QUICKJS_THREAD_CHECKER,
     LYNX_DEBUG_ENABLED,
+    ENABLE_JS_CALLBACK_MANAGER,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -265,6 +266,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
             {Key::ENABLE_QUICKJS_THREAD_CHECKER,
              "enable_quickjs_thread_checker"},
+            {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
