@@ -19,6 +19,9 @@ class ImageFragmentBehavior : public FragmentBehavior {
   void OnUpdateLayout(
       const starlight::LayoutResultForRendering& layout_result) override;
   void OnDraw(DisplayListBuilder& display_list_builder) override;
+
+ private:
+  base::String image_url_;
 };
 
 }  // namespace lynx::tasm

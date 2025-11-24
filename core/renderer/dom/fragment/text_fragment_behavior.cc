@@ -18,7 +18,12 @@ void TextFragmentBehavior::CreatePlatformRenderer() {
 }
 
 void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
+  const auto& layout_result = fragment_->LayoutResult();
+  builder.Begin(layout_result.padding_[starlight::Direction::kLeft],
+                layout_result.padding_[starlight::Direction::kTop],
+                layout_result.size_.width_, layout_result.size_.height_);
   builder.DrawText(fragment_->id());
+  builder.End();
 }
 
 }  // namespace lynx::tasm

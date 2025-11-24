@@ -83,6 +83,8 @@ class Fragment : public BaseElementContainer {
 
   bool IsReliableSibling() const;
 
+  const auto& LayoutResult() const { return layout_result_for_rendering_; }
+
  private:
   void DrawBorder(DisplayListBuilder& display_list_builder);
 
