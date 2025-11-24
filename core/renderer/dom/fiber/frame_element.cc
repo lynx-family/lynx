@@ -20,8 +20,8 @@ constexpr char kDefaultFrameTag[] = "frame";
 constexpr char kParamsName[] = "detail";
 constexpr char kLoad[] = "load";
 constexpr char kURL[] = "url";
-constexpr char kStatusCode[] = "status_code";
-constexpr char kStatusMessage[] = "status_message";
+constexpr char kStatusCode[] = "statusCode";
+constexpr char kStatusMessage[] = "statusMessage";
 }  // namespace
 
 FrameElement::FrameElement(ElementManager* element_manager)

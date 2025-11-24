@@ -38,8 +38,15 @@
   [_render updateFrame:frame];
 }
 
-- (void)updateMetaData:(LynxUpdateMeta *)meta {
-  [_render updateMetaData:meta];
+- (void)updateMetaData:(nullable LynxTemplateData *)initData
+           globalProps:(nullable LynxTemplateData *)globalProps {
+  if (initData == nil && globalProps == nil) {
+    return;
+  }
+  LynxUpdateMeta *updateMeta = [[LynxUpdateMeta alloc] init];
+  [updateMeta setData:initData];
+  [updateMeta setGlobalProps:globalProps];
+  [_render updateMetaData:updateMeta];
 }
 
 - (void)setUrl:(NSString *)url {

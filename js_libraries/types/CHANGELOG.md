@@ -1,5 +1,8 @@
 # CHANGELOG
-# 3.6.7
+## 3.6.8
+- Introduce `global-props` property for `<frame>` element.
+
+## 3.6.7
 - Introduce `<overlay>` element.
 
 ## 3.6.6

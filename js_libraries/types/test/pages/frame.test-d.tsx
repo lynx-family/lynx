@@ -31,6 +31,21 @@ let a;
   <frame src={'1'} data={1} />;
   // @ts-expect-error: data shoudl be object not array
   <frame src={'1'} data={[1, 2, 3]} />;
+
+  <frame src={'1'} />;
+  assertType<Record<string, unknown> | undefined>((a as unknown) as IntrinsicElements['frame']['global-props']);
+  <frame src={'1'} global-props={{}} />;
+  assertType<Record<string, unknown> | undefined>((a as unknown) as IntrinsicElements['frame']['global-props']);
+  <frame src={'1'} global-props={{ data1: 'data1' }} />;
+  assertType<Record<string, unknown> | undefined>((a as unknown) as IntrinsicElements['frame']['global-props']);
+  // @ts-expect-error: global-props shoudl be object not string
+  <frame src={'1'} global-props={'data1'} />;
+  // @ts-expect-error: global-props shoudl be object not boolean
+  <frame src={'1'} global-props={true} />;
+  // @ts-expect-error: global-props shoudl be object not number
+  <frame src={'1'} global-props={1} />;
+  // @ts-expect-error: global-props shoudl be object not array
+  <frame src={'1'} global-props={[1, 2, 3]} />;
 }
 
 // Events types check
@@ -40,8 +55,8 @@ function noop() {}
     src={'1'}
     bindload={(e: FrameLoadEvent) => {
       assertType<string>(e.detail.url);
-      assertType<number>(e.detail.status_code);
-      assertType<string>(e.detail.status_message);
+      assertType<number>(e.detail.statusCode);
+      assertType<string>(e.detail.statusMessage);
     }}
   />;
 }

@@ -1849,7 +1849,7 @@ public class LynxFPSRecord : NSObject, <NSCopying> {
 public class LynxFrameView : UIView, <LUIBodyView> {
   public void LynxFrameView::initWithRootView:(UIView< LUIBodyView > *rootView);
   public void LynxFrameView::setAppBundle:(LynxTemplateBundle *bundle);
-  public void LynxFrameView::updateMetaData:(LynxUpdateMeta *meta);
+  public void LynxFrameView::updateMetaData:globalProps:(nullable LynxTemplateData *initData,[globalProps] nullable LynxTemplateData *globalProps);
   public void LynxFrameView::setUrl:(NSString *url);
   public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
 }

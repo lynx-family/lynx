@@ -13,6 +13,7 @@ import com.lynx.tasm.LynxUpdateMeta;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateBundle;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import java.lang.ref.WeakReference;
@@ -66,7 +67,15 @@ public final class LynxFrameView extends UIBodyView {
     mRender.updateViewport(widthMeasureSpec, heightMeasureSpec);
   }
 
-  public void updateMetaData(LynxUpdateMeta meta) {
+  public void updateMetaData(TemplateData initData, TemplateData globalProps) {
+    if (initData == null && globalProps == null) {
+      return;
+    }
+    LynxUpdateMeta meta =
+        new LynxUpdateMeta.Builder()
+            .setUpdatedData(initData == null ? TemplateData.empty() : initData)
+            .setUpdatedGlobalProps(globalProps == null ? TemplateData.empty() : globalProps)
+            .build();
     mRender.updateMetaData(meta);
   }
 

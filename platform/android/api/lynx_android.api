@@ -5305,7 +5305,7 @@ public class com::lynx::tasm::behavior::ui::frame::LynxFrameView : com.lynx.tasm
   public com.lynx.tasm.behavior.ui.frame.LynxFrameView.LynxFrameView(Context context, AttributeSet attrs);
   public LynxView com.lynx.tasm.behavior.ui.frame.LynxFrameView.getRootView();
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateViewport(int widthMeasureSpec, int heightMeasureSpec);
-  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateMetaData(LynxUpdateMeta meta);
+  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateMetaData(TemplateData initData, TemplateData globalProps);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setUrl(String url);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.runOnTasmThread(Runnable runnable);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
@@ -10170,6 +10170,8 @@ public class com::lynx::tasm::behavior::ui::frame::UIFrame : com::lynx::tasm::be
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.updateLayout(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, Rect bound);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setData(ReadableMap value);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setSrc(String value);
+  public void com.lynx.tasm.behavior.ui.frame.UIFrame.setGlobalProps(ReadableMap value);
+  public void com.lynx.tasm.behavior.ui.frame.UIFrame.onPropsUpdated();
 }
 
 public class abstract com::lynx::tasm::behavior::ui::UIGroup : com.lynx.tasm.behavior.ui.LynxUI< T >, com.lynx.tasm.behavior.ui.UIParent, com.lynx.tasm.behavior.ui.IDrawChildHook {

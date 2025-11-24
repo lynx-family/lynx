@@ -13,6 +13,11 @@
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIContext.h>
 
+@interface LynxUIFrame ()
+@property(nonatomic, strong, nullable) LynxTemplateData* data;
+@property(nonatomic, strong, nullable) LynxTemplateData* globalProps;
+@end
+
 @implementation LynxUIFrame
 
 #if LYNX_LAZY_LOAD
@@ -67,13 +72,25 @@ LYNX_REGISTER_UI("frame")
   }];
 }
 
+- (void)propsDidUpdate {
+  [super propsDidUpdate];
+  [[self view] updateMetaData:self.data globalProps:self.globalProps];
+  self.data = nil;
+  self.globalProps = nil;
+}
+
 // TODO(zhoupeng.z): pass data on native directly
 LYNX_PROP_SETTER("data", updateData, NSDictionary*) {
-  LynxUpdateMeta* updateMeta = [[LynxUpdateMeta alloc] init];
-  [updateMeta setData:[[LynxTemplateData alloc] initWithDictionary:value useBoolLiterals:YES]];
-  [[self view] updateMetaData:updateMeta];
+  if (value != nil) {
+    [self setData:[[LynxTemplateData alloc] initWithDictionary:value useBoolLiterals:YES]];
+  }
 }
 
 LYNX_PROP_SETTER("src", setUrl, NSString*) { [[self view] setUrl:value]; }
 
+LYNX_PROP_SETTER("global-props", updateGlobalProps, NSDictionary*) {
+  if (value != nil) {
+    [self setGlobalProps:[[LynxTemplateData alloc] initWithDictionary:value useBoolLiterals:YES]];
+  }
+}
 @end

@@ -25,6 +25,8 @@ import java.util.HashMap;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
+  private TemplateData mInitData = null;
+  private TemplateData mGlobalProps = null;
 
   public UIFrame(LynxContext context) {
     this(context, null);
@@ -117,17 +119,10 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   @LynxProp(name = "data")
   public void setData(ReadableMap value) {
     if (!(value instanceof JavaOnlyMap)) {
-      LLog.e(TAG, "prop date is not a JavaOnlyMap");
+      LLog.e(TAG, "prop data is not a JavaOnlyMap");
       return;
     }
-    LynxFrameView view = getView();
-    if (view == null) {
-      return;
-    }
-    LynxUpdateMeta meta = new LynxUpdateMeta.Builder()
-                              .setUpdatedData(TemplateData.fromMap((JavaOnlyMap) value))
-                              .build();
-    view.updateMetaData(meta);
+    mInitData = TemplateData.fromMap((JavaOnlyMap) value);
   }
 
   @LynxProp(name = "src")
@@ -137,5 +132,25 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
       return;
     }
     view.setUrl(value);
+  }
+
+  @LynxProp(name = "global-props")
+  public void setGlobalProps(ReadableMap value) {
+    if (!(value instanceof JavaOnlyMap)) {
+      LLog.e(TAG, "global props data is not a JavaOnlyMap");
+      return;
+    }
+    mGlobalProps = TemplateData.fromMap((JavaOnlyMap) value);
+  }
+
+  @Override
+  public void onPropsUpdated() {
+    super.onPropsUpdated();
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.updateMetaData(mInitData, mGlobalProps);
+      mInitData = null;
+      mGlobalProps = null;
+    }
   }
 }

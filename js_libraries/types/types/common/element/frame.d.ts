@@ -29,9 +29,17 @@ export interface FrameProps extends StandardProps {
    * @since 3.6
    */
   bindload?: (e: FrameLoadEvent) => void;
+
+  /**
+   * Pass global props to the nested Lynx page within the frame.
+   * @iOS
+   * @Android
+   * @since 3.6
+   */
+  'global-props'?: Record<string, unknown>;
 }
 
-interface BaseFrameLoadEvent<T> extends BaseEventOrig<{}, T> {
+export interface BaseFrameLoadInfo {
   /**
    * The loaded url of the frame.
    * @Android
@@ -46,7 +54,7 @@ interface BaseFrameLoadEvent<T> extends BaseEventOrig<{}, T> {
    * @iOS
    * @since 3.6
    */
-  status_code: number;
+  statusCode: number;
 
   /**
    * Frame loaded status message.
@@ -54,8 +62,7 @@ interface BaseFrameLoadEvent<T> extends BaseEventOrig<{}, T> {
    * @iOS
    * @since 3.6
    */
-  status_message: string;
+  statusMessage: string;
 }
 
-interface FrameLoadInfo extends BaseFrameLoadEvent<Target> {}
-export type FrameLoadEvent = BaseEvent<'load', FrameLoadInfo>;
+export type FrameLoadEvent = BaseEvent<'bindload', BaseFrameLoadInfo>;
