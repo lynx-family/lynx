@@ -61,6 +61,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.ui.frame.LynxFrameView;
 import com.lynx.tasm.common.LepusBuffer;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.LynxEngineProxy;
@@ -262,7 +263,12 @@ public class LynxTemplateRender
    * TODO(zhoupeng.z): review this methde after decoupling LynxView from DevTool and SecurityService
    */
   private LynxView getLynxView() {
-    return mBodyView instanceof LynxView ? (LynxView) mBodyView : null;
+    if (mBodyView instanceof LynxView) {
+      return (LynxView) mBodyView;
+    } else if (mBodyView instanceof LynxFrameView) {
+      return ((LynxFrameView) mBodyView).getRootView();
+    }
+    return null;
   }
 
   private String formatLynxMessage(String action) {

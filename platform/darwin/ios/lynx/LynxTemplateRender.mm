@@ -8,6 +8,7 @@
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxFrameView.h>
 #import <Lynx/LynxLoadMeta.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxLogicExecutor.h>
@@ -279,7 +280,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (LynxView*)getLynxView {
-  return [_containerView isKindOfClass:[LynxView class]] ? (LynxView*)_containerView : nil;
+  if ([_containerView isKindOfClass:[LynxView class]]) {
+    return (LynxView*)_containerView;
+  } else if ([_containerView isKindOfClass:[LynxFrameView class]]) {
+    return (LynxView*)[(LynxFrameView*)_containerView getRootView];
+  }
+  return nil;
 }
 
 - (void)setUpDevTool:(BOOL)debuggable {

@@ -37,14 +37,14 @@ public final class LynxFrameView extends UIBodyView {
   private void init(Context context) {
     UIBodyView bodyView = ((LynxContext) context).getUIBodyView();
     if (bodyView != null) {
-      LynxViewBuilder builder = bodyView.getLynxViewBuilder();
-      mLynxUIRender = builder.createLynxUIRenderer();
-      mRender = new LynxTemplateRender(context, this, builder);
       if (bodyView instanceof LynxView) {
         mRootView = new WeakReference<>((LynxView) bodyView);
       } else if (bodyView instanceof LynxFrameView) {
         mRootView = new WeakReference<>(((LynxFrameView) bodyView).getRootView());
       }
+      LynxViewBuilder builder = bodyView.getLynxViewBuilder();
+      mLynxUIRender = builder.createLynxUIRenderer();
+      mRender = new LynxTemplateRender(context, this, builder);
     }
   }
 
