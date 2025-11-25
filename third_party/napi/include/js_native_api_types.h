@@ -93,8 +93,7 @@ typedef enum {
 } napi_valuetype;
 
 typedef enum {
-  unknown_type = -1,
-  napi_int8_array = 0,
+  napi_int8_array,
   napi_uint8_array,
   napi_uint8_clamped_array,
   napi_int16_array,

@@ -925,7 +925,8 @@ class NAPI_EXTERN TypedArray : public Object {
                          napi_typedarray_type type, size_t length)
       : Object(env, value), _type(type), _length(length) {}
 
-  static const napi_typedarray_type unknown_array_type = napi_typedarray_type::unknown_type;
+  static const napi_typedarray_type unknown_array_type =
+      static_cast<napi_typedarray_type>(-1);
 };
 
 #define NAPI_FOR_EACH_TYPED_ARRAY(V)                      \
