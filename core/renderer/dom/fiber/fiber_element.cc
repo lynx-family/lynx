@@ -206,7 +206,7 @@ void FiberElement::AttachToElementManager(
 }
 
 void FiberElement::OnNodeAdded(FiberElement *child) {
-  if (is_inline_element() && child != nullptr) {
+  if (is_inline_element() && child != nullptr && !is_component()) {
     child->ConvertToInlineElement();
   }
 
