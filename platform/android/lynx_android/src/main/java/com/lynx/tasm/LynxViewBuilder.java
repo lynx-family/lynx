@@ -105,7 +105,9 @@ public class LynxViewBuilder
     if (lynxViewConfig == null) {
       lynxViewConfig = new HashMap<>();
     }
-    lynxViewConfig.putIfAbsent(key, value);
+    if (lynxViewConfig.get(key) == null) {
+      lynxViewConfig.put(key, value);
+    }
     return this;
   }
 
