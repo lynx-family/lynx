@@ -99,6 +99,7 @@ public class LynxView extends UIBodyView {
   private int mCurrentHeightMeasureSpec = -1;
 
   private boolean isInPrePainting = false;
+  private boolean mDestroyed = false;
 
   public LynxView(Context context) {
     super(context);
@@ -1069,6 +1070,10 @@ public class LynxView extends UIBodyView {
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    if (mDestroyed) {
+      setMeasuredDimension(0, 0);
+      return;
+    }
     onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_MEASURE, new Callable<HashMap<String, String>>() {
       @Override
       public HashMap<String, String> call() throws Exception {
@@ -1221,6 +1226,10 @@ public class LynxView extends UIBodyView {
    * to release the `LynxView` memory, otherwise there will be a memory leak.
    */
   public void destroy() {
+    if (mDestroyed) {
+      return;
+    }
+    mDestroyed = true;
     LLog.i(TAG, "lynxview destroy " + this.toString());
     triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY, true);
     TraceEvent.beginSection(TraceEventDef.DESTORY_LYNXVIEW);
