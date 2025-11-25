@@ -67,6 +67,7 @@ void UIOverlay::SetParent(UIBase* parent) {
 UIOverlay::~UIOverlay() {
   LOGI("overlay destruction sign=" << Sign() << " this="
                                    << static_cast<const void*>(this));
+  NodeManager::Instance().SetUserData(RootNode(), nullptr);
   if (native_dialog_ != nullptr) {
     LOGI("overlay destruction close dialog sign="
          << Sign() << " this=" << static_cast<const void*>(this)
