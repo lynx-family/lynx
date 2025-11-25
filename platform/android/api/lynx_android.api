@@ -6972,6 +6972,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.updateGlobalProps(@NonNull TemplateData props);
   public void com.lynx.tasm.LynxView.updateData(Map< String, Object > data);
   public void com.lynx.tasm.LynxView.updateData(Map< String, Object > data, String processorName);
+  public void com.lynx.tasm.LynxView.updateViewport(int widthMeasureSpec, int heightMeasureSpec, boolean needLayout);
   public void com.lynx.tasm.LynxView.updateViewport(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.LynxView.updateFontScale(float scale);
   public void com.lynx.tasm.LynxView.destroy();
@@ -9919,6 +9920,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.EXCEPTION EXCEPTION;
   public final String com.lynx.tasm.base.trace.TraceEventDef.WIDTH_MEASURE_SPEC WIDTH_MEASURE_SPEC;
   public final String com.lynx.tasm.base.trace.TraceEventDef.HEIGHT_MEASURE_SPEC HEIGHT_MEASURE_SPEC;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.NEED_LAYOUT NEED_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PARAMS PARAMS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_IDS PIPELINE_IDS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_ID PIPELINE_ID;
