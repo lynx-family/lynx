@@ -113,7 +113,7 @@
       [_shadowNodeOwner setDelegate:_paintingContextProxy];
       auto* painting_context_ref = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
           painting_context->GetPlatformRef().get());
-      if (_embeddedMode == LynxEmbeddedModeUnset) {
+      if (_embeddedMode != LynxEmbeddedModeBase) {
         _performanceController =
             [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
         painting_context_ref->SetPerformanceController(_performanceController);
