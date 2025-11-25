@@ -445,21 +445,21 @@ void MockTasmDelegate::RecycleTemplateBundle(
 }
 
 event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
-    runtime::MessageEvent event) {
+    fml::RefPtr<runtime::MessageEvent> event) {
   auto event_message =
-      pub::ValueUtils::ConvertValueToLepusValue(*event.message());
-  if (event.type() == runtime::kMessageEventTypeOnNativeAppReady) {
+      pub::ValueUtils::ConvertValueToLepusValue(*(event->message()));
+  if (event->type() == runtime::kMessageEventTypeOnNativeAppReady) {
     EXPECT_TRUE(event_message.IsNil());
     ss_ << "OnNativeAppReady\n";
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeNotifyGlobalPropsUpdated) {
     ss_ << "NotifyGlobalPropsUpdated " << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnDynamicJSSourcePrepared) {
     EXPECT_TRUE(event_message.IsString());
     ss_ << "OnDynamicJSSourcePrepared " << event_message.StdString()
         << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypeOnComponentActivity) {
+  } else if (event->type() == runtime::kMessageEventTypeOnComponentActivity) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(6, args->size());
@@ -474,19 +474,20 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     // TODO: transfer component id to component name.
     ss_ << "OnComponentActivity " << action << " " << path << " " << entry_name
         << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypeOnReactComponentRender) {
+  } else if (event->type() ==
+             runtime::kMessageEventTypeOnReactComponentRender) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(4, args->size());
     EXPECT_TRUE(args->get(0).IsString());
     EXPECT_TRUE(args->get(3).IsBool());
     ss_ << "OnReactComponentRender " << args->get(0).StdString() << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnReactComponentDidUpdate) {
     EXPECT_TRUE(event_message.IsString());
     const auto& id = event_message.StdString();
     ss_ << "OnReactComponentDidUpdate " << id << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnReactComponentDidCatch) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
@@ -495,16 +496,16 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     const auto& id = args->get(0).StdString();
     auto error = args->get(1);
     ss_ << "OnReactComponentDidCatch " << id << " " << error << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnComponentSelectorChanged) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(2, args->size());
     EXPECT_TRUE(args->get(0).IsString());
     ss_ << "OnComponentSelectorChanged " << std::endl;
-  } else if (event.type() == runtime::KMessageEventTypeOnReactCardDidUpdate) {
+  } else if (event->type() == runtime::KMessageEventTypeOnReactCardDidUpdate) {
     ss_ << "OnReactCardDidUpdate" << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnReactComponentCreated) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
@@ -520,33 +521,33 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     EXPECT_TRUE(args->get(6).IsBool());
     ss_ << "OnReactComponentCreated " << entry_name << " " << path << " " << id
         << " " << parent_id << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnComponentPropertiesChanged) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(2, args->size());
     EXPECT_TRUE(args->get(0).IsString());
     ss_ << "OnComponentPropertiesChanged " << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnComponentDataSetChanged) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(2, args->size());
     EXPECT_TRUE(args->get(0).IsString());
     ss_ << "OnComponentDataSetChanged " << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypeOnReactCardRender) {
+  } else if (event->type() == runtime::kMessageEventTypeOnReactCardRender) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(3, args->size());
     EXPECT_TRUE(args->get(1).IsBool());
     EXPECT_TRUE(args->get(2).IsBool());
     ss_ << "OnReactCardRender" << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeOnReactComponentUnmount) {
     EXPECT_TRUE(event_message.IsString());
     const auto& id = event_message.StdString();
     ss_ << "OnReactComponentUnmount " << id << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypeSendPageEvent) {
+  } else if (event->type() == runtime::kMessageEventTypeSendPageEvent) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(3, args->size());
@@ -559,7 +560,7 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     RemoveChangedItems(const_cast<lepus::Value&>(info));
     lepusValueToJSONString(ss_, info, true);
     ss_ << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypePublishComponentEvent) {
+  } else if (event->type() == runtime::kMessageEventTypePublishComponentEvent) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(3, args->size());
@@ -572,7 +573,7 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     RemoveChangedItems(const_cast<lepus::Value&>(info));
     lepusValueToJSONString(ss_, info, true);
     ss_ << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypeSendGlobalEvent) {
+  } else if (event->type() == runtime::kMessageEventTypeSendGlobalEvent) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
     EXPECT_EQ(2, args->size());
@@ -583,7 +584,7 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     RemoveChangedItems(const_cast<lepus::Value&>(info));
     lepusValueToJSONString(ss_, info, true);
     ss_ << std::endl;
-  } else if (event.type() ==
+  } else if (event->type() ==
              runtime::kMessageEventTypeCallJSFunctionInLepusEvent) {
     EXPECT_TRUE(event_message.IsArray());
     auto args = event_message.Array();
@@ -597,7 +598,7 @@ event::DispatchEventResult MockTasmDelegate::DispatchMessageEvent(
     RemoveChangedItems(const_cast<lepus::Value&>(params));
     lepusValueToJSONString(ss_, params, true);
     ss_ << std::endl;
-  } else if (event.type() == runtime::kMessageEventTypeOnBTSConsoleEvent) {
+  } else if (event->type() == runtime::kMessageEventTypeOnBTSConsoleEvent) {
     EXPECT_TRUE(event_message.IsTable());
     auto args = event_message.Table();
     EXPECT_EQ(2, args->size());

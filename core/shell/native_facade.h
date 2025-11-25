@@ -95,7 +95,8 @@ class NativeFacade {
   virtual void OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) {}
 
   // TODO(songshourui.null): override this function later.
-  virtual void OnReceiveMessageEvent(runtime::MessageEvent event) {}
+  virtual void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
+  }
 
   void InvokePlatformCallBackWithValue(
       const std::shared_ptr<shell::PlatformCallBackHolder>& callback,

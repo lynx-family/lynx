@@ -302,8 +302,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
         if (strongSelf == nil) {
           return;
         }
-        strongSelf->shell_->DispatchMessageEvent(
-            lynx::tasm::darwin::EventConverterDarwin::ConvertNSDictionaryToMessageEvent(event));
+        auto messageEvent =
+            lynx::tasm::darwin::EventConverterDarwin::ConvertNSDictionaryToMessageEvent(event);
+        strongSelf->shell_->DispatchMessageEvent(std::move(messageEvent));
       });
     }];
   }

@@ -4,6 +4,8 @@
 
 #include "core/runtime/bindings/lepus/event/lepus_event_listener.h"
 
+#include <utility>
+
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/bindings/common/event/message_event.h"
@@ -22,7 +24,7 @@ LepusClosureEventListener::LepusClosureEventListener(
       context_(context),
       closure_(closure) {}
 
-void LepusClosureEventListener::Invoke(event::Event* event) {
+void LepusClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LEPUS_CLOSURE_EVENT_LISTENER_INVOKE, "name",
               event ? event->type() : "");
   LOGI("LepusClosureEventListener::Invoke name: " << (event ? event->type()
@@ -47,11 +49,10 @@ bool LepusClosureEventListener::Matches(event::EventListener* listener) {
 };
 
 lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
-    event::Event* event) {
+    fml::RefPtr<event::Event> event) {
   lepus::Value value = lepus::LEPUSValueHelper::CreateObject(context_);
   if (event->event_type() == event::Event::EventType::kMessageEvent) {
-    runtime::MessageEvent* message_event =
-        static_cast<runtime::MessageEvent*>(event);
+    auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
     value.SetProperty(BASE_STATIC_STRING(runtime::kType),
                       lepus::Value(message_event->type()));
     value.SetProperty(
@@ -63,7 +64,10 @@ lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
   if (event->event_type() == event::Event::EventType::kTouchEvent ||
       event->event_type() == event::Event::EventType::kCustomEvent) {
     event->HandleEventBaseDetail();
-    return event->detail();
+    auto event_detail = event->detail();
+    BASE_STATIC_STRING_DECL(kEventRef, "ref");
+    event_detail.Table()->SetValue(kEventRef, event);
+    return event_detail;
   }
   return value;
 }

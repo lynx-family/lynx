@@ -8,7 +8,6 @@ import("../../../../Lynx.gni")
 lepus_runtime_shared_sources = [
   "context_proxy_in_lepus.cc",
   "context_proxy_in_lepus.h",
-  "event_object.h",
   "lepus_event_listener.cc",
   "lepus_event_listener.h",
 ]

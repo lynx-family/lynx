@@ -162,7 +162,7 @@ class LynxRuntime final {
   void SetPageOptions(const tasm::PageOptions& page_options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
 
-  void OnReceiveMessageEvent(runtime::MessageEvent event);
+  void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);
 
   void OnSetPresetData(lepus::Value data);
   void OnComponentDecoded(tasm::TasmRuntimeBundle bundle);

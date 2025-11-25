@@ -43,17 +43,17 @@ class EventTarget;
 
 class EventDispatcher {
  public:
-  static DispatchEventResult DispatchEvent(EventTarget&, Event&);
+  static DispatchEventResult DispatchEvent(EventTarget&, fml::RefPtr<Event>);
 
   DispatchEventResult Dispatch();
   EventTarget& GetTarget() const { return *target_; }
-  Event& GetEvent() const { return *event_; }
+  fml::RefPtr<Event> GetEvent() const { return event_; }
 
  private:
-  EventDispatcher(EventTarget&, Event&);
+  EventDispatcher(EventTarget&, fml::RefPtr<Event>);
 
   fml::WeakPtr<EventTarget> target_;
-  Event* event_;
+  fml::RefPtr<Event> event_;
 };
 
 }  // namespace event

@@ -22,14 +22,15 @@ class ContextProxyInLepus : public runtime::ContextProxy {
   static ContextProxyInLepus* GetContextProxyFromLepusValue(
       const lepus::Value& binding_object);
 
-  runtime::MessageEvent CreateMessageEvent(const lepus::Value& event);
+  fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(
+      const lepus::Value& event);
 
   lepus::Value GetBinding(lepus::Context* context);
 
   virtual void PostMessage(const lepus::Value& message) override;
 
   virtual event::DispatchEventResult DispatchEvent(
-      event::Event& event) override;
+      fml::RefPtr<event::Event> event) override;
 
  protected:
   void EnsureListenerBeforePublishEvent();
