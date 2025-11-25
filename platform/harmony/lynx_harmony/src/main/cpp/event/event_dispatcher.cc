@@ -178,10 +178,6 @@ EventDispatcher::EventDispatcher(UIOwner* ui_owner) : ui_owner_(ui_owner) {
 }
 
 EventDispatcher::~EventDispatcher() {
-  if (!root_target_.expired()) {
-    NodeManager::Instance().SetUserData(root_target_.lock()->RootNode(),
-                                        nullptr);
-  }
   if (long_press_gesture_) {
     NodeManager::Instance().DisposeGesture(long_press_gesture_);
   }
