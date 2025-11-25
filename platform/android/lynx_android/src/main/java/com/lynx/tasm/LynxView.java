@@ -1170,8 +1170,9 @@ public class LynxView extends UIBodyView {
    * @brief The client updates the `LynxView` view size.
    * @param widthMeasureSpec Current `LynxView` width.
    * @param heightMeasureSpec Current `LynxView` height.
+   * @param needLayout whether needs to triggerLayout.
    */
-  public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
+  public void updateViewport(int widthMeasureSpec, int heightMeasureSpec, boolean needLayout) {
     onTraceEventBegin(
         TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT, new Callable<HashMap<String, String>>() {
           @Override
@@ -1179,6 +1180,7 @@ public class LynxView extends UIBodyView {
             HashMap<String, String> extraMap = new HashMap<>();
             extraMap.put(TraceEventDef.WIDTH_MEASURE_SPEC, String.valueOf(widthMeasureSpec));
             extraMap.put(TraceEventDef.HEIGHT_MEASURE_SPEC, String.valueOf(heightMeasureSpec));
+            extraMap.put(TraceEventDef.NEED_LAYOUT, String.valueOf(needLayout));
             return extraMap;
           }
         });
@@ -1190,9 +1192,19 @@ public class LynxView extends UIBodyView {
     if (mLynxTemplateRender == null) {
       return;
     }
-    mLynxTemplateRender.updateViewport(widthMeasureSpec, heightMeasureSpec);
-
+    mLynxTemplateRender.updateViewport(widthMeasureSpec, heightMeasureSpec, needLayout);
     onTraceEventEnd(TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT);
+  }
+
+  /**
+   * @apidoc
+   * @brief The client updates the `LynxView` view size.
+   * @param widthMeasureSpec Current `LynxView` width.
+   * @param heightMeasureSpec Current `LynxView` height.
+   */
+  public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
+    checkAccessFromNonUiThread("updateViewport");
+    updateViewport(widthMeasureSpec, heightMeasureSpec, true);
   }
 
   /**
