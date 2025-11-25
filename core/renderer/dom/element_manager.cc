@@ -100,8 +100,6 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_NEW_ANIMATOR_FLUSH_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
-  enable_level_order_traversing_ =
-      LynxEnv::GetInstance().EnableLevelOrderTraversing();
   if (platform_layout_context_) {
     layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());
@@ -1644,6 +1642,15 @@ void ElementManager::ScheduleLayout() {
   if (platform_layout_context_) {
     platform_layout_context_->ScheduleLayoutInEmbeddedMode(
         [this]() { request_layout_callback_(); });
+  }
+}
+
+void ElementManager::SetEnableParallelElement(bool value) {
+  enable_parallel_element_ = value;
+  if (enable_parallel_element_ &&
+      (thread_strategy_ == base::ThreadStrategyForRendering::ALL_ON_UI ||
+       thread_strategy_ == base::ThreadStrategyForRendering::MOST_ON_TASM)) {
+    parallel_with_sync_layout_ = true;
   }
 }
 

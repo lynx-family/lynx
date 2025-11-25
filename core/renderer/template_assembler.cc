@@ -2931,17 +2931,19 @@ void TemplateAssembler::OnPageConfigDecoded(
   element_manager->SetEnableFiberElementForRadonDiff(
       config->GetEnableFiberElementForRadonDiff());
 
-  if (config->GetEnableParallelElement() &&
-      element_manager->painting_context()->impl()->EnableParallelElement()) {
-    element_manager->SetEnableParallelElement(true);
-    bool enable_report_statistic =
-        lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
-            lynx::tasm::LynxEnv::Key::
-                ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC,
-            false);
-    element_manager->SetEnableReportThreadedElementFlushStatistic(
-        enable_report_statistic);
+  if (element_manager->painting_context()->impl()->EnableParallelElement()) {
+    element_manager->SetEnableLevelOrderTraversing(
+        config->GetEnableLevelOrderTraversing());
+    bool enable_parallel_element = config->GetEnableParallelElement();
+    element_manager->SetEnableParallelElement(enable_parallel_element);
+    if (enable_parallel_element) {
+      bool enable_report_statistic = LynxEnv::GetInstance().GetBoolEnv(
+          LynxEnv::Key::ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC, false);
+      element_manager->SetEnableReportThreadedElementFlushStatistic(
+          enable_report_statistic);
+    }
   }
+
   if (!config->GetEnableMultiTouch()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_DISABLE_MULTI_TOUCH,

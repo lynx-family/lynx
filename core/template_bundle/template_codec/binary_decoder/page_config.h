@@ -43,6 +43,8 @@ constexpr static uint64_t kDisableParallelElementMask = 1 << 17;
 constexpr static uint64_t kEnableListBatchRenderAsyncResolvePropertyMask =
     1 << 18;
 constexpr static uint64_t kEnableListBatchRenderAsyncResolveTreeMask = 1 << 20;
+constexpr static uint64_t kEnableParallelElementLevelOrderMask = 1 << 22;
+constexpr static uint64_t kDisableParallelElementLevelOrderMask = 1 << 23;
 
 // TODO(nihao.royal) unify parameters of different types.
 // constexpr static int32_t kTernaryInt32UndefinedValue = 0x7fffffff;
@@ -376,6 +378,8 @@ class PageConfig final : public LynxConfig {
   // platforms.
   void MarkPostToPlatform() { need_post_to_platform_ = false; }
 
+  bool GetEnableLevelOrderTraversing();
+
  private:
   std::string target_sdk_version_;
   std::string lepus_version_;
@@ -415,6 +419,8 @@ class PageConfig final : public LynxConfig {
 
   // enable raster animation
   bool enable_raster_animation_{false};
+
+  TernaryBool enable_level_order_traversing_{TernaryBool::UNDEFINE_VALUE};
 };
 }  // namespace tasm
 }  // namespace lynx

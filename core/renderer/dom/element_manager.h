@@ -953,14 +953,7 @@ class ElementManager : public ElementContextDelegate {
    */
   void CheckAndProcessSlotForInspector(Element *element);
 
-  void SetEnableParallelElement(bool value) {
-    enable_parallel_element_ = value;
-    if (enable_parallel_element_ &&
-        (thread_strategy_ == base::ThreadStrategyForRendering::ALL_ON_UI ||
-         thread_strategy_ == base::ThreadStrategyForRendering::MOST_ON_TASM)) {
-      parallel_with_sync_layout_ = true;
-    }
-  }
+  void SetEnableParallelElement(bool value);
 
   bool GetEnableParallelElement() { return enable_parallel_element_; }
 
@@ -1136,6 +1129,10 @@ class ElementManager : public ElementContextDelegate {
         expected, 0, std::memory_order_acquire, std::memory_order_relaxed)) {
       expected = 0;
     }
+  }
+
+  void SetEnableLevelOrderTraversing(bool enable) {
+    enable_level_order_traversing_ = enable;
   }
 
   bool EnableLevelOrderTraversing() const {

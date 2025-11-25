@@ -77,6 +77,16 @@ TEST(PageConfigTest, GetEnableParallelElement) {
   page_config.enable_parallel_element_ = true;
   EXPECT_EQ(page_config.GetEnableParallelElement(), true);
 
+  page_config.pipeline_scheduler_config_ = 0;
+  page_config.enable_parallel_element_ = false;
+  page_config.enable_level_order_traversing_ = TernaryBool::TRUE_VALUE;
+  EXPECT_EQ(page_config.GetEnableParallelElement(), true);
+
+  page_config.pipeline_scheduler_config_ = 0;
+  page_config.enable_parallel_element_ = true;
+  page_config.enable_level_order_traversing_ = TernaryBool::FALSE_VALUE;
+  EXPECT_EQ(page_config.GetEnableParallelElement(), true);
+
   page_config.pipeline_scheduler_config_ = kEnableParallelElementMask;
   page_config.enable_parallel_element_ = false;
   EXPECT_EQ(page_config.GetEnableParallelElement(), true);
@@ -88,6 +98,37 @@ TEST(PageConfigTest, GetEnableParallelElement) {
   page_config.pipeline_scheduler_config_ = kDisableParallelElementMask;
   page_config.enable_parallel_element_ = true;
   EXPECT_EQ(page_config.GetEnableParallelElement(), false);
+}
+
+TEST(PageConfigTest, GetEnableLevelOrderTraversing) {
+  PageConfig page_config;
+  EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), false);
+
+  page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
+  page_config.pipeline_scheduler_config_ = kEnableParallelElementLevelOrderMask;
+  EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), true);
+
+  page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
+  page_config.pipeline_scheduler_config_ =
+      kDisableParallelElementLevelOrderMask;
+  EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), false);
+
+  LynxEnv::GetInstance()
+      .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] = "true";
+  page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
+  page_config.pipeline_scheduler_config_ =
+      kDisableParallelElementLevelOrderMask;
+  EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), false);
+
+  page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
+  page_config.pipeline_scheduler_config_ = 0;
+  EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), true);
+
+  LynxEnv::GetInstance()
+      .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] = "false";
+  page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
+  page_config.pipeline_scheduler_config_ = 0;
+  EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), false);
 }
 
 TEST(PageConfigTest, EnableNativeScheduleCreateViewAsync) {

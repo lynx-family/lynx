@@ -17,8 +17,33 @@ bool PageConfig::GetEnableParallelElement() const {
   // enableParallelElement from pipelineSchedulerConfig would override
   // enableParallelElement encode option
   return (enableParallelElementFromSchedulerConfig ||
-          (isParallelElementConfigUndefined && enable_parallel_element_));
+          (isParallelElementConfigUndefined &&
+           (enable_parallel_element_ ||
+            enable_level_order_traversing_ == TernaryBool::TRUE_VALUE)));
 }
 
+bool PageConfig::GetEnableLevelOrderTraversing() {
+  if (enable_level_order_traversing_ != TernaryBool::UNDEFINE_VALUE) {
+    return enable_level_order_traversing_ == TernaryBool::TRUE_VALUE;
+  }
+
+  // level_order_traversing from pipelineSchedulerConfig would override
+  // level_order_traversing env
+  if ((pipeline_scheduler_config_ & kDisableParallelElementLevelOrderMask) >
+      0) {
+    enable_level_order_traversing_ = TernaryBool::FALSE_VALUE;
+    return false;
+  }
+
+  if ((pipeline_scheduler_config_ & kEnableParallelElementLevelOrderMask) > 0) {
+    enable_level_order_traversing_ = TernaryBool::TRUE_VALUE;
+    return true;
+  }
+
+  auto value_from_config = LynxEnv::GetInstance().EnableLevelOrderTraversing();
+  enable_level_order_traversing_ =
+      value_from_config ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE;
+  return value_from_config;
+}
 }  // namespace tasm
 }  // namespace lynx
