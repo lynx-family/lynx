@@ -136,6 +136,8 @@
 
 - (void)setLynxDebugEnabled:(BOOL)lynxDebugEnabled {
   [LynxService(LynxServiceDevToolProtocol) setLynxDebugPresetValue:lynxDebugEnabled];
+  lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv([KEY_LYNX_DEBUG UTF8String],
+                                                     [self lynxDebugEnabled]);
   [self initDevToolEnv];
 }
 
