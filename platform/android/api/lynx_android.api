@@ -1269,6 +1269,12 @@ public enum com::lynx::tasm::LynxSubErrorCode::Consumer {
   public com.lynx.tasm.LynxSubErrorCode.Consumer.Consumer(String value);
 }
 
+public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup {
+  public void com.lynx.tasm.behavior.render.ContainerRenderer.setLynxFrame(int l, int t, int r, int b);
+  public Rect com.lynx.tasm.behavior.render.ContainerRenderer.getLynxFrame();
+  public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context, @NonNull PlatformRendererContext platformRendererContext, int sign);
+}
+
 public class com::lynx::tasm::utils::ContextUtils :  {
   public static LynxContext com.lynx.tasm.utils.ContextUtils.toLynxContext(Context context);
   public static Activity com.lynx.tasm.utils.ContextUtils.getActivity(Context context);
@@ -8073,6 +8079,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, int left, int top, int width, int height);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
@@ -10095,6 +10102,8 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
 
 public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
   public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.mSign mSign;
+  public Rect com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getLynxFrame();
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setLynxFrame(int l, int t, int r, int b);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setPlatformRendererContext(PlatformRendererContext context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
@@ -10105,6 +10114,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerViewAccordingToNodeIndex(int nodeIndex, View view);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerImageAccordingToNodeIndex(int nodeIndex, LynxImageManager image);
   public LynxImageManager com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainImageAccordingToNodeIndex(int nodeIndex);
+  public LynxImageManager com.lynx.tasm.behavior.ui.UIBody.UIBodyView.peekImageAccordingToNodeIndex(int nodeIndex);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.clearNodeIndexImageMap();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.markNeedRemoveExistingViews();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.removeExistingViews();

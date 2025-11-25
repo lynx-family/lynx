@@ -108,6 +108,19 @@ void PlatformRendererContext::UnregisterPlatformRenderer(int32_t id) {
   renderer_registry_.erase(id);
 }
 
+void PlatformRendererContext::UpdatePlatformRendererFrame(int32_t target,
+                                                          const float* frame) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updatePlatformRendererFrame(
+      env, local_ref.Get(), target, static_cast<jint>(frame[0]),
+      static_cast<jint>(frame[1]), static_cast<jint>(frame[2]),
+      static_cast<jint>(frame[3]));
+}
+
 }  // namespace tasm
 }  // namespace lynx
 
