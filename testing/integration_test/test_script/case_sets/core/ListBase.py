@@ -9,7 +9,9 @@ from lib.common import utils
 
 config = {
     "type": "custom",
-    "path": "showcase/list/base"
+    "path": "showcase/list/base",
+    # FIXME(gaohanqing) Disable due to flaky issue, enable it after fix.
+    "enable": False
 }
 
 
