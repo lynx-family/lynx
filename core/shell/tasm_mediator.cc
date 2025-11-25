@@ -482,13 +482,14 @@ void TasmMediator::OnJSAppReload(
 }
 
 void TasmMediator::OnLifecycleEvent(const lepus::Value& args) {
-  runtime::MessageEvent event(runtime::kMessageEventTypeOnLifecycleEvent,
-                              runtime::ContextProxy::Type::kCoreContext,
-                              runtime::ContextProxy::Type::kJSContext,
-                              std::make_unique<pub::ValueImplLepus>(args));
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::kMessageEventTypeOnLifecycleEvent,
+      runtime::ContextProxy::Type::kCoreContext,
+      runtime::ContextProxy::Type::kJSContext,
+      std::make_unique<pub::ValueImplLepus>(args));
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_LIFE_CYCLE_EVENT,
               [&event](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_flow_ids(event.TraceFlowId());
+                ctx.event()->add_flow_ids(event->TraceFlowId());
                 ctx.event()->add_debug_annotations(kTaskName,
                                                    kJSTaskDispatchMessageEvent);
               });
@@ -780,9 +781,9 @@ void TasmMediator::RecycleTemplateBundle(
 }
 
 event::DispatchEventResult TasmMediator::DispatchMessageEvent(
-    runtime::MessageEvent event) {
-  auto copy_event = runtime::MessageEvent::ShallowCopy(event);
-  if (event.IsSendingToJSThread()) {
+    fml::RefPtr<runtime::MessageEvent> event) {
+  auto copy_event = runtime::MessageEvent::ShallowCopy(*event);
+  if (event->IsSendingToJSThread()) {
     if (runtime_actor_) {
       auto enqueue_info =
           tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
@@ -792,7 +793,7 @@ event::DispatchEventResult TasmMediator::DispatchMessageEvent(
         runtime->OnReceiveMessageEvent(std::move(message_event));
       });
     }
-  } else if (event.IsSendingToUIThread()) {
+  } else if (event->IsSendingToUIThread()) {
     facade_actor_->Act(
         [message_event = std::move(copy_event)](auto& facade) mutable {
           facade->OnReceiveMessageEvent(std::move(message_event));

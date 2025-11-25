@@ -149,7 +149,7 @@ function onEvent(e) {
 
 TEST_P(JSClosureEventListenerTest,
        JSClosureEventListenerConvertEventToPiperValue) {
-  auto message_event = std::make_unique<runtime::MessageEvent>(
+  auto message_event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value("1")));
@@ -163,7 +163,7 @@ function onEvent(e) {
   auto listener_1 = std::make_unique<JSClosureEventListener>(
       app_, piper::Value(rt, js_function));
 
-  auto res_1 = listener_1->ConvertEventToPiperValue(message_event.get());
+  auto res_1 = listener_1->ConvertEventToPiperValue(message_event);
   EXPECT_TRUE(res_1.isObject());
   EXPECT_EQ(res_1.getObject(rt).getProperty(rt, "type")->getString(rt).utf8(rt),
             "message");
@@ -175,11 +175,11 @@ function onEvent(e) {
 
   auto listener_2 = std::make_unique<JSClosureEventListener>(
       nullptr, piper::Value(rt, js_function));
-  auto res_2 = listener_2->ConvertEventToPiperValue(message_event.get());
+  auto res_2 = listener_2->ConvertEventToPiperValue(message_event);
   EXPECT_TRUE(res_2.isUndefined());
 
   message_event->set_event_type(event::Event::EventType::kTouchEvent);
-  auto res_3 = listener_1->ConvertEventToPiperValue(message_event.get());
+  auto res_3 = listener_1->ConvertEventToPiperValue(message_event);
   EXPECT_TRUE(res_3.isObject());
 }
 

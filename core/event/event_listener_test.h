@@ -25,7 +25,7 @@ class MockEventListener : public EventListener {
 
   ~MockEventListener() override = default;
 
-  virtual void Invoke(Event* event) override;
+  virtual void Invoke(fml::RefPtr<Event> event) override;
   virtual bool Matches(EventListener* listener) override;
 
   int32_t GetCount() { return count_; }

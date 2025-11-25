@@ -291,7 +291,7 @@ class LynxEngine {
   void InsertLynxTemplateBundle(const std::string& url,
                                 lynx::tasm::LynxTemplateBundle bundle);
 
-  void OnReceiveMessageEvent(runtime::MessageEvent event);
+  void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);
 
   void GetJSSessionStorage(const std::string&,
                            const piper::ApiCallBack& callback);

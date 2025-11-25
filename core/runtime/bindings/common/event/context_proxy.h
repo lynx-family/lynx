@@ -44,7 +44,7 @@ class ContextProxy : public event::EventTarget {
     Delegate() = default;
     virtual ~Delegate() = default;
     virtual event::DispatchEventResult DispatchMessageEvent(
-        MessageEvent event) = 0;
+        fml::RefPtr<runtime::MessageEvent> event) = 0;
   };
 
   ContextProxy(Delegate& delegate, Type origin_type, Type target_type)
@@ -63,7 +63,7 @@ class ContextProxy : public event::EventTarget {
   event::EventListener* GetListenerBeforePublishEvent();
 
   virtual event::DispatchEventResult DispatchEvent(
-      event::Event& event) override;
+      fml::RefPtr<event::Event> event) override;
 
   virtual EventTarget* GetParentTarget() override { return nullptr; };
 

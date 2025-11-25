@@ -64,7 +64,7 @@ class EventTarget {
     return fml::WeakPtr<EventTarget>();
   }
 
-  virtual DispatchEventResult DispatchEvent(Event&);
+  virtual DispatchEventResult DispatchEvent(fml::RefPtr<Event>);
   virtual bool AddEventListener(const std::string& type,
                                 std::shared_ptr<EventListener> listener);
   virtual bool RemoveEventListener(const std::string& type,
@@ -103,7 +103,7 @@ class EventTarget {
   }
 
   // Handle the trigger-global-event attribute and the global-bind event.
-  virtual void HandleGlobalEvent(Event& event) {}
+  virtual void HandleGlobalEvent(fml::RefPtr<Event> event) {}
   // Get the switch which controls whether compatible multi touch params.
   virtual bool GetEnableMultiTouchParamsCompatible() { return false; }
   // Get unit to calculate the position.
