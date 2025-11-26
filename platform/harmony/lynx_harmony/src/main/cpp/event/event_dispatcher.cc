@@ -60,7 +60,7 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
   auto event_dispatcher = reinterpret_cast<EventDispatcher*>(
-      NodeManager::Instance().GetUserData(node));
+      OH_ArkUI_GestureInterrupter_GetUserData(info));
   if (event_dispatcher == nullptr) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
@@ -202,7 +202,6 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
     return;
   }
   root_target_ = root->WeakTarget();
-  NodeManager::Instance().SetUserData(root->RootNode(), this);
   if (long_press_gesture_) {
     NodeManager::Instance().AddGestureToNode(
         root->RootNode(), long_press_gesture_, PARALLEL, NORMAL_GESTURE_MASK);
@@ -242,7 +241,8 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
                                            PARALLEL, NORMAL_GESTURE_MASK);
 
   NodeManager::Instance().SetGestureInterrupterToNode(
-      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_);
+      root->RootNode(), this,
+      EventDispatcher::event_gesture_interrupter_callback_);
 }
 
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {

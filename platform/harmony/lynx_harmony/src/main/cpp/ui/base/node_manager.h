@@ -132,7 +132,7 @@ class NodeManager {
                              void (*target_receiver)(ArkUI_GestureEvent* event,
                                                      void* extra_params));
 
-  void SetGestureInterrupterToNode(ArkUI_NodeHandle node,
+  void SetGestureInterrupterToNode(ArkUI_NodeHandle node, void* user_data,
                                    ArkUI_GestureInterruptResult (*interrupter)(
                                        ArkUI_GestureInterruptInfo* info));
 
@@ -258,6 +258,7 @@ class NodeManager {
 
   ArkUI_NativeNodeAPI_1* native_node_api_{nullptr};
   ArkUI_NativeGestureAPI_1* native_gesture_api_{nullptr};
+  ArkUI_NativeGestureAPI_2* native_gesture_api_2{nullptr};
 };
 }  // namespace harmony
 }  // namespace tasm

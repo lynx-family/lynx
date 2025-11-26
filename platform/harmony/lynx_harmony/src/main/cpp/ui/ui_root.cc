@@ -52,7 +52,6 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
 }
 
 UIRoot::~UIRoot() {
-  NodeManager::Instance().SetUserData(RootNode(), nullptr);
   NodeManager::Instance().RemoveNodeEventReceiver(transparent_sibling_,
                                                   UIBase::EventReceiver);
   NodeManager::Instance().UnregisterNodeEvent(transparent_sibling_,

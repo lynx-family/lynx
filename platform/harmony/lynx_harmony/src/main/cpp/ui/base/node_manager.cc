@@ -20,6 +20,8 @@ NodeManager::NodeManager() {
                               native_node_api_);
   OH_ArkUI_GetModuleInterface(ARKUI_NATIVE_GESTURE, ArkUI_NativeGestureAPI_1,
                               native_gesture_api_);
+  OH_ArkUI_GetModuleInterface(ARKUI_NATIVE_GESTURE, ArkUI_NativeGestureAPI_2,
+                              native_gesture_api_2);
 }
 
 ArkUI_NodeHandle NodeManager::CreateNode(ArkUI_NodeType type) {
@@ -174,9 +176,11 @@ void NodeManager::SetGestureEventTarget(
 }
 
 void NodeManager::SetGestureInterrupterToNode(
-    ArkUI_NodeHandle node, ArkUI_GestureInterruptResult (*interrupter)(
-                               ArkUI_GestureInterruptInfo* info)) {
-  native_gesture_api_->setGestureInterrupterToNode(node, interrupter);
+    ArkUI_NodeHandle node, void* user_data,
+    ArkUI_GestureInterruptResult (*interrupter)(
+        ArkUI_GestureInterruptInfo* info)) {
+  native_gesture_api_2->setGestureInterrupterToNode(node, user_data,
+                                                    interrupter);
 }
 
 void NodeManager::AddGestureToNode(ArkUI_NodeHandle node,
