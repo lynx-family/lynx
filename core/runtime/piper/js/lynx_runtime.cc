@@ -293,7 +293,7 @@ void LynxRuntime::ReadCoreJS(
     delegate_->OnCoreJSUpdated(*js_core_source_);
   }
   ret.emplace_back(kLynxCoreJSName,
-                   std::make_shared<piper::StringViewBuffer>(*js_core_source_));
+                   std::make_shared<piper::StringRefBuffer>(*js_core_source_));
 }
 
 void LynxRuntime::UpdateState(State state) {
