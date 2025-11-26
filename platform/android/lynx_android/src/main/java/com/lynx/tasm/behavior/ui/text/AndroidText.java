@@ -255,6 +255,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
           getPaddingLeft() + mTextTranslateOffset.x, getPaddingTop() + mTextTranslateOffset.y);
 
       if (mOverflow != 0) {
+        drawHighlight(canvas);
         drawOverflowPicture();
         canvas.drawPicture(mOverflowPicture);
       } else {
@@ -712,8 +713,10 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
     if (mSelectStart >= 0 && mSelectStart <= mTextLayout.getText().length() && mSelectEnd >= 0
         && mSelectEnd <= mTextLayout.getText().length()) {
-      Selection.setSelection((Spannable) mTextLayout.getText(), Math.min(mSelectStart, mSelectEnd),
-          Math.max(mSelectStart, mSelectEnd));
+      if (mTextLayout.getText() instanceof Spannable) {
+        Selection.setSelection((Spannable) mTextLayout.getText(),
+            Math.min(mSelectStart, mSelectEnd), Math.max(mSelectStart, mSelectEnd));
+      }
       mSelectStartPos.set(getBottomPositionForOffset(Math.min(mSelectStart, mSelectEnd), true));
       mSelectEndPos.set(getBottomPositionForOffset(Math.max(mSelectStart, mSelectEnd), false));
       mStartHandlerPos.set(mSelectStartPos.x - mSelectionLeftCursor.getBounds().width() / 2.f,
@@ -722,7 +725,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
           mSelectEndPos.y + mSelectionRightCursor.getBounds().height() / 2.f);
       clearOtherSelection();
     } else {
-      Selection.removeSelection((Spannable) mTextLayout.getText());
+      if (mTextLayout.getText() instanceof Spannable) {
+        Selection.removeSelection((Spannable) mTextLayout.getText());
+      }
     }
   }
 
@@ -899,12 +904,10 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   private void performCopy() {
-    int selectStart = Selection.getSelectionStart(mTextLayout.getText());
-    int selectEnd = Selection.getSelectionEnd(mTextLayout.getText());
-
-    if (selectStart < selectEnd) {
-      ClipData clipped = ClipData.newPlainText(
-          "Lynx-clipboard", mTextLayout.getText().subSequence(selectStart, selectEnd));
+    if (mSelectStart >= 0 && mSelectEnd > mSelectStart
+        && mSelectEnd <= mTextLayout.getText().length()) {
+      CharSequence selectedText = mTextLayout.getText().subSequence(mSelectStart, mSelectEnd);
+      ClipData clipped = ClipData.newPlainText("Lynx-clipboard", selectedText);
 
       ILynxSystemInvokeService systemInvokeService =
           LynxServiceCenter.inst().getService(ILynxSystemInvokeService.class);
