@@ -26,6 +26,7 @@ class Element;
 class RadonPage;
 class RadonComponent;
 class RadonPlug;
+class TemplateAssembler;
 
 using RadonNodeIndexType = uint32_t;
 using RadonBaseVector =
@@ -182,6 +183,8 @@ class RadonBase : public SelectorItem {
   }
 #endif
 
+  void SetTasm(TemplateAssembler* tasm) { tasm_ = tasm; }
+
  public:
   // Keep public for historical reason.
   RadonBaseVector radon_children_;
@@ -219,6 +222,8 @@ class RadonBase : public SelectorItem {
   RadonPage* root_node_{nullptr};
   RadonComponent* root_entry_node_{nullptr};
   Element* root_element_{nullptr};
+  // used for list and event
+  TemplateAssembler* tasm_{nullptr};
 };
 
 }  // namespace tasm
