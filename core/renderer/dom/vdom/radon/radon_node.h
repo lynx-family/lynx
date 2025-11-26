@@ -383,6 +383,15 @@ class RadonNode : public RadonBase {
 
   RadonNodeIndexType GetOriginalNodeIndex();
 
+  // Process events for element accroding to the satic_events or
+  // global_bind_events when needed.
+  void ProcessEvents();
+
+  // Set event listeners for element to adapt to the new event handling logic.
+  void SetEventListeners(
+      const std::pair<const base::String, std::unique_ptr<EventHandler>>&
+          event_entry);
+
   PageProxy* const page_proxy_;
   // TODO(wangyifei.20010605): rename it to data_model_;
   fml::RefPtr<AttributeHolder> attribute_holder_;
