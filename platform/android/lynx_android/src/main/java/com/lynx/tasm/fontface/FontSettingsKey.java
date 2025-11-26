@@ -7,13 +7,11 @@ import android.text.TextUtils;
 
 public final class FontSettingsKey {
   private final String variation;
-  private final String feature;
   private final float textSize;
   private final String fontFamily;
 
-  public FontSettingsKey(String variation, String feature, float textSize, String fontFamily) {
+  public FontSettingsKey(String variation, float textSize, String fontFamily) {
     this.variation = variation != null ? variation : "";
-    this.feature = feature != null ? feature : "";
     this.textSize = textSize;
     this.fontFamily = fontFamily;
   }
@@ -26,15 +24,14 @@ public final class FontSettingsKey {
       return false;
     FontSettingsKey k = (FontSettingsKey) o;
     return TextUtils.equals(fontFamily, k.fontFamily) && Float.compare(textSize, k.textSize) == 0
-        && TextUtils.equals(variation, k.variation) && TextUtils.equals(feature, k.feature);
+        && TextUtils.equals(variation, k.variation);
   }
 
   @Override
   public int hashCode() {
     int h = variation.hashCode();
-    h = 31 * h + feature.hashCode();
     h = 31 * h + Float.floatToIntBits(textSize);
-    h = 31 * h + fontFamily.hashCode();
+    h = 31 * h + (fontFamily != null ? fontFamily.hashCode() : 0);
     return h;
   }
 }
