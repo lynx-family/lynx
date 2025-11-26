@@ -33,7 +33,9 @@ template <typename T>
 struct ToJSONHelper<
     T, typename std::enable_if<std::is_integral<T>::value ||
                                std::is_floating_point<T>::value>::type> {
-  static void Convert(const T& value, std::stringstream& ss) { ss << value; }
+  static void Convert(const T& value, std::stringstream& ss) {
+    ss << std::setprecision(17) << value;
+  }
 };
 
 template <>
