@@ -682,7 +682,7 @@ void GradientFactory::ParseRadialRadiusAndMatrix(
       break;
     }
   }
-  if (RoughlyEqualZero(radius)) {
+  if (RoughlyEqualToZero(radius)) {
     FML_DLOG(WARNING) << "Paint a radial-gradient with 0 radius.";
   }
 }

@@ -1449,7 +1449,7 @@ void BoxPainter::ClipBorderSidePolygon(GraphicsContext* context,
   float cy = quad[3].y() - quad[2].y();
 
   float r1, r2;
-  if (RoughlyEqualZero(bx) && RoughlyEqualZero(by)) {
+  if (RoughlyEqualToZero(bx) && RoughlyEqualToZero(by)) {
     // The quad was actually a triangle.
     r1 = r2 = 1.0f;
   } else {

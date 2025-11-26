@@ -558,7 +558,7 @@ void ScrollView::Invalidate() {
 }
 
 void ScrollView::ScrollWithDelta(bool smooth, float delta) {
-  if (RoughlyEqualZero(delta)) {
+  if (RoughlyEqualToZero(delta)) {
     return;
   }
   float start_offset = scroll_direction_ == ScrollDirection::kVertical

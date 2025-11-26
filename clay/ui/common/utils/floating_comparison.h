@@ -19,9 +19,9 @@ inline bool RoughlyNotEqual(float v1, float v2) {
   return !RoughlyEqual(v1, v2);
 }
 
-inline bool RoughlyEqualZero(float value) { return RoughlyEqual(value, 0.f); }
+inline bool RoughlyEqualToZero(float value) { return RoughlyEqual(value, 0.f); }
 
-inline bool RoughlyNotZero(float value) { return !RoughlyEqualZero(value); }
+inline bool RoughlyNotZero(float value) { return !RoughlyEqualToZero(value); }
 
 }  // namespace clay
 

@@ -360,6 +360,8 @@
   std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
       std::make_shared<lynx::pub::LynxNativeModuleManager>();
   native_module_manager->SetPlatformModuleFactory(module_factory);
+  auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([_lynxUIRenderer uiDelegate]);
+  native_module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
 
   return native_module_manager;
 }
