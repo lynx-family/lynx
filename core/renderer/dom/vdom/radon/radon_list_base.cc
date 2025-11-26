@@ -36,7 +36,8 @@ void RadonListBase::AppendComponentInfo(
 }
 
 RadonListBase::RadonListBase(const RadonListBase& node, PtrLookupMap& map)
-    : RadonNode{node, map}, context_{node.context_}, tasm_{node.tasm_} {
+    : RadonNode{node, map}, context_{node.context_} {
+  SetTasm(node.tasm_);
   new_components_.reserve(kListComponentsReservingSize);
 }
 
@@ -44,8 +45,8 @@ RadonListBase::RadonListBase(const RadonListBase& node, PtrLookupMap& map)
 RadonListBase::RadonListBase(lepus::Context* context, PageProxy* page_proxy,
                              TemplateAssembler* tasm, uint32_t node_index)
     : RadonNode{page_proxy, BASE_STATIC_STRING(kListNodeTag), node_index},
-      context_{context},
-      tasm_{tasm} {
+      context_{context} {
+  SetTasm(tasm);
   RadonNode::node_type_ = kRadonListNode;
   if (page_proxy) {
     platform_info_.enable_move_operation_ =

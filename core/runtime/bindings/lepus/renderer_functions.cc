@@ -1329,6 +1329,7 @@ RENDERER_FUNCTION_CC(CreateVirtualNode) {
   }
   auto* tasm = GET_TASM_POINTER();
   auto* node = new lynx::tasm::RadonNode(tasm->page_proxy(), tag_name, eid);
+  node->SetTasm(tasm);
   RETURN(lepus::Value(static_cast<RadonBase*>(node)));
 }
 
@@ -1361,6 +1362,7 @@ RENDERER_FUNCTION_CC(CreateVirtualPage) {
   if (page && !keep_page_data) {
     page->DeriveFromMould(pm);
   }
+  page->SetTasm(self);
   page->SetGetDerivedStateFromPropsProcessor(
       self->GetProcessorWithName(REACT_PRE_PROCESS_LIFECYCLE));
   if (self->GetPageDSL() == PackageInstanceDSL::REACT) {
@@ -1408,6 +1410,7 @@ RENDERER_FUNCTION_CC(CreateVirtualComponent) {
   auto component = new RadonComponent(self->page_proxy(), tid, nullptr,
                                       self->style_sheet_manager(entry_name),
                                       mould, context, component_instance_id);
+  component->SetTasm(self);
   component->SetEntryName(entry_name);
   component->SetDSL(self->GetPageConfig()->GetDSL());
   if (ARGC() > 2) {

@@ -24,12 +24,22 @@
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
+#include "core/renderer/events/closure_event_listener.h"
+#include "core/renderer/events/events.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_scope.h"
+#include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/piper/js/runtime_constant.h"
 #include "core/services/feature_count/feature_counter.h"
+
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/worklet/lepus_element.h"
+#include "core/renderer/worklet/lepus_raf_handler.h"
+#endif  // ENABLE_LEPUSNG_WORKLET
 
 namespace lynx {
 namespace tasm {
@@ -294,7 +304,7 @@ void RadonNode::DispatchFirstTime() {
         static_cast<RadonElement*>(parent_element));
     radon_element()->FlushPropsFirstTimeWithParentElement(parent_element);
   }
-
+  ProcessEvents();
   class_dirty_ = false;
 }
 
@@ -547,6 +557,7 @@ bool RadonNode::ShouldFlush(const std::unique_ptr<RadonBase>& old_radon_base,
       NotifyElementNodeSetted();
     }
   });
+  ProcessEvents();
   id_dirty_ = false;
   class_dirty_ = false;
   style_invalidated_ = true;
@@ -800,6 +811,134 @@ void RadonNode::MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
   }
   for (auto& child : radon_children_) {
     child->MarkChildStyleDirtyRecursively(mark_whole_tree);
+  }
+}
+
+void RadonNode::ProcessEvents() {
+  if (tasm_ &&
+      (tasm_->EnableEventHandleRefactor() || tasm_->IsEmbeddedModeOn())) {
+    if (!static_events().empty() || !global_bind_events().empty()) {
+      for (const auto& static_event : static_events()) {
+        SetEventListeners(static_event);
+      }
+      for (const auto& global_bind_event : global_bind_events()) {
+        SetEventListeners(global_bind_event);
+      }
+    }
+  }
+}
+
+void RadonNode::SetEventListeners(
+    const std::pair<const base::String, std::unique_ptr<EventHandler>>&
+        event_entry) {
+  bool is_js_event = event_entry.second->is_js_event();
+  const auto& name = event_entry.first.str();
+  const auto& type = event_entry.second->type();
+  bool is_capture = type == EVENT_TYPE_CAPTURE;
+  bool is_capture_catch = type == EVENT_TYPE_CAPTURE_CATCH;
+  bool is_bubble_catch = type == EVENT_TYPE_CATCH;
+  bool is_global_bind = type == EVENT_TYPE_GLOBAL;
+  auto event_options = event::EventListener::Options(
+      is_capture || is_capture_catch, false, false, false,
+      is_capture_catch || is_bubble_catch, is_global_bind);
+
+  if (is_js_event) {
+    const auto& callback = event_entry.second->function();
+    element()->RemoveEventListener(
+        name, std::make_unique<event::ClosureEventListener>(
+                  [](lepus::Value args) {}, event_options,
+                  event::ClosureEventListener::ClosureType::kJS));
+    element()->AddEventListener(
+        name,
+        std::make_unique<event::ClosureEventListener>(
+            [tasm = tasm_, callback](lepus::Value args) {
+              const auto& args_array = args.Array();
+              if (args.IsArray() && args_array->size() == 2) {
+                const auto& event_info = args_array->get(0);
+                const auto& event_detail = args_array->get(1);
+                const auto& event_info_array = event_info.Array();
+                if (event_info.IsArray() && event_info_array->size() == 2) {
+                  const auto& call_method_name =
+                      event_info_array->get(0).Bool();
+                  const auto& page_name_or_component_id =
+                      event_info_array->get(1).StdString();
+                  auto message = lepus::CArray::Create();
+                  message->emplace_back(page_name_or_component_id);
+                  message->emplace_back(callback);
+                  // info be ShallowCopy first to avoid to be marked const.
+                  message->emplace_back(lepus_value::ShallowCopy(event_detail));
+                  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+                      call_method_name
+                          ? runtime::kMessageEventTypeSendPageEvent
+                          : runtime::kMessageEventTypePublishComponentEvent,
+                      runtime::ContextProxy::Type::kCoreContext,
+                      runtime::ContextProxy::Type::kJSContext,
+                      std::make_unique<pub::ValueImplLepus>(
+                          lepus::Value(std::move(message))));
+                  tasm->DispatchMessageEvent(std::move(event));
+                }
+              }
+            },
+            event_options, event::ClosureEventListener::ClosureType::kJS));
+  } else {
+#if ENABLE_LEPUSNG_WORKLET
+    const auto& lepus_func = event_entry.second->lepus_function();
+    const auto& lepus_script = event_entry.second->lepus_script();
+    element()->RemoveEventListener(
+        name, std::make_unique<event::ClosureEventListener>(
+                  [](lepus::Value args) {}, event_options,
+                  event::ClosureEventListener::ClosureType::kCore));
+    element()->AddEventListener(
+        name,
+        std::make_unique<event::ClosureEventListener>(
+            [tasm = tasm_, lepus_func, lepus_script](lepus::Value args) {
+              const auto& args_array = args.Array();
+              if (args.IsArray() && args_array->size() == 2) {
+                const auto& event_info = args_array->get(0);
+                const auto& event_detail = args_array->get(1);
+                const auto& event_info_array = event_info.Array();
+                if (event_info.IsArray() && event_info_array->size() == 3) {
+                  const auto& component_id =
+                      event_info_array->get(0).StdString();
+                  const auto& entry_name = event_info_array->get(1).StdString();
+                  int32_t element_id = event_info_array->get(2).Int32();
+                  BASE_STATIC_STRING_DECL(kEventRef, "ref");
+
+                  auto task_handler =
+                      std::make_shared<worklet::LepusApiHandler>();
+                  std::shared_ptr<PipelineOptions> current_option =
+                      std::make_shared<PipelineOptions>();
+                  PipelineScope pipeline_scope(tasm, current_option);
+                  EventResult result = EventResult::kDefault;
+                  auto event = fml::static_ref_ptr_cast<event::Event>(
+                      event_detail.Table()->GetValue(kEventRef)->RefCounted());
+
+                  result = lynx::worklet::LepusElement::FireElementWorklet(
+                      component_id, entry_name, tasm, lepus_func, lepus_script,
+                      event_detail, task_handler, element_id,
+                      static_cast<EventType>(1));
+                  // trigger patch finish when a worklet operation is
+                  // completed
+                  tasm->page_proxy()->element_manager()->SetNeedsLayout();
+                  tasm->page_proxy()->element_manager()->RequestResolve(
+                      current_option);
+                  if (event == nullptr) {
+                    return;
+                  }
+                  if (static_cast<int>(result) &
+                      static_cast<int>(
+                          EventResult::kStopImmediatePropagationBit)) {
+                    event->set_is_stop_immediate_propagation(true);
+                  } else if (static_cast<int>(result) &
+                             static_cast<int>(
+                                 EventResult::kStopPropagationBit)) {
+                    event->set_is_stop_propagation(true);
+                  }
+                }
+              }
+            },
+            event_options, event::ClosureEventListener::ClosureType::kCore));
+#endif  // ENABLE_LEPUSNG_WORKLET
   }
 }
 

@@ -34,7 +34,6 @@ class RadonListBase : public ListNode, public RadonNode {
 
  protected:
   lepus::Context* context_;
-  TemplateAssembler* tasm_;
   std::vector<std::unique_ptr<ListComponentInfo>> new_components_;
   void DispatchFirstTime() override;
   bool DiffListComponents();
