@@ -233,5 +233,6 @@
       }
     }
   },
-  "is_shorthand": true
+  "is_shorthand": true,
+  "formal_syntax": "<length-percentage> | auto"
 }

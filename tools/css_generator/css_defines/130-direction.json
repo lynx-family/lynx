@@ -93,5 +93,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "normal | lynx-rtl | rtl | ltr"
 }

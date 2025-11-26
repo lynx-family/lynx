@@ -119,5 +119,5 @@
     }
   },
   "is_shorthand": false,
-  "formal_syntax": "auto | max-content | fit-content | <length-percentage>"
+  "formal_syntax": "auto | max-content | fit-content | <length-percentage [0,∞]> | fit-content( <length-percentage [0,∞]> )"
 }

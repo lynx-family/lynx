@@ -377,5 +377,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "stretch | start | end | flex-start | flex-end | center | space-between | space-around | space-evenly"
 }

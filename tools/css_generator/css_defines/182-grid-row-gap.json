@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `row-gap`/`grid-row-gap` CSS property sets the size of the gap (gutter) between an element's rows in flexible box layout and grid layout.",
   "compat_data": {
     "grid-row-gap": {
       "__compat": {
@@ -208,5 +208,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<length-percentage>"
 }

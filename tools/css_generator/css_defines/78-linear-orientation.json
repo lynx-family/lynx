@@ -234,5 +234,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "column | row | column-reverse | row-reverse | vertical | horizontal | vertical-reverse | horizontal-reverse"
 }

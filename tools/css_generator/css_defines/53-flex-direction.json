@@ -61,5 +61,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "row | row-reverse | column | column-reverse"
 }

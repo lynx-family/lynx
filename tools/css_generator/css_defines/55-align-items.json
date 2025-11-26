@@ -454,5 +454,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "stretch | center | start | end | flex-start | flex-end | baseline | auto"
 }

@@ -211,11 +211,15 @@ export interface Properties {
   /**
    * The `direction` CSS property sets the direction of text.
    *
+   * **Syntax**: `normal | lynx-rtl | rtl | ltr`
+   *
    * @see https://lynxjs.org/api/css/properties/direction
    */
-  direction?: (number & {}) | (string & {}) | undefined;
+  direction?: 'ltr' | 'lynx-rtl' | 'normal' | 'rtl' | undefined;
   /**
    * Used to set the number of sibling elements in the relative-layout.
+   *
+   * **Syntax**: `<number>`
    *
    * @see https://lynxjs.org/api/css/properties/relative-id
    */
@@ -223,51 +227,67 @@ export interface Properties {
   /**
    * In relative-layout, specifies that the current element is aligned with the top edge of the parent or sibling element corresponding to `id`.
    *
+   * **Syntax**: ` none | parent | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-align-top
    */
-  relativeAlignTop?: (number & {}) | (string & {}) | undefined;
+  relativeAlignTop?: 'none' | 'parent' | (number & {}) | (string & {}) | undefined;
   /**
    * In relative-layout, specifies that the current element is aligned with the right edge of the parent or sibling element corresponding to `id`.
    *
+   * **Syntax**: ` none | parent | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-align-right
    */
-  relativeAlignRight?: (number & {}) | (string & {}) | undefined;
+  relativeAlignRight?: 'none' | 'parent' | (number & {}) | (string & {}) | undefined;
   /**
    * In relative-layout, specifies that the current element is aligned with the bottom edge of the parent or sibling element corresponding to `id`.
    *
+   * **Syntax**: ` none | parent | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-align-bottom
    */
-  relativeAlignBottom?: (number & {}) | (string & {}) | undefined;
+  relativeAlignBottom?: 'none' | 'parent' | (number & {}) | (string & {}) | undefined;
   /**
    * In relative-layout, specifies that the current element is aligned with the left edge of the parent or sibling element corresponding to `id`.
    *
+   * **Syntax**: ` none | parent | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-align-left
    */
-  relativeAlignLeft?: (number & {}) | (string & {}) | undefined;
+  relativeAlignLeft?: 'none' | 'parent' | (number & {}) | (string & {}) | undefined;
   /**
    * The current element is to the top of the sibling element specified corresponding to `id` in relative-layout.
    *
+   * **Syntax**: ` none | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-top-of
    */
-  relativeTopOf?: (number & {}) | (string & {}) | undefined;
+  relativeTopOf?: 'none' | (number & {}) | (string & {}) | undefined;
   /**
    * The current element is to the right of the sibling element specified corresponding to `id` in relative-layout.
    *
+   * **Syntax**: ` none | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-right-of
    */
-  relativeRightOf?: (number & {}) | (string & {}) | undefined;
+  relativeRightOf?: 'none' | (number & {}) | (string & {}) | undefined;
   /**
    * The current element is to the below of the sibling element specified corresponding to `id` in relative-layout.
    *
+   * **Syntax**: ` none | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-bottom-of
    */
-  relativeBottomOf?: (number & {}) | (string & {}) | undefined;
+  relativeBottomOf?: 'none' | (number & {}) | (string & {}) | undefined;
   /**
    * The current element is to the left of the sibling element specified corresponding to `id` in relative-layout.
    *
+   * **Syntax**: ` none | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-left-of
    */
-  relativeLeftOf?: (number & {}) | (string & {}) | undefined;
+  relativeLeftOf?: 'none' | (number & {}) | (string & {}) | undefined;
   /**
    * Used to add a rounded border to the bottom-left corner.
    *
@@ -279,15 +299,19 @@ export interface Properties {
   /**
    * Used to set typesetting acceleration in relative-layout.
    *
+   * **Syntax**: ` true | false`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-layout-once
    */
-  relativeLayoutOnce?: (number & {}) | (string & {}) | undefined;
+  relativeLayoutOnce?: 'false' | 'true' | undefined;
   /**
    * Used to set the centering alignment of the current element in the relative-layout.
    *
+   * **Syntax**: ` none | vertical | horizontal | both`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-center
    */
-  relativeCenter?: (number & {}) | (string & {}) | undefined;
+  relativeCenter?: 'both' | 'horizontal' | 'none' | 'vertical' | undefined;
   /**
    * enter transition name
    *
@@ -315,9 +339,11 @@ export interface Properties {
   /**
    * This property is a shorthand for the CSS properties: `flex-direction` and `flex-wrap`, specifies the direction of a flex container, as well as its wrapping behavior.
    *
+   * **Syntax**: `[row | row-reverse | column | column-reverse] || [nowrap | wrap | wrap-reverse]`
+   *
    * @see https://lynxjs.org/api/css/properties/flex-flow
    */
-  flexFlow?: (number & {}) | (string & {}) | undefined;
+  flexFlow?: 'column' | 'column-reverse' | 'nowrap' | 'row' | 'row-reverse' | 'wrap' | 'wrap-reverse' | (string & {}) | undefined;
   /**
    * The z-index CSS property sets the z-order of an element and its descendants or flex items.
    *
@@ -328,9 +354,11 @@ export interface Properties {
   /**
    * Set the position of the child element on the cross axis of the parent container in linear layout, is an style on the parent container.
    *
+   * **Syntax**: `none | start | end | center | stretch`
+   *
    * @see https://lynxjs.org/api/css/properties/linear-cross-gravity
    */
-  linearCrossGravity?: (number & {}) | (string & {}) | undefined;
+  linearCrossGravity?: 'center' | 'end' | 'none' | 'start' | 'stretch' | undefined;
   /**
    * The border-top-right-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.
    *
@@ -342,27 +370,35 @@ export interface Properties {
   /**
    * The `margin-inline-start` CSS property defines the logical inline start margin of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin-inline-start
    */
-  marginInlineStart?: (number & {}) | (string & {}) | undefined;
+  marginInlineStart?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `margin-inline-end` CSS property defines the logical inline end margin of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin-inline-end
    */
-  marginInlineEnd?: (number & {}) | (string & {}) | undefined;
+  marginInlineEnd?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * Defines the logical inline start padding of an element, which maps to a physical padding depending on the element's `direction`.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding-inline-start
    */
-  paddingInlineStart?: (number & {}) | (string & {}) | undefined;
+  paddingInlineStart?: (string & {}) | 0 | undefined;
   /**
    * Defines the logical inline end padding of an element, which maps to a physical padding depending on the element's `direction`.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding-inline-end
    */
-  paddingInlineEnd?: (number & {}) | (string & {}) | undefined;
+  paddingInlineEnd?: (string & {}) | 0 | undefined;
   /**
    * The `border-inline-start-color` CSS property defines the color of the logical inline start border of an element.
    *
@@ -434,39 +470,51 @@ export interface Properties {
   /**
    * Specifies that the current element is aligned with the left/right edges of the parent or sibling element corresponding to `id`.
    *
+   * **Syntax**: `none | parent | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-align-inline-start
    */
-  relativeAlignInlineStart?: (number & {}) | (string & {}) | undefined;
+  relativeAlignInlineStart?: 'none' | 'parent' | (number & {}) | (string & {}) | undefined;
   /**
    * Specifies that the current element is aligned with the left/right edges of the parent or sibling element corresponding to `id`.
    *
+   * **Syntax**: `none | parent | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-align-inline-end
    */
-  relativeAlignInlineEnd?: (number & {}) | (string & {}) | undefined;
+  relativeAlignInlineEnd?: 'none' | 'parent' | (number & {}) | (string & {}) | undefined;
   /**
    * The current element is to the left/right of the sibling element corresponding to the specified `id` in relative-layout.
+   *
+   * **Syntax**: `none | <number>`
    *
    * @see https://lynxjs.org/api/css/properties/relative-inline-start-of
    */
-  relativeInlineStartOf?: (number & {}) | (string & {}) | undefined;
+  relativeInlineStartOf?: 'none' | (number & {}) | (string & {}) | undefined;
   /**
    * The current element is to the left/right of the sibling element corresponding to the specified `id` in relative-layout.
    *
+   * **Syntax**: `none | <number>`
+   *
    * @see https://lynxjs.org/api/css/properties/relative-inline-end-of
    */
-  relativeInlineEndOf?: (number & {}) | (string & {}) | undefined;
+  relativeInlineEndOf?: 'none' | (number & {}) | (string & {}) | undefined;
   /**
    * The `inset-inline-start` CSS property defines the logical inline start inset of an element, which maps to a physical offset depstarting on the element's directionality.
    *
+   * **Syntax**: `auto | <length-percentage>`
+   *
    * @see https://lynxjs.org/api/css/properties/inset-inline-start
    */
-  insetInlineStart?: (number & {}) | (string & {}) | undefined;
+  insetInlineStart?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `inset-inline-end` CSS property defines the logical inline end inset of an element, which maps to a physical offset depending on the element's directionality.
    *
+   * **Syntax**: `auto | <length-percentage>`
+   *
    * @see https://lynxjs.org/api/css/properties/inset-inline-end
    */
-  insetInlineEnd?: (number & {}) | (string & {}) | undefined;
+  insetInlineEnd?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * A shorthand property for setting the width of all four borders of an element.
    *
@@ -484,29 +532,39 @@ export interface Properties {
   /**
    * The `grid-template-columns` CSS property defines track sizing functions of the grid columns.
    *
+   * **Syntax**: `<track-size>+`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-template-columns
    */
-  gridTemplateColumns?: (number & {}) | (string & {}) | undefined;
+  gridTemplateColumns?: (string & {}) | undefined;
   /**
    * The `grid-template-rows` CSS property defines track sizing functions of the grid rows.
    *
+   * **Syntax**: `<track-size>+`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-template-rows
    */
-  gridTemplateRows?: (number & {}) | (string & {}) | undefined;
+  gridTemplateRows?: (string & {}) | undefined;
   /**
    * The `grid-auto-columns` CSS property specifies the size of an implicitly-created grid column track or pattern of tracks.
    *
+   * **Syntax**: `<track-size>+`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-auto-columns
    */
-  gridAutoColumns?: (number & {}) | (string & {}) | undefined;
+  gridAutoColumns?: (string & {}) | undefined;
   /**
    * The `grid-auto-rows` CSS property specifies the size of an implicitly-created grid row track or pattern of tracks.
    *
+   * **Syntax**: `<track-size>+`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-auto-rows
    */
-  gridAutoRows?: (number & {}) | (string & {}) | undefined;
+  gridAutoRows?: (string & {}) | undefined;
   /**
    * Contributes a grid span to the grid item's placement.
+   *
+   * **Syntax**: `<number>`
    *
    * @see https://lynxjs.org/api/css/properties/grid-column-span
    */
@@ -514,27 +572,35 @@ export interface Properties {
   /**
    * Contributes a grid span to the grid item's placement.
    *
+   * **Syntax**: `<number>`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-row-span
    */
   gridRowSpan?: (number & {}) | (string & {}) | undefined;
   /**
    * The `grid-column-start` CSS property specifies a grid item's start position within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
+   * **Syntax**: `<number> | [span && <number>]`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-column-start
    */
-  gridColumnStart?: (number & {}) | (string & {}) | undefined;
+  gridColumnStart?: 'span' | (number & {}) | (string & {}) | undefined;
   /**
    * The `grid-column-end` CSS property specifies a grid item's end position within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
+   * **Syntax**: `<number> | [span && <number>]`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-column-end
    */
-  gridColumnEnd?: (number & {}) | (string & {}) | undefined;
+  gridColumnEnd?: 'span' | (number & {}) | (string & {}) | undefined;
   /**
    * The `grid-row-start` CSS property specifies a grid item's start position within the grid row by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
+   * **Syntax**: `<number> | [span && <number>]`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-row-start
    */
-  gridRowStart?: (number & {}) | (string & {}) | undefined;
+  gridRowStart?: 'span' | (number & {}) | (string & {}) | undefined;
   /**
    * Used to set the width of the left border.
    *
@@ -546,29 +612,51 @@ export interface Properties {
   /**
    * The `grid-row-end` CSS property specifies a grid item's end position within the grid row by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
+   * **Syntax**: `<number> | [span && <number>]`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-row-end
    */
-  gridRowEnd?: (number & {}) | (string & {}) | undefined;
-  gridColumnGap?: (number & {}) | (string & {}) | undefined;
-  gridRowGap?: (number & {}) | (string & {}) | undefined;
+  gridRowEnd?: 'span' | (number & {}) | (string & {}) | undefined;
+  /**
+   * The `column-gap`/`grid-column-gap` CSS property sets the size of the gap (gutter) between an element's columns in flexible box layout and grid layout.
+   *
+   * **Syntax**: `<length-percentage>`
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-column-gap
+   */
+  gridColumnGap?: (string & {}) | 0 | undefined;
+  /**
+   * The `row-gap`/`grid-row-gap` CSS property sets the size of the gap (gutter) between an element's rows in flexible box layout and grid layout.
+   *
+   * **Syntax**: `<length-percentage>`
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-row-gap
+   */
+  gridRowGap?: (string & {}) | 0 | undefined;
   /**
    * The CSS `justify-items` property defines the default `justify-self` for all items of the box, giving them all a default way of justifying each box along the appropriate axis.
    *
+   * **Syntax**: `start | end | center | stretch`
+   *
    * @see https://lynxjs.org/api/css/properties/justify-items
    */
-  justifyItems?: (number & {}) | (string & {}) | undefined;
+  justifyItems?: 'center' | 'end' | 'start' | 'stretch' | undefined;
   /**
    * The CSS `justify-self` property sets the way a box is justified inside its alignment container along the appropriate axis.
    *
+   * **Syntax**: `start | end | center | stretch | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/justify-self
    */
-  justifySelf?: (number & {}) | (string & {}) | undefined;
+  justifySelf?: 'auto' | 'center' | 'end' | 'start' | 'stretch' | undefined;
   /**
    * The `grid-auto-flow` CSS property controls how the auto-placement algorithm works, specifying exactly how auto-placed items get flowed into the grid.
    *
+   * **Syntax**: `[ row | column ] || dense`
+   *
    * @see https://lynxjs.org/api/css/properties/grid-auto-flow
    */
-  gridAutoFlow?: (number & {}) | (string & {}) | undefined;
+  gridAutoFlow?: 'column' | 'dense' | 'row' | (string & {}) | undefined;
   /**
    * The `filter` CSS property applies graphical effects like blur or color shift to an element.
    *
@@ -580,9 +668,11 @@ export interface Properties {
   /**
    * The `linear-direction` CSS property sets how linear items are placed in the linear container defining the main axis and the direction.
    *
+   * **Syntax**: `column | row | column-reverse | row-reverse | vertical | horizontal | vertical-reverse | horizontal-reverse`
+   *
    * @see https://lynxjs.org/api/css/properties/linear-direction
    */
-  linearDirection?: (number & {}) | (string & {}) | undefined;
+  linearDirection?: 'column' | 'column-reverse' | 'horizontal' | 'horizontal-reverse' | 'row' | 'row-reverse' | 'vertical' | 'vertical-reverse' | undefined;
   /**
    * The border-right-width CSS property sets the width of the left border of an element.
    *
@@ -665,21 +755,27 @@ export interface Properties {
   /**
    * The `gap` CSS shorthand property sets the gaps (gutters) between rows and columns in flexible box layout and grid layout.
    *
+   * **Syntax**: `<length-percentage>`
+   *
    * @see https://lynxjs.org/api/css/properties/gap
    */
-  gap?: (number & {}) | (string & {}) | undefined;
+  gap?: (string & {}) | 0 | undefined;
   /**
    * The `column-gap`/`grid-column-gap` CSS property sets the size of the gap (gutter) between an element's columns in flexible box layout and grid layout.
    *
+   * **Syntax**: `<length-percentage>`
+   *
    * @see https://lynxjs.org/api/css/properties/column-gap
    */
-  columnGap?: (number & {}) | (string & {}) | undefined;
+  columnGap?: (string & {}) | 0 | undefined;
   /**
    * The `row-gap`/`grid-row-gap` CSS property sets the size of the gap (gutter) between an element's rows in flexible box layout and grid layout.
    *
+   * **Syntax**: `<length-percentage>`
+   *
    * @see https://lynxjs.org/api/css/properties/row-gap
    */
-  rowGap?: (number & {}) | (string & {}) | undefined;
+  rowGap?: (string & {}) | 0 | undefined;
   imageRendering?: (number & {}) | (string & {}) | undefined;
   hyphens?: (number & {}) | (string & {}) | undefined;
   /**
@@ -758,7 +854,7 @@ export interface Properties {
   /**
    * The `height` CSS property specifies the height of an element.
    *
-   * **Syntax**: `auto | max-content | fit-content | <length-percentage>`
+   * **Syntax**: `auto | max-content | fit-content | <length-percentage [0,∞]> | fit-content( <length-percentage [0,∞]> )`
    *
    * @see https://lynxjs.org/api/css/properties/height
    */
@@ -766,7 +862,7 @@ export interface Properties {
   /**
    * The `width` CSS property specifies the width of an element.
    *
-   * **Syntax**: `auto | max-content | fit-content | <length-percentage>`
+   * **Syntax**: `auto | max-content | fit-content | <length-percentage [0,∞]> | fit-content( <length-percentage [0,∞]> )`
    *
    * @see https://lynxjs.org/api/css/properties/width
    */
@@ -774,15 +870,19 @@ export interface Properties {
   /**
    * To specify max width of a view.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/max-width
    */
-  maxWidth?: (number & {}) | (string & {}) | undefined;
+  maxWidth?: (string & {}) | 0 | undefined;
   /**
    * To specify min width of a view.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/min-width
    */
-  minWidth?: (number & {}) | (string & {}) | undefined;
+  minWidth?: (string & {}) | 0 | undefined;
   /**
    * The `right` CSS property participates in specifying the horizontal position of a positioned element.
    *
@@ -794,63 +894,83 @@ export interface Properties {
   /**
    * To specify max height of a view.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/max-height
    */
-  maxHeight?: (number & {}) | (string & {}) | undefined;
+  maxHeight?: (string & {}) | 0 | undefined;
   /**
    * To specify min height of a view.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/min-height
    */
-  minHeight?: (number & {}) | (string & {}) | undefined;
+  minHeight?: (string & {}) | 0 | undefined;
   /**
    * Sets the padding area on all four sides of an element at once.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding
    */
-  padding?: (number & {}) | (string & {}) | undefined;
+  padding?: (string & {}) | 0 | undefined;
   /**
    * Sets the width of the padding area on the left of an element.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding-left
    */
-  paddingLeft?: (number & {}) | (string & {}) | undefined;
+  paddingLeft?: (string & {}) | 0 | undefined;
   /**
    * Sets the width of the padding area on the right of an element.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding-right
    */
-  paddingRight?: (number & {}) | (string & {}) | undefined;
+  paddingRight?: (string & {}) | 0 | undefined;
   /**
    * Sets the height of the padding area on the top of an element.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding-top
    */
-  paddingTop?: (number & {}) | (string & {}) | undefined;
+  paddingTop?: (string & {}) | 0 | undefined;
   /**
    * Sets the height of the padding area on the bottom of an element.
    *
+   * **Syntax**: `<length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/padding-bottom
    */
-  paddingBottom?: (number & {}) | (string & {}) | undefined;
+  paddingBottom?: (string & {}) | 0 | undefined;
   /**
    * The margin CSS shorthand property sets the margin area on all four sides of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin
    */
-  margin?: (number & {}) | (string & {}) | undefined;
+  margin?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `margin-left` CSS property sets the margin area on the left of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin-left
    */
-  marginLeft?: (number & {}) | (string & {}) | undefined;
+  marginLeft?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `margin-right` CSS property sets the margin area on the right of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin-right
    */
-  marginRight?: (number & {}) | (string & {}) | undefined;
+  marginRight?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `bottom` CSS property participates in specifying the vertical position.
    *
@@ -862,15 +982,19 @@ export interface Properties {
   /**
    * The `margin-top` CSS property sets the margin area on the top of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin-top
    */
-  marginTop?: (number & {}) | (string & {}) | undefined;
+  marginTop?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `margin-bottom` CSS property sets the margin area on the bottom of an element.
    *
+   * **Syntax**: `<length-percentage> | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/margin-bottom
    */
-  marginBottom?: (number & {}) | (string & {}) | undefined;
+  marginBottom?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * `white-space`CSS property sets how white space inside an element is handled.。.
    *
@@ -916,9 +1040,11 @@ export interface Properties {
   /**
    * The `flex` CSS shorthand property sets how a flex item will grow or shrink to fit the space available in its flex container.
    *
+   * **Syntax**: `none | [ <number [0,∞]> <number [0,∞]>? || [auto | <length-percentage [0,∞]>] ]`
+   *
    * @see https://lynxjs.org/api/css/properties/flex
    */
-  flex?: (number & {}) | (string & {}) | undefined;
+  flex?: 'auto' | 'none' | (number & {}) | (string & {}) | 0 | undefined;
   /**
    * The `position` CSS property sets how an element is positioned in a document.
    *
@@ -930,11 +1056,15 @@ export interface Properties {
   /**
    * The `flex-grow` CSS property sets the flex grow factor, which specifies how much of the flex container's remaining space should be assigned to the flex item's main size.
    *
+   * **Syntax**: `<number [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/flex-grow
    */
   flexGrow?: (number & {}) | (string & {}) | undefined;
   /**
    * Defines the shrink factor of the flex element on the main axis.
+   *
+   * **Syntax**: `<number [0,∞]>`
    *
    * @see https://lynxjs.org/api/css/properties/flex-shrink
    */
@@ -942,45 +1072,59 @@ export interface Properties {
   /**
    * The `flex-basis` CSS property sets the initial main size of a flex item.
    *
+   * **Syntax**: `auto | <length-percentage [0,∞]>`
+   *
    * @see https://lynxjs.org/api/css/properties/flex-basis
    */
-  flexBasis?: (number & {}) | (string & {}) | undefined;
+  flexBasis?: 'auto' | (string & {}) | 0 | undefined;
   /**
    * The `flex-direction` CSS property sets how flex items are placed in the flex container defining the main axis and the direction.
    *
+   * **Syntax**: `row | row-reverse | column | column-reverse`
+   *
    * @see https://lynxjs.org/api/css/properties/flex-direction
    */
-  flexDirection?: (number & {}) | (string & {}) | undefined;
+  flexDirection?: 'column' | 'column-reverse' | 'row' | 'row-reverse' | undefined;
   /**
    * The `flex-wrap` CSS property sets whether flex items are forced onto one line or can wrap onto multiple lines.
    *
+   * **Syntax**: `nowrap | wrap | wrap-reverse`
+   *
    * @see https://lynxjs.org/api/css/properties/flex-wrap
    */
-  flexWrap?: (number & {}) | (string & {}) | undefined;
+  flexWrap?: 'nowrap' | 'wrap' | 'wrap-reverse' | undefined;
   /**
    * `align-items` property sets the `align-self` value on all direct children as a group.
    *
+   * **Syntax**: `stretch | center | start | end | flex-start | flex-end | baseline | auto`
+   *
    * @see https://lynxjs.org/api/css/properties/align-items
    */
-  alignItems?: (number & {}) | (string & {}) | undefined;
+  alignItems?: 'auto' | 'baseline' | 'center' | 'end' | 'flex-end' | 'flex-start' | 'start' | 'stretch' | undefined;
   /**
    * In flex and linear layout, `align-self` will align the elements in the current container on the cross axis.
    *
+   * **Syntax**: `auto | center | start | end | flex-start | flex-end | baseline | stretch`
+   *
    * @see https://lynxjs.org/api/css/properties/align-self
    */
-  alignSelf?: (number & {}) | (string & {}) | undefined;
+  alignSelf?: 'auto' | 'baseline' | 'center' | 'end' | 'flex-end' | 'flex-start' | 'start' | 'stretch' | undefined;
   /**
    * In flexible box layout, the `align-content` property defines how flex lines are aligned along the cross-axis.
    *
+   * **Syntax**: `stretch | start | end | flex-start | flex-end | center | space-between | space-around`
+   *
    * @see https://lynxjs.org/api/css/properties/align-content
    */
-  alignContent?: (number & {}) | (string & {}) | undefined;
+  alignContent?: 'center' | 'end' | 'flex-end' | 'flex-start' | 'space-around' | 'space-between' | 'start' | 'stretch' | undefined;
   /**
    * The CSS `justify-content` property defines how distributes space between and around content items along the main-axis of a flexible box layout, linear container, and the inline axis of a grid layout container.
    *
+   * **Syntax**: `stretch | start | end | flex-start | flex-end | center | space-between | space-around | space-evenly`
+   *
    * @see https://lynxjs.org/api/css/properties/justify-content
    */
-  justifyContent?: (number & {}) | (string & {}) | undefined;
+  justifyContent?: 'center' | 'end' | 'flex-end' | 'flex-start' | 'space-around' | 'space-between' | 'space-evenly' | 'start' | 'stretch' | undefined;
   /**
    * The `background` shorthand CSS property sets all background style properties at once, such as `background-clip`,`background-color`,`background-image`,`background-origin`,`background-position`,`background-repeat`,`background-size`.
    *
@@ -990,11 +1134,11 @@ export interface Properties {
   /**
    * The `box-sizing` property defines whether fixed sizes (such as `<length>`s and `<percentage>`s) are assigned to the content box or to the border box.
    *
-   * **Syntax**: `border-box | content-box | auto`
+   * **Syntax**: `border-box | content-box`
    *
    * @see https://lynxjs.org/api/css/properties/box-sizing
    */
-  boxSizing?: 'auto' | 'border-box' | 'content-box' | undefined;
+  boxSizing?: 'border-box' | 'content-box' | undefined;
   /**
    * The `border-color` shorthand CSS property sets the color (`border-top-color`, `border-right-color`, `border-bottom-color`, `border-left-color`) of an element's border.
    *
@@ -1095,6 +1239,8 @@ export interface Properties {
   /**
    * The `order` CSS property sets the order to lay out an item in container.
    *
+   * **Syntax**: `<number>`
+   *
    * @see https://lynxjs.org/api/css/properties/order
    */
   order?: (number & {}) | (string & {}) | undefined;
@@ -1110,9 +1256,11 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/transform-origin
    */
   transformOrigin?: (number & {}) | (string & {}) | undefined;
-  linearOrientation?: (number & {}) | (string & {}) | undefined;
+  linearOrientation?: 'column' | 'column-reverse' | 'horizontal' | 'horizontal-reverse' | 'row' | 'row-reverse' | 'vertical' | 'vertical-reverse' | undefined;
   /**
    * Child element's weight sum in linear.
+   *
+   * **Syntax**: `<number>`
    *
    * @see https://lynxjs.org/api/css/properties/linear-weight-sum
    */
@@ -1128,21 +1276,27 @@ export interface Properties {
   /**
    * Child element's weight in linear.
    *
+   * **Syntax**: `<number>`
+   *
    * @see https://lynxjs.org/api/css/properties/linear-weight
    */
   linearWeight?: (number & {}) | (string & {}) | undefined;
   /**
    * The CSS `linear-gravity` property defines how distributes space between and around content items along the main-axis of a linear container.
    *
+   * **Syntax**: `none | start | end | center | space-between | top | bottom | left | right | center-vertical | center-horizontal`
+   *
    * @see https://lynxjs.org/api/css/properties/linear-gravity
    */
-  linearGravity?: (number & {}) | (string & {}) | undefined;
+  linearGravity?: 'bottom' | 'center' | 'center-horizontal' | 'center-vertical' | 'end' | 'left' | 'none' | 'right' | 'space-between' | 'start' | 'top' | undefined;
   /**
    * The position of the child element in the linear container, perpendicular to the layout direction, is a property of the child element's layout, similar to `align-self` in flexible box layout.
    *
+   * **Syntax**: `none | stretch | start | end | center | top | bottom | left | right | center-vertical | center-horizontal | fill-vertical | fill-horizontal`
+   *
    * @see https://lynxjs.org/api/css/properties/linear-layout-gravity
    */
-  linearLayoutGravity?: (number & {}) | (string & {}) | undefined;
+  linearLayoutGravity?: 'bottom' | 'center' | 'center-horizontal' | 'center-vertical' | 'end' | 'fill-horizontal' | 'fill-vertical' | 'left' | 'none' | 'right' | 'start' | 'stretch' | 'top' | undefined;
   layoutAnimationCreateDuration?: (number & {}) | (string & {}) | undefined;
   layoutAnimationCreateTimingFunction?: (number & {}) | (string & {}) | undefined;
   layoutAnimationCreateDelay?: (number & {}) | (string & {}) | undefined;
@@ -1165,6 +1319,8 @@ export interface Properties {
   adaptFontSize?: (number & {}) | (string & {}) | undefined;
   /**
    * The `aspect-ratio` CSS property sets a preferred aspect-ratio for the box, which will be used in the calculation of auto sizes and some other layout functions.
+   *
+   * **Syntax**: ` <number [0,∞]> [ / <number [0,∞]> ]`
    *
    * @see https://lynxjs.org/api/css/properties/aspect-ratio
    */

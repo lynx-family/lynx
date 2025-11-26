@@ -71,5 +71,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "auto | <length-percentage [0,∞]>"
 }

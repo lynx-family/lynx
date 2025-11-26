@@ -39,5 +39,6 @@
       }
     }
   },
-  "is_shorthand": true
+  "is_shorthand": true,
+  "formal_syntax": "[row | row-reverse | column | column-reverse] || [nowrap | wrap | wrap-reverse]"
 }

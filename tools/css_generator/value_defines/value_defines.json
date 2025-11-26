@@ -23,6 +23,9 @@
         "<named-color>": "string",
         "<line-style>": "none | hidden | dotted | dashed | solid | double | groove | ridge | inset | outset",
         "<line-width>" : "<length> | thin | medium | thick",
-        "<number>": "number | string"
+        "<number>": "number | string",
+        "<track-size>": "<track-breadth> | minmax( <inflexible-breadth> , <track-breadth> )  | fit-content( <length-percentage [0,∞]>)",
+        "<track-breadth>": "  <length-percentage [0,∞]> | <flex [0,∞]> | max-content | auto",
+        "<inflexible-breadth>": "  <length-percentage [0,∞]> | max-content | auto"
     }
 }

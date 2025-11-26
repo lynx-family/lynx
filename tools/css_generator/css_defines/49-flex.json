@@ -66,5 +66,6 @@
       }
     }
   },
-  "is_shorthand": true
+  "is_shorthand": true,
+  "formal_syntax": "none | [ <number [0,∞]> <number [0,∞]>? || [auto | <length-percentage [0,∞]>] ]"
 }

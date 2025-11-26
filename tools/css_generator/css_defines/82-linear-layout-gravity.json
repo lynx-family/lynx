@@ -138,5 +138,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "none | stretch | start | end | center | top | bottom | left | right | center-vertical | center-horizontal | fill-vertical | fill-horizontal"
 }
