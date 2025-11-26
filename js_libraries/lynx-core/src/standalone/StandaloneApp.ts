@@ -18,6 +18,11 @@ import { Reporter } from '../modules';
 import Performance from '../modules/performance';
 import { CachedFunctionProxy } from '../util';
 import { AMDModule } from '../common/amd';
+import {
+  createResponseClass,
+  createRequestClass,
+  createReadableStreamClass,
+} from '../modules/fetch';
 
 export class BaseAppSingletonData<
   NativeAppProxy extends NativeApp = NativeApp,
@@ -39,6 +44,18 @@ export class BaseAppSingletonData<
   apiList: Record<string, unknown>;
   Reporter: Reporter;
   resolvedPromise: Promise<void>;
+  _createResponseClass: (
+    Promise: PromiseConstructor
+  ) => ReturnType<typeof createResponseClass>;
+  _createRequestClass: (
+    Promise: PromiseConstructor
+  ) => ReturnType<typeof createRequestClass>;
+  _createReadableStreamClass: (
+    Promise: PromiseConstructor
+  ) => ReturnType<typeof createReadableStreamClass>;
+  _ResponseClass: ReturnType<typeof createResponseClass>;
+  _RequestClass: ReturnType<typeof createRequestClass>;
+  _ReadableStreamClass: ReturnType<typeof createReadableStreamClass>;
 
   public transferSingletonData(
     baseApp: BaseApp,
@@ -63,6 +80,13 @@ export class BaseAppSingletonData<
     this.Reporter.rebind(() => baseApp);
     baseApp.Reporter = this.Reporter;
     baseApp.resolvedPromise = this.resolvedPromise;
+    // fetch api related
+    baseApp._createResponseClass = this._createResponseClass;
+    baseApp._ResponseClass = this._ResponseClass;
+    baseApp._createRequestClass = this._createRequestClass;
+    baseApp._RequestClass = this._RequestClass;
+    baseApp._createReadableStreamClass = this._createReadableStreamClass;
+    baseApp._ReadableStreamClass = this._ReadableStreamClass;
   }
 }
 
@@ -112,5 +136,12 @@ export default class StandaloneApp extends BaseApp {
     this.singletonData.apiList = this._apiList;
     this.singletonData.Reporter = this.Reporter;
     this.singletonData.resolvedPromise = this.resolvedPromise;
+    // fetch api related
+    this.singletonData._createResponseClass = this._createResponseClass;
+    this.singletonData._ResponseClass = this._ResponseClass;
+    this.singletonData._createRequestClass = this._createRequestClass;
+    this.singletonData._RequestClass = this._RequestClass;
+    this.singletonData._createReadableStreamClass = this._createReadableStreamClass;
+    this.singletonData._ReadableStreamClass = this._ReadableStreamClass;
   }
 }
