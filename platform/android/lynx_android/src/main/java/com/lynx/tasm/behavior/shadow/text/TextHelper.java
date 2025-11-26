@@ -887,8 +887,8 @@ public class TextHelper {
       }
     }
     if (fontVariationSettings != null || fontFeatureSettings != null) {
-      FontSettingsKey key = new FontSettingsKey(
-          fontVariationSettings, fontFeatureSettings, textPaint.getTextSize(), fontFamily);
+      FontSettingsKey key =
+          new FontSettingsKey(fontVariationSettings, textPaint.getTextSize(), fontFamily);
 
       Typeface tf = FontFaceManager.getInstance().getFontWithSettings(key);
       if (tf != null) {
@@ -898,13 +898,14 @@ public class TextHelper {
         if (fontVariationSettings != null && enableSetFontVariation()) {
           textPaint.setFontVariationSettings(fontVariationSettings);
         }
-        if (fontFeatureSettings != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-          textPaint.setFontFeatureSettings(fontFeatureSettings);
-        }
         if (hasValidTypeface) {
           tf = textPaint.getTypeface();
           FontFaceManager.getInstance().putFontWithSettings(key, tf);
         }
+      }
+
+      if (fontFeatureSettings != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        textPaint.setFontFeatureSettings(fontFeatureSettings);
       }
     }
   }

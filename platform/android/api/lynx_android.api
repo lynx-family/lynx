@@ -1857,7 +1857,7 @@ public class com::lynx::tasm::behavior::shadow::text::FontFamilySpan : MetricAff
 }
 
 public class com::lynx::tasm::fontface::FontSettingsKey :  {
-  public com.lynx.tasm.fontface.FontSettingsKey.FontSettingsKey(String variation, String feature, float textSize, String fontFamily);
+  public com.lynx.tasm.fontface.FontSettingsKey.FontSettingsKey(String variation, float textSize, String fontFamily);
   public boolean com.lynx.tasm.fontface.FontSettingsKey.equals(Object o);
   public int com.lynx.tasm.fontface.FontSettingsKey.hashCode();
 }
