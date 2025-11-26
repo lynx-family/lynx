@@ -61,31 +61,44 @@ public final class TemplateBundle {
     return nativePtr == that.nativePtr && templateSize == that.templateSize;
   }
 
-  private static TemplateBundle internalBuildTemplate(byte[] template, String url) {
+  private static SecurityResult verifyTasm(byte[] template, ByteBuffer buffer, String url) {
+    ILynxSecurityService securityService =
+        LynxServiceCenter.inst().getService(ILynxSecurityService.class);
+    if (securityService != null) {
+      // Do Security Check;
+      return securityService.verifyTASM(
+          null, template, buffer, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
+    }
+    return SecurityResult.onSuccess();
+  }
+
+  private static TemplateBundle internalBuildTemplate(
+      byte[] template, ByteBuffer buffer, String url) {
     TemplateBundle result = null;
-    if (template != null) {
+    int length;
+    if (template != null || buffer != null) {
+      length = buffer != null ? buffer.limit() : template.length;
       TraceEvent.beginSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE);
       if (checkIfEnvPrepared()) {
-        ILynxSecurityService securityService =
-            LynxServiceCenter.inst().getService(ILynxSecurityService.class);
-        if (securityService != null) {
-          // Do Security Check;
-          SecurityResult securityResult = securityService.verifyTASM(
-              null, template, null, url, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
-          if (!securityResult.isVerified()) {
-            result = new TemplateBundle(0, template.length, url,
-                "template verify failed, error message: " + securityResult.getErrorMsg(), null);
-            return result;
-          }
+        SecurityResult securityResult = verifyTasm(template, buffer, url);
+        if (!securityResult.isVerified()) {
+          result = new TemplateBundle(0, template.length, url,
+              "template verify failed, error message: " + securityResult.getErrorMsg(), null);
+          return result;
         }
         // 0: string, error message
         // 1: ReadableMap, pageConfig
-        Object[] buffer = new Object[2];
-        long ptr = nativeParseTemplateFromByteArray(template, buffer);
-        result = new TemplateBundle(
-            ptr, template.length, url, (String) buffer[0], (ReadableMap) buffer[1]);
+        Object[] options = new Object[2];
+        long ptr = 0;
+        if (buffer != null) {
+          ptr = nativeParseTemplateFromByteBuffer(buffer, options);
+        } else {
+          ptr = nativeParseTemplateFromByteArray(template, options);
+        }
+        result =
+            new TemplateBundle(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
       } else {
-        result = new TemplateBundle(0, template.length, url, "Lynx Env is not prepared", null);
+        result = new TemplateBundle(0, length, url, "Lynx Env is not prepared", null);
       }
       TraceEvent.endSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE);
     }
@@ -102,7 +115,7 @@ public final class TemplateBundle {
    * an invalid `TemplateBundle` is returned.
    */
   public static TemplateBundle fromTemplate(byte[] template) {
-    return internalBuildTemplate(template, null);
+    return internalBuildTemplate(template, null, null);
   }
 
   /**
@@ -117,37 +130,24 @@ public final class TemplateBundle {
    * an invalid `TemplateBundle` is returned.
    */
   public static TemplateBundle fromTemplate(ByteBuffer buffer, TemplateBundleOption option) {
-    TemplateBundle bundle = null;
+    String url = option != null ? option.getUrl() : null;
     if (buffer == null) {
-      return bundle;
-    }
-    if (!buffer.isDirect()) {
-      LLog.i(TAG, "TemplateBundle only supports DirectByteBuffer.");
-      bundle = new TemplateBundle(0, buffer.limit(), option.getUrl(),
-          "TemplateBundle only supports DirectByteBuffer.", null);
-      return bundle;
+      return null;
     }
 
-    // TODO(nihao.royal): support security check after SecurityService support buffer.
-    TraceEvent.beginSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_BYTEBUFFER);
-    if (checkIfEnvPrepared()) {
-      // 0: string, error message
-      // 1: ReadableMap, pageConfig
-      Object[] options = new Object[2];
-      long ptr = nativeParseTemplateFromByteBuffer(buffer, options);
-      bundle = new TemplateBundle(
-          ptr, buffer.limit(), option.getUrl(), (String) options[0], (ReadableMap) options[1]);
-    } else {
-      bundle =
-          new TemplateBundle(0, buffer.limit(), option.getUrl(), "LynxEnv is not prepared.", null);
+    if (!buffer.isDirect()) {
+      LLog.i(TAG, "TemplateBundle only supports DirectByteBuffer.");
+      return new TemplateBundle(
+          0, buffer.limit(), url, "TemplateBundle only supports DirectByteBuffer.", null);
     }
-    bundle.initWithOption(option);
-    TraceEvent.endSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_BYTEBUFFER);
-    return bundle;
+    TemplateBundle result = internalBuildTemplate(null, buffer, url);
+    result.initWithOption(option);
+    return result;
   }
 
   public static TemplateBundle fromTemplate(byte[] template, TemplateBundleOption option) {
-    TemplateBundle result = internalBuildTemplate(template, option.getUrl());
+    String url = option != null ? option.getUrl() : null;
+    TemplateBundle result = internalBuildTemplate(template, null, url);
     result.initWithOption(option);
     return result;
   }
