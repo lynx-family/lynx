@@ -18,6 +18,7 @@ import { Reporter } from '../modules';
 import Performance from '../modules/performance';
 import { CachedFunctionProxy } from '../util';
 import { AMDModule } from '../common/amd';
+import { createReadableStreamClass } from '../modules/fetch';
 
 export class BaseAppSingletonData<
   NativeAppProxy extends NativeApp = NativeApp,
@@ -39,6 +40,10 @@ export class BaseAppSingletonData<
   apiList: Record<string, unknown>;
   Reporter: Reporter;
   resolvedPromise: Promise<void>;
+  _createReadableStreamClass: (
+    Promise: PromiseConstructor
+  ) => ReturnType<typeof createReadableStreamClass>;
+  _ReadableStreamClass: ReturnType<typeof createReadableStreamClass>;
 
   public transferSingletonData(
     baseApp: BaseApp,
@@ -63,6 +68,9 @@ export class BaseAppSingletonData<
     this.Reporter.rebind(() => baseApp);
     baseApp.Reporter = this.Reporter;
     baseApp.resolvedPromise = this.resolvedPromise;
+    // fetch api related
+    baseApp._createReadableStreamClass = this._createReadableStreamClass;
+    baseApp._ReadableStreamClass = this._ReadableStreamClass;
   }
 }
 
@@ -112,5 +120,8 @@ export default class StandaloneApp extends BaseApp {
     this.singletonData.apiList = this._apiList;
     this.singletonData.Reporter = this.Reporter;
     this.singletonData.resolvedPromise = this.resolvedPromise;
+    // fetch api related
+    this.singletonData._createReadableStreamClass = this._createReadableStreamClass;
+    this.singletonData._ReadableStreamClass = this._ReadableStreamClass;
   }
 }
