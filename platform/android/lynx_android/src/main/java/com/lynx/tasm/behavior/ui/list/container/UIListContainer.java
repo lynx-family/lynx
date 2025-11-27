@@ -38,7 +38,6 @@ import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
-import com.lynx.tasm.behavior.ui.list.ListEventManager;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.ComponentView;
@@ -703,11 +702,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     mEnableListSticky = value;
   }
 
-  @LynxProp(name = "sticky-offset", defaultInt = 0)
-  public void setStickyOffset(Dynamic value) {
-    int offset = ListEventManager.dynamicToInt(value, 0);
-    offset = (int) PixelUtils.dipToPx(offset);
-    mStickyOffset = offset;
+  @LynxProp(name = "sticky-offset", defaultFloat = 0)
+  public void setStickyOffset(float value) {
+    mStickyOffset = (int) PixelUtils.dipToPx(value);
   }
 
   @LynxProp(name = "enable-fade-in-animation", defaultBoolean = false)
