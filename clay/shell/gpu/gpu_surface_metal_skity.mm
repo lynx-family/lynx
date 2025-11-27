@@ -161,8 +161,72 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromCAMetalLayer
 
 std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
     const skity::Vec2& frame_info) {
-  FML_UNIMPLEMENTED();
-  return nullptr;
+  GPUMTLTextureInfo texture = delegate_->GetMTLTexture(frame_info);
+  id<MTLTexture> mtl_texture = (__bridge id<MTLTexture>)(texture.texture);
+
+  if (!mtl_texture) {
+    FML_LOG(ERROR) << "Invalid MTLTexture given by the embedder.";
+    return nullptr;
+  }
+
+  auto surface = CreateSurfaceFromMetalTexture(context_, frame_info, mtl_texture,
+                                               static_cast<uint32_t>(msaa_samples_));
+  if (!surface) {
+    FML_LOG(ERROR) << "Could not create gpuSurface from the CAMetalLayer.";
+    return nullptr;
+  }
+
+  auto encode_callback = [this, texture, surface](SurfaceFrame& surface_frame,
+                                                  skity::Canvas* canvas) -> bool {
+    if (!canvas) {
+      FML_LOG(ERROR) << "skity Canvas is null.";
+      return false;
+    }
+    TRACE_EVENT("clay", "skity::Canvas::Flush");
+    canvas->Flush();
+    surface->Flush();
+
+    if (delegate_->EnablePartialRepaint()) {
+      for (auto& entry : damage_) {
+        if (entry.first != texture.texture_id) {
+          // Accumulate damage for other framebuffers
+          if (surface_frame.submit_info().frame_damage) {
+            entry.second.Join(*surface_frame.submit_info().frame_damage);
+          }
+        }
+      }
+      // Reset accumulated damage for current framebuffer
+      damage_[texture.texture_id] = skity::Rect::MakeEmpty();
+    }
+
+    return true;
+  };
+
+  // This code path is only used on Mac platform, which ensures rasterizer teardown before shell,
+  // thus safe to cauptre this
+  auto submit_callback = [this, texture](const SurfaceFrame::SubmitInfo&) -> bool {
+    TRACE_EVENT("clay", "GPUSurfaceMetal::PresentTexture");
+    return delegate_->PresentTexture(texture);
+  };
+
+  SurfaceFrame::FramebufferInfo framebuffer_info;
+  framebuffer_info.supports_readback = true;
+
+  if (size_ != frame_info) {
+    damage_.clear();
+    size_ = frame_info;
+  }
+
+  if (delegate_->EnablePartialRepaint()) {
+    auto i = damage_.find(texture.texture_id);
+    if (i != damage_.end()) {
+      framebuffer_info.existing_damage = i->second;
+    }
+    framebuffer_info.supports_partial_repaint = true;
+  }
+
+  return std::make_unique<SurfaceFrame>(surface, framebuffer_info, encode_callback, submit_callback,
+                                        frame_info);
 }
 
 // |Surface|
