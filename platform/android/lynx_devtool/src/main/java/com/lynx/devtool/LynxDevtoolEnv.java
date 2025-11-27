@@ -206,21 +206,30 @@ public class LynxDevtoolEnv {
   public void loadNativeDevtoolLibrary() {
     if (mDevtoolLibraryLoader != null) {
       mDevtoolLibraryLoader.loadLibrary("lynxdebugrouter");
-      mDevtoolLibraryLoader.loadLibrary("v8_libfull.cr");
       mDevtoolLibraryLoader.loadLibrary("basedevtool");
       mDevtoolLibraryLoader.loadLibrary("lynxdevtool");
+      if (LynxEnv.inst().shouldLoadDevToolJsBridge()) {
+        mDevtoolLibraryLoader.loadLibrary("v8_libfull.cr");
+        mDevtoolLibraryLoader.loadLibrary("lynxdevtool_js_bridge");
+      }
       LLog.i(TAG, "liblynxdevtool and libv8_libfull loaded via custom devtool library loader");
     } else {
       if (LynxEnv.inst().getLibraryLoader() != null) {
         LynxEnv.inst().getLibraryLoader().loadLibrary("lynxdebugrouter");
-        LynxEnv.inst().getLibraryLoader().loadLibrary("v8_libfull.cr");
         LynxEnv.inst().getLibraryLoader().loadLibrary("basedevtool");
         LynxEnv.inst().getLibraryLoader().loadLibrary("lynxdevtool");
+        if (LynxEnv.inst().shouldLoadDevToolJsBridge()) {
+          LynxEnv.inst().getLibraryLoader().loadLibrary("v8_libfull.cr");
+          LynxEnv.inst().getLibraryLoader().loadLibrary("lynxdevtool_js_bridge");
+        }
         LLog.i(TAG, "liblynxdevtool loaded via library loader");
       } else {
-        System.loadLibrary("v8_libfull.cr");
         System.loadLibrary("basedevtool");
         System.loadLibrary("lynxdevtool");
+        if (LynxEnv.inst().shouldLoadDevToolJsBridge()) {
+          System.loadLibrary("v8_libfull.cr");
+          System.loadLibrary("lynxdevtool_js_bridge");
+        }
         LLog.i(TAG, "liblynxdevtool loaded via system loader");
       }
     }

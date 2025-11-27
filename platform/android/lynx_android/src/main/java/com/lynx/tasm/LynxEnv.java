@@ -810,6 +810,12 @@ public class LynxEnv {
     return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, false);
   }
 
+  public boolean shouldLoadDevToolJsBridge() {
+    ILynxDevToolService devtoolService =
+        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    return mDevToolComponentAttach && (devtoolService != null && devtoolService.getLoadJsBridge());
+  }
+
   // if true, user can debug any lynx view
   public void enableDevtool(boolean enableDevTool) {
     LLog.i(TAG, enableDevTool ? "Turn on devtool" : "Turn off devtool");
