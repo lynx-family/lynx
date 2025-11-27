@@ -24,6 +24,7 @@ PubLynxContext::PubLynxContext(
   ui_owner->SetContext(this);
   node_owner->SetContext(this);
   context_->SetTapSlop("50px");
+  context_->SetLongPressDuration(500);
   context_->SetEnableTextOverflow(true);
   if (delegate->gesture_event_callback) {
     ui_owner->Owner()->InitGestureArenaManager(context_.get());
