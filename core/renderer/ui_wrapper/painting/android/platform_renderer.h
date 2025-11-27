@@ -5,11 +5,11 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_H_
 
-#include <memory>
-#include <vector>
-
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/utils/base/base_def.h"
 
 namespace lynx::tasm {
 
@@ -31,6 +31,10 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
 
   // Get the unique identifier for this renderer
   virtual int GetId() const = 0;
+
+  virtual const base::InlineVector<fml::RefPtr<PlatformRenderer>,
+                                   kChildrenInlineVectorSize>&
+  Children() const = 0;
 
   void ReleaseSelf() const override = 0;
 };

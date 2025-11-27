@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
 
+#include <cstddef>
+
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer.h"
@@ -18,6 +20,9 @@ class DisplayList;
 // for all platform-specific renderers. Platform-specific renderers should
 // inherit from this class to share common logic.
 class PlatformRendererImpl : public PlatformRenderer {
+  using ChildVecT = base::InlineVector<fml::RefPtr<PlatformRenderer>,
+                                       kChildrenInlineVectorSize>;
+
  public:
   explicit PlatformRendererImpl(int id) : id_(id) {}
 
@@ -28,6 +33,9 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   void RemoveFromParent() override;
   void AddChild(fml::RefPtr<PlatformRenderer> child) override;
+
+  const ChildVecT& Children() const override { return children_; }
+
   int GetId() const override { return id_; }
 
  protected:
@@ -45,8 +53,7 @@ class PlatformRendererImpl : public PlatformRenderer {
  private:
   int id_;
   PlatformRendererImpl* parent_ = nullptr;
-  base::InlineVector<fml::RefPtr<PlatformRenderer>, kChildrenInlineVectorSize>
-      children_;
+  ChildVecT children_;
 };
 
 }  // namespace lynx::tasm
