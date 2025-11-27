@@ -5,10 +5,8 @@
 #include "devtool/lynx_devtool/js_debug/lepus/inspector_lepus_observer_impl.h"
 
 #include "core/runtime/common/lynx_console_helper.h"
+#include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 #include "devtool/lynx_devtool/js_debug/lepus/inspector_lepus_debugger_impl.h"
-#if !ENABLE_UNITTESTS
-#include "devtool/lynx_devtool/js_debug/lepus/manager/lepus_inspector_manager_impl.h"
-#endif
 
 namespace lynx {
 namespace devtool {
@@ -35,10 +33,7 @@ InspectorLepusObserverImpl::InspectorLepusObserverImpl(
 
 std::unique_ptr<lepus::LepusInspectorManager>
 InspectorLepusObserverImpl::CreateLepusInspectorManager() {
-#if !ENABLE_UNITTESTS
-  return std::make_unique<lepus::LepusInspectorManagerImpl>();
-#endif
-  return nullptr;
+  return JSDebugHelper::GetInstance()->CreateLepusInspectorManager();
 }
 
 std::string InspectorLepusObserverImpl::GetDebugInfo(const std::string &url) {
