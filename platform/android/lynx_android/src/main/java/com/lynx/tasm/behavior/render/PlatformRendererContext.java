@@ -130,6 +130,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
+  @CalledByNative
+  public void updatePlatformRendererFrame(int sign, int left, int top, int width, int height) {
+    ViewGroup view = mViewHolder.get(sign);
+    if (view instanceof UIBody.UIBodyView) {
+      ((UIBody.UIBodyView) view).setLynxFrame(left, top, left + width, top + height);
+      view.requestLayout();
+    } else if (view instanceof ContainerRenderer) {
+      ((ContainerRenderer) view).setLynxFrame(left, top, left + width, top + height);
+      view.requestLayout();
+    }
+  }
+
   public LynxImageManager getImage(int sign) {
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {

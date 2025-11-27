@@ -460,18 +460,25 @@ public class LynxUIRenderer implements ILynxUIRenderer {
           "performInnerMeasure failed, mLynxUIOwner:" + mLynxUIOwner + ", bodyView:" + bodyView);
       return;
     }
-    mLynxUIOwner.performMeasure();
+    boolean isFragmentLayerRender =
+        lynxContext != null && lynxContext.isFragmentLayerRenderOn() && bodyView != null;
+    if (!isFragmentLayerRender) {
+      // No platform ui is needed
+      mLynxUIOwner.performMeasure();
+    }
     int width = 0;
     int height = 0;
     int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+
     if (widthMode == MeasureSpec.AT_MOST || widthMode == MeasureSpec.UNSPECIFIED) {
-      width = mLynxUIOwner.getRootWidth();
+      width = isFragmentLayerRender ? bodyView.getLynxFrame().width() : mLynxUIOwner.getRootWidth();
     } else {
       width = MeasureSpec.getSize(widthMeasureSpec);
     }
     int heightMode = MeasureSpec.getMode(heightMeasureSpec);
     if (heightMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.UNSPECIFIED) {
-      height = mLynxUIOwner.getRootHeight();
+      height =
+          isFragmentLayerRender ? bodyView.getLynxFrame().height() : mLynxUIOwner.getRootHeight();
     } else {
       height = MeasureSpec.getSize(heightMeasureSpec);
     }
@@ -485,6 +492,13 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       return;
     }
     LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
+    boolean isFragmentLayerRender = lynxContext != null && lynxContext.isFragmentLayerRenderOn()
+        && lynxContext.getUIBodyView() != null;
+    if (isFragmentLayerRender) {
+      // No need to perform layout for UIOwner under fragment layer render.
+      return;
+    }
+
     if (lynxContext != null) {
       String eventName = "LynxTemplateRender.Layout";
       boolean needLongTaskMonitor = LynxLongTaskMonitor.willProcessTask(

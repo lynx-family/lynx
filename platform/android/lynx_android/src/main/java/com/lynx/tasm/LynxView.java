@@ -1143,6 +1143,11 @@ public class LynxView extends UIBodyView {
       if (lynxUIRenderer.shouldInvokeNativeViewMethod()) {
         super.onLayout(changed, left, top, right, bottom);
       }
+      if (getLynxContext() != null && getLynxContext().isFragmentLayerRenderOn()) {
+        // PlatformRenderer uses native layout pass to update frame.
+        super.onLayout(changed, left, top, right, bottom);
+      }
+
       mLynxTemplateRender.onLayout(changed, left, top, right, bottom);
     } else {
       onLayoutWhenDetach();

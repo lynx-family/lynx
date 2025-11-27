@@ -29,6 +29,7 @@ import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
+import com.lynx.tasm.behavior.render.ContainerRenderer;
 import com.lynx.tasm.behavior.render.DisplayList;
 import com.lynx.tasm.behavior.render.DisplayListApplier;
 import com.lynx.tasm.behavior.render.PlatformRendererContext;
@@ -67,6 +68,9 @@ public class UIBody extends UIGroup<UIBodyView> {
   public UIBody(LynxContext context, final UIBodyView view) {
     super(context);
     mBodyView = view;
+    if (mBodyView != null) {
+      mBodyView.mLynxContext = context;
+    }
     initialize();
 
     mExceptionHandler = new Consumer<Exception>() {
@@ -132,6 +136,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         }
 
         mContext = context;
+        mBodyView.mLynxContext = context;
         mContext.setUIBodyView(mBodyView);
 
         TraceEvent.beginSection(TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW);
@@ -424,6 +429,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     private boolean mInterceptRequestLayout;
     private boolean mHasPendingRequestLayout;
+    private LynxContext mLynxContext = null;
 
     private WeakReference<ITimingCollector> mTimingCollector = new WeakReference<>(null);
 
@@ -438,6 +444,15 @@ public class UIBody extends UIGroup<UIBodyView> {
     private int mCacheWidth;
     private int mCacheHeight;
     boolean mIsMeaningfulPaintingAreaInvalidate = false;
+
+    private Rect mLynxFrame = new Rect();
+    public Rect getLynxFrame() {
+      return mLynxFrame;
+    }
+
+    public void setLynxFrame(int l, int t, int r, int b) {
+      mLynxFrame.set(l, t, r, b);
+    }
 
     // XXX(zhongyr): The following methods can be better abstracted, since they are common methods
     // for PlatformRender layer. Have to design a better way to compose the DisplayList based
@@ -526,6 +541,7 @@ public class UIBody extends UIGroup<UIBodyView> {
     public LynxImageManager peekImageAccordingToNodeIndex(int nodeIndex) {
       return mImageMap.get(nodeIndex);
     }
+
     public void clearNodeIndexImageMap() {
       mImageMap.clear();
     }
@@ -632,6 +648,20 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     public void setInstanceId(int instanceId) {
       mInstanceId = instanceId;
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+      super.onLayout(changed, l, t, r, b);
+      if (mLynxContext != null && mLynxContext.isFragmentLayerRenderOn()) {
+        for (int i = 0; i < getChildCount(); i++) {
+          View child = getChildAt(i);
+          if (child instanceof ContainerRenderer) {
+            Rect childFrame = ((ContainerRenderer) child).getLynxFrame();
+            child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+          }
+        }
+      }
     }
 
     @Override
