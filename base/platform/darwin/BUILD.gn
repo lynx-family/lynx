@@ -5,6 +5,14 @@
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../src/base.gni")
 
+base_pod_target_xcconfig = {
+  GCC_PREPROCESSOR_DEFINITIONS = [
+    "OS_IOS=1",
+    "HOST_OSTYPE=HOST_IOS",
+  ]
+  OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation -std=gnu++17"
+}
+
 podspec_target("lynx_base_podspec") {
   global_variables =
       [ "\$enable_frozen_mode = Integer(ENV[\"LYNX_ENABLE_FROZEN\"] || 0)" ]
@@ -30,14 +38,8 @@ podspec_target("lynx_base_podspec") {
       "-Wshorten-64-to-32",
       "-fno-rtti",
     ]
-    pod_target_xcconfig = {
-      GCC_PREPROCESSOR_DEFINITIONS = [
-        "OS_IOS=1",
-        "HOST_OSTYPE=HOST_IOS",
-      ]
-      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
-      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
-    }
+    pod_target_xcconfig = base_pod_target_xcconfig
+    pod_target_xcconfig.CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
     ios = {
       deployment_target = "10.0"
     }
@@ -54,24 +56,24 @@ base_darwin_public_headers = [
 
 subspec_target("Framework") {
   # The following flags are added just to keep it consistent with the original podspec.
-  pod_target_xcconfig = {
-    GCC_PREPROCESSOR_DEFINITIONS = [
-      "RAPIDJSON_HAS_STDSTRING=1",
-      "RAPIDJSON_NAMESPACE=lynx::rapidjson",
-      "RAPIDJSON_NAMESPACE_BEGIN=\\\"namespace lynx{namespace rapidjson{\\\"",
-      "RAPIDJSON_NAMESPACE_END=\\\"}};namespace rapidjson=::lynx::rapidjson;\\\"",
-      "ENABLE_INSPECTOR=1",
-      "LYNX_ENABLE_FROZEN_MODE=#{\$enable_frozen_mode}",
-      "OS_POSIX=1",
-    ]
-    HEADER_SEARCH_PATHS = [
-      "//PODS_ROOT/LynxBase/lynx",
-      "//PODS_ROOT/LynxBase",
-      "../../..",
-      "//",
-    ]
-    OTHER_CPLUSPLUSFLAGS = "-std=gnu++17"
-  }
+  pod_target_xcconfig = base_pod_target_xcconfig
+  pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [
+    "RAPIDJSON_HAS_STDSTRING=1",
+    "RAPIDJSON_NAMESPACE=lynx::rapidjson",
+    "RAPIDJSON_NAMESPACE_BEGIN=\\\"namespace lynx{namespace rapidjson{\\\"",
+    "RAPIDJSON_NAMESPACE_END=\\\"}};namespace rapidjson=::lynx::rapidjson;\\\"",
+    "ENABLE_INSPECTOR=1",
+    "LYNX_ENABLE_FROZEN_MODE=#{\$enable_frozen_mode}",
+    "OS_POSIX=1",
+  ]
+  pod_target_xcconfig.HEADER_SEARCH_PATHS = [
+    "//PODS_ROOT/LynxBase/lynx",
+    "//PODS_ROOT/LynxBase",
+    "../../..",
+    "//",
+  ]
+  pod_target_xcconfig.OTHER_CPLUSPLUSFLAGS += " -std=gnu++17"
+
   if (!is_debug) {
     pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
   }
