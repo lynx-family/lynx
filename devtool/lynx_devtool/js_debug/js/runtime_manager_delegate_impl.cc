@@ -7,21 +7,10 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/piper/js/js_executor.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-#include "core/runtime/jsi/v8/v8_api.h"
-#include "core/runtime/profile/v8/v8_runtime_profiler.h"
-#endif
-#include "core/runtime/jsi/quickjs/quickjs_api.h"
 #if JS_ENGINE_TYPE == 1
 #include "core/runtime/jsi/jsc/jsc_api.h"
 #endif
-
-#if ENABLE_NAPI_BINDING
-#include "core/runtime/bindings/napi/napi_runtime_proxy_v8.h"
-
-extern void RegisterV8RuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyV8Factory*);
-#endif
+#include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 
 namespace lynx {
 namespace devtool {
@@ -34,13 +23,7 @@ RuntimeManagerDelegateImpl::~RuntimeManagerDelegateImpl() {
 
 void RuntimeManagerDelegateImpl::BeforeRuntimeCreate(
     bool force_use_lightweight_js_engine) {
-#if !ENABLE_UNITTESTS
-#if ENABLE_NAPI_BINDING && (JS_ENGINE_TYPE == 0 || OS_ANDROID)
-  static piper::NapiRuntimeProxyV8FactoryImpl factory;
-  LOGI("js debug: RegisterV8RuntimeProxyFactory: " << &factory);
-  RegisterV8RuntimeProxyFactory(&factory);
-#endif
-#endif
+  JSDebugHelper::GetInstance()->RegisterNapiRuntimeProxy();
 }
 
 void RuntimeManagerDelegateImpl::OnRuntimeReady(
@@ -72,7 +55,6 @@ void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
 std::shared_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
-#if !ENABLE_UNITTESTS
   // When using a shared js context, create a runtime of the same type as the
   // context.
   if (use_shared_context) {
@@ -82,56 +64,42 @@ std::shared_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
       tasm::LynxEnv::GetInstance().GetV8Enabled(page_options.GetDebuggable());
   switch (v8_enable) {
     case 0:
-      LOGI("js debug: make Quickjs runtime");
-      return piper::makeQuickJsRuntime();
-      break;
+      return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineQuickjs);
     case 1:
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-      LOGI("js debug: make V8 runtime");
-      return piper::makeV8Runtime();
-#endif
-      break;
+      return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineV8);
     case 2:
       if (force_use_lightweight_js_engine) {
-        LOGI("js debug: make Quickjs runtime");
-        return piper::makeQuickJsRuntime();
+        return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineQuickjs);
       } else {
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-        LOGI("js debug: make V8 runtime");
-        return piper::makeV8Runtime();
-#endif
+        return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineV8);
       }
-      break;
     default:
       break;
   }
   LOGF("js debug: MakeRuntime fail! v8_enable: "
        << v8_enable << ", force_use_lightweight_js_engine: "
        << force_use_lightweight_js_engine);
-#endif
   return nullptr;
 }
 
 std::shared_ptr<piper::Runtime>
 RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
     bool force_use_lightweight_js_engine) {
-#if !ENABLE_UNITTESTS
   LOGI("js debug: create runtime for shared js context!")
   if (force_use_lightweight_js_engine) {
-    LOGI("js debug: make Quickjs runtime");
-    return piper::makeQuickJsRuntime();
+    return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineQuickjs);
   } else {
 #if JS_ENGINE_TYPE == 1
     LOGI("js debug: make JSC runtime");
     return piper::makeJSCRuntime();
-#elif JS_ENGINE_TYPE == 0 || OS_ANDROID
-    LOGI("js debug: make V8 runtime");
-    return piper::makeV8Runtime();
+#else
+    return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineV8);
 #endif
   }
-  LOGF("js debug: failed to create runtime! force_use_lightweight_js_engine: "
-       << force_use_lightweight_js_engine);
-#endif
+  LOGF(
+      "js debug: failed to create runtime for shared js context! "
+      "force_use_lightweight_js_engine: "
+      << force_use_lightweight_js_engine);
   return nullptr;
 }
 
@@ -145,30 +113,20 @@ RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
       tasm::LynxEnv::GetInstance().GetV8Enabled(page_options.GetDebuggable());
   switch (v8_enable) {
     case 0:
-      LOGI("js debug: make Quickjs profiler");
-      return piper::makeQuickJsRuntimeProfiler(js_context);
-      break;
+      return JSDebugHelper::GetInstance()->MakeRuntimeProfiler(
+          js_context, kKeyEngineQuickjs);
     case 1: {
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-      LOGI("js debug: make V8 profiler");
-      auto v8_profiler = piper::makeV8RuntimeProfiler(js_context);
-      return std::make_shared<profile::V8RuntimeProfiler>(
-          std::move(v8_profiler));
-#endif
-      break;
+      return JSDebugHelper::GetInstance()->MakeRuntimeProfiler(js_context,
+                                                               kKeyEngineV8);
     }
     case 2:
       if (force_use_lightweight_js_engine) {
-        LOGI("js debug: make Quickjs profiler");
-        return piper::makeQuickJsRuntimeProfiler(js_context);
+        return JSDebugHelper::GetInstance()->MakeRuntimeProfiler(
+            js_context, kKeyEngineQuickjs);
       } else {
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-        auto v8_profiler = piper::makeV8RuntimeProfiler(js_context);
-        return std::make_shared<profile::V8RuntimeProfiler>(
-            std::move(v8_profiler));
-#endif
+        return JSDebugHelper::GetInstance()->MakeRuntimeProfiler(js_context,
+                                                                 kKeyEngineV8);
       }
-      break;
     default:
       break;
   }
