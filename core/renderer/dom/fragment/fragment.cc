@@ -218,9 +218,6 @@ void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
   MarkDirtyState(kNeedRedraw);
   layout_result_for_rendering_ = std::move(layout_result_for_rendering);
-  if (behavior_) {
-    behavior_->OnUpdateLayout(layout_result_for_rendering_);
-  }
 }
 
 void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
@@ -399,7 +396,7 @@ void Fragment::Draw() {
   // generation. The shared totally different context.
 
   //  Collect own displayList.
-  DisplayListBuilder builder;
+  DisplayListBuilder builder{render_offset_[0], render_offset_[1]};
 
   OnDraw(builder);
 
@@ -626,6 +623,26 @@ void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
   }
   for (auto* child : root->children_) {
     MoveDirectStackingChildren(parent, child);
+  }
+}
+
+void Fragment::UpdateLayout(float left, float top, bool transition_view) {
+  float child_offset_x = left + layout_result_for_rendering_.offset_.X();
+  float child_offset_y = top + layout_result_for_rendering_.offset_.Y();
+  if (has_platform_renderer_) {
+    render_offset_[0] = left;
+    render_offset_[1] = top;
+
+    child_offset_x = 0;
+    child_offset_y = 0;
+  }
+
+  if (behavior_) {
+    behavior_->OnUpdateLayout(layout_result_for_rendering_);
+  }
+
+  for (auto* child : children_) {
+    child->UpdateLayout(child_offset_x, child_offset_y);
   }
 }
 

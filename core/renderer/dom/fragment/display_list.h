@@ -78,6 +78,7 @@ struct DisplayListOpCategoryTraits<DisplayListOpCategory::kSubtreeProperty> {
 class DisplayList {
  public:
   DisplayList() = default;
+  DisplayList(float dx, float dy) : render_offset_{dx, dy} {}
   ~DisplayList() = default;
 
   // Once the display list is built up by display list builder, it should be
@@ -99,6 +100,8 @@ class DisplayList {
     return content_data_.has_value() ? content_data_->float_data.data()
                                      : nullptr;
   }
+
+  const float* GetRenderOffset() const { return render_offset_; }
 
   const int32_t* GetSubtreePropertyOpTypesData() const {
     return subtree_property_data_.has_value()
@@ -179,6 +182,8 @@ class DisplayList {
   // Platform renderers that belongs to the layer holds this displayList. Used
   // for re-construct ot update the platform renderer hierachy.
   base::InlineVector<int, 16> sub_layers_;
+
+  float render_offset_[2] = {0, 0};
 };
 
 template <typename OpType, typename... Args>

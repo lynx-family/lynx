@@ -16,7 +16,7 @@ namespace tasm {
 
 class DisplayListBuilder {
  public:
-  DisplayListBuilder();
+  explicit DisplayListBuilder(float dx = 0, float dy = 0);
   ~DisplayListBuilder();
 
   DisplayListBuilder(const DisplayListBuilder&) = delete;

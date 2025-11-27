@@ -165,13 +165,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void updatePlatformRendererFrame(int sign, int left, int top, int width, int height) {
+  public void updatePlatformRendererFrame(
+      int sign, int left, int top, int width, int height, int dx, int dy) {
     ViewGroup view = mViewHolder.get(sign);
     if (view instanceof UIBody.UIBodyView) {
-      ((UIBody.UIBodyView) view).setLynxFrame(left, top, left + width, top + height);
+      ((UIBody.UIBodyView) view).setLynxFrame(left, top, left + width, top + height, dx, dy);
       view.requestLayout();
     } else if (view instanceof ContainerRenderer) {
-      ((ContainerRenderer) view).setLynxFrame(left, top, left + width, top + height);
+      ((ContainerRenderer) view).setLynxFrame(left, top, left + width, top + height, dx, dy);
       view.requestLayout();
     }
   }

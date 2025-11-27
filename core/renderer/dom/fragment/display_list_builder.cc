@@ -12,7 +12,8 @@
 namespace lynx {
 namespace tasm {
 
-DisplayListBuilder::DisplayListBuilder() = default;
+DisplayListBuilder::DisplayListBuilder(float dx, float dy)
+    : display_list_(dx, dy) {}
 
 DisplayListBuilder::~DisplayListBuilder() = default;
 

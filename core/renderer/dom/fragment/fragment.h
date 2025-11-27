@@ -51,7 +51,7 @@ class Fragment : public BaseElementContainer {
   void Destroy() override{};
 
   void UpdateLayout(float left, float top,
-                    bool transition_view = false) override{};
+                    bool transition_view = false) override;
   void UpdateLayoutWithoutChange() override{};
 
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override{};
@@ -127,6 +127,7 @@ class Fragment : public BaseElementContainer {
   LayoutResultForRendering layout_result_for_rendering_;
 
   std::unique_ptr<FragmentBehavior> behavior_;
+  float render_offset_[2] = {0, 0};
 };
 
 }  // namespace tasm

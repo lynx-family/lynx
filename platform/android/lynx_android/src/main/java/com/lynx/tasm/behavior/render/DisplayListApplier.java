@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PointF;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.text.Layout;
@@ -63,7 +64,6 @@ public class DisplayListApplier implements Drawable.Callback {
     mContentOpIndex = 0;
     mContentIntIndex = 0;
     mContentFloatIndex = 0;
-
     mBounds.clear();
   }
 
@@ -97,6 +97,10 @@ public class DisplayListApplier implements Drawable.Callback {
 
     Layout textLayout = textBundle.getTextLayout();
     if (textLayout != null) {
+      PointF offset = textBundle.getTextTranslateOffset();
+      if (offset != null) {
+        canvas.translate(offset.x, offset.y);
+      }
       textLayout.draw(canvas);
     }
   }

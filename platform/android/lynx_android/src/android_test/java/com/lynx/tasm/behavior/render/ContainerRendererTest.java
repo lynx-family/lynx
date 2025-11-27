@@ -69,7 +69,7 @@ public class ContainerRendererTest {
 
   @Test
   public void testSetLynxFrame() {
-    containerRenderer.setLynxFrame(TEST_LEFT, TEST_TOP, TEST_RIGHT, TEST_BOTTOM);
+    containerRenderer.setLynxFrame(TEST_LEFT, TEST_TOP, TEST_RIGHT, TEST_BOTTOM, 0, 0);
 
     Rect frame = containerRenderer.getLynxFrame();
     assertNotNull("LynxFrame should not be null", frame);
@@ -95,7 +95,7 @@ public class ContainerRendererTest {
     ContainerRenderer child =
         new ContainerRenderer(realLynxContext, mockPlatformRendererContext, TEST_SIGN + 1);
     Rect childFrame = new Rect(5, 10, 50, 60);
-    child.setLynxFrame(5, 10, 50, 60);
+    child.setLynxFrame(5, 10, 50, 60, 0, 0);
 
     // Add child to container
     containerRenderer.addView(child);
@@ -135,8 +135,8 @@ public class ContainerRendererTest {
     View regularChild = mock(View.class);
 
     // Set frames for ContainerRenderer children
-    child1.setLynxFrame(0, 0, 50, 50);
-    child2.setLynxFrame(50, 50, 100, 100);
+    child1.setLynxFrame(0, 0, 50, 50, 0, 0);
+    child2.setLynxFrame(50, 50, 100, 100, 0, 0);
 
     // Add children
     containerRenderer.addView(child1);
@@ -244,13 +244,13 @@ public class ContainerRendererTest {
   @Test
   public void testFrameBoundsValidation() {
     // Test with negative coordinates
-    containerRenderer.setLynxFrame(-10, -20, 50, 60);
+    containerRenderer.setLynxFrame(-10, -20, 50, 60, 0, 0);
     Rect frame = containerRenderer.getLynxFrame();
     assertEquals("Should handle negative left", -10, frame.left);
     assertEquals("Should handle negative top", -20, frame.top);
 
     // Test with zero dimensions
-    containerRenderer.setLynxFrame(0, 0, 0, 0);
+    containerRenderer.setLynxFrame(0, 0, 0, 0, 0, 0);
     frame = containerRenderer.getLynxFrame();
     assertEquals("Should handle zero width", 0, frame.right);
     assertEquals("Should handle zero height", 0, frame.bottom);
@@ -271,7 +271,7 @@ public class ContainerRendererTest {
       ContainerRenderer child =
           new ContainerRenderer(realLynxContext, mockPlatformRendererContext, TEST_SIGN + 1);
       Rect childFrame = new Rect(frame[0], frame[1], frame[2], frame[3]);
-      child.setLynxFrame(frame[0], frame[1], frame[2], frame[3]);
+      child.setLynxFrame(frame[0], frame[1], frame[2], frame[3], 0, 0);
 
       containerRenderer.addView(child);
       containerRenderer.onLayout(true, 0, 0, 200, 200);
