@@ -155,7 +155,45 @@ TEST_P(FiberElementTest, TestSetOverflow) {
   map = UnitHandler::Process(id, impl, configs);
   page->computed_css_style()->SetValue(id, map[id]);
   EXPECT_TRUE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowX());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowY());
   EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+
+  impl = lepus::Value("hidden");
+  id = CSSPropertyID::kPropertyIDOverflow;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowHidden());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowX());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowY());
+
+  impl = lepus::Value("visible");
+  id = CSSPropertyID::kPropertyIDOverflowX;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowX());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowY());
+
+  impl = lepus::Value("visible");
+  id = CSSPropertyID::kPropertyIDOverflowY;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowX());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowY());
+
+  impl = lepus::Value("hidden");
+  id = CSSPropertyID::kPropertyIDOverflowX;
+  map = UnitHandler::Process(id, impl, configs);
+  page->computed_css_style()->SetValue(id, map[id]);
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowXY());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
+  EXPECT_FALSE(page->computed_css_style()->IsOverflowX());
+  EXPECT_TRUE(page->computed_css_style()->IsOverflowY());
 }
 
 TEST_P(FiberElementTest, TestSetComputedFontSize0) {

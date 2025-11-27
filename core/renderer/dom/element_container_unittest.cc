@@ -970,6 +970,7 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
 TEST_F(ElementContainerTest, TestIsRootContainer) {
   auto config = std::make_shared<PageConfig>();
   manager->SetConfig(config);
+  manager->enable_fiber_element_for_radon_diff_ = true;
 
   auto element = manager->CreateFiberElement("view");
   auto container = element->element_container();
@@ -1007,6 +1008,7 @@ TEST_F(ElementContainerTest, TestMarkDirty) {
 TEST_F(ElementContainerTest, TestMarkDirty0) {
   auto config = std::make_shared<PageConfig>();
   manager->SetConfig(config);
+  manager->enable_fiber_element_for_radon_diff_ = true;
 
   auto element = manager->CreateFiberElement("page");
   auto container = element->element_container();

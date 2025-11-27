@@ -31,6 +31,7 @@ lynx_core_source_set("display_list") {
     "display_list.h",
     "display_list_builder.cc",
     "display_list_builder.h",
+    "rounded_rectangle.h",
   ]
 }
 
@@ -39,6 +40,7 @@ unittest_set("display_list_testset") {
   sources = [
     "display_list_builder_unittest.cc",
     "display_list_unittest.cc",
+    "rounded_rectangle_unittest.cc",
   ]
   public_deps = [
     ":display_list",

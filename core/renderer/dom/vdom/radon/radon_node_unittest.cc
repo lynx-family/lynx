@@ -215,7 +215,7 @@ TEST_F(RadonNodeTest, CreateFiberElementPage) {
 
 TEST_F(RadonNodeTest, NotCreateFiberElementPage) {
   page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::FALSE_VALUE);
+      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonPage>(page_proxy.get(), 0, nullptr,
                                                 nullptr, nullptr, nullptr);
   radon_node->SetComponent(nullptr);

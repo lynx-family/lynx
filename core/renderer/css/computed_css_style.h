@@ -261,6 +261,10 @@ class ComputedCSSStyle {
 
   bool IsOverflowXY() const { return origin_overflow_ == OVERFLOW_XY; }
 
+  bool IsOverflowX() const { return origin_overflow_ & OVERFLOW_X; }
+
+  bool IsOverflowY() const { return origin_overflow_ & OVERFLOW_Y; }
+
   bool IsOverflowHidden() const { return origin_overflow_ == OVERFLOW_HIDDEN; }
 
   base::flex_optional<TextAttributes>& GetTextAttributes() {
