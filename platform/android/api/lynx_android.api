@@ -2262,6 +2262,8 @@ public interface com::lynx::tasm::service::ILynxDevToolService {
   public void com.lynx.tasm.service.ILynxDevToolService.setLynxDebugPresetValue(boolean value);
   public boolean com.lynx.tasm.service.ILynxDevToolService.getLogBoxPresetValue();
   public void com.lynx.tasm.service.ILynxDevToolService.setLogBoxPresetValue(boolean value);
+  public boolean com.lynx.tasm.service.ILynxDevToolService.getLoadJsBridge();
+  public void com.lynx.tasm.service.ILynxDevToolService.setLoadJsBridge(boolean value);
 }
 
 public interface com::lynx::tasm::ILynxEngine {
@@ -4813,6 +4815,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.enableLynxDebug(boolean enableLynxDebug);
   public boolean com.lynx.tasm.LynxEnv.isDevtoolComponentAttach();
   public boolean com.lynx.tasm.LynxEnv.isDevtoolEnabled();
+  public boolean com.lynx.tasm.LynxEnv.shouldLoadDevToolJsBridge();
   public void com.lynx.tasm.LynxEnv.enableDevtool(boolean enableDevTool);
   public boolean com.lynx.tasm.LynxEnv.isRedBoxEnabled();
   public boolean com.lynx.tasm.LynxEnv.isLogBoxEnabled();

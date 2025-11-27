@@ -34,6 +34,11 @@
 #include "devtool/lynx_devtool/message_handler/fetch_debug_info_handler.h"
 #include "devtool/lynx_devtool/message_handler/stop_at_entry_handler.h"
 
+#if !OS_ANDROID && !ENABLE_UNITTESTS
+#include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
+#include "devtool/lynx_devtool/js_debug/helper/js_debug_proxy_impl.h"
+#endif
+
 namespace lynx {
 namespace devtool {
 static constexpr char kDomainKeyPrefix[] = "enable_cdp_domain_";
@@ -62,6 +67,11 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
         kTypeGetFetchDebugInfo, std::make_unique<FetchDebugInfoHandler>());
     global_dispatcher.RegisterMessageHandler(
         kTypeSetFetchDebugInfo, std::make_unique<FetchDebugInfoHandler>());
+
+#if !OS_ANDROID && !ENABLE_UNITTESTS
+    auto proxy = std::make_unique<JSDebugProxyImpl>();
+    JSDebugHelper::GetInstance()->SetJSDebugProxy(std::move(proxy));
+#endif
   });
   if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
       lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
