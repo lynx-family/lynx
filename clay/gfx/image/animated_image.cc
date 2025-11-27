@@ -5,8 +5,8 @@
 #include "clay/gfx/image/animated_image.h"
 
 #include "clay/gfx/graphics_context.h"
-#ifdef OS_WIN
-#include "clay/shell/platform/windows/codec/win_image.h"
+#if (defined(OS_MAC) || defined(OS_WIN))
+#include "clay/shell/platform/common/codec/desktop_image.h"
 #endif
 
 namespace clay {
@@ -20,8 +20,9 @@ std::shared_ptr<AnimatedImage> AnimatedImage::Make(
 }
 
 void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
-#ifdef OS_WIN
-  auto skity_pixmap = static_cast<WinImage*>(image_.get())->GetCurrentPixmap();
+#if (defined(OS_MAC) || defined(OS_WIN))
+  auto skity_pixmap =
+      static_cast<DesktopImage*>(image_.get())->GetCurrentPixmap();
   if (!skity_pixmap) {
     return;
   }

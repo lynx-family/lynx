@@ -36,7 +36,7 @@ config("config") {
       "//third_party/icu/source/common",
     ]
 
-    if (is_win) {
+    if (is_win || is_mac) {
       include_dirs += [
         "//third_party/skity/skity/include",
         "//third_party/skity/skity/module/codec/include",
@@ -45,6 +45,9 @@ config("config") {
     }
 
     defines += [ "ENABLE_SKITY" ]
+    if (is_win) {
+      defines += [ "TTTEXT_OS_WIN" ]
+    }
   } else {
     include_dirs += [
       # textlayout
