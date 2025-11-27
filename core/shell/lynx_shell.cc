@@ -35,42 +35,6 @@ namespace shell {
 
 namespace {
 
-bool DoAsyncHydration(base::ThreadStrategyForRendering strategy,
-                      const ShellOption& option) {
-  return !base::IsEngineAsync(strategy) &&
-         !option.enable_vsync_aligned_msg_loop_ &&
-         (tasm::Config::TrialAsyncHydration() ||
-          option.enable_async_hydration_);
-}
-
-base::ThreadStrategyForRendering MapThreadStrategyForTemporaryAsync(
-    base::ThreadStrategyForRendering main_strategy,
-    bool enable_async_hydration) {
-  if (enable_async_hydration) {
-    return base::ToAsyncEngineStrategy(main_strategy);
-  }
-  return main_strategy;
-}
-
-// for async hydration.
-void UnmergeToAsyncEngineIfNeeded(
-    base::ThreadStrategyForRendering current_strategy,
-    base::TaskRunnerManufactor& runners,
-    std::shared_ptr<shell::DynamicUIOperationQueue>& ui_operation_queue,
-    bool need_transfer_queue = true) {
-  if (runners.GetTASMTaskRunner()->RunsTasksOnCurrentThread()) {
-    fml::MessageLoopTaskQueues::GetInstance()->Unmerge(
-        runners.GetUITaskRunner()->GetTaskQueueId(),
-        runners.GetTASMTaskRunner()->GetTaskQueueId());
-    if (need_transfer_queue) {
-      ui_operation_queue->Transfer(
-          base::ToAsyncEngineStrategy(current_strategy));
-    }
-    LOGI("Unmerge engine and ui thread, engine task runner id:"
-         << runners.GetTASMTaskRunner()->GetTaskQueueId());
-  }
-}
-
 // Limit the number of Engine releases in asynchronous threads.
 bool TryIncrementAsyncDestroyCounter(std::atomic<int>& counter) {
   int current = counter.load();
@@ -98,18 +62,12 @@ int32_t LynxShell::NextInstanceId() {
 
 LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
                      const ShellOption& shell_option)
-    : runners_(MapThreadStrategyForTemporaryAsync(
-                   strategy, DoAsyncHydration(strategy, shell_option)),
-               // Multi tasm thread is necessary for auto concurrency or async
-               // hydrations, beacause they have to merge the tasm runner to ui.
-               shell_option.enable_multi_tasm_thread_ ||
-                   DoAsyncHydration(strategy, shell_option),
+    : runners_(strategy, shell_option.enable_multi_tasm_thread_,
                shell_option.enable_multi_layout_thread_,
                shell_option.enable_vsync_aligned_msg_loop_,
                // TODO(heshan,huangweiwu): the async_thread_cache config
                // conflicts with thread merge now.
-               shell_option.enable_multi_tasm_thread_ &&
-                   !DoAsyncHydration(strategy, shell_option),
+               shell_option.enable_multi_tasm_thread_,
                shell_option.js_group_thread_name_),
       instance_id_(shell_option.instance_id_ != kUnknownInstanceId
                        ? shell_option.instance_id_
@@ -122,7 +80,6 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
               : std::make_shared<TASMOperationQueueAsync>()),
       ui_operation_queue_(std::make_shared<shell::DynamicUIOperationQueue>(
           strategy, runners_.GetUITaskRunner(), instance_id_)),
-      enable_async_hydration_(DoAsyncHydration(strategy, shell_option)),
       current_strategy_(strategy),
       js_group_thread_name_(shell_option.js_group_thread_name_),
       enable_js_group_thread_(shell_option.enable_js_group_thread_),
@@ -133,11 +90,6 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
   engine_thread_switch_ = std::make_shared<EngineThreadSwitch>(
       runners_.GetUITaskRunner(), runners_.GetTASMTaskRunner(),
       ui_operation_queue_);
-  if (DoAsyncHydration(strategy, shell_option)) {
-    base::ThreadMerger::Merge(runners_.GetUITaskRunner().get(),
-                              runners_.GetTASMTaskRunner().get());
-    ui_operation_queue_->Transfer(current_strategy_);
-  }
 }
 
 LynxShell::~LynxShell() {
@@ -199,15 +151,6 @@ void LynxShell::Destroy() {
         });
   }
 
-  if (enable_async_hydration_) {
-    {
-      std::unique_lock<std::mutex> merge_lock(tasm_merge_mutex_);
-      tasm_merge_cv_.wait(merge_lock,
-                          [this] { return !need_wait_for_merge_.load(); });
-    }
-    UnmergeToAsyncEngineIfNeeded(current_strategy_, runners_,
-                                 ui_operation_queue_, false);
-  }
   ui_operation_queue_->Destroy();
   tasm::report::GlobalFeatureCounter::ClearAndReport(instance_id_);
 }
@@ -419,66 +362,16 @@ void LynxShell::LoadTemplate(
                     pipeline_options->pipeline_start_timestamp);
   }
 
-  bool need_to_merge_back = false;
-  if (hydration_pending_ && enable_async_hydration_) {
-    LOGI("Do async hydration for ssr, url=" << url);
-    UnmergeToAsyncEngineIfNeeded(current_strategy_, runners_,
-                                 ui_operation_queue_);
-    need_to_merge_back = true;
-    need_wait_for_merge_ = true;
-  }
-
   EnsureTemplateDataThreadSafe(template_data);
-  hydration_pending_ = false;
   perf_controller_actor_->ActAsync([url](auto& performance) {
     performance->GetTimingHandler().SetURL(url);
   });
-  engine_actor_->Act([url, source = std::move(source), template_data,
-                      pipeline_options = std::move(pipeline_options),
-                      need_to_merge_back,
-                      tasm_runner = runners_.GetTASMTaskRunner().get(),
-                      weak_ui_queue =
-                          std::weak_ptr<shell::DynamicUIOperationQueue>(
-                              ui_operation_queue_),
-                      current_strategy = current_strategy_,
-                      &need_wait_for_merge = need_wait_for_merge_,
-                      &tasm_merge_cv = tasm_merge_cv_](auto& engine) mutable {
-    engine->LoadTemplate(url, std::move(source), template_data,
-                         std::move(pipeline_options));
-    if (need_to_merge_back) {
-      // FIXME(heshan,zhixuan,liting):After each engine_actor's task is
-      // completed, the afterInvoke() is executed.Within this
-      // function, the flush() of the ui_queue is called on the TASM
-      // thread, while the transfer() of the ui_queue is called on the UI
-      // thread at the same time.That can result in mutiple threads to
-      // reading and writing to the same variable.
-      //
-      // To avoid this issue,
-      // tasks are now posted by tasm_runner to avoid running flush() and
-      // Transfer() at the same time.
-      //
-      // We need refactor this code in the future.
-      tasm_runner->PostTask([tasm_runner, weak_ui_queue, current_strategy,
-                             &need_wait_for_merge, &tasm_merge_cv]() {
-        fml::MessageLoopTaskQueues::GetInstance()->Merge(
-            base::UIThread::GetRunner()->GetTaskQueueId(),
-            tasm_runner->GetTaskQueueId());
-        need_wait_for_merge = false;
-        tasm_merge_cv.notify_all();
-        LOGI(
-            "Engine thread is merged backed to ui thread, engine task runner "
-            "id::"
-            << tasm_runner->GetTaskQueueId());
-        base::UIThread::GetRunner()->PostEmergencyTask([weak_ui_queue,
-                                                        current_strategy] {
-          if (auto ui_queue = weak_ui_queue.lock()) {
-            ui_queue->Transfer(current_strategy);
-            LOGI("UI op queue back to thread strategy:" << current_strategy);
-          }
-        });
+  engine_actor_->Act(
+      [url, source = std::move(source), template_data,
+       pipeline_options = std::move(pipeline_options)](auto& engine) mutable {
+        engine->LoadTemplate(url, std::move(source), template_data,
+                             std::move(pipeline_options));
       });
-    }
-  });
 
   if ((tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle() & (1u << 0)) > 0) {
     // mask value 1 << 0 for mts
@@ -560,7 +453,6 @@ void LynxShell::LoadSSRData(
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
-  hydration_pending_ = true;
   EnsureTemplateDataThreadSafe(template_data);
   engine_actor_->Act(
       [source = std::move(source), template_data,

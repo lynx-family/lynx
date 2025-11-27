@@ -868,7 +868,6 @@ public class LynxTemplateRender
         screenMetrics.density, LynxEnv.inst().getLocale(), mLynxViewBuilder.isEnableJSRuntime(),
         mLynxViewConfigProvider.isEnableMultiAsyncThread(),
         mLynxViewConfigProvider.isEnablePreUpdateData(), enableVSyncAligned,
-        mLynxViewConfigProvider.isEnableAsyncHydration(),
         mGroup != null && mGroup.enableJSGroupThread(), getJSGroupThreadNameIfNeed(),
         tasmPlatformInvoker, whiteBoardPtr, lynxUIRenderer.getUIDelegatePtr(),
         lynxUIRenderer.useInvokeUIMethod(), mLongTaskMonitorEnabled == LynxBooleanOption.FALSE,
@@ -4104,11 +4103,10 @@ public class LynxTemplateRender
       boolean enableLayoutSafePoint, boolean enableLayoutOnly, int screenWidth, int screenHeight,
       float density, String locale, boolean enableJSRuntime, boolean enableMultiAsyncThread,
       boolean enablePreUpdateData, boolean enableVSyncAlignedMessageLoop,
-      boolean enableAsyncHydration, boolean enableJSGroupThread, String jsGroupThreadName,
-      Object tasmPlatformInvoker, long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
-      boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
-      boolean enableUnifiedPipeline, int embeddedMode, boolean has_logic_executor,
-      boolean debuggable, long enginePtr, Object moduleFactory);
+      boolean enableJSGroupThread, String jsGroupThreadName, Object tasmPlatformInvoker,
+      long whiteboard, long uiDelegate, boolean useInvokeUIMethod, boolean longTaskMonitorDisabled,
+      boolean forceLayoutOnBackgroundThread, boolean enableUnifiedPipeline, int embeddedMode,
+      boolean has_logic_executor, boolean debuggable, long enginePtr, Object moduleFactory);
 
   private static native void nativeDestroy(long ptr);
 

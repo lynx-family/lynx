@@ -485,11 +485,9 @@ public class LynxViewBuilder
   }
 
   @Override
+  @Deprecated
   public boolean isEnableAsyncHydration() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableAsyncHydration();
-    }
-    return this.enableAsyncHydration;
+    return false;
   }
 
   @Override

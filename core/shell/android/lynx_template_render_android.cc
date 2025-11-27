@@ -246,10 +246,10 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
              jboolean enable_multi_async_thread,
              jboolean enable_pre_update_data,
              jboolean enable_vsync_aligned_msg_loop,
-             jboolean enable_async_hydration, jboolean enable_js_group_thread,
-             jstring js_group_thread_name, jobject tasm_platform_invoker,
-             jlong white_board_ptr, jlong ui_delegate_ptr,
-             jboolean use_invoke_ui_method, jboolean long_task_monitor_disabled,
+             jboolean enable_js_group_thread, jstring js_group_thread_name,
+             jobject tasm_platform_invoker, jlong white_board_ptr,
+             jlong ui_delegate_ptr, jboolean use_invoke_ui_method,
+             jboolean long_task_monitor_disabled,
              jboolean force_layout_on_background_thread,
              jboolean enable_unified_pipeline, jint embedded_mode,
              jboolean has_logic_executor, jboolean debuggable,
@@ -287,7 +287,6 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
   shell_option.enable_js_ = enable_js;
   shell_option.enable_vsync_aligned_msg_loop_ = enable_vsync_aligned_msg_loop;
-  shell_option.enable_async_hydration_ = enable_async_hydration;
   shell_option.enable_js_group_thread_ = enable_js_group_thread;
   shell_option.js_group_thread_name_ =
       JNIConvertHelper::ConvertToString(env, js_group_thread_name);
