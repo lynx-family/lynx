@@ -5,12 +5,14 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
 #include <ace/xcomponent/native_interface_xcomponent.h>
+#include <deviceinfo.h>
 
 #include <string>
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 namespace lynx {
 namespace tasm {
 namespace harmony {
@@ -20,6 +22,10 @@ NodeManager::NodeManager() {
                               native_node_api_);
   OH_ArkUI_GetModuleInterface(ARKUI_NATIVE_GESTURE, ArkUI_NativeGestureAPI_1,
                               native_gesture_api_);
+  if (OH_GetSdkApiVersion() >= kGestureInterrupterUserDataSupportVersion) {
+    OH_ArkUI_GetModuleInterface(ARKUI_NATIVE_GESTURE, ArkUI_NativeGestureAPI_2,
+                                native_gesture_api_2);
+  }
 }
 
 ArkUI_NodeHandle NodeManager::CreateNode(ArkUI_NodeType type) {
@@ -174,9 +180,15 @@ void NodeManager::SetGestureEventTarget(
 }
 
 void NodeManager::SetGestureInterrupterToNode(
-    ArkUI_NodeHandle node, ArkUI_GestureInterruptResult (*interrupter)(
-                               ArkUI_GestureInterruptInfo* info)) {
-  native_gesture_api_->setGestureInterrupterToNode(node, interrupter);
+    ArkUI_NodeHandle node, void* user_data,
+    ArkUI_GestureInterruptResult (*interrupter)(
+        ArkUI_GestureInterruptInfo* info)) {
+  if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
+    native_gesture_api_->setGestureInterrupterToNode(node, interrupter);
+  } else {
+    static_cast<ArkUI_NativeGestureAPI_2*>(native_gesture_api_2)
+        ->setGestureInterrupterToNode(node, user_data, interrupter);
+  }
 }
 
 void NodeManager::AddGestureToNode(ArkUI_NodeHandle node,
