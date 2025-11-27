@@ -293,7 +293,7 @@ target_link_directories(gn_test PUBLIC
 
 
 # subdirectory
-add_subdirectory(${ROOT_PATH}/lynx/tools/gn_tools/test 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists_impl/gn_cmake_test/gn_test_cmake 
   gn_test_cmake
   )
 
