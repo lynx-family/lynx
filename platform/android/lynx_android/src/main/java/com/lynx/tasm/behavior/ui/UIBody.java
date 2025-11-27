@@ -523,6 +523,9 @@ public class UIBody extends UIGroup<UIBodyView> {
       return image;
     }
 
+    public LynxImageManager peekImageAccordingToNodeIndex(int nodeIndex) {
+      return mImageMap.get(nodeIndex);
+    }
     public void clearNodeIndexImageMap() {
       mImageMap.clear();
     }

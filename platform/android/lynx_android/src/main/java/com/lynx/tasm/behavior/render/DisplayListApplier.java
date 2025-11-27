@@ -147,7 +147,7 @@ public class DisplayListApplier implements Drawable.Callback {
           // End fragment - no parameters
           canvas.restore();
           mBounds.pop();
-          return; // End of this view's content
+          break; // End of this sub view's content
 
         case OP_FILL:
           mPaint.reset();
@@ -163,7 +163,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_DRAW_VIEW:
           // Draw view: view_id (1 int)
-          if (intParamCount >= 1) {
+          if (intParamCount == 1) {
             int viewId = nextContentInt();
             // This indicates we should stop processing and let the view draw itself
           }
@@ -179,7 +179,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_IMAGE:
           // Image: image_id (1 int)
-          if (intParamCount >= 1 && floatParamCount >= 4) {
+          if (intParamCount == 1) {
             int imageId = nextContentInt();
             drawImage(canvas, imageId);
           }

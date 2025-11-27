@@ -1269,6 +1269,12 @@ public enum com::lynx::tasm::LynxSubErrorCode::Consumer {
   public com.lynx.tasm.LynxSubErrorCode.Consumer.Consumer(String value);
 }
 
+public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup {
+  public void com.lynx.tasm.behavior.render.ContainerRenderer.setLynxFrame(int l, int t, int r, int b);
+  public Rect com.lynx.tasm.behavior.render.ContainerRenderer.getLynxFrame();
+  public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context, @NonNull PlatformRendererContext platformRendererContext, int sign);
+}
+
 public class com::lynx::tasm::utils::ContextUtils :  {
   public static LynxContext com.lynx.tasm.utils.ContextUtils.toLynxContext(Context context);
   public static Activity com.lynx.tasm.utils.ContextUtils.getActivity(Context context);
@@ -10105,6 +10111,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerViewAccordingToNodeIndex(int nodeIndex, View view);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerImageAccordingToNodeIndex(int nodeIndex, LynxImageManager image);
   public LynxImageManager com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainImageAccordingToNodeIndex(int nodeIndex);
+  public LynxImageManager com.lynx.tasm.behavior.ui.UIBody.UIBodyView.peekImageAccordingToNodeIndex(int nodeIndex);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.clearNodeIndexImageMap();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.markNeedRemoveExistingViews();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.removeExistingViews();

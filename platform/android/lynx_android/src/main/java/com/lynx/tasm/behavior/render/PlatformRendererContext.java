@@ -71,9 +71,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   @CalledByNative
   public void createPlatformRenderer(int sign, int type) {
     switch (type) {
-      case PlatformRendererType.kView: {
-        AndroidView view = new AndroidView(mContext);
+      case PlatformRendererType.kView:
+      case PlatformRendererType.kText:
+      case PlatformRendererType.kImage: {
+        ContainerRenderer view = new ContainerRenderer(mContext, this, sign);
         mViewHolder.put(sign, view);
+        view.invalidate();
         break;
       }
       case PlatformRendererType.kPage: {
@@ -92,7 +95,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         AndroidScrollView scrollView = new AndroidScrollView(
             mContext, /*TODO: decoupling from UIScrollView*/ new UIScrollView(mContext));
         mViewHolder.put(sign, scrollView);
-      }
+      } break;
       default:
         // TODO: support customized PlatformRendererHostView.
         break;
@@ -130,7 +133,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   public LynxImageManager getImage(int sign) {
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {
-      return rootView.obtainImageAccordingToNodeIndex(sign);
+      return rootView.peekImageAccordingToNodeIndex(sign);
     }
     return null;
   }
