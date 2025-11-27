@@ -5,7 +5,14 @@ import("../../../core/runtime/jsi/v8/v8.gni")
 import("../../../testing/test.gni")
 import("../devtool.gni")
 
+if (is_android) {
+  import("../../../platform/android/lynx_android/LynxAndroid.gni")
+}
+
 devtool_common_js_debug_sources = [
+  "helper/js_debug_helper.cc",
+  "helper/js_debug_helper.h",
+  "helper/js_debug_proxy.h",
   "inspector_client_delegate_impl.cc",
   "inspector_client_delegate_impl.h",
   "inspector_const_extend.h",
@@ -97,39 +104,23 @@ devtool_source_set("devtool_js_debug") {
     ":devtool_common_js_debug",
     "../../../base/src:base_log_headers",
   ]
-  if (!enable_unittests) {
-    deps += [ ":devtool_quickjs_debug" ]
-    if (is_android || jsengine_type == "v8") {
-      deps += [ ":devtool_v8_debug" ]
-      include_dirs = [ v8_headers_search_path ]
-    }
-  }
-  public_configs = [ ":common_config" ]
 }
 
-devtool_source_set("devtool_lepus_debug_sources") {
+devtool_source_set("devtool_lepus_debug_manager") {
+  sources = [
+    "lepus/manager/lepus_inspector_manager_impl.cc",
+    "lepus/manager/lepus_inspector_manager_impl.h",
+  ]
+  deps = [ "../../js_inspect/lepus:lepus_debug" ]
+}
+
+devtool_source_set("devtool_lepus_debug") {
   sources = devtool_lepus_debug_sources
   deps = [
     ":devtool_common_js_debug",
     "../../../base/src:base_log_headers",
     "../recorder:recorder",
   ]
-
-  if (!enable_unittests) {
-    sources += [
-      "lepus/manager/lepus_inspector_manager_impl.cc",
-      "lepus/manager/lepus_inspector_manager_impl.h",
-    ]
-  }
-
-  public_configs = [ ":common_config" ]
-}
-
-devtool_source_set("devtool_lepus_debug") {
-  deps = [ ":devtool_lepus_debug_sources" ]
-  if (!enable_unittests) {
-    deps += [ "../../js_inspect/lepus:lepus_debug" ]
-  }
 }
 
 devtool_source_set("js_debug") {
@@ -138,11 +129,26 @@ devtool_source_set("js_debug") {
     ":devtool_lepus_debug",
     "../../../third_party/rapidjson:rapidjson",
   ]
+  if (!is_android && !enable_unittests) {
+    deps += [ ":js_debug_bridge" ]
+  }
 }
 
-config("common_config") {
-  if (enable_unittests) {
-    defines = [ "ENABLE_UNITTESTS" ]
+devtool_source_set("js_debug_bridge") {
+  sources = [
+    "helper/js_debug_proxy_impl.cc",
+    "helper/js_debug_proxy_impl.h",
+  ]
+  if (is_android) {
+    sources += [ "../android/devtool_js_bridge.cc" ]
+  }
+  deps = [
+    ":devtool_lepus_debug_manager",
+    ":devtool_quickjs_debug",
+  ]
+  if (is_android || jsengine_type == "v8") {
+    deps += [ ":devtool_v8_debug" ]
+    include_dirs = [ v8_headers_search_path ]
   }
 }
 
@@ -173,4 +179,57 @@ unittest_exec("js_debug_unittest_exec") {
 group("js_debug_unit_test") {
   testonly = true
   deps = [ ":js_debug_unittest_exec" ]
+}
+
+if (is_android) {
+  cmake_target("lynxdevtool_js_bridge") {
+    is_only_sub_cmake = true
+    cmake_version = "3.4.1"
+    target_type = "shared_library"
+    output_name = "lynxdevtool_js_bridge"
+    deps = [
+      ":lynxdevtool_js_bridge_lib",
+      "../../../platform/android/lynx_android:lynx_android",
+      "../../../platform/android/lynx_devtool:lynxdevtool",
+    ]
+
+    lib_dirs = [
+      "${primjs_native_lib_dir}",
+      "${v8_native_lib_dir}",
+    ]
+    libs = [
+      "android",
+      "dl",
+      "log",
+      "quick",
+      "v8_libfull.cr",
+    ]
+
+    if (enable_napi_binding) {
+      libs += [
+        "napi",
+        "napi_v8",
+      ]
+    }
+
+    configs = [
+      "../../../platform/android/lynx_devtool:devtool_common_defines",
+      "../../../platform/android/lynx_devtool:devtool_flag_config",
+      "../../../platform/android/lynx_devtool:devtool_ldflag_config",
+      "../../../platform/android:16kb_page",
+    ]
+  }
+
+  devtool_source_set("lynxdevtool_js_bridge_lib") {
+    public_deps = [
+      ":js_debug_bridge",
+      ":v8_profile_devtool",
+      "../../../core/build:build",
+    ]
+
+    # jsbridge source file
+    if (enable_napi_binding) {
+      public_deps += [ "../../../core/runtime/bindings/napi:napi_binding_v8" ]
+    }
+  }
 }

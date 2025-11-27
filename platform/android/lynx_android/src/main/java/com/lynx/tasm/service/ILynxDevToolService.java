@@ -65,4 +65,6 @@ public interface ILynxDevToolService extends IServiceProvider {
   void setLynxDebugPresetValue(boolean value);
   boolean getLogBoxPresetValue();
   void setLogBoxPresetValue(boolean value);
+  boolean getLoadJsBridge();
+  void setLoadJsBridge(boolean value);
 }
