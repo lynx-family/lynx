@@ -7,7 +7,10 @@ import("../Android.gni")
 import("lynx_devtool.gni")
 
 group("LynxDevtool") {
-  deps = [ ":lynxdevtool" ]
+  deps = [
+    ":lynxdevtool",
+    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_js_bridge",
+  ]
 }
 
 cmake_target("lynxdevtool") {
@@ -22,24 +25,11 @@ cmake_target("lynxdevtool") {
     "../lynx_android:lynx_android",
   ]
 
-  lib_dirs = [
-    "${primjs_native_lib_dir}",
-    "${v8_native_lib_dir}",
-  ]
   libs = [
     "android",
     "dl",
     "log",
-    "quick",
-    "v8_libfull.cr",
   ]
-
-  if (enable_napi_binding) {
-    libs += [
-      "napi",
-      "napi_v8",
-    ]
-  }
 
   configs = [
     ":devtool_common_defines",
@@ -47,6 +37,9 @@ cmake_target("lynxdevtool") {
     ":devtool_ldflag_config",
     "../:16kb_page",
   ]
+
+  sub_cmake_target =
+      [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_js_bridge" ]
 }
 
 group("lynxdevtool_lib") {
@@ -56,15 +49,8 @@ group("lynxdevtool_lib") {
     ":lynx_base_for_devtool",
     ":lynx_tasm_recorder_for_devtool",
     "../../../devtool/lynx_devtool:lynx_devtool_group",
-    "../../../devtool/lynx_devtool//js_debug:js_debug",
-    "../../../devtool/lynx_devtool/js_debug:v8_profile_devtool",
     "../../../devtool/lynx_devtool/tracing",
   ]
-
-  # jsbridge source file
-  if (enable_napi_binding) {
-    public_deps += [ "../../../core/runtime/bindings/napi:napi_binding_v8" ]
-  }
 }
 
 group("devtool_jni_files") {

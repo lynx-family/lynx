@@ -110,4 +110,11 @@ devtool_source_set("agent") {
     "../../../base/src:base_log_headers",
     "//third_party/zlib",
   ]
+  public_configs = [ ":common_config" ]
+}
+
+config("common_config") {
+  if (enable_unittests) {
+    defines = [ "ENABLE_UNITTESTS" ]
+  }
 }

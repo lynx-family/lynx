@@ -4,15 +4,10 @@
 
 #include "devtool/lynx_devtool/js_debug/js/inspector_runtime_observer_impl.h"
 
+#include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
+#include "devtool/lynx_devtool/js_debug/js/console_message_postman_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
-#if !ENABLE_UNITTESTS
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-#include "devtool/lynx_devtool/js_debug/js/v8/manager/v8_inspector_manager_impl.h"
-#endif
-#include "devtool/lynx_devtool/js_debug/js/quickjs/manager/quickjs_inspector_manager_impl.h"
-#endif
-#include "devtool/lynx_devtool/js_debug/js/console_message_postman_impl.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 namespace lynx {
@@ -26,22 +21,16 @@ InspectorRuntimeObserverImpl::InspectorRuntimeObserverImpl(
 
 std::unique_ptr<runtime::RuntimeManagerDelegate>
 InspectorRuntimeObserverImpl::CreateRuntimeManagerDelegate() {
+  if (!JSDebugHelper::GetInstance()->IsHelperAvailable()) {
+    return nullptr;
+  }
   return std::make_unique<RuntimeManagerDelegateImpl>();
 }
 
 std::unique_ptr<piper::RuntimeInspectorManager>
 InspectorRuntimeObserverImpl::CreateRuntimeInspectorManager(
     const std::string& vm_type) {
-#if !ENABLE_UNITTESTS
-  if (vm_type == kKeyEngineV8) {
-#if JS_ENGINE_TYPE == 0 || OS_ANDROID
-    return std::make_unique<piper::V8InspectorManagerImpl>();
-#endif
-  } else if (vm_type == kKeyEngineQuickjs) {
-    return std::make_unique<piper::QuickjsInspectorManagerImpl>();
-  }
-#endif
-  return nullptr;
+  return JSDebugHelper::GetInstance()->CreateRuntimeInspectorManager(vm_type);
 }
 
 std::shared_ptr<piper::ConsoleMessagePostMan>
