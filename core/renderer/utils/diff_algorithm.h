@@ -572,8 +572,9 @@ struct CachedComparator {
   }
 };
 
-template <typename RandomAccessIt, typename BinaryPredicate>
-auto GenerateCachedComparator(RandomAccessIt first1, RandomAccessIt first2,
+template <typename RandomAccessIt1, typename RandomAccessIt2 = RandomAccessIt1,
+          typename BinaryPredicate>
+auto GenerateCachedComparator(RandomAccessIt1 first1, RandomAccessIt2 first2,
                               BinaryPredicate pred) {
   auto compare = [pred, first1, first2](IndexType i, IndexType j) {
     return pred(*(first1 + i), *(first2 + j));

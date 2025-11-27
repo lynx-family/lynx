@@ -159,6 +159,9 @@ class DisplayList {
     }
   }
 
+  void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
+  const auto& SubLayers() const { return sub_layers_; }
+
  private:
   template <typename OpType, typename... Args>
   void AddOperationToData(base::auto_create_optional<OpData>& data_store,
@@ -172,6 +175,10 @@ class DisplayList {
   // These operations affect the entire subtree and only apply to owner layers -
   // lazy allocated
   base::auto_create_optional<OpData> subtree_property_data_;
+
+  // Platform renderers that belongs to the layer holds this displayList. Used
+  // for re-construct ot update the platform renderer hierachy.
+  base::InlineVector<int, 16> sub_layers_;
 };
 
 template <typename OpType, typename... Args>

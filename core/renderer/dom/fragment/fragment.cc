@@ -489,19 +489,6 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
   }
 
   child->set_parent(this);
-
-  // FIXME(songshourui): rebuild the layer tree according to DisplayList in
-  // PlatformRenderer::OnUpdateDisplayList.
-  if (child->has_platform_renderer_) {
-    auto* render_layer = this;
-    while (!render_layer->has_platform_renderer_ && render_layer->parent()) {
-      render_layer = static_cast<Fragment*>(render_layer->parent());
-    }
-    if (render_layer->has_platform_renderer_) {
-      painting_context()->InsertPaintingNode(render_layer->id(), child->id(),
-                                             -1);
-    }
-  }
 }
 
 void Fragment::RemoveSelf() {
