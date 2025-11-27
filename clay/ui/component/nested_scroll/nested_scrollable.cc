@@ -63,6 +63,7 @@ NestedScrollable::NestedScrollable(int id, std::string tag,
   wheel_animator_ = std::make_unique<ValueAnimator>();
   wheel_animator_->SetAnimationHandler(GetAnimationHandler());
   wheel_animator_->AddUpdateListener(this);
+  wheel_animator_->AddListener(this);
   wheel_animator_->SetInterpolator(
       CubicBezierInterpolator::Create(0.42, 0.0, 0.58, 1.0));
 }
@@ -265,11 +266,6 @@ void NestedScrollable::HandleEvent(const PointerEvent& event) {
                 if ((event.scroll_delta_x != 0.f && scrollable->CanScrollX()) ||
                     (event.scroll_delta_y != 0.f && scrollable->CanScrollY())) {
                   scrollable->signal_scroll_started_ = true;
-                  // FIXME(Chenfeng Pan): If current scrollable can't scroll, we
-                  // try to scroll parent. But parent's scrollstatus hasn't been
-                  // set properly. Will fix that soon later.
-                  scrollable->SetScrollStatus(
-                      Scrollable::ScrollStatus::kDragging);
                 }
               }
               scrollable->DispatchMouseWheelEvent(event);
@@ -282,9 +278,9 @@ void NestedScrollable::HandleEvent(const PointerEvent& event) {
               break;
             }
             case PointerEvent::SignalKind::kEndScroll:
+              scrollable->DispatchMouseWheelEvent(event);
               scrollable->signal_scroll_started_ = false;
               scrollable->handle_signal_event_ = false;
-              scrollable->SetScrollStatus(Scrollable::ScrollStatus::kIdle);
               break;
             default:
               break;
@@ -454,6 +450,14 @@ double NestedScrollable::CalculateVelocity(float time) {
   return slope * (delta / duration);
 }
 
+void NestedScrollable::OnAnimationEnd(Animator& animation) {
+  SetScrollStatus(ScrollStatus::kIdle);
+}
+
+void NestedScrollable::OnAnimationCancel(Animator& animation) {
+  SetScrollStatus(ScrollStatus::kIdle);
+}
+
 void NestedScrollable::OnAnimationUpdate(ValueAnimator& animation) {
   float fraction = wheel_animator_->GetAnimatedFraction();
   float scroll_delta = MaximumDimension(target_scroll_delta_) * fraction;
@@ -492,6 +496,16 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
     s->DoScroll(delta);
   } else {
     s->DoWheelScroll(delta);
+  }
+  if (event.signal_kind == PointerEvent::SignalKind::kStartScroll) {
+    s->SetScrollStatus(ScrollStatus::kDragging);
+  }
+  if (!need_scroll_animation_ &&
+      event.signal_kind == PointerEvent::SignalKind::kEndScroll) {
+    // Some unittests set `need_scroll_animation_` to false which causes mouse
+    // wheel event triggering no animation. In such case, we need to set scroll
+    // status in the end of mouse wheel event.
+    s->SetScrollStatus(ScrollStatus::kIdle);
   }
 }
 

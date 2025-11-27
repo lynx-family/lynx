@@ -29,6 +29,7 @@ enum class NestedScrollMode {
 };
 
 class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
+                         public AnimatorListener,
                          public AnimatorUpdateListener,
                          public GestureRecognizer::Delegate {
  public:
@@ -155,7 +156,10 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
   void OnOverscroll(FloatPoint prev_overscroll_offset) override;
 
   void OnBounceEnd(bool canceled) override;
-
+  void OnAnimationStart(Animator& animation) override{};
+  void OnAnimationEnd(Animator& animation) override;
+  void OnAnimationCancel(Animator& animation) override;
+  void OnAnimationRepeat(Animator& animation) override{};
   void OnAnimationUpdate(ValueAnimator& animation) override;
 
   double CalculateVelocity(float time);
