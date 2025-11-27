@@ -1,0 +1,141 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_win)
+
+import("../../../common/config.gni")
+
+config("relative_angle_headers") {
+  include_dirs = [ "//third_party/angle/include" ]
+}
+
+source_set("flutter_windows_utils") {
+  sources = [
+    "dpi_utils.cc",
+    "dpi_utils.h",
+  ]
+  configs += [ "../../../../clay:config" ]
+}
+
+source_set("flutter_windows_source") {
+  # Common Windows sources.
+  sources = [
+    "cursor_handler.cc",
+    "cursor_handler.h",
+    "direct_manipulation.cc",
+    "direct_manipulation.h",
+    "egl/child_window_win.cc",
+    "egl/child_window_win.h",
+    "egl/context.cc",
+    "egl/context.h",
+    "egl/direct_composition_surface.cc",
+    "egl/direct_composition_surface.h",
+    "egl/egl.cc",
+    "egl/egl.h",
+    "egl/manager.cc",
+    "egl/manager.h",
+    "egl/surface.cc",
+    "egl/surface.h",
+    "egl/window_surface.cc",
+    "egl/window_surface.h",
+    "flutter_key_map.g.cc",
+    "flutter_project_bundle.cc",
+    "flutter_project_bundle.h",
+    "flutter_window.cc",
+    "flutter_window.h",
+    "flutter_windows_engine.cc",
+    "flutter_windows_engine.h",
+    "flutter_windows_view.cc",
+    "flutter_windows_view.h",
+    "keyboard_handler_base.h",
+    "keyboard_key_embedder_handler.cc",
+    "keyboard_key_embedder_handler.h",
+    "keyboard_key_handler.cc",
+    "keyboard_key_handler.h",
+    "keyboard_manager.cc",
+    "keyboard_manager.h",
+    "keyboard_utils.cc",
+    "keyboard_utils.h",
+    "platform_handler.cc",
+    "platform_handler.h",
+    "sequential_id_generator.cc",
+    "sequential_id_generator.h",
+    "task_runner.cc",
+    "task_runner.h",
+    "task_runner_window.cc",
+    "task_runner_window.h",
+    "text_input_manager.cc",
+    "text_input_manager.h",
+    "text_input_plugin.cc",
+    "text_input_plugin.h",
+    "window.cc",
+    "window.h",
+    "window_binding_handler.h",
+    "window_binding_handler_delegate.h",
+    "window_mouse_drop_handler.cc",
+    "window_mouse_drop_handler.h",
+    "window_move_handler.cc",
+    "window_move_handler.h",
+    "window_proc_delegate_manager.cc",
+    "window_proc_delegate_manager.h",
+    "windows_proc_table.cc",
+    "windows_proc_table.h",
+    "windowsx_shim.h",
+  ]
+
+  libs = [
+    "dwmapi.lib",
+    "imm32.lib",
+  ]
+
+  configs += [ "//third_party/angle:gl_prototypes" ]
+
+  public_configs = [
+    ":relative_angle_headers",
+    "../../../../clay:config",
+  ]
+
+  defines = [
+    "FLUTTER_ENGINE_NO_PROTOTYPES",
+    "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING",
+  ]
+
+  public_deps = [ "../../../fml:string_conversion" ]
+
+  defines += [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+
+  if (clay_force_d3d9) {
+    defines += [ "CLAY_FORCE_D3D9" ]
+  }
+
+  deps = [
+    ":flutter_windows_utils",
+    "../../../../third_party/rapidjson",
+    "../../../common/graphics:gl_scoped_binder",
+    "../../../fml:fml",
+    "../../../fml:icu_util",
+    "../../../gfx/shared_image",
+    "../../../ui:ui",
+    "../../common:common",
+    "../common:common_cpp_core",
+    "../common:common_cpp_input",
+    "../common:common_cpp_switches",
+    "../embedder:embedder",
+    "//third_party/angle:libEGL_static",  # the order of libEGL_static and
+                                          # libGLESv2_static is important.. if
+                                          # reversed, will cause a linker error
+                                          # DllMain already defined in
+                                          # LIBCMTD.lib
+    "//third_party/angle:libGLESv2_static",
+  ]
+
+  if (enable_trace != "none") {
+    deps += [ "../../../../base/trace/native:trace" ]
+  }
+
+  configs += [ "../../../../clay:config" ]
+}

@@ -1,0 +1,55 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../common/config.gni")
+import("framework_shared.gni")
+
+source_set("common") {
+  sources = [
+    "clay_service_manager_service_darwin.h",
+    "clay_service_manager_service_darwin.mm",
+  ]
+
+  deps = [ "../../../../fml:fml" ]
+
+  public_configs = [
+    "../../../../../../lynx/clay:config",
+    ":framework_relative_headers",
+  ]
+
+  if (enable_trace != "none") {
+    if (enable_skity) {
+      include_dirs = [ "../../../../../base/trace" ]
+    } else {
+      deps += [ "../../../../../base/trace/darwin:LynxTrace" ]
+    }
+  }
+}
+
+# Shared framework headers end up in the same folder as platform-specific
+# framework headers when consumed by clients, so the include paths assume they
+# are next to each other.
+config("framework_relative_headers") {
+  include_dirs = [ "framework/Headers" ]
+}
+
+source_set("framework_shared") {
+  sources = [ "framework/Source/ClayServiceManager.mm" ]
+
+  public = framework_shared_headers
+
+  sources += framework_shared_headers
+
+  defines = [ "FLUTTER_FRAMEWORK" ]
+
+  public_configs = [
+    "../../../../../clay:config",
+    ":framework_relative_headers",
+  ]
+
+  deps = [ "../../../../fml:fml" ]
+}

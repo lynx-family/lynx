@@ -1,0 +1,92 @@
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#import <Cocoa/Cocoa.h>
+
+#import "clay/shell/platform/darwin/macos/framework/Headers/FlutterView.h"
+#import "clay/shell/platform/darwin/macos/framework/Source/FlutterSurfaceManager.h"
+#import "clay/shell/platform/darwin/macos/framework/Source/FlutterThreadSynchronizer.h"
+
+#include <stdint.h>
+
+@class ClayViewProvider;
+
+/**
+ * The view ID for APIs that don't support multi-view.
+ *
+ * Some single-view APIs will eventually be replaced by their multi-view
+ * variant. During the deprecation period, the single-view APIs will coexist with
+ * and work with the multi-view APIs as if the other views don't exist.  For
+ * backward compatibility, single-view APIs will always operate the view with
+ * this ID. Also, the first view assigned to the engine will also have this ID.
+ */
+constexpr uint64_t kFlutterDefaultViewId = 0;
+
+/**
+ * Listener for view resizing.
+ */
+@protocol FlutterViewReshapeListener <NSObject>
+/**
+ * Called when the view's backing store changes size.
+ */
+- (void)viewDidReshape:(nonnull NSView*)view;
+@end
+
+/**
+ * View capable of acting as a rendering target and input source for the Flutter
+ * engine.
+ */
+@interface FlutterView ()
+
+/**
+ * Initialize a FlutterView that will be rendered to using Metal rendering apis.
+ */
+- (nullable instancetype)initWithMTLDevice:(nonnull id<MTLDevice>)device
+                              commandQueue:(nonnull id<MTLCommandQueue>)commandQueue
+                           reshapeListener:(nonnull id<FlutterViewReshapeListener>)reshapeListener
+    NS_DESIGNATED_INITIALIZER;
+
+- (nullable instancetype)initWithFrame:(NSRect)frameRect
+                           pixelFormat:(nullable NSOpenGLPixelFormat*)format NS_UNAVAILABLE;
+- (nonnull instancetype)initWithFrame:(NSRect)frameRect NS_UNAVAILABLE;
+- (nullable instancetype)initWithCoder:(nonnull NSCoder*)coder NS_UNAVAILABLE;
+- (nonnull instancetype)init NS_UNAVAILABLE;
+
+/**
+ * Returns SurfaceManager for this view. SurfaceManager is responsible for
+ * providing and presenting render surfaces.
+ */
+@property(readonly, nonatomic, nonnull) FlutterSurfaceManager* surfaceManager;
+
+@property(nonatomic, nullable, weak) ClayViewProvider* provider;
+
+/**
+ * Must be called when shutting down. Unblocks raster thread and prevents any further
+ * synchronization.
+ */
+- (void)shutdown;
+
+/**
+ * By default, the `FlutterSurfaceManager` creates two layers to manage Flutter
+ * content, the content layer and containing layer. To set the native background
+ * color, onto which the Flutter content is drawn, call this method with the
+ * NSColor which you would like to override the default, black background color
+ * with.
+ */
+- (void)setBackgroundColor:(nonnull NSColor*)color;
+
+@end
+
+@interface FlutterView (FlutterViewPrivate)
+
+/**
+ * Returns FlutterThreadSynchronizer for this view.
+ * Used for FlutterEngineTest.
+ */
+- (nonnull FlutterThreadSynchronizer*)threadSynchronizer;
+
+@end

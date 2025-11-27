@@ -1,0 +1,27 @@
+# These symbols are looked up from within the executable at runtime and must
+# be exported in the dynamic symbol table.
+# CAPIs
+_lynx_env_*
+_lynx_value_*
+_lynx_view_*
+_lynx_group_*
+_lynx_load_meta_*
+_lynx_native_view_*
+_lynx_template_bundle_*
+_lynx_template_data_*
+_lynx_update_meta_*
+_lynx_resource_*
+_lynx_generic_resource_fetcher_*
+_lynx_runtime_lifecycle_observer_*
+_lynx_service_*
+_lynx_http_*
+_lynx_security_service_*
+_lynx_extension_module_*
+_lynx_vsync_observer_*
+_lynx_napi_*
+_lynx_event_reporter_service_*
+_lynx_free*
+_lynx_malloc*
+_lynx_strdup*
+_lynx_trace_*
+_lynx_log_write_detailed*

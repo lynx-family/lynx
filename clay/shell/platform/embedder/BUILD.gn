@@ -1,0 +1,98 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("../../../common/config.gni")
+import("../../config.gni")
+import("../../gpu/gpu.gni")
+
+declare_args() {
+  embedder_enable_software = shell_enable_software
+  embedder_enable_gl = shell_enable_gl
+  embedder_enable_metal = shell_enable_metal
+}
+
+shell_gpu_configuration("embedder_gpu_configuration") {
+  enable_software = embedder_enable_software
+  enable_gl = embedder_enable_gl
+  enable_metal = embedder_enable_metal
+}
+
+config("embedder_header_config") {
+  include_dirs = [ "." ]
+}
+
+# Template for the embedder build. Used to allow building it multiple times with
+# different flags.
+template("embedder_source_set") {
+  forward_variables_from(invoker, "*")
+
+  source_set(target_name) {
+    sources = [
+      "embedder_engine.cc",
+      "embedder_engine.h",
+      "embedder_struct_macros.h",
+      "embedder_surface.cc",
+      "embedder_surface.h",
+      "embedder_surface_software.cc",
+      "embedder_surface_software.h",
+      "embedder_task_runner.cc",
+      "embedder_task_runner.h",
+      "embedder_thread_host.cc",
+      "embedder_thread_host.h",
+      "platform_view_embedder.cc",
+      "platform_view_embedder.h",
+      "platform_view_embedder_delegate.cc",
+      "platform_view_embedder_delegate.h",
+      "vsync_waiter_embedder.cc",
+      "vsync_waiter_embedder.h",
+    ]
+
+    include_dirs = [ "//third_party/skity" ]
+
+    if (embedder_enable_gl) {
+      sources += [
+        "embedder_surface_gl.cc",
+        "embedder_surface_gl.h",
+      ]
+    }
+
+    deps = [
+      ":embedder_gpu_configuration",
+      "../../../common",
+      "../../../common/graphics",
+      "../../../flow",
+      "../../../fml:fml",
+      "../../../ui:ui",
+      "../../common:common",
+    ]
+
+    if (!enable_skity) {
+      deps += [ "//third_party/skia" ]
+    }
+
+    if (embedder_enable_metal) {
+      sources += [
+        "embedder_surface_metal.h",
+        "embedder_surface_metal.mm",
+      ]
+
+      deps += [ "../darwin/graphics" ]
+    }
+
+    public_configs += [
+      ":embedder_gpu_configuration_config",
+      ":embedder_header_config",
+      "../../../../clay:config",
+      "../darwin/common:framework_relative_headers",
+    ]
+  }
+}
+
+embedder_source_set("embedder") {
+  public_configs = []
+}

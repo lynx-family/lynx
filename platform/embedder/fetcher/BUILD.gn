@@ -1,0 +1,31 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+
+lynx_core_source_set("fetcher") {
+  sources = [
+    "lynx_generic_resource_fetcher.cc",
+    "lynx_generic_resource_fetcher_priv.h",
+    "lynx_resource_fetcher_holder.cc",
+    "lynx_resource_fetcher_holder.h",
+    "lynx_resource_request.cc",
+    "lynx_resource_request_priv.h",
+    "lynx_resource_response.cc",
+    "lynx_resource_response_priv.h",
+  ]
+  deps = [ "../../../core/template_bundle:template_bundle" ]
+  public_configs = [ "../:config" ]
+}
+if (enable_unittests) {
+  lynx_core_source_set("fetcher_unittests") {
+    testonly = true
+    sources = [
+      "lynx_generic_resource_fetcher_unittests.cc",
+      "lynx_resource_request_unittests.cc",
+      "lynx_resource_response_unittests.cc",
+    ]
+    deps = [ "//third_party/googletest:gtest" ]
+  }
+}

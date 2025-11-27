@@ -61,16 +61,18 @@ jsbridge_shared_sources = [
 if (!enable_unittests) {
   if (is_apple && !is_oliver_node_lynx) {
     jsbridge_shared_sources += jsc_sources
-    jsbridge_shared_sources +=
-        [
-          "bindings/jsi/modules/ios/lynx_module_darwin.h",
-          "bindings/jsi/modules/ios/lynx_module_darwin.mm",
-          "bindings/jsi/modules/ios/lynx_module_interceptor.h",
-          "bindings/jsi/modules/ios/module_factory_darwin.h",
-          "bindings/jsi/modules/ios/module_factory_darwin.mm",
-          "bindings/lepus/ios/lynx_lepus_module_darwin.h",
-          "bindings/lepus/ios/lynx_lepus_module_darwin.mm",
-        ] + jsbridge_extend_shared_sources
+    if (!is_mac || !desktop_enable_embedder_layer) {
+      jsbridge_shared_sources +=
+          [
+            "bindings/jsi/modules/ios/lynx_module_darwin.h",
+            "bindings/jsi/modules/ios/lynx_module_darwin.mm",
+            "bindings/jsi/modules/ios/lynx_module_interceptor.h",
+            "bindings/jsi/modules/ios/module_factory_darwin.h",
+            "bindings/jsi/modules/ios/module_factory_darwin.mm",
+            "bindings/lepus/ios/lynx_lepus_module_darwin.h",
+            "bindings/lepus/ios/lynx_lepus_module_darwin.mm",
+          ] + jsbridge_extend_shared_sources
+    }
   } else if (is_harmony) {
     jsbridge_shared_sources += [
       "bindings/jsi/modules/harmony/module_factory_harmony.cc",

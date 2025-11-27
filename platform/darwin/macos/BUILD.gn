@@ -1,0 +1,55 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+
+shared_library("lynx_shared_library") {
+  output_name = "Lynx"
+
+  deps = [
+    "../../../base/src:base_static",
+    "../../../clay/lynx_adaptor:lynx_adaptor",
+    "../../../clay/shell/platform/darwin/macos:flutter_framework_source",
+    "../../../clay/shell/platform/embedder:embedder",
+    "../../../core/runtime/bindings/napi:napi_binding_jsc",
+    "../../embedder:embedder",
+    "common:common",
+  ]
+  if (enable_testbench_replay) {
+    deps += [ "../../../core/services/replay" ]
+  }
+
+  if (enable_napi_binding) {
+    deps += [
+      "../../../core/runtime/bindings/napi:napi_binding_quickjs",
+      "../../../third_party/napi:env",
+    ]
+  }
+
+  if (jsengine_type == "v8") {
+    deps += [
+      "../../../devtool/lynx_devtool/js_debug:devtool_js_v8_bridge",
+      "../../../third_party/NativeScript:NativeScript",
+    ]
+    if (enable_napi_binding) {
+      deps += [
+        "../../../core/runtime/bindings/napi:napi_binding_v8",
+        "../../../third_party/napi:v8",
+      ]
+    }
+  }
+
+  ldflags = [
+    "-Wl,-install_name,@rpath/libLynx.dylib",
+    "-Wl,-exported_symbols_list," +
+        rebase_path("exported_symbols.sym", root_build_dir),
+  ]
+
+  frameworks = [
+    "CoreData.framework",
+    "QuartzCore.framework",
+    "WebKit.framework",
+    "JavaScriptCore.framework",
+  ]
+}

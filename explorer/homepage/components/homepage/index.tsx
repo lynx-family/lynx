@@ -48,7 +48,9 @@ export default function HomePage(props: HomePageProps) {
 
   const openSchema = () => {
     'background only';
-    NativeModules.ExplorerModule.openSchema(inputValue);
+    if (inputValue && inputValue.length > 0) {
+      NativeModules.ExplorerModule.openSchema(inputValue);
+    }
   };
 
   const openShowcasePage = () => {
@@ -118,9 +120,18 @@ export default function HomePage(props: HomePageProps) {
         </view>
       </view>
 
-      <view className={withTheme('input-card-url')}>
+      <view
+        className={withTheme('input-card-url')}
+        style={{
+          height:
+            lynx.__globalProps.platform === 'macos' ||
+            lynx.__globalProps.platform === 'windows'
+              ? '40%'
+              : '28%',
+        }}
+      >
         <text className={withTheme('bold-text')}>Card URL</text>
-        <explorer-input
+        <input
           className="input-box"
           bindinput={handleInput}
           placeholder="Enter Card URL"

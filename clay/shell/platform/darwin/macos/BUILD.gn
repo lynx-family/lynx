@@ -1,0 +1,102 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_mac)
+
+import("../../../../common/config.gni")
+import("../../../config.gni")
+import("../../../gpu/gpu.gni")
+
+shell_gpu_configuration("macos_gpu_configuration") {
+  enable_software = true
+  enable_gl = true
+  enable_metal = shell_enable_metal
+}
+
+_flutter_framework_headers = [
+  "framework/Headers/FlutterAppDelegate.h",
+  "framework/Headers/FlutterEngine.h",
+  "framework/Headers/ClayMacOS.h",
+  "framework/Headers/FlutterPlatformViews.h",
+  "framework/Headers/FlutterPluginMacOS.h",
+  "framework/Headers/FlutterPluginRegistrarMacOS.h",
+  "framework/Headers/FlutterView.h",
+  "framework/Headers/FlutterViewController.h",
+  "framework/Headers/ClayViewProvider.h",
+]
+
+source_set("flutter_framework_source") {
+  sources = [
+    "framework/Source/ClayMouseCursorPlugin.h",
+    "framework/Source/ClayMouseCursorPlugin.mm",
+    "framework/Source/ClayViewProvider.mm",
+    "framework/Source/ClayViewProvider_Internal.h",
+    "framework/Source/FlutterAppDelegate.mm",
+    "framework/Source/FlutterEmbedderKeyResponder.h",
+    "framework/Source/FlutterEmbedderKeyResponder.mm",
+    "framework/Source/FlutterEngine.mm",
+    "framework/Source/FlutterEngine_Internal.h",
+    "framework/Source/FlutterKeyPrimaryResponder.h",
+    "framework/Source/FlutterKeyboardManager.h",
+    "framework/Source/FlutterKeyboardManager.mm",
+    "framework/Source/FlutterKeyboardViewDelegate.h",
+    "framework/Source/FlutterPlatformViewController.h",
+    "framework/Source/FlutterPlatformViewController.mm",
+    "framework/Source/FlutterRenderer.h",
+    "framework/Source/FlutterRenderer.mm",
+    "framework/Source/FlutterSurface.h",
+    "framework/Source/FlutterSurface.mm",
+    "framework/Source/FlutterSurfaceManager.h",
+    "framework/Source/FlutterSurfaceManager.mm",
+    "framework/Source/FlutterTextInputPlugin.h",
+    "framework/Source/FlutterTextInputPlugin.mm",
+    "framework/Source/FlutterThreadSynchronizer.h",
+    "framework/Source/FlutterThreadSynchronizer.mm",
+    "framework/Source/FlutterView.h",
+    "framework/Source/FlutterView.mm",
+    "framework/Source/FlutterViewController.mm",
+    "framework/Source/FlutterViewController_Internal.h",
+    "framework/Source/FlutterViewEngineProvider.h",
+    "framework/Source/FlutterViewEngineProvider.mm",
+    "framework/Source/FlutterViewProvider.h",
+    "framework/Source/KeyCodeMap.g.mm",
+  ]
+
+  sources += _flutter_framework_headers
+
+  deps = [
+    ":macos_gpu_configuration",
+    "../../../../flow:flow",
+    "../../../../fml:fml",
+    "../../../../fml:icu_util",
+    "../../../../ui:ui",
+    "../../common:common_cpp_enums",
+    "../../common:common_cpp_input",
+    "../../common:common_cpp_switches",
+    "../../embedder:embedder",
+    "../common:common",
+    "../common:framework_shared",
+    "../graphics:graphics",
+    "//third_party/skia",
+  ]
+
+  public_configs = [ "../../../../../clay:config" ]
+
+  defines = [
+    "FLUTTER_FRAMEWORK",
+    "FLUTTER_ENGINE_NO_PROTOTYPES",
+  ]
+
+  frameworks = [
+    "Carbon.framework",
+    "Cocoa.framework",
+    "CoreVideo.framework",
+    "IOSurface.framework",
+    "Metal.framework",
+    "QuartzCore.framework",
+  ]
+}

@@ -1,0 +1,29 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../lynx/config.gni")
+import("../../../../lynx/core/Lynx.gni")
+
+# Used by lynx explorer
+lynx_core_source_set("lynx_recorder") {
+  sources = [
+    "test_bench_action_manager.cc",
+    "test_bench_action_manager.h",
+    "test_bench_replay_config.cc",
+    "test_bench_replay_config.h",
+    "test_bench_replay_data_module.cc",
+    "test_bench_replay_data_module.h",
+    "test_bench_url_analyzer.cc",
+    "test_bench_url_analyzer.h",
+    "test_bench_utils.cc",
+    "test_bench_utils.h",
+  ]
+
+  deps = [
+    "../../../../lynx/third_party/rapidjson",
+    "//third_party/zlib",
+  ]
+
+  configs = [ "../../../../lynx/platform/embedder:public_api" ]
+}

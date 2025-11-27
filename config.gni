@@ -90,6 +90,10 @@ declare_args() {
 
   # Whether to enable headless engine with host compiling.
   is_headless = false
+
+  # Whether to enable embedder layer for desktop.
+  # If true, we can eliminate some unused platform-layer compilation units.
+  desktop_enable_embedder_layer = false
 }
 
 declare_args() {

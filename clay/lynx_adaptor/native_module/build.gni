@@ -1,0 +1,29 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+clay_native_module_sources = [
+  "lynx_config_module.cc",
+  "lynx_config_module.h",
+  "lynx_exposure_module.cc",
+  "lynx_exposure_module.h",
+  "lynx_focus_module.cc",
+  "lynx_focus_module.h",
+  "lynx_intersection_observer_module.cc",
+  "lynx_intersection_observer_module.h",
+  "lynx_module_base.cc",
+  "lynx_module_base.h",
+  "lynx_module_factory.cc",
+  "lynx_module_factory.h",
+  "lynx_text_info_module.cc",
+  "lynx_text_info_module.h",
+  "lynx_ui_method_module.cc",
+  "lynx_ui_method_module.h",
+]
+
+if (!is_android && !is_ios && !is_tvos) {
+  clay_native_module_sources += [
+    "lynx_websocket_module.cc",
+    "lynx_websocket_module.h",
+  ]
+}

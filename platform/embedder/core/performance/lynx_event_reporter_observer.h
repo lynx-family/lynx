@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "lynx/platform/embedder/public/lynx_value.h"
+#include "platform/embedder/public/lynx_value.h"
 
 namespace lynx {
 namespace embedder {

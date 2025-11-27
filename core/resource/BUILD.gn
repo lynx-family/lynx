@@ -36,7 +36,8 @@ lynx_core_source_set("resource_loader") {
       "lynx_resource_loader_harmony.h",
     ]
     deps = [ "../build" ]
-  } else if (is_apple && !enable_unittests && !is_oliver_node_lynx) {
+  } else if (is_apple && !enable_unittests && !is_oliver_node_lynx &&
+             (!is_mac || !desktop_enable_embedder_layer)) {
     sources += [
       "lynx_resource_loader_darwin.h",
       "lynx_resource_loader_darwin.mm",

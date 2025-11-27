@@ -2,6 +2,218 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../core/Lynx.gni")
+import("../../testing/test.gni")
+
 config("public_api") {
   include_dirs = [ "./public" ]
+}
+
+config("config") {
+  include_dirs = [
+    "../..",
+    "../../base/include/value",
+  ]
+  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+  if (is_win) {
+    # enable dllexport for public APIs.
+    defines += [ "lynx_EXPORTS" ]
+    cflags = [
+      "-Wno-vla-extension",
+      "-Wno-vla-cxx-extension",
+    ]
+  }
+}
+
+lynx_core_source_set("embedder") {
+  sources = [
+    "lynx_env.cc",
+    "lynx_group.cc",
+    "lynx_group_priv.h",
+    "lynx_load_meta.cc",
+    "lynx_load_meta_priv.h",
+    "lynx_log.cc",
+    "lynx_native_view.cc",
+    "lynx_runtime_lifecycle_observer.cc",
+    "lynx_runtime_lifecycle_observer_priv.h",
+    "lynx_template_bundle.cc",
+    "lynx_template_bundle_priv.h",
+    "lynx_template_data.cc",
+    "lynx_template_data_priv.h",
+    "lynx_trace.cc",
+    "lynx_update_meta.cc",
+    "lynx_update_meta_priv.h",
+    "lynx_view.cc",
+    "lynx_view_builder.cc",
+    "lynx_view_builder_priv.h",
+    "lynx_view_client.cc",
+    "lynx_view_client_priv.h",
+    "lynx_view_clients.cc",
+    "lynx_view_clients.h",
+    "lynx_view_priv.h",
+    "lynx_vsync_monitor.cc",
+    "lynx_vsync_monitor_priv.h",
+    "memory/lynx_memory.cc",
+    "native_view/lynx_texture_view.cc",
+    "native_view/lynx_texture_view.h",
+  ]
+
+  public_deps = [
+    ":public_headers",
+    "../../core:lynx_native",
+    "./core:renderer",
+    "./lynx_service:lynx_service",
+    "./resource:resource",
+  ]
+  if (enable_napi_binding) {
+    public_deps += [ "./module:module" ]
+  }
+
+  public_configs = [
+    ":public_api",
+    ":config",
+  ]
+
+  if (!enable_unittests) {
+    sources += [
+      "sysinfo_embedder.cc",
+      "vsync_monitor_fallback.cc",
+      "vsync_monitor_fallback.h",
+    ]
+  } else {
+    sources += [
+      "../../clay/lynx_adaptor/native_platform_view_mock.cc",
+      "lynx_ui_renderer_mock.cc",
+    ]
+  }
+  if (is_win) {
+    sources += [ "../../core/renderer/utils/sys_lynx_env/sys_env_default.cc" ]
+  }
+}
+
+group("public_headers") {
+  deps = [
+    ":lynx_embedder_capi",
+    ":lynx_embedder_cxxapi",
+    ":lynx_napi_api",
+    ":lynx_value_api",
+  ]
+}
+
+copy("lynx_embedder_capi") {
+  sources = [
+    "./public/capi/lynx_env_capi.h",
+    "./public/capi/lynx_event_reporter_service_capi.h",
+    "./public/capi/lynx_export.h",
+    "./public/capi/lynx_extension_module_capi.h",
+    "./public/capi/lynx_extension_module_types_capi.h",
+    "./public/capi/lynx_generic_resource_fetcher_capi.h",
+    "./public/capi/lynx_group_capi.h",
+    "./public/capi/lynx_http_service_capi.h",
+    "./public/capi/lynx_load_meta_capi.h",
+    "./public/capi/lynx_log_capi.h",
+    "./public/capi/lynx_memory_capi.h",
+    "./public/capi/lynx_native_module_capi.h",
+    "./public/capi/lynx_native_view_capi.h",
+    "./public/capi/lynx_resource_request_capi.h",
+    "./public/capi/lynx_resource_response_capi.h",
+    "./public/capi/lynx_runtime_lifecycle_observer_capi.h",
+    "./public/capi/lynx_security_service_capi.h",
+    "./public/capi/lynx_service_center_capi.h",
+    "./public/capi/lynx_template_bundle_capi.h",
+    "./public/capi/lynx_template_data_capi.h",
+    "./public/capi/lynx_trace_capi.h",
+    "./public/capi/lynx_update_meta_capi.h",
+    "./public/capi/lynx_view_builder_capi.h",
+    "./public/capi/lynx_view_capi.h",
+    "./public/capi/lynx_view_client_capi.h",
+    "./public/capi/lynx_vsync_monitor_capi.h",
+  ]
+  outputs = [ "$root_build_dir/include/capi/{{source_file_part}}" ]
+}
+
+copy("lynx_embedder_cxxapi") {
+  sources = [
+    "./public/lynx_env.h",
+    "./public/lynx_event_reporter_service.h",
+    "./public/lynx_extension_module.h",
+    "./public/lynx_generic_resource_fetcher.h",
+    "./public/lynx_group.h",
+    "./public/lynx_http_service.h",
+    "./public/lynx_load_meta.h",
+    "./public/lynx_native_module.h",
+    "./public/lynx_native_view.h",
+    "./public/lynx_resource_request.h",
+    "./public/lynx_resource_response.h",
+    "./public/lynx_runtime_lifecycle_observer.h",
+    "./public/lynx_security_service.h",
+    "./public/lynx_service_center.h",
+    "./public/lynx_template_bundle.h",
+    "./public/lynx_template_data.h",
+    "./public/lynx_update_meta.h",
+    "./public/lynx_value.h",
+    "./public/lynx_view.h",
+    "./public/lynx_view_client.h",
+    "./public/lynx_vsync_monitor.h",
+  ]
+  outputs = [ "$root_build_dir/include/{{source_file_part}}" ]
+}
+
+copy("lynx_value_api") {
+  sources = [
+    "../../base/include/value/lynx_api_types.h",
+    "../../base/include/value/lynx_value_api.h",
+    "../../base/include/value/lynx_value_types.h",
+  ]
+  outputs =
+      [ "$root_build_dir/include/base/include/value/{{source_file_part}}" ]
+}
+
+copy("lynx_napi_api") {
+  sources = [
+    "../../third_party/napi/include/js_native_api.h",
+    "../../third_party/napi/include/js_native_api_types.h",
+    "../../third_party/napi/include/primjs_napi_defines.h",
+    "../../third_party/napi/include/primjs_napi_undefs.h",
+  ]
+  outputs = [
+    "$root_build_dir/include/third_party/napi/include/{{source_file_part}}",
+  ]
+}
+
+if (enable_unittests) {
+  executable("lynx_embedder_unittests") {
+    testonly = true
+    include_dirs = [ "../../base/include/value" ]
+    sources = [
+      "lynx_env_unittests.cc",
+      "lynx_group_unittests.cc",
+      "lynx_load_meta_unittests.cc",
+      "lynx_log_unittests.cc",
+      "lynx_template_bundle_unittests.cc",
+      "lynx_template_data_unittests.cc",
+      "lynx_update_meta_unittests.cc",
+      "lynx_value_unittest.cc",
+      "lynx_view_builder_unittests.cc",
+      "lynx_view_client_unittests.cc",
+      "lynx_view_unittests.cc",
+    ]
+
+    deps = [
+      ":embedder",
+      "../../base/src:base_static",
+      "../../testing/utils:gtest_custom_init",
+      "../../testing/utils:gtest_main",
+      "./fetcher:fetcher_unittests",
+      "./lynx_service:lynx_service_unittests",
+    ]
+
+    if (is_mac) {
+      frameworks = [
+        "IOSurface.framework",
+        "QuartzCore.framework",
+        "AppKit.framework",
+      ]
+    }
+  }
 }
