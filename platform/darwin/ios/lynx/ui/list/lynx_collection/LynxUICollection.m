@@ -386,13 +386,15 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
 
 - (void)updateDataSource {
   if (![self isNeedRenderComponents]) {
-    [self.context
-        reportLynxError:[LynxError
-                            lynxErrorWithCode:ECLynxComponentListUnsupportedThreadStrategy
-                                      message:@"Multi thread strategy can not be used by default."
-                                fixSuggestion:@"Please set the attribute of enable-async-list to "
-                                              @"true at LynxSDK 2.10+ ."
-                                        level:LynxErrorLevelError]];
+    if (self.listNoDiffInfo != nil || self.diffResultFromTasm != nil) {
+      [self.context
+          reportLynxError:[LynxError
+                              lynxErrorWithCode:ECLynxComponentListUnsupportedThreadStrategy
+                                        message:@"Multi thread strategy can not be used by default."
+                                  fixSuggestion:@"Please set the attribute of enable-async-list to "
+                                                @"true at LynxSDK 2.10+ ."
+                                          level:LynxErrorLevelError]];
+    }
     return;
   }
   if (self.isNewArch) {
@@ -417,10 +419,7 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
  (2) the thread strategy is not async;
  */
 - (BOOL)isNeedRenderComponents {
-  if ([self isAsync]) {
-    return (self.isNewArch) ? self.enableAsyncList : NO;
-  }
-  return YES;
+  return ![self isAsync] || (self.isNewArch && self.enableAsyncList);
 }
 
 #pragma mark - LynxUI Frame Updates
