@@ -608,7 +608,11 @@ public class UIList extends AbsLynxList<RecyclerView> {
     }
 
     if (!isNeedRenderComponents()) {
-      reportException();
+      // If the property updating not contain any diff info, we should avoid reporting any red
+      // screen warning.
+      if (mListPlatformInfo != null || mListNoDiffInfo != null) {
+        reportException();
+      }
       return;
     }
     if (this.mNewArch) {
@@ -679,10 +683,7 @@ public class UIList extends AbsLynxList<RecyclerView> {
    *    *(2) the thread strategy is not MOST_ON_TASM or MULTI_THREADS;
    */
   private boolean isNeedRenderComponents() {
-    if (isAsyncThreadStrategy()) {
-      return mNewArch ? mEnableAsyncList : false;
-    }
-    return true;
+    return !isAsyncThreadStrategy() || (mNewArch && mEnableAsyncList);
   }
 
   private void reportException() {
