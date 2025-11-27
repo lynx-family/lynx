@@ -1,0 +1,24 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../core/Lynx.gni")
+
+lynx_core_source_set("common") {
+  sources = [
+    "LynxUIRenderer.h",
+    "LynxUIRenderer.mm",
+    "vsync_monitor_macos.h",
+    "vsync_monitor_macos.mm",
+  ]
+
+  configs = [
+    "../../../../clay:config",
+    "../../../../clay/shell/platform/darwin/common:framework_relative_headers",
+  ]
+
+  deps = [
+    "../../../../clay/ui:ui",
+    "../../../../third_party/rapidjson",
+  ]
+}

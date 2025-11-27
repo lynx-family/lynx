@@ -1,0 +1,66 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+import("./native_module/build.gni")
+
+source_set("lynx_adaptor") {
+  sources = [
+    "base_def.h",
+    "clay_value.cc",
+    "clay_value.h",
+    "layout_context_clay.cc",
+    "layout_context_clay.h",
+    "lynx_event_dispatcher.cc",
+    "lynx_event_dispatcher.h",
+    "painting_context_clay.cc",
+    "painting_context_clay.h",
+    "platform_extra_bundle_clay.h",
+    "prop_bundle_impl.cc",
+    "prop_bundle_impl.h",
+    "timing_collector_clay.cc",
+    "timing_collector_clay.h",
+    "ui_delegate_clay.cc",
+    "ui_delegate_clay.h",
+    "value_converter.cc",
+    "value_converter.h",
+  ]
+  sources += rebase_path(clay_native_module_sources, "", "native_module")
+
+  # lynx_websocket_module.cc requires boringssl
+  include_dirs = [ "//third_party/boringssl/src/include" ]
+
+  public_configs = [
+    "../../clay:config",
+    "../../core:lynx_public_config",
+  ]
+
+  public_deps = [
+    "../fml:fml",
+    "../ui:ui",
+  ]
+
+  if (is_win || is_mac) {
+    sources += [
+      "native_view_service_desktop.cc",
+      "native_view_service_desktop.h",
+    ]
+    if (enable_unittests) {
+      sources += [ "native_platform_view_mock.cc" ]
+    } else {
+      sources += [ "native_platform_view.cc" ]
+    }
+    sources += [
+      "resource_loader_embedder.cc",
+      "resource_loader_embedder.h",
+    ]
+    include_dirs += [ "../../base/include/value" ]
+    public_deps += [ "../../base/src:base_values" ]
+  }
+
+  defines = []
+  if (is_mac || is_android || is_ios) {
+    defines += [ "TRACE_EVENT_HIDE_MACROS" ]
+  }
+}

@@ -1,0 +1,177 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/apple/templates/darwin_general_bundle.gni")
+import("//build/apple/templates/xib.gni")
+import("//build/config/mac/mac_sdk.gni")
+import("//build/config/mac/templates/mac_app_bundle.gni")
+import("../../../../core/Lynx.gni")
+import("../../../../oliver/oliver.gni")
+
+# TODO: move to oss when ready.
+
+action("build_card_resources") {
+  # Use the custom Python script
+  script = "build_resources.py"
+
+  # Use rebase_path to get the correct paths relative to the root
+  root_dir = rebase_path("../../../..", root_build_dir)
+
+  inputs = [
+    rebase_path("../../../homepage/package.json"),
+    rebase_path("../../../showcase/build_and_copy.py"),
+    rebase_path(
+        "../../../../testing/integration_test/demo_pages/build_and_copy.py"),
+  ]
+  outputs = [ "$target_gen_dir/build_card_resources.stamp" ]
+
+  # Pass the necessary directories as arguments
+  args = [
+    root_out_dir,
+    root_dir,
+    target_gen_dir,
+  ]
+}
+
+mac_app_bundle("lynx_explorer") {
+  output_name = "LynxExplorer"
+  bundle_identifier_prefix = "com.lynx.Explorer"
+  info_plist = "LynxExplorer/Info.plist"
+
+  # Depend on the build_card_resources action to ensure resources are built
+  deps = [ ":build_card_resources" ]
+
+  include_dirs = [
+    ".",
+    "$root_build_dir/include",
+  ]
+
+  sources = [
+    "LynxExplorer/AppDelegate.h",
+    "LynxExplorer/AppDelegate.mm",
+    "LynxExplorer/LynxWindow.h",
+    "LynxExplorer/LynxWindow.m",
+    "LynxExplorer/LynxWindowController.h",
+    "LynxExplorer/LynxWindowController.m",
+    "LynxExplorer/ViewController.h",
+    "LynxExplorer/ViewController.mm",
+    "LynxExplorer/fetcher/ExampleGenericResourceFetcher.h",
+    "LynxExplorer/fetcher/ExampleGenericResourceFetcher.mm",
+    "LynxExplorer/main.m",
+    "LynxExplorer/module/LynxDemoModule.h",
+    "LynxExplorer/module/LynxDemoModule.mm",
+    "LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.h",
+    "LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.mm",
+    "LynxExplorer/service/LynxHttpService.h",
+    "LynxExplorer/service/LynxHttpService.mm",
+  ]
+
+  defines = []
+
+  cflags_objc = [
+    "-fobjc-arc",
+    "-Wno-objc-property-no-attribute",
+    "-Wno-objc-missing-super-calls",
+    "-Wno-sometimes-uninitialized",
+  ]
+
+  cflags_objcc = [
+    "-fobjc-arc",
+    "-Wno-objc-property-no-attribute",
+    "-Wno-objc-missing-super-calls",
+    "-Wno-sometimes-uninitialized",
+  ]
+
+  ldflags = [ "-ObjC" ]
+
+  frameworks = [
+    "CoreData.framework",
+    "QuartzCore.framework",
+    "WebKit.framework",
+    "AppKit.framework",
+    "JavaScriptCore.framework",
+  ]
+
+  public_deps = [
+    ":embed_bundles",
+    ":main_menu",
+    ":resources_data",
+  ]
+
+  public_deps += [
+    ":copy_dylib",
+    "../../../../platform/darwin/macos:lynx_shared_library",
+    "../../../embedder/lynx_explorer:lynx_explorer_embedder",
+  ]
+  if (enable_testbench_replay) {
+    public_deps += [ "../../../../platform/embedder/lynx_recorder" ]
+  }
+}
+
+copy("copy_dylib") {
+  deps = [ "../../../../platform/darwin/macos:lynx_shared_library" ]
+  sources = [ "$root_build_dir/libLynx.dylib" ]
+  outputs = [
+    "$root_build_dir/LynxExplorer.app/Contents/Frameworks/{{source_file_part}}",
+  ]
+}
+
+xib_processer("main_menu") {
+  sources = [ "LynxExplorer/Base.lproj/MainMenu.xib" ]
+}
+
+bundle_data("resources_data") {
+  sources = [
+    "//third_party/icu/flutter/icudtl.dat",
+    "LynxExplorer/Info.plist",
+    "Resource",
+  ]
+  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+}
+
+bundle_data("embed_bundles") {
+  sources = [
+    "$root_build_dir/resource_bundles/LynxDebugResources.bundle",
+    "$root_build_dir/resource_bundles/LynxResources.bundle",
+  ]
+  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+  public_deps = [
+    ":lynx_debug_resources_bundle",
+    ":lynx_resources_bundle",
+  ]
+}
+
+build_kernel_js("lynx_core") {
+  script = "../../../../../lynx/tools/js_tools/build.py"
+  platform = "ios"
+  output_path = "$root_build_dir/lynx_core"
+}
+
+bundle_data("lynx_core_js") {
+  sources = [ "$root_build_dir/lynx_core/lynx_core.js" ]
+  outputs = [ "{{bundle_resources_dir}}/lynx_core.js" ]
+  public_deps = [ ":lynx_core" ]
+}
+
+bundle_data("lynx_core_dev_js") {
+  sources = [ "$root_build_dir/lynx_core/lynx_core_dev.js" ]
+  outputs = [ "{{bundle_resources_dir}}/lynx_core_dev.js" ]
+  public_deps = [ ":lynx_core" ]
+}
+
+darwin_general_bundle("lynx_resources_bundle") {
+  bundle_identifier = "com.lynx.LynxResources"
+  info_plist = "Resource/Info.plist"
+  deployment_target = mac_deployment_target
+  output_name = "resource_bundles/LynxResources"
+  public_deps = [ ":lynx_core_js" ]
+}
+
+darwin_general_bundle("lynx_debug_resources_bundle") {
+  bundle_identifier = "com.lynx.LynxDebugResources"
+  info_plist = "Resource/Info.plist"
+  deployment_target = mac_deployment_target
+  output_name = "resource_bundles/LynxDebugResources"
+  public_deps = [ ":lynx_core_dev_js" ]
+}

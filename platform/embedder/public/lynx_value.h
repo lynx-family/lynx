@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include "lynx_value_api.h"
+#include "base/include/value/lynx_value_api.h"
 namespace lynx {
 namespace pub {
 

@@ -1,0 +1,41 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_apple)
+
+import("../../../../common/config.gni")
+
+source_set("graphics") {
+  if (!enable_skity) {
+    sources = [
+      "FlutterDarwinContextMetalSkia.h",
+      "FlutterDarwinContextMetalSkia.mm",
+    ]
+  } else {
+    sources = [
+      "FlutterDarwinContextMetalSkity.h",
+      "FlutterDarwinContextMetalSkity.mm",
+    ]
+  }
+
+  deps = [
+    "../../../../common:common",
+    "../../../../common/graphics",
+    "../../../../fml:fml",
+  ]
+
+  frameworks = [ "CoreVideo.framework" ]
+
+  public_configs = [
+    "../../../../../clay:config",
+    "../common:framework_relative_headers",
+  ]
+
+  if (!enable_skity) {
+    public_deps = [ "//third_party/skia" ]
+  }
+}

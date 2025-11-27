@@ -28,6 +28,8 @@ group("default") {
     deps += [ "platform/darwin/ios/lynx_xelement:XElement" ]
     deps += [ "platform/darwin/ios:iOS" ]
     deps += [ "devtool/base_devtool/darwin/ios:BaseDevtool_podspec" ]
+  } else if ((is_win || is_mac) && desktop_enable_embedder_layer) {
+    deps += [ "explorer:explorer" ]
   }
 
   if (enable_unittests) {

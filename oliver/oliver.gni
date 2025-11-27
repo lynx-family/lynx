@@ -140,20 +140,19 @@ template("build_kernel_js") {
       "$_output_path/${_output_name}_dev.js",
     ]
 
-    need_gen = "false"
-    if (need_header) {
-      need_gen = "true"
-    }
-
     args = [
       "--platform",
       "$platform",
       "--release_output",
-      rebase_path(outputs[0], root_build_dir),
+      rebase_path(outputs[0]),
       "--dev_output",
-      rebase_path(outputs[1], root_build_dir),
-      "--gen_h_header",
-      "$need_gen",
+      rebase_path(outputs[1]),
     ]
+    if (need_header) {
+      args += [
+        "--gen_h_header",
+        "true",
+      ]
+    }
   }
 }

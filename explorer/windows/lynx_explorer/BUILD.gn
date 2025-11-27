@@ -1,0 +1,126 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/config/win/win.gni")
+import("../../../core/Lynx.gni")
+import("../../../oliver/oliver.gni")
+
+executable("lynx_explorer") {
+  output_name = "lynx_explorer/lynx_explorer"
+
+  sources = [
+    "dpi_utils_win32.cc",
+    "dpi_utils_win32.h",
+    "fetcher/example_generic_resource_fetcher.cc",
+    "fetcher/example_generic_resource_fetcher.h",
+    "httplib/httplib_client.cc",
+    "httplib/httplib_client.h",
+    "lynx_window.cc",
+    "lynx_window.h",
+    "lynx_window_manager.cc",
+    "lynx_window_manager.h",
+    "main.cc",
+    "module/lynx_demo_module.cc",
+    "module/lynx_demo_module.h",
+    "runtime/example_lynx_runtime_lifecycle_observer.cc",
+    "runtime/example_lynx_runtime_lifecycle_observer.h",
+  ]
+
+  include_dirs = [
+    ".",
+    "$root_build_dir/include",
+  ]
+
+  configs += [ "//build/config/win:windowed" ]
+
+  cflags = [
+    "-Wno-vla-extension",
+    "-Wno-vla-cxx-extension",
+  ]
+
+  libs = [
+    "gdi32.lib",
+    "user32.lib",
+    "kernel32.lib",
+  ]
+  if (use_flutter_cxx) {
+    if (windows_runtime_library_mode == "md") {
+      libs += [ "msvcprt.lib" ]
+    } else if (windows_runtime_library_mode == "mt") {
+      libs += [ "libcpmt.lib" ]
+    }
+  }
+
+  deps = [
+    ":build_card_resources",
+    ":copy_dll",
+    ":copy_icu",
+    ":copy_resources",
+    "../../../platform/windows:windows",
+    "../../embedder/lynx_explorer:lynx_explorer_embedder",
+
+    # httplib is used by lynx_explorer to download resources.
+    "//third_party/httplib",
+  ]
+
+  if (enable_testbench_replay) {
+    deps += [ "../../../platform/embedder/lynx_recorder" ]
+  }
+
+  manifests = [ "/manifestinput:" +
+                rebase_path("lynx_explorer.exe.manifest", root_build_dir) ]
+  ldflags = [
+              "/manifest:embed",
+              "/manifestuac:no",
+            ] + manifests
+}
+
+action("build_card_resources") {
+  # Use the custom Python script
+  script = "build_resources.py"
+
+  # Use rebase_path to get the correct paths relative to the root
+  root_dir = rebase_path("../../../..", root_build_dir)
+
+  # Add the build_resources.py script itself as an input dependency
+  # This ensures the action runs when the script changes
+  inputs = [ "build_resources.py" ]
+
+  # Set the output file
+  outputs = [ "$target_gen_dir/build_card_resources.stamp" ]
+
+  # Pass the necessary directories as arguments
+  args = [
+    root_out_dir,
+    root_dir,
+    target_gen_dir,
+  ]
+}
+
+copy("copy_dll") {
+  sources = [ "$root_build_dir/lynx.dll" ]
+  deps = [ "../../../clay/shell/platform/windows:flutter_windows_source" ]
+  outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
+  public_deps = [ "../../../platform/windows:windows" ]
+}
+
+build_kernel_js("lynx_core") {
+  script = "../../../tools/js_tools/build.py"
+  platform = "ios"
+  output_path = "$root_build_dir/lynx_core"
+}
+
+copy("copy_resources") {
+  sources = [
+    "$root_build_dir/lynx_core/lynx_core.js",
+    "$root_build_dir/lynx_core/lynx_core_dev.js",
+  ]
+  outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
+  deps = [ ":lynx_core" ]
+}
+
+copy("copy_icu") {
+  sources = [ "//third_party/icu/flutter/icudtl.dat" ]
+  outputs = [ "$root_build_dir/lynx_explorer/data/{{source_file_part}}" ]
+}

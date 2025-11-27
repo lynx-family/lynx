@@ -36,7 +36,7 @@ if (is_apple) {
 
 if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests &&
     !is_encoder_ut) {
-  if (is_apple) {
+  if (is_apple && (!is_mac || !desktop_enable_embedder_layer)) {
     performance_shared_sources += [
       "darwin/performance_controller_darwin.h",
       "darwin/performance_controller_darwin.mm",

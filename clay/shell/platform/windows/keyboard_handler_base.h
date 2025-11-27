@@ -1,0 +1,40 @@
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef CLAY_SHELL_PLATFORM_WINDOWS_KEYBOARD_HANDLER_BASE_H_
+#define CLAY_SHELL_PLATFORM_WINDOWS_KEYBOARD_HANDLER_BASE_H_
+
+#include <functional>
+#include <string>
+
+namespace clay {
+
+// Interface for classes that handles keyboard input events.
+//
+// Keyboard handlers are added to |FlutterWindowsView| in a chain.
+// When a key event arrives, |KeyboardHook| is called on each handler
+// until the first one that returns true. Then the proper text hooks
+// are called on each handler.
+class KeyboardHandlerBase {
+ public:
+  using KeyEventCallback = std::function<void(bool)>;
+
+  virtual ~KeyboardHandlerBase() = default;
+
+  // A function for hooking into keyboard input.
+  virtual void KeyboardHook(int key, int scancode, int action,
+                            char32_t character, bool extended, bool was_down,
+                            KeyEventCallback callback) = 0;
+
+  // If needed, synthesize modifier keys events by comparing the
+  // given modifiers state to the known pressing state..
+  virtual void SyncModifiersIfNeeded(int modifiers_state) = 0;
+};
+
+}  // namespace clay
+
+#endif  // CLAY_SHELL_PLATFORM_WINDOWS_KEYBOARD_HANDLER_BASE_H_

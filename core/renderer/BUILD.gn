@@ -94,7 +94,7 @@ lynx_core_source_set("tasm") {
       deps += [ "../runtime/bindings/napi:napi_binding_jsc" ]
     }
   }
-  if (is_mac && !enable_unittests) {
+  if (is_mac && !enable_unittests && !desktop_enable_embedder_layer) {
     deps += [
       "../../platform/darwin/ios/lynx_service_api:lynx_service_api_sources",
     ]

@@ -46,7 +46,8 @@ if (is_ios) {
   ]
 }
 
-if (is_apple && !enable_unittests && !is_oliver_ssr && !is_oliver_node_lynx) {
+if (is_apple && !enable_unittests && !is_oliver_ssr && !is_oliver_node_lynx &&
+    (!is_mac || !desktop_enable_embedder_layer)) {
   lynx_tasm_shared_sources += [
     "../base/darwin/config_darwin.h",
     "../base/darwin/config_darwin.mm",
