@@ -685,4 +685,33 @@ public class DisplayListApplierTest {
     assertEquals(BorderStyle.DASHED, capturedStyles[2]); // right
     assertEquals(BorderStyle.DASHED, capturedStyles[3]); // bottom
   }
+
+  @Test
+  public void testOpClipRectPlain() {
+    testDisplayList.ops = new int[] {0, 10, 1};
+    testDisplayList.iArgv = new int[] {0, 4, 0, 4, 0, 0};
+    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f};
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).save();
+    verify(mockCanvas).clipRect(any(RectF.class));
+    verify(mockCanvas).restore();
+  }
+
+  @Test
+  public void testOpClipRectRounded() {
+    testDisplayList.ops = new int[] {0, 10, 1};
+    testDisplayList.iArgv = new int[] {0, 4, 0, 12, 0, 0};
+    testDisplayList.fArgv =
+        new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f, 5f, 6f, 7f, 8f, 9f, 10f, 11f, 12f};
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).save();
+    verify(mockCanvas).clipPath(any(android.graphics.Path.class));
+    verify(mockCanvas).restore();
+  }
 }

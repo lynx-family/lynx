@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.text.Layout;
@@ -31,6 +32,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_IMAGE = 7;
   private static final int OP_CUSTOM = 8;
   private static final int OP_BORDER = 9;
+  private static final int OP_CLIP_RECT = 10;
 
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
@@ -217,6 +219,31 @@ public class DisplayListApplier implements Drawable.Callback {
                       (int) bounds.left, (int) bounds.top, (int) bounds.right, (int) bounds.bottom),
                   borderWidths, borderColors, borderStyles);
             }
+          }
+          break;
+        case OP_CLIP_RECT:
+          float left = nextContentFloat();
+          float top = nextContentFloat();
+          float width = nextContentFloat();
+          float height = nextContentFloat();
+
+          RectF rectF = new RectF(left, top, left + width, top + height);
+          if (floatParamCount > 4) {
+            float[] borderRadii = new float[8];
+            borderRadii[0] = nextContentFloat(); // top left x
+            borderRadii[1] = nextContentFloat(); // top left y
+            borderRadii[2] = nextContentFloat(); // top right x
+            borderRadii[3] = nextContentFloat(); // top right y
+            borderRadii[4] = nextContentFloat(); // bottom right x
+            borderRadii[5] = nextContentFloat(); // bottom right y
+            borderRadii[6] = nextContentFloat(); // bottom left x
+            borderRadii[7] = nextContentFloat(); // bottom left y
+
+            Path path = new Path();
+            path.addRoundRect(rectF, borderRadii, Path.Direction.CW);
+            canvas.clipPath(path);
+          } else {
+            canvas.clipRect(rectF);
           }
           break;
         default:

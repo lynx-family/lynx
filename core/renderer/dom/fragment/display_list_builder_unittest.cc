@@ -681,5 +681,84 @@ TEST_F(DisplayListBuilderTest, BorderOperationInMethodChaining) {
             static_cast<int32_t>(DisplayListOpType::kEnd));
 }
 
+TEST_F(DisplayListBuilderTest, ClipRectPlain) {
+  RoundedRectangle rect;
+  rect.SetX(10.0f);
+  rect.SetY(20.0f);
+  rect.SetWidth(100.0f);
+  rect.SetHeight(50.0f);
+
+  builder_->ClipRect(rect);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* content_int_data = display_list.GetContentIntData();
+  const float* content_float_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(content_op_types_data, nullptr);
+  EXPECT_NE(content_int_data, nullptr);
+  EXPECT_NE(content_float_data, nullptr);
+
+  EXPECT_EQ(content_op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kClipRect));
+
+  EXPECT_EQ(content_int_data[0], 0);
+  EXPECT_EQ(content_int_data[1], 4);
+
+  EXPECT_FLOAT_EQ(content_float_data[0], 10.0f);
+  EXPECT_FLOAT_EQ(content_float_data[1], 20.0f);
+  EXPECT_FLOAT_EQ(content_float_data[2], 100.0f);
+  EXPECT_FLOAT_EQ(content_float_data[3], 50.0f);
+}
+
+TEST_F(DisplayListBuilderTest, ClipRectRoundedCorners) {
+  RoundedRectangle rect;
+  rect.SetX(3.0f);
+  rect.SetY(4.0f);
+  rect.SetWidth(80.0f);
+  rect.SetHeight(40.0f);
+  rect.SetRadiusXTopLeft(5.0f);
+  rect.SetRadiusYTopLeft(6.0f);
+  rect.SetRadiusXTopRight(7.0f);
+  rect.SetRadiusYTopRight(8.0f);
+  rect.SetRadiusXBottomRight(9.0f);
+  rect.SetRadiusYBottomRight(10.0f);
+  rect.SetRadiusXBottomLeft(11.0f);
+  rect.SetRadiusYBottomLeft(12.0f);
+
+  builder_->ClipRect(rect);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* content_int_data = display_list.GetContentIntData();
+  const float* content_float_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(content_op_types_data, nullptr);
+  EXPECT_NE(content_int_data, nullptr);
+  EXPECT_NE(content_float_data, nullptr);
+
+  EXPECT_EQ(content_op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kClipRect));
+
+  EXPECT_EQ(content_int_data[0], 0);
+  EXPECT_EQ(content_int_data[1], 12);
+
+  EXPECT_FLOAT_EQ(content_float_data[0], 3.0f);
+  EXPECT_FLOAT_EQ(content_float_data[1], 4.0f);
+  EXPECT_FLOAT_EQ(content_float_data[2], 80.0f);
+  EXPECT_FLOAT_EQ(content_float_data[3], 40.0f);
+
+  EXPECT_FLOAT_EQ(content_float_data[4], 5.0f);
+  EXPECT_FLOAT_EQ(content_float_data[5], 6.0f);
+  EXPECT_FLOAT_EQ(content_float_data[6], 7.0f);
+  EXPECT_FLOAT_EQ(content_float_data[7], 8.0f);
+  EXPECT_FLOAT_EQ(content_float_data[8], 9.0f);
+  EXPECT_FLOAT_EQ(content_float_data[9], 10.0f);
+  EXPECT_FLOAT_EQ(content_float_data[10], 11.0f);
+  EXPECT_FLOAT_EQ(content_float_data[11], 12.0f);
+}
+
 }  // namespace tasm
 }  // namespace lynx

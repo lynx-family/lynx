@@ -87,6 +87,7 @@ class Fragment : public BaseElementContainer {
 
  private:
   void DrawBorder(DisplayListBuilder& display_list_builder);
+  void DrawClip(DisplayListBuilder& display_list_builder);
 
   void DrawBackground(DisplayListBuilder& display_list_builder);
 

@@ -87,5 +87,22 @@ DisplayListBuilder& DisplayListBuilder::Border(
   return *this;
 }
 
+// Set Clip Rect
+DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
+  if (rect.HasRadius()) {
+    display_list_.AddOperation(
+        DisplayListOpType::kClipRect, rect.GetX(), rect.GetY(), rect.GetWidth(),
+        rect.GetHeight(), rect.GetRadiusXTopLeft(), rect.GetRadiusYTopLeft(),
+        rect.GetRadiusXTopRight(), rect.GetRadiusYTopRight(),
+        rect.GetRadiusXBottomRight(), rect.GetRadiusYBottomRight(),
+        rect.GetRadiusXBottomLeft(), rect.GetRadiusYBottomLeft());
+  } else {
+    display_list_.AddOperation(DisplayListOpType::kClipRect, rect.GetX(),
+                               rect.GetY(), rect.GetWidth(), rect.GetHeight());
+  }
+
+  return *this;
+}
+
 }  // namespace tasm
 }  // namespace lynx
