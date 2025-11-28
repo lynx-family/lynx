@@ -2571,7 +2571,7 @@ TEST_P(FiberElementTest, FiberElementSetAndResetAttribute) {
 
   page->InsertNode(element0);
 
-  const auto& attributes = element0->data_model_->attributes();
+  auto& attributes = element0->data_model_->attributes();
 
   EXPECT_TRUE(attributes.at("enable-layout") == lepus::Value("false"));
   EXPECT_TRUE(attributes.at("flatten") == lepus::Value("false"));

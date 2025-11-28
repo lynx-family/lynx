@@ -27,7 +27,8 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
     return false;
   }
   // the CSSVariable order need to be kept.
-  StyleMap style_map(CSSProperty::GetTotalParsedStyleCountFromMap(map));
+  StyleMap style_map;
+  style_map.reserve(CSSProperty::GetTotalParsedStyleCountFromMap(map));
   for (const auto& [id, css_value] : map) {
     if (css_value.IsVariable()) {
       if (css_value.NeedsVariableResolution()) {

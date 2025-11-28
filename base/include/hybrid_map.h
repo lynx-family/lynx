@@ -477,11 +477,6 @@ class HybridMap {
                                                : big_map_.at(key);
   }
 
-  const T& at(const Key& key) const {
-    return HYBRID_MAP_LIKELY(using_small_map_) ? small_map_.at(key)
-                                               : big_map_.at(key);
-  }
-
   /// Different with other maps, the result is the pointer of data value in this
   /// map corresponding to key and a flag telling if insertion took place. DO
   /// NOT cache the pointer if either small map or big map is not node based.

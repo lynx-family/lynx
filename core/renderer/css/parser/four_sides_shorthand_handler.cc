@@ -64,6 +64,7 @@ HANDLER_IMPL() {
     return false;
   }
 
+  output.reserve(output.size() + 4);
   if (input.IsString()) {
     auto str = input.StringView();
     base::InlineVector<std::string, 4> combines;

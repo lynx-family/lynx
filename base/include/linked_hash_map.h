@@ -409,18 +409,18 @@ class LinkedHashMap {
     }
   }
 
-  /// @brief Compared with for range loop, it is recommended to use foreach
-  /// method to traverse nodes. The foreach method will detect whether the data
+  /// @brief Compared with for range loop, it is recommended to use for_each
+  /// method to traverse nodes. The for_each method will detect whether the data
   /// nodes are continuous and completely located in the memory pool. If this
   /// condition is met, it will traverse the nodes in an array manner. When the
   /// for range loop uses begin() and end() iterators, the iterators use a
   /// double linked list to access nodes, and the performance is slightly worse
-  /// than that of an array. However, the foreach method may bring a little
+  /// than that of an array. However, the for_each method may bring a little
   /// binary increment and does not allow the map to be modified while
   /// iterating.
   template <typename Callback, typename = std::enable_if_t<std::is_invocable_v<
                                    Callback, const Key&, const T&>>>
-  void foreach (Callback&& callback) const {
+  void for_each(Callback&& callback) const {
     if (is_imperfect_) {
       // Fallback to default iterators which are linked nodes.
       for (const auto& it : *this) {
@@ -438,7 +438,7 @@ class LinkedHashMap {
   template <typename Callback,
             typename =
                 std::enable_if_t<std::is_invocable_v<Callback, const Key&, T&>>>
-  void foreach (Callback&& callback) {
+  void for_each(Callback&& callback) {
     if (is_imperfect_) {
       // Fallback to default iterators which are linked nodes.
       for (auto& it : *this) {
@@ -454,7 +454,7 @@ class LinkedHashMap {
   }
 
   /// @brief Merge other map into self. This method provides optimizations
-  /// when self is empty and use other's foreach method to accelerate the
+  /// when self is empty and use other's for_each method to accelerate the
   /// iteration.
   void merge(const LinkedHashMap& other) {
     if (empty()) {
@@ -462,7 +462,7 @@ class LinkedHashMap {
       // because it does not check key existence when inserting nodes.
       *this = other;
     } else {
-      other.foreach (
+      other.for_each(
           [=](const Key& k, const T& v) { this->insert_or_assign(k, v); });
     }
   }

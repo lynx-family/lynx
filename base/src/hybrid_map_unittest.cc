@@ -347,8 +347,7 @@ static void Test_MapEraseIterator() {
 }
 
 template <class MAP>
-static void assert_map_content(const MAP& map,
-                               const base::Vector<std::string> keys,
+static void assert_map_content(MAP& map, const base::Vector<std::string> keys,
                                const base::Vector<std::string> values) {
   EXPECT_EQ(keys.size(), values.size());
   EXPECT_EQ(map.size(), keys.size());

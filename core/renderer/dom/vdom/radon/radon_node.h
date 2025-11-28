@@ -410,7 +410,7 @@ class RadonNode : public RadonBase {
 
   bool HydrateNode(const DispatchOption& option);
 
-  RawLepusStyleMap raw_inline_styles_{kCSSStyleMapFuzzyAllocationSize};
+  RawLepusStyleMap raw_inline_styles_;
   StyleMap cached_styles_;
 
   bool has_dynamic_class_{false};

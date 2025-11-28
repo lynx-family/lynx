@@ -52,11 +52,11 @@ TEST_F(RadonNodeTest, GetAttributesForWorklet) {
                                         page_proxy->element_manager().get());
 
   radon_element->SetAttribute("test", lepus::Value(2));
-  EXPECT_EQ(radon_element->GetAttributesForWorklet().at("test"),
+  EXPECT_EQ(radon_element->GetAttributesForWorklet().find("test")->second,
             lepus::Value(2));
 
   radon_element->SetAttribute("test", lepus::Value(3));
-  EXPECT_EQ(radon_element->GetAttributesForWorklet().at("test"),
+  EXPECT_EQ(radon_element->GetAttributesForWorklet().find("test")->second,
             lepus::Value(3));
 }
 

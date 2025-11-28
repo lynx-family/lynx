@@ -54,11 +54,11 @@ TEST_P(TextElementTest, TestInlineText) {
 
   page->FlushActionsAsRoot();
 
-  const auto& attributes = raw_text->data_model_->attributes();
+  auto& attributes = raw_text->data_model_->attributes();
   EXPECT_TRUE(attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("text-content"));
 
-  const auto& inline_attributes = inline_raw_text->data_model_->attributes();
+  auto& inline_attributes = inline_raw_text->data_model_->attributes();
   EXPECT_TRUE(inline_attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("inline-text-content"));
 
@@ -97,11 +97,11 @@ TEST_P(TextElementTest, TestXInlineText) {
 
   page->FlushActionsAsRoot();
 
-  const auto& attributes = raw_text->data_model_->attributes();
+  auto& attributes = raw_text->data_model_->attributes();
   EXPECT_TRUE(attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("text-content"));
 
-  const auto& inline_attributes = inline_raw_text->data_model_->attributes();
+  auto& inline_attributes = inline_raw_text->data_model_->attributes();
   EXPECT_TRUE(inline_attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("inline-text-content"));
 
@@ -147,15 +147,15 @@ TEST_P(TextElementTest, TestInlineTextAndImage) {
 
   page->FlushActionsAsRoot();
 
-  const auto& attributes = raw_text->data_model_->attributes();
+  auto& attributes = raw_text->data_model_->attributes();
   EXPECT_TRUE(attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("text-content"));
 
-  const auto& inline_attributes = inline_raw_text->data_model_->attributes();
+  auto& inline_attributes = inline_raw_text->data_model_->attributes();
   EXPECT_TRUE(inline_attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("inline-text-content"));
 
-  const auto& inline_image_attributes = inline_image->data_model_->attributes();
+  auto& inline_image_attributes = inline_image->data_model_->attributes();
   EXPECT_TRUE(inline_image_attributes.at("src") ==
               lepus::Value("inline-image-src://"));
 

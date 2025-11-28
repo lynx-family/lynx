@@ -186,7 +186,8 @@ bool UnitHandler::Process(const CSSPropertyID key, const lepus::Value& input,
 StyleMap UnitHandler::Process(const CSSPropertyID key,
                               const lepus::Value& input,
                               const CSSParserConfigs& configs) {
-  StyleMap ret(CSSProperty::GetShorthandExpand(key));
+  StyleMap ret;
+  ret.reserve(CSSProperty::GetShorthandExpand(key));
   Process(key, input, ret, configs);
   return ret;
 }
