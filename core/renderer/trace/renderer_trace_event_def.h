@@ -1192,6 +1192,8 @@ inline constexpr const char* const FRAME_ELEMENT_ON_SET_SRC =
     "FrameElement::OnSetSrc";
 inline constexpr const char* const FRAME_ELEMENT_DID_BUNDLED_LOADED =
     "FrameElement::DidBundleLoaded";
+inline constexpr const char* const FRAME_ELEMENT_FLUSH_PROPS =
+    "FrameElement::FlushProps";
 
 inline constexpr const char* const SIGNAL_CONTEXT_COMPLETE_UPDATES =
     "SignalContext::CompleteUpdates";

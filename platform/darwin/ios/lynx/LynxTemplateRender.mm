@@ -2533,6 +2533,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.lynxBackgroundRuntimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
     [builder setThreadStrategyForRender:self->_threadStrategyForRendering];
+    builder.enableUnifiedPipeline = self->_enableUnifiedPipeline;
   };
 }
 
