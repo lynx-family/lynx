@@ -1550,7 +1550,7 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_FLUSH_ANIMATED_STYLE);
   bool has_layout_style = false;
   for (const auto& style : *final_animator_map_) {
-    if (NeedFullFlushPath(style)) {
+    if (NeedFullFlushPath(style.first, style.second)) {
       has_layout_style = true;
       break;
     }

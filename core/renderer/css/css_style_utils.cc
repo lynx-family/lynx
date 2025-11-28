@@ -992,10 +992,10 @@ lepus_value CSSStyleUtils::TransformToLepus(
   return lepus_value(std::move(items));
 }
 
-bool CSSStyleUtils::IsLayoutRelatedTransform(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& style) {
-  if (style.first == tasm::kPropertyIDTransform) {
-    auto array = style.second.GetArray();
+bool CSSStyleUtils::IsLayoutRelatedTransform(tasm::CSSPropertyID id,
+                                             const tasm::CSSValue& value) {
+  if (id == tasm::kPropertyIDTransform) {
+    auto array = value.GetArray();
     for (size_t idx = 0; idx < array->size(); ++idx) {
       auto transform = array->get(idx).Array();
       auto transform_func =

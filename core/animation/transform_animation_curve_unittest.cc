@@ -189,8 +189,7 @@ TEST_F(TransformAnimationCurveTest, GetStyleInElement) {
   auto raw_value =
       lynx::tasm::CSSValue(1.0f, lynx::tasm::CSSValuePattern::NUMBER);
   auto y_id = lynx::tasm::CSSPropertyID::kPropertyIDOpacity;
-  auto value_pair1 = std::make_pair(y_id, raw_value);
-  bool set_success1 = test_frame1->SetValue(value_pair1, test_element);
+  bool set_success1 = test_frame1->SetValue(y_id, raw_value, test_element);
   EXPECT_EQ(set_success1, true);
   EXPECT_EQ(test_frame1->IsEmpty(), false);
   auto w_id = lynx::tasm::CSSPropertyID::kPropertyIDTop;
@@ -267,8 +266,7 @@ TEST_F(TransformAnimationCurveTest, SetValue) {
   lynx::tasm::UnitHandler::Process(id, impl1, output, configs);
   EXPECT_FALSE(output[id].IsArray());
   auto raw_value1 = output[id];
-  auto test_value_pair1 = std::make_pair(id, raw_value1);
-  bool set_success1 = test_frame->SetValue(test_value_pair1, test_element);
+  bool set_success1 = test_frame->SetValue(id, raw_value1, test_element);
   EXPECT_EQ(set_success1, false);
   EXPECT_EQ(test_frame->IsEmpty(), true);
 
@@ -280,8 +278,7 @@ TEST_F(TransformAnimationCurveTest, SetValue) {
   EXPECT_FALSE(output.find(id) == output.end());
   EXPECT_TRUE(output[id].IsArray());
   auto raw_value2 = output[id];
-  auto test_value_pair2 = std::make_pair(id, raw_value2);
-  bool set_success2 = test_frame->SetValue(test_value_pair2, test_element);
+  bool set_success2 = test_frame->SetValue(id, raw_value2, test_element);
   EXPECT_EQ(set_success2, true);
   EXPECT_EQ(test_frame->IsEmpty(), false);
 }
@@ -313,8 +310,7 @@ TEST_F(TransformAnimationCurveTest, GetValue) {
   EXPECT_FALSE(output1.find(id) == output1.end());
   EXPECT_TRUE(output1[id].IsArray());
   auto raw_value1 = output1[id];
-  auto test_value_pair1 = std::make_pair(id, raw_value1);
-  bool set_success1 = test_frame1->SetValue(test_value_pair1, test_element);
+  bool set_success1 = test_frame1->SetValue(id, raw_value1, test_element);
   EXPECT_EQ(set_success1, true);
   EXPECT_EQ(test_frame1->IsEmpty(), false);
   curve->AddKeyframe(std::move(test_frame1));
@@ -329,8 +325,7 @@ TEST_F(TransformAnimationCurveTest, GetValue) {
   EXPECT_FALSE(output2.find(id) == output2.end());
   EXPECT_TRUE(output2[id].IsArray());
   auto raw_value2 = output2[id];
-  auto test_value_pair2 = std::make_pair(id, raw_value2);
-  bool set_success2 = test_frame2->SetValue(test_value_pair2, test_element);
+  bool set_success2 = test_frame2->SetValue(id, raw_value2, test_element);
   EXPECT_EQ(set_success2, true);
   EXPECT_EQ(test_frame2->IsEmpty(), false);
   curve->AddKeyframe(std::move(test_frame2));

@@ -59,9 +59,8 @@ class TransformKeyframe : public Keyframe {
     is_empty_ = false;
   }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   const std::unique_ptr<transforms::TransformOperations>& Value() const {
     return value_;

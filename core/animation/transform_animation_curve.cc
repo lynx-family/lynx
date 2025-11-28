@@ -57,18 +57,18 @@ TransformKeyframe::GetTransformKeyframeValueInElement(tasm::Element* element) {
   }
 }
 
-bool TransformKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
+bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
+                                 const tasm::CSSValue& value,
+                                 tasm::Element* element) {
   auto keyframe_transform_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+      HandleCSSVariableValueIfNeed(id, value, element);
   if (!keyframe_transform_value.IsArray()) {
     return false;
   }
   auto transform = std::make_unique<transforms::TransformOperations>(
       element, keyframe_transform_value);
   value_ = std::move(transform);
-  css_value_ = css_value_pair.second;
+  css_value_ = value;
   is_empty_ = false;
   return true;
 }
@@ -126,15 +126,13 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
   // When view or font size has changed, let start_len and end_len be
   // 'AutoNLength', and then get The actual Nlength based on the updated size.
   if (keyframe->Value() && keyframe->Value()->GetOperations().empty()) {
-    auto prev_temp_pair = std::make_pair(
-        static_cast<tasm::CSSPropertyID>(Type()), keyframe->CSSValue());
-    keyframe->SetValue(prev_temp_pair, element_);
+    keyframe->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
+                       keyframe->CSSValue(), element_);
   }
   if (keyframe_next->Value() &&
       keyframe_next->Value()->GetOperations().empty()) {
-    auto next_temp_pair = std::make_pair(
-        static_cast<tasm::CSSPropertyID>(Type()), keyframe_next->CSSValue());
-    keyframe_next->SetValue(next_temp_pair, element_);
+    keyframe_next->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
+                            keyframe_next->CSSValue(), element_);
   }
 
   transforms::TransformOperations& start_transform =

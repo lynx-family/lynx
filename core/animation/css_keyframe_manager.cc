@@ -64,8 +64,8 @@ KeyframeModel* CSSKeyframeManager::ConstructModel(
 
 bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
     AnimationCurve::CurveType type, Animation* animation, double offset,
-    std::unique_ptr<TimingFunction> timing_function,
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair) {
+    std::unique_ptr<TimingFunction> timing_function, tasm::CSSPropertyID id,
+    const tasm::CSSValue& value) {
   KeyframeModel* keyframe_model =
       animation->keyframe_effect()->GetKeyframeModelByCurveType(type);
   bool has_model = (keyframe_model != nullptr);
@@ -128,7 +128,7 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
     keyframe_model = ConstructModel(std::move(new_curve), type, animation);
   }
   // set css_value to keyframe
-  if (!keyframe->SetValue(css_value_pair, element_)) {
+  if (!keyframe->SetValue(id, value, element_)) {
     return false;
   }
   // add keyframe into AnimationCurve
@@ -272,7 +272,7 @@ void CSSKeyframeManager::MakeKeyframeModel(Animation* animation,
       }
       bool init_status = InitCurveAndModelAndKeyframe(
           curve_type, animation, offset, std::move(timing_function),
-          css_value_pair);
+          css_value_pair.first, css_value_pair.second);
       if (!init_status) {
         continue;
       }
