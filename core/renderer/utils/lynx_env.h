@@ -129,6 +129,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_QUICKJS_THREAD_CHECKER,
     ENABLE_LEVEL_ORDER_TRAVERSING,
     LYNX_DEBUG_ENABLED,
+    ENABLE_JS_CALLBACK_MANAGER,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -273,6 +274,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_quickjs_thread_checker"},
             {Key::ENABLE_LEVEL_ORDER_TRAVERSING,
              "enable_level_order_traversing"},
+            {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());

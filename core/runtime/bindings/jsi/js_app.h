@@ -170,8 +170,12 @@ class App : public std::enable_shared_from_this<App> {
       const std::string entry_name, const std::string& url, long timeout);
   base::expected<Value, JSINativeException> readScript(
       const std::string entry_name, const std::string& url, long timeout);
-  piper::Value setTimeout(piper::Function func, int time);
-  piper::Value setInterval(piper::Function func, int time);
+  piper::Value setTimeout(
+      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+      int time);
+  piper::Value setInterval(
+      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+      int time);
   void clearTimeout(double task);
   piper::Value nativeModuleProxy();
 
@@ -274,7 +278,8 @@ class App : public std::enable_shared_from_this<App> {
 
   void SetJsBundleHolder(const std::weak_ptr<piper::JsBundleHolder>& holder);
 
-  void QueueMicrotask(piper::Function func);
+  void QueueMicrotask(
+      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback);
 
   void SetPageOptions(const tasm::PageOptions& options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
@@ -298,7 +303,7 @@ class App : public std::enable_shared_from_this<App> {
         delegate_(delegate),
         exception_handler_(exception_handler),
         js_task_adapter_(
-            std::make_unique<JsTaskAdapter>(rt, group_id, page_options)),
+            std::make_unique<JsTaskAdapter>(rt, app_guid_, page_options)),
         nativeModuleProxy_(std::move(nativeModuleProxy)),
         api_handler_(std::move(api_handler)),
         jsi_object_wrapper_manager_(
