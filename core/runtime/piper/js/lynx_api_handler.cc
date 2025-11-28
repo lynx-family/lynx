@@ -23,9 +23,9 @@ int64_t AnimationFrameTaskHandler::RequestAnimationFrame(piper::Function func) {
 
   if (doing_frame_) {
     // avoid recursive function call of "RequestAnimationFrame"
-    NextFrameTaskMap().insert_or_assign(task_id, std::move(task));
+    NextFrameTaskMap().emplace_unique(task_id, std::move(task));
   } else {
-    CurrentFrameTaskMap().insert_or_assign(task_id, std::move(task));
+    CurrentFrameTaskMap().emplace_unique(task_id, std::move(task));
   }
   return task_id;
 }
