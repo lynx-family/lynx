@@ -12,6 +12,7 @@
 
 static NSString *const kLynxLogicScriptPath = @"/logic.js";
 static NSString *const kLynxAppServicePath = @"/app-service.js";
+NSString *const kSendGlobalEvent = @"sendGlobalEvent";
 
 @interface LynxDefaultLogicExecutor ()
 
@@ -91,9 +92,9 @@ static NSString *const kLynxAppServicePath = @"/app-service.js";
 
 - (void)processEvent:(LynxView *)lynxView event:(NSDictionary *)event {
   NSString *methodName = event[@"method"];
-  if ([methodName isEqualToString:@"sendGlobalEvent"]) {
+  if ([methodName isEqualToString:kSendGlobalEvent]) {
     NSString *name = event[@"name"];
-    NSMutableArray *params = event[@"params"];
+    NSMutableArray *params = [event[@"params"] mutableCopy];
     [params addObject:@([lynxView lynxViewId])];
     [_runtime sendGlobalEvent:name withParams:params];
   } else {
