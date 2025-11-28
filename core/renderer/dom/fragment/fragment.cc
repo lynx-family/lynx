@@ -260,10 +260,14 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
   }
 
   RoundedRectangle rect;
-  auto border_left_width = layout_result_for_rendering_.border_.at(0);
-  auto border_top_width = layout_result_for_rendering_.border_.at(1);
-  auto border_right_width = layout_result_for_rendering_.border_.at(2);
-  auto border_bottom_width = layout_result_for_rendering_.border_.at(3);
+  auto border_left_width =
+      layout_result_for_rendering_.border_[starlight::Direction::kLeft];
+  auto border_top_width =
+      layout_result_for_rendering_.border_[starlight::Direction::kTop];
+  auto border_right_width =
+      layout_result_for_rendering_.border_[starlight::Direction::kRight];
+  auto border_bottom_width =
+      layout_result_for_rendering_.border_[starlight::Direction::kBottom];
 
   rect.SetX(border_left_width);
   rect.SetY(border_top_width);
@@ -361,6 +365,11 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
     return;
   }
 
+  if (element()->is_wrapper()) {
+    DrawChildren(display_list_builder);
+    return;
+  }
+
   display_list_builder.Begin(layout_result_for_rendering_.offset_.X(),
                              layout_result_for_rendering_.offset_.Y(),
                              layout_result_for_rendering_.size_.width_,
@@ -374,11 +383,15 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
     behavior_->OnDraw(display_list_builder);
   }
 
+  DrawChildren(display_list_builder);
+
+  display_list_builder.End();
+}
+
+void Fragment::DrawChildren(DisplayListBuilder& display_list_builder) {
   for (const auto& child : children_) {
     child->Draw(display_list_builder);
   }
-
-  display_list_builder.End();
 }
 
 void Fragment::Draw() {

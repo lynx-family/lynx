@@ -75,6 +75,8 @@ class Fragment : public BaseElementContainer {
 
   void OnDraw(DisplayListBuilder& display_list_builder);
 
+  void DrawChildren(DisplayListBuilder& display_list_builder);
+
   void AddChildBefore(Fragment* child, Fragment* sibling);
 
   void RemoveSelf();

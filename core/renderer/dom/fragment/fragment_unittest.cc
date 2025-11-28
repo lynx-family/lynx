@@ -80,9 +80,9 @@ TEST_F(FragmentTest, PlainRectGeneratesClipRectOp) {
   EXPECT_EQ(ints[1], 4);
 
   EXPECT_FLOAT_EQ(floats[0], 1.f);
-  EXPECT_FLOAT_EQ(floats[1], 2.f);
-  EXPECT_FLOAT_EQ(floats[2], 100.f - 1.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[3], 60.f - 2.f - 4.f);
+  EXPECT_FLOAT_EQ(floats[1], 3.f);
+  EXPECT_FLOAT_EQ(floats[2], 100.f - 1.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[3], 60.f - 3.f - 4.f);
 }
 
 TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
@@ -126,15 +126,15 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   EXPECT_EQ(ints[1], 12);
 
   EXPECT_FLOAT_EQ(floats[0], 1.f);
-  EXPECT_FLOAT_EQ(floats[1], 2.f);
-  EXPECT_FLOAT_EQ(floats[2], 100.f - 1.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[3], 60.f - 2.f - 4.f);
+  EXPECT_FLOAT_EQ(floats[1], 3.f);
+  EXPECT_FLOAT_EQ(floats[2], 100.f - 1.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[3], 60.f - 3.f - 4.f);
 
   EXPECT_FLOAT_EQ(floats[4], 10.f - 1.f);
-  EXPECT_FLOAT_EQ(floats[5], 12.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[6], 14.f - 3.f);
-  EXPECT_FLOAT_EQ(floats[7], 16.f - 2.f);
-  EXPECT_FLOAT_EQ(floats[8], 18.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[5], 12.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[6], 14.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[7], 16.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[8], 18.f - 2.f);
   EXPECT_FLOAT_EQ(floats[9], 20.f - 4.f);
   EXPECT_FLOAT_EQ(floats[10], 22.f - 1.f);
   EXPECT_FLOAT_EQ(floats[11], 24.f - 4.f);
