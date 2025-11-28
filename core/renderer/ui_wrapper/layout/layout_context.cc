@@ -450,24 +450,24 @@ LayoutNode* LayoutContext::InitLayoutNodeWithBundle(int32_t id,
 
 LayoutNode* LayoutContext::CreateLayoutNode(int32_t id,
                                             const base::String& tag) {
-  LayoutNode* layoutNode =
+  LayoutNode* layout_node =
       &layout_nodes_
            .emplace(std::piecewise_construct, std::forward_as_tuple(id),
                     std::forward_as_tuple(id, layout_configs_, lynx_env_config_,
                                           *init_css_style_))
            .first->second;
-  layoutNode->SetTag(tag);
+  layout_node->SetTag(tag);
   if (tag.str() == kListNodeTag) {
-    layoutNode->slnode()->MarkList();
+    layout_node->slnode()->MarkList();
   }
   if (layout_configs_.enable_fixed_new_ && root_) {
-    layoutNode->slnode()->SetRoot(root_->slnode());
+    layout_node->slnode()->SetRoot(root_->slnode());
   }
-  layoutNode->slnode()->SetEventHandler(this);
+  layout_node->slnode()->SetEventHandler(this);
   if (hierarchy_observer_) {
-    hierarchy_observer_->OnLayoutNodeCreated(id, layoutNode);
+    hierarchy_observer_->OnLayoutObjectCreated(id, layout_node->slnode());
   }
-  return layoutNode;
+  return layout_node;
 }
 
 void LayoutContext::InsertLayoutNode(int32_t parent_id, int32_t child_id,

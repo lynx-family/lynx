@@ -922,6 +922,8 @@ class FiberElement : public Element,
 
   virtual int32_t GetMemoryUsage() const override { return sizeof(*this); }
 
+  SLNode* GetLayoutObject() const override { return sl_node_.get(); }
+
   inline SLNode* slnode() const {
     if (sl_node_ != nullptr) {
       return sl_node_.get();

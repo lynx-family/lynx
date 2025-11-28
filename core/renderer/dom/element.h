@@ -165,6 +165,8 @@ class Element : public lepus::RefCounted,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
 
+  virtual SLNode* GetLayoutObject() const { return nullptr; }
+
   ElementManager* element_manager() const { return element_manager_; }
   Element* parent() const { return parent_; }
   Element* next_sibling() const { return Sibling(1); }

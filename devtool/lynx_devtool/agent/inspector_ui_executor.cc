@@ -670,13 +670,12 @@ void InspectorUIExecutor::EmulateTouchFromMouseEvent(
 // end input protocol
 
 // The following three functions are used for handling Layout Nodes
-void InspectorUIExecutor::OnLayoutNodeCreated(int32_t id,
-                                              tasm::LayoutNode* ptr) {
-  layout_nodes[id] = ptr;
+void InspectorUIExecutor::OnLayoutObjectCreated(int32_t id, SLNode* ptr) {
+  layout_objects_[id] = ptr;
 }
 
-void InspectorUIExecutor::OnLayoutNodeDestroy(int32_t id) {
-  layout_nodes.erase(id);
+void InspectorUIExecutor::OnLayoutObjectDestroy(int32_t id) {
+  layout_objects_.erase(id);
 }
 
 void InspectorUIExecutor::OnComponentUselessUpdate(
@@ -695,17 +694,20 @@ void InspectorUIExecutor::OnComponentUselessUpdate(
   devtool_mediator->SendCDPEvent(msg);
 }
 
-tasm::LayoutNode* InspectorUIExecutor::GetLayoutNodeForElement(
+SLNode* InspectorUIExecutor::GetLayoutObjectForElement(
     lynx::tasm::Element* element) {
   // IsDecoupleLayoutNode is an AB switch, in next version(Maybe 2.13), the Else
   // branch can be deleted.
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", nullptr);
-  return GetLayoutNodeById(element->impl_id());
+  if (auto node = element->GetLayoutObject()) {
+    return node;
+  }
+  return GetLayoutObjectById(element->impl_id());
 }
 
-tasm::LayoutNode* InspectorUIExecutor::GetLayoutNodeById(int32_t id) {
-  auto it = layout_nodes.find(id);
-  if (it != layout_nodes.end()) {
+SLNode* InspectorUIExecutor::GetLayoutObjectById(int32_t id) {
+  auto it = layout_objects_.find(id);
+  if (it != layout_objects_.end()) {
     return it->second;
   }
   return nullptr;

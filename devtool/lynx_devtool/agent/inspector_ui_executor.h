@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "core/renderer/starlight/layout/layout_object.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
@@ -87,14 +88,15 @@ class InspectorUIExecutor
                   int32_t template_size = 0);
 
  public:
-  void OnLayoutNodeCreated(int32_t id, tasm::LayoutNode* ptr);
-  void OnLayoutNodeDestroy(int32_t id);
+  void OnLayoutObjectCreated(int32_t id, SLNode* ptr);
+  void OnLayoutObjectDestroy(int32_t id);
   void OnComponentUselessUpdate(const std::string& component_name,
                                 const lepus::Value& properties);
-  tasm::LayoutNode* GetLayoutNodeForElement(lynx::tasm::Element* element);
-  tasm::LayoutNode* GetLayoutNodeById(int32_t id);
+  SLNode* GetLayoutObjectForElement(lynx::tasm::Element* element);
 
  protected:
+  SLNode* GetLayoutObjectById(int32_t id);
+
   lynx::shell::LynxShell* shell_;
   bool performance_ready_;
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
@@ -104,7 +106,7 @@ class InspectorUIExecutor
   bool uitree_enabled_;
   bool uitree_use_compression_;
   int uitree_compression_threshold_;
-  std::unordered_map<int32_t, lynx::tasm::LayoutNode*> layout_nodes;
+  std::unordered_map<int32_t, SLNode*> layout_objects_;
 };
 
 }  // namespace devtool

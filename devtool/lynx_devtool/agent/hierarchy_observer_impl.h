@@ -14,7 +14,6 @@ namespace lynx {
 
 namespace tasm {
 class Element;
-class LayoutNode;
 }  // namespace tasm
 
 namespace devtool {
@@ -28,8 +27,8 @@ class HierarchyObserverImpl : public tasm::HierarchyObserver {
       const std::shared_ptr<InspectorUIExecutor>& ui_executor);
   ~HierarchyObserverImpl() override = default;
 
-  void OnLayoutNodeCreated(int32_t id, tasm::LayoutNode* ptr) override;
-  void OnLayoutNodeDestroy(int32_t id) override;
+  void OnLayoutObjectCreated(int32_t id, SLNode* ptr) override;
+  void OnLayoutObjectDestroy(int32_t id) override;
 
   void OnComponentUselessUpdate(const std::string& component_name,
                                 const lepus::Value& properties) override;

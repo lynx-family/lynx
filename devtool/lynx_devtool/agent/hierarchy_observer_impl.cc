@@ -14,17 +14,16 @@ HierarchyObserverImpl::HierarchyObserverImpl(
     const std::shared_ptr<InspectorUIExecutor>& ui_executor)
     : ui_executor_wp_(ui_executor) {}
 
-void HierarchyObserverImpl::OnLayoutNodeCreated(int32_t id,
-                                                tasm::LayoutNode* ptr) {
+void HierarchyObserverImpl::OnLayoutObjectCreated(int32_t id, SLNode* ptr) {
   auto ui_executor = ui_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(ui_executor, "ui_executor is null");
-  ui_executor->OnLayoutNodeCreated(id, ptr);
+  ui_executor->OnLayoutObjectCreated(id, ptr);
 }
 
-void HierarchyObserverImpl::OnLayoutNodeDestroy(int32_t id) {
+void HierarchyObserverImpl::OnLayoutObjectDestroy(int32_t id) {
   auto ui_executor = ui_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(ui_executor, "ui_executor is null");
-  ui_executor->OnLayoutNodeDestroy(id);
+  ui_executor->OnLayoutObjectDestroy(id);
 }
 
 void HierarchyObserverImpl::OnComponentUselessUpdate(

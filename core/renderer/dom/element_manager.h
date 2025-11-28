@@ -83,8 +83,8 @@ class HierarchyObserver {
  public:
   virtual ~HierarchyObserver() {}
 
-  virtual void OnLayoutNodeCreated(int32_t id, LayoutNode *ptr) {}
-  virtual void OnLayoutNodeDestroy(int32_t id) {}
+  virtual void OnLayoutObjectCreated(int32_t id, SLNode *ptr) {}
+  virtual void OnLayoutObjectDestroy(int32_t id) {}
   virtual void OnComponentUselessUpdate(const std::string &component_name,
                                         const lepus::Value &properties) {}
 };

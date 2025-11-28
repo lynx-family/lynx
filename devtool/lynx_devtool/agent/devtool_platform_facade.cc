@@ -74,7 +74,7 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
   CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator_,
                                   "devtool_mediator_ is null", res);
 
-  auto layout_node = devtool_mediator_->GetLayoutNodeForElement(element);
+  auto layout_obj = devtool_mediator_->GetLayoutObjectForElement(element);
   if (element->is_virtual() ||
       (element->is_fiber_element() &&
        static_cast<lynx::tasm::FiberElement*>(element)->is_wrapper())) {
@@ -89,8 +89,7 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
     if (temp_parent) {
       res = GetBoxModel(temp_parent);
     }
-  } else if (layout_node != nullptr && layout_node->slnode() != nullptr) {
-    auto layout_obj = layout_node->slnode();
+  } else if (layout_obj != nullptr) {
     res.push_back(layout_obj->GetBorderBoundWidth() -
                   layout_obj->GetLayoutPaddingLeft() -
                   layout_obj->GetLayoutPaddingRight() -
@@ -125,11 +124,9 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
       float layout_only_x = 0;
       float layout_only_y = 0;
       while (current != nullptr && current->CanBeLayoutOnly()) {
-        auto current_layout_node =
-            devtool_mediator_->GetLayoutNodeForElement(current);
-        if (current_layout_node != nullptr &&
-            current_layout_node->slnode() != nullptr) {
-          auto current_layout_obj = current_layout_node->slnode();
+        auto current_layout_obj =
+            devtool_mediator_->GetLayoutObjectForElement(current);
+        if (current_layout_obj != nullptr) {
           layout_only_x +=
               current_layout_obj->GetBorderBoundLeftFromParentPaddingBound();
           layout_only_y +=
@@ -141,11 +138,9 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
                  static_cast<lynx::tasm::FiberElement*>(current)->is_wrapper());
       }
       if (current != nullptr) {
-        auto current_layout_node =
-            devtool_mediator_->GetLayoutNodeForElement(current);
-        if (current_layout_node != nullptr &&
-            current_layout_node->slnode() != nullptr) {
-          auto current_layout_obj = current_layout_node->slnode();
+        auto current_layout_obj =
+            devtool_mediator_->GetLayoutObjectForElement(current);
+        if (current_layout_obj != nullptr) {
           layout_only_x += current_layout_obj->GetLayoutBorderLeftWidth();
           layout_only_y += current_layout_obj->GetLayoutBorderTopWidth();
           pad_border_margin_layout[12] = layout_only_x;

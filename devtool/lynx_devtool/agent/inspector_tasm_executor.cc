@@ -1693,10 +1693,9 @@ std::string InspectorTasmExecutor::GetLayoutTree(tasm::Element* element) {
   auto devtool_mediator = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN_VALUE(devtool_mediator, "devtool_mediator is null",
                                   "");
-  LayoutNode* layout_node = devtool_mediator->GetLayoutNodeForElement(element);
+  auto* layout_node = devtool_mediator->GetLayoutObjectForElement(element);
   CHECK_NULL_AND_LOG_RETURN_VALUE(layout_node, "layout_node is null", "");
-  return lynx::tasm::replay::ReplayController::GetLayoutTree(
-      layout_node->slnode());
+  return lynx::tasm::replay::ReplayController::GetLayoutTree(layout_node);
 }
 
 void InspectorTasmExecutor::SendLayoutTree() {

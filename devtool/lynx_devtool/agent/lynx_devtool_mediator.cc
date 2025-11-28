@@ -1142,19 +1142,20 @@ std::vector<double> LynxDevToolMediator::GetBoxModel(tasm::Element* element) {
   return ui_executor_->GetBoxModel(element);
 }
 
-lynx::tasm::LayoutNode* LynxDevToolMediator::GetLayoutNodeForElement(
+SLNode* LynxDevToolMediator::GetLayoutObjectForElement(
     lynx::tasm::Element* element) {
   if (!ui_task_runner_->RunsTasksOnCurrentThread()) {
     LOGE(
-        "LynxDevToolMediator::GetLayoutNodeForElement must be called on the UI "
+        "LynxDevToolMediator::GetLayoutObjectForElement must be called on the "
+        "UI "
         "thread");
     return nullptr;
   }
-  return ui_executor_->GetLayoutNodeForElement(element);
+  return ui_executor_->GetLayoutObjectForElement(element);
 }
 
 void LynxDevToolMediator::SendLayoutTree() {
-  // Execute in UI thread since GetLayoutNodeForElement has assertion for
+  // Execute in UI thread since GetLayoutObjectForElement has assertion for
   // UI thread
   RunOnUIThread([executor = element_executor_] { executor->SendLayoutTree(); });
 }
