@@ -77,8 +77,8 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   bool InitCurveAndModelAndKeyframe(
       AnimationCurve::CurveType type, Animation* animation, double offset,
-      std::unique_ptr<TimingFunction> timing_function,
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair);
+      std::unique_ptr<TimingFunction> timing_function, tasm::CSSPropertyID id,
+      const tasm::CSSValue& value);
 
   KeyframeModel* ConstructModel(std::unique_ptr<AnimationCurve> curve,
                                 AnimationCurve::CurveType type,

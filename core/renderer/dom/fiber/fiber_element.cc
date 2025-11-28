@@ -276,13 +276,12 @@ FiberElement::GetParentInheritedProperty() {
   return real_parent->GetInheritedProperty();
 }
 
-bool FiberElement::NeedFullFlushPath(
-    const std::pair<CSSPropertyID, tasm::CSSValue> &style) {
-  return style.second.IsEmpty() || LayoutProperty::IsLayoutOnly(style.first) ||
-         LayoutProperty::IsLayoutWanted(style.first) ||
-         starlight::CSSStyleUtils::IsLayoutRelatedTransform(style) ||
-         style.first == kPropertyIDColor || style.first == kPropertyIDFilter ||
-         style.first == kPropertyIDBackgroundPosition;
+bool FiberElement::NeedFullFlushPath(CSSPropertyID id, const CSSValue &value) {
+  return value.IsEmpty() || LayoutProperty::IsLayoutOnly(id) ||
+         LayoutProperty::IsLayoutWanted(id) ||
+         starlight::CSSStyleUtils::IsLayoutRelatedTransform(id, value) ||
+         id == kPropertyIDColor || id == kPropertyIDFilter ||
+         id == kPropertyIDBackgroundPosition;
 }
 
 void FiberElement::ResolveParentComponentElement() const {

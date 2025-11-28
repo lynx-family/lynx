@@ -790,13 +790,11 @@ void RadonElement::ConsumeStyle(const StyleMap& styles,
   }
 }
 
-bool RadonElement::NeedFullFlushPath(
-    const std::pair<CSSPropertyID, tasm::CSSValue>& style) {
-  return style.second.IsEmpty() || LayoutProperty::IsLayoutOnly(style.first) ||
-         LayoutProperty::IsLayoutWanted(style.first) ||
-         style.first == kPropertyIDTransform ||
-         style.first == kPropertyIDColor || style.first == kPropertyIDFilter ||
-         style.first == kPropertyIDBackgroundPosition;
+bool RadonElement::NeedFullFlushPath(CSSPropertyID id, const CSSValue& value) {
+  return value.IsEmpty() || LayoutProperty::IsLayoutOnly(id) ||
+         LayoutProperty::IsLayoutWanted(id) || id == kPropertyIDTransform ||
+         id == kPropertyIDColor || id == kPropertyIDFilter ||
+         id == kPropertyIDBackgroundPosition;
 }
 
 void RadonElement::ConsumeTransitionStylesInAdvanceInternal(

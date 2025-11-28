@@ -74,9 +74,8 @@ class Keyframe {
 
   virtual void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern){};
 
-  virtual bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) = 0;
+  virtual bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                        tasm::Element* element) = 0;
 
  protected:
   bool is_empty_{true};

@@ -93,17 +93,17 @@ tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
   return std::move(*value_opt);
 }
 
-tasm::CSSValue HandleCSSVariableValueIfNeed(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
-  const auto& keyframe_value = css_value_pair.second;
+tasm::CSSValue HandleCSSVariableValueIfNeed(tasm::CSSPropertyID id,
+                                            const tasm::CSSValue& value,
+                                            tasm::Element* element) {
+  const auto& keyframe_value = value;
   bool is_variable = keyframe_value.IsVariable();
   if (is_variable) {
     tasm::StyleMap temp_var_map;
-    temp_var_map.insert_or_assign(css_value_pair.first, css_value_pair.second);
+    temp_var_map.insert_or_assign(id, value);
     element->HandleCSSVariables(temp_var_map);
     if (temp_var_map.empty()) {
-      return css_value_pair.second;
+      return value;
     }
     return temp_var_map.front().second;
   }
@@ -161,11 +161,10 @@ LayoutKeyframe::GetLayoutKeyframeValue(LayoutKeyframe* keyframe,
   return std::make_pair(length, css_value);
 }
 
-bool LayoutKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
-  auto keyframe_layout_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+bool LayoutKeyframe::SetValue(tasm::CSSPropertyID id,
+                              const tasm::CSSValue& value,
+                              tasm::Element* element) {
+  auto keyframe_layout_value = HandleCSSVariableValueIfNeed(id, value, element);
   auto parse_result = starlight::CSSStyleUtils::ToLength(
       keyframe_layout_value, CSSKeyframeManager::GetLengthContext(element),
       element->element_manager()->GetCSSParserConfigs());
@@ -177,7 +176,7 @@ bool LayoutKeyframe::SetValue(
     return false;
   }
   value_ = parse_result.first;
-  css_value_ = css_value_pair.second;
+  css_value_ = value;
   is_empty_ = false;
   return true;
 }
@@ -212,14 +211,12 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
   // When view or font size has changed, let start_len and end_len be
   // 'AutoNLength', and then get The actual Nlength based on the updated size.
   if (start_len.IsAuto() && !keyframe->CSSValue().IsEnum()) {
-    auto prev_temp_pair = std::make_pair(
-        static_cast<tasm::CSSPropertyID>(Type()), keyframe->CSSValue());
-    keyframe->SetValue(prev_temp_pair, element_);
+    keyframe->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
+                       keyframe->CSSValue(), element_);
   }
   if (end_len.IsAuto() && !keyframe_next->CSSValue().IsEnum()) {
-    auto next_temp_pair = std::make_pair(
-        static_cast<tasm::CSSPropertyID>(Type()), keyframe_next->CSSValue());
-    keyframe_next->SetValue(next_temp_pair, element_);
+    keyframe_next->SetValue(static_cast<tasm::CSSPropertyID>(Type()),
+                            keyframe_next->CSSValue(), element_);
   }
 
   auto start_result = LayoutKeyframe::GetLayoutKeyframeValue(
@@ -301,11 +298,11 @@ float OpacityKeyframe::GetOpacityKeyframeValue(OpacityKeyframe* keyframe,
   return value;
 }
 
-bool OpacityKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
+bool OpacityKeyframe::SetValue(tasm::CSSPropertyID id,
+                               const tasm::CSSValue& value,
+                               tasm::Element* element) {
   auto keyframe_opacity_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+      HandleCSSVariableValueIfNeed(id, value, element);
   if (!keyframe_opacity_value.IsNumber()) {
     return false;
   }
@@ -385,11 +382,10 @@ uint32_t ColorKeyframe::GetColorKeyframeValue(ColorKeyframe* keyframe,
   return value;
 }
 
-bool ColorKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
-  auto keyframe_color_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+bool ColorKeyframe::SetValue(tasm::CSSPropertyID id,
+                             const tasm::CSSValue& value,
+                             tasm::Element* element) {
+  auto keyframe_color_value = HandleCSSVariableValueIfNeed(id, value, element);
   if (!keyframe_color_value.IsNumber()) {
     return false;
   }
@@ -504,11 +500,10 @@ float FloatKeyframe::GetFloatKeyframeValue(FloatKeyframe* keyframe,
   return value;
 }
 
-bool FloatKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
-  auto keyframe_float_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+bool FloatKeyframe::SetValue(tasm::CSSPropertyID id,
+                             const tasm::CSSValue& value,
+                             tasm::Element* element) {
+  auto keyframe_float_value = HandleCSSVariableValueIfNeed(id, value, element);
   if (!keyframe_float_value.IsNumber()) {
     return false;
   }
@@ -574,11 +569,10 @@ tasm::CSSValue FilterKeyframe::GetFilterKeyframeValue(FilterKeyframe* keyframe,
   return filter;
 }
 
-bool FilterKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
-  auto keyframe_filter_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+bool FilterKeyframe::SetValue(tasm::CSSPropertyID id,
+                              const tasm::CSSValue& value,
+                              tasm::Element* element) {
+  auto keyframe_filter_value = HandleCSSVariableValueIfNeed(id, value, element);
   filter_ = keyframe_filter_value;
   is_empty_ = false;
   return true;
@@ -655,11 +649,11 @@ std::unique_ptr<BackgroundPositionKeyframe> BackgroundPositionKeyframe::Create(
       time, std::move(timing_function));
 }
 
-bool BackgroundPositionKeyframe::SetValue(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element) {
+bool BackgroundPositionKeyframe::SetValue(tasm::CSSPropertyID id,
+                                          const tasm::CSSValue& value,
+                                          tasm::Element* element) {
   auto keyframe_background_position_value =
-      HandleCSSVariableValueIfNeed(css_value_pair, element);
+      HandleCSSVariableValueIfNeed(id, value, element);
   if (!keyframe_background_position_value.IsArray()) {
     return false;
   }

@@ -146,7 +146,6 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto impl1 = lepus::Value("100px");
   lynx::tasm::UnitHandler::Process(id1, impl1, output1, configs);
   auto raw_value1 = output1[id1];
-  auto test_value_pair1 = std::make_pair(id1, raw_value1);
   auto test_animation1 = InitTestAnimation();
   auto test_timing_function1 =
       animation::CubicBezierTimingFunction::MakeTimingFunction(
@@ -154,7 +153,7 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto test_type1 = animation::AnimationCurve::CurveType::LEFT;
   bool init_success1 = test_manager->InitCurveAndModelAndKeyframe(
       test_type1, test_animation1.get(), test_offset,
-      std::move(test_timing_function1), test_value_pair1);
+      std::move(test_timing_function1), id1, raw_value1);
   EXPECT_EQ(init_success1, true);
   EXPECT_EQ(*test_animation1->animation_data(),
             test_animation1->keyframe_effect()
@@ -166,7 +165,6 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto impl2 = lepus::Value("1");
   lynx::tasm::UnitHandler::Process(id2, impl2, output2, configs);
   auto raw_value2 = output2[id2];
-  auto test_value_pair2 = std::make_pair(id2, raw_value2);
   auto test_animation2 = InitTestAnimation();
   auto test_timing_function2 =
       animation::CubicBezierTimingFunction::MakeTimingFunction(
@@ -174,7 +172,7 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto test_type2 = animation::AnimationCurve::CurveType::OPACITY;
   bool init_success2 = test_manager->InitCurveAndModelAndKeyframe(
       test_type2, test_animation2.get(), test_offset,
-      std::move(test_timing_function2), test_value_pair2);
+      std::move(test_timing_function2), id2, raw_value2);
   EXPECT_EQ(init_success2, true);
   EXPECT_EQ(*test_animation2->animation_data(),
             test_animation2->keyframe_effect()
@@ -186,7 +184,6 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto impl3 = lepus::Value("blue");
   lynx::tasm::UnitHandler::Process(id3, impl3, output3, configs);
   auto raw_value3 = output3[id3];
-  auto test_value_pair3 = std::make_pair(id3, raw_value3);
   auto test_animation3 = InitTestAnimation();
   auto test_timing_function3 =
       animation::CubicBezierTimingFunction::MakeTimingFunction(
@@ -194,7 +191,7 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto test_type3 = animation::AnimationCurve::CurveType::TEXTCOLOR;
   bool init_success3 = test_manager->InitCurveAndModelAndKeyframe(
       test_type3, test_animation3.get(), test_offset,
-      std::move(test_timing_function3), test_value_pair3);
+      std::move(test_timing_function3), id3, raw_value3);
   EXPECT_EQ(init_success3, true);
   EXPECT_EQ(*test_animation3->animation_data(),
             test_animation3->keyframe_effect()
@@ -206,7 +203,6 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto impl4 = lepus::Value("");
   lynx::tasm::UnitHandler::Process(id4, impl4, output4, configs);
   auto raw_value4 = output4[id4];
-  auto test_value_pair4 = std::make_pair(id4, raw_value4);
   auto test_animation4 = InitTestAnimation();
   auto test_timing_function4 =
       animation::CubicBezierTimingFunction::MakeTimingFunction(
@@ -214,7 +210,7 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   auto test_type4 = animation::AnimationCurve::CurveType::UNSUPPORT;
   bool init_success4 = test_manager->InitCurveAndModelAndKeyframe(
       test_type4, test_animation4.get(), test_offset,
-      std::move(test_timing_function4), test_value_pair4);
+      std::move(test_timing_function4), id4, raw_value4);
   EXPECT_EQ(init_success4, false);
 }
 

@@ -533,10 +533,8 @@ TEST_F(KeyframedAnimationCurveTest, HandleCSSVariableValueIfNeed) {
                              lepus::Value("true"));
   auto test_value =
       ::lynx::tasm::CSSValue(0.8, ::lynx::tasm::CSSValuePattern::NUMBER);
-  auto test_pair_1 =
-      std::make_pair(::lynx::tasm::kPropertyIDOpacity, test_value);
-  auto result_value_1 =
-      HandleCSSVariableValueIfNeed(test_pair_1, test_element.get());
+  auto result_value_1 = HandleCSSVariableValueIfNeed(
+      ::lynx::tasm::kPropertyIDOpacity, test_value, test_element.get());
 
   EXPECT_EQ(result_value_1, test_value);
 
@@ -546,14 +544,12 @@ TEST_F(KeyframedAnimationCurveTest, HandleCSSVariableValueIfNeed) {
       ::lynx::tasm::CSSValue("calc({{--height}} + {{--height}})",
                              ::lynx::tasm::CSSValuePattern::STRING,
                              ::lynx::tasm::CSSValueType::VARIABLE);
-  auto test_pair_2 =
-      std::make_pair(::lynx::tasm::kPropertyIDLeft, test_value_2);
 
   auto var_value = ::lynx::tasm::CSSValue("calc(20px + 20px)",
                                           ::lynx::tasm::CSSValuePattern::CALC,
                                           ::lynx::tasm::CSSValueType::VARIABLE);
-  auto result_value_2 =
-      HandleCSSVariableValueIfNeed(test_pair_2, test_element.get());
+  auto result_value_2 = HandleCSSVariableValueIfNeed(
+      ::lynx::tasm::kPropertyIDLeft, test_value_2, test_element.get());
   EXPECT_EQ(result_value_2, var_value);
 }
 

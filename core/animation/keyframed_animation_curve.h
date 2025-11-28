@@ -39,9 +39,9 @@ double TransformedKeyframeProgress(
 tasm::CSSValue GetStyleInElement(tasm::CSSPropertyID id,
                                  tasm::Element* element);
 
-tasm::CSSValue HandleCSSVariableValueIfNeed(
-    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-    tasm::Element* element);
+tasm::CSSValue HandleCSSVariableValueIfNeed(tasm::CSSPropertyID id,
+                                            const tasm::CSSValue& value,
+                                            tasm::Element* element);
 
 const std::unordered_set<AnimationCurve::CurveType>& GetOnXAxisCurveTypeSet();
 
@@ -59,9 +59,8 @@ class LayoutKeyframe : public Keyframe {
     is_empty_ = false;
   }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern) override;
 
@@ -100,9 +99,8 @@ class OpacityKeyframe : public Keyframe {
     is_empty_ = false;
   }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   float Value() const { return value_; }
 
@@ -137,9 +135,8 @@ class ColorKeyframe : public Keyframe {
     is_empty_ = false;
   }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   uint32_t Value() const { return value_; }
 
@@ -185,9 +182,8 @@ class FloatKeyframe : public Keyframe {
 
   void SetFloat(float value) { value_ = value; }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   uint32_t Value() const { return value_; }
 
@@ -218,9 +214,8 @@ class FilterKeyframe : public Keyframe {
 
   void SetFilter(const tasm::CSSValue& filter) { filter_ = filter; }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   FilterKeyframe(fml::TimeDelta time,
                  std::unique_ptr<TimingFunction> timing_function);
@@ -254,9 +249,8 @@ class BackgroundPositionKeyframe : public Keyframe {
 
   tasm::CSSValue GetBackgroundPosition() const { return background_position_; }
 
-  bool SetValue(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
-      tasm::Element* element) override;
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
 
   BackgroundPositionKeyframe(fml::TimeDelta time,
                              std::unique_ptr<TimingFunction> timing_function);

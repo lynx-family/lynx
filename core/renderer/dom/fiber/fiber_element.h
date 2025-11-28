@@ -216,8 +216,8 @@ class FiberElement : public Element,
 
   const InheritedProperty GetParentInheritedProperty();
 
-  virtual bool NeedFullFlushPath(
-      const std::pair<CSSPropertyID, tasm::CSSValue>& style) override;
+  virtual bool NeedFullFlushPath(CSSPropertyID id,
+                                 const CSSValue& value) override;
 
   const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }
 

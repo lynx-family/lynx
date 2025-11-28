@@ -153,8 +153,8 @@ class CSSStyleUtils {
       const tasm::CssMeasureContext& context,
       const tasm::CSSParserConfigs& configs);
 
-  static bool IsLayoutRelatedTransform(
-      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& style);
+  static bool IsLayoutRelatedTransform(tasm::CSSPropertyID id,
+                                       const tasm::CSSValue& value);
 
   static lepus_value TransformToLepus(
       const base::Vector<TransformRawData>& items);

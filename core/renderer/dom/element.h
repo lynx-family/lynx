@@ -647,8 +647,7 @@ class Element : public lepus::RefCounted,
   // Whether list uses platform component.
   virtual bool DisableListPlatformImplementation() const { return false; }
 
-  virtual bool NeedFullFlushPath(
-      const std::pair<CSSPropertyID, tasm::CSSValue>& style) = 0;
+  virtual bool NeedFullFlushPath(CSSPropertyID id, const CSSValue& value) = 0;
 
   virtual bool is_view() const { return false; }
 
