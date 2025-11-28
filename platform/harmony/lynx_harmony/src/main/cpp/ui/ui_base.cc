@@ -2017,7 +2017,7 @@ bool UIBase::IsVisibleForExposure(
     float offset_screen[2]) {
   float parent_rect[4] = {0};
   std::vector<UIBase*> parent_array;
-  UIBase* current = parent_;
+  UIBase* current = this;
   while (current != nullptr && current->Parent() != current) {
     if (!current->IsVisible()) {
       return false;
@@ -2067,6 +2067,8 @@ bool UIBase::IsVisibleForExposure(
     }
     current = current->Parent();
   }
+  float root_rect[4] = {0};
+  std::memcpy(root_rect, parent_rect, sizeof(float) * 4);
 
   float ui_rect[4] = {0, 0, width_, height_};
   bool ui_rect_calculated = false;
@@ -2140,8 +2142,11 @@ bool UIBase::IsVisibleForExposure(
     common_ancestor_ui_rect_map.emplace(-10, std::move(rect));
   }
 
-  return LynxUIHelper::CheckViewportIntersectWithRatio(ui_rect, window_rect,
-                                                       exposure_area_);
+  bool is_root_intersect_with_window =
+      LynxUIHelper::CheckViewportIntersectWithRatio(root_rect, window_rect, 0);
+  bool is_intersect_with_window = LynxUIHelper::CheckViewportIntersectWithRatio(
+      ui_rect, window_rect, exposure_area_);
+  return is_intersect_with_window && is_root_intersect_with_window;
 }
 
 void UIBase::WillRemoveFromUIParent() {

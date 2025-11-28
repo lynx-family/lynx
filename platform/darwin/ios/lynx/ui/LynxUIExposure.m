@@ -368,7 +368,10 @@
   BOOL isIntersectWithScreen = [self checkIntersect:frameOfUIInWindow
                                           otherRect:borderOfExposureScreen
                                               ratio:exposureAreaRatio];
-  return isIntersectWithRoot && isIntersectWithScreen;
+  BOOL isRootIntersectWithScreen = [self checkIntersect:frameOfRootUIInWindow
+                                              otherRect:borderOfExposureScreen
+                                                  ratio:0];
+  return isIntersectWithRoot && isIntersectWithScreen && isRootIntersectWithScreen;
 }
 
 - (BOOL)isLynxViewChanged {

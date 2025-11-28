@@ -369,7 +369,9 @@ public class UIExposure extends LynxObserverManager {
         !isInOverlay ? checkIntersect(uiRect, viewRect, exposureAreaRatio) : true;
     if (mWindowRect != null) {
       RectF borderOfWindowRect = getBorderOfWindowRect(ui);
-      return isIntersectWithRoot && checkIntersect(uiRect, borderOfWindowRect, exposureAreaRatio);
+      boolean isIntersectWithWindow = checkIntersect(uiRect, borderOfWindowRect, exposureAreaRatio);
+      boolean isRootIntersectWithWindow = checkIntersect(viewRect, borderOfWindowRect, 0);
+      return isIntersectWithRoot && isIntersectWithWindow && isRootIntersectWithWindow;
     } else {
       return isIntersectWithRoot;
     }
