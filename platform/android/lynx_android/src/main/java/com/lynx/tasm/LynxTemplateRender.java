@@ -4135,6 +4135,7 @@ public class LynxTemplateRender
         .setFontScale(mLynxViewBuilder.getFontScale())
         .setEnablePreUpdateData(true)
         .setDynamicComponentFetcher(mLynxViewBuilder.fetcher)
+        .setEnableUnifiedPipeline(mLynxViewBuilder.isEnableUnifiedPipeline())
         .setEnableGenericResourceFetcher(
             mLynxViewBuilder.getLynxRuntimeOptions().isEnableGenericResourceFetcher());
 
