@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "base/include/linked_hash_map.h"
+#include "base/include/vector.h"
 #include "core/runtime/jsi/jsi.h"
 
 namespace lynx {
@@ -38,7 +38,7 @@ class AnimationFrameTaskHandler {
     piper::Function func_;
     bool cancelled_;
   };
-  using TaskMap = base::LinkedHashMap<int64_t, std::unique_ptr<FrameTask>>;
+  using TaskMap = base::LinearFlatMap<int64_t, std::unique_ptr<FrameTask>>;
   TaskMap& CurrentFrameTaskMap();
   TaskMap& NextFrameTaskMap();
   int64_t current_index_;
