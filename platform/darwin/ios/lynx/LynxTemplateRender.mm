@@ -1232,6 +1232,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   } else {
     _LogE(@"TemplateRender %p sendGlobalEvent %@ error, can't get LynxContext", self, name);
   }
+
+  if (_context && _context.isEmbeddedModeOn) {
+    [self onLynxEventWithDictionary:@{
+      @"method" : kSendGlobalEvent,
+      @"name" : name,
+      @"params" : params
+    }];
+  }
 }
 
 - (void)sendGlobalEventToLepus:(nonnull NSString*)name withParams:(nullable NSArray*)params {
