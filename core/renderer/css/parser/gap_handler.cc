@@ -32,6 +32,7 @@ HANDLER_IMPL() {
     }
     return parse_success;
   } else if (input.IsNumber()) {
+    output.reserve(output.size() + 2);
     UnitHandler::Process(properties[0], input, output, configs);
     if (auto it = output.find(properties[0]); it != output.end()) {
       output.insert_or_assign(properties[1], it->second);

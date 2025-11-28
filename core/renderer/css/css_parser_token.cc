@@ -45,9 +45,9 @@ const StyleMap& CSSParseToken::GetAttributes() {
     // Get the total pool capacity of the parsed attributes from raw_attributes.
     total_pool_capacity =
         CSSProperty::GetTotalParsedStyleCountFromMap(raw_attributes_);
-    css_attribute.set_pool_capacity(total_pool_capacity);
+    css_attribute.reserve(total_pool_capacity);
     // Process raw attributes and store them in local variable css_attribute.
-    raw_attributes_.foreach ([&](const CSSPropertyID& k, const CSSValue& v) {
+    raw_attributes_.for_each([&](const CSSPropertyID& k, const CSSValue& v) {
       UnitHandler::ProcessCSSValue(k, v, css_attribute, parser_configs_);
     });
   }

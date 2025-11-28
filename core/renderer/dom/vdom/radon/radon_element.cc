@@ -201,7 +201,8 @@ void RadonElement::SetNativeProps(
   }
   // It hard to calculate the precise count of final styles.
   // Just reserve according to table size.
-  StyleMap styles(args_table->size() + kCSSStyleMapFuzzyAllocationSize);
+  StyleMap styles;
+  styles.reserve(args_table->size() + kCSSStyleMapFuzzyAllocationSize);
   for (auto& arg : *args_table) {
     auto id = CSSProperty::GetPropertyID(arg.first);
     if (id != kPropertyEnd) {

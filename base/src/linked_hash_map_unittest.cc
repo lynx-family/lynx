@@ -252,7 +252,7 @@ TEST(LinkedHashMap, copy_move_status) {
                                                               false, true));
 }
 
-TEST(LinkedHashMap, foreach_status) {
+TEST(LinkedHashMap, for_each_status) {
   std::set<std::string> key_set;
   LinkedHashMap<std::string, std::string, 12, 6> map;
   map.reserve(20);
@@ -267,7 +267,7 @@ TEST(LinkedHashMap, foreach_status) {
   auto key_set2 = key_set;
 
   // Perfect map iterates base on array.
-  map.foreach ([&](const std::string& key, const std::string& value) {
+  map.for_each([&](const std::string& key, const std::string& value) {
     EXPECT_TRUE(key_set.count(key) == 1);
     key_set.erase(key);
   });
@@ -277,7 +277,7 @@ TEST(LinkedHashMap, foreach_status) {
   map.erase("key5");
   EXPECT_TRUE(map.size() == 9);
   EXPECT_TRUE(decltype(map)::Testing::assume_status(map, false, false));
-  map.foreach ([&](const std::string& key, const std::string& value) {
+  map.for_each([&](const std::string& key, const std::string& value) {
     EXPECT_TRUE(key_set2.count(key) == 1);
     key_set2.erase(key);
   });

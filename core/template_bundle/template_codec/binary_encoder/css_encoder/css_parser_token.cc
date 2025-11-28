@@ -275,13 +275,13 @@ bool CSSParseToken::IsGlobalPseudoStyleToken() const {
 
 const tasm::StyleMap& CSSParseToken::GetAttributes() {
   if (!raw_attributes_.empty()) {
-    attributes_.set_pool_capacity(
+    attributes_.reserve(
         tasm::CSSProperty::GetTotalParsedStyleCountFromMap(raw_attributes_));
-    raw_attributes_.foreach ([&](const tasm::CSSPropertyID& k,
+    raw_attributes_.for_each([&](const tasm::CSSPropertyID& k,
                                  const tasm::CSSValue& v) {
       tasm::UnitHandler::ProcessCSSValue(k, v, attributes_, parser_configs_);
     });
-    raw_attributes_.clear(true);
+    raw_attributes_.clear();
   }
 
   return attributes_;

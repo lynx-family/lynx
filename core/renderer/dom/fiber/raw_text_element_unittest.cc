@@ -71,7 +71,7 @@ TEST_F(RawTextElementTest, SetText) {
 
   page->FlushActionsAsRoot();
 
-  const auto& attributes = raw_text->data_model_->attributes();
+  auto& attributes = raw_text->data_model_->attributes();
   EXPECT_TRUE(attributes.at(RawTextElement::kTextAttr) ==
               lepus::Value("text-content"));
 }

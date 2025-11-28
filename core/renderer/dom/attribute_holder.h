@@ -466,7 +466,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
  protected:
   ClassList classes_;
-  StyleMap inline_styles_{kCSSStyleMapFuzzyAllocationSize};
+  StyleMap inline_styles_;
   AttrMap attributes_;
   base::auto_create_optional<DataMap> data_set_;
   base::auto_create_optional<GestureMap> gesture_detectors_;

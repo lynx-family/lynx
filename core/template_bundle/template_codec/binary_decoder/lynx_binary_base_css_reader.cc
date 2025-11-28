@@ -284,7 +284,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSAttributes(
     }
 
     // We can calculate accurate reserving size from decoded property ids.
-    attr.set_pool_capacity(
+    attr.reserve(
         CSSProperty::GetTotalParsedStyleCountFromArray(decode_values, size));
     for (size_t i = 0; i < size; ++i) {
       UnitHandler::ProcessCSSValue(decode_values[i].id, decode_values[i].value,

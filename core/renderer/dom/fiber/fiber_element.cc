@@ -3326,7 +3326,7 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
   bool ret =
       DiffStyleImpl(pre_parsed_styles_map, parsed_styles_map_, parsed_styles);
   // styles left in old_map need to be removed
-  pre_parsed_styles_map.foreach (
+  pre_parsed_styles_map.for_each(
       [&](const CSSPropertyID &k, const CSSValue &v) {
         // Filter shorthand property that need to be expanded
         if (!CSSProperty::IsShorthandProperty(k)) {
