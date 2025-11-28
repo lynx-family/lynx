@@ -6,7 +6,10 @@
 
 @class LynxView;
 @class LynxTemplateBundle;
+
 NS_ASSUME_NONNULL_BEGIN
+extern NSString *const kSendGlobalEvent;
+
 @protocol LynxLogicExecutor <NSObject>
 
 /**

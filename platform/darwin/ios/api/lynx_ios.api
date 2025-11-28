@@ -6615,6 +6615,8 @@ public enum LynxBackgroundJsRuntimeType {
 
   public BOOL LynxImageFetchherSupportsProcessor(id< LynxImageFetcher > fetcher);
 
+  public NS_ASSUME_NONNULL_BEGIN NSString* const kSendGlobalEvent kSendGlobalEvent;
+
   public NS_ASSUME_NONNULL_BEGIN typedef NS_OPTIONS(NSInteger, LynxRequestOptions);
 
 public enum LynxImageRequestType {
