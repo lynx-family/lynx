@@ -26,8 +26,10 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/base/element_template_info.h"
+#include "core/runtime/piper/js/runtime_constant.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
@@ -159,13 +161,13 @@ bool ElementBinaryReader::DecodeElementRecursively(
         break;
 
       case ElementSectionEnum::ELEMENT_EVENTS:
-        if (!DecodeEventsSection(element)) {
+        if (!DecodeEventsSection(tasm, element)) {
           return false;
         }
         break;
 
       case ElementSectionEnum::ELEMENT_PIPER_EVENTS:
-        if (!DecodePiperEventsSection(element)) {
+        if (!DecodePiperEventsSection(tasm, element)) {
           return false;
         }
         break;
@@ -268,36 +270,85 @@ bool ElementBinaryReader::DecodeClassesSection(
 }
 
 bool ElementBinaryReader::DecodeEventsSection(
-    fml::RefPtr<FiberElement>& element) {
+    TemplateAssembler* tasm, fml::RefPtr<FiberElement>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_BINARY_READER_DECODE_EVENTS_SECTION);
   DECODE_COMPACT_U32(size);
   for (uint32_t i = 0; i < size; ++i) {
-    DECODE_U8(type);
+    DECODE_U8(type_enum);
     DECODE_STR(name);
-    DECODE_STR(value);
-    const auto& event_string =
-        GetEventStringType(static_cast<EventTypeEnum>(type));
-    if (event_string.str().empty()) {
+    DECODE_STR(callback);
+    const auto& type =
+        GetEventStringType(static_cast<EventTypeEnum>(type_enum));
+    if (type.str().empty()) {
       return false;
     }
-    element->SetJSEventHandler(std::move(name), event_string, std::move(value));
+    element->SetJSEventHandler(name, type, callback);
+
+    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+      bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
+      bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
+      bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;
+      bool is_global_bind = type.str() == EVENT_TYPE_GLOBAL;
+      auto event_options = event::EventListener::Options(
+          is_capture || is_capture_catch, false, false, false,
+          is_capture_catch || is_bubble_catch, is_global_bind);
+      auto handler_name = callback.str();
+      // remove the listener firstly to adapt rebind
+      element->RemoveEventListener(
+          name.str(), std::make_unique<event::ClosureEventListener>(
+                          [](lepus::Value args) {}, event_options,
+                          event::ClosureEventListener::ClosureType::kJS));
+      element->AddEventListener(
+          name.str(),
+          std::make_unique<event::ClosureEventListener>(
+              [tasm, handler_name](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (args.IsArray() && args_array->size() == 2) {
+                  const auto& event_info = args_array->get(0);
+                  const auto& event_detail = args_array->get(1);
+                  const auto& event_info_array = event_info.Array();
+                  if (event_info.IsArray() && event_info_array->size() == 2) {
+                    const auto& call_method_name =
+                        event_info_array->get(0).Bool();
+                    const auto& page_name_or_component_id =
+                        event_info_array->get(1).StdString();
+                    auto message = lepus::CArray::Create();
+                    message->emplace_back(page_name_or_component_id);
+                    message->emplace_back(handler_name);
+                    // info be ShallowCopy first to avoid to be marked const.
+                    message->emplace_back(
+                        lepus_value::ShallowCopy(event_detail));
+                    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+                        call_method_name
+                            ? runtime::kMessageEventTypeSendPageEvent
+                            : runtime::kMessageEventTypePublishComponentEvent,
+                        runtime::ContextProxy::Type::kCoreContext,
+                        runtime::ContextProxy::Type::kJSContext,
+                        std::make_unique<pub::ValueImplLepus>(
+                            lepus::Value(std::move(message))));
+                    tasm->DispatchMessageEvent(std::move(event));
+                  }
+                }
+              },
+              event_options, event::ClosureEventListener::ClosureType::kJS));
+    }
   }
   return true;
 }
 
 bool ElementBinaryReader::DecodePiperEventsSection(
-    fml::RefPtr<FiberElement>& element) {
+    TemplateAssembler* tasm, fml::RefPtr<FiberElement>& element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_PIPER_EVENTS_SECTION);
   DECODE_COMPACT_U32(size);
   for (uint32_t i = 0; i < size; ++i) {
-    DECODE_U8(type);
+    DECODE_U8(type_enum);
     DECODE_STR(name);
     DECODE_VALUE(value);
 
-    const auto& event_string =
-        GetEventStringType(static_cast<EventTypeEnum>(type));
-    if (event_string.str().empty()) {
+    const auto& type =
+        GetEventStringType(static_cast<EventTypeEnum>(type_enum));
+    if (type.str().empty()) {
       return false;
     }
 
@@ -314,8 +365,33 @@ bool ElementBinaryReader::DecodePiperEventsSection(
                    BASE_STATIC_STRING(PiperEventContent::kPiperFuncArgs))});
         });
 
-    element->data_model()->SetStaticEvent(event_string, std::move(name),
-                                          std::move(piper_event_content));
+    element->data_model()->SetStaticEvent(type, name, piper_event_content);
+
+    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+      bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
+      bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
+      bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;
+      bool is_global_bind = type.str() == EVENT_TYPE_GLOBAL;
+      auto event_options = event::EventListener::Options(
+          is_capture || is_capture_catch, false, false, false,
+          is_capture_catch || is_bubble_catch, is_global_bind);
+      // remove the listener firstly to adapt rebind
+      element->RemoveEventListener(
+          name.str(), std::make_unique<event::ClosureEventListener>(
+                          [](lepus::Value args) {}, event_options,
+                          event::ClosureEventListener::ClosureType::kJS));
+      element->AddEventListener(
+          name.str(),
+          std::make_unique<event::ClosureEventListener>(
+              [tasm, piper_event_content](lepus::Value args) {
+                for (const auto& event : piper_event_content) {
+                  const auto& func_name = event.first.str();
+                  const auto& func_args = event.second;
+                  tasm->TriggerLepusBridgeAsync(func_name, func_args);
+                }
+              },
+              event_options, event::ClosureEventListener::ClosureType::kJS));
+    }
   }
 
   return true;

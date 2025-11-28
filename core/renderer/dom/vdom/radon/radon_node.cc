@@ -815,7 +815,7 @@ void RadonNode::MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
 }
 
 void RadonNode::ProcessEvents() {
-  if (tasm_ &&
+  if (element() && tasm_ &&
       (tasm_->EnableEventHandleRefactor() || tasm_->IsEmbeddedModeOn())) {
     if (!static_events().empty() || !global_bind_events().empty()) {
       for (const auto& static_event : static_events()) {
@@ -843,47 +843,66 @@ void RadonNode::SetEventListeners(
       is_capture_catch || is_bubble_catch, is_global_bind);
 
   if (is_js_event) {
-    const auto& callback = event_entry.second->function();
+    // remove the listener firstly to adapt rebind
     element()->RemoveEventListener(
         name, std::make_unique<event::ClosureEventListener>(
                   [](lepus::Value args) {}, event_options,
                   event::ClosureEventListener::ClosureType::kJS));
-    element()->AddEventListener(
-        name,
-        std::make_unique<event::ClosureEventListener>(
-            [tasm = tasm_, callback](lepus::Value args) {
-              const auto& args_array = args.Array();
-              if (args.IsArray() && args_array->size() == 2) {
-                const auto& event_info = args_array->get(0);
-                const auto& event_detail = args_array->get(1);
-                const auto& event_info_array = event_info.Array();
-                if (event_info.IsArray() && event_info_array->size() == 2) {
-                  const auto& call_method_name =
-                      event_info_array->get(0).Bool();
-                  const auto& page_name_or_component_id =
-                      event_info_array->get(1).StdString();
-                  auto message = lepus::CArray::Create();
-                  message->emplace_back(page_name_or_component_id);
-                  message->emplace_back(callback);
-                  // info be ShallowCopy first to avoid to be marked const.
-                  message->emplace_back(lepus_value::ShallowCopy(event_detail));
-                  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
-                      call_method_name
-                          ? runtime::kMessageEventTypeSendPageEvent
-                          : runtime::kMessageEventTypePublishComponentEvent,
-                      runtime::ContextProxy::Type::kCoreContext,
-                      runtime::ContextProxy::Type::kJSContext,
-                      std::make_unique<pub::ValueImplLepus>(
-                          lepus::Value(std::move(message))));
-                  tasm->DispatchMessageEvent(std::move(event));
+    bool is_piper_event = event_entry.second->is_piper_event();
+    if (is_piper_event) {
+      const auto& piper_event_vec = *event_entry.second->piper_event_vec();
+      element()->AddEventListener(
+          name,
+          std::make_unique<event::ClosureEventListener>(
+              [tasm = tasm_, piper_event_vec](lepus::Value args) {
+                for (const auto& event : piper_event_vec) {
+                  const auto& func_name = event.piper_func_name_.str();
+                  auto func_args = event.piper_func_args_;
+                  tasm->TriggerLepusBridgeAsync(func_name, func_args);
                 }
-              }
-            },
-            event_options, event::ClosureEventListener::ClosureType::kJS));
+              },
+              event_options, event::ClosureEventListener::ClosureType::kJS));
+    } else {
+      const auto& callback = event_entry.second->function();
+      element()->AddEventListener(
+          name,
+          std::make_unique<event::ClosureEventListener>(
+              [tasm = tasm_, callback](lepus::Value args) {
+                const auto& args_array = args.Array();
+                if (args.IsArray() && args_array->size() == 2) {
+                  const auto& event_info = args_array->get(0);
+                  const auto& event_detail = args_array->get(1);
+                  const auto& event_info_array = event_info.Array();
+                  if (event_info.IsArray() && event_info_array->size() == 2) {
+                    const auto& call_method_name =
+                        event_info_array->get(0).Bool();
+                    const auto& page_name_or_component_id =
+                        event_info_array->get(1).StdString();
+                    auto message = lepus::CArray::Create();
+                    message->emplace_back(page_name_or_component_id);
+                    message->emplace_back(callback);
+                    // info be ShallowCopy first to avoid to be marked const.
+                    message->emplace_back(
+                        lepus_value::ShallowCopy(event_detail));
+                    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+                        call_method_name
+                            ? runtime::kMessageEventTypeSendPageEvent
+                            : runtime::kMessageEventTypePublishComponentEvent,
+                        runtime::ContextProxy::Type::kCoreContext,
+                        runtime::ContextProxy::Type::kJSContext,
+                        std::make_unique<pub::ValueImplLepus>(
+                            lepus::Value(std::move(message))));
+                    tasm->DispatchMessageEvent(std::move(event));
+                  }
+                }
+              },
+              event_options, event::ClosureEventListener::ClosureType::kJS));
+    }
   } else {
 #if ENABLE_LEPUSNG_WORKLET
     const auto& lepus_func = event_entry.second->lepus_function();
     const auto& lepus_script = event_entry.second->lepus_script();
+    // remove the listener firstly to adapt rebind
     element()->RemoveEventListener(
         name, std::make_unique<event::ClosureEventListener>(
                   [](lepus::Value args) {}, event_options,
