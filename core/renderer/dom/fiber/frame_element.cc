@@ -89,6 +89,7 @@ bool FrameElement::DidBundleLoaded(
 
 void FrameElement::FlushProps() {
   FiberElement::FlushProps();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FRAME_ELEMENT_FLUSH_PROPS, "src", src_);
   if (bundle_data_ && HasPaintingNode()) {
     if (bundle_data_->bundle) {
       element_container()->SetFrameAppBundle(bundle_data_->bundle);

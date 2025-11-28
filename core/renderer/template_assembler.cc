@@ -1334,9 +1334,14 @@ void TemplateAssembler::DidFetchBundle(
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ASSEMBLER_DID_FETCH_BUNDLE,
               "bundle_url", callback_info.component_url);
   if (callback_info.request.resource_type == pub::LynxResourceType::kFrame) {
-    auto pipeline_option = std::make_shared<PipelineOptions>();
-    {
-      PipelineScope pipeline_scope(this, pipeline_option);
+    if (this->GetCurrentPipelineContext()) {
+      // If the current context is not empty, it means the frame loading process
+      // is still in an ongoing pipeline, so there’s no need to create a new
+      // one.
+      element_manager_delegate_.DidFrameBundleLoaded(callback_info);
+    } else {
+      auto pipeline_options = std::make_shared<PipelineOptions>();
+      PipelineScope pipeline_scope(this, pipeline_options);
       element_manager_delegate_.DidFrameBundleLoaded(callback_info);
     }
   }
