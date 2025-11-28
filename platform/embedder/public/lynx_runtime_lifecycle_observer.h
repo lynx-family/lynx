@@ -8,6 +8,10 @@
 
 #include "capi/lynx_runtime_lifecycle_observer_capi.h"
 
+#ifdef USE_PRIMJS_NAPI
+#include "third_party/napi/include/primjs_napi_defines.h"
+#endif
+
 namespace lynx {
 namespace pub {
 
@@ -90,5 +94,9 @@ class LynxRuntimeLifecycleObserver
 
 }  // namespace pub
 }  // namespace lynx
+
+#ifdef USE_PRIMJS_NAPI
+#include "third_party/napi/include/primjs_napi_undefs.h"
+#endif
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_LYNX_RUNTIME_LIFECYCLE_OBSERVER_H_
