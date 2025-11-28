@@ -103,7 +103,7 @@ class Fragment : public BaseElementContainer {
   // element parent using this pointer. Which means if the
   // fragment_from_element_parent_ is not null, the fragment has position fixed
   // or z-index != 0.
-  Fragment* fragment_from_element_parent_;
+  Fragment* fragment_from_element_parent_{nullptr};
 
   base::MoveOnlyClosure<bool> should_create_layer_;
 

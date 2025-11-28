@@ -515,7 +515,7 @@ void Fragment::RemoveSelf() {
   }
 
   if (fragment_parent() == nullptr) {
-    LOGE("Fragment RemoveSelf Error: parent is nullptr");
+    LOGI("Skip Fragment RemoveSelf: parent is nullptr");
     return;
   }
 
