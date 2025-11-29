@@ -50,8 +50,8 @@ target 'LynxExplorer' do
 
   pod 'PrimJS', :subspecs => ['quickjs', 'napi']
 
-  pod 'SDWebImage','5.15.5'
-  pod 'SDWebImageWebPCoder', '0.11.0'
+  pod 'SDWebImage', '~> 5.19'
+  pod 'SDWebImageWebPCoder', '~> 0.14'
 
   pod 'DebugRouter', '5.0.13'
 end
