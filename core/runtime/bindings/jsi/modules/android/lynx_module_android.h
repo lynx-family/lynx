@@ -41,7 +41,8 @@ class LynxModuleAndroid
   void buildMap(JNIEnv *env,
                 lynx::base::android::ScopedLocalJavaRef<jobject> &descriptions,
                 NativeModuleMethods &methods,
-                std::unordered_map<std::string, std::shared_ptr<MethodInvoker>>
+                std::unordered_map<std::string,
+                                   std::vector<std::shared_ptr<MethodInvoker>>>
                     &method_invoker_maps);
   const base::android::ScopedGlobalJavaRef<jobject> CreateLynxModuleCallback(
       const std::shared_ptr<LynxModuleCallback> &base_callback);
@@ -66,7 +67,7 @@ class LynxModuleAndroid
   // cache the metaData of the methods registered on the Android Platform
   base::android::ScopedWeakGlobalJavaRef<jobject> wrapper_;
   // A MethodInvoker represents a ModuleMethod registered by Android
-  std::unordered_map<std::string, std::shared_ptr<MethodInvoker>>
+  std::unordered_map<std::string, std::vector<std::shared_ptr<MethodInvoker>>>
       method_invokers_;
 
   // for timing api & native promise
@@ -95,6 +96,10 @@ class LynxModuleAndroid
 
   bool Verify(const std::string &method_name,
               const std::shared_ptr<base::android::JavaOnlyArray> &params);
+
+  const std::shared_ptr<MethodInvoker> GetMethodInvoker(
+      const std::string &method_name, const pub::Value *args,
+      size_t args_count);
 
   inline Runtime *GetScopeRuntime() {
     if (!scope_rts_.empty()) {
