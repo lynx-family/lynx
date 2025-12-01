@@ -463,7 +463,7 @@ class LinkedHashMap {
       *this = other;
     } else {
       other.for_each(
-          [=](const Key& k, const T& v) { this->insert_or_assign(k, v); });
+          [this](const Key& k, const T& v) { this->insert_or_assign(k, v); });
     }
   }
 

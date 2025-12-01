@@ -16,7 +16,7 @@ action("version_inc") {
 
   args = [
     "--output",
-    rebase_path("$target_gen_dir/version.inc"),
+    rebase_path("$root_gen_dir/clay/version/version.inc"),
     "--content",
     string_join("\n",
                 [
@@ -29,7 +29,7 @@ action("version_inc") {
                 ]),
   ]
 
-  outputs = [ "$target_gen_dir/version.inc" ]
+  outputs = [ "$root_gen_dir/clay/version/version.inc" ]
 }
 
 source_set("version") {

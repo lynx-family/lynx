@@ -18,6 +18,7 @@
 #include <map>
 #include <mutex>
 #include <optional>
+#include <string>
 #else  // OS_WIN
 #include <dirent.h>
 #include <unistd.h>
