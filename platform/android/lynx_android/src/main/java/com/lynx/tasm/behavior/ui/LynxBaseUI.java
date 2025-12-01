@@ -3029,6 +3029,9 @@ public abstract class LynxBaseUI
       view = ((LynxUI) this).getView();
     }
 
+    // TODO(songshourui.null): remove the following code and use
+    // LynxUIHelper.convertPointInViewToScreen method later.
+
     // get the position of the view relative to the screen
     // point: currentView to rootView
     // base_point: rootView to screen

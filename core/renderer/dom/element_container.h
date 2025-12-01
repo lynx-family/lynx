@@ -22,11 +22,13 @@ namespace tasm {
 class ElementContainer : public BaseElementContainer {
  public:
   explicit ElementContainer(Element* element);
-  virtual ~ElementContainer();
+  ~ElementContainer() override;
 
   ElementContainer* element_container_parent() {
     return static_cast<ElementContainer*>(parent());
   }
+
+  bool HasUIPrimitive() const override;
 
   const auto& children() const { return children_; }
 

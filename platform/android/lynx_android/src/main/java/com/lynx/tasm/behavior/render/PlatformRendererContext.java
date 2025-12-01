@@ -3,11 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import android.graphics.PointF;
+import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
@@ -16,11 +19,14 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
+import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
+  private static String TAG = "PlatformRendererContext";
+
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
     public static final int kView = 1;
@@ -66,6 +72,34 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   public long getNativePtr() {
     return mNativePtr;
+  }
+
+  PointF convertPointInViewToScreen(int sign, PointF point) {
+    ViewGroup view = mViewHolder.get(sign);
+    if (view == null) {
+      LLog.e(TAG, "convertPointInViewToScreen failed since can not find target view.");
+    }
+    return LynxUIHelper.convertPointInViewToScreen(view, point);
+  }
+
+  public int getTargetWidth(int sign) {
+    View view = mViewHolder.get(sign);
+    if (view == null) {
+      LLog.e(TAG, "getTargetWidth failed since can not find target view.");
+      return 0;
+    }
+
+    return view.getWidth();
+  }
+
+  public int getTargetHeight(int sign) {
+    View view = mViewHolder.get(sign);
+    if (view == null) {
+      LLog.e(TAG, "getTargetHeight failed since can not find target view.");
+      return 0;
+    }
+
+    return view.getHeight();
   }
 
   @CalledByNative

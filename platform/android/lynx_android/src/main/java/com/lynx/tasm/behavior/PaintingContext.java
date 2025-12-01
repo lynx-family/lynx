@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior;
 
 import android.content.Context;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.os.Build;
 import android.util.DisplayMetrics;
@@ -112,6 +113,40 @@ public final class PaintingContext implements IPaintingContext {
   @Override
   public long getNativePaintingContextPtr() {
     return mNativePaintingContextPtr;
+  }
+
+  @Override
+  public PointF convertPointInViewToScreen(int sign, PointF point) {
+    LynxBaseUI ui = mUIOwner.getNode(sign);
+    if (ui == null) {
+      LLog.e(TAG, "convertPointInViewToScreen failed since can not find target ui.");
+      return point;
+    }
+
+    float[] result = ui.getLocationOnScreen(new float[] {point.x, point.y});
+    return new PointF(result[0], result[1]);
+  }
+
+  @Override
+  public int getTargetWidth(int sign) {
+    LynxBaseUI ui = mUIOwner.getNode(sign);
+    if (ui == null) {
+      LLog.e(TAG, "getTargetWidth failed since can not find target ui.");
+      return 0;
+    }
+
+    return ui.getWidth();
+  }
+
+  @Override
+  public int getTargetHeight(int sign) {
+    LynxBaseUI ui = mUIOwner.getNode(sign);
+    if (ui == null) {
+      LLog.e(TAG, "getTargetHeight failed since can not find target ui.");
+      return 0;
+    }
+
+    return ui.getHeight();
   }
 
   @CalledByNative

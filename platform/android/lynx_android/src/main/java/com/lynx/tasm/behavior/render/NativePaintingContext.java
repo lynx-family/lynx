@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import android.graphics.PointF;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
@@ -34,6 +35,19 @@ public class NativePaintingContext implements IPaintingContext {
   @Override
   public long getNativePaintingContextPtr() {
     return mNativePtr;
+  }
+
+  @Override
+  public PointF convertPointInViewToScreen(int sign, PointF point) {
+    return mPlatformRendererContext.convertPointInViewToScreen(sign, point);
+  }
+
+  public int getTargetWidth(int sign) {
+    return mPlatformRendererContext.getTargetWidth(sign);
+  }
+
+  public int getTargetHeight(int sign) {
+    return mPlatformRendererContext.getTargetHeight(sign);
   }
 
   public void attachUIBodyView(UIBody.UIBodyView view) {

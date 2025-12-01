@@ -462,6 +462,10 @@ bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
   return resolve_success;
 }
 
+bool Element::HasUIPrimitive() const {
+  return element_container()->HasUIPrimitive();
+}
+
 void Element::CheckHasInlineContainer(Element* parent) {
   if (parent) {
     allow_layoutnode_inline_ = parent->IsShadowNodeCustom();

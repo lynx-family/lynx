@@ -33,6 +33,8 @@ class BaseElementContainer {
   explicit BaseElementContainer(Element* element);
   virtual ~BaseElementContainer();
 
+  virtual bool HasUIPrimitive() const = 0;
+
   void set_parent(BaseElementContainer* parent) { parent_ = parent; }
   BaseElementContainer* parent() const { return parent_; }
 
