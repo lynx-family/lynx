@@ -285,4 +285,21 @@ NSString *const RTL_MARK = @"\u200F";
   return textDecorationStyle;
 }
 
++ (void)setLynxTextGradient:(LynxTextStyle *_Nonnull)textStyle
+               withGradient:(NSArray *_Nullable)value {
+  if (value == nil || [value count] < 2 || ![value[1] isKindOfClass:[NSArray class]]) {
+    textStyle.textGradient = nil;
+  } else {
+    NSUInteger type = [LynxConverter toNSUInteger:value[0]];
+    NSArray *args = (NSArray *)value[1];
+    if (type == LynxBackgroundImageLinearGradient) {
+      textStyle.textGradient = [[LynxLinearGradient alloc] initWithArray:args];
+    } else if (type == LynxBackgroundImageRadialGradient) {
+      textStyle.textGradient = [[LynxRadialGradient alloc] initWithArray:args];
+    } else if (type == LynxBackgroundImageConicGradient) {
+      textStyle.textGradient = [[LynxConicGradient alloc] initWithArray:args];
+    }
+  }
+}
+
 @end

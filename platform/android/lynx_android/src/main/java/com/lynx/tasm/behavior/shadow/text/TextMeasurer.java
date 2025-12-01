@@ -31,6 +31,8 @@ import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.shadow.ShadowStyle;
+import com.lynx.tasm.behavior.ui.background.BackgroundLinearGradientLayer;
+import com.lynx.tasm.behavior.ui.background.BackgroundRadialGradientLayer;
 import com.lynx.tasm.behavior.ui.image.InlineImageSpan;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
@@ -78,6 +80,10 @@ public class TextMeasurer {
   private final static int kPropMargin = 104;
 
   private final static int kPropBorderRadius = 105;
+
+  private final static int kPropColorLinearGradient = 106;
+  private final static int kPropColorRadialGradient = 107;
+  private final static int kPropColorConicGradient = 108;
 
   private final static int kTextPropEnd = 0xFF;
 
@@ -180,6 +186,92 @@ public class TextMeasurer {
           textAttributes.setFontColor(iterator.next().getInt());
 
           break;
+        case kPropColorLinearGradient: {
+          textAttributes = ensureTextAttributes(textAttributes);
+          JavaOnlyArray array = new JavaOnlyArray();
+          // [angle_float, colors_int_array, positions_float_array,side_or_corner_int]
+          array.pushDouble(iterator.next().getDouble()); // angle
+          int colorsCount = iterator.next().getInt(); // colors
+          JavaOnlyArray colorsArray = new JavaOnlyArray();
+          if (colorsCount > 0) {
+            for (int i = 0; i < colorsCount; i++) {
+              colorsArray.pushInt(iterator.next().getInt());
+            }
+          }
+          array.pushArray(colorsArray);
+
+          int positionsCount = iterator.next().getInt(); // positions
+          JavaOnlyArray positionsArray = new JavaOnlyArray();
+          if (positionsCount > 0) {
+            for (int i = 0; i < positionsCount; i++) {
+              positionsArray.pushDouble(iterator.next().getDouble());
+            }
+          }
+          array.pushArray(positionsArray);
+
+          array.pushInt(iterator.next().getInt()); // side_or_corner_int
+          textAttributes.mTextGradient = new BackgroundLinearGradientLayer(array);
+          break;
+        }
+
+        case kPropColorRadialGradient: {
+          textAttributes = ensureTextAttributes(textAttributes);
+          JavaOnlyArray array = new JavaOnlyArray();
+          // radialGradientData:[shape_array, color_int_array, position_int_array]
+          // shape_array:[shape_int, shape_size_int, pos_x_pattern_int, pos_x_value_double,
+          // pos_y_pattern_int, pos_y_value_double, {size_x_value_double,size_x_pattern_int,
+          // size_y_value_double,size_y_pattern_int}]
+
+          // shape array(flat)
+          JavaOnlyArray shapeArray = new JavaOnlyArray();
+          {
+            shapeArray.pushInt(iterator.next().getInt()); // shape: index0
+            int shapeSize = iterator.next().getInt();
+            shapeArray.pushInt(shapeSize); // shapeSize: index1
+            shapeArray.pushInt(iterator.next().getInt()); // pos_x_pattern: index2
+            shapeArray.pushDouble(iterator.next().getDouble()); // pos_x_value: index3
+            shapeArray.pushInt(iterator.next().getInt()); // pos_y_pattern: index4
+            shapeArray.pushDouble(iterator.next().getDouble()); // pos_y_value: index5
+
+            // Take care: we need to put 4 useless data for array index:6,7,8,9
+            for (int i = 0; i < 4; ++i) {
+              shapeArray.pushInt(0);
+            }
+
+            if (shapeSize == 4) { // RADIAL_SIZE_LENGTH is 4
+              shapeArray.pushDouble(iterator.next().getDouble()); // size_x_value: index10
+              shapeArray.pushInt(iterator.next().getInt()); // size_x_pattern: index11
+              shapeArray.pushDouble(iterator.next().getDouble()); // size_y_value: index12
+              shapeArray.pushInt(iterator.next().getInt()); // size_y_pattern: index13
+            }
+          }
+
+          array.pushArray(shapeArray);
+
+          int colorsCount = iterator.next().getInt(); // colors
+          JavaOnlyArray colorsArray = new JavaOnlyArray();
+          if (colorsCount > 0) {
+            for (int i = 0; i < colorsCount; i++) {
+              colorsArray.pushInt(iterator.next().getInt());
+            }
+          }
+          array.pushArray(colorsArray);
+
+          int positionsCount = iterator.next().getInt(); // positions
+          JavaOnlyArray positionsArray = new JavaOnlyArray();
+          if (positionsCount > 0) {
+            for (int i = 0; i < positionsCount; i++) {
+              positionsArray.pushDouble(iterator.next().getDouble());
+            }
+          }
+          array.pushArray(positionsArray);
+          textAttributes.mTextGradient = new BackgroundRadialGradientLayer(array);
+          break;
+        }
+        case kPropColorConicGradient:
+          // TODO(linxs): tbd
+          break;
+
         case kTextPropLineHeight:
           float lineHeight = (float) (iterator.next().getDouble());
           if (!isParagraph) {
@@ -504,6 +596,11 @@ public class TextMeasurer {
       if ((attributes.mTextDecoration & TEXT_DECORATION_UNDERLINE) != 0) {
         ops.add(new BaseTextShadowNode.SetSpanOperation(start, end, new LynxUnderlineSpan()));
       }
+    }
+
+    if (attributes.mTextGradient != null) {
+      ops.add(new BaseTextShadowNode.SetSpanOperation(
+          start, end, new LynxTextGradientSpan(attributes.mTextGradient)));
     }
 
     if (isParaAttr) {
