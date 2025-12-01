@@ -9,7 +9,8 @@ __all__ = ["SubErrorCodeFileGenerator"]
 
 CODE_NAME_PREFIX = "E_"
 
-IMPORTS = '''import java.util.List;
+IMPORTS = '''import java.util.Arrays;
+import java.util.List;
 import androidx.annotation.RestrictTo;\n\n'''
 
 # common function for sub error generators
@@ -175,7 +176,7 @@ class MetaDataFactoryGenerator(ModuleGenerator):
 
     def _value_list_code_for_enum(self, meta_data, value_list):
         res = []
-        res.append("List.of(")
+        res.append("Arrays.asList(")
         for v in value_list:
             res.append("{0}.{1}".format(
                 meta_data[KEY_NAME], str_to_upper_case(v)))
