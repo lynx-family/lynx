@@ -476,7 +476,7 @@ describe('List method test', () => {
       method: 'scrollToPosition',
       // @ts-expect-error
       params: {
-        'item-key': 'key-1',
+        itemKey: 'key-1',
       },
     });
   });
