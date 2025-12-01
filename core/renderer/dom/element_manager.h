@@ -661,6 +661,9 @@ class ElementManager : public ElementContextDelegate {
 
   virtual bool IsDomTreeEnabled() { return dom_tree_enabled_; }
   bool GetEnableZIndex() { return config_ && config_->GetEnableZIndex(); }
+  bool EnablePropertyBasedSimpleStyle() const {
+    return enable_property_based_simple_style_;
+  }
 
   void InsertDirtyContext(ElementContainer *stacking_context) {
     dirty_stacking_contexts_.insert(stacking_context);
@@ -1265,6 +1268,9 @@ class ElementManager : public ElementContextDelegate {
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_layout_in_element_mode_{false};
+
+  bool enable_property_based_simple_style_{false};
+
   bool has_viewport_ready_{false};
   bool is_memory_collecting_{false};
 
