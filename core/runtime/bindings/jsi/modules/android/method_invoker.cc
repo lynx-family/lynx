@@ -150,6 +150,93 @@ bool isNullable(char type) {
   }
 }
 
+// Target Type Checkers
+bool IsNumber(char type) {
+  switch (type) {
+    // byte & Byte
+    case 'b':
+    case 'B':
+    // short & Short
+    case 's':
+    case 'S':
+    // long & Long
+    case 'l':
+    case 'L':
+    // int & Int
+    case 'i':
+    case 'I':
+    // double & Double
+    case 'd':
+    case 'D':
+    // float & Float
+    case 'f':
+    case 'F':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsBool(char type) {
+  switch (type) {
+    case 'Z':
+    case 'z':
+    case '0':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsString(char type) {
+  switch (type) {
+    // String
+    case 'T':
+    // char & Character
+    case 'c':
+    case 'C':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsArray(char type) {
+  switch (type) {
+    case 'A':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsMap(char type) {
+  switch (type) {
+    case 'M':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsArrayBuffer(char type) {
+  switch (type) {
+    case 'a':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsCallback(char type) {
+  switch (type) {
+    case 'X':
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace
 
 std::optional<base::LynxError> MethodInvoker::ReportPendingJniException() {
@@ -719,6 +806,42 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
       return base::unexpected(
           std::make_pair(std::move(error_message), std::nullopt));
   }
+}
+
+bool MethodInvoker::VerifySignature(const pub::Value* args, size_t args_count) {
+  // Verify the argument count
+  auto required_arg_count = ContainsPromise() ? args_count_ + 1 : args_count_;
+  if (args_count != required_arg_count) {
+    return false;
+  }
+  // Verify the argument types
+  for (size_t i = 0; i < args_count; i++) {
+    auto arg = args->GetValueAtIndex(i);
+    bool verify_result = false;
+    char target_type = signature_[i + 2];
+    if (arg->IsUndefined() || arg->IsNil()) {
+      verify_result = isNullable(target_type);
+    } else if (arg->IsNumber() && target_type == 'X') {
+      verify_result = true;
+    } else if (arg->IsBool()) {
+      verify_result = IsBool(target_type);
+    } else if (arg->IsNumber()) {
+      verify_result = IsNumber(target_type);
+    } else if (arg->IsString()) {
+      verify_result = IsString(target_type);
+    } else if (arg->IsMap()) {
+      verify_result = IsMap(target_type);
+    } else if (arg->IsArray()) {
+      verify_result = IsArray(target_type);
+    } else if (arg->IsArrayBuffer()) {
+      verify_result = IsArrayBuffer(target_type);
+    }
+    if (verify_result) {
+      continue;
+    }
+    return false;
+  }
+  return true;
 }
 
 }  // namespace piper

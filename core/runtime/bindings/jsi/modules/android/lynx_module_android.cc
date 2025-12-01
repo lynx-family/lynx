@@ -107,7 +107,14 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
     first_param_str = args->GetValueAtIndex(0)->str();
   }
 
-  auto method_invoker = method_invokers_[method_name];
+  auto method_invoker = GetMethodInvoker(method_name, args.get(), count);
+  if (method_invoker == nullptr) {
+    LOGE("NativeModule: LynxModuleAndroid InvokeMethod. Method not found. "
+         << method_name);
+    return base::unexpected(
+        "NativeModule: LynxModuleAndroid InvokeMethod. Method not found. " +
+        method_name);
+  }
   // NativePromise Invoke
   if (method_invoker->ContainsPromise()) {
     auto native_promise = CreateLynxNativePromise(
@@ -161,7 +168,8 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
 void LynxModuleAndroid::buildMap(
     JNIEnv* env, lynx::base::android::ScopedLocalJavaRef<jobject>& descriptions,
     NativeModuleMethods& methods,
-    std::unordered_map<std::string, std::shared_ptr<MethodInvoker>>&
+    std::unordered_map<std::string,
+                       std::vector<std::shared_ptr<MethodInvoker>>>&
         method_invoker_maps) {
   // Get method descriptions , use MethodDescriptor
   jclass cls_array_list = env->GetObjectClass(descriptions.Get());
@@ -185,13 +193,19 @@ void LynxModuleAndroid::buildMap(
     const std::string method_name = descriptor.getName();
     const NativeModuleMethod metadata(method_name, 0);
     methods.emplace(method_name, metadata);
-
-    method_invoker_maps[method_name] = std::make_shared<MethodInvoker>(
+    // Add method invoker to the list
+    if (method_invoker_maps.find(method_name) == method_invoker_maps.end()) {
+      method_invoker_maps[method_name] =
+          std::vector<std::shared_ptr<MethodInvoker>>();
+    }
+    auto method_invoker = std::make_shared<MethodInvoker>(
         descriptor.getMethod().Get(), descriptor.getSignature(), module_name_,
         method_name);
+    method_invoker_maps[method_name].push_back(method_invoker);
+
     // Verify that the method is allowed to be called
     if (has_auth_validator_) {
-      method_invoker_maps[method_name]->SetAuthValidator(
+      method_invoker->SetAuthValidator(
           [this](const std::string& method_name,
                  const std::shared_ptr<base::android::JavaOnlyArray>& validator)
               -> bool { return Verify(method_name, validator); });
@@ -439,6 +453,36 @@ bool LynxModuleAndroid::Verify(
   }
   // Calling is allowed by default
   return true;
+}
+const std::shared_ptr<MethodInvoker> LynxModuleAndroid::GetMethodInvoker(
+    const std::string& method_name, const pub::Value* args, size_t args_count) {
+  const std::vector<std::shared_ptr<MethodInvoker>>& invoker_vec =
+      method_invokers_[method_name];
+
+  // If no invoker, return nullptr.
+  // This means that no target method are registered in the Lynx module.
+  if (invoker_vec.empty()) {
+    return nullptr;
+  }
+
+  // If only one invoker, return it.
+  // To maintain compatibility with legacy logic while also prioritizing
+  // performance, there is no signature verification here; parameter matching
+  // and verification are performed during invokeMethod call. This means that no
+  // methods with the same name are registered in the Lynx module.
+  if (invoker_vec.size() == 1) {
+    return invoker_vec.back();
+  }
+
+  // If multiple invokers, verify signature.
+  // This means that multiple methods with the same name are registered in the
+  // Lynx module.
+  for (const std::shared_ptr<MethodInvoker>& invoker : invoker_vec) {
+    if (invoker->VerifySignature(args, args_count)) {
+      return invoker;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace piper

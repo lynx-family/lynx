@@ -74,18 +74,12 @@ public class LynxModuleWrapper {
   }
 
   private void findMethods() {
-    Set<String> methodNames = new HashSet<>();
     Class<? extends LynxModule> classForMethods = mModule.getClass();
     Method[] targetMethods = classForMethods.getDeclaredMethods();
     for (Method targetMethod : targetMethods) {
       LynxMethod annotation = targetMethod.getAnnotation(LynxMethod.class);
       if (annotation != null) {
         String methodName = targetMethod.getName();
-        if (methodNames.contains(methodName)) {
-          throw new IllegalArgumentException(
-              "Java Module " + getName() + " method name already registered: " + methodName);
-        }
-        methodNames.add(methodName);
         MethodDescriptor md = new MethodDescriptor();
         LynxMethodWrapper method = new LynxMethodWrapper(targetMethod);
         md.name = methodName;
