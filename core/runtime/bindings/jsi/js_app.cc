@@ -432,7 +432,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
-          std::variant<std::unique_ptr<piper::Function>, double> id_or_callback;
           if ((args[0].isObject() || args[0].isNumber()) &&
               args[1].isNumber()) {
             std::variant<std::unique_ptr<piper::Function>, double>

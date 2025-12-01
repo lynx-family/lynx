@@ -497,6 +497,9 @@ export class Lynx {
       this.getNativeLynx().queueMicrotask(callback);
     } else {
       const id = this.getApp()._callbackManager.addCallback(callback);
+      if (id === undefined) {
+        return;
+      }
       this.getNativeLynx().queueMicrotask(id);
     }
   }

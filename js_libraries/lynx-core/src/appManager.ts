@@ -27,11 +27,14 @@ export function loadCard(
     if (cardType == 'standalone') {
       tt = new StandaloneApp({ nativeApp, params, lynx }, params);
     } else {
-      tt = new ReactApp({
-        nativeApp,
-        params,
-        lynx,
-      });
+      tt = new ReactApp(
+        {
+          nativeApp,
+          params,
+          lynx,
+        },
+        nativeGlobal?.multiApps[id]
+      );
     }
     nativeGlobal.currentAppId = id;
     nativeGlobal.multiApps[id] = tt;

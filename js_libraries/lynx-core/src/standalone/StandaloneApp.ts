@@ -3,95 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 import { DEFAULT_ENTRY } from '../common';
-import { SharedConsole } from '@lynx-js/runtime-shared';
 import { AppProxyParams, BaseApp, loadCardParams, NativeApp } from '../app';
 import { Lynx, NativeLynxProxy } from '../lynx';
-import {
-  CallLynxSetModule,
-  ExposureManager,
-  IntersectionObserverManager,
-  TextInfoManager,
-} from '../modules/nativeModules';
-import { AopManager } from '../modules';
-import EventEmitter from '../modules/event';
-import { Reporter } from '../modules';
-import Performance from '../modules/performance';
 import { CachedFunctionProxy } from '../util';
-import { AMDModule } from '../common/amd';
-import { createReadableStreamClass } from '../modules/fetch';
-import { CallbackManager } from 'src/common/callbackManager';
-import { LynxClearTimeout, LynxSetTimeout } from '@lynx-js/types';
-
-export class BaseAppSingletonData<
-  NativeAppProxy extends NativeApp = NativeApp,
-  LynxImpl extends Lynx = Lynx
-> {
-  nativeApp: NativeAppProxy;
-  sharedConsole: SharedConsole;
-  dynamicComponentExports: object;
-  loadedDynamicComponentsSet: Set<string>;
-  intersectionObserverManager: IntersectionObserverManager;
-  exposureManager: ExposureManager;
-  textInfoManager: TextInfoManager;
-  globalEventEmitter: EventEmitter;
-  aopManager: AopManager;
-  performance: Performance;
-  modules: Record<string, Record<string, AMDModule>>;
-  lazyCallableModules: Map<string, unknown>;
-  lynx: LynxImpl;
-  apiList: Record<string, unknown>;
-  Reporter: Reporter;
-  callbackManager: CallbackManager;
-  setTimeout: LynxSetTimeout;
-  setInterval: LynxSetTimeout;
-  clearInterval: LynxClearTimeout;
-  clearTimeout: LynxClearTimeout;
-  resolvedPromise: Promise<void>;
-  _createReadableStreamClass: (
-    Promise: PromiseConstructor
-  ) => ReturnType<typeof createReadableStreamClass>;
-  _ReadableStreamClass: ReturnType<typeof createReadableStreamClass>;
-
-  public transferSingletonData(
-    baseApp: BaseApp,
-    callLynxSetModule?: CallLynxSetModule
-  ) {
-    baseApp.nativeApp = this.nativeApp;
-    baseApp.sharedConsole = this.sharedConsole;
-    baseApp.dynamicComponentExports = this.dynamicComponentExports;
-    baseApp.loadedDynamicComponentsSet = this.loadedDynamicComponentsSet;
-    baseApp._intersectionObserverManager = this.intersectionObserverManager;
-    baseApp._exposureManager = this.exposureManager;
-    baseApp._textInfoManager = this.textInfoManager;
-    this.globalEventEmitter.setCallLynxSetModule(callLynxSetModule);
-    baseApp.GlobalEventEmitter = this.globalEventEmitter;
-    baseApp._aopManager = this.aopManager;
-    baseApp.performance = this.performance;
-    baseApp.modules = this.modules;
-    baseApp._lazyCallableModules = this.lazyCallableModules;
-    baseApp.lynx = this.lynx;
-    this.lynx.rebind(() => baseApp);
-    baseApp._apiList = this.apiList;
-    this.Reporter.rebind(() => baseApp);
-    baseApp.Reporter = this.Reporter;
-    baseApp._callbackManager = this.callbackManager;
-    baseApp.setTimeout = this.setTimeout;
-    baseApp.setInterval = this.setInterval;
-    baseApp.clearInterval = this.clearInterval;
-    baseApp.clearTimeout = this.clearTimeout;
-    baseApp.resolvedPromise = this.resolvedPromise;
-    // fetch api related
-    baseApp._createReadableStreamClass = this._createReadableStreamClass;
-    baseApp._ReadableStreamClass = this._ReadableStreamClass;
-  }
-}
 
 export default class StandaloneApp extends BaseApp {
-  public singletonData: BaseAppSingletonData;
-
   constructor(options: AppProxyParams<NativeApp>, params: loadCardParams) {
     super(options, undefined);
-    this.fillSingletonData();
     try {
       if (params.srcName) {
         delete this.lynx.requireModule.cache[params.srcName];
@@ -112,33 +30,5 @@ export default class StandaloneApp extends BaseApp {
       promise,
       () => lynx_proxy
     );
-  }
-
-  private fillSingletonData() {
-    this.singletonData = new BaseAppSingletonData();
-    this.singletonData.nativeApp = this._nativeApp;
-    this.singletonData.sharedConsole = this.sharedConsole;
-    this.singletonData.dynamicComponentExports = this.dynamicComponentExports;
-    this.singletonData.loadedDynamicComponentsSet = this.loadedDynamicComponentsSet;
-    this.singletonData.intersectionObserverManager = this._intersectionObserverManager;
-    this.singletonData.exposureManager = this._exposureManager;
-    this.singletonData.textInfoManager = this._textInfoManager;
-    this.singletonData.globalEventEmitter = this.GlobalEventEmitter;
-    this.singletonData.aopManager = this._aopManager;
-    this.singletonData.performance = this.performance;
-    this.singletonData.modules = this.modules;
-    this.singletonData.lazyCallableModules = this._lazyCallableModules;
-    this.singletonData.lynx = this.lynx;
-    this.singletonData.apiList = this._apiList;
-    this.singletonData.Reporter = this.Reporter;
-    this.singletonData.callbackManager = this._callbackManager;
-    this.singletonData.setTimeout = this.setTimeout;
-    this.singletonData.setInterval = this.setInterval;
-    this.singletonData.clearInterval = this.clearInterval;
-    this.singletonData.clearTimeout = this.clearTimeout;
-    this.singletonData.resolvedPromise = this.resolvedPromise;
-    // fetch api related
-    this.singletonData._createReadableStreamClass = this._createReadableStreamClass;
-    this.singletonData._ReadableStreamClass = this._ReadableStreamClass;
   }
 }
