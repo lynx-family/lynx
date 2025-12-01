@@ -44,6 +44,7 @@
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/list_component_info.h"
+#include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
 #include "core/renderer/page_proxy.h"
@@ -453,6 +454,11 @@ void FiberElement::SetStyleObjects(
   style_objects_ = std::move(style_objects);
 
   MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
+}
+
+void FiberElement::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
+  parsed_styles_map_ = std::move(style_map);
+  UpdateSimpleStyles(parsed_styles_map_);
 }
 
 void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
@@ -1491,9 +1497,16 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
 
   if (dirty_ & kDirtyStyleObjects) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::HandleStyleObjects");
-    StyleResolver::ResolveStyleObjects(
-        last_style_objects_ ? last_style_objects_.get() : nullptr,
-        style_objects_ ? style_objects_.get() : nullptr, this);
+    if (element_manager_->EnablePropertyBasedSimpleStyle()) {
+      StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
+          parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
+          this);
+    } else {
+      StyleResolver::ResolveStyleObjects(
+          last_style_objects_ ? last_style_objects_.get() : nullptr,
+          style_objects_ ? style_objects_.get() : nullptr, this);
+    }
+
     // Animation and Direction should be handled here
     dirty_ &= ~kDirtyStyleObjects;
   } else {

@@ -1697,3 +1697,11 @@ enableMTSPreExecute:
   valueType: bool
   author: 'lybvinci'
   since: '3.6'
+enablePropertyBasedSimpleStyle:
+  description: SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same elememnt has intersect properties.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: false
+  readNative: false
+  author: 'zhongyr'
+  since: '3.5'

@@ -820,6 +820,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableMTSPreExecute(
           doc[config::kEnableMTSPreExecute].GetBool());
     }
+
+    if (doc.HasMember(config::kEnablePropertyBasedSimpleStyle) &&
+        doc[config::kEnablePropertyBasedSimpleStyle].IsBool()) {
+      page_config->SetEnablePropertyBasedSimpleStyle(
+          doc[config::kEnablePropertyBasedSimpleStyle].GetBool());
+    }
   };
 };
 }  // namespace tasm

@@ -637,6 +637,17 @@ export interface Config {
   enablePlatformGesture?: boolean
 
   /**
+   * SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same elememnt has intersect properties.
+   *
+   * Supported platform: Android, iOS, HarmonyOS
+   *
+   * Since: 3.5
+   *
+   * @defaultValue undefined
+   */
+  enablePropertyBasedSimpleStyle?: boolean
+
+  /**
    * Enable query component sync in background runtime
    *
    * Supported platform: Android, HarmonyOS, iOS
