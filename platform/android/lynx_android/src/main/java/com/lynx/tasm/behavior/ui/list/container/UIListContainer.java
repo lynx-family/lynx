@@ -760,7 +760,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
     // Perform parameter parsing
     int positionParam = params.getInt("index", params.getInt("position", 0));
-    String itemKey = params.getString("item-key");
+    String itemKey = params.getString("itemKey");
     int resolvedPosition = positionParam;
     if (!TextUtils.isEmpty(itemKey)) {
       Integer idx = mItemKeyMap.get(itemKey);

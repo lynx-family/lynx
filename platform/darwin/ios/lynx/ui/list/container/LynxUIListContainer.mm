@@ -1117,7 +1117,7 @@ LYNX_UI_METHOD(scrollToPosition) {
     position = ((NSNumber *)[params objectForKey:@"index"]).intValue;
   }
 
-  NSString *itemKey = [params objectForKey:@"item-key"];
+  NSString *itemKey = [params objectForKey:@"itemKey"];
   NSInteger resolvedPosition = position;
   if (itemKey.length) {
     NSInteger idx = [self getIndexFromItemKey:itemKey];

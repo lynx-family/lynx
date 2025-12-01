@@ -668,7 +668,7 @@ export interface ScrollToPositionParams {
    * @Harmony
    * @since 3.6
    */
-  'item-key'?:string
+  itemKey?: string;
 
   /**
    * Enable scroll animation during scroll.

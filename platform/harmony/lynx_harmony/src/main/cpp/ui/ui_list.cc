@@ -222,7 +222,7 @@ void UIList::InvokeMethod(
         index = static_cast<int32_t>(v.Number());
       } else if (k.IsEqual("index") && v.IsNumber()) {
         index = static_cast<int32_t>(v.Number());
-      } else if (k.IsEqual("item-key") && v.IsString()) {
+      } else if (k.IsEqual("itemKey") && v.IsString()) {
         item_key = v.StdString();
       } else if (k.IsEqual("offset") && v.IsNumber()) {
         offset = v.Number();

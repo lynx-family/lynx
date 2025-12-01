@@ -451,7 +451,7 @@ describe('List method test', () => {
         alignTo: 'top',
         offset: 0,
         smooth: true,
-        'item-key': 'key-1',
+        itemKey: 'key-1',
       },
     });
 
