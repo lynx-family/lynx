@@ -304,4 +304,58 @@ public class LynxUIHelper {
 
     return new RectF(ui.getBoundingClientRect());
   }
+
+  /**
+   * @param view {@link View} The View that the point in.
+   * @param point {@link PointF}
+   * @return The point on screen.
+   */
+  public static PointF convertPointInViewToScreen(View view, PointF point) {
+    int[] basePoint = new int[2];
+
+    // get the position of the view relative to the screen
+    // targetPoint: the point in currentView to rootView
+    // basePoint: zero in rootView to screen
+    // currentView to Screen: targetPoint + basepoint
+    View rootView = view.getRootView();
+    rootView.getLocationOnScreen(basePoint);
+
+    float[] targetPoint = new float[] {point.x, point.y};
+
+    transformFromViewToRootView(view, targetPoint);
+
+    targetPoint[0] += basePoint[0];
+    targetPoint[1] += basePoint[1];
+
+    return new PointF(targetPoint[0], targetPoint[1]);
+  }
+
+  private static void transformFromViewToRootView(View fromView, float[] inOutLocation) {
+    if (!fromView.getMatrix().isIdentity()) {
+      fromView.getMatrix().mapPoints(inOutLocation);
+    }
+
+    View root_view = fromView.getRootView();
+    View current_view = fromView;
+
+    while (current_view != root_view) {
+      final View parent_view = (View) current_view.getParent();
+      if (parent_view == null) {
+        LLog.e(TAG, "transformFromViewToRootView failed, parent is null.");
+        break;
+      }
+
+      inOutLocation[0] += current_view.getLeft();
+      inOutLocation[1] += current_view.getTop();
+
+      inOutLocation[0] -= parent_view.getScrollX();
+      inOutLocation[1] -= parent_view.getScrollY();
+
+      if (!parent_view.getMatrix().isIdentity()) {
+        parent_view.getMatrix().mapPoints(inOutLocation);
+      }
+
+      current_view = parent_view;
+    }
+  }
 }

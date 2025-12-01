@@ -11,6 +11,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -53,7 +54,6 @@ import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
-import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -863,66 +863,81 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   @Override
   public float[] getTransformValue(int sign, float[] padBorderMarginLayout) {
     float[] res = new float[32];
-    if (mLynxUIOwner != null) {
-      LynxBaseUI ui = mLynxUIOwner.getNode(sign);
-      if (ui != null) {
-        for (int i = 0; i < 4; i++) {
-          LynxBaseUI.TransOffset arr;
-          if (i == 0) {
-            arr = ui.getTransformValue(padBorderMarginLayout[BoxModelOffset.PAD_LEFT.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.BORDER_LEFT.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.PAD_RIGHT.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.BORDER_RIGHT.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()],
-                padBorderMarginLayout[BoxModelOffset.PAD_TOP.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.BORDER_TOP.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.PAD_BOTTOM.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.BORDER_BOTTOM.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()]);
-          } else if (i == 1) {
-            arr = ui.getTransformValue(padBorderMarginLayout[BoxModelOffset.BORDER_LEFT.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.BORDER_RIGHT.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()],
-                padBorderMarginLayout[BoxModelOffset.BORDER_TOP.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.BORDER_BOTTOM.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()]);
-          } else if (i == 2) {
-            arr = ui.getTransformValue(padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()],
-                padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()]);
-          } else {
-            arr = ui.getTransformValue(-padBorderMarginLayout[BoxModelOffset.MARGIN_LEFT.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()],
-                padBorderMarginLayout[BoxModelOffset.MARGIN_RIGHT.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()],
-                -padBorderMarginLayout[BoxModelOffset.MARGIN_TOP.ordinal()]
-                    + padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()],
-                padBorderMarginLayout[BoxModelOffset.MARGIN_BOTTOM.ordinal()]
-                    - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()]);
-          }
-          /**
-           * The arr returns the x and y coordinates of four points, a total of 8 numbers,
-           * which are stored in the res array in the order of top-left, top-right, bottom-right,
-           * bottom-left.
-           */
 
-          if (arr != null) {
-            res[i * 8] = arr.left_top[0];
-            res[i * 8 + 1] = arr.left_top[1];
-            res[i * 8 + 2] = arr.right_top[0];
-            res[i * 8 + 3] = arr.right_top[1];
-            res[i * 8 + 4] = arr.right_bottom[0];
-            res[i * 8 + 5] = arr.right_bottom[1];
-            res[i * 8 + 6] = arr.left_bottom[0];
-            res[i * 8 + 7] = arr.left_bottom[1];
-          }
-        }
+    if (mPaintingContext == null) {
+      LLog.e(TAG, "getTransformValue failed since mPaintingContext is null.");
+      return res;
+    }
+
+    int width = mPaintingContext.getTargetWidth(sign);
+    int height = mPaintingContext.getTargetHeight(sign);
+
+    for (int i = 0; i < 4; i++) {
+      float left = 0;
+      float top = 0;
+      float right = 0;
+      float bottom = 0;
+
+      if (i == 0) {
+        left = padBorderMarginLayout[BoxModelOffset.PAD_LEFT.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.BORDER_LEFT.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()];
+        right = width - padBorderMarginLayout[BoxModelOffset.PAD_RIGHT.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.BORDER_RIGHT.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()];
+        top = padBorderMarginLayout[BoxModelOffset.PAD_TOP.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.BORDER_TOP.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()];
+        bottom = height - padBorderMarginLayout[BoxModelOffset.PAD_BOTTOM.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.BORDER_BOTTOM.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()];
+      } else if (i == 1) {
+        left = padBorderMarginLayout[BoxModelOffset.BORDER_LEFT.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()];
+        right = width - padBorderMarginLayout[BoxModelOffset.BORDER_RIGHT.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()];
+        top = padBorderMarginLayout[BoxModelOffset.BORDER_TOP.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()];
+        bottom = height - padBorderMarginLayout[BoxModelOffset.BORDER_BOTTOM.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()];
+      } else if (i == 2) {
+        left = padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()];
+        right = width - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()];
+        top = padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()];
+        bottom = height - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()];
+      } else {
+        left = -padBorderMarginLayout[BoxModelOffset.MARGIN_LEFT.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.LAYOUT_LEFT.ordinal()];
+        right = width + padBorderMarginLayout[BoxModelOffset.MARGIN_RIGHT.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.LAYOUT_RIGHT.ordinal()];
+        top = -padBorderMarginLayout[BoxModelOffset.MARGIN_TOP.ordinal()]
+            + padBorderMarginLayout[BoxModelOffset.LAYOUT_TOP.ordinal()];
+        bottom = height + padBorderMarginLayout[BoxModelOffset.MARGIN_BOTTOM.ordinal()]
+            - padBorderMarginLayout[BoxModelOffset.LAYOUT_BOTTOM.ordinal()];
       }
+
+      PointF targetLeftTop =
+          mPaintingContext.convertPointInViewToScreen(sign, new PointF(left, top));
+      PointF targetRightTop =
+          mPaintingContext.convertPointInViewToScreen(sign, new PointF(right, top));
+      PointF targetLeftBottom =
+          mPaintingContext.convertPointInViewToScreen(sign, new PointF(left, bottom));
+      PointF targetRightBottom =
+          mPaintingContext.convertPointInViewToScreen(sign, new PointF(right, bottom));
+
+      /**
+       * The arr returns the x and y coordinates of four points, a total of 8 numbers,
+       * which are stored in the res array in the order of top-left, top-right, bottom-right,
+       * bottom-left.
+       */
+      res[i * 8] = targetLeftTop.x;
+      res[i * 8 + 1] = targetLeftTop.y;
+      res[i * 8 + 2] = targetRightTop.x;
+      res[i * 8 + 3] = targetRightTop.y;
+      res[i * 8 + 4] = targetRightBottom.x;
+      res[i * 8 + 5] = targetRightBottom.y;
+      res[i * 8 + 6] = targetLeftBottom.x;
+      res[i * 8 + 7] = targetLeftBottom.y;
     }
     return res;
   }

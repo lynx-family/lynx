@@ -280,6 +280,10 @@ void ElementContainer::ReInsertChildForLayoutOnlyTransition(Element* child,
                                                 true);
 }
 
+bool ElementContainer::HasUIPrimitive() const {
+  return element() && !element()->CanBeLayoutOnly();
+}
+
 void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
                                                                 Element* ref) {
   if (child->IsNewFixed()) {

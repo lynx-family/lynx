@@ -2875,6 +2875,9 @@ public class com::lynx::tasm::animation::InterpolatorFactory :  {
 public interface com::lynx::tasm::behavior::IPaintingContext {
   public void com.lynx.tasm.behavior.IPaintingContext.destroy();
   public long com.lynx.tasm.behavior.IPaintingContext.getNativePaintingContextPtr();
+  public PointF com.lynx.tasm.behavior.IPaintingContext.convertPointInViewToScreen(int sign, PointF point);
+  public int com.lynx.tasm.behavior.IPaintingContext.getTargetWidth(int sign);
+  public int com.lynx.tasm.behavior.IPaintingContext.getTargetHeight(int sign);
 }
 
 public interface com::lynx::tasm::performance::IPerformanceObserver {
@@ -6667,6 +6670,7 @@ public class com::lynx::tasm::behavior::ui::utils::LynxUIHelper :  {
   public static int com.lynx.tasm.behavior.ui.utils.LynxUIHelper.px2dip(Context context, float pxValue);
   public static LynxBaseUI com.lynx.tasm.behavior.ui.utils.LynxUIHelper.getRelativeUI(final LynxBaseUI ui, String relativeID);
   public static RectF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.getRelativePositionInfo(final LynxBaseUI ui, ReadableMap params);
+  public static PointF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertPointInViewToScreen(View view, PointF point);
 }
 
 public interface com::lynx::tasm::behavior::LynxUIMethod {
@@ -7561,6 +7565,9 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public com.lynx.tasm.behavior.render.NativePaintingContext.NativePaintingContext(UIBody.UIBodyView rootView, LynxContext context);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.destroy();
   public long com.lynx.tasm.behavior.render.NativePaintingContext.getNativePaintingContextPtr();
+  public PointF com.lynx.tasm.behavior.render.NativePaintingContext.convertPointInViewToScreen(int sign, PointF point);
+  public int com.lynx.tasm.behavior.render.NativePaintingContext.getTargetWidth(int sign);
+  public int com.lynx.tasm.behavior.render.NativePaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.attachUIBodyView(UIBody.UIBodyView view);
 }
 
@@ -7901,6 +7908,9 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public com.lynx.tasm.behavior.PaintingContext.PaintingContext(LynxUIOwner uiOwner, int threadStrategy);
   public void com.lynx.tasm.behavior.PaintingContext.destroy();
   public long com.lynx.tasm.behavior.PaintingContext.getNativePaintingContextPtr();
+  public PointF com.lynx.tasm.behavior.PaintingContext.convertPointInViewToScreen(int sign, PointF point);
+  public int com.lynx.tasm.behavior.PaintingContext.getTargetWidth(int sign);
+  public int com.lynx.tasm.behavior.PaintingContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.PaintingContext.rebuildViewTree();
   public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex);
   public void com.lynx.tasm.behavior.PaintingContext.updateProps(int sign, boolean tendToFlatten, PropBundle bundle, ReadableMapBuffer styles);
@@ -8078,6 +8088,8 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
+  public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
+  public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformRenderer(int sign, int type);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);

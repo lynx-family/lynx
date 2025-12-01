@@ -119,11 +119,11 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
         0,
         0};
     std::vector<float> trans;
-    if (element->CanBeLayoutOnly()) {
+    if (!element->HasUIPrimitive()) {
       auto current = element;
       float layout_only_x = 0;
       float layout_only_y = 0;
-      while (current != nullptr && current->CanBeLayoutOnly()) {
+      while (current != nullptr && !current->HasUIPrimitive()) {
         auto current_layout_obj =
             devtool_mediator_->GetLayoutObjectForElement(current);
         if (current_layout_obj != nullptr) {

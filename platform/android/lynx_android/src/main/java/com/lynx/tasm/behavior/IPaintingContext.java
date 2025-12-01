@@ -3,9 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior;
 
+import android.graphics.PointF;
+
 public interface IPaintingContext {
   // this func will be execed on main thread.
   void destroy();
 
   long getNativePaintingContextPtr();
+
+  PointF convertPointInViewToScreen(int sign, PointF point);
+
+  int getTargetWidth(int sign);
+
+  int getTargetHeight(int sign);
 }

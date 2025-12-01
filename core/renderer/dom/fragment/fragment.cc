@@ -418,6 +418,8 @@ void Fragment::Draw(DisplayListBuilder& display_list_builder) {
   OnDraw(display_list_builder);
 }
 
+bool Fragment::HasUIPrimitive() const { return has_platform_renderer_; }
+
 void Fragment::InsertElementContainerAccordingToElement(Element* child,
                                                         Element* ref) {
   if (child == nullptr || child->fragment_impl() == nullptr) {

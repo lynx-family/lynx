@@ -41,6 +41,8 @@ class Fragment : public BaseElementContainer {
     fragment_from_element_parent_ = fragment_from_element_parent;
   }
 
+  bool HasUIPrimitive() const override;
+
   void InsertElementContainerAccordingToElement(Element* child,
                                                 Element* ref) override;
 

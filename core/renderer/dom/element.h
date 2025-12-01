@@ -370,7 +370,10 @@ class Element : public lepus::RefCounted,
 
   bool IsCSSInlineVariablesEnabled() const;
 
-  BaseElementContainer* element_container() { return element_container_.get(); }
+  BaseElementContainer* element_container() const {
+    return element_container_.get();
+  }
+
   ElementContainer* element_container_impl();
   Fragment* fragment_impl();
 
@@ -402,6 +405,8 @@ class Element : public lepus::RefCounted,
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
   virtual bool CanBeLayoutOnly() const = 0;
+
+  LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
 
   virtual void CheckHasInlineContainer(Element* parent);
 
