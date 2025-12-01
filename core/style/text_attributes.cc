@@ -4,6 +4,9 @@
 
 #include "core/style/text_attributes.h"
 
+#include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/measure_context.h"
+#include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/tasm/config.h"
 #include "core/style/color.h"
 
@@ -44,6 +47,30 @@ void TextAttributes::Apply(const TextAttributes& rhs) {
   font_variation_settings = rhs.font_variation_settings;
   font_feature_settings = rhs.font_feature_settings;
   font_optical_sizing = rhs.font_optical_sizing;
+}
+
+void TextAttributes::ProcessRadialGradientIfNeeded(
+    const tasm::CssMeasureContext& length_context,
+    const tasm::CSSParserConfigs& parser_configs) {
+  if (text_gradient.has_value() && text_gradient->IsArray()) {
+    // For radial gradients, compute the gradient data before setting the
+    // property.
+    if (text_gradient->Array()->size() > 1 &&
+        text_gradient->Array()->get(0).Number() ==
+            static_cast<uint32_t>(
+                starlight::BackgroundImageType::kRadialGradient)) {
+      // Clone the gradient data to avoid modifying the original data during
+      // computation.
+      if (!clone_text_gradient) {
+        text_gradient =
+            base::make_flex_optional(lepus::Value::Clone(*(text_gradient)));
+        clone_text_gradient = true;
+      }
+      auto& gradient_data = text_gradient->Array()->get(1);
+      starlight::CSSStyleUtils::ComputeRadialGradient(
+          gradient_data, length_context, parser_configs);
+    }
+  }
 }
 
 }  // namespace starlight

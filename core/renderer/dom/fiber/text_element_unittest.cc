@@ -444,6 +444,98 @@ TEST_P(TextElementTest, LayoutInElementFontScale) {
 INSTANTIATE_TEST_SUITE_P(TextElementTestModule, TextElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
+TEST_P(TextElementTest, TextGradient) {
+  if (enable_parallel_element_flush_strategy > 0) {
+    GTEST_SKIP();
+  }
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->enable_layout_in_element_mode_ = true;
+  manager->OnUpdateViewport(720, 1, 1080, 1, true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto text = manager->CreateFiberText("text");
+
+  text->SetRawInlineStyles(
+      base::String("color:linear-gradient(90deg, red, blue);"));
+
+  auto raw_text = manager->CreateFiberRawText();
+  auto content = lepus::Value("text-content");
+  raw_text->SetText(content);
+
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page.get());
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* mock_text_layout =
+      static_cast<TextLayoutMock*>((painting_context->text_layout_impl_).get());
+
+  auto& mock_text_prop_array =
+      mock_text_layout->text_layout_results_.at(text->impl_id()).get()->props_;
+
+  // check prop array
+  // linear-gradient
+  EXPECT_TRUE(std::get<int>(mock_text_prop_array[0]) ==
+              kPropColorLinearGradient);
+  // angle
+  EXPECT_EQ(std::get<double>(mock_text_prop_array[1]), 90.0);
+
+  // color_count
+  EXPECT_EQ(std::get<int>(mock_text_prop_array[2]), 2);
+  // Colors
+  // color red
+  EXPECT_EQ(std::get<int>(mock_text_prop_array[3]), -65536);
+  // color blue
+  EXPECT_EQ(std::get<int>(mock_text_prop_array[4]), -16776961);
+
+  // position_count
+  EXPECT_EQ(std::get<int>(mock_text_prop_array[5]), 0);
+
+  // radial-gradient
+  text->SetRawInlineStyles(
+      base::String("color:radial-gradient(circle, red, blue);"));
+  manager->OnPatchFinish(options, page.get());
+  painting_context->Flush();
+
+  auto& mock_text_prop_array_radial =
+      mock_text_layout->text_layout_results_.at(text->impl_id()).get()->props_;
+
+  EXPECT_TRUE(std::get<int>(mock_text_prop_array_radial[0]) ==
+              kPropColorRadialGradient);
+  // check shape array
+
+  // shape
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[1]), 1);
+  // shape_size
+  int shape_size = std::get<int>(mock_text_prop_array_radial[2]);
+  EXPECT_EQ(shape_size, 0);
+  // pos_x_pattern
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[3]),
+            static_cast<int>(CSSValuePattern::PERCENT));
+  // pos_x_value
+  EXPECT_EQ(std::get<double>(mock_text_prop_array_radial[4]), 50.0f);
+  // pos_y_pattern
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[5]),
+            static_cast<int>(CSSValuePattern::PERCENT));
+  // pos_y_value
+  EXPECT_EQ(std::get<double>(mock_text_prop_array_radial[6]), 50.0f);
+  // color_count
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[7]), 2);
+  // colors
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[8]), -65536);
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[9]), -16776961);
+  // positions
+  EXPECT_EQ(std::get<int>(mock_text_prop_array_radial[10]), 0);
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

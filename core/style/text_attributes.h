@@ -20,6 +20,11 @@
 #include "core/style/shadow_data.h"
 
 namespace lynx {
+namespace tasm {
+class CssMeasureContext;
+struct CSSParserConfigs;
+}  // namespace tasm
+
 namespace starlight {
 
 enum class TextPropertyID : uint8_t {
@@ -153,6 +158,10 @@ class TextAttributes {
   bool operator!=(const TextAttributes& rhs) const { return !(*this == rhs); }
 
   void Apply(const TextAttributes& rhs);
+
+  void ProcessRadialGradientIfNeeded(
+      const tasm::CssMeasureContext& length_context,
+      const tasm::CSSParserConfigs& parser_configs);
 };
 
 }  // namespace starlight
