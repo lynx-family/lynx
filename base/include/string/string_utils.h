@@ -155,7 +155,7 @@ BASE_EXPORT void ReplaceAll(std::string& str, std::string_view from,
 
 inline std::string_view TruncateToStringView(const std::string& input,
                                              size_t max_length) {
-  return std::string_view(input.c_str(), std::max(input.length(), max_length));
+  return std::string_view(input.c_str(), std::min(input.length(), max_length));
 }
 
 std::string SafeStringConvert(const char* str);
