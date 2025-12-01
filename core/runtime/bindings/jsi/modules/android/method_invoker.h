@@ -67,6 +67,8 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
     return signature_[signature_.length() - 1] == 'P';
   }
 
+  bool VerifySignature(const pub::Value* args, size_t args_count);
+
  private:
   jmethodID method_;
   std::string signature_;
