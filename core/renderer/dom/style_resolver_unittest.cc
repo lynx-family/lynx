@@ -13,6 +13,8 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
+#include "core/renderer/simple_styling/simple_style_node.h"
+#include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
@@ -28,6 +30,42 @@ static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 
 using namespace css;
+
+// Mock implementation of SimpleStyleNode for testing
+class MockSimpleStyleNode : public lynx::style::SimpleStyleNode {
+ public:
+  MockSimpleStyleNode() = default;
+  ~MockSimpleStyleNode() override = default;
+
+  void SetStyleObjects(std::unique_ptr<lynx::style::StyleObject*,
+                                       lynx::style::StyleObjectArrayDeleter>
+                           style_object) override {
+    // Not needed for this test
+  }
+
+  void UpdateSimpleStyles(const tasm::StyleMap& style_map) override {
+    current_styles_ = style_map;
+  }
+
+  void UpdateSimpleStyles(tasm::StyleMap&& style_map) override {
+    current_styles_ = std::move(style_map);
+  }
+
+  void ResetSimpleStyle(tasm::CSSPropertyID id) override {
+    current_styles_.erase(id);
+  }
+
+  // Helper method to get current styles for verification
+  const tasm::StyleMap& GetCurrentStyles() const { return current_styles_; }
+
+  // Helper method to check if a property exists
+  bool HasProperty(tasm::CSSPropertyID id) const {
+    return current_styles_.find(id) != current_styles_.end();
+  }
+
+ private:
+  tasm::StyleMap current_styles_;
+};
 
 class CSSPatchingTest : public ::testing::Test {
  public:
@@ -393,6 +431,145 @@ TEST_F(CSSPatchingTest, CSSSelectorDescendantSelectorScope) {
   auto new_value = result.at(key);
   EXPECT_EQ(new_value.GetPattern(), CSSValuePattern::PX);
   EXPECT_EQ(new_value.AsNumber(), 20);
+}
+
+TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_EmptyOldAndNew) {
+  // Test case: Both old and new style maps are empty
+  tasm::StyleMap old_dcl_style;
+  MockSimpleStyleNode target;
+  target.UpdateSimpleStyles(old_dcl_style);
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, nullptr,
+                                                 &target);
+
+  EXPECT_TRUE(target.GetCurrentStyles().empty());
+}
+
+TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_OnlyOldStyles) {
+  // Test case: Only old styles exist, new styles are null
+  tasm::StyleMap old_dcl_style;
+  old_dcl_style[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+  old_dcl_style[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("red");
+
+  MockSimpleStyleNode target;
+  target.UpdateSimpleStyles(old_dcl_style);
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, nullptr,
+                                                 &target);
+
+  // All old styles should be reset since new styles are null
+  EXPECT_TRUE(target.GetCurrentStyles().empty());
+}
+
+TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_OnlyNewStyles) {
+  // Test case: Only new styles exist, old styles are empty
+  tasm::StyleMap old_dcl_style;
+
+  // Create new style objects
+  tasm::StyleMap new_style_map1;
+  new_style_map1[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("18px");
+
+  tasm::StyleMap new_style_map2;
+  new_style_map2[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("blue");
+  new_style_map2[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("100px");
+
+  auto style_obj1 =
+      fml::MakeRefCounted<lynx::style::StyleObject>(new_style_map1);
+  auto style_obj2 =
+      fml::MakeRefCounted<lynx::style::StyleObject>(new_style_map2);
+
+  lynx::style::StyleObject* new_ptr[] = {style_obj1.get(), style_obj2.get(),
+                                         nullptr};
+
+  MockSimpleStyleNode target;
+  target.UpdateSimpleStyles(old_dcl_style);
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, new_ptr,
+                                                 &target);
+
+  // All new styles should be applied
+  EXPECT_TRUE(target.HasProperty(CSSPropertyID::kPropertyIDFontSize));
+  EXPECT_TRUE(target.HasProperty(CSSPropertyID::kPropertyIDColor));
+  EXPECT_TRUE(target.HasProperty(CSSPropertyID::kPropertyIDWidth));
+  EXPECT_EQ(target.GetCurrentStyles().size(), 3u);
+}
+
+TEST_F(CSSPatchingTest,
+       ResolveStyleObjectsBasedOnExistingMap_OverlappingStyles) {
+  // Test case: Both old and new styles exist with some overlapping properties
+  tasm::StyleMap old_dcl_style;
+  old_dcl_style[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+  old_dcl_style[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("red");
+  old_dcl_style[CSSPropertyID::kPropertyIDHeight] =
+      CSSValue::MakePlainString("50px");
+
+  // Create new style objects - font-size overlaps, color is new, height is not
+  // in new styles
+  tasm::StyleMap new_style_map1;
+  new_style_map1[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("18px");  // Overrides old
+
+  tasm::StyleMap new_style_map2;
+  new_style_map2[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("blue");  // Updates existing
+  new_style_map2[CSSPropertyID::kPropertyIDWidth] =
+      CSSValue::MakePlainString("100px");  // New property
+
+  auto style_obj1 =
+      fml::MakeRefCounted<lynx::style::StyleObject>(new_style_map1);
+  auto style_obj2 =
+      fml::MakeRefCounted<lynx::style::StyleObject>(new_style_map2);
+
+  lynx::style::StyleObject* new_ptr[] = {style_obj1.get(), style_obj2.get(),
+                                         nullptr};
+
+  MockSimpleStyleNode target;
+  target.UpdateSimpleStyles(old_dcl_style);
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, new_ptr,
+                                                 &target);
+
+  // Check that overlapping properties are updated, new properties are added,
+  // and old ones are reset
+  EXPECT_TRUE(target.HasProperty(CSSPropertyID::kPropertyIDFontSize));
+  EXPECT_TRUE(target.HasProperty(CSSPropertyID::kPropertyIDColor));
+  EXPECT_TRUE(target.HasProperty(CSSPropertyID::kPropertyIDWidth));
+  EXPECT_FALSE(
+      target.HasProperty(CSSPropertyID::kPropertyIDHeight));  // Should be reset
+  EXPECT_EQ(target.GetCurrentStyles().size(), 3u);
+}
+
+TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_EmptyNewStyles) {
+  // Test case: Old styles exist, but new styles array is empty (not null)
+  tasm::StyleMap old_dcl_style;
+  old_dcl_style[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue::MakePlainString("16px");
+  old_dcl_style[CSSPropertyID::kPropertyIDColor] =
+      CSSValue::MakePlainString("red");
+
+  // Empty new styles array (nullptr terminated)
+  lynx::style::StyleObject* new_ptr[] = {nullptr};
+
+  MockSimpleStyleNode target;
+  target.UpdateSimpleStyles(old_dcl_style);
+
+  StyleResolver resolver;
+  resolver.ResolveStyleObjectsBasedOnExistingMap(old_dcl_style, new_ptr,
+                                                 &target);
+
+  // All old styles should be reset since new styles are empty
+  EXPECT_TRUE(target.GetCurrentStyles().empty());
 }
 }  // namespace testing
 }  // namespace tasm
