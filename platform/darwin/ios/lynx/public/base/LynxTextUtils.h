@@ -6,6 +6,7 @@
 #import <UIKit/UIKit.h>
 
 #import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxTextStyle.h>
 
 @interface LynxTextUtils : NSObject
 /*
@@ -50,4 +51,7 @@
                 withAttachmentHeight:(CGFloat)attachmentHeight
              withAttachmentYPosition:(CGFloat)attachmentYPosition;
 + (NSInteger)convertLynxTextDecorationStyle:(NSInteger)decorationStyle;
+
++ (void)setLynxTextGradient:(LynxTextStyle *_Nonnull)textStyle
+               withGradient:(NSArray *_Nullable)value;
 @end

@@ -214,7 +214,10 @@ void PropBundleStyleWriter::WriteColor(PropBundle* bundle,
   auto& text_attr = style->GetTextAttributes();
   if (text_attr.has_value()) {
     // The text_gradient is an array where the first element is the gradient
-    // type and the second element is the gradient data.
+    // type and the second element is the gradient data
+
+    // TODO(linxs:) replace below with
+    // TextAttributes::ProcessRadialGradientIfNeeded
     if (text_attr->text_gradient.has_value() &&
         text_attr->text_gradient->IsArray()) {
       // For radial gradients, compute the gradient data before setting the

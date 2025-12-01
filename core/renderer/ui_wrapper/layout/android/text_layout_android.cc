@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/base/android/android_jni.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -245,8 +246,7 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
   }
 
   // styles
-  const auto& text_attributes =
-      element->computed_css_style()->GetTextAttributes();
+  auto& text_attributes = element->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value()) {
     for (CSSPropertyID id : property_bits) {
       switch (id) {
@@ -256,14 +256,141 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
               static_cast<float>(element->computed_css_style()->GetFontSize()));
           break;
 
-        case kPropertyIDColor:
-          props->AddProp(kTextPropColor);
-          props->AddProp(static_cast<int>(
-              text_attributes->color.has_value()
-                  ? text_attributes->color.value()
-                  : starlight::DefaultColor::DEFAULT_TEXT_COLOR));
-          // FIXME(linxs): use another key to indicate color gradient
+        case kPropertyIDColor: {
+          if (text_attributes->text_gradient.has_value()) {
+            auto& gradient_value = text_attributes->text_gradient.value();
+            if (gradient_value.IsArray()) {
+              const auto& gradient_array = *gradient_value.Array();
+              if (gradient_array.size() >= 2) {
+                lepus::Value type_value = gradient_array.get(0);
+                lepus::Value params_array = gradient_array.get(1);
+                const auto& params_vector = *params_array.Array();
+                if (type_value.IsNumber() && params_array.IsArray()) {
+                  auto type = static_cast<starlight::BackgroundImageType>(
+                      type_value.Number());
+                  if (type == starlight::BackgroundImageType::kLinearGradient) {
+                    // linearGradientData:[angle_float, colors_int_array,
+                    // positions_float_array,side_or_corner_int]
+                    if (params_vector.size() >= 4) {
+                      // key
+                      props->AddProp(
+                          static_cast<int>(kPropColorLinearGradient));
+                      // angle
+                      props->AddProp(
+                          static_cast<float>(params_vector.get(0).Number()));
+
+                      const auto& color_array = *params_vector.get(1).Array();
+                      // color_count
+                      props->AddProp(static_cast<int>(color_array.size()));
+                      // colors
+                      for (size_t i = 0; i < color_array.size(); ++i) {
+                        props->AddProp(
+                            static_cast<int>(color_array.get(i).UInt32()));
+                      }
+                      const auto& position_array =
+                          *params_vector.get(2).Array();
+                      // position_count
+                      props->AddProp(static_cast<int>(position_array.size()));
+                      // positions
+                      for (size_t i = 0; i < position_array.size(); ++i) {
+                        props->AddProp(
+                            static_cast<float>(position_array.get(i).Number()));
+                      }
+                      // side_or_corner
+                      props->AddProp(
+                          static_cast<int>(params_vector.get(3).Number()));
+                    }
+                  } else if (type ==
+                             starlight::BackgroundImageType::kRadialGradient) {
+                    text_attributes->ProcessRadialGradientIfNeeded(
+                        element->computed_css_style()->GetMeasureContext(),
+                        element->element_manager()->GetCSSParserConfigs());
+                    // radialGradientData:[shape_array, color_int_array,
+                    // position_int_array] shape_array:[shape_int,
+                    // shape_size_int, center_x, center_x_pattern_int, center_y,
+                    // center_y_pattern_int, {size_x_pattern, size_x_value,
+                    // size_y_pattern, size_y_value}]
+
+                    // key
+                    props->AddProp(static_cast<int>(kPropColorRadialGradient));
+
+                    const auto& shape_array = *params_vector.get(0).Array();
+                    // shape array(flat)
+                    // shape
+                    props->AddProp(
+                        static_cast<int>(shape_array.get(0).UInt32()));
+                    // shape_size
+                    uint32_t shape_size = shape_array.get(1).UInt32();
+                    props->AddProp(static_cast<int>(shape_size));
+                    // x-position pattern
+                    props->AddProp(
+                        static_cast<int>(shape_array.get(2).UInt32()));
+                    // x-position value
+                    props->AddProp(shape_array.get(3).Number());
+                    // y-position pattern
+                    props->AddProp(
+                        static_cast<int>(shape_array.get(4).UInt32()));
+                    // y-position value
+                    props->AddProp(shape_array.get(5).Number());
+
+                    if (shape_size ==
+                            static_cast<uint32_t>(
+                                starlight::RadialGradientSizeType::kLength) &&
+                        shape_array.size() == 14) {
+                      // we put correct size data form index:10,11,12,13, the
+                      // {index:6,7,8,9} is useless data} size_x_value
+                      props->AddProp(shape_array.get(10).Number());
+                      // size_x_pattern
+                      props->AddProp(
+                          static_cast<int>(shape_array.get(11).UInt32()));
+                      // size_y_value
+                      props->AddProp(shape_array.get(12).Number());
+                      // size_y_pattern
+                      props->AddProp(
+                          static_cast<int>(shape_array.get(13).UInt32()));
+                    }
+
+                    const auto& color_array = *params_vector.get(1).Array();
+                    // color_count
+                    props->AddProp(static_cast<int>(color_array.size()));
+                    // colors
+                    for (size_t i = 0; i < color_array.size(); ++i) {
+                      props->AddProp(
+                          static_cast<int>(color_array.get(i).UInt32()));
+                    }
+                    const auto& position_array = *params_vector.get(2).Array();
+                    // position_count
+                    props->AddProp(static_cast<int>(position_array.size()));
+                    // positions
+                    for (size_t i = 0; i < position_array.size(); ++i) {
+                      props->AddProp(
+                          static_cast<float>(position_array.get(i).Number()));
+                    }
+
+                  } else if (type ==
+                             starlight::BackgroundImageType::kConicGradient) {
+                    // TODO(linxs): tbd
+
+                  } else {
+                    props->AddProp(kTextPropColor);
+                    props->AddProp(static_cast<int>(
+                        text_attributes->color.has_value()
+                            ? text_attributes->color.value()
+                            : starlight::DefaultColor::DEFAULT_TEXT_COLOR));
+                    break;
+                  }
+                }
+              }
+            }
+          } else {
+            props->AddProp(kTextPropColor);
+            props->AddProp(static_cast<int>(
+                text_attributes->color.has_value()
+                    ? text_attributes->color.value()
+                    : starlight::DefaultColor::DEFAULT_TEXT_COLOR));
+          }
           break;
+        }
 
         case kPropertyIDWhiteSpace:
           props->AddProp(kTextPropWhiteSpace);

@@ -3,10 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
+#include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 
 #import <Lynx/LynxBaseTextShadowNode.h>
 #import <Lynx/LynxConverter+UI.h>
@@ -223,7 +225,7 @@ void TextLayoutDarwin::GenerateAttributedString(
 void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* textStyle) {
   const CSSIDBitset& property_bits = text_element->property_bits();
 
-  const auto& text_attributes = text_element->computed_css_style()->GetTextAttributes();
+  auto& text_attributes = text_element->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value()) {
     for (CSSPropertyID id : property_bits) {
       switch (id) {
@@ -232,14 +234,32 @@ void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* 
               static_cast<float>(text_element->computed_css_style()->GetFontSize());
           break;
         case kPropertyIDColor:
-          textStyle.foregroundColor = [LynxConverter
-              toUIColor:@(static_cast<int>(text_attributes->color.has_value()
-                                               ? *text_attributes->color
-                                               : starlight::DefaultColor::DEFAULT_TEXT_COLOR))];
-          break;
-        case kPropertyIDFontWeight:
-          textStyle.fontWeight =
-              [LynxTextUtils convertLynxFontWeight:static_cast<int>(text_attributes->font_weight)];
+          if (text_attributes->text_gradient.has_value() &&
+              text_attributes->text_gradient->IsArray()) {
+            textStyle.foregroundColor = [UIColor blackColor];
+            text_attributes->ProcessRadialGradientIfNeeded(
+                text_element->computed_css_style()->GetMeasureContext(),
+                text_element->element_manager()->GetCSSParserConfigs());
+            const auto& gradient_array = *(text_attributes->text_gradient)->Array();
+
+            if (gradient_array.size() < 2 || !gradient_array.get(1).IsArray()) {
+              textStyle.textGradient = nil;
+            } else {
+              // FIXME(linxs): workaround to use prop_bundle to convert the NSArray!
+              auto prop_bundle =
+                  text_element->element_manager()->GetPropBundleCreator()->CreatePropBundle(false);
+              prop_bundle->SetProps("color", pub::ValueImplLepus(*text_attributes->text_gradient));
+              NSArray* value = (NSArray*)(static_cast<tasm::PropBundleDarwin*>(prop_bundle.get())
+                                              ->dictionary()[@"color"]);
+              [LynxTextUtils setLynxTextGradient:textStyle withGradient:value];
+            }
+          } else {
+            textStyle.textGradient = nil;
+            textStyle.foregroundColor = [LynxConverter
+                toUIColor:@(static_cast<int>(text_attributes->color.has_value()
+                                                 ? *text_attributes->color
+                                                 : starlight::DefaultColor::DEFAULT_TEXT_COLOR))];
+          }
           break;
         case kPropertyIDFontStyle:
           textStyle.fontStyle = static_cast<LynxFontStyleType>(text_attributes->font_style);
