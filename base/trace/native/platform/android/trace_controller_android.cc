@@ -44,7 +44,7 @@ jlong CreateTraceController(JNIEnv* env, jobject jcaller) {
 jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
                   jobjectArray include_categories,
                   jobjectArray exclude_categories, jstring trace_file,
-                  jboolean enableSystrace) {
+                  jboolean enableSystrace, jboolean enableCompress) {
   auto* controller = reinterpret_cast<lynx::trace::TraceController*>(ptr);
   if (controller) {
     auto trace_config = std::make_shared<lynx::trace::TraceConfig>();
@@ -56,6 +56,7 @@ jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
         ConvertJavaStringArrayToStringVector(env, exclude_categories);
     trace_config->buffer_size = buffer_size;
     trace_config->enable_systrace = enableSystrace == JNI_TRUE;
+    trace_config->enable_compress = enableCompress == JNI_TRUE;
     int session_id = controller->StartTracing(trace_config);
 
     return session_id;

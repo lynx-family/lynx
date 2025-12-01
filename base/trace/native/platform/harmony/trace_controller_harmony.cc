@@ -65,6 +65,10 @@ napi_value TraceControllerHarmony::StartTracing(napi_env env,
   if (trace_config.find("filePath") != trace_config.end()) {
     config->file_path = trace_config["filePath"];
   }
+
+  if (trace_config.find("enableCompress") != trace_config.end()) {
+    config->enable_compress = trace_config["enableCompress"] == "true";
+  }
   config->included_categories = {"*"};
   config->excluded_categories = {"*"};
   auto session_id =

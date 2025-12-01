@@ -301,6 +301,10 @@ void LynxGlobalDevToolMediator::TracingStart(
             config->record_mode = lynx::trace::TraceConfig::RECORD_CONTINUOUSLY;
           }
         }
+        if (trace_config.isMember("enableCompress")) {
+          config->enable_compress = trace_config["enableCompress"].asBool();
+        }
+
         config->js_profile_interval =
             trace_config.isMember("JSProfileInterval")
                 ? trace_config["JSProfileInterval"].asInt()

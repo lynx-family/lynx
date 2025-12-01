@@ -4,8 +4,8 @@ Date: Wed, 16 Jul 2025 15:32:14 +0800
 Subject: [PATCH] [Infra] Add BUILD.gn file for perfetto
 
 ---
- sdk/BUILD.gn | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ sdk/BUILD.gn | 23 ++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
  create mode 100644 sdk/BUILD.gn
 
 diff --git a/sdk/BUILD.gn b/sdk/BUILD.gn
@@ -34,6 +34,7 @@ index 0000000000..b46ed5cd31
 +  # On some platfoms, cmsg = CMSG_NXTHDR(&msg_hdr, cmsg)) will cause build break:
 +  #  comparison of integers of different signs: 'unsigned long' and 'long'
 +  configs += [ ":allow_sign_compare" ]
++  deps = [ "//third_party/zlib" ]
 +}
 +
 -- 

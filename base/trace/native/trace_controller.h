@@ -34,13 +34,15 @@ struct TRACE_EXPORT TraceConfig {
   std::string file_path;
   int32_t js_profile_interval;
   RuntimeProfilerType js_profile_type;
+  bool enable_compress;
   TraceConfig()
       : record_mode(RECORD_AS_MUCH_AS_POSSIBLE),
         enable_systrace(false),
         buffer_size(kDefaultBufferSize),
         is_startup_tracing(false),
         js_profile_interval(-1),
-        js_profile_type(RuntimeProfilerType::quickjs) {}
+        js_profile_type(RuntimeProfilerType::quickjs),
+        enable_compress(false) {}
 };
 
 // DispatchBegin()/DispatchEnd() of TracePlugin that injected into

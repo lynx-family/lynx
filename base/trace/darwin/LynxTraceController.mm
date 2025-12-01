@@ -56,6 +56,10 @@ static LynxTraceController *lynxTraceController = nil;
     if ([config valueForKey:@"trace_file"] != nil) {
       trace_config->file_path = [config[@"trace_file"] UTF8String];
     }
+
+    if ([config valueForKey:@"enable_compress"] != nil) {
+      trace_config->enable_compress = [config[@"enable_compress"] boolValue];
+    }
     trace_config->included_categories = {"*"};
     trace_config->excluded_categories = {"*"};
     _sessionId = _traceController->StartTracing(trace_config);
