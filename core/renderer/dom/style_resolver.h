@@ -13,6 +13,7 @@
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
 #include "core/renderer/css/css_fragment.h"
+#include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_selector_constants.h"
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
@@ -60,6 +61,10 @@ class StyleResolver {
   static void ResolveStyleObjects(style::StyleObject** old_ptr,
                                   style::StyleObject** new_ptr,
                                   style::SimpleStyleNode* target);
+
+  static void ResolveStyleObjectsBasedOnExistingMap(
+      const tasm::StyleMap& old_dcl_style, style::StyleObject** new_ptr,
+      style::SimpleStyleNode* target);
 
  private:
   enum class PseudoClassType { kFocus, kHover, kActive };
