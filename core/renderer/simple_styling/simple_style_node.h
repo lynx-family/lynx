@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/css/css_property.h"
 
 namespace lynx::style {
@@ -22,6 +22,7 @@ class SimpleStyleNode {
   virtual void SetStyleObjects(
       std::unique_ptr<StyleObject*, StyleObjectArrayDeleter> style_object) = 0;
   virtual void UpdateSimpleStyles(const tasm::StyleMap& style_map) = 0;
+  virtual void UpdateSimpleStyles(tasm::StyleMap&& style_map) = 0;
   virtual void ResetSimpleStyle(tasm::CSSPropertyID id) = 0;
 };
 }  // namespace lynx::style
