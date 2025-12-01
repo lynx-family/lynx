@@ -1,32 +1,24 @@
 # CHANGELOG
-## 3.6.8
-- Introduce `global-props` property for `<frame>` element.
-
-## 3.6.7
-- Introduce `<overlay>` element.
-
-## 3.6.6
-- Support `bindload` on `frame` element.
-
-## 3.6.5
-- Introduce `enable-scroll-bar` property for `<textarea>` element.
-
-## 3.6.4
-- Introduce `item-key` on `list.scrollToPosition`.
-
-## 3.6.3
-- Fix list-type to avoid incompatible type error.
- 
-## 3.6.2
-- Add `lynx.stopExposure` and `lynx.resumeExposure` APIs.
-
-## 3.6.1
-- Add new reporting fields for `ImageLoadEvent`
 
 ## 3.6.0
 
-### Major Changes
-- Update into Lynx3.6.
+### Minor Changes
+
+- Add new reporting fields for `ImageLoadEvent`
+
+- Add `lynx.stopExposure` and `lynx.resumeExposure` APIs.
+
+- Fix list-type to avoid incompatible type error.
+
+- Introduce `item-key` on `list.scrollToPosition`.
+
+- Introduce `enable-scroll-bar` property for `<textarea>` element.
+
+- Support `bindload` on `frame` element.
+
+- Introduce `<overlay>` element.
+
+- Introduce `global-props` property for `<frame>` element.
 
 ## 3.5.9
 - Update `list` and `list-item` typings.
