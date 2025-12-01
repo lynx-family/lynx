@@ -18,7 +18,7 @@ config("config") {
 
   include_dirs = [
     "..",
-    "$root_gen_dir/lynx",
+    "$root_gen_dir",
   ]
 
   if (enable_skity) {
