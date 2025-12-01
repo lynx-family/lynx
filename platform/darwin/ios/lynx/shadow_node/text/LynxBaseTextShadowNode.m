@@ -375,9 +375,9 @@ LYNX_PROP_SETTER("color", setColor, id) {
   } else {
     _textStyle.foregroundColor = [UIColor blackColor];
     if ([value isKindOfClass:NSArray.class]) {
-      [self setTextGradient:(NSArray*)value];
+      [LynxTextUtils setLynxTextGradient:_textStyle withGradient:(NSArray*)value];
     } else {
-      [self setTextGradient:nil];
+      _textStyle.textGradient = nil;
     }
   }
   [self markStyleDirty];
