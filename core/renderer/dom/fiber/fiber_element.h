@@ -565,7 +565,9 @@ class FiberElement : public Element,
    * @param style_map A constant reference to a tasm::StyleMap containing the
    *                  styles to be updated.
    */
-  void UpdateSimpleStyles(const tasm::StyleMap& style_map) override final;
+  void UpdateSimpleStyles(const tasm::StyleMap& style_map) final;
+
+  void UpdateSimpleStyles(tasm::StyleMap&& style_map) final;
 
   /**
    * @brief Reset the simple style associated with the specified CSS property
