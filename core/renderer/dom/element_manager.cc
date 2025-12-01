@@ -989,6 +989,8 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
           {.enable_native_schedule_create_view_async =
                config_->GetEnableNativeScheduleCreateViewAsyncAsBool()});
     }
+    enable_property_based_simple_style_ =
+        config_->GetEnablePropertyBasedSimpleStyle();
   }
 }
 
