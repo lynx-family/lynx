@@ -11,6 +11,7 @@
 #import <SDWebImageWebPCoder/SDWebImageWebPCoder.h>
 #import "ExplorerModule.h"
 #import "TemplateProvider.h"
+#import "NativeLocalStorageModule.h"
 
 @implementation LynxInitProcessor
 
@@ -41,6 +42,8 @@ static LynxInitProcessor *_instance = nil;
 
   // register global JS module
   [globalConfig registerModule:ExplorerModule.class];
+  // register global JS module
+  [globalConfig registerModule:NativeLocalStorageModule.class];
 
   // prepare global config
   [env prepareConfig:globalConfig];

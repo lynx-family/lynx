@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { useState } from '@lynx-js/react';
+import { useState, useEffect } from '@lynx-js/react';
 import './index.scss';
 
 import ExplorerIconDark from '@assets/images/explorer-dark.png?inline';
@@ -23,6 +23,27 @@ interface HomePageProps {
 
 export default function HomePage(props: HomePageProps) {
   const [inputValue, setInputValue] = useState('');
+  // For iOS, manage recentUrls locally; for Android, use global
+  const [recentUrlsState, setRecentUrlsState] = useState<{ url: string; time: string }[]>([]);
+  const isIOS = SystemInfo.platform === 'iOS';
+  // Normalize recentUrls to always be array of { url, time }
+  const rawRecentUrls = isIOS
+    ? recentUrlsState
+    : lynx.__globalProps?.recentUrls || [];
+  const recentUrls = Array.isArray(rawRecentUrls)
+    ? rawRecentUrls.map(item =>
+      typeof item === 'string'
+        ? { url: item, time: '' }
+        : item
+    )
+    : [];
+  // Clear recent URLs
+  const clearRecentUrls = () => {
+    if (isIOS) { // currently feature available only for ios
+      setRecentUrlsState([]);
+      NativeModules.NativeLocalStorageModule.clearStorage();
+    }
+  };
 
   const icons = {
     Scan: {
@@ -46,9 +67,32 @@ export default function HomePage(props: HomePageProps) {
     NativeModules.ExplorerModule.openScan();
   };
 
+  // Load recent URLs from storage
+  useEffect(() => {
+    if (isIOS) {
+      const stored = NativeModules.NativeLocalStorageModule.getStorageItem('recentUrls');
+      if (stored) {
+        try {
+          setRecentUrlsState(JSON.parse(stored));
+        } catch {}
+      }
+    }
+  }, []);
+
   const openSchema = () => {
     'background only';
     NativeModules.ExplorerModule.openSchema(inputValue);
+
+    // for ios to save recent urls
+    if (isIOS && inputValue) {
+      const updated = [
+        { url: inputValue, time: new Date().toLocaleString(undefined, { year: 'numeric', month: '2-digit', 
+          day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false}) },
+        ...recentUrlsState.filter(item => item.url !== inputValue),
+      ].slice(0, 5); // keep max 5
+      setRecentUrlsState(updated);
+      NativeModules.NativeLocalStorageModule.setStorageItem('recentUrls', JSON.stringify(updated));
+    }
   };
 
   const openShowcasePage = () => {
@@ -100,21 +144,18 @@ export default function HomePage(props: HomePageProps) {
         <image src={getIcon('Explorer')} className="logo" mode="aspectFit" />
         <text className={withTheme('home-title')}>Lynx Explorer</text>
         <view className="scan">
-          {(() => {
-            if (SystemInfo.platform === 'iOS') {
-              return <></>;
-            }
-            return (
-              <image
-                src={getIcon('Scan')}
-                className="scan-icon"
-                bindtap={openScan}
-                accessibility-element={true}
-                accessibility-label="Open Scan"
-                accessibility-traits="button"
-              />
-            );
-          })()}
+          {isIOS ? (
+            <></>
+          ) : (
+            <image
+              src={getIcon('Scan')}
+              className="scan-icon"
+              bindtap={openScan}
+              accessibility-element={true}
+              accessibility-label="Open Scan"
+              accessibility-traits="button"
+            />
+          )}
         </view>
       </view>
 
@@ -156,6 +197,48 @@ export default function HomePage(props: HomePageProps) {
         <view style="margin: auto 5% auto auto; justify-content: center">
           <image src={getIcon('Forward')} className="forward-icon" />
         </view>
+      </view>
+
+      <view className='open-recently'>
+        <view className='recent-header'>
+          <text className={withTheme('bold-text')}>Open Recently</text>
+          {isIOS && recentUrls.length > 0 && ( // currently only for ios
+            <text
+              className={withTheme('text')}
+              style={{ marginLeft: 12, cursor: 'pointer', color: '#007AFF' }}
+              bindtap={clearRecentUrls}
+              accessibility-element={true}
+              accessibility-label="Clear All"
+              accessibility-traits="button"
+            >
+              Clear All
+            </text>
+        )}
+        </view>
+        {recentUrls.length === 0 ? (
+          <text className={withTheme('text')}>No recent URLs</text>
+        ) : (
+          <view className={withTheme("recent-items")}>
+            {recentUrls.map((item, idx) => (
+              <>
+                <view
+                  key={idx}
+                  className={withTheme('recent-item')}
+                  bindtap={() => {
+                    'background only';
+                    NativeModules.ExplorerModule.openSchema(item.url);
+                  }}
+                >
+                  <text className="recent-item-url">{item.url}</text>
+                  <text className="recent-item-time">{item.time}</text>
+                </view>
+                {idx < recentUrls.length - 1 && (
+                  <view className={withTheme("recent-item-divider")} />
+                )}
+              </>
+            ))}
+          </view>
+        )}
       </view>
     </view>
   );
