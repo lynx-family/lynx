@@ -18,6 +18,7 @@ import android.view.animation.Interpolator;
 import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.math.MathUtils;
 import androidx.core.view.NestedScrollingChild2;
 import androidx.core.view.NestedScrollingChildHelper;
 import androidx.core.view.NestedScrollingParent2;
@@ -1063,15 +1064,21 @@ public class NestedScrollContainerView
   @Override
   public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
       int dyUnconsumed, int type) {
+    int scrollRange = getScrollRange();
     if (mIsVertical) {
       final int oldScrollY = getScrollY();
-      scrollBy(0, dyUnconsumed);
+      // Consider nested scroll scenario, the outside NestedScrollContainerView may receive any
+      // un-consumed delta scroll offset, which may out of the valid range. So In MOST_ON_TASM or
+      // MULTI_THREAD thread strategy case, we can not guarantee that the
+      // UIListContainer#updateContentSizeAndOffset() callback is invoked immediately, so here we
+      // need to make sure the scroll offset is in the valid range.
+      scrollTo(getScrollX(), MathUtils.clamp(oldScrollY + dyUnconsumed, 0, scrollRange));
       final int myConsumed = getScrollY() - oldScrollY;
       final int myUnconsumed = dyUnconsumed - myConsumed;
       this.dispatchNestedScroll(0, myConsumed, 0, myUnconsumed, null, type);
     } else {
       final int oldScrollX = getScrollX();
-      scrollBy(dxUnconsumed, 0);
+      scrollTo(MathUtils.clamp(oldScrollX + dxUnconsumed, 0, scrollRange), getScrollY());
       final int myConsumed = getScrollX() - oldScrollX;
       final int myUnconsumed = dxUnconsumed - myConsumed;
       this.dispatchNestedScroll(myConsumed, 0, myUnconsumed, 0, null, type);
