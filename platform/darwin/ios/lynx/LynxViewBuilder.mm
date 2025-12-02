@@ -280,4 +280,11 @@
   return module_wrapper;
 }
 
+- (BOOL)enableFetchUIImage {
+  if (_lynxViewGroup) {
+    return _lynxViewGroup.enableFetchUIImage;
+  }
+  return [super enableFetchUIImage];
+}
+
 @end
