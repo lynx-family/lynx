@@ -5,6 +5,8 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_TRACE_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_TRACE_CAPI_H_
 
+#include <stdint.h>
+
 #include "lynx_export.h"
 
 LYNX_EXTERN_C_BEGIN
@@ -25,6 +27,10 @@ LYNX_CAPI_EXPORT void lynx_trace_section_end(const char* category,
 // macro.
 LYNX_CAPI_EXPORT void lynx_trace_instant(const char* category,
                                          const char* name);
+
+// [Internal] Records a counter event.
+LYNX_CAPI_EXPORT void lynx_trace_counter(const char* category, const char* name,
+                                         uint64_t value, bool incremental);
 
 LYNX_EXTERN_C_END
 
@@ -47,5 +53,10 @@ LYNX_EXTERN_C_END
 // Example: LYNX_CAPI_TRACE_INSTANT("MyCategory", "ButtonClicked");
 #define LYNX_CAPI_TRACE_INSTANT(category, name) \
   lynx_trace_instant(category, name)
+
+// Records a counter event via C-API.
+// Example: LYNX_CAPI_TRACE_COUNTER("MyCategory", "MyCounter", 42, false);
+#define LYNX_CAPI_TRACE_COUNTER(category, name, value, incremental) \
+  lynx_trace_counter(category, name, value, incremental)
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_TRACE_CAPI_H_
