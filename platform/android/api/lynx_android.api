@@ -1913,6 +1913,7 @@ public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
   public long com.lynx.tasm.performance.fsp.FSPSnapshot.getTotalPresentedContentArea();
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.setTotalPresentedContentArea(long totalPresentedContentArea);
   public long com.lynx.tasm.performance.fsp.FSPSnapshot.getTotalContentArea();
+  public long com.lynx.tasm.performance.fsp.FSPSnapshot.getContainerArea();
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.setTotalContentArea(long totalContentArea);
   public long com.lynx.tasm.performance.fsp.FSPSnapshot.getLastChangeTimestampUs();
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.setLastChangeTimestampUs(long lastChangeTimestampUs);
@@ -1922,6 +1923,8 @@ public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.setContentFillPercentageY(int contentFillPercentageY);
   public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContentFillPercentageTotalArea();
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.setContentFillPercentageTotalArea(int contentFillPercentageTotalArea);
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.getContainerFillPercentageContainerArea();
+  public void com.lynx.tasm.performance.fsp.FSPSnapshot.setContainerFillPercentageContainerArea(int containerFillPercentageContainerArea);
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getXProjections();
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYProjections();
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getXTotalContentProjections();
@@ -7471,9 +7474,10 @@ public class com::lynx::tasm::performance::performanceobserver::MetricFspEntry :
   public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.lynxFsp lynxFsp;
   public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.totalFsp totalFsp;
   public String com.lynx.tasm.performance.performanceobserver.MetricFspEntry.fspStatus fspStatus;
-  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillRatioX contentFillRatioX;
-  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillRatioY contentFillRatioY;
-  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillRatioTotalArea contentFillRatioTotalArea;
+  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillPercentageX contentFillPercentageX;
+  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillPercentageY contentFillPercentageY;
+  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.contentFillPercentageTotalArea contentFillPercentageTotalArea;
+  public double com.lynx.tasm.performance.performanceobserver.MetricFspEntry.containerFillPercentageContainerArea containerFillPercentageContainerArea;
   public com.lynx.tasm.performance.performanceobserver.MetricFspEntry.MetricFspEntry(HashMap< String, Object > props);
 }
 

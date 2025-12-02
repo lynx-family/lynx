@@ -5,6 +5,7 @@
         _ZN4lynx5trace24TraceEventImplementationEPKcRKNSt6__ndk112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEENS0_14TraceEventTypeEPKNS_8perfetto5TrackERK?RKNS3_8functionIFvNSD_12EventContextEEEE;
         _ZN4lynx5trace20InstanceCounterTrace5impl_E;
         _ZN4lynx5trace9GetFlowIdEv;
+        _ZN4lynx5trace14GetTraceTimeNsEv;
         _ZN4lynx5trace25TraceEventCategoryEnabledEPKc;
         _ZN4lynx5trace15TraceController8InstanceEv;
         _ZN4lynx5trace19TraceRuntimeProfileERKNSt6__ndk112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE?i;
