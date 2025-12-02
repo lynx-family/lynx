@@ -7088,7 +7088,6 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxViewConfig(Map< String, String > map);
   public Map< String, String > com.lynx.tasm.LynxViewBuilder.getLynxViewConfig();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxBackgroundRuntime(LynxBackgroundRuntime runtime);
-  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setTemplateBundle(TemplateBundle templateBundle);
   public BehaviorRegistry com.lynx.tasm.LynxViewBuilder.getBehaviorRegistry();
   public boolean com.lynx.tasm.LynxViewBuilder.isEnableAutoExpose();
   public Float com.lynx.tasm.LynxViewBuilder.getDensity();
