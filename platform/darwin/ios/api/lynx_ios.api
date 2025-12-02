@@ -588,6 +588,7 @@ public class LynxBaseConfigurator : NSObject {
   public id<LynxGenericResourceFetcher> LynxBaseConfigurator::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxBaseConfigurator::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxBaseConfigurator::templateResourceFetcher templateResourceFetcher;
+  public BOOL LynxBaseConfigurator::enableFetchUIImage enableFetchUIImage;
   public CGSize LynxBaseConfigurator::screenSize screenSize;
   public BOOL LynxBaseConfigurator::debuggable debuggable;
   public BOOL LynxBaseConfigurator::enablePreUpdateData enablePreUpdateData;
