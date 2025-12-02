@@ -53,7 +53,7 @@ def wait_for_equal(test, message, obj, prop_name, expected, timeout=10):
         lynxview = test.app.get_lynxview('lynxview', LynxView)
         image_path = os.path.join(settings.PROJECT_ROOT, "screenshots", test.platform, image_name)
         lynxview.screenshot(image_path)
-        test.log_record("error_record", EnumLogLevel.INFO, attachments={"error_img": image_path}, has_error=True)
+        test.log_record("error_img_record", EnumLogLevel.INFO, attachments={"error_img": image_path}, has_error=True)
         raise StopRunningCase(message)
 
 def _run_with_timeout(timeout, func):
