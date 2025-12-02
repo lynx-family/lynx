@@ -79,8 +79,8 @@ export class TemplateBundle extends lynx.TemplateBundle {
    * Asynchronously creates a TemplateBundle from a template binary data. This method avoids blocking the main thread.
    *
    * @apidoc
-   * @param template: ArrayBuffer, a buffer of template binary data.
-   * @return: Promise<TemplateBundle>, a promise that resolves with a new TemplateBundle object.
+   * @param template ArrayBuffer, a buffer of template binary data.
+   * @return A promise that resolves with a new TemplateBundle object.
    */
   public static async fromTemplateAsync(template: ArrayBuffer): Promise<TemplateBundle> {
     let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
