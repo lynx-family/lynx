@@ -32,6 +32,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)reloadLynxView:(BOOL)ignoreCache
           withTemplate:(nullable NSString *)templateBin
          fromFragments:(BOOL)fromFragments
+              withSize:(int32_t)size;
+- (void)reloadLynxView:(BOOL)ignoreCache
+          withTemplate:(nullable NSString *)templateBin
+         fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size
          withReloadUrl:(NSString *)reload_url;
 - (void)onReceiveTemplateFragment:(nullable NSString *)data withEof:(BOOL)eof;

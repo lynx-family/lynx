@@ -3741,6 +3741,7 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateAssemblerCreated(long ptr);
   public long com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onBackgroundRuntimeCreated(String groupName);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize, String reloadUrl);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.navigate(String url);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.stopCasting();

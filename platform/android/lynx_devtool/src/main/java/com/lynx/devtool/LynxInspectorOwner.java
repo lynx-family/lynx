@@ -236,6 +236,11 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     reload(ignoreCache, null, false, 0, "");
   }
 
+  public void reload(
+      boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize) {
+    reload(ignoreCache, templateBin, fromTemplateFragments, templateSize, "");
+  }
+
   public void reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments,
       int templateSize, String reloadUrl) {
     if (mReloadHelper != null) {

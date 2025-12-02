@@ -74,6 +74,12 @@ typedef void (^CDPResultCallback)(NSString *result);
           withTemplate:(nullable NSString *)templateBin
          fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size;
+
+- (void)reloadLynxView:(BOOL)ignoreCache
+          withTemplate:(nullable NSString *)templateBin
+         fromFragments:(BOOL)fromFragments
+              withSize:(int32_t)size
+             reloadUrl:(nullable NSString *)reloadUrl;
 /**
  * Invokes a CDP method from the SDK.
  *
