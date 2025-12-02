@@ -59,6 +59,8 @@ public class FSPTracer {
   private static final String KEY_CONTENT_FILL_PERCENTAGE_Y = "contentFillPercentageY";
   private static final String KEY_CONTENT_FILL_PERCENTAGE_TOTAL_AREA =
       "contentFillPercentageTotalArea";
+  private static final String KEY_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA =
+      "containerFillPercentageContainerArea";
   // Tracer fields
   private final FSPConfig mConfig = new FSPConfig();
   private final AtomicBoolean mIsRunning = new AtomicBoolean(false);
@@ -227,8 +229,8 @@ public class FSPTracer {
         mIsRunning.set(false);
         handleFSPResult(
             ResultStatus.SUCCESS, mPreviousSnapshot, mPreviousSnapshot.getLastChangeTimestampUs());
-        return;
       }
+      return;
     }
 
     // Update previous snapshot if valuable
@@ -270,8 +272,13 @@ public class FSPTracer {
 
     snapshot.setContentFillPercentageTotalArea(
         (int) (snapshot.getTotalPresentedContentArea() * 100 / snapshot.getTotalContentArea()));
+    if (snapshot.getContentFillPercentageTotalArea() < config.minContentFillPercentageTotalArea) {
+      return false;
+    }
 
-    return snapshot.getContentFillPercentageTotalArea() >= config.minContentFillPercentageTotalArea;
+    snapshot.setContainerFillPercentageContainerArea(
+        (int) (snapshot.getTotalPresentedContentArea() * 100 / snapshot.getContainerArea()));
+    return snapshot.getContainerFillPercentageContainerArea() > 0;
   }
 
   /// @note Run on ReportThread
@@ -305,11 +312,19 @@ public class FSPTracer {
       return false;
     }
 
-    // Check area change rate
+    // Check total meaningful content area change rate
     int areaChangeRate = (int) Math.abs(current.getTotalPresentedContentArea()
                              - previous.getTotalPresentedContentArea())
         * 1000 / (int) diffTMs;
     if (areaChangeRate > config.acceptableAreaDiffPerSec) {
+      return false;
+    }
+
+    // Check container area change rate
+    int containerAreaChangeRate = (int) Math.abs(current.getContainerFillPercentageContainerArea()
+                                      - previous.getContainerFillPercentageContainerArea())
+        * 1000 / (int) diffTMs;
+    if (containerAreaChangeRate > config.acceptableAreaDiffPerSec) {
       return false;
     }
 
@@ -350,6 +365,8 @@ public class FSPTracer {
         KEY_CONTENT_FILL_PERCENTAGE_Y, String.valueOf(currentSnapshot.getContentFillPercentageY()));
     info.put(KEY_CONTENT_FILL_PERCENTAGE_TOTAL_AREA,
         String.valueOf(currentSnapshot.getContentFillPercentageTotalArea()));
+    info.put(KEY_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA,
+        String.valueOf(currentSnapshot.getContainerFillPercentageContainerArea()));
     perfController.setFSPTimingInfo(currentSnapshot.getLastChangeTimestampUs(), info);
   }
 }

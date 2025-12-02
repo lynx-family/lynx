@@ -46,6 +46,7 @@ using argsVecPair =
 using FuncType = std::function<void(lynx::perfetto::EventContext)>;
 
 TRACE_EXPORT uint64_t GetFlowId();
+TRACE_EXPORT uint64_t GetTraceTimeNs();
 TRACE_EXPORT void TraceEventImplementation(
     const char* category_name, const char* name, TraceEventType phase,
     const lynx::perfetto::Track* track_id, const uint64_t& timestamp,
