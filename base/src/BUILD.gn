@@ -324,6 +324,7 @@ if (enable_unittests) {
       "auto_create_optional_unittest.cc",
       "auto_reset_unittest.cc",
       "boost/unordered_unittest.cc",
+      "bundled_optional_unittest.cc",
       "closure_unittest.cc",
       "concurrent_queue_unittest.cc",
       "datauri_utils_unittest.cc",

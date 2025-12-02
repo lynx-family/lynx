@@ -46,6 +46,7 @@ base_core_public_headers_list = [
   "base_defines.h",
   "base_export.h",
   "boost/unordered.h",
+  "bundled_optional.h",
   "cast_util.h",
   "closure.h",
   "compiler_specific.h",
