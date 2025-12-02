@@ -319,6 +319,7 @@ public class LynxTemplateRender
 
     // Set embedded mode for PerformanceController
     mPerformanceController.setEmbeddedMode(EmbeddedMode.isBaseModeEnable(mEmbeddedMode));
+    mPerformanceController.setPerformanceObserver(mClientV2);
 
     mEnableReuseEngine = EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mTemplateBundle != null;
 
@@ -1363,9 +1364,6 @@ public class LynxTemplateRender
     // Update the url info to generic info after the shell is rebuilt, because the rebuilt shell
     // generates a new instance ID.
     updateGenericInfoURL(mUrl);
-    if (mPerformanceController != null) {
-      mPerformanceController.setPerformanceObserver(mClientV2);
-    }
     if (mNativeFacade != null) {
       mNativeFacade.setTemplateLoadClient(mClient);
       dispatchOnPageStart(mUrl);
