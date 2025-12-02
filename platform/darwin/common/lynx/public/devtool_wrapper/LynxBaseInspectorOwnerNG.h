@@ -43,10 +43,4 @@
 - (void)subscribeMessage:(nonnull NSString *)type withHandler:(nonnull id<MessageHandler>)handler;
 - (void)unsubscribeMessage:(nonnull NSString *)type;
 
-- (void)reloadLynxView:(BOOL)ignoreCache
-          withTemplate:(nullable NSString *)templateBin
-         fromFragments:(BOOL)fromFragments
-              withSize:(int32_t)size
-         withReloadUrl:(nullable NSString *)reload_url;
-
 @end

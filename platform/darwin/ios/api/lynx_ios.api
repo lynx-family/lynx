@@ -668,6 +668,7 @@ public protocol LynxBaseInspectorOwner-p : <NSObject> {
   public void LynxBaseInspectorOwner-p::attach:(nonnull LynxView *lynxView);
   public (deprecated("Deprecated after Lynx2.18")) LynxBaseInspectorOwner-p::__attribute__();
   public void LynxBaseInspectorOwner-p::reloadLynxView:withTemplate:fromFragments:withSize:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size);
+  public void LynxBaseInspectorOwner-p::reloadLynxView:withTemplate:fromFragments:withSize:reloadUrl:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size,[reloadUrl] nullable NSString *reloadUrl);
   public void LynxBaseInspectorOwner-p::invokeCDPFromSDK:withCallback:(NSString *msg,[withCallback] CDPResultCallback callback);
   public void LynxBaseInspectorOwner-p::addCDPEventListener:withListener:(nonnull NSString *name,[withListener] nonnull id< CDPEventListener > listener);
   public void LynxBaseInspectorOwner-p::removeCDPEventListener:(nonnull NSString *name);
@@ -695,7 +696,6 @@ public protocol LynxBaseInspectorOwnerNG-p : <LynxBaseInspectorOwner> {
   public void LynxBaseInspectorOwnerNG-p::sendMessage:(nonnull CustomizedMessage *message);
   public void LynxBaseInspectorOwnerNG-p::subscribeMessage:withHandler:(nonnull NSString *type,[withHandler] nonnull id< MessageHandler > handler);
   public void LynxBaseInspectorOwnerNG-p::unsubscribeMessage:(nonnull NSString *type);
-  public void LynxBaseInspectorOwnerNG-p::reloadLynxView:withTemplate:fromFragments:withSize:withReloadUrl:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size,[withReloadUrl] nullable NSString *reload_url);
 }
 
 public class LynxBaselineShiftLayoutManager : NSLayoutManager {
