@@ -7,6 +7,7 @@
 namespace lynx {
 namespace trace {
 uint64_t GetFlowId() { return 0; }
+uint64_t GetTraceTimeNs() { return 0; }
 void TraceEventImplementation(const char* category_name, const char* name,
                               TraceEventType phase,
                               const lynx::perfetto::Track* track_id,

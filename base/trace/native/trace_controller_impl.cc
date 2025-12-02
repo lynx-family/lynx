@@ -77,6 +77,8 @@ uint64_t GetFlowId() {
   return sTraceEventFlowId++;
 }
 
+uint64_t GetTraceTimeNs() { return TrackEventInternal::GetTimeNs(); }
+
 void TraceEventImplementation(const char* category_name,
                               const std::string& name, TraceEventType phase,
                               const lynx::perfetto::Track* track_id,

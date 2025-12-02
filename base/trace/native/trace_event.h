@@ -144,6 +144,7 @@ using TraceEvent = lynx::perfetto::TrackEvent;
   lynx::trace::TraceCounter(category, lynx::perfetto::CounterTrack(track), \
                             ##__VA_ARGS__)
 #define TRACE_FLOW_ID() lynx::trace::GetFlowId()
+#define TRACE_TIME_NS() lynx::trace::GetTraceTimeNs()
 #elif ENABLE_TRACE_SYSTRACE  // ENABLE_TRACE_SYSTRACE
 
 #include "base/trace/native/trace_event_utils_systrace.h"
@@ -181,6 +182,7 @@ class ScopedTracer {
 #define TRACE_EVENT_CATEGORY_ENABLED(category) true
 #define TRACE_COUNTER(category, track, ...)
 #define TRACE_FLOW_ID() 0
+#define TRACE_TIME_NS() 0
 #else  // DISABLE_TRACE
 
 #define TRACE_EVENT_BEGIN(category, name, ...)
@@ -191,6 +193,7 @@ class ScopedTracer {
 #define TRACE_EVENT_CATEGORY_ENABLED(category)
 #define TRACE_COUNTER(category, track, ...)
 #define TRACE_FLOW_ID() 0
+#define TRACE_TIME_NS() 0
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)

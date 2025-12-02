@@ -33,7 +33,11 @@ public class FSPSnapshot {
   /// Y-axis content fill percentage
   private int mContentFillPercentageY = 0;
   /// Total content fill percentage
+  /// Formula: (presented content area / content area) * 100
   private int mContentFillPercentageTotalArea = 0;
+  /// Percentage of presented content area relative to container area.
+  /// Formula: (presented content area / container area) * 100
+  private int mContainerFillPercentageContainerArea = 0;
 
   public FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs) {
     mContainerWidth = containerWidth;
@@ -124,6 +128,10 @@ public class FSPSnapshot {
     return mTotalContentArea;
   }
 
+  public long getContainerArea() {
+    return (long) mContainerWidth * mContainerHeight;
+  }
+
   public void setTotalContentArea(long totalContentArea) {
     mTotalContentArea = totalContentArea;
   }
@@ -158,6 +166,14 @@ public class FSPSnapshot {
 
   public void setContentFillPercentageTotalArea(int contentFillPercentageTotalArea) {
     mContentFillPercentageTotalArea = contentFillPercentageTotalArea;
+  }
+
+  public int getContainerFillPercentageContainerArea() {
+    return mContainerFillPercentageContainerArea;
+  }
+
+  public void setContainerFillPercentageContainerArea(int containerFillPercentageContainerArea) {
+    mContainerFillPercentageContainerArea = containerFillPercentageContainerArea;
   }
 
   public BitSet getXProjections() {
