@@ -4388,6 +4388,50 @@ TEST(Vector, MapInsertOrAssign) {
   EXPECT_EQ(map.size(), 7);
 }
 
+TEST(Vector, MapEmplaceOrAssign) {
+  InlineOrderedFlatMap<std::string, std::string, 5> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
+
+  auto r = map.emplace_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
+
+  std::string s5 = "5";
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
+
+  std::string s6 = "6";
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
+
+  std::string s7 = "7";
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign("7", 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map["7"], "ggggg");
+
+  EXPECT_EQ(map.size(), 7);
+}
+
 TEST(Vector, SetInsert) {
   OrderedFlatSet<std::string> set{"1", "2", "3"};
   auto r = set.insert("3");
@@ -4508,6 +4552,32 @@ TEST(MapStringTest, ElementAccess) {
   EXPECT_EQ(m["grape"], "");
   EXPECT_EQ(m.at("grape"), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at("orange"), "");
+  m.at("orange") = "orange";
+  EXPECT_EQ(m["orange"], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  std::string melon = "melon";
+  m.at(std::move(melon)) = "green";
+  EXPECT_EQ(melon, "");
+  EXPECT_EQ(m.find("melon")->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  std::string pear = "pear";
+  auto r = m.insert_default_if_absent(std::move(pear));
+  EXPECT_TRUE(r.second);
+  r.first->second = "yellow";
+  EXPECT_EQ(pear, "");
+  EXPECT_EQ(m["pear"], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent("apple");
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m["apple"], "green");
+  r2.first->second = "red";
+  EXPECT_EQ(m["apple"], "red");
+  EXPECT_EQ(m.size(), 6);
 }
 
 TEST(MapStringTest, InsertUpdate) {
@@ -4563,6 +4633,34 @@ TEST(SetStringTest, Iterators) {
   EXPECT_EQ(order, "zqmhgcba");
 }
 
+TEST(SetStringTest, FrontBack) {
+  {
+    InlineOrderedFlatSet<std::string, 10> s{"a", "z", "c", "b",
+                                            "m", "g", "q", "h"};
+    EXPECT_EQ(s.front(), "a");
+    EXPECT_EQ(s.back(), "z");
+    s.erase("a");
+    s.erase("z");
+    s.erase("g");
+    EXPECT_EQ(s.front(), "b");
+    EXPECT_EQ(s.back(), "q");
+  }
+  {
+    const InlineOrderedFlatSet<std::string, 10> s{"a", "z", "c", "b",
+                                                  "m", "g", "q", "h"};
+    EXPECT_EQ(s.front(), "a");
+    EXPECT_EQ(s.back(), "z");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(s)>>&>(s))
+        .erase("a");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(s)>>&>(s))
+        .erase("z");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(s)>>&>(s))
+        .erase("g");
+    EXPECT_EQ(s.front(), "b");
+    EXPECT_EQ(s.back(), "q");
+  }
+}
+
 TEST(SetStringTest, Basic) {
   InlineOrderedFlatSet<std::string, 10> s{"a", "z", "c", "b",
                                           "m", "g", "q", "h"};
@@ -4606,6 +4704,45 @@ TEST(MapStringTest, Iterators) {
   EXPECT_EQ(rit, m.rend());
 }
 
+TEST(MapStringTest, FrontBack) {
+  {
+    OrderedFlatMap<std::string, std::string> m{
+        {"Z", "26"}, {"A", "1"}, {"M", "13"}};
+    EXPECT_EQ(m.front().first, "A");
+    EXPECT_EQ(m.front().second, "1");
+    EXPECT_EQ(m.back().first, "Z");
+    EXPECT_EQ(m.back().second, "26");
+    m.erase("A");
+    m.erase("Z");
+    EXPECT_EQ(m.front().first, "M");
+    EXPECT_EQ(m.front().second, "13");
+    EXPECT_EQ(m.back().first, "M");
+    EXPECT_EQ(m.back().second, "13");
+
+    m.front().second = "This is M";
+    EXPECT_EQ(m["M"], "This is M");
+    m.back().second = "This is M, too";
+    EXPECT_EQ(m["M"], "This is M, too");
+  }
+
+  {
+    const OrderedFlatMap<std::string, std::string> m{
+        {"Z", "26"}, {"A", "1"}, {"M", "13"}};
+    EXPECT_EQ(m.front().first, "A");
+    EXPECT_EQ(m.front().second, "1");
+    EXPECT_EQ(m.back().first, "Z");
+    EXPECT_EQ(m.back().second, "26");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(m)>>&>(m))
+        .erase("A");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(m)>>&>(m))
+        .erase("Z");
+    EXPECT_EQ(m.front().first, "M");
+    EXPECT_EQ(m.front().second, "13");
+    EXPECT_EQ(m.back().first, "M");
+    EXPECT_EQ(m.back().second, "13");
+  }
+}
+
 TEST(MapStringTest, EdgeCases) {
   OrderedFlatMap<std::string, std::string> m;
 
@@ -4641,6 +4778,31 @@ TEST(MapStringTest, InsertOrAssign) {
   EXPECT_EQ(m["empty"], "");
 
   auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");
+}
+
+TEST(MapStringTest, EmplaceOrAssign) {
+  OrderedFlatMap<std::string, std::string> m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "bana");
+    EXPECT_EQ(m["fruit"], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.emplace_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.emplace_or_assign("new_key", "value");
   EXPECT_EQ(it->first, "new_key");
 }
 
@@ -4700,6 +4862,50 @@ TEST(Vector, LinearMapInsertOrAssign) {
   EXPECT_EQ(map["7"], "g");
   EXPECT_TRUE(s7.empty());
   EXPECT_EQ(sg, "g");
+
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearMapEmplaceOrAssign) {
+  InlineLinearFlatMap<std::string, std::string, 5> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
+
+  auto r = map.emplace_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
+
+  std::string s5 = "5";
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
+
+  std::string s6 = "6";
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
+
+  std::string s7 = "7";
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign("7", 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map["7"], "ggggg");
 
   EXPECT_EQ(map.size(), 7);
 }
@@ -4824,6 +5030,56 @@ TEST(MapStringTest, LinearElementAccess) {
   EXPECT_EQ(m["grape"], "");
   EXPECT_EQ(m.at("grape"), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at("orange"), "");
+  m.at("orange") = "orange";
+  EXPECT_EQ(m["orange"], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  std::string melon = "melon";
+  m.at(std::move(melon)) = "green";
+  EXPECT_EQ(melon, "");
+  EXPECT_EQ(m.find("melon")->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  std::string pear = "pear";
+  auto r = m.insert_default_if_absent(std::move(pear));
+  EXPECT_TRUE(r.second);
+  r.first->second = "yellow";
+  EXPECT_EQ(pear, "");
+  EXPECT_EQ(m["pear"], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent("apple");
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m["apple"], "green");
+  r2.first->second = "red";
+  EXPECT_EQ(m["apple"], "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string black = "black";
+  auto r3 = m.insert_if_absent("apple", black);
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, "apple");
+  EXPECT_EQ(r3.first->second, "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string peach = "peach";
+  std::string pink = "pink";
+  auto r4 = m.insert_if_absent(std::move(peach), std::move(pink));
+  EXPECT_TRUE(r4.second);
+  EXPECT_TRUE(peach.empty());
+  EXPECT_TRUE(pink.empty());
+  EXPECT_EQ(r4.first->first, "peach");
+  EXPECT_EQ(r4.first->second, "pink");
+  EXPECT_EQ(m.size(), 7);
+
+  auto r5 = m.insert_if_absent("tomato", black);
+  EXPECT_TRUE(r5.second);
+  EXPECT_EQ(r5.first->first, "tomato");
+  EXPECT_EQ(r5.first->second, "black");
+  EXPECT_EQ(black, "black");
+  EXPECT_EQ(m.size(), 8);
 }
 
 TEST(MapStringTest, LinearInsertUpdate) {
@@ -4878,6 +5134,34 @@ TEST(SetStringTest, LinearIterators) {
   EXPECT_EQ(order, s.is_data_ordered() ? "zqmhgcba" : "hqgmbcza");
 }
 
+TEST(SetStringTest, LinearFrontBack) {
+  {
+    InlineLinearFlatSet<std::string, 10> s{"a", "z", "c", "b",
+                                           "m", "g", "q", "h"};
+    EXPECT_EQ(s.front(), "a");
+    EXPECT_EQ(s.back(), "h");
+    s.erase("a");
+    s.erase("h");
+    s.erase("g");
+    EXPECT_EQ(s.front(), "z");
+    EXPECT_EQ(s.back(), "q");
+  }
+  {
+    InlineLinearFlatSet<std::string, 10> s{"a", "z", "c", "b",
+                                           "m", "g", "q", "h"};
+    EXPECT_EQ(s.front(), "a");
+    EXPECT_EQ(s.back(), "h");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(s)>>&>(s))
+        .erase("a");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(s)>>&>(s))
+        .erase("h");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(s)>>&>(s))
+        .erase("g");
+    EXPECT_EQ(s.front(), "z");
+    EXPECT_EQ(s.back(), "q");
+  }
+}
+
 TEST(SetStringTest, LinearBasic) {
   InlineLinearFlatSet<std::string, 10> s{"a", "z", "c", "b",
                                          "m", "g", "q", "h"};
@@ -4921,6 +5205,45 @@ TEST(MapStringTest, LinearIterators) {
   EXPECT_EQ(rit, m.rend());
 }
 
+TEST(MapStringTest, LinearFrontBack) {
+  {
+    LinearFlatMap<std::string, std::string> m{
+        {"Z", "26"}, {"A", "1"}, {"M", "13"}};
+    EXPECT_EQ(m.front().first, "Z");
+    EXPECT_EQ(m.front().second, "26");
+    EXPECT_EQ(m.back().first, "M");
+    EXPECT_EQ(m.back().second, "13");
+    m.erase("Z");
+    m.erase("M");
+    EXPECT_EQ(m.front().first, "A");
+    EXPECT_EQ(m.front().second, "1");
+    EXPECT_EQ(m.back().first, "A");
+    EXPECT_EQ(m.back().second, "1");
+
+    m.front().second = "This is A";
+    EXPECT_EQ(m["A"], "This is A");
+    m.back().second = "This is A, too";
+    EXPECT_EQ(m["A"], "This is A, too");
+  }
+
+  {
+    const LinearFlatMap<std::string, std::string> m{
+        {"Z", "26"}, {"A", "1"}, {"M", "13"}};
+    EXPECT_EQ(m.front().first, "Z");
+    EXPECT_EQ(m.front().second, "26");
+    EXPECT_EQ(m.back().first, "M");
+    EXPECT_EQ(m.back().second, "13");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(m)>>&>(m))
+        .erase("Z");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(m)>>&>(m))
+        .erase("M");
+    EXPECT_EQ(m.front().first, "A");
+    EXPECT_EQ(m.front().second, "1");
+    EXPECT_EQ(m.back().first, "A");
+    EXPECT_EQ(m.back().second, "1");
+  }
+}
+
 TEST(MapStringTest, LinearEdgeCases) {
   LinearFlatMap<std::string, std::string> m;
 
@@ -4956,6 +5279,31 @@ TEST(MapStringTest, LinearInsertOrAssign) {
   EXPECT_EQ(m["empty"], "");
 
   auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");
+}
+
+TEST(MapStringTest, LinearEmplaceOrAssign) {
+  LinearFlatMap<std::string, std::string> m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "bana");
+    EXPECT_EQ(m["fruit"], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.emplace_or_assign("new_key", "value");
   EXPECT_EQ(it->first, "new_key");
 }
 
@@ -6110,6 +6458,18 @@ bool AssertMapContent_ABCbD_1232040(MapType& m) {
 }
 
 template <class MapType>
+bool AssertMapContent_ABCbD_102302040(MapType& m) {
+  return (m.size() == 5) && (m["A"] == "10") && (m["B"] == "2") &&
+         (m["C"] == "30") && (m["b"] == "20") && (m["D"] == "40");
+}
+
+template <class MapType>
+bool AssertMapContent_AbCD_10203040(MapType& m) {
+  return (m.size() == 4) && (m["A"] == "10") && (m["b"] == "20") &&
+         (m["C"] == "30") && (m["D"] == "40");
+}
+
+template <class MapType>
 bool AssertMapContent_AC_1030(MapType& m) {
   return (m.size() == 2) && (m["A"] == "10") && (m["C"] == "30");
 }
@@ -6247,6 +6607,84 @@ TEST(LinearMap, Merge) {
   }
 }
 
+template <class K>
+struct MergeAssignKeyPolicy : public ReducedHashKeyPolicy<K> {
+  static constexpr auto assign_existing_for_merge = true;
+};
+
+TEST(LinearMap, MergeAssign) {
+  {
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m2{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  }
+
+  {
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m2{{"A", "10"}, {"b", "20"}, {"C", "30"}, {"D", "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABCbD_102302040(m1));
+    EXPECT_TRUE(AssertMapContent_AbCD_10203040(m2));
+  }
+
+  {
+    InlineLinearFlatMap<std::string, std::string, 3,
+                        MergeAssignKeyPolicy<std::string>>
+        m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<std::string, std::string, MergeAssignKeyPolicy<std::string>>
+        m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<std::string, std::string, 3,
+                        MergeAssignKeyPolicy<std::string>>
+        m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<std::string, std::string, 3,
+                        MergeAssignKeyPolicy<std::string>>
+        m2{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<std::string, std::string, 3,
+                        MergeAssignKeyPolicy<std::string>>
+        m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<std::string, std::string, 4,
+                        MergeAssignKeyPolicy<std::string>>
+        m2{{"A", "10"}, {"b", "20"}, {"C", "30"}, {"D", "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABCbD_102302040(m1));
+    EXPECT_TRUE(AssertMapContent_AbCD_10203040(m2));
+  }
+}
+
 namespace {
 template <class SetType>
 bool AssertSetContent_ABCbD(SetType& m) {
@@ -6255,8 +6693,14 @@ bool AssertSetContent_ABCbD(SetType& m) {
 }
 
 template <class SetType>
-bool AssertMapContent_AC(SetType& m) {
+bool AssertSetContent_AC(SetType& m) {
   return m.size() == 2 && m.contains("A") && m.contains("C");
+}
+
+template <class SetType>
+bool AssertSetContent_AbCD(SetType& m) {
+  return m.size() == 4 && m.contains("A") && m.contains("b") &&
+         m.contains("C") && m.contains("D");
 }
 }  // namespace
 
@@ -6285,7 +6729,7 @@ TEST(OrderedSet, Merge) {
     OrderedFlatSet<std::string> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 
   {
@@ -6312,7 +6756,7 @@ TEST(OrderedSet, Merge) {
     InlineOrderedFlatSet<std::string, 4> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 }
 
@@ -6341,7 +6785,7 @@ TEST(LinearSet, Merge) {
     LinearFlatSet<std::string> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 
   {
@@ -6368,7 +6812,73 @@ TEST(LinearSet, Merge) {
     InlineLinearFlatSet<std::string, 4> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
+  }
+}
+
+TEST(LinearSet, MergeAssign) {
+  {
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m1{"A", "B",
+                                                                     "C"};
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m1{"A", "B",
+                                                                     "C"};
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m2{"A", "B",
+                                                                     "C"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+  }
+
+  {
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m1{"A", "B",
+                                                                     "C"};
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m2{"A", "b",
+                                                                     "C", "D"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABCbD(m1));
+    EXPECT_TRUE(AssertSetContent_AbCD(m2));
+  }
+
+  {
+    InlineLinearFlatSet<std::string, 3, MergeAssignKeyPolicy<std::string>> m1{
+        "A", "B", "C"};
+    LinearFlatSet<std::string, MergeAssignKeyPolicy<std::string>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    InlineLinearFlatSet<std::string, 3, MergeAssignKeyPolicy<std::string>> m1{
+        "A", "B", "C"};
+    InlineLinearFlatSet<std::string, 3, MergeAssignKeyPolicy<std::string>> m2{
+        "A", "B", "C"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+  }
+
+  {
+    InlineLinearFlatSet<std::string, 3, MergeAssignKeyPolicy<std::string>> m1{
+        "A", "B", "C"};
+    InlineLinearFlatSet<std::string, 4, MergeAssignKeyPolicy<std::string>> m2{
+        "A", "b", "C", "D"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABCbD(m1));
+    EXPECT_TRUE(AssertSetContent_AbCD(m2));
   }
 }
 
@@ -6408,6 +6918,50 @@ TEST(Vector, LinearMapInsertOrAssignBaseStringKey) {
   EXPECT_EQ(map["7"], "g");
   EXPECT_TRUE(s7.empty());
   EXPECT_EQ(sg, "g");
+
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearMapEmplaceOrAssignBaseStringKey) {
+  InlineLinearFlatMap<String, std::string, 5> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
+
+  auto r = map.emplace_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
+
+  String s5("5");
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
+
+  String s6("6");
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
+
+  String s7("7");
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign("7", 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map["7"], "ggggg");
 
   EXPECT_EQ(map.size(), 7);
 }
@@ -6548,6 +7102,56 @@ TEST(MapStringTest, LinearElementAccessBaseStringKey) {
   EXPECT_EQ(m["grape"], "");
   EXPECT_EQ(m.at("grape"), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at("orange"), "");
+  m.at("orange") = "orange";
+  EXPECT_EQ(m["orange"], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  std::string melon = "melon";
+  m.at(std::move(melon)) = "green";
+  EXPECT_EQ(melon, "");
+  EXPECT_EQ(m.find("melon")->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  std::string pear = "pear";
+  auto r = m.insert_default_if_absent(std::move(pear));
+  EXPECT_TRUE(r.second);
+  r.first->second = "yellow";
+  EXPECT_EQ(pear, "");
+  EXPECT_EQ(m["pear"], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent("apple");
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m["apple"], "green");
+  r2.first->second = "red";
+  EXPECT_EQ(m["apple"], "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string black = "black";
+  auto r3 = m.insert_if_absent("apple", black);
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, "apple");
+  EXPECT_EQ(r3.first->second, "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string peach = "peach";
+  std::string pink = "pink";
+  auto r4 = m.insert_if_absent(std::move(peach), std::move(pink));
+  EXPECT_TRUE(r4.second);
+  EXPECT_TRUE(peach.empty());
+  EXPECT_TRUE(pink.empty());
+  EXPECT_EQ(r4.first->first, "peach");
+  EXPECT_EQ(r4.first->second, "pink");
+  EXPECT_EQ(m.size(), 7);
+
+  auto r5 = m.insert_if_absent("tomato", black);
+  EXPECT_TRUE(r5.second);
+  EXPECT_EQ(r5.first->first, "tomato");
+  EXPECT_EQ(r5.first->second, "black");
+  EXPECT_EQ(black, "black");
+  EXPECT_EQ(m.size(), 8);
 }
 
 TEST(MapStringTest, LinearInsertUpdateBaseStringKey) {
@@ -6729,6 +7333,31 @@ TEST(MapStringTest, LinearInsertOrAssignBaseStringKey) {
   EXPECT_EQ(m["empty"], "");
 
   auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");
+}
+
+TEST(MapStringTest, LinearEmplaceOrAssignBaseStringKey) {
+  LinearFlatMap<String, std::string> m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "bana");
+    EXPECT_EQ(m["fruit"], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.emplace_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.emplace_or_assign("new_key", "value");
   EXPECT_EQ(it->first, "new_key");
 }
 
@@ -7483,7 +8112,7 @@ TEST(LinearSet, MergeBaseStringKey) {
     LinearFlatSet<String> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 
   {
@@ -7510,50 +8139,92 @@ TEST(LinearSet, MergeBaseStringKey) {
     InlineLinearFlatSet<String, 4> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 }
 
 TEST(Vector, LinearMapInsertOrAssignBaseStringKeyWithPolicy) {
-  {
-    InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> map{
-        {"3", "c"}, {"2", "b"}, {"1", "a"}};
-    EXPECT_EQ(map.size(), 3);
-    EXPECT_EQ(map["1"], "a");
-    EXPECT_EQ(map["2"], "b");
-    EXPECT_EQ(map["3"], "c");
-    EXPECT_EQ(map["4"], "");
+  InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
 
-    auto r = map.insert_or_assign("4", "d");
-    EXPECT_FALSE(r.second);
-    EXPECT_EQ(map["4"], "d");
+  auto r = map.insert_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
 
-    String s5("5");
-    std::string se = "e";
-    auto r2 = map.insert_or_assign(s5, std::move(se));
-    EXPECT_TRUE(r2.second);
-    EXPECT_EQ(map["5"], "e");
-    EXPECT_EQ(s5, "5");
-    EXPECT_TRUE(se.empty());
+  String s5("5");
+  std::string se = "e";
+  auto r2 = map.insert_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
 
-    String s6("6");
-    std::string sf = "f";
-    auto r3 = map.insert_or_assign(std::move(s6), std::move(sf));
-    EXPECT_TRUE(r3.second);
-    EXPECT_EQ(map["6"], "f");
-    EXPECT_TRUE(s6.empty());
-    EXPECT_TRUE(sf.empty());
+  String s6("6");
+  std::string sf = "f";
+  auto r3 = map.insert_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
 
-    String s7("7");
-    std::string sg = "g";
-    auto r4 = map.insert_or_assign(std::move(s7), sg);
-    EXPECT_TRUE(r4.second);
-    EXPECT_EQ(map["7"], "g");
-    EXPECT_TRUE(s7.empty());
-    EXPECT_EQ(sg, "g");
+  String s7("7");
+  std::string sg = "g";
+  auto r4 = map.insert_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
 
-    EXPECT_EQ(map.size(), 7);
-  }
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearMapEmplaceOrAssignBaseStringKeyWithPolicy) {
+  InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
+
+  auto r = map.emplace_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
+
+  String s5("5");
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
+
+  String s6("6");
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
+
+  String s7("7");
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign("7", 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map["7"], "ggggg");
+
+  EXPECT_EQ(map.size(), 7);
 }
 
 TEST(Vector, LinearSetInsertBaseStringKeyWithPolicy) {
@@ -7693,6 +8364,56 @@ TEST(MapStringTest, LinearElementAccessBaseStringKeyWithPolicy) {
   EXPECT_EQ(m["grape"], "");
   EXPECT_EQ(m.at("grape"), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at("orange"), "");
+  m.at("orange") = "orange";
+  EXPECT_EQ(m["orange"], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  std::string melon = "melon";
+  m.at(std::move(melon)) = "green";
+  EXPECT_EQ(melon, "");
+  EXPECT_EQ(m.find("melon")->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  std::string pear = "pear";
+  auto r = m.insert_default_if_absent(std::move(pear));
+  EXPECT_TRUE(r.second);
+  r.first->second = "yellow";
+  EXPECT_EQ(pear, "");
+  EXPECT_EQ(m["pear"], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent("apple");
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m["apple"], "green");
+  r2.first->second = "red";
+  EXPECT_EQ(m["apple"], "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string black = "black";
+  auto r3 = m.insert_if_absent("apple", black);
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, "apple");
+  EXPECT_EQ(r3.first->second, "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string peach = "peach";
+  std::string pink = "pink";
+  auto r4 = m.insert_if_absent(std::move(peach), std::move(pink));
+  EXPECT_TRUE(r4.second);
+  EXPECT_TRUE(peach.empty());
+  EXPECT_TRUE(pink.empty());
+  EXPECT_EQ(r4.first->first, "peach");
+  EXPECT_EQ(r4.first->second, "pink");
+  EXPECT_EQ(m.size(), 7);
+
+  auto r5 = m.insert_if_absent("tomato", black);
+  EXPECT_TRUE(r5.second);
+  EXPECT_EQ(r5.first->first, "tomato");
+  EXPECT_EQ(r5.first->second, "black");
+  EXPECT_EQ(black, "black");
+  EXPECT_EQ(m.size(), 8);
 }
 
 TEST(MapStringTest, LinearInsertUpdateBaseStringKeyWithPolicy) {
@@ -7878,6 +8599,31 @@ TEST(MapStringTest, LinearInsertOrAssignBaseStringKeyWithPolicy) {
   EXPECT_EQ(m["empty"], "");
 
   auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");
+}
+
+TEST(MapStringTest, LinearEmplaceOrAssignBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign("fruit", "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "bana");
+    EXPECT_EQ(m["fruit"], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.emplace_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.emplace_or_assign("new_key", "value");
   EXPECT_EQ(it->first, "new_key");
 }
 
@@ -8438,7 +9184,7 @@ TEST(LinearSet, MergeBaseStringKeyWithPolicy) {
     LinearFlatSet<String, KeyPolicy<String>> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 
   {
@@ -8465,7 +9211,7 @@ TEST(LinearSet, MergeBaseStringKeyWithPolicy) {
     InlineLinearFlatSet<String, 4, KeyPolicy<String>> m2{"A", "b", "C", "D"};
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
-    EXPECT_TRUE(AssertMapContent_AC(m2));
+    EXPECT_TRUE(AssertSetContent_AC(m2));
   }
 }
 
@@ -8491,6 +9237,12 @@ bool AssertMapContent_13(SetType& m) {
   return m.size() == 2 && m.contains(1) && m.contains(3);
 }
 
+template <class SetType>
+bool AssertMapContent_1n234(SetType& m) {
+  return m.size() == 4 && m.contains(1) && m.contains(-2) && m.contains(3) &&
+         m.contains(4);
+}
+
 template <class MapType>
 bool AssertMapContent_123_123(MapType& m) {
   return (m.size() == 3) && (m[1] == "1") && (m[2] == "2") && (m[3] == "3");
@@ -8508,45 +9260,93 @@ bool AssertMapContent_123n24_1232040(MapType& m) {
 }
 
 template <class MapType>
+bool AssertMapContent_123n24_102302040(MapType& m) {
+  return (m.size() == 5) && (m[1] == "10") && (m[2] == "2") && (m[3] == "30") &&
+         (m[-2] == "20") && (m[4] == "40");
+}
+
+template <class MapType>
 bool AssertMapContent_13_1030(MapType& m) {
   return (m.size() == 2) && (m[1] == "10") && (m[3] == "30");
+}
+
+template <class MapType>
+bool AssertMapContent_1n234_10203040(MapType& m) {
+  return (m.size() == 4) && (m[1] == "10") && (m[-2] == "20") &&
+         (m[3] == "30") && (m[4] == "40");
 }
 }  // namespace
 
 TEST(Vector, LinearMapInsertOrAssignIntKey) {
-  {
-    InlineLinearFlatMap<int16_t, std::string, 5> map{
-        {3, "c"}, {2, "b"}, {1, "a"}};
-    EXPECT_EQ(map.size(), 3);
-    EXPECT_EQ(map[1], "a");
-    EXPECT_EQ(map[2], "b");
-    EXPECT_EQ(map[3], "c");
-    EXPECT_EQ(map[4], "");
+  InlineLinearFlatMap<int16_t, std::string, 5> map{
+      {3, "c"}, {2, "b"}, {1, "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[1], "a");
+  EXPECT_EQ(map[2], "b");
+  EXPECT_EQ(map[3], "c");
+  EXPECT_EQ(map[4], "");
 
-    auto r = map.insert_or_assign(4, "d");
-    EXPECT_FALSE(r.second);
-    EXPECT_EQ(map[4], "d");
+  auto r = map.insert_or_assign(4, "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map[4], "d");
 
-    std::string se = "e";
-    auto r2 = map.insert_or_assign(5, std::move(se));
-    EXPECT_TRUE(r2.second);
-    EXPECT_EQ(map[5], "e");
-    EXPECT_TRUE(se.empty());
+  std::string se = "e";
+  auto r2 = map.insert_or_assign(5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map[5], "e");
+  EXPECT_TRUE(se.empty());
 
-    std::string sf = "f";
-    auto r3 = map.insert_or_assign(6, std::move(sf));
-    EXPECT_TRUE(r3.second);
-    EXPECT_EQ(map[6], "f");
-    EXPECT_TRUE(sf.empty());
+  std::string sf = "f";
+  auto r3 = map.insert_or_assign(6, std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map[6], "f");
+  EXPECT_TRUE(sf.empty());
 
-    std::string sg = "g";
-    auto r4 = map.insert_or_assign(7, sg);
-    EXPECT_TRUE(r4.second);
-    EXPECT_EQ(map[7], "g");
-    EXPECT_EQ(sg, "g");
+  std::string sg = "g";
+  auto r4 = map.insert_or_assign(7, sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map[7], "g");
+  EXPECT_EQ(sg, "g");
 
-    EXPECT_EQ(map.size(), 7);
-  }
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearMapEmplaceOrAssignIntKey) {
+  InlineLinearFlatMap<int16_t, std::string, 5> map{
+      {3, "c"}, {2, "b"}, {1, "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[1], "a");
+  EXPECT_EQ(map[2], "b");
+  EXPECT_EQ(map[3], "c");
+  EXPECT_EQ(map[4], "");
+
+  auto r = map.emplace_or_assign(4, "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map[4], "d");
+
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map[5], "e");
+  EXPECT_TRUE(se.empty());
+
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(6, std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map[6], "f");
+  EXPECT_TRUE(sf.empty());
+
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(7, sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map[7], "g");
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign(7, 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map[7], "ggggg");
+
+  EXPECT_EQ(map.size(), 7);
 }
 
 TEST(Vector, LinearSetInsertIntKey) {
@@ -8658,6 +9458,53 @@ TEST(MapIntTest, LinearElementAccessIntKey) {
   EXPECT_EQ(m[101], "");
   EXPECT_EQ(m.at(101), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at(102), "");
+  m.at(102) = "orange";
+  EXPECT_EQ(m[102], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  int32_t i103 = 103;
+  m.at(std::move(i103)) = "green";
+  EXPECT_EQ(m.find(103)->first, 103);
+  EXPECT_EQ(m.find(103)->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  int32_t i105 = 105;
+  auto r = m.insert_default_if_absent(std::move(i105));
+  EXPECT_TRUE(r.second);
+  r.first->second = "yellow";
+  EXPECT_EQ(m[105], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent(99);
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m[99], "green");
+  r2.first->second = "red";
+  EXPECT_EQ(m[99], "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string black = "black";
+  auto r3 = m.insert_if_absent(99, black);
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, 99);
+  EXPECT_EQ(r3.first->second, "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string pink = "pink";
+  auto r4 = m.insert_if_absent(200, std::move(pink));
+  EXPECT_TRUE(r4.second);
+  EXPECT_TRUE(pink.empty());
+  EXPECT_EQ(r4.first->first, 200);
+  EXPECT_EQ(r4.first->second, "pink");
+  EXPECT_EQ(m.size(), 7);
+
+  auto r5 = m.insert_if_absent(300, black);
+  EXPECT_TRUE(r5.second);
+  EXPECT_EQ(r5.first->first, 300);
+  EXPECT_EQ(r5.first->second, "black");
+  EXPECT_EQ(black, "black");
+  EXPECT_EQ(m.size(), 8);
 }
 
 TEST(MapIntTest, LinearInsertUpdateIntKey) {
@@ -8812,6 +9659,31 @@ TEST(MapIntTest, LinearInsertOrAssignIntKey) {
   EXPECT_EQ(m[11], "11");
 
   auto [it, _] = m.insert_or_assign(12, "orange");
+  EXPECT_EQ(it->first, 12);
+}
+
+TEST(MapIntTest, LinearEmplaceOrAssignIntKey) {
+  LinearFlatMap<int16_t, std::string> m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign(10, "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign(10, "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "bana");
+    EXPECT_EQ(m[10], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.emplace_or_assign(11, "11");
+  EXPECT_EQ(m[11], "11");
+
+  auto [it, _] = m.emplace_or_assign(12, "orange");
   EXPECT_EQ(it->first, 12);
 }
 
@@ -9328,6 +10200,72 @@ TEST(LinearMap, MergeIntKey) {
   }
 }
 
+TEST(LinearMap, MergeAssignIntKey) {
+  {
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m2{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m2{
+        {1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_102302040(m1));
+    EXPECT_TRUE(AssertMapContent_1n234_10203040(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3, MergeAssignKeyPolicy<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, MergeAssignKeyPolicy<uint8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3, MergeAssignKeyPolicy<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 3, MergeAssignKeyPolicy<uint8_t>>
+        m2{{1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3, MergeAssignKeyPolicy<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 4, MergeAssignKeyPolicy<uint8_t>>
+        m2{{1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_102302040(m1));
+    EXPECT_TRUE(AssertMapContent_1n234_10203040(m2));
+  }
+}
+
 TEST(LinearSet, MergeIntKey) {
   {
     LinearFlatSet<int8_t> m1{1, 2, 3};
@@ -9384,40 +10322,133 @@ TEST(LinearSet, MergeIntKey) {
   }
 }
 
-TEST(Vector, LinearMapInsertOrAssignIntKeyWithPolicy) {
+TEST(LinearSet, MergeAssignIntKey) {
   {
-    InlineLinearFlatMap<int16_t, std::string, 5, KeyPolicy<int16_t>> map{
-        {3, "c"}, {2, "b"}, {1, "a"}};
-    EXPECT_EQ(map.size(), 3);
-    EXPECT_EQ(map[1], "a");
-    EXPECT_EQ(map[2], "b");
-    EXPECT_EQ(map[3], "c");
-    EXPECT_EQ(map[4], "");
-
-    auto r = map.insert_or_assign(4, "d");
-    EXPECT_FALSE(r.second);
-    EXPECT_EQ(map[4], "d");
-
-    std::string se = "e";
-    auto r2 = map.insert_or_assign(5, std::move(se));
-    EXPECT_TRUE(r2.second);
-    EXPECT_EQ(map[5], "e");
-    EXPECT_TRUE(se.empty());
-
-    std::string sf = "f";
-    auto r3 = map.insert_or_assign(6, std::move(sf));
-    EXPECT_TRUE(r3.second);
-    EXPECT_EQ(map[6], "f");
-    EXPECT_TRUE(sf.empty());
-
-    std::string sg = "g";
-    auto r4 = map.insert_or_assign(7, sg);
-    EXPECT_TRUE(r4.second);
-    EXPECT_EQ(map[7], "g");
-    EXPECT_EQ(sg, "g");
-
-    EXPECT_EQ(map.size(), 7);
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_123(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
   }
+
+  {
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m2{1, 2, 3};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+  }
+
+  {
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m2{1, -2, 3, 4};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123n24(m1));
+    EXPECT_TRUE(AssertMapContent_1n234(m2));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3, MergeAssignKeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, MergeAssignKeyPolicy<int8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_123(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3, MergeAssignKeyPolicy<int8_t>> m1{1, 2, 3};
+    InlineLinearFlatSet<int8_t, 3, MergeAssignKeyPolicy<int8_t>> m2{1, 2, 3};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3, MergeAssignKeyPolicy<int8_t>> m1{1, 2, 3};
+    InlineLinearFlatSet<int8_t, 4, MergeAssignKeyPolicy<int8_t>> m2{1, -2, 3,
+                                                                    4};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123n24(m1));
+    EXPECT_TRUE(AssertMapContent_1n234(m2));
+  }
+}
+
+TEST(Vector, LinearMapInsertOrAssignIntKeyWithPolicy) {
+  InlineLinearFlatMap<int16_t, std::string, 5, KeyPolicy<int16_t>> map{
+      {3, "c"}, {2, "b"}, {1, "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[1], "a");
+  EXPECT_EQ(map[2], "b");
+  EXPECT_EQ(map[3], "c");
+  EXPECT_EQ(map[4], "");
+
+  auto r = map.insert_or_assign(4, "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map[4], "d");
+
+  std::string se = "e";
+  auto r2 = map.insert_or_assign(5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map[5], "e");
+  EXPECT_TRUE(se.empty());
+
+  std::string sf = "f";
+  auto r3 = map.insert_or_assign(6, std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map[6], "f");
+  EXPECT_TRUE(sf.empty());
+
+  std::string sg = "g";
+  auto r4 = map.insert_or_assign(7, sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map[7], "g");
+  EXPECT_EQ(sg, "g");
+
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearMapEmplaceOrAssignIntKeyWithPolicy) {
+  InlineLinearFlatMap<int16_t, std::string, 5, KeyPolicy<int16_t>> map{
+      {3, "c"}, {2, "b"}, {1, "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[1], "a");
+  EXPECT_EQ(map[2], "b");
+  EXPECT_EQ(map[3], "c");
+  EXPECT_EQ(map[4], "");
+
+  auto r = map.emplace_or_assign(4, "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map[4], "d");
+
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map[5], "e");
+  EXPECT_TRUE(se.empty());
+
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(6, std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map[6], "f");
+  EXPECT_TRUE(sf.empty());
+
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(7, sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map[7], "g");
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign(7, 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map[7], "ggggg");
+
+  EXPECT_EQ(map.size(), 7);
 }
 
 TEST(Vector, LinearSetInsertIntKeyWithPolicy) {
@@ -9530,6 +10561,53 @@ TEST(MapIntTest, LinearElementAccessIntKeyWithPolicy) {
   EXPECT_EQ(m[101], "");
   EXPECT_EQ(m.at(101), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at(102), "");
+  m.at(102) = "orange";
+  EXPECT_EQ(m[102], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  int32_t i103 = 103;
+  m.at(std::move(i103)) = "green";
+  EXPECT_EQ(m.find(103)->first, 103);
+  EXPECT_EQ(m.find(103)->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  int32_t i105 = 105;
+  auto r = m.insert_default_if_absent(std::move(i105));
+  EXPECT_TRUE(r.second);
+  r.first->second = "yellow";
+  EXPECT_EQ(m[105], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent(99);
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m[99], "green");
+  r2.first->second = "red";
+  EXPECT_EQ(m[99], "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string black = "black";
+  auto r3 = m.insert_if_absent(99, black);
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, 99);
+  EXPECT_EQ(r3.first->second, "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string pink = "pink";
+  auto r4 = m.insert_if_absent(200, std::move(pink));
+  EXPECT_TRUE(r4.second);
+  EXPECT_TRUE(pink.empty());
+  EXPECT_EQ(r4.first->first, 200);
+  EXPECT_EQ(r4.first->second, "pink");
+  EXPECT_EQ(m.size(), 7);
+
+  auto r5 = m.insert_if_absent(300, black);
+  EXPECT_TRUE(r5.second);
+  EXPECT_EQ(r5.first->first, 300);
+  EXPECT_EQ(r5.first->second, "black");
+  EXPECT_EQ(black, "black");
+  EXPECT_EQ(m.size(), 8);
 }
 
 TEST(MapIntTest, LinearInsertUpdateIntKeyWithPolicy) {
@@ -9690,6 +10768,31 @@ TEST(MapIntTest, LinearInsertOrAssignIntKeyWithPolicy) {
   EXPECT_EQ(m[11], "11");
 
   auto [it, _] = m.insert_or_assign(12, "orange");
+  EXPECT_EQ(it->first, 12);
+}
+
+TEST(MapIntTest, LinearEmplaceOrAssignIntKeyWithPolicy) {
+  LinearFlatMap<int16_t, std::string, KeyPolicy<int16_t>> m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign(10, "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign(10, "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "bana");
+    EXPECT_EQ(m[10], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.emplace_or_assign(11, "11");
+  EXPECT_EQ(m[11], "11");
+
+  auto [it, _] = m.emplace_or_assign(12, "orange");
   EXPECT_EQ(it->first, 12);
 }
 
@@ -10280,40 +11383,77 @@ TEST(LinearSet, MergeIntKeyWithPolicy) {
 }
 
 TEST(Vector, LinearMapInsertOrAssignIntKeyWithConsecutivePolicy) {
-  {
-    InlineLinearFlatMap<int16_t, std::string, 5,
-                        MapKeyPolicyConsecutiveIntegers<int16_t>>
-        map{{3, "c"}, {2, "b"}, {1, "a"}};
-    EXPECT_EQ(map.size(), 3);
-    EXPECT_EQ(map[1], "a");
-    EXPECT_EQ(map[2], "b");
-    EXPECT_EQ(map[3], "c");
-    EXPECT_EQ(map[4], "");
+  InlineLinearFlatMap<int16_t, std::string, 5,
+                      MapKeyPolicyConsecutiveIntegers<int16_t>>
+      map{{3, "c"}, {2, "b"}, {1, "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[1], "a");
+  EXPECT_EQ(map[2], "b");
+  EXPECT_EQ(map[3], "c");
+  EXPECT_EQ(map[4], "");
 
-    auto r = map.insert_or_assign(4, "d");
-    EXPECT_FALSE(r.second);
-    EXPECT_EQ(map[4], "d");
+  auto r = map.insert_or_assign(4, "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map[4], "d");
 
-    std::string se = "e";
-    auto r2 = map.insert_or_assign(5, std::move(se));
-    EXPECT_TRUE(r2.second);
-    EXPECT_EQ(map[5], "e");
-    EXPECT_TRUE(se.empty());
+  std::string se = "e";
+  auto r2 = map.insert_or_assign(5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map[5], "e");
+  EXPECT_TRUE(se.empty());
 
-    std::string sf = "f";
-    auto r3 = map.insert_or_assign(6, std::move(sf));
-    EXPECT_TRUE(r3.second);
-    EXPECT_EQ(map[6], "f");
-    EXPECT_TRUE(sf.empty());
+  std::string sf = "f";
+  auto r3 = map.insert_or_assign(6, std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map[6], "f");
+  EXPECT_TRUE(sf.empty());
 
-    std::string sg = "g";
-    auto r4 = map.insert_or_assign(7, sg);
-    EXPECT_TRUE(r4.second);
-    EXPECT_EQ(map[7], "g");
-    EXPECT_EQ(sg, "g");
+  std::string sg = "g";
+  auto r4 = map.insert_or_assign(7, sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map[7], "g");
+  EXPECT_EQ(sg, "g");
 
-    EXPECT_EQ(map.size(), 7);
-  }
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearMapEmplaceOrAssignIntKeyWithConsecutivePolicy) {
+  InlineLinearFlatMap<int16_t, std::string, 5,
+                      MapKeyPolicyConsecutiveIntegers<int16_t>>
+      map{{3, "c"}, {2, "b"}, {1, "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[1], "a");
+  EXPECT_EQ(map[2], "b");
+  EXPECT_EQ(map[3], "c");
+  EXPECT_EQ(map[4], "");
+
+  auto r = map.emplace_or_assign(4, "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map[4], "d");
+
+  std::string se = "e";
+  auto r2 = map.emplace_or_assign(5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map[5], "e");
+  EXPECT_TRUE(se.empty());
+
+  std::string sf = "f";
+  auto r3 = map.emplace_or_assign(6, std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map[6], "f");
+  EXPECT_TRUE(sf.empty());
+
+  std::string sg = "g";
+  auto r4 = map.emplace_or_assign(7, sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map[7], "g");
+  EXPECT_EQ(sg, "g");
+
+  auto r5 = map.emplace_or_assign(7, 5, 'g');
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(map[7], "ggggg");
+
+  EXPECT_EQ(map.size(), 7);
 }
 
 TEST(Vector, LinearMapEmplaceIntKeyWithConsecutivePolicy) {
@@ -10397,6 +11537,50 @@ TEST(MapIntTest, LinearElementAccessIntKeyWithConsecutivePolicy) {
   EXPECT_EQ(m[101], "");
   EXPECT_EQ(m.at(101), "");
   EXPECT_EQ(m.size(), 3);
+
+  EXPECT_EQ(m.at(102), "");
+  m.at(102) = "orange";
+  EXPECT_EQ(m[102], "orange");
+  EXPECT_EQ(m.size(), 4);
+
+  int32_t i103 = 103;
+  m.at(std::move(i103)) = "green";
+  EXPECT_EQ(m.find(103)->first, 103);
+  EXPECT_EQ(m.find(103)->second, "green");
+  EXPECT_EQ(m.size(), 5);
+
+  int32_t i105 = 105;
+  auto r = m.insert_default_if_absent(std::move(i105));
+  EXPECT_TRUE(r.second);
+  *r.first = "yellow";
+  EXPECT_EQ(m[105], "yellow");
+  EXPECT_EQ(m.size(), 6);
+
+  auto r2 = m.insert_default_if_absent(99);
+  EXPECT_FALSE(r2.second);
+  EXPECT_EQ(m[99], "green");
+  *r2.first = "red";
+  EXPECT_EQ(m[99], "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string black = "black";
+  auto r3 = m.insert_if_absent(99, black);
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(*r3.first, "red");
+  EXPECT_EQ(m.size(), 6);
+
+  std::string pink = "pink";
+  auto r4 = m.insert_if_absent(200, std::move(pink));
+  EXPECT_TRUE(r4.second);
+  EXPECT_TRUE(pink.empty());
+  EXPECT_EQ(*r4.first, "pink");
+  EXPECT_EQ(m.size(), 7);
+
+  auto r5 = m.insert_if_absent(300, black);
+  EXPECT_TRUE(r5.second);
+  EXPECT_EQ(*r5.first, "black");
+  EXPECT_EQ(black, "black");
+  EXPECT_EQ(m.size(), 8);
 }
 
 TEST(MapIntTest, LinearInsertUpdateIntKeyWithConsecutivePolicy) {
@@ -10480,16 +11664,45 @@ TEST(MapIntTest, LinearEraseOperationsIntKeyWithConsecutivePolicy) {
   EXPECT_EQ(m.erase(100), 0);
 }
 
+TEST(MapIntTest, LinearIteratorsIntKeyWithConsecutivePolicy_i8) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>> m{
+      {26, "26"}, {1, "1"}, {13, "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 1 : 26);
+  EXPECT_EQ(it->second, m.is_data_ordered() ? "1" : "26");
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 13 : 1);
+  EXPECT_EQ(it->second, m.is_data_ordered() ? "13" : "1");
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 26 : 13);
+  EXPECT_EQ(it->second, m.is_data_ordered() ? "26" : "13");
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(*rit, m.is_data_ordered() ? "26" : "13");
+  ++rit;
+  EXPECT_EQ(*rit, m.is_data_ordered() ? "13" : "1");
+  ++rit;
+  EXPECT_EQ(*rit, m.is_data_ordered() ? "1" : "26");
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
 TEST(MapIntTest, LinearIteratorsIntKeyWithConsecutivePolicy) {
   LinearFlatMap<int32_t, std::string, MapKeyPolicyConsecutiveIntegers<int32_t>>
       m{{26, "26"}, {1, "1"}, {13, "13"}};
 
   auto it = m.begin();
-  EXPECT_EQ(*it, m.is_data_ordered() ? "1" : "26");
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 1 : 26);
+  EXPECT_EQ(it->second, m.is_data_ordered() ? "1" : "26");
   ++it;
-  EXPECT_EQ(*it, m.is_data_ordered() ? "13" : "1");
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 13 : 1);
+  EXPECT_EQ(it->second, m.is_data_ordered() ? "13" : "1");
   ++it;
-  EXPECT_EQ(*it, m.is_data_ordered() ? "26" : "13");
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 26 : 13);
+  EXPECT_EQ(it->second, m.is_data_ordered() ? "26" : "13");
   ++it;
   EXPECT_EQ(it, m.end());
 
@@ -10525,6 +11738,32 @@ TEST(MapIntTest, LinearInsertOrAssignIntKeyWithConsecutivePolicy) {
   EXPECT_EQ(m[11], "11");
 
   auto [it, _] = m.insert_or_assign(12, "orange");
+  EXPECT_EQ(*it, "orange");
+}
+
+TEST(MapIntTest, LinearEmplaceOrAssignIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>
+      m;
+
+  {
+    auto [it, inserted] = m.emplace_or_assign(10, "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(*it, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.emplace_or_assign(10, "banana", 4);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(*it, "bana");
+    EXPECT_EQ(m[10], "bana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.emplace_or_assign(11, "11");
+  EXPECT_EQ(m[11], "11");
+
+  auto [it, _] = m.emplace_or_assign(12, "orange");
   EXPECT_EQ(*it, "orange");
 }
 
@@ -10898,6 +12137,92 @@ TEST(LinearMap, MergeIntKeyWithConsecutivePolicy) {
   }
 }
 
+template <class K>
+struct MergeAssignKeyPolicyConsecutiveIntegers
+    : public MapKeyPolicyConsecutiveIntegers<K> {
+  static constexpr auto assign_existing_for_merge = true;
+};
+
+TEST(LinearMap, MergeAssignIntKeyWithConsecutivePolicy) {
+  {
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_102302040(m1));
+    EXPECT_TRUE(AssertMapContent_1n234_10203040(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 4,
+                        MergeAssignKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_102302040(m1));
+    EXPECT_TRUE(AssertMapContent_1n234_10203040(m2));
+  }
+}
+
 template <class MAP>
 static void IntKeyMapComprehensiveTest() {
   const int num_elements = 1001;
@@ -10978,7 +12303,11 @@ static void IntKeyMapComprehensiveTest() {
     // test size
     ASSERT_EQ(loop_test_map.size(), size_before_erase);
     // test content of inserted value
-    ASSERT_EQ(insert_result.first->second, value_to_insert);
+    if constexpr (MAP::consecutive_key) {
+      ASSERT_EQ(*insert_result.first, value_to_insert);
+    } else {
+      ASSERT_EQ(insert_result.first->second, value_to_insert);
+    }
   }
   // Map unchanged
   ASSERT_EQ(loop_test_map, original_map);
@@ -11020,17 +12349,178 @@ static void IntKeyMapRandomInsertEraseTest() {
 
 TEST(IntKeyMap, ComprehensiveTestLinearFlat) {
   IntKeyMapComprehensiveTest<LinearFlatMap<int, std::string>>();
+  IntKeyMapComprehensiveTest<LinearFlatMap<
+      int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>>();
+  IntKeyMapComprehensiveTest<LinearFlatMap<
+      int32_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>>();
   IntKeyMapRandomInsertEraseTest<LinearFlatMap<int, std::string>>();
+  IntKeyMapRandomInsertEraseTest<LinearFlatMap<
+      int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>>();
+  IntKeyMapRandomInsertEraseTest<LinearFlatMap<
+      int32_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>>();
 }
 
 TEST(IntKeyMap, ComprehensiveTestOrderedFlat) {
   IntKeyMapComprehensiveTest<OrderedFlatMap<int, std::string>>();
-  IntKeyMapRandomInsertEraseTest<LinearFlatMap<int, std::string>>();
+  IntKeyMapRandomInsertEraseTest<OrderedFlatMap<int, std::string>>();
 }
 
 TEST(IntKeyMap, ComprehensiveTestLinearFlatWithConsecutivePolicy) {
   IntKeyMapRandomInsertEraseTest<
       LinearFlatMap<int, std::string, MapKeyPolicyConsecutiveIntegers<int>>>();
+}
+
+TEST(IntKeyMap, ConsecutivePolicyRangedLoop) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      map{{3, "33"}, {2, "22"}, {1, "11"}};
+  int index = 3;
+  for (auto& it : map) {
+    EXPECT_TRUE(it.first == index);
+    EXPECT_TRUE(it.second == std::to_string(index) + std::to_string(index));
+    it.second =
+        std::to_string(index) + std::to_string(index) + std::to_string(index);
+    index--;
+  }
+  EXPECT_TRUE(index == 0);
+  EXPECT_TRUE(map[3] == "333");
+  EXPECT_TRUE(map[2] == "222");
+  EXPECT_TRUE(map[1] == "111");
+}
+
+TEST(IntKeyMap, ConsecutivePolicyRangedLoop2) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      map{{3, "33"}, {2, "22"}, {1, "11"}};
+  int index = 3;
+  for (auto& [key, value] : map) {
+    EXPECT_TRUE(key == index);
+    EXPECT_TRUE(value == std::to_string(index) + std::to_string(index));
+    value =
+        std::to_string(index) + std::to_string(index) + std::to_string(index);
+    index--;
+  }
+  EXPECT_TRUE(index == 0);
+  EXPECT_TRUE(map[3] == "333");
+  EXPECT_TRUE(map[2] == "222");
+  EXPECT_TRUE(map[1] == "111");
+}
+
+TEST(IntKeyMap, ConsecutivePolicyIteratorImplicitToPair) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      map{{3, "33"}, {2, "22"}, {1, "11"}};
+  std::map<int8_t, std::string> ordered_map(map.begin(), map.end());
+
+  int index = 1;
+  for (auto& [key, value] : ordered_map) {
+    EXPECT_TRUE(key == index);
+    EXPECT_TRUE(value == std::to_string(index) + std::to_string(index));
+    value =
+        std::to_string(index) + std::to_string(index) + std::to_string(index);
+    index++;
+  }
+}
+
+TEST(IntKeyMap, ConsecutivePolicyFrontBack) {
+  {
+    LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+        m{{3, "33"}, {2, "22"}, {1, "11"}};
+    EXPECT_EQ(m.front().first, 3);
+    EXPECT_EQ(m.front().second, "33");
+    EXPECT_EQ(m.back().first, 1);
+    EXPECT_EQ(m.back().second, "11");
+    m.erase(3);
+    m.erase(1);
+    EXPECT_EQ(m.front().first, 2);
+    EXPECT_EQ(m.front().second, "22");
+    EXPECT_EQ(m.back().first, 2);
+    EXPECT_EQ(m.back().second, "22");
+
+    m.front().second = "22222";
+    EXPECT_EQ(m[2], "22222");
+    m.back().second = "222";
+    EXPECT_EQ(m[2], "222");
+  }
+
+  {
+    const LinearFlatMap<int8_t, std::string,
+                        MapKeyPolicyConsecutiveIntegers<int8_t>>
+        m{{3, "33"}, {2, "22"}, {1, "11"}};
+    EXPECT_EQ(m.front().first, 3);
+    EXPECT_EQ(m.front().second, "33");
+    EXPECT_EQ(m.back().first, 1);
+    EXPECT_EQ(m.back().second, "11");
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(m)>>&>(m))
+        .erase(3);
+    (const_cast<std::remove_const_t<std::remove_reference_t<decltype(m)>>&>(m))
+        .erase(1);
+    EXPECT_EQ(m.front().first, 2);
+    EXPECT_EQ(m.front().second, "22");
+    EXPECT_EQ(m.back().first, 2);
+    EXPECT_EQ(m.back().second, "22");
+  }
+}
+
+TEST(IntKeyMap, ConsecutivePolicyFindEqEnd) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      empty_map;
+  EXPECT_TRUE(empty_map.find(2) == empty_map.end());
+  EXPECT_TRUE(empty_map.begin() == empty_map.end());
+
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      map{{3, "33"}, {2, "22"}, {1, "11"}};
+  auto it = map.find(3);
+  auto it2 = map.find(5);
+  auto it3 = map.find(2);
+  EXPECT_TRUE(it == map.begin());
+  EXPECT_TRUE(map.begin() == it);
+  EXPECT_TRUE(it3 != map.begin());
+  EXPECT_TRUE(map.begin() != it3);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_TRUE(map.end() != it);
+  EXPECT_TRUE(it3 != map.end());
+  EXPECT_TRUE(map.end() != it3);
+  EXPECT_TRUE(it2 == map.end());
+  EXPECT_TRUE(map.end() == it2);
+  map.clear();
+  EXPECT_TRUE(map.begin() == map.end());
+}
+
+TEST(IntKeyMap, ConsecutivePolicyErase) {
+  {
+    LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+        map{{3, "33"}, {2, "22"}, {1, "11"}};
+    EXPECT_TRUE(map.size() == 3);
+    auto it = map.find(3);
+    auto it2 = map.erase(it);
+    EXPECT_TRUE(*it2 == "22");
+    EXPECT_TRUE(map.size() == 2);
+    it2 = map.erase(it2);
+    EXPECT_TRUE(*it2 == "11");
+    EXPECT_TRUE(map.size() == 1);
+    it2 = map.erase(it2);
+    EXPECT_TRUE(map.empty());
+    EXPECT_TRUE(it2 == map.end());
+    EXPECT_TRUE(map.begin() == map.end());
+  }
+
+  {
+    LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+        map{{3, "33"}, {2, "22"}, {1, "11"}};
+    auto it = map.begin();
+    EXPECT_TRUE(it == map.find(3));
+    EXPECT_TRUE(map.size() == 3);
+    auto it2 = map.erase(it);
+    EXPECT_TRUE(*it2 == "22");
+    EXPECT_TRUE(map.size() == 2);
+    it = map.begin();
+    it2 = map.erase(it);
+    EXPECT_TRUE(*it2 == "11");
+    EXPECT_TRUE(map.size() == 1);
+    it = map.begin();
+    it2 = map.erase(it);
+    EXPECT_TRUE(map.empty());
+    EXPECT_TRUE(it2 == map.end());
+    EXPECT_TRUE(map.begin() == map.end());
+  }
 }
 
 template <class MAP>
