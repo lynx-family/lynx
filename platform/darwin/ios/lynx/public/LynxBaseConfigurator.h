@@ -47,6 +47,8 @@
 @property(nonatomic, nonnull) id<LynxGenericResourceFetcher> genericResourceFetcher;
 @property(nonatomic, nonnull) id<LynxMediaResourceFetcher> mediaResourceFetcher;
 @property(nonatomic, nonnull) id<LynxTemplateResourceFetcher> templateResourceFetcher;
+// enable LynxMediaResourceFetcher::fetchUIImage
+@property(nonatomic, assign) BOOL enableFetchUIImage;
 
 /**
  * You can set a virtual screen size to lynxview by this way.
