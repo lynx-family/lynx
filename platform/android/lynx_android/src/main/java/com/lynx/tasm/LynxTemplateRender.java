@@ -312,13 +312,8 @@ public class LynxTemplateRender
     }
 
     mLynxViewBuilder = builder;
-    if (mLynxViewGroup != null) {
+    if (mLynxViewGroup != null && mLynxViewGroup.isTemplateBundleReady()) {
       mTemplateBundle = mLynxViewGroup.getTemplateBundle();
-    }
-
-    // fallback to use `builder.templateBundle`, delete it later;
-    if (mTemplateBundle == null) {
-      mTemplateBundle = mLynxViewBuilder.templateBundle;
     }
 
     mEmbeddedMode = mLynxViewConfigProvider.getEmbeddedMode();
