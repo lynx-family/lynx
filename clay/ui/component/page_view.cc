@@ -1119,6 +1119,9 @@ void PageView::ReportKeyEvent(const KeyEvent& event) {
 
     std::string web_key = KeyCodeConverter::ConvertToWebKey(
         event.GetLogical(), event.GetCharacter());
+    if (web_key.empty() || web_key[0] == '\0') {
+      return;
+    }
     auto temp_type = ToClayEventType(event.GetType());
     event_delegate_->OnKeyEvent(EventTypeToString(temp_type), view_id,
                                 web_key.c_str(),

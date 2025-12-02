@@ -85,6 +85,11 @@ LYNX_VALUE_EXPORT lynx_api_status lynx_value_create_map(lynx_api_env env,
 LYNX_VALUE_EXPORT lynx_api_status lynx_value_create_array(lynx_api_env env,
                                                           lynx_value* result);
 
+// Read the numberic value from lynx_value.
+// Returns lynx_api_ok if the API succeeded.
+LYNX_VALUE_EXPORT lynx_api_status lynx_value_get_number(lynx_api_env env,
+                                                        lynx_value value,
+                                                        double* result);
 // Read the double value from lynx_value. lynx_api_double_expected is returned
 // if the types do not match.
 // Returns lynx_api_ok if the API succeeded.

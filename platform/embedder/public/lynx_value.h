@@ -120,6 +120,13 @@ class LynxValue {
     return ret;
   }
 
+  double Number() const {
+    double ret;
+    lynx_api_status status = lynx_value_get_number(env_, value_, &ret);
+    if (status != lynx_api_ok) return 0.f;
+    return ret;
+  }
+
   double Double() const {
     double ret;
     lynx_api_status status = lynx_value_get_double(env_, value_, &ret);

@@ -80,6 +80,42 @@ lynx_api_status lynx_value_create_array(lynx_api_env env, lynx_value* result) {
   return lynx_api_ok;
 }
 
+lynx_api_status lynx_value_get_number(lynx_api_env env, lynx_value value,
+                                      double* result) {
+  switch (value.type) {
+    case lynx_value_double:
+      *result = value.val_double;
+      break;
+    case lynx_value_int32:
+      *result = value.val_int32;
+      break;
+    case lynx_value_uint32:
+      *result = value.val_uint32;
+      break;
+    case lynx_value_int64:
+      *result = value.val_int64;
+      break;
+    case lynx_value_uint64:
+      *result = value.val_uint64;
+      break;
+    case lynx_value_bool:
+      *result = value.val_bool;
+      break;
+    case lynx_value_string: {
+      auto* base_string =
+          reinterpret_cast<lynx::base::RefCountedStringImpl*>(value.val_ptr);
+      if (base_string) {
+        auto* str = base_string->c_str();
+        *result = strtod(str, nullptr);
+      }
+    } break;
+    default:
+      *result = 0;
+      break;
+  }
+  return lynx_api_ok;
+}
+
 lynx_api_status lynx_value_get_double(lynx_api_env env, lynx_value value,
                                       double* result) {
   if (unlikely(value.type != lynx_value_double)) {
