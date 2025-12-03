@@ -32,15 +32,15 @@ class LynxRuntimeHelperV8 : public runtime::LynxRuntimeHelper {
 extern void RegisterExternalRuntimeHelper(LynxRuntimeHelper *);
 extern "C" __attribute__((visibility("default"))) int JNI_OnLoad(JavaVM *vm,
                                                                  void *) {
-  static LynxRuntimeHelperV8 instance;
-  // register the helper
-  RegisterExternalRuntimeHelper(&instance);
-
 #if ENABLE_NAPI_BINDING
   static piper::NapiRuntimeProxyV8FactoryImpl factory;
   LOGI("Setting napi factory from external");
   RegisterV8RuntimeProxyFactory(&factory);
 #endif
+
+  static LynxRuntimeHelperV8 instance;
+  // register the helper
+  RegisterExternalRuntimeHelper(&instance);
 
   return JNI_VERSION_1_6;
 }
