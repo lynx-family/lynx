@@ -425,7 +425,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
                   processors:processors
                 imageFetcher:self.ui.context.imageFetcher
                  LynxUIImage:nil
-        enableGenericFetcher:NO
+        enableGenericFetcher:self.ui.context.mediaResourceFetcher != nil
                    completed:^(UIImage* _Nullable image, NSError* _Nullable error,
                                NSURL* _Nullable imageURL) {
                      __strong __typeof(weakSelf) strongSelf = weakSelf;

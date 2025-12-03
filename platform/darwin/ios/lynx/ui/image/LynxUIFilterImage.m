@@ -157,11 +157,14 @@ LYNX_REGISTER_UI("filter-image")
   [[LynxImageLoader sharedInstance]
       loadImageFromLynxURL:requestUrl
                       size:self.frame.size
-               contextInfo:@{LynxImageFetcherContextKeyUI : self}
+               contextInfo:@{
+                 LynxImageFetcherContextKeyUI : self,
+                 LynxImagePreloadAllFrames : @(YES)
+               }
                 processors:processorChain
               imageFetcher:self.context.imageFetcher
                LynxUIImage:nil
-      enableGenericFetcher:NO
+      enableGenericFetcher:self.context.mediaResourceFetcher != nil
                  completed:^(UIImage* _Nullable image, NSError* _Nullable error,
                              NSURL* _Nullable imageURL) {
                    typeof(weakSelf) strongSelf = weakSelf;
