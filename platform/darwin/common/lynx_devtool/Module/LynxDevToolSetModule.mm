@@ -41,6 +41,8 @@
     @"switchLongPressMenu" : NSStringFromSelector(@selector(switchLongPressMenu:)),
 #endif
     @"invokeCdp" : NSStringFromSelector(@selector(invokeCdp:callback:)),
+    @"isFspScreenshotEnabled" : NSStringFromSelector(@selector(isFspScreenshotEnabled)),
+    @"switchFspScreenshot" : NSStringFromSelector(@selector(switchFspScreenshot:)),
   };
 }
 
@@ -106,6 +108,14 @@
 
 - (void)switchQuickjsDebug:(BOOL)arg {
   [LynxDevtoolEnv.sharedInstance setQuickjsDebugEnabled:arg];
+}
+
+- (BOOL)isFspScreenshotEnabled {
+  return [LynxDevtoolEnv.sharedInstance get:SP_KEY_ENABLE_FSP_SCREENSHOT withDefaultValue:NO];
+}
+
+- (void)switchFspScreenshot:(BOOL)arg {
+  [LynxDevtoolEnv.sharedInstance set:arg forKey:SP_KEY_ENABLE_FSP_SCREENSHOT];
 }
 
 #if OS_IOS

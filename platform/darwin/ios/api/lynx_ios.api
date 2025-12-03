@@ -1388,6 +1388,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::devtoolEnabled devtoolEnabled;
   public BOOL LynxEnv::logBoxEnabled logBoxEnabled;
   public BOOL LynxEnv::highlightTouchEnabled highlightTouchEnabled;
+  public BOOL LynxEnv::fspScreenshotEnabled fspScreenshotEnabled;
   public BOOL LynxEnv::automationEnabled automationEnabled;
   public BOOL LynxEnv::layoutOnlyEnabled layoutOnlyEnabled;
   public BOOL LynxEnv::autoResumeAnimation autoResumeAnimation;
@@ -2752,6 +2753,7 @@ public class LynxMeaningfulContentInfo : NSObject {
 public class LynxMeaningfulContentSnapshot : NSObject {
   public NSArray<LynxMeaningfulContentInfo *>* LynxMeaningfulContentSnapshot::contentsArray contentsArray;
   public CGSize LynxMeaningfulContentSnapshot::containerSize containerSize;
+  public void LynxMeaningfulContentSnapshot::captureView:(id rootView);
 }
 
 public protocol LynxMeasureDelegate-p : <NSObject> {
@@ -6022,6 +6024,7 @@ public enum LynxEnvKey {
   public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
   public NSString* const SP_KEY_DEVTOOL_CONNECTED SP_KEY_DEVTOOL_CONNECTED;
   public NSString* const SP_KEY_ENABLE_QUICKJS_DEBUG SP_KEY_ENABLE_QUICKJS_DEBUG;
+  public NSString* const SP_KEY_ENABLE_FSP_SCREENSHOT SP_KEY_ENABLE_FSP_SCREENSHOT;
   public NSString* const SP_KEY_SHOW_DEVTOOL_BADGE SP_KEY_SHOW_DEVTOOL_BADGE;
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const LynxErrorDomain LynxErrorDomain;

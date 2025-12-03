@@ -1183,6 +1183,7 @@ extern NSString* const kDefaultComponentID;
                                                 maxY:rootSize.height];
   snapshot.contentsArray = contentsArray.copy;
   snapshot.containerSize = rootSize;
+  [snapshot captureView:self.rootUI.rootView];
   return snapshot;
 }
 

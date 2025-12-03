@@ -30,13 +30,7 @@ struct FSPSnapshot {
       : container_size_(std::move(container_size)),
         last_change_timestamp_us_(last_change_timestamp_us) {}
   FSPSnapshot() = default;
-  ~FSPSnapshot() {
-    if (callback_) {
-      callback_(image_ptr_);
-    }
-    image_ptr_ = nullptr;
-    callback_ = nullptr;
-  };
+  ~FSPSnapshot() = default;
 
   std::bitset<kXProjectionsLen> x_projections_;  // X-axis projection bitmap
   std::bitset<kYProjectionsLen> y_projections_;  // Y-axis projection bitmap
@@ -61,12 +55,10 @@ struct FSPSnapshot {
   /// Percentage of presented content area relative to container area.
   /// Formula: (presented content area / container area) * 100
   int32_t container_fill_percentage_container_area_ = 0;
-
-  /// Image pointer to store content projection information,
-  /// each pixel represents whether the content is presented or not.
-  void* image_ptr_ = nullptr;
-  /// Callback function to release image memory.
-  ReleaseCallback callback_ = nullptr;
+#if ENABLE_TRACE_PERFETTO
+  uint64_t trace_timestamp_us_ = 0;
+  uint64_t trace_thread_id_ = 0;
+#endif
 
   void FillContentToSnapshot(bool is_presented, IntRect rect,
                              int64_t first_presented_timestamp_us);
