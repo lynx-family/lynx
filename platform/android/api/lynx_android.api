@@ -6214,6 +6214,8 @@ public interface com::lynx::tasm::behavior::ui::list::LynxSnapHelper::LynxSnapHo
   public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getScrollY();
   public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getScrollHeight();
   public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getScrollWidth();
+  public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getContentHeight();
+  public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getContentWidth();
   public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getChildrenCount();
   public int com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getVirtualChildrenCount();
   public View com.lynx.tasm.behavior.ui.list.LynxSnapHelper.LynxSnapHooks.getChildAtIndex(int index);
