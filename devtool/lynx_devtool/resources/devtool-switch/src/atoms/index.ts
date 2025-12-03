@@ -105,6 +105,20 @@ export const highlightTouch = atomWithStorage('highlight', false, {
   removeItem() {},
 });
 
+export const fspScreenshot = atomWithStorage('fsp-screenshot', false, {
+  getItem() {
+    'background-only';
+    return (
+      NativeModules.LynxDevToolSetModule.isFspScreenshotEnabled?.() ?? false
+    );
+  },
+  setItem(_, value) {
+    'background-only';
+    return NativeModules.LynxDevToolSetModule.switchFspScreenshot?.(value);
+  },
+  removeItem() {},
+});
+
 export const v8 = atomWithStorage<V8Enable>('v8', 0, {
   getItem() {
     'background-only';

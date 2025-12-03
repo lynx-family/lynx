@@ -7,6 +7,8 @@ package com.lynx.tasm.performance.fsp;
 import android.graphics.Rect;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.eventreport.LynxEventReporter;
@@ -199,6 +201,7 @@ public class FSPTracer {
                 area.getOffsetY() + area.getHeight()),
             area.getFirstMeaningfulContentPresentedTimestampMicros());
       }
+      snapshot.traceCurrentTimestampUs = rawSnapshot.getTraceCurrentTimestampUs();
       tracer.onCaptureSnapshot(snapshot);
     });
   }
@@ -216,10 +219,15 @@ public class FSPTracer {
       mPreviousSnapshot = null;
       return;
     }
-
+    if (TraceEvent.isTracingStarted()) {
+      TraceEvent.instant(TraceEventDef.CATEGORY_DEFAULT,
+          TraceEventDef.FSP_TRACER_ON_VALUABLE_SNAPSHOT, snapshot.traceCurrentTimestampUs,
+          snapshot.toMap());
+    }
     // If previous snapshot exists, check stability
     if (mPreviousSnapshot != null && mPreviousSnapshot.getLastChangeTimestampUs() > 0
         && isSnapshotStable(snapshot, mPreviousSnapshot, mConfig)) {
+      TraceEvent.beginSection(TraceEventDef.FSP_TRACER_SNAPSHOT_STABLE);
       long diffTUs =
           snapshot.getLastChangeTimestampUs() - mPreviousSnapshot.getLastChangeTimestampUs();
       long diffTMs = diffTUs / 1000;
@@ -230,10 +238,11 @@ public class FSPTracer {
         handleFSPResult(
             ResultStatus.SUCCESS, mPreviousSnapshot, mPreviousSnapshot.getLastChangeTimestampUs());
       }
+      TraceEvent.endSection(TraceEventDef.FSP_TRACER_SNAPSHOT_STABLE);
       return;
     }
 
-    // Update previous snapshot if valuable
+    // Update previous snapshot if valuable.
     mPreviousSnapshot = snapshot;
   }
 
@@ -356,6 +365,12 @@ public class FSPTracer {
       HashMap<String, String> info = new HashMap<>(1);
       info.put(KEY_FSP_STATUS, status.getValue());
       perfController.setFSPTimingInfo(currentTimestampUs, info);
+      if (TraceEvent.isTracingStarted()) {
+        UIThreadUtils.runOnUiThread(() -> {
+          TraceEvent.instant(
+              TraceEventDef.CATEGORY_DEFAULT, TraceEventDef.FSP_TIMING_MARK_FSP_END, info);
+        });
+      }
       return;
     }
     HashMap<String, String> info = new HashMap<>(1);
@@ -369,5 +384,13 @@ public class FSPTracer {
     info.put(KEY_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA,
         String.valueOf(currentSnapshot.getContainerFillPercentageContainerArea()));
     perfController.setFSPTimingInfo(currentSnapshot.getLastChangeTimestampUs(), info);
+    if (TraceEvent.isTracingStarted()) {
+      UIThreadUtils.runOnUiThread(() -> {
+        // Add 1 us to make sure this evnet is after the snapshot bitmap
+        // event.
+        TraceEvent.instant(TraceEventDef.CATEGORY_DEFAULT, TraceEventDef.FSP_TIMING_MARK_FSP_END,
+            currentSnapshot.traceCurrentTimestampUs + 1, info);
+      });
+    }
   }
 }

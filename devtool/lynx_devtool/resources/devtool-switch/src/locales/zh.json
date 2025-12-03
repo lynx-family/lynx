@@ -19,6 +19,8 @@
   "LogBox desc": "开启后运行出错时会弹出错误提示",
   "Highlight Touch": "高亮触摸",
   "Highlight Touch desc": "开启后触摸时高亮触摸区域,并且输出事件相关日志",
+  "Enable FSP Screenshot": "开启 FSP 截图",
+  "Enable FSP Screenshot desc": "开启后能在Trace中显示FSP截图，搜索“FSPSnapshotBase64Bitmap”可查看\n重启app生效",
   "TestBench": "TestBench",
   "TestBench desc": "Lynx 页面录制工具\n开关后需重启",
   "Current JS Engine": "当前 JS 引擎"

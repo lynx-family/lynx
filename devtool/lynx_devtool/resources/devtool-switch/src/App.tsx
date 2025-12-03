@@ -11,6 +11,7 @@ import { LogBox } from './sections/LogBox';
 import { TestBench } from './sections/TestBench';
 import { PixelCopy } from './sections/PixelCopy';
 import { CurrentJSEngine } from './sections/CurrentJSEngine';
+import { FSPScreenshot } from './sections/FSPScreenshot';
 
 export default function App() {
   return (
@@ -68,6 +69,7 @@ function LynxDevTool(props: Props) {
       <DOMInspector />
       <PixelCopy />
       <HighlightTouch />
+      <FSPScreenshot />
     </>
   );
 }

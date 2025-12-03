@@ -228,4 +228,12 @@ public class TraceEventDef {
   public static final String TIMING_KEY_PAINT_END = "paintEnd";
   public static final String MARK_TIMING = "Timing::Mark";
   public static final String MARK_HOST_PLATFORM_TIMING = "Timing::MarkHostPlatformTiming";
+
+  // fsp
+  public static final String CATEGORY_DEFAULT = "lynx";
+  public static final String FSP_SNAPSHOT_BASE_64_BITMAP = "FSPSnapshotBase64Bitmap";
+  public static final String FSP_CONFIG_PARSE = "FSPConfig.parse";
+  public static final String FSP_TRACER_ON_VALUABLE_SNAPSHOT = "FSPTracer::OnValuableSnapshot";
+  public static final String FSP_TRACER_SNAPSHOT_STABLE = "FSPTracer::SnapshotStable";
+  public static final String FSP_TIMING_MARK_FSP_END = "Timing::Mark.fspEnd";
 }
