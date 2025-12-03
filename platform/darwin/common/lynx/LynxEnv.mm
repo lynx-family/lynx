@@ -188,18 +188,34 @@
 }
 
 - (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key {
+  if (![self lynxDebugEnabled]) {
+    _LogI(@"setDevtoolEnv, lynxDebugEnabled is NO");
+    return;
+  }
   [LynxDevToolUtils setDevtoolEnv:value forKey:key];
 }
 
 - (BOOL)getDevtoolEnv:(NSString *)key withDefaultValue:(BOOL)value {
+  if (![self lynxDebugEnabled]) {
+    _LogI(@"getDevtoolEnv, lynxDebugEnabled is NO, defaultValue is %@", value ? @"YES" : @"NO");
+    return value;
+  }
   return [LynxDevToolUtils getDevtoolEnv:key withDefaultValue:value];
 }
 
 - (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey {
+  if (![self lynxDebugEnabled]) {
+    _LogI(@"setDevtoolEnv group %@, lynxDebugEnabled is NO", groupKey);
+    return;
+  }
   [LynxDevToolUtils setDevtoolEnv:newGroupValues forGroup:groupKey];
 }
 
 - (NSSet *)getDevtoolEnvWithGroupName:(NSString *)groupKey {
+  if (![self lynxDebugEnabled]) {
+    _LogI(@"getDevtoolEnvWithGroupName %@, lynxDebugEnabled is NO", groupKey);
+    return nil;
+  }
   return [LynxDevToolUtils getDevtoolEnvWithGroupName:groupKey];
 }
 
