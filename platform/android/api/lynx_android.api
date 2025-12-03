@@ -1896,6 +1896,7 @@ public class com::lynx::tasm::performance::fsp::FSPConfig :  {
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageX minContentFillPercentageX;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageY minContentFillPercentageY;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageTotalArea minContentFillPercentageTotalArea;
+  public int com.lynx.tasm.performance.fsp.FSPConfig.minContainerFillPercentageContainerArea minContainerFillPercentageContainerArea;
   public int com.lynx.tasm.performance.fsp.FSPConfig.acceptablePixelDiffPerSec acceptablePixelDiffPerSec;
   public int com.lynx.tasm.performance.fsp.FSPConfig.acceptableAreaDiffPerSec acceptableAreaDiffPerSec;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minDiffIntervalMs minDiffIntervalMs;

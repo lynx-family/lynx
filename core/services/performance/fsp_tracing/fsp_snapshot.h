@@ -56,7 +56,11 @@ struct FSPSnapshot {
   /// Y-axis content fill percentage
   int32_t content_fill_percentage_y_ = 0;
   /// Total content fill percentage
+  /// Formula: (presented content area / content area) * 100
   int32_t content_fill_percentage_total_area_ = 0;
+  /// Percentage of presented content area relative to container area.
+  /// Formula: (presented content area / container area) * 100
+  int32_t container_fill_percentage_container_area_ = 0;
 
   /// Image pointer to store content projection information,
   /// each pixel represents whether the content is presented or not.

@@ -16,6 +16,8 @@ public class FSPConfig {
   public int minContentFillPercentageY;
   // Minimum content fill rate in total area direction, default is 30%.
   public int minContentFillPercentageTotalArea;
+  // Minimum meaningful content fill rate relative to container area, default is 1%.
+  public int minContainerFillPercentageContainerArea;
   // Acceptable pixel change rate on projection axis per second, default is 10 pixels per second.
   public int acceptablePixelDiffPerSec;
   // Acceptable total pixel area change rate per second, default is 10*10 pixels per second.
@@ -32,6 +34,8 @@ public class FSPConfig {
   private static final String MIN_CONTENT_FILL_PERCENTAGE_Y_KEY = "min_content_fill_percentage_y";
   private static final String MIN_CONTENT_FILL_PERCENTAGE_TOTAL_AREA_KEY =
       "min_content_fill_percentage_total_area";
+  private static final String MIN_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA_KEY =
+      "min_container_fill_percentage_container_area";
   private static final String ACCEPTABLE_PIXEL_DIFF_PER_SEC_KEY = "acceptable_pixel_diff_per_sec";
   private static final String ACCEPTABLE_AREA_DIFF_PER_SEC_KEY = "acceptable_area_diff_per_sec";
   private static final String MIN_DIFF_INTERVAL_MS_KEY = "min_diff_interval_ms";
@@ -49,6 +53,8 @@ public class FSPConfig {
     minContentFillPercentageY = parseInt(map, MIN_CONTENT_FILL_PERCENTAGE_Y_KEY, 30);
     minContentFillPercentageTotalArea =
         parseInt(map, MIN_CONTENT_FILL_PERCENTAGE_TOTAL_AREA_KEY, 30);
+    minContainerFillPercentageContainerArea =
+        parseInt(map, MIN_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA_KEY, 1);
     acceptablePixelDiffPerSec = parseInt(map, ACCEPTABLE_PIXEL_DIFF_PER_SEC_KEY, 10);
     acceptableAreaDiffPerSec = parseInt(map, ACCEPTABLE_AREA_DIFF_PER_SEC_KEY, 100);
     minDiffIntervalMs = parseInt(map, MIN_DIFF_INTERVAL_MS_KEY, 300);

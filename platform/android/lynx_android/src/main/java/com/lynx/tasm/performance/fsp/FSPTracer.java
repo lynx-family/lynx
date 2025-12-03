@@ -278,7 +278,8 @@ public class FSPTracer {
 
     snapshot.setContainerFillPercentageContainerArea(
         (int) (snapshot.getTotalPresentedContentArea() * 100 / snapshot.getContainerArea()));
-    return snapshot.getContainerFillPercentageContainerArea() > 0;
+    return snapshot.getContainerFillPercentageContainerArea()
+        >= config.minContainerFillPercentageContainerArea;
   }
 
   /// @note Run on ReportThread
