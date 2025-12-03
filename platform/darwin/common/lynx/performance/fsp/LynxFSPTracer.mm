@@ -232,6 +232,9 @@ using namespace lynx::tasm::performance;
     perfController->GetTimingHandler().SetFSPInfo(
         "contentFillPercentageTotalArea",
         std::to_string(result.content_fill_percentage_total_area_));
+    perfController->GetTimingHandler().SetFSPInfo(
+        "containerFillPercentageContainerArea",
+        std::to_string(result.container_fill_percentage_container_area_));
     TimestampKey timingKey(kFSPEnd);
     lynx::tasm::PipelineID pipeline;
     perfController->GetTimingHandler().SetTiming(
