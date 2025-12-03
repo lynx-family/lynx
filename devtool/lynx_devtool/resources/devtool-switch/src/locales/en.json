@@ -19,6 +19,8 @@
   "LogBox desc": "Displays error prompts when errors occur.",
   "Highlight Touch": "Hightlight Touch",
   "Highlight Touch desc": "Highlights the touch area and logs event-related messages.",
+  "Enable FSP Screenshot": "Enable FSP Screenshot",
+  "Enable FSP Screenshot desc": "When the switch is on, enable FSP screenshot, and display the FSP screenshot in the Trace, search for \"FSPSnapshotBase64Bitmap\" to view.\n Restart app to apply.",
   "TestBench": "TestBench",
   "TestBench desc": "Lynx Page Recording Tool\nRequires an app restart after toggling.",
   "Current JS Engine": "Current JS engine"
