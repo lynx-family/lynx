@@ -50,13 +50,15 @@ struct FSPResult {
   FSPResult(const char* status, int64_t fsp_timestamp_us,
             int32_t content_fill_percentage_x = 0.0,
             int32_t content_fill_percentage_y = 0.0,
-            int32_t content_fill_percentage_total_area = 0.0)
+            int32_t content_fill_percentage_total_area = 0.0,
+            int32_t container_fill_percentage_container_area = 0.0)
       : status_(status),
         fsp_timestamp_us_(fsp_timestamp_us),
         content_fill_percentage_x_(content_fill_percentage_x),
         content_fill_percentage_y_(content_fill_percentage_y),
-        content_fill_percentage_total_area_(
-            content_fill_percentage_total_area) {}
+        content_fill_percentage_total_area_(content_fill_percentage_total_area),
+        container_fill_percentage_container_area_(
+            container_fill_percentage_container_area) {}
   ~FSPResult() = default;
 
   FSPResult(const FSPResult& result) = delete;
@@ -72,6 +74,8 @@ struct FSPResult {
   int32_t content_fill_percentage_y_ = 0;
   /// Total content fill percentage
   int32_t content_fill_percentage_total_area_ = 0;
+  /// Container fill rate
+  int32_t container_fill_percentage_container_area_ = 0;
 };
 
 /// FSPTracer is responsible for monitoring and tracing FSP events.
@@ -110,6 +114,9 @@ class FSPTracer : public std::enable_shared_from_this<FSPTracer> {
   void OnFSPCancelledByUserInteraction(
       const base::flex_optional<FSPSnapshot>& current_snapshot,
       int64_t current_timestamp_us);
+  void HandleFSPResult(const char* status,
+                       const base::flex_optional<FSPSnapshot>& current_snapshot,
+                       int64_t current_timestamp_us);
 
   FSPTracer(const FSPTracer& tracer) = delete;
   FSPTracer& operator=(const FSPTracer&) = delete;
