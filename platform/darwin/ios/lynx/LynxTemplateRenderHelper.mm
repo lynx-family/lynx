@@ -286,11 +286,6 @@
 - (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)setUpMainThreadModuleFactory {
   std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory =
       std::make_shared<lynx::piper::ModuleFactoryDarwin>();
-  // setup user modules
-  if (_config) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
-    module_factory->addWrappers([_builder getModuleWrapper]);
-  }
   // setup user global modules
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
   if (_config != globalConfig && globalConfig) {
@@ -327,6 +322,15 @@
     }
   }
   module_factory_ = module_factory;
+
+  // setup mts user modules
+  // If enable MTS module, merge MTS user modules with bts thread module factory.
+  if (_enableMTSModule && _config) {
+    auto main_thread_module_factory = main_thread_module_factory_.lock();
+    if (main_thread_module_factory) {
+      main_thread_module_factory->addWrappers([_builder getModuleWrapper]);
+    }
+  }
 
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
   if (_config != globalConfig && globalConfig) {
