@@ -193,7 +193,8 @@ void LinearLayoutManager::HandleLayoutOrScrollResult(LayoutState& layout_state,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  if (list_container_->enable_batch_render()) {
+  if (list_container_->enable_batch_render() ||
+      list_container_->enable_insert_platform_view_operation()) {
     ListLayoutManager::HandleLayoutOrScrollResult(is_layout);
   } else {
     // No Batch Render.

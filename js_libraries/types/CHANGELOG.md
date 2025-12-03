@@ -4,6 +4,8 @@
 
 ### Minor Changes
 
+- Add `enable-insert-platform-view-operation` property for list.
+
 - Add new reporting fields for `ImageLoadEvent`
 
 - Add `lynx.stopExposure` and `lynx.resumeExposure` APIs.

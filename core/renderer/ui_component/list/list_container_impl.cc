@@ -467,6 +467,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   } else if (key.IsEqual(list::kExperimentalRecycleAvailableItemBeforeLayout)) {
     recycle_available_item_before_layout_ = value.Bool();
     should_set_props = false;
+  } else if (key.IsEqual(list::kEnableInsertPlatformViewOperation)) {
+    enable_insert_platform_view_operation_ = value.Bool();
+    should_set_props = true;
   }
   if (should_mark_layout_dirty) {
     element_->MarkLayoutDirty();

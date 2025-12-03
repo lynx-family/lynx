@@ -97,6 +97,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private final HashMap<String, UIComponent> mStickyTopItemMap = new HashMap<>();
   private final HashMap<String, UIComponent> mStickyBottomItemMap = new HashMap<>();
   private Callback mScrollToCallback = null;
+  private boolean mEnableInsertPlatformViewOperation = false;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
 
   private ListContainerProxy mListContainerProxy = null;
@@ -262,7 +263,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public void onLayoutFinish(long operationId, @Nullable LynxBaseUI component) {
     super.onLayoutFinish(operationId, component);
-    if (!mEnableBatchRender) {
+    if (!mEnableBatchRender && !mEnableInsertPlatformViewOperation) {
       insertListItemNode(component);
     }
   }
@@ -710,6 +711,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @LynxProp(name = "enable-fade-in-animation", defaultBoolean = false)
   public void setEnableFadeInAnimation(boolean value) {
     mEnableFadeInAnimation = value;
+  }
+
+  @LynxProp(name = "enable-insert-platform-view-operation", defaultBoolean = false)
+  public void setEnableInsertPlatformViewOperation(boolean value) {
+    mEnableInsertPlatformViewOperation = value;
   }
 
   @LynxProp(name = "update-animation-fade-in-duration", defaultInt = 100)
