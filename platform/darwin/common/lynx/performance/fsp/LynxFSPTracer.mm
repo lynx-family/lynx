@@ -14,6 +14,7 @@
 #include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_utils.h"
+#include "core/services/trace/service_trace_event_def.h"
 
 using namespace lynx::tasm::timing;
 using namespace lynx::tasm::performance;
@@ -205,6 +206,11 @@ using namespace lynx::tasm::performance;
     FSPSnapshot snapshot(lynx::base::geometry::IntSize(rawSnapshot.containerSize.width,
                                                        rawSnapshot.containerSize.height),
                          currentTimestampUs);
+#if ENABLE_TRACE_PERFETTO
+    snapshot.trace_timestamp_us_ = rawSnapshot.traceTimestampUs;
+    snapshot.trace_thread_id_ = rawSnapshot.traceThreadId;
+#endif
+
     for (LynxMeaningfulContentInfo* info in rawSnapshot.contentsArray) {
       bool is_presented = info.status == kLynxUIMeaningfulContentStatusPresented;
       lynx::base::geometry::IntRect rect(

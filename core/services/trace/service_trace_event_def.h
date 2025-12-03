@@ -54,6 +54,26 @@ static constexpr const char* const
 static constexpr const char* const
     PERFORMANCE_MEDIATOR_ON_PERFORMANCE_EVENT_BTS_ENGINE =
         "PerformanceMediator::OnPerformanceEventBTSEngine";
+/// FSP
+static constexpr const char* const FSP_TIMING_MARK_FSP_END =
+    "Timing::Mark.fspEnd";
+static constexpr const char* const FSP_SNAPSHOT_BASE_64_BITMAP =
+    "FSPSnapshotBase64Bitmap";
+static constexpr const char* const FSP_SNAPSHOT_BASE_64_BITMAP_PROP_DATA =
+    "data";
+static constexpr const char* const FSP_TRACER_START = "FSPTracer::Start";
+static constexpr const char* const FSP_TRACER_STOP = "FSPTracer::Stop";
+static constexpr const char* const FSP_TRACER_ON_VALUABLE_SNAPSHOT =
+    "FSPTracer::OnValuableSnapshot";
+static constexpr const char* const FSP_TRACER_SNAPSHOT_STABLE =
+    "FSPTracer::SnapshotStable";
+static constexpr const char* const FSP_TRACER_UPDATE_PREVIOUS_SNAPSHOT_STABLE =
+    "FSPTracer::UpdatePreviousSnapshotStable";
+static constexpr const char* const FSP_CONTAINER_SIZE = "containerSize";
+static constexpr const char* const FSP_TOTAL_PRESENTED_CONTENT_AREA =
+    "totalPresentedContentArea";
+static constexpr const char* const FSP_LAST_CHANGE_TIMESTAMP_US =
+    "lastChangeTimestampUs";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_SERVICES_TRACE_SERVICE_TRACE_EVENT_DEF_H_

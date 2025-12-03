@@ -228,6 +228,14 @@
   return [self getDevtoolEnv:SP_KEY_ENABLE_DEVTOOL withDefaultValue:NO];
 }
 
+- (BOOL)fspScreenshotEnabled {
+  return [self getDevtoolEnv:SP_KEY_ENABLE_FSP_SCREENSHOT withDefaultValue:NO];
+}
+
+- (void)setFspScreenshotEnabled:(BOOL)fspEnabled {
+  [self setDevtoolEnv:fspEnabled forKey:SP_KEY_ENABLE_FSP_SCREENSHOT];
+}
+
 - (BOOL)getEnableRadonCompatible
     __attribute__((deprecated("Radon diff mode can't be close after lynx 2.3."))) {
   return true;
