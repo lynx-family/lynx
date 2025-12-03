@@ -592,6 +592,16 @@ export interface ListProps extends StandardProps {
   'experimental-recycle-sticky-item'?: boolean;
 
   /**
+   * Whether to using operation from c++ list to insert list-item's platform view. The default value is false, but we recommend to set it to true in the case with MOST_ON_TASM or MULTI_THREAD thread strategy.
+   * @defaultValue false
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
+   */
+  'enable-insert-platform-view-operation'?: boolean;
+
+  /**
    * When the content size of a component is smaller than the component itself, decide whether to enable scrolling.
    * @defaultValue false
    * @Harmony

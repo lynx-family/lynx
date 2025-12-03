@@ -10,6 +10,8 @@
 
 ### Minor Changes
 
+- Add `experimental-update-sticky-for-diff` property for list.
+
 - Add new reporting fields for `ImageLoadEvent`
 
 - Add `lynx.stopExposure` and `lynx.resumeExposure` APIs.

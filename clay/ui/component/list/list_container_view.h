@@ -146,6 +146,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
   bool enable_recycle_sticky_item_ = true;
   bool update_sticky_for_diff_ = true;
+  bool enable_insert_platform_view_operation_ = false;
 
   std::unordered_set<std::string> sticky_top_item_key_set_;
   std::unordered_set<std::string> sticky_bottom_item_key_set_;

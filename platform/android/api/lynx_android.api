@@ -10511,6 +10511,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableListSticky(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setStickyOffset(float value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableFadeInAnimation(boolean value);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableInsertPlatformViewOperation(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setUpdateAnimationFadeInDuration(int value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableRecycleStickyItem(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setNeedVisibleItemInfo(boolean value);

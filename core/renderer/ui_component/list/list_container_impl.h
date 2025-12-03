@@ -111,6 +111,9 @@ class ListContainerImpl : public ListContainerDelegateInternal {
     return list_option_.batch_render_strategy !=
            list::BatchRenderStrategy::kDefault;
   }
+  bool enable_insert_platform_view_operation() const {
+    return enable_insert_platform_view_operation_;
+  }
   void ClearValidDiff() { has_valid_diff_ = false; }
   void ReportListItemLifecycleStatistic(
       const std::shared_ptr<PipelineOptions>& option,
@@ -151,6 +154,7 @@ class ListContainerImpl : public ListContainerDelegateInternal {
  private:
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
   bool enable_dynamic_span_count_{true};
+  bool enable_insert_platform_view_operation_{false};
   bool span_count_changed_{false};
   bool batch_adapter_initialized_{false};
   bool recycle_available_item_before_layout_{false};
