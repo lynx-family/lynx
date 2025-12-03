@@ -151,6 +151,16 @@ static constexpr const char kVerifyTasmEnd[] = "verifyTasmEnd";
 static constexpr const char kFfiStart[] = "ffiStart";
 static constexpr const char kFfiEnd[] = "ffiEnd";
 static constexpr const char kFSPEnd[] = "fspEnd";
+// ------------------ fsp ------------------
+static constexpr const char kFSPStatus[] = "fspStatus";
+static constexpr const char kContentFillPercentageX[] =
+    "contentFillPercentageX";
+static constexpr const char kContentFillPercentageY[] =
+    "contentFillPercentageY";
+static constexpr const char kContentFillPercentageTotalArea[] =
+    "contentFillPercentageTotalArea";
+static constexpr const char kContainerFillPercentageContainerArea[] =
+    "containerFillPercentageContainerArea";
 // ------------------ frameworkRenderingTiming ------------------
 static constexpr const char kFrameworkDsl[] = "dsl";
 static constexpr const char kFrameworkStage[] = "stage";

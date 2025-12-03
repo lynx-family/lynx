@@ -127,11 +127,26 @@ bool FSPTracer::IsSnapshotValuable(FSPSnapshot& snapshot,
   if (snapshot.total_content_area_ <= 0) {
     return false;
   }
+
+  // 4. Check meaningful content presented rate
   snapshot.content_fill_percentage_total_area_ =
       static_cast<int32_t>(snapshot.total_presented_content_area_ * 100 /
                            snapshot.total_content_area_);
-  return snapshot.content_fill_percentage_total_area_ >=
-         config.min_content_fill_percentage_total_area_;
+  if (snapshot.content_fill_percentage_total_area_ <
+      config.min_content_fill_percentage_total_area_) {
+    return false;
+  }
+
+  // 5. Check container fill rate
+  auto container_area =
+      snapshot.container_size_.Width() * snapshot.container_size_.Height();
+  if (container_area <= 0) {
+    return false;
+  }
+  snapshot.container_fill_percentage_container_area_ = static_cast<int32_t>(
+      snapshot.total_presented_content_area_ * 100 / container_area);
+  return snapshot.container_fill_percentage_container_area_ >=
+         config.min_container_fill_percentage_container_area_;
 }
 
 bool FSPTracer::IsSnapshotStable(const FSPSnapshot& current,
@@ -167,12 +182,23 @@ bool FSPTracer::IsSnapshotStable(const FSPSnapshot& current,
     return false;
   }
 
-  // 2. (fast) Area projection change rate
+  // 2.1 (fast) Area projection change rate
   int area_change_rate_w =
       std::abs(static_cast<int>((current.total_presented_content_area_ -
                                  previous.total_presented_content_area_))) *
       1000 / diff_t_ms;
   if (area_change_rate_w > config.acceptable_area_diff_per_sec_) {
+    return false;
+  }
+
+  // 2.2 (fast) Container fill rate change rate
+  int container_fill_rate_change_rate_w =
+      std::abs(static_cast<int>(
+          (current.container_fill_percentage_container_area_ -
+           previous.container_fill_percentage_container_area_))) *
+      1000 / diff_t_ms;
+  if (container_fill_rate_change_rate_w >
+      config.acceptable_area_diff_per_sec_) {
     return false;
   }
 
@@ -194,55 +220,23 @@ bool FSPTracer::IsSnapshotStable(const FSPSnapshot& current,
 void FSPTracer::OnFSP(const base::flex_optional<FSPSnapshot>& fsp_snapshot) {
   is_running_ = false;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FSPTracer::OnFSP");
-  if (completion_callback_) {
-    if (!fsp_snapshot.has_value()) {
-      completion_callback_(FSPResult(FSPResult::kFSPError, -1));
-      return;
-    }
-    FSPResult result(FSPResult::kFSPSuccess,
-                     fsp_snapshot->last_change_timestamp_us_,
-                     fsp_snapshot->content_fill_percentage_x_,
-                     fsp_snapshot->content_fill_percentage_y_,
-                     fsp_snapshot->content_fill_percentage_total_area_);
-    completion_callback_(std::move(result));
-  }
+  HandleFSPResult((fsp_snapshot.has_value() ? FSPResult::kFSPSuccess
+                                            : FSPResult::kFSPError),
+                  fsp_snapshot, -1);
 }
 
 void FSPTracer::OnFSPStop(
     const base::flex_optional<FSPSnapshot>& previous_snapshot,
     int64_t current_timestamp_us) {
-  if (completion_callback_) {
-    if (!previous_snapshot.has_value()) {
-      completion_callback_(
-          FSPResult(FSPResult::kFSPStop, current_timestamp_us));
-      return;
-    }
-    FSPResult result(FSPResult::kFSPStop,
-                     previous_snapshot->last_change_timestamp_us_,
-                     previous_snapshot->content_fill_percentage_x_,
-                     previous_snapshot->content_fill_percentage_y_,
-                     previous_snapshot->content_fill_percentage_total_area_);
-    completion_callback_(std::move(result));
-  }
+  HandleFSPResult(FSPResult::kFSPStop, previous_snapshot, current_timestamp_us);
 }
 
 void FSPTracer::OnFSPHardTimeOut(
     const base::flex_optional<FSPSnapshot>& current_snapshot,
     int64_t current_timestamp_us) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FSPTracer::OnFSPHardTimeOut");
-  if (completion_callback_) {
-    if (!current_snapshot.has_value()) {
-      completion_callback_(
-          FSPResult(FSPResult::kFSPCancelByTimeout, current_timestamp_us));
-      return;
-    }
-    FSPResult result(FSPResult::kFSPCancelByTimeout,
-                     current_snapshot->last_change_timestamp_us_,
-                     current_snapshot->content_fill_percentage_x_,
-                     current_snapshot->content_fill_percentage_y_,
-                     current_snapshot->content_fill_percentage_total_area_);
-    completion_callback_(std::move(result));
-  }
+  HandleFSPResult(FSPResult::kFSPCancelByTimeout, current_snapshot,
+                  current_timestamp_us);
 }
 
 void FSPTracer::OnFSPCancelledByUserInteraction(
@@ -250,19 +244,28 @@ void FSPTracer::OnFSPCancelledByUserInteraction(
     int64_t current_timestamp_us) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               "FSPTracer::OnFSPCancelledByUserInteraction");
-  if (completion_callback_) {
-    if (!current_snapshot.has_value()) {
-      completion_callback_(FSPResult(FSPResult::kFSPCancelByUserInteraction,
-                                     current_timestamp_us));
-      return;
-    }
-    FSPResult result(FSPResult::kFSPCancelByUserInteraction,
-                     current_snapshot->last_change_timestamp_us_,
-                     current_snapshot->content_fill_percentage_x_,
-                     current_snapshot->content_fill_percentage_y_,
-                     current_snapshot->content_fill_percentage_total_area_);
-    completion_callback_(std::move(result));
+  HandleFSPResult(FSPResult::kFSPCancelByUserInteraction, current_snapshot,
+                  current_timestamp_us);
+}
+
+void FSPTracer::HandleFSPResult(
+    const char* status,
+    const base::flex_optional<FSPSnapshot>& current_snapshot,
+    int64_t current_timestamp_us) {
+  if (!completion_callback_) {
+    return;
   }
+
+  if (!current_snapshot.has_value()) {
+    completion_callback_(FSPResult(status, current_timestamp_us));
+    return;
+  }
+  FSPResult result(status, current_snapshot->last_change_timestamp_us_,
+                   current_snapshot->content_fill_percentage_x_,
+                   current_snapshot->content_fill_percentage_y_,
+                   current_snapshot->content_fill_percentage_total_area_,
+                   current_snapshot->container_fill_percentage_container_area_);
+  completion_callback_(std::move(result));
 }
 
 }  // namespace performance
