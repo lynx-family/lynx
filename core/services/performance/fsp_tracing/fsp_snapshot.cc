@@ -14,7 +14,6 @@ namespace tasm {
 namespace performance {
 void FSPSnapshot::FillContentToSnapshot(bool is_presented, IntRect rect,
                                         int64_t first_presented_timestamp_us) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "FSPSnapshot::FillContentToSnapshot");
   // If content is invalid, return directly
   if (rect.IsEmpty() || container_size_.IsEmpty()) {
     return;

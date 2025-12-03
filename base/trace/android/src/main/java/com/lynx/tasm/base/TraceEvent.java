@@ -233,7 +233,7 @@ public class TraceEvent {
     }
   }
 
-  private static void instant(
+  public static void instant(
       String category, String eventName, long timestamp, Map<String, String> props) {
     if (enableTrace()) {
       if (enablePerfettoTrace() && isTracingStarted()) {

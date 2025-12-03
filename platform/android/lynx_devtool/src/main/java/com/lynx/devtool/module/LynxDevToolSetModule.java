@@ -52,6 +52,16 @@ public class LynxDevToolSetModule extends LynxContextModule {
   }
 
   @LynxMethod
+  public void switchEnableFspScreenshot(Boolean arg) {
+    LynxEnv.inst().setEnableFspScreenshot(arg);
+  }
+
+  @LynxMethod
+  public boolean isFspScreenshotEnabled() {
+    return LynxEnv.inst().enableFspScreenshot();
+  }
+
+  @LynxMethod
   public void switchHighlightTouch(Boolean arg) {
     LynxEnv.inst().enableHighlightTouch(arg);
   }

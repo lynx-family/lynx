@@ -49,6 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
     __attribute__((deprecated("Please use logBoxEnabled to instead")));
 @property(nonatomic, readwrite) BOOL logBoxEnabled;
 @property(nonatomic, readwrite) BOOL highlightTouchEnabled;
+@property(nonatomic, readwrite) BOOL fspScreenshotEnabled;
 @property(nonatomic, readwrite) BOOL automationEnabled;
 @property(nonatomic, readwrite) BOOL layoutOnlyEnabled;
 @property(nonatomic, readwrite) BOOL autoResumeAnimation;

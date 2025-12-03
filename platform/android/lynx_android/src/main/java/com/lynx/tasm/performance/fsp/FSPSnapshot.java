@@ -6,6 +6,8 @@ package com.lynx.tasm.performance.fsp;
 
 import android.graphics.Rect;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 
 /// FSPSnapshot is a snapshot of FSP.
 public class FSPSnapshot {
@@ -38,6 +40,8 @@ public class FSPSnapshot {
   /// Percentage of presented content area relative to container area.
   /// Formula: (presented content area / container area) * 100
   private int mContainerFillPercentageContainerArea = 0;
+
+  public long traceCurrentTimestampUs = 0;
 
   public FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs) {
     mContainerWidth = containerWidth;
@@ -190,5 +194,23 @@ public class FSPSnapshot {
 
   public BitSet getYTotalContentProjections() {
     return mYTotalContentProjections;
+  }
+
+  /// Just for Debug
+  public Map<String, String> toMap() {
+    HashMap<String, String> map = new HashMap<>();
+    map.put("ContainerSize", String.valueOf(mContainerWidth * mContainerHeight));
+    map.put("mTotalPresentedContentArea", String.valueOf(mTotalPresentedContentArea));
+    map.put("mTotalContentArea", String.valueOf(mTotalContentArea));
+    // fill percentage
+    map.put("mContentFillPercentageX", String.valueOf(mContentFillPercentageX));
+    map.put("mContentFillPercentageY", String.valueOf(mContentFillPercentageY));
+    map.put("mContentFillPercentageTotalArea", String.valueOf(mContentFillPercentageTotalArea));
+    map.put("mContainerFillPercentageContainerArea",
+        String.valueOf(mContainerFillPercentageContainerArea));
+    // trace timestamp
+    map.put("traceCurrentTimestampUs", String.valueOf(traceCurrentTimestampUs));
+    map.put("mLastChangeTimestampUs", String.valueOf(mLastChangeTimestampUs));
+    return map;
   }
 }

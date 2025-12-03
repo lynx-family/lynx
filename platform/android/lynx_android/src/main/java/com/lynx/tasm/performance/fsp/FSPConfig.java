@@ -5,6 +5,8 @@
 package com.lynx.tasm.performance.fsp;
 
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import java.util.HashMap;
 
 // FSP configuration
@@ -48,6 +50,7 @@ public class FSPConfig {
     if (mReady || !enable) {
       return;
     }
+    TraceEvent.beginSection(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.FSP_CONFIG_PARSE);
     HashMap<String, String> map = LynxEnv.inst().getFSPConfig();
     minContentFillPercentageX = parseInt(map, MIN_CONTENT_FILL_PERCENTAGE_X_KEY, 30);
     minContentFillPercentageY = parseInt(map, MIN_CONTENT_FILL_PERCENTAGE_Y_KEY, 30);
@@ -61,6 +64,7 @@ public class FSPConfig {
     hardTimeoutMs = parseInt(map, HARD_TIMEOUT_MS_KEY, 10000);
     snapshotIntervalMs = parseInt(map, SNAPSHOT_INTERVAL_MS_KEY, 17);
     mReady = true;
+    TraceEvent.endSection(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.FSP_CONFIG_PARSE, toMap());
   }
 
   private int parseInt(HashMap<String, String> map, String key, int defaultValue) {
@@ -83,5 +87,21 @@ public class FSPConfig {
       value = number.intValue();
     }
     return value;
+  }
+
+  private HashMap<String, String> toMap() {
+    HashMap<String, String> map = new HashMap<>();
+    map.put(MIN_CONTENT_FILL_PERCENTAGE_X_KEY, String.valueOf(minContentFillPercentageX));
+    map.put(MIN_CONTENT_FILL_PERCENTAGE_Y_KEY, String.valueOf(minContentFillPercentageY));
+    map.put(MIN_CONTENT_FILL_PERCENTAGE_TOTAL_AREA_KEY,
+        String.valueOf(minContentFillPercentageTotalArea));
+    map.put(MIN_CONTAINER_FILL_PERCENTAGE_CONTAINER_AREA_KEY,
+        String.valueOf(minContainerFillPercentageContainerArea));
+    map.put(ACCEPTABLE_PIXEL_DIFF_PER_SEC_KEY, String.valueOf(acceptablePixelDiffPerSec));
+    map.put(ACCEPTABLE_AREA_DIFF_PER_SEC_KEY, String.valueOf(acceptableAreaDiffPerSec));
+    map.put(MIN_DIFF_INTERVAL_MS_KEY, String.valueOf(minDiffIntervalMs));
+    map.put(HARD_TIMEOUT_MS_KEY, String.valueOf(hardTimeoutMs));
+    map.put(SNAPSHOT_INTERVAL_MS_KEY, String.valueOf(snapshotIntervalMs));
+    return map;
   }
 }
