@@ -220,7 +220,6 @@ public class TraceEventDef {
   public static final String NEED_LAYOUT = "needLayout";
   public static final String PARAMS = "params";
   public static final String PIPELINE_IDS = "pipeline_ids";
-
   public static final String DUMP_UI_TREE_LAYOUT = "DumpUITreeLayout";
 
   // timing
