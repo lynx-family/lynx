@@ -532,6 +532,14 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         factor = 0;
       }
       int offset = params.getInt("offset", 0);
+      if (Math.abs(offset) > 0) {
+        // The unit of offset is changed from ppx to px on Android platform in Lynx SDK version 3.7.
+        getLynxContext().handleLynxError(new LynxError(
+            LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG,
+            "The unit of offset is changed from ppx to px on Android platform in Lynx SDK version 3.7. If Lynx SDK version < 3.7, you can use Math.round(offset * PixelRatio).",
+            "", LynxError.LEVEL_WARN));
+        offset = (int) PixelUtils.dipToPx(offset);
+      }
       // The logic here is copied form the SnapHelper provided by Android.
       // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
       double snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
@@ -555,6 +563,16 @@ public class UIListContainer extends UISimpleView<ListContainerView>
             @Override
             public int getScrollWidth() {
               return getView().getWidth();
+            }
+
+            @Override
+            public int getContentHeight() {
+              return getView().getLinearLayout().getHeight();
+            }
+
+            @Override
+            public int getContentWidth() {
+              return getView().getLinearLayout().getWidth();
             }
 
             @Override
