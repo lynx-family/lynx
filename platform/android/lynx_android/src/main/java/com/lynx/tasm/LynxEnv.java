@@ -1420,6 +1420,17 @@ public class LynxEnv {
     return mFSPConfig;
   }
 
+  public boolean isFspScreenshotEnabled() {
+    if (!isLynxDebugEnabled()) {
+      return false;
+    }
+    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT, false);
+  }
+
+  public void enableFspScreenshot(boolean value) {
+    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT, value);
+  }
+
   /**
    * Initialize all FSP related configurations in one method
    */

@@ -74,6 +74,7 @@ import com.lynx.tasm.group.ILynxViewGroup;
 import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
 import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.performance.TimingOption;
+import com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.performance.timing.TimingConstants;
 import com.lynx.tasm.provider.*;
@@ -3003,7 +3004,11 @@ public class LynxTemplateRender
         mPerformanceController.startFSPTracer(() -> {
           // run on ui thread
           if (uiOwner != null) {
-            return uiOwner.getMeaningfulPaintingAreas();
+            MeaningfulContentSnapshot snapshot = uiOwner.getMeaningfulPaintingAreas();
+            if (snapshot != null) {
+              snapshot.takeScreenshot(mLynxUIRender);
+            }
+            return snapshot;
           }
           return null;
         });

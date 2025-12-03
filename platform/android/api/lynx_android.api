@@ -966,6 +966,7 @@ public class com::lynx::tasm::group::BitmapSize :  {
 }
 
 public class com::lynx::tasm::utils::BitmapUtils :  {
+  public static String com.lynx.tasm.utils.BitmapUtils.bitmapToFormattedBase64(Bitmap bitmap, int quality);
   public static String com.lynx.tasm.utils.BitmapUtils.bitmapToBase64WithQuality(Bitmap bitmap, int quality);
   public static String com.lynx.tasm.utils.BitmapUtils.bitmapToBase64(Bitmap bitmap, Bitmap.CompressFormat format, int quality, int flags);
 }
@@ -1907,6 +1908,7 @@ public class com::lynx::tasm::performance::fsp::FSPConfig :  {
 }
 
 public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
+  public long com.lynx.tasm.performance.fsp.FSPSnapshot.traceCurrentTimestampUs traceCurrentTimestampUs;
   public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs);
   public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot();
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.fillContentToSnapshot(boolean isPresented, Rect rect, long firstPresentedTimestampUs);
@@ -1931,6 +1933,7 @@ public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYProjections();
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getXTotalContentProjections();
   public BitSet com.lynx.tasm.performance.fsp.FSPSnapshot.getYTotalContentProjections();
+  public Map< String, String > com.lynx.tasm.performance.fsp.FSPSnapshot.toMap();
 }
 
 public class com::lynx::tasm::performance::fsp::FSPTracer :  {
@@ -4924,6 +4927,8 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.enableLazyInitA11y();
   public boolean com.lynx.tasm.LynxEnv.enableFSP();
   public HashMap< String, String > com.lynx.tasm.LynxEnv.getFSPConfig();
+  public boolean com.lynx.tasm.LynxEnv.isFspScreenshotEnabled();
+  public void com.lynx.tasm.LynxEnv.enableFspScreenshot(boolean value);
   public void com.lynx.tasm.LynxEnv.initNativeUIThread();
   public boolean com.lynx.tasm.LynxEnv.tryToLoadV8Bridge(boolean unused);
   public void com.lynx.tasm.LynxEnv.forceDisableQuickJsCache();
@@ -4982,6 +4987,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEVTOOL SP_KEY_ENABLE_DEVTOOL;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_LOGBOX SP_KEY_ENABLE_LOGBOX;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH SP_KEY_ENABLE_HIGHLIGHT_TOUCH;
+  public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT SP_KEY_ENABLE_FSP_SCREENSHOT;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_SHOW_DEVTOOL_BADGE SP_KEY_SHOW_DEVTOOL_BADGE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE SP_KEY_ENABLE_QUICKJS_CACHE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_V8 SP_KEY_ENABLE_V8;
@@ -7327,8 +7333,10 @@ public class com::lynx::tasm::utils::MatrixMathUtils :  {
 
 public class com::lynx::tasm::performance::fsp::MeaningfulContentSnapshot :  {
   public com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.MeaningfulContentSnapshot(int containerWidth, int containerHeight, List< MeaningfulPaintingArea > meaningfulPaintingAreas);
+  public void com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.takeScreenshot(ILynxUIRenderer uiRenderer);
   public int com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getContainerWidth();
   public int com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getContainerHeight();
+  public long com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getTraceCurrentTimestampUs();
   public List< MeaningfulPaintingArea > com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot.getMeaningfulPaintingAreas();
 }
 
@@ -9959,6 +9967,12 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY_PAINT_END TIMING_KEY_PAINT_END;
   public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_TIMING MARK_TIMING;
   public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_HOST_PLATFORM_TIMING MARK_HOST_PLATFORM_TIMING;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.CATEGORY_DEFAULT CATEGORY_DEFAULT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_SNAPSHOT_BASE_64_BITMAP FSP_SNAPSHOT_BASE_64_BITMAP;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_CONFIG_PARSE FSP_CONFIG_PARSE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_TRACER_ON_VALUABLE_SNAPSHOT FSP_TRACER_ON_VALUABLE_SNAPSHOT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_TRACER_SNAPSHOT_STABLE FSP_TRACER_SNAPSHOT_STABLE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.FSP_TIMING_MARK_FSP_END FSP_TIMING_MARK_FSP_END;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {

@@ -73,6 +73,7 @@ public enum LynxEnvKey {
   public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
   public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
   public static final String SP_KEY_ENABLE_HIGHLIGHT_TOUCH = "enable_highlight_touch";
+  public static final String SP_KEY_ENABLE_FSP_SCREENSHOT = "enable_fsp_screenshot";
   @Deprecated public static final String SP_KEY_SHOW_DEVTOOL_BADGE = "show_devtool_badge";
   public static final String SP_KEY_ENABLE_QUICKJS_CACHE = "enable_quickjs_cache";
   public static final String SP_KEY_ENABLE_V8 = "enable_v8";

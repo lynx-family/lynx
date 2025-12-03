@@ -129,6 +129,8 @@ public class LynxDevtoolEnv {
             new ArrayList<Object>(Arrays.asList(true, true, true)));
         put(LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH,
             new ArrayList<Object>(Arrays.asList(false, false, false)));
+        put(LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT,
+            new ArrayList<Object>(Arrays.asList(true, false, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD,
             new ArrayList<Object>(Arrays.asList(true, false, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG,
