@@ -665,6 +665,9 @@ lynx::devtool::InspectorStyleSheet ElementInspector::GetStyleSheetByName(
                                   "inspector_attribute is null", res);
   auto* style_root = inspector_attribute->style_root_;
   CHECK_NULL_AND_LOG_RETURN_VALUE(style_root, "style_root is null", res);
+  CHECK_NULL_AND_LOG_RETURN_VALUE(style_root->inspector_attribute(),
+                                  "style_root's inspector_attribute is null",
+                                  res);
   auto map = GetStyleSheetMap(style_root);
   if (map.find(name) != map.end()) {
     res = map.find(name)->second;

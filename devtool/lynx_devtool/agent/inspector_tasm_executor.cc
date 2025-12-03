@@ -387,7 +387,15 @@ lynx::tasm::Element* InspectorTasmExecutor::GetElementById(int node_id) {
   auto* node_manager = element_manager->node_manager();
   CHECK_NULL_AND_LOG_RETURN_VALUE(node_manager, "node_manager is null",
                                   nullptr);
-  return node_manager->Get(node_id);
+  auto* element = node_manager->Get(node_id);
+  if (element != nullptr && element->IsDetached()) {
+    // if the Element is not attached, it is meaningless to return ,
+    // and more important, the raw pointer held in its inspector_attribute_ may
+    // have already been released!
+    return nullptr;
+  }
+
+  return element;
 }
 
 lynx::tasm::Element* InspectorTasmExecutor::GetElementRoot() {
