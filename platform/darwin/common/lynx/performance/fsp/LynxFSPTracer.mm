@@ -136,6 +136,8 @@ using namespace lynx::tasm::performance;
                       config.min_content_fill_percentage_y_);
   parseFSPConfigValue(fspDict, @"min_content_fill_percentage_total_area",
                       config.min_content_fill_percentage_total_area_);
+  parseFSPConfigValue(fspDict, @"min_container_fill_percentage_container_area",
+                      config.min_container_fill_percentage_container_area_);
   parseFSPConfigValue(fspDict, @"acceptable_pixel_diff_per_sec",
                       config.acceptable_pixel_diff_per_sec_);
   parseFSPConfigValue(fspDict, @"acceptable_area_diff_per_sec",
@@ -222,16 +224,18 @@ using namespace lynx::tasm::performance;
   if (!actorPtr) {
     return;
   }
-
   actorPtr->Act([result = std::move(result)](auto& perfController) mutable {
-    perfController->GetTimingHandler().SetFSPInfo("fspStatus", result.status_);
+    perfController->GetTimingHandler().SetFSPInfo(kFSPStatus, result.status_);
     perfController->GetTimingHandler().SetFSPInfo(
-        "contentFillPercentageX", std::to_string(result.content_fill_percentage_x_));
+        kContentFillPercentageX, std::to_string(result.content_fill_percentage_x_));
     perfController->GetTimingHandler().SetFSPInfo(
-        "contentFillPercentageY", std::to_string(result.content_fill_percentage_y_));
+        kContentFillPercentageY, std::to_string(result.content_fill_percentage_y_));
     perfController->GetTimingHandler().SetFSPInfo(
-        "contentFillPercentageTotalArea",
+        kContentFillPercentageTotalArea,
         std::to_string(result.content_fill_percentage_total_area_));
+    perfController->GetTimingHandler().SetFSPInfo(
+        kContainerFillPercentageContainerArea,
+        std::to_string(result.container_fill_percentage_container_area_));
     TimestampKey timingKey(kFSPEnd);
     lynx::tasm::PipelineID pipeline;
     perfController->GetTimingHandler().SetTiming(
