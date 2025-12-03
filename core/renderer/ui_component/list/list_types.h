@@ -94,6 +94,8 @@ static constexpr const char* const kScrollOrientation = "scroll-orientation";
 static constexpr const char* const kPreloadBufferCount = "preload-buffer-count";
 static constexpr const char kExperimentalContinuousResolveTree[] =
     "experimental-continuous-resolve-tree";
+static constexpr const char* const kEnableInsertPlatformViewOperation =
+    "enable-insert-platform-view-operation";
 
 // constant value
 static constexpr int kInvalidIndex = -1;

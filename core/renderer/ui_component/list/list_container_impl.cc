@@ -454,6 +454,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_mark_layout_dirty = list_layout_manager_->SetPreloadBufferCount(
         static_cast<int>(value.Number()));
     should_set_props = false;
+  } else if (key.IsEqual(list::kEnableInsertPlatformViewOperation)) {
+    enable_insert_platform_view_operation_ = value.Bool();
+    should_set_props = true;
   } else if (key.IsEqual(list::kExperimentalBatchRenderStrategy)) {
     // If parse experimental-batch-render-strategy in list property, we should
     // block flush this property to platform because before parsing all

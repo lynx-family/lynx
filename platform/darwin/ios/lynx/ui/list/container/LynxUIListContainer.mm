@@ -143,6 +143,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, assign) BOOL enableRecycleStickyItem;
 @property(nonatomic, assign) BOOL enableFadeInAnimation;
 @property(nonatomic, assign) BOOL enableBatchRender;
+@property(nonatomic, assign) BOOL enableInsertPlatformViewOperation;
 @property(nonatomic, assign) CGFloat updateAnimationFadeInDuration;
 @property(nonatomic, assign) CGFloat maxFlingDistanceRatio;
 @property(nonatomic, assign) BOOL isInScrollToPosition;
@@ -177,6 +178,7 @@ LYNX_REGISTER_UI("list-container")
     _listNativeStateCache = [NSMutableDictionary dictionary];
     _initialFlushPropCache = [NSMutableDictionary dictionary];
     _enableBatchRender = NO;
+    _enableInsertPlatformViewOperation = NO;
     _currentScrollState = LynxListScrollStateIdle;
     _updateStickyForDiff = YES;
     _stickyTopItemKeySet = [NSMutableSet set];
@@ -446,7 +448,7 @@ LYNX_REGISTER_UI("list-container")
                           operationID:(int64_t)operationID {
   // If enable batch render, no need to insert platform view in
   // finishLayoutOperation()
-  if (!self.enableBatchRender) {
+  if (!self.enableBatchRender && !self.enableInsertPlatformViewOperation) {
     [self insertListComponent:component];
   }
 }
@@ -625,6 +627,11 @@ LYNX_PROP_SETTER("enable-fade-in-animation", setEnableFadeInAnimation, BOOL) {
 
 LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDuration, NSInteger) {
   self.updateAnimationFadeInDuration = value / 1000.;
+}
+
+LYNX_PROP_SETTER("enable-insert-platform-view-operation", setEnableInsertPlatformViewOperation,
+                 BOOL) {
+  self.enableInsertPlatformViewOperation = value;
 }
 
 LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {

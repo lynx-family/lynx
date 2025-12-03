@@ -233,6 +233,7 @@ exposure-screen-margin-bottom
 event-through
 hit-slop
 level
+enable-insert-platform-view-operation
 initial-scroll-offset
 experimental-batch-render-strategy
 z-index

@@ -72,6 +72,8 @@ void ListContainerView::SetAttribute(const char* attr_c,
     enable_recycle_sticky_item_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kExperimentalUpdateStickyForDiff) {
     update_sticky_for_diff_ = attribute_utils::GetBool(value);
+  } else if (kw == KeywordID::kEnableInsertPlatformViewOperation) {
+    enable_insert_platform_view_operation_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kNeedVisibleItemInfo) {
     need_visible_item_info_ = attribute_utils::GetBool(value);
   } else {
@@ -559,7 +561,8 @@ void ListContainerView::OnLayoutFinish(BaseView* view) {
   // child component layout info's flushing which triggered by starlight engine,
   // so we cannot add child view to the list until getting the real layout info
   // of the child component.
-  if (!enable_batch_render_strategy_) {
+  if (!enable_batch_render_strategy_ &&
+      !enable_insert_platform_view_operation_) {
     InsertListItemPaintingNode(view);
   }
 }

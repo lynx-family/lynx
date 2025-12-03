@@ -250,6 +250,7 @@ enum class KeywordID {
   kEventThrough,
   kHitSlop,
   kLevel,
+  kEnableInsertPlatformViewOperation,
   kInitialScrollOffset,
   kExperimentalBatchRenderStrategy,
   kZIndex,
