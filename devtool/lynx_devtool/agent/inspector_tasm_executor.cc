@@ -442,7 +442,8 @@ void InspectorTasmExecutor::InnerText(
   Element* element = GetElementById(nodeId);
   Json::Value raw_text_value_array(Json::ValueType::arrayValue);
   // find all raw-text on text element
-  if (element && !ElementInspector::LocalName(element).compare("text")) {
+  if (element && !element->IsDetached() &&
+      !ElementInspector::LocalName(element).compare("text")) {
     for (Element* raw_text_child : element->GetChildren()) {
       if (ElementInspector::LocalName(raw_text_child).compare("raw-text")) {
         continue;
@@ -683,7 +684,7 @@ void InspectorTasmExecutor::SetAttributesAsText(
   std::string name = params["name"].asString();
   std::string text = params["text"].asString();
   Element* ptr = GetElementById(index);
-  if (ptr != nullptr) {
+  if (ptr != nullptr && !ptr->IsDetached()) {
     msg_v = ElementHelper::SetAttributesAsText(ptr, name, text);
   }
 
@@ -1109,7 +1110,7 @@ void InspectorTasmExecutor::GetMatchedStylesForNode(
   Json::Value params = message["params"];
   size_t index = static_cast<size_t>(params["nodeId"].asInt64());
   Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr) {
+  if (ptr != nullptr && !ptr->IsDetached()) {
     content = ElementHelper::GetMatchedStylesForNode(ptr);
   } else {
     Json::Value error = Json::Value(Json::ValueType::objectValue);
@@ -1130,7 +1131,7 @@ void InspectorTasmExecutor::GetComputedStyleForNode(
   Json::Value params = message["params"];
   size_t index = static_cast<size_t>(params["nodeId"].asInt64());
   Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr) {
+  if (ptr != nullptr && !ptr->IsDetached()) {
     content["computedStyle"] = GetComputedStyleOfNode(ptr);
   }
   response["result"] = content;
@@ -1146,7 +1147,7 @@ void InspectorTasmExecutor::GetInlineStylesForNode(
   Json::Value params = message["params"];
   size_t index = static_cast<size_t>(params["nodeId"].asInt64());
   Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr) {
+  if (ptr != nullptr && !ptr->IsDetached()) {
     content["inlineStyle"] = ElementHelper::GetInlineStyleOfNode(ptr);
   }
   response["result"] = content;
@@ -1227,7 +1228,7 @@ void InspectorTasmExecutor::GetBackgroundColors(
   Json::Value params = message["params"];
   size_t index = static_cast<size_t>(params["nodeId"].asInt64());
   Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr) {
+  if (ptr != nullptr && !ptr->IsDetached()) {
     content = ElementHelper::GetBackGroundColorsOfNode(ptr);
   }
   response["result"] = content;
@@ -1410,7 +1411,7 @@ void InspectorTasmExecutor::HighlightNode(
     auto highlight_config = params["highlightConfig"];
     auto selector = params["selector"].asString();
     auto* current_node = GetElementById(static_cast<int>(node_id));
-    if (current_node == nullptr ||
+    if (current_node == nullptr || current_node->IsDetached() ||
         !ElementInspector::HasDataModel(current_node) ||
         ElementInspector::IsNeedEraseId(current_node)) {
       Json::Value error = Json::Value(Json::ValueType::objectValue);
@@ -1730,8 +1731,8 @@ Json::Value InspectorTasmExecutor::GetBoxModelOfNode(tasm::Element* ptr,
   if (ElementInspector::IsNeedEraseId(ptr)) {
     ptr = ElementInspector::GetChildElementForComponentRemoveView(ptr);
   }
-  if (ptr != nullptr && ElementInspector::HasDataModel(ptr) &&
-      GetBoxModel(ptr).size() == 34) {
+  if (ptr != nullptr && !ptr->IsDetached() &&
+      ElementInspector::HasDataModel(ptr) && GetBoxModel(ptr).size() == 34) {
     Json::Value model(Json::ValueType::objectValue);
     std::vector<double> box_model = GetBoxModel(ptr);
     if (mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW && root != nullptr) {
