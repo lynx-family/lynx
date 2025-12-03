@@ -125,6 +125,9 @@ NSMutableDictionary<NSString *, id> *ModuleFactoryDarwin::extraWrappers() { retu
 
 void ModuleFactoryDarwin::addWrappers(NSMutableDictionary<NSString *, id> *wrappers) {
   [modulesClasses_ addEntriesFromDictionary:wrappers];
+  for (NSString *name in wrappers) {
+    LOGD("NativeModule: registered module with name: " << name);
+  }
 }
 
 void ModuleFactoryDarwin::addModuleParamWrapperIfAbsent(
@@ -133,6 +136,8 @@ void ModuleFactoryDarwin::addModuleParamWrapperIfAbsent(
     if ([modulesClasses_ objectForKey:name]) {
       LOGW("NativeModule: Duplicated LynxModule For Name: " << name << ", will be ignored");
       continue;
+    } else {
+      LOGD("NativeModule: registered module with name: " << name);
     }
     modulesClasses_[name] = wrappers[name];
   }
