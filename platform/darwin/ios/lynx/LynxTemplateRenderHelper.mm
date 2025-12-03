@@ -176,7 +176,7 @@
   auto layout_proxy = std::make_shared<lynx::shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
   ui_delegate->OnLynxCreate(shell_->GetListEngineProxy(), [_lynxEngineProxy nativeProxy],
                             std::move(js_proxy), std::move(layout_proxy), std::move(perf_proxy),
-                            nullptr, nullptr, nullptr, _embeddedMode);
+                            nullptr, nullptr, nullptr, shell_->GetInstanceId(), _embeddedMode);
 
   // reset ui flush flag
   [self setNeedPendingUIOperation:_needPendingUIOperation];

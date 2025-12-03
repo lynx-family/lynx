@@ -43,7 +43,7 @@ void UIDelegateHarmony::OnLynxCreate(
     const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
-    const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+    const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
     bool is_embedded_mode) {
   auto lynx_context = lynx_context_.lock();
   if (!lynx_context) {

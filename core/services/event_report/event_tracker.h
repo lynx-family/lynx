@@ -78,6 +78,18 @@ struct MoveOnlyEvent {
     double_props_.insert({key, value});
   }
 
+  void SetStringProps(std::unordered_map<std::string, std::string>& props) {
+    string_props_ = std::move(props);
+  }
+
+  void SetIntProps(std::unordered_map<std::string, int>& props) {
+    int_props_ = std::move(props);
+  }
+
+  void SetDoubleProps(std::unordered_map<std::string, double>& props) {
+    double_props_ = std::move(props);
+  }
+
   const std::unordered_map<std::string, std::string>& GetStringProps() const {
     return string_props_;
   }

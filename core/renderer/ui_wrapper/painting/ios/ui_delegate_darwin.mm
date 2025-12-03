@@ -30,7 +30,8 @@ void UIDelegateDarwin::OnLynxCreate(
     const std::shared_ptr<shell::PerfControllerProxy> &perf_controller_proxy,
     const std::shared_ptr<pub::LynxResourceLoader> &resource_loader,
     const fml::RefPtr<fml::TaskRunner> &ui_task_runner,
-    const fml::RefPtr<fml::TaskRunner> &layout_task_runner, bool is_embedded_mode) {
+    const fml::RefPtr<fml::TaskRunner> &layout_task_runner, int32_t instance_id,
+    bool is_embedded_mode) {
   if (is_embedded_mode) {
     engine_proxy_ = std::move(engine_proxy);
     [[shadow_node_owner_ layoutTick] setLayoutBlock:^{

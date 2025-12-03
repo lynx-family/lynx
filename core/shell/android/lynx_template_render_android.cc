@@ -455,7 +455,7 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
       shell->GetListEngineProxy(), std::move(engine_proxy),
       std::move(runtime_proxy), std::move(layout_proxy),
       std::move(perf_controller_proxy), nullptr, nullptr, nullptr,
-      shell->GetPageOptions().IsEmbeddedModeOn());
+      shell->GetInstanceId(), shell->GetPageOptions().IsEmbeddedModeOn());
 }
 
 void StartRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {

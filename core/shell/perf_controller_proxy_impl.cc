@@ -8,6 +8,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/tasm/config.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/trace/service_trace_event_def.h"
 
 namespace lynx {
@@ -68,6 +69,19 @@ void PerfControllerProxyImpl::RunTaskInReportThread(base::closure task) {
       task();
     }
   });
+}
+
+void PerfControllerProxyImpl::OnEvent(int32_t instance_id, ReportEvent& event) {
+  perf_actor_->ActAsync(
+      [instance_id, event = std::move(event)](auto& controller) mutable {
+        lynx::tasm::report::MoveOnlyEvent move_only_event;
+        move_only_event.SetName(event.event_name.c_str());
+        move_only_event.SetStringProps(event.string_props);
+        move_only_event.SetDoubleProps(event.double_props);
+        move_only_event.SetIntProps(event.int_props);
+        lynx::tasm::report::EventTrackerPlatformImpl::OnEvent(
+            instance_id, std::move(move_only_event));
+      });
 }
 
 }  // namespace shell

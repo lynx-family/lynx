@@ -60,7 +60,7 @@ class UIDelegate {
       const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
       const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
       const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
-      bool is_embedded_mode = false) = 0;
+      int32_t instance_id, bool is_embedded_mode = false) = 0;
 
   virtual void OnUpdateScreenMetrics(float width, float height,
                                      float device_pixel_ratio) {}

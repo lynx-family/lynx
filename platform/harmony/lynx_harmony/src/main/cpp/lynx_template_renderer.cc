@@ -214,12 +214,12 @@ void LynxTemplateRenderer::SetUpLynxShell(
       shell_->GetPerfControllerActor());
   layout_proxy_ =
       std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
-  ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
-                             runtime_proxy_, layout_proxy_,
-                             perf_controller_proxy_, resource_loader,
-                             shell_->GetRunners()->GetUITaskRunner(),
-                             shell_->GetRunners()->GetLayoutTaskRunner(),
-                             shell_->GetPageOptions().IsEmbeddedModeOn());
+  ui_delegate_->OnLynxCreate(
+      shell_->GetListEngineProxy(), engine_proxy_, runtime_proxy_,
+      layout_proxy_, perf_controller_proxy_, resource_loader,
+      shell_->GetRunners()->GetUITaskRunner(),
+      shell_->GetRunners()->GetLayoutTaskRunner(), shell_->GetInstanceId(),
+      shell_->GetPageOptions().IsEmbeddedModeOn());
   tasm::report::EventTracker::UpdateGenericInfo(
       GetInstanceId(), tasm::report::harmony::kPropThreadMode,
       static_cast<int64_t>(thread_mode));

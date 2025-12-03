@@ -183,12 +183,12 @@ void LynxTemplateRenderer::Reset() {
                       settings_.bytecode_source_url,
                       settings_.vsync_monitor_platform_impl);
 
-  ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
-                             runtime_proxy_, layout_proxy_,
-                             perf_controller_proxy_, settings_.resource_loader,
-                             shell_->GetRunners()->GetUITaskRunner(),
-                             shell_->GetRunners()->GetLayoutTaskRunner(),
-                             shell_->GetPageOptions().IsEmbeddedModeOn());
+  ui_delegate_->OnLynxCreate(
+      shell_->GetListEngineProxy(), engine_proxy_, runtime_proxy_,
+      layout_proxy_, perf_controller_proxy_, settings_.resource_loader,
+      shell_->GetRunners()->GetUITaskRunner(),
+      shell_->GetRunners()->GetLayoutTaskRunner(), shell_->GetInstanceId(),
+      shell_->GetPageOptions().IsEmbeddedModeOn());
 }
 
 void LynxTemplateRenderer::LoadTemplate(
