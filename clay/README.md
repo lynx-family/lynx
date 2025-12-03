@@ -7,6 +7,7 @@ and performance optimizations, including:
 - Performance optimizations such as frame scheduling, animations, memory and images
 - Expanded platform support on tvOS and HarmonyOS, also support for embedding in Qt and Electron
 - Feature alignment with the Lynx framework, including native modules, CSS rendering, and providing consistent elements, among others
+
 And additional features inspired by [Chromium](https://chromium.googlesource.com/chromium/), including:
 - Schedule frame based on a state machine
 - Run animations and defer image decoding on the GPU thread
