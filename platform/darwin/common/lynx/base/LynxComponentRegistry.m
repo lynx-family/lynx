@@ -99,8 +99,8 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
 
 @interface LynxComponentScopeRegistry ()
 
-@property(nonatomic) NSMutableDictionary<NSString*, Class>* uiClasses;
-@property(nonatomic) NSMutableDictionary<NSString*, Class>* shadowNodeClasses;
+@property(nonatomic) LynxThreadSafeDictionary<NSString*, Class>* uiClasses;
+@property(nonatomic) LynxThreadSafeDictionary<NSString*, Class>* shadowNodeClasses;
 
 @end
 
@@ -109,8 +109,8 @@ static NSDictionary<NSString*, Class>* LynxBuiltInShadowNodeClasses;
 - (instancetype)init {
   self = [super init];
   if (self) {
-    _uiClasses = [NSMutableDictionary new];
-    _shadowNodeClasses = [NSMutableDictionary new];
+    _uiClasses = [LynxThreadSafeDictionary new];
+    _shadowNodeClasses = [LynxThreadSafeDictionary new];
   }
   return self;
 }
