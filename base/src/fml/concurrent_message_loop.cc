@@ -145,6 +145,7 @@ void ConcurrentMessageLoop::WorkerMain(uint32_t index) {
         void* pool = objc_autoreleasePoolPush();
 #endif
         task();
+        task = nullptr;
 #if defined(OS_IOS)
         objc_autoreleasePoolPop(pool);
 #endif
