@@ -134,6 +134,8 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
     update_sticky_for_diff_ = value.Bool();
   } else if (name == list::kItemSnap) {
     ResolveItemSnapProp(value);
+  } else if (name == list::kEnableInsertPlatformViewOperation) {
+    enable_insert_platform_view_operation_ = value.Bool();
   } else {
     BaseScrollContainer::OnPropUpdate(name, value);
   }
@@ -1100,7 +1102,7 @@ void UIList::RemoveListItemNode(lynx::tasm::harmony::UIComponent* child) {
 }
 
 void UIList::OnLayoutFinish(UIBase* base, int64_t operation_id) {
-  if (!base || enable_batch_render_) {
+  if (!base || enable_batch_render_ || enable_insert_platform_view_operation_) {
     return;
   }
   UIComponent* component = static_cast<UIComponent*>(base);
