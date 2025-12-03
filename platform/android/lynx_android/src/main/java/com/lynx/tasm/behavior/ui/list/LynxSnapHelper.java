@@ -15,6 +15,8 @@ public class LynxSnapHelper {
     int getScrollY();
     int getScrollHeight();
     int getScrollWidth();
+    int getContentHeight();
+    int getContentWidth();
     int getChildrenCount();
     int getVirtualChildrenCount();
     View getChildAtIndex(int index);
@@ -39,22 +41,18 @@ public class LynxSnapHelper {
     mSnapHooks = snapHooks;
   }
 
-  private int distanceToItem(@NonNull View targetView) {
+  private int getListItemSnapScrollOffset(@NonNull View targetView) {
     if (targetView instanceof AndroidView
         && ((AndroidView) targetView).getDrawChildHook() instanceof LynxBaseUI) {
       LynxBaseUI ui = (LynxBaseUI) ((AndroidView) targetView).getDrawChildHook();
       if (mIsVertical) {
-        final int childPosition =
-            (int) (ui.getTop() + (ui.getHeight() * mSnapAlignmentFactor) + mSnapAlignmentOffset);
-        final int containerPosition = (int) (mSnapHooks.getScrollY()
-            + mSnapHooks.getScrollHeight() * mSnapAlignmentFactor + mSnapAlignmentOffset);
-        return childPosition - containerPosition;
+        return (int) (ui.getTop()
+            - (mSnapHooks.getScrollHeight() - ui.getHeight()) * mSnapAlignmentFactor
+            + mSnapAlignmentOffset);
       } else {
-        final int childPosition =
-            (int) (ui.getLeft() + (ui.getWidth() * mSnapAlignmentFactor) + mSnapAlignmentOffset);
-        final int containerPosition = (int) (mSnapHooks.getScrollX()
-            + mSnapHooks.getScrollWidth() * mSnapAlignmentFactor + mSnapAlignmentOffset);
-        return childPosition - containerPosition;
+        return (int) (ui.getLeft()
+            - (mSnapHooks.getScrollWidth() - ui.getWidth()) * mSnapAlignmentFactor
+            + mSnapAlignmentOffset);
       }
     } else {
       throw new RuntimeException("A list-item is not an AndroidView, some thing went wrong");
@@ -75,22 +73,7 @@ public class LynxSnapHelper {
       if (position != INVALID_INDEX) {
         View view = mSnapHooks.getViewAtPosition(position);
         if (view != null) {
-          if (view instanceof AndroidView
-              && ((AndroidView) view).getDrawChildHook() instanceof LynxBaseUI) {
-            LynxBaseUI ui = (LynxBaseUI) ((AndroidView) view).getDrawChildHook();
-            if (mIsVertical) {
-              offset = (int) (ui.getTop()
-                  - (mSnapHooks.getScrollHeight() - ui.getHeight()) * mSnapAlignmentFactor
-                  + mSnapAlignmentOffset);
-            } else {
-              offset = (int) (ui.getLeft()
-                  - (mSnapHooks.getScrollWidth() - ui.getWidth()) * mSnapAlignmentFactor
-                  + mSnapAlignmentOffset);
-            }
-          } else {
-            throw new RuntimeException(
-                "The target list-item is not an AndroidView, some thing went wrong");
-          }
+          offset = getListItemSnapScrollOffset(view);
         } else {
           position = INVALID_INDEX;
         }
@@ -112,26 +95,58 @@ public class LynxSnapHelper {
 
     // A child that is exactly in the position is eligible for both before and after
     View closestChildBeforePosition = null;
-    int distanceBefore = Integer.MIN_VALUE;
     View closestChildAfterPosition = null;
+    View clampedChildBeforePosition = null;
+    View clampedChildAfterPosition = null;
+    int distanceBefore = Integer.MIN_VALUE;
     int distanceAfter = Integer.MAX_VALUE;
-
+    int contentOffset = mIsVertical ? mSnapHooks.getScrollY() : mSnapHooks.getScrollX();
+    int minScrollRange = 0;
+    int maxScrollRange = Math.max(0,
+        mIsVertical ? mSnapHooks.getContentHeight() - mSnapHooks.getScrollHeight()
+                    : mSnapHooks.getContentWidth() - mSnapHooks.getScrollWidth());
     // Find the first view before the position, and the first view after the position
     final int childCount = mSnapHooks.getChildrenCount();
     for (int i = 0; i < childCount; i++) {
-      final View child = mSnapHooks.getChildAtIndex(i);
+      View child = mSnapHooks.getChildAtIndex(i);
       if (child == null) {
         continue;
       }
-      final int distance = distanceToItem(child);
-
+      int itemSnapOffset = getListItemSnapScrollOffset(child);
+      int clampedItemSnapOffset = itemSnapOffset;
+      if (clampedItemSnapOffset > maxScrollRange) {
+        clampedItemSnapOffset = maxScrollRange;
+        // Consider child's itemSnapOffset may be clamped by maxScrollRange, here we choose
+        // the child which has the min itemSnapOffset.
+        if (clampedChildAfterPosition == null
+            || itemSnapOffset < getListItemSnapScrollOffset(clampedChildAfterPosition)) {
+          clampedChildAfterPosition = child;
+        } else {
+          // Use clampedChildAfterPosition instead of current list item.
+          child = clampedChildAfterPosition;
+        }
+      } else if (clampedItemSnapOffset < minScrollRange) {
+        // Consider child's itemSnapOffset may be clamped by minScrollRange, here we choose
+        // the child which has the max itemSnapOffset.
+        clampedItemSnapOffset = minScrollRange;
+        if (clampedChildBeforePosition == null
+            || itemSnapOffset > getListItemSnapScrollOffset(clampedChildBeforePosition)) {
+          clampedChildBeforePosition = child;
+        } else {
+          // Use clampedChildBeforePosition instead of current list item.
+          child = clampedChildBeforePosition;
+        }
+      }
+      final int distance = clampedItemSnapOffset - contentOffset;
       if (distance <= 0 && distance > distanceBefore) {
-        // Child is before the position and closer then the previous best
+        // Choose child with clampedItemSnapOffset is nearest-before
+        // content offset.
         distanceBefore = distance;
         closestChildBeforePosition = child;
       }
       if (distance >= 0 && distance < distanceAfter) {
-        // Child is after the position and closer then the previous best
+        // Choose child with clampedItemSnapOffset is nearest-after content
+        // offset.
         distanceAfter = distance;
         closestChildAfterPosition = child;
       }

@@ -654,27 +654,63 @@ std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
 
   UIComponent* closest_item_before_position = nullptr;
   UIComponent* closest_item_after_position = nullptr;
+  UIComponent* clamped_item_before_position = nullptr;
+  UIComponent* clamped_item_after_position = nullptr;
 
   float distance_before = std::numeric_limits<float>::lowest();
   float distance_after = std::numeric_limits<float>::max();
+  float min_scroll_range = 0.f;
+  float max_scroll_range = GetScrollRange();
+  float content_offset =
+      is_horizontal_ ? scroll_offset.first : scroll_offset.second;
 
-  for (const auto child : children_) {
+  for (UIBase* child : children_) {
     // Note: use HasParentDrawNode() to make sure that child is on view tree.
     if (IsListItem(child) && HasParentDrawNode(child)) {
-      auto list_item = static_cast<UIComponent*>(child);
-
+      auto* list_item = static_cast<UIComponent*>(child);
       if (vertical ? IsVisibleCellVertical(list_item)
                    : IsVisibleCellHorizontal(list_item)) {
-        float distance = DistanceToItem(
-            list_item, vertical, snap_factor_, snap_offset_, width_, height_,
-            scroll_offset.first, scroll_offset.second);
-        if (distance <= 0 && distance > distance_before) {
-          // Child is before the position and closer then the previous best
+        float item_snap_offset = GetListItemSnapScrollOffset(list_item);
+        float clamped_item_snap_offset = item_snap_offset;
+        if (item_snap_offset > max_scroll_range) {
+          clamped_item_snap_offset = max_scroll_range;
+          // Consider child's item_snap_offset may be clamped by
+          // max_scroll_range, here we choose the child which has the min
+          // item_snap_offset.
+          if (!clamped_item_after_position ||
+              item_snap_offset <
+                  GetListItemSnapScrollOffset(clamped_item_after_position)) {
+            clamped_item_after_position = list_item;
+          } else {
+            // Use clamped_item_after_position instead of current list item.
+            list_item = clamped_item_after_position;
+          }
+        } else if (item_snap_offset < min_scroll_range) {
+          clamped_item_snap_offset = min_scroll_range;
+          // Consider child's item_snap_offset may be clamped by
+          // min_scroll_range, here we choose the child which has the max
+          // item_snap_offset.
+          if (!clamped_item_before_position ||
+              item_snap_offset >
+                  GetListItemSnapScrollOffset(clamped_item_before_position)) {
+            clamped_item_before_position = list_item;
+          } else {
+            // Use clamped_item_before_position instead of current list item.
+            list_item = clamped_item_before_position;
+          }
+        }
+        float distance = clamped_item_snap_offset - content_offset;
+        if (base::FloatsLargerOrEqual(0.f, distance) &&
+            distance > distance_before) {
+          // Choose child with clamped_item_snap_offset is nearest-before
+          // content offset.
           distance_before = distance;
           closest_item_before_position = list_item;
         }
-        if (distance >= 0 && distance < distance_after) {
-          // Child is after the position and closer then the previous best
+        if (base::FloatsLargerOrEqual(distance, 0.f) &&
+            distance < distance_after) {
+          // Choose child with clamped_item_snap_offset is nearest-after content
+          // offset.
           distance_after = distance;
           closest_item_after_position = list_item;
         }
@@ -753,16 +789,13 @@ std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
   return {target_position, offsets.first, offsets.second};
 }
 
-float UIList::DistanceToItem(UIComponent* list_item, bool vertical,
-                             float factor, float offset, float viewport_width,
-                             float viewport_height, float scroll_x,
-                             float scroll_y) {
-  if (vertical) {
-    return list_item->top_ + list_item->height_ * factor -
-           (scroll_y + viewport_height * factor) + offset;
+float UIList::GetListItemSnapScrollOffset(UIComponent* list_item) const {
+  if (is_horizontal_) {
+    return list_item->left_ - (width_ - list_item->width_) * snap_factor_ +
+           snap_offset_;
   } else {
-    return list_item->left_ + list_item->width_ * factor -
-           (scroll_x + viewport_width * factor) + offset;
+    return list_item->top_ - (height_ - list_item->height_) * snap_factor_ +
+           snap_offset_;
   }
 }
 

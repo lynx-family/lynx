@@ -402,41 +402,26 @@
   return [objc_getAssociatedObject(self, _cmd) boolValue];
 }
 
-- (CGPoint)distanceToItem:(CGRect)itemFrame
-                     size:(CGSize)scrollViewSize
-            contentOffset:(CGPoint)contentOffset
-                 vertical:(BOOL)vertical
-                   factor:(CGFloat)factor
-                   offset:(CGFloat)offset {
-  if (vertical) {
-    return CGPointMake(0, CGRectGetMinY(itemFrame) + CGRectGetHeight(itemFrame) * factor -
-                              (contentOffset.y + scrollViewSize.height * factor) + offset);
-  } else {
-    return CGPointMake(CGRectGetMinX(itemFrame) + CGRectGetWidth(itemFrame) * factor -
-                           (contentOffset.x + scrollViewSize.width * factor) + offset,
-                       0);
-  }
-}
-
-- (CGPoint)calculateOffset:(CGPoint)contentOffset
-               targetFrame:(CGRect)targetFrame
-                scrollRect:(CGRect)scrollviewRect
-                    factor:(CGFloat)factor
-                    offset:(CGFloat)offset
-                  vertical:(BOOL)vertical {
-  CGPoint targetOffset = CGPointZero;
-  if (vertical) {
-    targetOffset = CGPointMake(
+- (CGPoint)calculateItemSnapPointWithItemFrame:(CGRect)itemFrame
+                                 contentOffset:(CGPoint)contentOffset
+                                scrollviewRect:(CGRect)scrollviewRect
+                                    snapFactor:(CGFloat)snapFactor
+                                    snapOffset:(CGFloat)snapOffset
+                                    isVertical:(BOOL)isVertical {
+  if (isVertical) {
+    // item_snap_offset = item_top - (list_height - item_height) * factor + offset
+    return CGPointMake(
         contentOffset.x,
-        CGRectGetMinY(targetFrame) -
-            (CGRectGetHeight(scrollviewRect) - CGRectGetHeight(targetFrame)) * factor + offset);
+        CGRectGetMinY(itemFrame) -
+            (CGRectGetHeight(scrollviewRect) - CGRectGetHeight(itemFrame)) * snapFactor +
+            snapOffset);
   } else {
-    targetOffset = CGPointMake(
-        CGRectGetMinX(targetFrame) -
-            (CGRectGetWidth(scrollviewRect) - CGRectGetWidth(targetFrame)) * factor + offset,
+    // item_snap_offset = item_left - (list_width - item_width) * factor + offset
+    return CGPointMake(
+        CGRectGetMinX(itemFrame) -
+            (CGRectGetWidth(scrollviewRect) - CGRectGetWidth(itemFrame)) * snapFactor + snapOffset,
         contentOffset.y);
   }
-  return targetOffset;
 }
 
 - (CGPoint)targetContentOffset:(CGPoint)proposedContentOffset
@@ -455,29 +440,85 @@
   // A child that is exactly in the position is eligible for both before and after
   __block UIView *closestBeforePosition = nil;
   __block UIView *closestAfterPosition = nil;
+  __block UIView *clampedItemBeforePosition = nil;
+  __block UIView *clampedItemAfterPosition = nil;
   __block CGFloat distanceBefore = -CGFLOAT_MAX;
   __block CGFloat distanceAfter = CGFLOAT_MAX;
 
   CGRect scrollviewRect = self.frame;
   CGPoint contentOffset = self.contentOffset;
+  CGFloat startRange = vertical ? -self.contentInset.top : -self.contentInset.left;
+  CGFloat endRange =
+      vertical
+          ? MAX(0, self.contentSize.height - scrollviewRect.size.height + self.contentInset.bottom)
+          : MAX(0, self.contentSize.width - scrollviewRect.size.width + self.contentInset.right);
 
   // Find the first view before the position, and the first view after the position
   [visibleItems enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull obj, NSUInteger idx,
                                              BOOL *_Nonnull stop) {
-    CGPoint distancePoint = [self distanceToItem:obj.frame
-                                            size:scrollviewRect.size
-                                   contentOffset:contentOffset
-                                        vertical:vertical
-                                          factor:factor
-                                          offset:offset];
-    CGFloat distance = vertical ? distancePoint.y : distancePoint.x;
+    CGPoint itemSnapPoint = [self calculateItemSnapPointWithItemFrame:obj.frame
+                                                        contentOffset:contentOffset
+                                                       scrollviewRect:scrollviewRect
+                                                           snapFactor:factor
+                                                           snapOffset:offset
+                                                           isVertical:vertical];
+    CGFloat itemSnapOffset = vertical ? itemSnapPoint.y : itemSnapPoint.x;
+    CGFloat clampedItemSnapOffset = itemSnapOffset;
+    if (clampedItemSnapOffset > endRange) {
+      clampedItemSnapOffset = endRange;
+      if (!clampedItemAfterPosition) {
+        clampedItemAfterPosition = obj;
+      } else {
+        CGPoint lastClampedItemSnapPoint =
+            [self calculateItemSnapPointWithItemFrame:clampedItemAfterPosition.frame
+                                        contentOffset:contentOffset
+                                       scrollviewRect:scrollviewRect
+                                           snapFactor:factor
+                                           snapOffset:offset
+                                           isVertical:vertical];
+        CGFloat lastClampedItemSnapOffset =
+            vertical ? lastClampedItemSnapPoint.y : lastClampedItemSnapPoint.x;
+        if (itemSnapOffset < lastClampedItemSnapOffset) {
+          // Consider child's itemSnapOffset may be clamped by endRange, here we choose the child
+          // which has the min itemSnapOffset.
+          clampedItemAfterPosition = obj;
+        } else {
+          // Use clampedItemAfterPosition instead of current list item.
+          obj = clampedItemAfterPosition;
+        }
+      }
+    } else if (clampedItemSnapOffset < startRange) {
+      clampedItemSnapOffset = startRange;
+      if (!clampedItemBeforePosition) {
+        clampedItemBeforePosition = obj;
+      } else {
+        CGPoint lastClampedItemSnapPoint =
+            [self calculateItemSnapPointWithItemFrame:clampedItemBeforePosition.frame
+                                        contentOffset:contentOffset
+                                       scrollviewRect:scrollviewRect
+                                           snapFactor:factor
+                                           snapOffset:offset
+                                           isVertical:vertical];
+        CGFloat lastClampedItemSnapOffset =
+            vertical ? lastClampedItemSnapPoint.y : lastClampedItemSnapPoint.x;
+        if (itemSnapOffset > lastClampedItemSnapOffset) {
+          // Consider child's itemSnapOffset may be clamped by startRange, here we choose the child
+          // which has the max itemSnapOffset.
+          clampedItemBeforePosition = obj;
+        } else {
+          // Use clampedItemBeforePosition instead of current list item.
+          obj = clampedItemBeforePosition;
+        }
+      }
+    }
+    CGFloat distance = clampedItemSnapOffset - (vertical ? contentOffset.y : contentOffset.x);
     if (distance <= 0 && distance > distanceBefore) {
-      // Child is before the position and closer then the previous best
+      // Choose child with clampedItemSnapOffset is nearest-before content offset.
       distanceBefore = distance;
       closestBeforePosition = obj;
     }
     if (distance >= 0 && distance < distanceAfter) {
-      // Child is after the position and closer then the previous best
+      // Choose child with clampedItemSnapOffset is nearest-after content offset.
       distanceAfter = distance;
       closestAfterPosition = obj;
     }
@@ -525,17 +566,14 @@
   // list), or it is not yet attached (very rare case when children are larger then the viewport).
   // Extrapolate from the child that is visible to get the position of the view to snap to.
   if (!CGRectIsNull(targetFrame)) {
-    CGPoint targetOffset = [self calculateOffset:contentOffset
-                                     targetFrame:targetFrame
-                                      scrollRect:scrollviewRect
-                                          factor:factor
-                                          offset:offset
-                                        vertical:vertical];
-
+    CGPoint targetOffset = [self calculateItemSnapPointWithItemFrame:targetFrame
+                                                       contentOffset:contentOffset
+                                                      scrollviewRect:scrollviewRect
+                                                          snapFactor:factor
+                                                          snapOffset:offset
+                                                          isVertical:vertical];
     callback(targetPosition, targetOffset);
-
     return targetOffset;
-    ;
   }
 
   UIView *visibleView = forward ? closestBeforePosition : closestAfterPosition;
@@ -560,13 +598,12 @@
     return proposedContentOffset;
   }
 
-  CGPoint targetOffset = [self calculateOffset:contentOffset
-                                   targetFrame:targetFrame
-                                    scrollRect:scrollviewRect
-                                        factor:factor
-                                        offset:offset
-                                      vertical:vertical];
-
+  CGPoint targetOffset = [self calculateItemSnapPointWithItemFrame:targetFrame
+                                                     contentOffset:contentOffset
+                                                    scrollviewRect:scrollviewRect
+                                                        snapFactor:factor
+                                                        snapOffset:offset
+                                                        isVertical:vertical];
   callback(targetPosition, targetOffset);
   return targetOffset;
 }
