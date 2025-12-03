@@ -27,6 +27,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign) CGSize containerSize;
 
+#if ENABLE_TRACE_PERFETTO
+/// Just for debug purpose.
+/// Image pointer to store content projection information.
+@property(nonatomic, assign) uint64_t traceTimestampUs;
+@property(nonatomic, assign) uint64_t traceThreadId;
+#endif
+
+/// Just for debug purpose.
+/// Captures the Meaningful Content (FSP) snapshot of the given view.
+- (void)captureView:(id)rootView;
+
 @end
 
 NS_ASSUME_NONNULL_END

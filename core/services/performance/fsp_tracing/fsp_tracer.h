@@ -78,6 +78,9 @@ struct FSPResult {
   int32_t content_fill_percentage_total_area_ = 0;
   /// Container fill rate
   int32_t container_fill_percentage_container_area_ = 0;
+#if ENABLE_TRACE_PERFETTO
+  int64_t trace_fsp_timestamp_us_ = 0;
+#endif
 };
 
 /// FSPTracer is responsible for monitoring and tracing FSP events.

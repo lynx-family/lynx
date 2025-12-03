@@ -27,6 +27,8 @@ static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_CSS = @"enable_cdp_domain_css";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page";
 static NSString *const SP_KEY_DEVTOOL_CONNECTED = @"devtool_connected";
 static NSString *const SP_KEY_ENABLE_QUICKJS_DEBUG = @"enable_quickjs_debug";
+static NSString *const SP_KEY_ENABLE_FSP_SCREENSHOT = @"enable_fsp_screenshot";
+
 // deprecated after Lynx2.9
 static NSString *const SP_KEY_SHOW_DEVTOOL_BADGE = @"show_devtool_badge";
 
