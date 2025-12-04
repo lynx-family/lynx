@@ -262,7 +262,8 @@ void IntersectionObserver::NotifyTarget() {
           clay::Value(std::move(map)));
     } else if (auto* delegate =
                    attached_view_->page_view()->GetEventDelegate()) {
-      delegate->OnIntersectionEvent(attached_view_->id(), now_entry_->ToMap());
+      delegate->OnIntersectionEvent(attached_view_->GetCallbackId(),
+                                    now_entry_->ToMap());
     }
   }
 }
