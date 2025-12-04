@@ -59,6 +59,7 @@ def install_requirements(python_bin_path, python_package_index, root_dir, pip_in
   if pip_install_args is None:
     pip_install_args = ''
   cmd = f'{python_path} -m pip install -r {requirements_path} {index_url} {pip_install_args}'
+  print("pip install cmd: ", cmd)
   try:
     if system == "Windows":
       copy_python3_exe(root_dir)
