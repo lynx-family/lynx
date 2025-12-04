@@ -814,3 +814,19 @@ jobs:
         with:
           name: ios-e2e-resources
           path: '${{ github.workspace }}/lynx/testing/integration_test/test_script/screenshots.zip'
+
+  clay-macos-build:
+    timeout-minutes: 60
+    runs-on: lynx-darwin-14-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build Clay Example
+        uses: ./lynx/.github/actions/clay-macos-build
+      - name: upload artifact
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        with:
+          name: clay_glfw
+          path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
