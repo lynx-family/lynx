@@ -49,11 +49,11 @@ typedef enum : uint8_t {
     int64_t val_int64;                     \
     uint64_t val_uint64;                   \
     lynx_value_ptr val_ptr;                \
-  };                                       \
-  lynx_value_type type;
+  };
 
 struct lynx_value {
   LYNX_VALUE_BASE_STORAGE_DEFINITION
+  lynx_value_type type;
 
   int32_t tag;
 };
