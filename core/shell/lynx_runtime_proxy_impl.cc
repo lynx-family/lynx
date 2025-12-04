@@ -292,8 +292,10 @@ void LynxRuntimeProxyImpl::AddLifecycleListener(
                 ctx.event()->add_debug_annotations(kTaskName,
                                                    kJSTaskEvaluateScript);
               });
+  if (!actor_) {
+    return;
+  }
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-
   actor_->Act([enqueue_info, delegate = std::move(delegate),
                flow_id](auto& runtime) mutable {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);

@@ -45,10 +45,14 @@ LynxModuleManagerNAPI::LynxModuleManagerNAPI(
 
 void LynxModuleManagerNAPI::SetupRuntimeLifecycleListener(
     std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy) {
-  static_cast<shell::LynxRuntimeProxyImpl*>(runtime_proxy.get())
-      ->AddLifecycleListener(
-          std::make_unique<EmbedderRuntimeLifecycleListenerDelegate>(
-              weak_from_this()));
+  auto runtime_proxy_impl =
+      static_cast<shell::LynxRuntimeProxyImpl*>(runtime_proxy.get());
+  if (!runtime_proxy_impl) {
+    return;
+  }
+  runtime_proxy_impl->AddLifecycleListener(
+      std::make_unique<EmbedderRuntimeLifecycleListenerDelegate>(
+          weak_from_this()));
 }
 
 void LynxModuleManagerNAPI::OnRuntimeAttach(Napi::Env env) {
