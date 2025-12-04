@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/base_export.h"
+
 typedef ArkUI_GestureInterruptResult (*GestureInterrupter)(
     ArkUI_GestureInterruptInfo* info);
 typedef void (*GestureReceiver)(ArkUI_GestureEvent* event, void* extraParams);
@@ -25,7 +27,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 class EventDispatcher;
-class NodeManager {
+class BASE_EXPORT NodeManager {
  public:
   static NodeManager& Instance() {
     static NodeManager instance;

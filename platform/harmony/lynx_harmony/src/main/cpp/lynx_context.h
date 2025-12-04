@@ -115,7 +115,7 @@ class LynxContext {
 
   void SetLongPressDuration(int32_t long_press_duration);
 
-  void SendEvent(const LynxEvent& event) const;
+  LYNX_EXPORT void SendEvent(const LynxEvent& event) const;
 
   void HandleTouchEvent(const TouchEvent& touch_event) const;
 
