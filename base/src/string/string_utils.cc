@@ -341,7 +341,7 @@ base::InlineVector<std::string, 32> SplitStringByCharsOrderly(
       default:
         break;
     }
-    characters[static_cast<int>(c)] = 1;
+    characters[static_cast<unsigned char>(c)] = 1;
   }
 
   std::string value;
@@ -358,7 +358,8 @@ base::InlineVector<std::string, 32> SplitStringByCharsOrderly(
     if (!is_variable && !is_string && cs[order % char_count] == c) {
       word_produced = true;
       order++;
-    } else if (!is_variable && !is_string && characters[static_cast<int>(c)]) {
+    } else if (!is_variable && !is_string &&
+               characters[static_cast<unsigned char>(c)]) {
       // restart
       order = 0;
       word_start = -1;
