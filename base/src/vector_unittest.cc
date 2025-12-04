@@ -130,6 +130,8 @@ void _checkVector([[maybe_unused]] const Vector<T>& array,
 
 #define CheckVector(array) _checkVector(array, __LINE__)
 
+using VectorTemplateless_0 = VectorTemplateless<0, false>;
+
 TEST(Vector, InlineTypeNoFullValueInitialization) {
   // This test make sure that inlined types will not be fully
   // value initialized with zero bytes.
@@ -1735,7 +1737,7 @@ TEST(Vector, Trivial) {
     int buffer[5] = {10, 11, 12, 13, 14};
     Vector<int> array(sizeof(buffer) / sizeof(buffer[0]), buffer);
 
-    VectorTemplateless<0>::PushBackBatch(&array, sizeof(int), buffer, 5);
+    VectorTemplateless_0::PushBackBatch(&array, sizeof(int), buffer, 5);
     CheckVector(array);
     EXPECT_EQ(to_s(array), "10111213141011121314");
   }
@@ -3444,7 +3446,7 @@ TEST(Vector, PairElement) {
         {{2, 2}, {2, 2}},
         {{3, 3}, {3, 3}},
         {{4, 4}, {4, 4}}};
-    VectorTemplateless<0>::PushBackBatch(
+    VectorTemplateless_0::PushBackBatch(
         &array, sizeof(std::pair<std::pair<int, int>, std::pair<int, int>>),
         buffer, 5);
     EXPECT_EQ(array.size(), 5);
@@ -3514,10 +3516,10 @@ TEST(Vector, Slice) {
   }
   EXPECT_EQ(array.size(), 100);
 
-  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 0, 0));
+  EXPECT_TRUE(VectorTemplateless_0::Erase(&array, 4, 0, 0));
   EXPECT_EQ(array.size(), 100);
 
-  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 99, 0));
+  EXPECT_TRUE(VectorTemplateless_0::Erase(&array, 4, 99, 0));
   EXPECT_EQ(array.size(), 100);
   for (int i = 0; i < 100; i++) {
     // Data not changed.
@@ -3525,24 +3527,24 @@ TEST(Vector, Slice) {
   }
 
   // DeleteCount == 0 is allowed but index 100 is out of range, so return false.
-  EXPECT_FALSE(VectorTemplateless<0>::Erase(&array, 4, 100, 0));
+  EXPECT_FALSE(VectorTemplateless_0::Erase(&array, 4, 100, 0));
   EXPECT_EQ(array.size(), 100);
 
-  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 0, 50));
+  EXPECT_TRUE(VectorTemplateless_0::Erase(&array, 4, 0, 50));
 
   EXPECT_EQ(array.size(), 50);
   EXPECT_EQ(array[0], 50);
 
-  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 10, 10));
+  EXPECT_TRUE(VectorTemplateless_0::Erase(&array, 4, 10, 10));
 
   EXPECT_EQ(array.size(), 40);
   EXPECT_EQ(array[0], 50);
   EXPECT_EQ(array[10], 70);
 
-  EXPECT_FALSE(VectorTemplateless<0>::Erase(&array, 4, 10, 100));
+  EXPECT_FALSE(VectorTemplateless_0::Erase(&array, 4, 10, 100));
   EXPECT_EQ(array.size(), 40);
 
-  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 0, 40));
+  EXPECT_TRUE(VectorTemplateless_0::Erase(&array, 4, 0, 40));
   EXPECT_EQ(array.size(), 0);
 }
 
@@ -4352,6 +4354,7 @@ TEST(Vector, MapInsertOrAssign) {
   InlineOrderedFlatMap<std::string, std::string, 5> map{
       {"3", "c"}, {"2", "b"}, {"1", "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map["1"], "a");
   EXPECT_EQ(map["2"], "b");
   EXPECT_EQ(map["3"], "c");
@@ -4830,6 +4833,7 @@ TEST(Vector, LinearMapInsertOrAssign) {
   InlineLinearFlatMap<std::string, std::string, 5> map{
       {"3", "c"}, {"2", "b"}, {"1", "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map["1"], "a");
   EXPECT_EQ(map["2"], "b");
   EXPECT_EQ(map["3"], "c");
@@ -6886,6 +6890,7 @@ TEST(Vector, LinearMapInsertOrAssignBaseStringKey) {
   InlineLinearFlatMap<String, std::string, 5> map{
       {"3", "c"}, {"2", "b"}, {"1", "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map["1"], "a");
   EXPECT_EQ(map["2"], "b");
   EXPECT_EQ(map["3"], "c");
@@ -8147,6 +8152,7 @@ TEST(Vector, LinearMapInsertOrAssignBaseStringKeyWithPolicy) {
   InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> map{
       {"3", "c"}, {"2", "b"}, {"1", "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map["1"], "a");
   EXPECT_EQ(map["2"], "b");
   EXPECT_EQ(map["3"], "c");
@@ -9281,6 +9287,7 @@ TEST(Vector, LinearMapInsertOrAssignIntKey) {
   InlineLinearFlatMap<int16_t, std::string, 5> map{
       {3, "c"}, {2, "b"}, {1, "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map[1], "a");
   EXPECT_EQ(map[2], "b");
   EXPECT_EQ(map[3], "c");
@@ -10383,6 +10390,7 @@ TEST(Vector, LinearMapInsertOrAssignIntKeyWithPolicy) {
   InlineLinearFlatMap<int16_t, std::string, 5, KeyPolicy<int16_t>> map{
       {3, "c"}, {2, "b"}, {1, "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map[1], "a");
   EXPECT_EQ(map[2], "b");
   EXPECT_EQ(map[3], "c");
@@ -11387,6 +11395,7 @@ TEST(Vector, LinearMapInsertOrAssignIntKeyWithConsecutivePolicy) {
                       MapKeyPolicyConsecutiveIntegers<int16_t>>
       map{{3, "c"}, {2, "b"}, {1, "a"}};
   EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map.capacity(), 5);
   EXPECT_EQ(map[1], "a");
   EXPECT_EQ(map[2], "b");
   EXPECT_EQ(map[3], "c");

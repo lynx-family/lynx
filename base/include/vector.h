@@ -78,7 +78,11 @@ namespace base {
 
 namespace {  // NOLINT
 
+template <bool EnableCounter>
 BASE_VECTOR_INLINE void* HeapAlloc(const size_t size) {
+  if constexpr (EnableCounter) {
+    // Call counter
+  }
   return std::malloc(size);
 }
 
@@ -174,8 +178,12 @@ BASE_VECTOR_NEVER_INLINE void _nontrivial_construct_copy(T* dest, T* source,
  * and is transparent to Vector or InlineVector's insert, push_back or other
  * data modifier methods. But the data is copied along with array elements by
  * Vector's copy and move constructors and copy and move assign operators.
+ *
+ * `CountRealloc`: A flag for local performance debugging. When enabled,
+ * array buffer reallocation will be counted. Note that the first allocation
+ * will NOT be counted.
  */
-template <class T, size_t ExtraBytesPerElement>
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
 struct VectorPrototype {
   static constexpr auto is_trivial =
       IsTrivial<T, is_instance<T, std::pair>{}>::value;
@@ -209,10 +217,10 @@ struct VectorPrototype {
   }
 
  protected:
-  template <class, size_t>
+  template <class, size_t, bool>
   friend struct VectorPrototype;
 
-  template <size_t>
+  template <size_t, bool>
   friend struct VectorTemplateless;
 
   template <class, class, class, size_t, bool>
@@ -227,9 +235,8 @@ struct VectorPrototype {
   BASE_VECTOR_NEVER_INLINE static void* _reallocate_buffer(void* array,
                                                            size_t element_size,
                                                            size_t count) {
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     auto old_capacity = proto_array->capacity();
     // old*2 for consistent with std::vector of libc++.
     // But we do not use max(count, old_cap * 2).
@@ -249,7 +256,18 @@ struct VectorPrototype {
       extra_bytes_size = AlignUp(new_capacity * ExtraBytesPerElement, 8);
     }
     const auto buffer_size = extra_bytes_size + new_capacity * element_size;
-    auto buffer = static_cast<uint8_t*>(HeapAlloc(buffer_size));
+    uint8_t* buffer;
+    if constexpr (CountRealloc) {
+      if (old_capacity > 0) {
+        // This is a RE-allocation.
+        buffer = static_cast<uint8_t*>(HeapAlloc<true>(buffer_size));
+      } else {
+        // First time allocation, skip counter.
+        buffer = static_cast<uint8_t*>(HeapAlloc<false>(buffer_size));
+      }
+    } else {
+      buffer = static_cast<uint8_t*>(HeapAlloc<false>(buffer_size));
+    }
     if (BASE_VECTOR_UNLIKELY(buffer == nullptr)) {
       return nullptr;
     }
@@ -279,8 +297,9 @@ struct VectorPrototype {
     }
     bool need_free = !is_static_buffer();
     auto buffer =
-        VectorPrototype<uint8_t, ExtraBytesPerElement>::_reallocate_buffer(
-            this, sizeof(T), count);
+        VectorPrototype<uint8_t, ExtraBytesPerElement,
+                        CountRealloc>::_reallocate_buffer(this, sizeof(T),
+                                                          count);
     if (buffer && prev_begin) {
       /* Leading bytes should be copied separately. */
       if constexpr (ExtraBytesPerElement > 0) {
@@ -399,14 +418,13 @@ struct VectorPrototype {
  APIs to manipulate Vector without template argument T.
  Note that templateless manipulators should only be used for trivial T types.
 */
-template <size_t ExtraBytesPerElement>
+template <size_t ExtraBytesPerElement, bool CountRealloc>
 struct VectorTemplateless {
   BASE_VECTOR_NEVER_INLINE static void ReallocateTrivial(void* array,
                                                          size_t element_size,
                                                          size_t count) {
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     const bool free_prev = !proto_array->is_static_buffer();
     auto prev_begin = proto_array->_begin_iter();
     [[maybe_unused]] void* prev_alloc_buffer;
@@ -414,8 +432,9 @@ struct VectorTemplateless {
       prev_alloc_buffer = proto_array->get_memory_allocate();
     }
     auto buffer =
-        VectorPrototype<uint8_t, ExtraBytesPerElement>::_reallocate_buffer(
-            array, element_size, count);
+        VectorPrototype<uint8_t, ExtraBytesPerElement,
+                        CountRealloc>::_reallocate_buffer(array, element_size,
+                                                          count);
     if (buffer && prev_begin) {
       /* Leading bytes should be copied separately. */
       if constexpr (ExtraBytesPerElement > 0) {
@@ -455,9 +474,8 @@ struct VectorTemplateless {
   BASE_VECTOR_NEVER_INLINE static bool Resize(void* array, size_t element_size,
                                               size_t count,
                                               const void* fill_value) {
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     bool reallocated = false;
     if (BASE_VECTOR_LIKELY(count > proto_array->size())) {
       if (BASE_VECTOR_LIKELY(count > proto_array->capacity())) {
@@ -482,9 +500,8 @@ struct VectorTemplateless {
   BASE_VECTOR_NEVER_INLINE static void* PrepareInsert(void* array,
                                                       size_t element_size,
                                                       const void* dest) {
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     auto diff = static_cast<const uint8_t*>(dest) - proto_array->_begin_iter();
     if (BASE_VECTOR_UNLIKELY(proto_array->size() == proto_array->capacity())) {
       ReallocateTrivial(array, element_size);
@@ -511,9 +528,8 @@ struct VectorTemplateless {
    */
   BASE_VECTOR_NEVER_INLINE static bool Erase(void* array, size_t element_size,
                                              size_t index, size_t count = 1) {
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     if (BASE_VECTOR_UNLIKELY(index >= proto_array->size())) {
       return false;
     }
@@ -537,9 +553,8 @@ struct VectorTemplateless {
     if (BASE_VECTOR_UNLIKELY(source == nullptr)) {
       return;
     }
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     if (proto_array->size() + count > proto_array->capacity()) {
       ReallocateTrivial(array, element_size, proto_array->size() + count);
     }
@@ -559,9 +574,8 @@ struct VectorTemplateless {
     if (BASE_VECTOR_UNLIKELY(source_count == 0)) {
       return;
     }
-    auto* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
-            array);
+    auto* proto_array = reinterpret_cast<
+        VectorPrototype<uint8_t, ExtraBytesPerElement, CountRealloc>*>(array);
     auto count = source_count + position;
     ReallocateTrivial(array, element_size, count);
     auto dest = proto_array->_begin_iter() + position * element_size;
@@ -579,37 +593,46 @@ struct VectorTemplateless {
  * provides basic methods of Vector with the same method signatures. For
  * POD types, it also provides some non-stl-standard methods for convenience.
  */
-template <class T, size_t ExtraBytesPerElement = 0>
-struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
-                public VectorPrototype<T, ExtraBytesPerElement> {
-  using typename VectorPrototype<T, ExtraBytesPerElement>::iterator;
-  using typename VectorPrototype<T, ExtraBytesPerElement>::const_iterator;
-  using VectorPrototype<T, ExtraBytesPerElement>::is_trivial;
-  using VectorPrototype<T, ExtraBytesPerElement>::is_trivially_destructible;
-  using VectorPrototype<
-      T, ExtraBytesPerElement>::is_trivially_destructible_after_move;
-  using VectorPrototype<T, ExtraBytesPerElement>::is_trivially_relocatable;
-  using VectorPrototype<T, ExtraBytesPerElement>::size;
-  using VectorPrototype<T, ExtraBytesPerElement>::capacity;
-  using VectorPrototype<T, ExtraBytesPerElement>::is_static_buffer;
-  using VectorPrototype<T, ExtraBytesPerElement>::_begin_iter;
-  using VectorPrototype<T, ExtraBytesPerElement>::_end_iter;
-  using VectorPrototype<T, ExtraBytesPerElement>::_finish_iter;
-  using VectorPrototype<T, ExtraBytesPerElement>::_free;
-  using VectorPrototype<T, ExtraBytesPerElement>::_transfer_from;
-  using VectorPrototype<T, ExtraBytesPerElement>::_swap;
-  using VectorPrototype<T, ExtraBytesPerElement>::_reset;
-  using VectorPrototype<T, ExtraBytesPerElement>::_set_count;
-  using VectorPrototype<T, ExtraBytesPerElement>::_inc_count;
-  using VectorPrototype<T, ExtraBytesPerElement>::_dec_count;
-  using VectorPrototype<T, ExtraBytesPerElement>::_reallocate_nontrivial;
-  using VectorPrototype<T, ExtraBytesPerElement>::_copy_extra_bytes_from;
+template <class T, size_t ExtraBytesPerElement = 0, bool CountRealloc = false>
+struct Vector
+    : protected VectorTemplateless<ExtraBytesPerElement, CountRealloc>,
+      public VectorPrototype<T, ExtraBytesPerElement, CountRealloc> {
+  using
+      typename VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::iterator;
+  using typename VectorPrototype<T, ExtraBytesPerElement,
+                                 CountRealloc>::const_iterator;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::is_trivial;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::is_trivially_destructible;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::is_trivially_destructible_after_move;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::is_trivially_relocatable;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::size;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::capacity;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::is_static_buffer;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_begin_iter;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_end_iter;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_finish_iter;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_free;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_transfer_from;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_swap;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_reset;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_set_count;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_inc_count;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_dec_count;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::_reallocate_nontrivial;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::_copy_extra_bytes_from;
 
-  using VectorTemplateless<ExtraBytesPerElement>::ReallocateTrivial;
-  using VectorTemplateless<ExtraBytesPerElement>::Resize;
-  using VectorTemplateless<ExtraBytesPerElement>::PrepareInsert;
-  using VectorTemplateless<ExtraBytesPerElement>::PushBackBatch;
-  using VectorTemplateless<ExtraBytesPerElement>::Fill;
+  using VectorTemplateless<ExtraBytesPerElement,
+                           CountRealloc>::ReallocateTrivial;
+  using VectorTemplateless<ExtraBytesPerElement, CountRealloc>::Resize;
+  using VectorTemplateless<ExtraBytesPerElement, CountRealloc>::PrepareInsert;
+  using VectorTemplateless<ExtraBytesPerElement, CountRealloc>::PushBackBatch;
+  using VectorTemplateless<ExtraBytesPerElement, CountRealloc>::Fill;
 
   using size_type = size_t;
   using difference_type = ptrdiff_t;
@@ -1117,7 +1140,7 @@ struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
    */
   template <class W = T, class U>
   typename std::enable_if<std::is_same_v<W, T> && is_trivial>::type append(
-      const Vector<U, ExtraBytesPerElement>& other) {
+      const Vector<U, ExtraBytesPerElement, CountRealloc>& other) {
     if (!other.empty()) {
       fill(other.data(), other.size() * sizeof(U), size());
     }
@@ -1272,10 +1295,12 @@ struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
   }
 };
 
-template <class T, size_t ExtraBytesPerElement>
-inline bool operator==(const Vector<T, ExtraBytesPerElement>& __x,
-                       const Vector<T, ExtraBytesPerElement>& __y) {
-  const typename Vector<T, ExtraBytesPerElement>::size_type __sz = __x.size();
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline bool operator==(
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __x,
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __y) {
+  const typename Vector<T, ExtraBytesPerElement, CountRealloc>::size_type __sz =
+      __x.size();
   if (__sz != __y.size()) {
     return false;
   }
@@ -1294,34 +1319,39 @@ inline bool operator==(const Vector<T, ExtraBytesPerElement>& __x,
   return true;
 }
 
-template <class T, size_t ExtraBytesPerElement>
-inline bool operator!=(const Vector<T, ExtraBytesPerElement>& __x,
-                       const Vector<T, ExtraBytesPerElement>& __y) {
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline bool operator!=(
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __x,
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __y) {
   return !(__x == __y);
 }
 
-template <class T, size_t ExtraBytesPerElement>
-inline bool operator<(const Vector<T, ExtraBytesPerElement>& __x,
-                      const Vector<T, ExtraBytesPerElement>& __y) {
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline bool operator<(
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __x,
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __y) {
   return std::lexicographical_compare(__x.begin(), __x.end(), __y.begin(),
                                       __y.end());
 }
 
-template <class T, size_t ExtraBytesPerElement>
-inline bool operator>(const Vector<T, ExtraBytesPerElement>& __x,
-                      const Vector<T, ExtraBytesPerElement>& __y) {
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline bool operator>(
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __x,
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __y) {
   return __y < __x;
 }
 
-template <class T, size_t ExtraBytesPerElement>
-inline bool operator>=(const Vector<T, ExtraBytesPerElement>& __x,
-                       const Vector<T, ExtraBytesPerElement>& __y) {
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline bool operator>=(
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __x,
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __y) {
   return !(__x < __y);
 }
 
-template <class T, size_t ExtraBytesPerElement>
-inline bool operator<=(const Vector<T, ExtraBytesPerElement>& __x,
-                       const Vector<T, ExtraBytesPerElement>& __y) {
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline bool operator<=(
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __x,
+    const Vector<T, ExtraBytesPerElement, CountRealloc>& __y) {
   return !(__y < __x);
 }
 
@@ -1341,28 +1371,32 @@ ByteArray ByteArrayFromBuffer(const T (&data)[Num]) {
  * is inplace following up the array struct. When element count exceeds N, a new
  * external buffer will be allocated and the inplace_buffer_ will be wasted.
  */
-template <class T, size_t N, size_t ExtraBytesPerElement = 0>
-struct InlineVector : public Vector<T, ExtraBytesPerElement> {
-  using typename VectorPrototype<T, ExtraBytesPerElement>::iterator;
-  using typename VectorPrototype<T, ExtraBytesPerElement>::const_iterator;
-  using VectorPrototype<T, ExtraBytesPerElement>::is_trivial;
-  using VectorPrototype<T, ExtraBytesPerElement>::size;
-  using VectorPrototype<T, ExtraBytesPerElement>::capacity;
-  using VectorPrototype<T, ExtraBytesPerElement>::_set_memory;
-  using VectorPrototype<T, ExtraBytesPerElement>::_set_capacity;
-  using VectorPrototype<T, ExtraBytesPerElement>::_copy_extra_bytes_from;
-  using Vector<T, ExtraBytesPerElement>::_begin_iter;
-  using Vector<T, ExtraBytesPerElement>::_end_iter;
-  using Vector<T, ExtraBytesPerElement>::reserve;
-  using Vector<T, ExtraBytesPerElement>::clear;
-  using Vector<T, ExtraBytesPerElement>::clear_and_shrink;
-  using Vector<T, ExtraBytesPerElement>::_from;
-  using Vector<T, ExtraBytesPerElement>::_construct_fill;
-  using Vector<T, ExtraBytesPerElement>::_construct_fill_default;
+template <class T, size_t N, size_t ExtraBytesPerElement = 0,
+          bool CountRealloc = false>
+struct InlineVector : public Vector<T, ExtraBytesPerElement, CountRealloc> {
+  using
+      typename VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::iterator;
+  using typename VectorPrototype<T, ExtraBytesPerElement,
+                                 CountRealloc>::const_iterator;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::is_trivial;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::size;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::capacity;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_set_memory;
+  using VectorPrototype<T, ExtraBytesPerElement, CountRealloc>::_set_capacity;
+  using VectorPrototype<T, ExtraBytesPerElement,
+                        CountRealloc>::_copy_extra_bytes_from;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::_begin_iter;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::_end_iter;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::reserve;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::clear;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::clear_and_shrink;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::_from;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::_construct_fill;
+  using Vector<T, ExtraBytesPerElement, CountRealloc>::_construct_fill_default;
 
   static constexpr size_t kInlinedSize = N;
 
-  InlineVector() : Vector<T, ExtraBytesPerElement>() {
+  InlineVector() : Vector<T, ExtraBytesPerElement, CountRealloc>() {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
     _init_static();
@@ -1399,14 +1433,15 @@ struct InlineVector : public Vector<T, ExtraBytesPerElement> {
   }
 
   InlineVector(std::initializer_list<T> list)
-      : Vector<T, ExtraBytesPerElement>() {
+      : Vector<T, ExtraBytesPerElement, CountRealloc>() {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
     _init_static();
     *this = std::move(list);
   }
 
-  InlineVector(const Vector<T, ExtraBytesPerElement>& other) {  // NOLINT
+  InlineVector(
+      const Vector<T, ExtraBytesPerElement, CountRealloc>& other) {  // NOLINT
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
     _init_static();
@@ -1421,14 +1456,16 @@ struct InlineVector : public Vector<T, ExtraBytesPerElement> {
   }
 
   template <size_t N2>
-  InlineVector(const InlineVector<T, N2, ExtraBytesPerElement>& other) {
+  InlineVector(
+      const InlineVector<T, N2, ExtraBytesPerElement, CountRealloc>& other) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
     _init_static();
     *this = other;
   }
 
-  InlineVector(Vector<T, ExtraBytesPerElement>&& other) {  // NOLINT
+  InlineVector(
+      Vector<T, ExtraBytesPerElement, CountRealloc>&& other) {  // NOLINT
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
     _init_static();
@@ -1443,7 +1480,8 @@ struct InlineVector : public Vector<T, ExtraBytesPerElement> {
   }
 
   template <size_t N2>
-  InlineVector(InlineVector<T, N2, ExtraBytesPerElement>&& other) {
+  InlineVector(
+      InlineVector<T, N2, ExtraBytesPerElement, CountRealloc>&& other) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
     _init_static();
@@ -1451,35 +1489,41 @@ struct InlineVector : public Vector<T, ExtraBytesPerElement> {
   }
 
   InlineVector& operator=(std::initializer_list<T> list) {
-    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(
-        std::move(list));
+    reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(this)->
+    operator=(std::move(list));
     return *this;
   }
 
-  InlineVector& operator=(const Vector<T, ExtraBytesPerElement>& other) {
-    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(other);
+  InlineVector& operator=(
+      const Vector<T, ExtraBytesPerElement, CountRealloc>& other) {
+    reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(this)->
+    operator=(other);
     return *this;
   }
 
   InlineVector& operator=(const InlineVector& other) {
-    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(other);
+    reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(this)->
+    operator=(other);
     return *this;
   }
 
   template <size_t N2>
   InlineVector& operator=(
-      const InlineVector<T, N2, ExtraBytesPerElement>& other) {
-    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(other);
+      const InlineVector<T, N2, ExtraBytesPerElement, CountRealloc>& other) {
+    reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(this)->
+    operator=(other);
     return *this;
   }
 
-  InlineVector& operator=(Vector<T, ExtraBytesPerElement>&& other) {
+  InlineVector& operator=(
+      Vector<T, ExtraBytesPerElement, CountRealloc>&& other) {
     if (this != &other) {
       if (other.size() > capacity()) {
         if (!other.is_static_buffer()) {
           // Just swap pointers.
-          reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(
-              std::move(other));
+          reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(this)
+              ->
+              operator=(std::move(other));
           return *this;
         } else {
           reserve(other.size());
@@ -1496,18 +1540,21 @@ struct InlineVector : public Vector<T, ExtraBytesPerElement> {
   }
 
   InlineVector& operator=(InlineVector&& other) {
-    return operator=(
-        std::move(*reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(&other)));
+    return operator=(std::move(
+        *reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(
+            &other)));
   }
 
   template <size_t N2>
-  InlineVector& operator=(InlineVector<T, N2, ExtraBytesPerElement>&& other) {
-    return operator=(
-        std::move(*reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(&other)));
+  InlineVector& operator=(
+      InlineVector<T, N2, ExtraBytesPerElement, CountRealloc>&& other) {
+    return operator=(std::move(
+        *reinterpret_cast<Vector<T, ExtraBytesPerElement, CountRealloc>*>(
+            &other)));
   }
 
   void clear_and_shrink() {
-    Vector<T, ExtraBytesPerElement>::clear_and_shrink();
+    Vector<T, ExtraBytesPerElement, CountRealloc>::clear_and_shrink();
     _init_static();
   }
 
@@ -1917,16 +1964,18 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
   using container_type = typename std::conditional_t<
       (N > 0),
       InlineVector<value_type, N,
-                   is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>,
+                   is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0,
+                   Stat>,
       Vector<value_type,
-             is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>>;
+             is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0, Stat>>;
 
   using store_container_type = typename std::conditional_t<
       (N > 0),
       InlineVector<store_value_type, N,
-                   is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>,
+                   is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0,
+                   Stat>,
       Vector<store_value_type,
-             is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>>;
+             is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0, Stat>>;
   using store_iterator =
       std::conditional_t<is_map, typename store_container_type::iterator,
                          typename store_container_type::const_iterator>;
@@ -2013,9 +2062,10 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
   // Only when not using hash, the internal array can be moved from source.
   // Because we are using extra leading bytes of array buffer to store hash
   // values.
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  KeyValueArray(Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+  KeyValueArray(Vector<store_value_type, ExtraBytesPerElement, CountRealloc>&&
+                    source_array)
       : array_(std::move(source_array)) {
     static_assert(!is_key_hash);
     UpdateMaxCount(array_.size());
@@ -2051,6 +2101,8 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
   bool is_static_buffer() const { return array_.is_static_buffer(); }
 
   size_t size() const { return array_.size(); }
+
+  size_t capacity() const { return array_.capacity(); }
 
   bool empty() const { return array_.empty(); }
 
@@ -2598,18 +2650,18 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
   // Only when not using hash, the internal array can be moved from source.
   // Because we are using extra leading bytes of array buffer to store hash
   // values.
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  LinearSearchArray(
-      Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+  LinearSearchArray(Vector<store_value_type, ExtraBytesPerElement,
+                           CountRealloc>&& source_array)
       : KeyValueArray<K, T, KeyPolicy, N, Stat>(std::move(source_array)) {
     static_assert(!is_key_hash);
   }
 
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  LinearSearchArray& operator=(
-      Vector<store_value_type, ExtraBytesPerElement>&& source_array) {
+  LinearSearchArray& operator=(Vector<store_value_type, ExtraBytesPerElement,
+                                      CountRealloc>&& source_array) {
     static_assert(!is_key_hash);
     array_ = std::move(source_array);
     UpdateMaxCount(array_.size());
@@ -3504,17 +3556,18 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
   // Only when not using hash, the internal array can be moved from source.
   // Because we are using extra leading bytes of array buffer to store hash
   // values.
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  LinearSearchMap(Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+  LinearSearchMap(Vector<store_value_type, ExtraBytesPerElement, CountRealloc>&&
+                      source_array)
       : LinearSearchArray<K, T, KeyPolicy, N, Stat>(std::move(source_array)) {
     static_assert(!is_key_hash);
   }
 
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  LinearSearchMap& operator=(
-      Vector<store_value_type, ExtraBytesPerElement>&& source_array) {
+  LinearSearchMap& operator=(Vector<store_value_type, ExtraBytesPerElement,
+                                    CountRealloc>&& source_array) {
     static_assert(!is_key_hash);
     array_ = std::move(source_array);
     UpdateMaxCount(array_.size());
@@ -4178,18 +4231,19 @@ struct LinearSearchSet : public LinearSearchArray<K, void, KeyPolicy, N, Stat> {
   // Only when not using hash, the internal array can be moved from source.
   // Because we are using extra leading bytes of array buffer to store hash
   // values.
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  LinearSearchSet(Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+  LinearSearchSet(Vector<store_value_type, ExtraBytesPerElement, CountRealloc>&&
+                      source_array)
       : LinearSearchArray<K, void, KeyPolicy, N, Stat>(
             std::move(source_array)) {
     static_assert(!is_key_hash);
   }
 
-  template <size_t ExtraBytesPerElement,
+  template <size_t ExtraBytesPerElement, bool CountRealloc,
             typename = std::enable_if_t<ExtraBytesPerElement == 0>>
-  LinearSearchSet& operator=(
-      Vector<store_value_type, ExtraBytesPerElement>&& source_array) {
+  LinearSearchSet& operator=(Vector<store_value_type, ExtraBytesPerElement,
+                                    CountRealloc>&& source_array) {
     static_assert(!is_key_hash);
     array_ = std::move(source_array);
     UpdateMaxCount(array_.size());
@@ -4328,9 +4382,9 @@ static_assert(std::is_same_v<Inlined<LinearFlatSet<int>, 5>::type,
 }  // namespace lynx
 
 namespace std {
-template <class T, size_t ExtraBytesPerElement>
-inline void swap(lynx::base::Vector<T, ExtraBytesPerElement>& x,
-                 lynx::base::Vector<T, ExtraBytesPerElement>& y) {
+template <class T, size_t ExtraBytesPerElement, bool CountRealloc>
+inline void swap(lynx::base::Vector<T, ExtraBytesPerElement, CountRealloc>& x,
+                 lynx::base::Vector<T, ExtraBytesPerElement, CountRealloc>& y) {
   x.swap(y);
 }
 
