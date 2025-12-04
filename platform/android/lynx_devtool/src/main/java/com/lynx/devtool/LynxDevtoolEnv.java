@@ -17,6 +17,8 @@ import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxTraceEnv;
+import com.lynx.tasm.service.ILynxDevToolService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -203,12 +205,18 @@ public class LynxDevtoolEnv {
     mDevtoolLibraryLoader = loader;
   }
 
+  private boolean shouldLoadDevToolJsBridge() {
+    ILynxDevToolService devtoolService =
+        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    return devtoolService != null && devtoolService.getLoadJsBridge();
+  }
+
   public void loadNativeDevtoolLibrary() {
     if (mDevtoolLibraryLoader != null) {
       mDevtoolLibraryLoader.loadLibrary("lynxdebugrouter");
       mDevtoolLibraryLoader.loadLibrary("basedevtool");
       mDevtoolLibraryLoader.loadLibrary("lynxdevtool");
-      if (LynxEnv.inst().shouldLoadDevToolJsBridge()) {
+      if (shouldLoadDevToolJsBridge()) {
         mDevtoolLibraryLoader.loadLibrary("v8_libfull.cr");
         mDevtoolLibraryLoader.loadLibrary("lynxdevtool_js_bridge");
       }
@@ -218,7 +226,7 @@ public class LynxDevtoolEnv {
         LynxEnv.inst().getLibraryLoader().loadLibrary("lynxdebugrouter");
         LynxEnv.inst().getLibraryLoader().loadLibrary("basedevtool");
         LynxEnv.inst().getLibraryLoader().loadLibrary("lynxdevtool");
-        if (LynxEnv.inst().shouldLoadDevToolJsBridge()) {
+        if (shouldLoadDevToolJsBridge()) {
           LynxEnv.inst().getLibraryLoader().loadLibrary("v8_libfull.cr");
           LynxEnv.inst().getLibraryLoader().loadLibrary("lynxdevtool_js_bridge");
         }
@@ -226,7 +234,7 @@ public class LynxDevtoolEnv {
       } else {
         System.loadLibrary("basedevtool");
         System.loadLibrary("lynxdevtool");
-        if (LynxEnv.inst().shouldLoadDevToolJsBridge()) {
+        if (shouldLoadDevToolJsBridge()) {
           System.loadLibrary("v8_libfull.cr");
           System.loadLibrary("lynxdevtool_js_bridge");
         }
