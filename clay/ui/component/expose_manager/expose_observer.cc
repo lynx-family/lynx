@@ -90,7 +90,7 @@ void ExposeObserver::NotifyAppearEvent(bool appear) {
   if (attached_view_ && attached_view_->page_view()) {
     const char* event_name = appear ? "uiappear" : "uidisappear";
     clay::Value::Map params;
-    params[detail_attr::kSign] = clay::Value(attached_view_->id());
+    params[detail_attr::kSign] = clay::Value(attached_view_->GetCallbackId());
     params[detail_attr::kExposureId] = clay::Value(expose_attrs_.exposure_id);
     params[detail_attr::kExposureIdCompat] =
         clay::Value(expose_attrs_.exposure_id);
@@ -98,13 +98,14 @@ void ExposeObserver::NotifyAppearEvent(bool appear) {
         clay::Value(expose_attrs_.exposure_scene);
     params[detail_attr::kExposureSceneCompat] =
         clay::Value(expose_attrs_.exposure_scene);
-    params[detail_attr::kUniqueId] = clay::Value(attached_view_->id());
+    params[detail_attr::kUniqueId] =
+        clay::Value(attached_view_->GetCallbackId());
     params[detail_attr::kDataSet] =
         CloneClayValue(attached_view_->GetDataSet());
     params[detail_attr::kDataSetCompat] =
         CloneClayValue(attached_view_->GetDataSet());
-    attached_view_->page_view()->SendCustomEvent(attached_view_->id(),
-                                                 event_name, std::move(params));
+    attached_view_->page_view()->SendCustomEvent(
+        attached_view_->GetCallbackId(), event_name, std::move(params));
   }
 }
 
@@ -121,8 +122,10 @@ void ExposeObserver::NotifyGlobalEvent(bool appear) {
                   clay::Value(expose_attrs_.exposure_scene));
   params->emplace(detail_attr::kExposureSceneCompat,
                   clay::Value(expose_attrs_.exposure_scene));
-  params->emplace(detail_attr::kSign, clay::Value(attached_view_->id()));
-  params->emplace(detail_attr::kUniqueId, clay::Value(attached_view_->id()));
+  params->emplace(detail_attr::kSign,
+                  clay::Value(attached_view_->GetCallbackId()));
+  params->emplace(detail_attr::kUniqueId,
+                  clay::Value(attached_view_->GetCallbackId()));
   attached_view_->page_view()->AddGlobalExposureEvent(appear, std::move(params),
                                                       attached_view_);
 }
