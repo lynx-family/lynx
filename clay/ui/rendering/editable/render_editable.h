@@ -140,7 +140,6 @@ class RenderEditable : public RenderBox {
   // |point| is relative to paragraph.
   void UpdateCaretByParagraph(const FloatPoint& point, bool is_select = false);
 
-  float EmptyCaretOffset() const;
   void UpdateCaretRectBesideBox(FloatRect& caret_rect,
                                 const FloatRect& box_nearby,
                                 bool caret_after_box);

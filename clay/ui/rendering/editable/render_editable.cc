@@ -64,7 +64,8 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
 
   auto content_rect = GetFrameRect();
   content_rect.SetLocation({0, 0});
-  content_rect.SetWidth(content_rect.width() - HorizontalThickness());
+  content_rect.SetWidth(content_rect.width() - HorizontalThickness() -
+                        CaretWidth());
   content_rect.SetHeight(content_rect.height() - VerticalThickness());
 
   // caret_rect's offset is relative to text.
@@ -93,12 +94,15 @@ void RenderEditable::Paint(PaintingContext& context, const FloatPoint& offset) {
     float x_offset = 0;
     if (!is_multiline_) {
       if (text_align_ == TextAlignment::kCenter) {
-        x_offset = std::max(
-            0.0,
-            (ContentWidth() - painter_->GetParagraph()->GetLongestLine()) / 2);
+        x_offset =
+            std::max(0.0, (content_rect.width() -
+                           painter_->GetParagraph()->GetMaxIntrinsicWidth()) /
+                              2);
       } else if (text_align_ == TextAlignment::kRight) {
-        x_offset = std::max(
-            0.0, ContentWidth() - painter_->GetParagraph()->GetLongestLine());
+        x_offset =
+            std::max(0.0, content_rect.width() -
+                              painter_->GetParagraph()->GetMaxIntrinsicWidth() -
+                              2 * offset_for_caret_visible_.x());
       }
     }
 
@@ -203,8 +207,7 @@ FloatRect RenderEditable::ComputeCaretRect() {
       std::min(GetRoughTextLineHeight(), static_cast<float>(ContentHeight())) -
       2 * CaretVerticalPreserveSpace();
   const FloatRect caret_proto =
-      FloatRect(EmptyCaretOffset(), CaretVerticalPreserveSpace(), CaretWidth(),
-                caret_height);
+      FloatRect(0, CaretVerticalPreserveSpace(), CaretWidth(), caret_height);
   const auto& text_editing_value = GetTextEditingValue();
   int caret_offset = text_editing_value.selection().extent();
   if (text_direction_ == TextDirection::kRtl &&
@@ -265,8 +268,9 @@ FloatRect RenderEditable::ComputeComposingRect(TextRange composing_range) {
           0.0,
           (ContentWidth() - painter_->GetParagraph()->GetLongestLine()) / 2);
     } else if (text_align_ == TextAlignment::kRight) {
-      x_offset = std::max(
-          0.0, ContentWidth() - painter_->GetParagraph()->GetLongestLine());
+      x_offset = std::max(0.0, ContentWidth() -
+                                   painter_->GetParagraph()->GetLongestLine() -
+                                   CaretWidth());
     }
   }
   return FloatRect(
@@ -305,9 +309,10 @@ void RenderEditable::EnsureCaretCenterInVertical(const FloatRect& content,
 
 void RenderEditable::EnsureCaretInVisibleArea(const FloatRect& content,
                                               FloatRect* caret) {
-  FloatRect current = FloatRect(content.x() - offset_for_caret_visible_.x(),
-                                content.y() - offset_for_caret_visible_.y(),
-                                content.width(), content.height());
+  FloatRect current =
+      FloatRect(content.x() - offset_for_caret_visible_.x(),
+                content.y() - offset_for_caret_visible_.y(),
+                content.width() - 2 * CaretWidth(), content.height());
   if (!is_multiline_) {
     // move caret to visible
     if (caret->x() < current.x()) {
@@ -528,8 +533,10 @@ void RenderEditable::UpdateCaretByParagraph(const FloatPoint& point,
           0.0,
           (ContentWidth() - painter_->GetParagraph()->GetLongestLine()) / 2);
     } else if (text_align_ == TextAlignment::kRight) {
-      x_offset = std::max(
-          0.0, ContentWidth() - painter_->GetParagraph()->GetLongestLine());
+      x_offset = std::max(0.0, ContentWidth() -
+                                   painter_->GetParagraph()->GetLongestLine() -
+                                   PaddingLeft() - BorderLeft() -
+                                   offset_for_caret_visible_.x());
     }
   }
   TextPosWithAffinity pair =
@@ -563,8 +570,8 @@ void RenderEditable::MoveCaretUpDown(VerticalDirection direction,
     float caret_height = std::min(GetRoughTextLineHeight(),
                                   static_cast<float>(ContentHeight())) -
                          2 * CaretVerticalPreserveSpace();
-    caret_rect = FloatRect(EmptyCaretOffset(), CaretVerticalPreserveSpace(),
-                           CaretWidth(), caret_height);
+    caret_rect =
+        FloatRect(0, CaretVerticalPreserveSpace(), CaretWidth(), caret_height);
     FloatRect down_rect = caret_rect;
     UpdateCaretRectDownstream(up_position, caret_rect);
     if (direction == VerticalDirection::kDown) {
@@ -604,36 +611,13 @@ void RenderEditable::SetCaretColor(const Color& color) {
   MarkNeedsPaint();
 }
 
-float RenderEditable::EmptyCaretOffset() const {
-  float empty_caret_offset = 0.0f;
-  switch (text_align_) {
-    case TextAlignment::kLeft:
-      empty_caret_offset = 0.0f;
-      break;
-    case TextAlignment::kCenter:
-      empty_caret_offset = ContentWidth() / 2.0;
-      break;
-    case TextAlignment::kRight:
-      empty_caret_offset = ContentWidth() - CaretWidth();
-      break;
-    // TODO(wangyanyi): Support textalign's start, end, justify attributes
-    case TextAlignment::kStart:
-      break;
-    case TextAlignment::kEnd:
-      break;
-    case TextAlignment::kJustify:
-      break;
-  }
-  return empty_caret_offset;
-}
-
 void RenderEditable::UpdateCaretRectBesideBox(FloatRect& caret_rect,
                                               const FloatRect& box_nearby,
                                               bool caret_after_box) {
   float box_nearby_height =
       std::min(box_nearby.height(), static_cast<float>(ContentHeight()));
-  caret_rect.SetHeight(box_nearby_height - CaretVerticalPreserveSpace() * 2);
-  caret_rect.SetY(box_nearby.y() + CaretVerticalPreserveSpace());
+  caret_rect.SetHeight(box_nearby_height);
+  caret_rect.SetY(box_nearby.y());
   if (caret_after_box) {
     caret_rect.SetX(box_nearby.MaxX());
   } else {
