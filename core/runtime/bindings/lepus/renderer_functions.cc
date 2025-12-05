@@ -766,7 +766,7 @@ RENDERER_FUNCTION_CC(WaitingForResponse) {
 
 RENDERER_FUNCTION_CC(AddListenerForResponse) {
   CHECK_ARGC_GE(AddListenerForResponse, 1);
-  CONVERT_ARG_AND_CHECK(arg0, 0, Closure, AddListenerForResponse);
+  CONVERT_ARG_AND_CHECK(arg0, 0, Callable, AddListenerForResponse);
   auto binding_proxy = LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1);
   ResponseHandlerInLepus* response_handler =
       ResponseHandlerInLepus::GetResponseHandlerFromLepusValue(binding_proxy);

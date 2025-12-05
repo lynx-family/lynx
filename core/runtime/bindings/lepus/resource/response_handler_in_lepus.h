@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/base_value.h"
 #include "core/runtime/bindings/common/resource/response_handler_proxy.h"
 #include "core/runtime/vm/lepus/context.h"
@@ -17,8 +18,10 @@
 namespace lynx {
 namespace tasm {
 
-class ResponseHandlerInLepus : public runtime::ResponseHandlerProxy,
-                               public lepus::RefCounted {
+class ResponseHandlerInLepus
+    : public runtime::ResponseHandlerProxy,
+      public lepus::RefCounted,
+      public fml::EnableWeakFromThis<ResponseHandlerInLepus> {
  public:
   ResponseHandlerInLepus(
       runtime::ResponseHandlerProxy::Delegate& delegate, const std::string& url,
@@ -37,6 +40,9 @@ class ResponseHandlerInLepus : public runtime::ResponseHandlerProxy,
   lepus::RefType GetRefType() const override {
     return lepus::RefType::kOtherType;
   };
+
+  void AddResourceListener(
+      base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) override;
 };
 
 }  // namespace tasm

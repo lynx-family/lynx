@@ -19,8 +19,10 @@ namespace piper {
 
 class App;
 
-class ResponseHandlerInJS : public HostObject,
-                            public runtime::ResponseHandlerProxy {
+class ResponseHandlerInJS
+    : public HostObject,
+      public runtime::ResponseHandlerProxy,
+      public std::enable_shared_from_this<ResponseHandlerInJS> {
  public:
   ResponseHandlerInJS(Delegate&, const std::string& url,
                       const std::shared_ptr<
@@ -33,6 +35,9 @@ class ResponseHandlerInJS : public HostObject,
   virtual void set(Runtime*, const PropNameID& name,
                    const Value& value) override;
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
+
+  void AddResourceListener(
+      base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) override;
 
  private:
   Value WaitingForResponse(Runtime& rt);

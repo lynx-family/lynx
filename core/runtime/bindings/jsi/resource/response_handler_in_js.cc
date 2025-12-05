@@ -40,6 +40,22 @@ Value ResponseHandlerInJS::get(Runtime* rt, const PropNameID& name) {
   return piper::Value::undefined();
 }
 
+void ResponseHandlerInJS::AddResourceListener(
+    base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) {
+  promise_->AddCallback(
+      [weak_self = weak_from_this(), closure = std::move(closure)](
+          tasm::BundleResourceInfo bundle_info) mutable {
+        auto self = weak_self.lock();
+        if (self) {
+          self->delegate_.InvokeResponsePromiseCallback(
+              [bundle_info = std::move(bundle_info),
+               closure = std::move(closure)]() mutable {
+                closure(std::move(bundle_info));
+              });
+        }
+      });
+}
+
 Value ResponseHandlerInJS::WaitingForResponse(Runtime& rt) {
   return Function::createFromHostFunction(
       rt, PropNameID::forAscii(rt, runtime::kWait), 1,
@@ -85,16 +101,13 @@ Value ResponseHandlerInJS::AddListenerForResponse(Runtime& rt) {
           piper::Function func = args[0].getObject(rt).getFunction(rt);
           AddResourceListener([this, func = std::move(func)](
                                   tasm::BundleResourceInfo info) mutable {
-            delegate_.InvokeResponsePromiseCallback(
-                [this, func = std::move(func), info]() {
-                  auto ptr = native_app_.lock();
-                  if (ptr && !ptr->IsDestroying()) {
-                    auto rt = ptr->GetRuntime();
-                    if (rt != nullptr) {
-                      func.call(*rt, ConvertBundleInfoToPiperValue(info));
-                    }
-                  }
-                });
+            auto ptr = native_app_.lock();
+            if (ptr && !ptr->IsDestroying()) {
+              auto rt = ptr->GetRuntime();
+              if (rt != nullptr) {
+                func.call(*rt, ConvertBundleInfoToPiperValue(info));
+              }
+            }
           });
         }
         return piper::Value::undefined();
