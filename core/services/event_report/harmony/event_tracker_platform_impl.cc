@@ -151,6 +151,7 @@ void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
                        "env_, js_self_ref_ or js_on_event_func_ not found.");
       return;
     }
+    base::NapiHandleScope scope(harmony::env_);
 
     napi_value instance_id_napi_value =
         base::NapiUtil::CreateInt32(harmony::env_, instance_id);
