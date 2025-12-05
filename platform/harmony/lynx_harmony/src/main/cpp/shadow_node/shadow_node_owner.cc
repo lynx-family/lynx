@@ -207,6 +207,7 @@ ShadowNode* ShadowNodeOwner::CreateJSShadowNode(int sign,
                                                 const std::string& tag,
                                                 PropBundleHarmony* props) {
   auto runnable = [this, sign, &tag]() -> ShadowNode* {
+    base::NapiHandleScope scope(env_);
     napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_);
     napi_value create = base::NapiUtil::GetReferenceNapiValue(env_, create_);
     if (!js_recv || !create) {
