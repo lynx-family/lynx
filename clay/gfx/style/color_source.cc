@@ -11,37 +11,6 @@
 
 namespace clay {
 
-std::shared_ptr<ColorSource> ColorSource::From(GrShader* sk_shader) {
-#ifndef ENABLE_SKITY
-  if (sk_shader == nullptr) {
-    return nullptr;
-  }
-  {
-    SkMatrix local_matrix;
-    SkTileMode xy[2];
-    SkImage* image = sk_shader->isAImage(&local_matrix, xy);
-    auto skity_matrix = clay::ConvertSkMatrixToSkityMatrix(local_matrix);
-    if (image) {
-      return std::make_shared<ImageColorSource>(
-          PaintImage::Make(image), ToClay(xy[0]), ToClay(xy[1]),
-          ImageSampling::kLinear, &skity_matrix);
-    }
-  }
-  // Skia provides |SkShader->asAGradient(&info)| method to access the
-  // parameters of a gradient, but the info object being filled has a number
-  // of parameters which are missing, including the local matrix in every
-  // gradient, and the sweep angles in the sweep gradients.
-  //
-  // Since we can't reproduce every Gradient, and customers rely on using
-  // gradients with matrices in text code, we have to just use an Unknown
-  // ColorSource to express all gradients.
-  // (see: https://github.com/flutter/flutter/issues/102947)
-  return std::make_shared<UnknownColorSource>(sk_ref_sp(sk_shader));
-#else
-  return nullptr;
-#endif  // ENABLE_SKITY
-}
-
 static void DlGradientDeleter(void* p) {
   // Some of our target environments would prefer a sized delete,
   // but other target environments do not have that operator.
@@ -124,6 +93,17 @@ std::shared_ptr<RuntimeEffectColorSource> ColorSource::MakeRuntimeEffect(
   FML_DCHECK(uniform_data != nullptr);
   return std::make_shared<RuntimeEffectColorSource>(
       std::move(runtime_effect), std::move(samplers), std::move(uniform_data));
+}
+
+std::shared_ptr<ImageColorSource> ColorSource::MakeImage(
+    fml::RefPtr<PaintImage> image, TileMode tile_mode_x, TileMode tile_mode_y,
+    ImageSampling sampling, const skity::Matrix* matrix) {
+  return std::make_shared<ImageColorSource>(image, tile_mode_x, tile_mode_y,
+                                            sampling, matrix);
+}
+
+std::shared_ptr<ColorColorSource> ColorSource::MakeColor(Color color) {
+  return std::make_shared<ColorColorSource>(color);
 }
 
 }  // namespace clay

@@ -23,8 +23,6 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
-static constexpr int kGestureInterrupterUserDataSupportVersion = 18;
-
 class UIOwner;
 class UIRoot;
 class UIBase;

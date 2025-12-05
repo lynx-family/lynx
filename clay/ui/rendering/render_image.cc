@@ -426,7 +426,7 @@ PaintFunction RenderImage::FixupPainterIfNeeded(const PaintFunction& painter) {
                               0.0f,  1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f,
                               0.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f};
 
-      auto color_filter = ColorFilter::From(SkColorFilters::Matrix(mx));
+      auto color_filter = ColorFilter::MakeMatrix(mx);
       context.PushColorFilter(color_filter, offset, old_painter);
 #endif  // ENABLE_SKITY
     };

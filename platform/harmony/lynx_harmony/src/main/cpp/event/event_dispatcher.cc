@@ -4,8 +4,6 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 
-#include <deviceinfo.h>
-
 #include <memory>
 #include <utility>
 
@@ -53,13 +51,7 @@ GestureReceiver EventDispatcher::velocity_tracker_pan_receiver_callback_ =
 
 GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     [](ArkUI_GestureInterruptInfo* info) -> ArkUI_GestureInterruptResult {
-  EventDispatcher* event_dispatcher = nullptr;
-  if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
-    event_dispatcher = NodeManager::Instance().GetEventDispatcher();
-  } else {
-    event_dispatcher = static_cast<EventDispatcher*>(
-        OH_ArkUI_GestureInterrupter_GetUserData(info));
-  }
+  auto event_dispatcher = NodeManager::Instance().GetEventDispatcher();
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
@@ -242,8 +234,7 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
                                            PARALLEL, NORMAL_GESTURE_MASK);
 
   NodeManager::Instance().SetGestureInterrupterToNode(
-      root->RootNode(), this,
-      EventDispatcher::event_gesture_interrupter_callback_);
+      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_);
 }
 
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {

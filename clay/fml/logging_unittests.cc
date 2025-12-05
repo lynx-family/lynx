@@ -22,25 +22,25 @@
 namespace fml {
 namespace testing {
 
-int UnreachableScopeWithoutReturnDoesNotMakeCompilerMad() {
-  KillProcess();
-  // return 0; <--- Missing but compiler is fine.
-}
-
-int UnreachableScopeWithMacroWithoutReturnDoesNotMakeCompilerMad() {
+TEST(Logging, Unreachable) {
+#ifndef NDEBUG
+  ASSERT_DEATH(FML_UNREACHABLE(), "");
+#else
   FML_UNREACHABLE();
-  // return 0; <--- Missing but compiler is fine.
+#endif
 }
 
-TEST(LoggingTest, UnreachableKillProcess) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  ASSERT_DEATH(KillProcess(), "");
+#if !defined(NDEBUG)
+TEST(Logging, Dcheck) {
+  bool called = false;
+  FML_DCHECK(true);
+  FML_DCHECK(true) << (called = true);
+  ASSERT_FALSE(called);
+  ASSERT_DEATH(FML_DCHECK(false), "");
 }
+#endif
 
-TEST(LoggingTest, UnreachableKillProcessWithMacro) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  ASSERT_DEATH({ FML_UNREACHABLE(); }, "");
-}
+TEST(Logging, Fatal) { ASSERT_DEATH(FML_LOG(FATAL) << "fatal", ""); }
 
 #if defined(OS_FUCHSIA)
 

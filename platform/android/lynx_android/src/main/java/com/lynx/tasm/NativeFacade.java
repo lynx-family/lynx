@@ -206,9 +206,6 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
     EventTarget target = (EventTarget) event.getTarget();
     if (target == null) {
-      target = context.getLynxUIOwner().findLynxUIBySign(event.getTag());
-    }
-    if (target == null) {
       return false;
     }
     LynxEventDetail detail =

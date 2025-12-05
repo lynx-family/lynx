@@ -113,7 +113,7 @@ TEST_F(ShaderMaskLayerTest, SimpleFilter) {
   const SkPaint child_paint = SkPaint(SkColors::kYellow);
   auto layer_filter =
       SkPerlinNoiseShader::MakeFractalNoise(1.0f, 1.0f, 1, 1.0f);
-  auto dl_filter = DlColorSource::From(layer_filter);
+  auto dl_filter = std::make_shared<UnknownColorSource>(layer_filter);
   auto mock_layer = std::make_shared<MockLayer>(child_path, child_paint);
   auto layer = std::make_shared<ShaderMaskLayer>(dl_filter, layer_bounds,
                                                  DlBlendMode::kSrc);
@@ -164,7 +164,7 @@ TEST_F(ShaderMaskLayerTest, MultipleChildren) {
   const SkPaint child_paint2 = SkPaint(SkColors::kCyan);
   auto layer_filter =
       SkPerlinNoiseShader::MakeFractalNoise(1.0f, 1.0f, 1, 1.0f);
-  auto dl_filter = DlColorSource::From(layer_filter);
+  auto dl_filter = std::make_shared<UnknownColorSource>(layer_filter);
   auto mock_layer1 = std::make_shared<MockLayer>(child_path1, child_paint1);
   auto mock_layer2 = std::make_shared<MockLayer>(child_path2, child_paint2);
   auto layer = std::make_shared<ShaderMaskLayer>(dl_filter, layer_bounds,
@@ -229,10 +229,10 @@ TEST_F(ShaderMaskLayerTest, Nested) {
   const SkPaint child_paint2 = SkPaint(SkColors::kCyan);
   auto layer_filter1 =
       SkPerlinNoiseShader::MakeFractalNoise(1.0f, 1.0f, 1, 1.0f);
-  auto dl_filter1 = DlColorSource::From(layer_filter1);
+  auto dl_filter1 = std::make_shared<UnknownColorSource>(layer_filter1);
   auto layer_filter2 =
       SkPerlinNoiseShader::MakeFractalNoise(2.0f, 2.0f, 2, 2.0f);
-  auto dl_filter2 = DlColorSource::From(layer_filter2);
+  auto dl_filter2 = std::make_shared<UnknownColorSource>(layer_filter2);
   auto mock_layer1 = std::make_shared<MockLayer>(child_path1, child_paint1);
   auto mock_layer2 = std::make_shared<MockLayer>(child_path2, child_paint2);
   auto layer1 = std::make_shared<ShaderMaskLayer>(dl_filter1, layer_bounds,
@@ -308,7 +308,7 @@ TEST_F(ShaderMaskLayerTest, Readback) {
       skity::Rect::MakeLTRB(2.0f, 4.0f, 20.5f, 20.5f);
   auto layer_filter =
       SkPerlinNoiseShader::MakeFractalNoise(1.0f, 1.0f, 1, 1.0f);
-  auto dl_filter = DlColorSource::From(layer_filter);
+  auto dl_filter = std::make_shared<UnknownColorSource>(layer_filter);
   auto layer = std::make_shared<ShaderMaskLayer>(dl_filter, layer_bounds,
                                                  DlBlendMode::kSrc);
 
@@ -329,7 +329,7 @@ TEST_F(ShaderMaskLayerTest, Readback) {
 TEST_F(ShaderMaskLayerTest, LayerCached) {
   auto layer_filter =
       SkPerlinNoiseShader::MakeFractalNoise(1.0f, 1.0f, 1, 1.0f);
-  auto dl_filter = DlColorSource::From(layer_filter);
+  auto dl_filter = std::make_shared<UnknownColorSource>(layer_filter);
   SkPaint paint;
   const SkRect layer_bounds = SkRect::MakeLTRB(2.0f, 4.0f, 20.5f, 20.5f);
   auto initial_transform = SkMatrix::Translate(50.0, 25.5);

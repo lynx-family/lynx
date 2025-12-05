@@ -61,22 +61,6 @@ enum class ColorSourceType {
 
 class ColorSource : public Attribute<ColorSource, GrShader, ColorSourceType> {
  public:
-  // Return a shared_ptr holding a DlColorSource representing the indicated
-  // Skia SkShader pointer.
-  //
-  // This method can detect each of the 4 recognized types from an analogous
-  // SkShader.
-  static std::shared_ptr<ColorSource> From(GrShader* sk_filter);
-
-  // Return a shared_ptr holding a DlColorFilter representing the indicated
-  // Skia SkShader pointer.
-  //
-  // This method can detect each of the 4 recognized types from an analogous
-  // SkShader.
-  static std::shared_ptr<ColorSource> From(GrShaderPtr sk_filter) {
-    return From(sk_filter.get());
-  }
-
   static std::shared_ptr<ColorSource> MakeLinear(
       const skity::Vec2 start_point, const skity::Vec2 end_point,
       uint32_t stop_count, const Color* colors, const float* stops,
@@ -102,6 +86,12 @@ class ColorSource : public Attribute<ColorSource, GrShader, ColorSourceType> {
       fml::RefPtr<RuntimeEffect> runtime_effect,
       std::vector<std::shared_ptr<ColorSource>> samplers,
       std::shared_ptr<std::vector<uint8_t>> uniform_data);
+
+  static std::shared_ptr<ImageColorSource> MakeImage(
+      fml::RefPtr<PaintImage> image, TileMode tile_mode_x, TileMode tile_mode_y,
+      ImageSampling sampling, const skity::Matrix* matrix = nullptr);
+
+  static std::shared_ptr<ColorColorSource> MakeColor(Color color);
 
   virtual bool is_opaque() const = 0;
 

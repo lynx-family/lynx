@@ -30,8 +30,6 @@ struct JSErrorInfo {
   std::string dynamic_component_path;
   // sourcemap release for kernel
   std::string release;
-  // release commit for kernel
-  std::string slot;
   int32_t error_code = error::E_BTS_RUNTIME_ERROR;
   base::LynxErrorLevel error_level{base::LynxErrorLevel::Error};
 };

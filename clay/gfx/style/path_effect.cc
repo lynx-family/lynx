@@ -25,27 +25,9 @@ static void PathEffectDeleter(void* p) {
   ::operator delete(p);
 }
 
-std::shared_ptr<PathEffect> PathEffect::From(GrPathEffect* sk_path_effect) {
-  if (sk_path_effect == nullptr) {
-    return nullptr;
-  }
-#ifndef ENABLE_SKITY
-  SkPathEffect::DashInfo info;
-  if (SkPathEffect::DashType::kDash_DashType ==
-      sk_path_effect->asADash(&info)) {
-    auto dash_path_effect =
-        DashPathEffect::Make(nullptr, info.fCount, info.fPhase);
-    info.fIntervals = reinterpret_cast<DashPathEffect*>(dash_path_effect.get())
-                          ->intervals_unsafe();
-    sk_path_effect->asADash(&info);
-    return dash_path_effect;
-  }
-  // If not dash path effect, we will use UnknownPathEffect to wrap it.
-  return std::make_shared<UnknownPathEffect>(sk_ref_sp(sk_path_effect));
-#else
-  FML_UNIMPLEMENTED();
-  return nullptr;
-#endif  // ENABLE_SKITY
+std::shared_ptr<PathEffect> PathEffect::MakeDash(const float intervals[],
+                                                 int count, float phase) {
+  return DashPathEffect::Make(intervals, count, phase);
 }
 
 std::shared_ptr<PathEffect> DashPathEffect::Make(const float* intervals,

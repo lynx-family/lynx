@@ -560,19 +560,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (value && value->isString()) {
             error_info.release = value->asString(rt)->utf8(rt);
           }
-          value = options_obj->getProperty(rt, "slot");
-          if (value && value->isString()) {
-            const std::string slot = value->asString(rt)->utf8(rt);
-            // slot is unknown_commit_hash when it is not set in js side.
-            if (slot != "unknown_commit_hash") {
-              // slot hash is 8 chars long, truncate it to 8 chars.
-              if (slot.length() > 7) {
-                error_info.slot = slot.substr(0, 8);
-              } else {
-                error_info.slot = slot;
-              }
-            }
-          }
           value = options_obj->getProperty(rt, "buildVersion");
           if (value && value->isString()) {
             error_info.build_version = value->asString(rt)->utf8(rt);

@@ -5,39 +5,21 @@
 #include "clay/gfx/style/color_filter.h"
 
 namespace clay {
-std::shared_ptr<ColorFilter> ColorFilter::From(GrColorFilter* sk_filter) {
-  if (sk_filter == nullptr) {
-    return nullptr;
-  }
-  if (sk_filter == SrgbToLinearGammaColorFilter::sk_filter_.get()) {
-    // Skia implements these filters as a singleton.
-    return SrgbToLinearGammaColorFilter::instance;
-  }
-  if (sk_filter == LinearToSrgbGammaColorFilter::sk_filter_.get()) {
-    // Skia implements these filters as a singleton.
-    return LinearToSrgbGammaColorFilter::instance;
-  }
-#ifndef ENABLE_SKITY
-  {
-    SkColor color;
-    SkBlendMode mode;
-    if (sk_filter->asAColorMode(&color, &mode)) {
-      return std::make_shared<BlendColorFilter>(color,
-                                                static_cast<BlendMode>(mode));
-    }
-  }
-  {
-    float matrix[20];
-    if (sk_filter->asAColorMatrix(matrix)) {
-      return std::make_shared<MatrixColorFilter>(matrix);
-    }
-  }
-  return std::make_shared<UnknownColorFilter>(sk_ref_sp(sk_filter));
-#else
-  // Simply use the unknown color filter to manage the skity color filter.
-  return std::make_shared<UnknownColorFilter>(
-      std::shared_ptr<GrColorFilter>(sk_filter));
-#endif  // ENABLE_SKITY
+std::shared_ptr<ColorFilter> ColorFilter::MakeBlend(Color color,
+                                                    BlendMode mode) {
+  return std::make_shared<BlendColorFilter>(color, mode);
+}
+
+std::shared_ptr<ColorFilter> ColorFilter::MakeMatrix(const float matrix[20]) {
+  return std::make_shared<MatrixColorFilter>(matrix);
+}
+
+std::shared_ptr<ColorFilter> ColorFilter::MakeSrgbToLinearGamma() {
+  return SrgbToLinearGammaColorFilter::instance;
+}
+
+std::shared_ptr<ColorFilter> ColorFilter::MakeLinearToSrgbGamma() {
+  return LinearToSrgbGammaColorFilter::instance;
 }
 
 const std::shared_ptr<SrgbToLinearGammaColorFilter>

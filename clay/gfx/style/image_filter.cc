@@ -6,29 +6,30 @@
 
 namespace clay {
 
-std::shared_ptr<ImageFilter> ImageFilter::From(const GrImageFilter* sk_filter) {
-  if (sk_filter == nullptr) {
-    return nullptr;
-  }
-#ifndef ENABLE_SKITY
-  {
-    SkColorFilter* color_filter;
-    if (sk_filter->isColorFilterNode(&color_filter)) {
-      FML_DCHECK(color_filter != nullptr);
-      // If |isColorFilterNode| succeeds, the pointer it sets into color_filter
-      // will be ref'd already so we do not use sk_ref_sp() here as that would
-      // double-ref the color filter object. Instead we use a bare sk_sp
-      // constructor to adopt this reference into an sk_sp<SkCF> without
-      // reffing it and let the compiler manage the refs.
-      return std::make_shared<ColorFilterImageFilter>(
-          ColorFilter::From(sk_sp<SkColorFilter>(color_filter)));
-    }
-  }
-  return std::make_shared<UnknownImageFilter>(sk_ref_sp(sk_filter));
-#else
-  FML_UNIMPLEMENTED();
-  return std::make_shared<UnknownImageFilter>(sk_filter);
-#endif  // ENABLE_SKITY
+std::shared_ptr<ImageFilter> ImageFilter::MakeBlur(float sigma_x, float sigma_y,
+                                                   TileMode tile_mode) {
+  return std::make_shared<BlurImageFilter>(sigma_x, sigma_y, tile_mode);
+}
+std::shared_ptr<ImageFilter> ImageFilter::MakeDilate(float radius_x,
+                                                     float radius_y) {
+  return std::make_shared<DilateImageFilter>(radius_x, radius_y);
+}
+std::shared_ptr<ImageFilter> ImageFilter::MakeErode(float radius_x,
+                                                    float radius_y) {
+  return std::make_shared<ErodeImageFilter>(radius_x, radius_y);
+}
+std::shared_ptr<ImageFilter> ImageFilter::MakeMatrix(
+    const skity::Matrix& matrix, ImageSampling sampling) {
+  return std::make_shared<MatrixImageFilter>(matrix, sampling);
+}
+std::shared_ptr<ImageFilter> ImageFilter::MakeColorFilter(
+    const std::shared_ptr<ColorFilter>& filter) {
+  return std::make_shared<ColorFilterImageFilter>(filter);
+}
+std::shared_ptr<ImageFilter> ImageFilter::MakeCompose(
+    const std::shared_ptr<ImageFilter>& outer,
+    const std::shared_ptr<ImageFilter>& inner) {
+  return std::make_shared<ComposeImageFilter>(outer, inner);
 }
 
 std::shared_ptr<ImageFilter> ImageFilter::makeWithLocalMatrix(

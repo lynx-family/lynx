@@ -83,7 +83,7 @@ void PaintingContext::RepaintCompositedChild(
         // Get the matrix from SkColorMatrix.
         std::copy_n(child->ColorFilterMatrix().data(), 20, m);
 
-        auto v = ColorFilter::From(COLOR_FILTER_MATRIX(m));
+        auto v = ColorFilter::MakeMatrix(m);
         ctx.PushColorFilter(v, offset, old_painter);
       };
     }

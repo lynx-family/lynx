@@ -30,21 +30,13 @@ enum class ColorFilterType {
 class ColorFilter
     : public Attribute<ColorFilter, GrColorFilter, ColorFilterType> {
  public:
-  // Return a shared_ptr holding a DlColorFilter representing the indicated
-  // Skia SkColorFilter pointer.
-  //
-  // This method can detect each of the 4 recognized types from an analogous
-  // SkColorFilter.
-  static std::shared_ptr<ColorFilter> From(GrColorFilter* sk_filter);
+  static std::shared_ptr<ColorFilter> MakeBlend(Color color, BlendMode mode);
 
-  // Return a shared_ptr holding a ColorFilter representing the indicated
-  // Skia SkColorFilter pointer.
-  //
-  // This method can detect each of the 4 recognized types from an analogous
-  // SkColorFilter.
-  static std::shared_ptr<ColorFilter> From(GrColorFilterPtr sk_filter) {
-    return From(sk_filter.get());
-  }
+  static std::shared_ptr<ColorFilter> MakeMatrix(const float matrix[20]);
+
+  static std::shared_ptr<ColorFilter> MakeSrgbToLinearGamma();
+
+  static std::shared_ptr<ColorFilter> MakeLinearToSrgbGamma();
 
   // Return a boolean indicating whether the color filtering operation will
   // modify transparent black. This is typically used to determine if applying
@@ -187,7 +179,7 @@ class SrgbToLinearGammaColorFilter final : public ColorFilter {
  public:
   static const std::shared_ptr<SrgbToLinearGammaColorFilter> instance;
 
-  SrgbToLinearGammaColorFilter() {}
+  SrgbToLinearGammaColorFilter() = default;
   SrgbToLinearGammaColorFilter(const SrgbToLinearGammaColorFilter& filter)
       : SrgbToLinearGammaColorFilter() {}
   explicit SrgbToLinearGammaColorFilter(

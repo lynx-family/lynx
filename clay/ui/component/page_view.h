@@ -323,11 +323,6 @@ class PageView : public BaseView,
   }
 #endif
 
-  void FilterInputAsync(const std::string& input, const std::string& pattern,
-                        std::function<void(const std::string&)> callback) {
-    render_delegate_->FilterInputAsync(input, pattern, callback);
-  }
-
   void DispatchLynxLayout();
   virtual void ResetPageView(bool recycle = false);
 

@@ -394,11 +394,6 @@
     return;
   }
 
-  // Lynx cards may be on the view tree but are in a hidden state.
-  if (_rootUI.view.isHidden) {
-    return;
-  }
-
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, UI_EXPOSURE_HANDLER);
 
   // There is no need to detect exposure when UI and LynxView haven't changed.

@@ -326,9 +326,6 @@ class Shell final : public PlatformView::Delegate,
   // Engine::Delegate
   void ShowSoftInput(int type, int action) override;
   void HideSoftInput() override;
-  void FilterInputAsync(
-      const std::string& input, const std::string& pattern,
-      std::function<void(const std::string&)> callback) override;
 
   std::string ShouldInterceptUrl(const std::string& origin_url,
                                  bool should_decode) override;

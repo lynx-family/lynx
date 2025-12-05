@@ -46,8 +46,6 @@ class TextInputController {
   void SetComposingRect(FloatRect rect);
   void Show();
   void Hide();
-  void InputFilterAsync(const std::string& input, const std::string& pattern,
-                        std::function<void(const std::string&)> callback);
 
   void UpdateEditingState(std::string text, TextSelection selection,
                           TextRange composing, Affinity affinity);

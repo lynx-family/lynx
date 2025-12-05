@@ -8,102 +8,67 @@
 #ifndef CLAY_FML_LOGGING_H_
 #define CLAY_FML_LOGGING_H_
 
-#include <sstream>
+// This file is a compatibility bridge to the new logging implementation in
+// lynx/base/include/log/logging.h. All FML_... macros are redefined in terms
+// of the new BASE_... and standard macros.
 
 #include "base/include/fml/macros.h"
+#include "base/include/fml/time/time_point.h"
+#include "base/include/log/logging.h"
 #include "build/build_config.h"
-#include "clay/fml/log_level.h"
-
+// #include "clay/fml/log_level.h"
 namespace fml {
-
-typedef void (*LogMessageCallback)(const char* log_level, const char* file,
-                                   const int line, const char* log_info);
-
-void SetLogMessageCallback(LogMessageCallback callback);
-
-class LogMessageVoidify {
- public:
-  void operator&(std::ostream&) {}
-};
-
-class LogMessage {
- public:
-  LogMessage(LogSeverity severity, const char* file, int line,
-             const char* condition);
-  ~LogMessage();
-
-  std::ostream& stream() { return stream_; }
-
- private:
-  std::ostringstream stream_;
-  const LogSeverity severity_;
-  const char* file_;
-  const int line_;
-
-  BASE_DISALLOW_COPY_AND_ASSIGN(LogMessage);
-};
-
-// Gets the FML_VLOG default verbosity level.
-int GetVlogVerbosity();
-
-// Returns true if |severity| is at or above the current minimum log level.
-// LOG_FATAL and above is always true.
-bool ShouldCreateLogMessage(LogSeverity severity);
-
-[[noreturn]] void KillProcess();
-
+using LogSeverity = ::lynx::base::logging::LogSeverity;
+constexpr LogSeverity LOG_INFO = ::lynx::base::logging::LOG_INFO;
+constexpr LogSeverity LOG_WARNING = ::lynx::base::logging::LOG_WARNING;
+constexpr LogSeverity LOG_ERROR = ::lynx::base::logging::LOG_ERROR;
+constexpr LogSeverity LOG_FATAL = ::lynx::base::logging::LOG_FATAL;
 }  // namespace fml
 
-#define FML_LOG_STREAM(severity) \
-  ::fml::LogMessage(::fml::LOG_##severity, __FILE__, __LINE__, nullptr).stream()
+// --- Stream-based Macros ---
 
-#define FML_LAZY_STREAM(stream, condition) \
-  !(condition) ? (void)0 : ::fml::LogMessageVoidify() & (stream)
-
-#define FML_EAT_STREAM_PARAMETERS(ignored) \
-  true || (ignored)                        \
-      ? (void)0                            \
-      : ::fml::LogMessageVoidify() &       \
-            ::fml::LogMessage(::fml::LOG_FATAL, 0, 0, nullptr).stream()
-
-#define FML_LOG_IS_ON(severity) \
-  (::fml::ShouldCreateLogMessage(::fml::LOG_##severity))
-
-#define FML_LOG(severity) \
-  FML_LAZY_STREAM(FML_LOG_STREAM(severity), FML_LOG_IS_ON(severity))
-
-#define FML_CHECK(condition)                                              \
-  FML_LAZY_STREAM(                                                        \
-      ::fml::LogMessage(::fml::LOG_FATAL, __FILE__, __LINE__, #condition) \
-          .stream(),                                                      \
-      !(condition))
-
-#define FML_VLOG_IS_ON(verbose_level) \
-  ((verbose_level) <= ::fml::GetVlogVerbosity())
-
-// The VLOG macros log with negative verbosities.
-#define FML_VLOG_STREAM(verbose_level) \
-  ::fml::LogMessage(-verbose_level, __FILE__, __LINE__, nullptr).stream()
-
-#define FML_VLOG(verbose_level) \
-  FML_LAZY_STREAM(FML_VLOG_STREAM(verbose_level), FML_VLOG_IS_ON(verbose_level))
+#define FML_LOG(severity) BASE_LOG(severity)
 
 #ifndef NDEBUG
 #define FML_DLOG(severity) FML_LOG(severity)
-#define FML_DCHECK(condition) FML_CHECK(condition)
 #else
-#define FML_DLOG(severity) FML_EAT_STREAM_PARAMETERS(true)
-#define FML_DCHECK(condition) FML_EAT_STREAM_PARAMETERS(condition)
+#define FML_DLOG(severity)                            \
+  true ? (void)0                                      \
+       : ::lynx::base::logging::LogMessageVoidify() & \
+             ::lynx::base::logging::NullLogStream()
 #endif
 
-#define FML_UNREACHABLE()                          \
-  {                                                \
-    FML_LOG(ERROR) << "Reached unreachable code."; \
-    ::fml::KillProcess();                          \
-  }
+// VLOG is for verbose debugging. We map it to a disabled stream to ensure
+// compatibility without adding complexity, as it's not critical.
+#define FML_VLOG(verbose_level)                       \
+  true ? (void)0                                      \
+       : ::lynx::base::logging::LogMessageVoidify() & \
+             ::lynx::base::logging::NullLogStream()
 
-#define FML_UNIMPLEMENTED()                                               \
-  FML_DLOG(ERROR) << "Unimplemented detail in " << __FUNCTION__ << " of " \
-                  << __FILE__;
+// --- Assertion and Check Macros ---
+
+#define FML_CHECK(condition) CHECK(condition)
+#define FML_DCHECK(condition) DCHECK(condition)
+
+// --- Utility Macros ---
+
+#define FML_UNREACHABLE() NOTREACHED()
+#define FML_UNIMPLEMENTED() UNIMPLEMENTED()
+
+// --- Deprecated Macros ---
+// These macros are part of the old implementation and are no longer needed.
+// Redefined here for any code that might still use them transitively.
+#define FML_EAT_STREAM_PARAMETERS(ignored)            \
+  true ? (void)0                                      \
+       : ::lynx::base::logging::LogMessageVoidify() & \
+             ::lynx::base::logging::NullLogStream()
+
+#define FML_LOG_STREAM(severity) LOG_STREAM(severity)
+#define FML_VLOG_STREAM(verbose_level)                 \
+  (true ? (void)0                                      \
+        : ::lynx::base::logging::LogMessageVoidify() & \
+              ::lynx::base::logging::NullLogStream())
+#define FML_LOG_IS_ON(severity) LOG_IS_ON(severity)
+#define FML_VLOG_IS_ON(verbose_level) false
 
 #endif  // CLAY_FML_LOGGING_H_

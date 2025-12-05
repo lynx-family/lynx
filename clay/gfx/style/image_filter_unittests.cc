@@ -12,22 +12,14 @@
 namespace clay {
 namespace testing {
 
-TEST(DisplayListImageFilter, FromSkiaNullFilter) {
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(nullptr);
-
-  ASSERT_EQ(filter, nullptr);
-  ASSERT_EQ(filter.get(), nullptr);
-}
-
 TEST(DisplayListImageFilter, FromSkiaBlurImageFilter) {
-  sk_sp<SkImageFilter> sk_image_filter =
-      SkImageFilters::Blur(5.0, 5.0, SkTileMode::kRepeat, nullptr);
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(sk_image_filter);
+  std::shared_ptr<DlImageFilter> filter =
+      ImageFilter::MakeBlur(5.0, 5.0, TileMode::kRepeat);
 
-  ASSERT_EQ(filter->type(), DlImageFilterType::kUnknown);
+  ASSERT_EQ(filter->type(), DlImageFilterType::kBlur);
 
   // We cannot recapture the blur parameters from an SkBlurImageFilter
-  ASSERT_EQ(filter->asBlur(), nullptr);
+  ASSERT_EQ(filter->asBlur(), filter.get());
   ASSERT_EQ(filter->asDilate(), nullptr);
   ASSERT_EQ(filter->asErode(), nullptr);
   ASSERT_EQ(filter->asMatrix(), nullptr);
@@ -36,15 +28,13 @@ TEST(DisplayListImageFilter, FromSkiaBlurImageFilter) {
 }
 
 TEST(DisplayListImageFilter, FromSkiaDilateImageFilter) {
-  sk_sp<SkImageFilter> sk_image_filter =
-      SkImageFilters::Dilate(5.0, 5.0, nullptr);
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(sk_image_filter);
+  std::shared_ptr<DlImageFilter> filter = ImageFilter::MakeDilate(5.0, 5.0);
 
-  ASSERT_EQ(filter->type(), DlImageFilterType::kUnknown);
+  ASSERT_EQ(filter->type(), DlImageFilterType::kDilate);
 
   // We cannot recapture the dilate parameters from an SkDilateImageFilter
   ASSERT_EQ(filter->asBlur(), nullptr);
-  ASSERT_EQ(filter->asDilate(), nullptr);
+  ASSERT_EQ(filter->asDilate(), filter.get());
   ASSERT_EQ(filter->asErode(), nullptr);
   ASSERT_EQ(filter->asMatrix(), nullptr);
   ASSERT_EQ(filter->asCompose(), nullptr);
@@ -52,71 +42,63 @@ TEST(DisplayListImageFilter, FromSkiaDilateImageFilter) {
 }
 
 TEST(DisplayListImageFilter, FromSkiaErodeImageFilter) {
-  sk_sp<SkImageFilter> sk_image_filter =
-      SkImageFilters::Erode(5.0, 5.0, nullptr);
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(sk_image_filter);
+  std::shared_ptr<DlImageFilter> filter = ImageFilter::MakeErode(5.0, 5.0);
 
-  ASSERT_EQ(filter->type(), DlImageFilterType::kUnknown);
+  ASSERT_EQ(filter->type(), DlImageFilterType::kErode);
 
   // We cannot recapture the erode parameters from an SkErodeImageFilter
   ASSERT_EQ(filter->asBlur(), nullptr);
   ASSERT_EQ(filter->asDilate(), nullptr);
-  ASSERT_EQ(filter->asErode(), nullptr);
+  ASSERT_EQ(filter->asErode(), filter.get());
   ASSERT_EQ(filter->asMatrix(), nullptr);
   ASSERT_EQ(filter->asCompose(), nullptr);
   ASSERT_EQ(filter->asColorFilter(), nullptr);
 }
 
 TEST(DisplayListImageFilter, FromSkiaMatrixImageFilter) {
-  sk_sp<SkImageFilter> sk_image_filter = SkImageFilters::MatrixTransform(
-      SkMatrix::RotateDeg(45), ToSk(DlImageSampling::kLinear), nullptr);
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(sk_image_filter);
+  skity::Matrix matrix = skity::Matrix::RotateDeg(45);
+  std::shared_ptr<DlImageFilter> filter =
+      ImageFilter::MakeMatrix(matrix, ImageSampling::kLinear);
 
-  ASSERT_EQ(filter->type(), DlImageFilterType::kUnknown);
+  ASSERT_EQ(filter->type(), DlImageFilterType::kMatrix);
 
   // We cannot recapture the blur parameters from an SkMatrixImageFilter
   ASSERT_EQ(filter->asBlur(), nullptr);
   ASSERT_EQ(filter->asDilate(), nullptr);
   ASSERT_EQ(filter->asErode(), nullptr);
-  ASSERT_EQ(filter->asMatrix(), nullptr);
+  ASSERT_EQ(filter->asMatrix(), filter.get());
   ASSERT_EQ(filter->asCompose(), nullptr);
   ASSERT_EQ(filter->asColorFilter(), nullptr);
 }
 
 TEST(DisplayListImageFilter, FromSkiaComposeImageFilter) {
-  sk_sp<SkImageFilter> sk_blur_filter =
-      SkImageFilters::Blur(5.0, 5.0, SkTileMode::kRepeat, nullptr);
-  sk_sp<SkImageFilter> sk_matrix_filter = SkImageFilters::MatrixTransform(
-      SkMatrix::RotateDeg(45), ToSk(DlImageSampling::kLinear), nullptr);
-  sk_sp<SkImageFilter> sk_image_filter =
-      SkImageFilters::Compose(sk_blur_filter, sk_matrix_filter);
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(sk_image_filter);
+  std::shared_ptr<DlImageFilter> sk_blur_filter =
+      ImageFilter::MakeBlur(5.0, 5.0, TileMode::kRepeat);
+  std::shared_ptr<DlImageFilter> sk_matrix_filter = ImageFilter::MakeMatrix(
+      skity::Matrix::RotateDeg(45), ImageSampling::kLinear);
+  std::shared_ptr<DlImageFilter> filter =
+      ImageFilter::MakeCompose(sk_blur_filter, sk_matrix_filter);
 
-  ASSERT_EQ(filter->type(), DlImageFilterType::kUnknown);
+  ASSERT_EQ(filter->type(), DlImageFilterType::kComposeFilter);
 
   // We cannot recapture the blur parameters from an SkComposeImageFilter
   ASSERT_EQ(filter->asBlur(), nullptr);
   ASSERT_EQ(filter->asDilate(), nullptr);
   ASSERT_EQ(filter->asErode(), nullptr);
   ASSERT_EQ(filter->asMatrix(), nullptr);
-  ASSERT_EQ(filter->asCompose(), nullptr);
+  ASSERT_EQ(filter->asCompose(), filter.get());
   ASSERT_EQ(filter->asColorFilter(), nullptr);
 }
 
 TEST(DisplayListImageFilter, FromSkiaColorFilterImageFilter) {
-  sk_sp<SkColorFilter> sk_color_filter =
-      SkColorFilters::Blend(SK_ColorRED, SkBlendMode::kSrcIn);
-  sk_sp<SkImageFilter> sk_image_filter =
-      SkImageFilters::ColorFilter(sk_color_filter, nullptr);
-  std::shared_ptr<DlImageFilter> filter = DlImageFilter::From(sk_image_filter);
-  DlBlendColorFilter dl_color_filter(DlColor::kRed(), DlBlendMode::kSrcIn);
-  DlColorFilterImageFilter dl_image_filter(dl_color_filter.shared());
+  std::shared_ptr<ColorFilter> color_filter =
+      ColorFilter::MakeBlend(Color::kRed(), BlendMode::kSrcIn);
+  std::shared_ptr<ImageFilter> filter =
+      ImageFilter::MakeColorFilter(color_filter);
 
   ASSERT_EQ(filter->type(), DlImageFilterType::kColorFilter);
 
-  ASSERT_TRUE(*filter->asColorFilter() == dl_image_filter);
-  ASSERT_EQ(*filter.get(), dl_image_filter);
-  ASSERT_EQ(*filter->asColorFilter()->color_filter(), dl_color_filter);
+  ASSERT_EQ(filter->asColorFilter()->color_filter(), color_filter);
 
   ASSERT_EQ(filter->asBlur(), nullptr);
   ASSERT_EQ(filter->asDilate(), nullptr);

@@ -76,23 +76,18 @@ FontWeight ToFontWeight(int font_weight_val) {
 
 // Returns units filtered. If nothing changed, returns 0.
 size_t EditableView::FilterInput(TextEditingValue* value,
-                                 const std::string& pattern) {
+                                 const std::regex& filter_regex) {
   auto input = value->GetText();
   auto origin_length = input.length();
-  text_input_controller_->InputFilterAsync(
-      input, pattern, [this, origin_length, value](const std::string& result) {
-        value->SetTextAndReserveSelectionState(result);
-        if (origin_length - result.length()) {
-          UpdateRemoteStateIfNeeded(*value);
-        }
-      });
-  return 0;
+  input = std::regex_replace(input, filter_regex, "");
+  value->SetTextAndReserveSelectionState(input);
+  return origin_length - input.length();
 }
 
 size_t EditableView::FilterNewLine(TextEditingValue* value) {
   // May costs time.
-  static auto pattern = std::string("\n");
-  return FilterInput(value, pattern);
+  static auto regex = std::regex("\n");
+  return FilterInput(value, regex);
 }
 
 size_t EditableView::FilterMaxLength(TextEditingValue* value) {
@@ -125,20 +120,20 @@ size_t EditableView::FilterInputTextByType(TextEditingValue* value) {
   switch (keyboard_input_type_) {
     case KeyboardInputType::kClassNumber: {
       if (max_lines_ > 1) {
-        static auto pattern = std::string("[^0-9\\.\n]");
-        return FilterInput(value, pattern);
+        static auto regex = std::regex("[^0-9\\.\n]");
+        return FilterInput(value, regex);
       } else {
-        static auto pattern = std::string("[^0-9\\.]");
-        return FilterInput(value, pattern);
+        static auto regex = std::regex("[^0-9\\.]");
+        return FilterInput(value, regex);
       }
     }
     case KeyboardInputType::kClassPhone: {
       if (max_lines_ > 1) {
-        static auto pattern = std::string("[^0-9\n]");
-        return FilterInput(value, pattern);
+        static auto regex = std::regex("[^0-9\n]");
+        return FilterInput(value, regex);
       } else {
-        static auto pattern = std::string("[^0-9]");
-        return FilterInput(value, pattern);
+        static auto regex = std::regex("[^0-9]");
+        return FilterInput(value, regex);
       }
     }
     default:
@@ -147,7 +142,7 @@ size_t EditableView::FilterInputTextByType(TextEditingValue* value) {
 }
 
 size_t EditableView::FilterInputTextByUser(TextEditingValue* value) {
-  return FilterInput(value, input_filter_pattern_);
+  return FilterInput(value, user_input_filter_);
 }
 
 EditableView::EditableView(int id, std::string tag, PageView* page_view,

@@ -132,12 +132,6 @@ void TextInputController::Hide() {
 #endif
 }
 
-void TextInputController::InputFilterAsync(
-    const std::string& input, const std::string& pattern,
-    std::function<void(const std::string&)> callback) {
-  page_view_->FilterInputAsync(input, pattern, callback);
-}
-
 void TextInputController::UpdateEditingState(std::string text,
                                              TextSelection selection,
                                              TextRange composing,

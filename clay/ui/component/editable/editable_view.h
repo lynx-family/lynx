@@ -8,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -162,7 +163,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
  protected:
   size_t FilterInputTextByType(TextEditingValue* value);
   size_t FilterInputTextByUser(TextEditingValue* value);
-  size_t FilterInput(TextEditingValue* value, const std::string& pattern);
+  size_t FilterInput(TextEditingValue* value, const std::regex& filter_regex);
   size_t FilterNewLine(TextEditingValue* value);
   size_t FilterMaxLength(TextEditingValue* value);
   // TODO(yulitao): Design formatters to deal with input types.
@@ -184,7 +185,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void LayoutText(LayoutContext* context);
   std::shared_ptr<TextSpan> BuildTextSpan(TextStyle style);
 
-  std::string input_filter_pattern_;
+  std::regex user_input_filter_;
   bool editing_ = false;
   std::unique_ptr<txt::Paragraph> paragraph_;
   TextStyle text_style_;

@@ -57,9 +57,6 @@ class MockDelegate : public clay::RenderDelegate {
 #endif
   void ReportTiming(const std::unordered_map<std::string, int64_t>& timing,
                     const std::string& flag) override {}
-  void FilterInputAsync(
-      const std::string& input, const std::string& pattern,
-      std::function<void(const std::string&)> callback) override {}
   BaseView* FindViewById(int view_id) override { return nullptr; }
   ShadowNode* FindShadowNodeById(int node_id) override { return nullptr; }
 

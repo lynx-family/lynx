@@ -80,9 +80,6 @@ class RenderDelegate {
   virtual void ActivateSystemCursor(int type, const std::string& path) = 0;
 #endif
 
-  virtual void FilterInputAsync(
-      const std::string& input, const std::string& pattern,
-      std::function<void(const std::string&)> callback) = 0;
   virtual void ReportTiming(
       const std::unordered_map<std::string, int64_t>& timing,
       const std::string& flag) = 0;

@@ -253,28 +253,15 @@ StackTrace JSErrorReporter::ComputeStackTrace(const JSErrorInfo& error,
                 opt_sf->filename != kDefaultSourceMapUrl) {
               opt_sf->filename = "file://" + opt_sf->filename;
             }
-            // handle source map for kernel.
-            // in JS kernel, the default error.filename parameter for
-            // reportError is 'lynx_core'. in dev version ，stack frame filename
-            // is 'lynx_core.js'. in alpha version , stack frame filename is
-            // 'lynx_core-{version}.js'. in rc or release version,stack frame
-            // filename is 'lynx_core-{version}-{hash}.js'
             if (opt_sf->filename.find(error.file_name) != std::string::npos) {
               std::string suffix;
               if (error.release.empty()) {
                 suffix = ".js";
               } else {
-                if (error.slot.empty()) {
-                  suffix = "." + error.release + ".js";
-                } else {
-                  suffix = "." + error.release + "-" + error.slot + ".js";
-                }
+                suffix = "." + error.release + ".js";
               }
               opt_sf->filename = error.file_name + suffix;
-              opt_sf->release = error.slot.empty()
-                                    ? error.release
-                                    : error.release + "-" + error.slot;
-              // Others are appService ,handle source map for appService
+              opt_sf->release = error.release;
             } else {
               opt_sf->release = GetSourceMapRelease(opt_sf->filename);
             }

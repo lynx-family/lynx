@@ -11,22 +11,6 @@
 namespace clay {
 namespace testing {
 
-TEST(DisplayListMaskFilter, FromSkiaNullFilter) {
-  std::shared_ptr<DlMaskFilter> filter = DlMaskFilter::From(nullptr);
-  ASSERT_EQ(filter, nullptr);
-  ASSERT_EQ(filter.get(), nullptr);
-}
-
-TEST(DisplayListMaskFilter, FromSkiaBlurFilter) {
-  sk_sp<SkMaskFilter> sk_filter =
-      SkMaskFilter::MakeBlur(SkBlurStyle::kNormal_SkBlurStyle, 5.0);
-  std::shared_ptr<DlMaskFilter> filter = DlMaskFilter::From(sk_filter);
-  ASSERT_EQ(filter->type(), DlMaskFilterType::kUnknown);
-  // We cannot recapture the blur parameters from an SkBlurMaskFilter
-  ASSERT_EQ(filter->asBlur(), nullptr);
-  ASSERT_EQ(filter->gr_object(), sk_filter);
-}
-
 TEST(DisplayListMaskFilter, BlurConstructor) {
   DlBlurMaskFilter filter(SkBlurStyle::kNormal_SkBlurStyle, 5.0);
 }

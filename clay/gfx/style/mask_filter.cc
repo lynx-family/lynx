@@ -9,18 +9,9 @@
 
 namespace clay {
 
-std::shared_ptr<MaskFilter> MaskFilter::From(GrMaskFilter* sk_filter) {
-  if (sk_filter == nullptr) {
-    return nullptr;
-  }
-#ifndef ENABLE_SKITY
-  // There are no inspection methods for SkMaskFilter so we cannot break
-  // the Skia filter down into a specific subclass (i.e. Blur).
-  return std::make_shared<UnknownMaskFilter>(sk_ref_sp(sk_filter));
-#else
-  FML_UNIMPLEMENTED();
-  return nullptr;
-#endif  // ENABLE_SKITY
+std::shared_ptr<MaskFilter> MaskFilter::MakeBlur(GrBlurStyle style, float sigma,
+                                                 bool respect_ctm) {
+  return std::make_shared<BlurMaskFilter>(style, sigma, respect_ctm);
 }
 
 }  // namespace clay

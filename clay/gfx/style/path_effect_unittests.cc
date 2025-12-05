@@ -14,24 +14,6 @@
 namespace clay {
 namespace testing {
 
-TEST(DisplayListPathEffect, FromSkiaNullPathEffect) {
-  std::shared_ptr<DlPathEffect> path_effect = DlPathEffect::From(nullptr);
-  ASSERT_EQ(path_effect, nullptr);
-  ASSERT_EQ(path_effect.get(), nullptr);
-}
-
-TEST(DisplayListPathEffect, FromSkiaPathEffect) {
-  const SkScalar TestDashes2[] = {1.0, 1.5};
-  sk_sp<SkPathEffect> sk_path_effect =
-      SkDashPathEffect::Make(TestDashes2, 2, 0.0);
-  std::shared_ptr<DlPathEffect> dl_path_effect =
-      DlPathEffect::From(sk_path_effect);
-
-  ASSERT_EQ(dl_path_effect->type(), DlPathEffectType::kDash);
-  ASSERT_TRUE(
-      Equals(dl_path_effect, DlDashPathEffect::Make(TestDashes2, 2, 0.0)));
-}
-
 TEST(DisplayListPathEffect, EffectShared) {
   const SkScalar TestDashes2[] = {1.0, 1.5};
   auto effect = DlDashPathEffect::Make(TestDashes2, 2, 0.0);

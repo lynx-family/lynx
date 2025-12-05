@@ -34,29 +34,12 @@ enum class MaskFilterType { kBlur, kUnknown };
 
 class MaskFilter : public Attribute<MaskFilter, GrMaskFilter, MaskFilterType> {
  public:
-  // Return a shared_ptr holding a DlMaskFilter representing the indicated
-  // Skia SkMaskFilter pointer.
-  //
-  // Since there is no public SkBlurMaskFilter and since the SkMaskFilter
-  // class provides no |asABlur| style type inference method, we cannot
-  // infer any specific data from the SkMaskFilter. As a result, the return
-  // value in this case will always be nullptr or DlUnknownMaskFilter.
-  static std::shared_ptr<MaskFilter> From(GrMaskFilter* sk_filter);
-
-  // Return a shared_ptr holding a DlMaskFilter representing the indicated
-  // Skia SkMaskFilter pointer.
-  //
-  // Since there is no public SkBlurMaskFilter and since the SkMaskFilter
-  // class provides no |asABlur| style type inference methods, we cannot
-  // infer any specific data from the SkMaskFilter. As a result, the return
-  // value in this case will always be nullptr or DlUnknownMaskFilter.
-  static std::shared_ptr<MaskFilter> From(GrMaskFilterPtr sk_filter) {
-    return From(sk_filter.get());
-  }
-
   // Return a BlurMaskFilter pointer to this object iff it is a Blur
   // type of MaskFilter, otherwise return nullptr.
   virtual const BlurMaskFilter* asBlur() const { return nullptr; }
+
+  std::shared_ptr<MaskFilter> MakeBlur(GrBlurStyle style, float sigma,
+                                       bool respect_ctm = true);
 };
 
 // The Blur type of MaskFilter which specifies modifying the

@@ -56,9 +56,6 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
    public:
     virtual void ShowSoftInput(int type, int action) = 0;
     virtual void HideSoftInput() = 0;
-    virtual void FilterInputAsync(
-        const std::string& input, const std::string& pattern,
-        std::function<void(const std::string&)> callback) = 0;
     virtual std::string ShouldInterceptUrl(const std::string& origin_url,
                                            bool should_decode) = 0;
     virtual std::shared_ptr<clay::ResourceLoaderIntercept>
@@ -96,6 +93,7 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
     virtual void WindowMove() = 0;
     virtual void ActivateSystemCursor(int type, const std::string& path) = 0;
 #endif
+
     virtual void ReportTiming(
         const std::unordered_map<std::string, int64_t>& timing,
         const std::string& flag) = 0;
@@ -253,11 +251,6 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   }
 #endif
 
-  void FilterInputAsync(
-      const std::string& input, const std::string& pattern,
-      std::function<void(const std::string&)> callback) override {
-    delegate_->FilterInputAsync(input, pattern, callback);
-  }
   void ReportTiming(const std::unordered_map<std::string, int64_t>& timing,
                     const std::string& flag) override;
 

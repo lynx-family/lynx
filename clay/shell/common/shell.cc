@@ -1000,21 +1000,6 @@ void Shell::HideSoftInput() {
                                     });
 }
 
-void Shell::FilterInputAsync(const std::string& input,
-                             const std::string& pattern,
-                             std::function<void(const std::string&)> callback) {
-  fml::TaskRunner::RunNowOrPostTask(GetTaskRunners().GetIOTaskRunner(),
-                                    [weak = weak_platform_view_, input, pattern,
-                                     callback = std::move(callback)]() {
-                                      std::string result = input;  // 默认值
-                                      if (weak) {
-                                        result =
-                                            weak->InputFilter(input, pattern);
-                                      }
-                                      callback(result);
-                                    });
-}
-
 std::string Shell::ShouldInterceptUrl(const std::string& origin_url,
                                       bool should_decode) {
   if (weak_platform_view_) {

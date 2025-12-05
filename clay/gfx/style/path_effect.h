@@ -30,11 +30,8 @@ class PathEffect : public Attribute<PathEffect, GrPathEffect, PathEffectType> {
  public:
   virtual ~PathEffect() = default;
 
-  static std::shared_ptr<PathEffect> From(GrPathEffect* sk_path_effect);
-
-  static std::shared_ptr<PathEffect> From(GrPathEffectPtr sk_path_effect) {
-    return From(sk_path_effect.get());
-  }
+  std::shared_ptr<PathEffect> MakeDash(const float intervals[], int count,
+                                       float phase);
 
   virtual const DashPathEffect* asDash() const { return nullptr; }
 

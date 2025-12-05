@@ -64,23 +64,18 @@ class ImageFilter
     kComplex,
   };
 
-  // Return a shared_ptr holding a DlImageFilter representing the indicated
-  // Skia SkImageFilter pointer.
-  //
-  // This method can only detect the ColorFilter type of ImageFilter from an
-  // analogous SkImageFilter as there are no "asA..." methods for the other
-  // types on SkImageFilter.
-  static std::shared_ptr<ImageFilter> From(const GrImageFilter* sk_filter);
-
-  // Return a shared_ptr holding a ImageFilter representing the indicated
-  // Skia SkImageFilter pointer.
-  //
-  // This method can only detect the ColorFilter type of ImageFilter from an
-  // analogous SkImageFilter as there are no "asA..." methods for the other
-  // types on SkImageFilter.
-  static std::shared_ptr<ImageFilter> From(const GrImageFilterPtr sk_filter) {
-    return From(sk_filter.get());
-  }
+  static std::shared_ptr<ImageFilter> MakeBlur(float sigma_x, float sigma_y,
+                                               TileMode tile_mode);
+  static std::shared_ptr<ImageFilter> MakeDilate(float radius_x,
+                                                 float radius_y);
+  static std::shared_ptr<ImageFilter> MakeErode(float radius_x, float radius_y);
+  static std::shared_ptr<ImageFilter> MakeMatrix(const skity::Matrix& matrix,
+                                                 ImageSampling sampling);
+  static std::shared_ptr<ImageFilter> MakeColorFilter(
+      const std::shared_ptr<ColorFilter>& filter);
+  static std::shared_ptr<ImageFilter> MakeCompose(
+      const std::shared_ptr<ImageFilter>& outer,
+      const std::shared_ptr<ImageFilter>& inner);
 
   // Return a BlurImageFilter pointer to this object iff it is a Blur
   // type of ImageFilter, otherwise return nullptr.

@@ -102,7 +102,8 @@ TEST_F(BackdropFilterLayerTest, SimpleFilter) {
       SkShaders::Color(SkColors::kMagenta, /*colorSpace=*/nullptr));
   auto mock_layer = std::make_shared<MockLayer>(child_path, child_paint);
   auto layer = std::make_shared<BackdropFilterLayer>(
-      DlImageFilter::From(layer_filter), DlBlendMode::kSrcOver);
+      std::make_shared<UnknownImageFilter>(layer_filter),
+      DlBlendMode::kSrcOver);
   layer->Add(mock_layer);
   auto parent = std::make_shared<ClipRectLayer>(child_bounds, Clip::hardEdge);
   parent->Add(layer);
@@ -138,7 +139,7 @@ TEST_F(BackdropFilterLayerTest, NonSrcOverBlend) {
       SkShaders::Color(SkColors::kMagenta, /*colorSpace=*/nullptr));
   auto mock_layer = std::make_shared<MockLayer>(child_path, child_paint);
   auto layer = std::make_shared<BackdropFilterLayer>(
-      DlImageFilter::From(layer_filter), DlBlendMode::kSrc);
+      std::make_shared<UnknownImageFilter>(layer_filter), DlBlendMode::kSrc);
   layer->Add(mock_layer);
   auto parent = std::make_shared<ClipRectLayer>(child_bounds, Clip::hardEdge);
   parent->Add(layer);
@@ -184,7 +185,8 @@ TEST_F(BackdropFilterLayerTest, MultipleChildren) {
   auto mock_layer1 = std::make_shared<MockLayer>(child_path1, child_paint1);
   auto mock_layer2 = std::make_shared<MockLayer>(child_path2, child_paint2);
   auto layer = std::make_shared<BackdropFilterLayer>(
-      DlImageFilter::From(layer_filter), DlBlendMode::kSrcOver);
+      std::make_shared<UnknownImageFilter>(layer_filter),
+      DlBlendMode::kSrcOver);
   layer->Add(mock_layer1);
   layer->Add(mock_layer2);
   auto parent =
@@ -240,9 +242,11 @@ TEST_F(BackdropFilterLayerTest, Nested) {
   auto mock_layer1 = std::make_shared<MockLayer>(child_path1, child_paint1);
   auto mock_layer2 = std::make_shared<MockLayer>(child_path2, child_paint2);
   auto layer1 = std::make_shared<BackdropFilterLayer>(
-      DlImageFilter::From(layer_filter1), DlBlendMode::kSrcOver);
+      std::make_shared<UnknownImageFilter>(layer_filter1),
+      DlBlendMode::kSrcOver);
   auto layer2 = std::make_shared<BackdropFilterLayer>(
-      DlImageFilter::From(layer_filter2), DlBlendMode::kSrcOver);
+      std::make_shared<UnknownImageFilter>(layer_filter2),
+      DlBlendMode::kSrcOver);
   layer2->Add(mock_layer2);
   layer1->Add(mock_layer1);
   layer1->Add(layer2);

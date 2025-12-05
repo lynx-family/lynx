@@ -8,43 +8,38 @@
 #ifndef CLAY_FML_LOG_SETTINGS_H_
 #define CLAY_FML_LOG_SETTINGS_H_
 
-#include <string>
-
-#include "clay/fml/log_level.h"
+#include "clay/fml/logging.h"  // The new, unified bridge header
 
 namespace fml {
 
-// Settings which control the behavior of FML logging.
+// The original LogSettings struct. Kept for source compatibility.
 struct LogSettings {
-  // The minimum logging level.
-  // Anything at or above this level will be logged (if applicable).
-  // Anything below this level will be silently ignored.
-  //
-  // The log level defaults to 0 (LOG_INFO).
-  //
-  // Log messages for FML_VLOG(x) are logged
-  // at level -x, so setting the min log level to negative values enables
-  // verbose logging.
   LogSeverity min_log_level = LOG_INFO;
 };
 
-// Gets the active log settings for the current process.
-void SetLogSettings(const LogSettings& settings);
+// DEPRECATED: Redirecting to new base logging implementation.
+inline void SetLogSettings(const LogSettings& settings) {
+  ::lynx::base::logging::SetMinLogLevel(settings.min_log_level);
+}
 
-// Sets the active log settings for the current process.
-LogSettings GetLogSettings();
+// DEPRECATED: Redirecting to new base logging implementation.
+inline LogSettings GetLogSettings() {
+  return {::lynx::base::logging::GetMinLogLevel()};
+}
 
-// Gets the minimum log level for the current process. Never returs a value
-// higher than LOG_FATAL.
-int GetMinLogLevel();
+// DEPRECATED: Redirecting to new base logging implementation.
+inline int GetMinLogLevel() { return ::lynx::base::logging::GetMinLogLevel(); }
 
 class ScopedSetLogSettings {
  public:
-  explicit ScopedSetLogSettings(const LogSettings& settings);
-  ~ScopedSetLogSettings();
+  explicit ScopedSetLogSettings(const LogSettings& settings) {
+    old_level_ = ::lynx::base::logging::GetMinLogLevel();
+    ::lynx::base::logging::SetMinLogLevel(settings.min_log_level);
+  }
+  ~ScopedSetLogSettings() { ::lynx::base::logging::SetMinLogLevel(old_level_); }
 
  private:
-  LogSettings old_settings_;
+  int old_level_;
 };
 
 }  // namespace fml
