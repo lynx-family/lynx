@@ -8,6 +8,8 @@
 #import "clay/shell/platform/darwin/macos/framework/Headers/FlutterViewController.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterViewController_Internal.h"
 
+#include "clay/fml/logging.h"
+
 #include <cctype>
 
 #include <Carbon/Carbon.h>

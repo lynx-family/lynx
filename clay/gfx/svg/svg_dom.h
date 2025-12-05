@@ -6,13 +6,17 @@
 #define CLAY_GFX_SVG_SVG_DOM_H_
 
 #include <memory>
+#include <string>
 
+#include "clay/gfx/rendering_backend.h"
 #include "skity/include/skity/io/data.hpp"
 
 namespace clay {
-
 class SVGDom : public std::enable_shared_from_this<SVGDom> {
  public:
+  using ImageCallback =
+      std::function<std::shared_ptr<skity::Image>(std::string url)>;
+
   virtual ~SVGDom() = default;
 
   static std::shared_ptr<SVGDom> Create(std::shared_ptr<skity::Data> data);

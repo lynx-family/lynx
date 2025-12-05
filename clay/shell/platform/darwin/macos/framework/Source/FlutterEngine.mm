@@ -23,7 +23,7 @@
 #include "clay/shell/common/services/drag_drop_service.h"
 #include "clay/shell/common/switches.h"
 #include "clay/shell/platform/common/engine_switches.h"
-#include "clay/shell/platform/darwin/common/clay_service_manager_service_darwin.h"
+#include "clay/shell/platform/darwin/common/services/clay_service_manager_service_darwin.h"
 #include "clay/shell/platform/embedder/embedder_engine.h"
 #include "clay/shell/platform/embedder/platform_view_embedder.h"
 #include "clay/shell/platform/embedder/platform_view_embedder_delegate.h"
