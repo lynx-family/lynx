@@ -71,7 +71,9 @@ void TextAreaNGView::OnLayout(LayoutContext* context) {
       std::max(ContentHeight(), editable_view_->EstimateHeightWithMaxLines()));
   auto node =
       static_cast<EditableNGShadowNode*>(page_view()->GetShadowNodeById(id()));
-  node->SetTextHeight(editable_view_->GetParagraph()->GetHeight());
+  if (node) {
+    node->SetTextHeight(editable_view_->GetParagraph()->GetHeight());
+  }
   page_view()->PostUIMethodTask([weak_ptr = GetWeakPtr()] {
     if (weak_ptr) {
       auto editable_text_view = static_cast<TextAreaNGView*>(weak_ptr.get());

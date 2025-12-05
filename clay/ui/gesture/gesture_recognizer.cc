@@ -102,7 +102,7 @@ void PrimaryPointerGestureRecognizer::OnTimeout() {
 
 void PrimaryPointerGestureRecognizer::HandleEvent(const PointerEvent& event) {
   GESTURE_LOG << GetMemberTag() << this
-              << " handle primary pointer gesture: " << event.ToString();
+              << " handle primary pointer event: " << event.ToString();
   if (event.pointer_id == primary_pointer_ &&
       recognizer_state_ == GestureRecognizerState::kPossible) {
     if ((event.type == PointerEvent::EventType::kMoveEvent ||

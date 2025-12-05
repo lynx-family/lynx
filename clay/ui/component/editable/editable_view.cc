@@ -1241,7 +1241,8 @@ void EditableView::ResetGestureRecognizers() {
   multi_tap_recognizer->SetDelegate(this);
   multi_tap_recognizer_ = multi_tap_recognizer.get();
   std::unique_ptr<DragGestureRecognizer> drag_recognizer =
-      std::make_unique<DragGestureRecognizer>(page_view()->gesture_manager());
+      std::make_unique<HorizontalDragGestureRecognizer>(
+          page_view()->gesture_manager());
   drag_recognizer->SetDelegate(this);
   drag_recognizer_ = drag_recognizer.get();
   multi_tap_recognizer->SetMultiTapCallback([this](auto&& PH1, int count) {
@@ -1253,7 +1254,6 @@ void EditableView::ResetGestureRecognizers() {
       OnGestureTripleTap(std::forward<decltype(PH1)>(PH1));
     }
   });
-  drag_recognizer->SetTouchSlop(1);
   drag_recognizer->SetDragStartCallback(
       [this](auto&& PH1) { OnDragStart(std::forward<decltype(PH1)>(PH1)); });
   drag_recognizer->SetDragUpdateCallback([this](auto&& PH1, auto&& PH2) {

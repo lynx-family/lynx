@@ -157,6 +157,7 @@ if (enable_unittests) {
     sources = [
       "common/attribute_utils_unittests.cc",
       "component/base_view_unittests.cc",
+      "component/editable/textarea_ng_view_unittests.cc",
       "component/keyframe_animator_unittests.cc",
       "component/list/base_list_view_unittests.cc",
       "component/list/focus_list_view_unittests.cc",

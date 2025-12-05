@@ -127,6 +127,7 @@ class HorizontalDragGestureRecognizer : public DragGestureRecognizer {
   FloatSize GetDeltaForDetails(const FloatSize& delta) const override;
   bool HasSufficientDistanceToAccept(const FloatSize& distance) override;
   bool IsFlingGesture(const VelocityEstimate& velocity) override;
+  const char* GetMemberTag() const override { return "[HorizontalDrag]"; }
 };
 
 class VerticalDragGestureRecognizer : public DragGestureRecognizer {
@@ -139,6 +140,7 @@ class VerticalDragGestureRecognizer : public DragGestureRecognizer {
   FloatSize GetDeltaForDetails(const FloatSize& delta) const override;
   bool HasSufficientDistanceToAccept(const FloatSize& distance) override;
   bool IsFlingGesture(const VelocityEstimate& velocity) override;
+  const char* GetMemberTag() const override { return "[VerticalDrag]"; }
 };
 
 std::unique_ptr<DragGestureRecognizer> CreateDragRecognizerByDirection(

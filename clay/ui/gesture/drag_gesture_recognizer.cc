@@ -54,7 +54,8 @@ void DragGestureRecognizer::HandleEvent(const PointerEvent& pointer) {
   if (state_ == DragState::kReady) {
     return;
   }
-
+  GESTURE_LOG << GetMemberTag() << this
+              << " handle pointer event: " << pointer.ToString();
   if (!timestamp_offset_) {
     const fml::TimePoint now = fml::TimePoint::Now();
     const fml::TimeDelta timestamp =

@@ -43,6 +43,7 @@ class TextAreaNGView : public WithTypeInfo<TextAreaNGView, BaseView>,
 #undef UI_METHOD_LIST_DECLARATION
 
  private:
+  FRIEND_TEST(TextAreaNGViewTest, scroll);
   void OnDestroy() override;
 
   EditableView* editable_view_ = nullptr;
