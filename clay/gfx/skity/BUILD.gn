@@ -10,7 +10,6 @@ source_set("skity") {
     "picture_skity.h",
     "rendering_material.cc",
     "rendering_material.h",
-    "skity_auto_canvas_save.h",
     "skity_canvas.cc",
     "skity_canvas.h",
     "skity_decoding_image.cc",

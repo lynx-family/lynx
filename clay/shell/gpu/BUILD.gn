@@ -54,10 +54,9 @@ source_set("gpu_surface_gl") {
       "gpu_surface_gl_skity.cc",
       "gpu_surface_gl_skity.h",
     ]
-    public_deps += [ "../../gfx/skity" ]
-  }
-  if (is_win) {
-    deps = [ "//third_party/angle:includes" ]
+    if (is_win) {
+      deps = [ "//third_party/angle:includes" ]
+    }
   }
 }
 

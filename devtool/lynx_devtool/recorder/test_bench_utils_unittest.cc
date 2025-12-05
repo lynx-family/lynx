@@ -24,7 +24,7 @@ class TestBenchUtilsTest : public testing::Test {
         std::make_unique<Byte[]>(*compressed_size_in);
     int z_result =
         compress(compressed_data.get(), compressed_size_in,
-                 reinterpret_cast<const Cr_z_Bytef*>(source), source_size);
+                 reinterpret_cast<const Bytef*>(source), source_size);
     if (z_result == Z_OK) {
       return compressed_data;
     } else {

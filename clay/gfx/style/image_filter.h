@@ -18,6 +18,9 @@
 #include "clay/gfx/style/color_filter.h"
 #include "clay/gfx/style/sampling_options.h"
 #include "clay/gfx/style/tile_mode.h"
+#ifdef ENABLE_SKITY
+#include "skity/effect/image_filter.hpp"
+#endif  // ENABLE_SKITY
 #include "skity/geometry/matrix.hpp"
 #include "skity/geometry/rect.hpp"
 
