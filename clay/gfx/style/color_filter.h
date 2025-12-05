@@ -14,6 +14,9 @@
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/blend_mode.h"
 #include "clay/gfx/style/color.h"
+#ifdef ENABLE_SKITY
+#include "skity/effect/color_filter.hpp"
+#endif  // ENABLE_SKITY
 namespace clay {
 
 class BlendColorFilter;

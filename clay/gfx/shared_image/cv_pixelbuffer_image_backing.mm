@@ -10,27 +10,30 @@
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/mtl_image_representation.h"
 #include "clay/gfx/shared_image/utils/image_utils.h"
-#include "third_party/skia/include/gpu/GrDirectContext.h"
 
 #if OS_IOS
 #include "clay/gfx/shared_image/eagl_image_representation.h"
 #endif
 
-#if ENABLE_SKITY
-#include "clay/gfx/shared_image/skity_mtl_image_representation.h"
-#include "skity/gpu/gpu_context.hpp"
-#else
 #if OS_MAC
 #include "clay/gfx/shared_image/cgl_image_representation.h"
 #endif
 
+#if ENABLE_SKITY
+
+#include "clay/gfx/shared_image/skity_mtl_image_representation.h"
+#include "skity/gpu/gpu_context.hpp"
+
+#else
+
 #if SKIA_ENABLE_GL
 #include "clay/gfx/shared_image/skia_gl_image_representation.h"
-#endif
+#endif  // GL
 #if SKIA_ENABLE_METAL
 #include "clay/gfx/shared_image/skia_mtl_image_representation.h"
-#endif
-#endif
+#endif  // METAl
+
+#endif  // SKITY
 
 namespace clay {
 

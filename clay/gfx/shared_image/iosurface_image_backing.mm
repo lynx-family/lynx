@@ -10,7 +10,6 @@
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/mtl_image_representation.h"
 #include "clay/gfx/shared_image/utils/image_utils.h"
-#include "third_party/skia/include/gpu/GrDirectContext.h"
 
 #if ENABLE_SKITY
 #include "clay/gfx/shared_image/skity_mtl_image_representation.h"
@@ -96,7 +95,7 @@ fml::RefPtr<SharedImageRepresentation> IOSurfaceImageBacking::CreateRepresentati
     const ClaySharedImageRepresentationConfig* config) {
   FML_CHECK(config->struct_size == sizeof(ClaySharedImageRepresentationConfig));
   switch (config->type) {
-#if OS_MAC
+#if OS_MAC && !defined(ENABLE_SKITY)
     case kClaySharedImageRepresentationTypeGL:
       return fml::MakeRefCounted<CGLImageRepresentation>(fml::Ref(this));
 #endif

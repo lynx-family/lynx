@@ -12,11 +12,11 @@
 #import "FlutterMacros.h"
 #include "clay/fml/logging.h"
 #include "clay/shell/gpu/gpu_surface_metal_delegate.h"
-#include "third_party/skia/include/gpu/GrDirectContext.h"
 
 #ifndef ENABLE_SKITY
 #include "clay/shell/gpu/gpu_surface_metal_skia.h"
 #import "clay/shell/platform/darwin/graphics/FlutterDarwinContextMetalSkia.h"
+#include "third_party/skia/include/gpu/GrDirectContext.h"
 #else
 #include "clay/shell/gpu/gpu_surface_metal_skity.h"
 #include "clay/shell/platform/darwin/graphics/FlutterDarwinContextMetalSkity.h"
@@ -31,14 +31,19 @@ EmbedderSurfaceMetal::EmbedderSurfaceMetal(EmbedderSurfaceMetalDelegate* delegat
   main_context_ = [FlutterDarwinContextMetalSkia
       createGrContext:(__bridge id<MTLDevice>)delegate_->GetMTLDevice()
          commandQueue:(__bridge id<MTLCommandQueue>)delegate_->GetMTLCommandQueue()];
-  valid_ = main_context_ != nullptr;
 #else
-  skity_context_ = [FlutterDarwinContextMetalSkity
+  main_context_ = [FlutterDarwinContextMetalSkity
       createGPUContext:(__bridge id<MTLDevice>)delegate_->GetMTLDevice()
           commandQueue:(__bridge id<MTLCommandQueue>)delegate_->GetMTLCommandQueue()];
-  valid_ = skity_context_ != nullptr;
-#endif  // ENABLE_SKITY
+#endif
+  valid_ = main_context_ != nullptr;
 }
+
+GPUCAMetalLayerHandle EmbedderSurfaceMetal::GetCAMetalLayer(const skity::Vec2& frame_size) const {
+  return nullptr;
+}
+
+clay::GrContextPtr EmbedderSurfaceMetal::GetMainGrContext() { return main_context_; }
 
 EmbedderSurfaceMetal::~EmbedderSurfaceMetal() = default;
 
@@ -68,7 +73,7 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext*
     return nullptr;
   }
   auto surface = std::make_unique<GPUSurfaceMetalSkity>(
-      this, context ? std::shared_ptr<clay::GrContext>(context) : skity_context_,
+      this, context ? std::shared_ptr<clay::GrContext>(context) : main_context_,
       MsaaSampleCount::kNone, true);
 
   if (!surface->IsValid()) {
@@ -77,13 +82,6 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext*
 
   return surface;
 #endif  // ENABLE_SKITY
-}
-
-sk_sp<GrDirectContext> EmbedderSurfaceMetal::GetMainGrContext() { return main_context_; }
-
-GPUCAMetalLayerHandle EmbedderSurfaceMetal::GetCAMetalLayer(const skity::Vec2& frame_info) const {
-  FML_CHECK(false) << "Only rendering to MTLTexture is supported.";
-  return nullptr;
 }
 
 GPUMTLTextureInfo EmbedderSurfaceMetal::GetMTLTexture(const skity::Vec2& frame_info) const {

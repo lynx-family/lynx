@@ -13,20 +13,20 @@
 #include "clay/fml/platform/darwin/cf_utils.h"
 #include "clay/fml/platform/darwin/scoped_nsobject.h"
 #include "clay/gfx/shared_image/shared_image_representation.h"
-#include "third_party/skia/include/gpu/mtl/GrMtlTypes.h"
 
 namespace clay {
-
 class SharedImageBacking;
 
 class MTLStorageManager : public RepresentationStorageManager {
  public:
   explicit MTLStorageManager(id<MTLDevice> device);
+
   ~MTLStorageManager() override;
 
   CVMetalTextureRef CreateTextureFromStorage(CVPixelBufferRef pixel_buffer,
                                              MTLPixelFormat pixelFormat,
                                              size_t width, size_t height);
+
   void FlushStorageRecycle();
 
  private:
@@ -34,8 +34,9 @@ class MTLStorageManager : public RepresentationStorageManager {
 };
 
 class API_AVAILABLE(macos(10.6), ios(11.0),
-                    tvos(11.0)) MTLImageRepresentation final
-    : public SharedImageRepresentation {
+                    tvos(11.0)) MTLImageRepresentation final :
+
+    public SharedImageRepresentation {
  public:
   MTLImageRepresentation(id<MTLDevice> device, id<MTLCommandQueue> queue,
                          fml::RefPtr<SharedImageBacking> backing);
@@ -60,14 +61,13 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
   bool GetMTLTextureFromIOSurface();
   bool GetMTLTextureFromCVPixelBuffer();
 
-  fml::scoped_nsprotocol<id<MTLDevice>> device_;
-  fml::scoped_nsprotocol<id<MTLCommandQueue>> queue_;
+  fml::scoped_nsprotocol<id<MTLDevice> > device_;
+  fml::scoped_nsprotocol<id<MTLCommandQueue> > queue_;
   fml::scoped_nsprotocol<id> event_;  // MTLSharedEvent
   uint64_t event_value_ = 0;
-  fml::scoped_nsprotocol<id<MTLTexture>> texture_;
+  fml::scoped_nsprotocol<id<MTLTexture> > texture_;
   fml::RefPtr<MTLStorageManager> storage_manager_;
 };
-
 }  // namespace clay
 
 #endif  // CLAY_GFX_SHARED_IMAGE_MTL_IMAGE_REPRESENTATION_H_

@@ -54,7 +54,7 @@ source_set("shared_image") {
         "utils/gl_texture_converter.cc",
         "utils/gl_texture_converter.h",
       ]
-    } else if (is_ios) {
+    } else if (is_ios || is_mac) {
       sources += [
         "skity_mtl_image_representation.h",
         "skity_mtl_image_representation.mm",

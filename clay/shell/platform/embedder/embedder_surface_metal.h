@@ -35,14 +35,13 @@ class EmbedderSurfaceMetalDelegate {
 class EmbedderSurfaceMetal final : public EmbedderSurface,
                                    public GPUSurfaceMetalDelegate {
  public:
-  EmbedderSurfaceMetal(EmbedderSurfaceMetalDelegate* delegate);
+  explicit EmbedderSurfaceMetal(EmbedderSurfaceMetalDelegate* delegate);
 
   ~EmbedderSurfaceMetal() override;
 
  private:
   EmbedderSurfaceMetalDelegate* delegate_;
   bool valid_ = false;
-  sk_sp<SkSurface> surface_;
   clay::GrContextPtr main_context_;
 
   // |OutputSurface|

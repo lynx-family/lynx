@@ -7,7 +7,14 @@
 
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterRenderer.h"
 
+#include "clay/fml/logging.h"
+
+#ifndef ENABLE_SKITY
 #include "clay/shell/platform/darwin/graphics/FlutterDarwinContextMetalSkia.h"
+#else
+#include "clay/shell/platform/darwin/graphics/FlutterDarwinContextMetalSkity.h"
+#endif
+
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterViewController_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterViewEngineProvider.h"
@@ -31,8 +38,11 @@ class EmbedderSurfaceMetalDelegateImpl : public EmbedderSurfaceMetalDelegate {
 
 @implementation FlutterRenderer {
   FlutterViewEngineProvider* _viewProvider;
-
+#ifndef ENABLE_SKITY
   FlutterDarwinContextMetalSkia* _darwinMetalContext;
+#else
+  FlutterDarwinContextMetalSkity* _darwinMetalContext;
+#endif
   clay::EmbedderSurfaceMetalDelegateImpl* _embedderSurfaceMetalDelegate;
 }
 
@@ -52,8 +62,13 @@ class EmbedderSurfaceMetalDelegateImpl : public EmbedderSurfaceMetalDelegate {
       return nil;
     }
 
+#ifndef ENABLE_SKITY
     _darwinMetalContext = [[FlutterDarwinContextMetalSkia alloc] initWithMTLDevice:_device
                                                                       commandQueue:_commandQueue];
+#else
+    _darwinMetalContext = [[FlutterDarwinContextMetalSkity alloc] initWithMTLDevice:_device
+                                                                       commandQueue:_commandQueue];
+#endif
 
     _embedderSurfaceMetalDelegate =
         new clay::EmbedderSurfaceMetalDelegateImpl((__bridge void*)self);

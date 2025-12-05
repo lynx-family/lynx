@@ -1,0 +1,36 @@
+From 62a1b3b24a1816b46b819ac725a6d9aa7cc3e8a3 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Tue, 25 Nov 2025 17:21:29 +0800
+Subject: [PATCH] bugfix: fix macos compile
+
+ On platforms where z_off64_t is a distinct type from z_off_t (e.g. macOS where z_off64_t is off_t), make sure the prototypes match the definitions in adler32.c and crc32.c, which always use z_off64_t for the 64-bit variants.
+---
+ zutil.h | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/zutil.h b/zutil.h
+index 81b9a9b..9df8fbf 100644
+--- a/zutil.h
++++ b/zutil.h
+@@ -206,9 +206,15 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
+ /* provide prototypes for these when building zlib without LFS */
+ #if !defined(_WIN32) && \
+     (!defined(_LARGEFILE64_SOURCE) || _LFS64_LARGEFILE-0 == 0)
+-    ZEXTERN uLong ZEXPORT adler32_combine64(uLong, uLong, z_off_t);
+-    ZEXTERN uLong ZEXPORT crc32_combine64(uLong, uLong, z_off_t);
+-    ZEXTERN uLong ZEXPORT crc32_combine_gen64(z_off_t);
++    /*
++     * On platforms where z_off64_t is a distinct type from z_off_t (e.g. macOS
++     * where z_off64_t is off_t), make sure the prototypes match the
++     * definitions in adler32.c and crc32.c, which always use z_off64_t for the
++     * 64-bit variants.
++     */
++    ZEXTERN uLong ZEXPORT adler32_combine64(uLong, uLong, z_off64_t);
++    ZEXTERN uLong ZEXPORT crc32_combine64(uLong, uLong, z_off64_t);
++    ZEXTERN uLong ZEXPORT crc32_combine_gen64(z_off64_t);
+ #endif
+ 
+         /* common defaults */
+-- 
+2.51.0
+
