@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/base_value.h"
 #include "core/runtime/bindings/common/resource/response_handler_proxy.h"
 #include "core/runtime/vm/lepus/context.h"
@@ -37,6 +38,19 @@ class ResponseHandlerInLepus : public runtime::ResponseHandlerProxy,
   lepus::RefType GetRefType() const override {
     return lepus::RefType::kOtherType;
   };
+
+  fml::WeakPtr<ResponseHandlerInLepus> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
+  void AddResourceListener(
+      base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) override;
+
+ private:
+  // Note: WeakPtrFactory must be the last member variable to ensure that
+  // WeakPtr is invalidated first during destruction and the other member
+  // variables are destroyed.
+  fml::WeakPtrFactory<ResponseHandlerInLepus> weak_factory_{this};
 };
 
 }  // namespace tasm
