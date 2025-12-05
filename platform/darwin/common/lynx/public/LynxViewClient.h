@@ -144,7 +144,7 @@
  * The following scheme is supported in LynxView:
  * 1. Http scheme: http or https
  * 2. File scheme: sources in app sandbox
- * Notice: Image in asste catalog is not support now.
+ * Notice: Image in asset catalog is not support now.
  *
  * @param url the url that ready for loading image
  * @return A url string that fit int with the support scheme list or null
@@ -153,8 +153,8 @@
     __attribute__((deprecated("Use loadImage:size:completion: to load image.")));
 
 /**
- * The callback is only called when template provider failed to fetch tempate resource.
- * The callback is depercated. Developer should use `lynxView:didRecieveError:` with errorCode
+ * The callback is only called when template provider failed to fetch template resource.
+ * The callback is deprecated. Developer should use `lynxView:didRecieveError:` with errorCode
  * `LynxErrorCodeTemplateProvider`.
  */
 - (void)lynxView:(LynxView *)view

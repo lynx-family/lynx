@@ -18,6 +18,7 @@ namespace clay {
 
 struct RasterCacheInfo;
 class FrameTiming;
+class FrameTimingListener;
 
 class InstrumentationService
     : public clay::Service<InstrumentationService, clay::Owner::kPlatform> {
@@ -30,10 +31,15 @@ class InstrumentationService
 
   const std::shared_ptr<clay::PerfCollector>& GetPerfCollector() const;
 
+  void AddFrameTimingListener(std::shared_ptr<FrameTimingListener> listener);
+
  private:
   void OnInit(clay::ServiceManager& service_manager,
               const clay::PlatformServiceContext& ctx) override;
+  void OnDestroy() override;
+
   Shell* shell_ = nullptr;
+  std::vector<std::shared_ptr<FrameTimingListener>> frame_timing_listeners_;
 };
 
 }  // namespace clay

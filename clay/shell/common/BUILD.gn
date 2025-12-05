@@ -21,6 +21,7 @@ source_set("common") {
     "display_manager.h",
     "engine.cc",
     "engine.h",
+    "frame_timing_listener.h",
     "one_shot_callback.h",
     "output_surface.cc",
     "output_surface.h",
