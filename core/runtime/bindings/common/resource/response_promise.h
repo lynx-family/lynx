@@ -83,6 +83,7 @@ class ResponsePromise {
       return;
     }
     promise_.set_value(value);
+    result_ = value;
     for (auto& cb : callbacks_) {
       cb(value);
     }
