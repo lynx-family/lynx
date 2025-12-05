@@ -1013,6 +1013,9 @@ void EditableView::SetReadOnly(bool read_only) {
     QuitEditing();
   }
   readonly_ = read_only;
+  if (!readonly_ && is_focused_) {
+    BeginEditing();
+  }
 }
 
 float EditableView::LayoutWidth() {
