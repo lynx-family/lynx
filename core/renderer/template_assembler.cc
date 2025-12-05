@@ -215,7 +215,7 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
       font_scale_(1.0),
       page_options_(page_options),
       pipeline_context_manager_(std::make_unique<PipelineContextManager>(
-          enable_unified_pipeline ||
+          enable_unified_pipeline || page_options.IsFragmentLayerRender() ||
           LynxEnv::GetInstance().EnableUnifiedPixelPipeline())),
       support_component_js_(false),
       template_loaded_(false),

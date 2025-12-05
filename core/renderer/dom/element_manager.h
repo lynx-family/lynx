@@ -491,6 +491,11 @@ class ElementManager : public ElementContextDelegate {
   }
 
   bool GetEnableNewAnimatorForFiber() {
+    // If enable fragment layer render, default enable new animation.
+    // TODO(songshourui.null): support simple styling + new animation.
+    if (enable_fragment_layer_render_) {
+      return true;
+    }
     if (config_) {
       return config_->GetEnableNewAnimator() && !enable_simple_style_;
     }

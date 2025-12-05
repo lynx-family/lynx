@@ -105,6 +105,10 @@ struct PageOptions {
                               EmbeddedMode::FRAGMENT_LAYER_RENDER)) > 0;
   }
 
+  bool IsFragmentLayerRender() const {
+    return (embedded_mode_ & EmbeddedMode::FRAGMENT_LAYER_RENDER) > 0;
+  }
+
   void SetHasLogicExecutor(bool enable) { has_logic_executor_ = enable; }
 
   bool HasLogicExecutor() const { return has_logic_executor_; }
