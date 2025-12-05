@@ -13,10 +13,5 @@ void PlatformDataDarwin::EnsureConvertData() {
   }
 }
 
-void PlatformDataDarwin::ShallowCopy() {
-  PlatformData::ShallowCopy();
-  _data = [_data getTemplateDataForJSThread];
-}
-
 }  // namespace tasm
 }  // namespace lynx
