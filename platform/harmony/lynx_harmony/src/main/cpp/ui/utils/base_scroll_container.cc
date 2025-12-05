@@ -232,7 +232,9 @@ bool BaseScrollContainer::IsVerticalScrollView() { return !is_horizontal_; }
 
 // for worklet or gesture
 std::vector<float> BaseScrollContainer::ScrollBy(float delta_x, float delta_y) {
-  GestureRecognized();
+  if (abs(delta_x) > 0.1 || abs(delta_y) > 0.1) {
+    GestureRecognized();
+  }
   std::vector<float> res(4, 0);
   float last_scroll_offset = GetScrollDistance();
   if (IsHorizontal()) {
