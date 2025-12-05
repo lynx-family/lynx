@@ -26,13 +26,36 @@ Fragment* Fragment::fragment_parent() const {
 }
 
 void Fragment::CreateLayerIfNeeded() {
-  // TODO(zhongyr): abstract one behavior for layerize.
-  if ((!element()->TendToFlatten() && !has_platform_renderer_ && behavior_ &&
-       !element()->IsShadowNodeVirtual()) ||
-      element()->is_page()) {
-    behavior_->CreatePlatformRenderer();
-    has_platform_renderer_ = true;
+  if (has_platform_renderer_) {
+    // If the fragment has a platform renderer, it means that the fragment
+    // is already layerized.
+    return;
   }
+
+  if ((element()->is_view() || element()->is_text() || element()->is_image()) &&
+      element()->TendToFlatten()) {
+    // If the fragment is a view, text, or image, and it tends to flatten,
+    // then it does not need to be layerized.
+    return;
+  }
+
+  if (element()->IsShadowNodeVirtual()) {
+    // If the fragment is a virtual shadow node, then it does not need to be
+    // layerized.
+    return;
+  }
+
+  if (behavior_ == nullptr) {
+    // If the fragment does not have a behavior, then it does not need to be
+    // layerized.
+    LOGE("Fragment " << element()->GetTag().str()
+                     << " does not have a behavior.");
+    return;
+  }
+
+  // TODO(zhongyr): abstract one behavior for layerize.
+  behavior_->CreatePlatformRenderer();
+  has_platform_renderer_ = true;
 }
 
 void Fragment::StyleChanged() {
