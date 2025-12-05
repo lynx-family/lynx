@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "base/include/platform/harmony/napi_util.h"
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
@@ -27,6 +28,7 @@ void LynxImageHelper::DecodeImageAsync(
     napi_env env, const std::string& url, bool is_base64,
     base::MoveOnlyClosure<void, ImageResponse&> callback,
     LynxImageEffectProcessor params) {
+  base::NapiHandleScope scope(env);
   auto context = new CallbackContext;
   context->env = env;
   context->url = url;
