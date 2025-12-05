@@ -1,0 +1,266 @@
+From 17b221792ce510b54e69d2a5c7bbbb1f003e6cfc Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Thu, 27 Nov 2025 17:35:42 +0800
+Subject: [PATCH] infra: support macos build.
+
+---
+ Makefile.am                   |   4 +-
+ config.h.in~                  | 149 ++++++++++++++++++++++++++++++++++
+ configure.ac                  |  18 ++--
+ java/Makefile.am              |   0
+ release/libjpeg-turbo.spec.in |   0
+ release/libjpeg.pc.in         |   0
+ release/libturbojpeg.pc.in    |   0
+ release/makecygwinpkg.in      |   0
+ release/makedpkg.in           |   0
+ release/makemacpkg.in         |   0
+ release/uninstall.in          |   0
+ 11 files changed, 160 insertions(+), 11 deletions(-)
+ create mode 100644 config.h.in~
+ create mode 100644 java/Makefile.am
+ create mode 100644 release/libjpeg-turbo.spec.in
+ create mode 100644 release/libjpeg.pc.in
+ create mode 100644 release/libturbojpeg.pc.in
+ create mode 100644 release/makecygwinpkg.in
+ create mode 100644 release/makedpkg.in
+ create mode 100644 release/makemacpkg.in
+ create mode 100644 release/uninstall.in
+
+diff --git a/Makefile.am b/Makefile.am
+index 80f00598..3ee9c20b 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -39,7 +39,7 @@ libjpeg_la_SOURCES += jdarith.c
+ endif
+ 
+ 
+-SUBDIRS = java
++SUBDIRS =
+ 
+ 
+ if WITH_TURBOJPEG
+@@ -177,7 +177,7 @@ dist-hook:
+ 	rm -rf `find $(distdir) -name .svn`
+ 
+ 
+-SUBDIRS += md5
++# SUBDIRS += md5
+ 
+ if WITH_12BIT
+ 
+diff --git a/config.h.in~ b/config.h.in~
+new file mode 100644
+index 00000000..5121d7e8
+--- /dev/null
++++ b/config.h.in~
+@@ -0,0 +1,149 @@
++/* config.h.in.  Generated from configure.ac by autoheader.  */
++
++/* use 8 or 12 */
++#undef BITS_IN_JSAMPLE
++
++/* libjpeg-turbo build number */
++#undef BUILD
++
++/* Support arithmetic encoding */
++#undef C_ARITH_CODING_SUPPORTED
++
++/* Support arithmetic decoding */
++#undef D_ARITH_CODING_SUPPORTED
++
++/* Define to 1 if you have the <dlfcn.h> header file. */
++#undef HAVE_DLFCN_H
++
++/* Define to 1 if you have the <inttypes.h> header file. */
++#undef HAVE_INTTYPES_H
++
++/* Define to 1 if you have the <jni.h> header file. */
++#undef HAVE_JNI_H
++
++/* Define to 1 if you have the <locale.h> header file. */
++#undef HAVE_LOCALE_H
++
++/* Define to 1 if you have the 'memcpy' function. */
++#undef HAVE_MEMCPY
++
++/* Define to 1 if you have the 'memset' function. */
++#undef HAVE_MEMSET
++
++/* Define to 1 if you have the <stddef.h> header file. */
++#undef HAVE_STDDEF_H
++
++/* Define to 1 if you have the <stdint.h> header file. */
++#undef HAVE_STDINT_H
++
++/* Define to 1 if you have the <stdio.h> header file. */
++#undef HAVE_STDIO_H
++
++/* Define to 1 if you have the <stdlib.h> header file. */
++#undef HAVE_STDLIB_H
++
++/* Define to 1 if you have the <strings.h> header file. */
++#undef HAVE_STRINGS_H
++
++/* Define to 1 if you have the <string.h> header file. */
++#undef HAVE_STRING_H
++
++/* Define to 1 if you have the <sys/stat.h> header file. */
++#undef HAVE_SYS_STAT_H
++
++/* Define to 1 if you have the <sys/types.h> header file. */
++#undef HAVE_SYS_TYPES_H
++
++/* Define to 1 if you have the <unistd.h> header file. */
++#undef HAVE_UNISTD_H
++
++/* Define to 1 if the system has the type 'unsigned char'. */
++#undef HAVE_UNSIGNED_CHAR
++
++/* Define to 1 if the system has the type 'unsigned short'. */
++#undef HAVE_UNSIGNED_SHORT
++
++/* Compiler does not support pointers to undefined structures. */
++#undef INCOMPLETE_TYPES_BROKEN
++
++/* How to obtain function inlining. */
++#undef INLINE
++
++/* libjpeg API version */
++#undef JPEG_LIB_VERSION
++
++/* libjpeg-turbo version */
++#undef LIBJPEG_TURBO_VERSION
++
++/* libjpeg-turbo version in integer form */
++#undef LIBJPEG_TURBO_VERSION_NUMBER
++
++/* Define to the sub-directory where libtool stores uninstalled libraries. */
++#undef LT_OBJDIR
++
++/* Support in-memory source/destination managers */
++#undef MEM_SRCDST_SUPPORTED
++
++/* Define if you have BSD-like bzero and bcopy in <strings.h> rather than
++   memset/memcpy in <string.h>. */
++#undef NEED_BSD_STRINGS
++
++/* Define if you need to include <sys/types.h> to get size_t. */
++#undef NEED_SYS_TYPES_H
++
++/* Name of package */
++#undef PACKAGE
++
++/* Define to the address where bug reports for this package should be sent. */
++#undef PACKAGE_BUGREPORT
++
++/* Define to the full name of this package. */
++#undef PACKAGE_NAME
++
++/* Define to the full name and version of this package. */
++#undef PACKAGE_STRING
++
++/* Define to the one symbol short name of this package. */
++#undef PACKAGE_TARNAME
++
++/* Define to the home page for this package. */
++#undef PACKAGE_URL
++
++/* Define to the version of this package. */
++#undef PACKAGE_VERSION
++
++/* Define if your (broken) compiler shifts signed values as if they were
++   unsigned. */
++#undef RIGHT_SHIFT_IS_UNSIGNED
++
++/* The size of 'size_t', as computed by sizeof. */
++#undef SIZEOF_SIZE_T
++
++/* Define to 1 if all of the C89 standard headers exist (not just the ones
++   required in a freestanding environment). This macro is provided for
++   backward compatibility; new code need not use it. */
++#undef STDC_HEADERS
++
++/* Version number of package */
++#undef VERSION
++
++/* Use accelerated SIMD routines. */
++#undef WITH_SIMD
++
++/* Define to 1 if type 'char' is unsigned and your compiler does not
++   predefine this macro.  */
++#ifndef __CHAR_UNSIGNED__
++# undef __CHAR_UNSIGNED__
++#endif
++
++/* Define to empty if 'const' does not conform to ANSI C. */
++#undef const
++
++/* Define to '__inline__' or '__inline' if that's what the C compiler
++   calls it, or to nothing if 'inline' is not supported under any name.  */
++#ifndef __cplusplus
++#undef inline
++#endif
++
++/* Define as 'unsigned int' if <stddef.h> doesn't define. */
++#undef size_t
+diff --git a/configure.ac b/configure.ac
+index 173000fa..e43216e7 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -590,13 +590,13 @@ AC_DEFINE_UNQUOTED([BUILD], "$BUILD", [libjpeg-turbo build number])
+ AC_CONFIG_HEADERS([config.h])
+ AC_CONFIG_HEADERS([jconfig.h])
+ AC_CONFIG_HEADERS([jconfigint.h])
+-AC_CONFIG_FILES([pkgscripts/libjpeg-turbo.spec.tmpl:release/libjpeg-turbo.spec.in])
+-AC_CONFIG_FILES([pkgscripts/makecygwinpkg.tmpl:release/makecygwinpkg.in])
+-AC_CONFIG_FILES([pkgscripts/makedpkg.tmpl:release/makedpkg.in])
+-AC_CONFIG_FILES([pkgscripts/makemacpkg.tmpl:release/makemacpkg.in])
+-AC_CONFIG_FILES([pkgscripts/uninstall.tmpl:release/uninstall.in])
+-AC_CONFIG_FILES([pkgscripts/libjpeg.pc:release/libjpeg.pc.in])
+-AC_CONFIG_FILES([pkgscripts/libturbojpeg.pc:release/libturbojpeg.pc.in])
++# AC_CONFIG_FILES([pkgscripts/libjpeg-turbo.spec.tmpl:release/libjpeg-turbo.spec.in])
++# AC_CONFIG_FILES([pkgscripts/makecygwinpkg.tmpl:release/makecygwinpkg.in])
++# AC_CONFIG_FILES([pkgscripts/makedpkg.tmpl:release/makedpkg.in])
++# AC_CONFIG_FILES([pkgscripts/makemacpkg.tmpl:release/makemacpkg.in])
++# AC_CONFIG_FILES([pkgscripts/uninstall.tmpl:release/uninstall.in])
++# AC_CONFIG_FILES([pkgscripts/libjpeg.pc:release/libjpeg.pc.in])
++# AC_CONFIG_FILES([pkgscripts/libturbojpeg.pc:release/libturbojpeg.pc.in])
+ if test "x$with_turbojpeg" != "xno"; then
+   AC_CONFIG_FILES([tjbenchtest])
+ fi
+@@ -606,6 +606,6 @@ if test "x$with_java" = "xyes"; then
+ fi
+ AC_CONFIG_FILES([libjpeg.map])
+ AC_CONFIG_FILES([Makefile simd/Makefile])
+-AC_CONFIG_FILES([java/Makefile])
+-AC_CONFIG_FILES([md5/Makefile])
++# AC_CONFIG_FILES([java/Makefile])
++# AC_CONFIG_FILES([md5/Makefile])
+ AC_OUTPUT
+diff --git a/java/Makefile.am b/java/Makefile.am
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/libjpeg-turbo.spec.in b/release/libjpeg-turbo.spec.in
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/libjpeg.pc.in b/release/libjpeg.pc.in
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/libturbojpeg.pc.in b/release/libturbojpeg.pc.in
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/makecygwinpkg.in b/release/makecygwinpkg.in
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/makedpkg.in b/release/makedpkg.in
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/makemacpkg.in b/release/makemacpkg.in
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/release/uninstall.in b/release/uninstall.in
+new file mode 100644
+index 00000000..e69de29b
+-- 
+2.51.0
+

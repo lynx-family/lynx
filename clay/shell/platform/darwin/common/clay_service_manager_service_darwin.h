@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_SHELL_PLATFORM_DARWIN_COMMON_FRAMEWORK_SOURCE_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
-#define CLAY_SHELL_PLATFORM_DARWIN_COMMON_FRAMEWORK_SOURCE_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
+#ifndef CLAY_SHELL_PLATFORM_DARWIN_COMMON_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
+#define CLAY_SHELL_PLATFORM_DARWIN_COMMON_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
 
 #import "ClayServiceManager.h"
 #include "clay/common/service/service.h"
@@ -15,6 +15,7 @@ class ClayServiceManagerServiceDarwin final
                          ServiceFlags::kMultiThread> {
  public:
   explicit ClayServiceManagerServiceDarwin(ClayServiceManager* manager);
+
   ClayServiceManager* GetClayServiceManager();
 
  private:
@@ -22,4 +23,4 @@ class ClayServiceManagerServiceDarwin final
 };
 }  // namespace clay
 
-#endif  // CLAY_SHELL_PLATFORM_DARWIN_COMMON_FRAMEWORK_SOURCE_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
+#endif  // CLAY_SHELL_PLATFORM_DARWIN_COMMON_SERVICES_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_

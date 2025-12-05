@@ -4,8 +4,11 @@
 
 #include "clay/shell/gpu/gpu_surface_gl_skity.h"
 
+#if defined(OS_OSX)
+#else
 #include <EGL/egl.h>
 #include <GLES/gl.h>
+#endif
 
 #include <utility>
 
@@ -26,7 +29,11 @@ std::shared_ptr<skity::GPUContext> GPUSurfaceGLSkity::MakeGLContext(
         << "Could not make the context current to set up the GPU context.";
     return nullptr;
   }
+#if defined(OS_OSX)
+  return nullptr;
+#else
   return skity::GLContextCreate(reinterpret_cast<void*>(eglGetProcAddress));
+#endif
 }
 
 GPUSurfaceGLSkity::GPUSurfaceGLSkity(

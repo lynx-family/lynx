@@ -9,7 +9,6 @@
 #include "clay/gfx/skity_to_skia_utils.h"
 
 namespace clay {
-
 std::shared_ptr<SVGImage> SVGImage::Make(const std::string& content) {
   auto image = std::shared_ptr<SVGImage>(new SVGImage(content));
   image->type_ = ImageType::kSVG;
@@ -20,6 +19,7 @@ SVGImage::SVGImage(const std::string& content) : content_(content) {
   svg_dom_ = SVGDom::Create(
       GrData::MakeWithProc(content_.data(), content_.size(), nullptr, nullptr));
 }
+
 void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
   if (!gpu_image_.object() || gpu_image_.object()->width() < size.width() ||
       gpu_image_.object()->height() < size.height()) {
@@ -54,5 +54,4 @@ void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
     });
   }
 }
-
 }  // namespace clay

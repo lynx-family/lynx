@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <future>
+#include <string>
 #include <utility>
 
 #include "base/include/fml/make_copyable.h"
@@ -14,7 +15,6 @@
 #include "clay/gfx/rendering_backend.h"
 
 namespace clay {
-
 SVGImageHolder::SVGImageHolder()
     : status_(SVGStatus::kNew), mutex_(fml::SharedMutex::Create()) {}
 
@@ -57,7 +57,8 @@ void SVGImageHolder::CreateSVGDOM(GrDataPtr data) {
   GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
       fml::MakeCopyable([raw_holder_ref, data]() {
         TRACE_EVENT("clay", "CreateSVGDOM");
-        std::unique_ptr<fml::RefPtr<SVGImageHolder>> holder_ref(raw_holder_ref);
+        std::unique_ptr<fml::RefPtr<SVGImageHolder> > holder_ref(
+            raw_holder_ref);
         fml::RefPtr<SVGImageHolder> holder(std::move(*holder_ref));
         {
           fml::UniqueLock lock(*holder->mutex_);
@@ -93,5 +94,4 @@ void SVGImageHolder::SetGraphicsImage(
     fml::RefPtr<GraphicsImageWrapper> image_wrapper) {
   svg_image_wrapper_ = image_wrapper;
 }
-
 }  // namespace clay
