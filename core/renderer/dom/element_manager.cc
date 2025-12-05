@@ -1635,9 +1635,14 @@ void ElementManager::SetPageOptions(const PageOptions &options) {
 
   enable_fragment_layer_render_ = ((page_options_.GetEmbeddedMode() &
                                     EmbeddedMode::FRAGMENT_LAYER_RENDER) > 0);
+
+  // If enable fragment layer render, default enable layout in element default.
   enable_layout_in_element_mode_ =
       enable_fragment_layer_render_ ||
       ((page_options_.GetEmbeddedMode() & EmbeddedMode::LAYOUT_IN_ELEMENT) > 0);
+
+  // If enable fragment layer render, default enable native list.
+  enable_native_list_ |= enable_fragment_layer_render_;
 }
 
 void ElementManager::ScheduleLayout() {

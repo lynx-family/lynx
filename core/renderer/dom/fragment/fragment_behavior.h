@@ -27,6 +27,10 @@ class FragmentBehavior {
   virtual void OnUpdateLayout(
       const starlight::LayoutResultForRendering& layout_result) {}
 
+  Fragment* fragment() { return fragment_; }
+
+  NativePaintingContext* painting_context() { return painting_context_; }
+
  protected:
   // Used for other painting related operations.
   Fragment* fragment_;

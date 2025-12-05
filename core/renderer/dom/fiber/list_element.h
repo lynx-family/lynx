@@ -162,6 +162,8 @@ class ListElement : public FiberElement, public tasm::ListNode {
   void Hydrate();
   void HydrateFinish();
 
+  void SetupFragmentBehavior(Fragment* fragment) override;
+
   virtual const base::String& GetPlatformNodeTag() const override {
     return platform_node_tag_;
   };

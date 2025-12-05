@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
 #include "core/renderer/template_assembler.h"
@@ -580,6 +582,10 @@ void ListElement::HydrateFinish() {
     // remove ssr helper when hydrate finish.
     ssr_helper_ = std::nullopt;
   }
+}
+
+void ListElement::SetupFragmentBehavior(Fragment* fragment) {
+  fragment->SetBehavior(std::make_unique<ListFragmentBehavior>(fragment));
 }
 
 void ListElement::AttachToElementManager(

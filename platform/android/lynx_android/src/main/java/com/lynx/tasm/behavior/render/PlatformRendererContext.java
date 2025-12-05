@@ -34,6 +34,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     public static final int kScroll = 3;
     public static final int kText = 4;
     public static final int kImage = 5;
+    public static final int kList = 6;
   }
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
@@ -129,6 +130,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         AndroidScrollView scrollView = new AndroidScrollView(
             mContext, /*TODO: decoupling from UIScrollView*/ new UIScrollView(mContext));
         mViewHolder.put(sign, scrollView);
+      } break;
+      case PlatformRendererType.kList: {
+        // TODO: support <list/> platform view here.
       } break;
       default:
         // TODO: support customized PlatformRendererHostView.
