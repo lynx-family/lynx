@@ -253,7 +253,7 @@ void TemplateAssembler::UpdateGlobalProps(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_GLOBAL_PROPS, "need_render",
               need_render);
   PipelineScope pipeline_scope(this, pipeline_options);
-
+  LOGI("UpdateGlobalProps " << data.GetLength() << " this: " << this);
   global_props_ = data;
   if (template_loaded_) {
     NotifyGlobalPropsChanged(data);
