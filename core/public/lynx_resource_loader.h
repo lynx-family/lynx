@@ -55,7 +55,7 @@ struct LynxResourceRequest {
 
   // TODO(nihao.royal): used by lazy bundle now, need to be removed in long
   // term.
-  bool request_in_current_thread{true};
+  bool request_in_current_thread = true;
 };
 
 struct LynxResourceResponse {
@@ -109,8 +109,9 @@ class LynxResourceLoader
   virtual void LoadBytecode(
       const LynxResourceRequest& request,
       base::MoveOnlyClosure<void, LynxResourceResponse&> callback) {
-    pub::LynxResourceResponse resp{.err_code = -1,
-                                   .err_msg = "LoadBytecode is not supported."};
+    pub::LynxResourceResponse resp;
+    resp.err_code = -1;
+    resp.err_msg = "LoadBytecode is not supported.";
     callback(resp);
   }
 
