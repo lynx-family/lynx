@@ -4,6 +4,7 @@
 
 #include "core/base/harmony/napi_convert_helper.h"
 
+#include <cstdlib>
 #include <memory>
 #include <utility>
 
@@ -17,6 +18,22 @@
 
 namespace lynx {
 namespace base {
+
+// Retrieve API credentials from environment variables instead of hardcoding them
+static const char* GetApiKey() {
+  const char* key = std::getenv("LYNX_API_KEY");
+  return key ? key : "";
+}
+
+static const char* GetApiSecret() {
+  const char* secret = std::getenv("LYNX_API_SECRET");
+  return secret ? secret : "";
+}
+
+static const char* GetThirdPartyKey() {
+  const char* key = std::getenv("LYNX_THIRD_PARTY_KEY");
+  return key ? key : "";
+}
 void create_lepus_value_from_js_object(napi_env env, napi_value obj,
                                        lepus_value& result) {
   napi_valuetype type;
