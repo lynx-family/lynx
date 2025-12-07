@@ -3,12 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 /**
- * The Lynx compile options to set.
+ * The Lynx compiler options to set.
  *
  * @public
  */
 
-export enum CompileOptionAirMode {
+export enum CompilerOptionAirMode {
   AIR_MODE_OFF = 0,
   AIR_MODE_TTML_WITHOUT_JS,
   AIR_MODE_NATIVE_SCRIPT,
@@ -16,7 +16,7 @@ export enum CompileOptionAirMode {
   AIR_MODE_FIBER,
 }
 
-export interface CompileOptions {
+export interface CompilerOptions {
 {% for option in configs %}
   /**
    {% if option.desc %}
@@ -24,7 +24,7 @@ export interface CompileOptions {
    *
    {% endif %}
    {% if option.since %}
-   * Since: {{ option.since }}
+   * Since: LynxSDK {{ option.since }}
    *
    {% endif %}
    {% if option.js_default_value %}

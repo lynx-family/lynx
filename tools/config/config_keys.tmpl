@@ -1,0 +1,21 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+const compilerOptionsKeys = [
+  {% for option in options %}
+  '{{option.name}}',
+  {% endfor %}
+]
+
+const configKeys = [
+  {% for config in configs %}
+  '{{config.name}}',
+  {% endfor %}
+]
+
+module.exports = {
+  compilerOptionsKeys,
+  configKeys,
+}
+
