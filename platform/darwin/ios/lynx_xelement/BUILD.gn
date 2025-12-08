@@ -39,6 +39,7 @@ podspec_target("XElement_podspec") {
     default_subspecs = [
       "Input",
       "Overlay",
+      "SVG",
       "Behavior",
     ]
   }
@@ -47,6 +48,7 @@ podspec_target("XElement_podspec") {
     ":Behavior",
     ":Input",
     ":Overlay",
+    ":SVG",
   ]
 }
 
@@ -103,18 +105,41 @@ subspec_target("Overlay") {
   dependency = lynx_dependency
 }
 
+subspec_target("SVG") {
+  sources = [
+    "svg/LynxSVGView.h",
+    "svg/LynxSVGView.m",
+    "svg/LynxUISVG.h",
+    "svg/LynxUISVG.m",
+  ]
+  public_header_files = [
+    "svg/LynxSVGView.h",
+    "svg/LynxUISVG.h",
+  ]
+
+  dependency = [ [
+        "ServalSVG",
+        ">= 0.0.17",
+      ] ]
+
+  dependency += lynx_dependency
+}
+
 subspec_target("Behavior") {
   sources = [
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.m",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.m",
+    "behavior/LynxUISVGAutoRegistry.h",
+    "behavior/LynxUISVGAutoRegistry.m",
     "behavior/LynxUITextAreaAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.m",
   ]
   public_header_files = [
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
+    "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.h",
   ]
 
@@ -122,5 +147,6 @@ subspec_target("Behavior") {
   dependency += [
     "XElement/Input",
     "XElement/Overlay",
+    "XElement/SVG",
   ]
 }
