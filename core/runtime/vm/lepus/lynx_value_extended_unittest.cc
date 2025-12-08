@@ -24,7 +24,7 @@ class LynxValueLepusNGTest : public ::testing::Test {
         env_(lynx_value_api_new_env(ctx_)),
         cell_(new ContextCell(nullptr, ctx_, rt_)) {
     LEPUS_SetContextOpaque(ctx_, cell_);
-    LEPUSLepusRefCallbacks callbacks = Context::GetLepusRefCall();
+    LEPUSLepusRefCallbacks callbacks = QuickContext::GetLepusRefCall();
     RegisterLepusRefCallbacks(rt_, &callbacks);
   }
 

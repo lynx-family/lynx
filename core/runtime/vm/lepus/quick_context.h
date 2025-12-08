@@ -45,6 +45,17 @@ struct RenderBindingFunction {
   RenderBindingFunc function;
 };
 
+class LEPUSRuntimeData {
+ public:
+  LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode);
+  ~LEPUSRuntimeData();
+
+  LEPUSRuntime* runtime_;
+  LEPUSContext* lepus_context_;
+  // "length" cache
+  LEPUSAtom length_atom_;
+};
+
 // use quickjs enginer as lepus context
 class QuickContext : private LEPUSRuntimeData,
                      public Context,
@@ -209,6 +220,8 @@ class QuickContext : private LEPUSRuntimeData,
   virtual void UpdateVMOuterObjSize(int size) override;
 
   virtual bool IsTracingGCEnabled() override;
+
+  static LEPUSLepusRefCallbacks GetLepusRefCall();
 
  private:
   virtual Value CallArgs(const base::String& name, const Value* args[],

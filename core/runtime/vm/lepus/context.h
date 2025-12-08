@@ -41,17 +41,6 @@ class LepusCallbackManager;
 namespace lepus {
 class ContextBundle;
 
-class LEPUSRuntimeData {
- public:
-  LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode);
-  ~LEPUSRuntimeData();
-
-  LEPUSRuntime* runtime_;
-  LEPUSContext* lepus_context_;
-  // "length" cache
-  LEPUSAtom length_atom_;
-};
-
 enum ContextType {
   VMContextType,       // Run low level version lepus with VmContext
   LepusNGContextType,  // Run lepusNG with qucikjs code
@@ -210,8 +199,6 @@ class Context {
   bool IsLepusContext() const { return type_ == LepusContextType; }
   virtual LEPUSContext* context() const { return nullptr; }
   virtual LEPUSValue GetTopLevelFunction() const { return LEPUS_UNDEFINED; }
-
-  static LEPUSLepusRefCallbacks GetLepusRefCall();
 
   static CellManager& GetContextCells();
   static ContextCell* RegisterContextCell(lepus::QuickContext* qctx);
