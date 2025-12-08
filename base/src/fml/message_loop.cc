@@ -36,10 +36,23 @@ MessageLoop& MessageLoop::GetCurrent() {
 }
 
 MessageLoop& MessageLoop::EnsureInitializedForCurrentThread(
+    fml::RefPtr<MessageLoopImpl> platform_loop) {
+  auto& looper_storage = GetThreadLocalLooper();
+  if (looper_storage == nullptr) {
+    if (platform_loop == nullptr) {
+      platform_loop = MessageLoopImpl::Create(nullptr);
+    }
+    looper_storage.reset(new MessageLoop(std::move(platform_loop)));
+  }
+  return *looper_storage;
+}
+
+MessageLoop& MessageLoop::EnsureInitializedForCurrentThread(
     void* platform_loop) {
   auto& looper_storage = GetThreadLocalLooper();
   if (looper_storage == nullptr) {
-    looper_storage.reset(new MessageLoop(platform_loop));
+    return EnsureInitializedForCurrentThread(
+        MessageLoopImpl::Create(platform_loop));
   }
   return *looper_storage;
 }
@@ -48,8 +61,8 @@ MessageLoop* MessageLoop::IsInitializedForCurrentThread() {
   return GetThreadLocalLooper().get();
 }
 
-MessageLoop::MessageLoop(void* platform_loop)
-    : loop_(MessageLoopImpl::Create(platform_loop)),
+MessageLoop::MessageLoop(fml::RefPtr<MessageLoopImpl> platform_loop)
+    : loop_(std::move(platform_loop)),
       task_runner_(fml::MakeRefCounted<fml::TaskRunner>(loop_)) {
   // TODO(zhengsenyao): Replace LYNX_BASE_CHECK with CHECK when CHECK available.
   LYNX_BASE_CHECK(loop_);
