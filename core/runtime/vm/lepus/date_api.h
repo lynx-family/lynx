@@ -11,7 +11,7 @@
 
 namespace lynx {
 namespace lepus {
-Value Now(VMContext* context) {
+Value Now(VMContext* context, Value*, int) {
   using std::chrono::milliseconds;
   using std::chrono::system_clock;
   using std::chrono::time_point;

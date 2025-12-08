@@ -11,7 +11,7 @@
 
 namespace lynx {
 namespace lepus {
-Value Stringify(VMContext* context) {
+Value Stringify(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   Value* arg = context->GetParam(0);
@@ -25,7 +25,7 @@ Value Stringify(VMContext* context) {
   return Value(lepusValueToJSONString(*arg));
 }
 
-Value Parse(VMContext* context) {
+Value Parse(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   Value* arg = context->GetParam(0);

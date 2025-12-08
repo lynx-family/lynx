@@ -62,8 +62,8 @@ class TestUtils {
   }
 
  private:
-  static lepus::Value Assert(lepus::Context* context) {
-    lepus::Value* val = context->GetParam(0);
+  static lepus::Value Assert(lepus::Context* context, lepus::Value* val,
+                             int argc) {
     if (val->IsTrue()) {
       return lepus::Value();
     } else {
@@ -71,8 +71,8 @@ class TestUtils {
       abort();
     }
   }
-  static lepus::Value Print(lepus::Context* context) {
-    long params_count = context->GetParamsSize();
+  static lepus::Value Print(lepus::Context* context, lepus::Value* val,
+                            int params_count) {
     for (long i = 0; i < params_count; i++) {
       lepus::Value* v = context->GetParam(i);
       v->Print();
@@ -80,8 +80,8 @@ class TestUtils {
     return lepus::Value();
   }
 
-  static lepus::Value Typeof(lepus::Context* context) {
-    lepus::Value* val = context->GetParam(0);
+  static lepus::Value Typeof(lepus::Context* context, lepus::Value* val,
+                             int argc) {
     switch (val->Type()) {
       case lepus::ValueType::Value_Nil:
         val->SetString("null");
@@ -119,8 +119,8 @@ class TestUtils {
     return *val;
   }
 
-  static lepus::Value SetFlag(lepus::Context* context) {
-    lepus::Value* parm1 = context->GetParam(0);
+  static lepus::Value SetFlag(lepus::Context* context, lepus::Value* parm1,
+                              int argc) {
     if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
       lepus::VMContext::Cast(context)->SetNullPropAsUndef(
           context->GetParam(1)->Bool());

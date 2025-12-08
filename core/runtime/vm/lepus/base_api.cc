@@ -30,7 +30,7 @@ static std::string GetPrintStr(VMContext* context) {
   return s.str();
 }
 
-static Value Console_Log(VMContext* context) {
+static Value Console_Log(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
 #ifdef LEPUS_PC
   LOGE(msg);
@@ -39,43 +39,43 @@ static Value Console_Log(VMContext* context) {
   return Value();
 }
 
-static Value Console_Warn(VMContext* context) {
+static Value Console_Warn(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("warn", msg);
   return Value();
 }
 
-static Value Console_Error(VMContext* context) {
+static Value Console_Error(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("error", msg);
   return Value();
 }
 
-static Value Console_Info(VMContext* context) {
+static Value Console_Info(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("info", msg);
   return Value();
 }
 
-static Value Console_Debug(VMContext* context) {
+static Value Console_Debug(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("debug", msg);
   return Value();
 }
 
-static Value Console_Report(VMContext* context) {
+static Value Console_Report(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("report", msg);
   return Value();
 }
 
-static Value Console_Alog(VMContext* context) {
+static Value Console_Alog(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("alog", msg);
   return Value();
 }
 
-static Value Assert(VMContext* context) {
+static Value Assert(VMContext* context, Value*, int) {
   UNUSED_LOG_VARIABLE Value* condition = context->GetParam(1);
   Value* msg = context->GetParam(2);
   std::string s = "Assertion failed:" + msg->StdString();
@@ -83,55 +83,55 @@ static Value Assert(VMContext* context) {
   return Value();
 }
 
-static Value Console_Count(VMContext* context) {
+static Value Console_Count(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("count", msg);
   return Value();
 }
 
-static Value Console_CountReset(VMContext* context) {
+static Value Console_CountReset(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("countReset", msg);
   return Value();
 }
 
-static Value Console_Group(VMContext* context) {
+static Value Console_Group(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("group", msg);
   return Value();
 }
 
-static Value Console_GroupCollapsed(VMContext* context) {
+static Value Console_GroupCollapsed(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("groupCollapsed", msg);
   return Value();
 }
 
-static Value Console_GroupEnd(VMContext* context) {
+static Value Console_GroupEnd(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("groupEnd", msg);
   return Value();
 }
 
-static Value Console_Time(VMContext* context) {
+static Value Console_Time(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("time", msg);
   return Value();
 }
 
-static Value Console_TimeLog(VMContext* context) {
+static Value Console_TimeLog(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("timeLog", msg);
   return Value();
 }
 
-static Value Console_TimeEnd(VMContext* context) {
+static Value Console_TimeEnd(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("timeEnd", msg);
   return Value();
 }
 
-static Value Console_Table(VMContext* context) {
+static Value Console_Table(VMContext* context, Value*, int) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("table", msg);
   return Value();
@@ -186,7 +186,7 @@ void RegisterBaseAPI(Context* ctx) {
 #endif
 }
 
-static Value toFixed(VMContext* context) {
+static Value toFixed(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
   Value n;                          // for precision

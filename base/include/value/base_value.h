@@ -91,7 +91,7 @@ class ByteArray;
 class RefCounted;
 class BuiltinFunctionTable;
 
-typedef Value (*CFunction)(Context*);
+typedef Value (*CFunction)(Context*, lepus::Value*, int);
 
 class BASE_EXPORT Value {
  private:

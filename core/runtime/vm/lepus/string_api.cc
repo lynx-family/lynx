@@ -356,7 +356,7 @@ static void GetRegExecuteResult(const int& capture_count, uint8_t** capture,
   array_global.emplace_back(std::move(array_data));
 }
 
-static Value Search(VMContext* context) {
+static Value Search(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   const auto& str = context->GetParam(params_count - 1)->StdString();
@@ -412,7 +412,7 @@ static Value Search(VMContext* context) {
   return Value(start);
 }
 
-static Value Trim(VMContext* context) {
+static Value Trim(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   DCHECK(context->GetParam(0)->IsString());
@@ -437,7 +437,7 @@ static Value Trim(VMContext* context) {
   return Value(std::move(str));
 }
 
-static Value CharAt(VMContext* context) {
+static Value CharAt(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   const auto& str = context->GetParam(params_count - 1)->StdString();
@@ -454,7 +454,7 @@ static Value CharAt(VMContext* context) {
     return Value(base::String());
 }
 
-static Value Match(VMContext* context) {
+static Value Match(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   Value result = Value(CArray::Create());
@@ -625,7 +625,7 @@ static Value Match(VMContext* context) {
   return result;
 }
 
-static Value Replace(VMContext* context) {
+static Value Replace(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   auto str = context->GetParam(params_count - 1)->String();
@@ -817,7 +817,7 @@ static Value Replace(VMContext* context) {
   return Value(std::move(result));
 }
 
-static Value Slice(VMContext* context) {
+static Value Slice(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2 || params_count == 3);
 
@@ -856,7 +856,7 @@ static Value Slice(VMContext* context) {
   }
 }
 
-static Value SubString(VMContext* context) {
+static Value SubString(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   const std::string& str = context->GetParam(params_count - 1)->StdString();
@@ -894,7 +894,7 @@ static Value SubString(VMContext* context) {
   }
 }
 
-static Value IndexOf(VMContext* context) {
+static Value IndexOf(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count > 1);
   Value* this_obj = context->GetParam(0);
@@ -912,7 +912,7 @@ static Value IndexOf(VMContext* context) {
   return Value(-1);
 }
 
-static Value Length(VMContext* context) {
+static Value Length(VMContext* context, Value*, int) {
   DCHECK(context->GetParam(0)->IsString());
   const auto& str = context->GetParam(0)->StdString();
   return Value(
@@ -920,7 +920,7 @@ static Value Length(VMContext* context) {
 }
 
 // substr(start[, length])
-static Value SubStr(VMContext* context) {
+static Value SubStr(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 3 || params_count == 2);
   DCHECK(context->GetParam(0)->IsString());
@@ -950,7 +950,7 @@ static Value SubStr(VMContext* context) {
   }
 }
 
-static Value Split(VMContext* context) {
+static Value Split(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2 || params_count == 3);
 

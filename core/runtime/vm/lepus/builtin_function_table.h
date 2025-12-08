@@ -36,7 +36,8 @@ class BuiltinFunctionTable {
   template <std::size_t N>
   BuiltinFunctionTable(
       Type type,
-      const std::pair<const char*, Value (*)(VMContext*)> (&list)[N]) {
+      const std::pair<const char*, Value (*)(VMContext*, Value*, int)> (
+          &list)[N]) {
     static_assert(N <= 256,
                   "BuiltinFunctionTable supports registering functions max "
                   "count of 256.");

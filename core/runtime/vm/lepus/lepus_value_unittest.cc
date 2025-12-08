@@ -20,7 +20,7 @@ namespace lepus {
 namespace test {
 
 namespace {
-static lepus::Value TestCFunction(lepus::Context* ctx) {
+static lepus::Value TestCFunction(lepus::Context* ctx, lepus::Value*, int) {
   return lepus::Value("test");
 }
 }  // namespace
@@ -610,7 +610,8 @@ TEST_F(LepusValueTest, LepusValuePointer) {
     ASSERT_TRUE(v3.Type() == Value_CFunction);
     ASSERT_TRUE(!v3.IsReference());
     auto func = v3.Function();
-    auto ret = func(&quick_ctx_);
+    auto ret =
+        func(&quick_ctx_, quick_ctx_.GetParam(0), quick_ctx_.GetParamsSize());
     ASSERT_TRUE(ret.IsString());
 
     lepus::Value v4;

@@ -15,7 +15,7 @@
 namespace lynx {
 namespace lepus {
 
-static Value Push(VMContext* context) {
+static Value Push(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count >= 1);
   Value* this_obj = context->GetParam(params_count - 1);
@@ -35,7 +35,7 @@ static Value Push(VMContext* context) {
   return Value(static_cast<uint64_t>(this_array->size()));
 }
 
-static Value Pop(VMContext* context) {
+static Value Pop(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   Value* this_obj = context->GetParam(params_count - 1);
@@ -45,7 +45,7 @@ static Value Pop(VMContext* context) {
   return Value(static_cast<uint64_t>(this_array->size()));
 }
 
-static Value Shift(VMContext* context) {
+static Value Shift(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   Value* this_obj = context->GetParam(params_count - 1);
@@ -53,7 +53,7 @@ static Value Shift(VMContext* context) {
   return this_obj->Array()->get_shift();
 }
 
-static Value Map(VMContext* context) {
+static Value Map(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   Value* map_function = context->GetParam(0);
@@ -76,7 +76,7 @@ static Value Map(VMContext* context) {
   return ret;
 }
 
-static Value Filter(VMContext* context) {
+static Value Filter(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   Value* filter_function = context->GetParam(0);
@@ -101,7 +101,7 @@ static Value Filter(VMContext* context) {
   return ret;
 }
 
-static Value Concat(VMContext* context) {
+static Value Concat(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   Value* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
@@ -208,7 +208,7 @@ static std::string CastToString(const Value& v) {
   return result;
 }
 
-static Value Join(VMContext* context) {
+static Value Join(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   Value* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
@@ -230,7 +230,7 @@ static Value Join(VMContext* context) {
   return Value(std::move(result));
 }
 
-static Value FindIndex(VMContext* context) {
+static Value FindIndex(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   Value* find_index_function = context->GetParam(0);
@@ -255,7 +255,7 @@ static Value FindIndex(VMContext* context) {
   return ret;
 }
 
-static Value Find(VMContext* context) {
+static Value Find(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   Value* find_index_function = context->GetParam(0);
@@ -279,7 +279,7 @@ static Value Find(VMContext* context) {
   return ret;
 }
 
-static Value Includes(VMContext* context) {
+static Value Includes(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   Value* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
@@ -311,7 +311,7 @@ static Value Includes(VMContext* context) {
   return Value(false);
 }
 
-static Value ArraySlice(VMContext* context) {
+static Value ArraySlice(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   Value* this_val = context->GetParam(params_count - 1);
   DCHECK(this_val->IsArray());
@@ -353,7 +353,7 @@ static Value ArraySlice(VMContext* context) {
   return Value(std::move(ret_array));
 }
 
-static Value ForEach(VMContext* context) {
+static Value ForEach(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   Value* foreach_function = context->GetParam(0);

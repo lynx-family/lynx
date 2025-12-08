@@ -27,7 +27,7 @@ const std::vector<std::string>& DateContent() {
   return date_content;
 }
 
-static Value ParseStringToDate(VMContext* context) {
+static Value ParseStringToDate(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
   Value* parsed = context->GetParam(0);
@@ -61,9 +61,11 @@ static std::string FormatDateToString(Value* date, const std::string& format) {
   return CDate::FormatToString(date, format);
 }
 
-static Value LepusNow(VMContext* context) { return CDate::LepusNow(); }
+static Value LepusNow(VMContext* context, Value*, int) {
+  return CDate::LepusNow();
+}
 
-static Value LepusLocal(VMContext* context) {
+static Value LepusLocal(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 0);
   if (params_count == 0) {
@@ -77,7 +79,7 @@ static Value LepusLocal(VMContext* context) {
   return Value();
 }
 
-static Value Locale(VMContext* context) {
+static Value Locale(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -94,7 +96,7 @@ static Value Locale(VMContext* context) {
   }
 }
 
-static Value Unix(VMContext* context) {
+static Value Unix(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1);
   auto date =
@@ -106,7 +108,7 @@ static Value Unix(VMContext* context) {
   return Value((int64_t(ret)));
 }
 
-static Value Format(VMContext* context) {
+static Value Format(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   if (params_count == 1) {
     char buf[64];
@@ -133,7 +135,7 @@ static Value Format(VMContext* context) {
   return Value(FormatDateToString(date, *format));
 }
 
-static Value Year(VMContext* context) {
+static Value Year(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -142,7 +144,7 @@ static Value Year(VMContext* context) {
   return Value(static_cast<uint32_t>(year));
 }
 
-static Value Month(VMContext* context) {
+static Value Month(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -151,7 +153,7 @@ static Value Month(VMContext* context) {
   return Value(static_cast<uint32_t>(month));
 }
 
-static Value Date(VMContext* context) {
+static Value Date(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -160,7 +162,7 @@ static Value Date(VMContext* context) {
   return Value(static_cast<uint32_t>(dat));
 }
 
-static Value Day(VMContext* context) {
+static Value Day(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -169,7 +171,7 @@ static Value Day(VMContext* context) {
   return Value(static_cast<uint32_t>(day));
 }
 
-static Value Hour(VMContext* context) {
+static Value Hour(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -178,7 +180,7 @@ static Value Hour(VMContext* context) {
   return Value(static_cast<uint32_t>(Hour));
 }
 
-static Value Minute(VMContext* context) {
+static Value Minute(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -187,7 +189,7 @@ static Value Minute(VMContext* context) {
   return Value(static_cast<uint32_t>(Min));
 }
 
-static Value Sec(VMContext* context) {
+static Value Sec(VMContext* context, Value*, int) {
   auto params_count_ = context->GetParamsSize();
   DCHECK(params_count_ == 1 || params_count_ == 2);
   auto date = fml::static_ref_ptr_cast<CDate>(
@@ -196,7 +198,7 @@ static Value Sec(VMContext* context) {
   return Value(static_cast<uint32_t>(second));
 }
 
-static Value GetTimeZoneOffset(VMContext* ctx) {
+static Value GetTimeZoneOffset(VMContext* ctx, Value*, int) {
   // return UTC - local / min
   return CDate::GetTimeZoneOffset();
 }

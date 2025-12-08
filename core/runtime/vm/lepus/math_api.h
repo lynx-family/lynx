@@ -13,14 +13,14 @@
 namespace lynx {
 namespace lepus {
 
-Value Sin(VMContext* context) {
+Value Sin(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(sin(arg->Number()));
 }
-Value Acos(VMContext* context) {
+Value Acos(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
@@ -28,7 +28,7 @@ Value Acos(VMContext* context) {
   return Value(acos(arg->Number()));
 }
 
-Value Asin(VMContext* context) {
+Value Asin(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
@@ -36,7 +36,7 @@ Value Asin(VMContext* context) {
   return Value(asin(arg->Number()));
 }
 
-Value Abs(VMContext* context) {
+Value Abs(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
@@ -44,49 +44,49 @@ Value Abs(VMContext* context) {
   return Value(fabs(arg->Number()));
 }
 
-Value Atan(VMContext* context) {
+Value Atan(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(atan(arg->Number()));
 }
-Value Ceil(VMContext* context) {
+Value Ceil(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(ceil(arg->Number()));
 }
-Value Cos(VMContext* context) {
+Value Cos(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(cos(arg->Number()));
 }
-Value Exp(VMContext* context) {
+Value Exp(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(exp(arg->Number()));
 }
-Value Floor(VMContext* context) {
+Value Floor(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(floor(arg->Number()));
 }
-Value Log(VMContext* context) {
+Value Log(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(log(arg->Number()));
 }
-Value Max(VMContext* context) {
+Value Max(VMContext* context, Value*, int) {
   Value* arg1 = context->GetParam(0);
   Value* arg2 = context->GetParam(1);
   if (!arg1->IsNumber() || !arg2->IsNumber()) {
@@ -94,7 +94,7 @@ Value Max(VMContext* context) {
   }
   return Value(fmax(arg1->Number(), arg2->Number()));
 }
-Value Min(VMContext* context) {
+Value Min(VMContext* context, Value*, int) {
   Value* arg1 = context->GetParam(0);
   Value* arg2 = context->GetParam(1);
   if (!arg1->IsNumber() || !arg2->IsNumber()) {
@@ -102,7 +102,7 @@ Value Min(VMContext* context) {
   }
   return Value(fmin(arg1->Number(), arg2->Number()));
 }
-Value Pow(VMContext* context) {
+Value Pow(VMContext* context, Value*, int) {
   Value* arg1 = context->GetParam(0);
   Value* arg2 = context->GetParam(1);
   if (!arg1->IsNumber() || !arg2->IsNumber()) {
@@ -110,7 +110,7 @@ Value Pow(VMContext* context) {
   }
   return Value(pow(arg1->Number(), arg2->Number()));
 }
-Value Random(VMContext* context) {
+Value Random(VMContext* context, Value*, int) {
   static bool seeded = false;
   if (!seeded) {
     seeded = true;
@@ -118,21 +118,21 @@ Value Random(VMContext* context) {
   }
   return Value(static_cast<float>(rand()) / static_cast<float>(RAND_MAX));
 }
-Value Round(VMContext* context) {
+Value Round(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value((int32_t)round(arg->Number()));
 }
-Value Sqrt(VMContext* context) {
+Value Sqrt(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();
   }
   return Value(sqrt(arg->Number()));
 }
-Value Tan(VMContext* context) {
+Value Tan(VMContext* context, Value*, int) {
   Value* arg = context->GetParam(0);
   if (!arg->IsNumber()) {
     return Value();

@@ -19,7 +19,8 @@ void RegisterCFunction(Context* context, const char* name, CFunction function);
 void RegisterBuiltinFunction(Context* context, const char* name,
                              CFunction function);
 inline void RegisterBuiltinFunction(Context* context, const char* name,
-                                    Value (*function)(VMContext*)) {
+                                    Value (*function)(VMContext*, Value*,
+                                                      int)) {
   RegisterBuiltinFunction(context, name, reinterpret_cast<CFunction>(function));
 }
 void RegisterBuiltinFunctionTable(Context* context, const char* name,
@@ -37,7 +38,7 @@ void RegisterTableFunction(Context* context,
 inline void RegisterTableFunction(Context* context,
                                   const fml::RefPtr<Dictionary>& table,
                                   const char* name,
-                                  Value (*function)(VMContext*)) {
+                                  Value (*function)(VMContext*, Value*, int)) {
   RegisterTableFunction(context, table, name,
                         reinterpret_cast<CFunction>(function));
 }

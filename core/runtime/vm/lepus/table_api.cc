@@ -12,7 +12,7 @@
 namespace lynx {
 namespace lepus {
 
-static Value Freeze(VMContext* context) {
+static Value Freeze(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   Value object = Value(context->GetParam(0)->Table());
@@ -27,7 +27,7 @@ static Value Freeze(VMContext* context) {
   return result;
 }
 
-static Value Keys(VMContext* context) {
+static Value Keys(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   Value* param = context->GetParam(0);
@@ -48,7 +48,7 @@ static Value Keys(VMContext* context) {
   return result;
 }
 
-static Value Assign(VMContext* context) {
+static Value Assign(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count >= 1);
   Value* target = context->GetParam(0);

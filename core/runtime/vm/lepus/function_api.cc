@@ -57,7 +57,7 @@ static void getArrayNumber(const Value* param, std::string& str) {
   }
 }
 
-static Value ParseInt(VMContext* context) {
+static Value ParseInt(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
   int64_t ret = 0;
@@ -95,7 +95,7 @@ static Value ParseInt(VMContext* context) {
   return Value(true, true);
 }
 
-static Value ParseFloat(VMContext* context) {
+static Value ParseFloat(VMContext* context, Value*, int) {
   LOGI("lepus::parseFloat");
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
@@ -128,7 +128,7 @@ static Value ParseFloat(VMContext* context) {
   return Value(true, true);
 }
 
-static Value IsNan(VMContext* context) {
+static Value IsNan(VMContext* context, Value*, int) {
   auto param_count = context->GetParamsSize();
   DCHECK(param_count == 1);
   return Value(context->GetParam(0)->NaN());
@@ -166,7 +166,7 @@ static int encodeURI_hex(std::string& result, int c) {
   return 0;
 }
 
-static Value EncodeURIComponent(VMContext* context) {
+static Value EncodeURIComponent(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   const std::string& param = context->GetParam(0)->StdString();
@@ -271,7 +271,7 @@ static void unicode_to_utf8(std::string& result, unsigned int c) {
   }
 }
 
-static Value DecodeURIComponent(VMContext* context) {
+static Value DecodeURIComponent(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   const std::string& param = context->GetParam(0)->StdString();
