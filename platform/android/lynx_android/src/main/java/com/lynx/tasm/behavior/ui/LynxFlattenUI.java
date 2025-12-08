@@ -208,12 +208,9 @@ public class LynxFlattenUI extends LynxBaseUI {
   }
 
   final void innerDraw(Canvas canvas) {
-    // TODO: 2020/8/9
-    // Using hidden APIs carries high risks. Control whether to use RenderNode online; by
-    // default, it is not used.
-    // Independently validate in grayscale to check for crashes.
-    // Before the official release, add try-catch protection. If a crash occurs, fallback to the old
-    // logic.
+    if (mIsDisplayNone) {
+      return;
+    }
     if (mRenderNode == null || !isHardwareDraw(canvas)) {
       draw(canvas);
       return;

@@ -4216,6 +4216,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPreviousDrawUI(LynxBaseUI previousDrawUI);
   public LynxBaseUI com.lynx.tasm.behavior.ui.LynxBaseUI.getNextDrawUI();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setNextDrawUI(LynxBaseUI nextDrawUI);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isDisplayNone();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.updateDisplayNoneState(boolean isDisplayNone);
   public float com.lynx.tasm.behavior.ui.LynxBaseUI.getAlpha();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAlpha(float mAlpha);
   public float com.lynx.tasm.behavior.ui.LynxBaseUI.getSkewX();
@@ -6560,6 +6562,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.beha
   public LynxBaseUI com.lynx.tasm.behavior.ui.LynxUI< T extends View >.getDrawHead();
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.insertDrawList(LynxBaseUI pre, LynxBaseUI child);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.onDrawingPositionChanged();
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.updateDisplayNoneState(boolean isDisplayNone);
   public com.lynx.tasm.behavior.ui.LynxUI< T extends View >.LynxUI(Context context);
   public com.lynx.tasm.behavior.ui.LynxUI< T extends View >.LynxUI(LynxContext context);
   public com.lynx.tasm.behavior.ui.LynxUI< T extends View >.LynxUI(LynxContext context, Object param);
@@ -6734,6 +6737,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.rebuildViewTree();
   public MeaningfulContentSnapshot com.lynx.tasm.behavior.LynxUIOwner.getMeaningfulPaintingAreas();
   public void com.lynx.tasm.behavior.LynxUIOwner.updateLayout(int tag, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky, float maxHeight, int nodeIndex);
+  public void com.lynx.tasm.behavior.LynxUIOwner.updateLayout(int tag, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky, float maxHeight, int nodeIndex, boolean isDisplayNone);
   public void com.lynx.tasm.behavior.LynxUIOwner.setFirstLayout();
   public void com.lynx.tasm.behavior.LynxUIOwner.onNodeReady(int tag);
   public void com.lynx.tasm.behavior.LynxUIOwner.onNodeReload(int tag);

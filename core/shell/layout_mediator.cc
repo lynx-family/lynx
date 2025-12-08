@@ -32,7 +32,8 @@ void LayoutMediator::OnLayoutUpdate(
     int tag, float x, float y, float width, float height,
     const std::array<float, 4> &paddings, const std::array<float, 4> &margins,
     const std::array<float, 4> &borders,
-    const std::array<float, 4> *sticky_positions, float max_height) {
+    const std::array<float, 4> *sticky_positions, float max_height,
+    bool is_display_none) {
   std::array<float, 4> sticky_positions_clone;
   bool has_sticky = false;
   if (sticky_positions) {

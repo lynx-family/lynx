@@ -212,6 +212,13 @@ public abstract class LynxBaseUI
   protected int mBorderRightWidth;
   protected int mBorderBottomWidth;
   protected float mFontSize;
+  protected boolean mIsDisplayNone = false;
+  public boolean isDisplayNone() {
+    return mIsDisplayNone;
+  }
+  public void updateDisplayNoneState(boolean isDisplayNone) {
+    mIsDisplayNone = isDisplayNone;
+  }
   private boolean mHasRadius = false;
   // this will be updated by layout change.Not affected by animation.
   // x is width, y is height.
@@ -558,7 +565,7 @@ public abstract class LynxBaseUI
   }
 
   public boolean getVisibility() {
-    return true;
+    return !mIsDisplayNone;
   }
 
   public boolean isVisible() {

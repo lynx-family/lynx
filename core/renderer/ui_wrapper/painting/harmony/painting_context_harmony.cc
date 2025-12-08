@@ -119,7 +119,8 @@ void PaintingContextHarmony::UpdatePaintingNode(
 void PaintingContextHarmony::UpdateLayout(
     int tag, float x, float y, float width, float height, const float* paddings,
     const float* margins, const float* borders, const float* bounds,
-    const float* sticky, float max_height, uint32_t node_index) {
+    const float* sticky, float max_height, uint32_t node_index,
+    bool is_display_none) {
 #define MAKE_UNIQUE_COPY(src, size)                      \
   std::unique_ptr<float[]> src##_copy{nullptr};          \
   if (src) {                                             \

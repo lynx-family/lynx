@@ -52,13 +52,14 @@ void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
   for (int i = 0; i < container_->GetChildCount(); ++i) {
     LayoutObject* child = static_cast<LayoutObject*>(container_->Find(i));
     const LayoutComputedStyle* child_style = child->GetCSSStyle();
-    if (child->IsNewFixed()) {
-      continue;
-    }
 
     if (child_style->GetDisplay(container_->GetLayoutConfigs(),
                                 container_->attr_map()) == DisplayType::kNone) {
       child->LayoutDisplayNone();
+      continue;
+    }
+
+    if (child->IsNewFixed()) {
       continue;
     }
 
@@ -93,7 +94,7 @@ void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
 }
 
 void LayoutAlgorithm::InitializeFixedNode(const SLNodeSet* fixed_node_set) {
-  // Only calling by root's LayoutAlgorithm.
+  // Only called by root's LayoutAlgorithm.
   if (fixed_node_set != nullptr) {
     const auto container_display = container_->GetCSSStyle()->GetDisplay(
         container_->GetLayoutConfigs(), container_->attr_map());
@@ -185,6 +186,12 @@ void LayoutAlgorithm::AlignAbsoluteAndFixedItems() {
 // Absolute | Fixed
 void LayoutAlgorithm::MeasureAbsoluteAndFixed() {
   for (LayoutObject* item : absolute_or_fixed_items_) {
+    // Prevent some unexpected behaviors, such as prevent fixed node's
+    // UpdateMeasure from being called by the root node's algorithm during the
+    // Alignment stage.
+    if (item->GetShouldDisplayNone()) {
+      continue;
+    }
     const Constraints containing_block =
         position_utils::GetContainingBlockForAbsoluteAndFixed(
             container_, container_constraints_);

@@ -4147,6 +4147,9 @@ void FiberElement::UpdateLayoutInfo() {
   borders_[2] = layout_result.border_[starlight::kRight];
   borders_[3] = layout_result.border_[starlight::kBottom];
 
+  is_display_none_ = sl_node_->GetShouldDisplayNone() &&
+                     !sl_node_->GetLayoutConfigs().IsGridNewQuirksMode();
+
   if (IsShadowNodeCustom()) {
     customized_layout_node_->OnLayoutAfter();
   }

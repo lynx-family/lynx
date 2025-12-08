@@ -148,6 +148,12 @@ float GridLayoutAlgorithm::BlockAxisAlignment(const GridItemInfo& item_info) {
 void GridLayoutAlgorithm::MeasureAbsoluteAndFixed() {
   for (GridItemInfo& item_info : grid_absolutely_positioned_item_infos_) {
     LayoutObject* const item = item_info.Item();
+    // Prevent some unexpected behaviors, such as prevent fixed node's
+    // UpdateMeasure from being called by the root node's algorithm during the
+    // Alignment stage.
+    if (item->GetShouldDisplayNone()) {
+      continue;
+    }
     Constraints containing_block;
     containing_block[InlineAxis()] = OneSideConstraint::Definite(
         CalcContainingBlock(InlineAxis(), item_info.StartLine(InlineAxis()),
