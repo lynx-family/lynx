@@ -11,8 +11,8 @@ import android.app.Application;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LLog;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -604,6 +604,21 @@ public class TemplateDataTest {
     } catch (Throwable e) {
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testByteArray() {
+    Map map = new HashMap();
+    map.put("key1", "value1");
+    map.put("key2", "value2".getBytes());
+    TemplateData data = TemplateData.fromMap(map);
+    Map testMap = data.toMap();
+    assertEquals(map.get("key1"), testMap.get("key1"));
+
+    byte[] bytes = ((byte[]) map.get("key2"));
+    byte[] testBytes = ((byte[]) testMap.get("key2"));
+    assertTrue(bytes.length == testBytes.length);
+    assertTrue(Arrays.equals(bytes, testBytes));
   }
 
   @Test

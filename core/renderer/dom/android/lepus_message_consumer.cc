@@ -433,8 +433,10 @@ void LepusEncoder::WriteValue(std::vector<int8_t> &vec,
         WriteValue(vec, iter.second);
       }
     } break;
-    case lepus::ValueType::Value_PrimJsValue:
     case lepus::ValueType::Value_ByteArray: {
+      WriteBytes(vec, value);
+    } break;
+    case lepus::ValueType::Value_PrimJsValue: {
       assert(false);
     } break;
     default: {
@@ -458,6 +460,16 @@ void LepusEncoder::WriteString(std::vector<int8_t> &vec,
   vec.push_back(TypeString);
   WriteSize(vec, str.size());
   std::copy(str.begin(), str.end(), std::back_inserter(vec));
+}
+
+void LepusEncoder::WriteBytes(std::vector<int8_t> &vec,
+                              const lepus::Value &value) {
+  auto byte_array = value.ByteArray();
+  size_t size = byte_array->GetLength();
+  vec.push_back(TypeByteArray);
+  WriteSize(vec, size);
+  std::copy(byte_array->GetPtr(), byte_array->GetPtr() + size,
+            std::back_inserter(vec));
 }
 
 void LepusEncoder::WriteSize(std::vector<int8_t> &vec, const size_t size) {

@@ -5,6 +5,7 @@
 #import <Foundation/Foundation.h>
 
 #include "base/include/value/array.h"
+#include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 
@@ -22,6 +23,8 @@ static NSDictionary *convertQjsTableToNSDictionary(const lepus::Value &value);
 static NSString *convertCStringToNSString(const char *value) {
   return [NSString stringWithUTF8String:value];
 }
+
+static NSData *convertLepusByteArrayToNSData(const lepus_value &value);
 
 static NSNumber *convertLepusBoolToNSNumber(bool value) { return value ? @(1) : @(0); }
 
@@ -65,6 +68,9 @@ id convertLepusValueToNSObject(const lepus_value &value) {
     case lepus::ValueType::Value_Table:
       nsValue = convertLepusTableToNSDictionary(value);
       break;
+    case lepus::ValueType::Value_ByteArray:
+      nsValue = convertLepusByteArrayToNSData(value);
+      break;
     default:
       break;
   }
@@ -83,6 +89,12 @@ static NSArray *convertLepusArrayToNSArray(const lepus_value &value) {
     }
   }
   return nsArr;
+}
+
+static NSData *convertLepusByteArrayToNSData(const lepus_value &value) {
+  auto bytes = value.ByteArray();
+  auto data = [NSData dataWithBytes:bytes->GetPtr() length:bytes->GetLength()];
+  return data;
 }
 
 static NSDictionary *convertLepusTableToNSDictionary(const lepus_value &value) {

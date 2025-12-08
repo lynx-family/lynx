@@ -59,6 +59,7 @@ class LepusEncoder {
   void WriteJSValue(std::vector<int8_t>& vec, const lepus::Value& value);
   void WriteJSArray(std::vector<int8_t>& vec, const lepus::Value& value);
   void WriteJSTable(std::vector<int8_t>& vec, const lepus::Value& value);
+  void WriteBytes(std::vector<int8_t>& vec, const lepus::Value& value);
 };
 
 }  // namespace tasm

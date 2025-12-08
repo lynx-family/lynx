@@ -434,6 +434,11 @@ public class LepusBuffer implements MessageCodec {
         result = map;
         break;
       }
+      case BYTE_ARRAY: {
+        final byte[] bytes = readBytes(buffer);
+        result = bytes;
+        break;
+      }
       default:
         throw new IllegalArgumentException("Message corrupted");
     }

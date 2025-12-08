@@ -5,6 +5,7 @@
 #import <XCTest/XCTest.h>
 #import "LynxTemplateData+Converter.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/byte_array.h"
 #include "core/renderer/utils/value_utils.h"
 
 @interface LynxTemplateDataTest : XCTestCase
@@ -397,6 +398,22 @@
   XCTAssertTrue([[dict allKeys] containsObject:@"key1"]);
   XCTAssertTrue([[dict allKeys] containsObject:@"key2"]);
   XCTAssertTrue([[dict allKeys] containsObject:@"key3"]);
+}
+
+- (void)testByteArray {
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{}];
+  [data updateDouble:1 forKey:@"key1"];
+  NSString* str = @"Hello, world";
+  [data updateObject:[str dataUsingEncoding:NSUTF8StringEncoding] forKey:@"key2"];
+
+  auto* value = LynxGetLepusValueFromTemplateData(data);
+  XCTAssertTrue(value->GetProperty("key2").IsByteArray());
+  XCTAssertEqual(value->GetProperty("key2").ByteArray()->GetLength(), 12);
+
+  NSDictionary* dict = [data dictionary];
+  XCTAssertTrue([[dict objectForKey:@"key1"] isEqualToNumber:@1]);
+  XCTAssertTrue(
+      [[dict objectForKey:@"key2"] isEqualToData:[str dataUsingEncoding:NSUTF8StringEncoding]]);
 }
 
 @end
