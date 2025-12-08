@@ -42,8 +42,10 @@ void UIOverlay::OnPropUpdate(const std::string& name,
 
 void UIOverlay::ShowDialog(bool is_show) {
   if (is_show) {
-    NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
-    NodeManager::DialogInstance()->show(native_dialog_, false);
+    if (native_dialog_) {
+      NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
+      NodeManager::DialogInstance()->show(native_dialog_, false);
+    }
     CustomEvent event{Sign(), "showoverlay", "detail", lepus_value()};
     context_->SendEvent(event);
     is_visible_ = true;
@@ -51,7 +53,10 @@ void UIOverlay::ShowDialog(bool is_show) {
     if (is_visible_) {
       CustomEvent event{Sign(), "dismissoverlay", "detail", lepus_value()};
       context_->SendEvent(event);
-      NodeManager::DialogInstance()->close(native_dialog_);
+      if (native_dialog_) {
+        NodeManager::DialogInstance()->setContent(native_dialog_, nullptr);
+        NodeManager::DialogInstance()->close(native_dialog_);
+      }
     }
     is_visible_ = false;
   }
@@ -71,6 +76,7 @@ UIOverlay::~UIOverlay() {
     LOGI("overlay destruction close dialog sign="
          << Sign() << " this=" << static_cast<const void*>(this)
          << " dialog=" << static_cast<const void*>(native_dialog_));
+    NodeManager::DialogInstance()->setContent(native_dialog_, nullptr);
     NodeManager::DialogInstance()->close(native_dialog_);
     NodeManager::DialogInstance()->dispose(native_dialog_);
     native_dialog_ = nullptr;
@@ -89,6 +95,10 @@ UIOverlay::~UIOverlay() {
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT);
   NodeManager::Instance().DisposeNode(stack_);
   stack_ = nullptr;
+}
+
+void UIOverlay::RemoveNode(UIBase* child) {
+  NodeManager::Instance().RemoveNode(stack_, child->DrawNode());
 }
 
 UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)

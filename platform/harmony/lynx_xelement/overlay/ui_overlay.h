@@ -41,6 +41,8 @@ class UIOverlay : public UIBase {
 
   void InsertNode(UIBase* child, int index) override;
 
+  void RemoveNode(UIBase* child) override;
+
   bool ShouldHitTest() override;
 
   bool EventThrough(float point[2]) override;
