@@ -472,14 +472,15 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     int widthMode = MeasureSpec.getMode(widthMeasureSpec);
 
     if (widthMode == MeasureSpec.AT_MOST || widthMode == MeasureSpec.UNSPECIFIED) {
-      width = isFragmentLayerRender ? bodyView.getLynxFrame().width() : mLynxUIOwner.getRootWidth();
+      width = isFragmentLayerRender ? bodyView.getRenderer().getLynxFrame().width()
+                                    : mLynxUIOwner.getRootWidth();
     } else {
       width = MeasureSpec.getSize(widthMeasureSpec);
     }
     int heightMode = MeasureSpec.getMode(heightMeasureSpec);
     if (heightMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.UNSPECIFIED) {
-      height =
-          isFragmentLayerRender ? bodyView.getLynxFrame().height() : mLynxUIOwner.getRootHeight();
+      height = isFragmentLayerRender ? bodyView.getRenderer().getLynxFrame().height()
+                                     : mLynxUIOwner.getRootHeight();
     } else {
       height = MeasureSpec.getSize(heightMeasureSpec);
     }
