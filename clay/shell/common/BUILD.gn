@@ -73,8 +73,6 @@ source_set("common") {
     "shell_common_rendering_backend.h",
     "switches.cc",
     "switches.h",
-    "timing_client_delegate.cc",
-    "timing_client_delegate.h",
     "variable_refresh_rate_display.cc",
     "variable_refresh_rate_display.h",
     "variable_refresh_rate_reporter.h",

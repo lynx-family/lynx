@@ -18,9 +18,9 @@
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/diff_context.h"
 #include "clay/flow/embedded_views.h"
-#include "clay/flow/instrumentation.h"
 #include "clay/flow/layer_snapshot_store.h"
 #include "clay/flow/raster_cache.h"
+#include "clay/flow/stopwatch.h"
 #include "clay/gfx/rendering_backend.h"
 
 namespace clay {

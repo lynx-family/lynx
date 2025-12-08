@@ -21,10 +21,10 @@
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/diff_context.h"
-#include "clay/flow/instrumentation.h"
 #include "clay/flow/layer_snapshot_store.h"
 #include "clay/flow/layers/layer_state_stack.h"
 #include "clay/flow/raster_cache.h"
+#include "clay/flow/stopwatch.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/rendering_backend.h"
 

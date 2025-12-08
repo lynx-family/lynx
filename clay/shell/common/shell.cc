@@ -1189,24 +1189,17 @@ void Shell::UpdateRasterInfo(
   }
 }
 
-void Shell::CreateTimingClientDelegate() {
-  fml::TaskRunner::RunNowOrPostTask(
-      GetTaskRunners().GetPlatformTaskRunner(),
-      [this, weak_platform_view = weak_platform_view_]() {
-        if (weak_platform_view) {
-          timing_client_delegate_ =
-              std::make_unique<clay::TimingClientDelegate>(
-                  weak_platform_view.get());
-        }
-      });
-}
-
 void Shell::ReportTiming(const std::unordered_map<std::string, int64_t>& timing,
                          const std::string& flag) {
   // Make sure on Platform Thread.
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
-  if (timing_client_delegate_) {
-    timing_client_delegate_->ReportTiming(timing, flag);
+
+  if (weak_platform_view_) {
+    if (flag == kSetupFlag) {
+      weak_platform_view_->OnTimingSetup(timing);
+    } else if (flag == kUpdateFlag || flag == kForceUpdateFlag) {
+      weak_platform_view_->OnTimingUpdate(timing, flag);
+    }
   }
 }
 
@@ -1261,7 +1254,6 @@ void Shell::CleanForRecycle() {
   raster_frame_service.Act([](auto& impl) { impl.CleanForRecycle(); });
 
   waiting_for_first_frame_->store(true);
-  timing_client_delegate_.reset();
   devtools_instrumentation_enabled_ = false;
   devtool_instrumentation_.reset();
 }

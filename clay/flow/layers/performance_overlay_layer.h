@@ -11,8 +11,8 @@
 #include <string>
 
 #include "base/include/fml/macros.h"
-#include "clay/flow/instrumentation.h"
 #include "clay/flow/layers/layer.h"
+#include "clay/flow/stopwatch.h"
 #include "clay/gfx/rendering_backend.h"
 
 class SkTextBlob;

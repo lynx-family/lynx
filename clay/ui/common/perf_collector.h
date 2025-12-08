@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 #include "base/include/fml/memory/ref_ptr.h"
-#include "clay/flow/instrumentation.h"
+#include "clay/flow/stopwatch.h"
 #include "clay/ui/component/base_view.h"
 
 namespace clay {
@@ -20,6 +20,11 @@ class PageView;
 
 static const uint32_t kPerfErrorCodeOK = 0;
 static const uint32_t kPerfErrorCodeSurfaceFailed = 1;
+
+// Timing flag constants for setup and update operations
+static constexpr const char* kSetupFlag = "clay_setup";
+static constexpr const char* kUpdateFlag = "clay_update";
+static constexpr const char* kForceUpdateFlag = "clay_force_update";
 
 enum class Perf {
   kEnablePartialRepaint,

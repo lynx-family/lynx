@@ -28,8 +28,6 @@ source_set("flow") {
     "flow_rendering_backend.h",
     "frame_timings.cc",
     "frame_timings.h",
-    "instrumentation.cc",
-    "instrumentation.h",
     "layer_snapshot_store.cc",
     "layer_snapshot_store.h",
     "layers/backdrop_filter_layer.cc",
@@ -103,6 +101,8 @@ source_set("flow") {
     "rtree.cc",
     "rtree.h",
     "services/animation_event_service.h",
+    "stopwatch.cc",
+    "stopwatch.h",
     "view_slicer.cc",
     "view_slicer.h",
 
@@ -201,7 +201,6 @@ if (enable_unittests) {
       "flow_test_utils.h",
       "frame_timings_recorder_unittests.cc",
       "gl_context_switch_unittests.cc",
-      "instrumentation_unittests.cc",
       "layers/backdrop_filter_layer_unittests.cc",
       "layers/checkerboard_layertree_unittests.cc",
       "layers/clip_path_layer_unittests.cc",
@@ -210,6 +209,7 @@ if (enable_unittests) {
       "layers/color_filter_layer_unittests.cc",
       "layers/container_layer_unittests.cc",
       "matrix_clip_tracker_unittests.cc",
+      "stopwatch_unittests.cc",
       "view_slicer_unittests.cc",
 
       # "layers/display_list_layer_unittests.cc",

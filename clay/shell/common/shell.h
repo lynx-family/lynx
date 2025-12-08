@@ -47,7 +47,6 @@
 #include "clay/shell/common/platform_view.h"
 #include "clay/shell/common/rasterizer.h"
 #include "clay/shell/common/resource_cache_limit_calculator.h"
-#include "clay/shell/common/timing_client_delegate.h"
 
 namespace clay {
 class PerfCollector;
@@ -407,7 +406,6 @@ class Shell final : public PlatformView::Delegate,
     return devtool_instrumentation_.get();
   }
 
-  void CreateTimingClientDelegate();
   void ReportTiming(const std::unordered_map<std::string, int64_t>& timing,
                     const std::string& flag) override;
 
@@ -458,7 +456,6 @@ class Shell final : public PlatformView::Delegate,
   std::shared_ptr<fml::SyncSwitch> is_gpu_disabled_sync_switch_;
 
   std::shared_ptr<clay::PerfCollector> perf_collector_;
-  std::unique_ptr<clay::TimingClientDelegate> timing_client_delegate_;
   std::unique_ptr<clay::DevtoolsInstrumentation> devtool_instrumentation_;
 
   fml::WeakPtr<Engine> weak_engine_;  // to be shared across threads
