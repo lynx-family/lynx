@@ -10,69 +10,57 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.LynxContext;
-public class ContainerRenderer extends ViewGroup {
-  private final Rect mLynxFrame = new Rect();
-  public final Point mRenderOffset = new Point();
-  private final int mSign;
-  private final PlatformRendererContext mPlatformRendererContext;
-  private DisplayListApplier mDisplayListApplier = null;
-  private final DisplayList mDisplayList = new DisplayList();
-  public void setLynxFrame(int l, int t, int r, int b, int dx, int dy) {
-    mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
-    mRenderOffset.set(dx, dy);
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-      setClipBounds(new Rect(0, 0, mLynxFrame.width(), mLynxFrame.height()));
-    }
+
+public class ContainerRenderer extends ViewGroup implements IRendererHost {
+  @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign);
   }
-  public Rect getLynxFrame() {
-    return mLynxFrame;
+
+  private Renderer mRenderer;
+
+  @Override
+  public void setRenderer(Renderer renderer) {
+    mRenderer = renderer;
   }
-  public ContainerRenderer(
-      LynxContext context, @NonNull PlatformRendererContext platformRendererContext, int sign) {
+
+  @Override
+  public Renderer getRenderer() {
+    return mRenderer;
+  }
+
+  @Override
+  public ViewGroup getView() {
+    return this;
+  }
+
+  public ContainerRenderer(LynxContext context) {
     super(context);
-    mPlatformRendererContext = platformRendererContext;
-    mSign = sign;
     setWillNotDraw(false);
     setClipChildren(false);
   }
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    for (int i = 0; i < getChildCount(); i++) {
-      View child = getChildAt(i);
-      if (child instanceof ContainerRenderer) {
-        Rect childFrame = ((ContainerRenderer) child).getLynxFrame();
-        child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
-      }
-    }
+    mRenderer.onLayout(changed, l, t, r, b);
   }
 
   @Override
   protected void onDraw(Canvas canvas) {
-    mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
-    if (mDisplayListApplier == null) {
-      mDisplayListApplier = new DisplayListApplier(mDisplayList, mPlatformRendererContext, this);
-    } else {
-      mDisplayListApplier.setDisplayList(mDisplayList);
-    }
+    mRenderer.onDraw(canvas);
   }
 
   @Override
   protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-    mDisplayListApplier.drawTillNextView(canvas);
-    canvas.save();
-    if (child instanceof ContainerRenderer) {
-      canvas.translate(-((ContainerRenderer) child).mRenderOffset.x,
-          -((ContainerRenderer) child).mRenderOffset.y);
-    }
+    mRenderer.beforeDrawChild(canvas, child);
     boolean ret = super.drawChild(canvas, child, drawingTime);
-    canvas.restore();
+    mRenderer.afterDrawChild(canvas, child);
     return ret;
   }
+
   @Override
   protected void dispatchDraw(Canvas canvas) {
     super.dispatchDraw(canvas);
-    mDisplayListApplier.drawTillNextView(canvas);
-    mDisplayListApplier.reset();
+    mRenderer.afterDispatchDraw(canvas);
   }
 }
