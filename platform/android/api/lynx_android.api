@@ -1270,11 +1270,12 @@ public enum com::lynx::tasm::LynxSubErrorCode::Consumer {
   public com.lynx.tasm.LynxSubErrorCode.Consumer.Consumer(String value);
 }
 
-public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup {
-  public final Point com.lynx.tasm.behavior.render.ContainerRenderer.mRenderOffset mRenderOffset;
-  public void com.lynx.tasm.behavior.render.ContainerRenderer.setLynxFrame(int l, int t, int r, int b, int dx, int dy);
-  public Rect com.lynx.tasm.behavior.render.ContainerRenderer.getLynxFrame();
-  public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context, @NonNull PlatformRendererContext platformRendererContext, int sign);
+public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup, com.lynx.tasm.behavior.render.IRendererHost {
+  public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.createRenderer(PlatformRendererContext platformRendererContext, int sign);
+  public void com.lynx.tasm.behavior.render.ContainerRenderer.setRenderer(Renderer renderer);
+  public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.getRenderer();
+  public ViewGroup com.lynx.tasm.behavior.render.ContainerRenderer.getView();
+  public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context);
 }
 
 public class com::lynx::tasm::utils::ContextUtils :  {
@@ -2904,6 +2905,13 @@ public interface com::lynx::tasm::behavior::ui::IProcessViewInfoHook {
   public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.afterProcessViewInfo(ViewInfo info);
   public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.processLayoutChildren();
   public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.processMeasureChildren();
+}
+
+public interface com::lynx::tasm::behavior::render::IRendererHost {
+  public void com.lynx.tasm.behavior.render.IRendererHost.setRenderer(Renderer renderer);
+  public Renderer com.lynx.tasm.behavior.render.IRendererHost.getRenderer();
+  public ViewGroup com.lynx.tasm.behavior.render.IRendererHost.getView();
+  public Renderer com.lynx.tasm.behavior.render.IRendererHost.createRenderer(PlatformRendererContext platformRendererContext, int sign);
 }
 
 public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
@@ -8807,6 +8815,19 @@ public class com::lynx::tasm::performance::performanceobserver::ReloadBundleEntr
   public com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.ReloadBundleEntry(HashMap< String, Object > props);
 }
 
+public class com::lynx::tasm::behavior::render::Renderer :  {
+  public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(int l, int t, int r, int b, int dx, int dy);
+  public Point com.lynx.tasm.behavior.render.Renderer.getRenderOffset();
+  public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(int l, int t, int r, int b);
+  public Rect com.lynx.tasm.behavior.render.Renderer.getLynxFrame();
+  public com.lynx.tasm.behavior.render.Renderer.Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign);
+  public void com.lynx.tasm.behavior.render.Renderer.onLayout(boolean changed, int l, int t, int r, int b);
+  public void com.lynx.tasm.behavior.render.Renderer.onDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.render.Renderer.beforeDrawChild(Canvas canvas, View child);
+  public void com.lynx.tasm.behavior.render.Renderer.afterDrawChild(Canvas canvas, View child);
+  public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas);
+}
+
 public class abstract com::lynx::tasm::rendernode::compat::RenderNodeCompat :  {
   public com.lynx.tasm.rendernode.compat.RenderNodeCompat.RenderNodeCompat();
   public abstract void com.lynx.tasm.rendernode.compat.RenderNodeCompat.init();
@@ -10137,11 +10158,11 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
   public void com.lynx.tasm.behavior.ui.UIBody.setChildrenLynxPageUI(HashMap< String, EventTarget > childrenLynxPageUI);
 }
 
-public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
-  public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.mSign mSign;
-  public Rect com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getLynxFrame();
-  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setLynxFrame(int l, int t, int r, int b, int dx, int dy);
-  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setPlatformRendererContext(PlatformRendererContext context);
+public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding, com.lynx.tasm.behavior.render.IRendererHost {
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setRenderer(Renderer renderer);
+  public Renderer com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getRenderer();
+  public ViewGroup com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getView();
+  public Renderer com.lynx.tasm.behavior.ui.UIBody.UIBodyView.createRenderer(PlatformRendererContext context, int sign);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.cacheLayoutInfo(int width, int height);
