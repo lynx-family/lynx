@@ -140,6 +140,11 @@ lynx_core_source_set("base") {
       ":observer",
     ]
   } else {
+    if (is_mac || is_win) {
+      include_dirs = [ "//third_party/node/deps/uv/include" ]
+      base_shared_sources -= [ "threading/js_thread_config_getter.cc" ]
+      base_shared_sources += [ "node/js_thread_config_getter_node.cc" ]
+    }
     sources += base_shared_sources
     public_deps += [ "../../base/trace/native:trace_public_headers" ]
     if (is_android) {
