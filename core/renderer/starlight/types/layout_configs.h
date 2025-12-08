@@ -23,6 +23,7 @@ constexpr base::Version kFlexIndefinitePercentageFixedVersion(2, 13);
 constexpr base::Version kFlexAutoMarginFixedVersion(2, 14);
 constexpr base::Version kAbsoluteAndFixedBoxInfoFixedVersion(2, 16);
 constexpr base::Version kGridNewVersion(3, 1);
+constexpr base::Version kFixedNodeWithDisplayNoneFixedVersion(3, 5);
 
 namespace starlight {
 
@@ -48,6 +49,8 @@ struct LayoutConfigs {
     is_absolute_and_fixed_box_info_fixed_quirks_mode_ =
         !IsVersionHigherOrEqual(kAbsoluteAndFixedBoxInfoFixedVersion);
     is_grid_new_quirks_mode_ = !IsVersionHigherOrEqual(kGridNewVersion);
+    is_fixed_node_with_display_none_quirks_mode_ =
+        !IsVersionHigherOrEqual(kFixedNodeWithDisplayNoneFixedVersion);
   }
   const base::Version& GetQuirksMode() const { return quirks_mode_; }
   void SetTargetSDKVersion(const std::string& target_sdk_version) {
@@ -127,6 +130,12 @@ struct LayoutConfigs {
   // minmax(), fit-content, and max-content. Furthermore, the Grid Sizing
   // Algorithm behaves more closely to HTML5 standards than previously.
   bool IsGridNewQuirksMode() const { return is_grid_new_quirks_mode_; }
+  // When setting display:none, the child element with position:fixed should not
+  // be measured. Fix this issue when
+  // is_fixed_node_with_display_none_quirks_mode_ is false.
+  bool IsFixedNodeWithDisplayNoneQuirksMode() const {
+    return is_fixed_node_with_display_none_quirks_mode_;
+  }
 
   bool is_absolute_in_content_bound_ = false;
   bool css_align_with_legacy_w3c_ = false;
@@ -151,6 +160,7 @@ struct LayoutConfigs {
   bool is_flex_auto_margin_quirks_mode_ = true;
   bool is_absolute_and_fixed_box_info_fixed_quirks_mode_ = true;
   bool is_grid_new_quirks_mode_ = true;
+  bool is_fixed_node_with_display_none_quirks_mode_ = true;
 };
 
 }  // namespace starlight
