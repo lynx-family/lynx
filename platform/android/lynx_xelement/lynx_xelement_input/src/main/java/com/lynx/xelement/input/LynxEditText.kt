@@ -70,7 +70,7 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText {
 
     // refer to comment, setOnKeyListener is only useful for hardware keyboards.
     // google input method(English) dosent trigger that.
-    override fun onCreateInputConnection(outAttrs: EditorInfo?): InputConnection? {
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
         val ic = super.onCreateInputConnection(outAttrs) ?: return null
         try {
             inputConnection?.setTarget(ic)
