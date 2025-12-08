@@ -4,7 +4,6 @@
 package com.lynx.tasm.behavior.render;
 
 import android.graphics.PointF;
-import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,15 +16,12 @@ import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
-import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
-import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
-import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
-  private static String TAG = "PlatformRendererContext";
+  final private static String TAG = "PlatformRendererContext";
 
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
@@ -39,9 +35,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
 
-  HashMap<Integer, ViewGroup> mViewHolder = new HashMap<>();
+  HashMap<Integer, IRendererHost> mViewHolder = new HashMap<>();
 
-  private LynxContext mContext = null;
+  private LynxContext mContext;
   private long mNativePtr = 0;
   private TextLayout mTextLayout;
   private boolean mDestroyed = false;
@@ -76,31 +72,31 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   PointF convertPointInViewToScreen(int sign, PointF point) {
-    ViewGroup view = mViewHolder.get(sign);
-    if (view == null) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null || host.getView() == null) {
       LLog.e(TAG, "convertPointInViewToScreen failed since can not find target view.");
     }
-    return LynxUIHelper.convertPointInViewToScreen(view, point);
+    return LynxUIHelper.convertPointInViewToScreen(host.getView(), point);
   }
 
   public int getTargetWidth(int sign) {
-    View view = mViewHolder.get(sign);
-    if (view == null) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null) {
       LLog.e(TAG, "getTargetWidth failed since can not find target view.");
       return 0;
     }
 
-    return view.getWidth();
+    return host.getView().getWidth();
   }
 
   public int getTargetHeight(int sign) {
-    View view = mViewHolder.get(sign);
-    if (view == null) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null) {
       LLog.e(TAG, "getTargetHeight failed since can not find target view.");
       return 0;
     }
 
-    return view.getHeight();
+    return host.getView().getHeight();
   }
 
   @CalledByNative
@@ -109,7 +105,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       case PlatformRendererType.kView:
       case PlatformRendererType.kText:
       case PlatformRendererType.kImage: {
-        ContainerRenderer view = new ContainerRenderer(mContext, this, sign);
+        ContainerRenderer view = new ContainerRenderer(mContext);
+        Renderer renderer = view.createRenderer(this, sign);
+        renderer.setRenderHost(view);
+        view.setRenderer(renderer);
         mViewHolder.put(sign, view);
         view.invalidate();
         break;
@@ -117,19 +116,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       case PlatformRendererType.kPage: {
         UIBody.UIBodyView view = mRootView.get();
         if (view != null) {
-          view.mSign = sign;
-          view.setPlatformRendererContext(this);
           view.setWillNotDraw(false);
-
           view.invalidate();
+          Renderer renderer = view.createRenderer(this, sign);
+          renderer.setRenderHost(view);
+          view.setRenderer(renderer);
           mViewHolder.put(sign, view);
         }
         break;
       }
       case PlatformRendererType.kScroll: {
-        AndroidScrollView scrollView = new AndroidScrollView(
-            mContext, /*TODO: decoupling from UIScrollView*/ new UIScrollView(mContext));
-        mViewHolder.put(sign, scrollView);
+        // TODO: support <scroll-view/> platform view here.
       } break;
       case PlatformRendererType.kList: {
         // TODO: support <list/> platform view here.
@@ -147,11 +144,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void insertPlatformRenderer(int parent, int child, int index) {
-    ViewGroup parentView = mViewHolder.get(parent);
-    ViewGroup childView = mViewHolder.get(child);
-    if (parentView == null || childView == null) {
+    IRendererHost hParent = mViewHolder.get(parent);
+    IRendererHost hChild = mViewHolder.get(child);
+    if (hParent == null || hChild == null) {
       return;
     }
+    ViewGroup parentView = hParent.getView();
+    ViewGroup childView = hChild.getView();
     int count = parentView.getChildCount();
     if (index == -1 || index >= count) {
       parentView.addView(childView);
@@ -162,23 +161,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void invalidatePlatformRenderer(int sign) {
-    ViewGroup view = mViewHolder.get(sign);
-    if (view != null) {
-      view.invalidate();
+    IRendererHost host = mViewHolder.get(sign);
+    if (host != null) {
+      host.getView().invalidate();
     }
   }
 
   @CalledByNative
   public void updatePlatformRendererFrame(
       int sign, int left, int top, int width, int height, int dx, int dy) {
-    ViewGroup view = mViewHolder.get(sign);
-    if (view instanceof UIBody.UIBodyView) {
-      ((UIBody.UIBodyView) view).setLynxFrame(left, top, left + width, top + height, dx, dy);
-      view.requestLayout();
-    } else if (view instanceof ContainerRenderer) {
-      ((ContainerRenderer) view).setLynxFrame(left, top, left + width, top + height, dx, dy);
-      view.requestLayout();
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null) {
+      LLog.d(TAG, "host renderer not found for sign: " + sign);
     }
+    host.getRenderer().setLynxFrame(left, top, left + width, top + height, dx, dy);
+    host.getView().requestLayout();
   }
 
   public LynxImageManager getImage(int sign) {
@@ -213,11 +210,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void removePlatformRendererFromParent(int sign) {
-    ViewGroup view = mViewHolder.get(sign);
-    if (view != null) {
-      ViewGroup parent = (ViewGroup) view.getParent();
+    IRendererHost host = mViewHolder.get(sign);
+    if (host != null) {
+      ViewGroup parent = (ViewGroup) host.getView().getParent();
       if (parent != null) {
-        parent.removeView(view);
+        parent.removeView(host.getView());
       }
     }
   }
