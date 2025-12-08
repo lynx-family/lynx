@@ -196,8 +196,9 @@ std::shared_ptr<skity::Image> TakeScreenshotWithOpaque(
   skity::Matrix root_surface_transformation;
   root_surface_transformation.Reset();
 
-  auto frame = compositor_context.AcquireFrame(
-      nullptr, skity_canvas, nullptr, root_surface_transformation, false, true);
+  auto frame =
+      compositor_context.AcquireFrame(gpu_context, skity_canvas, nullptr,
+                                      root_surface_transformation, false, true);
   skity_canvas->Clear(clay::Color::kTransparent());
   frame->Raster(*tree, true, nullptr, background_color);
 
