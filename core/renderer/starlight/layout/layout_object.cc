@@ -454,6 +454,7 @@ void LayoutObject::MarkUpdated() {
   current_node_has_new_layout_ = false;
   is_dirty_ = false;
   is_layout_occurred = true;
+  current_node_should_display_none_ = false;
 }
 
 // different from MarkUpdated, this function will not reset
@@ -871,6 +872,8 @@ void LayoutObject::HideLayoutObject() {
   SetBorderBoundLeftFromParentPaddingBound(0);
   measured_position_.Reset(0, 0, 0, 0);
   MarkHasNewLayout();
+  current_node_should_display_none_ =
+      !GetLayoutConfigs().IsFixedNodeWithDisplayNoneQuirksMode();
   for (int i = 0; i < GetChildCount(); ++i) {
     LayoutObject* child = static_cast<LayoutObject*>(Find(i));
     child->HideLayoutObject();

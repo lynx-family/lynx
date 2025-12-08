@@ -115,6 +115,9 @@ class LayoutObject : public ContainerNode {
   // location.
   LYNX_EXPORT void MarkNotDirty();
   bool GetHasNewLayout() const;
+  bool GetShouldDisplayNone() const {
+    return current_node_should_display_none_;
+  }
 
   bool GetFinalMeasure() const { return final_measure_; }
 
@@ -348,6 +351,7 @@ class LayoutObject : public ContainerNode {
   bool is_dirty_ = false;
   bool current_node_has_new_layout_ = false;
   bool is_layout_occurred = false;
+  bool current_node_should_display_none_ = false;
 
   bool final_measure_ = false;
   bool is_list_ = false;
