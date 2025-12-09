@@ -137,6 +137,7 @@ enum class AnimationPropertyType : uint32_t {
   kBoxShadow,
   kOffsetDistance,
   kBackgroundPosition,
+  kTransformOrigin,
   kAll = 1 << 18,
   kLegacyAll_1 = kOpacity | kWidth | kHeight | kBackgroundColor | kVisibility |
                  kLeft | kTop | kRight | kBottom | kTransform,

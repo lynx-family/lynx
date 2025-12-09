@@ -127,6 +127,7 @@ class AnimationCurve {
     FILTER = tasm::kPropertyIDFilter,
     OFFSET_DISTANCE = tasm::kPropertyIDOffsetDistance,
     BACKGROUND_POSITION = tasm::kPropertyIDBackgroundPosition,
+    TRANSFORM_ORIGIN = tasm::kPropertyIDTransformOrigin,
   };
 
   virtual ~AnimationCurve() = default;
@@ -209,6 +210,14 @@ class FilterAnimationCurve : public AnimationCurve {
 class BackgroundPositionAnimationCurve : public AnimationCurve {
  public:
   ~BackgroundPositionAnimationCurve() override = default;
+
+  std::unique_ptr<Keyframe> MakeEmptyKeyframe(
+      const fml::TimeDelta& offset) override;
+};
+
+class TransformOriginAnimationCurve : public AnimationCurve {
+ public:
+  ~TransformOriginAnimationCurve() override = default;
 
   std::unique_ptr<Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override;

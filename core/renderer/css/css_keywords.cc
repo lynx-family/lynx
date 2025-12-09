@@ -215,7 +215,7 @@ inline unsigned int CSSKeywordsHash::hash(const char *str, size_t len) {
 const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
                                                         size_t len) {
   enum {
-    TOTAL_KEYWORDS = 317,
+    TOTAL_KEYWORDS = 318,
     MIN_WORD_LENGTH = 1,
     MAX_WORD_LENGTH = 20,
     MIN_HASH_VALUE = 2,
@@ -238,13 +238,13 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"all", TokenType::ALL},
 #line 246 "css_keywords.tmpl"
       {"teal", TokenType::TEAL},
-#line 336 "css_keywords.tmpl"
+#line 337 "css_keywords.tmpl"
       {"on", TokenType::ON},
 #line 27 "css_keywords.tmpl"
       {"none", TokenType::NONE},
 #line 245 "css_keywords.tmpl"
       {"tan", TokenType::TAN},
-#line 325 "css_keywords.tmpl"
+#line 326 "css_keywords.tmpl"
       {"alternate", TokenType::ALTERNATE},
 #line 256 "css_keywords.tmpl"
       {"rotate", TokenType::ROTATE},
@@ -270,13 +270,13 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"rad", TokenType::RAD},
 #line 261 "css_keywords.tmpl"
       {"translate3d", TokenType::TRANSLATE_3D},
-#line 315 "css_keywords.tmpl"
+#line 316 "css_keywords.tmpl"
       {"ease", TokenType::EASE},
 #line 169 "css_keywords.tmpl"
       {"indigo", TokenType::INDIGO},
 #line 191 "css_keywords.tmpl"
       {"lime", TokenType::LIME},
-#line 311 "css_keywords.tmpl"
+#line 312 "css_keywords.tmpl"
       {"linear", TokenType::LINEAR},
 #line 215 "css_keywords.tmpl"
       {"orangered", TokenType::ORANGERED},
@@ -296,7 +296,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"solid", TokenType::SOLID},
 #line 236 "css_keywords.tmpl"
       {"sienna", TokenType::SIENNA},
-#line 312 "css_keywords.tmpl"
+#line 313 "css_keywords.tmpl"
       {"ease-in", TokenType::EASE_IN},
 #line 192 "css_keywords.tmpl"
       {"limegreen", TokenType::LIMEGREEN},
@@ -304,7 +304,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"repeat", TokenType::REPEAT},
 #line 168 "css_keywords.tmpl"
       {"indianred", TokenType::INDIANRED},
-#line 323 "css_keywords.tmpl"
+#line 324 "css_keywords.tmpl"
       {"s", TokenType::SECOND},
 #line 36 "css_keywords.tmpl"
       {"rem", TokenType::REM},
@@ -320,7 +320,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"thin", TokenType::THIN},
 #line 26 "css_keywords.tmpl"
       {"url", TokenType::URL},
-#line 333 "css_keywords.tmpl"
+#line 334 "css_keywords.tmpl"
       {"true", TokenType::TOKEN_TRUE},
 #line 94 "css_keywords.tmpl"
       {"toright", TokenType::TORIGHT},
@@ -346,7 +346,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"round", TokenType::ROUND},
 #line 76 "css_keywords.tmpl"
       {"hidden", TokenType::HIDDEN},
-#line 322 "css_keywords.tmpl"
+#line 323 "css_keywords.tmpl"
       {"ms", TokenType::MILLISECOND},
 #line 25 "css_keywords.tmpl"
       {"hsla", TokenType::HSLA},
@@ -356,11 +356,11 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"outset", TokenType::OUTSET},
 #line 247 "css_keywords.tmpl"
       {"thistle", TokenType::THISTLE},
-#line 318 "css_keywords.tmpl"
+#line 319 "css_keywords.tmpl"
       {"step-end", TokenType::STEP_END},
 #line 74 "css_keywords.tmpl"
       {"medium", TokenType::MEDIUM},
-#line 313 "css_keywords.tmpl"
+#line 314 "css_keywords.tmpl"
       {"ease-out", TokenType::EASE_OUT},
 #line 81 "css_keywords.tmpl"
       {"groove", TokenType::GROOVE},
@@ -372,11 +372,11 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"mediumorchid", TokenType::MEDIUMORCHID},
 #line 160 "css_keywords.tmpl"
       {"gold", TokenType::GOLD},
-#line 321 "css_keywords.tmpl"
+#line 322 "css_keywords.tmpl"
       {"steps", TokenType::STEPS},
 #line 200 "css_keywords.tmpl"
       {"mediumseagreen", TokenType::MEDIUMSEAGREEN},
-#line 317 "css_keywords.tmpl"
+#line 318 "css_keywords.tmpl"
       {"step-start", TokenType::STEP_START},
 #line 78 "css_keywords.tmpl"
       {"dashed", TokenType::DASHED},
@@ -424,7 +424,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"blur", TokenType::BLUR},
 #line 225 "css_keywords.tmpl"
       {"plum", TokenType::PLUM},
-#line 331 "css_keywords.tmpl"
+#line 332 "css_keywords.tmpl"
       {"paused", TokenType::PAUSED},
 #line 227 "css_keywords.tmpl"
       {"purple", TokenType::PURPLE},
@@ -436,13 +436,13 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"slateblue", TokenType::SLATEBLUE},
 #line 114 "css_keywords.tmpl"
       {"beige", TokenType::BEIGE},
-#line 329 "css_keywords.tmpl"
+#line 330 "css_keywords.tmpl"
       {"both", TokenType::BOTH},
 #line 89 "css_keywords.tmpl"
       {"local", TokenType::LOCAL},
 #line 23 "css_keywords.tmpl"
       {"rgba", TokenType::RGBA},
-#line 316 "css_keywords.tmpl"
+#line 317 "css_keywords.tmpl"
       {"ease-in-out", TokenType::EASE_IN_OUT},
 #line 201 "css_keywords.tmpl"
       {"mediumslateblue", TokenType::MEDIUMSLATEBLUE},
@@ -508,7 +508,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"violet", TokenType::VIOLET},
 #line 132 "css_keywords.tmpl"
       {"darkgoldenrod", TokenType::DARKGOLDENROD},
-#line 326 "css_keywords.tmpl"
+#line 327 "css_keywords.tmpl"
       {"alternate-reverse", TokenType::ALTERNATE_REVERSE},
 #line 60 "css_keywords.tmpl"
       {"border-area", TokenType::BORDER_AREA},
@@ -544,9 +544,9 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"lightgreen", TokenType::LIGHTGREEN},
 #line 294 "css_keywords.tmpl"
       {"margin-left", TokenType::MARGIN_LEFT},
-#line 324 "css_keywords.tmpl"
+#line 325 "css_keywords.tmpl"
       {"reverse", TokenType::REVERSE},
-#line 332 "css_keywords.tmpl"
+#line 333 "css_keywords.tmpl"
       {"running", TokenType::RUNNING},
 #line 62 "css_keywords.tmpl"
       {"radial-gradient", TokenType::RADIAL_GRADIENT},
@@ -576,7 +576,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"wheat", TokenType::WHEAT},
 #line 243 "css_keywords.tmpl"
       {"springgreen", TokenType::SPRINGGREEN},
-#line 335 "css_keywords.tmpl"
+#line 336 "css_keywords.tmpl"
       {"fr", TokenType::FR},
 #line 252 "css_keywords.tmpl"
       {"white", TokenType::WHITE},
@@ -590,7 +590,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"slategrey", TokenType::SLATEGREY},
 #line 296 "css_keywords.tmpl"
       {"margin-top", TokenType::MARGIN_TOP},
-#line 314 "css_keywords.tmpl"
+#line 315 "css_keywords.tmpl"
       {"ease-in-ease-out", TokenType::EASE_IN_EASE_OUT},
 #line 143 "css_keywords.tmpl"
       {"darkseagreen", TokenType::DARKSEAGREEN},
@@ -598,7 +598,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"slategray", TokenType::SLATEGRAY},
 #line 275 "css_keywords.tmpl"
       {"width", TokenType::WIDTH},
-#line 334 "css_keywords.tmpl"
+#line 335 "css_keywords.tmpl"
       {"false", TokenType::TOKEN_FALSE},
 #line 308 "css_keywords.tmpl"
       {"filter", TokenType::FILTER},
@@ -606,7 +606,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"padding-bottom", TokenType::PADDING_BOTTOM},
 #line 88 "css_keywords.tmpl"
       {"format", TokenType::FORMAT},
-#line 330 "css_keywords.tmpl"
+#line 331 "css_keywords.tmpl"
       {"infinite", TokenType::INFINITE},
 #line 230 "css_keywords.tmpl"
       {"royalblue", TokenType::ROYALBLUE},
@@ -632,11 +632,13 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"transform", TokenType::TRANSFORM},
 #line 66 "css_keywords.tmpl"
       {"farthest-side", TokenType::FARTHEST_SIDE},
+#line 310 "css_keywords.tmpl"
+      {"transform-origin", TokenType::TRANSFORM_ORIGIN},
 #line 202 "css_keywords.tmpl"
       {"mediumspringgreen", TokenType::MEDIUMSPRINGGREEN},
 #line 299 "css_keywords.tmpl"
       {"padding-right", TokenType::PADDING_RIGHT},
-#line 338 "css_keywords.tmpl"
+#line 339 "css_keywords.tmpl"
       {"from", TokenType::FROM},
 #line 177 "css_keywords.tmpl"
       {"lightcoral", TokenType::LIGHTCORAL},
@@ -728,7 +730,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"darkturquoise", TokenType::DARKTURQUOISE},
 #line 100 "css_keywords.tmpl"
       {"grayscale", TokenType::GRAYSCALE},
-#line 319 "css_keywords.tmpl"
+#line 320 "css_keywords.tmpl"
       {"square-bezier", TokenType::SQUARE_BEZIER},
 #line 140 "css_keywords.tmpl"
       {"darkorchid", TokenType::DARKORCHID},
@@ -748,7 +750,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"dimgray", TokenType::DIMGRAY},
 #line 159 "css_keywords.tmpl"
       {"ghostwhite", TokenType::GHOSTWHITE},
-#line 328 "css_keywords.tmpl"
+#line 329 "css_keywords.tmpl"
       {"backwards", TokenType::BACKWARDS},
 #line 126 "css_keywords.tmpl"
       {"cornflowerblue", TokenType::CORNFLOWERBLUE},
@@ -782,7 +784,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"max-height", TokenType::MAX_HEIGHT},
 #line 267 "css_keywords.tmpl"
       {"scaley", TokenType::SCALE_Y},
-#line 320 "css_keywords.tmpl"
+#line 321 "css_keywords.tmpl"
       {"cubic-bezier", TokenType::CUBIC_BEZIER},
 #line 290 "css_keywords.tmpl"
       {"border-left-color", TokenType::BORDER_LEFT_COLOR},
@@ -822,7 +824,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"matrix", TokenType::MATRIX},
 #line 34 "css_keywords.tmpl"
       {"px", TokenType::PX},
-#line 327 "css_keywords.tmpl"
+#line 328 "css_keywords.tmpl"
       {"forwards", TokenType::FORWARDS},
 #line 35 "css_keywords.tmpl"
       {"rpx", TokenType::RPX},
@@ -846,7 +848,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"flex-basis", TokenType::FLEX_BASIS},
 #line 269 "css_keywords.tmpl"
       {"skewx", TokenType::SKEW_X},
-#line 310 "css_keywords.tmpl"
+#line 311 "css_keywords.tmpl"
       {"offset-distance", TokenType::OFFSET_DISTANCE},
 #line 50 "css_keywords.tmpl"
       {"repeat-x", TokenType::REPEAT_X},
@@ -856,7 +858,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"wavy", TokenType::WAVY},
 #line 274 "css_keywords.tmpl"
       {"scalexy", TokenType::SCALE_XY},
-#line 337 "css_keywords.tmpl"
+#line 338 "css_keywords.tmpl"
       {"off", TokenType::OFF},
 #line 222 "css_keywords.tmpl"
       {"peachpuff", TokenType::PEACHPUFF},
@@ -909,76 +911,76 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       182, -1,  183, 184, -1,  -1,  -1,  -1,  185, 186, -1,  -1,  187, -1,
       188, -1,  189, 190, 191, -1,  -1,  -1,  192, 193, -1,  194, -1,  195,
       196, -1,  -1,  -1,  -1,  -1,  -1,  197, -1,  -1,  -1,  198, -1,  199,
-      -1,  -1,  -1,  -1,  -1,  200, -1,  -1,  -1,  201, -1,  -1,  -1,  202,
-      203, 204, 205, -1,  -1,  206, 207, -1,  -1,  -1,  -1,  208, -1,  -1,
-      209, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  210,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  211, -1,  -1,  -1,  -1,
-      -1,  -1,  212, -1,  -1,  -1,  213, -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      214, 215, -1,  -1,  -1,  216, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      217, 218, -1,  -1,  -1,  219, 220, -1,  221, -1,  222, -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  223, -1,  -1,  -1,  -1,  224, -1,
-      225, -1,  -1,  -1,  -1,  -1,  -1,  -1,  226, -1,  -1,  -1,  227, -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  228, -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  229, 230, -1,  -1,  231, -1,  232, -1,
-      233, 234, -1,  -1,  -1,  235, 236, 237, -1,  238, -1,  239, 240, -1,
-      -1,  241, -1,  242, -1,  -1,  -1,  243, -1,  -1,  -1,  -1,  244, -1,
-      -1,  -1,  -1,  -1,  -1,  245, -1,  -1,  246, -1,  -1,  247, 248, -1,
-      -1,  -1,  -1,  -1,  249, -1,  -1,  -1,  250, -1,  251, -1,  -1,  -1,
-      252, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  253,
-      -1,  254, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  255, -1,  -1,  -1,
-      256, -1,  -1,  -1,  257, 258, -1,  -1,  -1,  -1,  -1,  -1,  -1,  259,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  260, -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  261, -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  262, 263, -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  264, -1,  265, -1,  -1,  266, -1,  267,
-      -1,  -1,  -1,  -1,  -1,  268, 269, -1,  -1,  -1,  -1,  -1,  270, -1,
-      -1,  -1,  -1,  271, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  272, -1,  -1,
-      -1,  -1,  -1,  273, 274, -1,  275, 276, 277, -1,  -1,  -1,  -1,  278,
-      279, -1,  -1,  -1,  -1,  280, -1,  -1,  -1,  -1,  281, -1,  -1,  -1,
-      282, 283, -1,  -1,  -1,  -1,  -1,  284, -1,  -1,  285, -1,  -1,  -1,
-      286, -1,  287, -1,  -1,  -1,  -1,  -1,  -1,  -1,  288, -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  289, -1,  -1,  -1,  -1,  290, -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  291, 292, -1,  -1,  -1,  -1,  -1,  293,
-      -1,  -1,  -1,  294, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  200, -1,  -1,  -1,  201, -1,  -1,  202, 203,
+      204, 205, 206, -1,  -1,  207, 208, -1,  -1,  -1,  -1,  209, -1,  -1,
+      210, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  211,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  212, -1,  -1,  -1,  -1,
+      -1,  -1,  213, -1,  -1,  -1,  214, -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      215, 216, -1,  -1,  -1,  217, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      218, 219, -1,  -1,  -1,  220, 221, -1,  222, -1,  223, -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  224, -1,  -1,  -1,  -1,  225, -1,
+      226, -1,  -1,  -1,  -1,  -1,  -1,  -1,  227, -1,  -1,  -1,  228, -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  229, -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  230, 231, -1,  -1,  232, -1,  233, -1,
+      234, 235, -1,  -1,  -1,  236, 237, 238, -1,  239, -1,  240, 241, -1,
+      -1,  242, -1,  243, -1,  -1,  -1,  244, -1,  -1,  -1,  -1,  245, -1,
+      -1,  -1,  -1,  -1,  -1,  246, -1,  -1,  247, -1,  -1,  248, 249, -1,
+      -1,  -1,  -1,  -1,  250, -1,  -1,  -1,  251, -1,  252, -1,  -1,  -1,
+      253, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  254,
+      -1,  255, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  256, -1,  -1,  -1,
+      257, -1,  -1,  -1,  258, 259, -1,  -1,  -1,  -1,  -1,  -1,  -1,  260,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  261, -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  262, -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  263, 264, -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  265, -1,  266, -1,  -1,  267, -1,  268,
+      -1,  -1,  -1,  -1,  -1,  269, 270, -1,  -1,  -1,  -1,  -1,  271, -1,
+      -1,  -1,  -1,  272, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  273, -1,  -1,
+      -1,  -1,  -1,  274, 275, -1,  276, 277, 278, -1,  -1,  -1,  -1,  279,
+      280, -1,  -1,  -1,  -1,  281, -1,  -1,  -1,  -1,  282, -1,  -1,  -1,
+      283, 284, -1,  -1,  -1,  -1,  -1,  285, -1,  -1,  286, -1,  -1,  -1,
+      287, -1,  288, -1,  -1,  -1,  -1,  -1,  -1,  -1,  289, -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  290, -1,  -1,  -1,  -1,  291, -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  292, 293, -1,  -1,  -1,  -1,  -1,  294,
+      -1,  -1,  -1,  295, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      295, 296, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  297, -1,  -1,  -1,  -1,  298, -1,  299, -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  300, -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  301, -1,  -1,  -1,  302, -1,  -1,
+      296, 297, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  298, -1,  -1,  -1,  -1,  299, -1,  300, -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  303, -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  304, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      305, 306, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  307, -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  301, -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  302, -1,  -1,  -1,  303, -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  308, -1,  -1,  -1,  -1,
-      309, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  310, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  311, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  312, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  313, -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      314, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  304, -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  305, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      306, 307, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  308, -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  309, -1,  -1,  -1,  -1,
+      310, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  311, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  315, -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  312, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  316};
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  313, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  314, -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      315, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  316, -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  317};
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH) {
     unsigned int key = hash(str, len);
@@ -995,7 +997,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
   }
   return nullptr;
 }
-#line 339 "css_keywords.tmpl"
+#line 340 "css_keywords.tmpl"
 
 const struct TokenValue *GetTokenValue(const char *str, unsigned len) {
   return CSSKeywordsHash::GetTokenValue(str, len);

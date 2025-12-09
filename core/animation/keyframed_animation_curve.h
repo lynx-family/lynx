@@ -268,6 +268,38 @@ class KeyframedBackgroundPositionAnimationCurve
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
+//====transformOrigin keyframe ====
+class TransformOriginKeyframe : public Keyframe {
+ public:
+  static tasm::CSSValue GetTransformOriginKeyframeValue(
+      TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
+      tasm::Element* element);
+
+  static std::unique_ptr<TransformOriginKeyframe> Create(
+      fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function);
+  ~TransformOriginKeyframe() override = default;
+
+  tasm::CSSValue GetTransformOrigin() const { return transform_origin_; }
+
+  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+                tasm::Element* element) override;
+
+  TransformOriginKeyframe(fml::TimeDelta time,
+                          std::unique_ptr<TimingFunction> timing_function);
+
+ private:
+  tasm::CSSValue transform_origin_;
+};
+
+class KeyframedTransformOriginAnimationCurve
+    : public TransformOriginAnimationCurve {
+ public:
+  static std::unique_ptr<KeyframedTransformOriginAnimationCurve> Create();
+  ~KeyframedTransformOriginAnimationCurve() override = default;
+
+  tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
+};
+
 }  // namespace animation
 }  // namespace lynx
 #endif  // CORE_ANIMATION_KEYFRAMED_ANIMATION_CURVE_H_

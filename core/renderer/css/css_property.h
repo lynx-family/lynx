@@ -43,24 +43,25 @@ static constexpr PseudoState kPseudoStateSelection = 1 << 11;
   V(AnimationDirection, "direction")         \
   V(AnimationPlayState, "play-state")
 
-#define ALL_ANIMATABLE_PROPERTY_ID                                         \
-  tasm::kPropertyIDTop, tasm::kPropertyIDLeft, tasm::kPropertyIDRight,     \
-      tasm::kPropertyIDBottom, tasm::kPropertyIDWidth,                     \
-      tasm::kPropertyIDHeight, tasm::kPropertyIDBackgroundColor,           \
-      tasm::kPropertyIDColor, tasm::kPropertyIDOpacity,                    \
-      tasm::kPropertyIDBorderLeftColor, tasm::kPropertyIDBorderRightColor, \
-      tasm::kPropertyIDBorderTopColor, tasm::kPropertyIDBorderBottomColor, \
-      tasm::kPropertyIDBorderLeftWidth, tasm::kPropertyIDBorderRightWidth, \
-      tasm::kPropertyIDBorderTopWidth, tasm::kPropertyIDBorderBottomWidth, \
-      tasm::kPropertyIDPaddingLeft, tasm::kPropertyIDPaddingRight,         \
-      tasm::kPropertyIDPaddingTop, tasm::kPropertyIDPaddingBottom,         \
-      tasm::kPropertyIDMarginLeft, tasm::kPropertyIDMarginRight,           \
-      tasm::kPropertyIDMarginTop, tasm::kPropertyIDMarginBottom,           \
-      tasm::kPropertyIDMaxWidth, tasm::kPropertyIDMinWidth,                \
-      tasm::kPropertyIDMaxHeight, tasm::kPropertyIDMinHeight,              \
-      tasm::kPropertyIDFlexGrow, tasm::kPropertyIDFlexBasis,               \
-      tasm::kPropertyIDFilter, tasm::kPropertyIDTransform,                 \
-      tasm::kPropertyIDOffsetDistance, tasm::kPropertyIDBackgroundPosition
+#define ALL_ANIMATABLE_PROPERTY_ID                                          \
+  tasm::kPropertyIDTop, tasm::kPropertyIDLeft, tasm::kPropertyIDRight,      \
+      tasm::kPropertyIDBottom, tasm::kPropertyIDWidth,                      \
+      tasm::kPropertyIDHeight, tasm::kPropertyIDBackgroundColor,            \
+      tasm::kPropertyIDColor, tasm::kPropertyIDOpacity,                     \
+      tasm::kPropertyIDBorderLeftColor, tasm::kPropertyIDBorderRightColor,  \
+      tasm::kPropertyIDBorderTopColor, tasm::kPropertyIDBorderBottomColor,  \
+      tasm::kPropertyIDBorderLeftWidth, tasm::kPropertyIDBorderRightWidth,  \
+      tasm::kPropertyIDBorderTopWidth, tasm::kPropertyIDBorderBottomWidth,  \
+      tasm::kPropertyIDPaddingLeft, tasm::kPropertyIDPaddingRight,          \
+      tasm::kPropertyIDPaddingTop, tasm::kPropertyIDPaddingBottom,          \
+      tasm::kPropertyIDMarginLeft, tasm::kPropertyIDMarginRight,            \
+      tasm::kPropertyIDMarginTop, tasm::kPropertyIDMarginBottom,            \
+      tasm::kPropertyIDMaxWidth, tasm::kPropertyIDMinWidth,                 \
+      tasm::kPropertyIDMaxHeight, tasm::kPropertyIDMinHeight,               \
+      tasm::kPropertyIDFlexGrow, tasm::kPropertyIDFlexBasis,                \
+      tasm::kPropertyIDFilter, tasm::kPropertyIDTransform,                  \
+      tasm::kPropertyIDOffsetDistance, tasm::kPropertyIDBackgroundPosition, \
+      tasm::kPropertyIDTransformOrigin
 
 #define FOREACH_NEW_ANIMATOR_PROPERTY(V)              \
   V(kPropertyIDLeft, kLeft)                           \
@@ -96,6 +97,7 @@ static constexpr PseudoState kPseudoStateSelection = 1 << 11;
   V(kPropertyIDFlexBasis, kFlexBasis)                 \
   V(kPropertyIDFilter, kFilter)                       \
   V(kPropertyIDTransform, kTransform)                 \
+  V(kPropertyIDTransformOrigin, kTransformOrigin)     \
   V(kPropertyIDOffsetDistance, kOffsetDistance)       \
   V(kPropertyIDBackgroundPosition, kBackgroundPosition)
 

@@ -16,6 +16,7 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/starlight/types/nlength.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -58,6 +59,13 @@ class KeyframedAnimationCurveTest : public ::testing::Test {
 
   fml::RefPtr<::lynx::tasm::RadonElement> InitRadonElement() {
     auto test_element = manager->CreateNode("view", nullptr);
+    test_element->SetAttribute(base::String("enable-new-animator"),
+                               lepus::Value("true"));
+    return test_element;
+  }
+
+  fml::RefPtr<::lynx::tasm::FiberElement> InitFiberElement() {
+    auto test_element = manager->CreateFiberView();
     test_element->SetAttribute(base::String("enable-new-animator"),
                                lepus::Value("true"));
     return test_element;
@@ -595,6 +603,70 @@ TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
   EXPECT_FLOAT_EQ(20.f, result_1.get()->get(1).Double());
   EXPECT_FLOAT_EQ(40.f, result_2.get()->get(1).Double());
   EXPECT_FLOAT_EQ(60.f, result_3.get()->get(1).Double());
+}
+
+TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
+  std::unique_ptr<KeyframedTransformOriginAnimationCurve> curve(
+      KeyframedTransformOriginAnimationCurve::Create());
+  curve->type_ = AnimationCurve::CurveType::TRANSFORM_ORIGIN;
+  auto test_element = InitFiberElement();
+  curve->SetElement(test_element.get());
+
+  auto start_arr = lepus::CArray::Create();
+  start_arr->emplace_back(50);
+  start_arr->emplace_back(
+      static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
+  start_arr->emplace_back(50);
+  start_arr->emplace_back(
+      static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
+
+  auto end_arr = lepus::CArray::Create();
+  end_arr->emplace_back(0);
+  end_arr->emplace_back(
+      static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
+  end_arr->emplace_back(0);
+  end_arr->emplace_back(
+      static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
+
+  auto test_frame1 = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->transform_origin_ = lynx::tasm::CSSValue(start_arr);
+  test_frame1->is_empty_ = false;
+  curve->AddKeyframe(std::move(test_frame1));
+
+  auto test_frame2 = TransformOriginKeyframe::Create(
+      fml::TimeDelta::FromSecondsF(2.f), nullptr);
+  test_frame2->transform_origin_ = lynx::tasm::CSSValue(end_arr);
+  test_frame2->is_empty_ = false;
+  curve->AddKeyframe(std::move(test_frame2));
+
+  fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
+  fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(1.f);
+  fml::TimeDelta value3 = fml::TimeDelta::FromSecondsF(2.f);
+
+  auto result_1 = curve->GetValue(value1).GetArray();
+  auto result_2 = curve->GetValue(value2).GetArray();
+  auto result_3 = curve->GetValue(value3).GetArray();
+
+  EXPECT_FLOAT_EQ(50.f, result_1.get()->get(0).Number());
+  EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
+                  result_1.get()->get(1).Number());
+  EXPECT_FLOAT_EQ(50.f, result_1.get()->get(2).Number());
+  EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
+                  result_1.get()->get(3).Number());
+
+  EXPECT_FLOAT_EQ(25.f, result_2.get()->get(0).Number());
+  EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
+                  result_2.get()->get(1).Number());
+  EXPECT_FLOAT_EQ(25.f, result_2.get()->get(2).Number());
+  EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
+                  result_2.get()->get(3).Number());
+
+  EXPECT_FLOAT_EQ(0.f, result_3.get()->get(0).Number());
+  EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
+                  result_3.get()->get(1).Number());
+  EXPECT_FLOAT_EQ(0.f, result_3.get()->get(2).Number());
+  EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
+                  result_3.get()->get(3).Number());
 }
 
 TEST_F(KeyframedAnimationCurveTest, GetOnXAxisCurveTypeSet) {

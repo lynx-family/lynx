@@ -773,5 +773,107 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
   return tasm::CSSValue(std::move(outer_array));
 }
 
+//====== BackgroundPositionAnimator end =======
+
+//====== TransformOriginAnimator start =======
+TransformOriginKeyframe::TransformOriginKeyframe(
+    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
+    : Keyframe(time, std::move(timing_function)) {}
+
+tasm::CSSValue TransformOriginKeyframe::GetTransformOriginKeyframeValue(
+    TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
+    tasm::Element* element) {
+  if (keyframe && !keyframe->IsEmpty()) {
+    return keyframe->GetTransformOrigin();
+  }
+  return tasm::CSSValue();
+}
+
+std::unique_ptr<TransformOriginKeyframe> TransformOriginKeyframe::Create(
+    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+  return std::make_unique<TransformOriginKeyframe>(time,
+                                                   std::move(timing_function));
+}
+
+bool TransformOriginKeyframe::SetValue(tasm::CSSPropertyID id,
+                                       const tasm::CSSValue& value,
+                                       tasm::Element* element) {
+  auto keyframe_transform_origin_value =
+      HandleCSSVariableValueIfNeed(id, value, element);
+  if (!keyframe_transform_origin_value.IsArray()) {
+    return false;
+  }
+  transform_origin_ = keyframe_transform_origin_value;
+  is_empty_ = false;
+  return true;
+}
+
+std::unique_ptr<KeyframedTransformOriginAnimationCurve>
+KeyframedTransformOriginAnimationCurve::Create() {
+  return std::make_unique<KeyframedTransformOriginAnimationCurve>();
+}
+
+tasm::CSSValue KeyframedTransformOriginAnimationCurve::GetValue(
+    fml::TimeDelta& t) const {
+  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
+                               t);
+  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
+  double progress =
+      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+
+  TransformOriginKeyframe* keyframe =
+      static_cast<TransformOriginKeyframe*>(keyframes_[i].get());
+  TransformOriginKeyframe* keyframe_next =
+      static_cast<TransformOriginKeyframe*>(keyframes_[i + 1].get());
+
+  tasm::CSSValue start_background_position =
+      TransformOriginKeyframe::GetTransformOriginKeyframeValue(
+          keyframe, tasm::kPropertyIDTransformOrigin, element_);
+  tasm::CSSValue end_background_position =
+      TransformOriginKeyframe::GetTransformOriginKeyframeValue(
+          keyframe_next, tasm::kPropertyIDTransformOrigin, element_);
+
+  if (start_background_position == tasm::CSSValue() ||
+      end_background_position == tasm::CSSValue()) {
+    return start_background_position;
+  }
+
+  auto start_background_position_arr = start_background_position.GetArray();
+  auto end_background_position_arr = end_background_position.GetArray();
+
+  auto start_x_value =
+      static_cast<double>(start_background_position_arr->get(0).Number());
+  auto start_x_type = start_background_position_arr->get(1).Number();
+
+  auto end_x_value =
+      static_cast<double>(end_background_position_arr->get(0).Number());
+  auto end_x_type = end_background_position_arr->get(1).Number();
+
+  auto start_y_value =
+      static_cast<double>(start_background_position_arr->get(2).Number());
+  auto start_y_type = start_background_position_arr->get(3).Number();
+
+  auto end_y_value =
+      static_cast<double>(end_background_position_arr->get(2).Number());
+  auto end_y_type = end_background_position_arr->get(3).Number();
+
+  if (start_x_type != end_x_type || start_y_type != end_y_type) {
+    return start_background_position;
+  }
+
+  double result_x_value =
+      start_x_value + (end_x_value - start_x_value) * progress;
+  double result_y_value =
+      start_y_value + (end_y_value - start_y_value) * progress;
+
+  auto inner_array = lepus::CArray::Create();
+
+  inner_array->emplace_back(result_x_value);
+  inner_array->emplace_back(start_x_type);
+  inner_array->emplace_back(result_y_value);
+  inner_array->emplace_back(start_y_type);
+  return tasm::CSSValue(std::move(inner_array));
+}
+//====== TransformOriginAnimator end =======
 }  // namespace animation
 }  // namespace lynx

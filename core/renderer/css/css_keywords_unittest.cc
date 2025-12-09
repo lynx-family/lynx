@@ -274,6 +274,7 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"color", TokenType::COLOR},
       {"visibility", TokenType::VISIBILITY},
       {"transform", TokenType::TRANSFORM},
+      {"transform-origin", TokenType::TRANSFORM_ORIGIN},
       {"all", TokenType::ALL},
       {"max-width", TokenType::MAX_WIDTH},
       {"max-height", TokenType::MAX_HEIGHT},

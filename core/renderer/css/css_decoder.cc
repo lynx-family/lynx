@@ -1734,6 +1734,8 @@ std::string CSSDecoder::ToAnimationPropertyType(
       return "box-shadow";
     case starlight::AnimationPropertyType::kBackgroundPosition:
       return "background-position";
+    case starlight::AnimationPropertyType::kTransformOrigin:
+      return "transform-origin";
   }
 }
 

@@ -351,6 +351,7 @@ enum class TokenType {
   FILTER,               // filter
   OFFSET_DISTANCE,      // offset-distance
   BACKGROUND_POSITION,  // background-position
+  TRANSFORM_ORIGIN,     // transform-origin
   /* transition end*/
 
   /* timing function begin */

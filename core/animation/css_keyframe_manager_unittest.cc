@@ -458,6 +458,8 @@ TEST_F(CSSKeyframeManagerTest, GetPropertyIDToAnimationPropertyTypeMap) {
            starlight::AnimationPropertyType::kTransform},
           {tasm::kPropertyIDBackgroundPosition,
            starlight::AnimationPropertyType::kBackgroundPosition},
+          {tasm::kPropertyIDTransformOrigin,
+           starlight::AnimationPropertyType::kTransformOrigin},
       });
   EXPECT_EQ(test_map, *base_map);
 }
@@ -501,6 +503,7 @@ TEST_F(CSSKeyframeManagerTest, GetAnimatablePropertyIDSet) {
           tasm::kPropertyIDFilter,
           tasm::kPropertyIDOffsetDistance,
           tasm::kPropertyIDBackgroundPosition,
+          tasm::kPropertyIDTransformOrigin,
       });
   EXPECT_EQ(test_set, *base_set);
   bool test_flag = animation::IsAnimatableProperty(tasm::kPropertyIDOpacity);

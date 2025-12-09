@@ -95,5 +95,10 @@ std::unique_ptr<Keyframe> BackgroundPositionAnimationCurve::MakeEmptyKeyframe(
   return BackgroundPositionKeyframe::Create(offset, nullptr);
 }
 
+std::unique_ptr<Keyframe> TransformOriginAnimationCurve::MakeEmptyKeyframe(
+    const fml::TimeDelta& offset) {
+  return TransformOriginKeyframe::Create(offset, nullptr);
+}
+
 }  // namespace animation
 }  // namespace lynx

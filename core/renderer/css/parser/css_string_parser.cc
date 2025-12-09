@@ -2596,6 +2596,8 @@ starlight::AnimationPropertyType CSSStringParser::TokenToTransitionType(
       return starlight::AnimationPropertyType::kOffsetDistance;
     case TokenType::BACKGROUND_POSITION:
       return starlight::AnimationPropertyType::kBackgroundPosition;
+    case TokenType::TRANSFORM_ORIGIN:
+      return starlight::AnimationPropertyType::kTransformOrigin;
     default:
       UnitHandler::CSSWarning(false, configs.enable_css_strict_mode,
                               "Unsupported value: %s in transition-property "

@@ -112,6 +112,8 @@ const char* ConvertAnimationPropertyTypeToString(
       return "box-shadow";
     case starlight::AnimationPropertyType::kBackgroundPosition:
       return "background-position";
+    case starlight::AnimationPropertyType::kTransformOrigin:
+      return "transform-origin";
     default:
       return "";
   }
@@ -374,6 +376,12 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
       return true;
     }
     case starlight::AnimationPropertyType::kBackgroundPosition: {
+      if (!value.IsArray() && !value.IsVariable()) {
+        return false;
+      }
+      return true;
+    }
+    case starlight::AnimationPropertyType::kTransformOrigin: {
       if (!value.IsArray() && !value.IsVariable()) {
         return false;
       }

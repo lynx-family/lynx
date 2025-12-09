@@ -1624,6 +1624,7 @@ bool Element::WriteRenderStyleToBundle(tasm::CSSPropertyID id,
     case kPropertyIDBorderBottomColor:
     case kPropertyIDOpacity:
     case kPropertyIDOffsetDistance:
+    case kPropertyIDTransformOrigin:
       return computed_css_style()->SetValue(id, value);
     default:
       LOGE("[animation] unsupported animation value type for css:" << id);
