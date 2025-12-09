@@ -58,6 +58,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSSet *)devtoolEnvGetGroup:(NSString *)groupKey;
 
+- (void)reportDevToolGlobalContextTag:(NSString *_Nullable)key data:(id _Nullable)data;
+
+- (void)report:(NSString *)eventName
+    withCategory:(nullable NSDictionary *)category
+      withMetric:(nullable NSDictionary *)metric
+       withExtra:(nullable NSDictionary *)extra;
+
 @end
 
 NS_ASSUME_NONNULL_END

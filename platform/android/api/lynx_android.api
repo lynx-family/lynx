@@ -2275,6 +2275,8 @@ public interface com::lynx::tasm::service::ILynxDevToolService {
   public void com.lynx.tasm.service.ILynxDevToolService.setLogBoxPresetValue(boolean value);
   public boolean com.lynx.tasm.service.ILynxDevToolService.getLoadJsBridge();
   public void com.lynx.tasm.service.ILynxDevToolService.setLoadJsBridge(boolean value);
+  public void com.lynx.tasm.service.ILynxDevToolService.reportDevToolGlobalContextTag(@Nullable String key, @Nullable Object data);
+  public void com.lynx.tasm.service.ILynxDevToolService.report(@NonNull String eventName, @Nullable Map< String, Object > category, @Nullable Map< String, Object > metric, @Nullable Map< String, Object > extra);
 }
 
 public interface com::lynx::tasm::ILynxEngine {

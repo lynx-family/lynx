@@ -182,6 +182,15 @@
   return nil;
 }
 
+- (void)reportDevToolGlobalContextTag:(NSString *_Nullable)key data:(id _Nullable)data {
+}
+
+- (void)report:(NSString *)eventName
+    withCategory:(nullable NSDictionary *)category
+      withMetric:(nullable NSDictionary *)metric
+       withExtra:(nullable NSDictionary *)extra {
+}
+
 #pragma mark - LynxServiceProtocol
 
 @end

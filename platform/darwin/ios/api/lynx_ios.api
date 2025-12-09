@@ -3259,6 +3259,8 @@ public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
   public BOOL LynxServiceDevToolProtocol-p::devtoolEnvGetValue:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
   public void LynxServiceDevToolProtocol-p::devtoolEnvSet:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
   public NSSet * LynxServiceDevToolProtocol-p::devtoolEnvGetGroup:(NSString *groupKey);
+  public void LynxServiceDevToolProtocol-p::reportDevToolGlobalContextTag:data:(NSString *_Nullable key,[data] id _Nullable data);
+  public void LynxServiceDevToolProtocol-p::report:withCategory:withMetric:withExtra:(NSString *eventName,[withCategory] nullable NSDictionary *category,[withMetric] nullable NSDictionary *metric,[withExtra] nullable NSDictionary *extra);
 }
 
 public protocol LynxServiceEventReporterProtocol-p : <LynxServiceProtocol>, <LynxEventReportObserverProtocol>, <LynxPerformanceObserverProtocol> {

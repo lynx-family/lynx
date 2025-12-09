@@ -20,6 +20,8 @@
 
 - (BOOL)getDefaultValue:(NSString *)key;
 
+- (void)reportDevToolEnvInitEvent;
+
 // support iOS platform now
 - (void)prepareConfig:(LynxConfig *)config;
 

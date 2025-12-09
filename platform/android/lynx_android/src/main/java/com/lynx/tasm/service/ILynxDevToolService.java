@@ -67,4 +67,7 @@ public interface ILynxDevToolService extends IServiceProvider {
   void setLogBoxPresetValue(boolean value);
   boolean getLoadJsBridge();
   void setLoadJsBridge(boolean value);
+  void reportDevToolGlobalContextTag(@Nullable String key, @Nullable Object data);
+  void report(@NonNull String eventName, @Nullable Map<String, Object> category,
+      @Nullable Map<String, Object> metric, @Nullable Map<String, Object> extra);
 }

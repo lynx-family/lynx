@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.Keep;
 import com.example.lynxdevtool.BuildConfig;
 import com.lynx.config.LynxLiteConfigs;
@@ -105,6 +107,14 @@ public class LynxDevtoolEnv {
 
       setDefaultAppInfo(context);
       initEnvGroups();
+
+      // Delay 5 seconds before reporting env init
+      new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        @Override
+        public void run() {
+          reportDevToolEnvInitEvent();
+        }
+      }, 5000);
     } catch (Throwable t) {
       LLog.e(TAG, t.toString());
       throw t;
@@ -631,5 +641,18 @@ public class LynxDevtoolEnv {
 
   public boolean isAttached() {
     return true;
+  }
+
+  private void reportDevToolEnvInitEvent() {
+    ILynxDevToolService devtoolService =
+        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    if (devtoolService == null) {
+      return;
+    }
+    boolean enabled = getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, false);
+    devtoolService.reportDevToolGlobalContextTag("enable_devtool", enabled);
+    Map<String, Object> category = new HashMap<>();
+    category.put("enable_devtool", enabled);
+    devtoolService.report("devtool_env_init", category, null, null);
   }
 }

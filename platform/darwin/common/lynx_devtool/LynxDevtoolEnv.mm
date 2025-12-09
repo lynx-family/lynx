@@ -12,6 +12,8 @@
 #if OS_IOS
 #import <LynxDevtool/DevtoolWebSocketModule.h>
 #endif
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
 
 #include <LynxDevtool/LynxDebugBridge.h>
 #include "core/renderer/utils/lynx_env.h"
@@ -66,6 +68,8 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     [self initErrorsCanBeIgnored];
     [self initGroupDictionaries];
   }
+  [self reportDevToolEnvInitEvent];
+
   return self;
 }
 
@@ -185,6 +189,19 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     default:
       return NO;
   }
+}
+
+- (void)reportDevToolEnvInitEvent {
+  [LynxService(LynxServiceDevToolProtocol)
+      reportDevToolGlobalContextTag:@"enable_devtool"
+                               data:@([self get:SP_KEY_ENABLE_DEVTOOL withDefaultValue:NO])];
+  NSDictionary *category = @{
+    @"enable_devtool" : @([self get:SP_KEY_ENABLE_DEVTOOL withDefaultValue:NO]),
+  };
+  [LynxService(LynxServiceDevToolProtocol) report:@"devtool_env_init"
+                                     withCategory:category
+                                       withMetric:nil
+                                        withExtra:nil];
 }
 
 - (void)set:(NSSet *)newGroupValues forGroup:(NSString *)groupKey {

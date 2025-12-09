@@ -294,4 +294,13 @@ class LynxDevToolService : ILynxDevToolService {
     override fun setLoadJsBridge(value: Boolean) {
         loadJsBridge = value
     }
+
+    override fun reportDevToolGlobalContextTag(key: String?, data: Any?) { /* no-op */ }
+
+    override fun report(
+        eventName: String,
+        category: Map<String, Any>?,
+        metric: Map<String, Any>?,
+        extra: Map<String, Any>?
+    ) { /* no-op */ }
 }
