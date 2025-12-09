@@ -766,6 +766,7 @@ subspec_target("tasm") {
            "../../../../core/renderer/dom/selector:element_selector",
            "../../../../core/renderer/dom/vdom/radon",
            "../../../../core/renderer/events:events",
+           "../../../../core/renderer/layout_scheduler",
            "../../../../core/renderer/pipeline",
            "../../../../core/renderer/signal:signal",
            "../../../../core/renderer/trace:renderer_trace",

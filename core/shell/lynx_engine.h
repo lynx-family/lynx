@@ -16,6 +16,7 @@
 #include "core/public/prop_bundle.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
+#include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/piper/js/template_delegate.h"
@@ -32,7 +33,7 @@ class LynxEngine {
  public:
   class Delegate : public tasm::ElementManager::Delegate,
                    public tasm::TemplateAssembler::Delegate,
-                   public tasm::TemplateAssembler::LayoutScheduler {
+                   public tasm::LayoutScheduler::LayoutSchedulerImpl {
    public:
     Delegate() = default;
     ~Delegate() override = default;

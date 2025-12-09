@@ -112,7 +112,7 @@ class ListItemSchedulerAdapterTest
         manager->painting_context()->platform_impl_.get());
 
     tasm = std::make_shared<lynx::tasm::TemplateAssembler>(
-        tasm_mediator, std::move(unique_manager), tasm_mediator, 0);
+        tasm_mediator, std::move(unique_manager), &tasm_mediator, 0);
 
     auto test_entry = std::make_shared<TemplateEntry>();
     tasm->template_entries_.insert({"test_entry", test_entry});

@@ -47,6 +47,7 @@ lynx_core_source_set("tasm") {
     "data",
     "dom/vdom/radon",
     "events",
+    "layout_scheduler",
     "pipeline",
     "signal:signal",
     "starlight",

@@ -25,6 +25,7 @@
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/element_manager_delegate_impl.h"
 #include "core/renderer/events/touch_event_handler.h"
+#include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/pipeline/pipeline_context_manager.h"
 #include "core/renderer/pipeline/pipeline_layout_data.h"
@@ -252,18 +253,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
     bool scoped_ = false;
   };
 
-  class LayoutScheduler {
-   public:
-    LayoutScheduler() = default;
-    virtual ~LayoutScheduler() = default;
-
-    virtual void RequestLayout(
-        const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
-  };
-
   TemplateAssembler(Delegate& delegate, std::unique_ptr<ElementManager> client,
-                    LayoutScheduler& layout_scheduler, int32_t instance_id,
-                    bool enable_unified_pipeline = false,
+                    LayoutScheduler::LayoutSchedulerImpl* layout_scheduler,
+                    int32_t instance_id, bool enable_unified_pipeline = false,
                     const PageOptions& page_options = PageOptions());
   ~TemplateAssembler() override;
 
@@ -983,7 +975,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   std::string target_sdk_version_;
   Delegate& delegate_;
-  LayoutScheduler& layout_scheduler_;
+  std::unique_ptr<LayoutScheduler> layout_scheduler_;
   I18n i18n;
 
   std::unique_ptr<TouchEventHandler> touch_event_handler_;

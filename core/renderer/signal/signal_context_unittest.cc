@@ -66,7 +66,7 @@ BaseSignalTest::BaseSignalTest() {
                                        delegate_.get(), lynx_env_config);
 
   tasm_ = std::make_unique<lynx::tasm::TemplateAssembler>(
-      *delegate_.get(), std::move(manager), *delegate_.get(), 0);
+      *delegate_.get(), std::move(manager), delegate_.get(), 0);
 
   CompileOptions options;
   options.enable_fiber_arch_ = true;

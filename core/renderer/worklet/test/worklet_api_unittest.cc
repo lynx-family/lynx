@@ -61,7 +61,7 @@ class WorkletAPITest : public ::testing::Test {
 
     // Init tasm
     tasm_ = std::make_unique<lynx::tasm::TemplateAssembler>(
-        *delegate_.get(), std::move(manager), *delegate_.get(), 0);
+        *delegate_.get(), std::move(manager), delegate_.get(), 0);
     ctx_->delegate_ = tasm_.get();
 
     // Create default entry and set it to tasm

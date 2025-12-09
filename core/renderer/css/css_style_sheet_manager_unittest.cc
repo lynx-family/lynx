@@ -36,7 +36,7 @@ class CSSStyleSheetManagerTest : public ::testing::Test {
         std::make_unique<MockPaintingContext>(), delegate.get(),
         lynx_env_config);
     tasm = std::make_unique<lynx::tasm::TemplateAssembler>(
-        *delegate.get(), std::move(manager), *delegate.get(), 0);
+        *delegate.get(), std::move(manager), delegate.get(), 0);
   }
 
   std::unique_ptr<::testing::NiceMock<test::MockTasmDelegate>> delegate;

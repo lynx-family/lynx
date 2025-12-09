@@ -1,0 +1,17 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../testing/test.gni")
+import("../../Lynx.gni")
+
+layout_scheduler_shared_sources = [
+  "layout_scheduler.cc",
+  "layout_scheduler.h",
+]
+
+lynx_core_source_set("layout_scheduler") {
+  sources = layout_scheduler_shared_sources
+
+  public_deps = [ "../../../core/public:public" ]
+}

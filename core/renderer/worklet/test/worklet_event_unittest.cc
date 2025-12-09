@@ -59,7 +59,7 @@ class WorkletEventTest : public ::testing::Test {
 
     // Init tasm
     tasm_ = std::make_unique<lynx::tasm::TemplateAssembler>(
-        *delegate_.get(), std::move(manager), *delegate_.get(), 0);
+        *delegate_.get(), std::move(manager), delegate_.get(), 0);
     ctx_->delegate_ = tasm_.get();
     tasm_->EnsureTouchEventHandler();
     touch_event_handler_ = tasm_->touch_event_handler_.get();

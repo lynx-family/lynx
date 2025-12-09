@@ -394,7 +394,7 @@ void ElementManager::MarkLayoutDirtyAndRequestLayout(
     layout_node_manager_->MarkDirtyAndRequestLayout(id);
     options->layout_requested = true;
     if (!options->enable_unified_pixel_pipeline) {
-      RequestLayout(options);
+      TickLayout(options);
     }
   }
 }
@@ -402,21 +402,6 @@ void ElementManager::MarkLayoutDirtyAndRequestLayout(
 void ElementManager::RequestLayout(
     const std::shared_ptr<PipelineOptions> &options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REQUEST_LAYOUT);
-
-  if (options->render_for_recreate_engine) {
-    painting_context()->MarkUIOperationQueueFlushForRecreateEngine(false);
-  }
-
-  if (options->need_timestamps) {
-    painting_context()->MarkUIOperationQueueFlushTiming(
-        tasm::timing::kPaintingUiOperationExecuteEnd, options->pipeline_id);
-  }
-
-  if (!IsLayoutInElementModeOn()) {
-    DispatchLayoutUpdates(options);
-    return;
-  }
-
   // TODO(songshourui.null): we can optimize the performance here within
   // checking layout dirty.
   if (layout_node_manager_) {
@@ -454,11 +439,6 @@ void ElementManager::RequestLayout(
   layout_data = {.layout_triggered = false,
                  .pipeline_version = options->version};
   element_manager_delegate_->OnLayoutAfter(layout_data);
-}
-
-void ElementManager::DispatchLayoutUpdates(
-    const std::shared_ptr<PipelineOptions> &options) {
-  delegate_->DispatchLayoutUpdates(options);
 }
 
 std::unordered_map<int32_t, LayoutInfoArray>
@@ -760,7 +740,7 @@ void ElementManager::OnUpdateViewport(float width, int width_mode, float height,
 
   if (SetViewportSizeToRootNode()) {
     if (need_layout) {
-      RequestLayout(std::make_shared<PipelineOptions>());
+      TickLayout(std::make_shared<PipelineOptions>());
     } else {
       need_layout_ = true;
     }
@@ -1292,6 +1272,14 @@ fml::RefPtr<FrameElement> ElementManager::CreateFiberFrame() {
   return res;
 }
 
+void ElementManager::TickLayout(
+    const std::shared_ptr<PipelineOptions> &options) {
+  if (layout_tick_ == nullptr) {
+    return;
+  }
+  layout_tick_(options);
+}
+
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
                                    Element *element) {
   if (element == nullptr) {
@@ -1310,9 +1298,9 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
     is_memory_collecting_ = true;
   }
   base::MoveOnlyClosure<void, bool> patch_finish_callback =
-      [&option, self = this](bool has_patch) {
+      [&option, this](bool has_patch) {
         if (has_patch) {
-          self->RequestLayout(option);
+          TickLayout(option);
         }
       };
   if (element->is_radon_element()) {

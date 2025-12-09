@@ -204,6 +204,7 @@ group("lynx_native") {
     "renderer/css",
     "renderer/data:data",
     "renderer/events",
+    "renderer/layout_scheduler",
     "renderer/pipeline",
     "renderer/signal:signal",
     "renderer/starlight",

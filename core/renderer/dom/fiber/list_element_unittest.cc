@@ -45,7 +45,7 @@ class SSRListElement : public ::testing::Test {
     manager->SetConfig(config);
     manager_ = manager.get();
     tasm_ = std::make_shared<lynx::tasm::TemplateAssembler>(
-        *tasm_mediator_.get(), std::move(manager), *tasm_mediator_.get(), 0);
+        *tasm_mediator_.get(), std::move(manager), tasm_mediator_.get(), 0);
 
     page_ = fml::AdoptRef<PageElement>(new PageElement(manager_, "page", 0));
     list_element_ = fml::AdoptRef<ListElement>(new ListElement(

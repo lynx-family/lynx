@@ -199,16 +199,13 @@ TemplateAssembler::Scope::~Scope() {
   }
 }
 
-TemplateAssembler::TemplateAssembler(Delegate& delegate,
-                                     std::unique_ptr<ElementManager> client,
-                                     LayoutScheduler& layout_scheduler,
-                                     int32_t instance_id,
-                                     bool enable_unified_pipeline,
-                                     const PageOptions& page_options)
+TemplateAssembler::TemplateAssembler(
+    Delegate& delegate, std::unique_ptr<ElementManager> client,
+    LayoutScheduler::LayoutSchedulerImpl* layout_scheduler, int32_t instance_id,
+    bool enable_unified_pipeline, const PageOptions& page_options)
     : page_proxy_(this, std::move(client), &delegate),
       target_sdk_version_("null"),
       delegate_(delegate),
-      layout_scheduler_(layout_scheduler),
       touch_event_handler_(nullptr),
       page_config_(nullptr),
       instance_id_(instance_id),
@@ -223,6 +220,15 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
       destroyed_(false),
       is_loading_template_(false) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CONSTRUCTOR);
+
+  layout_scheduler_ = std::make_unique<LayoutScheduler>(
+      page_options.IsLayoutInElementModeOn()
+          ? page_proxy_.element_manager().get()
+          : layout_scheduler);
+
+  page_proxy_.element_manager()->SetLayoutTick(
+      [this](auto& options) { RequestLayout(options); });
+
   pipeline_context_manager_->SetOnCreateHook(
       [this]() { EnsureOnLayoutReadyHooksFinish(); });
 
@@ -3462,18 +3468,13 @@ void TemplateAssembler::TriggerLayout(
   pipeline_options->layout_requested = true;
 
   if (!pipeline_options->enable_unified_pixel_pipeline) {
-    page_proxy()->element_manager()->RequestLayout(pipeline_options);
+    RequestLayout(pipeline_options);
   }
 }
 
 void TemplateAssembler::RequestLayout(
     const std::shared_ptr<PipelineOptions>& pipeline_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateAssembler::RequestLayout");
-  if (page_proxy()->element_manager()->IsLayoutInElementModeOn()) {
-    page_proxy()->element_manager()->RequestLayout(pipeline_options);
-    return;
-  }
-
   if (pipeline_options->render_for_recreate_engine) {
     page_proxy()
         ->element_manager()
@@ -3489,7 +3490,7 @@ void TemplateAssembler::RequestLayout(
             tasm::timing::kPaintingUiOperationExecuteEnd,
             pipeline_options->pipeline_id);
   }
-  layout_scheduler_.RequestLayout(pipeline_options);
+  layout_scheduler_->RequestLayout(pipeline_options);
 }
 
 // starts run pixel pipeline process;

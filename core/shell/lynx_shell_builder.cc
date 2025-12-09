@@ -251,8 +251,10 @@ LynxShell* LynxShellBuilder::build() {
   // object of the platform layer to establish a mapping relationship.
   if (performance_controller_platform_) {
     performance_controller_platform_->SetActor(shell->perf_controller_actor_);
-    shell->perf_controller_actor_->Impl()->SetPlatformImpl(
-        std::move(this->performance_controller_platform_));
+    if (shell->perf_controller_actor_->Impl() != nullptr) {
+      shell->perf_controller_actor_->Impl()->SetPlatformImpl(
+          std::move(this->performance_controller_platform_));
+    }
   }
   if (loader_ != nullptr) {
     loader_->SetPerfControllerActor(shell->perf_controller_actor_);
@@ -420,8 +422,8 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
   // new instance rather than tasm_mediator when LayoutScheduler is more
   // complex.
   auto tasm = std::make_unique<lynx::tasm::TemplateAssembler>(
-      *tasm_mediator, std::move(element_manager), *tasm_mediator, instance_id,
-      this->enable_unified_pipeline_, shell_option_.page_options_);
+      *tasm_mediator, std::move(element_manager), tasm_mediator.get(),
+      instance_id, this->enable_unified_pipeline_, shell_option_.page_options_);
   tasm->SetEnableLayoutOnly(this->enable_layout_only_);
   if (this->loader_ != nullptr) {
     tasm->SetLazyBundleLoader(this->loader_);

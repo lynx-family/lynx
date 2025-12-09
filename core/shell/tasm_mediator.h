@@ -178,9 +178,7 @@ class TasmMediator : public LynxEngine::Delegate {
   void RequestVsync(
       uintptr_t id,
       base::MoveOnlyClosure<void, int64_t, int64_t> callback) override;
-  // delegate for class element manager
-  void DispatchLayoutUpdates(
-      const std::shared_ptr<tasm::PipelineOptions>& options) override;
+
   std::unordered_map<int32_t, tasm::LayoutInfoArray> GetSubTreeLayoutInfo(
       int32_t root_id, tasm::Viewport viewport = tasm::Viewport{}) override;
 

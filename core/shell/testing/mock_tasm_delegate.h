@@ -15,6 +15,7 @@
 #include "base/include/debug/lynx_error.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/runtime/bindings/common/event/message_event.h"
@@ -28,7 +29,7 @@ namespace test {
 
 class MockTasmDelegate : public TemplateAssembler::Delegate,
                          public ElementManager::Delegate,
-                         public TemplateAssembler::LayoutScheduler {
+                         public LayoutScheduler::LayoutSchedulerImpl {
  public:
   MockTasmDelegate() = default;
   virtual ~MockTasmDelegate() {}
@@ -139,11 +140,6 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   std::string DumpDelegate() { return ss_.str(); }
   void ResetThemeConfig();
 
-  void DispatchLayoutUpdates(
-      const std::shared_ptr<PipelineOptions>& options) override {
-    dispatch_layout_updates_called_ = true;
-  }
-
   MOCK_METHOD(void, UpdateLayoutNodeFontSize,
               (int32_t id, double cur_node_font_size,
                double root_node_font_size, double font_scale),
@@ -236,7 +232,9 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   void InvokeResponsePromiseCallback(base::closure closure) override{};
 
   void RequestLayout(
-      const std::shared_ptr<tasm::PipelineOptions>& options) override{};
+      const std::shared_ptr<tasm::PipelineOptions>& options) override {
+    dispatch_layout_updates_called_ = true;
+  };
 
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) override;

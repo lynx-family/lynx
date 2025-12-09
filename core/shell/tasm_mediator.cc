@@ -557,13 +557,6 @@ fml::RefPtr<fml::TaskRunner> TasmMediator::GetLepusTimedTaskRunner() {
   return engine_actor_->GetRunner();
 }
 
-// delegate for class element manager
-void TasmMediator::DispatchLayoutUpdates(
-    const std::shared_ptr<tasm::PipelineOptions>& options) {
-  layout_actor_->Act(
-      [options](auto& layout) { layout->DispatchLayoutUpdates(options); });
-}
-
 std::unordered_map<int32_t, tasm::LayoutInfoArray>
 TasmMediator::GetSubTreeLayoutInfo(int32_t root_id, tasm::Viewport viewport) {
   return layout_actor_->ActSync([root_id, viewport](auto& layout) {

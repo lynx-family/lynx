@@ -43,7 +43,7 @@ class ScrollElementTest : public ::testing::Test {
         lynx_env_config);
     manager = unique_manager.get();
     tasm = std::make_shared<lynx::tasm::TemplateAssembler>(
-        *tasm_mediator.get(), std::move(unique_manager), *tasm_mediator.get(),
+        *tasm_mediator.get(), std::move(unique_manager), tasm_mediator.get(),
         0);
 
     auto test_entry = std::make_shared<TemplateEntry>();

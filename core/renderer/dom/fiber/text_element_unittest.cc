@@ -289,6 +289,8 @@ TEST_P(TextElementTest, TestMeasureCase0) {
   manager->enable_layout_in_element_mode_ = true;
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+
   auto page = manager->CreateFiberPage("page", 11);
 
   auto text = manager->CreateFiberText("text");
@@ -402,6 +404,8 @@ TEST_P(TextElementTest, LayoutInElementFontScale) {
   manager->enable_layout_in_element_mode_ = true;
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+
   float mFontScale = 3.0f;
   // set font-scale:3
   manager->UpdateFontScale(mFontScale);
@@ -453,6 +457,8 @@ TEST_P(TextElementTest, TextGradient) {
   manager->SetConfig(config);
   manager->enable_layout_in_element_mode_ = true;
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
+
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
 
   auto page = manager->CreateFiberPage("page", 11);
 

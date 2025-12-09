@@ -39,6 +39,7 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
+#include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/pipeline/pipeline_layout_data.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
@@ -176,15 +177,14 @@ class ComponentManager {
   std::unordered_map<std::string, Element *> component_map_;
 };
 
-class ElementManager : public ElementContextDelegate {
+class ElementManager : public ElementContextDelegate,
+                       public LayoutScheduler::LayoutSchedulerImpl {
  public:
   class Delegate {
    public:
     Delegate() = default;
     virtual ~Delegate() = default;
 
-    virtual void DispatchLayoutUpdates(
-        const std::shared_ptr<PipelineOptions> &options) = 0;
     virtual std::unordered_map<int32_t, LayoutInfoArray> GetSubTreeLayoutInfo(
         int32_t root_id, Viewport viewport = Viewport{}) = 0;
 
@@ -1087,11 +1087,17 @@ class ElementManager : public ElementContextDelegate {
   void LegacyHandleLayoutTask(FiberElement *target,
                               base::MoveOnlyClosure<void> operation);
 
+  void SetLayoutTick(
+      base::MoveOnlyClosure<void, const std::shared_ptr<PipelineOptions>>
+          tick) {
+    layout_tick_ = std::move(tick);
+  }
+
   /**
    * call this function to request layout
    * @param options the pipeline options passed to layout context
    */
-  void RequestLayout(const std::shared_ptr<PipelineOptions> &options);
+  void RequestLayout(const std::shared_ptr<PipelineOptions> &options) override;
 
   void MarkLayoutDirtyAndRequestLayout(
       int32_t id, const std::shared_ptr<PipelineOptions> &options);
@@ -1199,6 +1205,8 @@ class ElementManager : public ElementContextDelegate {
   }
 
  protected:
+  void TickLayout(const std::shared_ptr<PipelineOptions> &options);
+
   /**
    * call this function after exec OnPatchFinishForFiber
    */
@@ -1236,7 +1244,6 @@ class ElementManager : public ElementContextDelegate {
   ElementManager(const ElementManager &) = delete;
   ElementManager &operator=(const ElementManager &) = delete;
   void OnListComponentUpdated(const std::shared_ptr<PipelineOptions> &options);
-  void DispatchLayoutUpdates(const std::shared_ptr<PipelineOptions> &options);
 
   const int instance_id_;
   int32_t element_id_{kInitialImplId};
@@ -1382,6 +1389,13 @@ class ElementManager : public ElementContextDelegate {
       devtool_func_map_;
 
   base::MoveOnlyClosure<void> request_layout_callback_;
+
+  // Keep layout_tick_ for now. Once enable_unified_pipeline is fully rolled
+  // out, layout triggering will be driven by TemplateAssembler. ElementManager
+  // will only implement layout when LayoutInElement is enabled and will no
+  // longer proactively tick layout, so this variable can be removed.
+  base::MoveOnlyClosure<void, const std::shared_ptr<PipelineOptions>>
+      layout_tick_;
 
  public:
   // fixed node attached to the page node.

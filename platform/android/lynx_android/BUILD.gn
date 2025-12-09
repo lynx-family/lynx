@@ -53,6 +53,7 @@ group("lynx_android_lib") {
     "../../../core/renderer/dom:renderer_dom",
     "../../../core/renderer/dom/selector:element_selector",
     "../../../core/renderer/events:events",
+    "../../../core/renderer/layout_scheduler",
     "../../../core/renderer/pipeline",
     "../../../core/renderer/signal:signal",
     "../../../core/renderer/starlight:starlight",
