@@ -1,0 +1,80 @@
+name: sdk-release-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      commitId:
+        description: 'specific commit ID to build'
+        required: false
+        type: string
+  push:
+    branches:
+      - sdk_release_test/**
+
+defaults:
+  run:
+    working-directory: lynx
+
+jobs:
+  android-sdk-release-test:
+    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          ref: ${{ github.event.inputs.commitId || github.ref }}
+          fetch-depth: 0
+      - name: Free up disk space
+        uses: ./lynx/.github/actions/free-android-disk
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Setup Android environment
+        uses: ./lynx/.github/actions/setup-android-env
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: 'github'
+      - name: Build Android SDK
+        uses: ./lynx/.github/actions/android-sdk-release
+        with:
+          version: 0.0.1-alpha.1
+      - name: Collect and zip artifacts
+        run: |
+          cd $GITHUB_WORKSPACE/lynx/platform/android
+          ./gradlew zipAllArtifacts
+
+  ios-sdk-release-test:
+    timeout-minutes: 15
+    runs-on: macos-14
+    env:
+      LOCAL_POD_NAME: 'local_pod'
+      POD_VERSION: '0.0.1-alpha.1'
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          ref: ${{ github.event.inputs.commitId || github.ref }}
+          fetch-depth: 0
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: github
+      - name: Setup Ruby Cache
+        uses: ./lynx/.github/actions/ios-common-deps
+      - name: Prepare cocoapods publish source
+        run: |-
+          source tools/envsetup.sh
+          export LANG=en_US.UTF-8
+          python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
+      - name: Publish to Local Pod Source
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          git config --global user.name "lynx.authors"
+          git config --global user.email "lynx.authors@users.noreply.github.com"
+          python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all

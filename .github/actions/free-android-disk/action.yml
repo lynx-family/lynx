@@ -1,0 +1,24 @@
+name: Free Android Disk Space
+
+description: Free up disk space on Android runner.
+
+runs:
+  using: composite
+  steps:
+    - name: Free up disk space
+      shell: bash
+      working-directory: /home/runner
+      run: |
+        CLEAN_DIRS=(
+          "/var/lib/docker"
+          "/usr/local/lib/node_modules"
+        )
+        for dir in "${CLEAN_DIRS[@]}"; do
+          if [ -d "$dir" ]; then
+            echo "Deleting $dir..."
+            sudo rm -rf "$dir"
+          else
+            echo "$dir does not exist, skipping..."
+          fi
+        done
+        sudo apt-get clean > /dev/null 2>&1
