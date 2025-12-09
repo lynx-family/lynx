@@ -3952,11 +3952,11 @@ public class LynxTouchEvent : LynxEvent {
 public class LynxTouchHandler : UIGestureRecognizer {
   public _Nullable id<LynxEventTarget> LynxTouchHandler::target target;
   public _Nullable id<LynxEventTarget> LynxTouchHandler::preTarget preTarget;
+  public BOOL LynxTouchHandler::enableNewGesture enableNewGesture;
   public NSMutableArray<LynxWeakProxy *>* LynxTouchHandler()::touchDeque touchDeque;
   public int32_t LynxTouchHandler()::tapSlop tapSlop;
   public BOOL LynxTouchHandler()::hasMultiTouch hasMultiTouch;
   public LynxGestureArenaManager* _Nullable LynxTouchHandler()::gestureArenaManager gestureArenaManager;
-  public BOOL LynxTouchHandler()::enableNewGesture enableNewGesture;
   public instancetype LynxTouchHandler::initWithEventHandler:(LynxEventHandler *eventHandler);
   public void LynxTouchHandler::onGestureRecognized();
   public void LynxTouchHandler::touchesBeganInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
