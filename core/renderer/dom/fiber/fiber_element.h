@@ -80,6 +80,13 @@ class FiberElement : public Element,
         new FiberElement(*this, clone_resolved_props));
   }
 
+  void SetupFragmentBehavior(Fragment* fragment) override;
+
+  bool is_platform_extended() const {
+    // TODO: return real value according to the platform tag info.
+    return false;
+  }
+
   ~FiberElement() override;
 
   void ReleaseSelf() const override { delete this; }
