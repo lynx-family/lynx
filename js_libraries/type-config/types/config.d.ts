@@ -509,7 +509,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS, HarmonyOS
    *
-   * Since: LynxSDK 3.6
+   * Since: LynxSDK 3.7
    *
    * @defaultValue false
    */
