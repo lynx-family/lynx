@@ -108,4 +108,54 @@ public class TextShadowNodeTest {
     Layout layout = textShadowNode.getTextRenderer().getTextLayout();
     Assert.assertEquals(layout.getLineCount(), 2);
   }
+
+  @Test
+  public void testFontStylePreservedWhenWeightChangesToNormal() {
+    // Given italic style set first
+    textShadowNode.setFontStyle(StyleConstants.FONTSTYLE_ITALIC);
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getFontStyle());
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getTypefaceStyle());
+
+    // When font weight changes to a normal range value (e.g. 400)
+    textShadowNode.setFontWeight(StyleConstants.FONTWEIGHT_400);
+
+    // Then font style should still be italic and typeface style remains italic
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getFontStyle());
+    Assert.assertEquals(
+        StyleConstants.FONTWEIGHT_400, textShadowNode.getTextAttributes().getFontWeight());
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getTypefaceStyle());
+  }
+
+  @Test
+  public void testBoldWeightWithoutItalicYieldsBoldTypeface() {
+    // Given default style (normal)
+    Assert.assertEquals(Typeface.NORMAL, textShadowNode.getTextAttributes().getFontStyle());
+    Assert.assertEquals(Typeface.NORMAL, textShadowNode.getTextAttributes().getTypefaceStyle());
+
+    // When setting font weight to bold range (e.g. 500)
+    textShadowNode.setFontWeight(StyleConstants.FONTWEIGHT_500);
+
+    // Then typeface style should be bold and font style should remain normal
+    Assert.assertEquals(
+        StyleConstants.FONTWEIGHT_500, textShadowNode.getTextAttributes().getFontWeight());
+    Assert.assertEquals(Typeface.NORMAL, textShadowNode.getTextAttributes().getFontStyle());
+    Assert.assertEquals(Typeface.BOLD, textShadowNode.getTextAttributes().getTypefaceStyle());
+  }
+
+  @Test
+  public void testSettingItalicAfterBoldWeightYieldsBoldItalic() {
+    // Given bold weight first
+    textShadowNode.setFontWeight(StyleConstants.FONTWEIGHT_700);
+    Assert.assertEquals(Typeface.BOLD, textShadowNode.getTextAttributes().getTypefaceStyle());
+
+    // When setting italic style afterwards
+    textShadowNode.setFontStyle(StyleConstants.FONTSTYLE_ITALIC);
+
+    // Then typeface style should combine to bold_italic
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getFontStyle());
+    Assert.assertEquals(
+        StyleConstants.FONTWEIGHT_700, textShadowNode.getTextAttributes().getFontWeight());
+    Assert.assertEquals(
+        Typeface.BOLD_ITALIC, textShadowNode.getTextAttributes().getTypefaceStyle());
+  }
 }
