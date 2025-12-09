@@ -566,7 +566,7 @@ public class BaseTextShadowNode extends ShadowNode {
         NativeLayoutNodeSpan[] nativeNodeSpans = sb.getSpans(
             layoutNode.getSpanStart(), layoutNode.getSpanEnd(), NativeLayoutNodeSpan.class);
         for (NativeLayoutNodeSpan nodeSpan : nativeNodeSpans) {
-          nodeSpan.updateLayoutNodeSize((int) Math.ceil(result.getWidthResult()),
+          nodeSpan.updateLayoutNodeSize((int) Math.floor(result.getWidthResult()),
               (int) Math.ceil(result.getHeightResult()),
               (int) Math.ceil(result.getBaselineResult()));
         }
