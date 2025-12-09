@@ -398,6 +398,12 @@ lynx_base_source_set("string_utils") {
 }
 
 # TODO(chenyouhui): Merge 'values' into 'base_values' target
+config("value_config") {
+  cflags_cc = [
+    "-Wno-missing-field-initializers",
+    "-Wno-error=missing-field-initializers",
+  ]
+}
 lynx_base_source_set("base_values") {
   public = base_values_public_headers
   sources = base_values_public_headers + [
@@ -409,6 +415,7 @@ lynx_base_source_set("base_values") {
               "value/table.cc",
             ]
   public_deps = [ ":values" ]
+  configs = [ ":value_config" ]
 }
 
 lynx_base_source_set("base_values_extended") {

@@ -10,10 +10,13 @@ runs:
       with:
         java-version: 11
         distribution: 'zulu'
+        cache: 'gradle'
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: 9862592
+        include-emulator: false
+        include-preview: false
     - name: Setup Android NDK
       shell: bash
       run: |-
