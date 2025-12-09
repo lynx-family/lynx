@@ -339,6 +339,7 @@ class ElementManager : public ElementContextDelegate,
   void AddFontFace(const lepus::Value &font);
 
   void SetEnableSimpleStyle(bool enable) { enable_simple_style_ = enable; }
+  bool EnableSimpleStyle() const { return enable_simple_style_; }
 
   void SetSimpleStyleKeyframes(
       const std::shared_ptr<CSSKeyframesTokenMap> &keyframes) {

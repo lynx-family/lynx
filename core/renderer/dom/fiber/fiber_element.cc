@@ -1056,6 +1056,24 @@ void FiberElement::HandleBeforeFlushActionsTask(
   }
 }
 
+void FiberElement::ResolveSimpleStyles() {
+  if (dirty_ & kDirtyStyleObjects) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::HandleStyleObjects");
+    if (element_manager_->EnablePropertyBasedSimpleStyle()) {
+      StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
+          parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
+          this);
+    } else {
+      StyleResolver::ResolveStyleObjects(
+          last_style_objects_ ? last_style_objects_.get() : nullptr,
+          style_objects_ ? style_objects_.get() : nullptr, this);
+    }
+
+    // Animation and Direction should be handled here
+    dirty_ &= ~kDirtyStyleObjects;
+  }
+}
+
 void FiberElement::ResolveCSSStyles(
     StyleMap &parsed_styles,
     base::InlineVector<CSSPropertyID, 16> &reset_style_ids, bool &need_update,
@@ -1495,20 +1513,8 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
     MarkDirtyLite(kDirtyPropagateInherited);
   }
 
-  if (dirty_ & kDirtyStyleObjects) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::HandleStyleObjects");
-    if (element_manager_->EnablePropertyBasedSimpleStyle()) {
-      StyleResolver::ResolveStyleObjectsBasedOnExistingMap(
-          parsed_styles_map_, style_objects_ ? style_objects_.get() : nullptr,
-          this);
-    } else {
-      StyleResolver::ResolveStyleObjects(
-          last_style_objects_ ? last_style_objects_.get() : nullptr,
-          style_objects_ ? style_objects_.get() : nullptr, this);
-    }
-
-    // Animation and Direction should be handled here
-    dirty_ &= ~kDirtyStyleObjects;
+  if (element_manager()->EnableSimpleStyle()) {
+    ResolveSimpleStyles();
   } else {
     ResolveCSSStyles(parsed_styles, reset_style_ids, need_update,
                      force_use_current_parsed_style_map);
