@@ -70,7 +70,12 @@ UIView::UIView(LynxContext* context, ArkUI_NodeType type, int sign,
                const std::string& tag)
     : UIBase(context, type, sign, tag) {
   // default overflow.
-  overflow_ = {true, true};
+  overflow_ = {context_->DefaultOverflowVisible(),
+               context_->DefaultOverflowVisible()};
+  if (!context_->DefaultOverflowVisible()) {
+    need_clip_ = true;
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
+  }
 }
 
 UIView::~UIView() {

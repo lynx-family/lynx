@@ -24,7 +24,7 @@ class LYNX_EXPORT UIView : public UIBase {
   void OnNodeEvent(ArkUI_NodeEvent* event) override;
 
  protected:
-  bool DefaultOverflowValue() override { return true; }
+  bool DefaultOverflowValue() override { return context_->DefaultOverflowVisible(); }
   UIView(LynxContext* context, ArkUI_NodeType type, int sign, const std::string& tag);
   ~UIView() override;
 

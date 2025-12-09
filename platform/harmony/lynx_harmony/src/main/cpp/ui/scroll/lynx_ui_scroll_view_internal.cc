@@ -15,7 +15,7 @@ namespace harmony {
 LynxUIScrollViewInternal::LynxUIScrollViewInternal(LynxContext* context,
                                                    int sign,
                                                    const std::string& tag)
-    : UIView(context, ARKUI_NODE_CUSTOM, sign, tag) {
+    : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag) {
   scroll_view_ = new LynxBaseScrollView(this);
   NodeManager::Instance().InsertNode(node_, scroll_view_->node_, 0);
   first_render_block_array_ = new std::vector<
@@ -184,7 +184,7 @@ void LynxUIScrollViewInternal::UpdateLayout(float left, float top, float width,
                                             const float* sticky,
                                             float max_height,
                                             uint32_t node_index) {
-  UIView::UpdateLayout(left, top, width, height, paddings, margins, sticky,
+  UIBase::UpdateLayout(left, top, width, height, paddings, margins, sticky,
                        max_height, node_index);
   NodeManager::Instance().SetAttributeWithNumberValue(scroll_view_->node_,
                                                       NODE_WIDTH, width_);
@@ -193,7 +193,7 @@ void LynxUIScrollViewInternal::UpdateLayout(float left, float top, float width,
 }
 
 void LynxUIScrollViewInternal::FinishLayoutOperation() {
-  UIView::FinishLayoutOperation();
+  UIBase::FinishLayoutOperation();
   float content_size[2] = {0, 0};
   for (auto child : children_) {
     content_size[0] +=

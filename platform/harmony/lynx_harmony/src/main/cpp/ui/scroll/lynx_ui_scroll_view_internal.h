@@ -16,7 +16,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
-class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
+class LynxUIScrollViewInternal : public UIBase, LynxBaseScrollViewDelegate {
  public:
   void SetScrollOrientation(const lepus::Value& value);
   void SetEnableScrollBar(const lepus::Value& value);
@@ -30,37 +30,44 @@ class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
   void SetLowerThreshold(const lepus::Value& value);
   void SetScrollEventThreshold(const lepus::Value& value);
 
-  void UIScrollTo(const lepus::Value& args,
-                  base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
-  void UIScrollBy(const lepus::Value& args,
-                  base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
-  void UIAutoScroll(const lepus::Value& args,
-                    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void UIScrollTo(
+      const lepus::Value& args,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void UIScrollBy(
+      const lepus::Value& args,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void UIAutoScroll(
+      const lepus::Value& args,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   LynxBaseScrollView* scroll_view_{nullptr};
 
  protected:
-  LynxUIScrollViewInternal(LynxContext* context, int sign, const std::string& tag);
+  LynxUIScrollViewInternal(LynxContext* context, int sign,
+                           const std::string& tag);
   ~LynxUIScrollViewInternal() override;
   void OnScrollStateChanged(LynxBaseScrollViewScrollState from,
                             LynxBaseScrollViewScrollState to) override;
   void ScrollViewDidScroll() override;
   void InsertNode(UIBase* child, int index) override;
   void RemoveNode(UIBase* child) override;
-  void UpdateLayout(float left, float top, float width, float height, const float* paddings,
-                    const float* margins, const float* sticky, float max_height,
+  void UpdateLayout(float left, float top, float width, float height,
+                    const float* paddings, const float* margins,
+                    const float* sticky, float max_height,
                     uint32_t node_index) override;
   void FinishLayoutOperation() override;
   bool IsScrollable() override;
   float ScrollX() override;
   float ScrollY() override;
-  void ScrollIntoView(bool smooth, const UIBase* target, const std::string& block,
+  void ScrollIntoView(bool smooth, const UIBase* target,
+                      const std::string& block,
                       const std::string& inline_value) override;
 
  private:
-  static void GetPositionOf(float result[2], UIBase* target, LynxUIScrollViewInternal* scroll,
-                            bool isRTL);
+  static void GetPositionOf(float result[2], UIBase* target,
+                            LynxUIScrollViewInternal* scroll, bool isRTL);
   static void AddOffset(float offset[2], float delta[2], bool is_rtl);
-  static void FormatOffset(float offset[2], LynxUIScrollViewInternal* scroll, bool is_rtl);
+  static void FormatOffset(float offset[2], LynxUIScrollViewInternal* scroll,
+                           bool is_rtl);
 
   void FlushFirstRenderOperations();
   void SendScrollEvent(const char* name, lepus::Value params);
@@ -76,10 +83,11 @@ class LynxUIScrollViewInternal : public UIView, LynxBaseScrollViewDelegate {
   float upper_threshold_{0.f};
   float lower_threshold_{0.f};
   float last_content_offset_[2]{0.f};
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>
+  std::chrono::time_point<std::chrono::steady_clock,
+                          std::chrono::steady_clock::duration>
       last_update_time_{std::chrono::steady_clock::now()};
-  std::vector<base::MoveOnlyClosure<void, LynxUIScrollViewInternal*>*>* first_render_block_array_{
-      nullptr};
+  std::vector<base::MoveOnlyClosure<void, LynxUIScrollViewInternal*>*>*
+      first_render_block_array_{nullptr};
 };
 
 }  // namespace harmony

@@ -14,7 +14,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
-    : UIView(context, ARKUI_NODE_STACK, sign, tag) {
+    : UIBase(context, ARKUI_NODE_STACK, sign, tag) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_ROOT_CONSTRUCTOR);
   root_proxy_ = NodeManager::Instance().CreateNode(ARKUI_NODE_STACK);
   normal_sibling_ = NodeManager::Instance().CreateNode(ARKUI_NODE_STACK);
