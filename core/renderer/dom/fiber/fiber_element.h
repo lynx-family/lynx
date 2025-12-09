@@ -585,6 +585,7 @@ class FiberElement : public Element,
                         base::InlineVector<CSSPropertyID, 16>& reset_style_ids,
                         bool& need_update,
                         bool& force_use_current_parsed_style_map);
+  void ResolveSimpleStyles();
 
   const base::String& GetRawInlineStyles();
 
