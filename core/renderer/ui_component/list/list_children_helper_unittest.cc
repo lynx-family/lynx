@@ -417,6 +417,137 @@ TEST_F(ListChildrenHelperTest, ClearAttachedChildren) {
   EXPECT_EQ(list_children_helper->attached_element_item_holder_map().size(), 0);
 }
 
+TEST_F(ListChildrenHelperTest, GetFirstChildFromTest) {
+  const ItemHolderSet& children = list_children_helper->children();
+  for (auto& it : item_holder_map) {
+    list_children_helper->AddChild(children, it.second.get());
+  }
+
+  // 1. Forward search
+  // Find an element with valid item key that exists after the starting point.
+  ItemHolder* start_child = GetItemHolder("C_2");
+  ItemHolder* result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() != "C_2";
+      },
+      false);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result->item_key(), "D_3");
+
+  // Try to find an element that only exists before the starting point.
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) { return item->item_key() == "A_0"; }, false);
+  EXPECT_EQ(result, nullptr);
+
+  // The condition is met by the starting element itself.
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() == "C_2";
+      },
+      false);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result->item_key(), "C_2");
+
+  // No element meets the condition.
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) { return item->item_key() == "Z_25"; }, false);
+  EXPECT_EQ(result, nullptr);
+
+  // 2. Reverse search
+  // Find an element that exists before the starting point.
+  start_child = GetItemHolder("G_6");
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() != "G_6";
+      },
+      true);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result->item_key(), "F_5");
+
+  // Try to find an element that only exists after the starting point.
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) { return item->item_key() == "I_8"; }, true);
+  EXPECT_EQ(result, nullptr);
+
+  // The condition is met by the starting element itself.
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() == "G_6";
+      },
+      true);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result->item_key(), "G_6");
+
+  // No element meets the condition.
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) { return item->item_key() == "Z_25"; }, true);
+  EXPECT_EQ(result, nullptr);
+
+  // 3. Edge cases
+  // start_child is not in children.
+  auto temp_holder = std::make_unique<ItemHolder>(99, "NotInSet");
+  result = list_children_helper->GetFirstChildFrom(
+      children, temp_holder.get(),
+      [](const ItemHolder* item) { return !item->item_key().empty(); }, false);
+  EXPECT_EQ(result, nullptr);
+
+  // 4. The set is empty.
+  start_child = GetItemHolder("F_5");
+  list_children_helper->ClearChildren();
+  EXPECT_EQ(list_children_helper->children().size(), 0);
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) { return !item->item_key().empty(); }, false);
+  EXPECT_EQ(result, nullptr);
+
+  // 5. The set only has one element.
+  start_child = GetItemHolder("F_5");
+  list_children_helper->ClearChildren();
+  list_children_helper->AddChild(children, start_child);
+  EXPECT_EQ(list_children_helper->children().size(), 1);
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() == "F_5";
+      },
+      false);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result->item_key(), "F_5");
+
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() != "F_5";
+      },
+      false);
+  EXPECT_EQ(result, nullptr);
+
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() == "F_5";
+      },
+      true);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(result->item_key(), "F_5");
+
+  result = list_children_helper->GetFirstChildFrom(
+      children, start_child,
+      [](const ItemHolder* item) {
+        return !item->item_key().empty() && item->item_key() != "F_5";
+      },
+      true);
+  EXPECT_EQ(result, nullptr);
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

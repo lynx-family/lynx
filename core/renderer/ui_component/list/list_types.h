@@ -71,6 +71,8 @@ static constexpr const char* const kLowerThresholdItemCount =
     "lower-threshold-item-count";
 static constexpr const char* const kUpperThresholdItemCount =
     "upper-threshold-item-count";
+static constexpr const char* const kExperimentalOptimizedSearchAnchor =
+    "experimental-optimized-search-anchor";
 static constexpr const char* const kScrollEventThrottle =
     "scroll-event-throttle";
 static constexpr const char kExperimentalBatchRenderStrategy[] =

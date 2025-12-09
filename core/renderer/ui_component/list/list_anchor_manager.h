@@ -34,6 +34,7 @@ class ListAnchorManager {
       item_holder_ = nullptr;
     }
 
+    bool is_removed_child_ref_{false};
     bool valid_{false};
     int index_{list::kInvalidIndex};
     // The top of anchor item_holder when this anchor_info first generated.
