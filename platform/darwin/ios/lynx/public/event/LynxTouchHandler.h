@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) _Nullable id<LynxEventTarget> target;
 @property(nonatomic, weak) _Nullable id<LynxEventTarget> preTarget;
 
+@property(nonatomic, assign) BOOL enableNewGesture;
+
 - (instancetype)initWithEventHandler:(LynxEventHandler*)eventHandler;
 
 - (void)onGestureRecognized;
