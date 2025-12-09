@@ -632,7 +632,7 @@ jobs:
         with:
           path: demo
           repository: lynx-family/integrating-lynx-demo-projects
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: 0ab9340e1e560f07d3d4c4331f8b62b0702d067a
       - name: Build the Demo Project
         run: |-
           cd $GITHUB_WORKSPACE
