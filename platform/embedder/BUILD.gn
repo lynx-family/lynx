@@ -2,6 +2,97 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../../core/Lynx.gni")
+
 config("public_api") {
   include_dirs = [ "./public" ]
+}
+
+config("config") {
+  defines = []
+  if (is_win) {
+    # enable dllexport for public APIs.
+    defines += [ "lynx_EXPORTS" ]
+  }
+}
+
+lynx_core_source_set("embedder") {
+  sources = [
+    "lynx_env.cc",
+    "lynx_group.cc",
+    "lynx_group_priv.h",
+    "lynx_load_meta.cc",
+    "lynx_load_meta_priv.h",
+    "lynx_runtime_lifecycle_observer.cc",
+    "lynx_runtime_lifecycle_observer_priv.h",
+    "lynx_template_bundle.cc",
+    "lynx_template_bundle_priv.h",
+    "lynx_template_data.cc",
+    "lynx_template_data_priv.h",
+    "lynx_update_meta.cc",
+    "lynx_update_meta_priv.h",
+    "lynx_view.cc",
+    "lynx_view_builder.cc",
+    "lynx_view_builder_priv.h",
+    "lynx_view_client.cc",
+    "lynx_view_client_priv.h",
+    "lynx_view_clients.cc",
+    "lynx_view_clients.h",
+    "lynx_view_priv.h",
+  ]
+
+  public_deps = [
+    "../../core:lynx_native",
+    "./core:renderer",
+    "./lynx_service:lynx_service",
+    "./resource:resource",
+  ]
+  if (enable_napi_binding) {
+    public_deps += [ "./module:module" ]
+  }
+
+  public_configs = [
+    ":public_api",
+    ":config",
+  ]
+
+  if (!enable_unittests) {
+    sources += [
+      "sysinfo_embedder.cc",
+      "vsync_monitor_fallback.cc",
+      "vsync_monitor_fallback.h",
+    ]
+  } else {
+    sources += [ "lynx_ui_renderer_mock.cc" ]
+  }
+  if (is_win) {
+    sources += [ "../../core/renderer/utils/sys_lynx_env/sys_env_default.cc" ]
+  }
+}
+
+if (enable_unittests) {
+  executable("lynx_embedder_unittests") {
+    testonly = true
+    include_dirs = [ "../../base/include/value" ]
+    sources = [
+      "lynx_env_unittests.cc",
+      "lynx_group_unittests.cc",
+      "lynx_load_meta_unittests.cc",
+      "lynx_template_bundle_unittests.cc",
+      "lynx_template_data_unittests.cc",
+      "lynx_update_meta_unittests.cc",
+      "lynx_value_unittest.cc",
+      "lynx_view_builder_unittests.cc",
+      "lynx_view_client_unittests.cc",
+      "lynx_view_unittests.cc",
+    ]
+    deps = [
+      ":embedder",
+      "../../base/src:base_static",
+      "../../testing/utils:gtest_custom_init",
+      "../../testing/utils:gtest_main",
+      "./fetcher:fetcher_unittests",
+      "./lynx_service:lynx_service_unittests",
+    ]
+  }
 }
