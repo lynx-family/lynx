@@ -11,7 +11,7 @@ set -e
 ##  habitat start up script for UN*X
 ##
 ##############################################################################
-__version__="0.3.146-alpha.1"
+__version__="0.3.146-alpha.2"
 
 if [[ "$HABITAT_DEBUG" = "true" ]]; then
   set -x
