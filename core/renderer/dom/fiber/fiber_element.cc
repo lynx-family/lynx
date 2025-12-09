@@ -43,6 +43,7 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/platform_extended_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
@@ -4312,6 +4313,13 @@ void FiberElement::InvalidateChildrenIfNeeded() {
     InvalidateChildren(invalidation_set);
   }
   invalidation_lists_.descendants.clear_and_shrink();
+}
+
+void FiberElement::SetupFragmentBehavior(Fragment *fragment) {
+  if (is_platform_extended()) {
+    fragment->SetBehavior(
+        std::make_unique<PlatformExtendedFragmentBehavior>(fragment, GetTag()));
+  }
 }
 
 }  // namespace tasm

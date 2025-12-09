@@ -97,6 +97,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 #pragma region NativePaintingContext
 
   void CreatePlatformRenderer(int id, PlatformRendererType type) override;
+  void CreatePlatformExtendedRenderer(int id,
+                                      const base::String &tag_name) override;
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
 
