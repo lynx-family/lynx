@@ -109,24 +109,34 @@
 
       CGContextSaveGState(graphicsContext);
 
-      // 2. Set the text drawing mode to kCGTextClip.
-      // This means that the subsequent text drawing operations will define a clipping area, rather
-      // than actually drawing pixels. Therefore, NSForegroundColorAttributeName in attributes will
-      // be ignored.
-      CGContextSetTextDrawingMode(graphicsContext, kCGTextClip);
+      // Create an explicit path from glyphs for reliable clipping
+      CGMutablePathRef path = CGPathCreateMutable();
+      BOOL hasValidGlyphs = NO;
 
-      // 3. Apply the font and text matrix, then "draw" the glyphs to create the clipping path.
-      // Note: This step does not draw anything on the screen, it only defines the clipping area in
-      // the context.
-      CGContextSetTextMatrix(graphicsContext, textMatrix);
-      // Core Graphics requires a CGFontRef, which we can get from a UIFont.
-      CGFontRef cgFont = CTFontCopyGraphicsFont((__bridge CTFontRef)font, NULL);
-      CGContextSetFont(graphicsContext, cgFont);
-      CGContextSetFontSize(graphicsContext, font.pointSize);
+      for (NSUInteger i = 0; i < glyphCount; i++) {
+        CGPathRef glyphPath = CTFontCreatePathForGlyph((__bridge CTFontRef)font, glyphs[i], NULL);
+        if (glyphPath) {
+          CGAffineTransform transform = CGAffineTransformConcat(
+              textMatrix, CGAffineTransformMakeTranslation(positions[i].x, positions[i].y));
+          CGPathAddPath(path, &transform, glyphPath);
+          CGPathRelease(glyphPath);
+          hasValidGlyphs = YES;
+        }
+      }
 
-      CGContextShowGlyphsAtPositions(graphicsContext, glyphs, positions, glyphCount);
+      // If no valid glyph paths, restore context and return without drawing gradient
+      if (!hasValidGlyphs) {
+        CGPathRelease(path);
+        CGContextRestoreGState(graphicsContext);
+        LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
+        return;
+      }
 
-      CGFontRelease(cgFont);
+      // Add path to context and clip
+      CGContextAddPath(graphicsContext, path);
+      CGContextClip(graphicsContext);
+      CGPathRelease(path);
+
       CGContextTranslateCTM(graphicsContext, _overflowOffset.x, _overflowOffset.y);
       [gradient draw:graphicsContext withRect:CGRectMake(0, 0, size.width, size.height)];
       CGContextRestoreGState(graphicsContext);
