@@ -24,6 +24,7 @@ import { UIClickView } from '../component/UIClickView';
 import { ClickShadowNode } from '../component/UIClickShadowNode';
 import { LynxExplorerInput } from '../component/LynxExplorerInput';
 import { ConfigurationConstant } from '@kit.AbilityKit';
+import { UISVG } from '@lynx/xelement_svg';
 
 
 @Entry
@@ -38,7 +39,8 @@ struct Index {
   private url: string = 'main.lynx.bundle';
   private behaviors: BehaviorRegistryMap = new Map([['click-view',
     new Behavior(UIClickView, ClickShadowNode, "this is a test custom data")],
-    ['explorer-input', new Behavior(LynxExplorerInput, undefined)]]);
+    ['explorer-input', new Behavior(LynxExplorerInput, undefined)],
+    ['svg',  new Behavior(UISVG, undefined)]]);
   private metaData = new MetaData(
     new TemplateData('{"text":"TD"}'),
     new TemplateData({ "theme": "Light" }));

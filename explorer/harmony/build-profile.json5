@@ -4,7 +4,7 @@
       {
         "name": "default",
         "signingConfig": "default",
-        "compatibleSdkVersion": "5.0.0(12)",
+        "compatibleSdkVersion": "5.0.1(13)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
@@ -121,6 +121,18 @@
           "name": "default",
           "applyToProducts": [
             "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xelement_svg",
+      "srcPath": "../../platform/harmony/lynx_xelement/svg",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+          "default"
           ]
         }
       ]

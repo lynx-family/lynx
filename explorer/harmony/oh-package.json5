@@ -27,6 +27,7 @@
     "@lynx/lynx_log_service": "file:../../platform/harmony/lynx_services/lynx_log_service",
     "@lynx/lynx_http_service": "file:../../platform/harmony/lynx_services/lynx_http_service",
     "@lynx/lynx_image_service": "file:../../platform/harmony/lynx_services/lynx_image_service",
+    "@lynx/xelement_svg": "file:../../platform/harmony/lynx_xelement/svg",
   },
   "modelVersion": "5.0.0"
 }

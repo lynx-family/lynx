@@ -1,0 +1,14 @@
+{
+  "name": "@lynx/xelement_svg",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Lynx XElement SVG",
+  "main": "Index.ets",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx",
+  "dependencies": {
+    "@lynx/lynx_base": "@param:dependencies.lynx_version",
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+    "@lynx/servalsvg": "0.0.1-alpha.1",
+  }
+}
