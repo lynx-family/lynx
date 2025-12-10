@@ -368,7 +368,9 @@
   BOOL isIntersectWithScreen = [self checkIntersect:frameOfUIInWindow
                                           otherRect:borderOfExposureScreen
                                               ratio:exposureAreaRatio];
-  BOOL isRootIntersectWithScreen = [self checkIntersect:frameOfRootUIInWindow otherRect:borderOfExposureScreen ratio:0];
+  BOOL isRootIntersectWithScreen = [self checkIntersect:frameOfRootUIInWindow
+                                              otherRect:borderOfExposureScreen
+                                                  ratio:0];
   return isIntersectWithRoot && isIntersectWithScreen && isRootIntersectWithScreen;
 }
 
