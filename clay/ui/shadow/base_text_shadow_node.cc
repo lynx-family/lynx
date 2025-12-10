@@ -234,9 +234,32 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
     }
     default:
       if (attr_c) {
+        auto kw = GetKeywordID(attr_c);
+        if (kw == KeywordID::kText) {
+          CreateRawTextNodeIfNeed(attribute_utils::GetCString(value));
+        }
         ShadowNode::SetAttribute(attr_c, value);
       }
       break;
+  }
+}
+
+void BaseTextShadowNode::CreateRawTextNodeIfNeed(std::string text) {
+  if (IsTextShadowNode() || IsInlineTextShadowNode()) {
+    for (auto child : GetChildren()) {
+      if (child->IsRawTextShadowNode()) {
+        if (child->id() > 0) {
+          return;
+        } else {
+          static_cast<RawTextShadowNode*>(child)->SetText(text);
+          return;
+        }
+      }
+    }
+    auto raw_text = new RawTextShadowNode(owner_, "raw-text", -1);
+    raw_text->SetText(text);
+    MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagChildren);
+    AddChild(raw_text);
   }
 }
 

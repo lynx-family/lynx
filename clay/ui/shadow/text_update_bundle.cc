@@ -16,18 +16,18 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
   if (view && view->Is<TextView>() && paragraph_) {
     auto text_view = static_cast<TextView*>(view);
     for (auto info : info_) {
-      auto view = text_view->page_view()->FindViewByViewId(info.id);
+      auto info_view = text_view->page_view()->FindViewByViewId(info.id);
       auto parent_view =
           text_view->page_view()->FindViewByViewId(info.parent_id);
-      if (!view || !parent_view) {
+      if (!info_view || !parent_view) {
         break;
       }
       if (info.need_mount) {
         if (info.placeholder_index.value_or(-1) >= 0) {
-          if (view->Is<InlineImageView>()) {
+          if (info_view->Is<InlineImageView>()) {
             text_view->PushInlineImageIndex(info.id,
                                             info.placeholder_index.value());
-            static_cast<InlineImageView*>(view)->SetLocation(
+            static_cast<InlineImageView*>(info_view)->SetLocation(
                 info.location.value());
           } else {
             text_view->PushInlineViewIndex(info.id,
@@ -36,15 +36,15 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
         }
 
         if (info.view_style) {
-          view->SetWidth(info.view_style->width);
-          view->SetHeight(info.view_style->height);
-          view->SetPaddings(
+          info_view->SetWidth(info.view_style->width);
+          info_view->SetHeight(info.view_style->height);
+          info_view->SetPaddings(
               info.view_style->padding_left, info.view_style->padding_top,
               info.view_style->padding_right, info.view_style->padding_bottom);
         }
         if (info.range_) {
-          if (view->Is<InlineTextView>()) {
-            auto render_object = view->render_object();
+          if (info_view->Is<InlineTextView>()) {
+            auto render_object = info_view->render_object();
             static_cast<RenderInlineText*>(render_object)->ClearTextBox();
             for (auto range : info.range_.value()) {
               auto boxes = paragraph_->GetRectsForRange(
@@ -56,15 +56,15 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
                     ->AddTextBox(box.rect);
               }
             }
-            static_cast<InlineTextView*>(view)->SetTextRange(
+            static_cast<InlineTextView*>(info_view)->SetTextRange(
                 info.range_.value());
           }
         }
-        if (!view->Parent()) {
-          parent_view->AddChild(view);
+        if (!info_view->Parent() && info.id > 0) {
+          parent_view->AddChild(info_view);
         }
       } else {
-        parent_view->RemoveChild(view);
+        parent_view->RemoveChild(info_view);
       }
     }
     text_view->UpdateInlineImageInfo();

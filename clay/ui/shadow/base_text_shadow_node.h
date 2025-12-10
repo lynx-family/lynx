@@ -110,6 +110,7 @@ class BaseTextShadowNode : public ShadowNode {
   TextMeasureMode width_mode_ = TextMeasureMode::kDefinite;
   void SetAttribute(KeywordID attr, const char* attr_c,
                     const clay::Value&) override;
+  void CreateRawTextNodeIfNeed(std::string text);
 
  protected:
  private:
