@@ -1369,6 +1369,7 @@ bool EditableView::MatchAttrSettings(KeywordID attr) {
     case KeywordID::kConfirmType:
     case KeywordID::kColor:
     case KeywordID::kFontSize:
+    case KeywordID::kLineHeight:
     case KeywordID::kFontWeight:
     case KeywordID::kLetterSpacing:
     case KeywordID::kTextAlign:
