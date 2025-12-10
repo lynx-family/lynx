@@ -13,6 +13,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
@@ -36,6 +37,7 @@ public class AndroidView
   // whether to intercept gestures to current, parents and children's gesture
   private Boolean mInterceptGesture = null;
 
+  private static final int MAX_BITMAP_SIZE = 100 * 1024 * 1024; // 100 MB
   public void setBlurSampling(int sampling) {
     this.mBlurSampling = sampling;
   }
@@ -59,6 +61,15 @@ public class AndroidView
 
     if (w <= 0 || h <= 0) {
       mBlurBitmap = null;
+      return;
+    }
+
+    if (w * h * 4 >= MAX_BITMAP_SIZE) {
+      LLog.e("AndroidView",
+          "Skip blur bitmap creation: w=" + w + " h=" + h
+              + " exceeds limit maxPixels=" + MAX_BITMAP_SIZE);
+      mBlurBitmap = null;
+      // Avoid subsequent operations on null bitmap in this pass
       return;
     }
 
