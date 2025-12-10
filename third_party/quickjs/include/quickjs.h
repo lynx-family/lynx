@@ -27,8 +27,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
-#define SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
+#ifndef THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
+#define THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
 
 #include <math.h>
 #include <stdint.h>
@@ -1618,7 +1618,10 @@ LEPUSValue LEPUS_NewArrayWithArgs(LEPUSContext *, int32_t, LEPUSValue *);
 const char *LEPUS_GetStringUtf8(LEPUSContext *, const struct JSString *);
 void LEPUS_SetFuncFileName(LEPUSContext *, LEPUSValue, const char *);
 
-void InitLynxTraceEnv(void *(*)(const char *), void (*)(void *));
+void InitLynxTraceEnv(void (*)(const char *, const char *, int64_t,
+                               const char *, const char *, const char *,
+                               const char *),
+                      void (*)(const char *, const char *, int64_t));
 
 void SetObjectCtxCheckStatus(LEPUSContext *ctx, bool enable);
 bool LEPUS_PushObjectCheckTid(LEPUSContext *ctx);
@@ -1632,4 +1635,4 @@ void *LEPUS_GetGCObserver(LEPUSRuntime *rt);
 #undef lepus_unlikely
 #undef lepus_force_inline
 
-#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_H_
+#endif  // THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_H_
