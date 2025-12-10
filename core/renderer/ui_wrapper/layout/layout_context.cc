@@ -857,8 +857,13 @@ void LayoutContext::Layout(const std::shared_ptr<PipelineOptions>& options) {
        << " ns");
 }
 
+bool LayoutContext::ShouldSkipLayoutRecursively(LayoutNode* node) {
+  // Skip recursion for null nodes, or clean non-virtual nodes.
+  return node == nullptr || (!node->IsDirty() && !node->is_virtual());
+}
+
 void LayoutContext::DispatchLayoutBeforeRecursively(LayoutNode* node) {
-  if (node == nullptr || !node->IsDirty()) {
+  if (ShouldSkipLayoutRecursively(node)) {
     return;
   }
   if (node->slnode()->GetSLMeasureFunc()) {
@@ -929,7 +934,7 @@ void LayoutContext::UpdateLayoutInfo(LayoutNode* node) {
 
 void LayoutContext::LayoutRecursively(
     LayoutNode* node, const std::shared_ptr<PipelineOptions>& options) {
-  if (!node->IsDirty() && !node->is_virtual()) {
+  if (ShouldSkipLayoutRecursively(node)) {
     return;
   }
 
