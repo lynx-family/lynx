@@ -1539,6 +1539,15 @@ void VMContext::ClosureManager::CleanUpClosuresCreatedAfterExecuted() {
   itr_ = 0;
 }
 
+void VMContext::RegisterGlobalCFunction(const char* name, CFunction function) {
+  global_.Add(name, lepus::Value(function));
+}
+
+void VMContext::RegisterObjectCFunction(lepus::Value& obj, const char* name,
+                                        CFunction function) {
+  obj.SetProperty(name, lepus::Value(function));
+}
+
 void VMContext::SetGlobalData(const base::String& name, Value value) {
   global_.Add(name, std::move(value));
 }
@@ -1561,12 +1570,6 @@ VMContext::ClosureManager::~ClosureManager() {
     itr->SetContext(Value());
   }
   itr_ = 0;
-}
-
-void VMContext::RegisterMethodToLynx() {
-#ifndef LEPUS_PC
-  tasm::Utils::RegisterMethodToLynx(this, lynx_);
-#endif
 }
 
 void VMContext::RegisterLepusVerion() {
@@ -1601,14 +1604,6 @@ bool VMContext::MoveContextBundle(VMContextBundle& bundle) {
   }
 
   return true;
-}
-
-void VMContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
-#ifndef LEPUS_PC
-  tasm::Utils::RegisterBuiltin(this);
-  tasm::Renderer::RegisterBuiltin(this, option);
-#endif
-  return;
 }
 
 void VMContext::ApplyConfig(

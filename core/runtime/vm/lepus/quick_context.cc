@@ -642,12 +642,6 @@ void QuickContext::Initialize() {
   RegisterLepusVerion();
 }
 
-void QuickContext::RegisterMethodToLynx() {
-#ifndef LEPUS_PC
-  tasm::Utils::RegisterNGMethodToLynx(this, lynx_, GetSdkVersion());
-#endif
-}
-
 void QuickContext::RegisterLepusVerion() {
   LEPUSContext* ctx = context();
   HandleScope func_scope(ctx);
@@ -985,6 +979,21 @@ bool QuickContext::GetTopLevelVariableByName(const base::String& name,
   }
   *ret = variable;
   return true;
+}
+
+void QuickContext::RegisterGlobalCFunction(const char* name,
+                                           CFunction function) {
+  auto c_func = NewBindingFunction(function);
+  HandleScope block_scope{lepus_context_, &c_func, HANDLE_TYPE_LEPUS_VALUE};
+  RegisterGlobalProperty(name, c_func);
+}
+
+void QuickContext::RegisterObjectCFunction(lepus::Value& obj, const char* name,
+                                           CFunction function) {
+  auto c_func = NewBindingFunction(function);
+  HandleScope block_scope{lepus_context_, &c_func, HANDLE_TYPE_LEPUS_VALUE};
+  LEPUSValueHelper::SetProperty(lepus_context_, WRAP_AS_JS_VALUE(obj.value()),
+                                name, c_func);
 }
 
 void QuickContext::SetGlobalData(const base::String& name, Value value) {
@@ -1333,14 +1342,6 @@ void QuickContext::set_debuginfo_outside(bool val) {
 }
 
 bool QuickContext::debuginfo_outside() const { return debuginfo_outside_; }
-
-void QuickContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
-#ifndef LEPUS_PC
-  tasm::Utils::RegisterNGBuiltin(this);
-  tasm::Renderer::RegisterNGBuiltin(this, option);
-#endif
-  return;
-}
 
 void QuickContext::ApplyConfig(
     const std::shared_ptr<tasm::PageConfig>& page_config,

@@ -1402,7 +1402,7 @@ void TouchEventHandler::EnsureGestureManager(lepus::Context *context) {
     gesture_manager_ = lepus::LEPUSValueHelper::CreateObject(context);
 
     // Register method to the gesture manager using utility function
-    tasm::Utils::RegisterNGMethodToGestureManager(context, gesture_manager_);
+    tasm::Utils::RegisterMethodToGestureManager(context, gesture_manager_);
   }
 }
 

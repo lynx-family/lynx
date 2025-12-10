@@ -28,13 +28,7 @@ lepus::Value ResponseHandlerInLepus::GetBindingObject(
   lepus::Value proxy_binding = lepus::LEPUSValueHelper::CreateObject(context);
   proxy_binding.SetProperty(BASE_STATIC_STRING(runtime::kInnerRuntimeProxy),
                             lepus::Value(handler));
-  if (context->IsVMContext()) {
-#if !ENABLE_JUST_LEPUSNG
-    Utils::RegisterMethodToResponseHandler(context, proxy_binding);
-#endif
-  } else {
-    Utils::RegisterNGMethodToResponseHandler(context, proxy_binding);
-  }
+  Utils::RegisterMethodToResponseHandler(context, proxy_binding);
   return proxy_binding;
 }
 

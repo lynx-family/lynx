@@ -92,6 +92,10 @@ class QuickContext : private LEPUSRuntimeData,
   bool GetTopLevelVariableByName(const base::String& name,
                                  lepus::Value* ret) override;
 
+  void RegisterGlobalCFunction(const char* name, CFunction function) override;
+  void RegisterObjectCFunction(lepus::Value& obj, const char* name,
+                               CFunction function) override;
+
   void SetGlobalData(const base::String& name, Value value) override;
   void ResetGlobalData(const base::String& name, Value value) override;
   virtual lepus::Value GetGlobalData(const base::String& name) override;
@@ -144,8 +148,6 @@ class QuickContext : private LEPUSRuntimeData,
   inline void set_napi_env(void* env) { napi_env_ = env; }
   inline void* napi_env() { return napi_env_; }
 
-  virtual void RegisterMethodToLynx() override;
-
   virtual void RegisterLepusVerion() override;
   void SetDebuggerSourceAndEndLine(const std::string& source);
 
@@ -165,7 +167,6 @@ class QuickContext : private LEPUSRuntimeData,
       const std::unordered_map<std::string, std::string>& info) override;
   void BeforeReportError(base::LynxError& error) override;
 
-  void RegisterCtxBuiltin(const tasm::ArchOption&) override;
   void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                    const tasm::CompileOptions&) override;
 

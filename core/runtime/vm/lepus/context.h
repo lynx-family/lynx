@@ -194,7 +194,6 @@ class Context {
 
   void EnsureLynx();
   void SetPropertyToLynx(const base::String& key, const lepus::Value& value);
-  virtual void RegisterMethodToLynx() {}
 
   void ReportError(
       const std::string& exception_info,
@@ -223,7 +222,14 @@ class Context {
   virtual bool DeSerialize(const ContextBundle&, bool, Value* ret,
                            const char* file_name = nullptr) = 0;
 
-  virtual void RegisterCtxBuiltin(const tasm::ArchOption&) = 0;
+  virtual void RegisterGlobalCFunction(const char* name,
+                                       CFunction function) = 0;
+  virtual void RegisterObjectCFunction(lepus::Value& obj, const char* name,
+                                       CFunction func) = 0;
+
+  void RegisterMethodToLynx();
+  void RegisterCtxBuiltin(const tasm::ArchOption&);
+
   virtual void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                            const tasm::CompileOptions&) = 0;
 

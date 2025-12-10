@@ -17,6 +17,7 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/common/utils.h"
 #include "core/runtime/vm/lepus/js_object.h"
@@ -150,6 +151,23 @@ void Context::RegisterLynx(bool enable_signal_api) {
   SetPropertyToLynx(BASE_STATIC_STRING(tasm::config::kEnableSignalAPI),
                     lepus::Value(enable_signal_api));
   SetPropertyToLynx(kEnableOnLayoutReadyHook, lepus::Value(true));
+}
+
+void Context::RegisterMethodToLynx() {
+#ifndef LEPUS_PC
+  tasm::Renderer::RegisterMethodToLynx(this, lynx_, GetSdkVersion());
+#endif  // LEPUS_PC
+}
+
+void Context::RegisterCtxBuiltin(const tasm::ArchOption& option) {
+#ifndef LEPUS_PC
+  if (option == tasm::ArchOption::FIBER_ARCH) {
+    tasm::Renderer::RegisterCFunctionForFiber(this);
+  } else {
+    tasm::Renderer::RegisterCFunctionForRadon(this);
+  }
+  return;
+#endif  // LEPUS_PC
 }
 
 void Context::ReportError(const std::string& exception_info, int32_t err_code,

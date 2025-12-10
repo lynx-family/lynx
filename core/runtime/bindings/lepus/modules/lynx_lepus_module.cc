@@ -71,13 +71,7 @@ Value LynxLepusModule::ToLepusValue(Context* context) {
   lepus::Value lepus_value = lepus::LEPUSValueHelper::CreateObject(context);
   lepus_value.SetProperty(BASE_STATIC_STRING(runtime::kInnerRuntimeProxy),
                           lepus::Value(fml::Ref(this)));
-  if (context->IsVMContext()) {
-#if !ENABLE_JUST_LEPUSNG
-    tasm::Utils::RegisterMethodToLepusModule(context, lepus_value);
-#endif
-  } else {
-    tasm::Utils::RegisterNGMethodToLepusModule(context, lepus_value);
-  }
+  tasm::Utils::RegisterMethodToLepusModule(context, lepus_value);
   return lepus_value;
 }
 

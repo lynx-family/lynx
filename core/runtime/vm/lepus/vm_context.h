@@ -112,6 +112,11 @@ class VMContext : public Context {
 
   inline Global* global() { return &global_; }
   inline Global* builtin() { return &builtin_; }
+
+  void RegisterGlobalCFunction(const char* name, CFunction function) override;
+  void RegisterObjectCFunction(lepus::Value& obj, const char* name,
+                               CFunction function) override;
+
   void SetGlobalData(const base::String& name, Value value) override;
   void ResetGlobalData(const base::String& name, Value value) override;
   lepus::Value GetGlobalData(const base::String& name) override;
@@ -128,14 +133,12 @@ class VMContext : public Context {
     return static_cast<VMContext*>(context);
   }
 
-  virtual void RegisterMethodToLynx() override;
-
   virtual void RegisterLepusVerion() override;
 
   bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,
                    const char* file_name = nullptr) override;
   bool MoveContextBundle(VMContextBundle& bundle);
-  void RegisterCtxBuiltin(const tasm::ArchOption&) override;
+
   void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                    const tasm::CompileOptions&) override;
 
