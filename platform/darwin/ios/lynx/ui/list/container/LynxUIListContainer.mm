@@ -207,12 +207,28 @@ LYNX_REGISTER_UI("list-container")
   return scrollView;
 }
 
+- (NSMutableArray *)restoreNativeStateBlockArray {
+  if (!_restoreNativeStateBlockArray) {
+    _restoreNativeStateBlockArray = [NSMutableArray array];
+  }
+  return _restoreNativeStateBlockArray;
+}
+
 - (BOOL)isScrollContainer {
   return YES;
 }
 
 - (void)onNodeReady {
   [super onNodeReady];
+
+  if (_restoreNativeStateBlockArray) {
+    NSArray *blockArray = _restoreNativeStateBlockArray;
+    _restoreNativeStateBlockArray = nil;
+    for (RestoreNativeStateBlock restoreNativeState in blockArray) {
+      restoreNativeState();
+    }
+  }
+
   auto listNodeInfoFetcher = self.context.fetcher;
   auto listEngineProxyPtr = [listNodeInfoFetcher getListEngineProxyPtr];
   if (_listContainerProxy == nullptr && listEngineProxyPtr != 0) {

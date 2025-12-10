@@ -1647,10 +1647,28 @@ LYNX_UI_METHOD(autoScroll) {
     if (nativeStorage && nativeStorage[cacheKey]) {
       // no first render and last time this UI shows it has a changed offset
       CGPoint offset = [nativeStorage[cacheKey] CGPointValue];
-      [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
-        LynxUIScroller *scroll = (LynxUIScroller *)ui;
-        [scroll initialScrollOffsetInner:scroll.enableScrollY ? offset.y : offset.x];
-      }];
+      NSMutableArray *restoreNativeStateBlockArray =
+          [self getRestoreNativeStateBlockArrayFromList:list];
+      if (restoreNativeStateBlockArray) {
+        // Before this commit, we insert the function for restoring the state into the
+        // nodeReadyBlockArray, waiting for these functions to be executed in the onNodeReady
+        // callback. However, not every child node will receive the onNodeReady callback. Therefore,
+        // we insert the function into the list's restoreNativeStateBlockArray, which will be
+        // uniformly called by the list after the rendering of the child nodes is completed.
+        __weak typeof(self) weakSelf = self;
+        [restoreNativeStateBlockArray addObject:^() {
+          if (weakSelf) {
+            LynxUIScroller *scroll = (LynxUIScroller *)weakSelf;
+            [scroll initialScrollOffsetInner:scroll.enableScrollY ? offset.y : offset.x];
+          }
+        }];
+      } else {
+        // For platform list, we still use nodeReadyBlockArray to restore native state.
+        [self.nodeReadyBlockArray addObject:^(LynxUI *ui) {
+          LynxUIScroller *scroll = (LynxUIScroller *)ui;
+          [scroll initialScrollOffsetInner:scroll.enableScrollY ? offset.y : offset.x];
+        }];
+      }
     } else {
       // first render
       if ([_propMap getValueForKey:LynxScrollViewInitialScrollIndex] &&
