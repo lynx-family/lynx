@@ -252,6 +252,7 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 - (void)onListCellDisappear:(nullable NSString*)itemKey exist:(BOOL)isExist withList:(LynxUI*)list;
 - (void)onListCellPrepareForReuse:(nullable NSString*)itemKey withList:(LynxUI*)list;
 - (NSMutableDictionary*)getNativeStorageFromList:(LynxUI*)list;
+- (NSMutableArray*)getRestoreNativeStateBlockArrayFromList:(LynxUI*)list;
 - (void)removeKeyFromNativeStorage:(LynxUI*)list key:(NSString*)key;
 - (void)storeKeyToNativeStorage:(LynxUI*)list key:(NSString*)key value:(id)value;
 - (BOOL)initialPropsFlushed:(NSString*)initialPropKey cacheKey:(NSString*)cacheKey;

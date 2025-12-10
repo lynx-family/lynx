@@ -4178,6 +4178,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI::onListCellDisappear:exist:withList:(nullable NSString *itemKey,[exist] BOOL isExist,[withList] LynxUI *list);
   public void LynxUI::onListCellPrepareForReuse:withList:(nullable NSString *itemKey,[withList] LynxUI *list);
   public NSMutableDictionary * LynxUI::getNativeStorageFromList:(LynxUI *list);
+  public NSMutableArray * LynxUI::getRestoreNativeStateBlockArrayFromList:(LynxUI *list);
   public void LynxUI::removeKeyFromNativeStorage:key:(LynxUI *list,[key] NSString *key);
   public void LynxUI::storeKeyToNativeStorage:key:value:(LynxUI *list,[key] NSString *key,[value] id value);
   public BOOL LynxUI::initialPropsFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
@@ -4571,6 +4572,7 @@ public class LynxUIListContainer : LynxUIScroller, <LynxUIComponentLayoutObserve
   public NSMutableDictionary<NSString *, NSMutableSet<NSString *> *>* LynxUIListContainer::initialFlushPropCache initialFlushPropCache;
   public CGFloat LynxUIListContainer::pagingAlignFactor pagingAlignFactor;
   public CGFloat LynxUIListContainer::pagingAlignOffset pagingAlignOffset;
+  public NSMutableArray<RestoreNativeStateBlock>* LynxUIListContainer::restoreNativeStateBlockArray restoreNativeStateBlockArray;
   public id<LynxUIListContainerDelegate> LynxUIListContainer::delegate delegate;
   public void LynxUIListContainer::updateScrollInfoWithEstimatedOffset:smooth:scrolling:(CGFloat estimatedOffset,[smooth] BOOL smooth,[scrolling] BOOL scrolling);
   public void LynxUIListContainer::insertListComponent:(LynxUIComponent *_Nonnull component);
@@ -6670,6 +6672,8 @@ public enum LynxOverflow {
   public BOOL LynxSameMeasureMode(LynxMeasureMode left, LynxMeasureMode right);
 
   public NS_ASSUME_NONNULL_BEGIN BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager);
+
+  typedef void(^ RestoreNativeStateBlock) (void)
 
 public enum LynxLayoutModelType {
   LynxLayoutModelInvalid

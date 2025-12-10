@@ -7,6 +7,8 @@
 
 @class LynxUIComponent;
 
+typedef void (^RestoreNativeStateBlock)(void);
+
 @interface LynxListContainerComponentWrapper : UIView
 @property(nonatomic, weak, nullable) LynxUIComponent *holdingUI;
 @end
@@ -33,6 +35,8 @@
     NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *initialFlushPropCache;
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
 @property(nonatomic, assign) CGFloat pagingAlignOffset;
+@property(nonatomic, strong, nullable)
+    NSMutableArray<RestoreNativeStateBlock> *restoreNativeStateBlockArray;
 
 @property(nonatomic, weak, nullable) id<LynxUIListContainerDelegate> delegate;
 
