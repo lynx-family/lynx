@@ -2583,7 +2583,11 @@ void FiberElement::SetNativeProps(
           EXEC_EXPR_FOR_INSPECTOR(element_manager()->OnSetNativeProps(
               this, key.ToString(), value, true));
         } else {
-          SetAttribute(key_str, value);
+          if (IsRadonArch()) {
+            SetAttribute(key_str, value, false);
+          } else {
+            SetAttribute(key_str, value);
+          }
           EXEC_EXPR_FOR_INSPECTOR(element_manager()->OnSetNativeProps(
               this, key.ToString(), value, false));
         }
