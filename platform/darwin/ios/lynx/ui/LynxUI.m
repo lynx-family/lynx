@@ -3870,6 +3870,13 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   [list.listNativeStateCache setObject:value forKey:key];
 }
 
+- (NSMutableArray*)getRestoreNativeStateBlockArrayFromList:(LynxUI*)list {
+  if (![list isKindOfClass:LynxUIListContainer.class]) {
+    return nil;
+  }
+  return ((LynxUIListContainer*)list).restoreNativeStateBlockArray;
+}
+
 - (BOOL)initialPropsFlushed:(NSString*)initialPropKey cacheKey:(NSString*)cacheKey {
   return YES;
 }
