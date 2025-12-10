@@ -28,11 +28,7 @@
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
-struct LEPUSRuntime;
-struct LEPUSContext;
-
 namespace lynx {
-
 namespace tasm {
 class AnimationFrameManager;
 class LepusCallbackManager;
@@ -44,7 +40,6 @@ class ContextBundle;
 enum ContextType {
   VMContextType,       // Run low level version lepus with VmContext
   LepusNGContextType,  // Run lepusNG with qucikjs code
-  LepusContextType     // Run low level version lepus with LepusNG
 };
 
 #define LEPUS_DEFAULT_CONTEXT_NAME "__Card__"
@@ -196,17 +191,6 @@ class Context {
   // check context type
   bool IsVMContext() const { return type_ == VMContextType; }
   bool IsLepusNGContext() const { return type_ == LepusNGContextType; }
-  bool IsLepusContext() const { return type_ == LepusContextType; }
-  virtual LEPUSContext* context() const { return nullptr; }
-  virtual LEPUSValue GetTopLevelFunction() const { return LEPUS_UNDEFINED; }
-
-  static CellManager& GetContextCells();
-  static ContextCell* RegisterContextCell(lepus::QuickContext* qctx);
-
-  static inline ContextCell* GetContextCellFromCtx(LEPUSContext* ctx) {
-    return ctx ? reinterpret_cast<ContextCell*>(LEPUS_GetContextOpaque(ctx))
-               : nullptr;
-  }
 
   void EnsureLynx();
   void SetPropertyToLynx(const base::String& key, const lepus::Value& value);
@@ -254,7 +238,7 @@ class Context {
   // deleted.
   virtual lepus::Value GetCurrentThis(lepus::Value* argv, int32_t offset) {
     return lepus::Value();
-  }
+  };
 
   virtual void SetDebugInfoURL(const std::string& url,
                                const std::string& file_name);

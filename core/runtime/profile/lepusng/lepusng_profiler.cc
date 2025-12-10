@@ -26,8 +26,11 @@ void QJSDebuggerFree(LEPUSContext *ctx);
 namespace lynx {
 namespace profile {
 
-LepusNGProfiler::LepusNGProfiler(std::shared_ptr<lepus::Context> context)
-    : weak_context_(context) {}
+LepusNGProfiler::LepusNGProfiler(std::shared_ptr<lepus::Context> context) {
+  if (context->IsLepusNGContext()) {
+    weak_context_ = std::static_pointer_cast<lepus::QuickContext>(context);
+  }
+}
 
 LepusNGProfiler::~LepusNGProfiler() {
   task_runner_ = nullptr;

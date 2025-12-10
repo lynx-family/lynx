@@ -1569,11 +1569,6 @@ RENDERER_FUNCTION_CC(SetStaticStyleTo2) {
 RENDERER_FUNCTION_CC(SetScriptEventTo) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, SET_SCRIPT_EVENT_TO);
 
-  if (LEPUS_CONTEXT()->IsLepusContext()) {
-    LOGI("SetScriptEventTo failed since context is lepus context.");
-    RETURN_UNDEFINED();
-  }
-
   DCHECK(ARGC() >= 4);
   CONVERT_ARG_AND_CHECK(arg0, 0, CPointer, SetScriptEventTo);
   CONVERT_ARG_AND_CHECK(arg1, 1, String, SetScriptEventTo);
@@ -2289,17 +2284,10 @@ RENDERER_FUNCTION_CC(SetComponent) {
 
 RENDERER_FUNCTION_CC(RegisterElementWorklet) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, REGISTER_ELEMENT_WORKLET);
-
-  if (LEPUS_CONTEXT()->IsLepusContext()) {
-    LOGI("RegisterElementWorklet failed since context is lepus context.");
-    RETURN_UNDEFINED();
-  }
-
   // parameter size = 3
   // [0]  worklet Instance -> JSValue
   // [1]  worklet Module Name -> String
   // [2]  component Reference -> CPointer
-
   DCHECK(ARGC() >= 3);
   CONVERT_ARG_AND_CHECK(arg0, 0, Object, RegisterElementWorklet);
   CONVERT_ARG_AND_CHECK(arg1, 1, String, RegisterElementWorklet);
@@ -4036,13 +4024,6 @@ RENDERER_FUNCTION_CC(CreateGestureDetector) {
   // Note: The code assumes that these arguments are provided correctly and in
   // the expected order.
 
-  if (LEPUS_CONTEXT()->IsLepusContext()) {
-    // Check if the context is a lepus context, if so, return undefined and log
-    // an info message.
-    LOGI("CreateGestureDetector failed since context is lepus context.");
-    RETURN_UNDEFINED();
-  }
-
   // Check if the required number of arguments (5) is present for the function
   // call.
   DCHECK(ARGC() >= 5);
@@ -4093,13 +4074,6 @@ RENDERER_FUNCTION_CC(FiberSetGestureDetector) {
   // Note: The code assumes that these arguments are provided correctly and in
   // the expected order.
 
-  if (LEPUS_CONTEXT()->IsLepusContext()) {
-    // Check if the context is a lepus context, if so, return undefined and log
-    // an info message.
-    LOGI("FiberSetGestureDetector failed since context is lepus context.");
-    RETURN_UNDEFINED();
-  }
-
   // Check if the required number of arguments (5) is present for the function
   // call.
   DCHECK(ARGC() >= 5);
@@ -4145,14 +4119,6 @@ RENDERER_FUNCTION_CC(FiberRemoveGestureDetector) {
   // [0] RefCounted -> element
   // [1] (long)id -> gesture id
   //...
-
-  if (LEPUS_CONTEXT()->IsLepusContext()) {
-    // Check if the context is a lepus context, if so, return undefined and log
-    // an info message.
-    LOGI("FiberRemoveGestureDetector failed since context is lepus context.");
-    RETURN_UNDEFINED();
-  }
-
   CHECK_ARGC_GE(FiberRemoveGestureDetector, 2);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberRemoveGestureDetector);
@@ -5944,12 +5910,13 @@ RENDERER_FUNCTION_CC(TriggerLepusBridge) {
   auto callback_manager = LEPUS_CONTEXT()->GetCallbackManager();
   std::unique_ptr<lepus::Value> callback_closure;
   if (ARGC() == 1) {
+    // TODO(songshourui.null): uinify Lepus & LepusNG callbacks.
     if (LEPUS_CONTEXT()->IsLepusNGContext()) {
       constexpr const static auto default_callback =
           [](LEPUSContext* context, LEPUSValue value, int argc,
              LEPUSValue* argv) -> LEPUSValue { return LEPUS_UNDEFINED; };
       constexpr const static char* kCallback = "callback";
-      auto context = LEPUS_CONTEXT()->context();
+      auto context = lepus::QuickContext::Cast(LEPUS_CONTEXT())->context();
       callback_closure = lepus::LepusValueFactory(context).CreatePtr(
           LEPUS_NewCFunction(context, default_callback, kCallback, 0));
     } else {

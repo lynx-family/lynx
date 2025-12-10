@@ -2153,7 +2153,7 @@ TEST_F(LepusValueMethods, Array_EraseRC) {
   LEPUSValue args[] = {LEPUS_NewString(ctx, "1"), LEPUS_NewString(ctx, "2"),
                        LEPUS_NewString(ctx, "3")};
   size_t count = sizeof(args) / sizeof(args[0]);
-  lynx_api_env env = lepus::Context::GetContextCellFromCtx(ctx)->env_;
+  lynx_api_env env = lepus::QuickContext::GetContextCellFromCtx(ctx)->env_;
   for (size_t i = 0; i < count; ++i) {
     LEPUSValue val = args[i];
     lepus::Value v(env, LEPUS_VALUE_GET_INT64(val),
@@ -2185,7 +2185,7 @@ TEST_F(LepusValueMethods, Array_EraseRC) {
   for (size_t i = 9; i < count + 9; ++i) {
     LEPUSValue val = args[i - 9];
     arr.Array()->Insert(
-        i, lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+        i, lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                         LEPUS_VALUE_GET_INT64(val),
                         lepus::LEPUSValueHelper::CalculateTag(val)));
   }
@@ -2256,7 +2256,7 @@ TEST_F(LepusValueMethods, Array_EraseGC) {
   for (size_t i = 0; i < count; ++i) {
     LEPUSValue val = args[i];
     arr.Array()->Insert(
-        i, lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+        i, lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                         LEPUS_VALUE_GET_INT64(val),
                         lepus::LEPUSValueHelper::CalculateTag(val)));
   }
@@ -2273,7 +2273,7 @@ TEST_F(LepusValueMethods, Array_EraseGC) {
   for (size_t i = 5; i < count + 5; ++i) {
     LEPUSValue val = args[i - 5];
     arr.Array()->Insert(
-        i, lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+        i, lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                         LEPUS_VALUE_GET_INT64(val),
                         lepus::LEPUSValueHelper::CalculateTag(val)));
   }
@@ -2290,7 +2290,7 @@ TEST_F(LepusValueMethods, Array_EraseGC) {
   for (size_t i = 9; i < count + 9; ++i) {
     LEPUSValue val = args[i - 9];
     arr.Array()->Insert(
-        i, lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+        i, lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                         LEPUS_VALUE_GET_INT64(val),
                         lepus::LEPUSValueHelper::CalculateTag(val)));
   }
@@ -2919,7 +2919,7 @@ TEST_F(LepusValueMethods, TestRefCountedValueConvertToJSValue) {
             lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx, val));
       } else {
         new (largv + i)
-            lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+            lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                          LEPUS_VALUE_GET_INT64(val),
                          lepus::LEPUSValueHelper::CalculateTag(val));
       }

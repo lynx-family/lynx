@@ -509,7 +509,7 @@ LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode) {
 }
 
 LEPUSRuntimeData::~LEPUSRuntimeData() {
-  ContextCell* cell = Context::GetContextCellFromCtx(lepus_context_);
+  ContextCell* cell = QuickContext::GetContextCellFromCtx(lepus_context_);
   LEPUS_FreeContext(lepus_context_);
   cell->ctx_ = nullptr;
   cell->qctx_ = nullptr;
@@ -536,7 +536,7 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode,
   LEPUSLepusRefCallbacks callbacks = GetLepusRefCall();
   RegisterLepusRefCallbacks(runtime_, &callbacks);
   LEPUS_SetMaxStackSize(context(), static_cast<size_t>(ULLONG_MAX));
-  LEPUS_SetContextOpaque(lepus_context_, Context::RegisterContextCell(this));
+  LEPUS_SetContextOpaque(lepus_context_, RegisterContextCell(this));
   Initialize();
   RegisterLepusType(runtime_, Value_Array, Value_Table);
   // data associated with debugger need to be initialized
@@ -674,10 +674,6 @@ void QuickContext::SetTopLevelFunction(LEPUSValue val) {
   if (debug_delegate != nullptr) {
     debug_delegate->OnTopLevelFunctionReady();
   }
-}
-
-LEPUSValue QuickContext::GetTopLevelFunction() const {
-  return top_level_function_;
 }
 
 void QuickContext::SetEnableStrictCheck(bool val) {
@@ -1111,10 +1107,10 @@ LEPUSValue QuickContext::NewBindingFunction(RenderBindingFunc func) {
                 lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx,
                                                                       val));
           } else {
-            new (largv + i)
-                lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
-                             LEPUS_VALUE_GET_INT64(val),
-                             lepus::LEPUSValueHelper::CalculateTag(val));
+            new (largv + i) lepus::Value(
+                lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
+                LEPUS_VALUE_GET_INT64(val),
+                lepus::LEPUSValueHelper::CalculateTag(val));
           }
         }
         qctx->set_current_this(this_obj);
@@ -1422,6 +1418,15 @@ LEPUSLepusRefCallbacks QuickContext::GetLepusRefCall() {
           &LepusRefSetPropertyCallBack, &LepusRefFreeStringCache,
           &LepusRefDeepEqualCallBack,   &LepusrefToString,
           &RefCountedObjVisitor};
+}
+
+CellManager& QuickContext::GetContextCells() {
+  thread_local CellManager cells_;
+  return cells_;
+}
+
+ContextCell* QuickContext::RegisterContextCell(lepus::QuickContext* qctx) {
+  return GetContextCells().AddCell(qctx);
 }
 
 #if ENABLE_TRACE_PERFETTO

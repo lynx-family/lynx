@@ -33,6 +33,9 @@ extern "C" {
 #include "quickjs/include/trace-gc.h"
 #endif
 
+struct LEPUSRuntime;
+struct LEPUSContext;
+
 namespace lynx {
 namespace lepus {
 
@@ -83,7 +86,9 @@ class QuickContext : private LEPUSRuntimeData,
 
   virtual std::unique_ptr<lepus::Value> GetTopLevelVariable(
       bool ignore_callable = false) override;
-  LEPUSContext* context() const override { return lepus_context_; }
+
+  LEPUSContext* context() const { return lepus_context_; }
+
   bool GetTopLevelVariableByName(const base::String& name,
                                  lepus::Value* ret) override;
 
@@ -143,7 +148,6 @@ class QuickContext : private LEPUSRuntimeData,
 
   virtual void RegisterLepusVerion() override;
   void SetDebuggerSourceAndEndLine(const std::string& source);
-  LYNX_EXPORT_FOR_DEVTOOL LEPUSValue GetTopLevelFunction() const override;
 
   LEPUSValue ReportSetConstValueError(const LEPUSValue&, LEPUSValue);
 
@@ -221,9 +225,16 @@ class QuickContext : private LEPUSRuntimeData,
 
   virtual bool IsTracingGCEnabled() override;
 
-  static LEPUSLepusRefCallbacks GetLepusRefCall();
+  static inline ContextCell* GetContextCellFromCtx(LEPUSContext* ctx) {
+    return ctx ? reinterpret_cast<ContextCell*>(LEPUS_GetContextOpaque(ctx))
+               : nullptr;
+  }
 
  private:
+  static LEPUSLepusRefCallbacks GetLepusRefCall();
+  static CellManager& GetContextCells();
+  static ContextCell* RegisterContextCell(lepus::QuickContext* qctx);
+
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count,
                          bool pause_suppression_mode) override;

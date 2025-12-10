@@ -58,15 +58,6 @@ inline void RegisterNGCFunction(Context* ctx,
 }
 
 inline void RegisterObjectNGCFunction(Context* ctx, lepus::Value& obj,
-                                      const char* name, LEPUSCFunction* func) {
-  LEPUSValue cf = LEPUS_NewCFunction(ctx->context(), func, name, 0);
-  Value value = MK_JS_LEPUS_VALUE(ctx->context(), cf);  // for tracing gc
-  LEPUSValueHelper::SetProperty(ctx->context(), WRAP_AS_JS_VALUE(obj.value()),
-                                name, cf);
-  return;
-}
-
-inline void RegisterObjectNGCFunction(Context* ctx, lepus::Value& obj,
                                       const RenderBindingFunction* funcs,
                                       size_t size) {
   auto* qctx = lepus::QuickContext::Cast(ctx);

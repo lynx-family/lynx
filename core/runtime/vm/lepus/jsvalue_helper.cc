@@ -442,7 +442,7 @@ lynx_value LEPUSValueHelper::ConstructLepusRefToLynxValue(
 
 Value LEPUSValueHelper::CreateObject(Context* ctx) {
   if (ctx && ctx->IsLepusNGContext()) {
-    LEPUSContext* lctx = ctx->context();
+    LEPUSContext* lctx = QuickContext::Cast(ctx)->context();
     return MK_JS_LEPUS_VALUE(lctx, LEPUS_NewObject(lctx));
   }
   return Value(lepus::Dictionary::Create());
@@ -450,7 +450,7 @@ Value LEPUSValueHelper::CreateObject(Context* ctx) {
 
 Value LEPUSValueHelper::CreateArray(Context* ctx) {
   if (ctx && ctx->IsLepusNGContext()) {
-    LEPUSContext* lctx = ctx->context();
+    auto* lctx = QuickContext::Cast(ctx)->context();
     return MK_JS_LEPUS_VALUE(lctx, LEPUS_NewArray(lctx));
   }
   return Value(lepus::CArray::Create());
@@ -461,7 +461,7 @@ lepus::Value LepusValueFactory::Create(const LEPUSValue& val) {
     return lepus::Value(
         LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx_, val));
   }
-  return lepus::Value(Context::GetContextCellFromCtx(ctx_)->env_,
+  return lepus::Value(QuickContext::GetContextCellFromCtx(ctx_)->env_,
                       LEPUS_VALUE_GET_INT64(val),
                       LEPUSValueHelper::CalculateTag(val));
 }
@@ -475,7 +475,7 @@ lepus::Value LepusValueFactory::Create(LEPUSValue&& val) {
     return lepus::Value(std::move(value));
   }
   int32_t tag = LEPUSValueHelper::CalculateTag(val);
-  return lepus::Value(Context::GetContextCellFromCtx(ctx_)->env_,
+  return lepus::Value(QuickContext::GetContextCellFromCtx(ctx_)->env_,
                       MAKE_LYNX_VALUE(val, tag));
 }
 
@@ -491,7 +491,7 @@ lepus::Value LepusValueFactory::Create(const lepus::Value& value,
     return lepus::Value(std::move(value));
   }
   int32_t tag = LEPUSValueHelper::CalculateTag(val);
-  return lepus::Value(Context::GetContextCellFromCtx(ctx_)->env_,
+  return lepus::Value(QuickContext::GetContextCellFromCtx(ctx_)->env_,
                       MAKE_LYNX_VALUE(val, tag));
 }
 
@@ -503,7 +503,7 @@ std::unique_ptr<lepus::Value> LepusValueFactory::CreatePtr(
   }
   int32_t tag = LEPUSValueHelper::CalculateTag(val);
   return std::make_unique<lepus::Value>(
-      Context::GetContextCellFromCtx(ctx_)->env_,
+      QuickContext::GetContextCellFromCtx(ctx_)->env_,
       lynx_value(MAKE_LYNX_VALUE(val, tag)));
 }
 
@@ -517,7 +517,7 @@ std::unique_ptr<lepus::Value> LepusValueFactory::CreatePtr(LEPUSValue&& val) {
   }
   int32_t tag = LEPUSValueHelper::CalculateTag(val);
   return std::make_unique<lepus::Value>(
-      Context::GetContextCellFromCtx(ctx_)->env_,
+      QuickContext::GetContextCellFromCtx(ctx_)->env_,
       lynx_value(MAKE_LYNX_VALUE(val, tag)));
 }
 

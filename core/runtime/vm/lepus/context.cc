@@ -220,15 +220,6 @@ ContextCell* CellManager::AddCell(lepus::QuickContext* qctx) {
   return ret;
 }
 
-CellManager& Context::GetContextCells() {
-  thread_local CellManager cells_;
-  return cells_;
-}
-
-ContextCell* Context::RegisterContextCell(lepus::QuickContext* qctx) {
-  return GetContextCells().AddCell(qctx);
-}
-
 bool Context::UpdateTopLevelVariable(const std::string& name,
                                      const Value& val) {
   auto path = ParseValuePath(name);

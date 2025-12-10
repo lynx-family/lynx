@@ -9,6 +9,7 @@
 
 #include "core/runtime/profile/runtime_profiler.h"
 #include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/vm/lepus/quick_context.h"
 
 namespace lynx {
 namespace profile {
@@ -25,7 +26,7 @@ class LepusNGProfiler : public RuntimeProfiler {
   virtual trace::RuntimeProfilerType GetType() override;
 
  private:
-  std::weak_ptr<lepus::Context> weak_context_;
+  std::weak_ptr<lepus::QuickContext> weak_context_;
 };
 }  // namespace profile
 }  // namespace lynx

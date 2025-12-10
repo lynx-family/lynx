@@ -72,7 +72,7 @@ __attribute__((unused)) static void PrepareArgs(LEPUSContext* ctx,
           lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx, val));
     } else {
       new (largv + i)
-          lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+          lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                        LEPUS_VALUE_GET_INT64(val),
                        lepus::LEPUSValueHelper::CalculateTag(val));
     }

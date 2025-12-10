@@ -311,7 +311,7 @@ LEPUSValue LEPUSRefArraySlice(LEPUSContext* ctx, LEPUSValue this_val,
       } else {
         array->Insert(
             static_cast<uint32_t>(i),
-            lepus::Value(lepus::Context::GetContextCellFromCtx(ctx)->env_,
+            lepus::Value(lepus::QuickContext::GetContextCellFromCtx(ctx)->env_,
                          LEPUS_VALUE_GET_INT64(val),
                          lepus::LEPUSValueHelper::CalculateTag(val)));
       }
