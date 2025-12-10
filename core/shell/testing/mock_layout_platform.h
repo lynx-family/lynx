@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #include "core/public/layout_ctx_platform_impl.h"
 #include "core/public/layout_node_manager.h"
@@ -28,7 +29,7 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
   int CreateLayoutNode(int id, const std::string& tag, PropBundle* props,
                        bool allow_inline) override {
     int result = LayoutNodeType::UNKNOWN;
-    if (tag == "raw-text") {
+    if (tag == "raw-text" || tag == "inline-text") {
       result |= LayoutNodeType::VIRTUAL;
     }
     if (tag == "view") {
@@ -37,13 +38,16 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
     if (tag == "inline-view") {
       result |= LayoutNodeType::INLINE;
     }
+    if (tag == "text") {
+      result |= LayoutNodeType::CUSTOM;
+    }
     return result;
   };
   void InsertLayoutNode(int parent, int child, int index) override {}
   void RemoveLayoutNode(int parent, int child, int index) override {}
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override {}
   void ScheduleLayout() override {}
-  void OnLayoutBefore(int id) override {}
+  void OnLayoutBefore(int id) override { before_ids.push_back(id); }
   void OnLayout(int id, float left, float top, float width, float height,
                 const std::array<float, 4>& paddings,
                 const std::array<float, 4>& borders) override {}
@@ -51,6 +55,8 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
 
   void SetFontFaces(const CSSFontFaceRuleMap&) override {}
   MOCK_METHOD(void, UpdateLayoutNode, (int, PropBundle*), (override));
+
+  std::vector<int32_t> before_ids;
 };
 }  // namespace test
 }  // namespace tasm

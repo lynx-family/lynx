@@ -254,6 +254,7 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
       const std::shared_ptr<PipelineOptions>& options);
   void GetLayoutInfoRecursively(
       std::unordered_map<int32_t, LayoutInfoArray>& result, LayoutNode* node);
+  bool ShouldSkipLayoutRecursively(LayoutNode* node);
 
   starlight::Constraints ConvertViewportToOneSideConstraint(Viewport viewport);
   bool IfNeedsUpdateLayoutInfo(LayoutNode* node);
