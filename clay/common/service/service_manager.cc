@@ -103,7 +103,7 @@ void ServiceManager::Detach() {
   services.clear();
 }
 
-#if OS_LINUX || OS_MAC
+#if OS_LINUX || OS_MAC || OS_WIN
 template void ServiceManager::Attach<Owner::kPlatform>(
     ServiceContext<Owner::kPlatform> context);
 template void ServiceManager::Attach<Owner::kUI>(
