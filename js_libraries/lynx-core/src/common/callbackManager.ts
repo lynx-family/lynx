@@ -65,10 +65,13 @@ export class CallbackManager {
     }
     const callback = this.callbacks.get(key);
     if (callback) {
-      if (once) {
-        this.removeCallback(key);
+      try {
+        callback.apply(callback, args);
+      } finally {
+        if (once) {
+          this.removeCallback(key);
+        }
       }
-      callback.apply(callback, args);
     } else {
       console.warn(`callCallback: Callback with ID ${key} not found`);
     }
@@ -97,6 +100,11 @@ export class CallbackManager {
       const callbackId = this.taskIdToCallbackIds.get(taskId);
       this.taskIdToCallbackIds.delete(taskId);
       this.removeCallback(callbackId);
+    }
+  }
+  removeTaskId(taskId: number | undefined) {
+    if (this.taskIdToCallbackIds && taskId !== undefined) {
+      this.taskIdToCallbackIds.delete(taskId);
     }
   }
 

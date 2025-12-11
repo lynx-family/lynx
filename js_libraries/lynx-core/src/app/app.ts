@@ -163,7 +163,10 @@ export abstract class BaseApp<
 
       this._callbackManager = new CallbackManager();
       this.setTimeout = this.wrapCallbackMethod(this.nativeApp.setTimeout);
-      this.setInterval = this.wrapCallbackMethod(this.nativeApp.setInterval);
+      this.setInterval = this.wrapCallbackMethod(
+        this.nativeApp.setInterval,
+        false
+      );
       this.clearInterval = this.wrapClearTimerMethod(
         this.nativeApp.clearInterval
       );
@@ -210,7 +213,7 @@ export abstract class BaseApp<
       const promiseCtor = this.setupPromise(
         this.setTimeout,
         this.clearTimeout,
-        lynx
+        this.queueMicrotask
       );
 
       this.lynx = this.createLynx(lynx, promiseCtor);
@@ -280,12 +283,28 @@ export abstract class BaseApp<
     return this.Reporter.getSourceMapRelease(url);
   };
 
+  queueMicrotask(callback: () => void): void {
+    if (!callback) {
+      return;
+    }
+    if (!this.params?.pageConfigSubset?.enableJSCallbackManager) {
+      this.lynx.getNativeLynx().queueMicrotask(callback);
+    } else {
+      const id = this._callbackManager.addCallback(callback);
+      if (id === undefined) {
+        return;
+      }
+      this.lynx.getNativeLynx().queueMicrotask(id);
+    }
+  }
+
   /**
    * pass id instead of callback for native.
    * for setTimeout、setInterval、queueMicrotask and other.
    */
   private wrapCallbackMethod(
-    nativeMethod: LynxSetTimeout2
+    nativeMethod: LynxSetTimeout2,
+    isTimeout: boolean = true
   ): (callback: (...args: unknown[]) => unknown, delay: number) => number {
     if (!this.params?.pageConfigSubset?.enableJSCallbackManager) {
       return nativeMethod;
@@ -298,13 +317,24 @@ export abstract class BaseApp<
       if (!callback) {
         return -1;
       }
-      const id = that._callbackManager.addCallback(callback);
+      const taskInfo = { taskId: undefined };
+      const cb = () => {
+        try {
+          callback.apply(callback, undefined);
+        } finally {
+          if (isTimeout) {
+            that._callbackManager.removeTaskId(taskInfo.taskId);
+          }
+        }
+      };
+      const id = that._callbackManager.addCallback(cb);
       if (id === undefined) {
         return -1;
       }
       const taskId = nativeMethod.call(undefined, id, delay);
       if (taskId !== undefined) {
         that._callbackManager.addTaskIdAndCallbackId(taskId, id);
+        taskInfo.taskId = taskId;
       }
       return taskId;
     };
@@ -929,7 +959,7 @@ export abstract class BaseApp<
   setupPromise(
     setTimeout: LynxSetTimeout,
     clearTimeout: LynxClearTimeout,
-    lynx: NativeLynxProxy
+    queueMicrotask: (callback: () => void) => void
   ) {
     const PromiseConstructor = getPromiseMaybePolyfill(
       setTimeout,
@@ -947,7 +977,7 @@ export abstract class BaseApp<
         }
       },
       clearTimeout,
-      lynx.queueMicrotask,
+      queueMicrotask,
       this._params?.pageConfigSubset?.enableMicrotaskPromisePolyfill ?? false
     );
     this.resolvedPromise = PromiseConstructor.resolve();
