@@ -12,6 +12,29 @@ namespace lynx::tasm {
 
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
+PlatformRendererAndroid::PlatformRendererAndroid(
+    PlatformRendererContext* context, int id, PlatformRendererType type)
+    : PlatformRendererAndroid(context, id, type, base::String()) {}
+
+PlatformRendererAndroid::PlatformRendererAndroid(
+    PlatformRendererContext* context, int id, const base::String& tag_name)
+    : PlatformRendererAndroid(context, id, PlatformRendererType::kUnknown,
+                              tag_name) {}
+
+PlatformRendererAndroid::PlatformRendererAndroid(
+    PlatformRendererContext* context, int id, PlatformRendererType type,
+    const base::String& tag_name)
+    : PlatformRendererImpl(id),
+      context_(context),
+      type_(type),
+      tag_name_(tag_name) {
+  InitializeAndroidView();
+  // Register this renderer with the context
+  if (context_) {
+    context_->RegisterPlatformRenderer(id, this);
+  }
+}
+
 void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
   display_list_ = std::move(display_list);
   constexpr int kFrameValueCount = 4;
@@ -47,7 +70,16 @@ void PlatformRendererAndroid::OnRemoveFromParent() {
 }
 
 void PlatformRendererAndroid::InitializeAndroidView() {
-  context_->CreatePlatformRenderer(GetId(), type_);
+  if (!context_) {
+    return;
+  }
+  if (type_ == PlatformRendererType::kUnknown && !tag_name_.empty()) {
+    // This is an extended platform renderer with a custom tag name
+    context_->CreatePlatformExtendedRenderer(GetId(), tag_name_);
+  } else {
+    // This is a standard platform renderer with a known type
+    context_->CreatePlatformRenderer(GetId(), type_);
+  }
 }
 
 void PlatformRendererAndroid::CleanupAndroidView() {
@@ -55,19 +87,16 @@ void PlatformRendererAndroid::CleanupAndroidView() {
     context_->DestroyPlatformRenderer(PlatformRendererImpl::GetId());
   }
 }
-PlatformRendererAndroid::PlatformRendererAndroid(
-    PlatformRendererContext* context, int id, PlatformRendererType type)
-    : PlatformRendererImpl(id), context_(context), type_(type) {
-  InitializeAndroidView();
-  // Register this renderer with the context
-  if (context_) {
-    context_->RegisterPlatformRenderer(id, this);
-  }
-}
 
 fml::RefPtr<PlatformRenderer> PlatformRendererAndroidFactory::CreateRenderer(
     int id, PlatformRendererType type) {
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, type);
+}
+
+fml::RefPtr<PlatformRenderer>
+PlatformRendererAndroidFactory::CreateExtendedRenderer(
+    int id, const base::String& tag_name) {
+  return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name);
 }
 
 }  // namespace lynx::tasm
