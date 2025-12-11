@@ -81,6 +81,9 @@ export class TemplateBundle extends lynx.TemplateBundle {
    * @apidoc
    * @param template ArrayBuffer, a buffer of template binary data.
    * @return A promise that resolves with a new TemplateBundle object.
+   * @note Due to ArkTS being restricted to run on the app’s main thread, we provide an asynchronous 
+   * TemplateBundle creation API to reduce blocking time from main-thread I/O operations. On other platforms, 
+   * developers can decide whether to run on a background thread without requiring a special asynchronous API.
    */
   public static async fromTemplateAsync(template: ArrayBuffer): Promise<TemplateBundle> {
     let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
@@ -103,6 +106,9 @@ export class TemplateBundle extends lynx.TemplateBundle {
    * @param template The template binary content.
    * @param option The TemplateBundleOption object.
    * @returns A promise that resolves with the new TemplateBundle object.
+   * @note Due to ArkTS being restricted to run on the app’s main thread, we provide an asynchronous 
+   * TemplateBundle creation API to reduce blocking time from main-thread I/O operations. On other platforms, 
+   * developers can decide whether to run on a background thread without requiring a special asynchronous API.
    */
   public static async fromTemplateAsyncWithOption(template: ArrayBuffer,
     option: TemplateBundleOption): Promise<TemplateBundle> {
