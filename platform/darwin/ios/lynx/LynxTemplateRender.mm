@@ -2540,7 +2540,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (LynxTemplateData* _Nullable)getTemplateData {
-  return _templateData;
+  return [_templateData deepClone];
 }
 
 @end
