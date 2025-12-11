@@ -170,7 +170,7 @@ jobs:
 
   ios-sdk-publish:
     timeout-minutes: 60
-    runs-on: macos-13
+    runs-on: macos-14
     needs: get-version
     steps:
       - name: Download Source
@@ -179,12 +179,22 @@ jobs:
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
           path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Set up Ruby + specify Bundler version
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.6.10'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
+        with:
+          cache-backend: 'github'
       - name: Publish iOS SDK
         uses: ./lynx/.github/actions/ios-sdk-publish
         with:

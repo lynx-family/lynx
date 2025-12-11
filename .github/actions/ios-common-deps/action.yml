@@ -7,6 +7,10 @@ inputs:
     default: 'lynx/ruby'
     required: false
     type: string
+  cache-backend:
+    description: cache backend for habitat
+    default: 'lynx-infra'
+    required: false
 
 runs:
   using: composite
@@ -21,7 +25,16 @@ runs:
         echo "VERSION=$ruby_version" >> $GITHUB_OUTPUT;
 
     - name: setup ruby cache action
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: ${{ inputs.path }}/${{ steps.get_ruby_version.outputs.VERSION }}
+        key: ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}-${{ hashFiles('lynx/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}
+    - name: setup cache action
+      if: ${{ inputs.cache-backend == 'github' }}
+      uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}/${{ steps.get_ruby_version.outputs.VERSION }}
         key: ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}-${{ hashFiles('lynx/Gemfile.lock') }}
