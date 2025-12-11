@@ -16,6 +16,8 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
  public:
   explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
                                    PlatformRendererType type);
+  explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
+                                   const base::String& tag_name);
   ~PlatformRendererAndroid() override;
 
   const DisplayList& GetDisplayList() const { return display_list_; }
@@ -23,6 +25,8 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
  protected:
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
+  void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
+                          bool tends_to_flatten) override;
   void OnAddChild(PlatformRenderer* child) override;
   void OnRemoveFromParent() override;
 
@@ -30,8 +34,10 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   // Android-specific context for managing native views via JNI
   PlatformRendererContext* context_;
   DisplayList display_list_;
+  bool is_platform_extended_renderer_ = false;
 
   PlatformRendererType type_;
+  base::String tag_name_;
 
   // Initialize the Android view
   void InitializeAndroidView();
@@ -51,6 +57,9 @@ class PlatformRendererAndroidFactory : public PlatformRendererFactory {
 
   fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type) override;
+
+  fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
+      int id, const base::String& tag_name);
 
  private:
   PlatformRendererContext* context_;
