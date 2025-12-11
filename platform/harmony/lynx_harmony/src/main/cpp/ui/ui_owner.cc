@@ -518,6 +518,10 @@ bool UIOwner::CanConsumeTouchEvent(float point[2]) {
   return event_dispatcher_->CanConsumeTouchEvent(point);
 }
 
+void UIOwner::UpdateRootTarget(UIBase* root) {
+  event_dispatcher_->UpdateRootTarget(root);
+};
+
 void UIOwner::InvokeUIMethod(int32_t id, const std::string& method,
                              PropBundleHarmony* args, int32_t callback_id) {
   if (const auto it = ui_holder_.find(id); it != ui_holder_.end()) {
