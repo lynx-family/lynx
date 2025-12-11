@@ -31,9 +31,9 @@ public class TypefaceCache {
   // Typeface.BOLD_ITALIC = 3
   private static final int sMaxStyles = 4;
   // Relation for font family name and typefaces of full style
-  private static final Map<String, Typeface[]> sFontFamilyCache = new HashMap<>();
+  private static final Map<String, Typeface[]> sFontFamilyCache = new ConcurrentHashMap<>();
   // Relation for typeface and typefaces of full style
-  private static final Map<Typeface, Typeface[]> sTypefaceCache = new HashMap<>();
+  private static final Map<Typeface, Typeface[]> sTypefaceCache = new ConcurrentHashMap<>();
   // Relate for style and file extension
   private static final String[] sFileExtensions = {"", "_bold", "_italic", "_bold_italic"};
   private static final String[] sFileSuffixes = {".ttf", ".otf"};
@@ -68,11 +68,11 @@ public class TypefaceCache {
     sLazyProviders.remove(provider);
   }
 
-  public synchronized static boolean containsTypeface(String fontFamilyName) {
+  public static boolean containsTypeface(String fontFamilyName) {
     return sFontFamilyCache.containsKey(fontFamilyName);
   }
 
-  public synchronized static boolean containsTypeface(String fontFamilyName, int style) {
+  public static boolean containsTypeface(String fontFamilyName, int style) {
     Typeface[] typefaces = sFontFamilyCache.get(fontFamilyName);
     return typefaces != null && typefaces[style] != null;
   }
@@ -196,7 +196,7 @@ public class TypefaceCache {
   /**
    * maybe async
    */
-  public synchronized static Typeface getTypeface(
+  public static Typeface getTypeface(
       LynxContext context, final String fontFamily, final int style) {
     String[] family_array = fontFamily.split(",");
     for (String family : family_array) {
@@ -216,7 +216,7 @@ public class TypefaceCache {
     return null;
   }
 
-  public synchronized static Typeface getCachedTypeface(final String fontFamily, final int style) {
+  public static Typeface getCachedTypeface(final String fontFamily, final int style) {
     Typeface[] cache = sFontFamilyCache.get(fontFamily);
     if (cache != null && cache[style] != null) {
       // return cached value.
@@ -236,7 +236,7 @@ public class TypefaceCache {
     return null;
   }
 
-  public synchronized static Typeface getTypeface(Typeface family, int style) {
+  public static Typeface getTypeface(Typeface family, int style) {
     if (family == null) {
       return Typeface.defaultFromStyle(style);
     }

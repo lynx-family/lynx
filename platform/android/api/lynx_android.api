@@ -10114,8 +10114,8 @@ public enum com::lynx::tasm::utils::SizeValue::Type {
 public class com::lynx::tasm::behavior::shadow::text::TypefaceCache :  {
   public static synchronized void com.lynx.tasm.behavior.shadow.text.TypefaceCache.addLazyProvider(LazyProvider provider);
   public static synchronized void com.lynx.tasm.behavior.shadow.text.TypefaceCache.removeLazyProvider(LazyProvider provider);
-  public static synchronized boolean com.lynx.tasm.behavior.shadow.text.TypefaceCache.containsTypeface(String fontFamilyName);
-  public static synchronized boolean com.lynx.tasm.behavior.shadow.text.TypefaceCache.containsTypeface(String fontFamilyName, int style);
+  public static boolean com.lynx.tasm.behavior.shadow.text.TypefaceCache.containsTypeface(String fontFamilyName);
+  public static boolean com.lynx.tasm.behavior.shadow.text.TypefaceCache.containsTypeface(String fontFamilyName, int style);
   public static synchronized void com.lynx.tasm.behavior.shadow.text.TypefaceCache.cacheTypeface(String fontFamilyName, int style, @NonNull Typeface typeface);
   public static synchronized void com.lynx.tasm.behavior.shadow.text.TypefaceCache.removePreRegisteredFontCache(@Nullable String fontFamilyName);
   public static void com.lynx.tasm.behavior.shadow.text.TypefaceCache.cacheFullStyleTypefacesFromAssets(AssetManager assetManager, String fontFamilyName, String path);
@@ -10124,9 +10124,9 @@ public class com::lynx::tasm::behavior::shadow::text::TypefaceCache :  {
   public static void com.lynx.tasm.behavior.shadow.text.TypefaceCache.cacheFullStyleTypefacesFromFile(String fontFamily, String path);
   public static void com.lynx.tasm.behavior.shadow.text.TypefaceCache.cacheTypefaceFromFile( @NonNull String fontFamilyName, int style, @NonNull String path);
   public static Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getTypefaceFromFile( @NonNull String fontFamilyName, int style, @NonNull String path);
-  public static synchronized Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getTypeface(LynxContext context, final String fontFamily, final int style);
-  public static synchronized Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getCachedTypeface(final String fontFamily, final int style);
-  public static synchronized Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getTypeface(Typeface family, int style);
+  public static Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getTypeface(LynxContext context, final String fontFamily, final int style);
+  public static Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getCachedTypeface(final String fontFamily, final int style);
+  public static Typeface com.lynx.tasm.behavior.shadow.text.TypefaceCache.getTypeface(Typeface family, int style);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextMeasurer::TypefaceListener : com.lynx.tasm.behavior.shadow.text.TypefaceCache.TypefaceListener {

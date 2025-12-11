@@ -6,13 +6,15 @@ package com.lynx.tasm.fontface;
 import android.util.Pair;
 import com.lynx.tasm.behavior.shadow.text.TypefaceCache;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 class FontFaceGroup {
-  private List<Pair<TypefaceCache.TypefaceListener, Integer>> mListeners = new ArrayList<>();
-  private Set<FontFace> mFontFaces = new HashSet<>();
+  private final CopyOnWriteArrayList<Pair<TypefaceCache.TypefaceListener, Integer>> mListeners =
+      new CopyOnWriteArrayList<>();
+  private final CopyOnWriteArraySet<FontFace> mFontFaces = new CopyOnWriteArraySet<>();
 
   void addListener(Pair<TypefaceCache.TypefaceListener, Integer> listener) {
     if (listener == null) {
@@ -27,6 +29,12 @@ class FontFaceGroup {
 
   List<Pair<TypefaceCache.TypefaceListener, Integer>> getListeners() {
     return mListeners;
+  }
+
+  List<Pair<TypefaceCache.TypefaceListener, Integer>> drainListeners() {
+    List<Pair<TypefaceCache.TypefaceListener, Integer>> snapshot = new ArrayList<>(mListeners);
+    mListeners.clear();
+    return snapshot;
   }
 
   void addFontFace(FontFace fontFace) {
