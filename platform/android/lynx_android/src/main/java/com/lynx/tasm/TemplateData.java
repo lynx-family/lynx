@@ -779,18 +779,6 @@ public final class TemplateData {
     return getDataForJSThreadInner();
   }
 
-  // Used to copy a new templateData that contains updateActions only.
-  @CalledByNative
-  private TemplateData getTemplateDataForJSThread() {
-    TemplateData data = TemplateData.empty();
-    data.mEnableJSData = true;
-    if (mJsNativeData != 0) {
-      data.mJsNativeData = nativeClone(mJsNativeData);
-    }
-    data.addUpdateActions(obtainUpdateActions());
-    return data;
-  }
-
   @CalledByNative
   long getNativeTemplateData() {
     return this.mNativeData;
