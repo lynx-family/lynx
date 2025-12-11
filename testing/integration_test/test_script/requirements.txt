@@ -4,8 +4,6 @@ attrs==25.4.0
     # via
     #   outcome
     #   trio
-certifi==2025.10.5
-    # via selenium
 h11==0.16.0
     # via wsproto
 idna==3.11

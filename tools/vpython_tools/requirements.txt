@@ -2,8 +2,6 @@ beautifulsoup4==4.14.2
     # via bs4
 bs4==0.0.2
     # via -r tools/vpython_tools/requirements.in
-certifi==2025.10.5
-    # via requests
 charset-normalizer==3.4.4
     # via requests
 doxmlparser==1.14.0
