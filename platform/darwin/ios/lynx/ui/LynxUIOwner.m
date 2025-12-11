@@ -1142,8 +1142,8 @@ extern NSString* const kDefaultComponentID;
     return nil;
   }
   NSMutableDictionary<NSString*, LynxMemoryRecord*>* uiMemUsage = [NSMutableDictionary dictionary];
-  [_uiHolder enumerateKeysAndObjectsUsingBlock:^(NSNumber* _Nonnull key, LynxUI* _Nonnull obj,
-                                                 BOOL* _Nonnull stop) {
+  [[_uiHolder copy] enumerateKeysAndObjectsUsingBlock:^(NSNumber* _Nonnull key,
+                                                        LynxUI* _Nonnull obj, BOOL* _Nonnull stop) {
     NSString* tag = [obj tagName];
     if (!tag) {
       return;
