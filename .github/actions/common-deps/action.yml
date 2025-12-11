@@ -69,7 +69,7 @@ runs:
         restore-keys: |
           pnpm-${{ runner.os }}-
 
-    - name: install Python dependencies
+    - name: Install Python dependencies
       shell: bash
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
