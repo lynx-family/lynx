@@ -4,8 +4,6 @@
 
 #include "clay/gfx/skity/jpeg_codec_skity.h"
 
-#include "skity/io/data.hpp"
-#include "skity/io/pixmap.hpp"
 #include "third_party/libjpeg-turbo/turbojpeg.h"
 
 namespace clay {
@@ -40,9 +38,7 @@ std::shared_ptr<skity::Data> JPEGCodecSkity::Encode(
     return nullptr;
   }
 
-  auto data = skity::Data::MakeWithCopy(buf, size);
-  tjFree(buf);
-  return data;
+  return skity::Data::MakeWithCopy(buf, size);
 }
 
 }  // namespace clay

@@ -16,9 +16,6 @@
 #include "clay/fml/logging.h"
 #include "clay/gfx/attributes.h"
 #include "clay/gfx/rendering_backend.h"
-#ifdef ENABLE_SKITY
-#include "skity/effect/path_effect.hpp"
-#endif  // ENABLE_SKITY
 
 namespace clay {
 
