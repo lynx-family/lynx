@@ -910,10 +910,11 @@ void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
 }
 
 bool EventDispatcher::EventThrough() {
-  if (first_active_target_.expired()) {
+  auto target = first_active_target_.lock();
+  if (!target) {
     return false;
   }
-  return first_active_target_.lock()->EventThrough(first_finger_down_point_);
+  return target->EventThrough(first_finger_down_point_);
 }
 
 bool EventDispatcher::ShouldInterceptGesture() {
