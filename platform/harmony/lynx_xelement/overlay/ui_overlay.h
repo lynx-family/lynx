@@ -41,6 +41,8 @@ class UIOverlay : public UIBase {
 
   void InsertNode(UIBase* child, int index) override;
 
+  void RemoveNode(UIBase* child) override;
+
   bool ShouldHitTest() override;
 
   bool EventThrough(float point[2]) override;
@@ -58,7 +60,8 @@ class UIOverlay : public UIBase {
  private:
   bool are_gestures_attached_{false};
   bool is_root_attached_{false};
-  bool is_visible_{false};
+  bool is_visible_props_{false};
+  bool is_show_{false};
   bool is_event_pass_through_{false};
   bool consume_event_self_{false};
   bool child_event_through_{false};
@@ -66,6 +69,7 @@ class UIOverlay : public UIBase {
   ArkUI_NativeDialog* native_dialog_{nullptr};
 
   void ShowDialog(bool is_show);
+  void RestoreRootTarget();
 };
 }  // namespace harmony
 }  // namespace tasm

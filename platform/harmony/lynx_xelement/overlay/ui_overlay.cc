@@ -14,6 +14,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 
@@ -35,25 +36,38 @@ void UIOverlay::OnPropUpdate(const std::string& name,
   UIBase::OnPropUpdate(name, value);
   if (name == "visible") {
     ShowDialog(value.Bool());
+    is_visible_props_ = value.Bool();
   } else if (name == "events-pass-through") {
     is_event_pass_through_ = value.Bool();
   }
 }
 
-void UIOverlay::ShowDialog(bool is_show) {
-  if (is_show) {
-    NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
-    NodeManager::DialogInstance()->show(native_dialog_, false);
-    CustomEvent event{Sign(), "showoverlay", "detail", lepus_value()};
-    context_->SendEvent(event);
-    is_visible_ = true;
+void UIOverlay::ShowDialog(bool show_dialog) {
+  if (show_dialog) {
+    if (!is_show_ && native_dialog_) {
+      NodeManager::DialogInstance()->setContent(native_dialog_, stack_);
+      NodeManager::DialogInstance()->show(native_dialog_, false);
+      CustomEvent event{Sign(), "showoverlay", "detail", lepus_value()};
+      context_->SendEvent(event);
+      context_->GetUIOwner()->UpdateRootTarget(this);
+      is_show_ = true;
+    } else {
+      LOGE("overlay show skipped: is_show_=" << is_show_ << ", native_dialog_="
+                                             << native_dialog_)
+    }
   } else {
-    if (is_visible_) {
+    if (is_show_ && native_dialog_) {
+      is_show_ = false;
+      RestoreRootTarget();
+      NodeManager::DialogInstance()->setContent(native_dialog_, nullptr);
+      NodeManager::DialogInstance()->close(native_dialog_);
       CustomEvent event{Sign(), "dismissoverlay", "detail", lepus_value()};
       context_->SendEvent(event);
-      NodeManager::DialogInstance()->close(native_dialog_);
+      is_show_ = false;
+    } else {
+      LOGE("overlay dismiss skipped: is_show_="
+           << is_show_ << ", native_dialog_=" << native_dialog_)
     }
-    is_visible_ = false;
   }
 }
 
@@ -61,16 +75,24 @@ void UIOverlay::SetParent(UIBase* parent) {
   UIBase::SetParent(parent);
   if (parent == nullptr) {
     ShowDialog(false);
+  } else {
+    if (is_visible_props_) {
+      ShowDialog(true);
+    }
   }
 }
 
 UIOverlay::~UIOverlay() {
   LOGI("overlay destruction sign=" << Sign() << " this="
                                    << static_cast<const void*>(this));
+  if (is_show_) {
+    RestoreRootTarget();
+  }
   if (native_dialog_ != nullptr) {
     LOGI("overlay destruction close dialog sign="
          << Sign() << " this=" << static_cast<const void*>(this)
          << " dialog=" << static_cast<const void*>(native_dialog_));
+    NodeManager::DialogInstance()->setContent(native_dialog_, nullptr);
     NodeManager::DialogInstance()->close(native_dialog_);
     NodeManager::DialogInstance()->dispose(native_dialog_);
     native_dialog_ = nullptr;
@@ -87,8 +109,20 @@ UIOverlay::~UIOverlay() {
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_EVENT_ON_DETACH);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT);
+  NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_TOUCH_EVENT);
   NodeManager::Instance().DisposeNode(stack_);
   stack_ = nullptr;
+}
+
+void UIOverlay::RemoveNode(UIBase* child) {
+  if (!child || !stack_) {
+    return;
+  }
+  auto draw = child->DrawNode();
+  if (!draw) {
+    return;
+  }
+  NodeManager::Instance().RemoveNode(stack_, draw);
 }
 
 UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
@@ -262,6 +296,21 @@ void UIOverlay::OnNodeReady() {
   if (!are_gestures_attached_) {
     context_->AttachGesturesToRoot(this);
     are_gestures_attached_ = true;
+  }
+}
+
+void UIOverlay::RestoreRootTarget() {
+  UIOverlay* top = nullptr;
+  for (auto it = global_dialogs.rbegin(); it != global_dialogs.rend(); ++it) {
+    if (*it != this && (*it)->IsVisible()) {
+      top = *it;
+      break;
+    }
+  }
+  if (top) {
+    context_->GetUIOwner()->UpdateRootTarget(top);
+  } else {
+    context_->GetUIOwner()->UpdateRootTarget(context_->Root());
   }
 }
 
