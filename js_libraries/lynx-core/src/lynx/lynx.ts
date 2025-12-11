@@ -489,19 +489,8 @@ export class Lynx {
   cancelAnimationFrame = (animationId: number) =>
     this.getNativeApp().cancelAnimationFrame(animationId);
 
-  queueMicrotask(callback: () => void): void {
-    if (!callback) {
-      return;
-    }
-    if (!this.getApp().params?.pageConfigSubset?.enableJSCallbackManager) {
-      this.getNativeLynx().queueMicrotask(callback);
-    } else {
-      const id = this.getApp()._callbackManager.addCallback(callback);
-      if (id === undefined) {
-        return;
-      }
-      this.getNativeLynx().queueMicrotask(id);
-    }
+  queueMicrotask(callback: () => void) {
+    this.getApp().queueMicrotask(callback);
   }
 
   loadScript = <LoadScript>(<T>(
