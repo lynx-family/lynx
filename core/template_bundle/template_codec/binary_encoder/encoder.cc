@@ -175,14 +175,12 @@ std::shared_ptr<lynx::lepus::Context> GetVMContent(
         LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER,
                     static_cast<lepus::Context::Delegate*>(assembler));
     quick_ctx->RegisterGlobalProperty("$kTemplateAssembler", self);
-    Utils::RegisterNGBuiltin(vm_context.get());
     Renderer::RegisterNGBuiltin(vm_context.get(),
                                 encoder_options.compile_options_.arch_option_);
   } else {
     lynx::lepus::Value self(static_cast<lepus::Context::Delegate*>(assembler));
     lynx::lepus::VMContext::Cast(vm_context.get())
         ->SetGlobalData("$kTemplateAssembler", self);
-    Utils::RegisterBuiltin(vm_context.get());
     Renderer::RegisterBuiltin(vm_context.get(),
                               encoder_options.compile_options_.arch_option_);
   }
@@ -637,7 +635,6 @@ const char* lepusCheck(const char* sourceFile, char* targetSdkVersion,
   context.Initialize();
   lynx::lepus::Value obj(lynx::lepus::Dictionary::Create());
   context.SetGlobalData("exports", obj);
-  lynx::tasm::Utils::RegisterBuiltin(&context);
   // TODO(songshourui.null): when exec lepusCheck, pass the arch option. If miss
   // the option, use RADON_ARCH as default.
   lynx::tasm::Renderer::RegisterBuiltin(&context,

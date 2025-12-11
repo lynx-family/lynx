@@ -1605,7 +1605,6 @@ bool VMContext::MoveContextBundle(VMContextBundle& bundle) {
 
 void VMContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
 #ifndef LEPUS_PC
-  tasm::Utils::RegisterBuiltin(this);
   tasm::Renderer::RegisterBuiltin(this, option);
 #endif
   return;

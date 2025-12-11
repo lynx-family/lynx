@@ -29,14 +29,6 @@ namespace tasm {
 #endif  // SetProp
 #endif  // OS_WIN
 
-void Utils::RegisterBuiltin(lepus::Context* context) {
-  lepus::RegisterCFunction(context, kCFuncIndexOf, &RendererFunctions::IndexOf);
-  lepus::RegisterCFunction(context, kCFuncGetLength,
-                           &RendererFunctions::GetLength);
-  lepus::RegisterCFunction(context, kCFuncSetValueToMap,
-                           &RendererFunctions::SetValueToMap);
-}
-
 void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
   if (lynx.IsTable()) {
     auto lynx_table = lynx.Table();
@@ -202,6 +194,11 @@ void Renderer::RegisterBuiltin(lepus::Context* context, ArchOption option) {
 }
 
 void Renderer::RegisterBuiltinForRadon(lepus::Context* context) {
+  lepus::RegisterCFunction(context, kCFuncIndexOf, &RendererFunctions::IndexOf);
+  lepus::RegisterCFunction(context, kCFuncGetLength,
+                           &RendererFunctions::GetLength);
+  lepus::RegisterCFunction(context, kCFuncSetValueToMap,
+                           &RendererFunctions::SetValueToMap);
   // clang-format off
   /* To add a RenderFunction, it needs to be registered first to avoid conflicts across different branches. */
   /* 001 */ lepus::RegisterCFunction(context, kCFuncCreatePage, &RendererFunctions::CreateVirtualPage);
@@ -340,6 +337,11 @@ void Renderer::RegisterBuiltinForRadon(lepus::Context* context) {
 }
 
 void Renderer::RegisterBuiltinForFiber(lepus::Context* context) {
+  lepus::RegisterCFunction(context, kCFuncIndexOf, &RendererFunctions::IndexOf);
+  lepus::RegisterCFunction(context, kCFuncGetLength,
+                           &RendererFunctions::GetLength);
+  lepus::RegisterCFunction(context, kCFuncSetValueToMap,
+                           &RendererFunctions::SetValueToMap);
   // To add a RenderFunction, it needs to be registered first to avoid conflicts
   // across different branches.
   /* 001 */ lepus::RegisterCFunction(context, kCFunctionCreateElement,
@@ -601,6 +603,18 @@ void Renderer::RegisterBuiltinForFiber(lepus::Context* context) {
   /* 116 */ lepus::RegisterCFunction(
       context, kCFunctionGetComputedStyleByKey,
       &RendererFunctions::FiberGetComputedStyleByKey);
+  /*117*/ lepus::RegisterCFunction(context, kSetTimeout,
+                                   &RendererFunctions::SetTimeout);
+  /*118*/ lepus::RegisterCFunction(context, kClearTimeout,
+                                   &RendererFunctions::ClearTimeout);
+  /*119*/ lepus::RegisterCFunction(context, kSetInterval,
+                                   &RendererFunctions::SetInterval);
+  /*120*/ lepus::RegisterCFunction(context, kClearTimeInterval,
+                                   &RendererFunctions::ClearTimeInterval);
+  /*121*/ lepus::RegisterCFunction(context, kRequestAnimationFrame,
+                                   &RendererFunctions::RequestAnimationFrame);
+  /*122*/ lepus::RegisterCFunction(context, kCancelAnimationFrame,
+                                   &RendererFunctions::CancelAnimationFrame);
 }
 }  // namespace tasm
 }  // namespace lynx

@@ -264,9 +264,6 @@ static const char* kCFunctionElementAnimate = "__ElementAnimate";
 
 class Utils {
  public:
-  static void RegisterBuiltin(lepus::Context* context);
-  static void RegisterNGBuiltin(lepus::Context* context);
-
   static void RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx);
   static void RegisterNGMethodToLynx(lepus::Context* context,
                                      lepus::Value& lynx,

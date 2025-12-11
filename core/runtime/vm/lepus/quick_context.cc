@@ -1336,7 +1336,6 @@ bool QuickContext::debuginfo_outside() const { return debuginfo_outside_; }
 
 void QuickContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
 #ifndef LEPUS_PC
-  tasm::Utils::RegisterNGBuiltin(this);
   tasm::Renderer::RegisterNGBuiltin(this, option);
 #endif
   return;

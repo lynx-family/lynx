@@ -81,7 +81,6 @@ class WorkletEventTest : public ::testing::Test {
     tasm_->template_entries_.insert({"test_entry", test_entry});
 
     // Register Method
-    tasm::Utils::RegisterNGBuiltin(ctx_.get());
     tasm::Renderer::RegisterNGBuiltin(ctx_.get(), tasm::ArchOption::RADON_ARCH);
     tasm::Renderer::RegisterNGBuiltin(ctx_.get(), tasm::ArchOption::FIBER_ARCH);
   }

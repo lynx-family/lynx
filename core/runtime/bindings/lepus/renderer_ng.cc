@@ -19,26 +19,6 @@
 
 namespace lynx {
 namespace tasm {
-void Utils::RegisterNGBuiltin(lepus::Context* context) {
-  static const lepus::RenderBindingFunction funcs[] = {
-      {kCFuncIndexOf, &RendererFunctions::IndexOf},
-      {kCFuncGetLength, &RendererFunctions::GetLength},
-      {kCFuncSetValueToMap, &RendererFunctions::SetValueToMap},
-      // Added in Lynx:3.0
-      {kSetTimeout, &RendererFunctions::SetTimeout},
-      // Added in Lynx:3.0
-      {kClearTimeout, &RendererFunctions::ClearTimeout},
-      // Added in Lynx:3.0
-      {kSetInterval, &RendererFunctions::SetInterval},
-      // Added in Lynx:3.0
-      {kClearTimeInterval, &RendererFunctions::ClearTimeInterval},
-      // Added in Lynx:3.0
-      {kRequestAnimationFrame, &RendererFunctions::RequestAnimationFrame},
-      // Added in Lynx:3.0
-      {kCancelAnimationFrame, &RendererFunctions::CancelAnimationFrame},
-  };
-  lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));
-}
 
 void Utils::RegisterNGMethodToLynx(lepus::Context* context, lepus::Value& lynx,
                                    const std::string& targetSdkVersion) {
@@ -204,6 +184,22 @@ void Renderer::RegisterNGBuiltin(lepus::Context* context, ArchOption option) {
 
 void Renderer::RegisterNGBuiltinForRadon(lepus::Context* context) {
   static const lepus::RenderBindingFunction funcs[] = {
+      {kCFuncIndexOf, &RendererFunctions::IndexOf},
+      {kCFuncGetLength, &RendererFunctions::GetLength},
+      {kCFuncSetValueToMap, &RendererFunctions::SetValueToMap},
+      // Added in Lynx:3.0
+      {kSetTimeout, &RendererFunctions::SetTimeout},
+      // Added in Lynx:3.0
+      {kClearTimeout, &RendererFunctions::ClearTimeout},
+      // Added in Lynx:3.0
+      {kSetInterval, &RendererFunctions::SetInterval},
+      // Added in Lynx:3.0
+      {kClearTimeInterval, &RendererFunctions::ClearTimeInterval},
+      // Added in Lynx:3.0
+      {kRequestAnimationFrame, &RendererFunctions::RequestAnimationFrame},
+      // Added in Lynx:3.0
+      {kCancelAnimationFrame, &RendererFunctions::CancelAnimationFrame},
+
       {kCFuncCreatePage, &RendererFunctions::CreateVirtualPage},
       {kCFuncAttachPage, &RendererFunctions::AttachPage},
       {kCFuncCreateVirtualComponent,
@@ -284,6 +280,22 @@ void Renderer::RegisterNGBuiltinForRadon(lepus::Context* context) {
 
 void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
   static const lepus::RenderBindingFunction funcs[] = {
+      {kCFuncIndexOf, &RendererFunctions::IndexOf},
+      {kCFuncGetLength, &RendererFunctions::GetLength},
+      {kCFuncSetValueToMap, &RendererFunctions::SetValueToMap},
+      // Added in Lynx:3.0
+      {kSetTimeout, &RendererFunctions::SetTimeout},
+      // Added in Lynx:3.0
+      {kClearTimeout, &RendererFunctions::ClearTimeout},
+      // Added in Lynx:3.0
+      {kSetInterval, &RendererFunctions::SetInterval},
+      // Added in Lynx:3.0
+      {kClearTimeInterval, &RendererFunctions::ClearTimeInterval},
+      // Added in Lynx:3.0
+      {kRequestAnimationFrame, &RendererFunctions::RequestAnimationFrame},
+      // Added in Lynx:3.0
+      {kCancelAnimationFrame, &RendererFunctions::CancelAnimationFrame},
+
       /* Element API BEGIN */
       {kCFunctionCreateElement, &RendererFunctions::FiberCreateElement},
       {kCFunctionCreatePage, &RendererFunctions::FiberCreatePage},
