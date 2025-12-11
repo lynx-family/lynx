@@ -342,25 +342,20 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
-          std::variant<std::unique_ptr<piper::Function>, double> id_or_callback;
           bool success = false;
           if (args[0].isObject()) {
             auto maybe_callback = args[0].getObject(rt);
             if (maybe_callback.isFunction(rt)) {
               auto callback = maybe_callback.asFunction(rt);
-              id_or_callback.emplace<std::unique_ptr<piper::Function>>(
-                  std::make_unique<piper::Function>(std::move(*callback)));
+              native_app->QueueMicrotask(std::move(*callback));
               success = true;
             }
-          } else if (args[0].isNumber()) {
-            id_or_callback.emplace<double>(args[0].getNumber());
-            success = true;
           }
           if (!success) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                "queueMicrotask args[0] isn't a function or callback id."));
+                "queueMicrotask args[0] isn't a function."));
           }
-          native_app->QueueMicrotask(std::move(id_or_callback));
+
           return piper::Value::undefined();
         });
   }

@@ -35,9 +35,7 @@ class JsTaskTest : public JSITestBase {
 
 TEST_P(JsTaskTest, SetTimeoutTaskTest) {
   auto func = function("function () { globalThis.foo = 'bar' }");
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(func));
-  adapter->SetTimeout(std::move(result), 100, 0);
+  adapter->SetTimeout(std::move(func), 100, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.foo")->isUndefined());
@@ -51,9 +49,7 @@ TEST_P(JsTaskTest, SetTimeoutTaskTest) {
 TEST_P(JsTaskTest, SetIntervalTaskTest) {
   auto func =
       function("function () { globalThis.foo = (globalThis.foo || 0) + 1 }");
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(func));
-  adapter->SetInterval(std::move(result), 100, 0);
+  adapter->SetInterval(std::move(func), 100, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.foo")->isUndefined());
@@ -72,9 +68,7 @@ TEST_P(JsTaskTest, SetIntervalTaskTest) {
 TEST_P(JsTaskTest, ThrownErrorTaskTest) {
   auto thrown_func = function("function() { throw new Error('foo') }");
 
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(thrown_func));
-  adapter->SetTimeout(std::move(result), 100, 0);
+  adapter->SetTimeout(std::move(thrown_func), 100, 0);
 
   std::this_thread::sleep_for(200ms);
   // Should throw error with message 'foo'
@@ -85,9 +79,7 @@ TEST_P(JsTaskTest, ThrownErrorTaskTest) {
 
 TEST_P(JsTaskTest, QueueMicrotaskTaskTest) {
   auto func = function("function () { globalThis.microtask = 'microtask' }");
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(func));
-  adapter->QueueMicrotask(std::move(result), 0);
+  adapter->QueueMicrotask(std::move(func), 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.microtask")->isUndefined());
@@ -103,12 +95,8 @@ TEST_P(JsTaskTest, MicrotaskTimeoutTaskOrderTest) {
       function("function () { globalThis.lastTask = 'timeout'; }");
   auto microtask_func =
       function("function () { globalThis.lastTask = 'microtask'; }");
-  std::variant<std::unique_ptr<piper::Function>, double> microtask_result =
-      std::make_unique<piper::Function>(std::move(microtask_func));
-  adapter->QueueMicrotask(std::move(microtask_result), 0);
-  std::variant<std::unique_ptr<piper::Function>, double> timeout_result =
-      std::make_unique<piper::Function>(std::move(timeout_func));
-  adapter->SetTimeout(std::move(timeout_result), 0, 0);
+  adapter->QueueMicrotask(std::move(microtask_func), 0);
+  adapter->SetTimeout(std::move(timeout_func), 0, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.lastTask")->isUndefined());

@@ -53,7 +53,7 @@ export class Lynx {
   }
 
   setTimeout: LynxSetTimeout = this.getApp().wrapReport(
-    this.getApp().setTimeout,
+    this.getNativeApp().setTimeout,
     'setTimeout Error'
   );
 
@@ -79,7 +79,7 @@ export class Lynx {
   }
 
   setInterval: LynxSetTimeout = this.getApp().wrapReport(
-    this.getApp().setInterval,
+    this.getNativeApp().setInterval,
     'setInterval Error'
   );
   clearInterval = this.getNativeApp().clearInterval;
@@ -490,18 +490,7 @@ export class Lynx {
     this.getNativeApp().cancelAnimationFrame(animationId);
 
   queueMicrotask(callback: () => void): void {
-    if (!callback) {
-      return;
-    }
-    if (!this.getApp().params?.pageConfigSubset?.enableJSCallbackManager) {
-      this.getNativeLynx().queueMicrotask(callback);
-    } else {
-      const id = this.getApp()._callbackManager.addCallback(callback);
-      if (id === undefined) {
-        return;
-      }
-      this.getNativeLynx().queueMicrotask(id);
-    }
+    this.getNativeLynx().queueMicrotask(callback);
   }
 
   loadScript = <LoadScript>(<T>(

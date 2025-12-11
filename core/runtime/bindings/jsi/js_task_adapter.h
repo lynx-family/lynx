@@ -6,7 +6,9 @@
 #define CORE_RUNTIME_BINDINGS_JSI_JS_TASK_ADAPTER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
 #include "base/include/closure.h"
@@ -21,7 +23,7 @@ namespace piper {
 class JsTaskAdapter {
  public:
   explicit JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
-                         const std::string& app_id,
+                         const std::string& group_id,
                          const tasm::PageOptions& page_options);
   ~JsTaskAdapter();
 
@@ -30,19 +32,14 @@ class JsTaskAdapter {
   JsTaskAdapter(JsTaskAdapter&&) = default;
   JsTaskAdapter& operator=(JsTaskAdapter&&) = default;
 
-  piper::Value SetTimeout(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
-      int32_t delay, uint64_t trace_flow_id);
+  piper::Value SetTimeout(Function func, int32_t delay, uint64_t trace_flow_id);
 
-  piper::Value SetInterval(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
-      int32_t delay, uint64_t trace_flow_id);
+  piper::Value SetInterval(Function func, int32_t delay,
+                           uint64_t trace_flow_id);
 
   void RemoveTask(uint32_t task);
 
-  void QueueMicrotask(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
-      uint64_t trace_flow_id);
+  void QueueMicrotask(Function func, uint64_t trace_flow_id);
 
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
@@ -54,9 +51,8 @@ class JsTaskAdapter {
     kSetInterval,
     kQueueMicrotask,
   };
-  base::closure MakeTask(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
-      TaskType task_type, uint64_t trace_flow_id);
+  base::closure MakeTask(Function func, TaskType task_type,
+                         uint64_t trace_flow_id);
 
   std::unique_ptr<base::TimedTaskManager> manager_;
   std::shared_ptr<std::unordered_map<uint64_t, base::closure>> micro_tasks_;
@@ -67,7 +63,7 @@ class JsTaskAdapter {
 
   std::weak_ptr<Runtime> rt_;
 
-  std::string app_id_;
+  std::string group_id_;
 
   tasm::PageOptions page_options_;
 };

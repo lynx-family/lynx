@@ -19,8 +19,6 @@ import Performance from '../modules/performance';
 import { CachedFunctionProxy } from '../util';
 import { AMDModule } from '../common/amd';
 import { createReadableStreamClass } from '../modules/fetch';
-import { CallbackManager } from 'src/common/callbackManager';
-import { LynxClearTimeout, LynxSetTimeout } from '@lynx-js/types';
 
 export class BaseAppSingletonData<
   NativeAppProxy extends NativeApp = NativeApp,
@@ -41,11 +39,6 @@ export class BaseAppSingletonData<
   lynx: LynxImpl;
   apiList: Record<string, unknown>;
   Reporter: Reporter;
-  callbackManager: CallbackManager;
-  setTimeout: LynxSetTimeout;
-  setInterval: LynxSetTimeout;
-  clearInterval: LynxClearTimeout;
-  clearTimeout: LynxClearTimeout;
   resolvedPromise: Promise<void>;
   _createReadableStreamClass: (
     Promise: PromiseConstructor
@@ -74,11 +67,6 @@ export class BaseAppSingletonData<
     baseApp._apiList = this.apiList;
     this.Reporter.rebind(() => baseApp);
     baseApp.Reporter = this.Reporter;
-    baseApp._callbackManager = this.callbackManager;
-    baseApp.setTimeout = this.setTimeout;
-    baseApp.setInterval = this.setInterval;
-    baseApp.clearInterval = this.clearInterval;
-    baseApp.clearTimeout = this.clearTimeout;
     baseApp.resolvedPromise = this.resolvedPromise;
     // fetch api related
     baseApp._createReadableStreamClass = this._createReadableStreamClass;
@@ -131,11 +119,6 @@ export default class StandaloneApp extends BaseApp {
     this.singletonData.lynx = this.lynx;
     this.singletonData.apiList = this._apiList;
     this.singletonData.Reporter = this.Reporter;
-    this.singletonData.callbackManager = this._callbackManager;
-    this.singletonData.setTimeout = this.setTimeout;
-    this.singletonData.setInterval = this.setInterval;
-    this.singletonData.clearInterval = this.clearInterval;
-    this.singletonData.clearTimeout = this.clearTimeout;
     this.singletonData.resolvedPromise = this.resolvedPromise;
     // fetch api related
     this.singletonData._createReadableStreamClass = this._createReadableStreamClass;
