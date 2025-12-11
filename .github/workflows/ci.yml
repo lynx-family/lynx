@@ -128,6 +128,8 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
+        with:
+          cache-backend: 'lynx-infra'
       - name: Install iOS Dependencies
         uses: nick-fields/retry@v2
         with:
@@ -615,6 +617,8 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
+        with:
+          cache-backend: 'lynx-infra'
       - name: Prepare cocoapods publish source
         run: |-
           source tools/envsetup.sh
@@ -662,6 +666,8 @@ jobs:
         uses: ./lynx/.github/actions/common-deps
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
+        with:
+          cache-backend: 'lynx-infra'
       - name: Get iOS simulator SDK version
         run: |
           xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
