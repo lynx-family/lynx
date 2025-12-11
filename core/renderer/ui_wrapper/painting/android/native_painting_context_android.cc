@@ -52,7 +52,10 @@ class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
     renderers_.insert_or_assign(id, view_factory_.CreateRenderer(id, type));
   }
 
-  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name) {}
+  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name) {
+    renderers_.insert_or_assign(
+        id, view_factory_.CreateExtendedRenderer(id, tag_name));
+  }
 
   void UpdateDisplayList(int id, DisplayList &&display_list) {
     auto it = renderers_.find(id);
