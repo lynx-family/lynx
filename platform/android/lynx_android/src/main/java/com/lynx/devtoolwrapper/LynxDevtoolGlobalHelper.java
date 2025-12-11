@@ -44,11 +44,16 @@ public class LynxDevtoolGlobalHelper {
   private LynxDevtoolGlobalHelper() {
     mAppInfo = new HashMap<>();
     mAppInfo.put("sdkVersion", LynxEnv.inst().getLynxVersion());
-    initRemoteDebugIfNecessary();
-    sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    if (LynxEnv.inst().isLynxDebugEnabled()) {
+      initRemoteDebugIfNecessary();
+      sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    }
   }
 
   private boolean initRemoteDebugIfNecessary() {
+    if (!LynxEnv.inst().isLynxDebugEnabled()) {
+      return false;
+    }
     if (!LynxEnv.inst().isNativeLibraryLoaded()) {
       if (mContext != null) {
         Toast.makeText(mContext, "Lynx initialization not finished!", Toast.LENGTH_SHORT).show();
