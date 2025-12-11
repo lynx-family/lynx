@@ -60,6 +60,15 @@ jobs:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Set up Ruby + specify Bundler version
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7.8'
+          bundler-version: '2.1.4'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
