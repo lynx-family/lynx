@@ -98,4 +98,11 @@ PlatformRendererAndroidFactory::CreateExtendedRenderer(
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name);
 }
 
+void PlatformRendererAndroid::OnUpdateAttributes(
+    const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
+  if (is_platform_extended_renderer_) {
+    // TODO(zhongyr): update attributes to java side via JNI.
+  }
+};
+
 }  // namespace lynx::tasm

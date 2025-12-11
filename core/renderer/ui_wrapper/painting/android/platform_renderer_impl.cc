@@ -15,6 +15,11 @@ void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
   OnUpdateDisplayList(std::move(display_list));
 }
 
+void PlatformRendererImpl::UpdateAttributes(
+    const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
+  OnUpdateAttributes(attributes, tends_to_flatten);
+}
+
 void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child) {
   if (!child) {
     return;
