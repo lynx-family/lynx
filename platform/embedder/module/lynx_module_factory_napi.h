@@ -42,6 +42,7 @@ class LynxModuleFactoryNAPI : public piper::NativeModuleFactory {
   std::mutex mutex_;
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
       module_creators_;
+  bool is_detached_ = false;
 };
 }  // namespace embedder
 }  // namespace lynx

@@ -5,6 +5,17 @@ import("../../../core/Lynx.gni")
 
 assert(enable_napi_binding)
 
+lynx_core_source_set("base_module") {
+  sources = [
+    "lynx_module_factory_napi.cc",
+    "lynx_module_factory_napi.h",
+    "lynx_module_manager_napi.cc",
+    "lynx_module_manager_napi.h",
+    "lynx_native_module_napi.cc",
+    "lynx_native_module_napi.h",
+  ]
+}
+
 lynx_core_source_set("module") {
   sources = [
     "extension_module_factory_impl.cc",
@@ -15,12 +26,9 @@ lynx_core_source_set("module") {
     "lynx_extension_module_priv.h",
     "lynx_fetch_module.cc",
     "lynx_fetch_module.h",
-    "lynx_module_factory_napi.cc",
-    "lynx_module_factory_napi.h",
-    "lynx_module_manager_napi.cc",
-    "lynx_module_manager_napi.h",
-    "lynx_native_module_napi.cc",
-    "lynx_native_module_napi.h",
   ]
-  deps = [ "../../../third_party/napi:env" ]
+  deps = [
+    ":base_module",
+    "../../../third_party/napi:env",
+  ]
 }
