@@ -234,7 +234,10 @@ void Fragment::CreatePaintingNode(
 void Fragment::UpdatePaintingNode(
     bool tend_to_flatten, const fml::RefPtr<PropBundle>& painting_data) {
   MarkDirtyState(kNeedRedraw);
-  // TODO(zhongyr): handle update or tend to flatten here.
+  if (behavior_) {
+    behavior_->OnAttributeUpdate(painting_data);
+  }
+  painting_context()->UpdatePaintingNode(id(), tend_to_flatten, painting_data);
 }
 
 void Fragment::UpdateLayout(
