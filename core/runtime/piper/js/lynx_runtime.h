@@ -30,6 +30,7 @@
 #include "core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/vm/lepus/lepus_global.h"
+#include "core/shell/lynx_actor_specialization.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "third_party/rapidjson/document.h"
 
