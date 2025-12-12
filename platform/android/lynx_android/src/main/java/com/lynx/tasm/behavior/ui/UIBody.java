@@ -32,7 +32,9 @@ import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.render.ContainerRenderer;
 import com.lynx.tasm.behavior.render.DisplayList;
 import com.lynx.tasm.behavior.render.DisplayListApplier;
+import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
@@ -420,13 +422,9 @@ public class UIBody extends UIGroup<UIBodyView> {
   }
 
   public static class UIBodyView
-      extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
+      extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding, IRendererHost {
     private ConcurrentHashMap<Integer, View> mViewMap = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Integer, LynxImageManager> mImageMap = new ConcurrentHashMap<>();
-
-    public int mSign;
-    private DisplayListApplier mDisplayListApplier = null;
-    DisplayList mDisplayList = new DisplayList();
 
     private IDrawChildHook mDrawChildHook;
     private long mMeaningfulPaintTiming;
@@ -451,22 +449,26 @@ public class UIBody extends UIGroup<UIBodyView> {
     private int mCacheHeight;
     boolean mIsMeaningfulPaintingAreaInvalidate = false;
 
-    private Rect mLynxFrame = new Rect();
-    public Rect getLynxFrame() {
-      return mLynxFrame;
+    private Renderer mRenderer;
+
+    @Override
+    public void setRenderer(Renderer renderer) {
+      mRenderer = renderer;
     }
 
-    public void setLynxFrame(int l, int t, int r, int b, int dx, int dy) {
-      mLynxFrame.set(l, t, r, b);
+    @Override
+    public Renderer getRenderer() {
+      return mRenderer;
     }
 
-    // XXX(zhongyr): The following methods can be better abstracted, since they are common methods
-    // for PlatformRender layer. Have to design a better way to compose the DisplayList based
-    // pipeline with legacy pipeline.
-    private PlatformRendererContext mPlatformRendererContext = null;
+    @Override
+    public ViewGroup getView() {
+      return this;
+    }
 
-    public void setPlatformRendererContext(PlatformRendererContext context) {
-      mPlatformRendererContext = context;
+    @Override
+    public Renderer createRenderer(PlatformRendererContext context, int sign) {
+      return new Renderer(context, sign);
     }
 
     // assign with the uiRenderer instance on TemplateRender
@@ -591,14 +593,14 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     private boolean shouldDrawWithDisplayList() {
-      return mPlatformRendererContext != null && mDisplayListApplier != null;
+      return mRenderer != null;
     }
 
     @Override
     protected void dispatchDraw(final Canvas canvas) {
       if (shouldDrawWithDisplayList()) {
         super.dispatchDraw(canvas);
-        mDisplayListApplier.drawTillNextView(canvas);
+        mRenderer.afterDispatchDraw(canvas);
         return;
       }
 
@@ -695,43 +697,25 @@ public class UIBody extends UIGroup<UIBodyView> {
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
       super.onLayout(changed, l, t, r, b);
-      if (mLynxContext != null && mLynxContext.isFragmentLayerRenderOn()) {
-        for (int i = 0; i < getChildCount(); i++) {
-          View child = getChildAt(i);
-          if (child instanceof ContainerRenderer) {
-            Rect childFrame = ((ContainerRenderer) child).getLynxFrame();
-            child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
-          }
-        }
+      if (shouldDrawWithDisplayList()) {
+        mRenderer.onLayout(changed, l, t, r, b);
       }
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-      // TODO(zhongyr): to be optimized. Not every draw has to retrieve the DL from native.
       super.onDraw(canvas);
-      if (mPlatformRendererContext != null) {
-        mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
-        if (mDisplayListApplier == null) {
-          mDisplayListApplier =
-              new DisplayListApplier(mDisplayList, mPlatformRendererContext, this);
-        } else {
-          mDisplayListApplier.setDisplayList(mDisplayList);
-        }
+      if (shouldDrawWithDisplayList()) {
+        mRenderer.onDraw(canvas);
       }
     }
 
     @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
       if (shouldDrawWithDisplayList()) {
-        mDisplayListApplier.drawTillNextView(canvas);
-        canvas.save();
-        if (child instanceof ContainerRenderer) {
-          canvas.translate(-((ContainerRenderer) child).mRenderOffset.x,
-              -((ContainerRenderer) child).mRenderOffset.y);
-        }
+        mRenderer.beforeDrawChild(canvas, child);
         boolean ret = super.drawChild(canvas, child, drawingTime);
-        canvas.restore();
+        mRenderer.afterDrawChild(canvas, child);
         return ret;
       }
       Rect bound = null;

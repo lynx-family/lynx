@@ -6,15 +6,17 @@ package com.lynx.tasm.behavior.render;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.util.DisplayMetrics;
-import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody;
-import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,6 +32,7 @@ public class PlatformRendererContextTest {
   @Mock private UIBody.UIBodyView mockBodyView;
 
   private PlatformRendererContext rendererContext;
+  private AtomicReference<Renderer> rootRendererRef;
 
   @Before
   public void setUp() {
@@ -45,6 +48,23 @@ public class PlatformRendererContextTest {
     when(mockLynxContext.getScreenMetrics()).thenReturn(mockDisplayMetrics);
     mockDisplayMetrics.density = 2;
     rendererContext = new PlatformRendererContext(mockBodyView, mockLynxContext);
+
+    rootRendererRef = new AtomicReference<>();
+    when(mockBodyView.createRenderer(any(PlatformRendererContext.class), anyInt()))
+        .thenAnswer(invocation -> {
+          PlatformRendererContext context = invocation.getArgument(0);
+          int sign = invocation.getArgument(1);
+          return new Renderer(context, sign);
+        });
+    doAnswer(invocation -> {
+      Renderer renderer = invocation.getArgument(0);
+      rootRendererRef.set(renderer);
+      return null;
+    })
+        .when(mockBodyView)
+        .setRenderer(any(Renderer.class));
+    when(mockBodyView.getRenderer()).thenAnswer(invocation -> rootRendererRef.get());
+    when(mockBodyView.getView()).thenReturn(mockBodyView);
   }
 
   @Test
@@ -64,54 +84,65 @@ public class PlatformRendererContextTest {
   @Test
   public void testCreatePlatformRenderer_PageType() {
     rendererContext.createPlatformRenderer(2, PlatformRendererContext.PlatformRendererType.kPage);
-    assertEquals(2, mockBodyView.mSign);
+    assertNotNull(mockBodyView.getRenderer());
+    assertEquals(2, mockBodyView.getRenderer().getSign());
     assertEquals(mockBodyView, rendererContext.mViewHolder.get(2));
   }
 
   @Test
   public void testInsertPlatformRenderer_AddAtEnd() {
-    ViewGroup mockParent = mock(ViewGroup.class);
-    ViewGroup mockChild = mock(ViewGroup.class);
-    when(mockParent.getChildCount()).thenReturn(2);
-    rendererContext.mViewHolder.put(1, mockParent);
-    rendererContext.mViewHolder.put(2, mockChild);
+    ViewGroup mockParentView = mock(ViewGroup.class);
+    ViewGroup mockChildView = mock(ViewGroup.class);
+    when(mockParentView.getChildCount()).thenReturn(2);
+    IRendererHost parentHost = createHost(mockParentView);
+    IRendererHost childHost = createHost(mockChildView);
+    rendererContext.mViewHolder.put(1, parentHost);
+    rendererContext.mViewHolder.put(2, childHost);
 
     rendererContext.insertPlatformRenderer(1, 2, -1);
-    verify(mockParent).addView(mockChild);
+    verify(mockParentView).addView(mockChildView);
   }
 
   @Test
   public void testInsertPlatformRenderer_AddAtIndex() {
-    ViewGroup mockParent = mock(ViewGroup.class);
-    ViewGroup mockChild = mock(ViewGroup.class);
-    when(mockParent.getChildCount()).thenReturn(5);
-    rendererContext.mViewHolder.put(1, mockParent);
-    rendererContext.mViewHolder.put(2, mockChild);
+    ViewGroup mockParentView = mock(ViewGroup.class);
+    ViewGroup mockChildView = mock(ViewGroup.class);
+    when(mockParentView.getChildCount()).thenReturn(5);
+    IRendererHost parentHost = createHost(mockParentView);
+    IRendererHost childHost = createHost(mockChildView);
+    rendererContext.mViewHolder.put(1, parentHost);
+    rendererContext.mViewHolder.put(2, childHost);
 
     rendererContext.insertPlatformRenderer(1, 2, 3);
-    verify(mockParent).addView(mockChild, 3);
+    verify(mockParentView).addView(mockChildView, 3);
   }
 
   @Test
   public void testInvalidatePlatformRenderer() {
     ViewGroup mockView = mock(ViewGroup.class);
-    rendererContext.mViewHolder.put(1, mockView);
+    IRendererHost host = createHost(mockView);
+    rendererContext.mViewHolder.put(1, host);
     rendererContext.invalidatePlatformRenderer(1);
     verify(mockView).invalidate();
   }
 
   @Test
   public void testRemovePlatformRendererFromParent() {
-    try {
-      Method field = View.class.getDeclaredMethod("getParent");
-      field.setAccessible(true);
-      ViewGroup parent = mock(ViewGroup.class);
-      ViewGroup child = mock(ViewGroup.class);
-      when(child.getParent()).thenReturn(parent);
-      rendererContext.mViewHolder.put(1, child);
-      rendererContext.removePlatformRendererFromParent(1);
-      verify(parent).getParent();
-    } catch (Exception e) {
-    }
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout parent = new FrameLayout(context);
+    FrameLayout child = new FrameLayout(context);
+    parent.addView(child);
+    IRendererHost childHost = createHost(child);
+    rendererContext.mViewHolder.put(1, childHost);
+
+    rendererContext.removePlatformRendererFromParent(1);
+    assertEquals(0, parent.getChildCount());
+    assertNull(child.getParent());
+  }
+
+  private IRendererHost createHost(ViewGroup view) {
+    IRendererHost host = mock(IRendererHost.class);
+    when(host.getView()).thenReturn(view);
+    return host;
   }
 }
