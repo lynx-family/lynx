@@ -5,15 +5,14 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef CODE_CACHE_H
-#define CODE_CACHE_H
+#ifndef SRC_NAPI_COMMON_CODE_CACHE_H_
+#define SRC_NAPI_COMMON_CODE_CACHE_H_
 
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-// <iostream> --> test only
-// #include <iostream>
 
 struct CachedData {
   CachedData() : length_(0), data_(nullptr), file_name_("") {}
@@ -54,7 +53,7 @@ class CacheBlob {
   static constexpr double MAGIC = 3.14159265;
 
  public:
-  CacheBlob(const std::string& path, int max_cap = 1 << 20)
+  explicit CacheBlob(const std::string& path, int max_cap = 1 << 20)
       : current_size_(0),
         target_path_(path),
         max_capacity_(max_cap),
@@ -76,6 +75,7 @@ class CacheBlob {
 #ifdef PROFILE_CODECACHE
   void dump_status(void* p);
 #endif  // PROFILE_CODECACHE
+
  private:
   void write_cache_unit(FILE* file_out, const CachedData* unit);
   void read_cache_unit(FILE* file_in);
@@ -101,4 +101,4 @@ class CacheBlob {
   CacheVector* append_vec_ = nullptr;
 };
 
-#endif  // CODE_CACHE_H
+#endif  // SRC_NAPI_COMMON_CODE_CACHE_H_

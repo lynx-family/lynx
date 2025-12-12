@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef PRIMJS_SRC_JS_NATIVE_API_H_
-#define PRIMJS_SRC_JS_NATIVE_API_H_
+#ifndef SRC_NAPI_JS_NATIVE_API_H_
+#define SRC_NAPI_JS_NATIVE_API_H_
 
 // This file needs to be compatible with C compilers.
 #include <stdbool.h>  // NOLINT(modernize-deprecated-headers)
@@ -14,6 +14,7 @@
 
 #ifdef ENABLE_CODECACHE
 #include <functional>
+#include <string>
 #include <vector>
 #endif  // ENABLE_CODECACHE
 
@@ -644,8 +645,7 @@ struct napi_env__ {
   V(call_threadsafe_function)         \
   V(delete_threadsafe_function)       \
   V(open_error_scope)                 \
-  V(close_error_scope)                \
-  NAPI_RUNTIME_CODECACHE_CALL(V)
+  V(close_error_scope)
 
 #define NAPI_ENV_CALL(API, ENV, ...) \
   napi_env(ENV)->napi_##API((ENV), __VA_ARGS__)
@@ -653,4 +653,4 @@ struct napi_env__ {
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif  // SRC_JS_NATIVE_API_H_
+#endif  // SRC_NAPI_JS_NATIVE_API_H_

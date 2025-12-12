@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef PRIMJS_SRC_NAPI_H_
-#define PRIMJS_SRC_NAPI_H_
+#ifndef SRC_NAPI_NAPI_H_
+#define SRC_NAPI_NAPI_H_
 
 #include <algorithm>
 #include <cstring>
@@ -479,7 +479,9 @@ class NAPI_EXTERN Number : public Value {
 
   NAPI_INLINE operator int64_t() const { return Int64Value(); }
 
-  NAPI_INLINE operator uint64_t() const { return static_cast<uint64_t>(Int64Value()); }
+  NAPI_INLINE operator uint64_t() const {
+    return static_cast<uint64_t>(Int64Value());
+  }
 
   NAPI_INLINE operator float() const { return FloatValue(); }
 
@@ -1135,7 +1137,7 @@ class NAPI_EXTERN Promise : public Object {
     Maybe<void> Reject(napi_value value);
 
    private:
-    Deferred(napi_env env);
+    explicit Deferred(napi_env env);
     NAPI_INLINE Deferred()
         : _env(nullptr), _deferred(nullptr), _promise(nullptr) {}
 
@@ -1203,7 +1205,7 @@ class Reference {
     return *this;
   }
 
-  NAPI_DISALLOW_ASSIGN(Reference<T>)
+  NAPI_DISALLOW_ASSIGN_COPY(Reference<T>)
 
   NAPI_INLINE operator napi_ref() const { return _ref; }
 
@@ -1578,6 +1580,7 @@ class NAPI_EXTERN ScriptWrappable {
 #ifdef NAPI_CPP_RTTI
   std::type_index* _isa_index;
 #else
+
  protected:
   void* type_id() { return _isa; }
   void set_type_id(void* index) { _isa = index; }
@@ -1682,7 +1685,7 @@ class ObjectWrap final : public InstanceWrap<T>,
   using StaticAccessorCallbackData =
       AccessorCallbackData<T, StaticMethodCallback, StaticSetterCallback>;
 
-  ObjectWrap(const CallbackInfo& callbackInfo);
+  explicit ObjectWrap(const CallbackInfo& callbackInfo);
 
   static Class DefineClass(Napi::Env env, const char* utf8name,
                            size_t props_count,
@@ -2323,7 +2326,6 @@ ThreadSafeFunction<ContextType, DataType, CallJs>::New(
       context, CallJsInternal, &tsfn);
   if (status != napi_ok) {
     delete finalizeData;
-    // TODO FATAL
   }
 
   return new ThreadSafeFunction<ContextType, DataType, CallJs>(env, tsfn);
@@ -2383,7 +2385,6 @@ ContextType* ThreadSafeFunction<ContextType, DataType, CallJs>::GetContext()
     const {
   void* context;
   _get_context(_tsfn, &context);
-  // TODO FATAL
   return static_cast<ContextType*>(context);
 }
 
@@ -2501,4 +2502,4 @@ String String::From(napi_env env, const T& value) {
 #include "primjs_napi_undefs.h"
 #endif
 
-#endif  // SRC_NAPI_H_
+#endif  // SRC_NAPI_NAPI_H_

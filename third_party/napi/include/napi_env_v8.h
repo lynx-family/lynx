@@ -5,8 +5,9 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#if !defined(SRC_NAPI_ENV_V8_H_) && !defined(_NAPI_V8_EXPORT_SOURCE_ONLY_)
-#define SRC_NAPI_ENV_V8_H_
+#if !defined(SRC_NAPI_V8_NAPI_ENV_V8_H_) && \
+    !defined(_NAPI_V8_EXPORT_SOURCE_ONLY_)
+#define SRC_NAPI_V8_NAPI_ENV_V8_H_
 
 #include <v8.h>
 
@@ -28,4 +29,4 @@ NAPI_EXTERN napi_value napi_v8_value_to_js_value(napi_env env,
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif
+#endif  // SRC_NAPI_V8_NAPI_ENV_V8_H_

@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef SRC_NAPI_STATE__H_
-#define SRC_NAPI_STATE__H_
+#ifndef SRC_NAPI_COMMON_NAPI_STATE_H_
+#define SRC_NAPI_COMMON_NAPI_STATE_H_
 
 #include "js_native_api.h"
 #ifdef USE_PRIMJS_NAPI
@@ -33,4 +33,4 @@ inline napi_status napi_set_last_error(napi_env env, napi_status error_code) {
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif
+#endif  // SRC_NAPI_COMMON_NAPI_STATE_H_

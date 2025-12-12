@@ -1,3 +1,7 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+//
 // this file may need to be include multiple times
 
 // node_api.h
@@ -9,6 +13,8 @@
 // node_api_types.h
 #define napi_async_execute_callback napi_async_execute_callback_primjs
 #define napi_async_complete_callback napi_async_complete_callback_primjs
+#define napi_async_work napi_async_work_primjs
+#define napi_threadsafe_function napi_threadsafe_function_primjs
 
 // js_native_api_types.h
 #define napi_env napi_env_primjs
@@ -98,3 +104,17 @@
 #define napi_property_descriptor napi_property_descriptor_primjs
 #define napi_extended_error_info napi_extended_error_info_primjs
 #define napi_get_last_error_info napi_get_last_error_info_primjs
+
+#define napi_key_include_prototypes napi_key_include_prototypes_primjs
+#define napi_key_own_only napi_key_own_only_primjs
+#define napi_key_collection_mode napi_key_collection_mode_primjs
+#define napi_key_all_properties napi_key_all_properties_primjs
+#define napi_key_writable napi_key_writable_primjs
+#define napi_key_enumerable napi_key_enumerable_primjs
+#define napi_key_configurable napi_key_configurable_primjs
+#define napi_key_skip_strings napi_key_skip_strings_primjs
+#define napi_key_skip_symbols napi_key_skip_symbols_primjs
+#define napi_key_filter napi_key_filter_primjs
+#define napi_key_keep_numbers napi_key_keep_numbers_primjs
+#define napi_key_numbers_to_strings napi_key_numbers_to_strings_primjs
+#define napi_key_conversion napi_key_conversion_primjs

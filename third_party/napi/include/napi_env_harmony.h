@@ -7,7 +7,7 @@
 #include "js_native_api_types.h"
 
 #ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
+#include "primjs_napi_defines.h"
 #endif
 
 #include "ark_runtime/jsvm.h"
@@ -18,6 +18,6 @@ NAPI_EXTERN void napi_detach_harmony(napi_env);
 
 EXTERN_C_END
 #ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_undefs.h"
+#include "primjs_napi_undefs.h"
 #endif
 #endif

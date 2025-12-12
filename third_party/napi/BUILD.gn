@@ -68,6 +68,7 @@ source_set("env") {
   ]
   public_configs = [ ":napi_config" ]
   configs += [ ":private_config" ]
+  include_dirs = [ "include" ]
   sources = [
     "../quickjs/src/src/napi/env/napi_env.cc",
     "../quickjs/src/src/napi/env/napi_env.h",
@@ -84,6 +85,7 @@ source_set("env") {
 source_set("quickjs") {
   public = [ "include/napi_env_quickjs.h" ]
   configs += [ ":private_config" ]
+  include_dirs = [ "include" ]
   sources = [
     "../quickjs/src/src/napi/quickjs/js_native_api_QuickJS.cc",
     "../quickjs/src/src/napi/quickjs/js_native_api_QuickJS.h",
@@ -115,6 +117,7 @@ source_set("v8") {
 source_set("jsc") {
   public = [ "include/napi_env_jsc.h" ]
   configs += [ ":private_config" ]
+  include_dirs = [ "include" ]
   sources = [
     "../quickjs/src/src/napi/jsc/js_native_api_JavaScriptCore.cc",
     "../quickjs/src/src/napi/jsc/js_native_api_JavaScriptCore.h",

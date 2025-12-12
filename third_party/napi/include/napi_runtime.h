@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef SRC_NAPI_RUNTIME_H_
-#define SRC_NAPI_RUNTIME_H_
+#ifndef SRC_NAPI_ENV_NAPI_RUNTIME_H_
+#define SRC_NAPI_ENV_NAPI_RUNTIME_H_
 
 #include "js_native_api.h"
 #ifdef USE_PRIMJS_NAPI
@@ -63,9 +63,19 @@ NAPI_EXTERN void napi_attach_runtime_with_configuration(
 
 NAPI_EXTERN void napi_detach_runtime(napi_env env);
 
+NAPI_EXTERN napi_status napi_runtime_get_threadsafe_function_context(
+    napi_threadsafe_function func, void** result);
+
+NAPI_EXTERN napi_status napi_runtime_call_threadsafe_function(
+    napi_threadsafe_function func, void* data,
+    napi_threadsafe_function_call_mode is_blocking);
+
+NAPI_EXTERN napi_status
+napi_runtime_delete_threadsafe_function(napi_threadsafe_function func);
+
 EXTERN_C_END
 
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif
+#endif  // SRC_NAPI_ENV_NAPI_RUNTIME_H_

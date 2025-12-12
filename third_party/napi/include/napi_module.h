@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef PRIMJS_SRC_NAPI_MODULE_H_
-#define PRIMJS_SRC_NAPI_MODULE_H_
+#ifndef SRC_NAPI_NAPI_MODULE_H_
+#define SRC_NAPI_NAPI_MODULE_H_
 
 #include "js_native_api.h"
 #ifdef USE_PRIMJS_NAPI
@@ -53,4 +53,4 @@ EXTERN_C_END
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif  // SRC_NAPI_MODULE_H_
+#endif  // SRC_NAPI_NAPI_MODULE_H_

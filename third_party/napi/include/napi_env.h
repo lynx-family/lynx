@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef SRC_NAPI_ENV_H_
-#define SRC_NAPI_ENV_H_
+#ifndef SRC_NAPI_ENV_NAPI_ENV_H_
+#define SRC_NAPI_ENV_NAPI_ENV_H_
 
 #include "js_native_api.h"
 #ifdef USE_PRIMJS_NAPI
@@ -27,4 +27,4 @@ EXTERN_C_END
 #include "primjs_napi_undefs.h"
 #endif
 
-#endif
+#endif  // SRC_NAPI_ENV_NAPI_ENV_H_

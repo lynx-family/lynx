@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
-#ifndef SRC_NAPI_ENV_QUICKJS_H_
-#define SRC_NAPI_ENV_QUICKJS_H_
+#ifndef SRC_NAPI_QUICKJS_NAPI_ENV_QUICKJS_H_
+#define SRC_NAPI_QUICKJS_NAPI_ENV_QUICKJS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,4 +42,4 @@ EXTERN_C_END
 #ifdef USE_PRIMJS_NAPI
 #include "primjs_napi_undefs.h"
 #endif
-#endif
+#endif  // SRC_NAPI_QUICKJS_NAPI_ENV_QUICKJS_H_

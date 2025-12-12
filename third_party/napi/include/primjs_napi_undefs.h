@@ -1,12 +1,15 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #undef napi_addon_register_func
 #undef napi_module
 #undef napi_add_env_cleanup_hook
 #undef napi_remove_env_cleanup_hook
 #undef napi_async_execute_callback
 #undef napi_async_complete_callback
+#undef napi_async_work
+#undef napi_threadsafe_function
 #undef napi_env
 #undef napi_env__
 #undef napi_value
@@ -85,3 +88,16 @@
 #undef napi_property_descriptor
 #undef napi_extended_error_info
 #undef napi_get_last_error_info
+#undef napi_key_include_prototypes
+#undef napi_key_own_only
+#undef napi_key_collection_mode
+#undef napi_key_all_properties
+#undef napi_key_writable
+#undef napi_key_enumerable
+#undef napi_key_configurable
+#undef napi_key_skip_strings
+#undef napi_key_skip_symbols
+#undef napi_key_filter
+#undef napi_key_keep_numbers
+#undef napi_key_numbers_to_strings
+#undef napi_key_conversion
