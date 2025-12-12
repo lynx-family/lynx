@@ -42,6 +42,13 @@ enum ContextType {
   LepusNGContextType,  // Run lepusNG with qucikjs code
 };
 
+struct RenderBindingFunction {
+  const char* name;
+  CFunction function;
+  bool for_lepus = true;
+  bool for_lepusng = true;
+};
+
 #define LEPUS_DEFAULT_CONTEXT_NAME "__Card__"
 
 class Context {

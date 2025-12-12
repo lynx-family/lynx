@@ -40,13 +40,6 @@ namespace lynx {
 namespace lepus {
 
 class ContextBinaryWriter;
-using RenderBindingFunc = lepus::Value (*)(lepus::Context*, lepus::Value*,
-                                           int32_t);
-
-struct RenderBindingFunction {
-  const char* name;
-  RenderBindingFunc function;
-};
 
 class LEPUSRuntimeData {
  public:
@@ -106,7 +99,7 @@ class QuickContext : private LEPUSRuntimeData,
   void RegisterObjectFunction(lepus::Value& obj,
                               const RenderBindingFunction* funcs, size_t size);
 
-  LEPUSValue NewBindingFunction(RenderBindingFunc func);
+  LEPUSValue NewBindingFunction(CFunction func);
 
   /**
    * @brief Called when the garbage collection (GC) operation is completed to

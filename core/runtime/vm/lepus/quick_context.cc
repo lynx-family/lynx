@@ -1086,7 +1086,7 @@ void QuickContext::RegisterGlobalFunction(const char* name,
   RegisterGlobalProperty(name, c_func);
 }
 
-LEPUSValue QuickContext::NewBindingFunction(RenderBindingFunc func) {
+LEPUSValue QuickContext::NewBindingFunction(CFunction func) {
   LEPUSValue binding_func =
       LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, reinterpret_cast<void*>(func));
   return LEPUS_NewCFunctionData(
@@ -1094,8 +1094,8 @@ LEPUSValue QuickContext::NewBindingFunction(RenderBindingFunc func) {
       [](LEPUSContext* ctx, LEPUSValue this_obj, int32_t argc,
          LEPUSValueConst* argv, int32_t magic, LEPUSValue* func_data) {
         auto* qctx = lepus::QuickContext::GetFromJsContext(ctx);
-        RenderBindingFunc func = reinterpret_cast<RenderBindingFunc>(
-            LEPUS_VALUE_GET_CPOINTER(func_data[0]));
+        CFunction func =
+            reinterpret_cast<CFunction>(LEPUS_VALUE_GET_CPOINTER(func_data[0]));
         // 1. prepare args.
         char args_buf[sizeof(lepus::Value) * argc];
         lepus::Value* largv = reinterpret_cast<lepus::Value*>(args_buf);
