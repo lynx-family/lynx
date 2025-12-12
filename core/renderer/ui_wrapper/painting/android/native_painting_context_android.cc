@@ -52,6 +52,8 @@ class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
     renderers_.insert_or_assign(id, view_factory_.CreateRenderer(id, type));
   }
 
+  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name) {}
+
   void UpdateDisplayList(int id, DisplayList &&display_list) {
     auto it = renderers_.find(id);
     if (it == renderers_.end()) {
@@ -180,6 +182,14 @@ std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
 void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {}
 
 void NativePaintingCtxAndroid::ResumeExposure() {}
+
+void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
+    int id, const base::String &tag_name) {
+  Enqueue([ref = platform_ref_, id, tag_name]() {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+        ->CreatePlatformExtendedRenderer(id, tag_name);
+  });
+}
 
 void NativePaintingCtxAndroid::UpdateLayout(
     int tag, float x, float y, float width, float height, const float *paddings,
