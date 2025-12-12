@@ -1525,7 +1525,8 @@ public class com::lynx::tasm::EmbeddedMode :  {
 
 public class com::lynx::tasm::performance::timing::EmbeddedTimingCollector :  {
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setObserver(WeakReference< IPerformanceObserver > observer);
-  public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasEmitTimingEvent();
+  public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasEmitLoadBundleEvent();
+  public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasPendingUpdateEvent();
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.markTiming(String key, long usTimestamp);
 }
 
@@ -9738,6 +9739,7 @@ public enum com::lynx::tasm::ThreadStrategyForRendering {
 public class com::lynx::tasm::performance::timing::TimingConstants :  {
   public final String com.lynx.tasm.performance.timing.TimingConstants.PIPELINE_START PIPELINE_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.LOAD_BUNDLE_START LOAD_BUNDLE_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.UPDATE_DATA_START UPDATE_DATA_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.RELOAD_BUNDLE_START RELOAD_BUNDLE_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_START VERIFY_TASM_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_END VERIFY_TASM_END;
@@ -9751,6 +9753,7 @@ public class com::lynx::tasm::performance::timing::TimingConstants :  {
   public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_DRAW_END HOST_PLATFORM_DRAW_END;
   public final String com.lynx.tasm.performance.timing.TimingConstants.LOAD_BUNDLE LOAD_BUNDLE;
   public final String com.lynx.tasm.performance.timing.TimingConstants.RELOAD_BUNDLE_FROM_NATIVE RELOAD_BUNDLE_FROM_NATIVE;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.UPDATE_TRIGGERED_BY_NATIVE UPDATE_TRIGGERED_BY_NATIVE;
   public final String com.lynx.tasm.performance.timing.TimingConstants.PIPELINE_ORIGIN PIPELINE_ORIGIN;
   public final String com.lynx.tasm.performance.timing.TimingConstants.TIMESTAMP_MAP TIMESTAMP_MAP;
 }
