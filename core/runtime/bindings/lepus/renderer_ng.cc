@@ -424,7 +424,7 @@ void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
       {kCFunctionSetStyleObject, &RendererFunctions::SetStyleObject},
       {kCFunctionUpdateStyleObject, &RendererFunctions::UpdateStyleObject},
       {kCFunctionAddEventListener, &RendererFunctions::FiberAddEventListener},
-      {kCFunctionRemoveEventListener,
+      {kCFunctionFiberRemoveEventListener,
        &RendererFunctions::FiberRemoveEventListener},
       {kCFunctionCreateEvent, &RendererFunctions::FiberCreateEvent},
       {kCFunctionDispatchEvent, &RendererFunctions::FiberDispatchEvent},
