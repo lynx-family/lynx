@@ -5,35 +5,27 @@
 #ifndef CLAY_GFX_IMAGE_ANIMATED_IMAGE_H_
 #define CLAY_GFX_IMAGE_ANIMATED_IMAGE_H_
 
-#include <list>
 #include <memory>
-#include <string>
-#include <unordered_set>
-#include <utility>
 
-#include "clay/gfx/animation/animation_handler.h"
+#include "base/include/fml/time/timer.h"
 #include "clay/gfx/gpu_object.h"
-#include "clay/gfx/graphics_context.h"
 #include "clay/gfx/image/base_image.h"
-#include "clay/gfx/shared_image/shared_image_sink.h"
 
 namespace clay {
 
 class AnimatedImage : public BaseImage {
  public:
   static std::shared_ptr<AnimatedImage> Make(
+      fml::RefPtr<fml::TaskRunner> task_runner,
       std::shared_ptr<PlatformImage> image);
 
   fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {
     return gpu_image_.object();
   }
-  fml::RefPtr<SharedImageSink> GetSharedImageSink();
-  void SetTextureId(int64_t texture_id) { texture_id_ = texture_id; }
-  int64_t GetTextureId() { return texture_id_; }
   void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) override;
 
-  bool DoAnimationFrame(int64_t frame_time,
-                        std::function<void()> on_frame_changed);
+  void SetAnimationFrameCallback(std::function<void()> func);
+
   void SetAutoPlay(bool auto_play);
   void SetLoopCount(int loop_count);
   void StartAnimate();
@@ -44,10 +36,12 @@ class AnimatedImage : public BaseImage {
  private:
   AnimatedImage() = default;
 
+  void NextFrame();
+
  private:
+  std::unique_ptr<fml::OneshotTimer> frame_timer_;
   GPUObject<GraphicsImage> gpu_image_;
-  fml::RefPtr<SharedImageSink> shared_image_;
-  int64_t texture_id_ = -1;
+  std::function<void()> animation_frame_callback_;
 };
 
 }  // namespace clay

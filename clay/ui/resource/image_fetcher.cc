@@ -107,7 +107,8 @@ uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
         }
         std::shared_ptr<BaseImage> image;
         if (platform_image->IsAnimated()) {
-          image = AnimatedImage::Make(platform_image);
+          image = AnimatedImage::Make(self->task_runners_.GetUITaskRunner(),
+                                      platform_image);
         } else {
           image = StaticImage::Make(platform_image);
         }

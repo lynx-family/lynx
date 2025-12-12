@@ -20,9 +20,9 @@ class PlatformImage : public std::enable_shared_from_this<PlatformImage> {
 
   virtual int GetWidth() = 0;
   virtual int GetHeight() = 0;
+  virtual int64_t GetDuration() = 0;
 
-  virtual std::tuple<std::shared_ptr<skity::Data>, ImageInfo> ToBitmap() = 0;
-  virtual fml::RefPtr<SharedImageSink> ToSharedImage() = 0;
+  virtual std::shared_ptr<skity::Pixmap> ToBitmap() = 0;
 
   virtual void DrawFrame(int64_t frame_time,
                          std::function<void()> on_frame_changed) = 0;

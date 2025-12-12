@@ -1326,6 +1326,15 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
       uri, false,
       [self = weak_factory_.GetWeakPtr(), index, background](
           std::shared_ptr<BaseImage> image, bool hit_cache) {
+        if (image->GetType() == ImageType::kAnimated) {
+          static_cast<AnimatedImage*>(image.get())
+              ->SetAnimationFrameCallback([self]() {
+                if (!self) {
+                  return;
+                }
+                self->render_object()->MarkNeedsPaint();
+              });
+        }
         if (background) {
           self->render_object()->SetBackgroundImage(index, image);
         } else {
