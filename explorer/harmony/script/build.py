@@ -59,13 +59,13 @@ def run_build_lynx_core(verbose, version):
     os.environ['PATH'] = os.pathsep.join([os.path.join(LYNX_DIR, '..', 'buildtools', 'node', 'bin'), os.environ['PATH']])
     main_dest_path = os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'src', 'main', 'resources', 'rawfile')
     debug_dest_path = os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile')
-    cmd = (f'python3 ./build.py --platform android '
-           f'--release_output {os.path.join(main_dest_path, "lynx_core.js")} '
-           f'--dev_output {os.path.join(debug_dest_path, "lynx_core_dev.js")} '
-           f'--version {version}')
+    cmd = ['python3', './build.py', '--platform', 'android',
+           '--release_output', os.path.join(main_dest_path, 'lynx_core.js'),
+           '--dev_output', os.path.join(debug_dest_path, 'lynx_core_dev.js'),
+           '--version', version]
     if verbose:
-        print(f'run command {cmd}')
-    check_call(cmd, shell=True, cwd=os.path.join(LYNX_DIR, 'tools', 'js_tools'))
+        print(f'run command {" ".join(cmd)}')
+    check_call(cmd, cwd=os.path.join(LYNX_DIR, 'tools', 'js_tools'))
 
 def run_copy_devtool_resources(verbose):
     scripts = [
@@ -74,10 +74,10 @@ def run_copy_devtool_resources(verbose):
     ]
     for script in scripts:
         if os.path.exists(script):
-            command = "python3 " + script
+            command = ['python3', script]
             if verbose:
-                print(f'run command {command}')
-            check_call(command, shell=True, cwd=LYNX_DIR)
+                print(f'run command {" ".join(command)}')
+            check_call(command, cwd=LYNX_DIR)
         else:
             print(f"Script {script} does not exist.")
 
@@ -117,15 +117,15 @@ def run_gn(args, gn_out_dir, abi):
     gn_args = f'target_os="harmony" jsengine_type="quickjs" is_debug={str(args.debug).lower()} target_cpu="{get_cpu_type(abi)}" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true'
     if args.dev:
         gn_args += ' enable_testbench_replay=true enable_testbench_recorder=true enable_trace="perfetto"'
-    cmd = f'gn gen {gn_out_dir} --args=\'{gn_args}\' --export-compile-commands'
-    check_call(cmd, shell=True, cwd=HARMONY_DIR)
+    cmd = ['gn', 'gen', gn_out_dir, f'--args={gn_args}', '--export-compile-commands']
+    check_call(cmd, cwd=HARMONY_DIR)
 
 def run_build_so(output_path, args):
     target = 'default'
-    cmd = f'ninja -C {output_path} {target}'
+    cmd = ['ninja', '-C', output_path, target]
     if args.verbose:
-        print(f'run command {cmd}')
-    check_call(cmd, shell=True, cwd=HARMONY_DIR)
+        print(f'run command {" ".join(cmd)}')
+    check_call(cmd, cwd=HARMONY_DIR)
 
 
 def run_cp_so(output_path, args, abi):
@@ -147,10 +147,10 @@ def run_cp_so(output_path, args, abi):
 def run_package_har(module_name, module_path, verbose):
     if verbose:
         print(f'===== start run package {module_name} =====')
-    cmd = f'hvigorw assembleHar --mode module -p module={module_name}@default -p product=default -p buildMode=debug --no-daemon'
+    cmd = ['hvigorw', 'assembleHar', '--mode', 'module', '-p', f'module={module_name}@default', '-p', 'product=default', '-p', 'buildMode=debug', '--no-daemon']
     if verbose:
-        print(f'run command {cmd}')
-    check_call(cmd, shell=True, cwd=HARMONY_DIR)
+        print(f'run command {" ".join(cmd)}')
+    check_call(cmd, cwd=HARMONY_DIR)
     # as even hvigor build failed, it still returns value 0, so we need to check har file exist or not
     har_path = os.path.join(HARMONY_DIR, module_path, 'build', 'default', 'outputs', 'default', f'{module_name}.har')
     if not os.path.isfile(har_path):
@@ -170,10 +170,10 @@ def collect_module_config_list(args):
 
 def run_package_hap(args):
     build_type = get_build_type(args)
-    cmd = f"hvigorw assembleApp --mode project -p product=default -p buildMode={build_type} -p skipGn=true --no-daemon"
+    cmd = ['hvigorw', 'assembleApp', '--mode', 'project', '-p', 'product=default', '-p', f'buildMode={build_type}', '-p', 'skipGn=true', '--no-daemon']
     if args.verbose:
-        print(f'run command {cmd}')
-    check_call(cmd, shell=True, cwd=HARMONY_DIR)
+        print(f'run command {" ".join(cmd)}')
+    check_call(cmd, cwd=HARMONY_DIR)
 
 def delete_gitignore_file():
     gitignore_paths = [
