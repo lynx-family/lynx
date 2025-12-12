@@ -110,7 +110,7 @@
     if ([_imageUI.context.mediaResourceFetcher respondsToSelector:@selector(isLocalResource:)]) {
       isLocalResource = [_imageUI.context.mediaResourceFetcher isLocalResource:requestUrl.url];
     }
-    if (isLocalResource != LynxResourceOptionalBoolFalse) {
+    if (_imageUI && isLocalResource != LynxResourceOptionalBoolFalse) {
       urlStr = [_imageUI.context.mediaResourceFetcher shouldRedirectUrl:requestUrl.request];
     }
     LLog(@"[lynx]originalURL %@, resolvedURL %@", requestUrl.url.absoluteURL, urlStr);
