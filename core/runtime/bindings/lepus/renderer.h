@@ -15,6 +15,7 @@ namespace lynx {
 namespace lepus {
 class Context;
 class Value;
+struct RenderBindingFunction;
 }  // namespace lepus
 
 namespace tasm {
@@ -22,34 +23,38 @@ namespace tasm {
 // Pointer of TempateAssembler
 constexpr char kTemplateAssembler[] = "$kTemplateAssembler";
 
-static const char* kCFuncGetLength = "_GetLength";
-static const char* kCFuncIndexOf = "_IndexOf";
-static const char* kCFuncSetValueToMap = "_SetValueToMap";
+constexpr static const char* kCFuncGetLength = "_GetLength";
+constexpr static const char* kCFuncIndexOf = "_IndexOf";
+constexpr static const char* kCFuncSetValueToMap = "_SetValueToMap";
 
-static const char* kCFuncAttachPage = "_AttachPage";
-static const char* kCFuncAppendChild = "_AppendChild";
-static const char* kCFuncAppendSubTree = "_AppendSubTree";
-static const char* kCFuncCloneSubTree = "_CloneSubTree";
-static const char* kCFuncCreateVirtualNode = "_CreateVirtualNode";
-static const char* kCFuncCreateVirtualComponent = "_CreateVirtualComponent";
-static const char* kCFuncCreatePage = "_CreatePage";
-static const char* kCFuncSetAttributeTo = "_SetAttributeTo";
-static const char* kCFuncSetStaticAttributeTo = "_SetStaticAttributeTo";
-static const char* kCFuncSetStyleTo = "_SetStyleTo";
-static const char* kCFuncSetStaticStyleTo = "_SetStaticStyleTo";
-static const char* kCFuncSetDynamicStyleTo = "_SetDynamicStyleTo";
-static const char* kCFuncSetClassTo = "_SetClassTo";
-static const char* kCFuncSetStaticClassTo = "_SetStaticClassTo";
-static const char* kCFuncSetStaticEventTo = "_SetStaticEventTo";
-static const char* kCFuncSetDataSetTo = "_SetDataSetTo";
-static const char* kCFuncSetEventTo = "_SetEventTo";
-static const char* kCFuncSetId = "_SetId";
-static const char* kCFuncSetStaticStyleTo2 = "_SetStaticStyleTo2";
-static const char* kCFuncSetStaticStyleToByFiber = "_SetStaticStyleToByFiber";
-static const char* kCFuncGetGlobalProps = "_GetGlobalProps";
-static const char* kCFuncHandleExceptionInLepus = "_HandleExceptionInLepus";
-static const char* kCFuncMarkPageElement = "_MarkPageElement";
-static const char* kCFuncGetSystemInfo = "_GetSystemInfo";
+constexpr static const char* kCFuncAttachPage = "_AttachPage";
+constexpr static const char* kCFuncAppendChild = "_AppendChild";
+constexpr static const char* kCFuncAppendSubTree = "_AppendSubTree";
+constexpr static const char* kCFuncCloneSubTree = "_CloneSubTree";
+constexpr static const char* kCFuncCreateVirtualNode = "_CreateVirtualNode";
+constexpr static const char* kCFuncCreateVirtualComponent =
+    "_CreateVirtualComponent";
+constexpr static const char* kCFuncCreatePage = "_CreatePage";
+constexpr static const char* kCFuncSetAttributeTo = "_SetAttributeTo";
+constexpr static const char* kCFuncSetStaticAttributeTo =
+    "_SetStaticAttributeTo";
+constexpr static const char* kCFuncSetStyleTo = "_SetStyleTo";
+constexpr static const char* kCFuncSetStaticStyleTo = "_SetStaticStyleTo";
+constexpr static const char* kCFuncSetDynamicStyleTo = "_SetDynamicStyleTo";
+constexpr static const char* kCFuncSetClassTo = "_SetClassTo";
+constexpr static const char* kCFuncSetStaticClassTo = "_SetStaticClassTo";
+constexpr static const char* kCFuncSetStaticEventTo = "_SetStaticEventTo";
+constexpr static const char* kCFuncSetDataSetTo = "_SetDataSetTo";
+constexpr static const char* kCFuncSetEventTo = "_SetEventTo";
+constexpr static const char* kCFuncSetId = "_SetId";
+constexpr static const char* kCFuncSetStaticStyleTo2 = "_SetStaticStyleTo2";
+constexpr static const char* kCFuncSetStaticStyleToByFiber =
+    "_SetStaticStyleToByFiber";
+constexpr static const char* kCFuncGetGlobalProps = "_GetGlobalProps";
+constexpr static const char* kCFuncHandleExceptionInLepus =
+    "_HandleExceptionInLepus";
+constexpr static const char* kCFuncMarkPageElement = "_MarkPageElement";
+constexpr static const char* kCFuncGetSystemInfo = "_GetSystemInfo";
 
 // Set Element Worklet
 constexpr static const char* kCFuncSetScriptEventTo = "_SetScriptEventTo";
@@ -64,100 +69,112 @@ constexpr static const char* kCFuncRemoveGestureDetector =
 constexpr static const char* kCFuncSetGestureState = "__SetGestureState";
 constexpr static const char* kCFuncConsumeGesture = "__ConsumeGesture";
 
-static const char* kCFuncCreateVirtualSlot = "_CreateVirtualSlot";
-static const char* kCFuncCreateVirtualPlug = "_CreateVirtualPlug";
-static const char* kCFuncCreateVirtualPlugWithComponent =
+constexpr static const char* kCFuncCreateVirtualSlot = "_CreateVirtualSlot";
+constexpr static const char* kCFuncCreateVirtualPlug = "_CreateVirtualPlug";
+constexpr static const char* kCFuncCreateVirtualPlugWithComponent =
     "_CreateVirtualPlugWithComponent";
-static const char* kCFuncMarkComponentHasRenderer = "_MarkComponentHasRenderer";
+constexpr static const char* kCFuncMarkComponentHasRenderer =
+    "_MarkComponentHasRenderer";
 
 // Relevant to component
-static const char* kCFuncSetProp = "_SetProp";
-static const char* kCFuncSetData = "_SetData";
-static const char* kCFuncProcessComponentData = "_ProcessData";
-static const char* kCFuncAddPlugToComponent = "_AddPlugToComponent";
-static const char* kCFuncAppendVirtualPlugToComponent =
+constexpr static const char* kCFuncSetProp = "_SetProp";
+constexpr static const char* kCFuncSetData = "_SetData";
+constexpr static const char* kCFuncProcessComponentData = "_ProcessData";
+constexpr static const char* kCFuncAddPlugToComponent = "_AddPlugToComponent";
+constexpr static const char* kCFuncAppendVirtualPlugToComponent =
     "_AppendPlugToComponent";
-static const char* kCFuncGetComponentData = "_GetComponentData";
-static const char* kCFuncGetComponentProps = "_GetComponentProps";
-static const char* kCFuncUpdateComponentInfo = "_UpdateComponentInfo";
-static const char* kCFuncGetComponentInfo = "_GetComponentInfo";
-static const char* kCFuncCreateVirtualListNode = "_CreateVirtualListNode";
-static const char* kCFuncAppendListComponentInfo = "_AppendListComponentInfo";
-static const char* kCFuncSetListRefreshComponentInfo =
+constexpr static const char* kCFuncGetComponentData = "_GetComponentData";
+constexpr static const char* kCFuncGetComponentProps = "_GetComponentProps";
+constexpr static const char* kCFuncUpdateComponentInfo = "_UpdateComponentInfo";
+constexpr static const char* kCFuncGetComponentInfo = "_GetComponentInfo";
+constexpr static const char* kCFuncCreateVirtualListNode =
+    "_CreateVirtualListNode";
+constexpr static const char* kCFuncAppendListComponentInfo =
+    "_AppendListComponentInfo";
+constexpr static const char* kCFuncSetListRefreshComponentInfo =
     "_SetListRefreshComponentInfo";
-static const char* kCFuncCreateVirtualComponentByName =
+constexpr static const char* kCFuncCreateVirtualComponentByName =
     "_CreateVirtualComponentByName";
-static const char* kCFuncCreateDynamicVirtualComponent =
+constexpr static const char* kCFuncCreateDynamicVirtualComponent =
     "_CreateDynamicVirtualComponent";
-static const char* kCFuncRenderDynamicComponent = "_RenderDynamicComponent";
-static const char* kCFuncAddFallbackToDynamicComponent =
+constexpr static const char* kCFuncRenderDynamicComponent =
+    "_RenderDynamicComponent";
+constexpr static const char* kCFuncAddFallbackToDynamicComponent =
     "_AddFallbackToDynamicComponent";
-static const char* kCFuncSetComponent = "_SetComponent";
+constexpr static const char* kCFuncSetComponent = "_SetComponent";
 
-static const char* kCFuncGetLazyLoadCount = "_GetLazyLoadCount";
-static const char* kCFuncThemedTranslation = "_sysTheme";
-static const char* kCFuncThemedLangTranslation = "_sysLang";
+constexpr static const char* kCFuncGetLazyLoadCount = "_GetLazyLoadCount";
+constexpr static const char* kCFuncThemedTranslation = "_sysTheme";
+constexpr static const char* kCFuncThemedLangTranslation = "_sysLang";
 
 // Template API
-static const char* kCFuncRegisterDataProcessor = "registerDataProcessor";
-static const char* kCFuncAddEventListener = "_AddEventListener";
-static const char* kCFuncSendGlobalEvent = "_SendGlobalEvent";
+constexpr static const char* kCFuncRegisterDataProcessor =
+    "registerDataProcessor";
+constexpr static const char* kCFuncAddEventListener = "_AddEventListener";
+constexpr static const char* kCFuncSendGlobalEvent = "_SendGlobalEvent";
 
 // Element Worklet
 constexpr static const char* kCFuncRegisterElementWorklet =
     "registerElementWorklet";
 
 // i18n
-static const char* kCFuncFilterI18nResource = "_FilterI18nResource";
-static const char* kCFuncI18nResourceTranslation = "_I18nResourceTranslation";
-static const char* kCFuncReFlushPage = "_ReFlushPage";
+constexpr static const char* kCFuncFilterI18nResource = "_FilterI18nResource";
+constexpr static const char* kCFuncI18nResourceTranslation =
+    "_I18nResourceTranslation";
+constexpr static const char* kCFuncReFlushPage = "_ReFlushPage";
 
 // Radon Component
-static const char* kCFuncGetComponentContextData = "_context";
-static const char* kCFuncSetContextData = "_SetContextData";
+constexpr static const char* kCFuncGetComponentContextData = "_context";
+constexpr static const char* kCFuncSetContextData = "_SetContextData";
 
 // Element API
 // Create Element
-static const char* kCFunctionCreateElement = "__CreateElement";
-static const char* kCFunctionCreateView = "__CreateView";
-static const char* kCFunctionCreateText = "__CreateText";
-static const char* kCFunctionCreateImage = "__CreateImage";
-static const char* kCFunctionCreateRawText = "__CreateRawText";
-static const char* kCFunctionCreateNonElement = "__CreateNonElement";
-static const char* kCFunctionCreateWrapperElement = "__CreateWrapperElement";
-static const char* kCFunctionCreateList = "__CreateList";
-static const char* kCFunctionCreateScrollView = "__CreateScrollView";
-static const char* kCFunctionCreatePage = "__CreatePage";
-static const char* kCFunctionGetPageElement = "__GetPageElement";
-static const char* kCFunctionCreateComponent = "__CreateComponent";
-static const char* kCFunctionQuerySelector = "__QuerySelector";
-static const char* kCFunctionQuerySelectorAll = "__QuerySelectorAll";
-static const char* kCFunctionCreateIf = "__CreateIf";
-static const char* kCFunctionCreateFor = "__CreateFor";
-static const char* kCFunctionCreateBlock = "__CreateBlock";
-static const char* kCFunctionCreateFrame = "__CreateFrame";
+constexpr static const char* kCFunctionCreateElement = "__CreateElement";
+constexpr static const char* kCFunctionCreateView = "__CreateView";
+constexpr static const char* kCFunctionCreateText = "__CreateText";
+constexpr static const char* kCFunctionCreateImage = "__CreateImage";
+constexpr static const char* kCFunctionCreateRawText = "__CreateRawText";
+constexpr static const char* kCFunctionCreateNonElement = "__CreateNonElement";
+constexpr static const char* kCFunctionCreateWrapperElement =
+    "__CreateWrapperElement";
+constexpr static const char* kCFunctionCreateList = "__CreateList";
+constexpr static const char* kCFunctionCreateScrollView = "__CreateScrollView";
+constexpr static const char* kCFunctionCreatePage = "__CreatePage";
+constexpr static const char* kCFunctionGetPageElement = "__GetPageElement";
+constexpr static const char* kCFunctionCreateComponent = "__CreateComponent";
+constexpr static const char* kCFunctionQuerySelector = "__QuerySelector";
+constexpr static const char* kCFunctionQuerySelectorAll = "__QuerySelectorAll";
+constexpr static const char* kCFunctionCreateIf = "__CreateIf";
+constexpr static const char* kCFunctionCreateFor = "__CreateFor";
+constexpr static const char* kCFunctionCreateBlock = "__CreateBlock";
+constexpr static const char* kCFunctionCreateFrame = "__CreateFrame";
 // Element Tree
-static const char* kCFunctionAppendElement = "__AppendElement";
-static const char* kCFunctionRemoveElement = "__RemoveElement";
-static const char* kCFunctionInsertElementBefore = "__InsertElementBefore";
-static const char* kCFunctionFirstElement = "__FirstElement";
-static const char* kCFunctionLastElement = "__LastElement";
-static const char* kCFunctionNextElement = "__NextElement";
-static const char* kCFunctionReplaceElement = "__ReplaceElement";
-static const char* kCFunctionReplaceElements = "__ReplaceElements";
-static const char* kCFunctionSwapElement = "__SwapElement";
-static const char* kCFunctionGetParent = "__GetParent";
-static const char* kCFunctionGetChildren = "__GetChildren";
-static const char* kCFunctionCloneElement = "__CloneElement";
-static const char* kCFunctionElementIsEqual = "__ElementIsEqual";
-static const char* kCFunctionUpdateIfNodeIndex = "__UpdateIfNodeIndex";
-static const char* kCFunctionUpdateForChildCount = "__UpdateForChildCount";
-static const char* kCFunctionMarkTemplateElement = "__MarkTemplateElement";
-static const char* kCFunctionIsTemplateElement = "__IsTemplateElement";
-static const char* kCFunctionMarkPartElement = "__MarkPartElement";
-static const char* kCFunctionIsPartElement = "__IsPartElement";
-static const char* kCFunctionGetTemplateParts = "__GetTemplateParts";
-static const char* kCFunctionCreateElementWithProperties =
+constexpr static const char* kCFunctionAppendElement = "__AppendElement";
+constexpr static const char* kCFunctionRemoveElement = "__RemoveElement";
+constexpr static const char* kCFunctionInsertElementBefore =
+    "__InsertElementBefore";
+constexpr static const char* kCFunctionFirstElement = "__FirstElement";
+constexpr static const char* kCFunctionLastElement = "__LastElement";
+constexpr static const char* kCFunctionNextElement = "__NextElement";
+constexpr static const char* kCFunctionReplaceElement = "__ReplaceElement";
+constexpr static const char* kCFunctionReplaceElements = "__ReplaceElements";
+constexpr static const char* kCFunctionSwapElement = "__SwapElement";
+constexpr static const char* kCFunctionGetParent = "__GetParent";
+constexpr static const char* kCFunctionGetChildren = "__GetChildren";
+constexpr static const char* kCFunctionCloneElement = "__CloneElement";
+constexpr static const char* kCFunctionElementIsEqual = "__ElementIsEqual";
+constexpr static const char* kCFunctionUpdateIfNodeIndex =
+    "__UpdateIfNodeIndex";
+constexpr static const char* kCFunctionUpdateForChildCount =
+    "__UpdateForChildCount";
+constexpr static const char* kCFunctionMarkTemplateElement =
+    "__MarkTemplateElement";
+constexpr static const char* kCFunctionIsTemplateElement =
+    "__IsTemplateElement";
+constexpr static const char* kCFunctionMarkPartElement = "__MarkPartElement";
+constexpr static const char* kCFunctionIsPartElement = "__IsPartElement";
+constexpr static const char* kCFunctionGetTemplateParts = "__GetTemplateParts";
+constexpr static const char* kCFunctionCreateElementWithProperties =
     "__CreateElementWithProperties";
 
 #pragma region simple styling api
@@ -170,97 +187,109 @@ constexpr const char* kCFunctionUpdateStyleObject = "__UpdateStyleObject";
 // TODO(songshourui.null): Based on the discussion results of the Element API,
 // it will be decided whether to clearly distinguish between the Element API and
 // the Signal API in the naming of the Signal API.
-static const char* kCFunctionCreateSignal = "__CreateSignal";
-static const char* kCFunctionWriteSignal = "__WriteSignal";
-static const char* kCFunctionReadSignal = "__ReadSignal";
-static const char* kCFunctionCreateComputation = "__CreateComputation";
-static const char* kCFunctionCreateMemo = "__CreateMemo";
-static const char* kCFunctionUnTrack = "__UnTrack";
-static const char* kCFunctionCreateScope = "__CreateScope";
-static const char* kCFunctionGetScope = "__GetScope";
-static const char* kCFunctionCleanUp = "__CleanUp";
-static const char* kCFunctionOnCleanUp = "__OnCleanUp";
-static const char* kCFunctionRunUpdates = "__RunUpdates";
+constexpr static const char* kCFunctionCreateSignal = "__CreateSignal";
+constexpr static const char* kCFunctionWriteSignal = "__WriteSignal";
+constexpr static const char* kCFunctionReadSignal = "__ReadSignal";
+constexpr static const char* kCFunctionCreateComputation =
+    "__CreateComputation";
+constexpr static const char* kCFunctionCreateMemo = "__CreateMemo";
+constexpr static const char* kCFunctionUnTrack = "__UnTrack";
+constexpr static const char* kCFunctionCreateScope = "__CreateScope";
+constexpr static const char* kCFunctionGetScope = "__GetScope";
+constexpr static const char* kCFunctionCleanUp = "__CleanUp";
+constexpr static const char* kCFunctionOnCleanUp = "__OnCleanUp";
+constexpr static const char* kCFunctionRunUpdates = "__RunUpdates";
 
 // Element Info
-static const char* kCFunctionGetElementUniqueID = "__GetElementUniqueID";
-static const char* kCFunctionGetElementByUniqueID = "__GetElementByUniqueID";
-static const char* kCFunctionGetTag = "__GetTag";
-static const char* kCFunctionSetAttribute = "__SetAttribute";
-static const char* kCFunctionGetAttributes = "__GetAttributes";
-static const char* kCFunctionGetAttributeByName = "__GetAttributeByName";
-static const char* kCFunctionGetAttributeNames = "__GetAttributeNames";
-static const char* kCFunctionAddClass = "__AddClass";
-static const char* kCFunctionSetClasses = "__SetClasses";
-static const char* kCFunctionGetClasses = "__GetClasses";
-static const char* kCFunctionAddInlineStyle = "__AddInlineStyle";
-static const char* kCFunctionSetInlineStyles = "__SetInlineStyles";
-static const char* kCFunctionGetInlineStyles = "__GetInlineStyles";
-static const char* kCFunctionSetParsedStyles = "__SetParsedStyles";
-static const char* kCFunctionGetInlineStyle = "__GetInlineStyle";
-static const char* kCFunctionGetComputedStyles = "__GetComputedStyles";
-static const char* kCFunctionAddEvent = "__AddEvent";
-static const char* kCFunctionSetEvents = "__SetEvents";
-static const char* kCFunctionGetEvent = "__GetEvent";
-static const char* kCFunctionGetEvents = "__GetEvents";
-static const char* kCFunctionSetID = "__SetID";
-static const char* kCFunctionGetID = "__GetID";
-static const char* kCFunctionAddDataset = "__AddDataset";
-static const char* kCFunctionSetDataset = "__SetDataset";
-static const char* kCFunctionGetDataset = "__GetDataset";
-static const char* kCFunctionGetDataByKey = "__GetDataByKey";
-static const char* kCFunctionSetCSSId = "__SetCSSId";
-static const char* kCFunctionSetConfig = "__SetConfig";
-static const char* kCFunctionAddConfig = "__AddConfig";
-static const char* kCFunctionGetConfig = "__GetConfig";
-static const char* kCFunctionAsyncResolveElement = "__AsyncResolveElement";
-static const char* kCFunctionAddEventListener = "__AddEventListener";
-static const char* kCFunctionFiberRemoveEventListener = "__RemoveEventListener";
-static const char* kCFunctionCreateEvent = "__CreateEvent";
-static const char* kCFunctionDispatchEvent = "__DispatchEvent";
-static const char* kCFunctionStopPropagation = "__StopPropagation";
-static const char* kCFunctionStopImmediatePropagation =
+constexpr static const char* kCFunctionGetElementUniqueID =
+    "__GetElementUniqueID";
+constexpr static const char* kCFunctionGetElementByUniqueID =
+    "__GetElementByUniqueID";
+constexpr static const char* kCFunctionGetTag = "__GetTag";
+constexpr static const char* kCFunctionSetAttribute = "__SetAttribute";
+constexpr static const char* kCFunctionGetAttributes = "__GetAttributes";
+constexpr static const char* kCFunctionGetAttributeByName =
+    "__GetAttributeByName";
+constexpr static const char* kCFunctionGetAttributeNames =
+    "__GetAttributeNames";
+constexpr static const char* kCFunctionAddClass = "__AddClass";
+constexpr static const char* kCFunctionSetClasses = "__SetClasses";
+constexpr static const char* kCFunctionGetClasses = "__GetClasses";
+constexpr static const char* kCFunctionAddInlineStyle = "__AddInlineStyle";
+constexpr static const char* kCFunctionSetInlineStyles = "__SetInlineStyles";
+constexpr static const char* kCFunctionGetInlineStyles = "__GetInlineStyles";
+constexpr static const char* kCFunctionSetParsedStyles = "__SetParsedStyles";
+constexpr static const char* kCFunctionGetInlineStyle = "__GetInlineStyle";
+constexpr static const char* kCFunctionGetComputedStyles =
+    "__GetComputedStyles";
+constexpr static const char* kCFunctionAddEvent = "__AddEvent";
+constexpr static const char* kCFunctionSetEvents = "__SetEvents";
+constexpr static const char* kCFunctionGetEvent = "__GetEvent";
+constexpr static const char* kCFunctionGetEvents = "__GetEvents";
+constexpr static const char* kCFunctionSetID = "__SetID";
+constexpr static const char* kCFunctionGetID = "__GetID";
+constexpr static const char* kCFunctionAddDataset = "__AddDataset";
+constexpr static const char* kCFunctionSetDataset = "__SetDataset";
+constexpr static const char* kCFunctionGetDataset = "__GetDataset";
+constexpr static const char* kCFunctionGetDataByKey = "__GetDataByKey";
+constexpr static const char* kCFunctionSetCSSId = "__SetCSSId";
+constexpr static const char* kCFunctionSetConfig = "__SetConfig";
+constexpr static const char* kCFunctionAddConfig = "__AddConfig";
+constexpr static const char* kCFunctionGetConfig = "__GetConfig";
+constexpr static const char* kCFunctionAsyncResolveElement =
+    "__AsyncResolveElement";
+constexpr static const char* kCFunctionAddEventListener = "__AddEventListener";
+constexpr static const char* kCFunctionFiberRemoveEventListener =
+    "__RemoveEventListener";
+constexpr static const char* kCFunctionCreateEvent = "__CreateEvent";
+constexpr static const char* kCFunctionDispatchEvent = "__DispatchEvent";
+constexpr static const char* kCFunctionStopPropagation = "__StopPropagation";
+constexpr static const char* kCFunctionStopImmediatePropagation =
     "__StopImmediatePropagation";
 // Element Component Info
-static const char* kCFunctionGetComponentID = "__GetComponentID";
-static const char* kCFunctionUpdateComponentID = "__UpdateComponentID";
-static const char* kCFunctionUpdateComponentInfo = "__UpdateComponentInfo";
+constexpr static const char* kCFunctionGetComponentID = "__GetComponentID";
+constexpr static const char* kCFunctionUpdateComponentID =
+    "__UpdateComponentID";
+constexpr static const char* kCFunctionUpdateComponentInfo =
+    "__UpdateComponentInfo";
 // List Info
-static const char* kCFunctionUpdateListCallbacks = "__UpdateListCallbacks";
+constexpr static const char* kCFunctionUpdateListCallbacks =
+    "__UpdateListCallbacks";
 // Other RenderFunctions
-static const char* kCFunctionFlushElementTree = "__FlushElementTree";
-static const char* kCFunctionAsyncResolveSubtreeProperty =
+constexpr static const char* kCFunctionFlushElementTree = "__FlushElementTree";
+constexpr static const char* kCFunctionAsyncResolveSubtreeProperty =
     "__AsyncResolveSubtree";
-static const char* kCFunctionMarkAsyncFlushRoot = "__MarkAsyncFlushRoot";
-static const char* kCFunctionOnLifecycleEvent = "__OnLifecycleEvent";
-static const char* kCFunctionElementFromBinary = "__ElementFromBinary";
-static const char* kCFunctionElementFromBinaryAsync =
+constexpr static const char* kCFunctionMarkAsyncFlushRoot =
+    "__MarkAsyncFlushRoot";
+constexpr static const char* kCFunctionOnLifecycleEvent = "__OnLifecycleEvent";
+constexpr static const char* kCFunctionElementFromBinary =
+    "__ElementFromBinary";
+constexpr static const char* kCFunctionElementFromBinaryAsync =
     "__ElementFromBinaryAsync";
-static const char* kCFunctionQueryComponent = "__QueryComponent";
-static const char* kCFunctionSetLepusInitData = "__SetLepusInitData";
-static const char* kCFunctionGetDiffData = "__GetDiffData";
-static const char* kCFunctionInvokeUIMethod = "__InvokeUIMethod";
-static const char* kCFunctionGetComputedStyleByKey = "__GetComputedStyleByKey";
+constexpr static const char* kCFunctionQueryComponent = "__QueryComponent";
+constexpr static const char* kCFunctionSetLepusInitData = "__SetLepusInitData";
+constexpr static const char* kCFunctionGetDiffData = "__GetDiffData";
+constexpr static const char* kCFunctionInvokeUIMethod = "__InvokeUIMethod";
+constexpr static const char* kCFunctionGetComputedStyleByKey =
+    "__GetComputedStyleByKey";
 
 // air strict mode
 // Element SetAttribute
-static const char* kCFunctionTriggerLepusBridge = "_TriggerLepusBridge";
-static const char* kCFunctionTriggerLepusBridgeSync = "_TriggerLepusBridgeSync";
-static const char* kCFunctionSetTimeout = "_SetTimeout";
-static const char* kCFunctionClearTimeout = "_ClearTimeout";
-static const char* kCFunctionSetTimeInterval = "_SetTimeInterval";
-static const char* kCFunctionClearTimeInterval = "_ClearTimeInterval";
-static const char* kCFunctionRemoveEventListener = "_RemoveEventListener";
-static const char* kCFunctionTriggerComponentEvent = "_TriggerComponentEvent";
-static const char* kCFunctionAirInvokeUIMethod = "_InvokeUIMethod";
+constexpr static const char* kCFunctionTriggerLepusBridge =
+    "_TriggerLepusBridge";
+constexpr static const char* kCFunctionTriggerLepusBridgeSync =
+    "_TriggerLepusBridgeSync";
+constexpr static const char* kCFunctionTriggerComponentEvent =
+    "_TriggerComponentEvent";
 
 // lepusNg sourceMap
-static const char* kCFunctionSetSourceMapRelease = "_SetSourceMapRelease";
-static const char* kCFunctionReportError = "_ReportError";
+constexpr static const char* kCFunctionSetSourceMapRelease =
+    "_SetSourceMapRelease";
+constexpr static const char* kCFunctionReportError = "_ReportError";
 
 // Worklet
-static const char* kCFunctionLoadLepusChunk = "__LoadLepusChunk";
-static const char* kCFunctionElementAnimate = "__ElementAnimate";
+constexpr static const char* kCFunctionLoadLepusChunk = "__LoadLepusChunk";
+constexpr static const char* kCFunctionElementAnimate = "__ElementAnimate";
 
 class Utils {
  public:
@@ -304,6 +333,13 @@ class Renderer {
 
   static void RegisterNGBuiltinForRadon(lepus::Context* context);
   static void RegisterNGBuiltinForFiber(lepus::Context* context);
+
+  static lepus::Value SlotFunction(lepus::Context* context, lepus::Value* args,
+                                   int size);
+  static const lepus::RenderBindingFunction* GetBuiltinFunctionsForRadon(
+      int32_t& size);
+  static const lepus::RenderBindingFunction* GetBuiltinFunctionsForFiber(
+      int32_t& size);
 };
 }  // namespace tasm
 }  // namespace lynx

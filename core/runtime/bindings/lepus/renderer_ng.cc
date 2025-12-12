@@ -166,12 +166,6 @@ void Utils::RegisterNGMethodToLepusModule(lepus::Context* context,
   }
 }
 
-static lepus::Value SlotFunction(lepus::Context* context, lepus::Value* argv,
-                                 int32_t argc) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, SLOT_FUNCTION);
-  return lepus::Value();
-}
-
 void Renderer::RegisterNGBuiltin(lepus::Context* context, ArchOption option) {
   switch (option) {
     case ArchOption::FIBER_ARCH:
@@ -274,6 +268,7 @@ void Renderer::RegisterNGBuiltinForRadon(lepus::Context* context) {
       {kCFuncAddFallbackToDynamicComponent,
        &RendererFunctions::AddFallbackToDynamicComponent},
       {kCFuncCreateGestureDetector, &RendererFunctions::CreateGestureDetector},
+      {kCFunctionElementAnimate, &RendererFunctions::ElementAnimate},
   };
   lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));
 }
@@ -427,7 +422,7 @@ void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
       {kCFunctionSetStyleObject, &RendererFunctions::SetStyleObject},
       {kCFunctionUpdateStyleObject, &RendererFunctions::UpdateStyleObject},
       {kCFunctionAddEventListener, &RendererFunctions::FiberAddEventListener},
-      {kCFunctionRemoveEventListener,
+      {kCFunctionFiberRemoveEventListener,
        &RendererFunctions::FiberRemoveEventListener},
       {kCFunctionCreateEvent, &RendererFunctions::FiberCreateEvent},
       {kCFunctionDispatchEvent, &RendererFunctions::FiberDispatchEvent},
