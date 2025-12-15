@@ -634,6 +634,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     layerInfo.paddingRect = paddingRect;
     layerInfo.backgroundClip = clipType;
     layerInfo.cornerInsets = cornerInsets;
+    layerInfo.borderInsets = [self getAdjustedBorderWidth];
+    layerInfo.borderRadii = [_backgroundInfo borderRadius];
     if (isMask) {
       LynxPlatformLength* len =
           [[LynxPlatformLength alloc] initWithValue:@"0.5" type:LynxPlatformLengthUnitPercentage];

@@ -127,6 +127,8 @@ typedef NS_ENUM(NSInteger, LynxBackgroundClipType) {
   LynxBackgroundClipPaddingBox = 0,  // 0
   LynxBackgroundClipBorderBox,       // 1
   LynxBackgroundClipContentBox,      // 2
+  LynxBackgroundClipText,            // 3
+  LynxBackgroundClipBorderArea,      // 4
 };
 
 typedef NS_ENUM(NSInteger, LynxBackgroundSizeType) {
