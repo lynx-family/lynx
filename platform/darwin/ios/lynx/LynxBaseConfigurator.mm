@@ -33,6 +33,7 @@
     _builderRegisteredAliasFontMap = [NSMutableDictionary dictionary];
     _threadStrategy = LynxThreadStrategyForRenderAllOnUI;
     _hasThreadStrategySet = NO;
+    _hasPendingJsTaskSet = NO;
   }
   return self;
 }
@@ -67,6 +68,11 @@
       _threadStrategy = LynxThreadStrategyForRenderAllOnUI;
       break;
   }
+}
+
+- (void)setEnablePendingJSTaskOnLayout:(BOOL)enablePendingJSTaskOnLayout {
+  _hasPendingJsTaskSet = YES;
+  _enablePendingJSTaskOnLayout = enablePendingJSTaskOnLayout;
 }
 
 - (void)addLynxResourceProvider:(NSString*)resType provider:(id<LynxResourceProvider>)provider {

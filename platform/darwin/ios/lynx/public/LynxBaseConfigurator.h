@@ -21,6 +21,7 @@
   LynxThreadStrategyForRender _threadStrategy;
   BOOL _hasThreadStrategySet;
   LynxConfig* _config;
+  BOOL _hasPendingJsTaskSet;
 }
 
 @property(nonatomic, nullable) LynxConfig* config;
