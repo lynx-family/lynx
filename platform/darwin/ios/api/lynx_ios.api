@@ -305,6 +305,8 @@ public class LynxBackgroundImageLayerInfo : NSObject {
   public LynxBackgroundPosition* LynxBackgroundImageLayerInfo::backgroundPosY backgroundPosY;
   public LynxBackgroundClipType LynxBackgroundImageLayerInfo::backgroundClip backgroundClip;
   public LynxCornerInsets LynxBackgroundImageLayerInfo::cornerInsets cornerInsets;
+  public UIEdgeInsets LynxBackgroundImageLayerInfo::borderInsets borderInsets;
+  public LynxBorderRadii LynxBackgroundImageLayerInfo::borderRadii borderRadii;
   public void LynxBackgroundImageLayerInfo::drawInContext:(CGContextRef _Nullable ctx);
   public BOOL LynxBackgroundImageLayerInfo::prepareGradientLayers();
   public CGPathRef LynxBackgroundImageLayerInfo::createClipPath();
@@ -545,6 +547,7 @@ public class LynxBackgroundUtils : NSObject {
   public UIImage * LynxBackgroundUtils::LynxGetBackgroundImage(CGSize viewSize, LynxBorderRadii cornerRadii, UIEdgeInsets borderInsets, CGColorRef backgroundColor, BOOL drawToEdge, NSArray *bgImageInfoArr, BOOL pixelated);
   public UIImage * LynxBackgroundUtils::LynxGetBackgroundImageWithClip(CGSize viewSize, LynxBorderRadii cornerRadii, UIEdgeInsets borderInsets, CGColorRef backgroundColor, BOOL drawToEdge, NSArray *bgImageInfoArr, LynxBackgroundClipType clip, UIEdgeInsets paddingInsets, BOOL pixelated);
   public CGPathRef LynxBackgroundUtils::LynxCreateBorderCenterPath(CGSize viewSize, LynxBorderRadii cornerRadius, UIEdgeInsets borderWidth);
+  public CGPathRef LynxBackgroundUtils::LynxCreateBorderAreaPath(CGSize viewSize, LynxBorderRadii cornerRadius, UIEdgeInsets borderWidth);
   public void LynxBackgroundUtils::LynxUpdateBorderLayerWithPath(CAShapeLayer *borderLayer, CGPathRef path, LynxBackgroundInfo *info);
   public BOOL LynxBackgroundUtils::internalHasSameBorderRadius(LynxBorderRadii radii);
   public void LynxBackgroundUtils::LBRGetBorderValueOrLength(NSArray *valArray, int index, LynxBorderUnitValue *value, LynxPlatformLength **length);
@@ -5739,6 +5742,8 @@ public enum LynxBackgroundClipType {
   LynxBackgroundClipPaddingBox
   LynxBackgroundClipBorderBox
   LynxBackgroundClipContentBox
+  LynxBackgroundClipText
+  LynxBackgroundClipBorderArea
 }
 
 public enum LynxBackgroundSizeType {

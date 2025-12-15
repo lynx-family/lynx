@@ -91,6 +91,8 @@ UIImage* LynxGetBackgroundImageWithClip(CGSize viewSize, LynxBorderRadii cornerR
 
 CGPathRef LynxCreateBorderCenterPath(CGSize viewSize, LynxBorderRadii cornerRadius,
                                      UIEdgeInsets borderWidth);
+CGPathRef LynxCreateBorderAreaPath(CGSize viewSize, LynxBorderRadii cornerRadius,
+                                   UIEdgeInsets borderWidth);
 void LynxUpdateBorderLayerWithPath(CAShapeLayer* borderLayer, CGPathRef path,
                                    LynxBackgroundInfo* info);
 

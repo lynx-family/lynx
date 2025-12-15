@@ -21,13 +21,23 @@
 
 - (void)drawInContext:(CGContextRef)ctx {
   if ([self.item isKindOfClass:[LynxBackgroundDrawable class]]) {
+    // For border-area, if there is no visible border width, nothing should be drawn.
+    if (_backgroundClip == LynxBackgroundClipBorderArea &&
+        UIEdgeInsetsEqualToEdgeInsets(_borderInsets, UIEdgeInsetsZero)) {
+      return;
+    }
+
     BOOL toRestore = NO;
     CGPathRef clipPath = [self createClipPath];
     if (clipPath != nil) {
       CGContextSaveGState(ctx);
       toRestore = YES;
       CGContextAddPath(ctx, clipPath);
-      CGContextClip(ctx);
+      if (_backgroundClip == LynxBackgroundClipBorderArea) {
+        CGContextEOClip(ctx);
+      } else {
+        CGContextClip(ctx);
+      }
       CGPathRelease(clipPath);
     }
 
@@ -53,6 +63,10 @@
   memory leaks.
 */
 - (CGPathRef)createClipPath {
+  if (_backgroundClip == LynxBackgroundClipBorderArea) {
+    return LynxCreateBorderAreaPath(_borderRect.size, _borderRadii, _borderInsets);
+  }
+
   if (_backgroundClip != LynxBackgroundClipBorderBox ||
       LynxCornerInsetsAreAboveThreshold(_cornerInsets)) {
     CGMutablePathRef clipPath = CGPathCreateMutable();
@@ -66,6 +80,11 @@
   if ([_item type] < LynxBackgroundImageLinearGradient) {
     return NO;
   }
+  // For border-area, if there is no visible border width, nothing should be drawn.
+  if (_backgroundClip == LynxBackgroundClipBorderArea &&
+      UIEdgeInsetsEqualToEdgeInsets(_borderInsets, UIEdgeInsetsZero)) {
+    return NO;
+  }
   [self flushPropsToDrawable];
   [(LynxBackgroundGradientDrawable*)_item prepareGradientWithBorderBox:_borderRect
                                                            andPaintBox:_paintingRect
@@ -75,6 +94,9 @@
   if (clipPath != nil) {
     CAShapeLayer* maskLayer = [CAShapeLayer layer];
     maskLayer.path = clipPath;
+    if (_backgroundClip == LynxBackgroundClipBorderArea) {
+      maskLayer.fillRule = kCAFillRuleEvenOdd;
+    }
     [[(LynxBackgroundGradientDrawable*)_item verticalRepeatLayer] setMask:maskLayer];
     CGPathRelease(clipPath);
   }

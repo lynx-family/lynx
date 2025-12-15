@@ -22,6 +22,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(atomic, nullable) LynxBackgroundPosition* backgroundPosY;
 @property(nonatomic, assign) LynxBackgroundClipType backgroundClip;
 @property(nonatomic, assign) LynxCornerInsets cornerInsets;
+@property(nonatomic, assign) UIEdgeInsets borderInsets;
+@property(nonatomic, assign) LynxBorderRadii borderRadii;
 - (void)drawInContext:(CGContextRef _Nullable)ctx;
 
 /**

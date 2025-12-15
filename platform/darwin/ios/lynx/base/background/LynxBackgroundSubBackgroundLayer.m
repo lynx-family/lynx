@@ -406,6 +406,14 @@ dispatch_block_t mDispatchTask = NULL;
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
   if (_layerBackgroundColor) {
+    // For border-area, if there is no visible border width, nothing should be drawn.
+    if (_backgroundColorClip == LynxBackgroundClipBorderArea &&
+        UIEdgeInsetsEqualToEdgeInsets(_borderInsets, UIEdgeInsetsZero)) {
+      [_colorLayer setFillColor:nil];
+      [CATransaction commit];
+      return;
+    }
+
     if (!_colorLayer) {
       _colorLayer = [CAShapeLayer layer];
     }
@@ -413,24 +421,40 @@ dispatch_block_t mDispatchTask = NULL;
     _colorLayer.fillColor = _layerBackgroundColor.CGColor;
     // create clipPath according to background-clip value for background-color
     UIEdgeInsets borderInsets;
+    CGPathRef clipPath = NULL;
     switch (_backgroundColorClip) {
       case LynxBackgroundClipPaddingBox:
         borderInsets = LynxGetEdgeInsets(self.bounds, _borderInsets, 1.0);
-        break;
-      case LynxBackgroundClipBorderBox:
-        borderInsets = UIEdgeInsetsZero;
+        clipPath = [LynxBackgroundUtils createBezierPathWithRoundedRect:self.bounds
+                                                            borderRadii:_cornerRadii
+                                                             edgeInsets:borderInsets];
         break;
       case LynxBackgroundClipContentBox:
         borderInsets = UIEdgeInsetsMake(
             _borderInsets.top + _paddingWidth.top, _borderInsets.left + _paddingWidth.left,
             _borderInsets.bottom + _paddingWidth.bottom, _borderInsets.right + _paddingWidth.right);
+        clipPath = [LynxBackgroundUtils createBezierPathWithRoundedRect:self.bounds
+                                                            borderRadii:_cornerRadii
+                                                             edgeInsets:borderInsets];
+        break;
+      case LynxBackgroundClipBorderArea:
+        clipPath = LynxCreateBorderAreaPath(self.bounds.size, _cornerRadii, _borderInsets);
+        break;
+      case LynxBackgroundClipBorderBox:
+      default:
+        borderInsets = UIEdgeInsetsZero;
+        clipPath = [LynxBackgroundUtils createBezierPathWithRoundedRect:self.bounds
+                                                            borderRadii:_cornerRadii
+                                                             edgeInsets:borderInsets];
         break;
     }
 
-    CGPathRef clipPath = [LynxBackgroundUtils createBezierPathWithRoundedRect:self.bounds
-                                                                  borderRadii:_cornerRadii
-                                                                   edgeInsets:borderInsets];
     _colorLayer.path = clipPath;
+    if (_backgroundColorClip == LynxBackgroundClipBorderArea) {
+      _colorLayer.fillRule = kCAFillRuleEvenOdd;
+    } else {
+      _colorLayer.fillRule = kCAFillRuleNonZero;
+    }
     CGPathRelease(clipPath);
     // Color layer should always at bottom.
     [self insertSublayer:_colorLayer atIndex:0];

@@ -405,13 +405,16 @@ UIImage* LynxGetBackgroundImageWithClip(CGSize viewSize, LynxBorderRadii cornerR
     case LynxBackgroundClipPaddingBox:
       borderInsets = LynxGetEdgeInsets(rect, borderInsets, 1.0);
       break;
-    case LynxBackgroundClipBorderBox:
-      borderInsets = UIEdgeInsetsZero;
-      break;
     case LynxBackgroundClipContentBox:
       borderInsets = UIEdgeInsetsMake(
           borderInsets.top + paddingInsets.top, borderInsets.left + paddingInsets.left,
           borderInsets.bottom + paddingInsets.bottom, borderInsets.right + paddingInsets.bottom);
+      break;
+    case LynxBackgroundClipBorderBox:
+    case LynxBackgroundClipText:
+    case LynxBackgroundClipBorderArea:
+    default:
+      borderInsets = UIEdgeInsetsZero;
       break;
   }
 
@@ -477,6 +480,27 @@ CGPathRef LynxCreateBorderCenterPath(CGSize viewSize, LynxBorderRadii cornerRadi
   CGPathRef path =
       LynxPathCreateWithRoundedRect(LynxGetRectWithEdgeInsets(rect, centerInsets),
                                     LynxGetCornerInsets(rect, cornerRadius, centerInsets));
+  return path;
+}
+
+CGPathRef LynxCreateBorderAreaPath(CGSize viewSize, LynxBorderRadii cornerRadius,
+                                   UIEdgeInsets borderWidth) {
+  CGRect rect = {.size = viewSize};
+  rect = LynxGetBoundsAutoAdjust(rect);
+
+  // Outer path uses no insets.
+  const LynxCornerInsets outerCornerInsets =
+      LynxGetCornerInsets(rect, cornerRadius, UIEdgeInsetsZero);
+  CGMutablePathRef path = CGPathCreateMutable();
+  LynxPathAddRoundedRect(path, rect, outerCornerInsets);
+
+  // Inner path is inset by the effective border widths.
+  const UIEdgeInsets insets = LynxGetEdgeInsets(rect, borderWidth, 1.0);
+  const CGRect innerRect = LynxGetRectWithEdgeInsets(rect, insets);
+  const LynxCornerInsets innerCornerInsets = LynxGetCornerInsets(rect, cornerRadius, insets);
+  // Add inner rounded rect in reverse to form a ring when used with even-odd fill rule.
+  LynxPathAddRoundedRect(path, innerRect, innerCornerInsets);
+
   return path;
 }
 
