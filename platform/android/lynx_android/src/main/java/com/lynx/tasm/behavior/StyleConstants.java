@@ -98,6 +98,8 @@ public final class StyleConstants implements AutoGenStyleConstants {
   public static final int BACKGROUND_CLIP_PADDING_BOX = 0;
   public static final int BACKGROUND_CLIP_BORDER_BOX = 1;
   public static final int BACKGROUND_CLIP_CONTENT_BOX = 2;
+  public static final int BACKGROUND_CLIP_TEXT = 3;
+  public static final int BACKGROUND_CLIP_BORDER_AREA = 4;
 
   // BackgroundOrigin
   public static final int BACKGROUND_ORIGIN_PADDING_BOX = 0;

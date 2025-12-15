@@ -263,7 +263,12 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
 
   private void drawRectangularRect(Canvas canvas) {
     int clip = mLayerManager.getLayerClip();
-    if (clip == StyleConstants.BACKGROUND_CLIP_BORDER_BOX) {
+    if (clip == StyleConstants.BACKGROUND_CLIP_BORDER_AREA) {
+      Path borderAreaPath = createRectangularBorderAreaPath();
+      if (borderAreaPath != null) {
+        canvas.drawPath(borderAreaPath, mPaint);
+      }
+    } else if (clip == StyleConstants.BACKGROUND_CLIP_BORDER_BOX) {
       canvas.drawRect(getBounds(), mPaint);
     } else if (clip == StyleConstants.BACKGROUND_CLIP_PADDING_BOX) {
       canvas.drawRect(mPaddingBox, mPaint);
@@ -285,9 +290,47 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
     } else if (clip == StyleConstants.BACKGROUND_CLIP_PADDING_BOX
         && mInnerClipPathForBorderRadius != null) {
       mInnerClipPathForBorderRadius.drawToCanvas(canvas, mPaint);
+    } else if (clip == StyleConstants.BACKGROUND_CLIP_BORDER_AREA) {
+      Path borderAreaPath = createRoundedBorderAreaPath();
+      if (borderAreaPath != null) {
+        canvas.drawPath(borderAreaPath, mPaint);
+      }
     } else {
       canvas.drawRect(mContentBox, mPaint);
     }
+  }
+
+  private boolean hasNonZeroBorderWidth() {
+    final RectF borderInsets = getDirectionAwareBorderInsets();
+    return borderInsets.left > 0 || borderInsets.top > 0 || borderInsets.right > 0
+        || borderInsets.bottom > 0;
+  }
+
+  private Path createRectangularBorderAreaPath() {
+    if (!hasNonZeroBorderWidth()) {
+      return null;
+    }
+    RectF outer = new RectF(getBounds());
+    RectF inner = new RectF(mPaddingBox);
+    Path path = new Path();
+    path.setFillType(Path.FillType.EVEN_ODD);
+    path.addRect(outer, Path.Direction.CW);
+    path.addRect(inner, Path.Direction.CCW);
+    return path;
+  }
+
+  private Path createRoundedBorderAreaPath() {
+    if (!hasNonZeroBorderWidth()) {
+      return null;
+    }
+    if (mOuterClipPathForBorderRadius == null || mInnerClipPathForBorderRadius == null) {
+      return null;
+    }
+    Path path = new Path();
+    path.setFillType(Path.FillType.EVEN_ODD);
+    path.addPath(mOuterClipPathForBorderRadius.path);
+    path.addPath(mInnerClipPathForBorderRadius.path);
+    return path;
   }
 
   public void drawBackGround(Canvas canvas) {

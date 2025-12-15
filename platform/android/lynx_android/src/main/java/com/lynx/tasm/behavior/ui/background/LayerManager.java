@@ -94,10 +94,12 @@ public abstract class LayerManager implements Drawable.Callback {
       }
 
       Path clipPath = null;
+      int clipType = StyleConstants.BACKGROUND_CLIP_BORDER_BOX;
 
       if (!mImageClipList.isEmpty()) {
         int usedClipIndex = index % mImageClipList.size();
-        switch (mImageClipList.get(usedClipIndex)) {
+        clipType = mImageClipList.get(usedClipIndex);
+        switch (clipType) {
           case StyleConstants.BACKGROUND_CLIP_BORDER_BOX:
             clipBox = borderRect;
             clipPath = outerDrawPath;
@@ -109,6 +111,19 @@ public abstract class LayerManager implements Drawable.Callback {
           case StyleConstants.BACKGROUND_CLIP_CONTENT_BOX:
             clipBox = contentRect;
             clipPath = innerDrawPath;
+            break;
+          case StyleConstants.BACKGROUND_CLIP_BORDER_AREA:
+            // For border-area, backgrounds are positioned relative to the border box,
+            // then clipped by the ring between border and padding.
+            paintingBox = borderRect;
+            clipBox = borderRect;
+            clipPath =
+                createBorderAreaClipPath(borderRect, paddingRect, outerDrawPath, innerDrawPath);
+            break;
+          case StyleConstants.BACKGROUND_CLIP_TEXT:
+          default:
+            clipBox = borderRect;
+            clipPath = outerDrawPath;
             break;
         }
       } else {
@@ -233,7 +248,8 @@ public abstract class LayerManager implements Drawable.Callback {
       int saveCount = canvas.save();
       // need to make sure all background content is clipped inside view's bounds
       // if clipPath is empty, need to clip at view's bounding rect
-      if (clipPath != null && hasBorder) {
+      if (clipPath != null
+          && (hasBorder || clipType == StyleConstants.BACKGROUND_CLIP_BORDER_AREA)) {
         // if has border&radius, do not use PathEffect to draw gradient, just clip
         canvas.clipPath(clipPath);
       } else {
@@ -410,7 +426,7 @@ public abstract class LayerManager implements Drawable.Callback {
     for (int i = 0; i < count; i++) {
       int value = bgClip.getInt(i);
       if (value < StyleConstants.BACKGROUND_CLIP_PADDING_BOX
-          || value > StyleConstants.BACKGROUND_CLIP_CONTENT_BOX) {
+          || value > StyleConstants.BACKGROUND_CLIP_BORDER_AREA) {
         mImageClipList.add(StyleConstants.BACKGROUND_CLIP_BORDER_BOX);
       } else {
         mImageClipList.add(value);
@@ -462,6 +478,20 @@ public abstract class LayerManager implements Drawable.Callback {
 
   @Override
   public void unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what) {}
+
+  private Path createBorderAreaClipPath(
+      RectF borderRect, RectF paddingRect, Path outerPath, Path innerPath) {
+    Path borderAreaPath = new Path();
+    borderAreaPath.setFillType(Path.FillType.EVEN_ODD);
+    if (outerPath != null && innerPath != null) {
+      borderAreaPath.addPath(outerPath);
+      borderAreaPath.addPath(innerPath);
+    } else {
+      borderAreaPath.addRect(borderRect, Path.Direction.CW);
+      borderAreaPath.addRect(paddingRect, Path.Direction.CCW);
+    }
+    return borderAreaPath;
+  }
 
   public void setEnableBitmapGradient(boolean enable) {
     mEnableBitmapGradient = enable;
