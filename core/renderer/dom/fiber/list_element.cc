@@ -633,6 +633,9 @@ int32_t ListElementSSRHelper::ComponentAtIndexInSSR(uint32_t index,
     options->trigger_layout_ = true;
     options->operation_id = operationId;
     options->list_comp_id_ = item->impl_id();
+    if (list_element_->DisableListPlatformImplementation()) {
+      options->list_id_ = list_element_->impl_id();
+    }
     auto* element_manager = list_element_->element_manager();
     element_manager->OnPatchFinish(options, item.get());
     EXEC_EXPR_FOR_INSPECTOR(
