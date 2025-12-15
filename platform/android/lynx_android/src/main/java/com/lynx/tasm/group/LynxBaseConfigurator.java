@@ -40,6 +40,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   @Deprecated protected boolean enableAutoConcurrency = false;
   protected boolean enableVSyncAlignedMessageLoop = false;
   protected boolean enablePendingJsTask = false;
+  protected boolean hasPendingJsTaskSet = false;
   protected boolean hasPresetMeasureSpec = false;
 
   static Float defaultDensity = null;
@@ -366,6 +367,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   public T setEnablePendingJsTask(boolean enablePendingJsTask) {
     this.enablePendingJsTask = enablePendingJsTask;
+    this.hasPendingJsTaskSet = true;
     return (T) this;
   }
 

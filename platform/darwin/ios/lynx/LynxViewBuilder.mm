@@ -78,10 +78,13 @@
 }
 
 - (BOOL)enablePendingJSTaskOnLayout {
+  if (_hasPendingJsTaskSet) {
+    return [super enablePendingJSTaskOnLayout];
+  }
   if (_lynxViewGroup) {
     return _lynxViewGroup.enablePendingJSTaskOnLayout;
   }
-  return [super enablePendingJSTaskOnLayout];
+  return NO;
 }
 
 - (BOOL)enableJSRuntime {
