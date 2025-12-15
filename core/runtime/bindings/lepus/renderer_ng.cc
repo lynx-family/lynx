@@ -166,6 +166,153 @@ void Utils::RegisterNGMethodToLepusModule(lepus::Context* context,
   }
 }
 
+lepus::Value Utils::CreateLynx(lepus::Context* context,
+                               const std::string& version) {
+  // clang-format off
+  constexpr const static lepus::RenderBindingFunction funcs[] = {
+      {tasm::kGetTextInfo, &RendererFunctions::GetTextInfo, true, true},
+      {kSetTimeout, &RendererFunctions::SetTimeout, true, true},
+      {kClearTimeout, &RendererFunctions::ClearTimeout, true, true},
+      {kSetInterval, &RendererFunctions::SetInterval, true, true},
+      {kClearTimeInterval, &RendererFunctions::ClearTimeInterval, true, true},
+      {kCFunctionTriggerLepusBridge, &RendererFunctions::TriggerLepusBridge, true, true},
+      {kCFunctionTriggerLepusBridgeSync, &RendererFunctions::TriggerLepusBridgeSync, true, true},
+      {kCFunctionTriggerComponentEvent, &RendererFunctions::TriggerComponentEvent, true, true},
+      {runtime::kGetDevTool, &RendererFunctions::GetDevTool, true, true},
+      {runtime::kGetCoreContext, &RendererFunctions::GetCoreContext, true, true},
+      {runtime::kGetJSContext, &RendererFunctions::GetJSContext, true, true},
+      {runtime::kGetUIContext, &RendererFunctions::GetUIContext, true, true},
+      {runtime::kGetNative, &RendererFunctions::GetNative, true, true},
+      {runtime::kGetEngine, &RendererFunctions::GetEngine, true, true},
+      // Reserved to ensure compatibility.Use global's instead.
+      {kRequestAnimationFrame, &RendererFunctions::RequestAnimationFrame, true, true},
+      // Reserved to ensure compatibility.Use global's instead.
+      {kCancelAnimationFrame, &RendererFunctions::CancelAnimationFrame, true, true},
+      {runtime::kGetCustomSectionSync, &RendererFunctions::GetCustomSectionSync, true, true},
+      // shared data.
+      {tasm::kSetSessionStorageItem, &RendererFunctions::SetSessionStorageItem, true, true},
+      {tasm::kGetSessionStorageItem, &RendererFunctions::GetSessionStorageItem, true, true},
+      // reportError
+      {runtime::kAddReporterCustomInfo, &RendererFunctions::LynxAddReporterCustomInfo, true, true},
+      {kReportError, &RendererFunctions::ReportError, true, true},
+      {kLoadScript, &RendererFunctions::LoadScript, true, true},
+      {kFetchBundle, &RendererFunctions::FetchBundle, true, true},
+      {kGetModule, &RendererFunctions::GetModule, true, true},
+      // exposure
+      {tasm::kStopExposure, &RendererFunctions::StopExposure, true, true},
+      {tasm::kResumeExposure, &RendererFunctions::ResumeExposure, true, true},
+  };
+  // clang-format on
+
+  auto lynx = lepus::LEPUSValueHelper::CreateObject(context);
+  context->RegisterObjectFunction(lynx, funcs,
+                                  sizeof(funcs) / sizeof(funcs[0]));
+
+  if (!version.empty()) {
+    lynx.SetProperty(BASE_STATIC_STRING(runtime::kTargetSdkVersion),
+                     lepus::Value(version));
+  }
+  lynx.SetProperty(BASE_STATIC_STRING(runtime::kPerformanceObject),
+                   CreateLynxPerformance(context));
+  return lynx;
+}
+
+lepus::Value Utils::CreateLynxPerformance(lepus::Context* context) {
+  // clang-format off
+  constexpr const static lepus::RenderBindingFunction funcs[] = {
+      {runtime::kGeneratePipelineOptions, &RendererFunctions::GeneratePipelineOptions, true, true},
+      {runtime::kOnPipelineStart, &RendererFunctions::OnPipelineStart, true, true},
+      {runtime::kMarkTiming, &RendererFunctions::MarkTiming, true, true},
+      {runtime::kBindPipelineIDWithTimingFlag, &RendererFunctions::BindPipelineIDWithTimingFlag, true, true},
+      {runtime::kAddTimingListener, &RendererFunctions::AddTimingListener, true, true},
+      {runtime::kProfileStart, &RendererFunctions::ProfileStart, true, true},
+      {runtime::kProfileEnd, &RendererFunctions::ProfileEnd, true, true},
+      {runtime::kProfileMark, &RendererFunctions::ProfileMark, true, true},
+      {runtime::kProfileFlowId, &RendererFunctions::ProfileFlowId, true, true},
+      {runtime::kIsProfileRecording, &RendererFunctions::IsProfileRecording, true, true},
+  };
+  // clang-format on
+
+  auto perf = lepus::LEPUSValueHelper::CreateObject(context);
+  context->RegisterObjectFunction(perf, funcs,
+                                  sizeof(funcs) / sizeof(funcs[0]));
+  return perf;
+}
+
+lepus::Value Utils::CreateResponseHandler(lepus::Context* context,
+                                          const lepus::Value& handler_impl) {
+  // clang-format off
+  constexpr const static lepus::RenderBindingFunction funcs[] = {
+      {runtime::kWait, &RendererFunctions::WaitingForResponse, true, true},
+      {runtime::kThen, &RendererFunctions::AddListenerForResponse, true, true},
+  };
+  // clang-format on
+
+  auto handler = lepus::LEPUSValueHelper::CreateObject(context);
+  context->RegisterObjectFunction(handler, funcs,
+                                  sizeof(funcs) / sizeof(funcs[0]));
+  handler.SetProperty(BASE_STATIC_STRING(runtime::kInnerRuntimeProxy),
+                      handler_impl);
+  return handler;
+}
+
+lepus::Value Utils::CreateContextProxy(lepus::Context* context,
+                                       runtime::ContextProxy::Type type,
+                                       const lepus::Value& proxy_impl) {
+  // clang-format off
+  constexpr const static lepus::RenderBindingFunction funcs[] = {
+      {runtime::kPostMessage, &RendererFunctions::PostMessage, true, true},
+      {runtime::kDispatchEvent, &RendererFunctions::DispatchEvent, true, true},
+      {runtime::kAddEventListener, &RendererFunctions::RuntimeAddEventListener, true, true},
+      {runtime::kRemoveEventListener, &RendererFunctions::RuntimeRemoveEventListener, true, true},
+  };
+
+  constexpr const static lepus::RenderBindingFunction devtool_funcs[] = {
+      {runtime::kReplaceStyleSheetByIdWithBase64, &RendererFunctions::ReplaceStyleSheetByIdWithBase64, true, true},
+      {runtime::kRemoveStyleSheetById, &RendererFunctions::RemoveStyleSheetById, true, true},
+  };
+  // clang-format on
+
+  auto proxy = lepus::LEPUSValueHelper::CreateObject(context);
+  context->RegisterObjectFunction(proxy, funcs,
+                                  sizeof(funcs) / sizeof(funcs[0]));
+  if (type == runtime::ContextProxy::Type::kDevTool) {
+    context->RegisterObjectFunction(
+        proxy, devtool_funcs, sizeof(devtool_funcs) / sizeof(devtool_funcs[0]));
+  }
+  proxy.SetProperty(BASE_STATIC_STRING(runtime::kInnerRuntimeProxy),
+                    proxy_impl);
+  return proxy;
+}
+
+lepus::Value Utils::CreateGestureManager(lepus::Context* context) {
+  // clang-format off
+  constexpr const static lepus::RenderBindingFunction funcs[] = {
+      {tasm::kCFuncSetGestureState, &RendererFunctions::FiberSetGestureState, true, true},
+      {tasm::kCFuncConsumeGesture, &RendererFunctions::FiberConsumeGesture, true, true},
+  };
+  // clang-format on
+
+  auto manager = lepus::LEPUSValueHelper::CreateObject(context);
+  context->RegisterObjectFunction(manager, funcs,
+                                  sizeof(funcs) / sizeof(funcs[0]));
+  return manager;
+}
+
+lepus::Value Utils::CreateLepusModule(lepus::Context* context,
+                                      const lepus::Value& module_impl) {
+  // clang-format off
+  constexpr const static lepus::RenderBindingFunction funcs[] = {
+      {runtime::kInvoke, &RendererFunctions::InvokeModuleMethod, true, true},
+  };
+  // clang-format on
+
+  auto obj = lepus::LEPUSValueHelper::CreateObject(context);
+  context->RegisterObjectFunction(obj, funcs, sizeof(funcs) / sizeof(funcs[0]));
+  obj.SetProperty(BASE_STATIC_STRING(runtime::kInnerRuntimeProxy), module_impl);
+  return obj;
+}
+
 lepus::Value Renderer::SlotFunction(lepus::Context* context, lepus::Value*,
                                     int size) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, SLOT_FUNCTION);

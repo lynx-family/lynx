@@ -29,7 +29,8 @@ namespace tasm {
 #endif  // SetProp
 #endif  // OS_WIN
 
-void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
+void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx,
+                                 const std::string& version) {
   if (lynx.IsTable()) {
     auto lynx_table = lynx.Table();
     lepus::RegisterTableFunction(context, lynx_table, kGetTextInfo,
@@ -92,6 +93,13 @@ void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
                                  &RendererFunctions::StopExposure);
     lepus::RegisterTableFunction(context, lynx_table, kResumeExposure,
                                  &RendererFunctions::ResumeExposure);
+    // Report error
+    lepus::RegisterTableFunction(context, lynx_table, kReportError,
+                                 &RendererFunctions::ReportError);
+    if (!version.empty()) {
+      lynx.SetProperty(BASE_STATIC_STRING(runtime::kTargetSdkVersion),
+                       lepus::Value(version));
+    }
   }
 }
 

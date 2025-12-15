@@ -293,7 +293,8 @@ constexpr static const char* kCFunctionElementAnimate = "__ElementAnimate";
 
 class Utils {
  public:
-  static void RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx);
+  static void RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx,
+                                   const std::string& version);
   static void RegisterNGMethodToLynx(lepus::Context* context,
                                      lepus::Value& lynx,
                                      const std::string& targetSdkVersion);
@@ -320,6 +321,18 @@ class Utils {
                                             lepus::Value& lepus_module);
   static void RegisterMethodToLepusModule(lepus::Context* context,
                                           lepus::Value& lepus_module);
+
+  static lepus::Value CreateLynx(lepus::Context* context,
+                                 const std::string& version);
+  static lepus::Value CreateLynxPerformance(lepus::Context* context);
+  static lepus::Value CreateResponseHandler(lepus::Context* context,
+                                            const lepus::Value& handler_impl);
+  static lepus::Value CreateContextProxy(lepus::Context* context,
+                                         runtime::ContextProxy::Type type,
+                                         const lepus::Value& proxy_impl);
+  static lepus::Value CreateGestureManager(lepus::Context* context);
+  static lepus::Value CreateLepusModule(lepus::Context* context,
+                                        const lepus::Value& module_impl);
 };
 
 class Renderer {
