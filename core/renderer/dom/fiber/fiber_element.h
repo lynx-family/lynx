@@ -1004,7 +1004,7 @@ class FiberElement : public Element,
 
   bool ShouldDestroy() const;
 
-  void UpdateLayoutInfoRecursively();
+  void UpdateLayoutInfoRecursively(PipelineOptions* options);
 
   void DispatchLayoutBeforeRecursively();
 

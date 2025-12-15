@@ -44,7 +44,9 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
+#include "core/runtime/vm/lepus/bytecode_generator.h"
 #include "core/runtime/vm/lepus/js_object.h"
+#include "core/runtime/vm/lepus/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/shell/lynx_ui_operation_queue.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -1534,6 +1536,79 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
 }
 
+TEST_P(FiberElementTest,
+       TestUpdateLayoutNodeAttributeWhenEnableLayoutInElement) {
+  manager->enable_layout_in_element_mode_ = true;
+  manager->enable_native_list_ = true;
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto ctx = std::make_shared<lepus::QuickContext>();
+  tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(ctx);
+
+  std::string js_source = R"(
+    let count = 0;
+    let callback = ()=> { 
+      count = count + 1;
+    }
+  )";
+
+  lepus::BytecodeGenerator::GenerateBytecode(ctx.get(), js_source,
+                                             ctx->GetSdkVersion(), "");
+  ctx->Execute();
+
+  auto callback = ctx->GetGlobalData("callback");
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto scroll = manager->CreateFiberElement("scroll-view");
+  scroll->SetAttribute("scroll-x", lepus::Value(true));
+  page->InsertNode(scroll);
+
+  auto list = manager->CreateFiberElement("list");
+  list->SetAttribute("column-count", lepus::Value(2));
+  list->SetAttribute("list-type", lepus::Value("waterfall"));
+  static_cast<ListElement*>(list.get())
+      ->UpdateCallbacks(callback, callback, callback);
+  static_cast<ListElement*>(list.get())->tasm_ = tasm.get();
+
+  list->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("1000px"));
+  list->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("1000px"));
+
+  lepus::Value single_action = lepus::LEPUSValueHelper::CreateObject(nullptr);
+  single_action.SetProperty("item-key", lepus::Value("a"));
+  single_action.SetProperty("position", lepus::Value(0));
+  single_action.SetProperty("type", lepus::Value("__snapshot_a94a8_test_37"));
+
+  lepus::Value insert_actions = lepus::LEPUSValueHelper::CreateArray(nullptr);
+  insert_actions.SetProperty(0, single_action);
+
+  lepus::Value single_info = lepus::LEPUSValueHelper::CreateObject(nullptr);
+  single_info.SetProperty("insertAction", insert_actions);
+
+  list->SetAttribute("update-list-info", single_info);
+  page->InsertNode(list);
+
+  auto list_item = manager->CreateFiberElement("list-item");
+  list_item->SetAttribute("full-span", lepus::Value(true));
+  list->InsertNode(list_item);
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+
+  EXPECT_TRUE(*(scroll->sl_node_->attr_map().scroll_));
+  EXPECT_EQ(*(list->sl_node_->attr_map().column_count_), 2);
+  EXPECT_EQ(*(list_item->sl_node_->attr_map().list_comp_type_),
+            static_cast<int>(ListComponentInfo::Type::LIST_ROW));
+
+  auto count = ctx->GetGlobalData("count");
+  EXPECT_EQ(count, lepus::Value(1));
+}
+
 TEST_P(FiberElementTest, InsertNode) {
   auto parent = manager->CreateFiberNode("view");
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
@@ -2041,8 +2116,8 @@ TEST_P(FiberElementTest, RemoveElement) {
   EXPECT_CALL(tasm_mediator, RemoveLayoutNode(ref->impl_id(), text->impl_id()));
   EXPECT_EQ(static_cast<int>(ref->children().size()), 2);
 
-  // do nothing for ref's layout node children, due to ref is detached form view
-  // tree, but the remove action is still in ref
+  // do nothing for ref's layout node children, due to ref is detached form
+  // view tree, but the remove action is still in ref
   EXPECT_CALL(tasm_mediator,
               RemoveLayoutNode(ref->impl_id(), element->impl_id()))
       .Times(0);
@@ -7412,7 +7487,8 @@ TEST_P(FiberElementTest, RemoveIntergenerationalChild) {
   EXPECT_TRUE(page_children[0] == element0_painting_node);
   EXPECT_TRUE(page_children[1] == child_painting_node);
 
-  // remove element1 from page, take care,the fixed child should also be removed
+  // remove element1 from page, take care,the fixed child should also be
+  // removed
   page->RemoveNode(element0);
   EXPECT_CALL(tasm_mediator,
               RemoveLayoutNode(page->impl_id(), element0->impl_id()));
@@ -13895,7 +13971,8 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles01) {
   }
 
   {
-    // text inline style: "background-color:var(--bg-color); --bg-color: black"
+    // text inline style: "background-color:var(--bg-color); --bg-color:
+    // black"
     text->RemoveAllInlineStyles();
     text->SetRawInlineStyles(
         "background-color:var(--bg-color); --bg-color: black");
@@ -13908,7 +13985,8 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles01) {
   }
 
   {
-    // page inline style: "background-color:var(--bg-color); --bg-color: green"
+    // page inline style: "background-color:var(--bg-color); --bg-color:
+    // green"
     page->RemoveAllInlineStyles();
     page->SetRawInlineStyles(
         "background-color:var(--bg-color); --bg-color: green");
@@ -13964,9 +14042,9 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles02) {
   }
 
   {
-    // page inline style: "background-color:var(--bg-color); --bg-color: black"
-    // text1 inline style: "background-color:var(--bg-color);"
-    // text2 inline style: "background-color:var(--bg-color);"
+    // page inline style: "background-color:var(--bg-color); --bg-color:
+    // black" text1 inline style: "background-color:var(--bg-color);" text2
+    // inline style: "background-color:var(--bg-color);"
     page->RemoveAllInlineStyles();
     page->SetRawInlineStyles(
         "background-color:var(--bg-color); --bg-color: black");
@@ -13983,9 +14061,10 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles02) {
   }
 
   {
-    // page inline style: "background-color:var(--bg-color); --bg-color: green"
-    // text1 inline style: "background-color:var(--bg-color); --bg-color: red"
-    // text2 inline style: "background-color:var(--bg-color);"
+    // page inline style: "background-color:var(--bg-color); --bg-color:
+    // green" text1 inline style: "background-color:var(--bg-color);
+    // --bg-color: red" text2 inline style:
+    // "background-color:var(--bg-color);"
     page->SetRawInlineStyles(
         "background-color:var(--bg-color); --bg-color: green");
     text1->RemoveAllInlineStyles();
@@ -14045,7 +14124,8 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles03) {
         "background-color: var(--no-color, var(--bg-color)); border-bottom: "
         "var(--border);");
     view2->SetRawInlineStyles(
-        "border-bottom: var(--no-border, var(--some-border, var(--border)));");
+        "border-bottom: var(--no-border, var(--some-border, "
+        "var(--border)));");
     page->FlushActionsAsRoot();
     painting_context->Flush();
     auto node = painting_context->node_map_[view1->impl_id()].get();
@@ -14542,7 +14622,8 @@ TEST_P(FiberElementTest, TestBackgroundToLepus) {
   {
     auto id = CSSPropertyID::kPropertyIDBackground;
     auto impl = lepus::Value(
-        "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, 0) "
+        "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, "
+        "0) "
         "15%, rgba(239, 155, 255, 0.3) 56.35%, #ff6448 100%)");
     tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
@@ -14558,7 +14639,8 @@ TEST_P(FiberElementTest, TestBackgroundToLepus) {
     auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
     auto id = CSSPropertyID::kPropertyIDMask;
     auto impl = lepus::Value(
-        "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, 0) "
+        "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, "
+        "0) "
         "15%, rgba(239, 155, 255, 0.3) 56.35%, #ff6448 100%)");
     tokens.get()->raw_attributes_[id] = CSSValue(impl, CSSValuePattern::STRING);
 
@@ -14872,8 +14954,8 @@ TEST_P(FiberElementTest,
 }
 
 // Test case for PageElement holding a ComponentElement, which holds a
-// ViewElement. The ComponentElement's CSSFragment has a :root selector with CSS
-// variables. Repeatedly call PageElement's FlushActionsAsRoot 1000 times.
+// ViewElement. The ComponentElement's CSSFragment has a :root selector with
+// CSS variables. Repeatedly call PageElement's FlushActionsAsRoot 1000 times.
 TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
   for (int i = 0; i < 10; ++i) {
     // 1. Create CSSFragment for ComponentElement with :root selector and CSS

@@ -1208,6 +1208,8 @@ class ElementManager : public ElementContextDelegate,
  protected:
   void TickLayout(const std::shared_ptr<PipelineOptions> &options);
 
+  void TickListIfNeeded(const std::shared_ptr<PipelineOptions> &options);
+
   /**
    * call this function after exec OnPatchFinishForFiber
    */

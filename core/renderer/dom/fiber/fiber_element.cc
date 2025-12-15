@@ -2921,6 +2921,25 @@ void FiberElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
 void FiberElement::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                              const lepus::Value &value) {
   if (EnableLayoutInElementMode()) {
+    EnsureSLNode();
+    bool changed = false;
+    if (key == starlight::LayoutAttribute::kScroll) {
+      changed = sl_node_->attr_map().setScroll(
+          value.IsBool() ? std::optional<bool>(value.Bool()) : std::nullopt);
+    } else if (key == starlight::LayoutAttribute::kColumnCount) {
+      changed = sl_node_->attr_map().setColumnCount(
+          value.IsNumber() ? std::optional<int>(value.Number()) : std::nullopt);
+    } else if (key == starlight::LayoutAttribute::kListCompType) {
+      changed = sl_node_->attr_map().setListCompType(
+          value.IsNumber() ? std::optional<int>(value.Number()) : std::nullopt);
+    }
+
+    if (changed) {
+      if (is_list()) {
+        sl_node_->MarkChildrenDirtyWithoutTriggerLayout();
+      }
+      sl_node_->MarkDirty();
+    }
     return;
   }
 
@@ -4114,13 +4133,17 @@ bool FiberElement::IfNeedsUpdateLayoutInfo() {
 /**
  * Reference {@link LayoutContext#LayoutRecursively }
  */
-void FiberElement::UpdateLayoutInfoRecursively() {
+void FiberElement::UpdateLayoutInfoRecursively(PipelineOptions *options) {
   if (!is_wrapper()) {
     if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
       return;
     }
 
     if (IfNeedsUpdateLayoutInfo()) {
+      if (is_list()) {
+        // TODO(songshourui.null): emplace_back element later
+        options->updated_list_elements_.emplace_back(impl_id());
+      }
       UpdateLayoutInfo();
     }
 
@@ -4128,7 +4151,7 @@ void FiberElement::UpdateLayoutInfoRecursively() {
   }
 
   for (auto &child : scoped_children_) {
-    child->UpdateLayoutInfoRecursively();
+    child->UpdateLayoutInfoRecursively(options);
   }
 }
 

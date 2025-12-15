@@ -261,7 +261,7 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
   auto* mock_text_painting_node_ =
       painting_context->node_map_.at(text->impl_id()).get();
 
-  EXPECT_EQ(mock_text_painting_node_->props_.size(), 0);
+  EXPECT_EQ(mock_text_painting_node_->props_.size(), 1);
   std::string key("text-overflow");
   EXPECT_EQ(text->text_props_->text_max_line, 1);
   EXPECT_TRUE(text->property_bits_.Has(kPropertyIDColor));
@@ -315,7 +315,7 @@ TEST_P(TextElementTest, TestMeasureCase0) {
   auto* mock_text_painting_node_ =
       painting_context->node_map_.at(text->impl_id()).get();
 
-  EXPECT_EQ(mock_text_painting_node_->props_.size(), 0);
+  EXPECT_EQ(mock_text_painting_node_->props_.size(), 1);
   EXPECT_EQ(text->text_props_->text_max_line, 1);
   EXPECT_TRUE(text->property_bits_.Has(kPropertyIDColor));
   EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->color, 4294901760);
