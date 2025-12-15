@@ -20,6 +20,7 @@
  @protected
   LynxThreadStrategyForRender _threadStrategy;
   BOOL _hasThreadStrategySet;
+  BOOL _hasPendingJsTaskSet;
 }
 
 @property(nonatomic, nullable) LynxConfig* config;
