@@ -35,6 +35,19 @@ void PlatformRendererContext::CreatePlatformRenderer(
       env, local_ref.Get(), id, static_cast<int32_t>(type));
 }
 
+void PlatformRendererContext::CreatePlatformExtendedRenderer(
+    int32_t id, const base::String& tag_name) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto j_tag_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, tag_name.c_str());
+  Java_PlatformRendererContext_createPlatformExtendedRenderer(
+      env, local_ref.Get(), id, j_tag_name.Get());
+}
+
 void PlatformRendererContext::InsertPlatformRenderer(int32_t parent,
                                                      int32_t child,
                                                      int32_t index) {
