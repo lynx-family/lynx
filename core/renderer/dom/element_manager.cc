@@ -429,16 +429,20 @@ void ElementManager::RequestLayout(
                    .pipeline_version = options->version,
                    .is_first_layout =
                        options->is_first_screen || options->is_reuse_engine};
-    element_manager_delegate_->OnLayoutAfter(layout_data);
-    return;
+  } else {
+    // When unified pipeline is disabled, force Flush as a fallback.
+    // Layout will trigger flush; this only compensates when layout is not
+    // invoked.
+    if (!options->enable_unified_pixel_pipeline) {
+      painting_context()->Flush();
+    }
+    layout_data = {.layout_triggered = false,
+                   .pipeline_version = options->version};
   }
 
-  if (!options->enable_unified_pixel_pipeline) {
-    painting_context()->Flush();
-  }
-  layout_data = {.layout_triggered = false,
-                 .pipeline_version = options->version};
   element_manager_delegate_->OnLayoutAfter(layout_data);
+
+  TickListIfNeeded(options);
 }
 
 std::unordered_map<int32_t, LayoutInfoArray>
@@ -1278,6 +1282,31 @@ void ElementManager::TickLayout(
     return;
   }
   layout_tick_(options);
+}
+
+void ElementManager::TickListIfNeeded(
+    const std::shared_ptr<PipelineOptions> &options) {
+  for (auto id : options->updated_list_elements_) {
+    if (auto *node = node_manager_->Get(id); node) {
+      node->OnListElementUpdated(options);
+    }
+  }
+
+  if (options->list_id_ != 0 && options->operation_id != 0 &&
+      options->list_comp_id_ != 0) {
+    auto *list_node = node_manager_->Get(options->list_id_);
+    auto *component_node = node_manager_->Get(options->list_comp_id_);
+    if (list_node) {
+      list_node->OnComponentFinished(component_node, options);
+    }
+  } else if (options->list_id_ != 0 && !options->operation_ids_.empty() &&
+             !options->list_item_ids_.empty() &&
+             options->operation_ids_.size() == options->list_item_ids_.size()) {
+    auto *list_element = node_manager_->Get(options->list_id_);
+    if (list_element) {
+      list_element->OnListItemBatchFinished(options);
+    }
+  }
 }
 
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,

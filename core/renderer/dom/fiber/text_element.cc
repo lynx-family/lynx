@@ -46,13 +46,6 @@ void TextElement::AttachToElementManager(
                      !EnableLayoutInElementMode());
 }
 
-void TextElement::PushStyleToBundle() {
-  if (EnableLayoutInElementMode()) {
-    return;
-  }
-  Element::PushStyleToBundle();
-}
-
 void TextElement::SetStyleInternal(CSSPropertyID id,
                                    const tasm::CSSValue& value) {
   FiberElement::SetStyleInternal(id, value);

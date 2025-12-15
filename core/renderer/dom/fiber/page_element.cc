@@ -164,7 +164,7 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   element_container()->MarkLayoutUIOperationQueueFlushStartIfNeed();
 
-  UpdateLayoutInfoRecursively();
+  UpdateLayoutInfoRecursively(options.get());
 
   element_container()->UpdateLayout(left_, top_, false);
 
