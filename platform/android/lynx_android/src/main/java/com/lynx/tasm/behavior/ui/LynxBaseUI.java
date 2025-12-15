@@ -3164,7 +3164,7 @@ public abstract class LynxBaseUI
 
   private EventTarget findHitTargetInSiblings(List<EventTarget> siblingTargets,
       EventTarget excludeTarget, float originX, float originY, boolean ignoreUserInteraction) {
-    for (int i = siblingTargets.size() - 1; i >= 0; i--) {
+    for (int i = 0; i < siblingTargets.size(); i++) {
       LynxBaseUI sibling = (LynxBaseUI) siblingTargets.get(i);
       if (sibling == null || sibling == excludeTarget) {
         continue;

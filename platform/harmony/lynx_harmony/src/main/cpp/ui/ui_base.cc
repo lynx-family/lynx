@@ -1913,8 +1913,7 @@ EventTarget* UIBase::HitTest(float point[2]) {
   if (!best_hittest_target ||
       best_hittest_target->PointerEvents() == LynxPointerEventsValue::kNone) {
     best_hittest_target = nullptr;
-    for (auto it = sibling_targets.rbegin(); it != sibling_targets.rend();
-         ++it) {
+    for (auto it = sibling_targets.begin(); it != sibling_targets.end(); ++it) {
       EventTarget* sibling = *it;
       if (!sibling || sibling == target) {
         continue;
