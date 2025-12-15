@@ -99,16 +99,22 @@ Value ResponseHandlerInJS::AddListenerForResponse(Runtime& rt) {
           }
 
           piper::Function func = args[0].getObject(rt).getFunction(rt);
-          AddResourceListener([this, func = std::move(func)](
-                                  tasm::BundleResourceInfo info) mutable {
-            auto ptr = native_app_.lock();
-            if (ptr && !ptr->IsDestroying()) {
-              auto rt = ptr->GetRuntime();
-              if (rt != nullptr) {
-                func.call(*rt, ConvertBundleInfoToPiperValue(info));
-              }
-            }
-          });
+          AddResourceListener(
+              [weak_self = weak_from_this(),
+               func = std::move(func)](tasm::BundleResourceInfo info) mutable {
+                auto self = weak_self.lock();
+                if (self) {
+                  auto ptr = self->native_app_.lock();
+                  if (ptr && !ptr->IsDestroying()) {
+                    auto rt = ptr->GetRuntime();
+                    if (rt != nullptr) {
+                      func.call(
+                          *ptr->GetRuntime(),
+                          self->ConvertBundleInfoToPiperValue(std::move(info)));
+                    }
+                  }
+                }
+              });
         }
         return piper::Value::undefined();
       });
