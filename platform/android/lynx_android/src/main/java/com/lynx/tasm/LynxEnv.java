@@ -58,6 +58,7 @@ import com.lynx.tasm.service.ILynxImageServiceExtension;
 import com.lynx.tasm.service.ILynxSystemInvokeService;
 import com.lynx.tasm.service.ILynxTrailService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -199,6 +200,8 @@ public class LynxEnv {
   protected boolean mEnableFSP = false;
   protected HashMap<String, String> mFSPConfig = null;
 
+  private boolean mEnableInitDisplayMetricsInEnv = true;
+
   protected LynxEnv() {}
 
   public static LynxEnv inst() {
@@ -310,6 +313,9 @@ public class LynxEnv {
 
     // ensure init ui thread native loop
     initNativeUIThread();
+
+    // init default display metrics if needed
+    initDisplayMetrics();
 
     // init global cache pool
     initNativeGlobalPool();
@@ -1408,6 +1414,14 @@ public class LynxEnv {
 
   protected void initEnableLazyInitA11y() {
     mEnableLazyInitA11y = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_LAZY_INIT_A11Y, true);
+  }
+
+  private void initDisplayMetrics() {
+    mEnableInitDisplayMetricsInEnv =
+        getBooleanFromExternalEnv(LynxEnvKey.INIT_DISPLAY_METRICS_IN_ENV, true);
+    if (mEnableInitDisplayMetricsInEnv) {
+      DisplayMetricsHolder.updateOrInitDisplayMetrics(mContext);
+    }
   }
 
   boolean enableDataListFix() {

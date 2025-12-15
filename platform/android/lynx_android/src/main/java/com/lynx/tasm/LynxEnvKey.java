@@ -46,7 +46,8 @@ public enum LynxEnvKey {
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
   FSP_ENABLE("enable_fsp"),
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),
-  LYNX_DEBUG_ENABLED("lynx_debug_enabled");
+  LYNX_DEBUG_ENABLED("lynx_debug_enabled"),
+  INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env");
 
   private final String description;
 
