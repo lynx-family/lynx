@@ -195,8 +195,9 @@ void SharedDrawableImage::DrawSkityImage(
   // We have specified the BottomLeft as the origin of the surface when create
   // SkImage. But Skity doesn't provide this parameter. So flip the y-axis
   // again.
-  skity::Matrix transform = transform_;
-  transform.PreScale(1.f, -1.f);
+  skity::Matrix transform = skity::Matrix::Translate(0.f, 1.f) *
+                            skity::Matrix::Scale(1.f, -1.f) * transform_;
+
   skity::Matrix scaled_transform;
   switch (fit_mode) {
     case clay::DrawableImage::FitMode::kScaleToFill:
