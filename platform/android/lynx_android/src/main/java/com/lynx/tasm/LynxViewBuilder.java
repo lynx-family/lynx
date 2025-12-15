@@ -478,10 +478,13 @@ public class LynxViewBuilder
 
   @Override
   public boolean isEnablePendingJsTask() {
+    if (hasPendingJsTaskSet) {
+      return this.enablePendingJsTask;
+    }
     if (lynxViewGroup != null) {
       return lynxViewGroup.isEnablePendingJsTask();
     }
-    return this.enablePendingJsTask;
+    return false;
   }
 
   @Override
