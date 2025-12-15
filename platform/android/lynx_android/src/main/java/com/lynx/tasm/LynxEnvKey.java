@@ -43,7 +43,8 @@ public enum LynxEnvKey {
   MEMORY_ACQUISITION_DELAY_SEC("memory_acquisition_delay_second"),
   MEMORY_REPORT_INTERVAL_SEC("memory_report_interval_sec"),
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
-  LYNX_DEBUG_ENABLED("lynx_debug_enabled");
+  LYNX_DEBUG_ENABLED("lynx_debug_enabled"),
+  INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env");
 
   private final String description;
 
