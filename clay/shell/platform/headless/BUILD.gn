@@ -1,0 +1,110 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("../../../../clay/shell/config.gni")
+import("../../../../clay/shell/gpu/gpu.gni")
+import("../../../../core/Lynx.gni")
+
+source_set("headless") {
+  sources = [
+    "clay_event_loop.cc",
+    "clay_event_loop.h",
+    "clay_headless_engine.cc",
+    "clay_headless_engine.h",
+    "clay_headless_renderer.cc",
+    "clay_headless_renderer.h",
+  ]
+
+  deps = [
+    "../../../common",
+    "../../../common/graphics",
+    "../../../flow",
+    "../../../fml:fml",
+    "../../../fml:icu_util",
+    "../../../gfx/shared_image",
+    "../../../ui:ui",
+    "../../common:common",
+    "../embedder:embedder",
+  ]
+
+  if (shell_enable_gl) {
+    sources += [
+      "gl/clay_headless_renderer_gl.cc",
+      "gl/clay_headless_renderer_gl.h",
+      "gl/clay_headless_renderer_host_gl.cc",
+      "gl/clay_headless_renderer_host_gl.h",
+    ]
+
+    deps += [ "../../gpu:gpu_surface_gl" ]
+
+    if (is_mac) {
+      sources += [
+        "gl/clay_headless_renderer_cgl.cc",
+        "gl/clay_headless_renderer_cgl.h",
+      ]
+    }
+
+    if (is_win) {
+      sources += [
+        "gl/clay_headless_renderer_angle.cc",
+        "gl/clay_headless_renderer_angle.h",
+      ]
+
+      configs += [ "//third_party/angle:gl_prototypes" ]
+
+      if (clay_force_d3d9) {
+        defines += [ "CLAY_FORCE_D3D9" ]
+      }
+
+      deps += [
+        "//third_party/angle:libEGL_static",  # the order of libEGL_static and
+                                              # libGLESv2_static is
+                                              # important.. if
+                                              # reversed, will cause a linker
+                                              # error
+                                              # DllMain already defined in
+                                              # LIBCMTD.lib
+        "//third_party/angle:libGLESv2_static",
+      ]
+    }
+
+    if (is_linux) {
+      sources += [
+        "gl/clay_headless_renderer_epoxy.cc",
+        "gl/clay_headless_renderer_epoxy.h",
+      ]
+    }
+
+    if (is_harmony) {
+      sources += [
+        "gl/clay_headless_renderer_gles.cc",
+        "gl/clay_headless_renderer_gles.h",
+      ]
+    }
+  }
+
+  if (shell_enable_metal) {
+    sources += [
+      "metal/clay_headless_renderer_metal.h",
+      "metal/clay_headless_renderer_metal.mm",
+    ]
+  }
+
+  public_configs = [
+    "../../../../clay:config",
+    ":headless_config",
+  ]
+}
+
+config("headless_config") {
+  defines = []
+
+  defines += [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+
+  if (is_win) {
+    defines += [ "lynx_EXPORTS" ]
+    cflags = [ "-Wno-c99-designator" ]
+  }
+}
