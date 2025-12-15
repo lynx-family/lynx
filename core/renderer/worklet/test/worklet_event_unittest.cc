@@ -81,8 +81,8 @@ class WorkletEventTest : public ::testing::Test {
     tasm_->template_entries_.insert({"test_entry", test_entry});
 
     // Register Method
-    tasm::Renderer::RegisterNGBuiltin(ctx_.get(), tasm::ArchOption::RADON_ARCH);
-    tasm::Renderer::RegisterNGBuiltin(ctx_.get(), tasm::ArchOption::FIBER_ARCH);
+    tasm::Renderer::RegisterBuiltin(ctx_.get(), tasm::ArchOption::RADON_ARCH);
+    tasm::Renderer::RegisterBuiltin(ctx_.get(), tasm::ArchOption::FIBER_ARCH);
   }
 
   fml::RefPtr<tasm::RadonElement> CreateElement(const std::string& js_var_name,

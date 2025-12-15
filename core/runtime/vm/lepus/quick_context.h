@@ -95,9 +95,11 @@ class QuickContext : private LEPUSRuntimeData,
   void SetStackSize(uint32_t stack_size);
   void RegisterGlobalFunction(const char* name, LEPUSCFunction* func,
                               int argc = 0);
-  void RegisterGlobalFunction(const RenderBindingFunction* funcs, size_t size);
+  void RegisterGlobalFunction(const RenderBindingFunction* funcs,
+                              size_t size) override;
   void RegisterObjectFunction(lepus::Value& obj,
-                              const RenderBindingFunction* funcs, size_t size);
+                              const RenderBindingFunction* funcs,
+                              size_t size) override;
 
   LEPUSValue NewBindingFunction(CFunction func);
 
@@ -158,7 +160,6 @@ class QuickContext : private LEPUSRuntimeData,
       const std::unordered_map<std::string, std::string>& info) override;
   void BeforeReportError(base::LynxError& error) override;
 
-  void RegisterCtxBuiltin(const tasm::ArchOption&) override;
   void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                    const tasm::CompileOptions&) override;
 

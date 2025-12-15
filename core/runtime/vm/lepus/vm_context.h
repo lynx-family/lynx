@@ -46,6 +46,12 @@ class VMContext : public Context {
   virtual void Initialize() override;
   virtual bool Execute() override;
 
+  void RegisterGlobalFunction(const RenderBindingFunction* funcs,
+                              size_t size) override;
+  void RegisterObjectFunction(lepus::Value& obj,
+                              const RenderBindingFunction* funcs,
+                              size_t size) override;
+
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const Value& value) override;
   virtual bool CheckTableShadowUpdatedWithTopLevelVariable(
@@ -135,7 +141,7 @@ class VMContext : public Context {
   bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,
                    const char* file_name = nullptr) override;
   bool MoveContextBundle(VMContextBundle& bundle);
-  void RegisterCtxBuiltin(const tasm::ArchOption&) override;
+
   void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                    const tasm::CompileOptions&) override;
 

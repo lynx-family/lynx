@@ -325,15 +325,8 @@ class Utils {
 class Renderer {
  public:
   static void RegisterBuiltin(lepus::Context* context, ArchOption option);
-  static void RegisterNGBuiltin(lepus::Context* context, ArchOption option);
 
  private:
-  static void RegisterBuiltinForRadon(lepus::Context* context);
-  static void RegisterBuiltinForFiber(lepus::Context* context);
-
-  static void RegisterNGBuiltinForRadon(lepus::Context* context);
-  static void RegisterNGBuiltinForFiber(lepus::Context* context);
-
   static lepus::Value SlotFunction(lepus::Context* context, lepus::Value* args,
                                    int size);
   static const lepus::RenderBindingFunction* GetBuiltinFunctionsForRadon(

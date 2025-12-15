@@ -195,6 +195,25 @@ void VMContext::Dump() {
 }
 #endif
 
+void VMContext::RegisterGlobalFunction(const RenderBindingFunction* funcs,
+                                       size_t size) {
+  for (size_t i = 0; i < size; ++i) {
+    SetGlobalData(funcs[i].name, lepus::Value(funcs[i].function));
+  }
+}
+
+void VMContext::RegisterObjectFunction(lepus::Value& obj,
+                                       const RenderBindingFunction* funcs,
+                                       size_t size) {
+  if (!obj.IsTable()) {
+    return;
+  }
+  auto table = obj.Table();
+  for (size_t i = 0; i < size; ++i) {
+    table->SetValue(funcs[i].name, funcs[i].function);
+  }
+}
+
 // check target's first level variable.
 // 1. if update key is not path, simply add new k-v pair for the first level
 // 2. if update key is value path, clone the first level k-v pair and update
@@ -1601,13 +1620,6 @@ bool VMContext::MoveContextBundle(VMContextBundle& bundle) {
   }
 
   return true;
-}
-
-void VMContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
-#ifndef LEPUS_PC
-  tasm::Renderer::RegisterBuiltin(this, option);
-#endif
-  return;
 }
 
 void VMContext::ApplyConfig(

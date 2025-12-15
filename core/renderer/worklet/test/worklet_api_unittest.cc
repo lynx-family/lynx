@@ -71,8 +71,8 @@ class WorkletAPITest : public ::testing::Test {
     tasm_->template_entries_[tasm::DEFAULT_ENTRY_NAME] = default_entry;
 
     // Register Method
-    tasm::Renderer::RegisterNGBuiltin(ctx_.get(), tasm::ArchOption::RADON_ARCH);
-    tasm::Renderer::RegisterNGBuiltin(ctx_.get(), tasm::ArchOption::FIBER_ARCH);
+    tasm::Renderer::RegisterBuiltin(ctx_.get(), tasm::ArchOption::RADON_ARCH);
+    tasm::Renderer::RegisterBuiltin(ctx_.get(), tasm::ArchOption::FIBER_ARCH);
   }
 
   void TearDown() override {}

@@ -357,7 +357,8 @@ TemplateEntry::~TemplateEntry() {
 
 void TemplateEntry::RegisterBuiltin() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_REGISTER_BUILD_IN);
-  vm_context_->RegisterCtxBuiltin(compile_options().arch_option_);
+  tasm::Renderer::RegisterBuiltin(vm_context_.get(),
+                                  compile_options().arch_option_);
 }
 
 void TemplateEntry::SetTemplateAssembler(TemplateAssembler* assembler) {

@@ -99,7 +99,7 @@ void BaseSignalTest::SetUp() {
 
   if (enable_ng_) {
     auto qctx = static_cast<lepus::QuickContext*>(ctx_.get());
-    Renderer::RegisterNGBuiltin(qctx, ArchOption::FIBER_ARCH);
+    Renderer::RegisterBuiltin(qctx, ArchOption::FIBER_ARCH);
   } else {
     auto vm_ctx = static_cast<lepus::VMContext*>(ctx_.get());
     Renderer::RegisterBuiltin(vm_ctx, ArchOption::FIBER_ARCH);

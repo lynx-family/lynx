@@ -64,7 +64,7 @@ void LynxContextPool::AddContextSafely(int32_t count) {
         context->SetGlobalData(BASE_STATIC_STRING(tasm::kTemplateAssembler),
                                lepus::Value());
       }
-      context->RegisterCtxBuiltin(arch_option_);
+      tasm::Renderer::RegisterBuiltin(context.get(), arch_option_);
       context->RegisterLynx(enable_signal_api_);
       // if context_bundle_ exists, should call DeSerialize. And if DeSerialize
       // fails, just return.

@@ -105,6 +105,12 @@ class Context {
 
   virtual void TriggerVmGC(){};
 
+  virtual void RegisterGlobalFunction(const RenderBindingFunction* funcs,
+                                      size_t size) = 0;
+  virtual void RegisterObjectFunction(lepus::Value& obj,
+                                      const RenderBindingFunction* funcs,
+                                      size_t size) = 0;
+
   bool UpdateTopLevelVariable(const std::string& name, const Value& val);
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const Value& val) = 0;
@@ -230,7 +236,6 @@ class Context {
   virtual bool DeSerialize(const ContextBundle&, bool, Value* ret,
                            const char* file_name = nullptr) = 0;
 
-  virtual void RegisterCtxBuiltin(const tasm::ArchOption&) = 0;
   virtual void ApplyConfig(const std::shared_ptr<tasm::PageConfig>&,
                            const tasm::CompileOptions&) = 0;
 
