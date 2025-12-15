@@ -9290,6 +9290,8 @@ public class com::lynx::tasm::behavior::StyleConstants : com.lynx.tasm.behavior.
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_CLIP_PADDING_BOX BACKGROUND_CLIP_PADDING_BOX;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_CLIP_BORDER_BOX BACKGROUND_CLIP_BORDER_BOX;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_CLIP_CONTENT_BOX BACKGROUND_CLIP_CONTENT_BOX;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_CLIP_TEXT BACKGROUND_CLIP_TEXT;
+  public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_CLIP_BORDER_AREA BACKGROUND_CLIP_BORDER_AREA;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_ORIGIN_PADDING_BOX BACKGROUND_ORIGIN_PADDING_BOX;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_ORIGIN_BORDER_BOX BACKGROUND_ORIGIN_BORDER_BOX;
   public final int com.lynx.tasm.behavior.StyleConstants.BACKGROUND_ORIGIN_CONTENT_BOX BACKGROUND_ORIGIN_CONTENT_BOX;
