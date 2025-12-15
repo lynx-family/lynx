@@ -3506,7 +3506,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   id<LynxEventTarget> target = guard ? [guard hitTest:point withEvent:event] : self;
   if (!target || [target pointerEvents] == kLynxPointerEventsValueNone) {
     target = nil;
-    for (LynxUI* sibling in [siblingTargets reverseObjectEnumerator]) {
+    for (LynxUI* sibling in [siblingTargets objectEnumerator]) {
       if (!sibling || sibling == guard) {
         continue;
       }
