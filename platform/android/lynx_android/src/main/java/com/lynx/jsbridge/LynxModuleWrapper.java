@@ -19,10 +19,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LynxModuleWrapper {
   private static final String TAG = "LynxModuleWrapper";
@@ -32,6 +31,8 @@ public class LynxModuleWrapper {
   private final String mName;
   private WeakReference<Context> mWeakContext;
   private LynxModule.AuthValidator mAuthValidator;
+  private static final ConcurrentHashMap<Class<? extends LynxModule>, ArrayList<MethodDescriptor>>
+      mMethodsCache = new ConcurrentHashMap<>();
 
   public LynxModuleWrapper(String name, LynxModule module) {
     mName = name;
@@ -75,6 +76,10 @@ public class LynxModuleWrapper {
 
   private void findMethods() {
     Class<? extends LynxModule> classForMethods = mModule.getClass();
+    if (mMethodsCache.containsKey(classForMethods)) {
+      mDescriptors.addAll(mMethodsCache.get(classForMethods));
+      return;
+    }
     Method[] targetMethods = classForMethods.getDeclaredMethods();
     for (Method targetMethod : targetMethods) {
       LynxMethod annotation = targetMethod.getAnnotation(LynxMethod.class);
@@ -88,6 +93,7 @@ public class LynxModuleWrapper {
         mDescriptors.add(md);
       }
     }
+    mMethodsCache.putIfAbsent(classForMethods, new ArrayList<>(mDescriptors));
   }
 
   private void findAttributes() {
