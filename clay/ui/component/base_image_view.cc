@@ -77,7 +77,6 @@ BaseImageView::BaseImageView(uint32_t id, std::string tag,
 }
 
 BaseImageView::~BaseImageView() {
-  GetAnimationHandler()->RemoveCallback(GetRenderImage());
   GetRenderImage()->RemoveClient();
   TryEndTransition();
   transition_animator_.reset();
@@ -447,21 +446,18 @@ void BaseImageView::FetchPlaceholder() {
         if (!image) {
           return;
         }
-        if (image->GetType() == ImageType::kAnimated) {
-          auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
-          if (animated_image->GetSharedImageSink()) {
-            auto texture = std::make_shared<SharedImageExternalTexture>(
-                animated_image->GetSharedImageSink());
-            self->page_view()->RegisterDrawableImage(texture);
-            animated_image->SetTextureId(texture->Id());
-          }
-          self->GetAnimationHandler()->AddAnimationFrameCallback(
-              self->GetRenderImage(), 0);
-        } else {
-          self->GetAnimationHandler()->RemoveCallback(self->GetRenderImage());
-        }
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
+        }
+
+        if (image->GetType() == ImageType::kAnimated) {
+          static_cast<AnimatedImage*>(image.get())
+              ->SetAnimationFrameCallback([self]() {
+                if (!self) {
+                  return;
+                }
+                self->GetRenderImage()->MarkNeedsPaint();
+              });
         }
         auto render_image = self->GetRenderImage();
         render_image->SetPlaceholderImage(std::move(image));
@@ -547,18 +543,15 @@ void BaseImageView::FetchSource() {
           return;
         }
         self->NotifyLoadSuccess(image->GetWidth(), image->GetHeight());
+
         if (image->GetType() == ImageType::kAnimated) {
-          auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
-          if (animated_image->GetSharedImageSink()) {
-            auto texture = std::make_shared<SharedImageExternalTexture>(
-                animated_image->GetSharedImageSink());
-            self->page_view()->RegisterDrawableImage(texture);
-            animated_image->SetTextureId(texture->Id());
-          }
-          self->GetAnimationHandler()->AddAnimationFrameCallback(
-              self->GetRenderImage(), 0);
-        } else {
-          self->GetAnimationHandler()->RemoveCallback(self->GetRenderImage());
+          static_cast<AnimatedImage*>(image.get())
+              ->SetAnimationFrameCallback([self]() {
+                if (!self) {
+                  return;
+                }
+                self->GetRenderImage()->MarkNeedsPaint();
+              });
         }
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();

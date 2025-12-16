@@ -391,20 +391,6 @@ void RenderImage::Paint(PaintingContext& context, const FloatPoint& offset) {
     }
 #endif  // ENABLE_SKITY
   }
-
-#ifdef ENABLE_SKITY
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    AnimatedImage* animated_image =
-        static_cast<AnimatedImage*>(image_resource_.get());
-    FloatPoint paint_offset = offset + PaintOffset();
-    if (animated_image->GetTextureId() >= 0) {
-      context.AddDrawableImage(paint_offset.x(), paint_offset.y(),
-                               ContentWidth(), ContentHeight(),
-                               animated_image->GetTextureId(),
-                               clay::DrawableImage::FitMode::kScaleToFill);
-    }
-  }
-#endif  // ENABLE_SKITY
 }
 
 void RenderImage::SetImageOpacity(float opacity) {
@@ -550,18 +536,6 @@ bool RenderImage::HasCapInsets() const {
       return true;
     }
   }
-  return false;
-}
-
-bool RenderImage::DoAnimationFrame(int64_t frame_time) {
-#ifdef ENABLE_SKITY
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    return animated_image->DoAnimationFrame(frame_time,
-                                            [this]() { MarkNeedsPaint(); });
-  }
-#endif  // ENABLE_SKITY
   return false;
 }
 

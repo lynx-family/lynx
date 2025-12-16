@@ -36,9 +36,7 @@ class RenderImageClient {
   virtual ~RenderImageClient() = default;
 };
 
-class RenderImage : public RenderBox,
-                    public ImageResourceClient,
-                    public AnimationHandler::AnimationFrameCallback {
+class RenderImage : public RenderBox, public ImageResourceClient {
  public:
   RenderImage() = default;
   ~RenderImage() override;
@@ -116,7 +114,6 @@ class RenderImage : public RenderBox,
   void DecodeImageFinish(bool success) override;
   void RegisterUploadTask(OneShotCallback<>&& task, int image_id) override;
   void OnImageChanged() override;
-  bool DoAnimationFrame(int64_t frame_time) override;
   void AdjustSizeIfNeeded();
 
   void CreateImageData(ImageData& resource);

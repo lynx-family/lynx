@@ -20,30 +20,22 @@ std::shared_ptr<StaticImage> StaticImage::Make(
 
 void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
   if (!gpu_image_.object()) {
-    auto bitmap = image_->ToBitmap();
-    auto data = std::get<0>(bitmap);
-    auto image_info = std::get<1>(bitmap);
-    if (!data) {
+    auto pixmap = image_->ToBitmap();
+    if (!pixmap) {
       FML_LOG(ERROR) << "StaticImage::Upload: Bitmap is null";
       return;
     }
-    auto alpha_type = ConvertToSkityAlphaType(image_info.alphaType());
-    auto color_type = ConvertToSkityColorType(image_info.colorType());
-    std::shared_ptr<skity::Pixmap> skity_pixmap =
-        std::make_shared<skity::Pixmap>(
-            std::move(data), image_info.width() * image_info.bytesPerPixel(),
-            image_info.width(), image_info.height(), alpha_type, color_type);
+
     auto image = skity::Image::MakeDeferredTextureImage(
-        skity::Texture::FormatFromColorType(color_type), image_info.width(),
-        image_info.height(), alpha_type);
+        skity::Texture::FormatFromColorType(pixmap->GetColorType()),
+        pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
     unref_queue->GetTaskRunner()->PostTask(
-        [context = unref_queue->GetContext(), image, skity_pixmap]() {
+        [context = unref_queue->GetContext(), image, pixmap]() {
           auto texture = context->CreateTexture(
-              skity::Texture::FormatFromColorType(skity_pixmap->GetColorType()),
-              skity_pixmap->Width(), skity_pixmap->Height(),
-              skity_pixmap->GetAlphaType());
-          texture->DeferredUploadImage(std::move(skity_pixmap));
+              skity::Texture::FormatFromColorType(pixmap->GetColorType()),
+              pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+          texture->DeferredUploadImage(std::move(pixmap));
           image->SetTexture(texture);
         });
   }
