@@ -239,7 +239,7 @@ deps = {
     "third_party/debug_router/src": {
         'type': 'git',
         'url': 'https://github.com/lynx-family/debug-router.git',
-        'commit': '031a44bc1b1fffc6a001a1245dda41b977316062',
+        'commit': '182355c8441b0969c35fc62e60fe59ec91b8048e',
         "ignore_in_git": True,
         "enable_lfs": False,
     },
