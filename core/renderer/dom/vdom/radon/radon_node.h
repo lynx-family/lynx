@@ -331,13 +331,12 @@ class RadonNode : public RadonBase {
     attribute_holder_->PresetInlineStyleMapCapacity(count);
   }
 
-  void SetRawInlineStyle(CSSPropertyID id, const lepus::Value& value) {
-    raw_inline_styles_.insert_or_assign(id, value);
-  }
-
   void SetRawInlineStyle(CSSPropertyID id, lepus::Value&& value) {
     raw_inline_styles_.insert_or_assign(id, std::move(value));
   }
+
+  void SetRawInlineStyle(CSSPropertyID id, lepus::Value&& value,
+                         const CSSParserConfigs& configs);
 
   const RawLepusStyleMap& raw_inline_styles() const {
     return raw_inline_styles_;
