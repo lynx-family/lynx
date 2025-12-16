@@ -1202,7 +1202,7 @@ void RadonNode::SetStaticInlineStyle(CSSPropertyID id,
                                      const base::String& string_value,
                                      const CSSParserConfigs& configs) {
   if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    SetRawInlineStyle(id, lepus::Value(string_value));
+    SetRawInlineStyle(id, lepus::Value(string_value), configs);
   } else {
     attribute_holder_->SetInlineStyle(id, string_value, configs);
   }
@@ -1212,7 +1212,7 @@ void RadonNode::SetStaticInlineStyle(CSSPropertyID id,
                                      base::String&& string_value,
                                      const CSSParserConfigs& configs) {
   if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    SetRawInlineStyle(id, lepus::Value(std::move(string_value)));
+    SetRawInlineStyle(id, lepus::Value(std::move(string_value)), configs);
   } else {
     attribute_holder_->SetInlineStyle(id, std::move(string_value), configs);
   }
@@ -1234,6 +1234,34 @@ void RadonNode::SetStaticInlineStyle(CSSPropertyID id, tasm::CSSValue&& value) {
                       lepus::Value(CSSDecoder::CSSValueToString(id, value)));
   } else {
     attribute_holder_->SetInlineStyle(id, std::move(value));
+  }
+}
+
+void RadonNode::SetRawInlineStyle(CSSPropertyID id, lepus::Value&& value,
+                                  const CSSParserConfigs& configs) {
+  if (raw_inline_styles_.contains(id)) {
+    // 1.  If the style property `id` already exists in the `raw_inline_styles_`
+    // map:
+    //   The function first validates the new `value` by calling
+    //   `UnitHandler::Process`.
+    //   - If the new value is valid, it updates the existing style property by
+    //   delegating to the `SetRawInlineStyle(CSSPropertyID, lepus::Value&&)`
+    //   overload.
+    //   - If the new value is invalid, the update is ignored, and the previous
+    //   valid style value is preserved. This ensures that an existing
+    //   valid style is not overwritten by an invalid one.
+    StyleMap styles;
+    bool process_success = UnitHandler::Process(id, value, styles, configs);
+    if (process_success) {
+      SetRawInlineStyle(id, std::move(value));
+    }
+  } else {
+    // 2. If the style property `id` does not exist:
+    //    The function adds the new style property directly without any
+    //    validation. This is a deliberate performance optimization to avoid the
+    //    cost of `UnitHandler::Process` for every new style property addition,
+    //    which can be frequent in rendering scenarios.
+    SetRawInlineStyle(id, std::move(value));
   }
 }
 
