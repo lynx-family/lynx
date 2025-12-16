@@ -86,8 +86,21 @@
     return NO;
   }
   [self flushPropsToDrawable];
+  CGRect paintBox = _paddingRect;
+  switch (_item.origin) {
+    case LynxBackgroundOriginBorderBox:
+      paintBox = _borderRect;
+      break;
+    case LynxBackgroundOriginContentBox:
+      paintBox = _contentRect;
+      break;
+    default:
+      paintBox = _paddingRect;
+      break;
+  }
+
   [(LynxBackgroundGradientDrawable*)_item prepareGradientWithBorderBox:_borderRect
-                                                           andPaintBox:_paintingRect
+                                                           andPaintBox:paintBox
                                                            andClipRect:_clipRect];
   // Handle background-clip
   CGPathRef clipPath = [self createClipPath];

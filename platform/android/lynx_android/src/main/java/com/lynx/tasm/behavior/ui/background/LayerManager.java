@@ -100,10 +100,6 @@ public abstract class LayerManager implements Drawable.Callback {
         int usedClipIndex = index % mImageClipList.size();
         clipType = mImageClipList.get(usedClipIndex);
         switch (clipType) {
-          case StyleConstants.BACKGROUND_CLIP_BORDER_BOX:
-            clipBox = borderRect;
-            clipPath = outerDrawPath;
-            break;
           case StyleConstants.BACKGROUND_CLIP_PADDING_BOX:
             clipBox = paddingRect;
             clipPath = innerDrawPath;
@@ -113,13 +109,11 @@ public abstract class LayerManager implements Drawable.Callback {
             clipPath = innerDrawPath;
             break;
           case StyleConstants.BACKGROUND_CLIP_BORDER_AREA:
-            // For border-area, backgrounds are positioned relative to the border box,
-            // then clipped by the ring between border and padding.
-            paintingBox = borderRect;
             clipBox = borderRect;
             clipPath =
                 createBorderAreaClipPath(borderRect, paddingRect, outerDrawPath, innerDrawPath);
             break;
+          case StyleConstants.BACKGROUND_CLIP_BORDER_BOX:
           case StyleConstants.BACKGROUND_CLIP_TEXT:
           default:
             clipBox = borderRect;

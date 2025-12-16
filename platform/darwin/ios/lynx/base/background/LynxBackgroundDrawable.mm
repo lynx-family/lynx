@@ -625,8 +625,7 @@ NSUInteger gcd(NSUInteger a, NSUInteger b) {
   _gradientLayer.colors = colors;
 
   const CGSize paintBoxSize = paintBox.size;
-  const CGSize clipSize = clipRect.size;
-  CGSize gradientSize = [self computeBackgroundSizeWithImageSize:&clipSize
+  CGSize gradientSize = [self computeBackgroundSizeWithImageSize:&paintBoxSize
                                                  andPaintBoxSize:&paintBoxSize];
   CGFloat width = gradientSize.width;
   CGFloat height = gradientSize.height;

@@ -78,9 +78,6 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
           clip_path = inner_path;
           break;
         case starlight::BackgroundClipType::kBorderArea:
-          // For border-area, backgrounds are positioned relative to the
-          // border box, then clipped to the ring between border and padding.
-          painting_box = border_rect;
           clip_box = border_rect;
           break;
         case starlight::BackgroundClipType::kText:
