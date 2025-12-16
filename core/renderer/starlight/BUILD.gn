@@ -134,6 +134,9 @@ source_set("starlight") {
   configs += [ ":starlight_private_config" ]
 
   deps = [ "../../../third_party/rapidjson" ]
+  if (is_win) {
+    deps += [ "../../../base/src:base_group" ]
+  }
 }
 
 group("starlight_tests") {

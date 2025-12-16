@@ -74,6 +74,7 @@ config("base_public_config") {
     defines += [
       "OS_WIN=1",
       "_CRT_SECURE_NO_WARNINGS=1",
+      "BASE_NO_EXPORT",
       "lynx_EXPORTS",
     ]
   }

@@ -116,6 +116,9 @@ source_set("file_util") {
 
     frameworks = [ "Foundation.framework" ]
   }
+  if (is_win) {
+    public_deps += [ "../../base/src:base_group" ]
+  }
 }
 
 source_set("native_library_util") {

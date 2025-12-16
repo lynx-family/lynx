@@ -54,6 +54,12 @@ if (enable_primjs_prebuilt_lib) {
       ":quickjs",
       "../quickjs:quickjs",
     ]
+
+    if (is_win && use_flutter_cxx) {
+      # Ensure MSVC C++ runtime and system libs are linked when building NAPI.
+      configs += [ "../../../core/platform/windows:win_libs_config" ]
+      libs = [ "msvcprt.lib" ]
+    }
   }
 }
 
