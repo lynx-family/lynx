@@ -147,7 +147,6 @@ void BackgroundDrawable::UpdateContentBox() {
 static inline uint32_t Alpha(uint32_t color) { return color >> 24; }
 
 void BackgroundDrawable::DrawBackground(OH_Drawing_Canvas* canvas) {
-  // draw background color
   if (Alpha(background_color_) != 0) {
     if (!brush_) {
       brush_ = OH_Drawing_BrushCreate();
@@ -159,6 +158,8 @@ void BackgroundDrawable::DrawBackground(OH_Drawing_Canvas* canvas) {
     if (layer_manager_) {
       clip = layer_manager_->GetLayerClip();
     }
+
+    // Draw background-color respecting background-clip, including border-area.
     if (!border_radius_->IsZero()) {
       if (clip == starlight::BackgroundClipType::kBorderBox) {
         if (outer_clip_path_) {
@@ -169,6 +170,19 @@ void BackgroundDrawable::DrawBackground(OH_Drawing_Canvas* canvas) {
       } else if (clip == starlight::BackgroundClipType::kPaddingBox &&
                  inner_clip_path_) {
         OH_Drawing_CanvasDrawPath(canvas, inner_clip_path_->path);
+      } else if (clip == starlight::BackgroundClipType::kBorderArea) {
+        // Fill only the border ring area: outer minus inner.
+        if (outer_clip_path_ && outer_clip_path_->path) {
+          OH_Drawing_CanvasSave(canvas);
+          OH_Drawing_CanvasClipPath(canvas, outer_clip_path_->path, INTERSECT,
+                                    true);
+          if (inner_clip_path_ && inner_clip_path_->path) {
+            OH_Drawing_CanvasClipPath(canvas, inner_clip_path_->path,
+                                      DIFFERENCE, true);
+          }
+          OH_Drawing_CanvasDrawRect(canvas, border_box_draw_rect_);
+          OH_Drawing_CanvasRestore(canvas);
+        }
       } else {
         OH_Drawing_CanvasDrawRect(canvas, content_box_draw_rect_);
       }
@@ -177,6 +191,29 @@ void BackgroundDrawable::DrawBackground(OH_Drawing_Canvas* canvas) {
         OH_Drawing_CanvasDrawRect(canvas, border_box_draw_rect_);
       } else if (clip == starlight::BackgroundClipType::kPaddingBox) {
         OH_Drawing_CanvasDrawRect(canvas, padding_box_draw_rect_);
+      } else if (clip == starlight::BackgroundClipType::kBorderArea) {
+        // Rectangular border-area: clip to outer rect then subtract padding
+        // box.
+        if (border_box_draw_rect_ && padding_box_draw_rect_) {
+          OH_Drawing_CanvasSave(canvas);
+          if (outer_clip_path_) {
+            // Use the precomputed outer path if available.
+            OH_Drawing_CanvasClipPath(canvas, outer_clip_path_->path, INTERSECT,
+                                      true);
+          } else {
+            OH_Drawing_CanvasClipRect(canvas, border_box_draw_rect_, INTERSECT,
+                                      true);
+          }
+          if (inner_clip_path_) {
+            OH_Drawing_CanvasClipPath(canvas, inner_clip_path_->path,
+                                      DIFFERENCE, true);
+          } else {
+            OH_Drawing_CanvasClipRect(canvas, padding_box_draw_rect_,
+                                      DIFFERENCE, true);
+          }
+          OH_Drawing_CanvasDrawRect(canvas, border_box_draw_rect_);
+          OH_Drawing_CanvasRestore(canvas);
+        }
       } else {
         OH_Drawing_CanvasDrawRect(canvas, content_box_draw_rect_);
       }
@@ -751,23 +788,10 @@ void BackgroundDrawable::DrawClipBorderPath(OH_Drawing_Path* border_path,
   OH_Drawing_CanvasDetachBrush(canvas);
 }
 
-void BackgroundDrawable::DestroyPath(
-    const std::unique_ptr<BackgroundDrawable::RoundRectPath>& rect_path) {
-  if (rect_path) {
-    OH_Drawing_PathDestroy(rect_path->path);
-    rect_path->path = nullptr;
-  }
-}
-
 BackgroundDrawable::~BackgroundDrawable() {
   if (border_path_) {
     OH_Drawing_PathDestroy(border_path_);
   }
-  DestroyPath(inner_clip_path_);
-  DestroyPath(outer_clip_path_);
-  DestroyPath(center_draw_path_);
-  DestroyPath(inner_draw_path_);
-  DestroyPath(outer_draw_path_);
   if (pen_) {
     OH_Drawing_PenDestroy(pen_);
   }
@@ -829,9 +853,6 @@ void BackgroundDrawable::UpdateRoundBorderPath(
   round_path->top = top;
   round_path->right = right;
   round_path->bottom = bottom;
-  if (!round_path->path) {
-    round_path->path = OH_Drawing_PathCreate();
-  }
   if (border_radius_->IsZero()) {
     OH_Drawing_PathAddRect(round_path->path, left, top, right, bottom,
                            PATH_DIRECTION_CW);

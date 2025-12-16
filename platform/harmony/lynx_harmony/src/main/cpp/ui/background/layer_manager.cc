@@ -60,9 +60,11 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
     // 2.clip
     auto clip_path = outer_path;
     auto clip_box = border_rect;
+    auto clip_type = starlight::BackgroundClipType::kBorderBox;
     if (!image_clip_list_.empty()) {
       auto used_index = index % image_clip_list_.size();
-      switch (image_clip_list_.at(used_index)) {
+      clip_type = image_clip_list_.at(used_index);
+      switch (clip_type) {
         case starlight::BackgroundClipType::kBorderBox:
           clip_box = border_rect;
           clip_path = outer_path;
@@ -75,7 +77,16 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
           clip_box = content_rect;
           clip_path = inner_path;
           break;
+        case starlight::BackgroundClipType::kBorderArea:
+          // For border-area, backgrounds are positioned relative to the
+          // border box, then clipped to the ring between border and padding.
+          painting_box = border_rect;
+          clip_box = border_rect;
+          break;
+        case starlight::BackgroundClipType::kText:
         default:
+          clip_box = border_rect;
+          clip_path = outer_path;
           break;
       }
     }
@@ -197,10 +208,29 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
     }
 
     OH_Drawing_CanvasSave(canvas);
-    //    auto saveCount = OH_Drawing_CanvasGetSaveCount(canvas);
     // need to make sure all background content is clipped inside view's bounds
-    // if clipPath is empty, need to clip at view's bounding rect
-    if (clip_path && has_border) {
+    // if clip_path is empty, need to clip at view's bounding rect
+    if (clip_type == starlight::BackgroundClipType::kBorderArea) {
+      // Clip to the border ring: outer minus inner.
+      if (outer_path) {
+        OH_Drawing_CanvasClipPath(canvas, outer_path, INTERSECT, true);
+      } else {
+        auto rect =
+            OH_Drawing_RectCreate(border_rect.left, border_rect.top,
+                                  border_rect.right, border_rect.bottom);
+        OH_Drawing_CanvasClipRect(canvas, rect, INTERSECT, true);
+        OH_Drawing_RectDestroy(rect);
+      }
+      if (inner_path) {
+        OH_Drawing_CanvasClipPath(canvas, inner_path, DIFFERENCE, true);
+      } else {
+        auto rect =
+            OH_Drawing_RectCreate(padding_rect.left, padding_rect.top,
+                                  padding_rect.right, padding_rect.bottom);
+        OH_Drawing_CanvasClipRect(canvas, rect, DIFFERENCE, true);
+        OH_Drawing_RectDestroy(rect);
+      }
+    } else if (clip_path && has_border) {
       // if has border&radius, do not use PathEffect to draw gradient, just clip
       OH_Drawing_CanvasClipPath(canvas, clip_path, INTERSECT, true);
     } else {

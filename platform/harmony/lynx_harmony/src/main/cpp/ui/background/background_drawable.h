@@ -6,6 +6,7 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_DRAWABLE_H_
 
 #include <native_drawing/drawing_canvas.h>
+#include <native_drawing/drawing_path.h>
 #include <native_drawing/drawing_types.h>
 
 #include <memory>
@@ -29,6 +30,11 @@ class BackgroundDrawable {
   };
 
   struct RoundRectPath {
+    RoundRectPath() { path = OH_Drawing_PathCreate(); }
+    ~RoundRectPath() {
+      OH_Drawing_PathDestroy(path);
+      path = nullptr;
+    }
     OH_Drawing_Path* path{nullptr};
     std::array<float, 8> radius{};
     std::string path_string;
