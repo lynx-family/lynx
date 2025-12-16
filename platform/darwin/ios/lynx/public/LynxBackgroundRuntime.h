@@ -25,7 +25,9 @@ NS_ASSUME_NONNULL_BEGIN
  * @param error the error object which should be a LynxError instance.
  * @see LynxError for error domain and error code.
  */
-- (void)runtime:(LynxBackgroundRuntime *)runtime didRecieveError:(NSError *)error;
+- (void)runtime:(LynxBackgroundRuntime *)runtime didReceiveError:(NSError *)error;
+- (void)runtime:(LynxBackgroundRuntime *)runtime
+    didRecieveError:(NSError *)error __attribute__((deprecated("Use didReceiveError")));
 
 /**
  * Notify that runtime evaluates javascript end. May be called on UI Thread

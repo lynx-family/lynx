@@ -61,7 +61,7 @@
   [self checkLynxError:error];
 }
 
-- (void)runtime:(LynxBackgroundRuntime*)runtime didRecieveError:(NSError*)error {
+- (void)runtime:(LynxBackgroundRuntime*)runtime didReceiveError:(NSError*)error {
   [self checkLynxError:error];
 }
 

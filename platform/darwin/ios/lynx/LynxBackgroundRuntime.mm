@@ -446,8 +446,15 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   }
   for (id<LynxBackgroundRuntimeLifecycle> client in currTable) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      if ([client respondsToSelector:@selector(runtime:didRecieveError:)]) {
-        [client runtime:self didRecieveError:error];
+      if ([client respondsToSelector:@selector(runtime:didReceiveError:)]) {
+        [client runtime:self didReceiveError:error];
+      } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        if ([client respondsToSelector:@selector(runtime:didRecieveError:)]) {
+          [client runtime:self didRecieveError:error];
+        }
+#pragma clang diagnostic pop
       }
     });
   }

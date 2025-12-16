@@ -468,7 +468,8 @@ public class LynxBackgroundRuntime : NSObject {
 }
 
 public protocol LynxBackgroundRuntimeLifecycle-p : <NSObject> {
-  public void LynxBackgroundRuntimeLifecycle-p::runtime:didRecieveError:(LynxBackgroundRuntime *runtime,[didRecieveError] NSError *error);
+  public void LynxBackgroundRuntimeLifecycle-p::runtime:didReceiveError:(LynxBackgroundRuntime *runtime,[didReceiveError] NSError *error);
+  public void LynxBackgroundRuntimeLifecycle-p::runtime:didRecieveError:(LynxBackgroundRuntime *runtime,[didRecieveError](deprecated("Use didReceiveError")) __attribute__);
   public void LynxBackgroundRuntimeLifecycle-p::runtime:didEvaluateJavaScriptEnd:(LynxBackgroundRuntime *runtime,[didEvaluateJavaScriptEnd] NSString *url);
 }
 
