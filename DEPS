@@ -145,7 +145,7 @@ deps = {
     'build': {
         "type": "git",
         "url": "https://github.com/lynx-family/buildroot.git",
-        "commit": "2b6a631306054a2ff884b978ead2eafeaf0b328f",
+        "commit": "15ff5d34b5a6a241f6ae3eba0fb144691fdb2bdd",
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
     },
