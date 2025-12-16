@@ -23,13 +23,14 @@
 
 - (void)startTrace {
   if (_controller) {
-    [_controller startTracing:nullptr config:@{}];
+    [_controller startTracing:nullptr config:@{@"enable_compress" : @YES}];
   }
 }
 
 - (void)startTrace:(int)bufferSize {
   if (_controller) {
-    [_controller startTracing:nullptr config:@{@"buffer_size" : @(bufferSize)}];
+    [_controller startTracing:nullptr
+                       config:@{@"buffer_size" : @(bufferSize), @"enable_compress" : @YES}];
   }
 }
 
