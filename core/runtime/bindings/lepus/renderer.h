@@ -293,35 +293,6 @@ constexpr static const char* kCFunctionElementAnimate = "__ElementAnimate";
 
 class Utils {
  public:
-  static void RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx,
-                                   const std::string& version);
-  static void RegisterNGMethodToLynx(lepus::Context* context,
-                                     lepus::Value& lynx,
-                                     const std::string& targetSdkVersion);
-  static void RegisterMethodToLynxPerformance(lepus::Context* context,
-                                              lepus::Value& lynx);
-  static void RegisterNGMethodToLynxPerformance(lepus::Context* context,
-                                                lepus::Value& lynx);
-  static void RegisterMethodToResponseHandler(lepus::Context* context,
-                                              lepus::Value& response_handler);
-  static void RegisterNGMethodToResponseHandler(lepus::Context* context,
-                                                lepus::Value& response_handler);
-
-  static void RegisterMethodToContextProxy(lepus::Context* context,
-                                           lepus::Value& target,
-                                           runtime::ContextProxy::Type type);
-  static void RegisterNGMethodToContextProxy(lepus::Context* context,
-                                             lepus::Value& target,
-                                             runtime::ContextProxy::Type type);
-
-  static void RegisterNGMethodToGestureManager(lepus::Context* context,
-                                               lepus::Value& gesture_manager);
-
-  static void RegisterNGMethodToLepusModule(lepus::Context* context,
-                                            lepus::Value& lepus_module);
-  static void RegisterMethodToLepusModule(lepus::Context* context,
-                                          lepus::Value& lepus_module);
-
   static lepus::Value CreateLynx(lepus::Context* context,
                                  const std::string& version);
   static lepus::Value CreateLynxPerformance(lepus::Context* context);

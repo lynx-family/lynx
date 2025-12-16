@@ -1399,10 +1399,7 @@ void TouchEventHandler::EnsureGestureManager(lepus::Context *context) {
   // Ensure that the context is valid and the gesture_manager_ is empty
   if (context && gesture_manager_.IsEmpty()) {
     // Create a new object for gesture_manager_ using the provided context
-    gesture_manager_ = lepus::LEPUSValueHelper::CreateObject(context);
-
-    // Register method to the gesture manager using utility function
-    tasm::Utils::RegisterNGMethodToGestureManager(context, gesture_manager_);
+    gesture_manager_ = Utils::CreateGestureManager(context);
   }
 }
 

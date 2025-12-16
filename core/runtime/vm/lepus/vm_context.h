@@ -134,8 +134,6 @@ class VMContext : public Context {
     return static_cast<VMContext*>(context);
   }
 
-  virtual void RegisterMethodToLynx() override;
-
   virtual void RegisterLepusVerion() override;
 
   bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,

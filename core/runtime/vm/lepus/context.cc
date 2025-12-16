@@ -108,8 +108,11 @@ std::shared_ptr<Context> Context::CreateContext(
 void Context::EnsureLynx() {
   // Initialize and inject Lynx if it has not been set before.
   if (lynx_.IsEmpty()) {
+#ifndef LEPUS_PC
+    lynx_ = tasm::Utils::CreateLynx(this, GetSdkVersion());
+#else
     lynx_ = lepus::LEPUSValueHelper::CreateObject(this);
-    RegisterMethodToLynx();
+#endif
     SetGlobalData(BASE_STATIC_STRING(tasm::kGlobalLynx), lynx_);
   }
 }

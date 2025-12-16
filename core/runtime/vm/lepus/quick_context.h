@@ -139,8 +139,6 @@ class QuickContext : private LEPUSRuntimeData,
   inline void set_napi_env(void* env) { napi_env_ = env; }
   inline void* napi_env() { return napi_env_; }
 
-  virtual void RegisterMethodToLynx() override;
-
   virtual void RegisterLepusVerion() override;
   void SetDebuggerSourceAndEndLine(const std::string& source);
 

@@ -1588,12 +1588,6 @@ VMContext::ClosureManager::~ClosureManager() {
   itr_ = 0;
 }
 
-void VMContext::RegisterMethodToLynx() {
-#ifndef LEPUS_PC
-  tasm::Utils::RegisterMethodToLynx(this, lynx_, GetSdkVersion());
-#endif
-}
-
 void VMContext::RegisterLepusVerion() {
   BASE_STATIC_STRING_DECL(kLepusVersion, "__lepus_version__");
   static constexpr const char kLepusVersionValue[] = LYNX_LEPUS_VERSION;

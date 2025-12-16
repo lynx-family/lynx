@@ -53,21 +53,8 @@ ContextProxyInLepus* ContextProxyInLepus::GetContextProxyFromLepusValue(
 
 lepus::Value ContextProxyInLepus::GetBinding(lepus::Context* context) {
   if (proxy_binding_.IsEmpty()) {
-    proxy_binding_ = lepus::LEPUSValueHelper::CreateObject(context);
-    proxy_binding_.SetProperty(BASE_STATIC_STRING(runtime::kInnerRuntimeProxy),
-                               lepus::Value(this));
-    if (context->IsVMContext()) {
-      // TODO(songshourui.null): There is no implementation of this function
-      // when enable lite. Later, we will abstract RegisterMethodToContextProxy
-      // as a utility function to solve this problem.
-#if !ENABLE_JUST_LEPUSNG
-      Utils::RegisterMethodToContextProxy(context, proxy_binding_,
-                                          target_type_);
-#endif
-    } else {
-      Utils::RegisterNGMethodToContextProxy(context, proxy_binding_,
-                                            target_type_);
-    }
+    proxy_binding_ =
+        Utils::CreateContextProxy(context, target_type_, lepus::Value(this));
   }
   if (context_ == nullptr) {
     context_ = context;

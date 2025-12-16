@@ -642,12 +642,6 @@ void QuickContext::Initialize() {
   RegisterLepusVerion();
 }
 
-void QuickContext::RegisterMethodToLynx() {
-#ifndef LEPUS_PC
-  tasm::Utils::RegisterNGMethodToLynx(this, lynx_, GetSdkVersion());
-#endif
-}
-
 void QuickContext::RegisterLepusVerion() {
   LEPUSContext* ctx = context();
   HandleScope func_scope(ctx);

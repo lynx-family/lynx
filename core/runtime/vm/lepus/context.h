@@ -207,7 +207,6 @@ class Context {
 
   void EnsureLynx();
   void SetPropertyToLynx(const base::String& key, const lepus::Value& value);
-  virtual void RegisterMethodToLynx() {}
 
   void ReportError(
       const std::string& exception_info,
