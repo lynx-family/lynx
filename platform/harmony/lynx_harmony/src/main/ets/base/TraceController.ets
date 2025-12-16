@@ -5,8 +5,9 @@
 import { TraceControllerHarmony } from 'liblynx.so';
 
 export interface TraceConfig {
-  filePath: string | undefined,
-  bufferSize: number | undefined,
+  filePath?: string | undefined,
+  bufferSize?: number | undefined,
+  enableCompress?: string | undefined,
 }
 
 export class TraceController {
