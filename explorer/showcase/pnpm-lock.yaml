@@ -9,7 +9,7 @@ importers:
       '@lynx-example/fetch': 0.3.0
       '@lynx-example/image': 0.3.0
       '@lynx-example/layout': 0.3.0
-      '@lynx-example/lazy-bundle': 0.3.0
+      '@lynx-example/lazy-bundle': 0.6.4
       '@lynx-example/list': 0.3.0
       '@lynx-example/scroll-view': 0.3.0
       '@lynx-example/text': 0.6.2
@@ -21,7 +21,7 @@ importers:
       '@lynx-example/fetch': 0.3.0
       '@lynx-example/image': 0.3.0
       '@lynx-example/layout': 0.3.0
-      '@lynx-example/lazy-bundle': 0.3.0
+      '@lynx-example/lazy-bundle': 0.6.4
       '@lynx-example/list': 0.3.0
       '@lynx-example/scroll-view': 0.3.0
       '@lynx-example/text': 0.6.2
@@ -170,11 +170,11 @@ packages:
       - '@types/react'
     dev: false
 
-  /@lynx-example/lazy-bundle/0.3.0:
-    resolution: {integrity: sha512-tK1p4p3iun3t4eECohOI8Xj7+v+4KE+T6ZFEBJTmgddoLWZKsSNSK6apbAS7+bBb/SXKnx9pvECGilru8g0oPw==}
+  /@lynx-example/lazy-bundle/0.6.4:
+    resolution: {integrity: sha512-IllbmCLvS7fczwr4gHcgewoJ45ybz1W9Xtk+GArDYJIjlelQQH9fhmdKgJlN3dlWDbjNLswuXhNd3NXUfV75DA==}
     engines: {node: '>=18'}
     dependencies:
-      '@lynx-js/react': 0.105.0
+      '@lynx-js/react': 0.114.3
     transitivePeerDependencies:
       - '@lynx-js/types'
       - '@types/react'
@@ -331,6 +331,18 @@ packages:
 
   /@lynx-js/react/0.112.6:
     resolution: {integrity: sha512-HBzWidMk8/1EdMi6Ej5f1onT5xt2tG8CL1+scsZ0ArURemcqiWKSSktb4zrvIl2u/Ele0Np3m7fy8Cm9YWXAjA==}
+    peerDependencies:
+      '@lynx-js/types': '*'
+      '@types/react': ^18
+    peerDependenciesMeta:
+      '@lynx-js/types':
+        optional: true
+    dependencies:
+      preact: /@hongzhiyuan/preact/10.24.0-00213bad
+    dev: false
+
+  /@lynx-js/react/0.114.3:
+    resolution: {integrity: sha512-Q4M792DLJdBM3zAJReFrpnMv8VgRUJW5meWi5cuGo+0tPMJc7S1ORqC6wqM3YCnJrcUpGUJY11oAz4gVQ48qBw==}
     peerDependencies:
       '@lynx-js/types': '*'
       '@types/react': ^18

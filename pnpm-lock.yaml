@@ -136,7 +136,7 @@ importers:
       '@lynx-example/fetch': 0.3.0
       '@lynx-example/image': 0.3.0
       '@lynx-example/layout': 0.3.0
-      '@lynx-example/lazy-bundle': 0.3.0
+      '@lynx-example/lazy-bundle': 0.6.4
       '@lynx-example/list': 0.3.0
       '@lynx-example/scroll-view': 0.3.0
       '@lynx-example/text': 0.6.2
@@ -148,7 +148,7 @@ importers:
       '@lynx-example/fetch': 0.3.0
       '@lynx-example/image': 0.3.0
       '@lynx-example/layout': 0.3.0
-      '@lynx-example/lazy-bundle': 0.3.0
+      '@lynx-example/lazy-bundle': 0.6.4
       '@lynx-example/list': 0.3.0
       '@lynx-example/scroll-view': 0.3.0
       '@lynx-example/text': 0.6.2
@@ -1625,11 +1625,11 @@ packages:
       - '@types/react'
     dev: false
 
-  /@lynx-example/lazy-bundle/0.3.0:
-    resolution: {integrity: sha512-tK1p4p3iun3t4eECohOI8Xj7+v+4KE+T6ZFEBJTmgddoLWZKsSNSK6apbAS7+bBb/SXKnx9pvECGilru8g0oPw==}
+  /@lynx-example/lazy-bundle/0.6.4:
+    resolution: {integrity: sha512-IllbmCLvS7fczwr4gHcgewoJ45ybz1W9Xtk+GArDYJIjlelQQH9fhmdKgJlN3dlWDbjNLswuXhNd3NXUfV75DA==}
     engines: {node: '>=18'}
     dependencies:
-      '@lynx-js/react': 0.105.0
+      '@lynx-js/react': 0.114.3
     transitivePeerDependencies:
       - '@lynx-js/types'
       - '@types/react'
@@ -1856,9 +1856,22 @@ packages:
       preact: /@hongzhiyuan/preact/10.24.0-00213bad
     dev: false
 
+  /@lynx-js/react/0.114.3:
+    resolution: {integrity: sha512-Q4M792DLJdBM3zAJReFrpnMv8VgRUJW5meWi5cuGo+0tPMJc7S1ORqC6wqM3YCnJrcUpGUJY11oAz4gVQ48qBw==}
+    peerDependencies:
+      '@lynx-js/types': '*'
+      '@types/react': ^18
+    peerDependenciesMeta:
+      '@lynx-js/types':
+        optional: true
+    dependencies:
+      preact: /@hongzhiyuan/preact/10.24.0-00213bad
+    dev: false
+
   /@lynx-js/rspeedy/0.9.3:
     resolution: {integrity: sha512-2wwEVRkx37ITavXC210tWA5yMuQe+jbGqfJ9U056bkgJNcjHlpsobTTooxaF+uHnhDfeqll7OeCn05lyfNoxBA==}
     engines: {node: '>=18'}
+    hasBin: true
     peerDependencies:
       typescript: 5.1.6 - 5.8.x
     peerDependenciesMeta:
@@ -9286,6 +9299,7 @@ packages:
 
   /ts-node/10.9.2_cweyxlvydpj27u2rgbsjf3lvqm:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
+    hasBin: true
     peerDependencies:
       '@swc/core': '>=1.2.50'
       '@swc/wasm': '>=1.2.50'
@@ -9317,6 +9331,7 @@ packages:
   /ts-node/9.1.1_typescript@5.8.3:
     resolution: {integrity: sha512-hPlt7ZACERQGf03M253ytLY3dHbGNGrAq9qIHWUY9XHYl1z7wYngSr3OQ5xmui8o2AaxsONxIzjafLUiWBo1Fg==}
     engines: {node: '>=10.0.0'}
+    hasBin: true
     peerDependencies:
       typescript: '>=2.7'
     dependencies:
@@ -9496,6 +9511,7 @@ packages:
 
   /update-browserslist-db/1.1.1_browserslist@4.24.3:
     resolution: {integrity: sha512-R8UzCaa9Az+38REPiJ1tXlImTJXlVfgHZsglwBD/k6nj76ctsH1E3q4doGrukiLQd3sGQYu56r5+lo5r94l29A==}
+    hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
     dependencies:
@@ -9641,6 +9657,7 @@ packages:
   /vite/5.4.18:
     resolution: {integrity: sha512-1oDcnEp3lVyHCuQ2YFelM4Alm2o91xNoMncRm1U7S+JdYfYOvbiGZ3/CxGttrOu2M/KcGz7cRC2DoNUA6urmMA==}
     engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
@@ -9678,6 +9695,7 @@ packages:
   /vitest/2.1.9:
     resolution: {integrity: sha512-MSmPM9REYqDGBI8439mA4mWhV5sKmDlBKWIYbA3lRb2PTHACE0mgKwA8yQ2xq9vxDTuk4iPrECBAEW2aoFXY0Q==}
     engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@types/node': ^18.0.0 || >=20.0.0
