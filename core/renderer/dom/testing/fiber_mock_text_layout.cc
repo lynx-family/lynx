@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -36,8 +37,9 @@ void TextLayoutMock::DispatchLayoutBefore(Element* element) {
   size_t current_length = 0;
   bool use_utf16 =
       text_element->is_inline_element() || text_element->has_inline_child();
+  bool has_inline_view = false;
   BuildTextPropsBuffer(text_element, output_str, current_length, use_utf16,
-                       props.get());
+                       props.get(), &has_inline_view);
 
   props->AddProp(kPropTextString);
   props->AddProp(output_str.c_str());
@@ -48,8 +50,8 @@ void TextLayoutMock::DispatchLayoutBefore(Element* element) {
 void TextLayoutMock::BuildTextPropsBuffer(TextElement* element,
                                           std::string& output,
                                           size_t& current_length,
-                                          bool use_utf16,
-                                          PropArrayMock* props) {
+                                          bool use_utf16, PropArrayMock* props,
+                                          bool* has_inline_view) {
   size_t start = current_length;
   base::String& content = element->content();
   if (!content.empty()) {
@@ -60,31 +62,54 @@ void TextLayoutMock::BuildTextPropsBuffer(TextElement* element,
 
   auto* child = element->first_render_child();
   while (child) {
-    if (static_cast<FiberElement*>(child)->is_raw_text()) {
-      auto* raw_text_child = static_cast<RawTextElement*>(child);
-      const auto& raw_content = raw_text_child->content();
-      if (!raw_content.empty()) {
-        output += raw_content.str();
-        current_length += use_utf16 ? raw_text_child->content_utf16_length()
-                                    : raw_content.length();
-      }
-    } else if (child->is_text()) {
-      // inline text
-      BuildTextPropsBuffer(static_cast<TextElement*>(child), output,
-                           current_length, use_utf16, props);
-    } else if (child->is_image() || child->is_view()) {
-      // inline image
-      output += kInlinePlaceHolder;
-      current_length += 1;  // placeholder's length is 1
-      AppendImageProps(static_cast<ImageElement*>(child), current_length - 1,
-                       current_length, props);
-    }
+    ProcessChildProps(static_cast<FiberElement*>(child), output, current_length,
+                      use_utf16, props, has_inline_view);
     child = child->next_render_sibling();
   }
 
   auto end = current_length;
   if (end > start) {
     AppendTextProps(element, start, end, props);
+  }
+}
+
+void TextLayoutMock::ProcessChildProps(FiberElement* child, std::string& output,
+                                       size_t& current_length, bool use_utf16,
+                                       PropArrayMock* props,
+                                       bool* has_inline_view) {
+  if (child->is_raw_text()) {
+    auto* raw_text_child = static_cast<RawTextElement*>(child);
+    const auto& raw_content = raw_text_child->content();
+    if (!raw_content.empty()) {
+      output += raw_content.str();
+      current_length += use_utf16 ? raw_text_child->content_utf16_length()
+                                  : raw_content.length();
+    }
+  } else if (child->is_text()) {
+    // inline text
+    BuildTextPropsBuffer(static_cast<TextElement*>(child), output,
+                         current_length, use_utf16, props, has_inline_view);
+  } else if (child->is_image()) {
+    // inline image
+    output += kInlinePlaceHolder;
+    current_length += 1;  // placeholder's length is 1
+    AppendImageProps(static_cast<ImageElement*>(child), current_length - 1,
+                     current_length, props);
+  } else if (child->is_view()) {
+    // inline view
+    output += kInlinePlaceHolder;
+    current_length += 1;  // placeholder's length is 1
+    AppendViewProps(static_cast<ViewElement*>(child), current_length - 1,
+                    current_length, props);
+    *has_inline_view = true;
+  } else if (child->is_wrapper()) {
+    auto* wrap_child = static_cast<FiberElement*>(child->first_render_child());
+    while (wrap_child) {
+      ProcessChildProps(wrap_child, output, current_length, use_utf16, props,
+                        has_inline_view);
+      wrap_child =
+          static_cast<FiberElement*>(wrap_child->next_render_sibling());
+    }
   }
 }
 

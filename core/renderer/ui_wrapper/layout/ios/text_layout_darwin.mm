@@ -173,51 +173,64 @@ void TextLayoutDarwin::GenerateAttributedString(
     }
   }
   for (auto* child = element->first_render_child(); child; child = child->next_render_sibling()) {
-    if (static_cast<FiberElement*>(child)->is_raw_text()) {
-      RawTextElement* rawText = static_cast<RawTextElement*>(child);
-      NSString* content = [NSString stringWithUTF8String:rawText->content().c_str()];
-      NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
-                                                                attributes:baseAttributes];
-      [attributedString appendAttributedString:str];
-    } else if (child->is_text()) {
-      // inline text
-      TextElement* textElement = static_cast<TextElement*>(child);
-      LynxTextStyle* inlineTextStyle = [[LynxTextStyle alloc] init];
-      ApplyTextStyle(textElement, inlineTextStyle);
+    ProcessChildAttribute(attributedString, static_cast<FiberElement*>(child), baseAttributes,
+                          inlineElementSigns, hasViewOrImage);
+  }
+}
 
-      NSMutableDictionary<NSAttributedStringKey, id>* textAttributes =
-          [NSMutableDictionary dictionaryWithDictionary:baseAttributes];
-      NSDictionary<NSAttributedStringKey, id>* attributes =
-          [inlineTextStyle toAttributesWithFontFaceContext:uiOwner_.fontFaceContext
-                                      withFontFaceObserver:nil];
-      [textAttributes addEntriesFromDictionary:attributes];
+void TextLayoutDarwin::ProcessChildAttribute(
+    NSMutableAttributedString* attributedString, FiberElement* child,
+    NSDictionary<NSAttributedStringKey, id>* baseAttributes, NSMutableSet* inlineElementSigns,
+    Boolean* hasViewOrImage) {
+  if (child->is_raw_text()) {
+    RawTextElement* rawText = static_cast<RawTextElement*>(child);
+    NSString* content = [NSString stringWithUTF8String:rawText->content().c_str()];
+    NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
+                                                              attributes:baseAttributes];
+    [attributedString appendAttributedString:str];
+  } else if (child->is_text()) {
+    // inline text
+    TextElement* textElement = static_cast<TextElement*>(child);
+    LynxTextStyle* inlineTextStyle = [[LynxTextStyle alloc] init];
+    ApplyTextStyle(textElement, inlineTextStyle);
 
-      GenerateAttributedString(attributedString, textElement, textAttributes, inlineElementSigns,
-                               hasViewOrImage);
-    } else if (child->is_image() || child->is_view()) {
-      *hasViewOrImage = YES;
-      FiberElement* placeholder_element = static_cast<FiberElement*>(child);
-      LynxTextAttachment* textAttachment = [[LynxTextAttachment alloc] init];
-      textAttachment.sign = placeholder_element->impl_id();
-      const auto& text_attributes = placeholder_element->computed_css_style()->GetTextAttributes();
-      textAttachment.verticalAlign =
-          text_attributes.has_value()
-              ? static_cast<LynxVerticalAlign>(text_attributes->vertical_align)
-              : LynxVerticalAlignDefault;
-      textAttachment.verticalAlignLength =
-          text_attributes.has_value() ? text_attributes->vertical_align_length : 0.f;
+    NSMutableDictionary<NSAttributedStringKey, id>* textAttributes =
+        [NSMutableDictionary dictionaryWithDictionary:baseAttributes];
+    NSDictionary<NSAttributedStringKey, id>* attributes =
+        [inlineTextStyle toAttributesWithFontFaceContext:uiOwner_.fontFaceContext
+                                    withFontFaceObserver:nil];
+    [textAttributes addEntriesFromDictionary:attributes];
 
-      [inlineElementSigns addObject:@(textAttachment.sign)];
-      NSMutableAttributedString* inlineElementAttributedString =
-          [[NSMutableAttributedString alloc] init];
-      [inlineElementAttributedString
-          appendAttributedString:[NSAttributedString
-                                     attributedStringWithAttachment:textAttachment]];
-      [inlineElementAttributedString
-          addAttributes:baseAttributes
-                  range:NSMakeRange(0, inlineElementAttributedString.length)];
+    GenerateAttributedString(attributedString, textElement, textAttributes, inlineElementSigns,
+                             hasViewOrImage);
+  } else if (child->is_image() || child->is_view()) {
+    *hasViewOrImage = YES;
+    FiberElement* placeholder_element = static_cast<FiberElement*>(child);
+    LynxTextAttachment* textAttachment = [[LynxTextAttachment alloc] init];
+    textAttachment.sign = placeholder_element->impl_id();
+    const auto& text_attributes = placeholder_element->computed_css_style()->GetTextAttributes();
+    textAttachment.verticalAlign =
+        text_attributes.has_value()
+            ? static_cast<LynxVerticalAlign>(text_attributes->vertical_align)
+            : LynxVerticalAlignDefault;
+    textAttachment.verticalAlignLength =
+        text_attributes.has_value() ? text_attributes->vertical_align_length : 0.f;
 
-      [attributedString appendAttributedString:inlineElementAttributedString];
+    [inlineElementSigns addObject:@(textAttachment.sign)];
+    NSMutableAttributedString* inlineElementAttributedString =
+        [[NSMutableAttributedString alloc] init];
+    [inlineElementAttributedString
+        appendAttributedString:[NSAttributedString attributedStringWithAttachment:textAttachment]];
+    [inlineElementAttributedString
+        addAttributes:baseAttributes
+                range:NSMakeRange(0, inlineElementAttributedString.length)];
+
+    [attributedString appendAttributedString:inlineElementAttributedString];
+  } else if (child->is_wrapper()) {
+    for (auto* wrap_child = child->first_render_child(); wrap_child;
+         wrap_child = wrap_child->next_render_sibling()) {
+      ProcessChildAttribute(attributedString, static_cast<FiberElement*>(wrap_child),
+                            baseAttributes, inlineElementSigns, hasViewOrImage);
     }
   }
 }
@@ -232,6 +245,10 @@ void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* 
         case kPropertyIDFontSize:
           textStyle.fontSize =
               static_cast<float>(text_element->computed_css_style()->GetFontSize());
+          break;
+        case kPropertyIDFontWeight:
+          textStyle.fontWeight =
+              [LynxTextUtils convertLynxFontWeight:static_cast<int>(text_attributes->font_weight)];
           break;
         case kPropertyIDColor:
           if (text_attributes->text_gradient.has_value() &&
