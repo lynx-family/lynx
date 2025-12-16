@@ -15,6 +15,8 @@ lynx_core_source_set("fragment") {
     "image_fragment_behavior.h",
     "list_fragment_behavior.cc",
     "list_fragment_behavior.h",
+    "list_item_fragment_behavior.cc",
+    "list_item_fragment_behavior.h",
     "page_fragment_behavior.cc",
     "page_fragment_behavior.h",
     "platform_extended_fragment_behavior.cc",

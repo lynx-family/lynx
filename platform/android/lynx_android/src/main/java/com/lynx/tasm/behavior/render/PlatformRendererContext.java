@@ -31,6 +31,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     public static final int kText = 4;
     public static final int kImage = 5;
     public static final int kList = 6;
+    public static final int kListItem = 7;
   }
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
@@ -104,7 +105,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     switch (type) {
       case PlatformRendererType.kView:
       case PlatformRendererType.kText:
-      case PlatformRendererType.kImage: {
+      case PlatformRendererType.kImage:
+      case PlatformRendererType.kListItem: {
         ContainerRenderer view = new ContainerRenderer(mContext);
         Renderer renderer = view.createRenderer(this, sign);
         renderer.setRenderHost(view);
