@@ -53,7 +53,7 @@ void UIOverlay::ShowDialog(bool show_dialog) {
       is_show_ = true;
     } else {
       LOGE("overlay show skipped: is_show_=" << is_show_ << ", native_dialog_="
-                                             << native_dialog_)
+                                             << native_dialog_);
     }
   } else {
     if (is_show_ && native_dialog_) {
@@ -66,7 +66,7 @@ void UIOverlay::ShowDialog(bool show_dialog) {
       is_show_ = false;
     } else {
       LOGE("overlay dismiss skipped: is_show_="
-           << is_show_ << ", native_dialog_=" << native_dialog_)
+           << is_show_ << ", native_dialog_=" << native_dialog_);
     }
   }
 }
