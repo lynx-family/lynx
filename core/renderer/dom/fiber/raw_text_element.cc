@@ -36,6 +36,8 @@ void RawTextElement::SetAttributeInternal(const base::String& key,
     // TODO(songshourui.null): we may need other attributes here.
     if (key.IsEqual(kTextAttr)) {
       content_ = value.String();
+      content_utf16_length_ =
+          GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
       return;
     }
   }

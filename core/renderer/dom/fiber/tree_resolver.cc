@@ -97,6 +97,14 @@ void TreeResolver::AttachChildToTargetParentForWrapper(FiberElement* parent,
   while (!ref_node && temp_parent && temp_parent->is_wrapper()) {
     ref_node = static_cast<FiberElement*>(temp_parent->next_render_sibling());
 
+    if (ref_node && ref_node->is_virtual() &&
+        ref_node->EnableLayoutInElementMode()) {
+      // If ref_node is virtual, try to find the next non-virtual sibling
+      // (virtual nodes are not inserted into the layout tree for unknown
+      // reasons)
+      ref_node = static_cast<FiberElement*>(ref_node->next_render_sibling());
+    }
+
     if (ref_node && ref_node->is_wrapper()) {
       // try to find the wrapper's first non-wrapper child as ref
       ref_node = FindFirstChildOrSiblingAsRefNode(ref_node);
