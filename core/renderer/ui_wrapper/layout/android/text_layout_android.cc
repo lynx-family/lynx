@@ -195,38 +195,53 @@ void TextLayoutAndroid::BuildTextPropsBuffer(
 
   auto* child = element->first_render_child();
   while (child) {
-    if (static_cast<FiberElement*>(child)->is_raw_text()) {
-      auto* raw_text_child = static_cast<RawTextElement*>(child);
-      const auto& raw_content = raw_text_child->content();
-      if (!raw_content.empty()) {
-        output += raw_content.str();
-        current_length += use_utf16 ? raw_text_child->content_utf16_length()
-                                    : raw_content.length();
-      }
-    } else if (child->is_text()) {
-      // inline text
-      BuildTextPropsBuffer(static_cast<TextElement*>(child), output,
-                           current_length, use_utf16, props, has_inline_view);
-    } else if (child->is_image()) {
-      // inline image
-      output += kInlinePlaceHolder;
-      current_length += 1;  // placeholder's length is 1
-      AppendImageProps(static_cast<ImageElement*>(child), current_length - 1,
-                       current_length, props);
-    } else if (child->is_view()) {
-      // inline view
-      output += kInlinePlaceHolder;
-      current_length += 1;  // placeholder's length is 1
-      AppendViewProps(static_cast<ViewElement*>(child), current_length - 1,
-                      current_length, props);
-      *has_inline_view = true;
-    }
+    ProcessChildProps(static_cast<FiberElement*>(child), output, current_length,
+                      use_utf16, props, has_inline_view);
     child = child->next_render_sibling();
   }
 
   auto end = current_length;
   if (end > start) {
     AppendTextProps(element, start, end, props);
+  }
+}
+
+void TextLayoutAndroid::ProcessChildProps(
+    FiberElement* child, std::string& output, size_t& current_length,
+    bool use_utf16, PropArrayAndroid* props, bool* has_inline_view) {
+  if (child->is_raw_text()) {
+    auto* raw_text_child = static_cast<RawTextElement*>(child);
+    const auto& raw_content = raw_text_child->content();
+    if (!raw_content.empty()) {
+      output += raw_content.str();
+      current_length += use_utf16 ? raw_text_child->content_utf16_length()
+                                  : raw_content.length();
+    }
+  } else if (child->is_text()) {
+    // inline text
+    BuildTextPropsBuffer(static_cast<TextElement*>(child), output,
+                         current_length, use_utf16, props, has_inline_view);
+  } else if (child->is_image()) {
+    // inline image
+    output += kInlinePlaceHolder;
+    current_length += 1;  // placeholder's length is 1
+    AppendImageProps(static_cast<ImageElement*>(child), current_length - 1,
+                     current_length, props);
+  } else if (child->is_view()) {
+    // inline view
+    output += kInlinePlaceHolder;
+    current_length += 1;  // placeholder's length is 1
+    AppendViewProps(static_cast<ViewElement*>(child), current_length - 1,
+                    current_length, props);
+    *has_inline_view = true;
+  } else if (child->is_wrapper()) {
+    auto* wrap_child = static_cast<FiberElement*>(child->first_render_child());
+    while (wrap_child) {
+      ProcessChildProps(wrap_child, output, current_length, use_utf16, props,
+                        has_inline_view);
+      wrap_child =
+          static_cast<FiberElement*>(wrap_child->next_render_sibling());
+    }
   }
 }
 
