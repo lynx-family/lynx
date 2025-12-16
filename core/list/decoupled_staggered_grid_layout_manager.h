@@ -16,23 +16,21 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
  public:
   class SpanItemInfo {
    public:
-    SpanItemInfo(int span_index = list::kInvalidIndex,
-                 int item_index = list::kInvalidIndex)
+    SpanItemInfo(int span_index = kInvalidIndex, int item_index = kInvalidIndex)
         : span_index_(span_index), item_index_(item_index) {}
 
     bool IsValid() const {
-      return span_index_ != list::kInvalidIndex &&
-             item_index_ != list::kInvalidIndex;
+      return span_index_ != kInvalidIndex && item_index_ != kInvalidIndex;
     }
 
-    int span_index_{list::kInvalidIndex};
-    int item_index_{list::kInvalidIndex};
+    int span_index_{kInvalidIndex};
+    int item_index_{kInvalidIndex};
   };
 
   class LayoutState {
    public:
-    LayoutState(int span_count, list::LayoutDirection layout_direction =
-                                    list::LayoutDirection::kLayoutToEnd)
+    LayoutState(int span_count, LayoutDirection layout_direction =
+                                    LayoutDirection::kLayoutToEnd)
         : layout_direction_(layout_direction) {
       start_lines.resize(span_count);
       start_index.resize(span_count);
@@ -41,7 +39,7 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
     }
 
     void Reset(int span_count) {
-      layout_direction_ = list::LayoutDirection::kLayoutToEnd;
+      layout_direction_ = LayoutDirection::kLayoutToEnd;
       is_start_full_span_ = false;
       is_end_full_span_ = false;
       start_lines.assign(span_count, 0.f);
@@ -51,8 +49,7 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
     }
 
     // Layout direction
-    list::LayoutDirection layout_direction_{
-        list::LayoutDirection::kLayoutToEnd};
+    LayoutDirection layout_direction_{LayoutDirection::kLayoutToEnd};
     // The latest updated content offset.
     float latest_updated_content_offset_{0.f};
 
@@ -70,7 +67,7 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
   ~StaggeredGridLayoutManager() override = default;
 
   void InitLayoutState() override;
-  void OnBatchLayoutChildren() override {}
+  void OnBatchLayoutChildren() override;
   void OnLayoutChildren(bool is_component_finished = false,
                         int component_index = -1) override;
 

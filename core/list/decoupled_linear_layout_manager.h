@@ -18,13 +18,13 @@ class LinearLayoutManager : public ListLayoutManager {
   class LayoutState {
    public:
     bool ValidPreload() const {
-      return preload_min_index_ != list::kInvalidIndex ||
-             preload_max_index_ != list::kInvalidIndex;
+      return preload_min_index_ != kInvalidIndex ||
+             preload_max_index_ != kInvalidIndex;
     }
 
     void ResetPreloadIndex() {
-      preload_min_index_ = list::kInvalidIndex;
-      preload_max_index_ = list::kInvalidIndex;
+      preload_min_index_ = kInvalidIndex;
+      preload_max_index_ = kInvalidIndex;
     }
 
     std::string ToString() const {
@@ -40,12 +40,11 @@ class LinearLayoutManager : public ListLayoutManager {
     // Next index to bind
     int next_bind_index_{0};
     // The min bind index in preload.
-    int preload_min_index_{list::kInvalidIndex};
+    int preload_min_index_{kInvalidIndex};
     // The max bind index in preload.
-    int preload_max_index_{list::kInvalidIndex};
+    int preload_max_index_{kInvalidIndex};
     // Layout direction
-    list::LayoutDirection layout_direction_{
-        list::LayoutDirection::kLayoutToEnd};
+    LayoutDirection layout_direction_{LayoutDirection::kLayoutToEnd};
     // Layout start coordinate.
     float next_layout_offset_{0.f};
     // Number of pixels that we should fill, in the layout direction.
@@ -73,7 +72,7 @@ class LinearLayoutManager : public ListLayoutManager {
   LinearLayoutManager(ListContainerImpl* list_container_impl);
   ~LinearLayoutManager() override = default;
 
-  void OnBatchLayoutChildren() override {}
+  void OnBatchLayoutChildren() override;
   void OnLayoutChildren(bool is_component_finished = false,
                         int component_index = -1) override;
 
@@ -82,6 +81,7 @@ class LinearLayoutManager : public ListLayoutManager {
                         bool from_platform) override;
   void LayoutInvalidItemHolder(int first_invalid_index) override;
   float GetTargetContentSize() override;
+  void PreloadSection() override;
   // Render and layout one ItemHolder, GridLayoutManager overrides this function
   // to render column-count ItemHolders or a full-span ItemHolder.
   virtual void LayoutChunk(LayoutChunkResult& result, LayoutState& layout_state,
@@ -98,9 +98,9 @@ class LinearLayoutManager : public ListLayoutManager {
       const ListAnchorManager::AnchorInfo& anchor_info);
   virtual void UpdateLayoutStateToFillPreloadBuffer(
       LayoutState& layout_state, int index, float offset,
-      list::LayoutDirection layout_direction);
-  virtual int GetTargetIndexForPreloadBuffer(
-      int start_index, list::LayoutDirection layout_direction);
+      LayoutDirection layout_direction);
+  virtual int GetTargetIndexForPreloadBuffer(int start_index,
+                                             LayoutDirection layout_direction);
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) const override;
 #endif
@@ -119,6 +119,7 @@ class LinearLayoutManager : public ListLayoutManager {
                               const ItemHolderSet& on_screen_children,
                               const float content_offset);
   void HandleLayoutOrScrollResult(LayoutState& layout_state, bool is_layout);
+
   // Implement preload.
   void HandlePreloadIfNeeded(LayoutState& layout_state,
                              ListAnchorManager::AnchorInfo& anchor_info,
@@ -127,6 +128,8 @@ class LinearLayoutManager : public ListLayoutManager {
   void PreloadInternal(LayoutState& layout_state, int target_index,
                        bool preload_section = false);
   void RecycleOffPreloadItemHolders(bool recycle_to_end, int target_index);
+  void PreloadSectionOnNextFrame();
+  void PreloadSection(LayoutState& layout_state);
 };
 
 }  // namespace list

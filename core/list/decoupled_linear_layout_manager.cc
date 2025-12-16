@@ -18,6 +18,10 @@ namespace list {
 LinearLayoutManager::LinearLayoutManager(ListContainerImpl* list_container_impl)
     : ListLayoutManager(list_container_impl) {}
 
+void LinearLayoutManager::OnBatchLayoutChildren() {
+  // TODO(dingwang.wxx): impl
+}
+
 void LinearLayoutManager::OnLayoutChildren(
     bool is_component_finished /* = false */, int component_index /* = -1 */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_LAYOUT_CHILDREN,
@@ -42,6 +46,8 @@ void LinearLayoutManager::OnLayoutChildren(
   // step 1. Update anchor info and layout all item_holders
   ListAnchorManager::AnchorInfo anchor_info;
   InitLayoutAndAnchor(anchor_info, component_index);
+  list_container_->list_event_manager()->SendAnchorDebugInfoIfNeeded(
+      anchor_info);
 
   // step 2. Fill after find anchor.
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
@@ -101,7 +107,11 @@ void LinearLayoutManager::OnLayoutChildrenInternal(
                     LINEAR_LAYOUT_MANAGER_HANDLE_PRELOAD_IF_NEED);
   list_children_helper_->UpdateOnScreenChildren(list_orientation_helper_.get(),
                                                 content_offset_);
-  HandlePreloadIfNeeded(layout_state, anchor_info, true);
+  if (enable_preload_section_) {
+    PreloadSectionOnNextFrame();
+  } else {
+    HandlePreloadIfNeeded(layout_state, anchor_info, true);
+  }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
 }
 
@@ -131,9 +141,9 @@ void LinearLayoutManager::OnLayoutAfter(LayoutState& layout_state) {
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
   list_container_->list_event_manager()->RecordVisibleItemIfNeeded(false);
-  list::EventSource event_source = list_container_->has_valid_diff()
-                                       ? list::EventSource::kDiff
-                                       : list::EventSource::kLayout;
+  EventSource event_source = list_container_->has_valid_diff()
+                                 ? EventSource::kDiff
+                                 : EventSource::kLayout;
   SendLayoutCompleteEvent();
   SendScrollEvents(scroll_delta, content_offset_, event_source);
   list_container_->ClearValidDiff();
@@ -147,7 +157,7 @@ void LinearLayoutManager::HandleLayoutOrScrollResult(LayoutState& layout_state,
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (list_container_->enable_batch_render() ||
-      list_container_->enable_insert_platform_view()) {
+      list_container_->enable_insert_platform_view_operation()) {
     ListLayoutManager::HandleLayoutOrScrollResult(is_layout);
   } else {
     // No Batch Render.
@@ -158,10 +168,10 @@ void LinearLayoutManager::HandleLayoutOrScrollResult(LayoutState& layout_state,
       RecycleOffScreenItemHolders();
     } else if (layout_state.ValidPreload()) {
       // valid preload case.
-      if (layout_state.preload_min_index_ != list::kInvalidIndex) {
+      if (layout_state.preload_min_index_ != kInvalidIndex) {
         RecycleOffPreloadItemHolders(false, layout_state.preload_min_index_);
       }
-      if (layout_state.preload_max_index_ != list::kInvalidIndex) {
+      if (layout_state.preload_max_index_ != kInvalidIndex) {
         RecycleOffPreloadItemHolders(true, layout_state.preload_max_index_);
       }
     }
@@ -178,6 +188,22 @@ void LinearLayoutManager::HandleLayoutOrScrollResult(LayoutState& layout_state,
           return false;
         });
     list_container_->FlushPatching();
+  }
+}
+
+void LinearLayoutManager::PreloadSectionOnNextFrame() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_PRELOAD_SECTION);
+  if (list_container_ &&
+      list_container_->need_preload_section_on_next_frame()) {
+    list_container_->list_delegate()->RequestNextFrame();
+  }
+}
+
+void LinearLayoutManager::PreloadSection() {
+  if (list_container_ &&
+      list_container_->need_preload_section_on_next_frame()) {
+    LayoutState layout_state;
+    PreloadSection(layout_state);
   }
 }
 
@@ -265,15 +291,14 @@ bool LinearLayoutManager::Preload(LayoutState& layout_state) {
           list_children_helper_->in_preload_children();
       int first_visible_index = first_visible_item_holder->index();
       int last_visible_index = last_visible_item_holder->index();
-      int start_index =
-          first_visible_index +
-          static_cast<int32_t>(list::LayoutDirection::kLayoutToStart);
+      int start_index = first_visible_index +
+                        static_cast<int32_t>(LayoutDirection::kLayoutToStart);
       int end_index = last_visible_index +
-                      static_cast<int32_t>(list::LayoutDirection::kLayoutToEnd);
+                      static_cast<int32_t>(LayoutDirection::kLayoutToEnd);
       int target_start_index = GetTargetIndexForPreloadBuffer(
-          start_index, list::LayoutDirection::kLayoutToStart);
+          start_index, LayoutDirection::kLayoutToStart);
       int target_end_index = GetTargetIndexForPreloadBuffer(
-          end_index, list::LayoutDirection::kLayoutToEnd);
+          end_index, LayoutDirection::kLayoutToEnd);
       // Fill to end for preload
       TRACE_EVENT_BEGIN(
           LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_HANDLE_PRELOAD_TO_END,
@@ -284,13 +309,12 @@ bool LinearLayoutManager::Preload(LayoutState& layout_state) {
           "last_visible_index = "
           << last_visible_index << ", preload range = [" << end_index << " -> "
           << target_end_index << "]");
-      if (end_index != list::kInvalidIndex &&
-          target_end_index != list::kInvalidIndex &&
+      if (end_index != kInvalidIndex && target_end_index != kInvalidIndex &&
           end_index <= target_end_index) {
         UpdateLayoutStateToFillPreloadBuffer(
             layout_state, end_index,
             list_orientation_helper_->GetDecoratedEnd(last_visible_item_holder),
-            list::LayoutDirection::kLayoutToEnd);
+            LayoutDirection::kLayoutToEnd);
         // Fill preload buffer item holders
         PreloadInternal(layout_state, target_end_index);
         layout_state.preload_max_index_ = target_end_index;
@@ -309,14 +333,13 @@ bool LinearLayoutManager::Preload(LayoutState& layout_state) {
           "first_visible_index = "
           << first_visible_index << ", preload range = [" << start_index
           << " -> " << target_start_index << "]");
-      if (start_index != list::kInvalidIndex &&
-          target_start_index != list::kInvalidIndex &&
+      if (start_index != kInvalidIndex && target_start_index != kInvalidIndex &&
           target_start_index <= start_index) {
         UpdateLayoutStateToFillPreloadBuffer(
             layout_state, start_index,
             list_orientation_helper_->GetDecoratedStart(
                 first_visible_item_holder),
-            list::LayoutDirection::kLayoutToStart);
+            LayoutDirection::kLayoutToStart);
         // Fill preload buffer item holders
         PreloadInternal(layout_state, target_start_index);
         // Record the min laid out index after this fill.
@@ -329,8 +352,8 @@ bool LinearLayoutManager::Preload(LayoutState& layout_state) {
       }
     }
   }
-  return layout_state.preload_max_index_ != list::kInvalidIndex ||
-         layout_state.preload_min_index_ != list::kInvalidIndex;
+  return layout_state.preload_max_index_ != kInvalidIndex ||
+         layout_state.preload_min_index_ != kInvalidIndex;
 }
 
 /**
@@ -357,7 +380,7 @@ void LinearLayoutManager::PreloadInternal(LayoutState& layout_state,
 void LinearLayoutManager::RecycleOffPreloadItemHolders(bool recycle_to_end,
                                                        int target_index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_RECYCLE_PRELOAD_ITEM);
-  if (target_index != list::kInvalidIndex) {
+  if (target_index != kInvalidIndex) {
     list_children_helper_->ForEachChild(
         [this, target_index, recycle_to_end](ItemHolder* item_holder) {
           if (item_holder) {
@@ -380,11 +403,11 @@ void LinearLayoutManager::RecycleOffPreloadItemHolders(bool recycle_to_end,
  * buffer count
  */
 int LinearLayoutManager::GetTargetIndexForPreloadBuffer(
-    int start_index, list::LayoutDirection layout_direction) {
+    int start_index, LayoutDirection layout_direction) {
   const int data_count = list_container_->GetDataCount();
-  int target_index = list::kInvalidIndex;
+  int target_index = kInvalidIndex;
   if (start_index >= 0 && start_index < data_count) {
-    target_index = layout_direction == list::LayoutDirection::kLayoutToEnd
+    target_index = layout_direction == LayoutDirection::kLayoutToEnd
                        ? start_index + preload_buffer_count_ - 1
                        : start_index - preload_buffer_count_ + 1;
     target_index = std::max(0, std::min(target_index, data_count));
@@ -450,7 +473,7 @@ void LinearLayoutManager::ScrollByInternal(float content_offset,
                     FLUSH_CONTENT_SIZE_AND_OFFSET_TO_PLATFORM);
   LayoutInvalidItemHolder(
       layout_state.min_layout_chunk_index_ -
-      static_cast<int32_t>(list::LayoutDirection::kLayoutToStart));
+      static_cast<int32_t>(LayoutDirection::kLayoutToStart));
   content_size_ = GetTargetContentSize();
   list_anchor_manager_->AdjustContentOffsetWithAnchor(
       anchor_info, layout_state.latest_updated_content_offset_);
@@ -488,7 +511,7 @@ void LinearLayoutManager::OnScrollAfter(LayoutState& layout_state,
   list_container_->StopInterceptListElementUpdated();
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
-  SendScrollEvents(scroll_delta, original_offset, list::EventSource::kScroll);
+  SendScrollEvents(scroll_delta, original_offset, EventSource::kScroll);
 }
 
 void LinearLayoutManager::UpdateScrollAnchorInfo(
@@ -563,7 +586,7 @@ void LinearLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
               offset +
               list_orientation_helper_->GetItemHolderMainMargin(item_holder);
           cross_axis = list_orientation_helper_->GetStartAfterPaddingInOther();
-          if (orientation_ == list::Orientation::kVertical) {
+          if (orientation_ == Orientation::kVertical) {
             item_holder->UpdateLayoutFromManager(cross_axis, main_axis);
           } else {
             item_holder->UpdateLayoutFromManager(main_axis, cross_axis);
@@ -614,35 +637,33 @@ void LinearLayoutManager::LayoutChunk(LayoutChunkResult& result,
     result.consumed_ =
         list_orientation_helper_->GetDecoratedMeasurement(item_holder);
     float left = 0.f, top = 0.f;
-    if (orientation_ == list::Orientation::kVertical) {
+    if (orientation_ == Orientation::kVertical) {
       // vertical
       left = list_orientation_helper_->GetStartAfterPaddingInOther() +
-             item_holder->GetMargin(list::FrameDirection::kLeft);
-      if (layout_state.layout_direction_ ==
-          list::LayoutDirection::kLayoutToEnd) {
+             item_holder->GetMargin(FrameDirection::kLeft);
+      if (layout_state.layout_direction_ == LayoutDirection::kLayoutToEnd) {
         // fill to end
         top = layout_state.next_layout_offset_ +
-              item_holder->GetMargin(list::FrameDirection::kTop);
+              item_holder->GetMargin(FrameDirection::kTop);
       } else {
         // fill to start
         top = layout_state.next_layout_offset_ - result.consumed_ +
               item_holder->top_inset() +
-              item_holder->GetMargin(list::FrameDirection::kTop);
+              item_holder->GetMargin(FrameDirection::kTop);
       }
     } else {
       // horizontal
       top = list_orientation_helper_->GetStartAfterPaddingInOther() +
-            item_holder->GetMargin(list::FrameDirection::kTop);
-      if (layout_state.layout_direction_ ==
-          list::LayoutDirection::kLayoutToEnd) {
+            item_holder->GetMargin(FrameDirection::kTop);
+      if (layout_state.layout_direction_ == LayoutDirection::kLayoutToEnd) {
         // fill to end
         left = layout_state.next_layout_offset_ +
-               item_holder->GetMargin(list::FrameDirection::kLeft);
+               item_holder->GetMargin(FrameDirection::kLeft);
       } else {
         // fill to start
         left = layout_state.next_layout_offset_ - result.consumed_ +
                item_holder->top_inset() +
-               item_holder->GetMargin(list::FrameDirection::kLeft);
+               item_holder->GetMargin(FrameDirection::kLeft);
       }
     }
     item_holder->UpdateLayoutFromManager(left, top);
@@ -663,13 +684,13 @@ void LinearLayoutManager::UpdateLayoutStateToFillStart(
       anchor_info.item_holder_ ? anchor_info.item_holder_->top_inset() : 0.f;
   float offset = anchor_info.start_offset_ - top_inset;
   int index = anchor_info.index_ +
-              static_cast<int32_t>(list::LayoutDirection::kLayoutToStart);
+              static_cast<int32_t>(LayoutDirection::kLayoutToStart);
   // Update layout state.
   layout_state.available_ = offset - content_offset_ -
                             list_orientation_helper_->GetStartAfterPadding();
   layout_state.next_bind_index_ = index;
   layout_state.next_layout_offset_ = offset;
-  layout_state.layout_direction_ = list::LayoutDirection::kLayoutToStart;
+  layout_state.layout_direction_ = LayoutDirection::kLayoutToStart;
 }
 
 // Update layout state to fill to end, GridLayoutManager overrides this function
@@ -684,13 +705,13 @@ void LinearLayoutManager::UpdateLayoutStateToFillEnd(
       list_orientation_helper_->GetEndAfterPadding() + content_offset_ - offset;
   layout_state.next_bind_index_ = index;
   layout_state.next_layout_offset_ = offset;
-  layout_state.layout_direction_ = list::LayoutDirection::kLayoutToEnd;
+  layout_state.layout_direction_ = LayoutDirection::kLayoutToEnd;
 }
 
 // Update layout state to fill preload buffer
 void LinearLayoutManager::UpdateLayoutStateToFillPreloadBuffer(
     LayoutState& layout_state, int index, float offset,
-    list::LayoutDirection layout_direction) {
+    LayoutDirection layout_direction) {
   layout_state.next_bind_index_ = index;
   layout_state.next_layout_offset_ = offset;
   layout_state.layout_direction_ = layout_direction;
@@ -726,7 +747,7 @@ bool LinearLayoutManager::HasMore(int next_bind_index, float remaining) const {
 bool LinearLayoutManager::HasMore(const LayoutState& layout_state,
                                   int target_index) const {
   int next_bind_index = layout_state.next_bind_index_;
-  if (layout_state.layout_direction_ == list::LayoutDirection::kLayoutToEnd) {
+  if (layout_state.layout_direction_ == LayoutDirection::kLayoutToEnd) {
     return list_container_ && next_bind_index >= 0 &&
            next_bind_index < list_container_->GetDataCount() &&
            next_bind_index <= target_index;
@@ -734,6 +755,79 @@ bool LinearLayoutManager::HasMore(const LayoutState& layout_state,
     return list_container_ && next_bind_index >= 0 &&
            next_bind_index < list_container_->GetDataCount() &&
            next_bind_index >= target_index;
+  }
+}
+
+void LinearLayoutManager::PreloadSection(LayoutState& layout_state) {
+  if (!enable_preload_section_) {
+    return;
+  }
+  const auto& on_screen_children = list_children_helper_->on_screen_children();
+  if (on_screen_children.empty()) {
+    DLIST_LOGE("LinearLayoutManager::PreloadSection: empty on screen children");
+  } else {
+    const auto* first_visible_item_holder = *(on_screen_children.cbegin());
+    const auto* last_visible_item_holder = *(on_screen_children.crbegin());
+    if (!first_visible_item_holder || !last_visible_item_holder) {
+      DLIST_LOGE(
+          "LinearLayoutManager::PreloadSection: visible item holder is "
+          "nullptr");
+    } else {
+      int first_visible_index = first_visible_item_holder->index();
+      int last_visible_index = last_visible_item_holder->index();
+      int start_index = first_visible_index +
+                        static_cast<int32_t>(LayoutDirection::kLayoutToStart);
+      int end_index = last_visible_index +
+                      static_cast<int32_t>(LayoutDirection::kLayoutToEnd);
+      const int data_count = list_container_->GetDataCount();
+      int target_end_index = end_index;
+      int section_count = last_visible_index - first_visible_index + 1;
+      if (section_count <= 0) {
+        DLIST_LOGE("LinearLayoutManager::PreloadSection: invalid section count "
+                   << section_count);
+        return;
+      }
+      while (end_index >= 0 && end_index < data_count &&
+             last_visible_item_holder) {
+        target_end_index = std::min(end_index + section_count, data_count - 1);
+        TRACE_EVENT(
+            LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_PRELOAD_SECTION_TO_END,
+            "info",
+            base::FormatString("[%d -> %d]", end_index, target_end_index));
+        UpdateLayoutStateToFillPreloadBuffer(
+            layout_state, end_index,
+            list_orientation_helper_->GetDecoratedEnd(last_visible_item_holder),
+            LayoutDirection::kLayoutToEnd);
+        // Fill preload section item holders
+        PreloadInternal(layout_state, target_end_index, true);
+        // Recycle
+        RecycleOffScreenItemHolders();
+        last_visible_item_holder =
+            list_container_->GetItemHolderForIndex(target_end_index);
+        end_index = target_end_index + 1;
+      }
+      int target_start_index = start_index;
+      while (start_index >= 0 && start_index < data_count &&
+             first_visible_item_holder) {
+        target_start_index = std::max(start_index - section_count, 0);
+        TRACE_EVENT(
+            LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_PRELOAD_SECTION_TO_START,
+            "info",
+            base::FormatString("[%d -> %d]", start_index, target_start_index));
+        UpdateLayoutStateToFillPreloadBuffer(
+            layout_state, start_index,
+            list_orientation_helper_->GetDecoratedStart(
+                first_visible_item_holder),
+            LayoutDirection::kLayoutToStart);
+        // Fill preload section item holders
+        PreloadInternal(layout_state, target_start_index, true);
+        // Recycle
+        RecycleOffScreenItemHolders();
+        first_visible_item_holder =
+            list_container_->GetItemHolderForIndex(target_start_index);
+        start_index = target_start_index - 1;
+      }
+    }
   }
 }
 

@@ -27,7 +27,7 @@ void ListChildrenHelper::AddChild(const ItemHolderSet& children,
 // ListContainer::OnComponentFinished() when the ItemHolder is bound with
 // element.
 void ListChildrenHelper::AttachChild(ItemHolder* item_holder,
-                                     list::ItemElementDelegate* item_delegate) {
+                                     ItemElementDelegate* item_delegate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_CHILDREN_ATTACH_CHILD, "index",
               std::to_string(item_holder ? item_holder->index() : -1),
               [this](lynx::perfetto::EventContext ctx) {
@@ -45,7 +45,7 @@ void ListChildrenHelper::AttachChild(ItemHolder* item_holder,
 // Delete ItemHolder from attached_children_ set. It will be invoked by
 // ListContainer::RecycleChild() when the ItemHolder is recycled.
 void ListChildrenHelper::DetachChild(ItemHolder* item_holder,
-                                     list::ItemElementDelegate* item_delegate) {
+                                     ItemElementDelegate* item_delegate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_CHILDREN_DETACH_CHILD, "index",
               std::to_string(item_holder ? item_holder->index() : -1),
               [this](lynx::perfetto::EventContext ctx) {
@@ -133,10 +133,10 @@ void ListChildrenHelper::InitStickyItemHolderSet(int thread_mode) {
   in_sticky_top_children_.Clear();
   in_sticky_bottom_children_.Clear();
   if (use_default_sticky_buffer_count_) {
-    int capacity = list::kStickyItemSetCapacityForSyncMode;
+    int capacity = kStickyItemSetCapacityForSyncMode;
     if (thread_mode > base::ThreadStrategyForRendering::ALL_ON_UI &&
         thread_mode <= base::ThreadStrategyForRendering::MULTI_THREADS) {
-      capacity = list::kStickyItemSetCapacityForASyncMode;
+      capacity = kStickyItemSetCapacityForASyncMode;
     }
     in_sticky_top_children_.SetCapacity(capacity);
     in_sticky_bottom_children_.SetCapacity(capacity);
@@ -150,23 +150,6 @@ bool ListChildrenHelper::AddToStickyItemHolderSet(ItemHolder* item_holder) {
     return in_sticky_bottom_children_.AddItemHolder(item_holder);
   }
   return false;
-}
-
-void ListChildrenHelper::AddDeferredDestroyItemHolder(ItemHolder* holder) {
-  deferred_destroy_children_.insert(holder);
-}
-
-void ListChildrenHelper::TraverseDeferredDestroyItemHolder(
-    std::function<void(ItemHolder*)> fn) {
-  if (!deferred_destroy_children_.empty()) {
-    for (auto& child : deferred_destroy_children_) {
-      fn(child);
-    }
-  }
-}
-
-void ListChildrenHelper::DestroyDeferredDestroyItemHolder() {
-  deferred_destroy_children_.clear();
 }
 
 bool ListChildrenHelper::InStickyItemHolderSet(
@@ -274,6 +257,34 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
   last_binding_children_.insert(new_binding_children.begin(),
                                 new_binding_children.end());
   ForEachChild(last_binding_children_, update_handler);
+}
+
+ItemHolder* ListChildrenHelper::GetFirstChildFrom(
+    const ItemHolderSet& children, ItemHolder* start_child,
+    const std::function<bool(const ItemHolder*)>& condition_func,
+    bool reverse /* = false */) const {
+  if (auto start_it = children.find(start_child); start_it != children.end()) {
+    if (!reverse) {
+      auto target_it =
+          std::find_if(start_it, children.end(),
+                       [&condition_func](const ItemHolder* item_holder) {
+                         return condition_func(item_holder);
+                       });
+      return target_it != children.end() ? *target_it : nullptr;
+    } else {
+      auto reverse_start_it = std::make_reverse_iterator(std::next(start_it));
+      auto reverse_target_it =
+          std::find_if(reverse_start_it, children.rend(),
+                       [&condition_func](const ItemHolder* item_holder) {
+                         return condition_func(item_holder);
+                       });
+      return reverse_target_it != children.rend() ? *reverse_target_it
+                                                  : nullptr;
+    }
+  } else {
+    // start_child is not in children or children is empty.
+    return nullptr;
+  }
 }
 
 #if ENABLE_TRACE_PERFETTO

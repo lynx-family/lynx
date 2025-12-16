@@ -19,7 +19,7 @@ GridLayoutManager::GridLayoutManager(ListContainerImpl* list_container_impl)
 
 void GridLayoutManager::UpdateLayoutStateToFillPreloadBuffer(
     LayoutState& layout_state, int index, float offset,
-    list::LayoutDirection layout_direction) {
+    LayoutDirection layout_direction) {
   ItemHolder* item_holder = list_container_->GetItemHolderForIndex(index);
   // calculate the index of the first column in this row
   if (item_holder && item_holder->item_col_index() > 0) {
@@ -32,13 +32,13 @@ void GridLayoutManager::UpdateLayoutStateToFillPreloadBuffer(
 }
 
 int GridLayoutManager::GetTargetIndexForPreloadBuffer(
-    int start_index, list::LayoutDirection layout_direction) {
+    int start_index, LayoutDirection layout_direction) {
   if (!ValidPreloadBufferCount()) {
-    return list::kInvalidIndex;
+    return kInvalidIndex;
   }
   const int data_count = list_container_->GetDataCount();
-  int target_index = list::kInvalidIndex;
-  if (layout_direction == list::LayoutDirection::kLayoutToEnd) {
+  int target_index = kInvalidIndex;
+  if (layout_direction == LayoutDirection::kLayoutToEnd) {
     // Layout to end
     for (int i = start_index;
          i < data_count && i < start_index + preload_buffer_count_; ++i) {
@@ -55,8 +55,8 @@ int GridLayoutManager::GetTargetIndexForPreloadBuffer(
         }
       }
     }
-    if (target_index == list::kInvalidIndex) {
-      return list::kInvalidIndex;
+    if (target_index == kInvalidIndex) {
+      return kInvalidIndex;
     }
   } else {
     // Layout to start
@@ -75,7 +75,7 @@ int GridLayoutManager::GetTargetIndexForPreloadBuffer(
       }
     }
     if (target_index == data_count) {
-      return list::kInvalidIndex;
+      return kInvalidIndex;
     }
   }
   // clamp target_index to range
@@ -158,7 +158,7 @@ void GridLayoutManager::LayoutChunk(LayoutChunkResult& result,
   // Update current index of layout state.
   int start_index_of_next_row = GetStartIndexOfNextRow(
       layout_state.layout_direction_, layout_state.next_bind_index_);
-  if (start_index_of_next_row != list::kInvalidIndex) {
+  if (start_index_of_next_row != kInvalidIndex) {
     layout_state.next_bind_index_ = start_index_of_next_row;
   } else {
     layout_state.next_bind_index_ +=
@@ -178,7 +178,7 @@ void GridLayoutManager::LayoutChunk(LayoutChunkResult& result,
   result.consumed_ = max_size;
   // Calculate item holder's main offset.
   float main_offset = 0.f, cross_offset = 0.f;
-  if (list::LayoutDirection::kLayoutToStart == layout_state.layout_direction_) {
+  if (LayoutDirection::kLayoutToStart == layout_state.layout_direction_) {
     main_offset = layout_state.next_layout_offset_ - max_size +
                   max_item_holder->top_inset();
   } else {
@@ -201,7 +201,7 @@ void GridLayoutManager::LayoutChunk(LayoutChunkResult& result,
       }
       cross_offset = list_orientation_helper_->GetStartAfterPaddingInOther() +
                      item_col_index * (item_cross_size + cross_axis_gap_);
-      if (orientation_ == list::Orientation::kVertical) {
+      if (orientation_ == Orientation::kVertical) {
         item_holder->UpdateLayoutFromManager(cross_offset, main_offset);
       } else {
         item_holder->UpdateLayoutFromManager(main_offset, cross_offset);
@@ -210,21 +210,21 @@ void GridLayoutManager::LayoutChunk(LayoutChunkResult& result,
   }
 }
 
-int GridLayoutManager::GetStartIndexOfNextRow(list::LayoutDirection direction,
+int GridLayoutManager::GetStartIndexOfNextRow(LayoutDirection direction,
                                               const int start_index) const {
   if (!list_container_) {
-    return list::kInvalidIndex;
+    return kInvalidIndex;
   }
-  int index = list::kInvalidIndex;
+  int index = kInvalidIndex;
   ItemHolder* item_holder = nullptr;
-  if (direction == list::LayoutDirection::kLayoutToEnd) {
+  if (direction == LayoutDirection::kLayoutToEnd) {
     const int data_count = list_container_->GetDataCount();
     for (int i = start_index + 1; i < data_count; ++i) {
       item_holder = list_container_->GetItemHolderForIndex(i);
       if (!item_holder) {
         DLIST_LOGE("GridLayoutManager::GetStartIndexOfNextRow "
                    << "null item holder");
-        return list::kInvalidIndex;
+        return kInvalidIndex;
       } else if (item_holder->item_full_span() ||
                  item_holder->item_col_index() == 0) {
         // If iterate to the first item holder in the next line, break directly.
@@ -238,7 +238,7 @@ int GridLayoutManager::GetStartIndexOfNextRow(list::LayoutDirection direction,
       if (!item_holder) {
         DLIST_LOGE("GridLayoutManager::GetStartIndexOfNextRow "
                    << "null item holder");
-        return list::kInvalidIndex;
+        return kInvalidIndex;
       } else if (item_holder->item_full_span() ||
                  item_holder->item_col_index() == 0) {
         // If iterate to the first item holder in the prev line, break directly.
@@ -268,8 +268,7 @@ void GridLayoutManager::UpdateLayoutStateToFillStart(
   }
   // calculate the index of  the first column in the pre row.
   int next_bind_index =
-      first_col_index +
-      static_cast<int32_t>(list::LayoutDirection::kLayoutToStart);
+      first_col_index + static_cast<int32_t>(LayoutDirection::kLayoutToStart);
   item_holder = list_container_->GetItemHolderForIndex(next_bind_index);
   if (item_holder && item_holder->item_col_index() > 0) {
     next_bind_index -= item_holder->item_col_index();
@@ -278,7 +277,7 @@ void GridLayoutManager::UpdateLayoutStateToFillStart(
   layout_state.available_ = offset - content_offset_ -
                             list_orientation_helper_->GetStartAfterPadding();
   layout_state.next_layout_offset_ = offset;
-  layout_state.layout_direction_ = list::LayoutDirection::kLayoutToStart;
+  layout_state.layout_direction_ = LayoutDirection::kLayoutToStart;
 }
 
 void GridLayoutManager::UpdateLayoutStateToFillEnd(
@@ -296,7 +295,7 @@ void GridLayoutManager::UpdateLayoutStateToFillEnd(
   layout_state.available_ =
       list_orientation_helper_->GetEndAfterPadding() + content_offset_ - offset;
   layout_state.next_layout_offset_ = offset;
-  layout_state.layout_direction_ = list::LayoutDirection::kLayoutToEnd;
+  layout_state.layout_direction_ = LayoutDirection::kLayoutToEnd;
 }
 
 void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
@@ -380,7 +379,7 @@ void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
               list_orientation_helper_->GetItemHolderCrossMargin(item_holder);
         } else {
           // previous item holder is not the last one in the current row.
-          if (orientation() == list::Orientation::kVertical) {
+          if (orientation() == Orientation::kVertical) {
             main_axis = prev_item_holder->top();
             cross_axis =
                 list_orientation_helper_->GetDecoratedMeasurementInOther(
@@ -405,7 +404,7 @@ void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
             list_orientation_helper_->GetStartAfterPaddingInOther() +
             list_orientation_helper_->GetItemHolderCrossMargin(item_holder);
       }
-      if (orientation_ == list::Orientation::kVertical) {
+      if (orientation_ == Orientation::kVertical) {
         item_holder->UpdateLayoutFromManager(cross_axis, main_axis);
       } else {
         item_holder->UpdateLayoutFromManager(main_axis, cross_axis);
@@ -415,7 +414,8 @@ void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
   });
 }
 
-bool GridLayoutManager::ShouldRecycleItemHolder(ItemHolder* item_holder) {
+bool GridLayoutManager::ShouldRecycleItemHolder(
+    const ItemHolder* item_holder) const {
   if (!item_holder || !item_holder->recyclable()) {
     return false;
   }
@@ -454,7 +454,7 @@ float GridLayoutManager::GetTargetContentSize() {
 }
 
 float GridLayoutManager::LargestMainSizeInRowWithItemHolder(
-    ItemHolder* item_holder) {
+    const ItemHolder* item_holder) const {
   if (!item_holder || !list_container_ || !list_orientation_helper_) {
     return 0.f;
   }

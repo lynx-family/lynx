@@ -113,6 +113,10 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
   }
 }
 
+void StaggeredGridLayoutManager::OnBatchLayoutChildren() {
+  // TODO(dingwang.wxx): impl
+}
+
 void StaggeredGridLayoutManager::OnLayoutChildren(
     bool is_component_finished /* = false */, int component_index /* = -1 */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, GRID_LAYOUT_MANAGER_LAYOUT_CHILDREN,
@@ -132,7 +136,8 @@ void StaggeredGridLayoutManager::OnLayoutChildren(
   // step 1. Update anchor info and layout all item_holders
   ListAnchorManager::AnchorInfo anchor_info;
   InitLayoutAndAnchor(anchor_info, component_index);
-  //  SendAnchorDebugInfo(anchor_info);
+  list_container_->list_event_manager()->SendAnchorDebugInfoIfNeeded(
+      anchor_info);
 
   // step 2. Fill after find anchor.
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
@@ -183,7 +188,7 @@ void StaggeredGridLayoutManager::OnLayoutChildrenInternal(
     // from the item 0 to initial-scroll-index. So we can remove this logic.
     TRACE_EVENT(LYNX_TRACE_CATEGORY, GRID_LAYOUT_MANAGER_FILL);
     layout_state.Reset(span_count_);
-    layout_state.layout_direction_ = list::LayoutDirection::kLayoutToStart;
+    layout_state.layout_direction_ = LayoutDirection::kLayoutToStart;
     UpdateStartAndEndLinesStatus(layout_state);
     Fill(layout_state);
   }
@@ -213,7 +218,6 @@ void StaggeredGridLayoutManager::OnLayoutChildrenInternal(
   // Note: need update on screen children.
   list_children_helper_->UpdateOnScreenChildren(list_orientation_helper_.get(),
                                                 content_offset_);
-  // TODO(dingwang.wxx): impl.
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
 }
 
@@ -227,9 +231,9 @@ void StaggeredGridLayoutManager::OnLayoutAfter() {
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
   list_container_->list_event_manager()->RecordVisibleItemIfNeeded(false);
-  list::EventSource event_source = list_container_->has_valid_diff()
-                                       ? list::EventSource::kDiff
-                                       : list::EventSource::kLayout;
+  EventSource event_source = list_container_->has_valid_diff()
+                                 ? EventSource::kDiff
+                                 : EventSource::kLayout;
   SendLayoutCompleteEvent();
   SendScrollEvents(scroll_delta, content_offset_, event_source);
   list_container_->ClearValidDiff();
@@ -241,7 +245,7 @@ void StaggeredGridLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (list_container_->enable_batch_render() ||
-      list_container_->enable_insert_platform_view()) {
+      list_container_->enable_insert_platform_view_operation()) {
     // batch render.
     ListLayoutManager::HandleLayoutOrScrollResult(is_layout);
   } else {
@@ -279,14 +283,14 @@ void StaggeredGridLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
  FillToStart process.
  */
 void StaggeredGridLayoutManager::Fill(LayoutState& layout_state) {
-  if (layout_state.layout_direction_ == list::LayoutDirection::kLayoutToEnd) {
+  if (layout_state.layout_direction_ == LayoutDirection::kLayoutToEnd) {
     // If layoutToEnd, only need to fill to end.
     FillToEnd(layout_state);
     LayoutInvalidItemHolder(0);
   } else {
     FillToStart(layout_state);
     // Fill to end if end is not completely filled.
-    layout_state.layout_direction_ = list::LayoutDirection::kLayoutToEnd;
+    layout_state.layout_direction_ = LayoutDirection::kLayoutToEnd;
     UpdateStartAndEndLinesStatus(layout_state);
     FillToEnd(layout_state);
     // Need layout all item_holder to avoid discontinuous layout which may cause
@@ -328,10 +332,10 @@ void StaggeredGridLayoutManager::FillToStart(LayoutState& layout_state) {
   float start_align_delta =
       list_orientation_helper_->GetDecoratedStart(scroll_anchor_item_holder) -
       content_offset_;
-  int next_item_index = list::kInvalidIndex;
+  int next_item_index = kInvalidIndex;
   bool need_fill = HasRemainSpaceToFillStart(layout_state) &&
                    (next_item_index = FindNextIndexToFillStart(layout_state)) !=
-                       list::kInvalidIndex;
+                       kInvalidIndex;
   while (need_fill) {
     bool item_size_changed = false;
     ItemHolder* item_holder =
@@ -378,7 +382,7 @@ void StaggeredGridLayoutManager::FillToStart(LayoutState& layout_state) {
     // If still not filled, trigger next fill.
     need_fill = HasRemainSpaceToFillStart(layout_state) &&
                 (next_item_index = FindNextIndexToFillStart(layout_state)) !=
-                    list::kInvalidIndex;
+                    kInvalidIndex;
   }
 }
 
@@ -401,7 +405,7 @@ void StaggeredGridLayoutManager::LayoutChunkToEnd(int current_index,
   float main_axis_position =
       CalculateMainAxisPosition(item_holder, layout_state);
   float cross_axis_position = CalculateCrossAxisPosition(item_holder);
-  if (orientation_ == list::Orientation::kVertical) {
+  if (orientation_ == Orientation::kVertical) {
     item_holder->UpdateLayoutFromManager(cross_axis_position,
                                          main_axis_position);
   } else {
@@ -443,7 +447,7 @@ void StaggeredGridLayoutManager::LayoutInvalidItemHolder(
   if (first_invalid_index < 0 || first_invalid_index > data_count - 1) {
     return;
   }
-  LayoutState layout_state(span_count_, list::LayoutDirection::kLayoutToEnd);
+  LayoutState layout_state(span_count_, LayoutDirection::kLayoutToEnd);
   for (int i = 0; i < span_count_; ++i) {
     auto& column_index = column_indexes_[i];
     if (!column_index.empty()) {
@@ -568,9 +572,9 @@ void StaggeredGridLayoutManager::ScrollByInternal(float content_offset,
       from_platform ? content_offset : content_offset_;
   list_container_->StartInterceptListElementUpdated();
   // Fill
-  LayoutState layout_state(span_count_,
-                           delta > 0 ? list::LayoutDirection::kLayoutToEnd
-                                     : list::LayoutDirection::kLayoutToStart);
+  LayoutState layout_state(span_count_, delta > 0
+                                            ? LayoutDirection::kLayoutToEnd
+                                            : LayoutDirection::kLayoutToStart);
   UpdateStartAndEndLinesStatus(layout_state);
   SetContentOffset(content_offset);
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
@@ -597,7 +601,7 @@ void StaggeredGridLayoutManager::OnScrollAfter(float original_offset) {
   list_container_->StopInterceptListElementUpdated();
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
-  SendScrollEvents(scroll_delta, original_offset, list::EventSource::kScroll);
+  SendScrollEvents(scroll_delta, original_offset, EventSource::kScroll);
 }
 
 float StaggeredGridLayoutManager::GetTargetContentSize() {
@@ -728,7 +732,7 @@ int StaggeredGridLayoutManager::FindNextIndexToFillStart(
   const auto& start_indexes = layout_state.start_index;
   const auto& start_lines = layout_state.start_lines;
   if (start_indexes.empty() || start_lines.empty()) {
-    return list::kInvalidIndex;
+    return kInvalidIndex;
   }
   ListAdapter* list_adapter = list_container_->list_adapter();
   if (layout_state.is_start_full_span_) {
@@ -736,7 +740,7 @@ int StaggeredGridLayoutManager::FindNextIndexToFillStart(
     int start_full_span_index = start_indexes[0];
     if (start_full_span_index == 0) {
       // Case 1.1 start index is first item.
-      return list::kInvalidIndex;
+      return kInvalidIndex;
     } else if (list_adapter->IsFullSpanAtIndex(start_full_span_index - 1)) {
       // Case 1.2 start index - 1 is full span item.
       return start_full_span_index - 1;
@@ -755,7 +759,7 @@ int StaggeredGridLayoutManager::FindNextIndexToFillStart(
       for (const auto& column_index : column_indexes_) {
         int item_index =
             GetItemIndexBeforeTargetIndex(column_index, start_full_span_index);
-        if (item_index != list::kInvalidIndex) {
+        if (item_index != kInvalidIndex) {
           return item_index;
         }
       }
@@ -789,14 +793,14 @@ int StaggeredGridLayoutManager::FindNextIndexToFillStart(
               column_indexes_[span_item_info.span_index_];
           int next_item_index = GetItemIndexBeforeTargetIndex(
               column_index, span_item_info.item_index_);
-          if (next_item_index != list::kInvalidIndex) {
+          if (next_item_index != kInvalidIndex) {
             return next_item_index;
           }
         }
       }
     }
   }
-  return list::kInvalidIndex;
+  return kInvalidIndex;
 }
 
 int StaggeredGridLayoutManager::GetItemIndexBeforeTargetIndex(
@@ -816,7 +820,7 @@ int StaggeredGridLayoutManager::GetItemIndexBeforeTargetIndex(
       }
     }
   }
-  return list::kInvalidIndex;
+  return kInvalidIndex;
 }
 
 std::vector<StaggeredGridLayoutManager::SpanItemInfo>
@@ -825,7 +829,7 @@ StaggeredGridLayoutManager::GetMaxEndSpanItemInfoForStartLines(
   const auto& start_indexes = layout_state.start_index;
   const auto& start_lines = layout_state.start_lines;
   if (start_lines.empty()) {
-    return {{list::kInvalidIndex, list::kInvalidIndex}};
+    return {{kInvalidIndex, kInvalidIndex}};
   }
   if (layout_state.is_start_full_span_) {
     return {{0, start_indexes[0]}};
@@ -846,7 +850,7 @@ StaggeredGridLayoutManager::GetMinEndSpanItemInfoForEndLines(
   const auto& end_indexes = layout_state.end_index;
   const auto& end_lines = layout_state.end_lines;
   if (end_lines.empty()) {
-    return {list::kInvalidIndex, list::kInvalidIndex};
+    return {kInvalidIndex, kInvalidIndex};
   }
   if (layout_state.is_end_full_span_) {
     return {0, end_indexes[0]};

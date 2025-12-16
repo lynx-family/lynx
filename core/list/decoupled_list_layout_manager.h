@@ -24,12 +24,7 @@ class ListLayoutManager {
  public:
   ListLayoutManager(ListContainerImpl* list_container_impl);
   virtual ~ListLayoutManager() = default;
-  void InitLayoutManager(ListChildrenHelper* list_children_helper,
-                         list::Orientation list_orientation) {
-    SetListChildrenHelper(list_children_helper);
-    SetOrientation(list_orientation);
-    SetListAnchorManager(list_children_helper_);
-  }
+
   // Init layout state.
   virtual void InitLayoutState() {}
   // Render and layout child nodes. This function will be invoked within
@@ -39,8 +34,12 @@ class ListLayoutManager {
   virtual void OnLayoutChildren(bool is_component_finished = false,
                                 int component_index = -1) = 0;
   virtual void OnBatchLayoutChildren() {}
-  void SetOrientation(list::Orientation orientation);
-  void SetListAnchorManager(ListChildrenHelper* list_children_helper);
+  virtual void PreloadSection() {}
+
+  void InitLayoutManager(ListChildrenHelper* list_children_helper,
+                         Orientation list_orientation);
+  void SetOrientation(Orientation orientation);
+  void CreateOrUpdateListAnchorManager();
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y);
   void ScrollToPosition(int index, float offset, int align, bool smooth);
@@ -52,14 +51,17 @@ class ListLayoutManager {
   float GetPaddingTop() const;
   float GetPaddingBottom() const;
   bool CanScrollHorizontally() const {
-    return orientation_ == list::Orientation::kHorizontal;
+    return orientation_ == Orientation::kHorizontal;
   }
   bool CanScrollVertically() const {
-    return orientation_ == list::Orientation::kVertical;
+    return orientation_ == Orientation::kVertical;
   }
-  void SetListChildrenHelper(ListChildrenHelper* list_children_helper) {
-    list_children_helper_ = list_children_helper;
+  bool ItemHolderVisibleInList(const ItemHolder* item_holder) const;
+  bool IsItemHolderNotAtStickyPosition(const ItemHolder* item_holder) const;
+  void UpdateDiffAnchorReference() {
+    list_anchor_manager_->UpdateDiffAnchorReference();
   }
+
   void SetMainAxisGap(float main_axis_gap) { main_axis_gap_ = main_axis_gap; }
   void SetCrossAxisGap(float cross_axis_gap) {
     cross_axis_gap_ = cross_axis_gap;
@@ -67,8 +69,15 @@ class ListLayoutManager {
   void SetInitialScrollIndex(int initial_scroll_index) {
     list_anchor_manager_->SetInitialScrollIndex(initial_scroll_index);
   }
-  int initial_scroll_index() const {
-    return list_anchor_manager_->initial_scroll_index();
+  void SetAnchorPriorityFromBegin(bool anchor_priority_from_begin) {
+    list_anchor_manager_->SetAnchorPriorityFromBegin(
+        anchor_priority_from_begin);
+  }
+  void SetAnchorAlignToBottom(bool anchor_align_to_bottom) {
+    list_anchor_manager_->SetAnchorAlignToBottom(anchor_align_to_bottom);
+  }
+  void SetAnchorVisibility(AnchorVisibility anchor_visibility) {
+    list_anchor_manager_->SetAnchorVisibility(anchor_visibility);
   }
   bool SetPreloadBufferCount(int count) {
     bool count_changed = false;
@@ -85,38 +94,36 @@ class ListLayoutManager {
     }
     return count_changed;
   }
-  int preload_buffer_count() const { return preload_buffer_count_; }
+  void SetEnablePreloadSection(bool value) { enable_preload_section_ = value; }
   void SetSpanCount(int span_count);
-  int span_count() const { return span_count_; }
-  float content_size() const { return content_size_; }
-  list::Orientation orientation() const { return orientation_; }
-  float main_axis_gap() const { return main_axis_gap_; }
-  float cross_axis_gap() const { return cross_axis_gap_; }
-  //  void UpdateDiffAnchorReference() {
-  //    list_anchor_manager_->UpdateDiffAnchorReference();
-  //  }
-  float content_offset() const { return content_offset_; }
-  // Only use this in UpdateListLayoutManager.
   void SetContentOffset(float content_offset, bool with_clamp = true) {
     content_offset_ =
         with_clamp ? ClampContentOffsetToEdge(content_offset, content_size_)
                    : std::max(content_offset, 0.f);
   }
-  bool IsHorizontal() const {
-    return orientation_ == list::Orientation::kHorizontal;
-  }
-  bool ItemHolderVisibleInList(ItemHolder* item_holder);
-  bool IsItemHolderNotAtStickyPosition(const ItemHolder* item_holder) const;
   void ResetContentOffsetAndContentSize(float content_offset,
                                         float content_size) {
     content_size_ = content_size;
     content_offset_ = content_offset;
   }
 
+  int initial_scroll_index() const {
+    return list_anchor_manager_->initial_scroll_index();
+  }
+  int preload_buffer_count() const { return preload_buffer_count_; }
+  int span_count() const { return span_count_; }
+  float content_size() const { return content_size_; }
+  Orientation orientation() const { return orientation_; }
+  float main_axis_gap() const { return main_axis_gap_; }
+  float cross_axis_gap() const { return cross_axis_gap_; }
+  float content_offset() const { return content_offset_; }
+  bool enable_preload_section() const { return enable_preload_section_; }
+  float main_axis_size() const {
+    return list_orientation_helper_ ? list_orientation_helper_->GetMeasurement()
+                                    : 0.f;
+  }
+
  protected:
-  // Init AnchorInfo and layout all item_holders.
-  void InitLayoutAndAnchor(ListAnchorManager::AnchorInfo& anchor_info,
-                           int finishing_binding_index);
   // Handle scrolling events from the platform.
   virtual void ScrollByInternal(float content_offset, float original_offset,
                                 bool from_platform) = 0;
@@ -124,13 +131,20 @@ class ListLayoutManager {
   virtual void LayoutInvalidItemHolder(int first_invalid_index) = 0;
   // Get list's content size.
   virtual float GetTargetContentSize() = 0;
-  virtual bool ShouldRecycleItemHolder(ItemHolder* item_holder);
+  virtual bool ShouldRecycleItemHolder(const ItemHolder* item_holder) const;
+#if ENABLE_TRACE_PERFETTO
+  virtual void UpdateTraceDebugInfo(TraceEvent* event) const;
+#endif
+
+  // Init AnchorInfo and layout all item_holders.
+  void InitLayoutAndAnchor(ListAnchorManager::AnchorInfo& anchor_info,
+                           int finishing_binding_index);
   void RecycleOffScreenItemHolders();
   void FlushContentSizeAndOffsetToPlatform(
       float content_offset_before_adjustment, bool from_layout);
   void SendLayoutCompleteEvent();
   void SendScrollEvents(float scroll_delta, float original_offset,
-                        list::EventSource event_source);
+                        EventSource event_source);
   // Sticky methods
   int UpdateStickyItems();
   bool ShouldRecycleStickyItemHolder(const ItemHolder* item_holder) const;
@@ -138,12 +152,11 @@ class ListLayoutManager {
   // Calculated content_offset must be clamped to [0, content_size], or Android
   // may stop at an over-edge index
   float ClampContentOffsetToEdge(float content_offset, float content_size);
-  bool ValidPreloadBufferCount() const { return preload_buffer_count_ > 0; }
+  bool ValidPreloadBufferCount() const {
+    return preload_buffer_count_ > 0 && !enable_preload_section_;
+  }
   void OnPrepareForLayoutChildren();
   void HandleLayoutOrScrollResult(bool is_layout);
-#if ENABLE_TRACE_PERFETTO
-  virtual void UpdateTraceDebugInfo(TraceEvent* event) const;
-#endif
 
  private:
   bool UpdateStickyItemsInternal(int& layout_changed_position,
@@ -151,12 +164,9 @@ class ListLayoutManager {
   void FlushScrollInfoToPlatformIfNeeded();
   void SetListLayoutInfoToAllItemHolders();
 
- public:
-  std::unique_ptr<ListOrientationHelper> list_orientation_helper_;
-
  protected:
   bool is_non_smooth_scroll_{false};
-  list::Orientation orientation_{list::Orientation::kVertical};
+  Orientation orientation_{Orientation::kVertical};
   int span_count_{1};
   float content_size_{0.f};
   float content_offset_{0.f};
@@ -164,7 +174,9 @@ class ListLayoutManager {
   float main_axis_gap_{0.f};
   float cross_axis_gap_{0.f};
   int preload_buffer_count_{0};
+  bool enable_preload_section_{false};
   std::unique_ptr<ListAnchorManager> list_anchor_manager_;
+  std::unique_ptr<ListOrientationHelper> list_orientation_helper_;
   ListContainerImpl* list_container_{nullptr};
   ListChildrenHelper* list_children_helper_{nullptr};
 };

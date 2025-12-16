@@ -15,14 +15,15 @@
 namespace lynx {
 namespace list {
 
-using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
+using BindingItemHolderWeakMap =
+    std::unordered_map<int64_t, fml::WeakPtr<ItemHolder>>;
 
 class DefaultListAdapter : public ListAdapter {
  public:
   DefaultListAdapter(ListContainerImpl* list_container_impl)
       : ListAdapter(list_container_impl),
-        binding_item_holder_map_(
-            std::make_unique<list::BindingItemHolderMap>()) {}
+        binding_item_holder_weak_map_(
+            std::make_unique<BindingItemHolderWeakMap>()) {}
 
   ~DefaultListAdapter() override = default;
 
@@ -82,13 +83,13 @@ class DefaultListAdapter : public ListAdapter {
 
   // Finish bind item holder with element.
   void OnFinishBindItemHolder(
-      list::ItemElementDelegate* list_item_delegate,
-      const std::shared_ptr<tasm::PipelineOptions>& option) override;
+      ItemElementDelegate* list_item_delegate,
+      const std::shared_ptr<tasm::PipelineOptions>& options) override;
 
   // Finish bind item holders with elements. Note: no need to implement.
   void OnFinishBindItemHolders(
-      const std::vector<ItemElementDelegate*>& list_items,
-      const std::shared_ptr<lynx::tasm::PipelineOptions>& options) override {}
+      const std::vector<ItemElementDelegate*>& list_item_delegate_array,
+      const std::shared_ptr<tasm::PipelineOptions>& options) override {}
 
   // Recycle ItemHolder.
   void RecycleItemHolder(ItemHolder* item_holder) override;
@@ -128,13 +129,14 @@ class DefaultListAdapter : public ListAdapter {
     return item_holder->removed_;
   }
 
-  list::ItemElementDelegate* GetItemElementDelegate(
+  ItemElementDelegate* GetItemElementDelegate(
       const ItemHolder* item_holder) override {
     return item_holder->item_delegate_;
   }
 
  private:
-  std::unique_ptr<list::BindingItemHolderMap> binding_item_holder_map_;
+  std::unique_ptr<BindingItemHolderWeakMap> binding_item_holder_weak_map_{
+      nullptr};
 };
 
 }  // namespace list

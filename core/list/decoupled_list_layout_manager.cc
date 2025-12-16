@@ -18,13 +18,34 @@ namespace list {
 ListLayoutManager::ListLayoutManager(ListContainerImpl* list_container_impl)
     : list_container_(list_container_impl) {
   if (!list_container_) {
-    DLIST_LOGE("[ListLayoutManager] error: "
-               << "list_container_ is nullptr");
+    DLIST_LOGE(
+        "ListLayoutManager::ListLayoutManager: list_container_ is nullptr");
   }
 }
 
-void ListLayoutManager::SetListAnchorManager(
-    ListChildrenHelper* list_children_helper) {
+// When create ListContainerImpl or change list-type prop, we will invoke this
+// function to init LayoutManager.
+void ListLayoutManager::InitLayoutManager(
+    ListChildrenHelper* list_children_helper, Orientation list_orientation) {
+  list_children_helper_ = list_children_helper;
+  // create list_orientation_helper_.
+  SetOrientation(list_orientation);
+  // create list_anchor_manager_.
+  CreateOrUpdateListAnchorManager();
+}
+
+// Set layout orientation, and if list_orientation_helper_ == nullptr or
+// orientation changed, create new list_orientation_helper_.
+void ListLayoutManager::SetOrientation(Orientation orientation) {
+  if (orientation_ == orientation && list_orientation_helper_ != nullptr) {
+    return;
+  }
+  orientation_ = orientation;
+  list_orientation_helper_ =
+      ListOrientationHelper::CreateListOrientationHelper(this, orientation);
+}
+
+void ListLayoutManager::CreateOrUpdateListAnchorManager() {
   if (!list_anchor_manager_) {
     list_anchor_manager_ = std::make_unique<ListAnchorManager>(this);
   }
@@ -36,15 +57,25 @@ void ListLayoutManager::SetListAnchorManager(
 }
 
 float ListLayoutManager::GetWidth() const {
-  if (list_container_ && list_container_->list_delegate()) {
-    return list_container_->list_delegate()->GetWidth();
+  ElementDelegate* list_delegate = nullptr;
+  if (list_container_ && (list_delegate = list_container_->list_delegate())) {
+    return list_delegate->GetWidth() -
+           list_delegate
+               ->GetBorders()[static_cast<uint32_t>(FrameDirection::kLeft)] -
+           list_delegate
+               ->GetBorders()[static_cast<uint32_t>(FrameDirection::kRight)];
   }
   return 0.f;
 }
 
 float ListLayoutManager::GetHeight() const {
-  if (list_container_ && list_container_->list_delegate()) {
-    return list_container_->list_delegate()->GetHeight();
+  ElementDelegate* list_delegate = nullptr;
+  if (list_container_ && (list_delegate = list_container_->list_delegate())) {
+    return list_delegate->GetHeight() -
+           list_delegate
+               ->GetBorders()[static_cast<uint32_t>(FrameDirection::kTop)] -
+           list_delegate
+               ->GetBorders()[static_cast<uint32_t>(FrameDirection::kBottom)];
   }
   return 0.f;
 }
@@ -52,7 +83,7 @@ float ListLayoutManager::GetHeight() const {
 float ListLayoutManager::GetPaddingLeft() const {
   if (list_container_ && list_container_->list_delegate()) {
     return list_container_->list_delegate()
-        ->GetPaddings()[static_cast<uint32_t>(list::FrameDirection::kLeft)];
+        ->GetPaddings()[static_cast<uint32_t>(FrameDirection::kLeft)];
   }
   return 0.f;
 }
@@ -60,7 +91,7 @@ float ListLayoutManager::GetPaddingLeft() const {
 float ListLayoutManager::GetPaddingRight() const {
   if (list_container_ && list_container_->list_delegate()) {
     return list_container_->list_delegate()
-        ->GetPaddings()[static_cast<uint32_t>(list::FrameDirection::kRight)];
+        ->GetPaddings()[static_cast<uint32_t>(FrameDirection::kRight)];
   }
   return 0.f;
 }
@@ -68,7 +99,7 @@ float ListLayoutManager::GetPaddingRight() const {
 float ListLayoutManager::GetPaddingTop() const {
   if (list_container_ && list_container_->list_delegate()) {
     return list_container_->list_delegate()
-        ->GetPaddings()[static_cast<uint32_t>(list::FrameDirection::kTop)];
+        ->GetPaddings()[static_cast<uint32_t>(FrameDirection::kTop)];
   }
   return 0.f;
 }
@@ -76,7 +107,7 @@ float ListLayoutManager::GetPaddingTop() const {
 float ListLayoutManager::GetPaddingBottom() const {
   if (list_container_ && list_container_->list_delegate()) {
     return list_container_->list_delegate()
-        ->GetPaddings()[static_cast<uint32_t>(list::FrameDirection::kBottom)];
+        ->GetPaddings()[static_cast<uint32_t>(FrameDirection::kBottom)];
   }
   return 0.f;
 }
@@ -113,25 +144,13 @@ void ListLayoutManager::SetListLayoutInfoToAllItemHolders() {
         "ListLayoutManager::SetListLayoutInfoToAllItemHolders: invalid list "
         "container's size.");
   }
-  list_children_helper_->ForEachChild(
-      [container_size,
-       is_rtl = list_container_->IsRTL()](ItemHolder* item_holder) {
-        item_holder->SetContainerSize(container_size);
-        item_holder->SetDirection(is_rtl ? list::Direction::kRTL
-                                         : list::Direction::kNormal);
-        return false;
-      });
-}
-
-// Set layout orientation, and if list_orientation_helper_ == nullptr or
-// orientation changed, create new list_orientation_helper_.
-void ListLayoutManager::SetOrientation(list::Orientation orientation) {
-  if (orientation_ == orientation && list_orientation_helper_ != nullptr) {
-    return;
-  }
-  orientation_ = orientation;
-  list_orientation_helper_ =
-      ListOrientationHelper::CreateListOrientationHelper(this, orientation);
+  list_children_helper_->ForEachChild([container_size,
+                                       is_rtl = list_container_->IsRTL()](
+                                          ItemHolder* item_holder) {
+    item_holder->SetContainerSize(container_size);
+    item_holder->SetDirection(is_rtl ? Direction::kRTL : Direction::kNormal);
+    return false;
+  });
 }
 
 void ListLayoutManager::SetSpanCount(int span_count) {
@@ -145,10 +164,9 @@ void ListLayoutManager::ScrollByPlatformContainer(float content_offset_x,
                                                   float original_x,
                                                   float original_y) {
   ScrollByInternal(
-      orientation_ == list::Orientation::kHorizontal ? content_offset_x
-                                                     : content_offset_y,
-      orientation_ == list::Orientation::kHorizontal ? original_x : original_y,
-      true);
+      orientation_ == Orientation::kHorizontal ? content_offset_x
+                                               : content_offset_y,
+      orientation_ == Orientation::kHorizontal ? original_x : original_y, true);
 }
 
 // Platform UI will invoke this function when scrollToPosition UI method is
@@ -163,9 +181,9 @@ void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
   }
   list_anchor_manager_->InitScrollToPositionParam(item_holder, index, offset,
                                                   align, smooth);
-  DLIST_LOGI("[list_container=" << list_container_ << "] ScrollToPosition: "
-                                << item_holder << ", " << index << ", "
-                                << offset << ", " << align << ", " << smooth);
+  DLIST_LOGI("[" << list_container_ << "] ScrollToPosition: " << item_holder
+                 << ", " << index << ", " << offset << ", " << align << ", "
+                 << smooth);
   if (smooth) {
     float target_offset =
         list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
@@ -182,7 +200,7 @@ void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
         list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
     // scroll to additional offset
     if (base::FloatsNotEqual(0, offset) ||
-        align != static_cast<int>(list::ScrollingInfoAlignment::kTop)) {
+        align != static_cast<int>(ScrollingInfoAlignment::kTop)) {
       ScrollByInternal(target_offset, target_offset, false);
     }
     is_non_smooth_scroll_ = false;
@@ -192,19 +210,21 @@ void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
 // Platform UI will invoke this function when scrollToPosition UI method is
 // finished to clear ListLayoutManager's related scrolling info.
 void ListLayoutManager::ScrollStopped() {
-  DLIST_LOGI("[list_container=" << list_container_ << "] ScrollStopped");
+  DLIST_LOGI("[" << list_container_ << "] ScrollStopped");
   list_anchor_manager_->ResetScrollInfo();
 }
 
 // Determine whether the current ItemHolder needs to be recycled.
-bool ListLayoutManager::ShouldRecycleItemHolder(ItemHolder* item_holder) {
+bool ListLayoutManager::ShouldRecycleItemHolder(
+    const ItemHolder* item_holder) const {
   if (!item_holder || !item_holder->recyclable() || !list_orientation_helper_) {
     return false;
   }
   return !ItemHolderVisibleInList(item_holder);
 }
 
-bool ListLayoutManager::ItemHolderVisibleInList(ItemHolder* item_holder) {
+bool ListLayoutManager::ItemHolderVisibleInList(
+    const ItemHolder* item_holder) const {
   if (!item_holder) {
     return false;
   }
@@ -230,12 +250,13 @@ void ListLayoutManager::RecycleOffScreenItemHolders() {
         return false;
       });
   ListAdapter* list_adapter = list_container_->list_adapter();
+  ItemElementDelegate* list_item_delegate = nullptr;
+  bool should_request_state_restore =
+      list_container_->should_request_state_restore();
   for (auto item_holder : off_screen_item_holders) {
-    list::ItemElementDelegate* list_item_delegate =
-        list_adapter->GetItemElementDelegate(item_holder);
-    if (list_item_delegate && list_container_->should_request_state_restore()) {
-      list_container_->list_delegate()->OnListItemDisappear(
-          list_item_delegate->GetImplId(), true, item_holder->item_key());
+    list_item_delegate = list_adapter->GetItemElementDelegate(item_holder);
+    if (list_item_delegate && should_request_state_restore) {
+      list_item_delegate->OnListItemDisappear(true, item_holder->item_key());
     }
     list_container_->list_adapter()->RecycleItemHolder(item_holder);
   }
@@ -246,10 +267,10 @@ void ListLayoutManager::RecycleOffScreenItemHolders() {
 void ListLayoutManager::FlushContentSizeAndOffsetToPlatform(
     float content_offset_before_adjustment, bool from_layout) {
   content_offset_ = ClampContentOffsetToEdge(content_offset_, content_size_);
-  float delta_x = orientation_ == list::Orientation::kVertical
+  float delta_x = CanScrollVertically()
                       ? 0.f
                       : content_offset_ - content_offset_before_adjustment;
-  float delta_y = orientation_ == list::Orientation::kVertical
+  float delta_y = CanScrollVertically()
                       ? content_offset_ - content_offset_before_adjustment
                       : 0.f;
   if (list_container_) {
@@ -270,9 +291,10 @@ void ListLayoutManager::FlushScrollInfoToPlatformIfNeeded() {
     if (item_holder) {
       if (item_holder != scrolling_info.item_holder_) {
         DLIST_LOGE(
-            "FlushScrollInfoToPlatformIfNeeded: target item holder in "
-            "scrolling_info_ is not exist: "
-            << scrolling_info.item_holder_ << ", " << item_holder);
+            "[" << list_container_
+                << "] FlushScrollInfoToPlatformIfNeeded: target item holder in "
+                   "scrolling_info_ is not exist: "
+                << scrolling_info.item_holder_ << ", " << item_holder);
       }
       float target_offset =
           list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
@@ -306,7 +328,7 @@ void ListLayoutManager::SendLayoutCompleteEvent() {
 
 void ListLayoutManager::SendScrollEvents(float scroll_delta,
                                          float original_offset,
-                                         list::EventSource event_source) {
+                                         EventSource event_source) {
   list_container_->list_event_manager()->SendScrollEvent(scroll_delta,
                                                          event_source);
   list_container_->list_event_manager()->DetectScrollToThresholdAndSend(
@@ -317,9 +339,9 @@ void ListLayoutManager::SendScrollEvents(float scroll_delta,
 int ListLayoutManager::UpdateStickyItems() {
   if (!list_container_ || !list_container_->list_adapter() ||
       !list_container_->sticky_enabled()) {
-    return list::kInvalidIndex;
+    return kInvalidIndex;
   }
-  int minimum_layout_changed_item_holder_index = list::kInvalidIndex;
+  int minimum_layout_changed_item_holder_index = kInvalidIndex;
   float sticky_offset = list_container_->sticky_offset();
   // If recycle sticky item, clear sticky item holder set firstly.
   if (list_container_->recycle_sticky_item()) {
@@ -367,7 +389,7 @@ bool ListLayoutManager::UpdateStickyItemsInternal(int& layout_changed_position,
     if (base::FloatsNotEqual(
             list_orientation_helper_->GetDecoratedMeasurement(item_holder),
             size_before_bind)) {
-      if (layout_changed_position == list::kInvalidIndex ||
+      if (layout_changed_position == kInvalidIndex ||
           layout_changed_position > item_holder->index()) {
         layout_changed_position = item_holder->index();
       }

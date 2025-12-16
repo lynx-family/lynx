@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "core/list/decoupled_list_anchor_manager.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/public/pub_value.h"
 
@@ -37,23 +38,28 @@ class ListEventManager {
     upper_threshold_item_count_ = upper_threshold_item_count;
   }
 
-  void SetChildrenHelper(ListChildrenHelper* children_helper) {
-    children_helper_ = children_helper;
-  };
+  void SetListDebugInfoLevel(ListDebugInfoLevel debug_info_level) {
+    debug_info_level_ = debug_info_level;
+  }
 
   void SendLayoutCompleteEvent();
 
-  void SendScrollEvent(float distance, list::EventSource event_source);
+  void SendScrollEvent(float distance, EventSource event_source);
 
   void SendExposureEvent(const std::string& event_name,
                          const ItemHolder* item_holder);
 
   void DetectScrollToThresholdAndSend(float distance, float original_offset,
-                                      list::EventSource event_source);
+                                      EventSource event_source);
 
   void RecordVisibleItemIfNeeded(bool is_layout_before);
 
   void RecordDiffResultIfNeeded();
+
+  void SendDiffDebugEventIfNeeded();
+
+  void SendAnchorDebugInfoIfNeeded(
+      const ListAnchorManager::AnchorInfo& anchor_info);
 
   void SetNeedLayoutCompleteInfo(bool need_layout_complete_info) {
     need_layout_complete_info_ = need_layout_complete_info;
@@ -61,20 +67,27 @@ class ListEventManager {
 
  private:
   void SendCustomScrollEvent(const std::string& event_name, float distance,
-                             list::EventSource event_source);
+                             EventSource event_source);
+
   void CreateLayoutCompleteInfoIfNeeded();
+
   std::unique_ptr<pub::Value> GenerateScrollInfo(float deltaX,
                                                  float deltaY) const;
+
   std::unique_ptr<pub::Value> GenerateVisibleCellsInfo(
       float scroll_left, float scroll_top, bool for_scroll_info) const;
+
   std::unique_ptr<pub::Value> GenerateNodeExposureInfo(
       const ItemHolder* item_holder) const;
+
   void UpdatePreviousScrollState(bool is_lower, bool is_upper);
+
   bool NotAtBouncesArea(float content_offset, float content_size,
                         float list_size);
 
+  bool ShouldGenerateDebugInfo(ListDebugInfoLevel target_level) const;
+
  private:
-  ListChildrenHelper* children_helper_{nullptr};
   ListContainerImpl* list_container_{nullptr};
   std::unique_ptr<pub::Value> layout_complete_info_;
   bool need_visible_cell_{false};
@@ -82,10 +95,12 @@ class ListEventManager {
   int scroll_event_throttle_ms_{200};
   int lower_threshold_item_count_{0};
   int upper_threshold_item_count_{0};
+  ListDebugInfoLevel debug_info_level_{
+      ListDebugInfoLevel::kListDebugInfoLevelInfo};
   std::chrono::time_point<std::chrono::steady_clock,
                           std::chrono::steady_clock::duration>
       last_scroll_event_time_ = std::chrono::steady_clock::now();
-  list::ListScrollState previous_scroll_state_{list::ListScrollState::kMiddle};
+  ScrollPositionState previous_scroll_pos_state_{ScrollPositionState::kMiddle};
 };
 
 }  // namespace list

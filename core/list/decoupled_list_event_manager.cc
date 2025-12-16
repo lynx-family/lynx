@@ -16,15 +16,14 @@ namespace list {
 ListEventManager::ListEventManager(ListContainerImpl* list_container_impl)
     : list_container_(list_container_impl) {
   if (!list_container_) {
-    DLIST_LOGE("[EventManager] error: "
-               << "list_container_ is nullptr");
+    DLIST_LOGE(
+        "ListEventManager::ListEventManager: list_container_ is nullptr");
   }
 }
 
 void ListEventManager::SendLayoutCompleteEvent() {
   if (!list_container_ || !list_container_->value_factory() ||
-      !list_container_->list_delegate()->HasBoundEvent(
-          list::kEventLayoutComplete)) {
+      !list_container_->list_delegate()->HasBoundEvent(kEventLayoutComplete)) {
     return;
   }
   CreateLayoutCompleteInfoIfNeeded();
@@ -33,17 +32,17 @@ void ListEventManager::SendLayoutCompleteEvent() {
     std::unique_ptr<pub::Value> layout_complete_info =
         std::move(layout_complete_info_);
     // push layout id
-    layout_complete_info->PushInt32ToMap(list::kLayoutInfoLayoutId,
+    layout_complete_info->PushInt32ToMap(kLayoutInfoLayoutId,
                                          list_container_->layout_id());
+    // push scroll info if needed
     std::unique_ptr<pub::Value> scroll_info;
     if (need_layout_complete_info_ &&
         (scroll_info = GenerateScrollInfo(0.f, 0.f))) {
-      layout_complete_info->PushValueToMap(list::kLayoutInfoScrollInfo,
-                                           *scroll_info);
+      layout_complete_info->PushValueToMap(kLayoutInfoScrollInfo, *scroll_info);
     }
     list_container_->ResetLayoutID();
     list_container_->list_delegate()->SendCustomEvent(
-        list::kEventLayoutComplete, list::kEventParamDetail,
+        kEventLayoutComplete, kEventParamDetail,
         std::move(layout_complete_info));
   }
 }
@@ -54,11 +53,15 @@ void ListEventManager::RecordVisibleItemIfNeeded(bool is_layout_before) {
   }
   CreateLayoutCompleteInfoIfNeeded();
   if (layout_complete_info_) {
+    // push eventUnit
+    layout_complete_info_->PushStringToMap(kLayoutInfoEventUnit,
+                                           kLayoutInfoEventUnitValuePx);
+    // push visibleItemBeforeUpdate or visibleItemAfterUpdate
     std::unique_ptr<pub::Value> visible_cells_info;
     if ((visible_cells_info = GenerateVisibleCellsInfo(0.f, 0.f, false))) {
       layout_complete_info_->PushValueToMap(
-          is_layout_before ? list::kLayoutInfoVisibleItemBeforeUpdate
-                           : list::kLayoutInfoVisibleItemAfterUpdate,
+          is_layout_before ? kLayoutInfoVisibleItemBeforeUpdate
+                           : kLayoutInfoVisibleItemAfterUpdate,
           *visible_cells_info);
     }
   }
@@ -69,16 +72,17 @@ void ListEventManager::RecordDiffResultIfNeeded() {
     return;
   }
   CreateLayoutCompleteInfoIfNeeded();
-  std::unique_ptr<pub::Value> diff_result;
-  if (layout_complete_info_ &&
-      (diff_result = list_container_->list_adapter()->GenerateDiffResult())) {
-    layout_complete_info_->PushValueToMap(list::kLayoutInfoDiffResult,
-                                          *diff_result);
+  if (layout_complete_info_) {
+    std::unique_ptr<pub::Value> diff_result;
+    if ((diff_result = list_container_->list_adapter()->GenerateDiffResult())) {
+      layout_complete_info_->PushValueToMap(kLayoutInfoDiffResult,
+                                            *diff_result);
+    }
   }
 }
 
 void ListEventManager::SendScrollEvent(float distance,
-                                       list::EventSource event_source) {
+                                       EventSource event_source) {
   if (base::IsZero(distance)) {
     return;
   }
@@ -88,19 +92,20 @@ void ListEventManager::SendScrollEvent(float distance,
                       now - last_scroll_event_time_)
                       .count();
   if (duration > scroll_event_throttle_ms_) {
-    SendCustomScrollEvent(list::kEventScroll, distance, event_source);
+    SendCustomScrollEvent(kEventScroll, distance, event_source);
     last_scroll_event_time_ = now;
   }
 }
 
 void ListEventManager::DetectScrollToThresholdAndSend(
     float distance, float original_offset, list::EventSource event_source) {
-  if (!list_container_ || !list_container_->list_layout_manager() ||
-      !list_container_->value_factory()) {
+  if (!list_container_) {
     return;
   }
   ListLayoutManager* list_layout_manager =
       list_container_->list_layout_manager();
+  ListChildrenHelper* list_children_helper =
+      list_container_->list_children_helper();
   bool is_upper = false;
   bool is_lower = false;
   bool is_lower_edge = false;
@@ -109,7 +114,7 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   // calculate the firstItemIndex & lastItemIndex
   int first_index = INT_MAX;
   int end_index = INT_MIN;
-  auto item_holder_list = children_helper_->on_screen_children();
+  auto item_holder_list = list_children_helper->on_screen_children();
   for (auto it = item_holder_list.begin(); it != item_holder_list.end(); ++it) {
     auto item_holder = *it;
     if (item_holder) {
@@ -119,8 +124,7 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   }
   float content_offset = list_layout_manager->content_offset();
   float content_size = list_layout_manager->content_size();
-  float list_size =
-      list_layout_manager->list_orientation_helper_->GetMeasurement();
+  float list_size = list_layout_manager->main_axis_size();
 
   // sendUpperScrollEvent
   if (first_index < upper_threshold_item_count_) {
@@ -145,11 +149,10 @@ void ListEventManager::DetectScrollToThresholdAndSend(
 
   // sendLowerScrollEvent
   int bottom_border_item_index =
-      children_helper_->GetChildCount() - lower_threshold_item_count_ - 1;
+      list_children_helper->GetChildCount() - lower_threshold_item_count_ - 1;
   if (end_index > bottom_border_item_index) {
     is_lower = true;
   }
-
   if (lower_threshold_item_count_ == 0 &&
       base::FloatsLargerOrEqual(content_offset + list_size, content_size)) {
     // come to the bottom edge
@@ -163,27 +166,27 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   }
 
   // Send scroll to upper/lower event.
-  if (event_source == list::EventSource::kDiff ||
-      event_source == list::EventSource::kLayout) {
+  if (event_source == EventSource::kDiff ||
+      event_source == EventSource::kLayout) {
     // 1. Force sending lower/upper event after diff or layout
     if (is_upper) {
-      SendCustomScrollEvent(list::kEventScrollToUpper, distance, event_source);
+      SendCustomScrollEvent(kEventScrollToUpper, distance, event_source);
     }
     if (is_lower) {
-      SendCustomScrollEvent(list::kEventScrollToLower, distance, event_source);
+      SendCustomScrollEvent(kEventScrollToLower, distance, event_source);
     }
-  } else if (event_source == list::EventSource::kScroll) {
+  } else if (event_source == EventSource::kScroll) {
     // 2. Handle event from scroll.
-    list::ListScrollState previous_state = previous_scroll_state_;
-    if (is_upper && (previous_state != list::ListScrollState::kUpper &&
-                     previous_state != list::ListScrollState::kBothEdge)) {
+    ScrollPositionState previous_state = previous_scroll_pos_state_;
+    if (is_upper && (previous_state != ScrollPositionState::kUpper &&
+                     previous_state != ScrollPositionState::kBothEdge)) {
       // Update previous_status and valid_diff flag before sending event to
       // avoid reenter in worklet.
       UpdatePreviousScrollState(is_lower, is_upper);
       SendCustomScrollEvent(list::kEventScrollToUpper, distance, event_source);
     }
-    if (is_lower && (previous_state != list::ListScrollState::kLower &&
-                     previous_state != list::ListScrollState::kBothEdge)) {
+    if (is_lower && (previous_state != ScrollPositionState::kLower &&
+                     previous_state != ScrollPositionState::kBothEdge)) {
       // Update previous_status and valid_diff flag before sending event to
       // avoid reenter in worklet.
       UpdatePreviousScrollState(is_lower, is_upper);
@@ -195,14 +198,14 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   // Send scroll to upper/lower edge event.
   if (is_lower_edge &&
       NotAtBouncesArea(original_offset, content_size, list_size)) {
-    SendCustomScrollEvent(list::kEventScrollToLowerEdge, 0, event_source);
+    SendCustomScrollEvent(kEventScrollToLowerEdge, 0, event_source);
   }
   if (is_upper_edge &&
       NotAtBouncesArea(original_offset, content_size, list_size)) {
-    SendCustomScrollEvent(list::kEventScrollToUpperEdge, 0, event_source);
+    SendCustomScrollEvent(kEventScrollToUpperEdge, 0, event_source);
   }
   if (!is_lower_edge && !is_upper_edge) {
-    SendCustomScrollEvent(list::kEventScrollToNormalState, 0, event_source);
+    SendCustomScrollEvent(kEventScrollToNormalState, 0, event_source);
   }
 }
 
@@ -227,19 +230,19 @@ bool ListEventManager::NotAtBouncesArea(float original_offset,
 
 void ListEventManager::UpdatePreviousScrollState(bool is_lower, bool is_upper) {
   if (is_lower && is_upper) {
-    previous_scroll_state_ = list::ListScrollState::kBothEdge;
+    previous_scroll_pos_state_ = ScrollPositionState::kBothEdge;
   } else if (is_lower) {
-    previous_scroll_state_ = list::ListScrollState::kLower;
+    previous_scroll_pos_state_ = ScrollPositionState::kLower;
   } else if (is_upper) {
-    previous_scroll_state_ = list::ListScrollState::kUpper;
+    previous_scroll_pos_state_ = ScrollPositionState::kUpper;
   } else {
-    previous_scroll_state_ = list::ListScrollState::kMiddle;
+    previous_scroll_pos_state_ = ScrollPositionState::kMiddle;
   }
 }
 
 void ListEventManager::SendCustomScrollEvent(const std::string& event_name,
                                              float distance,
-                                             list::EventSource event_source) {
+                                             EventSource event_source) {
   if (!list_container_ || !list_container_->value_factory() ||
       !list_container_->list_delegate()->HasBoundEvent(event_name)) {
     return;
@@ -247,9 +250,9 @@ void ListEventManager::SendCustomScrollEvent(const std::string& event_name,
   ListLayoutManager* list_layout_manager =
       list_container_->list_layout_manager();
   bool is_vertical = list_layout_manager->CanScrollVertically();
-  float scroll_left =
-      !is_vertical ? list_layout_manager->content_offset() : 0.f;
-  float scroll_top = is_vertical ? list_layout_manager->content_offset() : 0.f;
+  float content_offset = list_layout_manager->content_offset();
+  float scroll_left = !is_vertical ? content_offset : 0.f;
+  float scroll_top = is_vertical ? content_offset : 0.f;
   float dx = !is_vertical ? distance : 0.f;
   float dy = is_vertical ? distance : 0.f;
   float layouts_unit_per_px =
@@ -257,16 +260,66 @@ void ListEventManager::SendCustomScrollEvent(const std::string& event_name,
   if (base::FloatsLarger(layouts_unit_per_px, 0.f)) {
     std::unique_ptr<pub::Value> scroll_info = GenerateScrollInfo(dx, dy);
     if (scroll_info) {
-      scroll_info->PushInt32ToMap(list::kScrollInfoEventSource,
+      // push eventSource
+      scroll_info->PushInt32ToMap(kScrollInfoEventSource,
                                   static_cast<int>(event_source));
       std::unique_ptr<pub::Value> visible_cells_info;
+      // push attachedCells if needed.
       if (need_visible_cell_ && (visible_cells_info = GenerateVisibleCellsInfo(
                                      scroll_left, scroll_top, true))) {
-        scroll_info->PushValueToMap(list::kScrollInfoAttachedCells,
+        scroll_info->PushValueToMap(kScrollInfoAttachedCells,
                                     *visible_cells_info);
       }
       list_container_->list_delegate()->SendCustomEvent(
-          event_name, list::kEventParamDetail, std::move(scroll_info));
+          event_name, kEventParamDetail, std::move(scroll_info));
+    }
+  }
+}
+
+void ListEventManager::SendDiffDebugEventIfNeeded() {
+  const auto& value_factory = list_container_->value_factory();
+  if (value_factory &&
+      ShouldGenerateDebugInfo(ListDebugInfoLevel::kListDebugInfoLevelInfo)) {
+    std::unique_ptr<pub::Value> debug_info;
+    std::unique_ptr<pub::Value> diff_result;
+    if ((debug_info = value_factory->CreateMap()) &&
+        (diff_result = list_container_->list_adapter()->GenerateDiffResult())) {
+      // push diff result
+      debug_info->PushValueToMap(kDebugInfoDiffResult, *diff_result);
+      list_container_->list_delegate()->SendCustomEvent(
+          kEventListDebugInfo, kEventParamDetail, std::move(debug_info));
+    }
+  }
+}
+
+void ListEventManager::SendAnchorDebugInfoIfNeeded(
+    const ListAnchorManager::AnchorInfo& anchor_info) {
+  const auto& value_factory = list_container_->value_factory();
+  if (value_factory &&
+      ShouldGenerateDebugInfo(ListDebugInfoLevel::kListDebugInfoLevelInfo)) {
+    std::unique_ptr<pub::Value> debug_info;
+    std::unique_ptr<pub::Value> anchor_info_map;
+    if ((debug_info = value_factory->CreateMap()) &&
+        (anchor_info_map = value_factory->CreateMap())) {
+      if (!anchor_info.valid_) {
+        anchor_info_map->PushInt32ToMap(kDebugInfoAnchorIndex, kInvalidIndex);
+      } else {
+        anchor_info_map->PushInt32ToMap(kDebugInfoAnchorIndex,
+                                        anchor_info.index_);
+        anchor_info_map->PushInt32ToMap(kDebugInfoAnchorStartOffset,
+                                        anchor_info.start_offset_);
+        anchor_info_map->PushInt32ToMap(kDebugInfoAnchorStartAlignmentDelta,
+                                        anchor_info.start_alignment_delta_);
+        anchor_info_map->PushInt32ToMap(
+            kDebugInfoAnchorDirty,
+            list_container_->list_adapter()->IsDirty(anchor_info.item_holder_));
+        anchor_info_map->PushInt32ToMap(
+            kDebugInfoAnchorBinding, list_container_->list_adapter()->IsBinding(
+                                         anchor_info.item_holder_));
+      }
+      debug_info->PushValueToMap(kDebugInfoAnchorInfo, *anchor_info_map);
+      list_container_->list_delegate()->SendCustomEvent(
+          kEventListDebugInfo, kEventParamDetail, std::move(debug_info));
     }
   }
 }
@@ -281,7 +334,7 @@ void ListEventManager::SendExposureEvent(const std::string& event_name,
   std::unique_ptr<pub::Value> exposure_info =
       GenerateNodeExposureInfo(item_holder);
   if (exposure_info) {
-    list_item_delegate->SendCustomEvent(event_name, list::kEventParamDetail,
+    list_item_delegate->SendCustomEvent(event_name, kEventParamDetail,
                                         std::move(exposure_info));
   }
 }
@@ -291,9 +344,10 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateNodeExposureInfo(
   std::unique_ptr<pub::Value> exposure_info;
   const auto& value_factory = list_container_->value_factory();
   if (value_factory && (exposure_info = value_factory->CreateMap())) {
-    exposure_info->PushInt32ToMap(list::kCellInfoIndex, item_holder->index());
-    exposure_info->PushStringToMap(list::kCellInfoItemKey,
-                                   item_holder->item_key());
+    // push index
+    exposure_info->PushInt32ToMap(kCellInfoIndex, item_holder->index());
+    // push key
+    exposure_info->PushStringToMap(kCellInfoItemKey, item_holder->item_key());
   }
   return exposure_info;
 }
@@ -319,19 +373,19 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateScrollInfo(
       float list_height =
           list_container_->list_delegate()->GetHeight() / layouts_unit_per_px;
 
-      scroll_info->PushDoubleToMap(list::kScrollInfoScrollLeft,
+      scroll_info->PushDoubleToMap(kScrollInfoScrollLeft,
                                    is_vertical ? 0.f : content_offset);
-      scroll_info->PushDoubleToMap(list::kScrollInfoScrollTop,
+      scroll_info->PushDoubleToMap(kScrollInfoScrollTop,
                                    !is_vertical ? 0.f : content_offset);
-      scroll_info->PushDoubleToMap(list::kScrollInfoScrollWidth,
+      scroll_info->PushDoubleToMap(kScrollInfoScrollWidth,
                                    is_vertical ? list_width : content_size);
-      scroll_info->PushDoubleToMap(list::kScrollInfoScrollHeight,
+      scroll_info->PushDoubleToMap(kScrollInfoScrollHeight,
                                    !is_vertical ? list_height : content_size);
-      scroll_info->PushDoubleToMap(list::kScrollInfoListWidth, list_width);
-      scroll_info->PushDoubleToMap(list::kScrollInfoListHeight, list_height);
-      scroll_info->PushDoubleToMap(list::kScrollInfoDeltaX,
+      scroll_info->PushDoubleToMap(kScrollInfoListWidth, list_width);
+      scroll_info->PushDoubleToMap(kScrollInfoListHeight, list_height);
+      scroll_info->PushDoubleToMap(kScrollInfoDeltaX,
                                    deltaX / layouts_unit_per_px);
-      scroll_info->PushDoubleToMap(list::kScrollInfoDeltaY,
+      scroll_info->PushDoubleToMap(kScrollInfoDeltaY,
                                    deltaY / layouts_unit_per_px);
     }
   }
@@ -376,8 +430,10 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
         list_container_->list_delegate()->GetLayoutsUnitPerPx();
     if (visible_cells_info && base::FloatsLarger(layouts_unit_per_px, 0.f)) {
       ListAdapter* list_adapter = list_container_->list_adapter();
-      children_helper_->ForEachChild(
-          children_helper_->on_screen_children(),
+      ListChildrenHelper* list_children_helper =
+          list_container_->list_children_helper();
+      list_children_helper->ForEachChild(
+          list_children_helper->on_screen_children(),
           [list_adapter, layouts_unit_per_px, scroll_left, scroll_top,
            for_scroll_info, &visible_cells_info,
            &value_factory](ItemHolder* item_holder) {
@@ -386,50 +442,45 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
             if (list_item_delegate) {
               auto item_info = value_factory->CreateMap();
               if (item_info) {
-                item_info->PushStringToMap(list::kCellInfoItemKey,
+                item_info->PushStringToMap(kCellInfoItemKey,
                                            item_holder->item_key());
-                item_info->PushInt32ToMap(list::kCellInfoIndex,
-                                          item_holder->index());
+                item_info->PushInt32ToMap(kCellInfoIndex, item_holder->index());
                 float left = item_holder->left();
                 float top = item_holder->top();
                 if (for_scroll_info) {
                   // scroll info
                   item_info->PushStringToMap(
-                      list::kCellInfoIdSelector,
-                      list_item_delegate->GetIdSelector());
+                      kCellInfoIdSelector, list_item_delegate->GetIdSelector());
                   item_info->PushDoubleToMap(
-                      list::kCellInfoTop,
-                      (top - scroll_top) / layouts_unit_per_px);
+                      kCellInfoTop, (top - scroll_top) / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
-                      list::kCellInfoBottom,
+                      kCellInfoBottom,
                       (top + item_holder->height()) / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
-                      list::kCellInfoLeft,
+                      kCellInfoLeft,
                       (left - scroll_left) / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
-                      list::kCellInfoRight,
+                      kCellInfoRight,
                       (left + item_holder->width()) / layouts_unit_per_px);
                   // for legacy API
-                  item_info->PushInt32ToMap(list::kCellInfoPosition,
+                  item_info->PushInt32ToMap(kCellInfoPosition,
                                             item_holder->index());
                 } else {
                   // layout info
-                  item_info->PushDoubleToMap(list::kCellInfoOriginX,
+                  item_info->PushDoubleToMap(kCellInfoOriginX,
                                              left / layouts_unit_per_px);
-                  item_info->PushDoubleToMap(list::kCellInfoOriginY,
+                  item_info->PushDoubleToMap(kCellInfoOriginY,
                                              top / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
-                      list::kCellInfoWidth,
+                      kCellInfoWidth,
                       item_holder->width() / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
-                      list::kCellInfoHeight,
+                      kCellInfoHeight,
                       item_holder->height() / layouts_unit_per_px);
                   item_info->PushBoolToMap(
-                      list::kCellInfoIsBinding,
-                      list_adapter->IsBinding(item_holder));
+                      kCellInfoIsBinding, list_adapter->IsBinding(item_holder));
                   item_info->PushBoolToMap(
-                      list::kCellInfoUpdated,
-                      list_adapter->IsUpdated(item_holder));
+                      kCellInfoUpdated, list_adapter->IsUpdated(item_holder));
                 }
                 visible_cells_info->PushValueToArray(*item_info);
               }
@@ -442,9 +493,17 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
 }
 
 void ListEventManager::CreateLayoutCompleteInfoIfNeeded() {
-  if (!layout_complete_info_) {
+  if (!layout_complete_info_ && list_container_->value_factory()) {
     layout_complete_info_ = list_container_->value_factory()->CreateMap();
   }
+}
+
+bool ListEventManager::ShouldGenerateDebugInfo(
+    ListDebugInfoLevel target_level) const {
+  ElementDelegate* list_delegate = list_container_->list_delegate();
+  return list_delegate->IsInDebugMode() &&
+         list_delegate->HasBoundEvent(kEventListDebugInfo) &&
+         debug_info_level_ >= target_level;
 }
 
 }  // namespace list

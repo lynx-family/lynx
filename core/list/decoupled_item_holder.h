@@ -6,8 +6,11 @@
 #define CORE_LIST_DECOUPLED_ITEM_HOLDER_H_
 
 #include <array>
+#include <limits>
 #include <string>
 
+#include "base/include/flex_optional.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "core/list/decoupled_list_types.h"
 
 namespace lynx {
@@ -16,65 +19,19 @@ namespace list {
 class ItemElementDelegate;
 class ListOrientationHelper;
 
-class ItemHolder {
+class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
  public:
-  ItemHolder(int index, const std::string& item_key);
-  virtual ~ItemHolder() = default;
-
-  void UpdateLayoutFromItemDelegate();
-  void UpdateLayoutFromItemDelegate(list::ItemElementDelegate* item_delegate);
-  void UpdateLayoutToPlatform(float content_size, float container_size);
-  virtual void UpdateLayoutToPlatform(float content_size, float container_size,
-                                      list::ItemElementDelegate* item_delegate);
-  virtual void UpdateLayoutFromManager(float left, float top);
-  bool IsAtStickyPosition(float content_offset, float list_height,
-                          float content_size, float sticky_offset, float start,
-                          float end) const;
-  bool VisibleInList(ListOrientationHelper* orientation_helper,
-                     float content_offset) const;
-  float GetBorder(list::FrameDirection frame_direction) const;
-  float GetPadding(list::FrameDirection frame_direction) const;
-  float GetMargin(list::FrameDirection frame_direction) const;
-  void SetIndex(int index) { index_ = index; }
-  void SetItemKey(const std::string& item_key) { item_key_ = item_key; }
-  void SetItemSpanSize(int item_span_size) { item_span_size_ = item_span_size; }
-  void SetItemColIndex(int item_col_index) { item_col_index_ = item_col_index; }
-  void SetItemFullSpan(bool item_full_span) {
-    item_full_span_ = item_full_span;
-  }
-  void SetTopInset(float top_inset) { top_inset_ = top_inset; }
-  void SetTop(float top) { top_ = top; }
-  void SetLeft(float left) { left_ = left; }
-  void SetEstimatedSize(float estimated_size) {
-    estimated_size_ = estimated_size;
-  }
-  void SetContainerSize(float container_size) {
-    container_size_ = container_size;
-  }
-  void SetOrientation(list::Orientation orientation) {
-    orientation_ = orientation;
-  }
-  void SetDirection(list::Direction direction) { direction_ = direction; }
-  void SetSticky(bool sticky_top, bool sticky_bottom) {
-    sticky_top_ = sticky_top;
-    sticky_bottom_ = sticky_bottom;
-  }
-  void SetRecyclable(bool recyclable) { recyclable_ = recyclable; }
-
-  const std::string& item_key() const { return item_key_; }
-  int index() const { return index_; }
-  int item_col_index() const { return item_col_index_; }
-  int item_span_size() const { return item_span_size_; }
-  bool item_full_span() const { return item_full_span_; }
-  float top_inset() const { return top_inset_; }
-  float left() const { return left_; }
-  float top() const { return top_; }
-  float height() const;
-  float width() const;
-  bool sticky() const { return sticky_top_ || sticky_bottom_; }
-  bool sticky_top() const { return sticky_top_; }
-  bool sticky_bottom() const { return sticky_bottom_; }
-  bool recyclable() const { return recyclable_; }
+  class AnimationDelegate {
+   public:
+    virtual ~AnimationDelegate() = default;
+    // Animation running currently.
+    virtual ListContainerAnimationType AnimationType() const = 0;
+    virtual void DeferredDestroyItemHolder(ItemHolder* holder) = 0;
+    virtual void RecycleItemHolder(ItemHolder* holder) = 0;
+    // Whether enable update animation in frontend, distinguish this from
+    // `AnimationType()` plz.
+    virtual bool UpdateAnimation() const = 0;
+  };
 
   // Note: The comparator of ItemHolder should allow objects with the same
   // index but different addresses to exist and it should meet the
@@ -99,21 +56,96 @@ class ItemHolder {
     }
   };
 
+  ItemHolder(int index, const std::string& item_key,
+             AnimationDelegate* delegate);
+  virtual ~ItemHolder() = default;
+
+  void UpdateLayoutFromItemDelegate();
+  void UpdateLayoutFromItemDelegate(ItemElementDelegate* item_delegate);
+  void UpdateLayoutToPlatform(float content_size, float container_size);
+  void UpdateLayoutToPlatform(float content_size, float container_size,
+                              ItemElementDelegate* item_delegate);
+  void UpdateLayoutFromManager(float left, float top);
+  bool IsAtStickyPosition(float content_offset, float list_height,
+                          float content_size, float sticky_offset, float start,
+                          float end) const;
+  bool VisibleInList(ListOrientationHelper* orientation_helper,
+                     float content_offset) const;
+
+  // Animation
+  void DoAnimationFrame(float progress);
+  void EndAnimation();
+  void RecycleAfterAnimation(ItemHolderAnimationType type);
+  void MarkInsertOpacity();
+
+  float GetBorder(FrameDirection frame_direction) const;
+  float GetPadding(FrameDirection frame_direction) const;
+  float GetMargin(FrameDirection frame_direction) const;
+  void SetIndex(int index) { index_ = index; }
+  void SetItemKey(const std::string& item_key) { item_key_ = item_key; }
+  void SetItemSpanSize(int item_span_size) { item_span_size_ = item_span_size; }
+  void SetItemColIndex(int item_col_index) { item_col_index_ = item_col_index; }
+  void SetItemFullSpan(bool item_full_span) {
+    item_full_span_ = item_full_span;
+  }
+  void SetTopInset(float top_inset) { top_inset_ = top_inset; }
+  void SetTop(float top) { top_ = top; }
+  void SetLeft(float left) { left_ = left; }
+  void SetEstimatedSize(float estimated_size) {
+    estimated_size_ = estimated_size;
+  }
+  void SetContainerSize(float container_size) {
+    container_size_ = container_size;
+  }
+  void SetOrientation(Orientation orientation) { orientation_ = orientation; }
+  void SetDirection(Direction direction) { direction_ = direction; }
+  void SetSticky(bool sticky_top, bool sticky_bottom) {
+    sticky_top_ = sticky_top;
+    sticky_bottom_ = sticky_bottom;
+  }
+  void SetWeakAnchorRef(ItemHolder* item_holder) {
+    weak_anchor_ref_ = base::make_flex_optional(
+        item_holder ? item_holder->WeakFromThis() : fml::WeakPtr<ItemHolder>());
+  }
+  void ResetWeakAnchorRef() { weak_anchor_ref_.reset(); }
+  ItemHolder* GetAnchorRefHolder() const {
+    return weak_anchor_ref_ && (*weak_anchor_ref_) ? (*weak_anchor_ref_).get()
+                                                   : nullptr;
+  }
+  void SetRecyclable(bool recyclable) { recyclable_ = recyclable; }
+
+  const std::string& item_key() const { return item_key_; }
+  int index() const { return index_; }
+  int item_col_index() const { return item_col_index_; }
+  int item_span_size() const { return item_span_size_; }
+  bool item_full_span() const { return item_full_span_; }
+  float top_inset() const { return top_inset_; }
+  float left() const { return left_; }
+  float top() const { return top_; }
+  float height() const;
+  float width() const;
+  bool sticky() const { return sticky_top_ || sticky_bottom_; }
+  bool sticky_top() const { return sticky_top_; }
+  bool sticky_bottom() const { return sticky_bottom_; }
+  base::flex_optional<fml::WeakPtr<ItemHolder>> weak_anchor_ref() const {
+    return weak_anchor_ref_;
+  }
+  bool recyclable() const { return recyclable_; }
+
  private:
-  float GetRTLLeft(float content_size, float container_size) const;
+  float GetRTLLeft(float content_size, float container_size, float left,
+                   float width) const;
   float GetSizeInMainAxis() const;
-  void SetItemDelegate(list::ItemElementDelegate* item_delegate) {
+  void SetItemDelegate(ItemElementDelegate* item_delegate) {
     item_delegate_ = item_delegate;
   }
   void SetOperationId(int64_t operation_id) { operation_id_ = operation_id; }
-  void MarkDiffStatus(list::DiffStatus status) { diff_status_ = status; }
+  void MarkDiffStatus(DiffStatus status) { diff_status_ = status; }
   void MarkRemoved(bool value) { removed_ = value; }
   void MarkDirty(bool value) { dirty_ = value; }
   void MarkVirtualDomPreloaded(bool value) { virtual_dom_preloaded_ = value; }
   bool removed() const { return removed_; }
-  bool is_updated() const {
-    return diff_status_ == list::DiffStatus::kUpdateTo;
-  }
+  bool is_updated() const { return diff_status_ == DiffStatus::kUpdateTo; }
   bool BoundWithItemDelegate() {
     return !dirty_ && item_delegate_ && operation_id_ == 0;
   }
@@ -133,18 +165,19 @@ class ItemHolder {
   // Whether the ItemHolder is removed.
   bool removed_{false};
   // kValid / kRemoved / kUpdateTo / kUpdatedFrom / kMoveTo / kMoveFrom
-  list::DiffStatus diff_status_{list::DiffStatus::kValid};
+  DiffStatus diff_status_{DiffStatus::kValid};
   // The id of every binding operation, which is used to determine the binding
   // relationship with ItemHolder and child element.
   int64_t operation_id_{0};
   // The ItemElementDelegate's ptr bound with ItemHolder. If the ItemHolder is
   // recycled, the element_ will be reset to nullptr;
-  list::ItemElementDelegate* item_delegate_{nullptr};
+  ItemElementDelegate* item_delegate_{nullptr};
   bool virtual_dom_preloaded_{false};
 
   // All layout Info of item holder.
   // The ItemHolder's index in data source.
-  int index_{list::kInvalidIndex};
+  int index_{kInvalidIndex};
+  base::flex_optional<fml::WeakPtr<ItemHolder>> weak_anchor_ref_;
   // The ItemHold's key.
   std::string item_key_;
   // Whether the ItemHolder can be recycled.
@@ -162,21 +195,32 @@ class ItemHolder {
   int item_span_size_{1};
   float left_{0.f};
   float top_{0.f};
-  float width_{list::kInvalidDimensionSize};
-  float height_{list::kInvalidDimensionSize};
+  float width_{kInvalidDimensionSize};
+  float height_{kInvalidDimensionSize};
   // The ItemHolder's main axis-gap.
   float top_inset_{0.f};
   // The container's size in main axis.
-  float container_size_{list::kInvalidDimensionSize};
+  float container_size_{kInvalidDimensionSize};
   // The ItemHolder's estimated size (ppx).
-  float estimated_size_{list::kInvalidDimensionSize};
+  float estimated_size_{kInvalidDimensionSize};
   // The layout's orientation. (kVertical / kHorizontal)
-  list::Orientation orientation_{list::Orientation::kVertical};
+  Orientation orientation_{Orientation::kVertical};
   // The layout's direction. (kNormal / kRTL)
-  list::Direction direction_{list::Direction::kNormal};
+  Direction direction_{Direction::kNormal};
   std::array<float, 4> paddings_{};
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
+
+  // Animation
+  AnimationDelegate* animation_delegate_{nullptr};
+  float animation_origin_left_{std::numeric_limits<float>::quiet_NaN()};
+  float animation_origin_top_{std::numeric_limits<float>::quiet_NaN()};
+  // Note: 1.f means the opacity animation of 1 -> 0, and the 0.f is the
+  // opposite.
+  float animation_origin_opacity_{std::numeric_limits<float>::quiet_NaN()};
+  float content_size_{std::numeric_limits<float>::quiet_NaN()};
+  float container_width_{std::numeric_limits<float>::quiet_NaN()};
+  ItemHolderAnimationType animation_type_{ItemHolderAnimationType::kNone};
 };
 
 }  // namespace list

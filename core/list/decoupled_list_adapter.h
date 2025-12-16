@@ -13,15 +13,14 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/list/decoupled_adapter_helper.h"
+#include "core/list/decoupled_item_holder.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/public/pipeline_option.h"
 
 namespace lynx {
 namespace list {
 
-class ItemElementDelegate;
 class ListContainerImpl;
-class ListMediator;
 
 class ListAdapter : public AdapterHelper::Delegate {
  public:
@@ -99,13 +98,13 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   // Finish bind item holder with element.
   virtual void OnFinishBindItemHolder(
-      list::ItemElementDelegate* list_item_delegate,
-      const std::shared_ptr<tasm::PipelineOptions>& option) = 0;
+      ItemElementDelegate* list_item_delegate,
+      const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
 
   // Finish bind item holders with elements
   virtual void OnFinishBindItemHolders(
       const std::vector<ItemElementDelegate*>& list_items,
-      const std::shared_ptr<lynx::tasm::PipelineOptions>& options) = 0;
+      const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
 
   // Recycle ItemHolder.
   virtual void RecycleItemHolder(ItemHolder* item_holder) = 0;
@@ -131,14 +130,23 @@ class ListAdapter : public AdapterHelper::Delegate {
   // Return whether the ItemHolder is removed
   virtual bool IsRemoved(const ItemHolder* item_holder) = 0;
 
-  virtual list::ItemElementDelegate* GetItemElementDelegate(
+  virtual ItemElementDelegate* GetItemElementDelegate(
       const ItemHolder* item_holder) = 0;
 
   virtual void RecycleItemHolder(const ItemHolder* item_holder) {}
 
-  bool UpdateDataSource(const pub::Value& data_source);
+  // Return diff result and whether to use animation in this diff process,
+  // animation will not be enabled in first screen.
+  std::pair<ListAdapterDiffResult, bool> UpdateRadonDataSource(
+      const pub::Value& radon_data_source);
 
-  bool UpdateFiberDataSource(const pub::Value& data_source);
+  std::pair<ListAdapterDiffResult, bool> UpdateFiberDataSource(
+      const pub::Value& fiber_data_source);
+
+  // Return parsed diff result.
+  std::unique_ptr<pub::Value> GenerateDiffResult() const;
+
+  void ClearDiffResult();
 
   void UpdateItemHolderToLatest(ListChildrenHelper* list_children_helper);
 
@@ -151,16 +159,14 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   // If the list item is self-layout-updated, we invoke the method to update
   // layout info to the ItemHolder.
-  void UpdateLayoutInfoToItemHolder(
-      list::ItemElementDelegate* list_item_delegate, ItemHolder* item_holder);
+  void UpdateLayoutInfoToItemHolder(ItemElementDelegate* list_item_delegate,
+                                    ItemHolder* item_holder);
 
   void EnqueueElementsIfNeeded();
 
   ItemHolder* GetItemHolderForIndex(int index);
 
   bool IsFullSpanAtIndex(int index) const;
-
-  std::unique_ptr<pub::Value> GenerateDiffResult() const;
 
   void Release() {
     list_container_ = nullptr;
@@ -186,7 +192,7 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   AdapterHelper* list_adapter_helper() const { return adapter_helper_.get(); }
 
-  const std::unique_ptr<list::ItemHolderMap>& item_holder_map() const {
+  const std::unique_ptr<ItemHolderMap>& item_holder_map() const {
     return item_holder_map_;
   }
 
@@ -204,7 +210,11 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   void CheckSticky(ItemHolder* item_holder, int32_t index);
 
-  void FlushListContainerInfo();
+  bool HasExpectedDiffAnimation() const;
+
+  void UpdateAnchorRefItem(ListChildrenHelper* list_children_helper);
+
+  void GenerateAndFlushListContainerInfo();
 
   void GenerateDiffArray(const std::string& diff_key,
                          const std::vector<int32_t>& diff_array,
@@ -212,7 +222,7 @@ class ListAdapter : public AdapterHelper::Delegate {
 
  protected:
   ListContainerImpl* list_container_{nullptr};
-  std::unique_ptr<list::ItemHolderMap> item_holder_map_;
+  std::unique_ptr<ItemHolderMap> item_holder_map_;
   ItemHolderSet fiber_flush_item_holder_set_;
 
  private:

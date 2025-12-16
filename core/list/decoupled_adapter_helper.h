@@ -20,14 +20,6 @@ namespace lynx {
 namespace list {
 
 class AdapterHelper {
- private:
-  void UpdateInsertions(const pub::Value& diff_insertions);
-  void UpdateRemovals(const pub::Value& diff_removals);
-  void UpdateUpdateFrom(const pub::Value& diff_update_from);
-  void UpdateUpdateTo(const pub::Value& diff_update_to);
-  void UpdateMoveTo(const pub::Value& diff_move_to);
-  void UpdateMoveFrom(const pub::Value& diff_move_from);
-
  public:
   class Delegate {
    public:
@@ -51,21 +43,31 @@ class AdapterHelper {
     }
     std::string ToString() const;
   };
-  // radon-diff
-  bool UpdateDiffResult(const pub::Value& diff_result);
+  // Update diff info for Radon arch.
+  bool UpdateRadonDiffResult(const pub::Value& diff_result);
+
   void UpdateItemKeys(const pub::Value& item_keys_value);
+
   void UpdateEstimatedHeightsPx(const pub::Value& estimated_heights_px);
+
   void UpdateEstimatedSizesPx(const pub::Value& estimated_sizes_px);
+
   void UpdateFullSpans(const pub::Value& full_spans);
+
   void UpdateStickyBottoms(const pub::Value& sticky_bottoms);
+
   void UpdateStickyTops(const pub::Value& sticky_tops);
-  // Fiber
+
+  // Update diff info for Fiber arch.
   void UpdateFiberInsertAction(const std::unique_ptr<pub::Value>& insert_action,
                                bool only_parse_insertions = true);
+
   void UpdateFiberRemoveAction(const std::unique_ptr<pub::Value>& remove_action,
                                bool only_parse_removals = true);
+
   void UpdateFiberUpdateAction(const std::unique_ptr<pub::Value>& update_action,
                                bool only_parse_update = true);
+
   void UpdateFiberExtraInfo();
 
   void SetDelegate(AdapterHelper::Delegate* delegate) { delegate_ = delegate; }
@@ -88,10 +90,16 @@ class AdapterHelper {
     if (item_key_map_.end() != (it = item_key_map_.find(item_key))) {
       return it->second;
     }
-    return list::kInvalidIndex;
+    return kInvalidIndex;
   }
 
-  void ClearDiffInfo() {
+  bool HasExpectedDiffAnimation() const {
+    return !(insertions().size() == item_keys().size() &&
+             update_from().empty() && update_to().empty() &&
+             move_from().empty() && move_to().empty() && removals().empty());
+  }
+
+  void ClearDiffResult() {
     diff_result_.insertions_.clear();
     diff_result_.removals_.clear();
     diff_result_.update_from_.clear();
@@ -144,6 +152,19 @@ class AdapterHelper {
   }
 
  private:
+  void UpdateInsertions(const pub::Value& diff_insertions);
+
+  void UpdateRemovals(const pub::Value& diff_removals);
+
+  void UpdateUpdateFrom(const pub::Value& diff_update_from);
+
+  void UpdateUpdateTo(const pub::Value& diff_update_to);
+
+  void UpdateMoveTo(const pub::Value& diff_move_to);
+
+  void UpdateMoveFrom(const pub::Value& diff_move_from);
+
+ private:
   AdapterHelper::Delegate* delegate_{nullptr};
   DiffResult diff_result_;
   DiffResult last_diff_result_;
@@ -165,6 +186,7 @@ class AdapterHelper {
   std::unordered_set<std::string> fiber_sticky_bottoms_;
   std::unordered_set<std::string> fiber_unrecyclable_;
 };
+
 }  // namespace list
 }  // namespace lynx
 

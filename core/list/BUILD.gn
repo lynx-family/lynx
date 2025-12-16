@@ -14,6 +14,8 @@ if (disable_list_platform_implementation) {
   list_container_shared_sources += [
     "decoupled_adapter_helper.cc",
     "decoupled_adapter_helper.h",
+    "decoupled_batch_list_adapter.cc",
+    "decoupled_batch_list_adapter.h",
     "decoupled_default_list_adapter.cc",
     "decoupled_default_list_adapter.h",
     "decoupled_grid_layout_manager.cc",
@@ -28,6 +30,8 @@ if (disable_list_platform_implementation) {
     "decoupled_list_anchor_manager.h",
     "decoupled_list_children_helper.cc",
     "decoupled_list_children_helper.h",
+    "decoupled_list_container_animation_manager.cc",
+    "decoupled_list_container_animation_manager.h",
     "decoupled_list_container_impl.cc",
     "decoupled_list_container_impl.h",
     "decoupled_list_event_manager.cc",

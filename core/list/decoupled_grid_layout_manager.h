@@ -25,13 +25,13 @@ class GridLayoutManager : public LinearLayoutManager {
       LayoutState& layout_state,
       const ListAnchorManager::AnchorInfo& anchor_info) override;
   void LayoutInvalidItemHolder(int first_invalid_index) override;
-  bool ShouldRecycleItemHolder(ItemHolder* item_holder) override;
+  bool ShouldRecycleItemHolder(const ItemHolder* item_holder) const override;
   float GetTargetContentSize() override;
   void UpdateLayoutStateToFillPreloadBuffer(
       LayoutState& layout_state, int index, float offset,
-      list::LayoutDirection layout_direction) override;
-  int GetTargetIndexForPreloadBuffer(
-      int start_index, list::LayoutDirection layout_direction) override;
+      LayoutDirection layout_direction) override;
+  int GetTargetIndexForPreloadBuffer(int start_index,
+                                     LayoutDirection layout_direction) override;
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) const override;
 #endif
@@ -40,8 +40,8 @@ class GridLayoutManager : public LinearLayoutManager {
   // get the column size which the item holder occupies
   int getSpanSize(int index);
   // calculate the largest itemHolder‘s index in this row.
-  float LargestMainSizeInRowWithItemHolder(ItemHolder* item_holder);
-  int GetStartIndexOfNextRow(list::LayoutDirection direction,
+  float LargestMainSizeInRowWithItemHolder(const ItemHolder* item_holder) const;
+  int GetStartIndexOfNextRow(LayoutDirection direction,
                              const int start_index) const;
 };
 

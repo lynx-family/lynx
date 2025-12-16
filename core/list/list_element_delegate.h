@@ -11,10 +11,11 @@
 #include <string>
 
 #include "base/include/debug/lynx_error.h"
+#include "core/base/threading/task_runner_manufactor.h"
+#include "core/list/decoupled_list_types.h"
 #include "core/list/list_item_element_delegate.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/pub_value.h"
-#include "core/renderer/css/css_property_id.h"
 
 namespace lynx {
 namespace list {
@@ -22,11 +23,11 @@ namespace list {
 class ElementDelegate {
  public:
   virtual ~ElementDelegate() = default;
+
   virtual int32_t GetImplId() const = 0;
   virtual float GetPhysicalPixelsPerLayoutUnit() const = 0;
   virtual float GetLayoutsUnitPerPx() const = 0;
   virtual void MarkListElementLayoutDirty() = 0;
-  virtual void OnErrorOccurred(base::LynxError error) const = 0;
   virtual bool IsRTL() const = 0;
   virtual float GetWidth() const = 0;
   virtual float GetHeight() const = 0;
@@ -35,7 +36,8 @@ class ElementDelegate {
   virtual const std::array<float, 4>& GetBorders() const = 0;
   virtual void FlushListContainerInfo(
       const std::string& list_container_info_str,
-      std::unique_ptr<pub::Value> list_container_info) = 0;
+      std::unique_ptr<pub::Value> list_container_info,
+      bool from_fiber_data_source) = 0;
   virtual void UpdateListLayoutNodeAttribute() = 0;
   virtual bool ComponentAtIndex(uint32_t index, int64_t operationId = 0,
                                 bool enable_reuse_notification = false) = 0;
@@ -49,17 +51,26 @@ class ElementDelegate {
                                                     float delta_y,
                                                     bool is_init_scroll_offset,
                                                     bool from_layout) = 0;
-  virtual void OnListItemWillAppear(int32_t list_item_id,
-                                    const std::string& item_key) = 0;
-  virtual void OnListItemDisappear(int32_t list_item_id, bool is_exist,
-                                   const std::string& item_key) = 0;
-  virtual int GetThreadStrategy() const = 0;
   virtual bool HasBoundEvent(const std::string& event_name) const = 0;
   virtual void SendCustomEvent(const std::string& event_name,
                                const std::string& param_name,
                                std::unique_ptr<pub::Value> param) = 0;
   virtual void UpdateScrollInfo(float estimated_offset, bool smooth,
                                 bool scrolling) = 0;
+
+  virtual int GetThreadStrategy() const {
+    return base::ThreadStrategyForRendering::ALL_ON_UI;
+  }
+  virtual bool IsFiberArch() const { return false; }
+  virtual void CheckZIndex(ItemElementDelegate* list_item_delegate) const {}
+  virtual void ReportListItemLifecycleStatistic(
+      const std::shared_ptr<tasm::PipelineOptions>& option,
+      const std::string& item_key) const {}
+  virtual void OnErrorOccurred(base::LynxError error) const {}
+  virtual bool IsAttachToElementManager() const { return true; }
+  virtual void MarkTiming(ListTiming flag) {}
+  virtual void RequestNextFrame() {}
+  virtual bool IsInDebugMode() const { return false; }
 };
 
 }  // namespace list

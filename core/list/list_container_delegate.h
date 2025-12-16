@@ -6,6 +6,7 @@
 #define CORE_LIST_LIST_CONTAINER_DELEGATE_H_
 
 #include <memory>
+#include <vector>
 
 #include "core/list/list_element_delegate.h"
 #include "core/list/list_item_element_delegate.h"
@@ -20,15 +21,19 @@ class ContainerDelegate {
  public:
   virtual ~ContainerDelegate() = default;
 
+  virtual void OnAttachToElementManager() = 0;
   virtual bool ResolveAttribute(const pub::Value& key,
                                 const pub::Value& value) = 0;
-  virtual void ResolveListAxisGap(lynx::tasm::CSSPropertyID id, float gap) = 0;
+  virtual void ResolveListAxisGap(tasm::CSSPropertyID id, float gap) = 0;
   virtual void PropsUpdateFinish() = 0;
   virtual void OnLayoutChildren(
       const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
   virtual void FinishBindItemHolder(
-      ItemElementDelegate* list_item,
-      const std::shared_ptr<tasm::PipelineOptions>& option) = 0;
+      ItemElementDelegate* list_item_delegate,
+      const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
+  virtual void FinishBindItemHolders(
+      const std::vector<ItemElementDelegate*>& list_item_delegate_array,
+      const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
   virtual void ScrollByPlatformContainer(float content_offset_x,
                                          float content_offset_y,
                                          float original_x,
@@ -39,6 +44,7 @@ class ContainerDelegate {
                                 bool smooth) = 0;
   virtual void ScrollStopped() = 0;
   virtual void EnableInsertPlatformView() = 0;
+  virtual void OnNextFrame() = 0;
 };
 
 std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(

@@ -1,7 +1,7 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-//
+
 #include "core/list/decoupled_item_holder.h"
 
 #include <algorithm>
@@ -13,15 +13,18 @@
 namespace lynx {
 namespace list {
 
-ItemHolder::ItemHolder(int index, const std::string& item_key)
-    : index_(index), item_key_(item_key) {}
+ItemHolder::ItemHolder(int index, const std::string& item_key,
+                       AnimationDelegate* delegate)
+    : index_(index), item_key_(item_key), animation_delegate_(delegate) {
+  DCHECK(delegate);
+}
 
 void ItemHolder::UpdateLayoutFromItemDelegate() {
   UpdateLayoutFromItemDelegate(item_delegate_);
 }
 
 void ItemHolder::UpdateLayoutFromItemDelegate(
-    list::ItemElementDelegate* item_delegate) {
+    ItemElementDelegate* item_delegate) {
   if (item_delegate) {
     // Update layout info from starlight. Here we don't update left and top's
     // value which are always zero for list's child element.
@@ -38,34 +41,77 @@ void ItemHolder::UpdateLayoutToPlatform(float content_size,
   UpdateLayoutToPlatform(content_size, container_size, item_delegate_);
 }
 
-void ItemHolder::UpdateLayoutToPlatform(
-    float content_size, float container_size,
-    list::ItemElementDelegate* item_delegate) {
-  if (item_delegate_) {
-    if (direction_ == list::Direction::kRTL) {
-      item_delegate_->UpdateLayoutToPlatform(
-          GetRTLLeft(content_size, container_size), top_);
+void ItemHolder::UpdateLayoutToPlatform(float content_size,
+                                        float container_size,
+                                        ItemElementDelegate* item_delegate) {
+  if (item_delegate) {
+    if (animation_delegate_->UpdateAnimation() &&
+        animation_type_ == ItemHolderAnimationType::kTransform) {
+      // NOTE: In the remove animation, a new item holder is created, and we
+      // need the new item holder to also run the transform animation.
     } else {
-      item_delegate_->UpdateLayoutToPlatform(left_, top_);
+      if (direction_ == Direction::kRTL) {
+        item_delegate_->UpdateLayoutToPlatform(
+            GetRTLLeft(content_size, container_size, left_, width_), top_);
+      } else {
+        item_delegate_->UpdateLayoutToPlatform(left_, top_);
+      }
     }
+    // Record current content size and container width.
+    content_size_ = content_size;
+    container_width_ = container_size;
   }
 }
 
 void ItemHolder::UpdateLayoutFromManager(float left, float top) {
   // Update left and top's value from list's layout manager.
+  if (base::FloatsEqual(left, left_) && base::FloatsEqual(top, top_)) {
+    return;
+  }
+  if (animation_delegate_->UpdateAnimation() &&
+      animation_delegate_->AnimationType() !=
+          ListContainerAnimationType::kNone &&
+      std::isnan(animation_origin_left_) && std::isnan(animation_origin_top_)) {
+    animation_origin_left_ = left_;
+    animation_origin_top_ = top_;
+    animation_type_ = ItemHolderAnimationType::kTransform;
+    // NOTE: In an insert animation, the item could be set with opacity
+    // animation first, currently we cover it with a transform animation.
+    animation_origin_opacity_ = std::numeric_limits<float>::quiet_NaN();
+  }
+  // NOTE: When the coordinates are assigned multiple times during the
+  // animation, we take the last assignment as the animation’s target position.
   left_ = left;
   top_ = top;
 }
 
+void ItemHolder::DoAnimationFrame(float progress) {
+  // TODO(dingwang.wxx): impl animation
+}
+
+void ItemHolder::EndAnimation() {
+  // TODO(dingwang.wxx): impl animation
+}
+
+// Animation here means the `animation` of *this* item holder, nor all the list
+// animations.
+void ItemHolder::RecycleAfterAnimation(ItemHolderAnimationType type) {
+  // TODO(dingwang.wxx): impl animation
+}
+
+void ItemHolder::MarkInsertOpacity() {
+  // TODO(dingwang.wxx): impl animation
+}
+
 float ItemHolder::height() const {
-  if (orientation_ == list::Orientation::kHorizontal) {
+  if (orientation_ == Orientation::kHorizontal) {
     return base::FloatsLargerOrEqual(height_, 0.f) ? height_ : 0.f;
   }
   return GetSizeInMainAxis();
 }
 
 float ItemHolder::width() const {
-  if (orientation_ == list::Orientation::kVertical) {
+  if (orientation_ == Orientation::kVertical) {
     return base::FloatsLargerOrEqual(width_, 0.f) ? width_ : 0.f;
   }
   return GetSizeInMainAxis();
@@ -74,34 +120,34 @@ float ItemHolder::width() const {
 float ItemHolder::GetSizeInMainAxis() const {
   // If the ItemHolder is never bound, we use estimated size or container size.
   float main_axis_size =
-      orientation_ == list::Orientation::kVertical ? height_ : width_;
+      orientation_ == Orientation::kVertical ? height_ : width_;
   return base::FloatsLargerOrEqual(main_axis_size, 0.f)
              ? main_axis_size
              : (base::FloatsLargerOrEqual(estimated_size_, 0.f)
                     ? estimated_size_
                     : (base::FloatsLarger(container_size_, 0.f)
                            ? container_size_
-                           : list::kDefaultMainAxisItemSize));
+                           : kDefaultMainAxisItemSize));
 }
 
-float ItemHolder::GetBorder(list::FrameDirection frame_direction) const {
+float ItemHolder::GetBorder(FrameDirection frame_direction) const {
   return borders_[static_cast<uint32_t>(frame_direction)];
 }
 
-float ItemHolder::GetPadding(list::FrameDirection frame_direction) const {
+float ItemHolder::GetPadding(FrameDirection frame_direction) const {
   return paddings_[static_cast<uint32_t>(frame_direction)];
 }
 
-float ItemHolder::GetMargin(list::FrameDirection frame_direction) const {
+float ItemHolder::GetMargin(FrameDirection frame_direction) const {
   return margins_[static_cast<uint32_t>(frame_direction)];
 }
 
-float ItemHolder::GetRTLLeft(float content_size, float container_size) const {
-  if (orientation_ == list::Orientation::kHorizontal) {
-    return std::max(content_size, container_size) - left_ - width_;
-  } else {
-    return container_size - left_ - width_;
+float ItemHolder::GetRTLLeft(float content_size, float container_size,
+                             float left, float width) const {
+  if (orientation_ == Orientation::kHorizontal) {
+    return std::max(content_size, container_size) - left - width;
   }
+  return container_size - left - width;
 }
 
 bool ItemHolder::IsAtStickyPosition(float content_offset, float list_height,

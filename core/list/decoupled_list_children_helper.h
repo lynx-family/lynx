@@ -56,10 +56,8 @@ class ListChildrenHelper {
   void UpdateTraceDebugInfo(TraceEvent* event);
 #endif
   void AddChild(const ItemHolderSet& children, ItemHolder* item_holder);
-  void AttachChild(ItemHolder* item_holder,
-                   list::ItemElementDelegate* item_delegate);
-  void DetachChild(ItemHolder* item_holder,
-                   list::ItemElementDelegate* item_delegate);
+  void AttachChild(ItemHolder* item_holder, ItemElementDelegate* item_delegate);
+  void DetachChild(ItemHolder* item_holder, ItemElementDelegate* item_delegate);
   void ForEachChild(const std::function<bool(ItemHolder*)>& func,
                     bool reverse = false) const;
   void ForEachChild(const ItemHolderSet& children,
@@ -67,14 +65,11 @@ class ListChildrenHelper {
                     bool reverse = false) const;
   const ItemHolderSet& children() const { return children_; }
   const ItemHolderSet& attached_children() const { return attached_children_; }
-  const std::unordered_map<list::ItemElementDelegate*, ItemHolder*>&
+  const std::unordered_map<ItemElementDelegate*, ItemHolder*>&
   attached_delegate_item_holder_map() const {
     return attached_delegate_item_holder_map_;
   }
   int GetChildCount() const { return static_cast<int>(children_.size()); }
-  int GetAttachedChildCount() const {
-    return static_cast<int>(children_.size());
-  }
   void ClearChildren() { children_.clear(); }
   void ClearLastBindingChildren() { last_binding_children_.clear(); }
   void ClearAttachedChildren() {
@@ -99,6 +94,7 @@ class ListChildrenHelper {
   void ClearOnScreenChildren() { on_screen_children_.clear(); }
   void ClearInPreloadChildren() { in_preload_children_.clear(); }
   void ClearInStickyChildren() { in_sticky_children_.clear(); }
+  void ClearDeferredDestroyItemHolder() { deferred_destroy_children_.clear(); }
   const ItemHolderSet& on_screen_children() const {
     return on_screen_children_;
   }
@@ -116,6 +112,10 @@ class ListChildrenHelper {
       const std::function<bool(ItemHolder*)>& insert_handler,
       const std::function<bool(ItemHolder*)>& recycle_handler,
       const std::function<bool(ItemHolder*)>& update_handler);
+  ItemHolder* GetFirstChildFrom(
+      const ItemHolderSet& children, ItemHolder* start_child,
+      const std::function<bool(const ItemHolder*)>& condition_func,
+      bool reverse = false) const;
   void InitStickyItemHolderSet(int thread_mode);
   bool AddToStickyItemHolderSet(ItemHolder* item_holder);
   bool InStickyItemHolderSet(const ItemHolder* item_holder) const;
@@ -130,16 +130,12 @@ class ListChildrenHelper {
     }
   }
 
-  void AddDeferredDestroyItemHolder(ItemHolder* holder);
-  void TraverseDeferredDestroyItemHolder(std::function<void(ItemHolder*)> fn);
-  void DestroyDeferredDestroyItemHolder();
-
  private:
   bool recycle_item_holder_{false};
   bool use_default_sticky_buffer_count_{true};
   StickyItemHolderSet in_sticky_top_children_;
   StickyItemHolderSet in_sticky_bottom_children_;
-  std::unordered_map<list::ItemElementDelegate*, ItemHolder*>
+  std::unordered_map<ItemElementDelegate*, ItemHolder*>
       attached_delegate_item_holder_map_;
   ItemHolderSet children_;
   ItemHolderSet attached_children_;

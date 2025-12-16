@@ -32,17 +32,17 @@ std::string AdapterHelper::DiffResult::ToString() const {
     }
     oss << "],";
   };
-  diff_action_to_string(list::kInsertions, insertions_);
-  diff_action_to_string(list::kRemovals, removals_);
-  diff_action_to_string(list::kUpdateFrom, update_from_);
-  diff_action_to_string(list::kUpdateTo, update_to_);
-  diff_action_to_string(list::kMoveFrom, move_from_);
-  diff_action_to_string(list::kMoveTo, move_to_);
+  diff_action_to_string(kRadonDataInsertions, insertions_);
+  diff_action_to_string(kRadonDataRemovals, removals_);
+  diff_action_to_string(kRadonDataUpdateFrom, update_from_);
+  diff_action_to_string(kRadonDataUpdateTo, update_to_);
+  diff_action_to_string(kRadonDataMoveFrom, move_from_);
+  diff_action_to_string(kRadonDataMoveTo, move_to_);
   return oss.str();
 }
 
 //  update "diff-result" info  on radon_diff architecture
-bool AdapterHelper::UpdateDiffResult(const pub::Value& diff_result) {
+bool AdapterHelper::UpdateRadonDiffResult(const pub::Value& diff_result) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_DIFF_RESULT);
   bool has_update = false;
   if (diff_result.IsMap()) {
@@ -50,22 +50,22 @@ bool AdapterHelper::UpdateDiffResult(const pub::Value& diff_result) {
         [this, &has_update](const pub::Value& key, const pub::Value& value) {
           if (key.IsString()) {
             const std::string& key_str = key.str();
-            if (key_str == list::kInsertions) {
+            if (key_str == kRadonDataInsertions) {
               UpdateInsertions(value);
               has_update = true;
-            } else if (key_str == list::kRemovals) {
+            } else if (key_str == kRadonDataRemovals) {
               UpdateRemovals(value);
               has_update = true;
-            } else if (key_str == list::kUpdateFrom) {
+            } else if (key_str == kRadonDataUpdateFrom) {
               UpdateUpdateFrom(value);
               has_update = true;
-            } else if (key_str == list::kUpdateTo) {
+            } else if (key_str == kRadonDataUpdateTo) {
               UpdateUpdateTo(value);
               has_update = true;
-            } else if (key_str == list::kMoveFrom) {
+            } else if (key_str == kRadonDataMoveFrom) {
               UpdateMoveFrom(value);
               has_update = true;
-            } else if (key_str == list::kMoveTo) {
+            } else if (key_str == kRadonDataMoveTo) {
               UpdateMoveTo(value);
               has_update = true;
             }
@@ -149,7 +149,7 @@ void AdapterHelper::UpdateMoveFrom(const pub::Value& diff_move_from) {
   }
 }
 
-//   update "item-key" info  on radon_diff architecture
+// update "item-key" info on radon architecture
 void AdapterHelper::UpdateItemKeys(const pub::Value& item_keys_value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_ITEM_KEYS);
   auto& item_keys = diff_result_.item_keys_;
@@ -191,7 +191,7 @@ void AdapterHelper::UpdateItemKeys(const pub::Value& item_keys_value) {
   }
 }
 
-// update "estimated-height-px" info  on radon_diff architecture
+// update "estimated-height-px" info on radon architecture
 void AdapterHelper::UpdateEstimatedHeightsPx(
     const pub::Value& estimated_heights_px) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_ESTIMATED_HEIGHT);
@@ -208,7 +208,7 @@ void AdapterHelper::UpdateEstimatedHeightsPx(
   }
 }
 
-// update "estimated-main-axis-size-px" info  on radon_diff architecture
+// update "estimated-main-axis-size-px" info on radon architecture
 void AdapterHelper::UpdateEstimatedSizesPx(
     const pub::Value& estimated_sizes_px) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_ESTIMATED_SIZE);
@@ -225,7 +225,7 @@ void AdapterHelper::UpdateEstimatedSizesPx(
   }
 }
 
-//  update "full-span" info  on radon_diff architecture
+// update "full-span" info on radon architecture
 void AdapterHelper::UpdateFullSpans(const pub::Value& full_spans) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_FULL_SPANS);
   full_spans_.clear();
@@ -238,7 +238,7 @@ void AdapterHelper::UpdateFullSpans(const pub::Value& full_spans) {
   }
 }
 
-// update "sticky-bottom" info  on radon_diff architecture
+// update "sticky-bottom" info on radon architecture
 void AdapterHelper::UpdateStickyBottoms(const pub::Value& sticky_bottoms) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_STICKY_BOTTOMS);
   sticky_bottoms_.clear();
@@ -251,7 +251,7 @@ void AdapterHelper::UpdateStickyBottoms(const pub::Value& sticky_bottoms) {
   }
 }
 
-// update "sticky-top" info  on radon_diff architecture
+// update "sticky-top" info on radon architecture
 void AdapterHelper::UpdateStickyTops(const pub::Value& sticky_tops) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_STICKY_TOPS);
   sticky_tops_.clear();
@@ -267,7 +267,7 @@ void AdapterHelper::UpdateStickyTops(const pub::Value& sticky_tops) {
 // update "insert-action" on fiber architecture
 void AdapterHelper::UpdateFiberInsertAction(
     const std::unique_ptr<pub::Value>& insert_action,
-    bool only_parse_insertions) {
+    bool only_parse_insertions /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_FIBER_INSERT_ACTION);
   if (!insert_action || !insert_action->IsArray()) {
     return;
@@ -282,9 +282,9 @@ void AdapterHelper::UpdateFiberInsertAction(
                                &item_keys](int64_t index,
                                            const pub::Value& value) {
     if (value.IsMap()) {
-      const auto& position = value.GetValueForKey(list::kPosition);
-      const auto& item_key = value.GetValueForKey(list::kItemKey);
-      if (!position->IsNumber()) {
+      const auto& position = value.GetValueForKey(kFiberDataPosition);
+      const auto& item_key = value.GetValueForKey(kFiberDataItemKey);
+      if (!position || !item_key || !position->IsNumber()) {
         return;
       }
       int index = static_cast<int>(position->Number());
@@ -296,34 +296,38 @@ void AdapterHelper::UpdateFiberInsertAction(
             return;
           }
           if (index <= static_cast<int>(item_keys.size())) {
-            const auto& is_full_span = value.GetValueForKey(list::kFullSpan);
-            const auto& is_sticky_top = value.GetValueForKey(list::kStickyTop);
+            const auto& is_full_span = value.GetValueForKey(kFiberDataFullSpan);
+            const auto& is_sticky_top =
+                value.GetValueForKey(kFiberDataStickyTop);
             const auto& is_sticky_bottom =
-                value.GetValueForKey(list::kStickyBottom);
+                value.GetValueForKey(kFiberDataStickyBottom);
             const auto& estimated_height_px =
-                value.GetValueForKey(list::kEstimatedHeightPx);
+                value.GetValueForKey(kFiberDataEstimatedHeightPx);
             const auto& estimated_size_px =
-                value.GetValueForKey(list::kEstimatedMainAxisSizePx);
-            const auto& recyclable = value.GetValueForKey(list::kRecyclable);
+                value.GetValueForKey(kFiberDataEstimatedMainAxisSizePx);
+            const auto& recyclable = value.GetValueForKey(kFiberDataRecyclable);
             item_keys.insert(item_keys.begin() + index, item_key_str);
-            if (is_full_span->IsBool() && is_full_span->Bool()) {
+            if (is_full_span && is_full_span->IsBool() &&
+                is_full_span->Bool()) {
               fiber_full_spans_.insert(item_key_str);
             }
-            if (is_sticky_top->IsBool() && is_sticky_top->Bool()) {
+            if (is_sticky_top && is_sticky_top->IsBool() &&
+                is_sticky_top->Bool()) {
               fiber_sticky_tops_.insert(item_key_str);
             }
-            if (is_sticky_bottom->IsBool() && is_sticky_bottom->Bool()) {
+            if (is_sticky_bottom && is_sticky_bottom->IsBool() &&
+                is_sticky_bottom->Bool()) {
               fiber_sticky_bottoms_.insert(item_key_str);
             }
-            if (estimated_height_px->IsNumber()) {
+            if (estimated_height_px && estimated_height_px->IsNumber()) {
               fiber_estimated_heights_px_[item_key_str] =
                   static_cast<int32_t>(estimated_height_px->Number());
             }
-            if (estimated_size_px->IsNumber()) {
+            if (estimated_size_px && estimated_size_px->IsNumber()) {
               fiber_estimated_sizes_px_[item_key_str] =
                   static_cast<int32_t>(estimated_size_px->Number());
             }
-            if (recyclable->IsBool() && !recyclable->Bool()) {
+            if (recyclable && recyclable->IsBool() && !recyclable->Bool()) {
               fiber_unrecyclable_.insert(item_key_str);
             }
           }
@@ -352,7 +356,7 @@ void AdapterHelper::UpdateFiberInsertAction(
 // update "remove-action" on  fiber architecture
 void AdapterHelper::UpdateFiberRemoveAction(
     const std::unique_ptr<pub::Value>& remove_action,
-    bool only_parse_removals) {
+    bool only_parse_removals /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_FIBER_REMOVE_ACTION);
   if (!remove_action || !remove_action->IsArray()) {
     return;
@@ -422,7 +426,8 @@ void AdapterHelper::UpdateFiberRemoveAction(
 
 // update "update-action" on fiber architecture
 void AdapterHelper::UpdateFiberUpdateAction(
-    const std::unique_ptr<pub::Value>& update_action, bool only_parse_update) {
+    const std::unique_ptr<pub::Value>& update_action,
+    bool only_parse_update /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADAPTER_HELPER_UPDATE_FIBER_UPDATE_ACTION);
   if (!update_action || !update_action->IsArray()) {
     return;
@@ -439,11 +444,12 @@ void AdapterHelper::UpdateFiberUpdateAction(
                                &update_to, &item_keys,
                                &oss](int64_t index, const pub::Value& value) {
     if (value.IsMap()) {
-      const auto& from_position = value.GetValueForKey(list::kFrom);
-      const auto& to_position = value.GetValueForKey(list::kTo);
-      const auto& item_key = value.GetValueForKey(list::kItemKey);
-      const auto& flush = value.GetValueForKey(list::kFlush);
-      if (!from_position->IsNumber() || !to_position->IsNumber() ||
+      const auto& from_position = value.GetValueForKey(kFiberDataFrom);
+      const auto& to_position = value.GetValueForKey(kFiberDataTo);
+      const auto& item_key = value.GetValueForKey(kFiberDataItemKey);
+      const auto& flush = value.GetValueForKey(kFiberDataFlush);
+      if (!from_position || !to_position || !flush || !item_key ||
+          !from_position->IsNumber() || !to_position->IsNumber() ||
           !flush->IsBool()) {
         return;
       }
@@ -463,49 +469,50 @@ void AdapterHelper::UpdateFiberUpdateAction(
           const std::string& item_key_str = item_key->str();
           if (from < static_cast<int>(item_keys.size())) {
             item_keys[from] = item_key_str;
-            const auto& is_full_span = value.GetValueForKey(list::kFullSpan);
-            const auto& is_sticky_top = value.GetValueForKey(list::kStickyTop);
+            const auto& is_full_span = value.GetValueForKey(kFiberDataFullSpan);
+            const auto& is_sticky_top =
+                value.GetValueForKey(kFiberDataStickyTop);
             const auto& is_sticky_bottom =
-                value.GetValueForKey(list::kStickyBottom);
+                value.GetValueForKey(kFiberDataStickyBottom);
             const auto& estimated_height_px =
-                value.GetValueForKey(list::kEstimatedHeightPx);
+                value.GetValueForKey(kFiberDataEstimatedHeightPx);
             const auto& estimated_size_px =
-                value.GetValueForKey(list::kEstimatedMainAxisSizePx);
-            const auto& recyclable = value.GetValueForKey(list::kRecyclable);
-            if (is_full_span->IsBool()) {
+                value.GetValueForKey(kFiberDataEstimatedMainAxisSizePx);
+            const auto& recyclable = value.GetValueForKey(kFiberDataRecyclable);
+            if (is_full_span && is_full_span->IsBool()) {
               if (is_full_span->Bool()) {
                 fiber_full_spans_.insert(item_key_str);
               } else {
                 fiber_full_spans_.erase(item_key_str);
               }
             }
-            if (is_sticky_top->IsBool()) {
+            if (is_sticky_top && is_sticky_top->IsBool()) {
               if (is_sticky_top->Bool()) {
                 fiber_sticky_tops_.insert(item_key_str);
               } else {
                 fiber_sticky_tops_.erase(item_key_str);
               }
             }
-            if (is_sticky_bottom->IsBool()) {
+            if (is_sticky_bottom && is_sticky_bottom->IsBool()) {
               if (is_sticky_bottom->Bool()) {
                 fiber_sticky_bottoms_.insert(item_key_str);
               } else {
                 fiber_sticky_bottoms_.erase(item_key_str);
               }
             }
-            if (estimated_height_px->IsNumber() &&
+            if (estimated_height_px && estimated_height_px->IsNumber() &&
                 fiber_estimated_heights_px_.end() !=
                     fiber_estimated_heights_px_.find(item_key_str)) {
               fiber_estimated_heights_px_[item_key_str] =
                   static_cast<int32_t>(estimated_height_px->Number());
             }
-            if (estimated_size_px->IsNumber() &&
+            if (estimated_size_px && estimated_size_px->IsNumber() &&
                 fiber_estimated_sizes_px_.end() !=
                     fiber_estimated_sizes_px_.find(item_key_str)) {
               fiber_estimated_sizes_px_[item_key_str] =
                   static_cast<int32_t>(estimated_size_px->Number());
             }
-            if (recyclable->IsBool()) {
+            if (recyclable && recyclable->IsBool()) {
               if (!recyclable->Bool()) {
                 fiber_unrecyclable_.insert(item_key_str);
               } else {

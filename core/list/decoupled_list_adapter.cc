@@ -6,9 +6,7 @@
 
 #include <unordered_set>
 
-#include "base/include/log/logging.h"
 #include "core/list/decoupled_list_container_impl.h"
-#include "core/renderer/tasm/config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
@@ -16,10 +14,10 @@ namespace list {
 
 ListAdapter::ListAdapter(ListContainerImpl* list_container_impl)
     : list_container_(list_container_impl),
-      item_holder_map_(std::make_unique<list::ItemHolderMap>()),
+      item_holder_map_(std::make_unique<ItemHolderMap>()),
       adapter_helper_(std::make_unique<AdapterHelper>()) {
   if (!list_container_) {
-    DLIST_LOGE("[ListAdapter] error: list_container_ is nullptr");
+    DLIST_LOGE("ListAdapter::ListAdapter: list_container_ is nullptr");
   }
   adapter_helper_->SetDelegate(this);
 }
@@ -29,121 +27,148 @@ void ListAdapter::OnErrorOccurred(lynx::base::LynxError error) {
 }
 
 // Update data source for radon diff arch.
-bool ListAdapter::UpdateDataSource(const pub::Value& data_source) {
+std::pair<ListAdapterDiffResult, bool> ListAdapter::UpdateRadonDataSource(
+    const pub::Value& radon_data_source) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_DATA_SOURCE);
+  if (!radon_data_source.IsMap()) {
+    return {ListAdapterDiffResult::kNone, false};
+  }
   bool has_updated = false;
-  if (data_source.IsMap() && adapter_helper_) {
-    // Parse diff result.
-    data_source.ForeachMap(
-        [this, &has_updated](const pub::Value& key, const pub::Value& value) {
-          if (key.IsString() && key.str() == list::kDiffResult) {
-            has_updated = adapter_helper_->UpdateDiffResult(value);
-          }
-        });
-    // TODO(@hujing.1):refactor the code according to the corresponding vector
-    // if the diffResult:insert[0,1,2,3],update from:[0,1,2,3],update
-    // To:[4,5,6,7].
-
-    // firstly:should handle the removed actions and inserted actions,to keep
-    //  the data size is right.
-    for (const auto& cur : adapter_helper_->removals()) {
-      ItemHolder* child_holder = GetItemHolderForIndex(cur);
-      if (child_holder) {
-        OnItemHolderRemoved(child_holder);
-      }
+  // Parse diff result.
+  radon_data_source.ForeachMap(
+      [this, &has_updated](const pub::Value& key, const pub::Value& value) {
+        if (key.IsString() && key.str() == kRadonDataDiffResult) {
+          has_updated = adapter_helper_->UpdateRadonDiffResult(value);
+        }
+      });
+  // TODO(@hujing.1):refactor the code according to the corresponding vector
+  // if the diffResult:insert[0,1,2,3],update from:[0,1,2,3],update
+  // To:[4,5,6,7].
+  // Firstly: should handle the removed actions and inserted actions,to keep the
+  // data size is right.
+  for (const auto& cur : adapter_helper_->removals()) {
+    ItemHolder* child_holder = GetItemHolderForIndex(cur);
+    if (child_holder) {
+      OnItemHolderRemoved(child_holder);
     }
-    // secondly:according to the old data,to keep itemHolder status right
-    for (const auto& cur : adapter_helper_->move_from()) {
-      ItemHolder* child_holder = GetItemHolderForIndex(cur);
-      if (child_holder) {
-        OnItemHolderMovedFrom(child_holder);
-      }
+  }
+  // Secondly: according to the old data,to keep itemHolder status right.
+  for (const auto& cur : adapter_helper_->move_from()) {
+    ItemHolder* child_holder = GetItemHolderForIndex(cur);
+    if (child_holder) {
+      OnItemHolderMovedFrom(child_holder);
     }
-    for (const auto& cur : adapter_helper_->update_from()) {
-      ItemHolder* child_holder = GetItemHolderForIndex(cur);
-      if (child_holder) {
-        OnItemHolderUpdateFrom(child_holder);
-      }
+  }
+  for (const auto& cur : adapter_helper_->update_from()) {
+    ItemHolder* child_holder = GetItemHolderForIndex(cur);
+    if (child_holder) {
+      OnItemHolderUpdateFrom(child_holder);
     }
-
-    const auto& value_factory = list_container_->value_factory();
-    std::unique_ptr<pub::Value> list_container_info;
-    if (value_factory) {
-      list_container_info = value_factory->CreateMap();
-    }
-    // init list_container_info
-    // TODO(dingwang.wxx): Check whether the following traversal can be skipped
-    // if the has_updated is not true. Update extra info.
-    data_source.ForeachMap([this, &list_container_info](
-                               const pub::Value& key, const pub::Value& value) {
-      if (key.IsString()) {
-        const std::string& key_str = key.str();
-        if (key_str == list::kDataSourceEstimatedHeightPx) {
-          adapter_helper_->UpdateEstimatedHeightsPx(value);
-        } else if (key_str == list::kDataSourceEstimatedMainAxisSizePx) {
-          adapter_helper_->UpdateEstimatedSizesPx(value);
-        } else if (key_str == list::kDataSourceFullSpan) {
-          adapter_helper_->UpdateFullSpans(value);
-        } else if (key_str == list::kDataSourceStickyTop) {
-          adapter_helper_->UpdateStickyTops(value);
-          if (list_container_info) {
-            list_container_info->PushValueToMap(list::kDataSourceStickyStart,
-                                                value);
-          }
-        } else if (key_str == list::kDataSourceStickyBottom) {
-          adapter_helper_->UpdateStickyBottoms(value);
-          if (list_container_info) {
-            list_container_info->PushValueToMap(list::kDataSourceStickyEnd,
-                                                value);
-          }
-        } else if (key_str == list::kDataSourceItemKeys) {
-          adapter_helper_->UpdateItemKeys(value);
-          if (list_container_info) {
-            list_container_info->PushValueToMap(list::kDataSourceItemKeys,
-                                                value);
+  }
+  // init list_container_info
+  const auto& value_factory = list_container_->value_factory();
+  std::unique_ptr<pub::Value> list_container_info;
+  if (value_factory) {
+    list_container_info = value_factory->CreateMap();
+  }
+  radon_data_source.ForeachMap(
+      [this, &list_container_info](const pub::Value& key,
+                                   const pub::Value& value) {
+        if (key.IsString()) {
+          const std::string& key_str = key.str();
+          if (key_str == kRadonDataEstimatedHeightPx) {
+            adapter_helper_->UpdateEstimatedHeightsPx(value);
+          } else if (key_str == kRadonDataEstimatedMainAxisSizePx) {
+            adapter_helper_->UpdateEstimatedSizesPx(value);
+          } else if (key_str == kRadonDataFullSpan) {
+            adapter_helper_->UpdateFullSpans(value);
+          } else if (key_str == kRadonDataStickyTop) {
+            adapter_helper_->UpdateStickyTops(value);
+            if (list_container_info) {
+              list_container_info->PushValueToMap(kListContainerInfoStickyStart,
+                                                  value);
+            }
+          } else if (key_str == kRadonDataStickyBottom) {
+            adapter_helper_->UpdateStickyBottoms(value);
+            if (list_container_info) {
+              list_container_info->PushValueToMap(kListContainerInfoStickyEnd,
+                                                  value);
+            }
+          } else if (key_str == kRadonDataItemKeys) {
+            adapter_helper_->UpdateItemKeys(value);
+            if (list_container_info) {
+              list_container_info->PushValueToMap(kListContainerInfoItemKeys,
+                                                  value);
+            }
           }
         }
-      }
-    });
-
-    // thirdly:update the item holder status according to the new diffResult
-    for (const auto& cur : adapter_helper_->move_to()) {
-      ItemHolder* child_holder = GetItemHolderForIndex(cur);
-      if (child_holder) {
-        OnItemHolderMovedTo(child_holder);
-      }
+      });
+  // Thirdly: update the item holder status according to the new diffResult.
+  for (const auto& cur : adapter_helper_->move_to()) {
+    ItemHolder* child_holder = GetItemHolderForIndex(cur);
+    if (child_holder) {
+      OnItemHolderMovedTo(child_holder);
     }
-
-    for (const auto& cur : adapter_helper_->update_to()) {
-      ItemHolder* child_holder = GetItemHolderForIndex(cur);
-      if (child_holder) {
-        OnItemHolderUpdateTo(child_holder, false);
-      }
+  }
+  for (const auto& cur : adapter_helper_->update_to()) {
+    ItemHolder* child_holder = GetItemHolderForIndex(cur);
+    if (child_holder) {
+      OnItemHolderUpdateTo(child_holder, false);
     }
-    // flush list-container-info
+  }
+  // Flush list-container-info
+  if (list_container_info) {
     list_container_->list_delegate()->FlushListContainerInfo(
-        list::kListContainerInfo, std::move(list_container_info));
+        kListContainerInfo, std::move(list_container_info), false);
   }
   // For output list diff info before clear
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_OUTPUT_DATA_SOURCE_DIFF_INFO,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  return has_updated;
+  auto result = ListAdapterDiffResult::kNone;
+  if (has_updated) {
+    if (!adapter_helper_->removals().empty()) {
+      result |= ListAdapterDiffResult::kRemove;
+    }
+    if (!adapter_helper_->insertions().empty()) {
+      result |= ListAdapterDiffResult::kInsert;
+    }
+    if (!adapter_helper_->update_from().empty() &&
+        !adapter_helper_->update_to().empty()) {
+      result |= ListAdapterDiffResult::kUpdate;
+    }
+    if (!adapter_helper_->move_from().empty() &&
+        !adapter_helper_->move_to().empty()) {
+      result |= ListAdapterDiffResult::kMove;
+    }
+  }
+  return {result, HasExpectedDiffAnimation()};
+}
+
+bool ListAdapter::HasExpectedDiffAnimation() const {
+  return !(adapter_helper_->insertions().size() ==
+               adapter_helper_->item_keys().size() &&
+           adapter_helper_->update_from().empty() &&
+           adapter_helper_->update_to().empty() &&
+           adapter_helper_->move_from().empty() &&
+           adapter_helper_->move_to().empty() &&
+           adapter_helper_->removals().empty());
 }
 
 // Update data source for fiber arch.
-bool ListAdapter::UpdateFiberDataSource(const pub::Value& data) {
+std::pair<ListAdapterDiffResult, bool> ListAdapter::UpdateFiberDataSource(
+    const pub::Value& fiber_data_source) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_FIVER_DATA_SOURCE);
-  if (!data.IsMap()) {
-    return false;
+  if (!fiber_data_source.IsMap()) {
+    return {ListAdapterDiffResult::kNone, false};
   }
   std::unique_ptr<pub::Value> insert_action =
-      data.GetValueForKey(list::kFiberInsertAction);
+      fiber_data_source.GetValueForKey(kFiberDataInsertAction);
   std::unique_ptr<pub::Value> remove_action =
-      data.GetValueForKey(list::kFiberRemoveAction);
+      fiber_data_source.GetValueForKey(kFiberDataRemoveAction);
   std::unique_ptr<pub::Value> update_action =
-      data.GetValueForKey(list::kFiberUpdateAction);
+      fiber_data_source.GetValueForKey(kFiberDataUpdateAction);
   // Firstly only generate insert / remove / update arrays.
   adapter_helper_->UpdateFiberRemoveAction(remove_action);
   adapter_helper_->UpdateFiberInsertAction(insert_action);
@@ -156,51 +181,70 @@ bool ListAdapter::UpdateFiberDataSource(const pub::Value& data) {
   adapter_helper_->UpdateFiberUpdateAction(update_action, false);
   // Update extra info.
   adapter_helper_->UpdateFiberExtraInfo();
-  // Generate and flush list-container-info for fiber
-  FlushListContainerInfo();
+  // Generate and flush list-container-info for fiber.
+  GenerateAndFlushListContainerInfo();
   // For output list diff info before clear
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LIST_ADAPTER_OUTPUT_FIBER_DATA_SOURCE_DIFF_INFO,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  return adapter_helper_->HasValidDiff();
+  if (adapter_helper_->HasValidDiff()) {
+    auto result = ListAdapterDiffResult::kNone;
+    if (!adapter_helper_->removals().empty()) {
+      result |= ListAdapterDiffResult::kRemove;
+    }
+    if (!adapter_helper_->insertions().empty()) {
+      result |= ListAdapterDiffResult::kInsert;
+    }
+    if (!adapter_helper_->update_from().empty() &&
+        !adapter_helper_->update_to().empty()) {
+      result |= ListAdapterDiffResult::kUpdate;
+    }
+    if (!adapter_helper_->move_from().empty() &&
+        !adapter_helper_->move_to().empty()) {
+      result |= ListAdapterDiffResult::kMove;
+    }
+    return {result, HasExpectedDiffAnimation()};
+  } else {
+    return {ListAdapterDiffResult::kNone, false};
+  }
 }
 
-void ListAdapter::FlushListContainerInfo() {
+void ListAdapter::GenerateAndFlushListContainerInfo() {
   const auto& value_factory = list_container_->value_factory();
   if (value_factory) {
     std::unique_ptr<pub::Value> list_container_info =
         value_factory->CreateMap();
-    std::unique_ptr<pub::Value> sticky_top_indexes =
+    std::unique_ptr<pub::Value> sticky_start_indexes =
         value_factory->CreateArray();
-    std::unique_ptr<pub::Value> sticky_bottom_indexes =
+    std::unique_ptr<pub::Value> sticky_end_indexes =
         value_factory->CreateArray();
     std::unique_ptr<pub::Value> item_keys = value_factory->CreateArray();
     if (list_container_info) {
-      if (sticky_top_indexes) {
+      if (sticky_start_indexes) {
         for (const auto& index : adapter_helper_->sticky_tops()) {
-          sticky_top_indexes->PushInt32ToArray(index);
+          sticky_start_indexes->PushInt32ToArray(index);
         }
-        list_container_info->PushValueToMap(list::kDataSourceStickyStart,
-                                            *sticky_top_indexes);
+        list_container_info->PushValueToMap(kListContainerInfoStickyStart,
+                                            *sticky_start_indexes);
       }
-      if (sticky_bottom_indexes) {
+      if (sticky_end_indexes) {
         for (const auto& index : adapter_helper_->sticky_bottoms()) {
-          sticky_bottom_indexes->PushInt32ToArray(index);
+          sticky_end_indexes->PushInt32ToArray(index);
         }
-        list_container_info->PushValueToMap(list::kDataSourceStickyEnd,
-                                            *sticky_bottom_indexes);
+        list_container_info->PushValueToMap(kListContainerInfoStickyEnd,
+                                            *sticky_end_indexes);
       }
       if (item_keys) {
         for (const auto& item_key : adapter_helper_->item_keys()) {
           item_keys->PushStringToArray(item_key);
         }
-        list_container_info->PushValueToMap(list::kDataSourceItemKeys,
+        list_container_info->PushValueToMap(kListContainerInfoItemKeys,
                                             *item_keys);
       }
       list_container_->list_delegate()->FlushListContainerInfo(
-          list::kListContainerInfo, std::move(list_container_info));
+          kListContainerInfo, std::move(list_container_info), true);
     }
   }
 }
@@ -214,6 +258,11 @@ void ListAdapter::UpdateItemHolderToLatest(
   if (!list_children_helper) {
     return;
   }
+  // Update anchor ref for removed on screen children.
+  // Note: This logic should be invoked before latest diff info being updated to
+  // all ItemHolders, so here UpdateAnchorRefItem() is invoked in the begin of
+  // UpdateItemHolderToLatest()
+  UpdateAnchorRefItem(list_children_helper);
 
   const auto& children = list_children_helper->children();
   const auto& attached_children = list_children_helper->attached_children();
@@ -243,9 +292,15 @@ void ListAdapter::UpdateItemHolderToLatest(
         OnItemHolderReInsert(item_holder);
       }
     } else {
-      (*item_holder_map_)[item_key] =
-          std::make_unique<ItemHolder>(new_index, item_key);
+      ListContainerAnimationManager* list_animation_manager =
+          list_container_->list_animation_manager();
+      (*item_holder_map_)[item_key] = std::make_unique<ItemHolder>(
+          new_index, item_key, list_animation_manager);
       item_holder = (*item_holder_map_)[item_key].get();
+      if (list_animation_manager->AnimationType() !=
+          ListContainerAnimationType::kNone) {
+        item_holder->MarkInsertOpacity();
+      }
       OnItemHolderInserted(item_holder);
     }
     CheckSticky(item_holder, new_index);
@@ -257,7 +312,7 @@ void ListAdapter::UpdateItemHolderToLatest(
     if (attached_children_set.find(item_holder) !=
         attached_children_set.end()) {
       // Add item holder to attached children.
-      list::ItemElementDelegate* list_item_delegate =
+      ItemElementDelegate* list_item_delegate =
           GetItemElementDelegate(item_holder);
       list_children_helper->AttachChild(item_holder, list_item_delegate);
     }
@@ -266,6 +321,86 @@ void ListAdapter::UpdateItemHolderToLatest(
       // Add item holder to last binding children.
       list_children_helper->AddChild(last_binding_children, item_holder);
     }
+  }
+}
+
+void ListAdapter::UpdateAnchorRefItem(
+    ListChildrenHelper* list_children_helper) {
+  const auto& children = list_children_helper->children();
+  const auto& on_screen_children = list_children_helper->on_screen_children();
+  bool has_valid_diff = list_adapter_helper()->HasValidDiff();
+  bool should_search_ref_anchor = list_container_->ShouldSearchRefAnchor();
+  SearchRefAnchorStrategy search_strategy =
+      list_container_->search_ref_anchor_strategy();
+  std::unordered_map<ItemHolder*, ItemHolder*> tmp_anchor_ref_map;
+  if (has_valid_diff && should_search_ref_anchor &&
+      !on_screen_children.empty() && !children.empty()) {
+    list_children_helper->ForEachChild(
+        on_screen_children,
+        [this, list_children_helper, &children, &tmp_anchor_ref_map,
+         search_strategy](ItemHolder* on_screen_child) {
+          // We only need to update removed on screen child.
+          if (IsRemoved(on_screen_child)) {
+            auto weak_anchor_ref = on_screen_child->weak_anchor_ref();
+            if (!weak_anchor_ref) {
+              // (1) Removed child's weak_anchor_ref is never set.
+              if (auto it = children.find(on_screen_child);
+                  it != children.end()) {
+                ItemHolder* anchor_ref_child =
+                    list_children_helper->GetFirstChildFrom(
+                        children, on_screen_child,
+                        [this, on_screen_child](const ItemHolder* item_holder) {
+                          return item_holder != on_screen_child &&
+                                 !IsRemoved(item_holder);
+                        },
+                        search_strategy == SearchRefAnchorStrategy::kToStart);
+                on_screen_child->SetWeakAnchorRef(anchor_ref_child);
+              } else {
+                // Unexpected case: child is not in children set.
+                DLIST_LOGE("[" << list_container_
+                               << "] ListAdapter::UpdateItemHolderToLatest: "
+                                  "on_screen_child is not at children set and "
+                                  "it's weak_anchor_ref is never set: index="
+                               << on_screen_child->index()
+                               << ", item-key=" << on_screen_child->item_key());
+                on_screen_child->SetWeakAnchorRef(nullptr);
+              }
+            } else if (weak_anchor_ref && (*weak_anchor_ref)) {
+              // (2) Update weak_anchor_ref if needed.
+              ItemHolder* current_anchor_ref_child = (*weak_anchor_ref).get();
+              if (IsRemoved(current_anchor_ref_child)) {
+                // Current anchor ref child is removed, need to find a new
+                // anchor ref.
+                if (auto it = tmp_anchor_ref_map.find(current_anchor_ref_child);
+                    it != tmp_anchor_ref_map.end()) {
+                  // Fast find new ref anchor child from tmp_anchor_ref_map
+                  on_screen_child->SetWeakAnchorRef(it->second);
+                } else {
+                  if (auto it = children.find(current_anchor_ref_child);
+                      it != children.end()) {
+                    ItemHolder* new_anchor_ref_child =
+                        list_children_helper->GetFirstChildFrom(
+                            children, current_anchor_ref_child,
+                            [this, current_anchor_ref_child](
+                                const ItemHolder* item_holder) {
+                              return item_holder != current_anchor_ref_child &&
+                                     !IsRemoved(item_holder);
+                            },
+                            search_strategy ==
+                                SearchRefAnchorStrategy::kToStart);
+                    tmp_anchor_ref_map[current_anchor_ref_child] =
+                        new_anchor_ref_child;
+                    on_screen_child->SetWeakAnchorRef(new_anchor_ref_child);
+                  } else {
+                    tmp_anchor_ref_map[current_anchor_ref_child] = nullptr;
+                    on_screen_child->SetWeakAnchorRef(nullptr);
+                  }
+                }
+              }
+            }
+          }
+          return false;
+        });
   }
 }
 
@@ -327,24 +462,24 @@ bool ListAdapter::IsFullSpanAtIndex(int index) const {
 }
 
 std::unique_ptr<pub::Value> ListAdapter::GenerateDiffResult() const {
-  std::unique_ptr<pub::Value> diff_result;
+  std::unique_ptr<pub::Value> diff_info;
   const auto& value_factory = list_container_->value_factory();
-  if (value_factory && (diff_result = value_factory->CreateMap())) {
-    GenerateDiffArray(list::kDiffResultInsertions,
-                      adapter_helper_->insertions(), diff_result);
-    GenerateDiffArray(list::kDiffResultRemovals, adapter_helper_->removals(),
-                      diff_result);
-    GenerateDiffArray(list::kDiffResultUpdateFrom,
-                      adapter_helper_->update_from(), diff_result);
-    GenerateDiffArray(list::kDiffResultUpdateTo, adapter_helper_->update_to(),
-                      diff_result);
-    GenerateDiffArray(list::kDiffResultMoveFrom, adapter_helper_->move_from(),
-                      diff_result);
-    GenerateDiffArray(list::kDiffResultMoveTo, adapter_helper_->move_to(),
-                      diff_result);
+  if (value_factory && (diff_info = value_factory->CreateMap())) {
+    GenerateDiffArray(kDiffInfoInsertion, adapter_helper_->insertions(),
+                      diff_info);
+    GenerateDiffArray(kDiffInfoRemoval, adapter_helper_->removals(), diff_info);
+    GenerateDiffArray(kDiffInfoUpdateFrom, adapter_helper_->update_from(),
+                      diff_info);
+    GenerateDiffArray(kDiffInfoUpdateTo, adapter_helper_->update_to(),
+                      diff_info);
+    GenerateDiffArray(kDiffInfoMoveFrom, adapter_helper_->move_from(),
+                      diff_info);
+    GenerateDiffArray(kDiffInfoMoveTo, adapter_helper_->move_to(), diff_info);
   }
-  return diff_result;
+  return diff_info;
 }
+
+void ListAdapter::ClearDiffResult() { adapter_helper_->ClearDiffResult(); }
 
 void ListAdapter::GenerateDiffArray(
     const std::string& diff_key, const std::vector<int32_t>& diff_array,
@@ -362,7 +497,7 @@ void ListAdapter::GenerateDiffArray(
 
 // Get estimated height for the specified index.
 float ListAdapter::GetEstimatedSizeForIndex(int index) {
-  float estimated_size = list::kInvalidDimensionSize;
+  float estimated_size = kInvalidDimensionSize;
   const float layouts_unit_per_px =
       list_container_->list_delegate()->GetLayoutsUnitPerPx();
   // Note: Taking into account compatibility with lower versions, developers
@@ -385,7 +520,7 @@ float ListAdapter::GetEstimatedSizeForIndex(int index) {
       return estimated_size;
     }
   }
-  return list::kInvalidDimensionSize;
+  return kInvalidDimensionSize;
 }
 
 // Get whether the ItemHolder is recyclable for the specified index.
@@ -437,11 +572,19 @@ void ListAdapter::RecycleAllItemHolders() {
 
 void ListAdapter::RecycleRemovedItemHolders() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_RECYCLE_REMOVED_ITEM_HOLDER);
+  ListContainerAnimationManager* list_animation_manager =
+      list_container_->list_animation_manager();
   for (auto it = item_holder_map_->begin(); it != item_holder_map_->end();) {
     const auto& item_holder = it->second.get();
     if (item_holder && IsRemoved(item_holder)) {
       RecycleItemHolder(item_holder);
-      it = item_holder_map_->erase(it);
+      if (list_animation_manager->UpdateAnimation() &&
+          list_animation_manager->AnimationType() !=
+              ListContainerAnimationType::kNone) {
+        ++it;
+      } else {
+        it = item_holder_map_->erase(it);
+      }
     } else {
       ++it;
     }
@@ -449,7 +592,7 @@ void ListAdapter::RecycleRemovedItemHolders() {
 }
 
 void ListAdapter::UpdateLayoutInfoToItemHolder(
-    list::ItemElementDelegate* list_item_delegate, ItemHolder* item_holder) {
+    ItemElementDelegate* list_item_delegate, ItemHolder* item_holder) {
   if (list_item_delegate && item_holder && IsFinishedBinding(item_holder) &&
       GetItemElementDelegate(item_holder) == list_item_delegate) {
     item_holder->UpdateLayoutFromItemDelegate(list_item_delegate);
@@ -484,12 +627,27 @@ void ListAdapter::EnqueueElementsIfNeeded() {
 // It will invoked list's EnqueueComponent() to recycle component
 // bound with ItemHolder and remove platform view from parent.
 void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
-  list::ItemElementDelegate* list_item_delegate =
-      GetItemElementDelegate(item_holder);
+  if (!item_holder) {
+    DLIST_LOGE("[" << list_container_
+                   << "] ListAdapter::EnqueueElement: null item holder");
+    return;
+  }
+  if (auto type = list_container_->list_animation_manager()->AnimationType();
+      type != ListContainerAnimationType::kNone) {
+    if (type == ListContainerAnimationType::kRemove) {
+      item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kOpacity);
+    } else if (type == ListContainerAnimationType::kInsert) {
+      // The insert animation in a list may push a child off the screen, but at
+      // that moment we still need a transform animation, so deferred destroy is
+      // still necessary.
+      item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kTransform);
+    }
+    return;
+  }
+  ItemElementDelegate* list_item_delegate = GetItemElementDelegate(item_holder);
   if (list_item_delegate) {
-    // Remove list item platform view.
     int32_t list_item_id = list_item_delegate->GetImplId();
-    // Remove painting node and enqueue list item.
+    // Remove platform view and enqueue list item.
     list_container_->list_delegate()->RemoveListItemPaintingNode(list_item_id);
     list_container_->list_delegate()->EnqueueComponent(list_item_id);
     // Detach child.

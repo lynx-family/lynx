@@ -25,10 +25,12 @@ class ListContainerDefault : public ContainerDelegate {
 
   ~ListContainerDefault() override {}
 
+  void OnAttachToElementManager() override {}
+
   bool ResolveAttribute(const pub::Value& key,
                         const pub::Value& value) override {}
 
-  void ResolveListAxisGap(lynx::tasm::CSSPropertyID id, float gap) override {}
+  void ResolveListAxisGap(tasm::CSSPropertyID id, float gap) override {}
 
   void PropsUpdateFinish() override {}
 
@@ -37,7 +39,11 @@ class ListContainerDefault : public ContainerDelegate {
 
   void FinishBindItemHolder(
       ItemElementDelegate* list_item_delegate,
-      const std::shared_ptr<tasm::PipelineOptions>& option) override {}
+      const std::shared_ptr<tasm::PipelineOptions>& options) override {}
+
+  void FinishBindItemHolders(
+      const std::vector<ItemElementDelegate*>& list_item_delegate_array,
+      const std::shared_ptr<tasm::PipelineOptions>& options) override {}
 
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y) override {}
@@ -53,6 +59,8 @@ class ListContainerDefault : public ContainerDelegate {
   void ScrollStopped() override {}
 
   void EnableInsertPlatformView() override {}
+
+  void OnNextFrame() override {}
 };
 
 }  // namespace list

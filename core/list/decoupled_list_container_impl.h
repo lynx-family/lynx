@@ -13,6 +13,7 @@
 #include "core/list/decoupled_item_holder.h"
 #include "core/list/decoupled_list_adapter.h"
 #include "core/list/decoupled_list_children_helper.h"
+#include "core/list/decoupled_list_container_animation_manager.h"
 #include "core/list/decoupled_list_event_manager.h"
 #include "core/list/decoupled_list_layout_manager.h"
 #include "core/list/decoupled_list_types.h"
@@ -24,33 +25,38 @@
 namespace lynx {
 namespace list {
 
-class ListContainerImpl : public list::ContainerDelegate {
+class ListContainerImpl : public ContainerDelegate {
  public:
-  ListContainerImpl(list::ElementDelegate* list_delegate,
+  ListContainerImpl(ElementDelegate* list_delegate,
                     const std::shared_ptr<pub::PubValueFactory>& value_factory);
   ~ListContainerImpl() override;
 
-  // Implement list::ContainerDelegate
+  // Implement ContainerDelegate
+  void OnAttachToElementManager() override;
   bool ResolveAttribute(const pub::Value& key,
                         const pub::Value& value) override;
-  void ResolveListAxisGap(lynx::tasm::CSSPropertyID id, float gap) override;
+  void ResolveListAxisGap(tasm::CSSPropertyID id, float gap) override;
   void PropsUpdateFinish() override;
   void OnLayoutChildren(
       const std::shared_ptr<tasm::PipelineOptions>& options) override;
   void FinishBindItemHolder(
-      list::ItemElementDelegate* list_item_delegate,
-      const std::shared_ptr<tasm::PipelineOptions>& option) override;
+      ItemElementDelegate* list_item_delegate,
+      const std::shared_ptr<tasm::PipelineOptions>& options) override;
+  void FinishBindItemHolders(
+      const std::vector<ItemElementDelegate*>& list_item_delegate_array,
+      const std::shared_ptr<tasm::PipelineOptions>& options) override;
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y) override;
   void OnListItemLayoutUpdated(
-      list::ItemElementDelegate* list_item_delegate) override;
+      ItemElementDelegate* list_item_delegate) override;
   void OnAttachedToElementManager() override;
   void ScrollToPosition(int index, float offset, int align,
                         bool smooth) override;
   void ScrollStopped() override;
   void EnableInsertPlatformView() override {
-    enable_insert_platform_view_ = true;
+    enable_insert_platform_view_operation_ = true;
   }
+  void OnNextFrame() override;
 
   int GetDataCount() const;
   ItemHolder* GetItemHolderForIndex(int index);
@@ -64,6 +70,17 @@ class ListContainerImpl : public list::ContainerDelegate {
   void StartInterceptListElementUpdated();
   void StopInterceptListElementUpdated();
   float RoundValueToPixelGrid(const float value);
+  void ClearValidDiff() { has_valid_diff_ = false; }
+  void MarkShouldFlushFinishLayout(bool has_layout) {
+    should_flush_finish_layout_ |= has_layout;
+  }
+  void ResetLayoutID() { layout_id_ = -1; }
+  bool ShouldSearchRefAnchor() const {
+    return search_ref_anchor_strategy_ == SearchRefAnchorStrategy::kToStart ||
+           search_ref_anchor_strategy_ == SearchRefAnchorStrategy::kToEnd;
+  }
+
+  // Getter
   ListAdapter* list_adapter() const { return list_adapter_.get(); }
   ListLayoutManager* list_layout_manager() const {
     return list_layout_manager_.get();
@@ -74,12 +91,12 @@ class ListContainerImpl : public list::ContainerDelegate {
   ListChildrenHelper* list_children_helper() const {
     return list_children_helper_.get();
   }
+  ListContainerAnimationManager* list_animation_manager() const {
+    return list_animation_manager_.get();
+  }
   bool IsRTL() const { return list_delegate_->IsRTL(); }
   int intercept_depth() const { return intercept_depth_; }
-  list::ElementDelegate* list_delegate() { return list_delegate_; }
-  ListLayoutManager* list_layout_manager() {
-    return list_layout_manager_.get();
-  }
+  ElementDelegate* list_delegate() { return list_delegate_; }
   int layout_id() const { return layout_id_; }
   bool sticky_enabled() const { return sticky_enabled_; }
   bool recycle_sticky_item() const { return recycle_sticky_item_; }
@@ -87,19 +104,25 @@ class ListContainerImpl : public list::ContainerDelegate {
   bool should_request_state_restore() const {
     return should_request_state_restore_;
   }
-  bool enable_insert_platform_view() const {
-    return enable_insert_platform_view_;
+  bool enable_batch_render() const {
+    return batch_render_strategy_ != BatchRenderStrategy::kDefault;
   }
+  bool enable_insert_platform_view_operation() const {
+    return enable_insert_platform_view_operation_;
+  }
+  bool has_valid_diff() const { return has_valid_diff_; }
   const std::shared_ptr<pub::PubValueFactory>& value_factory() {
     return value_factory_;
   }
-  bool has_valid_diff() const { return has_valid_diff_; }
-  bool enable_batch_render() const { return false; }
-  void ClearValidDiff() { has_valid_diff_ = false; }
-  void MarkShouldFlushFinishLayout(bool has_layout) {
-    should_flush_finish_layout_ |= has_layout;
+  bool need_preload_section_on_next_frame() const {
+    return need_preload_section_on_next_frame_;
   }
-  void ResetLayoutID() { layout_id_ = -1; }
+  bool should_flush_finish_layout() const {
+    return should_flush_finish_layout_;
+  }
+  SearchRefAnchorStrategy search_ref_anchor_strategy() const {
+    return search_ref_anchor_strategy_;
+  }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -107,35 +130,43 @@ class ListContainerImpl : public list::ContainerDelegate {
   ListContainerImpl(const ListContainerImpl& list_container_impl) = delete;
 
  private:
-  void UpdateListLayoutManager(list::LayoutType layout_type);
+  void UpdateListLayoutManager(LayoutType layout_type);
   //  fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
-  bool should_flush_finish_layout_{false};
-  bool enable_insert_platform_view_{false};
   bool enable_dynamic_span_count_{true};
+  bool enable_insert_platform_view_operation_{false};
   bool span_count_changed_{false};
+  bool batch_adapter_initialized_{false};
   bool recycle_available_item_before_layout_{false};
   bool sticky_enabled_{false};
   bool recycle_sticky_item_{true};
-  int layout_id_{-1};
-  int sticky_buffer_count_{list::kInvalidItemCount};
+  SearchRefAnchorStrategy search_ref_anchor_strategy_{
+      SearchRefAnchorStrategy::kNone};
+  int sticky_buffer_count_{kInvalidItemCount};
   float sticky_offset_{0.f};
   int intercept_depth_{0};
+  bool should_flush_finish_layout_{false};
+  LayoutType layout_type_{LayoutType::kSingle};
+  ElementDelegate* list_delegate_{nullptr};
   float physical_pixels_per_layout_unit_{1.f};
-  int initial_scroll_index_{-1};
-  list::InitialScrollIndexStatus initial_scroll_index_status_{
-      list::InitialScrollIndexStatus::kUnset};
-  list::LayoutType layout_type_{list::LayoutType::kSingle};
-  list::ElementDelegate* list_delegate_{nullptr};
+  int initial_scroll_index_{kInvalidIndex};
+  InitialScrollIndexStatus initial_scroll_index_status_{
+      InitialScrollIndexStatus::kUnset};
   std::unique_ptr<ListLayoutManager> list_layout_manager_;
   std::unique_ptr<ListAdapter> list_adapter_;
   std::unique_ptr<ListChildrenHelper> list_children_helper_;
   std::unique_ptr<ListEventManager> list_event_manager_;
+  std::unique_ptr<ListContainerAnimationManager> list_animation_manager_;
   bool need_recycle_all_item_holders_before_layout_{false};
   bool need_update_item_holders_{false};
+  int layout_id_{kInvalidIndex};
   bool should_request_state_restore_{false};
   bool has_valid_diff_{false};
+  bool update_animation_{false};
+  bool need_preload_section_on_next_frame_{false};
+  BatchRenderStrategy batch_render_strategy_{BatchRenderStrategy::kDefault};
+  ListAdapterDiffResult animation_diff_result_{ListAdapterDiffResult::kNone};
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };
 

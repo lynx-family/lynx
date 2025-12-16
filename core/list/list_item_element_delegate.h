@@ -18,6 +18,7 @@ namespace list {
 class ItemElementDelegate {
  public:
   virtual ~ItemElementDelegate() = default;
+
   virtual int32_t GetImplId() const = 0;
   virtual std::string GetIdSelector() const = 0;
   virtual float GetWidth() const = 0;
@@ -30,6 +31,9 @@ class ItemElementDelegate {
   virtual void SendCustomEvent(const std::string& event_name,
                                const std::string& param_name,
                                std::unique_ptr<pub::Value> param) = 0;
+  virtual void OnListItemWillAppear(const std::string& item_key) = 0;
+  virtual void OnListItemDisappear(bool is_exist,
+                                   const std::string& item_key) = 0;
 };
 
 }  // namespace list
