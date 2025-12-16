@@ -443,7 +443,6 @@ TEST_P(TextElementTest, LayoutInElementFontScale) {
 
 INSTANTIATE_TEST_SUITE_P(TextElementTestModule, TextElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
-
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

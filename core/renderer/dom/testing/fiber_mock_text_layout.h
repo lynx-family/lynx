@@ -18,6 +18,7 @@
 
 namespace lynx {
 namespace tasm {
+class FiberElement;
 class TextElement;
 class ViewElement;
 class ImageElement;
@@ -63,7 +64,10 @@ class TextLayoutMock : public TextLayoutImpl {
  private:
   void BuildTextPropsBuffer(TextElement* element, std::string& output,
                             size_t& current_length, bool use_utf16,
-                            PropArrayMock* props);
+                            PropArrayMock* props, bool* has_inline_view);
+  void ProcessChildProps(FiberElement* element, std::string& output,
+                         size_t& current_length, bool use_utf16,
+                         PropArrayMock* props, bool* has_inline_view);
   static void AppendTextProps(TextElement* element, size_t pos_start,
                               size_t pos_end, PropArrayMock* props);
   static void AppendViewProps(ViewElement* view_element, size_t start,
