@@ -554,7 +554,7 @@ bool LynxEnv::DisableJSModeStrip() {
 
 bool LynxEnv::EnablePlatformDataFix() {
   static bool enable_platform_data_fix =
-      GetBoolEnv(Key::ENABLE_PLATFORM_DATA_FIX, false);
+      GetBoolEnv(Key::ENABLE_PLATFORM_DATA_FIX, true);
   return enable_platform_data_fix;
 }
 
