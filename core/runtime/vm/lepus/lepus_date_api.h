@@ -14,7 +14,7 @@ namespace lepus {
 
 void RegisterLepusDateAPI(Context* ctx);
 
-const Value& GetDatePrototypeAPI(const base::String& key);
+const RestrictedValue& GetDatePrototypeAPI(const base::String& key);
 
 const std::vector<std::string>& DateContent();
 

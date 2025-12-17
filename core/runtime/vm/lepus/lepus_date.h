@@ -16,10 +16,10 @@
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/ref_type.h"
 #include "core/base/lynx_export.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 
 namespace lynx {
 namespace lepus {
-class Value;
 
 struct tm_extend : public tm {
 #ifdef OS_WIN
@@ -29,11 +29,12 @@ struct tm_extend : public tm {
 
 class CDate : public lepus::RefCounted {
  public:
-  static Value GetTimeZoneOffset();
+  static RestrictedValue GetTimeZoneOffset();
   static fml::RefPtr<CDate> Create() {
     return fml::AdoptRef<CDate>(new CDate());
   }
-  static std::string FormatToString(Value* date, const std::string& format);
+  static std::string FormatToString(RestrictedValue* date,
+                                    const std::string& format);
   static size_t CountNum(const std::string& format, size_t index, size_t max);
   static void ParserFormatString(std::string date, const std::string& format,
                                  tm_extend& tm_, int& ms);
@@ -48,7 +49,7 @@ class CDate : public lepus::RefCounted {
     return fml::AdoptRef<CDate>(new CDate(date));
   }
 
-  static Value LepusNow();
+  static RestrictedValue LepusNow();
   static fml::RefPtr<CDate> Create(const tm_extend& date, int ms) {
     return fml::AdoptRef<CDate>(new CDate(date, ms));
   }

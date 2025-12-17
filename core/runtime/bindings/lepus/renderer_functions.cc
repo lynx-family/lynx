@@ -312,7 +312,8 @@ void UpdateComponentConfig(TemplateAssembler* tasm, RadonComponent* component) {
   component->UpdateSystemInfo(GetSystemInfoFromTasm(tasm));
 }
 
-RadonComponent* GetRadonComponent(lepus::Context* context, lepus::Value* arg) {
+RadonComponent* GetRadonComponent(lepus::Context* context,
+                                  const lepus::Value* arg) {
   auto* tasm = static_cast<TemplateAssembler*>(context->GetDelegate());
   if (tasm->page_proxy()->HasRadonPage()) {
     RadonBase* base = reinterpret_cast<RadonBase*>(arg->CPoint());
@@ -392,11 +393,9 @@ lepus::Value InnerTranslateResourceForTheme(lepus::Context* ctx,
   return lepus::Value(std::move(ret));
 }
 
-GestureDetector InnerCreateGestureDetector(double gesture_id,
-                                           double gesture_type,
-                                           lepus::Value* callback_config,
-                                           lepus::Value* relation_map_value,
-                                           lepus::Context* ctx) {
+GestureDetector InnerCreateGestureDetector(
+    double gesture_id, double gesture_type, const lepus::Value* callback_config,
+    const lepus::Value* relation_map_value, lepus::Context* ctx) {
   // Extract the "callbacks" property from the input "callbacksConfigs"
   // argument.
   BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
@@ -564,7 +563,7 @@ RENDERER_FUNCTION_CC(GetSessionStorageItem) {
 
 RENDERER_FUNCTION_CC(StopExposure) {
   CHECK_ARGC_EQ(StopExposure, 1);
-  lepus::Value* options = nullptr;
+  const lepus::Value* options = nullptr;
   if (argc == 1) {
     CONVERT_ARG(arg0, 0);
     if (!arg0->IsEmpty() && !arg0->IsObject()) {
@@ -2224,8 +2223,18 @@ RENDERER_FUNCTION_CC(RenderDynamicComponent) {
   lepus::Context* target_context = self->GetLepusContext(url).get();
   BASE_STATIC_STRING_DECL(kRenderEntranceDynamicComponent,
                           "$renderEntranceDynamicComponent");
-  target_context->Call(kRenderEntranceDynamicComponent, *arg2, *arg3, *arg4,
-                       *arg5);
+  if (target_context->IsVMContext()) {
+    // arg2: a C pointer wrapped by lepusng value
+    // arg3: component data previously fetched by GetComponentData and is a
+    //    lepus ref. Here it is a pure lepus::Dictionary.
+    // arg4: ditto
+    // arg5: a lepusng bool
+    target_context->Call(kRenderEntranceDynamicComponent, arg2->ToLepusValue(),
+                         *arg3, *arg4, arg5->ToLepusValue());
+  } else {
+    target_context->Call(kRenderEntranceDynamicComponent, *arg2, *arg3, *arg4,
+                         *arg5);
+  }
   RETURN_UNDEFINED();
 }
 

@@ -534,16 +534,6 @@ Value QuickContext::CallClosureArgs(const Value& closure, const Value* args[],
   return ret;
 }
 
-long QuickContext::GetParamsSize() {
-  assert(false);
-  return 0;
-}
-
-Value* QuickContext::GetParam(long index) {
-  assert(false);
-  return nullptr;
-}
-
 const std::string& QuickContext::name() const { return name_; }
 
 bool QuickContext::CheckTableShadowUpdatedWithTopLevelVariable(
@@ -658,11 +648,10 @@ void QuickContext::ResetTopLevelVariableByVal(const Value& val) {
   // TODO(nihao) lepus NG support reset top var.
 }
 
-std::unique_ptr<lepus::Value> QuickContext::GetTopLevelVariable(
-    bool ignore_callable) {
+lepus::Value QuickContext::GetTopLevelVariable(bool ignore_callable) {
   // assert(false);
   LOGE("GetTopLevelVariable.... \n");
-  return std::make_unique<lepus::Value>();
+  return lepus::Value();
 }
 
 LEPUSValue QuickContext::GetProperty(const std::string& name,

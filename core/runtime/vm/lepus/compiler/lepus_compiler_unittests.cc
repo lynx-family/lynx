@@ -172,9 +172,9 @@ static void Print_Value(const lepus::Value* val, std::ostream& output) {
 lepus::Value Print(lepus::Context* context) {
   long params_count = context->GetParamsSize();
   for (long i = 0; i < params_count; i++) {
-    lepus::Value* v = context->GetParam(i);
+    lepus::Value v(*lepus::VMContext::Cast(context)->GetParam(i));
     std::ostringstream s;
-    Print_Value(v, s);
+    Print_Value(&v, s);
     LOGE(s.str());
   }
   return lepus::Value();
@@ -229,7 +229,7 @@ static lepus::Value SetFlag(lepus::Context* context) {
   lepus::Value* parm1 = context->GetParam(0);
   if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
     lepus::VMContext::Cast(context)->SetNullPropAsUndef(
-        context->GetParam(1)->Bool());
+        lepus::VMContext::Cast(context)->GetParam(1)->Bool());
   }
   return lepus::Value();
 }

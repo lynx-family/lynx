@@ -102,30 +102,31 @@ Value& Value::operator=(Value&& value) noexcept {
 
 Value::Value(const base::String& data) {
   auto* str = base::String::Unsafe::GetUntaggedStringRawRef(data);
-  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(str),
-            .type = lynx_value_string};
+  value_.type = lynx_value_string;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(str);
   str->AddRef();
 }
 
 Value::Value(base::String&& data) {
   auto* str = base::String::Unsafe::GetUntaggedStringRawRef(data);
-  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(str),
-            .type = lynx_value_string};
+  value_.type = lynx_value_string;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(str);
   if (str != base::String::Unsafe::GetStringRawRef(data)) {
     str->AddRef();
   }
   base::String::Unsafe::SetStringToEmpty(data);
 }
 
-Value::Value(const fml::RefPtr<lepus::ByteArray>& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
-              .type = lynx_value_arraybuffer}) {
+Value::Value(const fml::RefPtr<lepus::ByteArray>& data) {
+  value_.type = lynx_value_arraybuffer;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get());
   data.get()->AddRef();
 }
 
-Value::Value(fml::RefPtr<lepus::ByteArray>&& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
-              .type = lynx_value_arraybuffer}) {}
+Value::Value(fml::RefPtr<lepus::ByteArray>&& data) {
+  value_.type = lynx_value_arraybuffer;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef());
+}
 
 Value::Value(const fml::RefPtr<lepus::RefCounted>& data) {
   value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get());
@@ -140,91 +141,114 @@ Value::Value(fml::RefPtr<lepus::RefCounted>&& data) {
   value_.type = lynx_value_object;
 }
 
-Value::Value(bool val) : value_({.val_bool = val, .type = lynx_value_bool}) {}
+Value::Value(bool val) {
+  value_.type = lynx_value_bool;
+  value_.val_bool = val;
+}
 
 Value::Value(const char* val) {
   auto* str = base::RefCountedStringImpl::Unsafe::RawCreate(val);
-  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(str),
-            .type = lynx_value_string};
+  value_.type = lynx_value_string;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(str);
 }
 
 Value::Value(const std::string& str) {
   auto* ptr = base::RefCountedStringImpl::Unsafe::RawCreate(str);
-  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr),
-            .type = lynx_value_string};
+  value_.type = lynx_value_string;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
 }
 
 Value::Value(std::string&& str) {
   auto* ptr = base::RefCountedStringImpl::Unsafe::RawCreate(std::move(str));
-  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr),
-            .type = lynx_value_string};
+  value_.type = lynx_value_string;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
 }
 
-Value::Value(void* data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data),
-              .type = lynx_value_external}) {}
-
-Value::Value(CFunction val)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(val),
-              .type = lynx_value_function}) {}
-
-Value::Value(BuiltinFunctionTable* data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data),
-              .type = lynx_value_function_table}) {}
-
-Value::Value(bool for_nan, bool val) {
-  if (for_nan) {
-    value_.val_bool = val;
-    value_.type = lynx_value_nan;
-  }
+Value::Value(void* data) {
+  value_.type = lynx_value_external;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data);
 }
 
-Value::Value(double val)
-    : value_({.val_double = val, .type = lynx_value_double}) {}
-Value::Value(int32_t val)
-    : value_({.val_int32 = val, .type = lynx_value_int32}) {}
-Value::Value(uint32_t val)
-    : value_({.val_uint32 = val, .type = lynx_value_uint32}) {}
-Value::Value(int64_t val)
-    : value_({.val_int64 = val, .type = lynx_value_int64}) {}
-Value::Value(uint64_t val)
-    : value_({.val_uint64 = val, .type = lynx_value_uint64}) {}
-Value::Value(uint8_t data)
-    : value_({.val_uint32 = data, .type = lynx_value_uint32}) {}
+Value::Value(CFunction val) {
+  value_.type = lynx_value_function;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(val);
+  value_.tag = static_cast<int32_t>(CFunctionType_Default);
+}
 
-Value::Value(const fml::RefPtr<Dictionary>& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
-              .type = lynx_value_map}) {
+Value::Value(CFunctionBuiltin val) {
+  value_.type = lynx_value_function;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(val);
+  value_.tag = static_cast<int32_t>(CFunctionType_Builtin);
+}
+
+Value::Value(BuiltinFunctionTable* data) {
+  value_.type = lynx_value_function_table;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data);
+}
+
+Value::Value(double val) {
+  value_.type = lynx_value_double;
+  value_.val_double = val;
+}
+Value::Value(int32_t val) {
+  value_.type = lynx_value_int32;
+  value_.val_int32 = val;
+}
+Value::Value(uint32_t val) {
+  value_.type = lynx_value_uint32;
+  value_.val_uint32 = val;
+}
+Value::Value(int64_t val) {
+  value_.type = lynx_value_int64;
+  value_.val_int64 = val;
+}
+Value::Value(uint64_t val) {
+  value_.type = lynx_value_uint64;
+  value_.val_uint64 = val;
+}
+Value::Value(uint8_t data) {
+  value_.type = lynx_value_uint32;
+  value_.val_uint32 = data;
+}
+
+Value::Value(CreateAsNanTag) {
+  value_.type = lynx_value_nan;
+  value_.val_bool = true;
+}
+
+Value::Value(const fml::RefPtr<Dictionary>& data) {
+  value_.type = lynx_value_map;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get());
   data.get()->AddRef();
 }
 
-Value::Value(fml::RefPtr<Dictionary>&& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
-              .type = lynx_value_map}) {}
+Value::Value(fml::RefPtr<Dictionary>&& data) {
+  value_.type = lynx_value_map;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef());
+}
 
-Value::Value(const fml::WeakRefPtr<Dictionary>& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
-              .type = lynx_value_map}) {
+Value::Value(const fml::WeakRefPtr<Dictionary>& data) {
+  value_.type = lynx_value_map;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get());
   data.get()->AddRef();
 }
 
-Value::Value(const fml::RefPtr<CArray>& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
-              .type = lynx_value_array}) {
+Value::Value(const fml::RefPtr<CArray>& data) {
+  value_.type = lynx_value_array;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get());
   data.get()->AddRef();
 }
 
-Value::Value(fml::RefPtr<CArray>&& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
-              .type = lynx_value_array}) {}
-
-Value::Value(const fml::WeakRefPtr<CArray>& data)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
-              .type = lynx_value_array}) {
-  data.get()->AddRef();
+Value::Value(fml::RefPtr<CArray>&& data) {
+  value_.type = lynx_value_array;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef());
 }
 
-Value::Value(lynx_value&& value) : value_(std::move(value)) {}
+Value::Value(const fml::WeakRefPtr<CArray>& data) {
+  value_.type = lynx_value_array;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get());
+  data.get()->AddRef();
+}
 
 Value::Value(lynx_api_env env, int64_t val, int32_t tag) : env_(env) {
   value_.val_int64 = val;
@@ -434,7 +458,16 @@ fml::RefPtr<lepus::RefCounted> Value::RefCounted() && {
 
 CFunction Value::Function() const {
   if (likely(value_.type == lynx_value_function)) {
+    DCHECK(value_.tag == static_cast<int32_t>(CFunctionType_Default));
     return reinterpret_cast<CFunction>(Ptr());
+  }
+  return nullptr;
+}
+
+CFunctionBuiltin Value::FunctionBuiltin() const {
+  if (likely(value_.type == lynx_value_function)) {
+    DCHECK(value_.tag == static_cast<int32_t>(CFunctionType_Builtin));
+    return reinterpret_cast<CFunctionBuiltin>(Ptr());
   }
   return nullptr;
 }
@@ -840,7 +873,7 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
     case lynx_value_bool:
       return Value(src.Bool());
     case lynx_value_nan:
-      return Value(true, src.NaN());
+      return Value(Value::kCreateAsNanTag);
     case lynx_value_string: {
       return Value(src.String());
     }
@@ -1282,9 +1315,8 @@ ValueType Value::LegacyTypeFromLynxValue(const lynx_value& value) {
 
 Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
                           int32_t flag) {
-  static Value empty_value;
   if (!env) {
-    return empty_value;
+    goto ret_empty;
   }
   if (val.type != lynx_value_extended) {
     if (likely(flag == 0)) {
@@ -1344,13 +1376,20 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
       if (flag == 0) {
         return lepus::Value(env, val);
       }
-      return empty_value;
+      break;
+    }
+    case lynx_value_external: {
+      void* ret;
+      lynx_value_get_external_ext(env, val, &ret);
+      return lepus::Value(ret);
     }
     default:
       LOGE("not support type:" << static_cast<uint32_t>(type));
       break;
   }
 
+ret_empty:
+  static Value empty_value;
   return empty_value;
 }
 

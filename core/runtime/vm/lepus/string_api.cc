@@ -356,7 +356,7 @@ static void GetRegExecuteResult(const int& capture_count, uint8_t** capture,
   array_global.emplace_back(std::move(array_data));
 }
 
-static Value Search(VMContext* context) {
+static RestrictedValue Search(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   const auto& str = context->GetParam(params_count - 1)->StdString();
@@ -373,7 +373,7 @@ static Value Search(VMContext* context) {
     }
   } else {
     // no param
-    return Value(static_cast<int64_t>(0));
+    return RestrictedValue(static_cast<int64_t>(0));
   }
 
   const char* pattern = reg_exp->get_pattern().c_str();
@@ -390,7 +390,7 @@ static Value Search(VMContext* context) {
   if (bc == nullptr) {
     context->ReportError("SyntaxError: Invalid regular expression: /" +
                          reg_exp->get_pattern().str() + "/:" + error_msg);
-    return Value();
+    return RestrictedValue();
   }
 
   base::InlineVector<uint16_t, 512> str_c;
@@ -409,10 +409,10 @@ static Value Search(VMContext* context) {
     start = (capture[0] - reinterpret_cast<uint8_t*>(str_c.data())) >> shift;
   }
 
-  return Value(start);
+  return RestrictedValue(start);
 }
 
-static Value Trim(VMContext* context) {
+static RestrictedValue Trim(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   DCHECK(context->GetParam(0)->IsString());
@@ -421,7 +421,7 @@ static Value Trim(VMContext* context) {
   auto left_pos = ori_str.find_first_not_of(" ");
   if (left_pos == std::string::npos) {
     // All spaces or empty string
-    return Value(base::String());
+    return RestrictedValue(base::String());
   }
 
   auto right_pos = ori_str.find_last_not_of(" ");
@@ -434,10 +434,10 @@ static Value Trim(VMContext* context) {
   auto str = ori_str;
   str.erase(right_pos + 1);  // trim right first
   str.erase(0, left_pos);
-  return Value(std::move(str));
+  return RestrictedValue(std::move(str));
 }
 
-static Value CharAt(VMContext* context) {
+static RestrictedValue CharAt(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   const auto& str = context->GetParam(params_count - 1)->StdString();
@@ -449,15 +449,15 @@ static Value CharAt(VMContext* context) {
         static_cast<int64_t>(context->GetParam(0)->Number()));
   }
   if (pos >= 0 && pos < str.length())
-    return Value(str.substr(pos, 1));
+    return RestrictedValue(str.substr(pos, 1));
   else
-    return Value(base::String());
+    return RestrictedValue(base::String());
 }
 
-static Value Match(VMContext* context) {
+static RestrictedValue Match(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
-  Value result = Value(CArray::Create());
+  RestrictedValue result(CArray::Create());
   auto result_array = result.Array();
   result_array->SetIsMatchResult();
   auto str = context->GetParam(params_count - 1)->String();
@@ -475,7 +475,7 @@ static Value Match(VMContext* context) {
 
   std::string pattern;
   std::string flags;
-  Value* param;
+  RestrictedValue* param;
   int re_flags = 0;
 
   // handle param:
@@ -522,7 +522,7 @@ static Value Match(VMContext* context) {
   if (bc == nullptr) {
     context->ReportError("SyntaxError: Invalid regular expression: /" +
                          pattern + "/: " + error_msg);
-    return Value();
+    return RestrictedValue();
   }
 
   bool global_mode = false;
@@ -546,7 +546,7 @@ static Value Match(VMContext* context) {
                    static_cast<int>(unicode_len), shift, nullptr);
     if (ret == 0 || ret == -1) {
       if (match_num == 0) {
-        result = Value();
+        result = RestrictedValue();
         result_array.reset(result.Array().get());
       }
       break;
@@ -625,7 +625,7 @@ static Value Match(VMContext* context) {
   return result;
 }
 
-static Value Replace(VMContext* context) {
+static RestrictedValue Replace(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   auto str = context->GetParam(params_count - 1)->String();
@@ -634,11 +634,11 @@ static Value Replace(VMContext* context) {
     DCHECK(params_count == 3);
   }
 
-  Value* param1 = context->GetParam(0);
+  RestrictedValue* param1 = context->GetParam(0);
   DCHECK(param1->IsRegExp() || param1->IsString());
 
   // Prepare param2
-  Value* param2 = context->GetParam(1);
+  RestrictedValue* param2 = context->GetParam(1);
   const std::string* param2_str_ptr;
   switch (param2->Type()) {
     case Value_String: {
@@ -704,7 +704,7 @@ static Value Replace(VMContext* context) {
     if (bc == nullptr) {
       context->ReportError("SyntaxError: Invalid regular expression: / " +
                            pattern.str() + "/: " + error_msg);
-      return Value();
+      return RestrictedValue();
     }
 
     size_t start_search_index = 0;
@@ -758,29 +758,29 @@ static Value Replace(VMContext* context) {
                             *array_global_ptr);
 
         if (param2->IsClosure()) {
-          Value* call_function = param2;
+          auto* call_function = param2;
           int param_len = -1;
-          Value* this_obj = context->GetParam(params_count - 1);
-          Value* match = this_obj + (++param_len);
-          *match =
-              Value(array_global_ptr->get(find_match).Array()->get(1).String());
+          auto* this_obj = context->GetParam(params_count - 1);
+          auto* match = this_obj + (++param_len);
+          *match = RestrictedValue(
+              array_global_ptr->get(find_match).Array()->get(1).String());
           size_t parentheses_match_size =
               (array_global_ptr->get(find_match).Array()->size() - 1) / 3 - 1;
           for (size_t i = 0; i < parentheses_match_size; i++) {
-            Value* p = this_obj + (++param_len);
-            *p = Value(array_global_ptr->get(find_match)
-                           .Array()
-                           ->get(3 * i + 4)
-                           .String());
+            auto* p = this_obj + (++param_len);
+            *p = RestrictedValue(array_global_ptr->get(find_match)
+                                     .Array()
+                                     ->get(3 * i + 4)
+                                     .String());
           }
 
-          Value* offset = this_obj + (++param_len);
+          auto* offset = this_obj + (++param_len);
           offset->SetNumber(static_cast<int64_t>(
               array_global_ptr->get(find_match).Array()->get(2).Number()));
-          Value* string = this_obj + (++param_len);
-          *string =
-              Value(array_global_ptr->get(find_match).Array()->get(0).String());
-          Value call_function_ret;
+          auto* string = this_obj + (++param_len);
+          *string = RestrictedValue(
+              array_global_ptr->get(find_match).Array()->get(0).String());
+          RestrictedValue call_function_ret;
           static_cast<VMContext*>(context)->CallFunction(
               call_function, param_len + 1, &call_function_ret);
           find_match++;
@@ -814,16 +814,16 @@ static Value Replace(VMContext* context) {
     }
     free(bc);
   }
-  return Value(std::move(result));
+  return RestrictedValue(std::move(result));
 }
 
-static Value Slice(VMContext* context) {
+static RestrictedValue Slice(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2 || params_count == 3);
 
   const std::string& str = context->GetParam(params_count - 1)->StdString();
   if (params_count == 1) {
-    return Value(str);
+    return RestrictedValue(str);
   }
 
   int64_t startIndex = static_cast<int64_t>(context->GetParam(0)->Number());
@@ -838,7 +838,7 @@ static Value Slice(VMContext* context) {
   size_t strIndex = start_index >= str.size() ? str.size() : start_index;
 
   if (params_count == 2) {
-    return Value(str.substr(strIndex));
+    return RestrictedValue(str.substr(strIndex));
   } else {
     int64_t endIndex = static_cast<int64_t>(context->GetParam(1)->Number());
     if (endIndex < 0) {
@@ -850,13 +850,13 @@ static Value Slice(VMContext* context) {
     size_t end_index = base::UTF8IndexToCIndex(str.c_str(), str.length(),
                                                static_cast<size_t>(endIndex));
     if (start_index >= end_index) {
-      return Value(base::String());
+      return RestrictedValue(base::String());
     }
-    return Value(str.substr(start_index, end_index - start_index));
+    return RestrictedValue(str.substr(start_index, end_index - start_index));
   }
 }
 
-static Value SubString(VMContext* context) {
+static RestrictedValue SubString(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsString());
   const std::string& str = context->GetParam(params_count - 1)->StdString();
@@ -871,7 +871,7 @@ static Value SubString(VMContext* context) {
                 : start;
     size_t start_index =
         base::UTF8IndexToCIndex(str.c_str(), str.length(), start);
-    return Value(str.substr(start_index));
+    return RestrictedValue(str.substr(start_index));
   } else {
     DCHECK(context->GetParam(1)->IsNumber());
     int32_t end = static_cast<int32_t>(context->GetParam(1)->Number());
@@ -890,37 +890,39 @@ static Value SubString(VMContext* context) {
               ? static_cast<int32_t>(str.size())
               : end;
     size_t end_index = base::UTF8IndexToCIndex(str.c_str(), str.length(), end);
-    return Value(str.substr(start_index, end_index - start_index));
+    return RestrictedValue(str.substr(start_index, end_index - start_index));
   }
 }
 
-static Value IndexOf(VMContext* context) {
+static RestrictedValue IndexOf(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count > 1);
-  Value* this_obj = context->GetParam(0);
-  Value* arg = context->GetParam(1);
+  auto* this_obj = context->GetParam(0);
+  auto* arg = context->GetParam(1);
   long index = params_count == 2 ? 0 : context->GetParam(2)->Number();
 
   if (this_obj->IsString() && arg->IsString()) {
-    const auto& this_str = this_obj->StdString();
-    std::size_t result = this_str.find(arg->StdString(), index);
+    const auto& this_str =
+        RestrictedValue::Unsafe::TypeSure::GetStdString(*this_obj);
+    const auto& arg_str = RestrictedValue::Unsafe::TypeSure::GetStdString(*arg);
+    std::size_t result = this_str.find(arg_str, index);
     if (result != std::string::npos) {
-      return Value(static_cast<uint32_t>(base::CIndexToUTF8Index(
+      return RestrictedValue(static_cast<uint32_t>(base::CIndexToUTF8Index(
           this_str.c_str(), this_str.length(), result)));
     }
   }
-  return Value(-1);
+  return RestrictedValue(-1);
 }
 
-static Value Length(VMContext* context) {
+static RestrictedValue Length(VMContext* context) {
   DCHECK(context->GetParam(0)->IsString());
   const auto& str = context->GetParam(0)->StdString();
-  return Value(
+  return RestrictedValue(
       static_cast<uint32_t>(base::SizeOfUtf8(str.c_str(), str.length())));
 }
 
 // substr(start[, length])
-static Value SubStr(VMContext* context) {
+static RestrictedValue SubStr(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 3 || params_count == 2);
   DCHECK(context->GetParam(0)->IsString());
@@ -939,18 +941,19 @@ static Value SubStr(VMContext* context) {
     DCHECK(context->GetParam(2)->IsNumber());
     int64_t length = static_cast<int64_t>(context->GetParam(2)->Number());
     if (length <= 0) {
-      return Value(base::String());
+      return RestrictedValue(base::String());
     }
     size_t end_index =
         base::UTF8IndexToCIndex(str.c_str(), str.length(),
                                 utf8_start_index + static_cast<size_t>(length));
-    return Value(str.str().substr(start_index, end_index - start_index));
+    return RestrictedValue(
+        str.str().substr(start_index, end_index - start_index));
   } else {
-    return Value(str.str().substr(start_index));
+    return RestrictedValue(str.str().substr(start_index));
   }
 }
 
-static Value Split(VMContext* context) {
+static RestrictedValue Split(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2 || params_count == 3);
 
@@ -959,7 +962,7 @@ static Value Split(VMContext* context) {
   const std::string& pattern = context->GetParam(0)->StdString();
 
   size_t pattern_length = pattern.length(), str_length = str.length();
-  Value res = Value(CArray::Create()), temp;
+  RestrictedValue res = RestrictedValue(CArray::Create()), temp;
   auto array_res = res.Array();
   size_t max_size = 0, size = 0;
   bool max_flag = false;
@@ -1011,7 +1014,7 @@ void RegisterStringAPI(Context* ctx) {
   RegisterFunctionTable(ctx, "String", &apis);
 }
 
-const Value& GetStringPrototypeAPI(const base::String& key) {
+const RestrictedValue& GetStringPrototypeAPI(const base::String& key) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::StringPrototype,
                                    {
                                        {"split", &Split},
