@@ -47,7 +47,7 @@ source_set("net") {
   ]
   public_configs = [
     "../:config",
-    "../../../lynx/base/src:base_public_config",
+    "../../base/src:base_public_config",
   ]
 }
 

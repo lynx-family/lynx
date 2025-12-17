@@ -143,7 +143,7 @@ bundle_data("embed_bundles") {
 }
 
 build_kernel_js("lynx_core") {
-  script = "../../../../../lynx/tools/js_tools/build.py"
+  script = "../../../../tools/js_tools/build.py"
   platform = "ios"
   output_path = "$root_build_dir/lynx_core"
 }

@@ -17,7 +17,7 @@ source_set("common") {
   deps = [ "../../../../fml:fml" ]
 
   public_configs = [
-    "../../../../../../lynx/clay:config",
+    "../../../../../clay:config",
     ":framework_relative_headers",
   ]
 

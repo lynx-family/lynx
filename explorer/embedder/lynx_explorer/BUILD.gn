@@ -2,8 +2,8 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("../../../../lynx/core/Lynx.gni")
-import("../../../../lynx/oliver/oliver.gni")
+import("../../../core/Lynx.gni")
+import("../../../oliver/oliver.gni")
 
 source_set("lynx_explorer_embedder") {
   sources = [
