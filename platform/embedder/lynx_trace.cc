@@ -20,3 +20,17 @@ LYNX_EXTERN_C void lynx_trace_section_end(const char* category,
 LYNX_EXTERN_C void lynx_trace_instant(const char* category, const char* name) {
   TRACE_EVENT_INSTANT(category, name);
 }
+
+LYNX_EXTERN_C void lynx_trace_counter(const char* category, const char* name,
+                                      uint64_t value, bool incremental) {
+#if ENABLE_TRACE_PERFETTO
+  // For Perfetto, we can construct a CounterTrack with the incremental flag.
+  TRACE_COUNTER(category,
+                lynx::perfetto::CounterTrack(name).set_incremental(incremental),
+                value);
+#else
+  // For other backends (or when tracing is disabled), TRACE_COUNTER is a no-op
+  // or doesn't support this. We call the macro with the name only.
+  TRACE_COUNTER(category, name, value);
+#endif
+}
