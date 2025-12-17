@@ -100,8 +100,12 @@ class BaseElementContainer {
   virtual void ListCellDisappear(bool is_exist, const base::String& item_key);
   virtual void ListReusePaintingNode(int32_t child_id,
                                      const base::String& item_key);
-  virtual void InsertListItemPaintingNode(int32_t child_id);
-  virtual void RemoveListItemPaintingNode(int32_t child_id);
+  virtual void InsertListItemPaintingNode(int32_t child_id) = 0;
+  virtual void RemoveListItemPaintingNode(int32_t child_id) = 0;
+  virtual void UpdateContentOffsetForListContainer(float content_size,
+                                                   float delta_x, float delta_y,
+                                                   bool is_init_scroll_offset,
+                                                   bool from_layout) = 0;
 
   virtual std::vector<float> ScrollBy(float width, float height);
   virtual std::vector<float> GetRectToLynxView();
@@ -111,10 +115,6 @@ class BaseElementContainer {
       const std::string& method, const pub::Value& params,
       const std::function<void(int32_t code, const pub::Value& data)>&
           callback);
-  virtual void UpdateContentOffsetForListContainer(float content_size,
-                                                   float delta_x, float delta_y,
-                                                   bool is_init_scroll_offset,
-                                                   bool from_layout);
 
   virtual void SetGestureDetectorState(int32_t gesture_id, int32_t state);
   virtual void ConsumeGesture(int32_t gesture_id, const lepus::Value& params);

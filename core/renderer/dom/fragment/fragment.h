@@ -64,6 +64,13 @@ class Fragment : public BaseElementContainer {
       bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
 
+  void InsertListItemPaintingNode(int32_t child_id) override;
+  void RemoveListItemPaintingNode(int32_t child_id) override;
+  void UpdateContentOffsetForListContainer(float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout) override;
+
   void CreateLayerIfNeeded();
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;
 
@@ -90,6 +97,8 @@ class Fragment : public BaseElementContainer {
   const auto& LayoutResult() const { return layout_result_for_rendering_; }
 
  private:
+  void UpdateRenderOffsetRecursively(float left, float top);
+
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
 

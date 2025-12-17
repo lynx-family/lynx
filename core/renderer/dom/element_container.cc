@@ -613,6 +613,24 @@ void ElementContainer::UpdatePaintingNode(
                                          painting_data);
 }
 
+void ElementContainer::InsertListItemPaintingNode(int32_t child_id) {
+  painting_context()->InsertListItemPaintingNode(element()->impl_id(),
+                                                 child_id);
+}
+
+void ElementContainer::RemoveListItemPaintingNode(int32_t child_id) {
+  painting_context()->RemoveListItemPaintingNode(element()->impl_id(),
+                                                 child_id);
+}
+
+void ElementContainer::UpdateContentOffsetForListContainer(
+    float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  painting_context()->UpdateContentOffsetForListContainer(
+      element()->impl_id(), content_size, delta_x, delta_y,
+      is_init_scroll_offset, from_layout);
+}
+
 bool ElementContainer::IsSticky() { return element()->is_sticky(); }
 
 //========helper function for get index for fiber ========

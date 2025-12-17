@@ -77,16 +77,6 @@ void BaseElementContainer::ListReusePaintingNode(int32_t child_id,
   painting_context()->ListReusePaintingNode(child_id, item_key);
 }
 
-void BaseElementContainer::InsertListItemPaintingNode(int32_t child_id) {
-  painting_context()->InsertListItemPaintingNode(element()->impl_id(),
-                                                 child_id);
-}
-
-void BaseElementContainer::RemoveListItemPaintingNode(int32_t child_id) {
-  painting_context()->RemoveListItemPaintingNode(element()->impl_id(),
-                                                 child_id);
-}
-
 std::vector<float> BaseElementContainer::ScrollBy(float width, float height) {
   return painting_context()->ScrollBy(element()->impl_id(), width, height);
 }
@@ -106,14 +96,6 @@ void BaseElementContainer::Invoke(
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {
   return painting_context()->Invoke(element()->impl_id(), method, params,
                                     callback);
-}
-
-void BaseElementContainer::UpdateContentOffsetForListContainer(
-    float content_size, float delta_x, float delta_y,
-    bool is_init_scroll_offset, bool from_layout) {
-  painting_context()->UpdateContentOffsetForListContainer(
-      element()->impl_id(), content_size, delta_x, delta_y,
-      is_init_scroll_offset, from_layout);
 }
 
 void BaseElementContainer::SetGestureDetectorState(int32_t gesture_id,

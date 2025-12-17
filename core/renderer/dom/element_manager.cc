@@ -32,6 +32,7 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
@@ -442,7 +443,13 @@ void ElementManager::RequestLayout(
 
   element_manager_delegate_->OnLayoutAfter(layout_data);
 
+  // TODO(songshourui.null): Move the following functions to onLayoutAfter.
   TickListIfNeeded(options);
+
+  if (root()->EnableFragmentLayerRender()) {
+    static_cast<Fragment *>(root()->element_container())->Draw();
+    root()->element_container()->Flush();
+  }
 }
 
 std::unordered_map<int32_t, LayoutInfoArray>

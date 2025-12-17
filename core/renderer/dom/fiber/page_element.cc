@@ -176,10 +176,6 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   element_container()->FinishLayoutOperation(options);
 
-  if (EnableFragmentLayerRender()) {
-    static_cast<Fragment*>(fragment_impl())->Draw();
-  }
-
   if (!options->enable_unified_pixel_pipeline) {
     element_container()->Flush();
   }

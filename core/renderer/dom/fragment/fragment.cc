@@ -240,6 +240,37 @@ void Fragment::UpdatePaintingNode(
   painting_context()->UpdatePaintingNode(id(), tend_to_flatten, painting_data);
 }
 
+void Fragment::InsertListItemPaintingNode(int32_t child_id) {
+  if (behavior_ == nullptr) {
+    LOGE(
+        "Fragment::InsertListItemPaintingNode failed since behavior_ is null.");
+    return;
+  }
+  // TODO(songshourui.null): impl this method later.
+}
+
+void Fragment::RemoveListItemPaintingNode(int32_t child_id) {
+  if (behavior_ == nullptr) {
+    LOGE(
+        "Fragment::RemoveListItemPaintingNode failed since behavior_ is null.");
+    return;
+  }
+  // TODO(songshourui.null): impl this method later.
+}
+
+void Fragment::UpdateContentOffsetForListContainer(float content_size,
+                                                   float delta_x, float delta_y,
+                                                   bool is_init_scroll_offset,
+                                                   bool from_layout) {
+  if (behavior_ == nullptr) {
+    LOGE(
+        "Fragment::UpdateContentOffsetForListContainer failed since behavior_ "
+        "is null.");
+    return;
+  }
+  // TODO(songshourui.null): impl this method later.
+}
+
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
   MarkDirtyState(kNeedRedraw);
@@ -653,6 +684,12 @@ void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
 }
 
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
+  layout_result_for_rendering_.offset_.SetX(left);
+  layout_result_for_rendering_.offset_.SetY(top);
+  UpdateRenderOffsetRecursively(0, 0);
+}
+
+void Fragment::UpdateRenderOffsetRecursively(float left, float top) {
   float child_offset_x = left + layout_result_for_rendering_.offset_.X();
   float child_offset_y = top + layout_result_for_rendering_.offset_.Y();
   if (has_platform_renderer_) {
@@ -668,7 +705,7 @@ void Fragment::UpdateLayout(float left, float top, bool transition_view) {
   }
 
   for (auto* child : children_) {
-    child->UpdateLayout(child_offset_x, child_offset_y);
+    child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y);
   }
 }
 

@@ -58,6 +58,13 @@ class ElementContainer : public BaseElementContainer {
       bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
 
+  void InsertListItemPaintingNode(int32_t child_id) override;
+  void RemoveListItemPaintingNode(int32_t child_id) override;
+  void UpdateContentOffsetForListContainer(float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout) override;
+
  protected:
   void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
 

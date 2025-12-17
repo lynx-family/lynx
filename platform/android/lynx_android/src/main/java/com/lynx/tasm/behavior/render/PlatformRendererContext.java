@@ -106,7 +106,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       case PlatformRendererType.kView:
       case PlatformRendererType.kText:
       case PlatformRendererType.kImage:
-      case PlatformRendererType.kListItem: {
+      // TODO(songshourui.null): Support <list>, <list-item> and <scroll-view>'s platform view
+      // later, use ContainerRenderer for now
+      case PlatformRendererType.kList:
+      case PlatformRendererType.kListItem:
+      case PlatformRendererType.kScroll: {
         ContainerRenderer view = new ContainerRenderer(mContext);
         Renderer renderer = view.createRenderer(this, sign);
         renderer.setRenderHost(view);
@@ -127,12 +131,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         }
         break;
       }
-      case PlatformRendererType.kScroll: {
-        // TODO: support <scroll-view/> platform view here.
-      } break;
-      case PlatformRendererType.kList: {
-        // TODO: support <list/> platform view here.
-      } break;
       default:
         // TODO: support customized PlatformRendererHostView.
         break;
