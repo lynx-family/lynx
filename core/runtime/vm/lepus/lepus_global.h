@@ -23,12 +23,7 @@ class Global {
 
   ~Global() = default;
 
-  inline Value* Get(std::size_t index) {
-    if (index < global_cnt_) {
-      return &global_content_[index];
-    }
-    return nullptr;
-  }
+  inline Value* Get(std::size_t index) { return &global_content_[index]; }
 
   int Search(const base::String& name) {
     auto iter = global_.find(name);

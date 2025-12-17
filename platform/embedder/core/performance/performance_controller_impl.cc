@@ -20,7 +20,7 @@ void PerformanceControllerImpl::OnPerformanceEvent(
 lepus::Value PerformanceControllerImpl::PreparePerformanceData(
     const std::unique_ptr<pub::Value>& entry_map) {
   if (!entry_map || !entry_map->IsMap()) {
-    return lepus::Value{true, true};
+    return lepus::Value(lepus::Value::kCreateAsNanTag);
   }
 
   // 1. parse instanceid
@@ -41,7 +41,7 @@ lepus::Value PerformanceControllerImpl::PreparePerformanceData(
     }
     return lepus_entry_map;
   }
-  return lepus::Value{true, true};
+  return lepus::Value(lepus::Value::kCreateAsNanTag);
 }
 
 void PerformanceControllerImpl::SendPerformanceData(

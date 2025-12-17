@@ -20,7 +20,7 @@ namespace lepus {
 namespace test {
 
 namespace {
-static lepus::Value TestCFunction(lepus::Context* ctx) {
+static lepus::Value TestCFunction(lepus::Context* ctx, lepus::Value*, int) {
   return lepus::Value("test");
 }
 }  // namespace
@@ -73,7 +73,7 @@ TEST_F(LepusValueTest, LepusValueNull) {
 
 TEST_F(LepusValueTest, LepusValueNumber) {
   {
-    lepus::Value v1(true, true);
+    lepus::Value v1(lepus::Value::kCreateAsNanTag);
     ASSERT_TRUE(v1.IsNaN());
     ASSERT_TRUE(v1.NaN());
     ASSERT_TRUE(v1.Type() == Value_NaN);
@@ -610,7 +610,7 @@ TEST_F(LepusValueTest, LepusValuePointer) {
     ASSERT_TRUE(v3.Type() == Value_CFunction);
     ASSERT_TRUE(!v3.IsReference());
     auto func = v3.Function();
-    auto ret = func(&quick_ctx_);
+    auto ret = func(&quick_ctx_, nullptr, 0);
     ASSERT_TRUE(ret.IsString());
 
     lepus::Value v4;

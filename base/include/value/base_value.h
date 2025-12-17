@@ -33,6 +33,7 @@ namespace lynx {
 namespace lepus {
 
 class Value;
+struct RestrictedValue;
 
 using LepusValueIterator =
     base::MoveOnlyClosure<void, const lepus::Value&, const lepus::Value&>;
@@ -84,13 +85,19 @@ enum ValueType {
 };
 
 class Context;
+class VMContext;
 class CArray;
 class Dictionary;
 class ByteArray;
 class RefCounted;
 class BuiltinFunctionTable;
 
-typedef Value (*CFunction)(Context*);
+enum CFunctionType {
+  CFunctionType_Default,
+  CFunctionType_Builtin,
+};
+typedef Value (*CFunction)(Context*, lepus::Value*, int);
+typedef RestrictedValue (*CFunctionBuiltin)(VMContext*);
 
 class BASE_EXPORT Value {
  private:
@@ -132,12 +139,22 @@ class BASE_EXPORT Value {
   explicit Value(const fml::RefPtr<lepus::RefCounted>& data);
   explicit Value(fml::RefPtr<lepus::RefCounted>&& data);
 
+#define NumberConstructor(name, type) explicit Value(type data);
+
+  NumberType(NumberConstructor)
+
+      explicit Value(uint8_t data);
+#undef NumberConstructor
+
+  enum CreateAsNanTag { kCreateAsNanTag };
+  explicit Value(CreateAsNanTag);
+
   explicit Value(bool val);
   explicit Value(void* data);
   explicit Value(CFunction val);
+  explicit Value(lepus::CFunctionBuiltin val);
   explicit Value(BuiltinFunctionTable* data);
-  explicit Value(bool for_nan, bool val);
-  explicit Value(lynx_value&& value);
+  explicit Value(const lynx_value& value) : value_(value) {}
   Value(lynx_api_env env, int64_t val, int32_t tag);
   Value(lynx_api_env env, const lynx_value& value);
   Value(lynx_api_env env, lynx_value&& value);
@@ -162,37 +179,34 @@ class BASE_EXPORT Value {
   }
   inline bool IsCallable() const { return IsClosure() || IsJSFunction(); }
 
-// add for compile
-#define NumberConstructor(name, type) explicit Value(type data);
-
-  NumberType(NumberConstructor)
-
-      explicit Value(uint8_t data);
-#undef NumberConstructor
-
   void SetNumber(double val) {
     FreeValue();
-    value_ = {.val_double = val, .type = lynx_value_double};
+    value_.type = lynx_value_double;
+    value_.val_double = val;
   }
 
   void SetNumber(int32_t val) {
     FreeValue();
-    value_ = {.val_int32 = val, .type = lynx_value_int32};
+    value_.type = lynx_value_int32;
+    value_.val_int32 = val;
   }
 
   void SetNumber(uint32_t val) {
     FreeValue();
-    value_ = {.val_uint32 = val, .type = lynx_value_uint32};
+    value_.type = lynx_value_uint32;
+    value_.val_uint32 = val;
   }
 
   void SetNumber(int64_t val) {
     FreeValue();
-    value_ = {.val_int64 = val, .type = lynx_value_int64};
+    value_.type = lynx_value_int64;
+    value_.val_int64 = val;
   }
 
   void SetNumber(uint64_t val) {
     FreeValue();
-    value_ = {.val_uint64 = val, .type = lynx_value_uint64};
+    value_.type = lynx_value_uint64;
+    value_.val_uint64 = val;
   }
 
   inline ValueType Type() const { return LegacyTypeFromLynxValue(value_); }
@@ -262,6 +276,9 @@ class BASE_EXPORT Value {
     return value_.type == lynx_value_undefined || IsJSUndefined();
   }
   inline bool IsCFunction() const { return value_.type == lynx_value_function; }
+  inline CFunctionType GetCFunctionType() const {
+    return static_cast<CFunctionType>(value_.tag);
+  }
   inline bool IsBuiltinFunctionTable() const {
     return value_.type == lynx_value_function_table;
   }
@@ -371,6 +388,7 @@ class BASE_EXPORT Value {
   fml::RefPtr<lepus::RefCounted> RefCounted() &&;
 
   CFunction Function() const;
+  CFunctionBuiltin FunctionBuiltin() const;
   BuiltinFunctionTable* FunctionTable() const;
   void* CPoint() const;
 
@@ -641,7 +659,8 @@ class BASE_EXPORT Value {
   }
 
   void IteratorJSValue(const LepusValueIterator& callback) const;
-  const lynx_value& value() const { return value_; }
+  const lynx_value& value() const& { return value_; }
+  lynx_value& value() && { return value_; }
   static ValueType LegacyTypeFromLynxValue(const lynx_value& value);
   static lynx_value_type ToLynxValueType(ValueType type);
 

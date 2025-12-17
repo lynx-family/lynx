@@ -76,7 +76,7 @@ void SwitchInfo::Adjust() {
   }
 }
 
-long SwitchInfo::Switch(Value* value) {
+long SwitchInfo::Switch(RestrictedValue* value) {
   if (type_ == SwitchType_Table) {
     if (!value->IsNumber() || min_ > max_) {
       return -1;

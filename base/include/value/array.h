@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #ifndef BASE_INCLUDE_VALUE_ARRAY_H_
 #define BASE_INCLUDE_VALUE_ARRAY_H_
+#include <type_traits>
 #include <utility>
 
 #include "base/include/base_defines.h"
@@ -195,6 +196,27 @@ class BASE_EXPORT CArray : public RefCountedBase {
     Unsafe() = delete;
 
     static BASE_INLINE CArray* RawCreate() { return new CArray(); }
+
+    template <class ValueType>
+    static void BASE_INLINE PushBack(CArray& array, ValueType&& v) {
+      if (array.IsConstLog()) {
+        return;
+      }
+      array.vec_.emplace_back(std::forward<ValueType>(v));
+    }
+
+    template <class ValueType>
+    static void BASE_INLINE SetIndex(CArray& array, size_t index,
+                                     ValueType&& v) {
+      if (array.IsConstLog()) {
+        return;
+      }
+      if (index >= array.vec_.size()) {
+        array.resize(index + 1);
+      }
+      std::decay_t<ValueType>::Assign(array.vec_[index],
+                                      std::forward<ValueType>(v));
+    }
   };
 
  protected:

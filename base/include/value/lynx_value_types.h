@@ -19,7 +19,7 @@
 
 typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_ref) * lynx_value_ref;
 
-typedef enum {
+typedef enum : uint8_t {
   lynx_value_null,
   lynx_value_undefined,
   lynx_value_bool,
@@ -52,8 +52,15 @@ struct lynx_value {
   };
 
   lynx_value_type type;
+  uint8_t __unnamed0__;
+  uint8_t __unnamed1__;
+  uint8_t __unnamed2__;
+
   int32_t tag;
 };
+
+static_assert(sizeof(lynx_value) == 16,
+              "The lynx_value was precisely designed to be 16 bytes.");
 
 typedef void (*lynx_value_iterator_callback)(lynx_api_env env, lynx_value key,
                                              lynx_value val, void* pfunc,

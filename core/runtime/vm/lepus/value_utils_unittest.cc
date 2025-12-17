@@ -3091,8 +3091,8 @@ TEST_F(LepusValueMethods, DeleteObjectProperty) {
 }
 
 TEST(ReportFatalError, VMContextTest) {
-  auto report_fatal_error = [](lepus::Context* ctx) {
-    auto* arg = ctx->GetParam(0);
+  auto report_fatal_error = [](lepus::Context* ctx, lepus::Value* arg,
+                               int argc) {
     if (!arg->IsString()) {
       ctx->ReportFatalError("args is not string", false,
                             error::E_MTS_RENDERER_FUNCTION_FATAL);
@@ -3154,8 +3154,8 @@ TEST(ReportFatalError, VMContextTest) {
 }
 
 TEST(ReportFatalError, VMContextTest2) {
-  auto report_fatal_error = [](lepus::Context* ctx) {
-    auto* arg = ctx->GetParam(0);
+  auto report_fatal_error = [](lepus::Context* ctx, lepus::Value* arg,
+                               int argc) {
     if (!arg->IsString()) {
       return ctx->ReportFatalError("args is not string", false,
                                    error::E_MTS_RENDERER_FUNCTION_FATAL);

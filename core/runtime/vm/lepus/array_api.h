@@ -9,7 +9,7 @@
 namespace lynx {
 namespace lepus {
 
-const Value& GetArrayPrototypeAPI(const base::String& key);
+const RestrictedValue& GetArrayPrototypeAPI(const base::String& key);
 
 }  // namespace lepus
 }  // namespace lynx

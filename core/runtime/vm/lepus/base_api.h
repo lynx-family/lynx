@@ -10,7 +10,7 @@ namespace lynx {
 namespace lepus {
 
 void RegisterBaseAPI(Context* ctx);
-const Value& GetNumberPrototypeAPI(const base::String& key);
+const RestrictedValue& GetNumberPrototypeAPI(const base::String& key);
 
 }  // namespace lepus
 }  // namespace lynx
