@@ -142,12 +142,11 @@ class NodeManager {
 
   void DisposeGesture(ArkUI_GestureRecognizer* recognizer);
 
-  ArkUI_GestureRecognizerType GetGestureType(
-      ArkUI_GestureRecognizer* recognizer);
+  void SetEventDispatcher(EventDispatcher* dispatcher) {
+    event_dispatcher_ = dispatcher;
+  }
 
-  void SetUserData(ArkUI_NodeHandle node, void* user_data);
-
-  void* GetUserData(ArkUI_NodeHandle node);
+  EventDispatcher* GetEventDispatcher() { return event_dispatcher_; }
 
   template <typename... Args>
   void SetAttributeWithNumberValue(ArkUI_NodeHandle node,
@@ -258,6 +257,7 @@ class NodeManager {
 
   ArkUI_NativeNodeAPI_1* native_node_api_{nullptr};
   ArkUI_NativeGestureAPI_1* native_gesture_api_{nullptr};
+  EventDispatcher* event_dispatcher_{nullptr};
 };
 }  // namespace harmony
 }  // namespace tasm

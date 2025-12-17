@@ -155,13 +155,6 @@ void UIExposure::ExecExposureCheck() {
     return;
   }
 
-  // Lynx cards may be on the view tree but are in a hidden state.
-  if (NodeManager::Instance().GetAttribute<int>(ui_owner_->Root()->DrawNode(),
-                                                NODE_VISIBILITY, 0) !=
-      ARKUI_VISIBILITY_VISIBLE) {
-    return;
-  }
-
   std::set<UIExposureDetail> ui_visible_now;
   std::set<UIExposureDetail> appear_ui_set;
   std::set<UIExposureDetail> disappear_ui_set;
