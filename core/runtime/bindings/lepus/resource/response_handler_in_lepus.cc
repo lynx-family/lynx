@@ -50,15 +50,15 @@ ResponseHandlerInLepus::GetResponseHandlerFromLepusValue(
 
 void ResponseHandlerInLepus::AddResourceListener(
     base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) {
-  promise_->AddCallback([self = WeakFromThis(), closure = std::move(closure)](
+  promise_->AddCallback([delegate = &delegate_, closure = std::move(closure)](
                             tasm::BundleResourceInfo bundle_info) mutable {
-    if (self) {
-      self->delegate_.InvokeResponsePromiseCallback(
-          [bundle_info = std::move(bundle_info),
-           closure = std::move(closure)]() mutable {
-            closure(std::move(bundle_info));
-          });
-    }
+    // it's safe here because callback won't be invoked if engine destroyed
+    // it's guaranteed by LazyBundleLoader.
+    delegate->InvokeResponsePromiseCallback(
+        [bundle_info = std::move(bundle_info),
+         closure = std::move(closure)]() mutable {
+          closure(std::move(bundle_info));
+        });
   });
 }
 
