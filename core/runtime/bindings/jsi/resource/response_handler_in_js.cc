@@ -43,11 +43,11 @@ Value ResponseHandlerInJS::get(Runtime* rt, const PropNameID& name) {
 void ResponseHandlerInJS::AddResourceListener(
     base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) {
   promise_->AddCallback(
-      [weak_self = weak_from_this(), closure = std::move(closure)](
+      [native_app = native_app_, closure = std::move(closure)](
           tasm::BundleResourceInfo bundle_info) mutable {
-        auto self = weak_self.lock();
-        if (self) {
-          self->delegate_.InvokeResponsePromiseCallback(
+        auto ptr = native_app.lock();
+        if (ptr && !ptr->IsDestroying()) {
+          ptr->GetDelegate().InvokeResponsePromiseCallback(
               [bundle_info = std::move(bundle_info),
                closure = std::move(closure)]() mutable {
                 closure(std::move(bundle_info));
@@ -75,7 +75,7 @@ Value ResponseHandlerInJS::WaitingForResponse(Runtime& rt) {
 
           double timeout = args[0].getNumber();
           auto result = WaitAndGetResource(timeout);
-          return ConvertBundleInfoToPiperValue(result);
+          return ConvertBundleInfoToPiperValue(ptr, result);
         }
         return piper::Value::undefined();
       });
@@ -98,30 +98,36 @@ Value ResponseHandlerInJS::AddListenerForResponse(Runtime& rt) {
                 "ResponseHandler.then's first param must be function."));
           }
 
-          piper::Function func = args[0].getObject(rt).getFunction(rt);
-          AddResourceListener([this, func = std::move(func)](
-                                  tasm::BundleResourceInfo info) mutable {
-            auto ptr = native_app_.lock();
-            if (ptr && !ptr->IsDestroying()) {
-              auto rt = ptr->GetRuntime();
-              if (rt != nullptr) {
-                func.call(*rt, ConvertBundleInfoToPiperValue(info));
-              }
-            }
-          });
+          ApiCallBack callback;
+          if (args[0].isObject() && args[0].getObject(rt).isFunction(rt)) {
+            callback =
+                ptr->CreateCallBack(args[0].getObject(rt).getFunction(rt));
+          }
+          AddResourceListener(
+              [native_app = native_app_, callback = std::move(callback)](
+                  tasm::BundleResourceInfo info) mutable {
+                auto ptr = native_app.lock();
+                if (ptr && !ptr->IsDestroying()) {
+                  auto rt = ptr->GetRuntime();
+                  if (rt != nullptr) {
+                    ptr->InvokeApiCallBackWithValue(
+                        callback, ConvertBundleInfoToPiperValue(ptr, info));
+                  }
+                }
+              });
         }
         return piper::Value::undefined();
       });
 }
 
 piper::Value ResponseHandlerInJS::ConvertBundleInfoToPiperValue(
+    std::shared_ptr<App> native_app,
     const tasm::BundleResourceInfo& bundle_info) {
-  auto app = native_app_.lock();
   std::shared_ptr<Runtime> rt = nullptr;
-  if (app && !app->IsDestroying()) {
-    rt = app->GetRuntime();
+  if (native_app && !native_app->IsDestroying()) {
+    rt = native_app->GetRuntime();
   }
-  if (rt == nullptr || app == nullptr) {
+  if (rt == nullptr || native_app == nullptr) {
     return piper::Value::undefined();
   }
   piper::Object obj(*rt);

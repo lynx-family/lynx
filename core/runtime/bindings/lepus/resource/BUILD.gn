@@ -17,3 +17,27 @@ lynx_core_source_set("lepus_runtime") {
 
   public_deps = [ "../../common/resource:promise" ]
 }
+
+unittest_set("response_handler_lepus_testset") {
+  sources = [ "response_handler_in_lepus_unittest.cc" ]
+  public_deps = [
+    ":lepus_runtime",
+    "../../../../../third_party/quickjs",
+    "../../../../renderer:tasm",
+    "../../../../renderer/dom:dom",
+    "../../../../renderer/dom:renderer_dom",
+    "../../../../renderer/starlight",
+    "../../lepus",
+  ]
+  data_deps = []
+}
+
+unittest_exec("response_handler_lepus_unittests_exec") {
+  sources = []
+  deps = [ ":response_handler_lepus_testset" ]
+}
+
+group("response_handler_tests") {
+  testonly = true
+  deps = [ ":response_handler_lepus_unittests_exec" ]
+}
