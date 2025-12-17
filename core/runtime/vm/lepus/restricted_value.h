@@ -482,8 +482,8 @@ struct RestrictedValue {
         }
       }
 
-      static BASE_INLINE bool IsNumberDoubleFast(const RestrictedValue& value,
-                                                 double& result) {
+      static bool IsNumberDoubleFast(const RestrictedValue& value,
+                                     double& result) {
         auto type = value.value_.type;
         if (likely(type == lynx_value_double)) {
           result = value.value_.val_double;

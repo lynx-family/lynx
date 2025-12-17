@@ -6,29 +6,29 @@
 
 #include <vector>
 
-#include "base/include/value/base_value.h"
 #include "core/runtime/vm/lepus/op_code.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 
 namespace lynx {
 namespace lepus {
 class Heap {
  public:
   Heap() : heap_(kBaseHeapSize) { top_ = &heap_[0]; }
-  Value* top_;
-  Value* base() { return &heap_[0]; }
+  RestrictedValue* top_;
+  RestrictedValue* base() { return &heap_[0]; }
 
  private:
   friend class ContextBinaryWriter;
   static constexpr int kBaseHeapSize = 10240;
-  std::vector<Value> heap_;
+  std::vector<RestrictedValue> heap_;
 };
 
 struct Frame {
-  Value* register_;
+  RestrictedValue* register_;
 
-  Value* function_;
+  RestrictedValue* function_;
 
-  Value* return_;
+  RestrictedValue* return_;
 
   const Instruction* instruction_;
 
@@ -50,8 +50,9 @@ struct Frame {
         prev_frame_(nullptr),
         current_pc_(0) {}
 
-  Frame(Value* reg, Value* function, Value* ret, const Instruction* ins,
-        const Instruction* end, Frame* prev_frame, int current_pc)
+  Frame(RestrictedValue* reg, RestrictedValue* function, RestrictedValue* ret,
+        const Instruction* ins, const Instruction* end, Frame* prev_frame,
+        int current_pc)
       : register_(reg),
         function_(function),
         return_(ret),

@@ -9,9 +9,11 @@
 #include <chrono>
 #include <utility>
 
+#include "core/runtime/vm/lepus/restricted_value.h"
+
 namespace lynx {
 namespace lepus {
-Value Now(VMContext* context, Value*, int) {
+RestrictedValue Now(VMContext* context) {
   using std::chrono::milliseconds;
   using std::chrono::system_clock;
   using std::chrono::time_point;
@@ -20,7 +22,7 @@ Value Now(VMContext* context, Value*, int) {
   time_stamp tp = time_point_cast<milliseconds>(system_clock::now());
   auto current_time = tp.time_since_epoch().count();
 
-  return Value((uint64_t)current_time);
+  return RestrictedValue((uint64_t)current_time);
 }
 
 void RegisterDateAPI(Context* ctx) {

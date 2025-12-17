@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/runtime/vm/lepus/restricted_value.h"
 #include "core/runtime/vm/lepus/token.h"
 
 namespace lynx {
@@ -19,7 +20,6 @@ enum SwitchType {
   SwitchType_Lookup,
 };
 
-class Value;
 class SwitchInfo {
  public:
   SwitchInfo()
@@ -44,7 +44,7 @@ class SwitchInfo {
   static bool SortTable(const std::pair<int, int>& v1,
                         const std::pair<int, int>& v2);
   void Adjust();
-  long Switch(Value* value);
+  long Switch(RestrictedValue* value);
 
   long default_offset() const { return default_offset_; }
 

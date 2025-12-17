@@ -8,24 +8,25 @@
 #include <utility>
 
 #include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 
 namespace lynx {
 namespace lepus {
-Value Stringify(VMContext* context, Value*, int) {
+RestrictedValue Stringify(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   auto* arg = context->GetParam(0);
   if (arg->IsString()) {
-    return Value(arg->String());
+    return RestrictedValue(arg->String());
   } else if (arg->IsNil() || arg->IsUndefined()) {
     BASE_STATIC_STRING_DECL(kNull, "null");
-    return Value(kNull);
+    return RestrictedValue(kNull);
   }
   DCHECK(arg->IsTable() || arg->IsArray());
-  return Value(lepusValueToJSONString(*arg));
+  return RestrictedValue(lepusValueToJSONString(Value(*arg)));
 }
 
-Value Parse(VMContext* context, Value*, int) {
+RestrictedValue Parse(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   auto* arg = context->GetParam(0);
@@ -36,7 +37,7 @@ Value Parse(VMContext* context, Value*, int) {
     // other type
     res = jsonValueTolepusValue("");
   }
-  return res;
+  return RestrictedValue(res);
 }
 
 void RegisterJSONAPI(Context* ctx) {

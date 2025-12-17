@@ -1316,9 +1316,8 @@ ValueType Value::LegacyTypeFromLynxValue(const lynx_value& value) {
 
 Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
                           int32_t flag) {
-  static Value empty_value;
   if (!env) {
-    return empty_value;
+    goto ret_empty;
   }
   if (val.type != lynx_value_extended) {
     if (likely(flag == 0)) {
@@ -1378,13 +1377,20 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
       if (flag == 0) {
         return lepus::Value(env, val);
       }
-      return empty_value;
+      break;
+    }
+    case lynx_value_external: {
+      void* ret;
+      lynx_value_get_external_ext(env, val, &ret);
+      return lepus::Value(ret);
     }
     default:
       LOGE("not support type:" << static_cast<uint32_t>(type));
       break;
   }
 
+ret_empty:
+  static Value empty_value;
   return empty_value;
 }
 

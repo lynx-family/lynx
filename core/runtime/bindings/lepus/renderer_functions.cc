@@ -2289,8 +2289,18 @@ RENDERER_FUNCTION_CC(RenderDynamicComponent) {
   lepus::Context* target_context = self->GetLepusContext(url).get();
   BASE_STATIC_STRING_DECL(kRenderEntranceDynamicComponent,
                           "$renderEntranceDynamicComponent");
-  target_context->Call(kRenderEntranceDynamicComponent, *arg2, *arg3, *arg4,
-                       *arg5);
+  if (target_context->IsVMContext()) {
+    // arg2: a C pointer wrapped by lepusng value
+    // arg3: component data previously fetched by GetComponentData and is a
+    //    lepus ref. Here it is a pure lepus::Dictionary.
+    // arg4: ditto
+    // arg5: a lepusng bool
+    target_context->Call(kRenderEntranceDynamicComponent, arg2->ToLepusValue(),
+                         *arg3, *arg4, arg5->ToLepusValue());
+  } else {
+    target_context->Call(kRenderEntranceDynamicComponent, *arg2, *arg3, *arg4,
+                         *arg5);
+  }
   RETURN_UNDEFINED();
 }
 

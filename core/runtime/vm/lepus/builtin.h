@@ -18,11 +18,8 @@ void RegisterBuiltin(Context* context);
 void RegisterCFunction(Context* context, const char* name, CFunction function);
 void RegisterBuiltinFunction(Context* context, const char* name,
                              CFunction function);
-inline void RegisterBuiltinFunction(Context* context, const char* name,
-                                    Value (*function)(VMContext*, Value*,
-                                                      int)) {
-  RegisterBuiltinFunction(context, name, reinterpret_cast<CFunction>(function));
-}
+void RegisterBuiltinFunction(Context* context, const char* name,
+                             CFunctionBuiltin function);
 void RegisterBuiltinFunctionTable(Context* context, const char* name,
                                   BuiltinFunctionTable* function_table);
 
@@ -35,14 +32,9 @@ void RegisterFunctionTable(Context* context, const char* name,
 void RegisterTableFunction(Context* context,
                            const fml::RefPtr<Dictionary>& table,
                            const char* name, CFunction function);
-inline void RegisterTableFunction(Context* context,
-                                  const fml::RefPtr<Dictionary>& table,
-                                  const char* name,
-                                  Value (*function)(VMContext*, Value*, int)) {
-  RegisterTableFunction(context, table, name,
-                        reinterpret_cast<CFunction>(function));
-}
-
+void RegisterTableFunction(Context* context,
+                           const fml::RefPtr<Dictionary>& table,
+                           const char* name, CFunctionBuiltin function);
 inline void RegisterNGCFunction(Context* ctx, const char* name,
                                 LEPUSCFunction* function) {
   QuickContext* quick_ctx = QuickContext::Cast(ctx);

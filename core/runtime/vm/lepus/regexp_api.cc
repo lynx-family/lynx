@@ -22,7 +22,7 @@ extern "C" {
 
 namespace lynx {
 namespace lepus {
-static Value Test(VMContext* context, Value*, int) {
+static RestrictedValue Test(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(context->GetParam(params_count - 1)->IsRegExp());
   auto reg_exp = fml::static_ref_ptr_cast<RegExp>(
@@ -63,11 +63,10 @@ static Value Test(VMContext* context, Value*, int) {
                  static_cast<int>(unicode_len), shift, nullptr);
   // free bc
   free(bc);
-  Value result = Value(static_cast<bool>(ret));
-  return result;
+  return RestrictedValue(static_cast<bool>(ret));
 }
 
-const Value& GetRegexPrototypeAPI(const base::String& key) {
+const RestrictedValue& GetRegexPrototypeAPI(const base::String& key) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::RegexPrototype,
                                    {
                                        {"test", &Test},

@@ -21,6 +21,7 @@
 #include "core/runtime/vm/lepus/function.h"
 #include "core/runtime/vm/lepus/heap.h"
 #include "core/runtime/vm/lepus/marco.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 
 namespace lynx {
 namespace tasm {
@@ -69,12 +70,13 @@ class VMContext : public Context {
     return heap().top_ - current_frame_->register_;
   }
 
-  LEPUS_INLINE Value* GetParam(long index) {
+  LEPUS_INLINE RestrictedValue* GetParam(long index) {
     return current_frame_->register_ + index;
   }
 
   void CleanClosuresInCycleReference() override;
-  int32_t CallFunction(Value* function, size_t argc, Value* ret);
+  int32_t CallFunction(RestrictedValue* function, size_t argc,
+                       RestrictedValue* ret);
 
   LYNX_EXPORT_FOR_DEVTOOL Frame* GetCurrentFrame();
   LYNX_EXPORT_FOR_DEVTOOL fml::RefPtr<Function> GetRootFunction();
@@ -175,7 +177,7 @@ class VMContext : public Context {
 
    private:
     VMContext* ctx_;
-    Value last_closure_context_;
+    RestrictedValue last_closure_context_;
   };
 
   class ClosureManager {
@@ -195,9 +197,9 @@ class VMContext : public Context {
 
   Heap& heap() { return heap_; }
 
-  bool ExecuteBinaryInternal(lepus::Value* result);
-  Value* CallPrologue(const base::String& name);
-  Value CallEpilogue(Value* function, size_t arg_count);
+  bool ExecuteBinaryInternal(RestrictedValue* ret_val);
+  RestrictedValue* CallPrologue(const base::String& name);
+  RestrictedValue CallEpilogue(RestrictedValue* function, size_t arg_count);
 
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count,
@@ -206,14 +208,14 @@ class VMContext : public Context {
                                 size_t args_count) override;
 
   void RunFrame();
-  void GenerateClosure(Value* value, long index);
-  Value PrepareClosureContext(const fml::RefPtr<lepus::Closure>& clo);
+  void GenerateClosure(RestrictedValue* value, long index);
+  RestrictedValue PrepareClosureContext(const fml::RefPtr<lepus::Closure>& clo);
   void ReportException(const std::string& exception_info, int& pc,
                        int& instruction_length,
                        fml::RefPtr<Closure>& current_frame_closure,
                        Function*& current_frame_function,
                        const Instruction*& current_frame_base,
-                       Value*& current_frame_regs, bool report_logbox,
+                       RestrictedValue*& current_frame_regs, bool report_logbox,
                        int32_t err_code = error::E_MTS_RUNTIME_ERROR);
   void ReportLogBox(const std::string& exception_info, int& pc);
 
@@ -245,8 +247,8 @@ class VMContext : public Context {
 
   std::unordered_map<base::String, long> top_level_variables_;
   fml::RefPtr<Function> root_function_;
-  base::InlineStack<Value, 32> context_;
-  Value closure_context_;
+  base::InlineStack<RestrictedValue, 32> context_;
+  RestrictedValue closure_context_;
   std::string exception_info_;
   bool enable_strict_check_;
   bool enable_top_var_strict_mode_;
@@ -256,29 +258,34 @@ class VMContext : public Context {
   bool executed_ = false;
 
   ClosureManager closures_;
-  base::InlineStack<Value, 16> block_context_;
+  base::InlineStack<RestrictedValue, 16> block_context_;
 
   std::optional<std::string> current_exception_{};
   int32_t err_code_ = error::E_MTS_RUNTIME_ERROR;
 
   // To reduce arguments need to be passed.
   struct RunFrameContext {
-    Value*& regs;
+    RestrictedValue*& regs;
     Instruction i;
   };
 
   // Extract unlike paths of RunFrame for PGO to reduce binary size expansion.
-  void RunFrame_Op_Neg_UnlikelyPath(Value*& a);
-  void RunFrame_Op_Pos(Value*& a);
-  void RunFrame_Op_Add_UnlikelyPath_B_Number(Value*& a, Value*& b, Value*& c);
-  void RunFrame_Op_Add_UnlikelyPath_C_Number(Value*& a, Value*& b, Value*& c);
+  void RunFrame_Op_Neg_UnlikelyPath(RestrictedValue* a);
+  void RunFrame_Op_Pos(RestrictedValue* a);
+  void RunFrame_Op_Add_UnlikelyPath_B_Number(RestrictedValue* a,
+                                             RestrictedValue* b,
+                                             RestrictedValue* c);
+  void RunFrame_Op_Add_UnlikelyPath_C_Number(RestrictedValue* a,
+                                             RestrictedValue* b,
+                                             RestrictedValue* c);
   void RunFrame_Op_Mod(RunFrameContext& ctx);
   void RunFrame_Op_Pow(RunFrameContext& ctx);
   void RunFrame_Op_BitOr(RunFrameContext& ctx);
   void RunFrame_Op_BitAnd(RunFrameContext& ctx);
   void RunFrame_Op_BitXor(RunFrameContext& ctx);
-  void RunFrame_Op_GetTable_UnlikelyPath_String(Value*& a, Value*& b,
-                                                Value*& c);
+  void RunFrame_Op_GetTable_UnlikelyPath_String(RestrictedValue* a,
+                                                RestrictedValue* b,
+                                                RestrictedValue* c);
   void RunFrame_Op_CreateBlockContext(RunFrameContext& ctx);
   void RunFrame_Label_EnterBlock(fml::RefPtr<Closure>& closure);
   void RunFrame_Label_LeaveBlock();

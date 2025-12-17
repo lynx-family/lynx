@@ -12,11 +12,11 @@
 namespace lynx {
 namespace lepus {
 
-static Value Freeze(VMContext* context, Value*, int) {
+static RestrictedValue Freeze(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
-  Value object = Value(context->GetParam(0)->Table());
-  Value result = Value(Dictionary::Create());
+  RestrictedValue object(context->GetParam(0)->Table());
+  RestrictedValue result(Dictionary::Create());
   auto object_table = object.Table();
   auto result_table = result.Table();
   result_table->reserve(object_table->size());
@@ -27,20 +27,21 @@ static Value Freeze(VMContext* context, Value*, int) {
   return result;
 }
 
-static Value Keys(VMContext* context, Value*, int) {
+static RestrictedValue Keys(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   auto* param = context->GetParam(0);
-  Value result = Value(CArray::Create());
+  RestrictedValue result(CArray::Create());
   auto result_array = result.Array();
   if (param->IsArray()) {
-    size_t array_size = param->Array()->size();
+    size_t array_size =
+        RestrictedValue::Unsafe::TypeSure::GetArray(*param)->size();
     result_array->reserve(array_size);
     for (size_t i = 0; i < array_size; i++) {
       result_array->emplace_back(std::to_string(i));
     }
   } else if (param->IsTable()) {
-    auto param_table = param->Table();
+    auto param_table = RestrictedValue::Unsafe::TypeSure::GetTable(*param);
     result_array->reserve(param_table->size());
     param_table->for_each(
         [&](const auto& key, const auto&) { result_array->emplace_back(key); });
@@ -48,40 +49,35 @@ static Value Keys(VMContext* context, Value*, int) {
   return result;
 }
 
-static Value Assign(VMContext* context, Value*, int) {
+static RestrictedValue Assign(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count >= 1);
   auto* target = context->GetParam(0);
-  switch (target->Type()) {
-    case Value_Table: {
-      auto target_table = target->Table();
-      for (int32_t i = 1; i < params_count; i++) {
-        Value* source = context->GetParam(i);
-        if (source->IsTable()) {
-          for (const auto& iter : *(source->Table())) {
-            target_table->SetValue(iter.first, iter.second);
-          }
+  if (target->IsTable()) {
+    auto target_table = target->Table();
+    for (int32_t i = 1; i < params_count; i++) {
+      auto* source = context->GetParam(i);
+      if (source->IsTable()) {
+        auto source_table =
+            RestrictedValue::Unsafe::TypeSure::GetTable(*source);
+        for (const auto& iter : *source_table) {
+          target_table->SetValue(iter.first, iter.second);
         }
       }
-      break;
     }
-    case Value_Array: {
-      auto target_array = target->Array();
-      for (int32_t i = 1; i < params_count; i++) {
-        Value* source = context->GetParam(i);
-        int32_t index = 0;
-        if (source->IsArray()) {
-          auto source_array = source->Array();
-          size_t array_size = source_array->size();
-          for (size_t j = 0; j < array_size; j++) {
-            target_array->set(index++, source_array->get(j));
-          }
+  } else if (target->IsArray()) {
+    auto target_array = RestrictedValue::Unsafe::TypeSure::GetArray(*target);
+    for (int32_t i = 1; i < params_count; i++) {
+      auto* source = context->GetParam(i);
+      int32_t index = 0;
+      if (source->IsArray()) {
+        auto source_array =
+            RestrictedValue::Unsafe::TypeSure::GetArray(*source);
+        size_t array_size = source_array->size();
+        for (size_t j = 0; j < array_size; j++) {
+          target_array->set(index++, source_array->get(j));
         }
       }
-      break;
-    }
-    default: {
-      break;
     }
   }
   return *target;

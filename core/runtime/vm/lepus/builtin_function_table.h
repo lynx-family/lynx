@@ -5,11 +5,10 @@
 #define CORE_RUNTIME_VM_LEPUS_BUILTIN_FUNCTION_TABLE_H_
 
 #include <functional>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
-#include "base/include/value/base_value.h"
+#include "base/include/vector.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 
 namespace lynx {
 namespace lepus {
@@ -35,9 +34,7 @@ class BuiltinFunctionTable {
 
   template <std::size_t N>
   BuiltinFunctionTable(
-      Type type,
-      const std::pair<const char*, Value (*)(VMContext*, Value*, int)> (
-          &list)[N]) {
+      Type type, const std::pair<const char*, CFunctionBuiltin> (&list)[N]) {
     static_assert(N <= 256,
                   "BuiltinFunctionTable supports registering functions max "
                   "count of 256.");
@@ -45,13 +42,13 @@ class BuiltinFunctionTable {
     array_.reserve(N);
     for (size_t i = 0; i < N; i++) {
       map_[list[i].first] = i;
-      array_.emplace_back(reinterpret_cast<CFunction>(list[i].second));
+      array_.emplace_back(list[i].second);
     }
     // lower uint8_t of 1 as engaged flag, higher 8 bits is type.
     engaged_type_ = static_cast<uint16_t>(1 | (type << 8));
   }
 
-  const Value& GetFunction(const base::String& key) {
+  const RestrictedValue& GetFunction(const base::String& key) {
     base::RefCountedStringImpl* ref =
         base::String::Unsafe::GetUntaggedStringRawRef(key);
     if (ref->__get_padding_shorts__()[0] == engaged_type_) {
@@ -61,7 +58,7 @@ class BuiltinFunctionTable {
     // map search.
     auto it = map_.find(key);
     if (it == map_.end()) {
-      static Value kEmpty;
+      static RestrictedValue kEmpty;
       return kEmpty;
     } else {
       if (!ref->__get_padding_chars__()[0]) {
@@ -74,8 +71,8 @@ class BuiltinFunctionTable {
   }
 
  private:
-  std::unordered_map<base::String, size_t> map_;
-  std::vector<Value> array_;
+  base::LinearFlatMap<base::String, size_t> map_;
+  base::Vector<RestrictedValue> array_;
   uint16_t engaged_type_;
 };
 

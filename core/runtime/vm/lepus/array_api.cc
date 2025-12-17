@@ -10,12 +10,13 @@
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
 #include "core/runtime/vm/lepus/lepus_date.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {
 namespace lepus {
 
-static Value Push(VMContext* context, Value*, int) {
+static RestrictedValue Push(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count >= 1);
   auto* this_obj = context->GetParam(params_count - 1);
@@ -32,28 +33,28 @@ static Value Push(VMContext* context, Value*, int) {
     auto* val = context->GetParam(i);
     this_array->push_back(*val);
   }
-  return Value(static_cast<uint64_t>(this_array->size()));
+  return RestrictedValue(static_cast<uint64_t>(this_array->size()));
 }
 
-static Value Pop(VMContext* context, Value*, int) {
+static RestrictedValue Pop(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
   auto this_array = this_obj->Array();
   this_array->pop_back();
-  return Value(static_cast<uint64_t>(this_array->size()));
+  return RestrictedValue(static_cast<uint64_t>(this_array->size()));
 }
 
-static Value Shift(VMContext* context, Value*, int) {
+static RestrictedValue Shift(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
-  return this_obj->Array()->get_shift();
+  return RestrictedValue(this_obj->Array()->get_shift());
 }
 
-static Value Map(VMContext* context, Value*, int) {
+static RestrictedValue Map(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   auto* map_function = context->GetParam(0);
@@ -62,7 +63,7 @@ static Value Map(VMContext* context, Value*, int) {
   auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
-  Value array_temp_ = (*this_obj), ret, map_ret;
+  RestrictedValue array_temp_ = (*this_obj), ret, map_ret;
   auto ret_array = CArray::Create();
   auto array_temp_ptr = array_temp_.Array();
   ret_array->reserve(length);
@@ -76,7 +77,7 @@ static Value Map(VMContext* context, Value*, int) {
   return ret;
 }
 
-static Value Filter(VMContext* context, Value*, int) {
+static RestrictedValue Filter(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   auto* filter_function = context->GetParam(0);
@@ -85,7 +86,7 @@ static Value Filter(VMContext* context, Value*, int) {
   auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
-  Value array_temp_ = (*this_obj), ret, filter_ret;
+  RestrictedValue array_temp_ = (*this_obj), ret, filter_ret;
   auto ret_array = CArray::Create();
   auto array_temp_ptr = array_temp_.Array();
   for (size_t i = 0; i < length; i++) {
@@ -100,7 +101,7 @@ static Value Filter(VMContext* context, Value*, int) {
   return ret;
 }
 
-static Value Concat(VMContext* context, Value*, int) {
+static RestrictedValue Concat(VMContext* context) {
   auto params_count = context->GetParamsSize();
   auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
@@ -114,7 +115,7 @@ static Value Concat(VMContext* context, Value*, int) {
   for (int i = 1; i < params_count; i++) {
     auto* param_i = context->GetParam(i - 1);
     if (param_i->IsArray()) {
-      auto array_i = param_i->Array();
+      auto array_i = RestrictedValue::Unsafe::TypeSure::GetArray(*param_i);
       ret_array->reserve(ret_array->size() + array_i->size());
       for (size_t j = 0; j < array_i->size(); j++) {
         ret_array->push_back(array_i->get(j));
@@ -124,7 +125,7 @@ static Value Concat(VMContext* context, Value*, int) {
     }
   }
 
-  return Value(std::move(ret_array));
+  return RestrictedValue(std::move(ret_array));
 }
 
 static std::string CastToString(const Value& v) {
@@ -207,7 +208,7 @@ static std::string CastToString(const Value& v) {
   return result;
 }
 
-static Value Join(VMContext* context, Value*, int) {
+static RestrictedValue Join(VMContext* context) {
   auto params_count = context->GetParamsSize();
   auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
@@ -226,10 +227,10 @@ static Value Join(VMContext* context, Value*, int) {
       result += (CastToString(this_obj_array->get(i)));
     }
   }
-  return Value(std::move(result));
+  return RestrictedValue(std::move(result));
 }
 
-static Value FindIndex(VMContext* context, Value*, int) {
+static RestrictedValue FindIndex(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   auto* find_index_function = context->GetParam(0);
@@ -238,22 +239,22 @@ static Value FindIndex(VMContext* context, Value*, int) {
   auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
-  Value array_temp_ = (*this_obj), find_index_ret;
+  RestrictedValue array_temp_ = (*this_obj), find_index_ret;
   auto array_temp_ptr = array_temp_.Array();
-  Value ret(-1);
+  RestrictedValue ret(-1);
   for (int i = 0; static_cast<size_t>(i) < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
     context->CallFunction(find_index_function, 3, &find_index_ret);
     if ((find_index_ret.IsTrue())) {
-      ret = Value(i);
+      ret = RestrictedValue(i);
       break;
     }
   }
   return ret;
 }
 
-static Value Find(VMContext* context, Value*, int) {
+static RestrictedValue Find(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   auto* find_index_function = context->GetParam(0);
@@ -262,7 +263,7 @@ static Value Find(VMContext* context, Value*, int) {
   auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
-  Value array_temp_ = (*this_obj), ret, find_index_ret;
+  RestrictedValue array_temp_ = (*this_obj), ret, find_index_ret;
   auto array_temp_ptr = array_temp_.Array();
   for (size_t i = 0; i < length; i++) {
     *this_obj = array_temp_ptr->get(i);
@@ -276,13 +277,13 @@ static Value Find(VMContext* context, Value*, int) {
   return ret;
 }
 
-static Value Includes(VMContext* context, Value*, int) {
+static RestrictedValue Includes(VMContext* context) {
   auto params_count = context->GetParamsSize();
   auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
 
   if (params_count == 1) {
-    return Value(false);
+    return RestrictedValue(false);
   }
 
   int64_t start_find = 0;
@@ -302,13 +303,13 @@ static Value Includes(VMContext* context, Value*, int) {
   for (size_t i = static_cast<size_t>(start_find); i < this_array->size();
        i++) {
     if (this_array->get(i) == *param1) {
-      return Value(true);
+      return RestrictedValue(true);
     }
   }
-  return Value(false);
+  return RestrictedValue(false);
 }
 
-static Value ArraySlice(VMContext* context, Value*, int) {
+static RestrictedValue ArraySlice(VMContext* context) {
   auto params_count = context->GetParamsSize();
   auto* this_val = context->GetParam(params_count - 1);
   DCHECK(this_val->IsArray());
@@ -347,10 +348,10 @@ static Value ArraySlice(VMContext* context, Value*, int) {
       ret_array->push_back(this_array->get(i));
     }
   }
-  return Value(std::move(ret_array));
+  return RestrictedValue(std::move(ret_array));
 }
 
-static Value ForEach(VMContext* context, Value*, int) {
+static RestrictedValue ForEach(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
   auto* foreach_function = context->GetParam(0);
@@ -359,17 +360,17 @@ static Value ForEach(VMContext* context, Value*, int) {
   auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
-  Value array_temp_ = (*this_obj), foreach_ret;
+  RestrictedValue array_temp_ = (*this_obj), foreach_ret;
   auto array_temp_ptr = array_temp_.Array();
   for (size_t i = 0; i < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
     context->CallFunction(foreach_function, 3, &foreach_ret);
   }
-  return Value();
+  return RestrictedValue();
 }
 
-const Value& GetArrayPrototypeAPI(const base::String& key) {
+const RestrictedValue& GetArrayPrototypeAPI(const base::String& key) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::ArrayPrototype,
                                    {
                                        {"push", &Push},
