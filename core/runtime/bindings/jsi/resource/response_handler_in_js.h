@@ -43,7 +43,8 @@ class ResponseHandlerInJS
   Value WaitingForResponse(Runtime& rt);
   Value AddListenerForResponse(Runtime& rt);
 
-  piper::Value ConvertBundleInfoToPiperValue(
+  static piper::Value ConvertBundleInfoToPiperValue(
+      std::shared_ptr<App> native_app,
       const tasm::BundleResourceInfo& bundle_info);
 
   std::weak_ptr<App> native_app_;

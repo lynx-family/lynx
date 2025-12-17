@@ -771,11 +771,12 @@ RENDERER_FUNCTION_CC(AddListenerForResponse) {
   ResponseHandlerInLepus* response_handler =
       ResponseHandlerInLepus::GetResponseHandlerFromLepusValue(binding_proxy);
   response_handler->AddResourceListener(
-      [ctx = LEPUS_CONTEXT(), &arg0](tasm::BundleResourceInfo bundle_info) {
+      [ctx = LEPUS_CONTEXT(),
+       arg = *arg0](tasm::BundleResourceInfo bundle_info) {
         auto value = bundle_info.ConvertToLepusValue();
         std::vector<lepus::Value> param;
         param.push_back(value);
-        ctx->CallClosureArgs(*arg0, param);
+        ctx->CallClosureArgs(arg, param);
       });
   RETURN_UNDEFINED()
 }
