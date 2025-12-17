@@ -125,7 +125,7 @@ static NSData* loadDataFromAssets(NSString* schema, NSError** error) {
   // use async request dynamic component template to to ensure the stability of test result
   [NSURLConnection
       sendAsynchronousRequest:request
-                        queue:[NSOperationQueue mainQueue]
+                        queue:[[NSOperationQueue alloc] init]
             completionHandler:^(NSURLResponse* _Nullable response, NSData* _Nullable data,
                                 NSError* _Nullable connectionError) {
               // response: The response header returned by the server
