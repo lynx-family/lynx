@@ -19,18 +19,6 @@
 
 namespace lynx {
 namespace tasm {
-#define CREATE_FUNCTION(name) \
-  RENDERER_FUNCTION(name) { return LEPUS_UNDEFINED; }
-
-#define RenderFatal(expression, ...) \
-  LynxFatal(expression, LYNX_ERROR_CODE_DATA_BINDING, __VA_ARGS__)
-
-#define CHECK_ARGC_EQ(name, count) \
-  RenderFatal(argc == count, #name " params size should == " #count);
-
-#define CHECK_ARGC_GE(name, count) \
-  RenderFatal(argc >= count, #name " params size should == " #count);
-
 void Utils::RegisterNGBuiltin(lepus::Context* context) {
   static const lepus::RenderBindingFunction funcs[] = {
       {kCFuncIndexOf, &RendererFunctions::IndexOf},

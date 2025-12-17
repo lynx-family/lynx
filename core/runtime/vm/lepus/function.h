@@ -19,6 +19,7 @@
 #include "core/base/lynx_export.h"
 #include "core/runtime/vm/lepus/op_code.h"
 #include "core/runtime/vm/lepus/regexp.h"
+#include "core/runtime/vm/lepus/restricted_value.h"
 #include "core/runtime/vm/lepus/switch.h"
 #include "core/runtime/vm/lepus/upvalue.h"
 
@@ -128,7 +129,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   const auto& GetChildFunction() { return child_functions_; }
 
   inline Value* GetConstValue(std::size_t index) {
-    return index < const_size_ ? &const_values_[index] : nullptr;
+    return &const_values_[index];
   }
 
   LYNX_EXPORT_FOR_DEVTOOL const auto& GetConstValue() { return const_values_; }
@@ -288,14 +289,15 @@ class Closure : public lepus::RefCounted {
     return fml::WeakRefPtr<Function>(function_.get());
   }
 
-  void AddUpvalue(Value* value) { upvalues_.push_back(value); }
-  Value* GetUpvalue(long index) { return upvalues_[index]; }
+  void AddUpvalue(RestrictedValue* value) { upvalues_.push_back(value); }
+  RestrictedValue* GetUpvalue(long index) { return upvalues_[index]; }
   const auto& GetUpvalues() { return upvalues_; }
   void ClearUpvalues() { upvalues_.clear(); }
   void ReleaseSelf() const override { delete this; }
 
-  void SetContext(Value v) { context_ = std::move(v); }
-  Value GetContext() { return context_; }
+  void SetContext(const RestrictedValue& v) { context_ = v; }
+  void ClearContext() { context_.SetNil(); }
+  const RestrictedValue& GetContext() const { return context_; }
 
   RefType GetRefType() const override { return RefType::kClosure; }
 
@@ -316,8 +318,8 @@ class Closure : public lepus::RefCounted {
   friend class BaseBinaryReader;
   friend class VMContext;
 
-  base::InlineVector<Value*, 4> upvalues_;
-  Value context_;
+  base::InlineVector<RestrictedValue*, 4> upvalues_;
+  RestrictedValue context_;
   fml::RefPtr<Function> function_;
 };
 }  // namespace lepus

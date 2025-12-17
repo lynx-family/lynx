@@ -27,14 +27,14 @@ static tm_extend LocalToUTC(tm_extend local) {
   gmtime_r(&temp, &UTC);
   return UTC;
 }
-Value CDate::GetTimeZoneOffset() {
+RestrictedValue CDate::GetTimeZoneOffset() {
   tm_extend tm_local;
   time_t time_utc;
   time(&time_utc);
   memset(&tm_local, 0, sizeof(tm_local));
   localtime_r(&time_utc, &tm_local);  // return local tm
   int64_t offset = (-tm_local.tm_gmtoff) / 60;
-  return Value(offset);
+  return RestrictedValue(offset);
 }
 void CDate::print(std::ostream& ss) {
   char buf[25];
@@ -53,17 +53,17 @@ void CDate::print(std::ostream& ss) {
   ss << "  '$ms': " << ms_ << " }" << std::endl;
 }
 
-Value CDate::LepusNow() {
+RestrictedValue CDate::LepusNow() {
   time_t now = time(nullptr);
   timeval ms;
   if (gettimeofday(&ms, nullptr) == -1 || now == -1) {
-    return Value();
+    return RestrictedValue();
   }
   tm_extend tm_now;
   memset(&tm_now, 0, sizeof(tm_now));
   localtime_r(&now, &tm_now);
   GetTimeZone(tm_now);
-  return Value(CDate::Create(tm_now, ms.tv_usec / 1000));
+  return RestrictedValue(CDate::Create(tm_now, ms.tv_usec / 1000));
 }
 
 void CDate::print(
@@ -197,7 +197,8 @@ void CDate::ParserFormatString(std::string date, const std::string& format,
   }
 }
 
-std::string CDate::FormatToString(Value* date, const std::string& format) {
+std::string CDate::FormatToString(RestrictedValue* date,
+                                  const std::string& format) {
   const tm_extend& time =
       fml::static_ref_ptr_cast<CDate>(date->RefCounted())->get_date_();
   int ms = fml::static_ref_ptr_cast<CDate>(date->RefCounted())->get_ms_();

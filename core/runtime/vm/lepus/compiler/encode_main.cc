@@ -306,7 +306,7 @@ class TestLepus : public lynx::lepus::ContextBinaryWriter {
 
 #define RenderFatal(expression, ...)
 
-#define RENDERER_FUNCTION(name)                                       \
+#define PRIM_CFUNCTION(name)                                          \
   static LEPUSValue name(LEPUSContext* ctx, LEPUSValueConst this_val, \
                          int argc, LEPUSValueConst* argv)
 #define RUNTIME_FUNCTION_DATA(name)                                   \
@@ -337,13 +337,13 @@ class TestLepus : public lynx::lepus::ContextBinaryWriter {
     return LEPUS_UNDEFINED;                                           \
   }
 
-RENDERER_FUNCTION(Console_Log) {
+PRIM_CFUNCTION(Console_Log) {
   lepus::Value value(ctx, argv[0]);
   std::cout << value.ToString() << std::endl;
   return LEPUS_UNDEFINED;
 }
 
-RENDERER_FUNCTION(Test_val) {
+PRIM_CFUNCTION(Test_val) {
   lepus::Value v(ctx, argv[0]);
   if (v.IsInt64()) {
     std::cout << v.Int64() << std::endl;
@@ -356,19 +356,19 @@ RENDERER_FUNCTION(Test_val) {
   }
 }
 
-RENDERER_FUNCTION(Test_eq) {
+PRIM_CFUNCTION(Test_eq) {
   lepus::Value left(ctx, argv[0]);
   lepus::Value right(ctx, argv[1]);
 
   std::cout << left.IsEqual(right) << std::endl;
 }
 
-RENDERER_FUNCTION(Test_valueEq) {
+PRIM_CFUNCTION(Test_valueEq) {
   lepus::Value v(ctx, argv[0]);
   std::cout << v.IsEqual(v.ToLepusValue()) << std::endl;
 }
 
-RENDERER_FUNCTION(Test_set) {
+PRIM_CFUNCTION(Test_set) {
   lepus::Value obj(ctx, argv[0]);
   lepus::Value key(ctx, argv[1]);
   lepus::Value val(ctx, argv[2]);
@@ -380,7 +380,7 @@ RENDERER_FUNCTION(Test_set) {
   }
 }
 
-RENDERER_FUNCTION(Test_Contains) {
+PRIM_CFUNCTION(Test_Contains) {
   lepus::Value obj(ctx, argv[0]);
   lepus::Value key(ctx, argv[1]);
 
@@ -389,7 +389,7 @@ RENDERER_FUNCTION(Test_Contains) {
             << std::endl;
 }
 
-RENDERER_FUNCTION(UpdateComponentInfo) {
+PRIM_CFUNCTION(UpdateComponentInfo) {
   CHECK_ARGC_EQ(UpdateComponentInfo, 4);
   CONVERT_ARG_AND_CHECK(arg0, 0, CPointer, UpdateComponentInfo);
   CONVERT_ARG_AND_CHECK(arg1, 1, base::String, UpdateComponentInfo);
@@ -402,7 +402,7 @@ RENDERER_FUNCTION(UpdateComponentInfo) {
   RETURN_UNDEFINED();
 }
 
-RENDERER_FUNCTION(TestArgcNG) {
+PRIM_CFUNCTION(TestArgcNG) {
   CONVERT_ARG(arg1, 0);
   if (!arg1->IsString()) {
     return lepus::QuickContext::GetFromJsContext(ctx)

@@ -21,8 +21,8 @@ static std::string GetPrintStr(VMContext* context) {
   std::ostringstream s;
   s << "[main-thread.js] ";
   for (long i = 0; i < params_count; i++) {
-    Value* v = context->GetParam(i);
-    v->PrintValue(s);
+    Value v(*context->GetParam(i));
+    v.PrintValue(s);
     if (i < params_count - 1) {
       s << " ";
     }
@@ -30,111 +30,111 @@ static std::string GetPrintStr(VMContext* context) {
   return s.str();
 }
 
-static Value Console_Log(VMContext* context) {
+static RestrictedValue Console_Log(VMContext* context) {
   std::string msg = GetPrintStr(context);
 #ifdef LEPUS_PC
   LOGE(msg);
 #endif
   context->OnBTSConsoleEvent("log", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Warn(VMContext* context) {
+static RestrictedValue Console_Warn(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("warn", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Error(VMContext* context) {
+static RestrictedValue Console_Error(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("error", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Info(VMContext* context) {
+static RestrictedValue Console_Info(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("info", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Debug(VMContext* context) {
+static RestrictedValue Console_Debug(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("debug", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Report(VMContext* context) {
+static RestrictedValue Console_Report(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("report", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Alog(VMContext* context) {
+static RestrictedValue Console_Alog(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("alog", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Assert(VMContext* context) {
-  UNUSED_LOG_VARIABLE Value* condition = context->GetParam(1);
-  Value* msg = context->GetParam(2);
+static RestrictedValue Assert(VMContext* context) {
+  UNUSED_LOG_VARIABLE auto* condition = context->GetParam(1);
+  auto* msg = context->GetParam(2);
   std::string s = "Assertion failed:" + msg->StdString();
   assert(condition->IsTrue() && s.c_str());
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Count(VMContext* context) {
+static RestrictedValue Console_Count(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("count", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_CountReset(VMContext* context) {
+static RestrictedValue Console_CountReset(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("countReset", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Group(VMContext* context) {
+static RestrictedValue Console_Group(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("group", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_GroupCollapsed(VMContext* context) {
+static RestrictedValue Console_GroupCollapsed(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("groupCollapsed", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_GroupEnd(VMContext* context) {
+static RestrictedValue Console_GroupEnd(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("groupEnd", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Time(VMContext* context) {
+static RestrictedValue Console_Time(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("time", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_TimeLog(VMContext* context) {
+static RestrictedValue Console_TimeLog(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("timeLog", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_TimeEnd(VMContext* context) {
+static RestrictedValue Console_TimeEnd(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("timeEnd", msg);
-  return Value();
+  return RestrictedValue();
 }
 
-static Value Console_Table(VMContext* context) {
+static RestrictedValue Console_Table(VMContext* context) {
   std::string msg = GetPrintStr(context);
   context->OnBTSConsoleEvent("table", msg);
-  return Value();
+  return RestrictedValue();
 }
 
 void RegisterBaseAPI(Context* ctx) {
@@ -186,13 +186,13 @@ void RegisterBaseAPI(Context* ctx) {
 #endif
 }
 
-static Value toFixed(VMContext* context) {
+static RestrictedValue toFixed(VMContext* context) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
-  Value n;                          // for precision
-  Value* v = context->GetParam(1);  // for value
+  RestrictedValue n;               // for precision
+  auto* v = context->GetParam(1);  // for value
   if (params_count == 1) {
-    n = Value(0);
+    n = RestrictedValue(0);
     v = context->GetParam(0);
   } else {
     n = *context->GetParam(0);
@@ -204,10 +204,10 @@ static Value toFixed(VMContext* context) {
 
   os << std::setiosflags(std::ios::fixed)
      << std::setprecision(static_cast<int>(n.Number())) << v->Number();
-  return Value(os.str());
+  return RestrictedValue(os.str());
 }
 
-const Value& GetNumberPrototypeAPI(const base::String& key) {
+const RestrictedValue& GetNumberPrototypeAPI(const base::String& key) {
   static BuiltinFunctionTable apis(BuiltinFunctionTable::NumberPrototype,
                                    {
                                        {"toFixed", &toFixed},

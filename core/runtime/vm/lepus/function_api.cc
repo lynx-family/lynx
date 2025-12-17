@@ -38,9 +38,9 @@ static bool ParseStringToDouble(const std::string& str, double& ret) {
   return true;
 }
 
-static void getArrayNumber(const Value* param, std::string& str) {
-  if (param->IsArray() && param->Array()->size() > 0) {
-    const auto& array0 = param->Array()->get(0);
+static void getArrayNumber(const Value& param, std::string& str) {
+  if (param.IsArray() && param.Array()->size() > 0) {
+    const auto& array0 = param.Array()->get(0);
     if (array0.IsString()) {
       str = array0.StdString();
     } else if (array0.IsNumber()) {
@@ -52,12 +52,12 @@ static void getArrayNumber(const Value* param, std::string& str) {
         str = "false";
       }
     } else {
-      getArrayNumber(&array0, str);
+      getArrayNumber(array0, str);
     }
   }
 }
 
-static Value ParseInt(VMContext* context) {
+static RestrictedValue ParseInt(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
   int64_t ret = 0;
@@ -65,15 +65,15 @@ static Value ParseInt(VMContext* context) {
   if (params_count == 2) {
     radix = static_cast<int32_t>(context->GetParam(1)->Number());
     if (radix < 2 || radix > 36) {
-      return Value(true, true);
+      return RestrictedValue(RestrictedValue::kCreateAsNanTag);
     }
   }
   if (context->GetParam(0)->IsString()) {
     // Avoid string copy for most common case.
     if (ParseStringToInt(context->GetParam(0)->StdString(), radix, ret)) {
-      return Value(ret);
+      return RestrictedValue(ret);
     }
-    return Value(true, true);
+    return RestrictedValue(RestrictedValue::kCreateAsNanTag);
   }
 
   std::string str;
@@ -86,16 +86,17 @@ static Value ParseInt(VMContext* context) {
       str = "false";
     }
   } else {
-    getArrayNumber(context->GetParam(0), str);
+    Value tmp(*context->GetParam(0));
+    getArrayNumber(tmp, str);
   }
 
   if (ParseStringToInt(str, radix, ret)) {
-    return Value(ret);
+    return RestrictedValue(ret);
   }
-  return Value(true, true);
+  return RestrictedValue(RestrictedValue::kCreateAsNanTag);
 }
 
-static Value ParseFloat(VMContext* context) {
+static RestrictedValue ParseFloat(VMContext* context) {
   LOGI("lepus::parseFloat");
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
@@ -104,34 +105,35 @@ static Value ParseFloat(VMContext* context) {
     // Avoid string copy for most common case.
     if (ParseStringToDouble(context->GetParam(0)->StdString(), ret)) {
       if (ret != static_cast<int64_t>(ret)) {
-        return Value(ret);
+        return RestrictedValue(ret);
       } else {
-        return Value(static_cast<int64_t>(ret));
+        return RestrictedValue(static_cast<int64_t>(ret));
       }
     }
-    return Value(true, true);
+    return RestrictedValue(RestrictedValue::kCreateAsNanTag);
   }
 
   std::string str;
   if (context->GetParam(0)->IsNumber()) {
     str = std::to_string(context->GetParam(0)->Number());
   } else {
-    getArrayNumber(context->GetParam(0), str);
+    Value tmp(*context->GetParam(0));
+    getArrayNumber(tmp, str);
   }
   if (ParseStringToDouble(str, ret)) {
     if (ret != static_cast<int64_t>(ret)) {
-      return Value(ret);
+      return RestrictedValue(ret);
     } else {
-      return Value(static_cast<int64_t>(ret));
+      return RestrictedValue(static_cast<int64_t>(ret));
     }
   }
-  return Value(true, true);
+  return RestrictedValue(RestrictedValue::kCreateAsNanTag);
 }
 
-static Value IsNan(VMContext* context) {
+static RestrictedValue IsNan(VMContext* context) {
   auto param_count = context->GetParamsSize();
   DCHECK(param_count == 1);
-  return Value(context->GetParam(0)->NaN());
+  return RestrictedValue(context->GetParam(0)->NaN());
 }
 
 static int isURIReserved(int c) {
@@ -166,7 +168,7 @@ static int encodeURI_hex(std::string& result, int c) {
   return 0;
 }
 
-static Value EncodeURIComponent(VMContext* context) {
+static RestrictedValue EncodeURIComponent(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   const std::string& param = context->GetParam(0)->StdString();
@@ -205,7 +207,7 @@ static Value EncodeURIComponent(VMContext* context) {
       }
     }
   }
-  return Value(std::move(result));
+  return RestrictedValue(std::move(result));
 }
 
 static inline int from_hex(int c) {
@@ -271,7 +273,7 @@ static void unicode_to_utf8(std::string& result, unsigned int c) {
   }
 }
 
-static Value DecodeURIComponent(VMContext* context) {
+static RestrictedValue DecodeURIComponent(VMContext* context) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
   const std::string& param = context->GetParam(0)->StdString();
@@ -329,7 +331,7 @@ static Value DecodeURIComponent(VMContext* context) {
     }
     result += tmp;
   }
-  return Value(std::move(result));
+  return RestrictedValue(std::move(result));
 }
 
 void RegisterFunctionAPI(Context* ctx) {

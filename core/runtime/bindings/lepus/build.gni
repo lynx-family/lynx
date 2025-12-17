@@ -9,7 +9,6 @@ lynx_lepus_binding_sources = [
   "renderer.h",
   "renderer_functions.h",
   "renderer_functions_def.h",
-  "renderer_template.h",
 ]
 
 if (is_android && enable_lite) {

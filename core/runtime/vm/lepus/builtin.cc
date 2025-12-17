@@ -30,6 +30,11 @@ void RegisterBuiltinFunction(Context* context, const char* name,
   VMContext::Cast(context)->SetBuiltinData(name, lepus::Value(function));
 }
 
+void RegisterBuiltinFunction(Context* context, const char* name,
+                             CFunctionBuiltin function) {
+  VMContext::Cast(context)->SetBuiltinData(name, lepus::Value(function));
+}
+
 void RegisterBuiltinFunctionTable(Context* context, const char* name,
                                   BuiltinFunctionTable* function_table) {
   VMContext::Cast(context)->builtin()->Set(name, lepus::Value(function_table));
@@ -48,6 +53,12 @@ void RegisterFunctionTable(Context* context, const char* name,
 void RegisterTableFunction(Context* context,
                            const fml::RefPtr<Dictionary>& table,
                            const char* name, CFunction function) {
+  table->SetValue(name, function);
+}
+
+void RegisterTableFunction(Context* context,
+                           const fml::RefPtr<Dictionary>& table,
+                           const char* name, CFunctionBuiltin function) {
   table->SetValue(name, function);
 }
 

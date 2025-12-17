@@ -8,7 +8,7 @@
 
 namespace lynx {
 namespace lepus {
-const Value& GetRegexPrototypeAPI(const base::String& key);
+const RestrictedValue& GetRegexPrototypeAPI(const base::String& key);
 }  // namespace lepus
 }  // namespace lynx
 #endif  // CORE_RUNTIME_VM_LEPUS_REGEXP_API_H_
