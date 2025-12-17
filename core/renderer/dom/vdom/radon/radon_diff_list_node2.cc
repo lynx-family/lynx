@@ -511,9 +511,8 @@ int32_t RadonDiffListNode2::ComponentAtIndex(uint32_t index,
           // reused
           auto* element = fake_unique_reuse->element();
           if (element) {
-            page_proxy_->element_manager()
-                ->painting_context()
-                ->ListReusePaintingNode(element->impl_id(), item_key);
+            element->element_container()->ListReusePaintingNode(
+                element->impl_id(), item_key);
           }
         }
 

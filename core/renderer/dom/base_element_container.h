@@ -99,7 +99,7 @@ class BaseElementContainer {
   virtual void ListCellWillAppear(const std::string& item_key);
   virtual void ListCellDisappear(bool is_exist, const base::String& item_key);
   virtual void ListReusePaintingNode(int32_t child_id,
-                                     const std::string& item_key);
+                                     const base::String& item_key);
   virtual void InsertListItemPaintingNode(int32_t child_id);
   virtual void RemoveListItemPaintingNode(int32_t child_id);
 

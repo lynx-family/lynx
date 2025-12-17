@@ -73,7 +73,7 @@ void BaseElementContainer::ListCellDisappear(bool is_exist,
 }
 
 void BaseElementContainer::ListReusePaintingNode(int32_t child_id,
-                                                 const std::string& item_key) {
+                                                 const base::String& item_key) {
   painting_context()->ListReusePaintingNode(child_id, item_key);
 }
 
