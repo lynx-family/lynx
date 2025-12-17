@@ -254,7 +254,7 @@ export abstract class BaseApp<
     return this.Reporter.getSourceMapRelease(url);
   };
 
-  queueMicrotask(callback: () => void): void {
+  queueMicrotask = (callback: () => void): void => {
     if (!callback) {
       return;
     }
@@ -267,7 +267,7 @@ export abstract class BaseApp<
       }
       this.lynx.getNativeLynx().queueMicrotask(id);
     }
-  }
+  };
 
   /**
    * pass id instead of callback for native.
