@@ -14,8 +14,9 @@ MockEventListener::MockEventListener(EventListener::Type type,
                                      const std::string& content,
                                      const std::string& event_name,
                                      const std::string& erase_content,
-                                     EventTarget* target)
-    : EventListener(type),
+                                     EventTarget* target,
+                                     const Options& options)
+    : EventListener(type, options),
       content_(content),
       event_name_(event_name),
       erase_content_(erase_content),
