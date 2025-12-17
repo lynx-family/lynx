@@ -190,19 +190,6 @@ void NodeManager::DisposeGesture(ArkUI_GestureRecognizer* recognizer) {
   native_gesture_api_->dispose(recognizer);
 }
 
-ArkUI_GestureRecognizerType NodeManager::GetGestureType(
-    ArkUI_GestureRecognizer* recognizer) {
-  return native_gesture_api_->getGestureType(recognizer);
-}
-
-void NodeManager::SetUserData(ArkUI_NodeHandle node, void* user_data) {
-  native_node_api_->setUserData(node, user_data);
-}
-
-void* NodeManager::GetUserData(ArkUI_NodeHandle node) {
-  return native_node_api_->getUserData(node);
-}
-
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

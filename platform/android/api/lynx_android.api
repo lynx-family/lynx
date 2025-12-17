@@ -5888,7 +5888,7 @@ public class com::lynx::tasm::resourceprovider::LynxResourceResponse :  {
   public ResponseState com.lynx.tasm.resourceprovider.LynxResourceResponse< T >.getState();
   public Throwable com.lynx.tasm.resourceprovider.LynxResourceResponse< T >.getError();
   public T com.lynx.tasm.resourceprovider.LynxResourceResponse< T >.getData();
-  public static< T > LynxResourceResponse< T > com.lynx.tasm.resourceprovider.LynxResourceResponse< T >.onFailed(Throwable error);
+  public static LynxResourceResponse com.lynx.tasm.resourceprovider.LynxResourceResponse< T >.onFailed(Throwable error);
   public static< T > LynxResourceResponse< T > com.lynx.tasm.resourceprovider.LynxResourceResponse< T >.onSuccess(T data);
 }
 

@@ -216,7 +216,6 @@ public class ViewInfo implements IDrawChildHook {
     }
     int currentSize = mSubDrawInfoArray.size();
     if (index > currentSize) {
-      // 填充 null 到中间位置
       int nullsToAdd = index - currentSize;
       for (int i = 0; i < nullsToAdd; i++) {
         mSubDrawInfoArray.add(null);
