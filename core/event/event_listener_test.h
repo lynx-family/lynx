@@ -21,7 +21,8 @@ class MockEventListener : public EventListener {
   MockEventListener(EventListener::Type, const std::string&,
                     const std::string& event_name = "",
                     const std::string& erase_content = "",
-                    EventTarget* target = nullptr);
+                    EventTarget* target = nullptr,
+                    const Options& options = Options());
 
   ~MockEventListener() override = default;
 

@@ -2354,15 +2354,15 @@ void App::CallJSFunctionInLepusEvent(const std::string& component_id,
 std::optional<Value> App::SendPageEvent(const std::string& page_name,
                                         const std::string& handler,
                                         const lepus::Value& info) {
-  LOGI("App::SendPageEvent,handler: " << handler << " " << this);
   auto rt = rt_.lock();
   if (rt && IsJsAppStateValid()) {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
         GetPageOptions(), tasm::timing::kJSFuncTask,
         tasm::timing::kTaskNameJSAppSendPageEvent, handler);
+    LOGI("App::SendPageEvent, handler: " << handler << " " << this);
     TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_SEND_PAGE_EVENT,
                 [&](lynx::perfetto::EventContext ctx) {
-                  ctx.event()->add_debug_annotations("event", handler);
+                  ctx.event()->add_debug_annotations("handler", handler);
                 });
     Scope scope(*rt);
     Object js_app = js_app_.getObject(*rt);
@@ -3258,18 +3258,17 @@ void App::OnIntersectionObserverEvent(int32_t observer_id, int32_t callback_id,
 std::optional<Value> App::PublishComponentEvent(const std::string& component_id,
                                                 const std::string& handler,
                                                 const lepus::Value& info) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PUBLISH_COMPONENT_EVENT,
-              [&](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("event", handler);
-              });
-  LOGI(" publishComponentEvent " << component_id << " " << handler << " "
-                                 << this);
-
   auto rt = rt_.lock();
   if (rt && IsJsAppStateValid() && card_bundle_.support_component_js) {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
         GetPageOptions(), tasm::timing::kUpdateTriggeredByBts,
         tasm::timing::kTaskNameJSAppPublishComponentEvent, handler);
+    LOGI("App::PublishComponentEvent componentId: "
+         << component_id << ", handler: " << handler << " " << this);
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PUBLISH_COMPONENT_EVENT,
+                [&](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_debug_annotations("handler", handler);
+                });
     Scope scope(*rt);
     Object js_app = js_app_.getObject(*rt);
 

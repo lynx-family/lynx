@@ -126,7 +126,9 @@ class Event : public lepus::RefCounted {
   int64_t time_stamp() const { return time_stamp_; };
   const std::string& type() const { return type_; }
   bool capture() const { return capture_; }
+  void set_capture(bool capture) { capture_ = capture; }
   bool bubbles() const { return bubbles_; }
+  void set_bubbles(bool bubbles) { bubbles_ = bubbles; }
   bool cancelable() const { return cancelable_; }
   bool composed() const { return composed_; }
 
@@ -173,6 +175,7 @@ class Event : public lepus::RefCounted {
   virtual void HandleEventCustomDetail();
   // Called before dispatching an event to handle the conflic and param.
   virtual bool HandleEventConflictAndParam() { return false; }
+  bool IsCaptureBubbleEvent();
 
  protected:
   EventType event_type_{EventType::kNone};
