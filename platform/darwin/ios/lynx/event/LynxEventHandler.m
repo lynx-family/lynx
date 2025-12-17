@@ -66,8 +66,7 @@
   BOOL res = NO;
   if ([otherGestureRecognizer.view isDescendantOfView:self.eventHandler.rootView]) {
     if ([otherGestureRecognizer.view isKindOfClass:[UIScrollView class]] &&
-        (((UIScrollView*)otherGestureRecognizer.view).isDecelerating ||
-         ((UIScrollView*)otherGestureRecognizer.view).isDragging)) {
+        (((UIScrollView*)otherGestureRecognizer.view).isDragging)) {
       [self.eventHandler onGestureRecognizedByEventTarget:self.eventHandler.touchTarget];
     } else if (otherGestureRecognizer.view.lynxEnableTapGestureSimultaneously) {
       res = YES;

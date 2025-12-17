@@ -121,5 +121,13 @@ void Event::HandleEventBaseDetail(bool is_core_event) {
 
 void Event::HandleEventCustomDetail() {}
 
+bool Event::IsCaptureBubbleEvent() {
+  return event_type_ == EventType::kTouchEvent ||
+         event_type_ == EventType::kCustomEvent ||
+         event_type_ == EventType::kMouseEvent ||
+         event_type_ == EventType::kWheelEvent ||
+         event_type_ == EventType::kKeyboardEvent;
+}
+
 }  // namespace event
 }  // namespace lynx

@@ -53,19 +53,6 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
     return {EventCancelType::kNotCanceled, false};
   }
 
-  TRACE_EVENT(
-      LYNX_TRACE_CATEGORY, EVENT_TARGET_DISPATCHEVENT,
-      [&event, target = this](lynx::perfetto::EventContext ctx) {
-        ctx.event()->add_debug_annotations("name", event->type());
-        ctx.event()->add_debug_annotations(
-            "phase", std::to_string(static_cast<int>(event->event_phase())));
-        ctx.event()->add_debug_annotations("target", target->GetUniqueID());
-        ctx.event()->add_flow_ids(event->TraceFlowId());
-      });
-  LOGI("EventTarget::DispatchEvent name: "
-       << event->type() << ", phase: " << static_cast<int>(event->event_phase())
-       << ", target: " << GetUniqueID());
-
   // Fire all listeners registered for this event. Don't fire listeners removed
   // during event dispatch. Also, don't fire event listeners added during event
   // dispatch. Conveniently, all new event listeners will be added after or at
@@ -85,29 +72,35 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
                      });
   }
   for (auto& listener : copy) {
-    if (event->event_phase() == Event::PhaseType::kCapturingPhase &&
-        !listener->GetOptions().IsCapture()) {
-      continue;
-    }
-    // Align the logic of capturePhase:false of miniapp.
-    if ((event->event_phase() == Event::PhaseType::kAtTarget) &&
-        !event->capture() && listener->GetOptions().IsCapture()) {
-      continue;
-    }
-    if ((event->event_phase() == Event::PhaseType::kBubblingPhase) &&
-        listener->GetOptions().IsCapture()) {
-      continue;
-    }
-    if ((event->event_phase() != Event::PhaseType::kGlobal) &&
-        listener->GetOptions().IsGlobal()) {
+    if (!listener->IsMatchEvent(event)) {
       continue;
     }
     if (listener->removed()) {
       continue;
     }
+
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY, EVENT_TARGET_DISPATCHEVENT,
+        [&event, &listener, target = this](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_debug_annotations("name", event->type());
+          ctx.event()->add_debug_annotations(
+              "phase", std::to_string(static_cast<int>(event->event_phase())));
+          ctx.event()->add_debug_annotations("target", target->GetUniqueID());
+          ctx.event()->add_debug_annotations(
+              "listener_options",
+              std::to_string(listener->GetOptions().Flags()));
+          ctx.event()->add_flow_ids(event->TraceFlowId());
+        });
+    LOGI("EventTarget::DispatchEvent name: "
+         << event->type()
+         << ", phase: " << static_cast<int>(event->event_phase())
+         << ", target: " << GetUniqueID()
+         << ", listener options: " << listener->GetOptions().Flags());
+
     is_catch |= listener->GetOptions().IsCatch();
     listener->Invoke(event);
     consumed = true;
+
     if (event->is_stop_immediate_propagation()) {
       break;
     }

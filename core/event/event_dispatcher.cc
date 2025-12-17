@@ -55,16 +55,18 @@ EventDispatcher::EventDispatcher(EventTarget& target, fml::RefPtr<Event> event)
 }
 
 DispatchEventResult EventDispatcher::Dispatch() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH,
-              [this](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_flow_ids(event_->TraceFlowId());
-                ctx.event()->add_debug_annotations("name", event_->type());
-              });
-  LOGI("EventDispatcher::Dispatch name: " << event_->type());
   if (!target_) {
     LOGE("EventDispatcher::Dispatch error: the target is null.");
     return {EventCancelType::kCanceledBeforeDispatch, false};
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH,
+              [this, target = target_](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("name", event_->type());
+                ctx.event()->add_debug_annotations("target",
+                                                   target->GetUniqueID());
+              });
+  LOGI("EventDispatcher::Dispatch name: " << event_->type() << " target: "
+                                          << target_->GetUniqueID())
   // handle conflic and param
   if (event_->HandleEventConflictAndParam()) {
     return {EventCancelType::kCanceledByEventHandler, false};
@@ -74,11 +76,9 @@ DispatchEventResult EventDispatcher::Dispatch() {
   bool consumed = false;
   auto path = event_->event_path();
 
-  // TODO(hexionghui): trigger global event, eg: trigger-global-event attribute
-  // or GlobalEventEmitter
+  // trigger global event, eg: trigger-global-event attribute or global-bind
+  // event
   target_->HandleGlobalEvent(event_);
-
-  // TODO(hexionghui): global-bind event, eg: global-bindtap
 
   // capture, eg: capture-bindtap
   if (event_->capture()) {
