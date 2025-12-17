@@ -863,21 +863,37 @@ void RadonNode::SetEventListeners(
               },
               event_options, event::ClosureEventListener::ClosureType::kJS));
     } else {
-      const auto& callback = event_entry.second->function();
+      const auto& callback = event_entry.second->function().str();
       element()->AddEventListener(
           name,
           std::make_unique<event::ClosureEventListener>(
-              [tasm = tasm_, callback](lepus::Value args) {
+              [tasm = tasm_, name, callback](lepus::Value args) {
                 const auto& args_array = args.Array();
                 if (args.IsArray() && args_array->size() == 2) {
                   const auto& event_info = args_array->get(0);
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();
                   if (event_info.IsArray() && event_info_array->size() == 2) {
-                    const auto& call_method_name =
-                        event_info_array->get(0).Bool();
-                    const auto& page_name_or_component_id =
-                        event_info_array->get(1).StdString();
+                    auto call_method_name = event_info_array->get(0).Bool();
+                    auto page_name_or_component_id =
+                        call_method_name
+                            ? tasm->FindEntry(tasm::DEFAULT_ENTRY_NAME)
+                                  ->GetName()
+                            : event_info_array->get(1).StdString();
+                    TRACE_EVENT(
+                        LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_CLOSURE,
+                        [&name, &callback, &page_name_or_component_id](
+                            lynx::perfetto::EventContext ctx) {
+                          ctx.event()->add_debug_annotations("name", name);
+                          ctx.event()->add_debug_annotations("callback",
+                                                             callback);
+                          ctx.event()->add_debug_annotations(
+                              "component", page_name_or_component_id);
+                        });
+                    LOGI(
+                        "Invoke the Closure of ClosureEventListener for event: "
+                        << name << " with callback: " << callback
+                        << " in component: " << page_name_or_component_id)
                     auto message = lepus::CArray::Create();
                     message->emplace_back(page_name_or_component_id);
                     message->emplace_back(callback);

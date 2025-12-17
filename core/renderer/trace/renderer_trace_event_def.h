@@ -822,6 +822,8 @@ inline constexpr const char* const EVENT_TARGET_DISPATCHEVENT =
     "EventTarget::DispatchEvent";
 inline constexpr const char* const CLOSURE_EVENT_LISTENER_INVOKE =
     "ClosureEventListener::Invoke";
+inline constexpr const char* const CLOSURE_EVENT_LISTENER_CLOSURE =
+    "ClosureEventListener::Closure";
 inline constexpr const char* const LEPUS_CLOSURE_EVENT_LISTENER_INVOKE =
     "LepusClosureEventListener::Invoke";
 inline constexpr const char* const JS_CLOSURE_EVENT_LISTENER_INVOKE =
