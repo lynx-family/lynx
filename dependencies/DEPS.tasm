@@ -1,0 +1,21 @@
+import os
+
+
+deps = {
+    'buildtools/emsdk': {
+        "type": "git",
+        "url": "https://github.com/emscripten-core/emsdk.git",
+        "commit": "2346baa7bb44a4a0571cc75f1986ab9aaa35aa03",
+        "ignore_in_git": True,
+    },
+    'config_emsdk': {
+        "type": "action",
+        "cwd": os.path.join(root_dir, "buildtools/emsdk/"),
+        "commands": [
+            "./emsdk install latest",
+            "./emsdk activate latest",
+            ". ./emsdk_env.sh",
+        ],
+        "require": ['buildtools/emsdk']
+    },
+}

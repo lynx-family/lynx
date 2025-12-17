@@ -2,11 +2,12 @@ habitat_version = "0.3.146-alpha.2"
 solutions = [
     {
         'name': '.',
-        'deps_file': 'DEPS',
+        'deps_file': 'dependencies/DEPS',
         'url': '',
         'target_deps_files': {
-            'clay': 'DEPS.clay',
-            'dev': 'DEPS.dev'
+            'clay': 'dependencies/DEPS.clay',
+            'dev': 'dependencies/DEPS.dev',
+            'tasm': 'dependencies/DEPS.tasm'
         },
     }
 ]
