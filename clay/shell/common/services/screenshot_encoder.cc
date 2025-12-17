@@ -30,7 +30,8 @@ float GetScale(int original_width, int original_height, int max_width,
 
 // static
 ScreenshotEncodeResult ScreenshotEncoder::ScaleAndEncode(
-    GrDataPtr data, const clay::ScreenshotRequest& request) {
+    ScreenshotData screenshot, const clay::ScreenshotRequest& request) {
+  auto data = screenshot.data;
   if (!data) {
     FML_DLOG(ERROR) << "Failed to take screenshot with empty data!";
     return {};
@@ -46,20 +47,22 @@ ScreenshotEncodeResult ScreenshotEncoder::ScaleAndEncode(
   // cause the dangling pointer exception during Encode caused by the
   // invalidation of the pixelRef.
   SkBitmap scaled_bitmap;
-  SkPixmap scaled_pixmap = ScaleImage(data, scaled_bitmap, request);
+  SkPixmap scaled_pixmap = ScaleImage(screenshot, scaled_bitmap, request);
   return Encode(scaled_pixmap, request);
 #else
-  std::shared_ptr<skity::Pixmap> scaled_pixmap = ScaleImage(data, request);
+  std::shared_ptr<skity::Pixmap> scaled_pixmap =
+      ScaleImage(screenshot, request);
   return Encode(scaled_pixmap, request);
 #endif  // ENABLE_SKITY
 }
 
 #ifndef ENABLE_SKITY
-SkPixmap ScreenshotEncoder::ScaleImage(sk_sp<SkData> data,
+SkPixmap ScreenshotEncoder::ScaleImage(ScreenshotData screenshot,
                                        SkBitmap& scaled_bitmap,
                                        const clay::ScreenshotRequest& request) {
-  size_t image_width = request.page_width_;
-  size_t image_height = request.page_height_;
+  auto data = screenshot.data;
+  size_t image_width = screenshot.frame_size.x;
+  size_t image_height = screenshot.frame_size.y;
 
   auto image_info = SkImageInfo::Make(
       image_width, image_height, kRGBA_8888_SkColorType, kUnpremul_SkAlphaType);
@@ -178,9 +181,10 @@ ScreenshotEncodeResult ScreenshotEncoder::Encode(
 }
 #else
 std::shared_ptr<skity::Pixmap> ScreenshotEncoder::ScaleImage(
-    std::shared_ptr<skity::Data> data, const clay::ScreenshotRequest& request) {
-  size_t image_width = request.page_width_;
-  size_t image_height = request.page_height_;
+    ScreenshotData screenshot, const clay::ScreenshotRequest& request) {
+  auto data = screenshot.data;
+  size_t image_width = screenshot.frame_size.x;
+  size_t image_height = screenshot.frame_size.y;
 
   std::shared_ptr<skity::Data> skity_data =
       skity::Data::MakeWithCopy(data->RawData(), data->Size());

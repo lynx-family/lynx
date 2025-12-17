@@ -9,6 +9,7 @@
 
 #include "clay/common/graphics/screenshot.h"
 #include "clay/gfx/rendering_backend.h"
+#include "clay/shell/common/screenshot_utils.h"
 
 namespace clay {
 
@@ -20,7 +21,7 @@ struct ScreenshotEncodeResult {
 class ScreenshotEncoder {
  public:
   static ScreenshotEncodeResult ScaleAndEncode(
-      GrDataPtr data, const clay::ScreenshotRequest& request);
+      ScreenshotData screenshot, const clay::ScreenshotRequest& request);
 
 #ifndef ENABLE_SKITY
   static ScreenshotEncodeResult Encode(const SkPixmap& pixmap,
@@ -32,12 +33,11 @@ class ScreenshotEncoder {
 
  private:
 #ifndef ENABLE_SKITY
-  static SkPixmap ScaleImage(sk_sp<SkData> data, SkBitmap& scaled_bitmap,
+  static SkPixmap ScaleImage(ScreenshotData screenshot, SkBitmap& scaled_bitmap,
                              const clay::ScreenshotRequest& request);
 #else
   static std::shared_ptr<skity::Pixmap> ScaleImage(
-      std::shared_ptr<skity::Data> data,
-      const clay::ScreenshotRequest& request);
+      ScreenshotData screenshot, const clay::ScreenshotRequest& request);
 #endif
 };
 

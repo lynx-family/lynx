@@ -39,7 +39,7 @@ GrDataPtr ScreenshotService::TakeScreenshotHardware(
     if (request.type_ == clay::ScreenshotType::BITMAP) {
       return screenshot.data;
     } else {
-      auto result = ScreenshotEncoder::ScaleAndEncode(screenshot.data, request);
+      auto result = ScreenshotEncoder::ScaleAndEncode(screenshot, request);
       return result.data;
     }
   }
@@ -59,8 +59,8 @@ GrDataPtr ScreenshotService::TakeScreenshotHardware(
         auto task_runner = request.task_runner_
                                ? request.task_runner_
                                : clay::Isolate::Instance().GetIOTaskRunner();
-        task_runner->PostTask([data, request]() {
-          auto result = ScreenshotEncoder::ScaleAndEncode(data, request);
+        task_runner->PostTask([screenshot, request]() {
+          auto result = ScreenshotEncoder::ScaleAndEncode(screenshot, request);
           if (result.data) {
             result.metadata.timestamp_ =
                 std::chrono::steady_clock::now().time_since_epoch().count();
