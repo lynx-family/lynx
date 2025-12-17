@@ -18,6 +18,7 @@
 /third_party/perfetto
 /third_party/httplib
 /third_party/boringssl
+/third_party/webview2
 *.profraw
 __pycache__
 /venv
