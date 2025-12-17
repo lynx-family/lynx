@@ -203,20 +203,18 @@ piper::Value Console::CallJSEngineConsole(Runtime* rt, const Value* args,
   Scope scope(*rt);
   bool is_devtool_enabled =
       tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable_;
-  if (count > 0) {
-    if (is_devtool_enabled) {
-      piper::Object global = rt->global();
-      auto console = global.getProperty(*rt, "console");
-      if (console && console->isObject() &&
-          !console->getObject(*rt).isHostObject(*rt) &&
-          console->getObject(*rt).hasProperty(*rt, func_name.c_str())) {
-        auto func_value =
-            console->getObject(*rt).getProperty(*rt, func_name.c_str());
-        if (func_value && func_value->isObject() &&
-            func_value->getObject(*rt).isFunction(*rt)) {
-          piper::Function func = func_value->getObject(*rt).getFunction(*rt);
-          func.callWithThis(*rt, console->getObject(*rt), args, count);
-        }
+  if (is_devtool_enabled) {
+    piper::Object global = rt->global();
+    auto console = global.getProperty(*rt, "console");
+    if (console && console->isObject() &&
+        !console->getObject(*rt).isHostObject(*rt) &&
+        console->getObject(*rt).hasProperty(*rt, func_name.c_str())) {
+      auto func_value =
+          console->getObject(*rt).getProperty(*rt, func_name.c_str());
+      if (func_value && func_value->isObject() &&
+          func_value->getObject(*rt).isFunction(*rt)) {
+        piper::Function func = func_value->getObject(*rt).getFunction(*rt);
+        func.callWithThis(*rt, console->getObject(*rt), args, count);
       }
     }
   }
@@ -227,12 +225,8 @@ piper::Value Console::LogWithLevel(Runtime* rt, const int level,
                                    const Value* args, size_t count,
                                    const std::string& func_name) {
   Scope scope(*rt);
-
-  bool is_devtool_enabled =
-      tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable_;
+  CallJSEngineConsole(rt, args, count, func_name);
   if (count > 0) {
-    CallJSEngineConsole(rt, args, count, func_name);
-
     std::string msg;
     for (size_t i = 0; i < count; ++i) {
       msg += LogObject_(rt, &args[i]);
@@ -267,6 +261,8 @@ piper::Value Console::LogWithLevel(Runtime* rt, const int level,
         break;
     }
 
+    bool is_devtool_enabled =
+        tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable_;
     if (is_devtool_enabled) {
       auto post_man = post_man_.lock();
       if (post_man != nullptr) {
