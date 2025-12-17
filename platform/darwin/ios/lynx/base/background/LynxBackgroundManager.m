@@ -415,11 +415,15 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     // FIXME(linxs:) change to imageService once imageService is ready!
     LynxURL* requestUrl = [[LynxURL alloc] init];
     requestUrl.url = url;
+    if (self.ui.context.mediaResourceFetcher) {
+      requestUrl.request = [[LynxResourceRequest alloc] initWithUrl:url.absoluteString
+                                                               type:LynxResourceTypeImage];
+    }
     [[LynxImageLoader sharedInstance]
         loadImageFromLynxURL:requestUrl
                         size:self.ui.view.bounds.size
                  contextInfo:@{
-                   LynxImageFetcherContextKeyUI : self,
+                   LynxImageFetcherContextKeyUI : self.ui,
                    LynxImagePreloadAllFrames : @(YES)
                  }
                   processors:processors

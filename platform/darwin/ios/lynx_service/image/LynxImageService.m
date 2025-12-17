@@ -93,6 +93,13 @@
                                      processors:(nonnull NSArray*)processors
                                       completed:(nonnull LynxImageLoadCompletionBlock)completed
                                     LynxUIImage:(nonnull LynxUIImage*)lynxImage {
+  LynxUI* lynxUI = nil;
+  if ([contextInfo objectForKey:LynxImageFetcherContextKeyUI]) {
+    id callerUI = [contextInfo objectForKey:LynxImageFetcherContextKeyUI];
+    if ([callerUI isKindOfClass:[LynxUI class]]) {
+      lynxUI = callerUI;
+    }
+  }
   _imageUI = lynxImage;
   NSString* urlStr = requestUrl.url.absoluteString;
   BOOL isBase64 = [urlStr hasPrefix:@"data:image"];
@@ -107,11 +114,11 @@
   if (!isBase64 && !shouldSkipRedirection && enableGenericFetcher) {
     LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"MediaFetcher.shouldRedirectImageUrl")
     LynxResourceOptionalBool isLocalResource = LynxResourceOptionalBoolUndefined;
-    if ([_imageUI.context.mediaResourceFetcher respondsToSelector:@selector(isLocalResource:)]) {
-      isLocalResource = [_imageUI.context.mediaResourceFetcher isLocalResource:requestUrl.url];
+    if ([lynxUI.context.mediaResourceFetcher respondsToSelector:@selector(isLocalResource:)]) {
+      isLocalResource = [lynxUI.context.mediaResourceFetcher isLocalResource:requestUrl.url];
     }
-    if (isLocalResource != LynxResourceOptionalBoolFalse) {
-      urlStr = [_imageUI.context.mediaResourceFetcher shouldRedirectUrl:requestUrl.request];
+    if (lynxUI && requestUrl.request && isLocalResource != LynxResourceOptionalBoolFalse) {
+      urlStr = [lynxUI.context.mediaResourceFetcher shouldRedirectUrl:requestUrl.request];
     }
     LLog(@"[lynx]originalURL %@, resolvedURL %@", requestUrl.url.absoluteURL, urlStr);
     LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
