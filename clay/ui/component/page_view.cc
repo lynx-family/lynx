@@ -1122,7 +1122,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         }
       }
       bool is_scale = event.scale != 1;
-      if (event_delegate_) {
+      if (event_delegate_ && pan_zoom_target_) {
         if (is_scale) {
           event_delegate_->OnMouseEvent(
               "zoom", pan_zoom_target_->id(), button_state_, buttons_state_,
