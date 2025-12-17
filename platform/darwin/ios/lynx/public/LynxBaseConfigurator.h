@@ -20,6 +20,7 @@
  @protected
   LynxThreadStrategyForRender _threadStrategy;
   BOOL _hasThreadStrategySet;
+  LynxConfig* _config;
 }
 
 @property(nonatomic, nullable) LynxConfig* config;

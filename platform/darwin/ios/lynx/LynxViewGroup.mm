@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxLogicExecutor.h>
+#import <Lynx/LynxService.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewGroup.h>
@@ -202,6 +203,11 @@
 
 - (LynxTemplateBundle *_Nullable)getTemplateBundleNonBlocking {
   return _templateBundle;
+}
+
+- (void)setConfig:(LynxConfig *)config {
+  [super setConfig:config];
+  [LynxService(LynxServiceModuleProtocol) initLynxViewGroup:self];
 }
 
 @end

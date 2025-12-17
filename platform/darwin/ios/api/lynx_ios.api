@@ -3317,6 +3317,7 @@ public class LynxServiceInfo : NSObject {
 }
 
 public protocol LynxServiceModuleProtocol-p : <LynxServiceProtocol> {
+  public void LynxServiceModuleProtocol-p::initLynxViewGroup:(LynxViewGroup *lynxViewGroup);
   public void LynxServiceModuleProtocol-p::initGlobalProps:(LynxView *lynxView);
   public void LynxServiceModuleProtocol-p::clearModuleForDestroy:(LynxView *lynxView);
   public void LynxServiceModuleProtocol-p::cloneGlobalPropsForReload:(LynxView *lynxView);
