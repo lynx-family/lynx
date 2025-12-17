@@ -24,11 +24,37 @@
 
 #include "core/event/event_listener.h"
 
+#include "core/event/event.h"
+
 namespace lynx {
 namespace event {
 
 EventListener::EventListener(Type type, const EventListener::Options& options)
     : type_(type), options_(options) {}
+
+bool EventListener::IsMatchEvent(fml::RefPtr<Event> event) const {
+  bool is_capture_bubble_event = event->IsCaptureBubbleEvent();
+  if (is_capture_bubble_event) {
+    bool is_capture_listener =
+        event->event_phase() == Event::PhaseType::kCapturingPhase &&
+        GetOptions().IsCapture() && !GetOptions().IsGlobal();
+    // Align the logic of capturePhase:false of miniapp.
+    bool is_good_capture = GetOptions().IsCapture() && event->capture();
+    bool is_target_listener =
+        event->event_phase() == Event::PhaseType::kAtTarget &&
+        (is_good_capture || !GetOptions().IsCapture()) &&
+        !GetOptions().IsGlobal();
+    bool is_bubble_listener =
+        event->event_phase() == Event::PhaseType::kBubblingPhase &&
+        !GetOptions().IsCapture() && !GetOptions().IsGlobal();
+    bool is_global_listener =
+        event->event_phase() == Event::PhaseType::kGlobal &&
+        GetOptions().IsGlobal();
+    return is_capture_listener || is_target_listener || is_bubble_listener ||
+           is_global_listener;
+  }
+  return true;
+}
 
 }  // namespace event
 }  // namespace lynx

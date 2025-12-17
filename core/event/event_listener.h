@@ -63,6 +63,8 @@ class EventListener {
                 (passive ? kPassiveBit : 0) | (signal ? kSignalBit : 0) |
                 (is_catch ? kCatchBit : 0) | (is_global ? kGlobalBit : 0)) {}
 
+    int64_t Flags() const { return flags; }
+
     bool IsCapture() const { return (flags & kCaptureBit) == kCaptureBit; }
 
     bool IsCatch() const { return (flags & kCatchBit) == kCatchBit; }
@@ -89,6 +91,8 @@ class EventListener {
   virtual void Invoke(fml::RefPtr<Event> event) = 0;
 
   virtual bool Matches(EventListener* listener) = 0;
+
+  bool IsMatchEvent(fml::RefPtr<Event> event) const;
 
  protected:
   bool removed_{false};
