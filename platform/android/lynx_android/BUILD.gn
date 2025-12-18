@@ -117,7 +117,7 @@ group("lynx_android_lib") {
 }
 
 group("lynx_jni_files") {
-  exec_script("../../../tools/build_jni/generate_and_register_jni_files.py",
+  exec_script("//tools_shared/jni_generator/generate_and_register_jni_files.py",
               [
                 "-root",
                 rebase_path("../../../"),

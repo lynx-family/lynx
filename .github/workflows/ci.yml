@@ -58,7 +58,7 @@ jobs:
       - name: Run gn relative path check
         run: |
           source tools/envsetup.sh
-          python3 tools/gn_tools/gn_relative_path_checker.py
+          python3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
 
   darwin-native-unittests-check:
     timeout-minutes: 60

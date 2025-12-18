@@ -25,7 +25,7 @@
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/shell/lynx_shell.h"
 #include "core/template_bundle/lynx_template_bundle.h"
-#include "harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 
 namespace lynx {
 

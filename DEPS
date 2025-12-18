@@ -78,12 +78,6 @@ deps = {
         "patches": os.path.join(root_dir, 'patches', 'xhook', '*.patch'),
         "ignore_in_git": True,
     },
-    'python_venv_set': {
-        "type": "action",
-        "commands": [
-            python_path + " tools/vpython_tools/vpython_env_setup.py --root_dir " + root_dir,
-        ],
-    },
     'change_executable_permission': {
         "type": "action",
         "commands": [
@@ -104,21 +98,6 @@ deps = {
         "ignore_in_git": True,
         "decompress": True,
         "condition": system in ['linux', 'darwin'],
-    },
-    'update_gradle_local_properties': {
-        "type": "action",
-        "cwd": os.path.join(root_dir),
-        "commands": [
-            f"{python_path} " + os.path.join(root_dir, "tools", "android_tools", "update_local_properties.py") + ' '
-            "-f "
-            f'{root_dir}/platform/android/local.properties '
-            f'{root_dir}/explorer/android/local.properties '
-            "-p "
-            f'ndk.dir={os.environ.get("ANDROID_NDK", "")} '
-            f'sdk.dir={os.environ.get("ANDROID_HOME", "")} '
-            f'cmake.dir={os.path.join(root_dir, "buildtools", "cmake")}'
-        ],
-        "condition": system in ['linux', 'darwin', 'windows']
     },
     'buildtools/cmake': {
         "type": "http",
@@ -175,7 +154,7 @@ deps = {
         'commit': '04cf2989168a3f9218d463bea6f15f8ade2032fd',
         'ignore_in_git': True,
     },
-    'third_party/checkstyle/checkstyle.jar':{
+    'buildtools/checkstyle/checkstyle.jar':{
         "type": "http",
         "url": "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-9.2.1/checkstyle-9.2.1-all.jar",
         "ignore_in_git": True,
@@ -333,7 +312,7 @@ deps = {
     "./tools_shared": {
         "type": "solution",
         "url": "https://github.com/lynx-family/tools-shared.git",
-        "commit": "f13686a7f3ea237475af97b106c894652b2c0ef2",
+        "commit": "1ea4099fad9ed61f548c864469e4eaf7cf3336b1",
         'deps_file': 'dependencies/DEPS',
         "ignore_in_git": True,
     },
@@ -342,5 +321,11 @@ deps = {
         "url": f"https://github.com/lynx-family/buildtools/releases/download/v1.13.2/buildtools-doxygen-{system}-{machine}.tar.gz",
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin']
+    },
+    "buildtools/pmd": {
+        "type": "http",
+        "url": "https://github.com/pmd/pmd/releases/download/pmd_releases%2F6.48.0/pmd-bin-6.48.0.zip",
+        "ignore_in_git": True,
+        "condition": system in ["linux", "darwin"]
     },
 }

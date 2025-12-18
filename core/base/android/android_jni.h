@@ -7,6 +7,7 @@
 
 #include <jni.h>
 #include <cstdint>
+#include <string>
 
 #include "core/base/lynx_export.h"
 #include "base/include/platform/android/jni_utils.h"
