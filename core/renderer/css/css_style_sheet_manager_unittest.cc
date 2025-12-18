@@ -84,6 +84,11 @@ TEST_F(CSSStyleSheetManagerTest, Pseudo) {
   EXPECT_TRUE(manager);
   // cm->css_id()
   auto cf = manager->GetCSSStyleSheetForPage(1);
+  if (tasm->page_proxy()
+          ->element_manager()
+          ->GetEnableFiberElementForRadonDiff()) {
+    cf = manager->GetCSSStyleSheetForComponent(1);
+  }
   EXPECT_TRUE(cf);
   EXPECT_TRUE(cf->HasPseudoStyle());
   EXPECT_TRUE(cf->HasPseudoNotStyle());

@@ -507,13 +507,16 @@ enableFiberElementForRadonDiff:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: DragonDragonDDD
-  readNative: true
+  readNative: false
   since: '3.0'
   supportPlatform:
     - Android
     - HarmonyOS
     - iOS
   export: false
+  deprecated: '3.7'
+  codeGen:
+    - NONE
 enableOptPushStyleToBundle:
   description: Enable using PropBundleStyleWriter to write style to PropBundle.
   defaultValue: TernaryBool::UNDEFINE_VALUE

@@ -16,7 +16,7 @@ namespace tasm {
 DispatchOption::DispatchOption(PageProxy* page_proxy)
     : need_notify_devtool_(page_proxy->element_manager()->GetDevToolFlag() &&
                            page_proxy->element_manager()->IsDomTreeEnabled()) {
-  if (page_proxy->IsServerSideRendering() || page_proxy->HasSSRRadonPage()) {
+  if (page_proxy->HasSSRRadonPage()) {
     need_update_element_ = false;
   }
 }

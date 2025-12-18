@@ -113,7 +113,7 @@ TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent2) {
   component->RadonNode::DispatchSelf(option);
   touch_event_handler_->HandleTriggerComponentEvent(tasm_.get(), "xxxx", obj);
   EXPECT_EQ(delegate_->DumpDelegate(),
-            "PublishComponentEvent 0 onXXXX "
+            "SendPageEvent  onXXXX "
             "{\"currentTarget\":{\"dataset\":{},\"id\":\"\"},\"detail\":null,"
             "\"target\":{\"dataset\":{},\"id\":\"\"},\"type\":\"xxxx\"}\n");
 }

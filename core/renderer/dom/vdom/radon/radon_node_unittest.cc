@@ -75,8 +75,6 @@ TEST_F(RadonNodeTest, GetOriginalNodeIndex) {
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementView) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   auto* element = radon_node->element();
@@ -85,18 +83,6 @@ TEST_F(RadonNodeTest, CreateFiberElementView) {
   radon_node->DispatchFirstTime();
   EXPECT_TRUE(static_cast<FiberElement*>(element)->dirty_ &
               FiberElement::kDirtyStyle);
-  EXPECT_FALSE(element->element_container()->IsRootContainer());
-}
-
-TEST_F(RadonNodeTest, NotCreateFiberElementView) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::FALSE_VALUE);
-  auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
-  radon_node->CreateElementIfNeeded();
-  auto* element = radon_node->element();
-  EXPECT_FALSE(element->is_fiber_element());
-  EXPECT_TRUE(element->is_view());
-  radon_node->DispatchFirstTime();
   EXPECT_FALSE(element->element_container()->IsRootContainer());
 }
 
@@ -202,8 +188,6 @@ TEST_F(RadonNodeTest, CreateFiberElementWrapperComponent) {
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementPage) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonPage>(page_proxy.get(), 0, nullptr,
                                                 nullptr, nullptr, nullptr);
   radon_node->SetComponent(nullptr);
@@ -214,8 +198,6 @@ TEST_F(RadonNodeTest, CreateFiberElementPage) {
 }
 
 TEST_F(RadonNodeTest, NotCreateFiberElementPage) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonPage>(page_proxy.get(), 0, nullptr,
                                                 nullptr, nullptr, nullptr);
   radon_node->SetComponent(nullptr);
@@ -226,8 +208,6 @@ TEST_F(RadonNodeTest, NotCreateFiberElementPage) {
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementPageByTag) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "page", 123);
   radon_node->SetComponent(nullptr);
   auto element = radon_node->CreateFiberElement();
@@ -236,8 +216,6 @@ TEST_F(RadonNodeTest, CreateFiberElementPageByTag) {
 }
 
 TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithoutOptimization) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   auto* element = radon_node->element();
@@ -252,8 +230,6 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithoutOptimization) {
 
 TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithOptimization) {
   page_proxy->element_manager()->config_->SetEnableExtendedLayoutOpt(true);
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   auto* element = radon_node->element();
@@ -307,8 +283,6 @@ TEST_F(RadonNodeTest,
 }
 
 TEST_F(RadonNodeTest, SetInlineStyleForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->SetInlineStyle(
       CSSPropertyID::kPropertyIDBackgroundColor, base::String("black"),
@@ -322,8 +296,6 @@ TEST_F(RadonNodeTest, SetInlineStyleForFiber) {
 }
 
 TEST_F(RadonNodeTest, FlushInlineStyleForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   EXPECT_TRUE(radon_node->element()->is_fiber_element());
@@ -348,8 +320,6 @@ TEST_F(RadonNodeTest, FlushInlineStyleForFiber) {
 }
 
 TEST_F(RadonNodeTest, FlushAttributeForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   EXPECT_TRUE(radon_node->element()->is_fiber_element());
@@ -367,8 +337,6 @@ TEST_F(RadonNodeTest, FlushAttributeForFiber) {
 }
 
 TEST_F(RadonNodeTest, DiffAttributeForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node1 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node1->CreateElementIfNeeded();
   auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
@@ -387,8 +355,6 @@ TEST_F(RadonNodeTest, DiffAttributeForFiber) {
 }
 
 TEST_F(RadonNodeTest, DiffAttributeEmptyForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node1 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node1->CreateElementIfNeeded();
   auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
@@ -405,8 +371,6 @@ TEST_F(RadonNodeTest, DiffAttributeEmptyForFiber) {
 }
 
 TEST_F(RadonNodeTest, DiffClassesForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node1 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node1->CreateElementIfNeeded();
   auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
@@ -422,8 +386,6 @@ TEST_F(RadonNodeTest, DiffClassesForFiber) {
 }
 
 TEST_F(RadonNodeTest, DiffStylesForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node1 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node1->CreateElementIfNeeded();
   auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
@@ -450,9 +412,6 @@ TEST_F(RadonNodeTest, DiffStylesForFiber) {
 }
 
 TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
-
   auto parent = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   parent->CreateElementIfNeeded();
   auto child = new RadonNode(page_proxy.get(), "view", 0);
@@ -468,9 +427,6 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
 }
 
 TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiberComponent) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
-
   auto parent = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   parent->CreateElementIfNeeded();
   auto* parent_element = static_cast<FiberElement*>(parent->element());
@@ -497,8 +453,6 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiberComponent) {
 }
 
 TEST_F(RadonNodeTest, DiffAttr) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   EXPECT_TRUE(radon_node->element()->is_fiber_element());
@@ -534,8 +488,6 @@ TEST_F(RadonNodeTest, DiffAttr) {
 }
 
 TEST_F(RadonNodeTest, DiffEmptyAttr) {
-  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
-      TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
   radon_node->CreateElementIfNeeded();
   EXPECT_TRUE(radon_node->element()->is_fiber_element());

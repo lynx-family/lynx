@@ -979,8 +979,6 @@ class ElementManager : public ElementContextDelegate,
     return enable_fiber_element_for_radon_diff_;
   }
 
-  void SetEnableFiberElementForRadonDiff(TernaryBool value);
-
   bool GetEnableOptPushStyleToBundle() {
     return enable_opt_push_style_to_bundle_;
   }
@@ -1287,7 +1285,7 @@ class ElementManager : public ElementContextDelegate,
 
   bool enable_report_threaded_element_flush_statistic_{false};
 
-  bool enable_fiber_element_for_radon_diff_{false};
+  bool enable_fiber_element_for_radon_diff_{true};
 
   bool settings_enable_use_mapbuffer_for_ui_op_;
 

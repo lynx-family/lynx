@@ -1599,7 +1599,8 @@ void RadonComponent::RadonReusableDiffChildren(
 }
 
 const std::string& RadonComponent::GetEntryName() const {
-  if (entry_name_.empty() && radon_component_ != nullptr) {
+  if (entry_name_.empty() && radon_component_ != nullptr &&
+      radon_component_ != this) {
     entry_name_ = radon_component_->GetEntryName();
   }
   return entry_name_;
@@ -1638,7 +1639,8 @@ void RadonComponent::GenerateAndSetComponentId() {
 }
 
 void RadonComponent::SetComponentId() {
-  if (element() && element()->is_fiber_element()) {
+  if (element() && element()->is_fiber_element() &&
+      !page_proxy_->IsServerSideRendering()) {
     component_element()->set_component_id(ComponentStrId());
   }
 }

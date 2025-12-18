@@ -2939,9 +2939,6 @@ void TemplateAssembler::OnPageConfigDecoded(
   element_manager->SetEnableUIOperationOptimize(
       config->GetEnableUIOperationOptimize());
 
-  element_manager->SetEnableFiberElementForRadonDiff(
-      config->GetEnableFiberElementForRadonDiff());
-
   if (element_manager->painting_context()->impl()->EnableParallelElement()) {
     element_manager->SetEnableLevelOrderTraversing(
         config->GetEnableLevelOrderTraversing());

@@ -760,7 +760,7 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
 
   // If the fiber element is currently in the detached state, then do not
   // generate the corresponding chain.
-  if (component->is_fiber_element() &&
+  if (component->IsFiberArch() &&
       static_cast<FiberElement *>(component)->IsDetached()) {
     LOGE(
         "TouchEventHandler::GenerateResponseChain failed since the component "

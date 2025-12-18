@@ -123,14 +123,6 @@ class LynxConfigDecoder final {
               : TernaryBool::FALSE_VALUE);
     }
 
-    if (doc.HasMember(config::kEnableFiberElementForRadonDiff) &&
-        doc[config::kEnableFiberElementForRadonDiff].IsBool()) {
-      page_config->SetEnableFiberElementForRadonDiff(
-          doc[config::kEnableFiberElementForRadonDiff].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
     if (doc.HasMember(config::kEnableOptPushStyleToBundle) &&
         doc[config::kEnableOptPushStyleToBundle].IsBool()) {
       page_config->SetEnableOptPushStyleToBundle(

@@ -1572,17 +1572,6 @@ void ElementManager::SetEnableUIOperationOptimize(TernaryBool enable) {
   }
 }
 
-void ElementManager::SetEnableFiberElementForRadonDiff(TernaryBool value) {
-  if (value == TernaryBool::TRUE_VALUE) {
-    enable_fiber_element_for_radon_diff_ = true;
-  } else if (value == TernaryBool::FALSE_VALUE) {
-    enable_fiber_element_for_radon_diff_ = false;
-  } else {
-    enable_fiber_element_for_radon_diff_ = LynxEnv::GetInstance().GetBoolEnv(
-        lynx::tasm::LynxEnv::Key::ENABLE_FIBER_ELEMENT_FOR_RADON_DIFF, false);
-  }
-}
-
 void ElementManager::SetEnableOptPushStyleToBundle(TernaryBool value) {
   if (value == TernaryBool::TRUE_VALUE) {
     enable_opt_push_style_to_bundle_ = true;
