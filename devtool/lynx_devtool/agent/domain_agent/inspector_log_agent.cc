@@ -20,8 +20,11 @@ InspectorLogAgent::~InspectorLogAgent() = default;
 void InspectorLogAgent::CallMethod(const std::shared_ptr<MessageSender>& sender,
                                    const Json::Value& message) {
   std::string method = message["method"].asString();
-  auto iter = functions_map_.find(method);
-  if (iter == functions_map_.end()) {
+  std::map<std::string, LogAgentMethod>::iterator iter;
+  // Do not process Log messages for the MTS target to avoid sending duplicate
+  // `Log.entryAdded` messages.
+  if (message.isMember("sessionId") ||
+      (iter = functions_map_.find(method)) == functions_map_.end()) {
     Json::Value res;
     res["error"] = Json::ValueType::objectValue;
     res["error"]["code"] = kInspectorErrorCode;

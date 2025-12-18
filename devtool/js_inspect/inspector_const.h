@@ -47,6 +47,8 @@ constexpr char kKeyState[] = "state";
 constexpr char kKeyEngineType[] = "engineType";
 constexpr char kKeyEngineV8[] = "V8";
 constexpr char kKeyEngineQuickjs[] = "PrimJS";
+constexpr char kKeyEngineJSC[] = "JSC";
+constexpr char kKeyEngineJSVM[] = "JSVM";
 constexpr char kKeyEngineLepus[] = "Lepus";
 
 // Methods

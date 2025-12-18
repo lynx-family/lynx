@@ -71,6 +71,9 @@ void JSExecutor::loadPreJSBundle(
       force_use_light_weight_js_engine_, *this, rt_id, ensure_console,
       enable_user_bytecode, bytecode_source_url, std::move(bytecode_getter),
       page_options);
+  if (runtime_observer_ng_ != nullptr) {
+    runtime_observer_ng_->OnRuntimeCreated(js_runtime_->type());
+  }
 }
 
 void JSExecutor::SetObserver(JSIObserver* observer) {

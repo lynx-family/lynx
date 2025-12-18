@@ -41,6 +41,7 @@ class InspectorRuntimeObserverImpl : public piper::InspectorRuntimeObserverNG {
       const std::string& vm_type, int64_t runtime_id,
       const std::string& group_id, bool single_group,
       const std::shared_ptr<devtool::InspectorClientNG>& client) override;
+  void OnRuntimeCreated(piper::JSRuntimeType type) override;
   void OnRuntimeDestroyed(int64_t runtime_id) override;
 
   void PrepareForScriptEval() override;

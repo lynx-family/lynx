@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/js_debug/js/inspector_runtime_observer_impl.h"
 
+#include "base/include/timer/time_utils.h"
+#include "core/runtime/common/lynx_console_helper.h"
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 #include "devtool/lynx_devtool/js_debug/js/console_message_postman_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
@@ -54,6 +56,31 @@ void InspectorRuntimeObserverImpl::OnInspectorInited(
   if (sp != nullptr) {
     sp->OnInspectorInited(vm_type, runtime_id, group_id, single_group, client);
   }
+}
+
+void InspectorRuntimeObserverImpl::OnRuntimeCreated(piper::JSRuntimeType type) {
+  static constexpr char kEngineTypeMsg[] =
+      "[LynxDevTool] Current BTS engine type: ";
+  std::string type_str;
+  switch (type) {
+    case piper::JSRuntimeType::v8:
+      type_str = kKeyEngineV8;
+      break;
+    case piper::JSRuntimeType::jsc:
+      type_str = kKeyEngineJSC;
+      break;
+    case piper::JSRuntimeType::quickjs:
+      type_str = kKeyEngineQuickjs;
+      break;
+    case piper::JSRuntimeType::jsvm:
+      type_str = kKeyEngineJSVM;
+      break;
+  }
+  // Always log the engine type regardless of whether JS debugging is enabled,
+  // so do not invoke this logic within `OnInspectorInited`.
+  OnConsoleMessagePosted(
+      {kEngineTypeMsg + type_str, piper::CONSOLE_LOG_INFO,
+       static_cast<int64_t>(base::CurrentSystemTimeMilliseconds())});
 }
 
 void InspectorRuntimeObserverImpl::OnRuntimeDestroyed(int64_t runtime_id) {

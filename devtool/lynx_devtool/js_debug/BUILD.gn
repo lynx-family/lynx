@@ -160,6 +160,7 @@ unittest_set("js_debug_testset") {
   sources = [
     "inspector_client_delegate_impl_unittest.cc",
     "java_script_debugger_ng_unittest.cc",
+    "js/inspector_runtime_observer_impl_unittest.cc",
     "lepus/inspector_lepus_debugger_impl_unittest.cc",
     "lepus/inspector_lepus_observer_impl_unittest.cc",
   ]

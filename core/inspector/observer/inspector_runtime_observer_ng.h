@@ -25,6 +25,8 @@ class InspectorClientNG;
 }
 namespace piper {
 
+enum class JSRuntimeType;
+
 // Only works for js runtime.
 // Create some instances which implemented in LynxDevtool and observe the js
 // runtime.
@@ -56,6 +58,7 @@ class InspectorRuntimeObserverNG {
       const std::string& vm_type, int64_t runtime_id,
       const std::string& group_id, bool single_group,
       const std::shared_ptr<devtool::InspectorClientNG>& client) = 0;
+  virtual void OnRuntimeCreated(JSRuntimeType type) = 0;
   virtual void OnRuntimeDestroyed(int64_t runtime_id) = 0;
 
   virtual void PrepareForScriptEval() = 0;
