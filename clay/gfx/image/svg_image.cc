@@ -39,14 +39,19 @@ void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
         skity::Texture::FormatFromColorType(color_type), image_info.width(),
         image_info.height(), alpha_type);
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
-    unref_queue->GetTaskRunner()->PostTask(
-        [context = unref_queue->GetContext(), image, pixmap]() {
-          auto texture = context->CreateTexture(
-              skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-              pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+    unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
+                                            image, pixmap,
+                                            weak = weak_from_this()]() {
+      if (auto self = weak.lock()) {
+        auto texture = context->CreateTexture(
+            skity::Texture::FormatFromColorType(pixmap->GetColorType()),
+            pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+        if (texture) {
           texture->DeferredUploadImage(std::move(pixmap));
           image->SetTexture(texture);
-        });
+        }
+      }
+    });
   }
 }
 
