@@ -145,6 +145,7 @@ std::unique_ptr<pub::Value> LazyBundleLifecycleOption::GetLazyBundleEntry() {
   constexpr const static char kComponentUrl[] = "componentUrl";
   constexpr const static char kSize[] = "size";
   constexpr const static char kMode[] = "mode";
+  constexpr const static char kLoadSuccess[] = "loadSuccess";
   constexpr const static char kDecodeStartTime[] = "decodeStart";
   constexpr const static char kDecodeEndTime[] = "decodeEnd";
   constexpr const static char kRequireStartTime[] = "requireStart";
@@ -155,6 +156,7 @@ std::unique_ptr<pub::Value> LazyBundleLifecycleOption::GetLazyBundleEntry() {
   performance_entry->PushStringToMap(tasm::timing::kEntryName, kNameLazyBundle);
   performance_entry->PushStringToMap(kComponentUrl, component_url);
   performance_entry->PushInt64ToMap(kSize, binary_size);
+  performance_entry->PushBoolToMap(kLoadSuccess, is_success);
   performance_entry->PushStringToMap(kMode,
                                      lazy_bundle::GenerateModeInfo(mode));
   performance_entry->PushUInt64ToMap(kDecodeStartTime, start_decode_time);
