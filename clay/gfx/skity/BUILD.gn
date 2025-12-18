@@ -27,13 +27,6 @@ source_set("skity") {
 
   public_configs = [ "../../:config" ]
 
-  sources += [
-    "jpeg_codec_skity.cc",
-    "jpeg_codec_skity.h",
-  ]
-
-  deps += [ "//third_party/libjpeg-turbo:turbojpeg" ]
-
   if (!enable_skity) {
     public_deps += [ "//third_party/skia" ]
   }

@@ -63,9 +63,9 @@
 #include "third_party/skia/include/utils/SkShadowUtils.h"
 #include "third_party/skia/src/gpu/ganesh/GrBackendUtils.h"
 #else
-#include "clay/gfx/skity/jpeg_codec_skity.h"
 #include "clay/gfx/skity/skity_auto_canvas_save.h"
 #include "clay/gfx/skity/skity_lazy_image_traveller.h"
+#include "skity/codec/codec.hpp"
 #include "skity/effect/color_filter.hpp"
 #include "skity/effect/image_filter.hpp"
 #include "skity/effect/mask_filter.hpp"
