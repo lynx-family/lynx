@@ -620,7 +620,7 @@ LynxResourceLoaderHarmony::CallbackHandler::HandleStreamOnErrorCallback(
 // private
 void LynxResourceLoaderHarmony::PostTaskOnUIThread(base::closure task) {
   if (ui_task_runner_) {
-    ui_task_runner_->PostTask(std::move(task));
+    fml::TaskRunner::RunNowOrPostTask(ui_task_runner_, std::move(task));
   } else {
     LOGE("Unable to switch to Main thread");
   }
