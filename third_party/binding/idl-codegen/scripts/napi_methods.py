@@ -160,8 +160,8 @@ def filter_command_argument_literal(argument):
         return argument['name']
     elif argument['is_dictionary']:
         return 'std::move({})'.format(argument['name'])
-    elif argument['idl_type'] == 'object': # Generic objects are not supported in command buffer
-        return ''
+    elif argument['idl_type'] == 'object': # Generic objects are trasferred by serialization
+        return 'std::move({})'.format(argument['name'])
 
 def use_local_result(method):
     extended_attributes = method.extended_attributes
