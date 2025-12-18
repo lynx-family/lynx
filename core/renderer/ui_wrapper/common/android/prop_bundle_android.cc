@@ -14,6 +14,7 @@
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
 #include "core/renderer/utils/value_utils.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PropBundle_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PropBundle_register_jni.h"
 
@@ -37,6 +38,76 @@ PropBundleAndroid::PropBundleAndroid(
     const std::shared_ptr<base::android::ScopedGlobalJavaRef<jobject>>&
         jni_object)
     : jni_object_(jni_object) {}
+
+PropBundleAndroid::PropBundleAndroid(const NativePropBundle& prop_bundle) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  jni_object_ = std::make_shared<base::android::ScopedGlobalJavaRef<jobject>>(
+      env, Java_PropBundle_createPropBundle(env).Get());
+
+  // Copy all props from NativePropBundle
+  for (const auto& [key, value] : prop_bundle.GetProps()) {
+    pub::ValueImplLepus pub_value(value);
+    SetProps(key.c_str(), pub_value);
+  }
+
+  // Copy event handlers if present
+  const auto& events = prop_bundle.GetEvents();
+  if (events.has_value()) {
+    for (const auto& event_value : events.value()) {
+      pub::ValueImplLepus pub_event(event_value);
+      SetEventHandler(pub_event);
+    }
+  }
+
+  // Copy gesture detectors if present
+  const auto& gesture_detectors = prop_bundle.GetGestureDetectors();
+  if (gesture_detectors.has_value()) {
+    for (const auto& [gesture_id, detector] : gesture_detectors.value()) {
+      if (detector) {
+        SetGestureDetector(*detector);
+      }
+    }
+  }
+}
+
+PropBundleAndroid& PropBundleAndroid::operator=(
+    const NativePropBundle& prop_bundle) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+
+  // Reset all member variables
+  jni_object_ = std::make_shared<base::android::ScopedGlobalJavaRef<jobject>>(
+      env, Java_PropBundle_createPropBundle(env).Get());
+  style_buffer_builder_ = base::android::MapBufferBuilder{};
+  style_map_buffer_.reset();
+  is_const_ = false;
+
+  // Copy all props from NativePropBundle
+  for (const auto& [key, value] : prop_bundle.GetProps()) {
+    pub::ValueImplLepus pub_value(value);
+    SetProps(key.c_str(), pub_value);
+  }
+
+  // Copy event handlers if present
+  const auto& events = prop_bundle.GetEvents();
+  if (events.has_value()) {
+    for (const auto& event_value : events.value()) {
+      pub::ValueImplLepus pub_event(event_value);
+      SetEventHandler(pub_event);
+    }
+  }
+
+  // Copy gesture detectors if present
+  const auto& gesture_detectors = prop_bundle.GetGestureDetectors();
+  if (gesture_detectors.has_value()) {
+    for (const auto& [gesture_id, detector] : gesture_detectors.value()) {
+      if (detector) {
+        SetGestureDetector(*detector);
+      }
+    }
+  }
+
+  return *this;
+}
 
 void PropBundleAndroid::SetNullProps(const char* key) {
   JNIEnv* env = base::android::AttachCurrentThread();

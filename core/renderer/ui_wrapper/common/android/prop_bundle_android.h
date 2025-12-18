@@ -14,6 +14,7 @@
 #include "core/public/prop_bundle.h"
 #include "core/renderer/tasm/react/android/mapbuffer/compact_array_buffer_builder.h"
 #include "core/renderer/tasm/react/android/mapbuffer/map_buffer_builder.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 
 namespace lynx {
 namespace tasm {
@@ -29,6 +30,9 @@ class PropBundleAndroid : public PropBundle {
   PropBundleAndroid(
       const std::shared_ptr<base::android::ScopedGlobalJavaRef<jobject>>&
           jni_object);
+
+  PropBundleAndroid(const NativePropBundle& prop_bundle);
+  PropBundleAndroid& operator=(const NativePropBundle& prop_bundle);
 
   jobject jni_object() { return jni_object_->Get(); }
 
