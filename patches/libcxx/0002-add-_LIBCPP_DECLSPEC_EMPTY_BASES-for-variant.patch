@@ -1,0 +1,28 @@
+From 008a60f0d62bcbe7dae91f3fedf0fccefb3a2ed2 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Thu, 18 Dec 2025 16:31:51 +0800
+Subject: [PATCH] add _LIBCPP_DECLSPEC_EMPTY_BASES for variant
+
+---
+ include/variant | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/include/variant b/include/variant
+index 147dadfde..4076d57de 100644
+--- a/include/variant
++++ b/include/variant
+@@ -1275,7 +1275,11 @@ using __best_match_t =
+ } // namespace __variant_detail
+ 
+ template <class... _Types>
++#if defined(ENABLE_LIBCPP_DECLSPEC_EMPTY_BASES)
++class _LIBCPP_TEMPLATE_VIS _LIBCPP_DECLSPEC_EMPTY_BASES variant
++#else
+ class _LIBCPP_TEMPLATE_VIS variant
++#endif
+     : private __sfinae_ctor_base<
+           __all<is_copy_constructible_v<_Types>...>::value,
+           __all<is_move_constructible_v<_Types>...>::value>,
+-- 
+2.49.0
+
