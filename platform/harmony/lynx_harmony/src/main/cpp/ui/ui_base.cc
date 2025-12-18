@@ -1867,7 +1867,17 @@ bool UIBase::ContainsPoint(float point[2]) {
 }
 
 bool UIBase::ShouldHitTest() {
-  if (!node_ || NodeManager::Instance().GetParent(DrawNode()) == nullptr) {
+  // When the parent node is JSUIBase, in the case of Custom Layout, the parent
+  // of FrameNode is nullptr, which will cause the child node to fail to respond
+  // to HitTest. Therefore, this needs to be avoided.
+  // TODO(hexionghui): When JSUIBase does not mount child nodes to the system's
+  // view tree but mounts them to Lynx's UIBase tree, a problem may occur where
+  // HitTest hits an invisible node. This issue can be fixed when the query
+  // interface for obtaining the status of the rendered node (similar to
+  // getlsOnRenderTree) is exposed.
+  bool is_parent_js_ui = parent_ ? parent_->HasJSObject() : false;
+  if (!node_ || (!is_parent_js_ui &&
+                 NodeManager::Instance().GetParent(DrawNode()) == nullptr)) {
     return false;
   }
   if (NodeManager::Instance().GetAttribute<int>(
