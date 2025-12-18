@@ -105,19 +105,13 @@ copy("copy_dll") {
   public_deps = [ "../../../platform/windows:windows" ]
 }
 
-build_kernel_js("lynx_core") {
-  script = "../../../tools/js_tools/build.py"
-  platform = "ios"
-  output_path = "$root_build_dir/lynx_core"
-}
-
 copy("copy_resources") {
   sources = [
     "$root_build_dir/lynx_core/lynx_core.js",
     "$root_build_dir/lynx_core/lynx_core_dev.js",
   ]
   outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
-  deps = [ ":lynx_core" ]
+  deps = [ "../../../platform/windows:lynx_core" ]
 }
 
 copy("copy_icu") {

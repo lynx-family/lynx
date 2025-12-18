@@ -4,6 +4,7 @@
 
 import("//build/config/win/win.gni")
 import("../../core/Lynx.gni")
+import("../../oliver/oliver.gni")
 
 shared_library("windows") {
   output_name = "lynx"
@@ -34,4 +35,24 @@ shared_library("windows") {
       libs += [ "libcpmt.lib" ]
     }
   }
+}
+
+build_kernel_js("lynx_core") {
+  script = "../../tools/js_tools/build.py"
+  platform = "ios"
+  output_path = "$root_build_dir/lynx_core"
+}
+
+action("package_sdk") {
+  script = "./package_sdk.py"
+  outputs = [ "$root_build_dir/lynx_sdk_windows_${target_cpu}.zip" ]
+  args = [
+    rebase_path(outputs[0]),
+    rebase_path(root_build_dir),
+    rebase_path("//third_party/icu/flutter/icudtl.dat"),
+  ]
+  deps = [
+    ":lynx_core",
+    ":windows",
+  ]
 }

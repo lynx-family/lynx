@@ -137,41 +137,7 @@ bundle_data("embed_bundles") {
   ]
   outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
   public_deps = [
-    ":lynx_debug_resources_bundle",
-    ":lynx_resources_bundle",
+    "../../../../platform/darwin/macos:lynx_debug_resources_bundle",
+    "../../../../platform/darwin/macos:lynx_resources_bundle",
   ]
-}
-
-build_kernel_js("lynx_core") {
-  script = "../../../../tools/js_tools/build.py"
-  platform = "ios"
-  output_path = "$root_build_dir/lynx_core"
-}
-
-bundle_data("lynx_core_js") {
-  sources = [ "$root_build_dir/lynx_core/lynx_core.js" ]
-  outputs = [ "{{bundle_resources_dir}}/lynx_core.js" ]
-  public_deps = [ ":lynx_core" ]
-}
-
-bundle_data("lynx_core_dev_js") {
-  sources = [ "$root_build_dir/lynx_core/lynx_core_dev.js" ]
-  outputs = [ "{{bundle_resources_dir}}/lynx_core_dev.js" ]
-  public_deps = [ ":lynx_core" ]
-}
-
-darwin_general_bundle("lynx_resources_bundle") {
-  bundle_identifier = "com.lynx.LynxResources"
-  info_plist = "Resource/Info.plist"
-  deployment_target = mac_deployment_target
-  output_name = "resource_bundles/LynxResources"
-  public_deps = [ ":lynx_core_js" ]
-}
-
-darwin_general_bundle("lynx_debug_resources_bundle") {
-  bundle_identifier = "com.lynx.LynxDebugResources"
-  info_plist = "Resource/Info.plist"
-  deployment_target = mac_deployment_target
-  output_name = "resource_bundles/LynxDebugResources"
-  public_deps = [ ":lynx_core_dev_js" ]
 }

@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//build/apple/templates/darwin_general_bundle.gni")
 import("../../../core/Lynx.gni")
 
 shared_library("lynx_shared_library") {
@@ -51,5 +52,54 @@ shared_library("lynx_shared_library") {
     "QuartzCore.framework",
     "WebKit.framework",
     "JavaScriptCore.framework",
+  ]
+}
+
+build_kernel_js("lynx_core") {
+  script = "../../../tools/js_tools/build.py"
+  platform = "ios"
+  output_path = "$root_build_dir/lynx_core"
+}
+
+bundle_data("lynx_core_js") {
+  sources = [ "$root_build_dir/lynx_core/lynx_core.js" ]
+  outputs = [ "{{bundle_resources_dir}}/lynx_core.js" ]
+  public_deps = [ ":lynx_core" ]
+}
+
+bundle_data("lynx_core_dev_js") {
+  sources = [ "$root_build_dir/lynx_core/lynx_core_dev.js" ]
+  outputs = [ "{{bundle_resources_dir}}/lynx_core_dev.js" ]
+  public_deps = [ ":lynx_core" ]
+}
+
+darwin_general_bundle("lynx_resources_bundle") {
+  bundle_identifier = "com.lynx.LynxResources"
+  info_plist = "Resource/Info.plist"
+  deployment_target = mac_deployment_target
+  output_name = "resource_bundles/LynxResources"
+  public_deps = [ ":lynx_core_js" ]
+}
+
+darwin_general_bundle("lynx_debug_resources_bundle") {
+  bundle_identifier = "com.lynx.LynxDebugResources"
+  info_plist = "Resource/Info.plist"
+  deployment_target = mac_deployment_target
+  output_name = "resource_bundles/LynxDebugResources"
+  public_deps = [ ":lynx_core_dev_js" ]
+}
+
+action("package_sdk") {
+  script = "./package_sdk.py"
+  outputs = [ "$root_build_dir/lynx_sdk_macos_${target_cpu}.zip" ]
+  args = [
+    rebase_path(outputs[0]),
+    rebase_path(root_build_dir),
+    rebase_path("//third_party/icu/flutter/icudtl.dat"),
+  ]
+  deps = [
+    ":lynx_debug_resources_bundle",
+    ":lynx_resources_bundle",
+    ":lynx_shared_library",
   ]
 }

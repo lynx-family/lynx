@@ -49,6 +49,11 @@ $PSNativeCommandArgumentPassing = 'Legacy' # Compatibility with PowerShell 7 if 
 .\buildtools\gn\gn.exe gen out\Default --args='desktop_enable_embedder_layer = true enable_clay_standalone = true disable_visibility_hidden = true use_ndk_static_cxx = false  enable_linker_map = false enable_clay = true is_headless = true skia_enable_flutter_defines = true  skia_use_dng_sdk = false skia_use_sfntly = false skia_enable_pdf = false skia_enable_svg = true enable_svg = true skia_enable_skottie = true skia_use_x11 = false skia_use_wuffs = true skia_use_expat = true skia_use_fontconfig = false clay_enable_skshaper = true skia_use_icu = true allow_deprecated_api_calls = true stripped_symbols = true is_official_build = true enable_lto = false is_clang = true enable_lepusng_worklet = true enable_napi_binding = true is_debug = false enable_inspector = true jsengine_type = \"quickjs\"' --ide=vs
 .\buildtools\ninja\ninja.exe -C out\Default explorer
 ```
+Or, you can run the following command to build the `LynxSDK` if you need.
+This will generate `lynx_sdk_windows_${target_cpu}.zip` in `out\Default` directory.
+```shell
+.\buildtools\ninja\ninja.exe -C out\Default platform\windows:package_sdk
+```
 
 ## Run and Debug
 
