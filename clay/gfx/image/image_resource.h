@@ -65,6 +65,8 @@ class ImageResource {
     return clients_;
   }
 
+  size_t GetGraphicsImageAllocSize() const;
+
  private:
   void ReleaseImage();
   bool owned_by_raster_;

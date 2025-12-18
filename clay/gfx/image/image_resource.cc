@@ -105,7 +105,7 @@ void ImageResource::DecodeFinish(bool success) {
         !image_->DecodeWithPriority()) {
       client->RequestRenderImage(this, success);
     }
-    client->DecodeImageFinish(success);
+    client->DecodeImageFinish(success, GetUrl());
   }
 }
 
@@ -154,6 +154,13 @@ void ImageResource::OnFinalLoopComplete() {
   for (auto* client : clients_) {
     client->OnFinalLoopComplete();
   }
+}
+
+size_t ImageResource::GetGraphicsImageAllocSize() const {
+  if (image_) {
+    return image_->GetGraphicsImageAllocSize();
+  }
+  return 0;
 }
 
 }  // namespace clay

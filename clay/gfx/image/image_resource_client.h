@@ -5,6 +5,8 @@
 #ifndef CLAY_GFX_IMAGE_IMAGE_RESOURCE_CLIENT_H_
 #define CLAY_GFX_IMAGE_IMAGE_RESOURCE_CLIENT_H_
 
+#include <string>
+
 #include "clay/shell/common/one_shot_callback.h"
 #include "clay/ui/rendering/decode_utils.h"
 
@@ -18,7 +20,7 @@ class ImageResourceClient {
   virtual void RequestRenderImage(ImageResource* image_resource,
                                   bool success) = 0;
   virtual void OnImageChanged() = 0;
-  virtual void DecodeImageFinish(bool success) {}
+  virtual void DecodeImageFinish(bool success, const std::string& url) {}
 
   virtual void RegisterUploadTask(OneShotCallback<>&& task, int image_id) {}
 

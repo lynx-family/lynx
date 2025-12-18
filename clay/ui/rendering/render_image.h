@@ -24,7 +24,7 @@ class ImagePainterTest;
 
 class RenderImageClient {
  public:
-  virtual void OnDecodeFinished(bool success) = 0;
+  virtual void OnDecodeFinished(bool success, const std::string& url) = 0;
   virtual void RegisterUploadTask(OneShotCallback<>&& task, int image_id) = 0;
   virtual void OnStartPlay() = 0;
   virtual void OnCurrentLoopComplete() = 0;
@@ -111,7 +111,7 @@ class RenderImage : public RenderBox, public ImageResourceClient {
   void WillPaint() override;
   bool WillRenderImage() override { return IsActualVisible(); }
   void RequestRenderImage(ImageResource* image_resource, bool success) override;
-  void DecodeImageFinish(bool success) override;
+  void DecodeImageFinish(bool success, const std::string& url) override;
   void RegisterUploadTask(OneShotCallback<>&& task, int image_id) override;
   void OnImageChanged() override;
   void AdjustSizeIfNeeded();

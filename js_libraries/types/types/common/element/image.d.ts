@@ -161,6 +161,7 @@ export interface ImageProps extends StandardProps {
    * @iOS
    * @Android
    * @Harmony
+   * @PC
    * @since 2.12
    */
   'tint-color'?: string;

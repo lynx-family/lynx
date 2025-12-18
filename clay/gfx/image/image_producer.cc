@@ -911,6 +911,23 @@ void ImageProducer::ReleaseAllFrames() {
 #endif
 }
 
+size_t ImageProducer::GetAllocationSize() const {
+  if (is_svg_) {
+#if defined(ENABLE_SVG)
+    return svg_frame_->GetAllocationSize();
+#else
+    return 0;
+#endif
+  }
+  if (current_frame_ && current_frame_->FrameIsReady()) {
+    return current_frame_->GetAllocationSize();
+  }
+  if (next_frame_ && next_frame_->FrameIsReady()) {
+    return next_frame_->GetAllocationSize();
+  }
+  return 0;
+}
+
 bool ImageProducer::WillNextFrameSizeChange() const {
   if (is_svg_) {
     return true;

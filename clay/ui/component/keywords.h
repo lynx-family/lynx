@@ -202,6 +202,7 @@ enum class KeywordID {
   kEditOnFocus,
   kCaretColor,
   kTintColor,
+  kEnableReportInfo,
   kRichtype,
   kFullscreenMode,
   kSmartScroll,

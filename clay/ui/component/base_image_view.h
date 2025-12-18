@@ -76,7 +76,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   void pauseAnimation();
   void resumeAnimation();
 
-  void OnDecodeFinished(bool success) override;
+  void OnDecodeFinished(bool success, const std::string& url) override;
   void RegisterUploadTask(OneShotCallback<>&& task, int image_id) override;
   void OnStartPlay() override;
   void OnCurrentLoopComplete() override;
@@ -95,6 +95,23 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   void NotifyLoadSuccess(int width, int height);
 
  private:
+  struct ReportInfo {
+    enum ImageOrigin {
+      kImageUnknown = 1,
+      kImageNetwork,
+      kImageDisk,
+      kImageMemoryEncoded,
+      kImageMemoryDecoded,
+      kImageLocal,
+      kImageMax,
+    };
+
+    bool enable_report_info = false;
+
+    uint64_t download_start_time = 0;
+    ImageOrigin image_origin = ImageOrigin::kImageUnknown;
+  };
+
   void NotifyLoadError(const std::string& error_msg);
   void NotifyDecodedSuccess();
   void NotifyStartPlay();
@@ -108,6 +125,8 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
 
   void TriggerTransitionIfNeeded();
   void TryEndTransition();
+
+  void ReportImageLoadInfo();
 
   bool should_redirect_url_ = true;
   bool prevent_loading_on_list_scroll_ = false;
@@ -126,6 +145,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   bool fetch_delay_placeholder_ = false;
   bool defer_src_invalidation_ = false;
   Listener* listener_ = nullptr;
+  ReportInfo report_info_;
 };
 
 inline RenderImage* BaseImageView::GetRenderImage() {

@@ -74,6 +74,8 @@ class ImageProducer : public std::enable_shared_from_this<ImageProducer> {
 
   bool NeedDecode() const { return !decoded_ && !decoding_; }
 
+  size_t GetAllocationSize() const;
+
  private:
   ImageProducer(bool is_svg, GrDataPtr data,
                 fml::RefPtr<ImageDescriptor> descriptor,

@@ -15,6 +15,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/timer/time_utils.h"
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/value_animator.h"
@@ -163,6 +164,9 @@ void BaseImageView::SetAttribute(const char* attr_c, const clay::Value& value) {
       }
       break;
     }
+    case KeywordID::kEnableReportInfo:
+      report_info_.enable_report_info = attribute_utils::GetBool(value);
+      break;
     default:
       BaseView::SetAttribute(attr_c, value);
       break;
@@ -374,7 +378,9 @@ void BaseImageView::NotifyLoadError(const std::string& error_msg) {
 }
 
 void BaseImageView::NotifyLoadSuccess(int width, int height) {
-  if (HasEvent(event_attr::kEventImageLoadSuccess)) {
+  // Only send once if enable_report_info or extra_load_info is true.
+  if (HasEvent(event_attr::kEventImageLoadSuccess) &&
+      !report_info_.enable_report_info) {
     page_view()->SendEvent(id(), event_attr::kEventImageLoadSuccess,
                            {"width", "height"}, width, height);
   }
@@ -426,6 +432,9 @@ void BaseImageView::FetchPlaceholder() {
 
             if (!hit_cache) {
               self->TriggerTransitionIfNeeded();
+            } else {
+              self->report_info_.image_origin =
+                  ReportInfo::ImageOrigin::kImageMemoryDecoded;
             }
 
             RenderImage* render_image = self->GetRenderImage();
@@ -448,6 +457,9 @@ void BaseImageView::FetchPlaceholder() {
         }
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
+        } else {
+          self->report_info_.image_origin =
+              ReportInfo::ImageOrigin::kImageMemoryDecoded;
         }
 
         if (image->GetType() == ImageType::kAnimated) {
@@ -469,6 +481,8 @@ void BaseImageView::FetchSource() {
   if (source_.empty()) {
     return;
   }
+  report_info_.download_start_time =
+      lynx::base::CurrentSystemTimeMilliseconds();
 #ifndef ENABLE_SKITY
   source_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImageAsync(
       source_,
@@ -558,6 +572,7 @@ void BaseImageView::FetchSource() {
         }
         auto render_image = self->GetRenderImage();
         render_image->SetImage(std::move(image));
+        self->ReportImageLoadInfo();
       });
 #endif  // ENABLE_SKITY
 }
@@ -610,11 +625,15 @@ void BaseImageView::DidUpdateAttributes() {
 
 // If decoding has not occurred but graphics image is prepared, it will also
 // calls this callback
-void BaseImageView::OnDecodeFinished(bool success) {
+void BaseImageView::OnDecodeFinished(bool success, const std::string& url) {
   if (!success) {
     NotifyLoadError(GetSource());
   } else {
     NotifyDecodedSuccess();
+    // Only report load info if this image is not placeholder.
+    if (url == source_) {
+      ReportImageLoadInfo();
+    }
   }
 }
 
@@ -656,5 +675,33 @@ std::string BaseImageView::ToString() const {
   return ss.str();
 }
 #endif
+
+void BaseImageView::ReportImageLoadInfo() {
+  if (!HasEvent(event_attr::kEventImageLoadSuccess) ||
+      !report_info_.enable_report_info) {
+    return;
+  }
+
+  // load finish time includes decode cost.
+  uint64_t load_finish = lynx::base::CurrentSystemTimeMilliseconds();
+  uint64_t cost = load_finish - report_info_.download_start_time;
+  int width = GetRenderImage()->GetImage()->GetWidth();
+  int height = GetRenderImage()->GetImage()->GetHeight();
+  size_t memory_cost =
+      GetRenderImage()->GetImage()->GetGraphicsImageAllocSize();
+  bool downsampled = GetRenderImage()->DownSampling();
+  std::string url = source_;
+  float view_width = Width();
+  float view_height = Height();
+
+  page_view()->SendEvent(
+      id(), event_attr::kEventImageLoadSuccess,
+      {"load_start", "load_finish", "cost", "src", "width", "height",
+       "memory_cost", "downsampled", "view_width", "view_height", "origin"},
+      std::to_string(report_info_.download_start_time),
+      std::to_string(load_finish), std::to_string(cost), url, width, height,
+      std::to_string(memory_cost), downsampled, view_width, view_height,
+      static_cast<int>(report_info_.image_origin));
+}
 
 }  // namespace clay

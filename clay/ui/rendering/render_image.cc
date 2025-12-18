@@ -60,7 +60,7 @@ void RenderImage::SetImage(std::unique_ptr<ImageResource> resource) {
       // Check if the image has been decoded without triggerring decode
       auto graphics_image = image->TryGetGraphicsImage();
       if (graphics_image) {
-        DecodeImageFinish(true);
+        DecodeImageFinish(true, resource->GetUrl());
       } else if (!graphics_image && !image->UsePromise()) {
         resource_is_pending = true;
       }
@@ -510,9 +510,9 @@ void RenderImage::RequestRenderImage(ImageResource* image_resource,
 #endif  // ENABLE_SKITY
 }
 
-void RenderImage::DecodeImageFinish(bool success) {
+void RenderImage::DecodeImageFinish(bool success, const std::string& url) {
   if (client_) {
-    client_->OnDecodeFinished(success);
+    client_->OnDecodeFinished(success, url);
   }
 }
 

@@ -68,7 +68,8 @@ bool SkityDecodingImage::MaybeAnimated() const {
   return raw_image_ && raw_image_->MaybeAnimated();
 }
 
-void SkityDecodingImage::DecodeImageFinish(bool success) {
+void SkityDecodingImage::DecodeImageFinish(bool success,
+                                           const std::string& url) {
   // Save the latest decoded image, if decoding fails, continue to use the
   // previous frame or empty.
   if (auto g_image = image_resource_->GetImage()->GetGraphicsImage()) {

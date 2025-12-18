@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "clay/gfx/image/graphics_image_skia.h"
 #include "clay/gfx/image/image.h"
@@ -35,7 +36,7 @@ class DecodingImage final : public GraphicsImageSkia,
   void RequestRenderImage(ImageResource* image_resource,
                           bool success) override {}
   void OnImageChanged() override {}
-  void DecodeImageFinish(bool success) override;
+  void DecodeImageFinish(bool success, const std::string& url) override;
 
   LazyImageDecodeCallback callback_;
   std::shared_ptr<Image> raw_image_ = nullptr;

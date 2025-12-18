@@ -443,9 +443,7 @@ size_t Image::GetGraphicsImageAllocSize() const {
 #endif
 
   FML_DCHECK(image_producer_);
-  return image_producer_->CurrentFrameReady()
-             ? image_producer_->GetCurrentFrame()->GetAllocationSize()
-             : 0;
+  return image_producer_->GetAllocationSize();
 }
 
 int Image::GetWidth() {

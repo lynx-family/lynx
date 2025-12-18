@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "clay/gfx/image/image.h"
 #include "clay/gfx/image/image_resource.h"
@@ -55,7 +56,7 @@ class SkityDecodingImage final : public skity::Image,
   void RequestRenderImage(ImageResource* image_resource,
                           bool success) override {}
   void OnImageChanged() override {}
-  void DecodeImageFinish(bool success) override;
+  void DecodeImageFinish(bool success, const std::string& url) override;
 
  private:
   LazyImageDecodeCallback callback_;
