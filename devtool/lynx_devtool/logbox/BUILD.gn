@@ -1,0 +1,12 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("../devtool.gni")
+
+source_set("logbox") {
+  sources = [ "lynx_logbox_wrapper.cc" ]
+  public_deps = [ "../../base_devtool/logbox:logbox" ]
+  if (is_win) {
+    public_deps += [ "../../../base/src:base_group" ]
+  }
+}

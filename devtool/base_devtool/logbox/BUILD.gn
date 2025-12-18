@@ -1,0 +1,44 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/config/win/win.gni")
+
+group("logbox") {
+  deps = [ ":logbox_impl" ]
+  public_configs = [ ":logbox_config" ]
+}
+
+config("logbox_config") {
+  include_dirs = [ "." ]
+  if (!is_win) {
+    defines = [ "DISABLE_LOGBOX_BASE" ]
+  }
+}
+
+source_set("logbox_impl") {
+  configs += [ ":logbox_config" ]
+  sources = [
+    "logbox_base.cc",
+    "logbox_dialog_base.cc",
+    "logbox_manager.cc",
+    "logbox_notification.cc",
+  ]
+  deps = [
+    "../../../core/base:json_utils",
+    "//third_party/modp_b64",
+  ]
+  if (is_win) {
+    sources += [
+      "logbox_dialog_windows.cc",
+      "logbox_notification_windows.cc",
+      "logbox_owner_windows.cc",
+    ]
+    libs = [ "WebView2LoaderStatic.lib" ]
+    include_dirs = [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/include" ]
+    lib_dirs = [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/$target_cpu" ]
+  }
+  if (is_debug) {
+    defines = [ "DEBUG_FRONTEND" ]
+  }
+}
