@@ -16,6 +16,8 @@ if (!enable_unittests) {
       "android/platform_extra_bundle_android.h",
       "android/prop_bundle_android.cc",
       "android/prop_bundle_android.h",
+      "native_prop_bundle.cc",
+      "native_prop_bundle.h",
     ]
   } else if (is_harmony) {
     ui_wrapper_common_shared_sources += [
@@ -23,6 +25,8 @@ if (!enable_unittests) {
       "harmony/platform_extra_bundle_harmony.h",
       "harmony/prop_bundle_harmony.cc",
       "harmony/prop_bundle_harmony.h",
+      "native_prop_bundle.cc",
+      "native_prop_bundle.h",
     ]
   } else if (is_ios) {
     ui_wrapper_common_shared_sources += [
