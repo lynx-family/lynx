@@ -30,7 +30,7 @@ TEST(LazyBundleTest, GetLazyBundleEntry) {
       performance_entry->GetValueForKey(timing::kEntryName)->str();
   EXPECT_EQ(type, "resource");
   EXPECT_EQ(name, "lazyBundle");
-  EXPECT_EQ(len, 9);
+  EXPECT_EQ(len, 10);
 }
 
 TEST(LazyBundleTest, ConstructSuccessMessageForMTS) {
