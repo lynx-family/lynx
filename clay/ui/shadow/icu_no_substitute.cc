@@ -4,7 +4,7 @@
 
 #include "clay/ui/shadow/icu_substitute.h"
 
-#if defined(ENABLE_SKITY) && defined(OS_ANDROID)
+#if defined(ENABLE_SKITY) && !defined(OS_IOS) && !defined(OS_WIN)
 #include "clay/ui/component/text/tttext_headers.h"
 #else
 #include <unicode/ubidi.h>
@@ -15,7 +15,7 @@ namespace clay {
 
 namespace icu_substitute {
 
-#if defined(ENABLE_SKITY) && defined(OS_ANDROID)
+#if defined(ENABLE_SKITY) && !defined(OS_IOS) && !defined(OS_WIN)
 #define UScriptGetScript tttext::ICUWrapper::uscriptGetScript
 #define UBidiOpenSized tttext::ICUWrapper::ubidiOpenSized
 #define UBidiSetPara tttext::ICUWrapper::ubidiSetPara

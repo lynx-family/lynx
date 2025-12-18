@@ -7,11 +7,8 @@
 
 #include <memory>
 
-// Forward declarations to avoid requiring Skity headers for all includers.
-namespace skity {
-class Data;
-class Pixmap;
-}  // namespace skity
+#include "skity/io/data.hpp"
+#include "skity/io/pixmap.hpp"
 
 namespace clay {
 
