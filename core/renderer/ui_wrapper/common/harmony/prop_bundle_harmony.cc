@@ -8,10 +8,6 @@
 #include <utility>
 
 #include "base/include/platform/harmony/napi_util.h"
-#include "core/base/harmony/napi_convert_helper.h"
-#include "core/base/js_constants.h"
-#include "core/renderer/events/gesture.h"
-#include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace tasm {
@@ -20,104 +16,17 @@ using base::NapiHandleScope;
 PropBundleHarmony::PropBundleHarmony() = default;
 
 PropBundleHarmony::PropBundleHarmony(
-    const PropMap& props, const std::optional<std::vector<lepus::Value>>& event)
-    : props_(props), event_handler_(event) {}
+    const PropMap& props,
+    const base::flex_optional<std::vector<lepus::Value>>& event)
+    : NativePropBundle(props, event) {}
 
 PropBundleHarmony::~PropBundleHarmony() = default;
-
-void PropBundleHarmony::SetNullProps(const char* key) {
-  auto result = props_.emplace(key, lepus::Value());
-  if (!result.second) {
-    result.first->second = lepus::Value();
-  }
-}
-
-// XXX(renzhongyue): values can be stored in a better and simpler struct instead
-// of lepus::Value. Now values are unwrapped in Element::PushToBundle and
-// wrapped again here.
-void PropBundleHarmony::SetProps(const char* key, unsigned int value) {
-  auto result = props_.emplace(key, lepus::Value(value));
-  if (!result.second) {
-    result.first->second = lepus::Value(value);
-  }
-}
-
-void PropBundleHarmony::SetProps(const char* key, int value) {
-  auto result = props_.emplace(key, lepus::Value(value));
-  if (!result.second) {
-    result.first->second = lepus::Value(value);
-  }
-}
-
-bool PropBundleHarmony::Contains(const char* key) const {
-  return props_.find(key) != props_.end();
-}
-
-void PropBundleHarmony::SetProps(const char* key, const char* value) {
-  auto result = props_.emplace(std::string(key), value);
-  if (!result.second) {
-    result.first->second = lepus::Value(value);
-  }
-}
-void PropBundleHarmony::SetProps(const char* key, bool value) {
-  auto result = props_.emplace(key, lepus::Value(value));
-  if (!result.second) {
-    result.first->second = lepus::Value(value);
-  }
-}
-void PropBundleHarmony::SetProps(const char* key, double value) {
-  auto result = props_.emplace(key, lepus::Value(value));
-  if (!result.second) {
-    result.first->second = lepus::Value(value);
-  }
-}
-
-void PropBundleHarmony::SetProps(const char* key, const pub::Value& value) {
-  props_[key] = pub::ValueUtils::ConvertValueToLepusValue(value);
-}
-
-void PropBundleHarmony::SetEventHandler(const pub::Value& event) {
-  if (!event_handler_) {
-    event_handler_ = std::vector<lepus::Value>();
-  }
-  event_handler_->emplace_back(
-      pub::ValueUtils::ConvertValueToLepusValue(event));
-}
-
-void PropBundleHarmony::SetGestureDetector(const GestureDetector& detector) {
-  if (!gesture_detector_map_) {
-    gesture_detector_map_ = GestureMap();
-  }
-  gesture_detector_map_->emplace(detector.gesture_id(),
-                                 std::make_shared<GestureDetector>(detector));
-}
-
-void PropBundleHarmony::ResetEventHandler() {}
-
-void PropBundleHarmony::SetPropsByID(CSSPropertyID id, const uint8_t* data,
-                                     size_t size) {
-  auto array = lepus::Value(lepus::CArray::Create());
-  for (size_t i = 0; i < size; ++i) {
-    array.SetProperty(i, lepus::Value(data[i]));
-  }
-  auto key = CSSProperty::GetPropertyNameCStr(id);
-  props_[key] = lepus::Value(std::move(array));
-}
-
-void PropBundleHarmony::SetPropsByID(CSSPropertyID id, const uint32_t* data,
-                                     size_t size) {
-  auto array = lepus::Value(lepus::CArray::Create());
-  for (size_t i = 0; i < size; ++i) {
-    array.SetProperty(i, lepus::Value(data[i]));
-  }
-  auto key = CSSProperty::GetPropertyNameCStr(id);
-  props_[key] = lepus::Value(std::move(array));
-}
 
 fml::RefPtr<PropBundle> PropBundleHarmony::ShallowCopy() {
   auto prop = fml::MakeRefCounted<PropBundleHarmony>(props_, event_handler_);
   return prop;
 }
+
 napi_value PropBundleHarmony::GetJSProps() const {
   napi_value result = nullptr;
   napi_create_object(env_, &result);
@@ -218,16 +127,6 @@ napi_value PropBundleHarmony::GetNapiValue(napi_ref ref) {
 
 fml::RefPtr<PropBundle> PropBundleCreatorHarmony::CreatePropBundle() {
   return fml::MakeRefCounted<PropBundleHarmony>();
-}
-
-void PropBundleHarmony::SetProps(const pub::Value& value) {
-  auto prev_value_vector =
-      pub::ScopedCircleChecker::InitVectorIfNecessary(value);
-  value.ForeachMap(
-      [this, &prev_value_vector](const pub::Value& k, const pub::Value& v) {
-        props_[k.str().c_str()] = pub::ValueUtils::ConvertValueToLepusValue(
-            v, prev_value_vector.get(), 0);
-      });
 }
 
 napi_env PropBundleHarmony::env_ = nullptr;
