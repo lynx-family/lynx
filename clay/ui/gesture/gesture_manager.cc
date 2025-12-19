@@ -128,8 +128,8 @@ bool GestureManager::HandlePointerEvent(HitTestable* root,
     GESTURE_LOG << "try sweep arena";
     arena_manager_->Sweep(event.pointer_id);
   } else if (event.type == PointerEvent::EventType::kSignalEvent) {
+    mouse_wheel_phase_handler_.UpdatePhaseAndScheduleEndEvent(event);
     if (signal_event_route_) {
-      mouse_wheel_phase_handler_.UpdatePhaseAndScheduleEndEvent(event);
       signal_event_route_(event);
     }
   }
