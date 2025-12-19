@@ -2263,9 +2263,19 @@ void FiberElement::ConsumeStyleInternal(
   }
 
   // Handle font-size first. Other css may use this to calc rem or em.
-  const auto it = parsed_styles_map_.find(CSSPropertyID::kPropertyIDFontSize);
-  CSSValue font_value =
-      (it != parsed_styles_map_.end()) ? it->second : CSSValue();
+  // Prioritize the new font-size from `styles`. If it's not available,
+  // fall back to the value in `parsed_styles_map_`.
+  CSSValue font_value;
+  const auto new_it = styles.find(CSSPropertyID::kPropertyIDFontSize);
+  if (new_it != styles.end()) {
+    font_value = new_it->second;
+  } else {
+    const auto parsed_it =
+        parsed_styles_map_.find(CSSPropertyID::kPropertyIDFontSize);
+    if (parsed_it != parsed_styles_map_.end()) {
+      font_value = parsed_it->second;
+    }
+  }
   SetFontSize(font_value);
 
   auto consume_func = [this, should_skip = std::move(should_skip)](
