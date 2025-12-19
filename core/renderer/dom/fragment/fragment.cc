@@ -274,11 +274,27 @@ void Fragment::UpdateContentOffsetForListContainer(float content_size,
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
   MarkDirtyState(kNeedRedraw);
-  layout_result_for_rendering_ = std::move(layout_result_for_rendering);
+  layout_info_.layout_result = std::move(layout_result_for_rendering);
+  UpdateBorderRadiusAccordingToLayoutInfo();
 }
 
 void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
   behavior_ = std::move(behavior);
+}
+
+int32_t Fragment::DefineBorderBox(DisplayListBuilder& display_list_builder) {
+  return box_recorder_.GetIndexOfBoxModel(BoxModelType::kBoxModelTypeBorder,
+                                          LayoutResult(), display_list_builder);
+}
+
+int32_t Fragment::DefinePaddingBox(DisplayListBuilder& display_list_builder) {
+  return box_recorder_.GetIndexOfBoxModel(BoxModelType::kBoxModelTypePadding,
+                                          LayoutResult(), display_list_builder);
+}
+
+int32_t Fragment::DefineContentBox(DisplayListBuilder& display_list_builder) {
+  return box_recorder_.GetIndexOfBoxModel(BoxModelType::kBoxModelTypeContent,
+                                          LayoutResult(), display_list_builder);
 }
 
 void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
@@ -315,20 +331,20 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
 
   RoundedRectangle rect;
   auto border_left_width =
-      layout_result_for_rendering_.border_[starlight::Direction::kLeft];
+      layout_info_.layout_result.border_[starlight::Direction::kLeft];
   auto border_top_width =
-      layout_result_for_rendering_.border_[starlight::Direction::kTop];
+      layout_info_.layout_result.border_[starlight::Direction::kTop];
   auto border_right_width =
-      layout_result_for_rendering_.border_[starlight::Direction::kRight];
+      layout_info_.layout_result.border_[starlight::Direction::kRight];
   auto border_bottom_width =
-      layout_result_for_rendering_.border_[starlight::Direction::kBottom];
+      layout_info_.layout_result.border_[starlight::Direction::kBottom];
 
   rect.SetX(border_left_width);
   rect.SetY(border_top_width);
-  rect.SetWidth(std::max(layout_result_for_rendering_.size_.width_ -
+  rect.SetWidth(std::max(layout_info_.layout_result.size_.width_ -
                              border_left_width - border_right_width,
                          0.f));
-  rect.SetHeight(std::max(layout_result_for_rendering_.size_.height_ -
+  rect.SetHeight(std::max(layout_info_.layout_result.size_.height_ -
                               border_top_width - border_bottom_width,
                           0.f));
 
@@ -343,8 +359,8 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
                              ->GetLayoutComputedStyle()
                              ->surround_data_.border_data_;
 
-    starlight::LayoutUnit width(layout_result_for_rendering_.size_.width_);
-    starlight::LayoutUnit height(layout_result_for_rendering_.size_.height_);
+    starlight::LayoutUnit width(layout_info_.layout_result.size_.width_);
+    starlight::LayoutUnit height(layout_info_.layout_result.size_.height_);
     rect.SetRadiusXTopLeft(std::max(
         starlight::NLengthToLayoutUnit(border->radius_x_top_left, width)
                 .ToFloat() -
@@ -424,10 +440,12 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
     return;
   }
 
-  display_list_builder.Begin(layout_result_for_rendering_.offset_.X(),
-                             layout_result_for_rendering_.offset_.Y(),
-                             layout_result_for_rendering_.size_.width_,
-                             layout_result_for_rendering_.size_.height_);
+  box_recorder_.Reset();
+
+  display_list_builder.Begin(layout_info_.layout_result.offset_.X(),
+                             layout_info_.layout_result.offset_.Y(),
+                             layout_info_.layout_result.size_.width_,
+                             layout_info_.layout_result.size_.height_);
 
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
@@ -684,14 +702,55 @@ void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
 }
 
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
-  layout_result_for_rendering_.offset_.SetX(left);
-  layout_result_for_rendering_.offset_.SetY(top);
+  layout_info_.layout_result.offset_.SetX(left);
+  layout_info_.layout_result.offset_.SetY(top);
   UpdateRenderOffsetRecursively(0, 0);
 }
 
+void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
+  if (element()->computed_css_style()->HasBorderRadius()) {
+    const auto& border = element()
+                             ->computed_css_style()
+                             ->GetLayoutComputedStyle()
+                             ->surround_data_.border_data_;
+    starlight::LayoutUnit width(layout_info_.layout_result.size_.width_);
+    starlight::LayoutUnit height(layout_info_.layout_result.size_.height_);
+
+    BorderRadiusInfo border_radius_info{
+        .x_top_left =
+            starlight::NLengthToLayoutUnit(border->radius_x_top_left, width)
+                .ToFloat(),
+        .y_top_left =
+            starlight::NLengthToLayoutUnit(border->radius_y_top_left, height)
+                .ToFloat(),
+        .x_top_right =
+            starlight::NLengthToLayoutUnit(border->radius_x_top_right, width)
+                .ToFloat(),
+        .y_top_right =
+            starlight::NLengthToLayoutUnit(border->radius_y_top_right, height)
+                .ToFloat(),
+        .x_bottom_right =
+            starlight::NLengthToLayoutUnit(border->radius_x_bottom_right, width)
+                .ToFloat(),
+        .y_bottom_right = starlight::NLengthToLayoutUnit(
+                              border->radius_y_bottom_right, height)
+                              .ToFloat(),
+        .x_bottom_left =
+            starlight::NLengthToLayoutUnit(border->radius_x_bottom_left, width)
+                .ToFloat(),
+        .y_bottom_left =
+            starlight::NLengthToLayoutUnit(border->radius_y_bottom_left, height)
+                .ToFloat(),
+    };
+    layout_info_.border_radius_info = std::move(border_radius_info);
+  } else {
+    layout_info_.border_radius_info = std::nullopt;
+  }
+}
+
 void Fragment::UpdateRenderOffsetRecursively(float left, float top) {
-  float child_offset_x = left + layout_result_for_rendering_.offset_.X();
-  float child_offset_y = top + layout_result_for_rendering_.offset_.Y();
+  float child_offset_x = left + layout_info_.layout_result.offset_.X();
+  float child_offset_y = top + layout_info_.layout_result.offset_.Y();
   if (has_platform_renderer_) {
     render_offset_[0] = left;
     render_offset_[1] = top;
@@ -701,7 +760,7 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top) {
   }
 
   if (behavior_) {
-    behavior_->OnUpdateLayout(layout_result_for_rendering_);
+    behavior_->OnUpdateLayout(layout_info_);
   }
 
   for (auto* child : children_) {

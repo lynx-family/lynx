@@ -12,19 +12,26 @@
 namespace lynx::tasm {
 
 void ImageFragmentBehavior::OnUpdateLayout(
-    const starlight::LayoutResultForRendering& layout_result) {
+    const LayoutInfoForDraw& layout_info) {
   const char* current_src =
       static_cast<ImageElement*>(fragment_->element())->src();
+
   if (image_url_ != current_src) {
     image_url_ = current_src;
     painting_context_->CreateImage(fragment_->id(), image_url_,
-                                   layout_result.size_.width_,
-                                   layout_result.size_.height_);
+                                   layout_info.GetContentBoxWidth(),
+                                   layout_info.GetContentBoxHeight());
   }
 }
 
 void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
-  display_list_builder.DrawImage(fragment_->id());
+  constexpr const static int32_t kInvalidIndex = -1;
+
+  display_list_builder.DrawImage(
+      fragment()->id(),
+      fragment()->LayoutResult().border_radius_info != std::nullopt
+          ? fragment()->DefineContentBox(display_list_builder)
+          : kInvalidIndex);
 }
 
 }  // namespace lynx::tasm

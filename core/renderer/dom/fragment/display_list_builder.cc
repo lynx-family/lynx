@@ -63,8 +63,9 @@ DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
 
 void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
-DisplayListBuilder& DisplayListBuilder::DrawImage(int image_id) {
-  display_list_.AddOperation(DisplayListOpType::kImage, image_id);
+DisplayListBuilder& DisplayListBuilder::DrawImage(int32_t image_id,
+                                                  int32_t box_index) {
+  display_list_.AddOperation(DisplayListOpType::kImage, image_id, box_index);
   return *this;
 }
 
@@ -103,6 +104,25 @@ DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
                                rect.GetY(), rect.GetWidth(), rect.GetHeight());
   }
 
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
+    const RoundedRectangle& rect, int32_t& index) {
+  if (rect.HasRadius()) {
+    display_list_.AddOperation(
+        DisplayListOpType::kRecordBox, rect.GetX(), rect.GetY(),
+        rect.GetWidth(), rect.GetHeight(), rect.GetRadiusXTopLeft(),
+        rect.GetRadiusYTopLeft(), rect.GetRadiusXTopRight(),
+        rect.GetRadiusYTopRight(), rect.GetRadiusXBottomRight(),
+        rect.GetRadiusYBottomRight(), rect.GetRadiusXBottomLeft(),
+        rect.GetRadiusYBottomLeft());
+  } else {
+    display_list_.AddOperation(DisplayListOpType::kRecordBox, rect.GetX(),
+                               rect.GetY(), rect.GetWidth(), rect.GetHeight());
+  }
+
+  index = current_index_of_box_model++;
   return *this;
 }
 

@@ -7,9 +7,10 @@
 #include <memory>
 
 #include "core/renderer/dom/base_element_container.h"
+#include "core/renderer/dom/fragment/box_model_recorder.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
-#include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/dom/fragment/layout_info.h"
 
 namespace lynx {
 namespace starlight {
@@ -94,9 +95,14 @@ class Fragment : public BaseElementContainer {
 
   bool IsReliableSibling() const;
 
-  const auto& LayoutResult() const { return layout_result_for_rendering_; }
+  const auto& LayoutResult() const { return layout_info_; }
+
+  int32_t DefineBorderBox(DisplayListBuilder& display_list_builder);
+  int32_t DefinePaddingBox(DisplayListBuilder& display_list_builder);
+  int32_t DefineContentBox(DisplayListBuilder& display_list_builder);
 
  private:
+  void UpdateBorderRadiusAccordingToLayoutInfo();
   void UpdateRenderOffsetRecursively(float left, float top);
 
   void DrawBorder(DisplayListBuilder& display_list_builder);
@@ -133,7 +139,9 @@ class Fragment : public BaseElementContainer {
   base::InlineLinearFlatSet<Fragment*, kChildrenInlineVectorSize>
       fixed_children_;
 
-  LayoutResultForRendering layout_result_for_rendering_;
+  LayoutInfoForDraw layout_info_;
+
+  BoxModelRecorder box_recorder_;
 
   std::unique_ptr<FragmentBehavior> behavior_;
   float render_offset_[2] = {0, 0};

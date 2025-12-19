@@ -44,7 +44,7 @@ class DisplayListBuilder {
   DisplayListBuilder& Clip(float x, float y, float width, float height);
 
   // Retrieve Image source and draw
-  DisplayListBuilder& DrawImage(int image_id);
+  DisplayListBuilder& DrawImage(int32_t image_id, int32_t box_index);
 
   // Retrieve text source and draw
   DisplayListBuilder& DrawText(int text_id);
@@ -55,6 +55,10 @@ class DisplayListBuilder {
   // Set clip rect
   DisplayListBuilder& ClipRect(const RoundedRectangle& border);
 
+  // Record box model
+  DisplayListBuilder& RecordBoxModel(const RoundedRectangle& rect,
+                                     int32_t& index);
+
   // Build the final display list
   DisplayList Build();
 
@@ -63,6 +67,8 @@ class DisplayListBuilder {
 
  private:
   DisplayList display_list_;
+
+  int32_t current_index_of_box_model = 0;
 };
 
 }  // namespace tasm
