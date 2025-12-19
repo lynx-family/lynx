@@ -38,8 +38,7 @@ namespace fml {
 
 class ThreadHandle {
  public:
-  ThreadHandle(base::closure&& function,
-               [[maybe_unused]] bool enable_preset_thread_priority);
+  ThreadHandle(base::closure&& function);
   ~ThreadHandle();
 
   void Join();
@@ -53,8 +52,7 @@ class ThreadHandle {
 };
 
 #if defined(OS_WIN)
-ThreadHandle::ThreadHandle(base::closure&& function,
-                           bool enable_preset_thread_priority) {
+ThreadHandle::ThreadHandle(base::closure&& function) {
   thread_ = (HANDLE*)_beginthreadex(
       nullptr, Thread::GetDefaultStackSize(),
       [](void* arg) -> unsigned {
@@ -72,8 +70,7 @@ void ThreadHandle::Join() { WaitForSingleObjectEx(thread_, INFINITE, FALSE); }
 ThreadHandle::~ThreadHandle() { CloseHandle(thread_); }
 #else
 
-ThreadHandle::ThreadHandle(base::closure&& function,
-                           bool enable_preset_thread_priority) {
+ThreadHandle::ThreadHandle(base::closure&& function) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 
@@ -82,20 +79,18 @@ ThreadHandle::ThreadHandle(base::closure&& function,
   LYNX_BASE_CHECK(result == 0);
 
 #if defined(OS_IOS)
-  if (enable_preset_thread_priority) {
-    // Set scheduling policy and priority for the new thread.
-    // This can fail if the user does not have permissions to do so. We will
-    // not check the result of these calls and let the thread be created with
-    // default attributes.
-    if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0) {
-      int policy;
-      struct sched_param current_param;
-      if (pthread_getschedparam(pthread_self(), &policy, &current_param) == 0) {
-        if (pthread_attr_setschedpolicy(&attr, policy) == 0) {
-          struct sched_param high_prio_param;
-          high_prio_param.sched_priority = sched_get_priority_max(policy);
-          pthread_attr_setschedparam(&attr, &high_prio_param);
-        }
+  // Set scheduling policy and priority for the new thread.
+  // This can fail if the user does not have permissions to do so. We will
+  // not check the result of these calls and let the thread be created with
+  // default attributes.
+  if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0) {
+    int policy;
+    struct sched_param current_param;
+    if (pthread_getschedparam(pthread_self(), &policy, &current_param) == 0) {
+      if (pthread_attr_setschedpolicy(&attr, policy) == 0) {
+        struct sched_param high_prio_param;
+        high_prio_param.sched_priority = sched_get_priority_max(policy);
+        pthread_attr_setschedparam(&attr, &high_prio_param);
       }
     }
   }
@@ -161,8 +156,7 @@ Thread::Thread(const ThreadConfigSetter& setter, const ThreadConfig& config)
     lynx::base::android::DetachFromVM();
 #endif
   };
-  thread_ = std::make_unique<ThreadHandle>(
-      std::move(setup_thread), config.enable_preset_thread_priority);
+  thread_ = std::make_unique<ThreadHandle>(std::move(setup_thread));
   latch.Wait();
   task_runner_ = runner;
   loop_ = loop_impl;

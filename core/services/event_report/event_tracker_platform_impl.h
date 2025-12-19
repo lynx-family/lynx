@@ -72,8 +72,7 @@ class EventTrackerPlatformImpl {
   static fml::RefPtr<fml::TaskRunner> GetReportTaskRunner() {
     static base::NoDestructor<fml::Thread> event_report_thread_t_(
         fml::Thread::ThreadConfig(
-            kLynxReportThread, fml::Thread::ThreadPriority::NORMAL, nullptr,
-            tasm::LynxEnv::GetInstance().EnablePresetThreadPriority()));
+            kLynxReportThread, fml::Thread::ThreadPriority::NORMAL, nullptr));
     return event_report_thread_t_->GetTaskRunner();
   }
 };

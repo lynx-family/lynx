@@ -88,9 +88,8 @@ class ThreadGroup {
       std::lock_guard<std::mutex> lock(thread_group_mutex_);
       auto it = thread_groups_.find(index);
       if (it == thread_groups_.end()) {
-        auto new_thread = std::make_unique<fml::Thread>(GetJSThreadConfig(
-            prefix_name_ + std::to_string(index),
-            tasm::LynxEnv::GetInstance().EnablePresetThreadPriority()));
+        auto new_thread = std::make_unique<fml::Thread>(
+            GetJSThreadConfig(prefix_name_ + std::to_string(index)));
         auto task_runner =
             fml::MakeRefCounted<fml::TaskRunner>(new_thread->GetLoop());
         thread_groups_.emplace(index, std::move(new_thread));
@@ -295,9 +294,8 @@ fml::RefPtr<fml::TaskRunner> TaskRunnerManufactor::GetJSRunner(
     const std::string& js_group_thread_name) {
   static constexpr const char* js_thread_name = "Lynx_JS";
   if (js_group_thread_name.empty()) {
-    static base::NoDestructor<fml::Thread> js_thread(GetJSThreadConfig(
-        js_thread_name,
-        tasm::LynxEnv::GetInstance().EnablePresetThreadPriority()));
+    static base::NoDestructor<fml::Thread> js_thread(
+        GetJSThreadConfig(js_thread_name));
     return js_thread->GetTaskRunner();
   } else {
     unsigned char group_thread_name_last_char =
@@ -364,9 +362,8 @@ fml::RefPtr<fml::MessageLoopImpl> TaskRunnerManufactor::StartTASMThread() {
         GetTASMThreadCache(tasm_thread_name).GetTaskRunner(label_)->GetLoop();
   } else {
     static base::NoDestructor<fml::Thread> tasm_thread(
-        fml::Thread::ThreadConfig(
-            tasm_thread_name, fml::Thread::ThreadPriority::HIGH, nullptr,
-            tasm::LynxEnv::GetInstance().EnablePresetThreadPriority()));
+        fml::Thread::ThreadConfig(tasm_thread_name,
+                                  fml::Thread::ThreadPriority::HIGH, nullptr));
     tasm_loop_ = tasm_thread->GetLoop();
   }
 
@@ -386,9 +383,8 @@ void TaskRunnerManufactor::StartLayoutThread(bool enable_multi_layout_thread) {
             ->GetLoop());
   } else {
     static base::NoDestructor<fml::Thread> layout_thread(
-        fml::Thread::ThreadConfig(
-            layout_thread_name, fml::Thread::ThreadPriority::HIGH, nullptr,
-            tasm::LynxEnv::GetInstance().EnablePresetThreadPriority()));
+        fml::Thread::ThreadConfig(layout_thread_name,
+                                  fml::Thread::ThreadPriority::HIGH, nullptr));
 
     layout_task_runner_ = fml::MakeRefCounted<fml::TaskRunner>(
         layout_thread->GetTaskRunner()->GetLoop());

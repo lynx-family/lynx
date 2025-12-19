@@ -11,18 +11,15 @@ namespace fml {
 
 namespace {
 
-void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_priority,
-                       bool need_reset_priority) {
+void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_priority) {
   pthread_set_qos_class_self_np(qos_class, 0);
   [[NSThread currentThread] setThreadPriority:thread_priority];
-  if (need_reset_priority) {
-    sched_param param;
-    int policy;
-    pthread_t thread = pthread_self();
-    if (pthread_getschedparam(thread, &policy, &param) == 0) {
-      param.sched_priority = sched_priority;
-      pthread_setschedparam(thread, policy, &param);
-    }
+  sched_param param;
+  int policy;
+  pthread_t thread = pthread_self();
+  if (pthread_getschedparam(thread, &policy, &param) == 0) {
+    param.sched_priority = sched_priority;
+    pthread_setschedparam(thread, policy, &param);
   }
 }
 
@@ -51,13 +48,13 @@ void PlatformThreadPriority::Setter(const lynx::fml::Thread::ThreadConfig& confi
     switch (config.priority) {
       case lynx::fml::Thread::ThreadPriority::BACKGROUND:
       case lynx::fml::Thread::ThreadPriority::LOW:
-        SetThreadPriority(4, QOS_CLASS_BACKGROUND, 0.0, config.enable_preset_thread_priority);
+        SetThreadPriority(4, QOS_CLASS_BACKGROUND, 0.0);
         break;
       case lynx::fml::Thread::ThreadPriority::NORMAL:
-        SetThreadPriority(31, QOS_CLASS_DEFAULT, 0.5, config.enable_preset_thread_priority);
+        SetThreadPriority(31, QOS_CLASS_DEFAULT, 0.5);
         break;
       case lynx::fml::Thread::ThreadPriority::HIGH:
-        SetThreadPriority(46, QOS_CLASS_USER_INITIATED, 1.0, true);
+        SetThreadPriority(46, QOS_CLASS_USER_INITIATED, 1.0);
         break;
     }
   }

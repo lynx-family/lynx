@@ -11,11 +11,9 @@
 namespace lynx {
 namespace base {
 
-fml::Thread::ThreadConfig GetJSThreadConfig(
-    const std::string& worker_name, bool enable_preset_thread_priority) {
+fml::Thread::ThreadConfig GetJSThreadConfig(const std::string& worker_name) {
   return fml::Thread::ThreadConfig{worker_name,
-                                   fml::Thread::ThreadPriority::HIGH, nullptr,
-                                   enable_preset_thread_priority};
+                                   fml::Thread::ThreadPriority::HIGH, nullptr};
 }
 }  // namespace base
 }  // namespace lynx
