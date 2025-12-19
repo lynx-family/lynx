@@ -7,6 +7,7 @@
 
 #include <list>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -21,6 +22,8 @@ namespace clay {
 constexpr size_t kMBytes = 1024 * 1024;  // 1MB
 #if OS_ANDROID
 constexpr size_t kImageCacheMaxBytes = 32 * kMBytes;  // 32MB
+#elif OS_WIN || OS_MAC
+constexpr size_t kImageCacheMaxBytes = 128 * kMBytes;  // 128MB
 #else
 constexpr size_t kImageCacheMaxBytes = 16 * kMBytes;  // 16MB
 #endif
@@ -30,8 +33,13 @@ constexpr float kDesiredOccupancyRatio = 0.8f;
 constexpr size_t kMaxItemBytes = 4 * kMBytes;
 constexpr size_t kMaxCleanItemsPerCell = 10;
 
+#if OS_WIN || OS_MAC
+constexpr int64_t kMaxTimeToLive = 360;  // 360 seconds
+constexpr int64_t kPruneInterval = 60;   // 60 second.
+#else
 constexpr int64_t kMaxTimeToLive = 60;  // 60 seconds
 constexpr int64_t kPruneInterval = 1;   // 1 second.
+#endif
 
 template <class T>
 class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
@@ -44,9 +52,9 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
     desired_cache_bytes_ = max_cached_bytes_ * kDesiredOccupancyRatio;
   }
   ~ImageCache() { ClearCache(); }
-  void StoreImage(int64_t id, std::shared_ptr<T> image,
+  void StoreImage(const std::string& id, std::shared_ptr<T> image,
                   bool is_prune_old_images = true) {
-#if defined(ENABLE_PLATFORM_DECODE)
+#if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
     size_t bytes = image->GetGraphicsImageAllocSize();
@@ -71,8 +79,8 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 #endif
   }
 
-  std::shared_ptr<T> TakeImage(int64_t id) {
-#if defined(ENABLE_PLATFORM_DECODE)
+  std::shared_ptr<T> TakeImage(const std::string& id) {
+#if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
     auto found = cache_map_.find(id);
@@ -92,8 +100,8 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 #endif
   }
 
-  std::shared_ptr<T> FindImage(int64_t id) {
-#if defined(ENABLE_PLATFORM_DECODE)
+  std::shared_ptr<T> FindImage(const std::string& id) {
+#if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
     auto found = cache_map_.find(id);
@@ -109,7 +117,7 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
   }
 
   void ClearCache() {
-#if defined(ENABLE_PLATFORM_DECODE)
+#if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
     ClearCacheInternal();
@@ -194,17 +202,17 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
   }
 
   struct ImageItem {
-    ImageItem(int64_t id, const fml::TimePoint& time_stamp, size_t bytes,
-              std::shared_ptr<T> image)
+    ImageItem(const std::string& id, const fml::TimePoint& time_stamp,
+              size_t bytes, std::shared_ptr<T> image)
         : id_(id), time_stamp_(time_stamp), bytes_(bytes), image_(image) {}
-    int64_t id_;
+    std::string id_;
     fml::TimePoint time_stamp_;
     size_t bytes_;
     std::shared_ptr<T> image_;
   };
 
   std::list<ImageItem> cache_list_;
-  std::unordered_map<int64_t, decltype(cache_list_.begin())> cache_map_;
+  std::unordered_map<std::string, decltype(cache_list_.begin())> cache_map_;
 
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
 

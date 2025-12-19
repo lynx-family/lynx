@@ -1084,6 +1084,9 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
             wheel_target_ = top_view;
           }
           FML_DCHECK(wheel_target_ != nullptr);
+          if (!wheel_target_) {
+            break;
+          }
           event_delegate_->OnWheelEvent(
               EventTypeToString(type), wheel_target_->id(),
               transformed_position.x(), transformed_position.y(), position.x(),
@@ -1122,7 +1125,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         }
       }
       bool is_scale = event.scale != 1;
-      if (event_delegate_) {
+      if (event_delegate_ && pan_zoom_target_) {
         if (is_scale) {
           event_delegate_->OnMouseEvent(
               "zoom", pan_zoom_target_->id(), button_state_, buttons_state_,

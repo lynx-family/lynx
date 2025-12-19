@@ -166,10 +166,7 @@ void Transform::Scale(float x, float y) { matrix_.PreScale(x, y); }
 void Transform::PostScale(float x, float y) { matrix_.PostScale(x, y); }
 
 void Transform::Scale3d(float x, float y, float z) {
-  if (z != 1.f) {
-    FML_LOG(WARNING)
-        << "Skity has ignored the element related z when Scale3D. Z = " << z;
-  }
+  // Skity has ignored the element related z when Scale3D.
   matrix_.PreScale(x, y);
 }
 
@@ -190,7 +187,7 @@ void Transform::Translate3d(const FloatVector3d& offset) {
 }
 
 void Transform::Translate3d(float x, float y, float z) {
-  FML_LOG(ERROR) << "Skity has ignored the element related z when Translate3d.";
+  // Skity has ignored the element related z when Translate3d.
   matrix_.PreTranslate(x, y);
 }
 

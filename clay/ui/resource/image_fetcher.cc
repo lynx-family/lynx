@@ -61,8 +61,7 @@ ImageFetcher::ImageFetcher(clay::TaskRunners task_runners,
 uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
                                   const ImageCallback& callback) {
   auto fetchID = NextUniqueID();
-  auto id = std::hash<std::string>()(url);
-  auto image = image_cache_->FindImage(id);
+  auto image = image_cache_->FindImage(url);
   if (image) {
     callback(image, true);
     return fetchID;
@@ -78,7 +77,7 @@ uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
         return fetchID;
       }
       url_loader_map_.insert({url, loader});
-      loader->Load(url, [self = GetWeakPtr(), id, url, callback](
+      loader->Load(url, [self = GetWeakPtr(), url, callback](
                             const uint8_t* data, size_t size) {
         if (!self) {
           callback(nullptr, false);
@@ -90,12 +89,12 @@ uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
         }
         auto image = SVGImage::Make(
             std::string(reinterpret_cast<const char*>(data), size));
-        self->image_cache_->StoreImage(id, image, false);
+        self->image_cache_->StoreImage(url, image, false);
         self->OnFetchFinish(url, image);
       });
     } else {
       url_loader_map_.insert({url, nullptr});
-      FetchImage(url, [self = GetWeakPtr(), id, url, callback](
+      FetchImage(url, [self = GetWeakPtr(), url, callback](
                           std::shared_ptr<PlatformImage> platform_image) {
         if (!self) {
           callback(nullptr, false);
@@ -112,7 +111,7 @@ uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
         } else {
           image = StaticImage::Make(platform_image);
         }
-        self->image_cache_->StoreImage(id, image, false);
+        self->image_cache_->StoreImage(url, image, false);
         self->OnFetchFinish(url, image);
       });
     }
@@ -123,14 +122,13 @@ uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
 uint64_t ImageFetcher::FetchSVGImageWithContent(const std::string& content,
                                                 const ImageCallback& callback) {
   auto fetchID = NextUniqueID();
-  auto id = std::hash<std::string>()(content);
-  auto image = image_cache_->FindImage(id);
+  auto image = image_cache_->FindImage(content);
   if (image) {
     callback(image, true);
     return fetchID;
   }
   image = SVGImage::Make(content);
-  image_cache_->StoreImage(id, image, false);
+  image_cache_->StoreImage(content, image, false);
   callback(image, false);
   return fetchID;
 }

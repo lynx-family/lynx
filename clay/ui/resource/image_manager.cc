@@ -129,9 +129,8 @@ void ImageManager::MoveToInactiveCacheIfNeeded(const std::string& url,
   auto range = active_url_image_map_.equal_range(url);
   size_t count = std::distance(range.first, range.second);
   if (count == 1) {
-    auto id = std::hash<std::string>()(url);
     // If there is only one image, then move it to inactive image cache.
-    inactive_image_cache_->StoreImage(id, range.first->second);
+    inactive_image_cache_->StoreImage(url, range.first->second);
     active_url_image_map_.erase(range.first);
   } else {
     for (auto image_iter = range.first; image_iter != range.second;
@@ -281,8 +280,7 @@ std::unique_ptr<ImageResource> ImageManager::GetImageResourceFromCache(
 
   // If the image is not cached, then check if the image is cached in inactive
   // image map.
-  auto id = std::hash<std::string>()(url);
-  auto image = inactive_image_cache_->TakeImage(id);
+  auto image = inactive_image_cache_->TakeImage(url);
   if (image) {
     image->SetIsActive(true);
     active_url_image_map_.insert({url, image});
