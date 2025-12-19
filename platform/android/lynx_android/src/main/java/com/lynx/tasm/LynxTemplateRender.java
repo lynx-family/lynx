@@ -24,6 +24,8 @@ import androidx.annotation.StringDef;
 import com.lynx.BuildConfig;
 import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
+import com.lynx.jsbridge.CommonModuleCreator;
+import com.lynx.jsbridge.IContextFinder;
 import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxAccessibilityModule;
 import com.lynx.jsbridge.LynxExposureModule;
@@ -127,6 +129,10 @@ public class LynxTemplateRender
   private volatile boolean reload = false;
   private LynxSSRHelper mSSRHelper;
   private boolean mHasDestroy = false;
+  /**
+   * Whether LynxView is destroying.
+   */
+  private boolean mDestroying = false;
 
   private boolean mHasPageStart;
 
@@ -518,7 +524,21 @@ public class LynxTemplateRender
     if (!mLynxViewBuilder.isEnableMTSModule()) {
       return;
     }
-    mMainThreadModuleFactory = new LynxModuleFactory(mLynxContext);
+    mMainThreadModuleFactory = new LynxModuleFactory();
+    // bind common module creator
+    IContextFinder contextFinder = new IContextFinder() {
+      private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
+      @NonNull
+      @Override
+      public WeakReference<Context> findContext(@Nullable String instanceId) {
+        return mContext;
+      }
+
+      @Override
+      public void registerContext(
+          @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
+    };
+    mMainThreadModuleFactory.bind(new CommonModuleCreator(contextFinder));
     // set internal modules
     setLynxInternalModules(mMainThreadModuleFactory);
     // set user modules
@@ -528,11 +548,43 @@ public class LynxTemplateRender
   private void setUpBackgroundThreadModuleFactory() {
     if (mRuntime != null) {
       mModuleFactory = mRuntime.getModuleFactory();
-      mModuleFactory.setContext(mLynxContext);
     } else {
-      mModuleFactory = new LynxModuleFactory(mLynxContext);
+      mModuleFactory = new LynxModuleFactory();
       mModuleFactory.registerModuleAuthValidator(mLynxRuntimeOptions.getModuleAuthValidator());
     }
+    final LynxViewClient client = mLynxContext.getLynxViewClient();
+    Runnable factoryRunnable = new Runnable() {
+      @Override
+      public void run() {
+        if (client != null) {
+          if (mDestroying || mHasDestroy) {
+            return;
+          }
+          LLog.i("LynxModuleFactory", "lynx invoke onLynxViewAndJSRuntimeDestroy");
+          client.onLynxViewAndJSRuntimeDestroy();
+        }
+      }
+    };
+    mModuleFactory.setLifecycleListener(new LynxModuleFactory.AbstractLifecycleListener() {
+      @Override
+      public void onDestroy() {
+        UIThreadUtils.runOnUiThread(factoryRunnable);
+      }
+    });
+    // bind common module creator
+    IContextFinder contextFinder = new IContextFinder() {
+      private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
+      @NonNull
+      @Override
+      public WeakReference<Context> findContext(@Nullable String instanceId) {
+        return mContext;
+      }
+
+      @Override
+      public void registerContext(
+          @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
+    };
+    mModuleFactory.bind(new CommonModuleCreator(contextFinder));
     // set user modules
     setUserModules(mModuleFactory);
     // set internal modules
@@ -1018,6 +1070,7 @@ public class LynxTemplateRender
     reload = false;
     mHasPageStart = false;
     mHasDestroy = false;
+    mDestroying = false;
     mLynxContext.setImageInterceptor(mClient); // for compatible with the old ImageInterceptor
     // TODO(zhoupeng.z): Currently the LynxViewClient in LynxContext is only used to report errors,
     // make it compatible with LynxViewClientV2
@@ -2261,9 +2314,7 @@ public class LynxTemplateRender
   }
 
   private void destroyNative() {
-    if (mModuleFactory != null) {
-      mModuleFactory.markLynxViewIsDestroying();
-    }
+    mDestroying = true;
     LLog.i(TAG, "destroyNative url " + getTemplateUrl() + " in " + this.toString());
     if (mDevTool != null) {
       mDevTool.destroy();
@@ -2278,6 +2329,7 @@ public class LynxTemplateRender
     }
 
     mHasDestroy = true;
+    mDestroying = false;
   }
 
   public final ThreadStrategyForRendering getThreadStrategyForRendering() {

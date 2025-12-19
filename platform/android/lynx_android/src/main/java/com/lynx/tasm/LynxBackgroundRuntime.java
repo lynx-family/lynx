@@ -7,8 +7,11 @@ import android.content.Context;
 import android.text.TextUtils;
 import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.devtoolwrapper.LynxDevtool;
+import com.lynx.jsbridge.CommonModuleCreator;
+import com.lynx.jsbridge.IContextFinder;
 import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxFetchModule;
 import com.lynx.jsbridge.LynxModuleFactory;
@@ -20,6 +23,7 @@ import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.resource.LynxResourceLoader;
+import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
@@ -98,12 +102,26 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     }
     mState = STATE_START;
     mOptions = options;
-    mModuleFactory = new LynxModuleFactory(context);
+    mModuleFactory = new LynxModuleFactory();
     LynxFetchModuleEventSender eventSender = new LynxFetchModuleEventSender();
     eventSender.setWeakRuntime(this);
     mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
     mModuleFactory.addModuleParamWrapper(options.getWrappers());
     mModuleFactory.registerModuleAuthValidator(options.getModuleAuthValidator());
+    // bind common module creator
+    IContextFinder contextFinder = new IContextFinder() {
+      private WeakReference<Context> mContext = new WeakReference<>(context);
+      @NonNull
+      @Override
+      public WeakReference<Context> findContext(@Nullable String instanceId) {
+        return mContext;
+      }
+
+      @Override
+      public void registerContext(
+          @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
+    };
+    mModuleFactory.bind(new CommonModuleCreator(contextFinder));
 
     if (LynxEnv.inst().isLynxDebugEnabled()) {
       initDevtool(context, debuggable);

@@ -27,6 +27,7 @@ import com.lynx.react.bridge.WritableArray;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.Assertions;
+import com.lynx.tasm.behavior.LynxContext;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -83,6 +84,8 @@ public class LynxMethodWrapper {
       return 'Y';
     } else if (paramClass == byte[].class) {
       return 'a';
+    } else if (paramClass == LynxContext.class) {
+      return 'K';
     } else {
       throw new RuntimeException("Got unknown param class: " + paramClass.getSimpleName());
     }

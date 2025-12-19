@@ -128,6 +128,9 @@ public class LynxEnv {
   protected volatile boolean mIsNativeLibraryLoaded = false;
   protected boolean mIsDevLibraryLoaded = false;
   protected boolean mIsNativeUIThreadInited = false;
+  /**
+   * Only use to cache LynxModule Class
+   */
   protected LynxModuleFactory mModuleFactory;
   protected final Map<String, Behavior> mBehaviorMap = new HashMap<>();
   protected final LynxViewClientGroup mClient = new LynxViewClientGroup();
@@ -270,9 +273,6 @@ public class LynxEnv {
 
     // init Behaviors and warm behaviors
     initBehaviors();
-
-    // init ModuleFactory
-    getModuleFactory().setContext(context);
 
     // Calling sequence:
     // initDevtoolEnv() > loadNativeLibraries() > syncDevtoolComponentAttachSwitch()
@@ -475,7 +475,7 @@ public class LynxEnv {
 
   public LynxModuleFactory getModuleFactory() {
     if (mModuleFactory == null) {
-      mModuleFactory = new LynxModuleFactory(mContext);
+      mModuleFactory = new LynxModuleFactory();
     }
     return mModuleFactory;
   }

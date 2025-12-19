@@ -184,6 +184,13 @@ public class abstract com::lynx::tasm::animation::layout::AbstractLayoutAnimatio
   public void com.lynx.tasm.animation.layout.AbstractLayoutAnimation.setDuration(@Nullable long duration);
 }
 
+public class abstract com::lynx::jsbridge::LynxModuleFactory::AbstractLifecycleListener :  {
+  public void com.lynx.jsbridge.LynxModuleFactory.AbstractLifecycleListener.onCreate();
+  public void com.lynx.jsbridge.LynxModuleFactory.AbstractLifecycleListener.onModuleRegistered(@NonNull String name, @NonNull ParamWrapper wrapper);
+  public void com.lynx.jsbridge.LynxModuleFactory.AbstractLifecycleListener.onModuleCreated(@NonNull String name, @NonNull LynxModuleWrapper wrapper);
+  public abstract void com.lynx.jsbridge.LynxModuleFactory.AbstractLifecycleListener.onDestroy();
+}
+
 public class abstract com::lynx::tasm::image::ScalingUtils::AbstractScaleType : com.lynx.tasm.image.ScalingUtils.ScaleType {
   public Matrix com.lynx.tasm.image.ScalingUtils.AbstractScaleType.getTransform(Matrix outTransform, Rect parentRect, int childWidth, int childHeight, float focusX, float focusY);
   public abstract void com.lynx.tasm.image.ScalingUtils.AbstractScaleType.getTransformImpl(Matrix matrix, float availableWidth, float availableHeight, float sourceWidth, float sourceHeight, float offsetStartX, float offsetStartY);
@@ -1240,6 +1247,14 @@ public class com::lynx::tasm::utils::ColorUtils :  {
   public static boolean com.lynx.tasm.utils.ColorUtils.isValid(String color);
 }
 
+public class com::lynx::jsbridge::CommonModuleCreator : com.lynx.jsbridge.IModuleCreator {
+  public com.lynx.jsbridge.CommonModuleCreator.CommonModuleCreator(IContextFinder contextFinder);
+  public IContextFinder com.lynx.jsbridge.CommonModuleCreator.currentContextFinder();
+  public LynxModuleWrapper com.lynx.jsbridge.CommonModuleCreator.create(String name, ConcurrentHashMap< String, ParamWrapper > ClassParams);
+  public void com.lynx.jsbridge.CommonModuleCreator.destroy();
+  public int com.lynx.jsbridge.CommonModuleCreator.Type();
+}
+
 public interface com::lynx::react::bridge::mapbuffer::CompactArrayBuffer {
   public int com.lynx.react.bridge.mapbuffer.CompactArrayBuffer.count();
   public int com.lynx.react.bridge.mapbuffer.CompactArrayBuffer.getInt(int index);
@@ -2198,6 +2213,11 @@ public interface com::lynx::tasm::base::IComplicatedLogDelegate {
   public boolean com.lynx.tasm.base.IComplicatedLogDelegate.isComplicatedLogLoggable(int level, LogSource source, Long runtimeId);
 }
 
+public interface com::lynx::jsbridge::IContextFinder {
+  public WeakReference< Context > com.lynx.jsbridge.IContextFinder.findContext(String instanceId);
+  public void com.lynx.jsbridge.IContextFinder.registerContext(String instanceId, WeakReference< Context > context);
+}
+
 public class com::lynx::tasm::icu::ICURegister :  {
   public static synchronized void com.lynx.tasm.icu.ICURegister.loadLibrary(@NonNull INativeLibraryLoader loader);
 }
@@ -2777,6 +2797,13 @@ public interface com::lynx::tasm::performance::memory::IMemoryMonitor {
 
 public interface com::lynx::tasm::performance::memory::IMemoryRecordBuilder {
   public MemoryRecord com.lynx.tasm.performance.memory.IMemoryRecordBuilder.build();
+}
+
+public interface com::lynx::jsbridge::IModuleCreator {
+  public IContextFinder com.lynx.jsbridge.IModuleCreator.currentContextFinder();
+  public LynxModuleWrapper com.lynx.jsbridge.IModuleCreator.create(String name, ConcurrentHashMap< String, ParamWrapper > ClassParams);
+  public void com.lynx.jsbridge.IModuleCreator.destroy();
+  public int com.lynx.jsbridge.IModuleCreator.Type();
 }
 
 public interface com::lynx::tasm::INativeLibraryLoader {
@@ -5751,15 +5778,16 @@ public class abstract com::lynx::jsbridge::LynxModule :  {
 }
 
 public class com::lynx::jsbridge::LynxModuleFactory :  {
-  public com.lynx.jsbridge.LynxModuleFactory.LynxModuleFactory(@NonNull Context context);
-  public void com.lynx.jsbridge.LynxModuleFactory.setContext(@NonNull Context context);
+  public com.lynx.jsbridge.LynxModuleFactory.LynxModuleFactory();
+  public void com.lynx.jsbridge.LynxModuleFactory.setLifecycleListener(@Nullable AbstractLifecycleListener listener);
+  public void com.lynx.jsbridge.LynxModuleFactory.bind(IModuleCreator creator);
   public void com.lynx.jsbridge.LynxModuleFactory.setLynxModuleExtraData(Object data);
   public void com.lynx.jsbridge.LynxModuleFactory.registerModule( @NonNull String name, @NonNull Class<? extends LynxModule > module, @Nullable Object param);
   public void com.lynx.jsbridge.LynxModuleFactory.addModuleParamWrapper(List< ParamWrapper > wrappers);
   public void com.lynx.jsbridge.LynxModuleFactory.addModuleParamWrapperIfAbsent(List< ParamWrapper > wrappers);
   public void com.lynx.jsbridge.LynxModuleFactory.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
+  public IContextFinder com.lynx.jsbridge.LynxModuleFactory.currentContextFinder();
   public LynxModuleWrapper com.lynx.jsbridge.LynxModuleFactory.getModule(String name);
-  public void com.lynx.jsbridge.LynxModuleFactory.markLynxViewIsDestroying();
   public void com.lynx.jsbridge.LynxModuleFactory.retainJniObject();
   public long com.lynx.jsbridge.LynxModuleFactory.getNativePtr();
   public void com.lynx.jsbridge.LynxModuleFactory.destroy();
@@ -5767,7 +5795,7 @@ public class com::lynx::jsbridge::LynxModuleFactory :  {
 
 public class com::lynx::jsbridge::LynxModuleWrapper :  {
   public com.lynx.jsbridge.LynxModuleWrapper.LynxModuleWrapper(String name, LynxModule module);
-  public void com.lynx.jsbridge.LynxModuleWrapper.setLynxContext(WeakReference< Context > weakContext);
+  public void com.lynx.jsbridge.LynxModuleWrapper.setContextFinder(IContextFinder contextFinder);
   public LynxModule com.lynx.jsbridge.LynxModuleWrapper.getModule();
   public String com.lynx.jsbridge.LynxModuleWrapper.getName();
   public void com.lynx.jsbridge.LynxModuleWrapper.setAuthValidator(LynxModule.AuthValidator authValidator);
@@ -10129,6 +10157,11 @@ public class com::lynx::tasm::behavior::ui::LynxBaseUI::TransOffset :  {
 public enum com::lynx::tasm::fontface::FontFace::TYPE {
   public com.lynx.tasm.fontface.FontFace.TYPE.URL URL;
   public com.lynx.tasm.fontface.FontFace.TYPE.LOCAL LOCAL;
+}
+
+public interface com::lynx::jsbridge::IModuleCreator::Type {
+  public int com.lynx.jsbridge.IModuleCreator.Type.NORMAL NORMAL;
+  public int com.lynx.jsbridge.IModuleCreator.Type.SHARED SHARED;
 }
 
 public enum com::lynx::tasm::utils::SizeValue::Type {

@@ -28,6 +28,10 @@ public abstract class LynxModule {
     boolean verify(String moduleName, String methodName, JavaOnlyArray methodParams);
   }
 
+  /**
+   * In CommonLynxModule, there is a unique corresponding LynxContext.However, in SharedLynxModule,
+   * mContext is ApplicationContext.
+   */
   protected Context mContext;
   protected Object mParam;
   protected Object mExtraData;

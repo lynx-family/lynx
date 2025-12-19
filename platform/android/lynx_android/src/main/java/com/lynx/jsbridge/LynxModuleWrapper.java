@@ -4,9 +4,8 @@
 package com.lynx.jsbridge;
 
 import android.content.Context;
-import android.util.Pair;
+import androidx.annotation.NonNull;
 import com.lynx.react.bridge.JavaOnlyArray;
-import com.lynx.react.bridge.ReadableArray;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.CalledByNative;
@@ -15,7 +14,6 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,15 +22,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LynxModuleWrapper {
-  private static final String TAG = "LynxModuleWrapper";
+  private static final String TAG = "NativeModule:LynxModuleWrapper";
   private final LynxModule mModule;
   private final ArrayList<MethodDescriptor> mDescriptors;
   private final ArrayList<AttributeDescriptor> mAttributeDescriptors;
   private final String mName;
-  private WeakReference<Context> mWeakContext;
   private LynxModule.AuthValidator mAuthValidator;
   private static final ConcurrentHashMap<Class<? extends LynxModule>, ArrayList<MethodDescriptor>>
       mMethodsCache = new ConcurrentHashMap<>();
+  private IContextFinder mContextFinder;
 
   public LynxModuleWrapper(String name, LynxModule module) {
     mName = name;
@@ -41,10 +39,11 @@ public class LynxModuleWrapper {
     mAttributeDescriptors = new ArrayList<>();
   }
 
-  public void setLynxContext(WeakReference<Context> weakContext) {
-    mWeakContext = weakContext;
+  public void setContextFinder(IContextFinder contextFinder) {
+    mContextFinder = contextFinder;
   }
 
+  @NonNull
   @CalledByNative
   public LynxModule getModule() {
     return mModule;
@@ -122,6 +121,7 @@ public class LynxModuleWrapper {
 
   @CalledByNative
   public Collection<MethodDescriptor> getMethodDescriptors() {
+    WeakReference<Context> contextRef = mContextFinder.findContext("");
     if (mDescriptors.isEmpty()) {
       try {
         findMethods();
@@ -129,9 +129,9 @@ public class LynxModuleWrapper {
         UIThreadUtils.runOnUiThread(new Runnable() {
           @Override
           public void run() {
-            if (mWeakContext != null) {
-              Context lynxContext = mWeakContext.get();
-              if (lynxContext != null && lynxContext instanceof LynxContext) {
+            if (contextRef != null) {
+              Context lynxContext = contextRef.get();
+              if (lynxContext instanceof LynxContext) {
                 LynxError error = new LynxError(LynxSubErrorCode.E_NATIVE_MODULES_EXCEPTION,
                     "NativeModules: GetMethodDescriptors error!"
                         + "moduleName: " + mName + " exception: " + exp.toString());
@@ -149,6 +149,7 @@ public class LynxModuleWrapper {
 
   @CalledByNative
   public Collection<AttributeDescriptor> getAttributeDescriptor() {
+    WeakReference<Context> contextRef = mContextFinder.findContext("");
     if (mAttributeDescriptors.isEmpty()) {
       try {
         findAttributes();
@@ -156,9 +157,9 @@ public class LynxModuleWrapper {
         UIThreadUtils.runOnUiThread(new Runnable() {
           @Override
           public void run() {
-            if (mWeakContext != null) {
-              Context lynxContext = mWeakContext.get();
-              if (lynxContext != null && lynxContext instanceof LynxContext) {
+            if (contextRef != null) {
+              Context lynxContext = contextRef.get();
+              if (lynxContext instanceof LynxContext) {
                 LynxError error = new LynxError(LynxSubErrorCode.E_NATIVE_MODULES_EXCEPTION,
                     "NativeModules: getAttributeDescriptors error!"
                         + "moduleName: " + mName + " exception: " + exp.toString());

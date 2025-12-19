@@ -4,55 +4,86 @@
 
 package com.lynx.jsbridge;
 
-import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
-import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxViewClient;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
-import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.utils.UIThreadUtils;
-import java.lang.ref.WeakReference;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * LynxModuleFactory is a factory class for creating LynxModules.has three main functions
+ * 1. Managing registered Module Classes.use {@link #registerModule(String, Class, Object)} to
+ * register a module class. and use {@link #mWrappers}  to cache the module class.
+ * 2. Use {@link #getModule(String)} to create a LynxModuleWrapper through {@link #mModuleCreator}.
+ * 3. Interacting with Native's LynxModuleFactory object
+ */
 public class LynxModuleFactory {
   private static final String TAG = "LynxModuleFactory";
-  // When we use LynxBackgroundRuntime Standalone to create LynxView, JS Thread may
-  // access LynxModule meanwhile new modules are registered during LynxView creation.
-  // We use `ConcurrentHashMap` instead of `Map` here, because `putIfAbsent` on
-  // `ConcurrentHashMap` requires API level 1, but on `Map ` requires API level 24.
+  /**
+   * When we use LynxBackgroundRuntime Standalone to create LynxView, JS Thread may
+   * access LynxModule meanwhile new modules are registered during LynxView creation.
+   * We use `ConcurrentHashMap` instead of `Map` here, because `putIfAbsent` on
+   * `ConcurrentHashMap` requires API level 1, but on `Map ` requires API level 24.
+   */
   private final ConcurrentHashMap<String, ParamWrapper> mWrappers;
-  private Map<String, LynxModuleWrapper> mModulesByName;
-  private WeakReference<Context> mWeakContext;
-  private LynxViewClient mLynxViewClient;
+  /**
+   * native ptr of module factory
+   */
   private long mNativePtr = 0;
-  private boolean mIsLynxViewDestroying = false;
-  private boolean mHasDestroyed = false;
+  /**
+   * Used for assembling Module instances, including CommonModuleCreator and SharedModuleCreator.
+   */
+  private IModuleCreator mModuleCreator;
+  /**
+   * Extra data that will be passed to Every LynxModule {@link LynxModule#mExtraData}.
+   */
   private Object mLynxModuleExtraData;
+  /**
+   * Whether LynxModuleFactory is destroyed.
+   */
+  private boolean mHasDestroyed = false;
 
-  // AuthValidator is only valid for the current LynxBackgroundRuntime Options.
+  /**
+   * AuthValidator is only valid for the current LynxBackgroundRuntime Options.
+   */
   private LynxModule.AuthValidator mAuthValidator;
 
-  public LynxModuleFactory(@NonNull Context context) {
+  @Nullable AbstractLifecycleListener mLifecycleListener;
+
+  /**
+   * AbstractLifecycleListener is a listener for LynxModuleFactory's lifecycle.
+   */
+  public static abstract class AbstractLifecycleListener {
+    public void onCreate(){};
+    public void onModuleRegistered(@NonNull String name, @NonNull ParamWrapper wrapper){};
+    public void onModuleCreated(@NonNull String name, @NonNull LynxModuleWrapper wrapper){};
+
+    /**
+     * called on module execute thread.like JS Thread
+     */
+    public abstract void onDestroy();
+  }
+
+  public LynxModuleFactory() {
     mWrappers = new ConcurrentHashMap<>();
-    setContext(context);
   }
 
-  public void setContext(@NonNull Context context) {
-    if (context instanceof LynxContext) {
-      mLynxViewClient = ((LynxContext) context).getLynxViewClient();
-    }
-    mWeakContext = new WeakReference<>(context);
+  public void setLifecycleListener(@Nullable AbstractLifecycleListener listener) {
+    mLifecycleListener = listener;
   }
 
-  private Map<String, ParamWrapper> getWrappers() {
+  /**
+   * bind IModuleCreator to LynxModuleFactory. if creator is null, LynxModuleFactory will only use
+   * to cache module class.
+   */
+  public void bind(IModuleCreator creator) {
+    mModuleCreator = creator;
+  }
+
+  protected Map<String, ParamWrapper> getWrappers() {
     return mWrappers;
   }
 
@@ -69,32 +100,37 @@ public class LynxModuleFactory {
 
     ParamWrapper oldWrapper = mWrappers.get(name);
     if (oldWrapper != null) {
-      LLog.e("LynxModuleFactory",
-          "Duplicated LynxModule For Name: " + name + ", " + oldWrapper + " will be override");
+      LLog.e(
+          TAG, "Duplicated LynxModule For Name: " + name + ", " + oldWrapper + " will be override");
     }
     mWrappers.put(name, wrapper);
-    LLog.v("LynxModuleFactory", "registered module with name: " + name + " class" + module);
+    LLog.v(TAG, "method registerModule , registered module with name: " + name + " class" + module);
   }
 
   public void addModuleParamWrapper(List<ParamWrapper> wrappers) {
-    if (wrappers == null || wrappers.size() == 0) {
+    if (wrappers == null || wrappers.isEmpty()) {
       return;
     }
     for (ParamWrapper w : wrappers) {
       String name = w.getName();
       ParamWrapper oldWrapper = this.mWrappers.get(name);
       if (oldWrapper != null) {
-        LLog.e("LynxModuleFactory",
+        LLog.e(TAG,
             "Duplicated LynxModule For Name: " + name + ", " + oldWrapper + " will be override");
       }
       this.mWrappers.put(name, w);
+      LLog.v(TAG,
+          "method addModuleParamWrapper ,  registered module with name: " + name + " class" + w);
     }
   }
 
-  // Only used in LynxBackgroundRuntime Standalone to create LynxView, we already register
-  // some modules in RuntimeOptions and we don't want the modules on LynxViewBuilder overwrite it.
+  /**
+   * Only used in LynxBackgroundRuntime Standalone to create LynxView, we already register
+   * some modules in RuntimeOptions and we don't want the modules on LynxViewBuilder overwrite it.
+   * @param wrappers the module params to be registered.
+   */
   public void addModuleParamWrapperIfAbsent(List<ParamWrapper> wrappers) {
-    if (wrappers == null || wrappers.size() == 0) {
+    if (wrappers == null || wrappers.isEmpty()) {
       return;
     }
     for (ParamWrapper w : wrappers) {
@@ -103,6 +139,9 @@ public class LynxModuleFactory {
         LLog.w(TAG, "Duplicated LynxModule For Name: " + name + ", will be ignored");
       }
       this.mWrappers.putIfAbsent(name, w);
+      LLog.v(TAG,
+          "method addModuleParamWrapperIfAbsent , registered module with name: " + name + " class"
+              + w);
     }
   }
 
@@ -110,104 +149,23 @@ public class LynxModuleFactory {
     mAuthValidator = authValidator;
   }
 
-  private void getModuleExceptionReport(Exception e) {
-    LLog.e("LynxModuleFactory", "get Module failed" + e);
+  public IContextFinder currentContextFinder() {
+    if (mModuleCreator == null) {
+      return null;
+    }
+    return mModuleCreator.currentContextFinder();
   }
 
   public LynxModuleWrapper getModule(String name) {
-    if (name == null) {
-      LLog.e("LynxModuleFactory", "getModule failed, name is null");
+    if (mModuleCreator == null) {
       return null;
     }
-    if (mModulesByName == null) {
-      mModulesByName = new HashMap<>();
+    LynxModuleWrapper moduleWrapper = mModuleCreator.create(name, mWrappers);
+    if (moduleWrapper != null) {
+      moduleWrapper.getModule().setExtraData(mLynxModuleExtraData);
+      moduleWrapper.setAuthValidator(mAuthValidator);
     }
-    if (mModulesByName.get(name) != null) {
-      return mModulesByName.get(name);
-    }
-
-    ParamWrapper wrapper = mWrappers.get(name);
-    if (wrapper == null) {
-      wrapper = LynxEnv.inst().getModuleFactory().getWrappers().get(name);
-      if (wrapper == null) {
-        return null;
-      }
-    }
-    Class<? extends LynxModule> clazz = wrapper.getModuleClass();
-    LynxModule module = null;
-    try {
-      boolean isLynxContxtBaseModule = LynxContextModule.class.isAssignableFrom(clazz);
-      Context context = mWeakContext.get();
-      if (context == null) {
-        LLog.e(TAG, clazz.getCanonicalName() + " called with Null context");
-        return null;
-      }
-      if (isLynxContxtBaseModule) { // LynxContextModule
-        boolean isLynxContext = context instanceof LynxContext;
-        if (!isLynxContext) {
-          throw new Exception(clazz.getCanonicalName() + " must be created with LynxContext");
-        }
-
-        if (wrapper.getParam() == null) {
-          for (Constructor<?> ctor : clazz.getConstructors()) {
-            Class[] types = ctor.getParameterTypes();
-            if (types.length == 1 && LynxContext.class.equals(types[0])) {
-              module = (LynxModule) ctor.newInstance((LynxContext) context);
-              break;
-            } else if (types.length == 2 && LynxContext.class.equals(types[0])
-                && Object.class.equals(types[1])) {
-              module = (LynxModule) ctor.newInstance((LynxContext) context, null);
-              break;
-            }
-          }
-        } else {
-          Constructor<?> ctor = clazz.getConstructor(LynxContext.class, Object.class);
-          module = (LynxModule) ctor.newInstance((LynxContext) context, wrapper.getParam());
-        }
-      } else { // LynxModule
-        if (wrapper.getParam() == null) {
-          for (Constructor<?> ctor : clazz.getConstructors()) {
-            Class[] types = ctor.getParameterTypes();
-            if (types.length == 1 && Context.class.equals(types[0])) {
-              module = (LynxModule) ctor.newInstance(context);
-              break;
-            } else if (types.length == 2 && Context.class.equals(types[0])
-                && Object.class.equals(types[1])) {
-              module = (LynxModule) ctor.newInstance(context, null);
-              break;
-            }
-          }
-        } else {
-          Constructor<?> ctor = clazz.getConstructor(Context.class, Object.class);
-          module = (LynxModule) ctor.newInstance(context, wrapper.getParam());
-        }
-      }
-    } catch (InstantiationException e) {
-      getModuleExceptionReport(e);
-    } catch (IllegalAccessException e) {
-      getModuleExceptionReport(e);
-    } catch (NoSuchMethodException e) {
-      getModuleExceptionReport(e);
-    } catch (InvocationTargetException e) {
-      getModuleExceptionReport(e);
-      LLog.e("LynxModuleFactory", "get TargetException " + e.getTargetException());
-    } catch (Exception e) {
-      getModuleExceptionReport(e);
-    }
-    if (module == null) {
-      LLog.v("LynxModuleFactory", "getModule" + name + "failed");
-      return null;
-    }
-    module.setExtraData(mLynxModuleExtraData);
-    LynxModuleWrapper moduleWrapper = new LynxModuleWrapper(name, module);
-    moduleWrapper.setAuthValidator(mAuthValidator);
-    moduleWrapper.setLynxContext(mWeakContext);
-    mModulesByName.put(name, moduleWrapper);
     return moduleWrapper;
-  }
-
-  public void markLynxViewIsDestroying() {
-    mIsLynxViewDestroying = true;
   }
 
   public void retainJniObject() {
@@ -222,6 +180,7 @@ public class LynxModuleFactory {
     return mNativePtr;
   }
 
+  // Called by native code.
   @CalledByNative
   private LynxModuleWrapper moduleWrapperForName(String name) {
     LynxModuleWrapper module = getModule(name);
@@ -238,27 +197,15 @@ public class LynxModuleFactory {
     if (mHasDestroyed) {
       return;
     }
-    mHasDestroyed = true;
-    if (mModulesByName != null) {
-      for (LynxModuleWrapper wrapper : mModulesByName.values()) {
-        wrapper.destroy();
-      }
+    if (mLifecycleListener != null) {
+      mLifecycleListener.onDestroy();
     }
-
-    if (mIsLynxViewDestroying) {
-      UIThreadUtils.runOnUiThread(new Runnable() {
-        @Override
-        public void run() {
-          if (mLynxViewClient != null) {
-            LLog.i("LynxModuleFactory", "lynx invoke onLynxViewAndJSRuntimeDestroy");
-            mLynxViewClient.onLynxViewAndJSRuntimeDestroy();
-          }
-        }
-      });
+    if (mModuleCreator != null) {
+      mModuleCreator.destroy();
     }
-    mNativePtr = 0;
-    mModulesByName = null;
     mWrappers.clear();
+    mNativePtr = 0;
+    mHasDestroyed = true;
   }
 
   private native boolean nativeRetainJniObject(long nativePtr);
