@@ -29,7 +29,7 @@
   self = [super initWithFrame:NSZeroRect];
   if (self) {
     [self setWantsLayer:YES];
-    [self setBackgroundColor:[NSColor blackColor]];
+    [self setBackgroundColor:[NSColor clearColor]];
     [self setLayerContentsRedrawPolicy:NSViewLayerContentsRedrawDuringViewResize];
     _reshapeListener = reshapeListener;
     _threadSynchronizer = [[FlutterThreadSynchronizer alloc] init];
