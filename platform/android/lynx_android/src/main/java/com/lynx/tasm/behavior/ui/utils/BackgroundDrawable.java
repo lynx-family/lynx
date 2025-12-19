@@ -82,6 +82,27 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
       }
     }
 
+    public void updateValue(Rect bounds, float[] borderRadius) {
+      if (rect == null) {
+        rect = new RectF();
+      }
+      rect.left = bounds.left;
+      rect.top = bounds.top;
+      rect.right = bounds.right;
+      rect.bottom = bounds.bottom;
+
+      radius = borderRadius;
+
+      allCornersWithSameRadius = checkAllCornersWithSameRadius(radius);
+
+      if (path == null) {
+        path = new Path();
+      } else {
+        path.reset();
+      }
+      path.addRoundRect(rect, radius, Path.Direction.CW);
+    }
+
     public void updateValue(
         Rect bounds, float[] borderRadius, RectF borderWidth, float mul, boolean center) {
       if (rect == null) {

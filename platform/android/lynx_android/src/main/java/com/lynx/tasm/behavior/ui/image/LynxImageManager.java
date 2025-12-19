@@ -29,6 +29,7 @@ import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.PropsConstants;
+import com.lynx.tasm.behavior.render.RoundedRectangle;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.ViewInfo;
@@ -1001,6 +1002,15 @@ public class LynxImageManager implements Drawable.Callback {
       return;
     }
     mSrcLoadListener.tryHandleResult();
+  }
+
+  public void updateInnerClipPathForBorderRadius(RoundedRectangle rect) {
+    if (rect == null || !rect.hasBorderRadius()) {
+      mInnerClipPathForBorderRadius = null;
+      return;
+    }
+    mInnerClipPathForBorderRadius = new BackgroundDrawable.RoundRectPath();
+    mInnerClipPathForBorderRadius.updateValue(rect.getRect(), rect.getBorderRadii());
   }
 
   public void onDraw(Canvas canvas) {
