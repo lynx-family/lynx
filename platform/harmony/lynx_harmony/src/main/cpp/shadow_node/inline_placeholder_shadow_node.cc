@@ -99,6 +99,18 @@ float InlinePlaceholderShadowNode::CalcPlaceholderTopOffset(
   }
 }
 
+void InlinePlaceholderShadowNode::OnPropsUpdate(const std::string& name,
+                                                const lepus::Value& value) {
+  char const* attr = name.c_str();
+  if (base::StringEqual(attr, kIdSelector)) {
+    if (value.IsString()) {
+      id_selector_ = value.StdString();
+    }
+  } else {
+    BaseTextShadowNode::OnPropsUpdate(name, value);
+  }
+}
+
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx
