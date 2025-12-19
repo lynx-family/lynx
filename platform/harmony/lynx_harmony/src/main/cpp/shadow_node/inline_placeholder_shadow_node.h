@@ -27,6 +27,13 @@ class InlinePlaceholderShadowNode : public BaseTextShadowNode {
                            MeasureMode height_mode,
                            bool final_measure) override;
   bool IsPlaceholder() const override;
+  void OnPropsUpdate(const std::string& name,
+                     const lepus::Value& value) override;
+  const char* IdSelector() const { return id_selector_.data(); }
+  LynxVerticalAlignStyle GetVerticalAlignStyle() const {
+    return text_props_.has_value() ? text_props_->vertical_align_style_
+                                   : LynxVerticalAlignStyle();
+  }
 
   int32_t Index() const { return placeholder_index_; }
   float CalcPlaceholderTopOffset(LineMetricsHarmony* line_metrics) const;
@@ -39,6 +46,7 @@ class InlinePlaceholderShadowNode : public BaseTextShadowNode {
   int32_t placeholder_index_;
   float baseline_offset_{0.f};
   double line_height_{0.f};
+  std::string id_selector_;
 };
 
 }  // namespace harmony
