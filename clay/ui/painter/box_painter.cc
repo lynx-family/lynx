@@ -468,7 +468,7 @@ void BoxPainter::PaintBackground(GraphicsContext* context,
     paint.setAntiAlias(render_object_->CanApplyAA());
 #endif
     if (background.clips.size() > 0) {
-      FloatRect clip_rect;
+      FloatRect clip_rect = render_object_->GetFrameRect();
       FloatPoint offset(render_object_->location());
       auto clip = background.clips[0];
       if (clip == ClayBackgroundClipType::kPaddingBox) {
@@ -480,6 +480,11 @@ void BoxPainter::PaintBackground(GraphicsContext* context,
       clip_rect.Move(-offset.x(), -offset.y());
       if (!clip_rect.IsEmpty()) {
         context->ClipRect(clip_rect, GrClipOp::kIntersect, false);
+      }
+      if (clip == ClayBackgroundClipType::kBorderArea) {
+        FloatRect padding_rect = render_object_->PaddingRect();
+        padding_rect.Move(-offset.x(), -offset.y());
+        context->ClipRect(padding_rect, GrClipOp::kDifference, false);
       }
     }
     if (render_object_->HasBackgroundColorRasterAnimation()) {

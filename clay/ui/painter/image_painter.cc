@@ -396,6 +396,12 @@ void ImagePainter::PaintBackgroundImage(
   if (!clip_rect.IsEmpty()) {
     context->ClipRect(clip_rect, GrClipOp::kIntersect, false);
   }
+  if (clip == ClayBackgroundClipType::kBorderArea) {
+    FloatRect padding_rect = render_box_->PaddingRect();
+    padding_rect.Move(-offset.x(), -offset.y());
+    context->ClipRect(padding_rect, GrClipOp::kDifference, false);
+  }
+
   GraphicsContext::AutoRestore saver(context, true);
   skity::Rect src_rect = skity::Rect::MakeXYWH(0, 0, image_width, image_height);
   skity::Rect dst_rect = skity::Rect::MakeXYWH(0, 0, width, height);

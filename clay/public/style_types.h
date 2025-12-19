@@ -103,6 +103,7 @@ enum class ClayBackgroundClipType {
   kBorderBox = 1,
   kContentBox = 2,
   kText = 3,
+  kBorderArea = 4,
 };
 
 enum class ClayMaskClipType {
