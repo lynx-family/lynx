@@ -55,6 +55,10 @@ class DisplayListBuilder {
   // Set clip rect
   DisplayListBuilder& ClipRect(const RoundedRectangle& border);
 
+  // Record box model
+  DisplayListBuilder& RecordBoxModel(const RoundedRectangle& rect,
+                                     int32_t& index);
+
   // Build the final display list
   DisplayList Build();
 
@@ -63,6 +67,8 @@ class DisplayListBuilder {
 
  private:
   DisplayList display_list_;
+
+  int32_t current_index_of_box_model = 0;
 };
 
 }  // namespace tasm

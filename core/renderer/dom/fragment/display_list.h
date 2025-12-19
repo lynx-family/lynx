@@ -31,6 +31,7 @@ enum class DisplayListOpType : int32_t {
   kCustom = 8,
   kBorder = 9,
   kClipRect = 10,
+  kRecordBox = 11,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {

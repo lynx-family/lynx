@@ -106,5 +106,24 @@ DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
+    const RoundedRectangle& rect, int32_t& index) {
+  if (rect.HasRadius()) {
+    display_list_.AddOperation(
+        DisplayListOpType::kRecordBox, rect.GetX(), rect.GetY(),
+        rect.GetWidth(), rect.GetHeight(), rect.GetRadiusXTopLeft(),
+        rect.GetRadiusYTopLeft(), rect.GetRadiusXTopRight(),
+        rect.GetRadiusYTopRight(), rect.GetRadiusXBottomRight(),
+        rect.GetRadiusYBottomRight(), rect.GetRadiusXBottomLeft(),
+        rect.GetRadiusYBottomLeft());
+  } else {
+    display_list_.AddOperation(DisplayListOpType::kRecordBox, rect.GetX(),
+                               rect.GetY(), rect.GetWidth(), rect.GetHeight());
+  }
+
+  index = current_index_of_box_model++;
+  return *this;
+}
+
 }  // namespace tasm
 }  // namespace lynx

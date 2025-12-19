@@ -35,10 +35,14 @@ lynx_core_source_set("fragment") {
 
 lynx_core_source_set("display_list") {
   sources = [
+    "box_model_recorder.cc",
+    "box_model_recorder.h",
     "display_list.cc",
     "display_list.h",
     "display_list_builder.cc",
     "display_list_builder.h",
+    "layout_info.cc",
+    "layout_info.h",
     "rounded_rectangle.h",
   ]
 }
@@ -46,8 +50,10 @@ lynx_core_source_set("display_list") {
 unittest_set("display_list_testset") {
   testonly = true
   sources = [
+    "box_model_recorder_unittest.cc",
     "display_list_builder_unittest.cc",
     "display_list_unittest.cc",
+    "layout_info_unittest.cc",
     "rounded_rectangle_unittest.cc",
   ]
   public_deps = [
