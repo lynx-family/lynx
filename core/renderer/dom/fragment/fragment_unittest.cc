@@ -8,9 +8,11 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/image_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -138,6 +140,124 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   EXPECT_FLOAT_EQ(floats[9], 20.f - 4.f);
   EXPECT_FLOAT_EQ(floats[10], 22.f - 1.f);
   EXPECT_FLOAT_EQ(floats[11], 24.f - 4.f);
+}
+
+TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
+  auto element = manager->CreateFiberImage("image");
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({1.f, 2.f, 3.f, 4.f});
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+
+  auto* lcs = element->computed_css_style()->GetLayoutComputedStyle();
+  lcs->surround_data_.border_data_ = starlight::BordersData();
+  auto& bd = *lcs->surround_data_.border_data_;
+  bd.radius_x_top_left = starlight::NLength::MakeUnitNLength(10.f);
+  bd.radius_y_top_left = starlight::NLength::MakeUnitNLength(12.f);
+  bd.radius_x_top_right = starlight::NLength::MakeUnitNLength(14.f);
+  bd.radius_y_top_right = starlight::NLength::MakeUnitNLength(16.f);
+  bd.radius_x_bottom_right = starlight::NLength::MakeUnitNLength(18.f);
+  bd.radius_y_bottom_right = starlight::NLength::MakeUnitNLength(20.f);
+  bd.radius_x_bottom_left = starlight::NLength::MakeUnitNLength(22.f);
+  bd.radius_y_bottom_left = starlight::NLength::MakeUnitNLength(24.f);
+
+  fragment.UpdateLayout(layout);
+
+  EXPECT_EQ(fragment.LayoutResult().layout_result.border_,
+            starlight::DirectionValue<float>({1.f, 2.f, 3.f, 4.f}));
+  EXPECT_EQ(fragment.LayoutResult().layout_result.padding_,
+            starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f}));
+  EXPECT_EQ(fragment.LayoutResult().layout_result.margin_,
+            starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f}));
+
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->x_top_left, 10.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->y_top_left, 12.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->x_top_right, 14.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->y_top_right, 16.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->x_bottom_right, 18.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->y_bottom_right, 20.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->x_bottom_left, 22.f);
+  EXPECT_EQ(fragment.LayoutResult().border_radius_info->y_bottom_left, 24.f);
+
+  DisplayListBuilder builder;
+  EXPECT_EQ(fragment.DefineBorderBox(builder), 0);
+  EXPECT_EQ(fragment.DefinePaddingBox(builder), 1);
+  EXPECT_EQ(fragment.DefineContentBox(builder), 2);
+
+  fragment.behavior_->OnDraw(builder);
+
+  DisplayList list = builder.Build();
+  const int32_t* ops = list.GetContentOpTypesData();
+  const int32_t* ints = list.GetContentIntData();
+  const float* floats = list.GetContentFloatData();
+
+  ASSERT_NE(ops, nullptr);
+  ASSERT_NE(ints, nullptr);
+  ASSERT_NE(floats, nullptr);
+
+  EXPECT_EQ(ops[0], static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  EXPECT_EQ(ints[0], 0);
+  EXPECT_EQ(ints[1], 12);
+
+  EXPECT_FLOAT_EQ(floats[0], 0.f);
+  EXPECT_FLOAT_EQ(floats[1], 0.f);
+  EXPECT_FLOAT_EQ(floats[2], 100.f);
+  EXPECT_FLOAT_EQ(floats[3], 60.f);
+
+  EXPECT_FLOAT_EQ(floats[4], 10.f);
+  EXPECT_FLOAT_EQ(floats[5], 12.f);
+  EXPECT_FLOAT_EQ(floats[6], 14.f);
+  EXPECT_FLOAT_EQ(floats[7], 16.f);
+  EXPECT_FLOAT_EQ(floats[8], 18.f);
+  EXPECT_FLOAT_EQ(floats[9], 20.f);
+  EXPECT_FLOAT_EQ(floats[10], 22.f);
+  EXPECT_FLOAT_EQ(floats[11], 24.f);
+
+  EXPECT_EQ(ops[1], static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  EXPECT_EQ(ints[2], 0);
+  EXPECT_EQ(ints[3], 12);
+
+  EXPECT_FLOAT_EQ(floats[12], 1.f);
+  EXPECT_FLOAT_EQ(floats[13], 3.f);
+  EXPECT_FLOAT_EQ(floats[14], 97.f);
+  EXPECT_FLOAT_EQ(floats[15], 53.f);
+
+  EXPECT_FLOAT_EQ(floats[16], 10.f - 1.f);
+  EXPECT_FLOAT_EQ(floats[17], 12.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[18], 14.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[19], 16.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[20], 18.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[21], 20.f - 4.f);
+  EXPECT_FLOAT_EQ(floats[22], 22.f - 1.f);
+  EXPECT_FLOAT_EQ(floats[23], 24.f - 4.f);
+
+  EXPECT_EQ(ops[2], static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  EXPECT_EQ(ints[4], 0);
+  EXPECT_EQ(ints[5], 12);
+
+  EXPECT_FLOAT_EQ(floats[24], 1.f);
+  EXPECT_FLOAT_EQ(floats[25], 3.f);
+  EXPECT_FLOAT_EQ(floats[26], 100.f - 1.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[27], 60.f - 3.f - 4.f);
+
+  EXPECT_FLOAT_EQ(floats[28], 10.f - 1.f);
+  EXPECT_FLOAT_EQ(floats[29], 12.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[30], 14.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[31], 16.f - 3.f);
+  EXPECT_FLOAT_EQ(floats[32], 18.f - 2.f);
+  EXPECT_FLOAT_EQ(floats[33], 20.f - 4.f);
+  EXPECT_FLOAT_EQ(floats[34], 22.f - 1.f);
+  EXPECT_FLOAT_EQ(floats[35], 24.f - 4.f);
+
+  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kImage));
+  EXPECT_EQ(ints[6], 2);
+  EXPECT_EQ(ints[7], 0);
 }
 
 }  // namespace tasm

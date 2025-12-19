@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -23,6 +24,8 @@ import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -388,7 +391,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpImage() {
     testDisplayList.ops = new int[] {0, 7}; // OP_BEGIN, OP_IMAGE
-    testDisplayList.iArgv = new int[] {0, 4, 0, 1}; // intParamCounts: 1 int, 4 float params
+    testDisplayList.iArgv = new int[] {0, 4, 0, 1, -1}; // intParamCounts: 1 int, 4 float params
     testDisplayList.fArgv =
         new float[] {0f, 0f, 100f, 50f, 10f, 20f, 30f, 40f}; // bounds + image params
 
@@ -698,6 +701,67 @@ public class DisplayListApplierTest {
     verify(mockCanvas).save();
     verify(mockCanvas).clipRect(any(RectF.class));
     verify(mockCanvas).restore();
+  }
+
+  private ArrayList<RoundedRectangle> getBoxArray(DisplayListApplier applier) {
+    ArrayList<RoundedRectangle> list = null;
+    try {
+      Field field = DisplayListApplier.class.getDeclaredField("mRoundedRectangleArray");
+      field.setAccessible(true);
+      list = (ArrayList<RoundedRectangle>) field.get(applier);
+    } catch (NoSuchFieldException | IllegalAccessException e) {
+      fail(e.toString());
+    }
+    return list;
+  }
+
+  @Test
+  public void testOpRecordBox0() {
+    testDisplayList.ops = new int[] {0, 11, 1};
+    testDisplayList.iArgv = new int[] {0, 4, 0, 4, 0, 0};
+    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f};
+
+    ArrayList<RoundedRectangle> list = getBoxArray(displayListApplier);
+    assertEquals(0, list.size());
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    assertEquals(1, list.size());
+    assertEquals(new RoundedRectangle(new RectF(10.0f, 12.0f, 90.0f, 42.0f), null), list.get(0));
+
+    displayListApplier.reset();
+    assertEquals(0, list.size());
+  }
+
+  @Test
+  public void testOpRecordBox1() {
+    testDisplayList.ops = new int[] {0, 11, 1};
+    testDisplayList.iArgv = new int[] {0, 4, 0, 12, 0, 0};
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 50f, 10f, 12f, 80f, 30f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f};
+
+    ArrayList<RoundedRectangle> list = getBoxArray(displayListApplier);
+    assertEquals(0, list.size());
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    float[] border = new float[8];
+    border[0] = 2.0f;
+    border[1] = 2.0f;
+    border[2] = 2.0f;
+    border[3] = 2.0f;
+    border[4] = 2.0f;
+    border[5] = 2.0f;
+    border[6] = 2.0f;
+    border[7] = 2.0f;
+
+    assertEquals(1, list.size());
+    assertEquals(new RoundedRectangle(new RectF(10.0f, 12.0f, 90.0f, 42.0f), border), list.get(0));
+
+    displayListApplier.reset();
+    assertEquals(0, list.size());
   }
 
   @Test

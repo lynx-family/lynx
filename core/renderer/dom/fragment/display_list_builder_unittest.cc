@@ -117,7 +117,7 @@ TEST_F(DisplayListBuilderTest, DrawViewOperation) {
 
 TEST_F(DisplayListBuilderTest, DrawImageOperation) {
   int image_id = 123;
-  builder_->DrawImage(image_id);
+  builder_->DrawImage(image_id, -1);
 
   DisplayList display_list = builder_->Build();
 
@@ -129,7 +129,7 @@ TEST_F(DisplayListBuilderTest, DrawImageOperation) {
 
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
   // With optimized AddOperation: [int_count, float_count, param]
-  EXPECT_EQ(int_data_data[0], 1);                         // int_count
+  EXPECT_EQ(int_data_data[0], 2);                         // int_count
   EXPECT_EQ(int_data_data[1], 0);                         // float_count
   EXPECT_EQ(int_data_data[2], image_id);                  // actual param
   EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
@@ -221,7 +221,7 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
   builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF0000FF)
       .DrawView(123)
-      .DrawImage(456)
+      .DrawImage(456, -1)
       .DrawText(789)
       .Transform(1.0f, 0.0f, 0.0f, 1.0f, 50.0f, 50.0f)
       .Clip(10.0f, 10.0f, 80.0f, 80.0f)
@@ -292,7 +292,7 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
   for (size_t i = 0; i < kNumOperations; ++i) {
     builder_->Fill(static_cast<uint32_t>(i));
     if (i % 3 == 0) {
-      builder_->DrawImage(static_cast<int>(i));
+      builder_->DrawImage(static_cast<int>(i), -1);
     }
     if (i % 5 == 0) {
       builder_->DrawText(static_cast<int>(i * 2));
@@ -398,7 +398,7 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   builder_->Begin(0.0f, 0.0f, 0.0f, 0.0f)
       .Fill(0)
       .DrawView(0)
-      .DrawImage(0)
+      .DrawImage(0, -1)
       .DrawText(0)
       .Transform(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
       .Clip(0.0f, 0.0f, 0.0f, 0.0f)
@@ -446,14 +446,15 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_EQ(display_list.GetContentIntData()[7], 0);  // DrawView param
 
   // DrawImage operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[8], 1);   // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[9], 0);   // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[10], 0);  // DrawImage param
+  EXPECT_EQ(display_list.GetContentIntData()[8], 2);    // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[9], 0);    // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[10], 0);   // DrawImage param
+  EXPECT_EQ(display_list.GetContentIntData()[11], -1);  // int_count
 
   // DrawText operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[11], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[12], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[13], 0);  // DrawText param
+  EXPECT_EQ(display_list.GetContentIntData()[12], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[13], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[14], 0);  // DrawText param
 
   // Transform operation: [int_count=0, float_count=6, 6 float params]
   EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);  // int_count
@@ -475,7 +476,7 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
 }
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
-  builder_->DrawImage(0);
+  builder_->DrawImage(0, -1);
   builder_->DrawText(0);
 
   DisplayList display_list = builder_->Build();
@@ -488,19 +489,20 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
 
   // Check DrawImage operation
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
-  EXPECT_EQ(int_data_data[0], 1);  // int_count
+  EXPECT_EQ(int_data_data[0], 2);  // int_count
   EXPECT_EQ(int_data_data[1], 0);  // float_count
   EXPECT_EQ(int_data_data[2], 0);  // image_id param
+  EXPECT_EQ(int_data_data[3], -1);
 
   // Check DrawText operation
   EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kText));
-  EXPECT_EQ(int_data_data[3], 1);  // int_count
-  EXPECT_EQ(int_data_data[4], 0);  // float_count
-  EXPECT_EQ(int_data_data[5], 0);  // text_id param
+  EXPECT_EQ(int_data_data[4], 1);  // int_count
+  EXPECT_EQ(int_data_data[5], 0);  // float_count
+  EXPECT_EQ(int_data_data[6], 0);  // text_id param
 }
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
-  builder_->DrawImage(-123);
+  builder_->DrawImage(-123, 1);
   builder_->DrawText(-456);
 
   DisplayList display_list = builder_->Build();
@@ -513,15 +515,16 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
 
   // Check DrawImage operation with negative value
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
-  EXPECT_EQ(int_data_data[0], 1);     // int_count
+  EXPECT_EQ(int_data_data[0], 2);     // int_count
   EXPECT_EQ(int_data_data[1], 0);     // float_count
   EXPECT_EQ(int_data_data[2], -123);  // image_id param
+  EXPECT_EQ(int_data_data[3], 1);
 
   // Check DrawText operation with negative value
   EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kText));
-  EXPECT_EQ(int_data_data[3], 1);     // int_count
-  EXPECT_EQ(int_data_data[4], 0);     // float_count
-  EXPECT_EQ(int_data_data[5], -456);  // text_id param
+  EXPECT_EQ(int_data_data[4], 1);     // int_count
+  EXPECT_EQ(int_data_data[5], 0);     // float_count
+  EXPECT_EQ(int_data_data[6], -456);  // text_id param
 }
 
 TEST_F(DisplayListBuilderTest, NegativeValues) {
@@ -843,6 +846,69 @@ TEST_F(DisplayListBuilderTest, RecordBoxModelRoundedCorners) {
   EXPECT_FLOAT_EQ(content_float_data[9], 10.0f);
   EXPECT_FLOAT_EQ(content_float_data[10], 11.0f);
   EXPECT_FLOAT_EQ(content_float_data[11], 12.0f);
+}
+
+TEST_F(DisplayListBuilderTest, DrawImageWithBoxIndex) {
+  int image_id = 123;
+  int box_index = 5;
+  builder_->DrawImage(image_id, box_index);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+
+  EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kImage));
+  // With optimized AddOperation: [int_count, float_count, param]
+  EXPECT_EQ(int_data_data[0], 2);                         // int_count
+  EXPECT_EQ(int_data_data[1], 0);                         // float_count
+  EXPECT_EQ(int_data_data[2], image_id);                  // actual param
+  EXPECT_EQ(int_data_data[3], box_index);                 // box_index
+  EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
+}
+
+TEST_F(DisplayListBuilderTest, RecordBoxModel) {
+  int32_t index;
+  RoundedRectangle rect;
+  rect.SetX(1.0);
+  rect.SetY(2.0);
+  rect.SetWidth(3.0);
+  rect.SetHeight(4.0);
+  rect.SetRadiusXTopLeft(0.1);
+
+  builder_->RecordBoxModel(rect, index);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+  const float* float_data_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+
+  EXPECT_EQ(op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kRecordBox));
+  // With optimized AddOperation: [int_count, float_count, param]
+  EXPECT_EQ(int_data_data[0], 0);                         // int_count
+  EXPECT_EQ(int_data_data[1], 12);                        // float_count
+  EXPECT_EQ(display_list.GetContentFloatDataSize(), 12);  // 12 float parameters
+
+  EXPECT_EQ(float_data_data[0], 1.0);
+  EXPECT_EQ(float_data_data[1], 2.0);
+  EXPECT_EQ(float_data_data[2], 3.0);
+  EXPECT_EQ(float_data_data[3], 4.0);
+  EXPECT_EQ(float_data_data[4], 0.1f);
+  EXPECT_EQ(float_data_data[5], 0);
+  EXPECT_EQ(float_data_data[6], 0);
+  EXPECT_EQ(float_data_data[7], 0);
+  EXPECT_EQ(float_data_data[8], 0);
+  EXPECT_EQ(float_data_data[9], 0);
+  EXPECT_EQ(float_data_data[10], 0);
+  EXPECT_EQ(float_data_data[11], 0);
 }
 
 }  // namespace tasm

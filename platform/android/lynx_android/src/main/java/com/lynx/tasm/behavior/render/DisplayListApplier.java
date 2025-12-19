@@ -21,6 +21,7 @@ import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Stack;
 
 public class DisplayListApplier implements Drawable.Callback {
@@ -34,6 +35,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_CUSTOM = 8;
   private static final int OP_BORDER = 9;
   private static final int OP_CLIP_RECT = 10;
+  private static final int OP_RECORD_BOX = 11;
 
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
@@ -47,6 +49,8 @@ public class DisplayListApplier implements Drawable.Callback {
   private int mContentFloatIndex;
 
   private WeakReference<View> mHostLayer;
+
+  private final ArrayList<RoundedRectangle> mRoundedRectangleArray = new ArrayList<>();
 
   public DisplayListApplier(
       DisplayList displayList, PlatformRendererContext platformRendererContext, View hostLayer) {
@@ -65,6 +69,7 @@ public class DisplayListApplier implements Drawable.Callback {
     mContentIntIndex = 0;
     mContentFloatIndex = 0;
     mBounds.clear();
+    mRoundedRectangleArray.clear();
   }
 
   public void drawTillNextView(Canvas canvas) {
@@ -76,11 +81,13 @@ public class DisplayListApplier implements Drawable.Callback {
     processContentOperations(canvas);
   }
 
-  private void drawImage(Canvas canvas, int id) {
+  private void drawImage(Canvas canvas, int id, int boxIndex) {
     LynxImageManager imageManager = mContext.getImage(id);
     if (imageManager == null) {
       return;
     }
+    imageManager.updateInnerClipPathForBorderRadius(
+        boxIndex >= 0 ? mRoundedRectangleArray.get(boxIndex) : null);
     imageManager.setView(mHostLayer.get());
     imageManager.onDraw(canvas);
   }
@@ -183,9 +190,10 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_IMAGE:
           // Image: image_id (1 int)
-          if (intParamCount == 1) {
+          if (intParamCount == 2) {
             int imageId = nextContentInt();
-            drawImage(canvas, imageId);
+            int boxIndex = nextContentInt();
+            drawImage(canvas, imageId, boxIndex);
           }
           break;
         case OP_BORDER:
@@ -225,7 +233,7 @@ public class DisplayListApplier implements Drawable.Callback {
             }
           }
           break;
-        case OP_CLIP_RECT:
+        case OP_CLIP_RECT: {
           float left = nextContentFloat();
           float top = nextContentFloat();
           float width = nextContentFloat();
@@ -250,6 +258,29 @@ public class DisplayListApplier implements Drawable.Callback {
             canvas.clipRect(rectF);
           }
           break;
+        }
+        case OP_RECORD_BOX: {
+          float left = nextContentFloat();
+          float top = nextContentFloat();
+          float width = nextContentFloat();
+          float height = nextContentFloat();
+
+          RectF rectF = new RectF(left, top, left + width, top + height);
+          float[] borderRadii = null;
+          if (floatParamCount > 4) {
+            borderRadii = new float[8];
+            borderRadii[0] = nextContentFloat(); // top left x
+            borderRadii[1] = nextContentFloat(); // top left y
+            borderRadii[2] = nextContentFloat(); // top right x
+            borderRadii[3] = nextContentFloat(); // top right y
+            borderRadii[4] = nextContentFloat(); // bottom right x
+            borderRadii[5] = nextContentFloat(); // bottom right y
+            borderRadii[6] = nextContentFloat(); // bottom left x
+            borderRadii[7] = nextContentFloat(); // bottom left y
+          }
+          mRoundedRectangleArray.add(new RoundedRectangle(rectF, borderRadii));
+          break;
+        }
         default:
           break;
       }

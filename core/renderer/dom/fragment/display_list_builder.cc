@@ -63,8 +63,9 @@ DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
 
 void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
-DisplayListBuilder& DisplayListBuilder::DrawImage(int image_id) {
-  display_list_.AddOperation(DisplayListOpType::kImage, image_id);
+DisplayListBuilder& DisplayListBuilder::DrawImage(int32_t image_id,
+                                                  int32_t box_index) {
+  display_list_.AddOperation(DisplayListOpType::kImage, image_id, box_index);
   return *this;
 }
 

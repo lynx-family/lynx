@@ -44,7 +44,7 @@ class DisplayListBuilder {
   DisplayListBuilder& Clip(float x, float y, float width, float height);
 
   // Retrieve Image source and draw
-  DisplayListBuilder& DrawImage(int image_id);
+  DisplayListBuilder& DrawImage(int32_t image_id, int32_t box_index);
 
   // Retrieve text source and draw
   DisplayListBuilder& DrawText(int text_id);

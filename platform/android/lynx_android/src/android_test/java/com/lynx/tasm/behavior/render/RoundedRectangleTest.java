@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -57,5 +58,31 @@ public class RoundedRectangleTest {
     borders[7] = 1.0f;
     roundedRect = new RoundedRectangle(rectF, borders);
     assertTrue(roundedRect.hasBorderRadius());
+  }
+
+  @Test
+  public void testEquals() {
+    RectF rectF = new RectF(1.1f, 1.1f, 2.2f, 2.2f);
+    RoundedRectangle roundedRect0 = new RoundedRectangle(rectF, null);
+
+    float[] borders = new float[8];
+    RoundedRectangle roundedRect1 = new RoundedRectangle(rectF, borders);
+
+    RectF rectF2 = new RectF(1.1f, 1.1f, 2.2f, 2.2f);
+    RoundedRectangle roundedRect2 = new RoundedRectangle(rectF2, borders);
+
+    assertEquals(roundedRect0, roundedRect1);
+    assertEquals(roundedRect0, roundedRect2);
+
+    float[] borders1 = new float[8];
+    borders1[0] = 2.0f;
+    RoundedRectangle roundedRect3 = new RoundedRectangle(rectF2, borders1);
+
+    assertNotEquals(roundedRect0, roundedRect3);
+
+    float[] borders2 = new float[8];
+    borders1[0] = 2.0f;
+    RoundedRectangle roundedRect4 = new RoundedRectangle(rectF, borders2);
+    assertNotEquals(roundedRect3, roundedRect4);
   }
 }

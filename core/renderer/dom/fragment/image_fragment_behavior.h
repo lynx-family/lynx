@@ -16,8 +16,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
  public:
   explicit ImageFragmentBehavior(Fragment* fragment)
       : FragmentBehavior(fragment) {}
-  void OnUpdateLayout(
-      const starlight::LayoutResultForRendering& layout_result) override;
+  void OnUpdateLayout(const LayoutInfoForDraw& layout_result) override;
   void OnDraw(DisplayListBuilder& display_list_builder) override;
 
  private:

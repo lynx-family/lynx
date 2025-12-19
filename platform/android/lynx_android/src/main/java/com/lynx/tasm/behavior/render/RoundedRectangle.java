@@ -6,14 +6,37 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.Rect;
 import android.graphics.RectF;
+import androidx.annotation.Nullable;
+import java.util.Arrays;
 
 public class RoundedRectangle {
   private final RectF mRect;
   private final float[] mBorderRadii;
 
+  private boolean mHasBorderRadius = false;
+
   public RoundedRectangle(RectF rect, float[] borderRadii) {
     mRect = rect;
     mBorderRadii = borderRadii;
+    mHasBorderRadius = hasNonZero(mBorderRadii);
+  }
+
+  private boolean hasNonZero(float[] array) {
+    if (array == null) {
+      return false;
+    }
+
+    // The length must be 8 since the rectangle have eight radius.
+    if (array.length != 8) {
+      return false;
+    }
+
+    for (float v : array) {
+      if (v > 0.0f) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public RectF getRectF() {
@@ -25,10 +48,36 @@ public class RoundedRectangle {
   }
 
   public boolean hasBorderRadius() {
-    return mBorderRadii != null && mBorderRadii.length == 8;
+    return mHasBorderRadius;
   }
 
   public float[] getBorderRadii() {
     return mBorderRadii;
+  }
+
+  @Override
+  public boolean equals(@Nullable Object obj) {
+    if (this == obj)
+      return true;
+
+    if (!(obj instanceof RoundedRectangle)) {
+      return false;
+    }
+
+    RoundedRectangle other = (RoundedRectangle) obj;
+
+    if (mRect != null && mBorderRadii != null && hasBorderRadius() && other.hasBorderRadius()) {
+      return mRect.equals(other.mRect) && Arrays.equals(mBorderRadii, other.mBorderRadii);
+    }
+
+    if (mRect == null && other.mRect == null && hasBorderRadius() && other.hasBorderRadius()) {
+      return Arrays.equals(mBorderRadii, other.mBorderRadii);
+    }
+
+    if (mRect != null && other.mRect != null && !hasBorderRadius() && !other.hasBorderRadius()) {
+      return mRect.equals(other.mRect);
+    }
+
+    return mRect == null && other.mRect == null && !hasBorderRadius() && !other.hasBorderRadius();
   }
 }

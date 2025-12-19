@@ -8915,6 +8915,7 @@ public class com::lynx::tasm::behavior::render::RoundedRectangle :  {
   public Rect com.lynx.tasm.behavior.render.RoundedRectangle.getRect();
   public boolean com.lynx.tasm.behavior.render.RoundedRectangle.hasBorderRadius();
   public float[] com.lynx.tasm.behavior.render.RoundedRectangle.getBorderRadii();
+  public boolean com.lynx.tasm.behavior.render.RoundedRectangle.equals(@Nullable Object obj);
 }
 
 public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable::RoundRectPath :  {

@@ -8,7 +8,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
-#include "core/renderer/starlight/types/layout_result.h"
+#include "core/renderer/dom/fragment/layout_info.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
 namespace lynx::tasm {
@@ -24,8 +24,7 @@ class FragmentBehavior {
 
   virtual void OnDraw(DisplayListBuilder& display_list_builder){};
 
-  virtual void OnUpdateLayout(
-      const starlight::LayoutResultForRendering& layout_result) {}
+  virtual void OnUpdateLayout(const LayoutInfoForDraw& layout_result) {}
 
   Fragment* fragment() { return fragment_; }
 
