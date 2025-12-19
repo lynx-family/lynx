@@ -9,8 +9,6 @@ import("//build/config/mac/templates/mac_app_bundle.gni")
 import("../../../../core/Lynx.gni")
 import("../../../../oliver/oliver.gni")
 
-# TODO: move to oss when ready.
-
 action("build_card_resources") {
   # Use the custom Python script
   script = "build_resources.py"
