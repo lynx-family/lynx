@@ -147,6 +147,10 @@ class DisplayList {
                : 0;
   }
 
+  void MarkRootNeedClipBounds() { root_need_clip_bounds_ = true; }
+
+  bool RootNeedClipBounds() const { return root_need_clip_bounds_; }
+
   void Clear();
 
   void ClearSubtreeProperties();
@@ -185,6 +189,8 @@ class DisplayList {
   base::InlineVector<int, 16> sub_layers_;
 
   float render_offset_[2] = {0, 0};
+
+  bool root_need_clip_bounds_{false};
 };
 
 template <typename OpType, typename... Args>

@@ -475,6 +475,8 @@ void Fragment::Draw() {
 
   OnDraw(builder);
 
+  CheckRootIfNeedClipBounds(builder);
+
   painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
       id(), builder.Build());
 }
@@ -705,6 +707,13 @@ void Fragment::UpdateLayout(float left, float top, bool transition_view) {
   layout_info_.layout_result.offset_.SetX(left);
   layout_info_.layout_result.offset_.SetY(top);
   UpdateRenderOffsetRecursively(0, 0);
+}
+
+void Fragment::CheckRootIfNeedClipBounds(
+    DisplayListBuilder& display_list_builder) {
+  if (element()->computed_css_style()->IsOverflowHidden()) {
+    display_list_builder.MarkRootNeedClipBounds();
+  }
 }
 
 void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {

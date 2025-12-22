@@ -8121,7 +8121,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, int left, int top, int width, int height, int dx, int dy);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
@@ -8822,9 +8822,8 @@ public class com::lynx::tasm::performance::performanceobserver::ReloadBundleEntr
 }
 
 public class com::lynx::tasm::behavior::render::Renderer :  {
-  public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(int l, int t, int r, int b, int dx, int dy);
+  public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy);
   public Point com.lynx.tasm.behavior.render.Renderer.getRenderOffset();
-  public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(int l, int t, int r, int b);
   public Rect com.lynx.tasm.behavior.render.Renderer.getLynxFrame();
   public com.lynx.tasm.behavior.render.Renderer.Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign);
   public void com.lynx.tasm.behavior.render.Renderer.onLayout(boolean changed, int l, int t, int r, int b);

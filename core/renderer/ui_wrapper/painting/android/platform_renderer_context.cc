@@ -122,14 +122,15 @@ void PlatformRendererContext::UnregisterPlatformRenderer(int32_t id) {
 }
 
 void PlatformRendererContext::UpdatePlatformRendererFrame(
-    int32_t target, const float* frame, const float* render_offset) {
+    int32_t target, bool need_clip, const float* frame,
+    const float* render_offset) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_updatePlatformRendererFrame(
-      env, local_ref.Get(), target, static_cast<jint>(frame[0]),
+      env, local_ref.Get(), target, need_clip, static_cast<jint>(frame[0]),
       static_cast<jint>(frame[1]), static_cast<jint>(frame[2]),
       static_cast<jint>(frame[3]), static_cast<jint>(render_offset[0]),
       static_cast<jint>(render_offset[1]));

@@ -102,6 +102,7 @@ class Fragment : public BaseElementContainer {
   int32_t DefineContentBox(DisplayListBuilder& display_list_builder);
 
  private:
+  void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
   void UpdateBorderRadiusAccordingToLayoutInfo();
   void UpdateRenderOffsetRecursively(float left, float top);
 

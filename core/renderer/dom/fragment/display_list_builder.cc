@@ -126,5 +126,10 @@ DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::MarkRootNeedClipBounds() {
+  display_list_.MarkRootNeedClipBounds();
+  return *this;
+}
+
 }  // namespace tasm
 }  // namespace lynx

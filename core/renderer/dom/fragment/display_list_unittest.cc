@@ -405,5 +405,13 @@ TEST_F(DisplayListTest, TemplateCategorySelection) {
   EXPECT_EQ(subtree_int_data[3], 4);  // float_count for Clip
 }
 
+TEST_F(DisplayListTest, TestMarkRootNeedClipBounds) {
+  EXPECT_FALSE(display_list_->RootNeedClipBounds());
+
+  display_list_->MarkRootNeedClipBounds();
+
+  EXPECT_TRUE(display_list_->RootNeedClipBounds());
+}
+
 }  // namespace tasm
 }  // namespace lynx

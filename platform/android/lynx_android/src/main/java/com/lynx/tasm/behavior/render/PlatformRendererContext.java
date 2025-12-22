@@ -182,12 +182,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void updatePlatformRendererFrame(
-      int sign, int left, int top, int width, int height, int dx, int dy) {
+      int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy) {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
     }
-    host.getRenderer().setLynxFrame(left, top, left + width, top + height, dx, dy);
+    host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
     host.getView().requestLayout();
   }
 

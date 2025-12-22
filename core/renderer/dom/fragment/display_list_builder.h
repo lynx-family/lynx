@@ -59,6 +59,8 @@ class DisplayListBuilder {
   DisplayListBuilder& RecordBoxModel(const RoundedRectangle& rect,
                                      int32_t& index);
 
+  DisplayListBuilder& MarkRootNeedClipBounds();
+
   // Build the final display list
   DisplayList Build();
 

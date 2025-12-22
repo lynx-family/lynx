@@ -911,5 +911,17 @@ TEST_F(DisplayListBuilderTest, RecordBoxModel) {
   EXPECT_EQ(float_data_data[11], 0);
 }
 
+TEST_F(DisplayListBuilderTest, TestCallMarkRootNeedClipBounds) {
+  builder_->MarkRootNeedClipBounds();
+
+  DisplayList display_list = builder_->Build();
+  EXPECT_TRUE(display_list.RootNeedClipBounds());
+}
+
+TEST_F(DisplayListBuilderTest, TestNotCallMarkRootNeedClipBounds) {
+  DisplayList display_list = builder_->Build();
+  EXPECT_FALSE(display_list.RootNeedClipBounds());
+}
+
 }  // namespace tasm
 }  // namespace lynx

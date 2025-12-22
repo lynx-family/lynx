@@ -28,7 +28,8 @@ class PlatformRendererContext {
 
   void DestroyPlatformRenderer(int32_t target);
 
-  void UpdatePlatformRendererFrame(int32_t target, const float frame[4],
+  void UpdatePlatformRendererFrame(int32_t target, bool need_clip,
+                                   const float frame[4],
                                    const float render_offset[2]);
 
   // Get PlatformRendererAndroid by ID

@@ -20,20 +20,29 @@ public class Renderer {
   private final DisplayList mDisplayList = new DisplayList();
   private IRendererHost mRenderHost;
 
-  public void setLynxFrame(int l, int t, int r, int b, int dx, int dy) {
+  public void setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy) {
     mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
     mRenderOffset.set(dx, dy);
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-      mRenderHost.getView().setClipBounds(new Rect(0, 0, mLynxFrame.width(), mLynxFrame.height()));
+    if (needClip) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        mRenderHost.getView().setClipBounds(
+            new Rect(0, 0, mLynxFrame.width(), mLynxFrame.height()));
+      }
+    } else {
+      View self = mRenderHost.getView();
+      ViewGroup parent = (ViewGroup) self.getParent();
+      if (parent != null) {
+        parent.setClipChildren(false);
+        parent.setClipToPadding(false);
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        self.setClipBounds(null);
+      }
     }
   }
 
   public Point getRenderOffset() {
     return mRenderOffset;
-  }
-
-  public void setLynxFrame(int l, int t, int r, int b) {
-    setLynxFrame(l, t, r, b, 0, 0);
   }
 
   public Rect getLynxFrame() {

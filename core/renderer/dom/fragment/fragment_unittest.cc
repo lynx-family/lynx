@@ -260,5 +260,35 @@ TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   EXPECT_EQ(ints[7], 0);
 }
 
+TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds) {
+  auto element = manager->CreateFiberImage("image");
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+
+  DisplayListBuilder builder;
+  fragment.CheckRootIfNeedClipBounds(builder);
+
+  DisplayList list = builder.Build();
+  EXPECT_TRUE(list.RootNeedClipBounds());
+}
+
+TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds1) {
+  auto element = manager->CreateFiberImage("image");
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_Y;
+
+  DisplayListBuilder builder;
+  fragment.CheckRootIfNeedClipBounds(builder);
+
+  DisplayList list = builder.Build();
+  EXPECT_FALSE(list.RootNeedClipBounds());
+}
+
 }  // namespace tasm
 }  // namespace lynx
