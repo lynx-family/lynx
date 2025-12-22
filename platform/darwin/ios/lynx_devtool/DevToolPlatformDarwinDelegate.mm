@@ -245,7 +245,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   void Navigate(const std::string& url) override {}
 
   std::vector<double> GetBoxModel(Element* element) override {
-    if (element->GetTag() == "x-overlay-ng") {
+    if (element->GetTag() == "x-overlay-ng" || element->GetTag() == "overlay") {
       return ElementInspector::GetOverlayNGBoxModel(element);
     }
     auto box_model = GetBoxModelInGeneralPlatform(element);
