@@ -28,6 +28,7 @@ target(lynx_harmony_type, "lynx_harmony") {
     "../../../base/trace/native:trace",
     "../../../core:lynx_native",
     "../../../core/runtime/bindings/napi:napi_binding_quickjs",
+    "../../../service_api:lynx_service_api_native",
     "../../../third_party/quickjs",
     "../lynx_xelement",
   ]

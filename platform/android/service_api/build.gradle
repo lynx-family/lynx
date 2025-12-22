@@ -6,35 +6,130 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply from: '../publish.gradle'
 
+import org.json.simple.JSONObject
+
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
+  compileSdkVersion rootProject.ext.compileSdkVersion
 
-    defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 32
-        missingDimensionStrategy 'lynx', 'noasan'
-    }
+  defaultConfig {
+    minSdkVersion 16
+    targetSdkVersion 32
+    missingDimensionStrategy 'lynx', 'noasan'
+  }
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+  buildTypes {
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      externalNativeBuild {
+        cmake {
+          arguments '-DANDROID_PLATFORM=android-14',
+            '-DBUILD_LEPUS_COMPILE=false',
+            '-DANDROID_TOOLCHAIN=clang',
+            '-DANDROID_STL=' + getCppLib(),
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DLOCAL_ARM_NEON=true',
+            '-DBUILD_TYPE=release',
+            '-LH'// Show compile parameters.
+          cppFlags '-Wl,-ldl',
+            '-Wno-unused-command-line-argument'
         }
+      }
+      ndk {
+        abiFilters(*rootProject.ext.abiList)
+      }
+    }
 
-        debug {
-            debuggable true
+    debug {
+      externalNativeBuild {
+        cmake {
+          arguments '-DANDROID_PLATFORM=android-14',
+            '-DBUILD_LEPUS_COMPILE=false',
+            '-DANDROID_TOOLCHAIN=clang',
+            '-DANDROID_STL=' + getCppLib(),
+            '-DLOCAL_ARM_NEON=true',
+            '-DBUILD_TYPE=debug',
+            '-LH'// Show compile parameters.
+
+          // Symbol table with line numbers.
+          cppFlags "-g",
+            '-Wl,-ldl',
+            '-Wno-unused-command-line-argument'
         }
+      }
+      ndk {
+        abiFilters(*rootProject.ext.abiList)
+      }
+      debuggable true
     }
+  }
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+      version CMAKE_VERSION
     }
-  
-    kotlinOptions {
-        // @see https://www.zacsweers.dev/jvmdefault-more-useful/
-        freeCompilerArgs += '-Xjvm-default=all'
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+
+  kotlinOptions {
+    // @see https://www.zacsweers.dev/jvmdefault-more-useful/
+    freeCompilerArgs += '-Xjvm-default=all'
+  }
+
+  flavorDimensions "lynx"
+  productFlavors {
+    debugMode {
+      dimension "lynx"
+      externalNativeBuild {
+        cmake {
+          cppFlags '-Wl,-ldl',
+            '-Wno-unused-command-line-argument'
+          arguments '-DFLAVOR_NAME=debugMode'
+
+        }
+      }
     }
+    asan {
+      dimension "lynx"
+      externalNativeBuild {
+        cmake {
+          cppFlags '-fsanitize=address',
+            '-fsanitize-address-use-after-scope',
+            '-fPIE',
+            '-Wl,-ldl',
+            '-Wl,-llog',
+            '-Wno-unused-command-line-argument'
+          arguments '-DANDROID_ARM_MODE=arm', '-DFLAVOR_NAME=asan'
+          abiFilters(*rootProject.ext.abiList)
+        }
+      }
+    }
+    noasan {
+      dimension "lynx"
+      externalNativeBuild {
+        cmake {
+          arguments '-DFLAVOR_NAME=noasan'
+        }
+      }
+    }
+    dev {
+      dimension "lynx"
+      matchingFallbacks = ["noasan"]
+      externalNativeBuild {
+        cmake {
+          cppFlags '-Wl,-ldl',
+            '-Wno-unused-command-line-argument'
+          arguments '-DANDROID_STL=' + getCppLib(),
+            '-DFLAVOR_NAME=dev'
+        }
+      }
+    }
+  }
 }
 
 dependencies {

@@ -26,8 +26,7 @@ builder({
         ],
         "output": "out/Default_test_enable_trace",
         "type": "gn",
-    }
-
+    },
 })
 
 coverage({
@@ -286,4 +285,10 @@ targets({
         "coverage": True,
         "enable_parallel":True,
     },
+    "lynx_service_api_static_unittests_exec": {
+        "cwd": ".",
+        "owners":["dangyingkai", "nihao.royal"],
+        "coverage": True,
+        "enable_parallel": True,
+    }
 })

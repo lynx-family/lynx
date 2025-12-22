@@ -1,0 +1,7 @@
+service_api_sources = rebase_path([
+                                    "service_api.cc",
+                                    "service_api.h",
+                                    "service_api_services.h",
+                                    "service_api_utils.h",
+                                    "service_lazy_load.h",
+                                  ])

@@ -67,8 +67,17 @@ subspec_target("Core") {
     "./LynxServiceTrailProtocol.h",
     "./LynxServiceLogProtocol.h",
   ]
+  flatten_deps = [ ":service_api_native" ]
 }
 
 lynx_core_source_set("lynx_service_api_sources") {
   sources = lynx_service_api_sources
+}
+
+subspec_target("service_api_native") {
+  deps = [ "../../../../service_api:src" ]
+
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [ "../../../.." ]
+  }
 }

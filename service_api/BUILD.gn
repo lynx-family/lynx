@@ -1,0 +1,41 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../config.gni")
+import("../core/Lynx.gni")
+import("../testing/test.gni")
+import("service_api.gni")
+
+source_set("src") {
+  sources = service_api_sources
+  if (enable_unittests) {
+    defines = [ "TESTING=1" ]
+  }
+}
+
+if (is_harmony) {
+  shared_library("lynx_service_api_native") {
+    output_name = "lynx_service_api"
+    deps = [ ":src" ]
+    configs += [ "../platform/harmony/lynx_harmony:harmony_public_config" ]
+  }
+}
+
+if (enable_unittests) {
+  source_set("src_testset") {
+    testonly = true
+    sources = [
+      "./testing/a/a_service.h",
+      "./testing/b/b_service.h",
+    ]
+    deps = [ ":src" ]
+    defines = [ "TESTING=1" ]
+  }
+
+  shared_library("lynx_service_api_native_testing") {
+    testonly = true
+    output_name = "lynx_service_api_ut"
+    deps = [ ":src_testset" ]
+  }
+}

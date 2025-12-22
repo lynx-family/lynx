@@ -132,6 +132,7 @@ def run_build_so(output_path, args):
 def run_cp_so(output_path, args, abi):
     shared_object_cp_map = {
         'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
+        'liblynx_service_api.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
         'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', abi),
         'liblynxdevtool.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'libs', abi),
         'liblynx_image_service.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_services', 'lynx_image_service', 'libs', abi),
