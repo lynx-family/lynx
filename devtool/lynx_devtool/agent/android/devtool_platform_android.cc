@@ -450,7 +450,7 @@ int DevToolPlatformAndroid::SetUIStyle(int id, std::string name,
 
 std::vector<double> DevToolPlatformAndroid::GetBoxModel(
     tasm::Element* element) {
-  if (element->GetTag() == "x-overlay-ng") {
+  if (element->GetTag() == "x-overlay-ng" || element->GetTag() == "overlay") {
     return ElementInspector::GetOverlayNGBoxModel(element);
   }
   auto box_model = GetBoxModelInGeneralPlatform(element);

@@ -154,7 +154,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                     var parentUI: LynxBaseUI? = parentBaseUI
                   lynxContext.EnsureEventDispatcher()
                     while (parentUI != null) {
-                        if (parentUI.tagName == "x-overlay-ng") {
+                        if (parentUI.tagName == "x-overlay-ng" || parentUI.tagName == "overlay") {
                             parentUI.touchEventDispatcher?.setFocusedUI(this@LynxUIBaseInput)
                             break
                         }
@@ -170,7 +170,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 override fun onAttachedToWindow(inputMode: Int) {
                     var parent: LynxBaseUI? = parentBaseUI
                     while (parent != null) {
-                        if (parent.tagName == "x-overlay-ng") {
+                        if (parent.tagName == "x-overlay-ng" || parent.tagName == "overlay") {
                             parent.window?.setSoftInputMode(inputMode)
                             return
                         }

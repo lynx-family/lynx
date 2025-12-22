@@ -76,7 +76,7 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
   InitLayoutBundle();
   SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
 
-  if (tag.IsEquals("x-overlay-ng")) {
+  if (tag.IsEquals("x-overlay-ng") || tag.IsEquals("overlay")) {
     can_has_layout_only_children_ = false;
   }
 
