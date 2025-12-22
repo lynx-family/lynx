@@ -58,6 +58,7 @@ constexpr uint32_t kFlagAccessibilityTraits = 1 << 10;
 constexpr uint32_t kFlagAccessibilityMode = 1 << 11;
 constexpr uint32_t kFlagAccessibilityExclusive = 1 << 12;
 constexpr uint32_t kFlagBackgroundColor = 1 << 13;
+constexpr uint32_t kFlagMaskChanged = 1 << 14;
 
 // std::sqrt(5.0) is not constexpr in C++17, so we use an approximation
 // to allow this value to be used in compile-time constants.
@@ -80,6 +81,7 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"overflow-y", &UIBase::SetOverflowY},
     {"overflow", &UIBase::SetOverflow},
     {"opacity", &UIBase::SetOpacity},
+    {"harmony-render-group", &UIBase::SetGroup},
     {"visibility", &UIBase::SetVisibility},
     {"image-rendering", &UIBase::SetImageRendering},
     {"border-width", &UIBase::SetBorderWidth},
@@ -103,6 +105,12 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"background-size", &UIBase::SetBackgroundSize},
     {"background-image", &UIBase::SetBackgroundImage},
     {"background-position", &UIBase::SetBackgroundPosition},
+    {"mask-position", &UIBase::SetMaskPosition},
+    {"mask-size", &UIBase::SetMaskSize},
+    {"mask-origin", &UIBase::SetMaskOrigin},
+    {"mask-repeat", &UIBase::SetMaskRepeat},
+    {"mask-clip", &UIBase::SetMaskClip},
+    {"mask-image", &UIBase::SetMaskImage},
     {"box-shadow", &UIBase::SetBoxShadow},
     {"pointer-events", &UIBase::SetPointerEvents},
     {"user-interaction-enabled", &UIBase::SetUserInteractionEnabled},
@@ -197,6 +205,8 @@ UIBase::~UIBase() {
     NodeManager::Instance().RemoveNodeCustomEventReceiver(
         Node(), UIBase::CustomEventReceiver);
   }
+  NodeManager::Instance().UnregisterNodeCustomEvent(
+      Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW);
   NodeManager::Instance().RemoveNodeEventReceiver(Node(),
                                                   UIBase::EventReceiver);
   DetachFromNodeContent();
@@ -253,6 +263,13 @@ void UIBase::CustomEventReceiver(ArkUI_NodeCustomEvent* event) {
     ui->OnDrawBehind(reinterpret_cast<OH_Drawing_Canvas*>(
                          OH_ArkUI_DrawContext_GetCanvas(context)),
                      event_node);
+  } else if (type == ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW) {
+    auto event_node = OH_ArkUI_NodeCustomEvent_GetNodeHandle(event);
+    ArkUI_DrawContext* context =
+        OH_ArkUI_NodeCustomEvent_GetDrawContextInDraw(event);
+    ui->OnOverlayDraw(reinterpret_cast<OH_Drawing_Canvas*>(
+                          OH_ArkUI_DrawContext_GetCanvas(context)),
+                      event_node);
   }
 }
 
@@ -508,7 +525,6 @@ void UIBase::OnNodeReady() {
     ApplyOverflowClip();
     Invalidate();
   }
-
   if (basic_shape_ &&
       (dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
                        kFlagClipPathChanged)) != 0) {
@@ -527,6 +543,29 @@ void UIBase::OnNodeReady() {
       Invalidate();
     }
   }
+
+  if (((dirty_flags_ & (kFlagFrameChanged | kFlagMaskChanged)) != 0) &&
+      mask_drawable_) {
+    auto parent = NodeManager::Instance().GetParent(DrawNode());
+    if (parent) {
+      NodeManager::Instance().SetAttributeWithNumberValue(parent,
+                                                          NODE_RENDER_GROUP, 1);
+    }
+    mask_drawable_->UpdateBounds(0, 0, width_, height_, padding_left_,
+                                 padding_top_, padding_right_, padding_bottom_,
+                                 context_->ScaledDensity());
+    if (background_drawable_) {
+      mask_drawable_->SetBorderWidth({
+          background_drawable_->GetBorderLeftWidth(),
+          background_drawable_->GetBorderRightWidth(),
+          background_drawable_->GetBorderTopWidth(),
+          background_drawable_->GetBorderBottomWidth(),
+      });
+    }
+    mask_drawable_->AdjustBorder();
+    Invalidate();
+  }
+
   if ((dirty_flags_ & (kFlagFrameChanged | kFlagTransformOriginChanged)) != 0 &&
       transform_origin_.has_value()) {
     NodeManager::Instance().SetAttributeWithNumberValue(
@@ -534,6 +573,7 @@ void UIBase::OnNodeReady() {
         transform_origin_->x.GetValue(width_),
         transform_origin_->y.GetValue(height_));
   }
+
   if ((dirty_flags_ & (kFlagFrameSizeChanged | kFlagTransformChanged)) != 0) {
     ApplyTransform();
     Invalidate();
@@ -602,6 +642,15 @@ void UIBase::SetOpacity(const lepus::Value& value) {
   }
   NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(), NODE_OPACITY,
                                                       opacity);
+}
+
+void UIBase::SetGroup(const lepus::Value& value) {
+  int v = value.Number();
+  if (value.IsNil()) {
+    v = 0;
+  }
+  NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(),
+                                                      NODE_RENDER_GROUP, v);
 }
 
 void UIBase::SetVisibility(const lepus::Value& value) {
@@ -815,7 +864,7 @@ void UIBase::CreateOrUpdateBackground() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_CREATE_OR_UPDATE_BACKGROUND);
   if (!background_drawable_) {
     background_drawable_ =
-        std::make_unique<BackgroundDrawable>(std::weak_ptr(shared_from_this()));
+        std::make_unique<BackgroundDrawable>(weak_from_this(), false);
   }
   dirty_flags_ |= kFlagBackgroundChanged;
 }
@@ -851,6 +900,14 @@ void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW_BEHIND);
   if (background_drawable_) {
     background_drawable_->Render(canvas);
+  }
+}
+
+void UIBase::OnOverlayDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_OVERLAY_DRAW);
+  bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
+  if (need_draw && mask_drawable_) {
+    mask_drawable_->Render(canvas);
   }
 }
 
@@ -1745,6 +1802,9 @@ void UIBase::InitDrawNode() {
     NodeManager::Instance().RegisterNodeCustomEvent(
         draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW,
         ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
+    NodeManager::Instance().RegisterNodeCustomEvent(
+        draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW,
+        ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
     // update view tree
     NodeManager::Instance().InsertNodeAfter(parent, draw_node_, Node());
     NodeManager::Instance().RemoveNode(parent, Node());
@@ -1774,6 +1834,8 @@ void UIBase::DestroyDrawNode() {
   if (draw_node_) {
     NodeManager::Instance().UnregisterNodeCustomEvent(
         draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW);
+    NodeManager::Instance().UnregisterNodeCustomEvent(
+        draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW);
     NodeManager::Instance().RemoveNodeCustomEventReceiver(
         draw_node_, UIBase::CustomEventReceiver);
     NodeManager::Instance().DisposeNode(draw_node_);
@@ -2357,6 +2419,48 @@ std::vector<float> UIBase::ScrollBy(float delta_x, float delta_y) {
 
 starlight::ImageRenderingType UIBase::RenderingType() {
   return rendering_type_;
+}
+
+void UIBase::SetMaskClip(const lepus::Value& value) {
+  CreateOrUpdateMask();
+  mask_drawable_->SetBackgroundClip(value);
+}
+
+void UIBase::SetMaskOrigin(const lepus::Value& value) {
+  CreateOrUpdateMask();
+  mask_drawable_->SetBackgroundOrigin(value);
+}
+
+void UIBase::SetMaskImage(const lepus::Value& value) {
+  CreateOrUpdateMask();
+  mask_drawable_->SetBackgroundImage(value);
+}
+
+void UIBase::SetMaskSize(const lepus::Value& value) {
+  CreateOrUpdateMask();
+  mask_drawable_->SetBackgroundSize(value);
+}
+
+void UIBase::SetMaskPosition(const lepus::Value& value) {
+  CreateOrUpdateMask();
+  mask_drawable_->SetBackgroundPosition(value);
+}
+
+void UIBase::SetMaskRepeat(const lepus::Value& value) {
+  CreateOrUpdateMask();
+  mask_drawable_->SetBackgroundRepeat(value);
+}
+
+void UIBase::CreateOrUpdateMask() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "UIBase::CreateOrUpdateMask");
+  if (!mask_drawable_) {
+    NodeManager::Instance().RegisterNodeCustomEvent(
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW,
+        ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
+    mask_drawable_ =
+        std::make_unique<BackgroundDrawable>(weak_from_this(), true);
+  }
+  dirty_flags_ |= kFlagMaskChanged;
 }
 
 void UIBase::SetClipPath(const lepus::Value& value) {

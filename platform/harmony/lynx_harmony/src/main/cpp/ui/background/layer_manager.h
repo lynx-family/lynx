@@ -29,20 +29,20 @@ class LayerManager {
   };
 
  public:
-  explicit LayerManager(const std::weak_ptr<UIBase>& ui_base)
-      : ui_base_(ui_base) {}
+  LayerManager(const std::weak_ptr<UIBase>& ui_base, bool is_mask)
+      : ui_base_(ui_base), is_mask_(is_mask) {}
   struct Rect {
     float left;
     float right;
     float top;
     float bottom;
   };
-  std::vector<std::shared_ptr<BackgroundLayer>> image_layer_list_{};
-  std::vector<PlatformLength> image_position_list_{};
-  std::vector<PlatformLength> image_size_list_{};
-  std::vector<starlight::BackgroundRepeatType> image_repeat_list_{};
-  std::vector<starlight::BackgroundOriginType> image_origin_list_{};
-  std::vector<starlight::BackgroundClipType> image_clip_list_{};
+  std::vector<std::shared_ptr<BackgroundLayer>> image_layer_list_;
+  std::vector<PlatformLength> image_position_list_;
+  std::vector<PlatformLength> image_size_list_;
+  std::vector<starlight::BackgroundRepeatType> image_repeat_list_;
+  std::vector<starlight::BackgroundOriginType> image_origin_list_;
+  std::vector<starlight::BackgroundClipType> image_clip_list_;
 
   void Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
             const Rect& padding_rect, const Rect& content_rect,
@@ -61,6 +61,7 @@ class LayerManager {
 
  private:
   float scale_density_{0.f};
+  bool is_mask_{false};
 };
 }  // namespace harmony
 }  // namespace tasm

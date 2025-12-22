@@ -34,8 +34,10 @@ static constexpr const float kOuterMul = 0.0f;
 static constexpr const float kInnerMul = 1.0f;
 static constexpr const float kAntiAliasClipLength = 2.0f;
 
-BackgroundDrawable::BackgroundDrawable(const std::weak_ptr<UIBase>& ui_base)
+BackgroundDrawable::BackgroundDrawable(const std::weak_ptr<UIBase>& ui_base,
+                                       bool is_mask)
     : ui_base_(ui_base),
+      is_mask_(is_mask),
       border_info_(std::make_unique<BorderInfo>()),
       border_radius_(std::make_unique<BorderRadius>()) {}
 
@@ -47,9 +49,22 @@ float BackgroundDrawable::GetLength(float length, int32_t unit,
   return length * reference;
 }
 
+void BackgroundDrawable::SetBorderWidth(const std::array<float, 4>& value) {
+  border_info_->border_left_origin_width = value[0];
+  border_info_->border_right_origin_width = value[1];
+  border_info_->border_top_origin_width = value[2];
+  border_info_->border_bottom_origin_width = value[3];
+}
+
 void BackgroundDrawable::Render(OH_Drawing_Canvas* canvas) {
   if (base::FloatsLarger(view_width_, 0) &&
       base::FloatsLarger(view_height_, 0)) {
+    if (blend_brush_) {  // draw mask
+      OH_Drawing_CanvasSaveLayer(canvas, border_box_draw_rect_, blend_brush_);
+      DrawBackground(canvas);
+      OH_Drawing_CanvasRestore(canvas);
+      return;
+    }
     DrawBackground(canvas);
     DrawShadow(canvas);
     DrawBorder(canvas);
@@ -807,6 +822,9 @@ BackgroundDrawable::~BackgroundDrawable() {
   if (border_fill_path_) {
     OH_Drawing_PathDestroy(border_fill_path_);
   }
+  if (blend_brush_) {
+    OH_Drawing_BrushDestroy(blend_brush_);
+  }
 }
 
 void BackgroundDrawable::DrawMultiColorBorderPath(
@@ -1288,7 +1306,11 @@ void BackgroundDrawable::SetBoxShadow(const lepus::Value& value) {
 
 void BackgroundDrawable::InitLayerManager() {
   if (!layer_manager_) {
-    layer_manager_ = std::make_unique<LayerManager>(ui_base_);
+    layer_manager_ = std::make_unique<LayerManager>(ui_base_, is_mask_);
+    if (is_mask_) {
+      blend_brush_ = OH_Drawing_BrushCreate();
+      OH_Drawing_BrushSetBlendMode(blend_brush_, BLEND_MODE_DST_IN);
+    }
   }
 }
 }  // namespace harmony

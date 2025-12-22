@@ -70,7 +70,7 @@ class BackgroundDrawable {
   };
 
  public:
-  explicit BackgroundDrawable(const std::weak_ptr<UIBase>& ui_base);
+  BackgroundDrawable(const std::weak_ptr<UIBase>& ui_base, bool is_mask);
   void UpdateBounds(float left, float top, float width, float height,
                     float padding_left, float padding_top, float padding_right,
                     float padding_bottom, float scale_density);
@@ -102,6 +102,7 @@ class BackgroundDrawable {
   void SetBackgroundPosition(const lepus::Value& value);
   void SetBackgroundRepeat(const lepus::Value& value);
   void SetBoxShadow(const lepus::Value& value);
+  void SetBorderWidth(const std::array<float, 4>& value);
   void Render(OH_Drawing_Canvas* canvas);
   bool HasShadow();
   bool HasBorder() { return has_border_; }
@@ -127,6 +128,7 @@ class BackgroundDrawable {
 
  private:
   std::weak_ptr<UIBase> ui_base_;
+  bool is_mask_;
   float scale_density_{1.0};
   std::unique_ptr<BorderInfo> border_info_{nullptr};
   std::unique_ptr<RoundRectPath> inner_clip_path_{nullptr};
@@ -159,6 +161,7 @@ class BackgroundDrawable {
   OH_Drawing_Rect* content_box_draw_rect_{nullptr};
   OH_Drawing_Rect* border_box_draw_rect_{nullptr};
   OH_Drawing_Brush* brush_{nullptr};
+  OH_Drawing_Brush* blend_brush_{nullptr};
   OH_Drawing_Path* border_path_{nullptr};
   OH_Drawing_Pen* pen_{nullptr};
   OH_Drawing_Path* border_line_path_{nullptr};

@@ -38,7 +38,7 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
     if (!image_layer_list_.at(index)->IsReady()) {
       continue;
     }
-    auto painting_box = padding_rect;
+    auto painting_box = is_mask_ ? border_rect : padding_rect;
     // 1.origin
     if (!image_origin_list_.empty()) {
       auto used_index = index % image_origin_list_.size();
@@ -175,6 +175,10 @@ void LayerManager::Draw(OH_Drawing_Canvas* canvas, const Rect& border_rect,
     // 4.position
     float offset_x = painting_box.left;
     float offset_y = painting_box.top;
+    if (is_mask_ && image_position_list_.size() < 2) {
+      offset_x += ((painting_box.right - painting_box.left) - width) * 0.5;
+      offset_y += ((painting_box.bottom - painting_box.top) - height) * 0.5;
+    }
     if (image_position_list_.size() >= 2) {
       auto used_pos_index = index % (image_position_list_.size() / 2);
 

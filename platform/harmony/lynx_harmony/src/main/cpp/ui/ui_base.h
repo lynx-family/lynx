@@ -81,6 +81,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void FinishLayoutOperation() {}
   virtual void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
+  virtual void OnOverlayDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
@@ -275,6 +276,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   LynxEventPropStatus enable_exposure_ui_clip_{LynxEventPropStatus::kUndefined};
 
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
+  std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
   std::vector<std::string> events_;
   ArkUI_NodeType node_type_;
   starlight::ImageRenderingType rendering_type_{
@@ -297,8 +299,10 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetReactRef(const lepus::Value& value);
   void SetBackgroundColor(const lepus::Value& value);
   void SetOpacity(const lepus::Value& value);
+  void SetGroup(const lepus::Value& value);
   void SetVisibility(const lepus::Value& value);
   void CreateOrUpdateBackground();
+  void CreateOrUpdateMask();
   void SetTransform(const lepus::Value& value);
   void SetTransformOrigin(const lepus::Value& value);
   void ApplyTransform();
@@ -329,6 +333,12 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetBackgroundSize(const lepus::Value& value);
   void SetBackgroundPosition(const lepus::Value& value);
   void SetBackgroundRepeat(const lepus::Value& value);
+  void SetMaskClip(const lepus::Value& value);
+  void SetMaskOrigin(const lepus::Value& value);
+  void SetMaskImage(const lepus::Value& value);
+  void SetMaskSize(const lepus::Value& value);
+  void SetMaskPosition(const lepus::Value& value);
+  void SetMaskRepeat(const lepus::Value& value);
   void SetOverflow(const lepus::Value& value);
   void SetOverflowX(const lepus::Value& value);
   void SetOverflowY(const lepus::Value& value);

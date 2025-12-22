@@ -28,7 +28,7 @@ ArkUI_NodeHandle NodeManager::CreateNode(ArkUI_NodeType type) {
 
 bool NodeManager::SetAttribute(ArkUI_NodeHandle node,
                                ArkUI_NodeAttributeType type,
-                               ArkUI_AttributeItem* item) {
+                               const ArkUI_AttributeItem* item) {
   return native_node_api_->setAttribute(node, type, item) == 0;
 }
 
