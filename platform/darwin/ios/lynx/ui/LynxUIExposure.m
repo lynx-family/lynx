@@ -85,8 +85,10 @@
 @end
 
 @interface LynxUIExposure ()
-// A System resource for call the exposure handler cyclical
+// A System resource for call the exposure detection cyclical
 @property(nonatomic) CADisplayLink *displayLink;
+// A System resource for call the lynxview changed detection cyclical
+@property(nonatomic) CADisplayLink *displayLinkForLynxView;
 // Global Event sender
 @property(nonatomic, weak) LynxRootUI *rootUI;
 // A map hold all effective UIs which be assigned exposured property,
@@ -112,8 +114,10 @@
 @end
 
 @implementation LynxUIExposure {
-  // Detection frequency, the default value is 20fps.
+  // Detection frequency for exposure detection, the default value is 20fps.
   int32_t _frameRate;
+  // Detection frequency for lynxview changed detection, the default value is 20fps.
+  int32_t _frameRateForLynxView;
   // The callback that changes flag to YES reflecting the UI has changed.
   void (^_callback)(NSDictionary *);
 }
@@ -130,6 +134,7 @@
     _disappearSet = [[NSMutableSet alloc] init];
     _appearSet = [[NSMutableSet alloc] init];
     _frameRate = 20;
+    _frameRateForLynxView = 20;
     _lynxViewOldFrame = CGRectZero;
     _flag = NO;
     _enableCheckExposureOptimize = NO;
@@ -167,9 +172,9 @@
 }
 
 // set frame rate by page config
-- (void)setObserverFrameRate:(int32_t)rate {
-  // If rate < 0, do not use this negative value.
-  if (rate < 0) {
+- (void)setObserverFrameRateForExposure:(int32_t)rate {
+  // If rate <= 0, do not use this negative/zero value.
+  if (rate <= 0) {
     return;
   }
   // If rate > 60, let _frameRate = 60.
@@ -180,8 +185,41 @@
   _frameRate = rate;
 }
 
+- (void)setObserverFrameRateForLynxView:(int32_t)rate {
+  // If rate < 0, do not use this negative value.
+  if (rate < 0) {
+    return;
+  }
+  // If rate == 0, let _frameRateForLynxView = 60 and destroy _displayLinkForLynxView.
+  if (rate == 0) {
+    _frameRateForLynxView = 0;
+    if (_displayLinkForLynxView) {
+      [_displayLinkForLynxView invalidate];
+      _displayLinkForLynxView = nil;
+    }
+    return;
+  }
+  // If rate > 60, let _frameRateForLynxView = 60.
+  if (rate > 60) {
+    _frameRateForLynxView = 60;
+    return;
+  }
+  _frameRateForLynxView = rate;
+}
+
 // set frame rate by js api
 - (void)setObserverFrameRateDynamic:(NSDictionary *)options {
+  if (options == nil) {
+    return;
+  }
+
+  int32_t rate = [[options valueForKey:@"forExposureCheck"] intValue];
+  [self setObserverFrameRateForExposure:rate];
+  rate = [[options valueForKey:@"forPageRect"] intValue];
+  [self setObserverFrameRateForLynxView:rate];
+
+  [self setUpExposureDisplayLink];
+  [self setUpLynxViewDisplayLink];
 }
 
 - (void)setEnableCheckExposureOptimize:(BOOL)enableCheckExposureOptimize {
@@ -374,16 +412,22 @@
   return isIntersectWithRoot && isIntersectWithScreen && isRootIntersectWithScreen;
 }
 
-- (BOOL)isLynxViewChanged {
+- (void)isLynxViewChanged:(CADisplayLink *)sender {
   CGRect lynxViewNewFrame = [_rootUI.rootView convertRect:_rootUI.rootView.bounds toView:nil];
 
   // It means LynxView doesn't change when the new frame is equal to the old frame.
   if (CGRectEqualToRect(_lynxViewOldFrame, lynxViewNewFrame)) {
     _lynxViewOldFrame = lynxViewNewFrame;
-    return NO;
+    // There is no need to detect exposure when LynxView haven't changed.
+    return;
   }
   _lynxViewOldFrame = lynxViewNewFrame;
-  return YES;
+
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, UI_EXPOSURE_HANDLER);
+
+  [self ExecExposureTask];
+
+  LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
 }
 
 - (void)exposureHandler:(CADisplayLink *)sender {
@@ -397,16 +441,21 @@
     return;
   }
 
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, UI_EXPOSURE_HANDLER);
-
-  // There is no need to detect exposure when UI and LynxView haven't changed.
-  if (_enableCheckExposureOptimize && !_flag && ![self isLynxViewChanged]) {
-    LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
+  // There is no need to detect exposure when UI haven't changed.
+  if (_enableCheckExposureOptimize && !_flag) {
     return;
   }
   // The flag should be reset to NO before the next runloop.
   [self didExposure];
 
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, UI_EXPOSURE_HANDLER);
+
+  [self ExecExposureTask];
+
+  LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
+}
+
+- (void)ExecExposureTask {
   // step 1: select UI in the screen from all exposured UI
   for (LynxUIExposureDetail *detail in [_exposedLynxUIMap allValues]) {
     if (detail.ui != nil) {
@@ -465,8 +514,6 @@
 
   [_disappearSet removeAllObjects];
   [_appearSet removeAllObjects];
-
-  LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
 }
 
 - (void)stopExposure:(NSDictionary *)options {
@@ -672,19 +719,52 @@
   LLogInfo(@"LynxUIExposure addExposureToRunLoop");
   // After calling stopExposure, the exposure detection task should not be started in
   // didMoveToWindow, but will only be started in resumeExposure.
-  if (!_isStopExposure && _displayLink == nil) {
+  if (!_isStopExposure) {
+    [self setUpExposureDisplayLink];
+    [self setUpLynxViewDisplayLink];
+  }
+}
+
+- (void)setUpExposureDisplayLink {
+  if (_frameRate == 0) {
+    return;
+  }
+  if (_displayLink == nil) {
     _displayLink = [CADisplayLink displayLinkWithTarget:[LynxWeakProxy proxyWithTarget:self]
                                                selector:@selector(exposureHandler:)];
-    if (@available(iOS 10.0, *)) {
-      _displayLink.preferredFramesPerSecond = _frameRate;  // ms = 1000 / 20 = 50ms
-    } else {
+  }
+
+  if (@available(iOS 10.0, *)) {
+    _displayLink.preferredFramesPerSecond = _frameRate;  // ms = 1000 / 20 = 50ms
+  } else {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-      _displayLink.frameInterval = 60 / _frameRate;  // ms =(1000/60) * 3 = 50ms
+    _displayLink.frameInterval = 60 / _frameRate;  // ms =(1000/60) * 3 = 50ms
 #pragma clang diagnostic pop
-    }
-    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
   }
+  [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+}
+
+- (void)setUpLynxViewDisplayLink {
+  if (!_enableCheckExposureOptimize || _frameRateForLynxView == 0) {
+    return;
+  }
+  if (_displayLinkForLynxView == nil) {
+    _displayLinkForLynxView =
+        [CADisplayLink displayLinkWithTarget:[LynxWeakProxy proxyWithTarget:self]
+                                    selector:@selector(isLynxViewChanged:)];
+  }
+
+  if (@available(iOS 10.0, *)) {
+    _displayLinkForLynxView.preferredFramesPerSecond =
+        _frameRateForLynxView;  // ms = 1000 / 20 = 50ms
+  } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    _displayLinkForLynxView.frameInterval = 60 / _frameRateForLynxView;  // ms =(1000/60) * 3 = 50ms
+#pragma clang diagnostic pop
+  }
+  [_displayLinkForLynxView addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
 
 - (void)addLynxUI:(LynxUI *)ui
@@ -763,6 +843,10 @@
   if (_displayLink) {
     [_displayLink invalidate];
     _displayLink = nil;
+  }
+  if (_displayLinkForLynxView) {
+    [_displayLinkForLynxView invalidate];
+    _displayLinkForLynxView = nil;
   }
 }
 

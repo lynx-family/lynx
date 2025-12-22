@@ -9,8 +9,9 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LynxUIExposure ()
 
 - (instancetype)initWithObserver:(LynxGlobalObserver *)observer;
-- (BOOL)isLynxViewChanged;
-- (void)setObserverFrameRate:(int32_t)rate;
+- (void)isLynxViewChanged:(CADisplayLink *)sender;
+- (void)setObserverFrameRateForExposure:(int32_t)rate;
+- (void)setObserverFrameRateForLynxView:(int32_t)rate;
 - (void)setEnableCheckExposureOptimize:(BOOL)enableCheckExposureOptimize;
 
 @end

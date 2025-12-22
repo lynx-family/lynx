@@ -214,7 +214,8 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
       setEnableNewIntersectionObserver:pageConfig->GetEnableNewIntersectionObserver()];
 
   // Set config to LynxUIExposure
-  [_uiOwner.uiContext.uiExposure setObserverFrameRate:pageConfig->GetObserverFrameRate()];
+  [_uiOwner.uiContext.uiExposure
+      setObserverFrameRateForExposure:pageConfig->GetObserverFrameRate()];
   [_uiOwner.uiContext.uiExposure
       setEnableCheckExposureOptimize:pageConfig->GetEnableCheckExposureOptimize()];
 

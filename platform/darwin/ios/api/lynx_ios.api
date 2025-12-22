@@ -4473,8 +4473,9 @@ public class LynxUIExposure : NSObject {
   public void LynxUIExposure::resumeExposure();
   public void LynxUIExposure::setObserverFrameRateDynamic:(NSDictionary *options);
   public instancetype LynxUIExposure()::initWithObserver:(LynxGlobalObserver *observer);
-  public BOOL LynxUIExposure()::isLynxViewChanged();
-  public void LynxUIExposure()::setObserverFrameRate:(int32_t rate);
+  public void LynxUIExposure()::isLynxViewChanged:(CADisplayLink *sender);
+  public void LynxUIExposure()::setObserverFrameRateForExposure:(int32_t rate);
+  public void LynxUIExposure()::setObserverFrameRateForLynxView:(int32_t rate);
   public void LynxUIExposure()::setEnableCheckExposureOptimize:(BOOL enableCheckExposureOptimize);
   public void LynxUIExposure()::exposureHandler:(CADisplayLink *sender);
   public void LynxUIExposure()::sendEvent:eventName:(NSMutableSet< LynxUIExposureDetail * > *uiSet, [eventName] NSString *eventName);
