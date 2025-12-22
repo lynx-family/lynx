@@ -8,6 +8,7 @@
 #include <native_drawing/drawing_rect.h>
 #include <native_drawing/drawing_sampling_options.h>
 
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
@@ -75,7 +76,8 @@ void BackgroundImageLayer::LoadImage() {
           }
         });
   } else {
-    DecodeImageData(url_, true);
+    bool is_base64 = base::BeginsWith(url_, image::kBase64Scheme);
+    DecodeImageData(url_, is_base64);
   }
 }
 
