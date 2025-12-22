@@ -8,6 +8,7 @@
  * @public
  */
 
+{% if not export %}
 export enum CompilerOptionAirMode {
   AIR_MODE_OFF = 0,
   AIR_MODE_TTML_WITHOUT_JS,
@@ -16,8 +17,10 @@ export enum CompilerOptionAirMode {
   AIR_MODE_FIBER,
 }
 
+{% endif %}
 export interface CompilerOptions {
-{% for option in configs %}
+{% for option in options %}
+{% if not export or (export and option.export)%}
   /**
    {% if option.desc %}
    * {{ option.desc }}
@@ -37,5 +40,6 @@ export interface CompilerOptions {
    */
   {{ option.name }}?: {{ option.js_value_type }}
 
+{% endif %}
 {% endfor %}
 }

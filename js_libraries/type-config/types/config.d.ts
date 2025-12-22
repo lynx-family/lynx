@@ -120,17 +120,6 @@ export interface Config {
   enableAccessibilityElement?: boolean
 
   /**
-   * If true, when reload template or update data with option reset_page_data, the keys that do not exist in the new data but exist in the original data will have their values set to undefined in TTML Strict Mode.
-   *
-   * Supported platform: Android, HarmonyOS, iOS
-   *
-   * Since: LynxSDK 2.14
-   *
-   * @defaultValue false
-   */
-  enableAirDetectRemovedKeysWhenUpdateData?: boolean
-
-  /**
    * Whether to enable asynchronous initialization of videoEngine
    *
    * Supported platform: Android
@@ -206,17 +195,6 @@ export interface Config {
    * @defaultValue undefined
    */
   enableComponentAsyncDecode?: boolean
-
-  /**
-   * Customize component lifecycle align webview when enable.
-   *
-   * Supported platform: Android
-   *
-   * Since: LynxSDK 2.2
-   *
-   * @defaultValue false
-   */
-  enableComponentLifecycleAlignWebview?: boolean
 
   /**
    * Support component can be passed null props, null props only supported in LepusNG now. Open this switch to support lepus use null prop.
@@ -360,17 +338,6 @@ export interface Config {
    * @defaultValue false
    */
   enableExposureWhenReload?: boolean
-
-  /**
-   * Indicates whether use FiberElement for RadonDiff Arch.
-   *
-   * Supported platform: Android, HarmonyOS, iOS
-   *
-   * Since: LynxSDK 3.0
-   *
-   * @defaultValue undefined
-   */
-  enableFiberElementForRadonDiff?: boolean
 
   /**
    * A better and stable position fixed handling. 
@@ -637,7 +604,7 @@ export interface Config {
   enablePlatformGesture?: boolean
 
   /**
-   * SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same elememnt has intersect properties.
+   * SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same element has intersect properties.
    *
    * Supported platform: Android, iOS, HarmonyOS
    *
@@ -989,50 +956,6 @@ export interface Config {
   keyboardCallbackPassRelativeHeight?: boolean
 
   /**
-   * GC threshold of lepusNG. Let default value be 256, and the unit is KB.
-   *
-   * Supported platform: Android, HarmonyOS, iOS
-   *
-   * Since: LynxSDK 2.9
-   *
-   * @defaultValue undefined
-   */
-  lepusGCThreshold?: number
-
-  /**
-   * If this is set to true, lepus.js will get undefined instead of null for a nonexistent property on the object; Only available for lepus engine.
-   *
-   * Supported platform: Android, HarmonyOS, iOS
-   *
-   * Since: LynxSDK 1.6
-   *
-   * @defaultValue false
-   */
-  lepusNullPropAsUndef?: boolean
-
-  /**
-   * Set the virtual stack space of the lepusng engine, or use the system default value if it is not set actively
-   *
-   * Supported platform: iOS
-   *
-   * Since: LynxSDK 2.2
-   *
-   * @defaultValue undefined
-   */
-  lepusQuickjsStacksize?: number
-
-  /**
-   * Sets whether lepus/lepusng is run in strict mode
-   *
-   * Supported platform: Android, HarmonyOS, iOS
-   *
-   * Since: LynxSDK 1.4
-   *
-   * @defaultValue false
-   */
-  lepusStrict?: boolean
-
-  /**
    * Specify the interval for triggering the long press event.
    *
    * Supported platform: Android, HarmonyOS, iOS
@@ -1042,17 +965,6 @@ export interface Config {
    * @defaultValue undefined
    */
   longPressDuration?: number
-
-  /**
-   * set 0 is surface mapview, set 1 is texture mapview
-   *
-   * Supported platform: Android
-   *
-   * Since: LynxSDK 3.2
-   *
-   * @defaultValue undefined
-   */
-  mapContainerType?: number
 
   /**
    * Specifies the frequency of exposure detection.

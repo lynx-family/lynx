@@ -8,7 +8,7 @@ compilerOptions:
   templateDebugUrl:
     defaultValue: ''
     valueType: string
-  enableCssExternalClass:
+  enableCSSExternalClass:
     defaultValue: 'true'
     valueType: boolean
     since: '1.6'
@@ -18,6 +18,7 @@ compilerOptions:
     since: '2.1'
     nameAs:
       member: enable_lepus_ng
+    export: false
   enableCSSClassMerge:
     defaultValue: 'false'
     valueType: boolean
@@ -41,6 +42,7 @@ compilerOptions:
     jsValueType: Record<string, unknown>
     codeGen:
       - NONE
+    export: false
   debugInfoOutside:
     defaultValue: 'false'
     valueType: boolean
@@ -50,10 +52,12 @@ compilerOptions:
     defaultValue: 'true'
     valueType: boolean
     since: '1.6'
+    export: false
   enableCSSStrictMode:
     defaultValue: 'false'
     valueType: boolean
     since: '1.6'
+    author: zhongyr
   defaultOverflowVisible:
     defaultValue: 'true'
     valueType: boolean
@@ -73,6 +77,7 @@ compilerOptions:
     valueType: boolean
     codeGen:
       - NONE
+    export: false
   enableKeepPageData:
     defaultValue: 'false'
     valueType: boolean
@@ -89,6 +94,7 @@ compilerOptions:
     defaultValue: 'false'
     valueType: boolean
     since: '2.3'
+    export: false
   enableCSSLazyDecode:
     defaultValue: FE_OPTION_UNDEFINED
     valueType: FeOption
@@ -104,6 +110,7 @@ compilerOptions:
     defaultValue: FE_OPTION_UNDEFINED
     valueType: FeOption
     jsValueType: boolean
+    author: DragonDragonDDD
     since: '2.6'
   enableCSSAsyncDecode:
     defaultValue: FE_OPTION_UNDEFINED
@@ -124,6 +131,7 @@ compilerOptions:
     valueType: uint8_t
     jsValueType: CompilerOptionAirMode
     since: '2.11'
+    export: false
   enableFiberArch:
     defaultValue: 'false'
     valueType: boolean
@@ -143,6 +151,7 @@ compilerOptions:
     valueType: boolean
     since: '2.18'
     bindMemberTo: enable_reuse_context
+    export: false
   enableCSSInvalidation:
     description: If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
     defaultValue: 'false'
@@ -152,6 +161,7 @@ compilerOptions:
     description: Enable this switch to use all raw css styles(no parse in encode), not used in runtime.
     defaultValue: 'true'
     valueType: boolean
+    export: false
   experimental_encodeQuickjsBytecode:
     description: Allow encoding quickjs bytecode instead of source code in template.
     defaultValue: 'false'
@@ -164,6 +174,7 @@ compilerOptions:
     valueType: boolean
     nameAs:
       member: enable_async_lepus_chunk_decode
+    export: false
   enableSimpleStyling:
     description: Using the simplified styling module.
     defaultValue: 'false'
@@ -174,17 +185,68 @@ compilerOptions:
     valueType: string
     codeGen:
       - NONE
+    export: false
   enableLepusDebug:
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
+    export: false
   enableParallelElement:
     defaultValue: 'false'
     valueType: boolean
     codeGen:
       - NONE
-# compile options end here
+    export: false
+  silence:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  enableTTForFullVersion:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  enableDataSetAttrs:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  skipEncode:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  enableSSR:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  enableCursor:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  closureFix:
+    defaultValue: 'true'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+  enableConcurrentElement:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+    export: false
+# compiler options end here
 
 # PageConfig start here
 extraInfo:
@@ -340,6 +402,7 @@ lepusGCThreshold:
     - Android
     - HarmonyOS
     - iOS
+  export: false
 pipelineSchedulerConfig:
   description:
     Scheduler config for pipeline, including enableParallelElement/list-framework
@@ -380,6 +443,7 @@ lepusQuickjsStacksize:
   since: '2.2'
   supportPlatform:
     - iOS
+  export: false
 observerFrameRate:
   description: Specifies the frequency of exposure detection.
   defaultValue: '20'
@@ -449,6 +513,7 @@ enableFiberElementForRadonDiff:
     - Android
     - HarmonyOS
     - iOS
+  export: false
 enableOptPushStyleToBundle:
   description: Enable using PropBundleStyleWriter to write style to PropBundle.
   defaultValue: TernaryBool::UNDEFINE_VALUE
@@ -629,6 +694,7 @@ mapContainerType:
   since: '3.2'
   supportPlatform:
     - Android
+  export: false
 flatten:
   description:
     Control whether the node requires creating a corresponding Android
@@ -672,6 +738,7 @@ lepusStrict:
     - Android
     - HarmonyOS
     - iOS
+  export: false
 lepusNullPropAsUndef:
   description:
     If this is set to true, lepus.js will get undefined instead of null
@@ -691,6 +758,7 @@ lepusNullPropAsUndef:
     - Android
     - HarmonyOS
     - iOS
+  export: false
 dataStrictMode:
   description:
     ReactLynx cannot opt top_level_variables used in lepus. So we cannot
@@ -835,6 +903,7 @@ enableComponentLifecycleAlignWebview:
   since: '2.2'
   supportPlatform:
     - Android
+  export: false
 enableListNewArchitecture:
   description: Indicates whether to use new architecture for the  platform list
   defaultValue: 'false'
@@ -1380,6 +1449,7 @@ enableAirDetectRemovedKeysWhenUpdateData:
     - Android
     - HarmonyOS
     - iOS
+  export: false
 enableJSDataProcessor:
   description: Enable data processor on JS thread
   defaultValue: 'false'
@@ -1713,7 +1783,7 @@ enableMTSPreExecute:
   author: 'lybvinci'
   since: '3.7'
 enablePropertyBasedSimpleStyle:
-  description: SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same elememnt has intersect properties.
+  description: SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same element has intersect properties.
   defaultValue: 'false'
   valueType: bool
   readSettings: false

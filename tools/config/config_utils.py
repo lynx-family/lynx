@@ -7,26 +7,29 @@
 
 import os
 import sys
+import shutil
 import subprocess
 
 _this_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.abspath(os.path.join(_this_dir, os.pardir, os.pardir, os.pardir))
-if sys.platform == "win32":
-    CLANG_FORMAT_PATH = os.path.join(
-        _root_dir, "buildtools", "llvm", "clang-format.exe"
-    )
-    if not os.path.exists(CLANG_FORMAT_PATH):
-        CLANG_FORMAT_PATH = os.path.join(
-            _root_dir, "lynx", "buildtools", "llvm", "clang-format.exe"
-        )
-else:
-    CLANG_FORMAT_PATH = os.path.join(
-        _root_dir, "buildtools", "llvm", "bin", "clang-format"
-    )
-    if not os.path.exists(CLANG_FORMAT_PATH):
-        CLANG_FORMAT_PATH = os.path.join(
-            _root_dir, "lynx", "buildtools", "llvm", "bin", "clang-format"
-        )
+_clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang-format"
+
+
+def _get_clang_format_path():
+    # 1. Check pre-defined paths in the repository
+    candidate_paths = [
+        os.path.join(_root_dir, "buildtools", "llvm", _clang_format_binary),
+        os.path.join(_root_dir, "lynx", "buildtools", "llvm", _clang_format_binary),
+    ]
+    for path in candidate_paths:
+        if os.path.exists(path):
+            return path
+
+    # 2. Fallback to system PATH
+    return shutil.which(_clang_format_binary) or _clang_format_binary
+
+
+CLANG_FORMAT_PATH = _get_clang_format_path()
 
 
 def clang_format(file: str, style="Google", file_extension=None) -> str:

@@ -1,75 +1,46 @@
 import { describe, it, expect } from 'vitest';
-import { compilerOptionsKeys, configKeys, CompilerOptionAirMode } from '../index'
+import { compilerOptionsKeys, configKeys } from '../index'
 
 describe('type-config index', () => {
   it('should export correct keys and types', () => {
     expect(compilerOptionsKeys).toBeDefined();
     expect(configKeys).toBeDefined();
-    expect(CompilerOptionAirMode).toBeDefined();
-  });
-  it('should have correct CompilerOptionAirMode', () => {
-    expect(CompilerOptionAirMode).toMatchInlineSnapshot(`
-      {
-        "0": "AIR_MODE_OFF",
-        "1": "AIR_MODE_TTML_WITHOUT_JS",
-        "2": "AIR_MODE_NATIVE_SCRIPT",
-        "3": "AIR_MODE_STRICT",
-        "4": "AIR_MODE_FIBER",
-        "AIR_MODE_FIBER": 4,
-        "AIR_MODE_NATIVE_SCRIPT": 2,
-        "AIR_MODE_OFF": 0,
-        "AIR_MODE_STRICT": 3,
-        "AIR_MODE_TTML_WITHOUT_JS": 1,
-      }
-    `)
   });
   it('should have correct compilerOptionsKeys', () => {
-    expect(compilerOptionsKeys.length).toBe(38);
+    expect(compilerOptionsKeys.length).toBe(26);
     expect(compilerOptionsKeys).toMatchInlineSnapshot(`
       [
-        "bundleModuleMode",
         "debugInfoOutside",
         "defaultDisplayLinear",
         "defaultOverflowVisible",
         "disableMultipleCascadeCSS",
-        "enableAirRawCSS",
         "enableComponentConfig",
         "enableCSSAsyncDecode",
         "enableCSSClassMerge",
         "enableCSSEngine",
-        "enableCssExternalClass",
+        "enableCSSExternalClass",
         "enableCSSInvalidation",
         "enableCSSLazyDecode",
         "enableCSSSelector",
         "enableCSSStrictMode",
         "enableCSSVariable",
-        "enableDynamicComponent",
         "enableEventRefactor",
         "enableFiberArch",
         "enableFlexibleTemplate",
         "enableKeepPageData",
-        "enableLepusChunkAsyncDecode",
-        "enableLepusDebug",
-        "enableLynxAir",
-        "enableParallelElement",
-        "enableRadon",
         "enableRemoveCSSScope",
-        "enableReuseContext",
         "enableSimpleStyling",
         "experimental_encodeQuickjsBytecode",
         "forceCalcNewStyle",
         "implicitAnimation",
-        "lynxAirMode",
         "removeCSSParserLog",
         "targetSdkVersion",
         "templateDebugUrl",
-        "trialOptions",
-        "useLepusNG",
       ]
     `)
   })
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(130);
+    expect(configKeys.length).toBe(122);
     expect(configKeys).toMatchInlineSnapshot(`
       [
         "absoluteInContentBound",
@@ -82,7 +53,6 @@ describe('type-config index', () => {
         "disableQuickTracingGC",
         "enableA11y",
         "enableAccessibilityElement",
-        "enableAirDetectRemovedKeysWhenUpdateData",
         "enableAsyncInitVideoEngine",
         "enableAsyncRequestImage",
         "enableAsyncResolveSubtree",
@@ -90,7 +60,6 @@ describe('type-config index', () => {
         "enableCheckLocalImage",
         "enableCircularDataCheck",
         "enableComponentAsyncDecode",
-        "enableComponentLifecycleAlignWebview",
         "enableComponentNullProp",
         "enableCreateViewAsync",
         "enableCSSInheritance",
@@ -104,7 +73,6 @@ describe('type-config index', () => {
         "enableExposureUIMargin",
         "enableExposureWhenLayout",
         "enableExposureWhenReload",
-        "enableFiberElementForRadonDiff",
         "enableFixedNew",
         "enableHarmonyNewOverlay",
         "enableHarmonyVisibleAreaChangeForExposure",
@@ -161,12 +129,7 @@ describe('type-config index', () => {
         "implicit",
         "includeFontPadding",
         "keyboardCallbackPassRelativeHeight",
-        "lepusGCThreshold",
-        "lepusNullPropAsUndef",
-        "lepusQuickjsStacksize",
-        "lepusStrict",
         "longPressDuration",
-        "mapContainerType",
         "observerFrameRate",
         "pipelineSchedulerConfig",
         "preferredFps",
