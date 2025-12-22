@@ -3144,6 +3144,7 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
       child->EnsureSLNode();
       sl_node_->InsertChildBefore(child->sl_node_.get(),
                                   ref ? ref->sl_node_.get() : nullptr);
+      MarkLayoutDirtyLite();
     }
     child->attached_to_layout_parent_ = true;
     return;
@@ -3174,6 +3175,7 @@ void FiberElement::RemoveLayoutNode(FiberElement *child) {
             "Element.");
       }
       child->slnode()->parent()->RemoveChild(child->slnode());
+      MarkLayoutDirtyLite();
       child->attached_to_layout_parent_ = false;
     }
     return;
