@@ -211,7 +211,7 @@ def _gen_compile_options_types():
 
 def gen_config_doc(configs: list[Config]):
     config_doc_tmpl_path = JINJA_TEMPLATES_PATH / "lynx_config_doc.tmpl"
-    config_doc_header_path = (LYNX_CONFIG_TOOLS_PATH / "lynx_config_doc.mdx",)
+    config_doc_header_path = LYNX_CONFIG_TOOLS_PATH / "lynx_config_doc.mdx"
 
     render_code_content(
         config_doc_tmpl_path,
