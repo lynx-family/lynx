@@ -10,6 +10,7 @@
 
 export interface Config {
 {% for config in configs %}
+{% if not export or (export and config.export)%}
   /**
    {% if config.desc %}
    * {{ config.desc }}
@@ -32,6 +33,7 @@ export interface Config {
    */
   {{ config.name }}?: {{ config.js_value_type }}
 
+{% endif %}
 {% endfor %}
 }
 

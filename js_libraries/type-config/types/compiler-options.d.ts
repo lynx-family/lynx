@@ -8,21 +8,7 @@
  * @public
  */
 
-export enum CompilerOptionAirMode {
-  AIR_MODE_OFF = 0,
-  AIR_MODE_TTML_WITHOUT_JS,
-  AIR_MODE_NATIVE_SCRIPT,
-  AIR_MODE_STRICT,
-  AIR_MODE_FIBER,
-}
-
 export interface CompilerOptions {
-  /**
-   * @defaultValue ""
-   *
-   */
-  bundleModuleMode?: string
-
   /**
    * @defaultValue false
    *
@@ -52,14 +38,6 @@ export interface CompilerOptions {
    *
    */
   disableMultipleCascadeCSS?: boolean
-
-  /**
-   * Enable this switch to use all raw css styles(no parse in encode), not used in runtime.
-   *
-   * @defaultValue true
-   *
-   */
-  enableAirRawCSS?: boolean
 
   /**
    * Since: LynxSDK 2.6
@@ -95,7 +73,7 @@ export interface CompilerOptions {
    * @defaultValue true
    *
    */
-  enableCssExternalClass?: boolean
+  enableCSSExternalClass?: boolean
 
   /**
    * If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
@@ -140,14 +118,6 @@ export interface CompilerOptions {
   enableCSSVariable?: boolean
 
   /**
-   * Since: LynxSDK 1.6
-   *
-   * @defaultValue true
-   *
-   */
-  enableDynamicComponent?: boolean
-
-  /**
    * Since: LynxSDK 2.5
    *
    * @defaultValue undefined
@@ -180,54 +150,10 @@ export interface CompilerOptions {
   enableKeepPageData?: boolean
 
   /**
-   * Allow async decode lepus chunk.
-   *
-   * @defaultValue false
-   *
-   */
-  enableLepusChunkAsyncDecode?: boolean
-
-  /**
-   * @defaultValue false
-   *
-   */
-  enableLepusDebug?: boolean
-
-  /**
-   * Since: LynxSDK 2.3
-   *
-   * @defaultValue false
-   *
-   */
-  enableLynxAir?: boolean
-
-  /**
-   * @defaultValue false
-   *
-   */
-  enableParallelElement?: boolean
-
-  /**
-   * @defaultValue false
-   *
-   */
-  enableRadon?: boolean
-
-  /**
    * @defaultValue false
    *
    */
   enableRemoveCSSScope?: boolean
-
-  /**
-   * Enable this switch to reuse lepus::Context between DynamicComponent and page can only be used in lepusng.
-   *
-   * Since: LynxSDK 2.18
-   *
-   * @defaultValue false
-   *
-   */
-  enableReuseContext?: boolean
 
   /**
    * Using the simplified styling module.
@@ -266,14 +192,6 @@ export interface CompilerOptions {
   implicitAnimation?: boolean
 
   /**
-   * Since: LynxSDK 2.11
-   *
-   * @defaultValue undefined
-   *
-   */
-  lynxAirMode?: CompilerOptionAirMode
-
-  /**
    * @defaultValue false
    *
    */
@@ -290,19 +208,5 @@ export interface CompilerOptions {
    *
    */
   templateDebugUrl?: string
-
-  /**
-   * @defaultValue undefined
-   *
-   */
-  trialOptions?: Record<string, unknown>
-
-  /**
-   * Since: LynxSDK 2.1
-   *
-   * @defaultValue false
-   *
-   */
-  useLepusNG?: boolean
 
 }
