@@ -96,6 +96,7 @@ class Config:
         if self.value_type == "bool" or self.value_type == "boolean":
             self.value_type = "bool"
             self.js_value_type = "boolean"
+            self.js_default_value = self.default_value
         elif self.value_type == "string":
             self.value_type = "std::string"
             self.setter_input_type = "const std::string&"
@@ -242,7 +243,7 @@ def parse_config() -> list[Config]:
         config = yaml.safe_load(f)
     configs: list[Config] = []
     for key, value in config.items():
-        if key == "compileOptions":
+        if key == "compilerOptions":
             global _compile_options
             _compile_options = [
                 _construct_config_object(key, value) for key, value in value.items()
@@ -255,7 +256,12 @@ def parse_config() -> list[Config]:
     return configs
 
 
-def render_code_content(template_path: str, output_path: str, configs: list[Config]):
+def render_code_content(
+    template_path: str,
+    output_path: str,
+    configs: list[Config],
+    options: list[Config] = None,
+):
     if not os.path.exists(template_path):
         print(f"{template_path} not found when gen config")
         sys.exit(1)
@@ -264,7 +270,7 @@ def render_code_content(template_path: str, output_path: str, configs: list[Conf
 
     rendered_content = Template(
         lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True
-    ).render(configs=configs)
+    ).render(configs=configs, options=options)
     if output_path.endswith(".cc") or output_path.endswith(".h"):
         rendered_content = clang_format(rendered_content, file_extension=".h")
 
@@ -400,7 +406,7 @@ def gen_compile_options():
 def gen_compile_options_types():
     compile_options_types_tmpl_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "compile_options_types.tmpl",
+        "compiler_options_types.tmpl",
     )
 
     config_types_header_path = os.path.normpath(
@@ -411,7 +417,7 @@ def gen_compile_options_types():
             "js_libraries",
             "type-config",
             "types",
-            "compile-options.d.ts",
+            "compiler-options.d.ts",
         )
     )
 
@@ -440,6 +446,32 @@ def gen_config_doc(configs: list[Config]):
     )
 
 
+def gen_config_keys(configs: list[Config]):
+    config_keys_tmpl_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "config_keys.tmpl",
+    )
+
+    config_keys_header_path = os.path.normpath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            os.path.pardir,
+            os.path.pardir,
+            "js_libraries",
+            "type-config",
+            "config-keys.js",
+        )
+    )
+
+    global _compile_options
+    render_code_content(
+        config_keys_tmpl_path,
+        config_keys_header_path,
+        sort_by_deprecated_and_alphabetical(configs),
+        sort_by_deprecated_and_alphabetical(_compile_options),
+    )
+
+
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--gen-lynx-config", default=True, action="store_true")
@@ -462,6 +494,8 @@ def main():
         gen_config_types(configs)
         # gen compile options types
         gen_compile_options_types()
+        # gen config keys
+        gen_config_keys(configs)
     if args.gen_config_doc:
         # gen config doc
         gen_config_doc(configs)

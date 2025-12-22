@@ -3,12 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 /**
- * The Lynx compile options to set.
+ * The Lynx compiler options to set.
  *
  * @public
  */
 
-export enum CompileOptionAirMode {
+export enum CompilerOptionAirMode {
   AIR_MODE_OFF = 0,
   AIR_MODE_TTML_WITHOUT_JS,
   AIR_MODE_NATIVE_SCRIPT,
@@ -16,33 +16,39 @@ export enum CompileOptionAirMode {
   AIR_MODE_FIBER,
 }
 
-export interface CompileOptions {
+export interface CompilerOptions {
   /**
-   * @defaultValue undefined
+   * @defaultValue ""
+   *
+   */
+  bundleModuleMode?: string
+
+  /**
+   * @defaultValue false
    *
    */
   debugInfoOutside?: boolean
 
   /**
-   * Since: 2.2
+   * Since: LynxSDK 2.2
    *
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   defaultDisplayLinear?: boolean
 
   /**
-   * Since: 1.6
+   * Since: LynxSDK 1.6
    *
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   defaultOverflowVisible?: boolean
 
   /**
-   * Since: 2.0
+   * Since: LynxSDK 2.0
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   disableMultipleCascadeCSS?: boolean
@@ -50,15 +56,15 @@ export interface CompileOptions {
   /**
    * Enable this switch to use all raw css styles(no parse in encode), not used in runtime.
    *
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   enableAirRawCSS?: boolean
 
   /**
-   * Since: 2.6
+   * Since: LynxSDK 2.6
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableComponentConfig?: boolean
@@ -70,23 +76,23 @@ export interface CompileOptions {
   enableCSSAsyncDecode?: boolean
 
   /**
-   * Since: 2.1
+   * Since: LynxSDK 2.1
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableCSSClassMerge?: boolean
 
   /**
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   enableCSSEngine?: boolean
 
   /**
-   * Since: 1.6
+   * Since: LynxSDK 1.6
    *
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   enableCssExternalClass?: boolean
@@ -94,9 +100,9 @@ export interface CompileOptions {
   /**
    * If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
    *
-   * Since: 2.10
+   * Since: LynxSDK 2.10
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableCSSInvalidation?: boolean
@@ -110,39 +116,39 @@ export interface CompileOptions {
   /**
    * This switch will enable the css module in blink standard mode.
    *
-   * Since: 2.8
+   * Since: LynxSDK 2.8
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableCSSSelector?: boolean
 
   /**
-   * Since: 1.6
+   * Since: LynxSDK 1.6
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableCSSStrictMode?: boolean
 
   /**
-   * Since: 2.0
+   * Since: LynxSDK 2.0
    *
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   enableCSSVariable?: boolean
 
   /**
-   * Since: 1.6
+   * Since: LynxSDK 1.6
    *
-   * @defaultValue undefined
+   * @defaultValue true
    *
    */
   enableDynamicComponent?: boolean
 
   /**
-   * Since: 2.5
+   * Since: LynxSDK 2.5
    *
    * @defaultValue undefined
    *
@@ -150,7 +156,7 @@ export interface CompileOptions {
   enableEventRefactor?: boolean
 
   /**
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableFiberArch?: boolean
@@ -158,17 +164,17 @@ export interface CompileOptions {
   /**
    * If enable this value, the template will be encoded as flexible template.
    *
-   * Since: 2.8
+   * Since: LynxSDK 2.8
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableFlexibleTemplate?: boolean
 
   /**
-   * Since: 2.1
+   * Since: LynxSDK 2.1
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableKeepPageData?: boolean
@@ -176,27 +182,39 @@ export interface CompileOptions {
   /**
    * Allow async decode lepus chunk.
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableLepusChunkAsyncDecode?: boolean
 
   /**
-   * Since: 2.3
+   * @defaultValue false
    *
-   * @defaultValue undefined
+   */
+  enableLepusDebug?: boolean
+
+  /**
+   * Since: LynxSDK 2.3
+   *
+   * @defaultValue false
    *
    */
   enableLynxAir?: boolean
 
   /**
-   * @defaultValue undefined
+   * @defaultValue false
+   *
+   */
+  enableParallelElement?: boolean
+
+  /**
+   * @defaultValue false
    *
    */
   enableRadon?: boolean
 
   /**
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableRemoveCSSScope?: boolean
@@ -204,9 +222,9 @@ export interface CompileOptions {
   /**
    * Enable this switch to reuse lepus::Context between DynamicComponent and page can only be used in lepusng.
    *
-   * Since: 2.18
+   * Since: LynxSDK 2.18
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableReuseContext?: boolean
@@ -214,9 +232,9 @@ export interface CompileOptions {
   /**
    * Using the simplified styling module.
    *
-   * Since: 3.3
+   * Since: LynxSDK 3.3
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   enableSimpleStyling?: boolean
@@ -224,15 +242,15 @@ export interface CompileOptions {
   /**
    * Allow encoding quickjs bytecode instead of source code in template.
    *
-   * Since: 2.12
+   * Since: LynxSDK 2.12
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   experimental_encodeQuickjsBytecode?: boolean
 
   /**
-   * Since: 2.6
+   * Since: LynxSDK 2.6
    *
    * @defaultValue undefined
    *
@@ -240,23 +258,23 @@ export interface CompileOptions {
   forceCalcNewStyle?: boolean
 
   /**
-   * Since: 1.4
+   * Since: LynxSDK 1.4
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   implicitAnimation?: boolean
 
   /**
-   * Since: 2.11
+   * Since: LynxSDK 2.11
    *
    * @defaultValue undefined
    *
    */
-  lynxAirMode?: CompileOptionAirMode
+  lynxAirMode?: CompilerOptionAirMode
 
   /**
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   removeCSSParserLog?: boolean
@@ -280,9 +298,9 @@ export interface CompileOptions {
   trialOptions?: Record<string, unknown>
 
   /**
-   * Since: 2.1
+   * Since: LynxSDK 2.1
    *
-   * @defaultValue undefined
+   * @defaultValue false
    *
    */
   useLepusNG?: boolean

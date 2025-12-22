@@ -1,5 +1,5 @@
-import { assertType, describe, expectTypeOf, it } from 'vitest';
-import { Config, CompileOptions, CompileOptionAirMode } from '../types/index';
+import { describe, expectTypeOf, it } from 'vitest';
+import { Config, CompilerOptions, CompilerOptionAirMode } from '../types/index';
 
 describe('Test Config Types', () => {
   it('should have correct Config type', () => {
@@ -136,41 +136,44 @@ describe('Test Config Types', () => {
 
 describe('Test Compile Options Types', () => {
   it('should have correct types', () => {
-    expectTypeOf<CompileOptions>().toBeObject();
-    expectTypeOf<CompileOptions>().toHaveProperty('debugInfoOutside').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('defaultDisplayLinear').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('defaultOverflowVisible').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('disableMultipleCascadeCSS').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableAirRawCSS').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableComponentConfig').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSAsyncDecode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSClassMerge').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSEngine').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCssExternalClass').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSInvalidation').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSLazyDecode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSSelector').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSStrictMode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableCSSVariable').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableDynamicComponent').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableEventRefactor').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableFiberArch').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableFlexibleTemplate').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableKeepPageData').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableLepusChunkAsyncDecode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableLynxAir').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableRadon').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableRemoveCSSScope').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableReuseContext').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('enableSimpleStyling').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('experimental_encodeQuickjsBytecode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('forceCalcNewStyle').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('implicitAnimation').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('lynxAirMode').toEqualTypeOf<CompileOptionAirMode | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('removeCSSParserLog').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('targetSdkVersion').toEqualTypeOf<string | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('templateDebugUrl').toEqualTypeOf<string | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('trialOptions').toEqualTypeOf<Record<string, unknown> | undefined>();
-    expectTypeOf<CompileOptions>().toHaveProperty('useLepusNG').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toBeObject();
+    expectTypeOf<CompilerOptions>().toHaveProperty('bundleModuleMode').toEqualTypeOf<string | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('debugInfoOutside').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('defaultDisplayLinear').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('defaultOverflowVisible').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('disableMultipleCascadeCSS').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableAirRawCSS').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableComponentConfig').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSAsyncDecode').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSClassMerge').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSEngine').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCssExternalClass').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSInvalidation').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSLazyDecode').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSSelector').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSStrictMode').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSVariable').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableDynamicComponent').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableEventRefactor').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableFiberArch').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableFlexibleTemplate').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableKeepPageData').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableLepusChunkAsyncDecode').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableLepusDebug').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableLynxAir').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableParallelElement').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableRadon').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableRemoveCSSScope').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableReuseContext').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableSimpleStyling').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('experimental_encodeQuickjsBytecode').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('forceCalcNewStyle').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('implicitAnimation').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('lynxAirMode').toEqualTypeOf<CompilerOptionAirMode | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('removeCSSParserLog').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('targetSdkVersion').toEqualTypeOf<string | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('templateDebugUrl').toEqualTypeOf<string | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('trialOptions').toEqualTypeOf<Record<string, unknown> | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('useLepusNG').toEqualTypeOf<boolean | undefined>();
   });
 });
