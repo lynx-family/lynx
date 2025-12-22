@@ -98,7 +98,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   if ((tag == "image") && (painting_data->Contains("autoplay") ||
                            painting_data->Contains("loop-count"))) {
     ui = UIFlattenImage::Make(context_.get(), sign, tag);
-  } else if (tag == "x-overlay-ng" && context_->GetEnableHarmonyNewOverlay()) {
+  } else if ((tag == "x-overlay-ng" || tag == "overlay") &&
+             context_->GetEnableHarmonyNewOverlay()) {
     ui = CreateJSUI(sign, tag);
   } else if (auto* node_info = context_->GetNodeInfo(tag);
              node_info && node_info->ui_creator) {
