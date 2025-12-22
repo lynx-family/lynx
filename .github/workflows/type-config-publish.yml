@@ -1,0 +1,55 @@
+name: type_config_publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The npm tag to publish with.'
+        required: false
+        default: 'latest'
+
+jobs:
+  type_config_publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-backend: github
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@latest
+          npm --version
+      - name: Build
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+      - name: Update version for non-latest tags
+        if: github.event.inputs.tag != 'latest'
+        run: |
+          cd $GITHUB_WORKSPACE/lynx/js_libraries/type-config
+          npm version prerelease --preid=${{ github.event.inputs.tag }} --no-git-tag-version
+      - name: Test
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/js_libraries/type-config
+          npm test
+      - name: Publish
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/js_libraries/type-config
+          npm publish --access public --provenance --tag ${{ github.event.inputs.tag }}

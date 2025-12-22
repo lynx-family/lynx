@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { Config, CompilerOptions, CompilerOptionAirMode } from '../types/index';
+import { Config, CompilerOptions } from '../types/index';
 
 describe('Test Config Types', () => {
   it('should have correct Config type', () => {
@@ -14,7 +14,6 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('disableQuickTracingGC').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableA11y').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAccessibilityElement').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('enableAirDetectRemovedKeysWhenUpdateData').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAsyncInitVideoEngine').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAsyncRequestImage').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableAsyncResolveSubtree').toEqualTypeOf<boolean | undefined>();
@@ -22,7 +21,6 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableCheckLocalImage').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCircularDataCheck').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableComponentAsyncDecode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('enableComponentLifecycleAlignWebview').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableComponentNullProp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCreateViewAsync').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSInheritance').toEqualTypeOf<boolean | undefined>();
@@ -36,7 +34,6 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableExposureUIMargin').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableExposureWhenLayout').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableExposureWhenReload').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('enableFiberElementForRadonDiff').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFixedNew').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableHarmonyVisibleAreaChangeForExposure').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableICU').toEqualTypeOf<boolean | undefined>();
@@ -90,12 +87,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('implicit').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('includeFontPadding').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('keyboardCallbackPassRelativeHeight').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('lepusGCThreshold').toEqualTypeOf<number | undefined>();
-    expectTypeOf<Config>().toHaveProperty('lepusNullPropAsUndef').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('lepusQuickjsStacksize').toEqualTypeOf<number | undefined>();
-    expectTypeOf<Config>().toHaveProperty('lepusStrict').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('longPressDuration').toEqualTypeOf<number | undefined>();
-    expectTypeOf<Config>().toHaveProperty('mapContainerType').toEqualTypeOf<number | undefined>();
     expectTypeOf<Config>().toHaveProperty('observerFrameRate').toEqualTypeOf<number | undefined>();
     expectTypeOf<Config>().toHaveProperty('pipelineSchedulerConfig').toEqualTypeOf<number | undefined>();
     expectTypeOf<Config>().toHaveProperty('preferredFps').toEqualTypeOf<string | undefined>();
@@ -137,43 +129,31 @@ describe('Test Config Types', () => {
 describe('Test Compile Options Types', () => {
   it('should have correct types', () => {
     expectTypeOf<CompilerOptions>().toBeObject();
-    expectTypeOf<CompilerOptions>().toHaveProperty('bundleModuleMode').toEqualTypeOf<string | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('debugInfoOutside').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('defaultDisplayLinear').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('defaultOverflowVisible').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('disableMultipleCascadeCSS').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableAirRawCSS').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableComponentConfig').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSAsyncDecode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSClassMerge').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSEngine').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableCssExternalClass').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSExternalClass').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSInvalidation').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSLazyDecode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSSelector').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSStrictMode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableCSSVariable').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableDynamicComponent').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableEventRefactor').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableFiberArch').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableFlexibleTemplate').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableKeepPageData').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableLepusChunkAsyncDecode').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableLepusDebug').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableLynxAir').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableParallelElement').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableRadon').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableRemoveCSSScope').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('enableReuseContext').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('enableSimpleStyling').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('experimental_encodeQuickjsBytecode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('forceCalcNewStyle').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('implicitAnimation').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('lynxAirMode').toEqualTypeOf<CompilerOptionAirMode | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('removeCSSParserLog').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('targetSdkVersion').toEqualTypeOf<string | undefined>();
     expectTypeOf<CompilerOptions>().toHaveProperty('templateDebugUrl').toEqualTypeOf<string | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('trialOptions').toEqualTypeOf<Record<string, unknown> | undefined>();
-    expectTypeOf<CompilerOptions>().toHaveProperty('useLepusNG').toEqualTypeOf<boolean | undefined>();
   });
 });

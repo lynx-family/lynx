@@ -4,13 +4,17 @@
 
 const compilerOptionsKeys = [
   {% for option in options %}
+  {% if not export or (export and option.export)%}
   '{{option.name}}',
+  {% endif %}
   {% endfor %}
 ]
 
 const configKeys = [
   {% for config in configs %}
+  {% if not export or (export and config.export)%}
   '{{config.name}}',
+  {% endif %}
   {% endfor %}
 ]
 

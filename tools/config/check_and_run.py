@@ -15,25 +15,18 @@ def check_and_run():
         import yaml
         import jinja2
         from gen_config import (
-            gen_page_config_decode,
             gen_lynx_config,
             parse_config,
-            gen_config_types,
-            gen_compile_options,
-            gen_compile_options_types,
-            gen_config_keys,
+            gen_types
         )
 
         configs = parse_config()
         if not configs:
             sys.exit(-1)
 
-        gen_page_config_decode(configs)
         gen_lynx_config(configs)
-        gen_compile_options()
-        gen_config_types(configs)
-        gen_compile_options_types()
-        gen_config_keys(configs)
+        gen_types(configs)
+
         sys.exit(0)
     except ImportError:
         print("Required dependencies not found. Running gen_config.py...")
