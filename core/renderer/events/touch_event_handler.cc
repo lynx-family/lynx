@@ -171,7 +171,7 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
     return;
   }
 
-  if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+  if (tasm->EnableEventHandleRefactor()) {
     if (info.is_multi_finger) {
       for (auto events : *info.params.Table()) {
         int tag = std::stoi(events.first.str());
@@ -373,7 +373,7 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
     return;
   }
 
-  if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+  if (tasm->EnableEventHandleRefactor()) {
     auto target = node_manager_->Get(tag);
     if (!target) {
       LOGE("HandleCustomEvent error: the target is null.");
@@ -652,7 +652,7 @@ void TouchEventHandler::HandleTriggerComponentEvent(
     return;
   }
 
-  if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+  if (tasm->EnableEventHandleRefactor()) {
     int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch())
                             .count();

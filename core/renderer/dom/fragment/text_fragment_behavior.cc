@@ -19,7 +19,8 @@ void TextFragmentBehavior::CreatePlatformRenderer() {
 
 void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
   const auto& layout_info = fragment_->LayoutResult();
-  builder.Begin(layout_info.layout_result.padding_[starlight::Direction::kLeft],
+  builder.Begin(fragment_->id(),
+                layout_info.layout_result.padding_[starlight::Direction::kLeft],
                 layout_info.layout_result.padding_[starlight::Direction::kTop],
                 layout_info.layout_result.size_.width_,
                 layout_info.layout_result.size_.height_);

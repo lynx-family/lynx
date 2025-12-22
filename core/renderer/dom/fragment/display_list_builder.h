@@ -25,7 +25,8 @@ class DisplayListBuilder {
   DisplayListBuilder& operator=(DisplayListBuilder&&) = default;
 
   // Begin a new fragment
-  DisplayListBuilder& Begin(float x, float y, float width, float height);
+  DisplayListBuilder& Begin(int id, float x, float y, float width,
+                            float height);
 
   // End the current fragment
   DisplayListBuilder& End();

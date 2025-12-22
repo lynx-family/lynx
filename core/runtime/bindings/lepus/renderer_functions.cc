@@ -3811,7 +3811,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   if (callback->IsEmpty()) {
     // If callback is undefined, remove event.
     element->RemoveEvent(name->String(), type->String());
-    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor()) {
       element->RemoveEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
@@ -3821,7 +3821,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   } else if (callback->IsString()) {
     element->SetJSEventHandler(name->String(), type->String(),
                                callback->String());
-    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor()) {
       auto handler_name = callback->StdString();
       auto event_name = name->StdString();
       // remove the listener firstly to adapt rebind
@@ -3886,7 +3886,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
     element->SetLepusEventHandler(name->String(), type->String(),
                                   lepus::Value(), *callback);
 #if ENABLE_LEPUSNG_WORKLET
-    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor()) {
       // remove the listener firstly to adapt rebind
       element->RemoveEventListener(
           name->StdString(),
@@ -3960,7 +3960,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       element->SetWorkletEventHandler(name->String(), type->String(), value,
                                       context);
     }
-    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor()) {
       // Because the framework will repeatedly add different callbacks for the
       // same MTS callback, callback should not be passed in as the only flag of
       // the listener.

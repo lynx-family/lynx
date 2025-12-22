@@ -9,6 +9,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/event/event_dispatcher.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
@@ -243,6 +244,14 @@ void LynxEngine::SyncFetchLayoutResult() {
   LayoutMediator::HandleLayoutVoluntarily(operation_queue_.get(),
                                           element_manager->catalyzer(),
                                           element_manager->GetPageOptions());
+}
+
+void LynxEngine::SendEvent(int32_t target_id, fml::RefPtr<event::Event> event) {
+  auto target =
+      tasm_->page_proxy()->element_manager()->node_manager()->Get(target_id);
+  if (target) {
+    event::EventDispatcher::DispatchEvent(*target, std::move(event));
+  }
 }
 
 void LynxEngine::SendAirPageEvent(const std::string& name,

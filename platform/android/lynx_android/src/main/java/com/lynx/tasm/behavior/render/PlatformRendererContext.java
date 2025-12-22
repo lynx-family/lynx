@@ -34,6 +34,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     public static final int kListItem = 7;
   }
 
+  public static final class PlatformEventHandlerState {
+    public static final int kNone = 0;
+  }
+
   WeakReference<UIBody.UIBodyView> mRootView = null;
 
   HashMap<Integer, IRendererHost> mViewHolder = new HashMap<>();
@@ -61,6 +65,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (context != null && context.isLayoutInElementModeOn()) {
       this.mTextMeasurer = new TextMeasurer(context);
       mTextLayout = new TextLayout(this);
+    }
+  }
+
+  public void setLynxEngineActorForPlatformRendererContext(long ptr) {
+    if (ptr != 0) {
+      nativeSetLynxEngineActorForPlatformRendererContext(mNativePtr, ptr);
     }
   }
 
@@ -189,6 +199,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     host.getRenderer().setLynxFrame(left, top, left + width, top + height, dx, dy);
     host.getView().requestLayout();
+    host.getView().invalidate();
   }
 
   public LynxImageManager getImage(int sign) {
@@ -230,6 +241,20 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         parent.removeView(host.getView());
       }
     }
+  }
+
+  public boolean dispatchPlatformInputEvent(int[] iEventData, float[] fEventData) {
+    if (mDestroyed || mNativePtr == 0) {
+      return false;
+    }
+    return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+  }
+
+  public int getPlatformEventHandlerState() {
+    if (mDestroyed || mNativePtr == 0) {
+      return PlatformEventHandlerState.kNone;
+    }
+    return nativeGetPlatformEventHandlerState(mNativePtr);
   }
 
   public void getDisplayList(int id, DisplayList displayList) {
@@ -296,6 +321,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
 
+  native void nativeSetLynxEngineActorForPlatformRendererContext(long nativePtr, long ptr);
+
   native int[] nativeGetDisplayListLengths(long nativePtr, int id);
 
   /**
@@ -304,6 +331,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
    */
   native void nativeGetDisplayListData(
       long nativePtr, int id, int[] ops, int[] iArgv, float[] fArgv);
+
+  native boolean nativeDispatchPlatformInputEvent(
+      long nativePtr, int[] iEventData, float[] fEventData);
+
+  native int nativeGetPlatformEventHandlerState(long nativePtr);
 
   public void destroy() {
     mDestroyed = true;

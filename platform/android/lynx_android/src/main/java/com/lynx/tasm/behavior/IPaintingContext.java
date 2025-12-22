@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior;
 
 import android.graphics.PointF;
+import android.view.MotionEvent;
 
 public interface IPaintingContext {
   // this func will be execed on main thread.
@@ -16,4 +17,8 @@ public interface IPaintingContext {
   int getTargetWidth(int sign);
 
   int getTargetHeight(int sign);
+
+  boolean dispatchPlatformMotionEvent(MotionEvent ev);
+
+  void setLynxEngineActorForPlatformRendererContext(long ptr);
 }

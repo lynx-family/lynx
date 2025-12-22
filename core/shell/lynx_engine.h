@@ -118,6 +118,8 @@ class LynxEngine {
 
   void SyncFetchLayoutResult();
 
+  void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
+
   void SendAirPageEvent(const std::string& name, const lepus_value& params);
 
   void SendCustomEvent(const std::string& name, int32_t tag,

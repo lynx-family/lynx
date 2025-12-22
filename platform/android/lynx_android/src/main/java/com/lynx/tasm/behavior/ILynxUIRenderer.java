@@ -40,6 +40,8 @@ public interface ILynxUIRenderer {
 
   void attachNativeFacade(NativeFacade nativeFacade);
 
+  void setLynxEngineForPlatformRendererContext(long ptr);
+
   void onReloadAndInitUIThreadPart();
 
   void onReloadAndInitAnyThreadPart();

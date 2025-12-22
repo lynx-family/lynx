@@ -25,7 +25,7 @@ class DisplayListBuilderTest : public ::testing::Test {
 TEST_F(DisplayListBuilderTest, EmptyBuilder) {}
 
 TEST_F(DisplayListBuilderTest, BeginOperation) {
-  auto& result = builder_->Begin(10.0f, 20.0f, 100.0f, 200.0f);
+  auto& result = builder_->Begin(0, 10.0f, 20.0f, 100.0f, 200.0f);
 
   EXPECT_EQ(&result, builder_.get());  // Method chaining
 
@@ -41,11 +41,12 @@ TEST_F(DisplayListBuilderTest, BeginOperation) {
 
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kBegin));
 
-  // Check parameter data structure - optimized to only store float params
-  EXPECT_EQ(int_data_data[0], 0);  // int_count (no int params)
+  // Check parameter data structure
+  EXPECT_EQ(int_data_data[0], 1);  // int_count (1 int param)
   EXPECT_EQ(int_data_data[1], 4);  // float_count (4 float params)
 
-  // Check float parameters directly
+  // Check parameters
+  EXPECT_EQ(int_data_data[2], 0);
   EXPECT_FLOAT_EQ(float_data_data[0], 10.0f);
   EXPECT_FLOAT_EQ(float_data_data[1], 20.0f);
   EXPECT_FLOAT_EQ(float_data_data[2], 100.0f);
@@ -218,7 +219,7 @@ TEST_F(DisplayListBuilderTest, ClipOperation) {
 }
 
 TEST_F(DisplayListBuilderTest, MethodChaining) {
-  builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f)
+  builder_->Begin(0, 0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF0000FF)
       .DrawView(123)
       .DrawImage(456, -1)
@@ -258,7 +259,7 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
 }
 
 TEST_F(DisplayListBuilderTest, ClearBuilder) {
-  builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f).Fill(0xFF0000FF).End();
+  builder_->Begin(0, 0.0f, 0.0f, 100.0f, 100.0f).Fill(0xFF0000FF).End();
 
   builder_->Clear();
 
@@ -266,7 +267,7 @@ TEST_F(DisplayListBuilderTest, ClearBuilder) {
 }
 
 TEST_F(DisplayListBuilderTest, BuildMultipleTimes) {
-  builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f).Fill(0xFF0000FF);
+  builder_->Begin(0, 0.0f, 0.0f, 100.0f, 100.0f).Fill(0xFF0000FF);
 
   DisplayList display_list1 = builder_->Build();
 
@@ -287,7 +288,7 @@ TEST_F(DisplayListBuilderTest, BuildMultipleTimes) {
 TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
   const size_t kNumOperations = 100;
 
-  builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f);
+  builder_->Begin(0, 0.0f, 0.0f, 100.0f, 100.0f);
 
   for (size_t i = 0; i < kNumOperations; ++i) {
     builder_->Fill(static_cast<uint32_t>(i));
@@ -346,7 +347,7 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
     if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kImage)) {
       // Find corresponding data - need to calculate data index based on
       // position
-      size_t data_index = 2;            // Skip Begin operation data
+      size_t data_index = 3;            // Skip Begin operation data
       for (size_t j = 1; j < i; ++j) {  // Skip Begin operation
         if (op_types_data[j] ==
                 static_cast<int32_t>(DisplayListOpType::kFill) ||
@@ -372,7 +373,7 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
     if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kText)) {
       // Find corresponding data - need to calculate data index based on
       // position
-      size_t data_index = 2;            // Skip Begin operation data
+      size_t data_index = 3;            // Skip Begin operation data
       for (size_t j = 1; j < i; ++j) {  // Skip Begin operation
         if (op_types_data[j] ==
                 static_cast<int32_t>(DisplayListOpType::kFill) ||
@@ -395,7 +396,7 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
 }
 
 TEST_F(DisplayListBuilderTest, ZeroValues) {
-  builder_->Begin(0.0f, 0.0f, 0.0f, 0.0f)
+  builder_->Begin(0, 0.0f, 0.0f, 0.0f, 0.0f)
       .Fill(0)
       .DrawView(0)
       .DrawImage(0, -1)
@@ -427,34 +428,35 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
             static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
 
   // Check specific zero values
-  // Begin operation: [int_count=0, float_count=4, 4 float params]
-  EXPECT_EQ(display_list.GetContentIntData()[0], 0);  // int_count
+  // Begin operation: [int_count=1, float_count=4, 1 int param, 4 float params]
+  EXPECT_EQ(display_list.GetContentIntData()[0], 1);  // int_count
   EXPECT_EQ(display_list.GetContentIntData()[1], 4);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[2], 0);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[0], 0.0f);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[1], 0.0f);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[2], 0.0f);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[3], 0.0f);
 
   // Fill operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[2], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[3], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[4], 0);  // Fill color param
+  EXPECT_EQ(display_list.GetContentIntData()[3], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[4], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[5], 0);  // Fill color param
 
   // DrawView operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[5], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[6], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[7], 0);  // DrawView param
+  EXPECT_EQ(display_list.GetContentIntData()[6], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[7], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[8], 0);  // DrawView param
 
   // DrawImage operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[8], 2);    // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[9], 0);    // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[10], 0);   // DrawImage param
-  EXPECT_EQ(display_list.GetContentIntData()[11], -1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[9], 2);    // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[10], 0);   // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[11], 0);   // DrawImage param
+  EXPECT_EQ(display_list.GetContentIntData()[12], -1);  // int_count
 
   // DrawText operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[12], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[13], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[14], 0);  // DrawText param
+  EXPECT_EQ(display_list.GetContentIntData()[13], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[14], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[15], 0);  // DrawText param
 
   // Transform operation: [int_count=0, float_count=6, 6 float params]
   EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);  // int_count
@@ -528,7 +530,7 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
 }
 
 TEST_F(DisplayListBuilderTest, NegativeValues) {
-  builder_->Begin(-10.0f, -20.0f, -100.0f, -200.0f)
+  builder_->Begin(0, -10.0f, -20.0f, -100.0f, -200.0f)
       .Transform(-1.0f, -2.0f, -3.0f, -4.0f, -5.0f, -6.0f)
       .Clip(-5.0f, -15.0f, -50.0f, -100.0f);
 
@@ -537,10 +539,11 @@ TEST_F(DisplayListBuilderTest, NegativeValues) {
   // Check Begin operation with negative values (content operation)
   // Begin: [int_count=0, float_count=4, 4 float params]
   EXPECT_EQ(display_list.GetContentIntData()[0],
-            0);  // int_count (no int params)
+            1);  // int_count (1 int params)
   EXPECT_EQ(display_list.GetContentIntData()[1], 4);  // float_count
 
-  // Check float parameters directly for Begin
+  // Check parameters directly for Begin
+  EXPECT_EQ(display_list.GetContentIntData()[2], 0);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[0], -10.0f);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[1], -20.0f);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[2], -100.0f);
@@ -658,7 +661,7 @@ TEST_F(DisplayListBuilderTest, BorderOperationInMethodChaining) {
   border_data.color_top = 0xFF0000FF;
   border_data.style_top = starlight::BorderStyleType::kSolid;
 
-  builder_->Begin(0.0f, 0.0f, 100.0f, 100.0f)
+  builder_->Begin(0, 0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF00FF00)
       .Border(border_data)
       .DrawView(123)

@@ -176,6 +176,13 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   @Override
+  public void setLynxEngineForPlatformRendererContext(long ptr) {
+    if (mPaintingContext != null) {
+      mPaintingContext.setLynxEngineActorForPlatformRendererContext(ptr);
+    }
+  }
+
+  @Override
   public void onCreateTemplateRenderer(LynxContext context, LynxPageLoadListener pageLoadListener,
       ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry,
       LayoutTick layoutTick) {
@@ -381,6 +388,10 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   @Override
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
+    LynxContext context = mLynxContext.get();
+    if (context != null && context.isFragmentLayerRenderOn() && mPaintingContext != null) {
+      return mPaintingContext.dispatchPlatformMotionEvent(ev);
+    }
     EnsureEventDispatcher();
     return (mEventDispatcher != null) && mEventDispatcher.onTouchEvent(ev, rootUi);
   }

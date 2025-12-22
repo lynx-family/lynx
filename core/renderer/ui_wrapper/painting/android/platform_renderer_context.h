@@ -5,12 +5,24 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
+#include <memory>
+
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
-namespace lynx::tasm {
+namespace lynx {
+
+namespace shell {
+class LynxEngine;
+}
+
+namespace event {
+class Event;
+}
+
+namespace tasm {
 
 class PlatformRendererAndroid;
 
@@ -18,6 +30,9 @@ class PlatformRendererContext {
  public:
   PlatformRendererContext(JNIEnv* env, jobject j_this)
       : java_ref_(env, j_this) {}
+
+  void SetLynxEngineActorForPlatformRendererContext(
+      std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor);
 
   void CreatePlatformRenderer(int32_t id, PlatformRendererType type);
   void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name);
@@ -40,11 +55,27 @@ class PlatformRendererContext {
   void CreateImage(int32_t id, base::String src, float width, float height);
   void DestroyImage(int32_t id);
 
+  // The event data from the platform layer is forwarded to PlatformEventHandler
+  // for subsequent event processing.
+  bool DispatchPlatformInputEvent(int int_event_data[],
+                                  float float_event_data[]);
+  // The current state of PlatformEventHandler is obtained to determine the
+  // gesture handling at the platform layer.
+  int GetPlatformEventHandlerState();
+  // Send event to the target element.
+  void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
+  // Update the pseudo status of the target element.
+  void UpdatePseudoStatusStatus(int32_t target_id, uint32_t pre_status,
+                                uint32_t current_status);
+
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;
   base::InlineOrderedFlatMap<int32_t, PlatformRendererAndroid*, 64>
       renderer_registry_;
+  std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_{nullptr};
 };
 
-}  // namespace lynx::tasm
+}  // namespace tasm
+}  // namespace lynx
+
 #endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_

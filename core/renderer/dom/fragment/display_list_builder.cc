@@ -17,11 +17,12 @@ DisplayListBuilder::DisplayListBuilder(float dx, float dy)
 
 DisplayListBuilder::~DisplayListBuilder() = default;
 
-DisplayListBuilder& DisplayListBuilder::Begin(float x, float y, float width,
-                                              float height) {
+DisplayListBuilder& DisplayListBuilder::Begin(int id, float x, float y,
+                                              float width, float height) {
   // Use AddOperation directly to avoid temporary vector construction - only
   // store float params
-  display_list_.AddOperation(DisplayListOpType::kBegin, x, y, width, height);
+  display_list_.AddOperation(DisplayListOpType::kBegin, id, x, y, width,
+                             height);
   return *this;
 }
 

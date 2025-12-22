@@ -442,7 +442,7 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 
   box_recorder_.Reset();
 
-  display_list_builder.Begin(layout_info_.layout_result.offset_.X(),
+  display_list_builder.Begin(id(), layout_info_.layout_result.offset_.X(),
                              layout_info_.layout_result.offset_.Y(),
                              layout_info_.layout_result.size_.width_,
                              layout_info_.layout_result.size_.height_);

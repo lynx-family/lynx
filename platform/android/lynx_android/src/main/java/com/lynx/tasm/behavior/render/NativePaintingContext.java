@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior.render;
 
 import android.graphics.PointF;
+import android.view.MotionEvent;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
@@ -52,6 +53,21 @@ public class NativePaintingContext implements IPaintingContext {
 
   public void attachUIBodyView(UIBody.UIBodyView view) {
     mPlatformRendererContext.setRootView(view);
+  }
+
+  @Override
+  public boolean dispatchPlatformMotionEvent(MotionEvent ev) {
+    // TODO(hexionghui): handle multi-pointer event.
+    // iEventData: [event_type, action_type, event_source, pointer_count, ...]
+    int[] iEventData = {0, ev.getActionMasked(), ev.getSource(), ev.getPointerCount()};
+    // fEventData: [pointer_id, pointer_x, pointer_y, ...]
+    float[] fEventData = {ev.getPointerId(0), ev.getX(), ev.getY()};
+    return mPlatformRendererContext.dispatchPlatformInputEvent(iEventData, fEventData);
+  }
+
+  @Override
+  public void setLynxEngineActorForPlatformRendererContext(long ptr) {
+    mPlatformRendererContext.setLynxEngineActorForPlatformRendererContext(ptr);
   }
 
   private native long nativeCreatePaintingContext(

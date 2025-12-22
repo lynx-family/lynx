@@ -284,7 +284,7 @@ bool ElementBinaryReader::DecodeEventsSection(
     }
     element->SetJSEventHandler(name, type, callback);
 
-    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor()) {
       bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
       bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
       bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;
@@ -386,7 +386,7 @@ bool ElementBinaryReader::DecodePiperEventsSection(
 
     element->data_model()->SetStaticEvent(type, name, piper_event_content);
 
-    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor()) {
       bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
       bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
       bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;

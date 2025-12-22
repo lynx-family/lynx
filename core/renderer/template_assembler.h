@@ -811,7 +811,11 @@ class TemplateAssembler final : public TemplateEntryHolder,
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
   bool EnableEventHandleRefactor() const {
-    return page_config_ ? page_config_->GetEnableEventHandleRefactor() : false;
+    return page_config_
+               ? (page_config_->GetEnableEventHandleRefactor() ||
+                  IsEmbeddedModeOn() ||
+                  page_proxy_.element_manager()->IsFragmentLayerRenderModeOn())
+               : false;
   }
 
  private:

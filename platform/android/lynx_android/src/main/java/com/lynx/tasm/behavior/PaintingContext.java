@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.MotionEvent;
 import android.view.WindowManager;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
@@ -148,6 +149,14 @@ public final class PaintingContext implements IPaintingContext {
 
     return ui.getHeight();
   }
+
+  @Override
+  public boolean dispatchPlatformMotionEvent(MotionEvent ev) {
+    return false;
+  }
+
+  @Override
+  public void setLynxEngineActorForPlatformRendererContext(long ptr) {}
 
   @CalledByNative
   public void rebuildViewTree() {

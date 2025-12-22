@@ -815,8 +815,7 @@ void RadonNode::MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
 }
 
 void RadonNode::ProcessEvents() {
-  if (element() && tasm_ &&
-      (tasm_->EnableEventHandleRefactor() || tasm_->IsEmbeddedModeOn())) {
+  if (element() && tasm_ && tasm_->EnableEventHandleRefactor()) {
     if (!static_events().empty() || !global_bind_events().empty()) {
       for (const auto& static_event : static_events()) {
         SetEventListeners(static_event);
