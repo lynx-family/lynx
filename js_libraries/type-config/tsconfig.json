@@ -1,18 +1,36 @@
 {
   "compilerOptions": {
-    "lib": ["ES2015", "ES2016", "ES2017"],
+    "lib": [
+      "ES2015",
+      "ES2016",
+      "ES2017"
+    ],
     "esModuleInterop": true,
     "baseUrl": "./types",
     "strict": true,
     "outDir": "lib",
-    "typeRoots": ["./node_modules/@types", "./types"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ],
     "types": [],
     "jsx": "preserve",
     "module": "esnext",
     "moduleResolution": "Node",
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "exactOptionalPropertyTypes": true
   },
-  "include": ["types/**/*.d.ts", "test/**/*.test-d.ts"],
-  "exclude": ["node_modules", "lib"]
+  "include": [
+    "*.js",
+    "*.d.ts",
+    "types/**/*.d.ts",
+    "test/**/*.test-d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib"
+  ]
 }

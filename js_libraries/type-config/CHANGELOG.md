@@ -1,7 +1,7 @@
 # CHANGELOG
 
-## 0.0.1
+## 3.6.0
 
 ### Patch Changes
 
-- Add all Lynx Config types on this packages.
+- Add all Lynx Config and CompilerOptions types on this packages.

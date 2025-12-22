@@ -21,6 +21,7 @@ def check_and_run():
             gen_config_types,
             gen_compile_options,
             gen_compile_options_types,
+            gen_config_keys,
         )
 
         configs = parse_config()
@@ -32,6 +33,7 @@ def check_and_run():
         gen_compile_options()
         gen_config_types(configs)
         gen_compile_options_types()
+        gen_config_keys(configs)
         sys.exit(0)
     except ImportError:
         print("Required dependencies not found. Running gen_config.py...")

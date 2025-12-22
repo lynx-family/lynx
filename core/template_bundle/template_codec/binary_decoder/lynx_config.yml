@@ -1,7 +1,7 @@
 # Copyright 2025 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
-compileOptions:
+compilerOptions:
   targetSdkVersion:
     defaultValue: ''
     valueType: string
@@ -122,7 +122,7 @@ compileOptions:
   lynxAirMode:
     defaultValue: AIR_MODE_OFF
     valueType: uint8_t
-    jsValueType: CompileOptionAirMode
+    jsValueType: CompilerOptionAirMode
     since: '2.11'
   enableFiberArch:
     defaultValue: 'false'
@@ -169,6 +169,21 @@ compileOptions:
     defaultValue: 'false'
     valueType: boolean
     since: '3.3'
+  bundleModuleMode:
+    defaultValue: ''
+    valueType: string
+    codeGen:
+      - NONE
+  enableLepusDebug:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
+  enableParallelElement:
+    defaultValue: 'false'
+    valueType: boolean
+    codeGen:
+      - NONE
 # compile options end here
 
 # PageConfig start here
