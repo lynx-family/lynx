@@ -594,7 +594,7 @@ TEST_F(DisplayListBuilderTest, BorderOperation) {
   border_data.style_bottom = starlight::BorderStyleType::kDotted;
   border_data.style_left = starlight::BorderStyleType::kDouble;
 
-  builder_->Border(border_data);
+  builder_->Border(1, 2, border_data);
 
   DisplayList display_list = builder_->Build();
 
@@ -614,8 +614,8 @@ TEST_F(DisplayListBuilderTest, BorderOperation) {
   // Verify data structure - border operation should have both int and float
   // parameters Based on the implementation: 4 float widths + 4 int colors + 4
   // int styles = 8 int, 4 float
-  EXPECT_EQ(content_int_data[0], 8);  // int_count
-  EXPECT_EQ(content_int_data[1], 4);  // float_count
+  EXPECT_EQ(content_int_data[0], 10);  // int_count
+  EXPECT_EQ(content_int_data[1], 0);   // float_count
 }
 
 TEST_F(DisplayListBuilderTest, BorderOperationWithZeroValues) {
@@ -636,7 +636,7 @@ TEST_F(DisplayListBuilderTest, BorderOperationWithZeroValues) {
   border_data.style_bottom = starlight::BorderStyleType::kNone;
   border_data.style_left = starlight::BorderStyleType::kNone;
 
-  builder_->Border(border_data);
+  builder_->Border(1, 2, border_data);
 
   DisplayList display_list = builder_->Build();
 
@@ -663,7 +663,7 @@ TEST_F(DisplayListBuilderTest, BorderOperationInMethodChaining) {
 
   builder_->Begin(0, 0.0f, 0.0f, 100.0f, 100.0f)
       .Fill(0xFF00FF00)
-      .Border(border_data)
+      .Border(1, 2, border_data)
       .DrawView(123)
       .End();
 

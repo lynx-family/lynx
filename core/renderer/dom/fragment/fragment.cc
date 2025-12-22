@@ -306,7 +306,8 @@ void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
                            ->computed_css_style()
                            ->GetLayoutComputedStyle()
                            ->surround_data_.border_data_;
-  display_list_builder.Border(*border);
+  display_list_builder.Border(DefineBorderBox(display_list_builder),
+                              DefinePaddingBox(display_list_builder), *border);
 }
 
 void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {

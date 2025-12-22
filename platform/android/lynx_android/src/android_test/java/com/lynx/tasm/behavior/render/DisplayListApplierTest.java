@@ -538,40 +538,35 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testOpBorderUniform() {
-    testDisplayList.ops = new int[] {0, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.ops = new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, 8, 4, // OP_BEGIN: 1 int, 4 float params
+        1, 4, 0, // OP_BEGIN: 0 int, 4 float params
+        0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
+        10, 0, // OP_BORDER: 10 int, 0 float params
+        0, 1, // Out box index: 0, inner box index: 1
         0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
         0, 0, 0, 0, // Border styles (solid)
         0, 0 // OP_END, 0 int, 0 float params.
     };
     testDisplayList.fArgv = new float[] {
         0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
+        0f, 0f, 100f, 50f, // out box: x=0, y=0, width=100, height=50
+        5f, 5f, 90f, 40f, // inner box: x=0, y=0, width=100, height=50
         5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
     };
 
     spyDisplayListApplier.setDisplayList(testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
+    verify(spyDisplayListApplier)
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(0, 0, 100, 50), null)));
+    verify(spyDisplayListApplier)
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(5, 5, 95, 45), null)));
+
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
-        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), boundsCaptor.capture(),
-            borderWidthsCaptor.capture(), borderColorsCaptor.capture(),
-            borderStylesCaptor.capture());
-
-    // Verify bounds
-    android.graphics.Rect capturedBounds = boundsCaptor.getValue();
-    assertEquals(0, capturedBounds.left);
-    assertEquals(0, capturedBounds.top);
-    assertEquals(100, capturedBounds.right);
-    assertEquals(50, capturedBounds.bottom);
-
-    // Verify border widths
-    int[] capturedWidths = borderWidthsCaptor.getValue();
-    assertEquals(5, capturedWidths[0]); // left
-    assertEquals(5, capturedWidths[1]); // top
-    assertEquals(5, capturedWidths[2]); // right
-    assertEquals(5, capturedWidths[3]); // bottom
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), eq(0), eq(1),
+            borderColorsCaptor.capture(), borderStylesCaptor.capture());
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
@@ -590,40 +585,35 @@ public class DisplayListApplierTest {
 
   @Test
   public void testOpBorderComplex() {
-    testDisplayList.ops = new int[] {0, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.ops = new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, 8, 4, // OP_BEGIN: 1 int, 4 float params
+        1, 4, 0, // OP_BEGIN: 0 int, 4 float params
+        0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
+        10, 0, // OP_BORDER: 10 int, 0 float params,
+        0, 1, // Out box index: 0, inner box index: 1,
         0xFFFF00FF, 0xFF00FFFF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
         0, 1, 2, 3, // Border styles (solid)
         0, 0 // OP_END, 0 int, 0 float params.
     };
     testDisplayList.fArgv = new float[] {
         0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
+        0f, 0f, 100f, 50f, // out box: x=0, y=0, width=100, height=50
+        5f, 5f, 90f, 40f, // inner box: x=0, y=0, width=100, height=50
         5f, 6f, 5f, 0f // border widths: left=5, top=5, right=5, bottom=5
     };
 
     spyDisplayListApplier.setDisplayList(testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
+    verify(spyDisplayListApplier)
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(0, 0, 100, 50), null)));
+    verify(spyDisplayListApplier)
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(5, 5, 95, 45), null)));
+
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
-        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), boundsCaptor.capture(),
-            borderWidthsCaptor.capture(), borderColorsCaptor.capture(),
-            borderStylesCaptor.capture());
-
-    // Verify bounds
-    android.graphics.Rect capturedBounds = boundsCaptor.getValue();
-    assertEquals(0, capturedBounds.left);
-    assertEquals(0, capturedBounds.top);
-    assertEquals(100, capturedBounds.right);
-    assertEquals(50, capturedBounds.bottom);
-
-    // Verify border widths
-    int[] capturedWidths = borderWidthsCaptor.getValue();
-    assertEquals(5, capturedWidths[Spacing.TOP]);
-    assertEquals(6, capturedWidths[Spacing.RIGHT]);
-    assertEquals(5, capturedWidths[Spacing.BOTTOM]);
-    assertEquals(0, capturedWidths[Spacing.LEFT]);
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), eq(0), eq(1),
+            borderColorsCaptor.capture(), borderStylesCaptor.capture());
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
@@ -642,40 +632,36 @@ public class DisplayListApplierTest {
 
   @Test
   public void testOpBorderDashedOrDotted() {
-    testDisplayList.ops = new int[] {0, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.ops =
+        new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BOX, OP_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, 8, 4, // OP_BEGIN: 1 int, 4 float params
+        1, 4, 0, // OP_BEGIN: 0 int, 4 float params
+        4, 0, 4, 0, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
+        10, 0, // OP_BORDER: 10 int, 0 float
+        0, 1, // Out box index: 0, inner box index: 1
         0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
         1, 1, 1, 1, // Border styles (solid)
         0, 0 // OP_END, 0 int, 0 float params.
     };
     testDisplayList.fArgv = new float[] {
         0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
+        0f, 0f, 100f, 50f, // out box: x=0, y=0, width=100, height=50
+        5f, 5f, 90f, 40f, // inner box: x=0, y=0, width=100, height=50
         5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
     };
 
     spyDisplayListApplier.setDisplayList(testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
+    verify(spyDisplayListApplier)
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(0, 0, 100, 50), null)));
+    verify(spyDisplayListApplier)
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(5, 5, 95, 45), null)));
+
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
-        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), boundsCaptor.capture(),
-            borderWidthsCaptor.capture(), borderColorsCaptor.capture(),
-            borderStylesCaptor.capture());
-
-    // Verify bounds
-    android.graphics.Rect capturedBounds = boundsCaptor.getValue();
-    assertEquals(0, capturedBounds.left);
-    assertEquals(0, capturedBounds.top);
-    assertEquals(100, capturedBounds.right);
-    assertEquals(50, capturedBounds.bottom);
-
-    // Verify border widths
-    int[] capturedWidths = borderWidthsCaptor.getValue();
-    assertEquals(5, capturedWidths[0]); // left
-    assertEquals(5, capturedWidths[1]); // top
-    assertEquals(5, capturedWidths[2]); // right
-    assertEquals(5, capturedWidths[3]); // bottom
+        .drawRectangularBorders(eq(mockCanvas), any(Paint.class), eq(0), eq(1),
+            borderColorsCaptor.capture(), borderStylesCaptor.capture());
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();

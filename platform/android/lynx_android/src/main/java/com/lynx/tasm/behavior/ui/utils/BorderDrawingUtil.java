@@ -20,8 +20,14 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PathEffect;
+import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Region;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.render.RoundedRectangle;
 
 /**
  * Utility class for drawing rectangular borders.
@@ -29,6 +35,38 @@ import androidx.annotation.NonNull;
  * array and style array.
  */
 public class BorderDrawingUtil {
+  private static String TAG = "BorderDrawingUtil";
+
+  // TODO(songshourui.null): Let BackgroundDrawable use this method later.
+  /**
+   * Draws rounded rectangle borders on a canvas with the specified parameters.
+   * This is a general utility function that can be used by any drawable that needs to draw
+   * rounded rectangle borders.
+   *
+   * @param canvas       The canvas to draw on
+   * @param paint        The paint object to use for drawing (will be modified during drawing)
+   * @param outBox       The rounded rectangle to draw outer border around
+   * @param innerBox     The rounded rectangle to draw inner border around
+   * @param borderColors Array of border colors for [left, top, right, bottom]
+   * @param borderStyles Array of border styles for [left, top, right, bottom], cannot be null
+   */
+  public static void drawBorders(Canvas canvas, Paint paint, RoundedRectangle outBox,
+      RoundedRectangle innerBox, int[] borderColors, @NonNull BorderStyle[] borderStyles) {
+    int[] borderWidths = new int[] {(int) (innerBox.getRectF().left - outBox.getRectF().left),
+        (int) (innerBox.getRectF().top - outBox.getRectF().top),
+        (int) (outBox.getRectF().right - innerBox.getRectF().right),
+        (int) (outBox.getRectF().bottom - innerBox.getRectF().bottom)};
+
+    if (outBox.hasBorderRadius() || innerBox.hasBorderRadius()) {
+      drawRoundedBorders(canvas, paint, outBox, innerBox, borderWidths, borderColors, borderStyles);
+    } else {
+      drawRectangularBorders(
+          canvas, paint, outBox.getRect(), borderWidths, borderColors, borderStyles);
+    }
+  }
+
+  // TODO(songshourui.null): Let BackgroundDrawable use drawBorders method later, and make this
+  // method private.
   /**
    * Draws rectangular borders on a canvas with the specified parameters.
    * This is a general utility function that can be used by any drawable that needs to draw
@@ -201,6 +239,262 @@ public class BorderDrawingUtil {
   }
 
   /**
+   * Draws rounded rectangle borders on a canvas with the specified parameters.
+   * This is a general utility function that can be used by any drawable that needs to draw
+   * rounded rectangle borders.
+   *
+   * @param canvas       The canvas to draw on
+   * @param paint        The paint object to use for drawing (will be modified during drawing)
+   * @param outBounds    The rounded rectangle to draw outer border around
+   * @param innerBounds  The rounded rectangle to draw inner border around
+   * @param borderWidths Array of calculated border widths for [left, top, right, bottom] in pixels
+   * @param borderColors Array of border colors for [left, top, right, bottom]
+   * @param borderStyles Array of border styles for [left, top, right, bottom], cannot be null
+   */
+  private static void drawRoundedBorders(Canvas canvas, Paint paint, RoundedRectangle outBounds,
+      RoundedRectangle innerBounds, int[] borderWidths, int[] borderColors,
+      @NonNull BorderStyle[] borderStyles) {
+    canvas.save();
+
+    final int borderLeftWidth = borderWidths[Spacing.LEFT];
+    final int borderTopWidth = borderWidths[Spacing.TOP];
+    final int borderRightWidth = borderWidths[Spacing.RIGHT];
+    final int borderBottomWidth = borderWidths[Spacing.BOTTOM];
+
+    final int borderColorLeft = borderColors[Spacing.LEFT];
+    final int borderColorTop = borderColors[Spacing.TOP];
+    final int borderColorRight = borderColors[Spacing.RIGHT];
+    final int borderColorBottom = borderColors[Spacing.BOTTOM];
+
+    if (borderLeftWidth > 0 || borderTopWidth > 0 || borderRightWidth > 0
+        || borderBottomWidth > 0) {
+      // If it's a full and even border draw inner rect path with stroke
+
+      final boolean isBorderColorSame = (borderColorLeft == borderColorRight
+          && borderColorLeft == borderColorTop && borderColorLeft == borderColorBottom);
+
+      final boolean isBorderWidthSame = (borderTopWidth == borderLeftWidth
+          && borderBottomWidth == borderLeftWidth && borderRightWidth == borderLeftWidth);
+
+      if (isBorderWidthSame && isBorderColorSame && toDrawBorderUseSameStyle(borderStyles)) {
+        strokeCenterDrawPath(canvas, paint, borderStyles[Spacing.LEFT], Spacing.LEFT,
+            borderColorLeft, borderLeftWidth, borderLeftWidth, outBounds, innerBounds);
+      }
+      // In the case of uneven border widths/colors draw quadrilateral in each
+      // direction
+      else {
+        final RectF outerClipRect = outBounds.getRectF();
+        final float left = outerClipRect.left;
+        final float right = outerClipRect.right;
+        final float top = outerClipRect.top;
+        final float bottom = outerClipRect.bottom;
+
+        final RectF innerClipRect = innerBounds.getRectF();
+        final PointF innerTopLeft = new PointF(innerClipRect.left, innerClipRect.top);
+        BackgroundDrawable.getEllipseIntersectionWithLine(innerClipRect.left, innerClipRect.top,
+            innerClipRect.left + 2 * innerBounds.getTopLeftRadiusX(),
+            innerClipRect.top + 2 * innerBounds.getTopLeftRadiusY(), outerClipRect.left,
+            outerClipRect.top, innerClipRect.left, innerClipRect.top, innerTopLeft);
+
+        final PointF innerTopRight = new PointF(innerClipRect.right, innerClipRect.top);
+        BackgroundDrawable.getEllipseIntersectionWithLine(
+            innerClipRect.right - 2 * innerBounds.getTopRightRadiusX(), innerClipRect.top,
+            innerClipRect.right, innerClipRect.top + 2 * innerBounds.getTopRightRadiusY(),
+            outerClipRect.right, outerClipRect.top, innerClipRect.right, innerClipRect.top,
+            innerTopRight);
+
+        final PointF innerBottomRight = new PointF(innerClipRect.right, innerClipRect.bottom);
+        BackgroundDrawable.getEllipseIntersectionWithLine(
+            innerClipRect.right - 2 * innerBounds.getBottomRightRadiusX(),
+            innerClipRect.bottom - 2 * innerBounds.getBottomRightRadiusY(), innerClipRect.right,
+            innerClipRect.bottom, outerClipRect.right, outerClipRect.bottom, innerClipRect.right,
+            innerClipRect.bottom, innerBottomRight);
+
+        final PointF innerBottomLeft = new PointF(innerClipRect.left, innerClipRect.bottom);
+        BackgroundDrawable.getEllipseIntersectionWithLine(innerClipRect.left,
+            innerClipRect.bottom - 2 * innerBounds.getBottomLeftRadiusY(),
+            innerClipRect.left + 2 * innerBounds.getBottomLeftRadiusX(), innerClipRect.bottom,
+            outerClipRect.left, outerClipRect.bottom, innerClipRect.left, innerClipRect.bottom,
+            innerBottomLeft);
+
+        if (borderTopWidth > 0 && Color.alpha(borderColorTop) != 0) {
+          final float x1 = left;
+          final float y1 = top;
+          final float x2 = innerTopLeft.x;
+          final float y2 = innerTopLeft.y;
+          final float x3 = innerTopRight.x;
+          final float y3 = innerTopRight.y;
+          final float x4 = right;
+          final float y4 = top;
+          boolean toClip = false;
+          float w = borderTopWidth;
+          if (!isBorderWidthSame) {
+            w = Math.max(w, Math.max(borderLeftWidth, borderRightWidth));
+            toClip = w - Math.min(borderLeftWidth, borderRightWidth) >= 2;
+          }
+          canvas.save();
+          clipQuadrilateralWithBounds(
+              canvas, x1, y1, x2, y2, x3, y3, x4, y4, toClip, outBounds, innerBounds);
+          strokeCenterDrawPath(canvas, paint, borderStyles[Spacing.TOP], Spacing.TOP,
+              borderColorTop, borderTopWidth, w, outBounds, innerBounds);
+          canvas.restore();
+        }
+
+        if (borderRightWidth > 0 && borderColorRight != 0) {
+          final float x1 = right;
+          final float y1 = top;
+          final float x2 = innerTopRight.x;
+          final float y2 = innerTopRight.y;
+          final float x3 = innerBottomRight.x;
+          final float y3 = innerBottomRight.y;
+          final float x4 = right;
+          final float y4 = bottom;
+          boolean toClip = false;
+          float w = borderRightWidth;
+          if (!isBorderWidthSame) {
+            w = Math.max(w, Math.max(borderTopWidth, borderBottomWidth));
+            toClip = w - Math.min(borderTopWidth, borderBottomWidth) >= 2;
+          }
+          canvas.save();
+          clipQuadrilateralWithBounds(
+              canvas, x1, y1, x2, y2, x3, y3, x4, y4, toClip, outBounds, innerBounds);
+          strokeCenterDrawPath(canvas, paint, borderStyles[Spacing.RIGHT], Spacing.RIGHT,
+              borderColorRight, borderRightWidth, w, outBounds, innerBounds);
+          canvas.restore();
+        }
+
+        if (borderBottomWidth > 0 && borderColorBottom != 0) {
+          final float x1 = left;
+          final float y1 = bottom;
+          final float x2 = innerBottomLeft.x;
+          final float y2 = innerBottomLeft.y;
+          final float x3 = innerBottomRight.x;
+          final float y3 = innerBottomRight.y;
+          final float x4 = right;
+          final float y4 = bottom;
+          boolean toClip = false;
+          float w = borderBottomWidth;
+          if (!isBorderWidthSame) {
+            w = Math.max(w, Math.max(borderLeftWidth, borderRightWidth));
+            toClip = w - Math.min(borderLeftWidth, borderRightWidth) >= 2;
+          }
+          canvas.save();
+          clipQuadrilateralWithBounds(
+              canvas, x1, y1, x2, y2, x3, y3, x4, y4, toClip, outBounds, innerBounds);
+          strokeCenterDrawPath(canvas, paint, borderStyles[Spacing.BOTTOM], Spacing.BOTTOM,
+              borderColorBottom, borderBottomWidth, w, outBounds, innerBounds);
+          canvas.restore();
+        }
+
+        if (borderLeftWidth > 0 && borderColorLeft != 0) {
+          final float x1 = left;
+          final float y1 = top;
+          final float x2 = innerTopLeft.x;
+          final float y2 = innerTopLeft.y;
+          final float x3 = innerBottomLeft.x;
+          final float y3 = innerBottomLeft.y;
+          final float x4 = left;
+          final float y4 = bottom;
+          boolean toClip = false;
+          float w = borderLeftWidth;
+          if (!isBorderWidthSame) {
+            w = Math.max(w, Math.max(borderTopWidth, borderBottomWidth));
+            toClip = w - Math.min(borderTopWidth, borderBottomWidth) >= 2;
+          }
+          canvas.save();
+          clipQuadrilateralWithBounds(
+              canvas, x1, y1, x2, y2, x3, y3, x4, y4, toClip, outBounds, innerBounds);
+          strokeCenterDrawPath(canvas, paint, borderStyles[Spacing.LEFT], Spacing.LEFT,
+              borderColorLeft, borderLeftWidth, w, outBounds, innerBounds);
+          canvas.restore();
+        }
+      }
+    }
+
+    canvas.restore();
+  }
+
+  private static void strokeCenterDrawPathMoreLines(Canvas canvas, Paint paint, int borderPosition,
+      float borderWidth, int color0, int color1, boolean isDoubleStyle, RoundedRectangle outBounds,
+      RoundedRectangle innerBounds) {
+    paint.setPathEffect(null);
+    paint.setStyle(Paint.Style.STROKE);
+    paint.setStrokeWidth(borderWidth);
+
+    final boolean isTopLeft = (borderPosition == Spacing.TOP || borderPosition == Spacing.LEFT);
+
+    paint.setColor(ColorUtil.multiplyColorAlpha(isTopLeft ? color1 : color0, 255));
+    BackgroundDrawable.RoundRectPath centerPathOuter =
+        new BackgroundDrawable.RoundRectPath(outBounds, innerBounds,
+            isDoubleStyle ? BackgroundDrawable.RoundRectPath.Pos.OUTER3
+                          : BackgroundDrawable.RoundRectPath.Pos.OUTER2);
+    centerPathOuter.drawToCanvas(canvas, paint);
+
+    paint.setColor(ColorUtil.multiplyColorAlpha(isTopLeft ? color0 : color1, 255));
+    BackgroundDrawable.RoundRectPath centerPathInner =
+        new BackgroundDrawable.RoundRectPath(outBounds, innerBounds,
+            isDoubleStyle ? BackgroundDrawable.RoundRectPath.Pos.INNER3
+                          : BackgroundDrawable.RoundRectPath.Pos.INNER2);
+    centerPathInner.drawToCanvas(canvas, paint);
+  }
+
+  private static void strokeCenterDrawPath(Canvas canvas, Paint paint, BorderStyle borderStyle,
+      int borderPosition, int borderColor, float borderWidthForEffect, float borderWidthForStroke,
+      RoundedRectangle outBounds, RoundedRectangle innerBounds) {
+    PathEffect pathEffectForBorderStyle = null;
+    switch (borderStyle) {
+      case NONE:
+      case HIDDEN:
+        return;
+
+      case DASHED:
+      case DOTTED:
+        pathEffectForBorderStyle = borderStyle.getPathEffect(borderWidthForEffect);
+        break;
+
+      case SOLID:
+        break;
+      case INSET:
+        if (borderPosition == Spacing.TOP || borderPosition == Spacing.LEFT) {
+          borderColor = BorderStyle.darkenColor(borderColor);
+        }
+        break;
+      case OUTSET:
+        if (borderPosition == Spacing.BOTTOM || borderPosition == Spacing.RIGHT) {
+          borderColor = BorderStyle.darkenColor(borderColor);
+        }
+        break;
+
+      case DOUBLE:
+        strokeCenterDrawPathMoreLines(canvas, paint, borderPosition, borderWidthForEffect / 3.0f,
+            borderColor, borderColor, true, outBounds, innerBounds);
+        return;
+      case GROOVE:
+        strokeCenterDrawPathMoreLines(canvas, paint, borderPosition, borderWidthForEffect / 2.0f,
+            borderColor, BorderStyle.darkenColor(borderColor), false, outBounds, innerBounds);
+        return;
+      case RIDGE:
+        strokeCenterDrawPathMoreLines(canvas, paint, borderPosition, borderWidthForEffect / 2.0f,
+            BorderStyle.darkenColor(borderColor), borderColor, false, outBounds, innerBounds);
+        return;
+      default:
+        LLog.e(TAG, "Unsupported border style: " + borderStyle);
+    }
+
+    paint.setStyle(Paint.Style.STROKE);
+    paint.setColor(ColorUtil.multiplyColorAlpha(borderColor, 255));
+    paint.setStrokeWidth(borderWidthForStroke);
+    paint.setPathEffect(pathEffectForBorderStyle);
+    paint.setAntiAlias(true);
+
+    BackgroundDrawable.RoundRectPath centerPath = new BackgroundDrawable.RoundRectPath(
+        outBounds, innerBounds, BackgroundDrawable.RoundRectPath.Pos.CENTER);
+    centerPath.drawToCanvas(canvas, paint);
+
+    paint.setPathEffect(null);
+  }
+
+  /**
    * Quickly determine if all the set border colors are equal. Bitwise AND all the
    * set colors together, then OR them all together. If the AND and the OR are the
    * same, then the colors are compatible, so return this color.
@@ -228,6 +522,25 @@ public class BorderDrawingUtil {
       return false;
     }
     return borderStyles[0].isSolidDashedOrDotted();
+  }
+
+  private static void clipQuadrilateralWithBounds(Canvas canvas, float x1, float y1, float x2,
+      float y2, float x3, float y3, float x4, float y4, boolean needClip,
+      RoundedRectangle outBounds, RoundedRectangle innerBounds) {
+    if (needClip) {
+      if (outBounds != null) {
+        Path path = new Path();
+        path.addRoundRect(outBounds.getRectF(), outBounds.getBorderRadii(), Path.Direction.CW);
+        canvas.clipPath(path, Region.Op.INTERSECT);
+      }
+
+      if (innerBounds != null) {
+        Path path = new Path();
+        path.addRoundRect(innerBounds.getRectF(), innerBounds.getBorderRadii(), Path.Direction.CW);
+        canvas.clipPath(path, Region.Op.DIFFERENCE);
+      }
+    }
+    clipQuadrilateral(canvas, x1, y1, x2, y2, x3, y3, x4, y4);
   }
 
   private static void clipQuadrilateral(Canvas canvas, float x1, float y1, float x2, float y2,

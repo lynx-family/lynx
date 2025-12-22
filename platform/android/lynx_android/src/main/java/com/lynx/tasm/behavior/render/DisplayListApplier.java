@@ -13,6 +13,7 @@ import android.text.Layout;
 import android.text.Spanned;
 import android.view.View;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
@@ -25,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 public class DisplayListApplier implements Drawable.Callback {
+  private static String TAG = "DisplayListApplier";
+
   // Operation type constants matching C++ DisplayListOpType and DisplayListSubtreePropertyOpType
   private static final int OP_BEGIN = 0;
   private static final int OP_END = 1;
@@ -124,6 +127,10 @@ public class DisplayListApplier implements Drawable.Callback {
     }
   }
 
+  void recordRoundedRectangle(RoundedRectangle roundedRectangle) {
+    mRoundedRectangleArray.add(roundedRectangle);
+  }
+
   private void processContentOperations(Canvas canvas) {
     if (mDisplayList.ops == null) {
       return;
@@ -200,14 +207,9 @@ public class DisplayListApplier implements Drawable.Callback {
           }
           break;
         case OP_BORDER:
-          if (intParamCount == 8 && floatParamCount == 4) {
-            // Read border parameters
-            // 4 floats: border widths (left, top, right, bottom)
-            int[] borderWidths = new int[4];
-            borderWidths[Spacing.TOP] = Math.round(nextContentFloat()); // top
-            borderWidths[Spacing.RIGHT] = Math.round(nextContentFloat()); // right
-            borderWidths[Spacing.BOTTOM] = Math.round(nextContentFloat()); // bottom
-            borderWidths[Spacing.LEFT] = Math.round(nextContentFloat()); // left
+          if (intParamCount == 10) {
+            int outBoxIndex = nextContentInt();
+            int innerBoxIndex = nextContentInt();
 
             // 8 ints: border colors (4) + border styles (4)
             int[] borderColors = new int[4];
@@ -224,16 +226,9 @@ public class DisplayListApplier implements Drawable.Callback {
             borderStyles[Spacing.BOTTOM] = BorderStyle.parse(nextContentInt()); // bottom style
             borderStyles[Spacing.LEFT] = BorderStyle.parse(nextContentInt()); // left style
 
-            // Get current bounds from the stack
-            if (!mBounds.isEmpty()) {
-              RectF bounds = mBounds.peek();
-
-              // Use the member function to draw the rectangular borders (verifiable in tests)
-              drawRectangularBorders(canvas, mPaint,
-                  new android.graphics.Rect(
-                      (int) bounds.left, (int) bounds.top, (int) bounds.right, (int) bounds.bottom),
-                  borderWidths, borderColors, borderStyles);
-            }
+            // Use the member function to draw borders (verifiable in tests)
+            drawRectangularBorders(
+                canvas, mPaint, outBoxIndex, innerBoxIndex, borderColors, borderStyles);
           }
           break;
         case OP_CLIP_RECT: {
@@ -281,7 +276,7 @@ public class DisplayListApplier implements Drawable.Callback {
             borderRadii[6] = nextContentFloat(); // bottom left x
             borderRadii[7] = nextContentFloat(); // bottom left y
           }
-          mRoundedRectangleArray.add(new RoundedRectangle(rectF, borderRadii));
+          recordRoundedRectangle(new RoundedRectangle(rectF, borderRadii));
           break;
         }
         default:
@@ -301,10 +296,24 @@ public class DisplayListApplier implements Drawable.Callback {
    * @param borderColors Array of border colors for [left, top, right, bottom]
    * @param borderStyles Array of border styles for [left, top, right, bottom]
    */
-  void drawRectangularBorders(Canvas canvas, Paint paint, android.graphics.Rect bounds,
-      int[] borderWidths, int[] borderColors, BorderStyle[] borderStyles) {
-    BorderDrawingUtil.drawRectangularBorders(
-        canvas, paint, bounds, borderWidths, borderColors, borderStyles);
+  void drawRectangularBorders(Canvas canvas, Paint paint, int outBoxIndex, int innerBoxIndex,
+      int[] borderColors, BorderStyle[] borderStyles) {
+    RoundedRectangle outBox = null;
+    if (outBoxIndex >= 0 && outBoxIndex < mRoundedRectangleArray.size()) {
+      outBox = mRoundedRectangleArray.get(outBoxIndex);
+    }
+
+    RoundedRectangle innerBox = null;
+    if (innerBoxIndex >= 0 && innerBoxIndex < mRoundedRectangleArray.size()) {
+      innerBox = mRoundedRectangleArray.get(innerBoxIndex);
+    }
+
+    if (outBox == null || innerBox == null) {
+      LLog.e(TAG, "drawRectangularBorders failed since outBox or innerBox is null.");
+      return;
+    }
+
+    BorderDrawingUtil.drawBorders(canvas, paint, outBox, innerBox, borderColors, borderStyles);
   }
 
   // Helper methods for reading content data

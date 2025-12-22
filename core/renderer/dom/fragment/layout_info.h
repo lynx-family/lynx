@@ -30,9 +30,9 @@ struct LayoutInfoForDraw {
   starlight::LayoutResultForRendering layout_result;
   base::flex_optional<BorderRadiusInfo> border_radius_info;
 
-  float GetBorderBoxX() const { return layout_result.offset_.X(); }
+  float GetBorderBoxX() const { return 0; }
 
-  float GetBorderBoxY() const { return layout_result.offset_.Y(); }
+  float GetBorderBoxY() const { return 0; }
 
   float GetBorderBoxWidth() const { return layout_result.size_.width_; }
 

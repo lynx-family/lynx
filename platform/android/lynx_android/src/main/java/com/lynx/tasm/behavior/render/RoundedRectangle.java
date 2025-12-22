@@ -55,6 +55,38 @@ public class RoundedRectangle {
     return mBorderRadii;
   }
 
+  public float getTopLeftRadiusX() {
+    return mBorderRadii != null ? mBorderRadii[0] : 0.0f;
+  }
+
+  public float getTopLeftRadiusY() {
+    return mBorderRadii != null ? mBorderRadii[1] : 0.0f;
+  }
+
+  public float getTopRightRadiusX() {
+    return mBorderRadii != null ? mBorderRadii[2] : 0.0f;
+  }
+
+  public float getTopRightRadiusY() {
+    return mBorderRadii != null ? mBorderRadii[3] : 0.0f;
+  }
+
+  public float getBottomLeftRadiusX() {
+    return mBorderRadii != null ? mBorderRadii[4] : 0.0f;
+  }
+
+  public float getBottomLeftRadiusY() {
+    return mBorderRadii != null ? mBorderRadii[5] : 0.0f;
+  }
+
+  public float getBottomRightRadiusX() {
+    return mBorderRadii != null ? mBorderRadii[6] : 0.0f;
+  }
+
+  public float getBottomRightRadiusY() {
+    return mBorderRadii != null ? mBorderRadii[7] : 0.0f;
+  }
+
   @Override
   public boolean equals(@Nullable Object obj) {
     if (this == obj)

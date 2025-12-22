@@ -51,7 +51,8 @@ class DisplayListBuilder {
   DisplayListBuilder& DrawText(int text_id);
 
   // Set all border properties at once (color, width, style for all four sides)
-  DisplayListBuilder& Border(const starlight::BordersData& border);
+  DisplayListBuilder& Border(int32_t out_index, int32_t inner_index,
+                             const starlight::BordersData& border);
 
   // Set clip rect
   DisplayListBuilder& ClipRect(const RoundedRectangle& border);

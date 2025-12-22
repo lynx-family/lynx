@@ -980,6 +980,7 @@ public class com::lynx::tasm::utils::BlurUtils :  {
 }
 
 public class com::lynx::tasm::behavior::ui::utils::BorderDrawingUtil :  {
+  public static void com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil.drawBorders(Canvas canvas, Paint paint, RoundedRectangle outBox, RoundedRectangle innerBox, int[] borderColors, @NonNull BorderStyle[] borderStyles);
   public static void com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil.drawRectangularBorders(Canvas canvas, Paint paint, Rect bounds, int[] borderWidths, int[] borderColors, @NonNull BorderStyle[] borderStyles);
 }
 
@@ -1019,6 +1020,7 @@ public enum com::lynx::tasm::behavior::ui::utils::BorderStyle {
   public boolean com.lynx.tasm.behavior.ui.utils.BorderStyle.isSolidDashedOrDotted();
   public void com.lynx.tasm.behavior.ui.utils.BorderStyle.strokeBorderLine(Canvas canvas, Paint paint, int borderPosition, float borderWidth, int color, float startX, float startY, float stopX, float stopY, float borderLength, float borderMeasureWidth);
   public static BorderStyle com.lynx.tasm.behavior.ui.utils.BorderStyle.parse(int style);
+  public static int com.lynx.tasm.behavior.ui.utils.BorderStyle.darkenColor(int color);
 }
 
 public interface com::lynx::tasm::behavior::ui::utils::BorderWidth {
@@ -8929,6 +8931,14 @@ public class com::lynx::tasm::behavior::render::RoundedRectangle :  {
   public Rect com.lynx.tasm.behavior.render.RoundedRectangle.getRect();
   public boolean com.lynx.tasm.behavior.render.RoundedRectangle.hasBorderRadius();
   public float[] com.lynx.tasm.behavior.render.RoundedRectangle.getBorderRadii();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getTopLeftRadiusX();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getTopLeftRadiusY();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getTopRightRadiusX();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getTopRightRadiusY();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getBottomLeftRadiusX();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getBottomLeftRadiusY();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getBottomRightRadiusX();
+  public float com.lynx.tasm.behavior.render.RoundedRectangle.getBottomRightRadiusY();
   public boolean com.lynx.tasm.behavior.render.RoundedRectangle.equals(@Nullable Object obj);
 }
 
@@ -8937,6 +8947,8 @@ public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable::RoundRect
   public float [] com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.radius radius;
   public Path com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.path path;
   public boolean com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.allCornersWithSameRadius allCornersWithSameRadius;
+  public com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.RoundRectPath();
+  public com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.RoundRectPath(RoundedRectangle outBounds, RoundedRectangle innerBounds, Pos type);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.updateValue(Rect bounds, float[] borderRadius);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.updateValue(Rect bounds, float[] borderRadius, RectF borderWidth, float mul, boolean center);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.drawToCanvas(Canvas canvas, Paint paint);

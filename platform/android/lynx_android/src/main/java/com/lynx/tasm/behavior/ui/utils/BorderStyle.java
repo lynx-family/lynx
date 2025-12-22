@@ -70,7 +70,7 @@ public enum BorderStyle {
     return BorderStyle.values()[style];
   }
 
-  private static int darkenColor(int color) {
+  public static int darkenColor(int color) {
     return ((color & 0x00FEFEFE) >> 1) | (color & 0xFF000000);
   }
 

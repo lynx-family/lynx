@@ -49,8 +49,8 @@ TEST_F(LayoutInfoForDrawTest, BorderPaddingContentBoxesAndRadii) {
 
   // Border box
   auto border_rect = info.GenerateBorderRectangle();
-  EXPECT_FLOAT_EQ(border_rect.GetX(), 10.0f);
-  EXPECT_FLOAT_EQ(border_rect.GetY(), 20.0f);
+  EXPECT_FLOAT_EQ(border_rect.GetX(), 0.f);
+  EXPECT_FLOAT_EQ(border_rect.GetY(), 0.f);
   EXPECT_FLOAT_EQ(border_rect.GetWidth(), 100.0f);
   EXPECT_FLOAT_EQ(border_rect.GetHeight(), 50.0f);
   EXPECT_FLOAT_EQ(border_rect.GetRadiusXTopLeft(), 9.0f);
@@ -64,8 +64,8 @@ TEST_F(LayoutInfoForDrawTest, BorderPaddingContentBoxesAndRadii) {
 
   // Padding box
   auto padding_rect = info.GeneratePaddingRectangle();
-  EXPECT_FLOAT_EQ(padding_rect.GetX(), 10.0f + 1.0f);
-  EXPECT_FLOAT_EQ(padding_rect.GetY(), 20.0f + 2.0f);
+  EXPECT_FLOAT_EQ(padding_rect.GetX(), 0.f + 1.0f);
+  EXPECT_FLOAT_EQ(padding_rect.GetY(), 0.f + 2.0f);
   EXPECT_FLOAT_EQ(padding_rect.GetWidth(), 100.0f - 1.0f - 3.0f);
   EXPECT_FLOAT_EQ(padding_rect.GetHeight(), 50.0f - 2.0f - 4.0f);
   EXPECT_FLOAT_EQ(padding_rect.GetRadiusXTopLeft(), 9.0f - 1.0f);
@@ -79,8 +79,8 @@ TEST_F(LayoutInfoForDrawTest, BorderPaddingContentBoxesAndRadii) {
 
   // Content box
   auto content_rect = info.GenerateContentRectangle();
-  EXPECT_FLOAT_EQ(content_rect.GetX(), 10.0f + 1.0f + 5.0f);
-  EXPECT_FLOAT_EQ(content_rect.GetY(), 20.0f + 2.0f + 6.0f);
+  EXPECT_FLOAT_EQ(content_rect.GetX(), 0.f + 1.0f + 5.0f);
+  EXPECT_FLOAT_EQ(content_rect.GetY(), 0.f + 2.0f + 6.0f);
   EXPECT_FLOAT_EQ(content_rect.GetWidth(),
                   (100.0f - 1.0f - 3.0f) - 5.0f - 7.0f);
   EXPECT_FLOAT_EQ(content_rect.GetHeight(),

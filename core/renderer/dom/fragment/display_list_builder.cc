@@ -76,10 +76,9 @@ DisplayListBuilder& DisplayListBuilder::DrawText(int text_id) {
 }
 
 DisplayListBuilder& DisplayListBuilder::Border(
+    int32_t out_index, int32_t inner_index,
     const starlight::BordersData& border) {
-  display_list_.AddOperation(DisplayListOpType::kBorder, border.width_top,
-                             border.width_right, border.width_bottom,
-                             border.width_left,
+  display_list_.AddOperation(DisplayListOpType::kBorder, out_index, inner_index,
                              static_cast<int32_t>(border.color_top),
                              static_cast<int32_t>(border.color_right),
                              static_cast<int32_t>(border.color_bottom),

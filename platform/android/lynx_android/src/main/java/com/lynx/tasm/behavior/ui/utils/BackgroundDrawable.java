@@ -25,6 +25,7 @@ import androidx.annotation.Nullable;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
+import com.lynx.tasm.behavior.render.RoundedRectangle;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.background.BackgroundLayerManager;
@@ -80,6 +81,17 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
         }
         return 0;
       }
+    }
+
+    public RoundRectPath() {}
+
+    public RoundRectPath(RoundedRectangle outBounds, RoundedRectangle innerBounds, Pos type) {
+      updateValue(outBounds.getRect(), outBounds.getBorderRadii(),
+          new RectF(innerBounds.getRectF().left - outBounds.getRectF().left,
+              innerBounds.getRectF().top - outBounds.getRectF().top,
+              outBounds.getRectF().right - innerBounds.getRectF().right,
+              outBounds.getRectF().bottom - innerBounds.getRectF().bottom),
+          type.getOffset(), type == Pos.CENTER);
     }
 
     public void updateValue(Rect bounds, float[] borderRadius) {
@@ -977,9 +989,9 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
         mInnerBottomRightCorner);
   }
 
-  private static void getEllipseIntersectionWithLine(double ellipseBoundsLeft,
-      double ellipseBoundsTop, double ellipseBoundsRight, double ellipseBoundsBottom,
-      double lineStartX, double lineStartY, double lineEndX, double lineEndY, PointF result) {
+  static void getEllipseIntersectionWithLine(double ellipseBoundsLeft, double ellipseBoundsTop,
+      double ellipseBoundsRight, double ellipseBoundsBottom, double lineStartX, double lineStartY,
+      double lineEndX, double lineEndY, PointF result) {
     final double ellipseCenterX = (ellipseBoundsLeft + ellipseBoundsRight) / 2;
     final double ellipseCenterY = (ellipseBoundsTop + ellipseBoundsBottom) / 2;
 
