@@ -2998,13 +2998,15 @@ bool CSSStringParser::ParseVarReference(VarReference &ref) {
   // Check for fallback value after comma
   if (Consume(TokenType::COMMA)) {
     // Collect everything until the closing parenthesis as fallback
-    const char *fallback_start = current_token_.start;
+    // The previous_token_ is the comma, so we start after it.
+    const char *fallback_start = previous_token_.start + previous_token_.length;
+
     while (!Check(TokenType::TOKEN_EOF)) {
       Advance();
     }
     ref.fallback = base::String(
         fallback_start,
-        (current_token_.start + current_token_.length) - fallback_start);
+        current_token_.start + current_token_.length - fallback_start);
   }
   return Check(TokenType::TOKEN_EOF);
 }

@@ -1505,6 +1505,45 @@ TEST(CSSStringParser, font_feature_settings) {
   }
 }
 
+TEST(CSSStringParser, parse_variable_compact) {
+  CSSParserConfigs configs;
+  // Compact var with fallback, no whitespace
+  {
+    std::string raw = "var(--a,10px)";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+    ASSERT_TRUE(result.optionals_.HasValue<CSSValue::VarReferenceField>());
+
+    auto& refs = result.optionals_.Get<CSSValue::VarReferenceField>();
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    EXPECT_EQ(ref.Name(raw), "--a");
+    ASSERT_FALSE(ref.fallback.empty());
+    EXPECT_EQ(ref.fallback.str(), "10px");
+  }
+
+  // Compact nested var, no whitespace
+  {
+    std::string raw = "var(--a,var(--b))";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+    ASSERT_TRUE(result.optionals_.HasValue<CSSValue::VarReferenceField>());
+
+    auto& refs = result.optionals_.Get<CSSValue::VarReferenceField>();
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    EXPECT_EQ(ref.Name(raw), "--a");
+    ASSERT_FALSE(ref.fallback.empty());
+    EXPECT_EQ(ref.fallback.str(), "var(--b)");
+  }
+}
+
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx
