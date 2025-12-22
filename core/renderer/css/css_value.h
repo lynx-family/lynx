@@ -277,6 +277,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     type_ = CSSValueType::VARIABLE;
     needs_variable_resolution_ = true;
   }
+  const base::InlineVector<VarReference, 1>* GetVarReferences() const {
+    return var_references_.get();
+  }
   bool NeedsVariableResolution() const { return needs_variable_resolution_; }
 
   bool IsVariable() const { return type_ == CSSValueType::VARIABLE; }
