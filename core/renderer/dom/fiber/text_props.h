@@ -41,6 +41,9 @@ enum TextPropertyKeyID {
   kPropRectSize = 103,
   kPropMargin = 104,
   kPropBorderRadius = 105,
+  kPropColorLinearGradient = 106,
+  kPropColorRadialGradient = 107,
+  kPropColorConicGradient = 108,
 
   kTextPropEnd = 0xFF,
 };
