@@ -59,6 +59,7 @@ constexpr uint32_t kFlagAccessibilityMode = 1 << 11;
 constexpr uint32_t kFlagAccessibilityExclusive = 1 << 12;
 constexpr uint32_t kFlagBackgroundColor = 1 << 13;
 constexpr uint32_t kFlagMaskChanged = 1 << 14;
+constexpr uint32_t kFlagRenderGroup = 1 << 15;
 
 // std::sqrt(5.0) is not constexpr in C++17, so we use an approximation
 // to allow this value to be used in compile-time constants.
@@ -520,6 +521,16 @@ void UIBase::OnNodeReady() {
     InitDrawNode();
   }
 
+  if (dirty_flags_ & kFlagRenderGroup) {
+    int group =
+        (base::FloatsNotEqual(opacity_, 1.0) && HasOverlappingRendering()) ||
+                render_group_
+            ? 1
+            : 0;
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        DrawNode(), NODE_RENDER_GROUP, group);
+  }
+
   if ((dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
                        kFlagRadiusChanged | kFlagOverflowChanged)) != 0) {
     ApplyOverflowClip();
@@ -640,17 +651,19 @@ void UIBase::SetOpacity(const lepus::Value& value) {
   if (value.IsNil()) {
     opacity = 1;
   }
+  opacity_ = opacity;
+  dirty_flags_ |= kFlagRenderGroup;
   NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(), NODE_OPACITY,
                                                       opacity);
 }
 
 void UIBase::SetGroup(const lepus::Value& value) {
-  int v = value.Number();
+  bool v = value.Bool();
   if (value.IsNil()) {
-    v = 0;
+    v = false;
   }
-  NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(),
-                                                      NODE_RENDER_GROUP, v);
+  render_group_ = v;
+  dirty_flags_ |= kFlagRenderGroup;
 }
 
 void UIBase::SetVisibility(const lepus::Value& value) {
@@ -1815,6 +1828,11 @@ void UIBase::InitDrawNode() {
     NodeManager::Instance().ResetAttribute(Node(), NODE_OPACITY);
     NodeManager::Instance().SetAttributeWithNumberValue(draw_node_,
                                                         NODE_OPACITY, opacity);
+    auto group =
+        NodeManager::Instance().GetAttribute(Node(), NODE_RENDER_GROUP);
+    NodeManager::Instance().ResetAttribute(Node(), NODE_RENDER_GROUP);
+    NodeManager::Instance().SetAttribute(draw_node_, NODE_RENDER_GROUP, group);
+
     // update visibility
     int32_t visibility{ARKUI_VISIBILITY_VISIBLE};
     NodeManager::Instance().GetAttributeValues(Node(), NODE_VISIBILITY,

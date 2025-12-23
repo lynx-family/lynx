@@ -224,6 +224,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float margin_right_{0};
   float margin_bottom_{0};
   std::vector<float> sticky_value_;
+  float opacity_{1.f};
+  bool render_group_{false};
   void GetTransformValue(float left, float right, float top, float bottom,
                          std::vector<float>& point);
   void GetLocationOnScreen(std::pair<float, float>& point);
@@ -293,6 +295,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   };
   void InitAccessibilityAttrs(LynxAccessibilityMode mode,
                               const std::string& traits);
+  // Returns whether this view has content which overlaps.
+  virtual bool HasOverlappingRendering() { return true; }
+  bool HasBackground() const {
+    return background_drawable_ || has_background_color_;
+  }
 
  private:
   void SetIdSelector(const lepus::Value& value);

@@ -34,6 +34,7 @@ class UIText : public UIBase {
   void FrameDidChanged() override;
   EventTarget* HitTest(float point[2]) override;
   const std::string& GetAccessibilityLabel() const override;
+  bool HasOverlappingRendering() override { return HasBackground(); }
 
  private:
   void UpdateInlineImageFrame();
