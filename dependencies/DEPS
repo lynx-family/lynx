@@ -267,6 +267,7 @@ deps = {
         "env": {
             'NODE_CHANNEL_FD': '1' if not system == 'windows' else '',
             'COREPACK_HOME': os.path.join(root_dir, 'buildtools', 'corepack'),
+            "COREPACK_ENABLE_NETWORK": "1",
             # Windows does not have `node/bin` dir
             # And it also use `;` as seperator of PATH
             'PATH': f"{os.path.join(root_dir, 'buildtools', 'node')};{os.environ.get('PATH')}"

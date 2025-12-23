@@ -286,6 +286,16 @@ jobs:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
 
+  windows-explorer-build:
+    runs-on: lynx-windows-2022-large-verify
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build windows Explorer
+        uses: ./lynx/.github/actions/windows-explorer-build
+
   android-sdk-release:
     timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-large

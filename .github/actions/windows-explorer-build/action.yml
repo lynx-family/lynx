@@ -1,0 +1,45 @@
+name: build windows explorer
+
+description: build windows explorer apk.
+
+inputs:
+  build-type:
+    description: The type of explorer we are building. It could be release or whatever.
+    required: false
+runs:
+  using: composite
+  steps:
+    - name: Python Setup
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Setup Visual Studio
+      uses: microsoft/setup-msbuild@v1
+      with:
+        vs-version: '17.0'
+    - name: Install Visual Studio Workloads
+      shell: PowerShell
+      run: |
+        & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Enterprise" --add Microsoft.VisualStudio.Workload.NativeDesktop --quiet --norestart
+    - name: Setup Node.js 18.20.0
+      uses: actions/setup-node@v6
+      with:
+        node-version: '18.20.0'
+        cache: 'npm'
+        cache-dependency-path: 'lynx'
+    - name: Install Common Dependencies
+      uses: ./lynx/.github/actions/windows-common-deps
+      with:
+        target: 'clay'
+    - name: Build Explorer App
+      shell: PowerShell
+      run: |-
+        [Environment]::SetEnvironmentVariable('DEPOT_TOOLS_WIN_TOOLCHAIN', 0, 'User')
+        [Environment]::SetEnvironmentVariable('GYP_MSVS_OVERRIDE_PATH', '${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Community', 'User')
+        [Environment]::SetEnvironmentVariable('WINDOWSSDKDIR', '${env:ProgramFiles(x86)}\Windows Kits\10', 'User')
+        cd lynx
+        .\tools\envsetup.ps1
+        $PSNativeCommandArgumentPassing = 'Legacy'
+        .\buildtools\gn\gn.exe gen out\Default --args='desktop_enable_embedder_layer=true enable_clay_standalone=true disable_visibility_hidden=true use_ndk_static_cxx=false  enable_linker_map=false enable_clay=true is_headless=true skia_enable_flutter_defines=true  skia_use_dng_sdk=false skia_use_sfntly=false skia_enable_pdf=false skia_enable_svg=true enable_svg=true skia_enable_skottie=true skia_use_x11=false skia_use_wuffs=true skia_use_expat=true skia_use_fontconfig=false clay_enable_skshaper=true skia_use_icu=true allow_deprecated_api_calls=true stripped_symbols=true is_official_build=true enable_lto=false is_clang=true enable_lepusng_worklet=true enable_napi_binding=true is_debug=false enable_inspector=true jsengine_type=\"quickjs\"' --ide=vs
+        .\buildtools\ninja\ninja.exe -C out\Default explorer
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
