@@ -923,6 +923,7 @@ public class com::lynx::tasm::behavior::Behavior :  {
   public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten);
   public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten, boolean createAsync);
   public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten, boolean createAsync, boolean needProcessDirection);
+  public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten, boolean createAsync, boolean needProcessDirection, boolean supportFragmentLayerRender);
   public boolean com.lynx.tasm.behavior.Behavior.supportCreateAsync();
   public boolean com.lynx.tasm.behavior.Behavior.needProcessDirection();
   public LynxUI com.lynx.tasm.behavior.Behavior.createUIWithParams(LynxContext context, Object params);
@@ -935,6 +936,7 @@ public class com::lynx::tasm::behavior::Behavior :  {
   public BehaviorClassWarmer com.lynx.tasm.behavior.Behavior.createClassWarmer();
   public final boolean com.lynx.tasm.behavior.Behavior.supportUIFlatten();
   public String com.lynx.tasm.behavior.Behavior.getName();
+  public IRendererHost com.lynx.tasm.behavior.Behavior.createPlatformRendererHost(LynxContext context);
   public String com.lynx.tasm.behavior.Behavior.toString();
 }
 
@@ -7651,7 +7653,7 @@ public class com::lynx::tasm::behavior::shadow::text::NativeLayoutNodeSpan : com
 }
 
 public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx.tasm.behavior.IPaintingContext {
-  public com.lynx.tasm.behavior.render.NativePaintingContext.NativePaintingContext(UIBody.UIBodyView rootView, LynxContext context);
+  public com.lynx.tasm.behavior.render.NativePaintingContext.NativePaintingContext(UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.destroy();
   public long com.lynx.tasm.behavior.render.NativePaintingContext.getNativePaintingContextPtr();
   public PointF com.lynx.tasm.behavior.render.NativePaintingContext.convertPointInViewToScreen(int sign, PointF point);
@@ -8184,7 +8186,7 @@ public class com::lynx::tasm::behavior::ui::utils::PlatformLength :  {
 
 public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.lynx.tasm.behavior.shadow.TextMeasurerProvider {
   public TextMeasurer com.lynx.tasm.behavior.render.PlatformRendererContext.getTextMeasurer();
-  public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context);
+  public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);

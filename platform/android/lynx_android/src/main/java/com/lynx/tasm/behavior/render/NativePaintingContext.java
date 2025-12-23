@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.PointF;
 import android.view.MotionEvent;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody;
@@ -21,8 +22,9 @@ public class NativePaintingContext implements IPaintingContext {
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
   private boolean mDestroyed = false;
 
-  public NativePaintingContext(UIBody.UIBodyView rootView, LynxContext context) {
-    mPlatformRendererContext = new PlatformRendererContext(rootView, context);
+  public NativePaintingContext(
+      UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry) {
+    mPlatformRendererContext = new PlatformRendererContext(rootView, context, behaviorRegistry);
     mNativePtr = nativeCreatePaintingContext(
         this, mPlatformRendererContext.getNativePtr(), mPlatformRendererContext.getTextLayout());
   }

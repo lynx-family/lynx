@@ -191,7 +191,8 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     }
     if (mPaintingContext == null) {
       mPaintingContext = context.isFragmentLayerRenderOn()
-          ? new NativePaintingContext(mLynxUIOwner.getRootUI().getBodyView(), context)
+          ? new NativePaintingContext(
+              mLynxUIOwner.getRootUI().getBodyView(), context, behaviorRegistry)
           : new PaintingContext(mLynxUIOwner, threadStrategy.id());
     }
     if (mShadowNodeOwner == null) {

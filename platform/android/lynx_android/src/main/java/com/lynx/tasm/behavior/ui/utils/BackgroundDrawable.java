@@ -1080,40 +1080,6 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
   private static int darkenColor(int color) {
     return ((color & 0x00FEFEFE) >> 1) | (color & 0xFF000000);
   }
-  //
-  //  private void strokeBorderMoreLines(Canvas canvas, int borderPosition, float borderWidth,
-  //      float borderOffset, int color0, int color1, float startX, float startY, float stopX,
-  //      float stopY) {
-  //    mPaint.setPathEffect(null);
-  //    mPaint.setStrokeWidth(borderWidth);
-  //
-  //    for (int i = -1; i <= 1; i += 2) {
-  //      float xOffset = 0, yOffset = 0;
-  //      int color = 0;
-  //      switch (borderPosition) {
-  //        case Spacing.TOP:
-  //          yOffset = borderOffset * i;
-  //          color = (i == 1 ? color0 : color1);
-  //          break;
-  //        case Spacing.RIGHT:
-  //          xOffset = -borderOffset * i;
-  //          color = (i == 1 ? color1 : color0);
-  //          break;
-  //        case Spacing.BOTTOM:
-  //          yOffset = -borderOffset * i;
-  //          color = (i == 1 ? color1 : color0);
-  //          break;
-  //        case Spacing.LEFT:
-  //          xOffset = borderOffset * i;
-  //          color = (i == 1 ? color0 : color1);
-  //          break;
-  //      }
-  //
-  //      mPaint.setColor(ColorUtil.multiplyColorAlpha(color, mAlpha));
-  //      canvas.drawLine(startX + xOffset, startY + yOffset, stopX + xOffset, stopY + yOffset,
-  //      mPaint);
-  //    }
-  //  }
 
   private BorderStyle getBorderStyleWithDefaultSolid(int borderPosition) {
     BorderStyle borderStyle =
@@ -1129,66 +1095,6 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
     }
     return borderStyle;
   }
-
-  /*
-  private void strokeBorderLine(Canvas canvas, int borderPosition, int color, float startX,
-      float startY, float stopX, float stopY, float borderLength, float borderWidth,
-      BorderStyle externalStyle) {
-    BorderStyle borderStyle = externalStyle;
-    if (borderStyle == null) {
-      borderStyle = (mBorderStyle == null
-              ? null
-              : (mBorderStyle[borderPosition] != null ? mBorderStyle[borderPosition]
-                                                      : mBorderStyle[Spacing.ALL]));
-    }
-    if (borderStyle == null) {
-      borderStyle = BorderStyle.SOLID;
-    }
-
-    mPathEffectForBorderStyle = null;
-    switch (borderStyle) {
-      case NONE:
-      case HIDDEN:
-        return;
-
-      case DASHED:
-      case DOTTED:
-        mPathEffectForBorderStyle = borderStyle.getPathEffectAutoAdjust(borderWidth, borderLength);
-        break;
-
-      case SOLID:
-        break;
-      case INSET:
-        if (borderPosition == Spacing.TOP || borderPosition == Spacing.LEFT) {
-          color = darkenColor(color);
-        }
-        break;
-      case OUTSET:
-        if (borderPosition == Spacing.BOTTOM || borderPosition == Spacing.RIGHT) {
-          color = darkenColor(color);
-        }
-        break;
-
-      case DOUBLE:
-        strokeBorderMoreLines(canvas, borderPosition, borderWidth / 3, borderWidth / 3, color,
-            color, startX, startY, stopX, stopY);
-        return;
-      case GROOVE:
-        strokeBorderMoreLines(canvas, borderPosition, borderWidth / 2, borderWidth / 4, color,
-            darkenColor(color), startX, startY, stopX, stopY);
-        return;
-      case RIDGE:
-        strokeBorderMoreLines(canvas, borderPosition, borderWidth / 2, borderWidth / 4,
-            darkenColor(color), color, startX, startY, stopX, stopY);
-        return;
-    }
-
-    mPaint.setColor(ColorUtil.multiplyColorAlpha(color, mAlpha));
-    mPaint.setPathEffect(mPathEffectForBorderStyle);
-    mPaint.setStrokeWidth(borderWidth);
-    canvas.drawLine(startX, startY, stopX, stopY, mPaint);
-    mPaint.setPathEffect(null);
-  }*/
 
   private void strokeCenterDrawPathMoreLines(Canvas canvas, int borderPosition, float borderWidth,
       int color0, int color1, boolean isDoubleStyle) {

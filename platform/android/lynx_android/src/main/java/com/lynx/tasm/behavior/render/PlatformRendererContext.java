@@ -10,6 +10,8 @@ import androidx.annotation.Nullable;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.Behavior;
+import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
@@ -44,6 +46,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   HashMap<Integer, IRendererHost> mViewHolder = new HashMap<>();
 
   private LynxContext mContext;
+  private BehaviorRegistry mBehaviorRegistry;
   private long mNativePtr = 0;
   private TextLayout mTextLayout;
   private boolean mDestroyed = false;
@@ -55,11 +58,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return mTextMeasurer;
   }
 
-  public PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context) {
+  public PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context,
+      BehaviorRegistry behaviorRegistry) {
     if (rootView != null) {
       this.mRootView = new WeakReference<>(rootView);
     }
     this.mContext = context;
+    this.mBehaviorRegistry = behaviorRegistry;
     this.mNativePtr = nativeCreateEmbeddedViewContext(this);
 
     // Initialize TextMeasurer if layout mode is enabled
@@ -144,6 +149,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
+    if (mBehaviorRegistry != null) {
+      Behavior behavior = mBehaviorRegistry.get(tagName);
+      if (behavior != null) {
+        IRendererHost host = behavior.createPlatformRendererHost(mContext);
+        if (host != null) {
+          Renderer renderer = host.createRenderer(this, sign);
+          renderer.setRenderHost(host);
+          host.setRenderer(renderer);
+          mViewHolder.put(sign, host);
+          host.getView().invalidate();
+          renderer.updateAttributes(initData);
+          return;
+        }
+      }
+    }
     // For extended platform renderers, we need to create a custom view based on the tag name
     // Currently, we'll create a ContainerRenderer as a fallback, but in the future
     // we should look up the actual class based on the tag name

@@ -14,6 +14,7 @@ import android.widget.FrameLayout;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,6 +31,7 @@ public class PlatformRendererContextTest {
   @Mock private Resources mockResources;
   @Mock private DisplayMetrics mockDisplayMetrics;
   @Mock private UIBody.UIBodyView mockBodyView;
+  @Mock private BehaviorRegistry mockBehaviorRegistry;
 
   private PlatformRendererContext rendererContext;
   private AtomicReference<Renderer> rootRendererRef;
@@ -47,7 +49,8 @@ public class PlatformRendererContextTest {
     when(mockResources.getDisplayMetrics()).thenReturn(mockDisplayMetrics);
     when(mockLynxContext.getScreenMetrics()).thenReturn(mockDisplayMetrics);
     mockDisplayMetrics.density = 2;
-    rendererContext = new PlatformRendererContext(mockBodyView, mockLynxContext);
+    rendererContext =
+        new PlatformRendererContext(mockBodyView, mockLynxContext, mockBehaviorRegistry);
 
     rootRendererRef = new AtomicReference<>();
     when(mockBodyView.createRenderer(any(PlatformRendererContext.class), anyInt()))

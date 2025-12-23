@@ -9,6 +9,7 @@ import static org.mockito.Mockito.*;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody;
 import java.lang.reflect.Field;
@@ -23,6 +24,7 @@ public class NativePaintingContextTest {
   private NativePaintingContext mNativePaintingContext;
   @Mock private UIBody.UIBodyView mRootView;
   @Mock private LynxContext mContext;
+  @Mock private BehaviorRegistry mockBehaviorRegistry;
   private PlatformRendererContext mSpyPlatformContext;
 
   @Before
@@ -34,7 +36,7 @@ public class NativePaintingContextTest {
         System.loadLibrary(libName);
       }
     });
-    mNativePaintingContext = new NativePaintingContext(mRootView, mContext);
+    mNativePaintingContext = new NativePaintingContext(mRootView, mContext, mockBehaviorRegistry);
 
     try {
       Field field = NativePaintingContext.class.getDeclaredField("mPlatformRendererContext");

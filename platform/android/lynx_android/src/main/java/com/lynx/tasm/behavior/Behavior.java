@@ -4,6 +4,7 @@
 package com.lynx.tasm.behavior;
 
 import com.lynx.tasm.BehaviorClassWarmer;
+import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
@@ -15,6 +16,7 @@ public class Behavior {
   // TODO: If additional fields are necessary, including a metadata field is required
   // to prevent the constructor from becoming overly complex.
   private final boolean mNeedProcessDirection;
+  private final boolean mSupportFragmentLayerRender;
 
   public Behavior(String name) {
     this(name, false, false, false);
@@ -41,10 +43,16 @@ public class Behavior {
    *     in RTL
    */
   public Behavior(String name, boolean flatten, boolean createAsync, boolean needProcessDirection) {
+    this(name, flatten, createAsync, needProcessDirection, false);
+  }
+
+  public Behavior(String name, boolean flatten, boolean createAsync, boolean needProcessDirection,
+      boolean supportFragmentLayerRender) {
     mName = name;
     mFlatten = flatten;
     mCreateAsync = createAsync;
     mNeedProcessDirection = needProcessDirection;
+    mSupportFragmentLayerRender = supportFragmentLayerRender;
   }
 
   public boolean supportCreateAsync() {
@@ -95,6 +103,10 @@ public class Behavior {
 
   public String getName() {
     return mName;
+  }
+
+  public IRendererHost createPlatformRendererHost(LynxContext context) {
+    return null;
   }
 
   @Override
