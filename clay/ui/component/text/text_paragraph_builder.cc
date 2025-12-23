@@ -172,6 +172,10 @@ void ApplyParagraphStyle(const TextStyle& clay_style,
     txt_style.text_height_behavior = txt::TextHeightBehavior::kAll;
   }
 
+  if (clay_style.line_spacing) {
+    txt_style.line_spacing = clay_style.line_spacing.value();
+  }
+
   if (clay_style.keep_trailing_spaces) {
     txt_style.keep_trailing_spaces = clay_style.keep_trailing_spaces.value();
   }
@@ -300,6 +304,12 @@ void ApplyTextStyle(const TextStyle& clay_style, txt::TextStyle& txt_style) {
   if (clay_style.align_type) {
     txt_style.align_type = ToTTTextAlign(clay_style.align_type.value());
     txt_style.enable_text_bounds_ = true;
+  }
+  if (clay_style.stroke_color) {
+    txt_style.stroke_color = clay_style.stroke_color.value();
+  }
+  if (clay_style.stroke_width) {
+    txt_style.stroke_width = clay_style.stroke_width.value();
   }
 #endif
 }

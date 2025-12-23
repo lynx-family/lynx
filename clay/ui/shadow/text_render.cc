@@ -231,7 +231,7 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
 std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
     double layout_width) {
   TRACE_EVENT("clay", "TextRender::LayoutParagraph");
-#ifndef ENABLE_SKITY
+#ifndef CLAY_ENABLE_TTTEXT
   ReprocessAttributeIfNeeded(layout_width);
 #endif
   auto text_style = measure_node_->text_style_.value();
@@ -310,6 +310,7 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
     measured_width_ = std::ceil(cache_paragraph_->GetMaxIntrinsicWidth());
     if (measure_node_->text_style_->line_spacing.has_value() &&
         cache_paragraph_->GetLineMetrics().size() > 0) {
+#ifndef CLAY_ENABLE_TTTEXT
       auto line_spacing =
           std::max(measure_node_->text_style_->line_spacing.value() -
                        cache_paragraph_->GetLineMetrics().begin()->ascent -
@@ -317,6 +318,9 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
                    0.0);
       measured_height_ =
           std::ceil(cache_paragraph_->GetHeight() - line_spacing);
+#else
+      measured_height_ = std::ceil(cache_paragraph_->GetHeight());
+#endif
     } else {
       measured_height_ = std::ceil(cache_paragraph_->GetHeight());
     }
@@ -331,7 +335,7 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
   prev_layout_width_ = layout_width;
 }
 
-#ifndef ENABLE_SKITY
+#ifndef CLAY_ENABLE_TTTEXT
 void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
   // Determine if the baseline_shift property needs to be set
   for (auto* child : measure_node_->GetChildren()) {

@@ -136,6 +136,8 @@ tttext::Style ParagraphBuilderTTText::ToTTStyle(const TextStyle& text_style) {
     shadow_list.emplace_back(shadow);
   }
   style.SetTextShadowList(shadow_list);
+  style.SetTextStrokeStyle(tttext::TTColor(text_style.stroke_color),
+                           text_style.stroke_width);
 #if defined(CLAY_ENABLE_TTTEXT)
   style.SetVerticalAlignment(text_style.align_type);
 #endif  // CLAY_ENABLE_TTTEXT
@@ -190,6 +192,7 @@ void ParagraphBuilderTTText::ToTTParaStyle(const ParagraphStyle& para_style) {
   tt_para_style.SetLineHeightInPercent(para_style.height);
   tt_para_style.EnableTextBounds(para_style.enable_text_bounds);
   tt_para_style.SetDefaultStyle(ToTTStyle(text_style));
+  tt_para_style.SetLineSpaceAfterPx(para_style.line_spacing);
 }
 void ParagraphBuilderTTText::CreateParagraph() {
   if (paragraph_ == nullptr) {

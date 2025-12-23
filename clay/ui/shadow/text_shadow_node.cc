@@ -179,6 +179,9 @@ void TextShadowNode::CreateGradientShaderMap(
       }
     }
   }
+  if (node->IsInlineViewShadowNode()) {
+    return;
+  }
   for (auto* child : node->GetChildren()) {
     CreateGradientShaderMap(child, paragraph, map, range_map);
   }
@@ -211,6 +214,7 @@ void TextShadowNode::ProcessParagraph(
 
   if (context_measure && owner_) {
     auto line_metrics = paragraph->GetLineMetrics();
+#ifndef CLAY_ENABLE_TTTEXT
     auto line_spacing = std::max(
         text_style_->line_spacing.value_or(0) -
             (line_metrics.size() > 0
@@ -218,6 +222,7 @@ void TextShadowNode::ProcessParagraph(
                  : 0),
         0.0);
     bundle_->SetLineSpacingOffset(-line_spacing / 2);
+#endif
   }
 }
 

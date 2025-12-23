@@ -137,6 +137,10 @@ struct TextStyle {
   std::optional<double> strut_leading;
   std::optional<VerticalAlignType> align_type;
   std::optional<bool> enable_text_bounds;
+#ifdef CLAY_ENABLE_TTTEXT
+  std::optional<float> stroke_width;
+  std::optional<Color> stroke_color;
+#endif
 
   bool operator==(const TextStyle& style) const {
     return this->enable_font_scaling == style.enable_font_scaling &&
