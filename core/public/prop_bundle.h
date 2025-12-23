@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/public/pub_value.h"
 
@@ -115,6 +116,15 @@ class PropBundleCreator {
   virtual fml::RefPtr<PropBundle> CreatePropBundle(bool use_map_buffer) {
     return CreatePropBundle();
   };
+
+  /*
+   * Create a lepus::Value based prop bundle named NativePropBundle when
+   * use_native_value is true. And currently for fragment_layer_render only.
+   */
+  virtual fml::RefPtr<PropBundle> CreatePropBundle(bool use_map_buffer,
+                                                   bool use_native_value) {
+    return CreatePropBundle(use_map_buffer);
+  }
 };
 
 }  // namespace tasm

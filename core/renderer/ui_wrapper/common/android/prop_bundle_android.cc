@@ -683,6 +683,14 @@ fml::RefPtr<PropBundle> PropBundleCreatorAndroid::CreatePropBundle(
   return fml::AdoptRef(new PropBundleAndroid(use_map_buffer));
 }
 
+fml::RefPtr<PropBundle> PropBundleCreatorAndroid::CreatePropBundle(
+    bool use_map_buffer, bool is_native_bundle) {
+  if (is_native_bundle) {
+    return fml::MakeRefCounted<NativePropBundle>();
+  }
+  return fml::AdoptRef(new PropBundleAndroid(use_map_buffer));
+}
+
 base::android::ScopedLocalJavaRef<jobject>
 PropBundleAndroid::GetStyleMapBuffer() {
   if (use_map_buffer_) {

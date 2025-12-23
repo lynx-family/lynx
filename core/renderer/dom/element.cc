@@ -989,7 +989,7 @@ void Element::PreparePropBundleIfNeed() {
   if (!prop_bundle_) {
     bool use_map_buffer = element_manager_->GetEnableUseMapBuffer();
     prop_bundle_ = element_manager()->GetPropBundleCreator()->CreatePropBundle(
-        use_map_buffer);
+        use_map_buffer, EnableFragmentLayerRender());
   }
 }
 

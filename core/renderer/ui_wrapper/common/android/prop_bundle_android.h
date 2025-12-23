@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/base/android/java_only_array.h"
 #include "core/base/android/java_only_map.h"
 #include "core/public/prop_bundle.h"
@@ -23,17 +24,22 @@ class PropBundleCreatorAndroid : public PropBundleCreator {
   fml::RefPtr<PropBundle> CreatePropBundle() override;
 
   fml::RefPtr<PropBundle> CreatePropBundle(bool use_map_buffer) override;
+
+  fml::RefPtr<PropBundle> CreatePropBundle(bool use_map_buffer,
+                                           bool is_native_bundle) override;
 };
 
 class PropBundleAndroid : public PropBundle {
  public:
-  PropBundleAndroid(
+  explicit PropBundleAndroid(
       const std::shared_ptr<base::android::ScopedGlobalJavaRef<jobject>>&
           jni_object);
 
-  PropBundleAndroid(const NativePropBundle& prop_bundle);
+  explicit PropBundleAndroid(const NativePropBundle& prop_bundle);
   PropBundleAndroid& operator=(const NativePropBundle& prop_bundle);
 
+  PropBundleAndroid(const PropBundleAndroid&) = delete;
+  PropBundleAndroid& operator=(const PropBundleAndroid&) = delete;
   jobject jni_object() { return jni_object_->Get(); }
 
   lynx::base::android::ScopedLocalJavaRef<jobject> GetProps();
@@ -93,7 +99,7 @@ class PropBundleAndroid : public PropBundle {
                                 uint16_t id, const pub::Value& value);
 
  private:
-  PropBundleAndroid(bool use_map_buffer = false);
+  explicit PropBundleAndroid(bool use_map_buffer = false);
   friend class PropBundleCreatorAndroid;
 
   void CopyIfConst(JNIEnv* env);
@@ -107,14 +113,13 @@ class PropBundleAndroid : public PropBundle {
 
   bool is_const_{false};
   [[maybe_unused]] bool use_map_buffer_{false};
-
-  PropBundleAndroid(const PropBundleAndroid&) = delete;
-  PropBundleAndroid& operator=(const PropBundleAndroid&) = delete;
 };
 
 class PropArrayAndroid {
  public:
   PropArrayAndroid();
+  PropArrayAndroid(const PropArrayAndroid&) = delete;
+  PropArrayAndroid& operator=(const PropArrayAndroid&) = delete;
 
   void AddProp(int value);
   void AddProp(unsigned int value);
@@ -129,8 +134,6 @@ class PropArrayAndroid {
  private:
   std::optional<base::android::CompactArrayBufferBuilder>
       ui_operation_batch_builder_{std::nullopt};
-  PropArrayAndroid(const PropArrayAndroid&) = delete;
-  PropArrayAndroid& operator=(const PropArrayAndroid&) = delete;
 };
 }  // namespace tasm
 }  // namespace lynx
