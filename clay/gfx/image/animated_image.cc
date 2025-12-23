@@ -69,6 +69,7 @@ void AnimatedImage::SetLoopCount(int loop_count) {
   image_->SetLoopCount(loop_count);
 }
 void AnimatedImage::StartAnimate() {
+  StopAnimation();
   image_->StartAnimation();
   if (animation_frame_callback_) {
     animation_frame_callback_();
