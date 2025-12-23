@@ -109,14 +109,30 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 @end
 
 @interface LynxOpacityView : UIView
-
 @end
 
 @implementation LynxOpacityView
 
+/**
+ * LynxOpacityView is a transparent container whose sole purpose is to apply opacity to its
+ * entire subtree. It must never participate in hit-testing itself; otherwise:
+ * 1. It would steal touches that belong to sibling views placed underneath.
+ * 2. It could become the first responder, breaking the interaction model expected by the app.
+ * Returning nil ensures the traversal continues with other siblings.
+ */
 - (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
-  UIView* ret = [super hitTest:point withEvent:event];
-  return ret == self ? nil : ret;
+  UIView* result = [super hitTest:point withEvent:event];
+  return result == self ? nil : result;
+}
+
+/**
+ * Returning YES from pointInside allows the event system to keep digging into this view’s
+ * children. If we returned NO, the subtree would be cut off from every touch event.
+ * Because hitTest already guarantees LynxOpacityView itself is never returned,
+ * returning YES here only affects the search path and does not expose the container to callers.
+ */
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent*)event {
+  return YES;
 }
 
 @end
