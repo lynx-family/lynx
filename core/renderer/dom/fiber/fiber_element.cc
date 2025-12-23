@@ -940,7 +940,11 @@ void FiberElement::SetIdSelector(const base::String &idSelector) {
   updated_attr_map_[BASE_STATIC_STRING(AttributeHolder::kIdSelectorAttrName)]
       .SetString(idSelector);
   data_model_->SetIdSelector(idSelector);
-  MarkDirty(kDirtyStyle | kDirtyAttr);
+  if (element_manager() && element_manager()->EnableSimpleStyle()) {
+    MarkDirty(kDirtyAttr);
+  } else {
+    MarkDirty(kDirtyStyle | kDirtyAttr);
+  }
 }
 
 bool FiberElement::CheckHasIdMapInCSSFragment() {
