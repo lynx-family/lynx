@@ -333,5 +333,127 @@ Napi::Object RestrictedNapiRuntimeProxyDecorator::GetGlobal() {
   return Napi::Object(proxy_->Env(), raw_global);
 }
 
+// for TrackingNapiRuntimeProxyDecorator
+namespace {
+static const uint64_t kOwnerMarkingKey =
+    reinterpret_cast<uint64_t>(&kOwnerMarkingKey);
+struct OwnerMarkingData {
+  napi_status (*original_create_function)(napi_env env, const char *utf8name,
+                                          size_t length,
+                                          napi_callback constructor, void *data,
+                                          napi_value *result) = nullptr;
+  napi_status (*original_define_class)(
+      napi_env env, const char *utf8name, size_t length,
+      napi_callback constructor, void *data, size_t property_count,
+      const napi_property_descriptor *properties, napi_class super_class,
+      napi_class *result) = nullptr;
+  napi_status (*set_named_property)(napi_env env, napi_value object,
+                                    const char *name,
+                                    napi_value value) = nullptr;
+  napi_status (*create_string_utf8)(napi_env env, const char *str,
+                                    size_t length,
+                                    napi_value *result) = nullptr;
+  napi_status (*class_get_function)(napi_env env, napi_class clazz,
+                                    napi_value *result) = nullptr;
+  std::string owner_id;
+};
+
+static napi_status HookedCreateFunction(napi_env env, const char *utf8name,
+                                        size_t length,
+                                        napi_callback constructor, void *data,
+                                        napi_value *result) {
+  void *d = nullptr;
+  env->napi_get_instance_data(env, kOwnerMarkingKey, &d);
+  auto *owner = static_cast<OwnerMarkingData *>(d);
+  if (!owner || !owner->original_create_function) {
+    return napi_generic_failure;
+  }
+  auto status = owner->original_create_function(env, utf8name, length,
+                                                constructor, data, result);
+  if (status == napi_ok && result && owner->set_named_property &&
+      owner->create_string_utf8) {
+    napi_value owner_val;
+    owner->create_string_utf8(env, owner->owner_id.c_str(),
+                              owner->owner_id.size(), &owner_val);
+    owner->set_named_property(env, *result, "___lynxNapiOwner", owner_val);
+  }
+  return status;
+}
+}  // namespace
+
+void TrackingNapiRuntimeProxyDecorator::SetupLoader() {
+  proxy_->SetupLoader();
+  auto runtime = proxy_->GetJSRuntime().lock();
+  if (!runtime) return;
+  Napi::Env env = proxy_->Env();
+  napi_env raw_env = env;
+  if (!raw_env || !raw_env->ctx) return;
+  Napi::ContextScope context_scope(env);
+  Napi::HandleScope handle_scope(env);
+  void *data_ptr = nullptr;
+  raw_env->napi_get_instance_data(raw_env, kOwnerMarkingKey, &data_ptr);
+  auto *owner_data = static_cast<OwnerMarkingData *>(data_ptr);
+  if (!owner_data) {
+    owner_data = new OwnerMarkingData();
+    owner_data->owner_id = std::to_string(runtime->getRuntimeId());
+    owner_data->original_create_function = raw_env->napi_create_function;
+    owner_data->original_define_class = raw_env->napi_define_class;
+    owner_data->set_named_property = raw_env->napi_set_named_property;
+    owner_data->create_string_utf8 = raw_env->napi_create_string_utf8;
+    owner_data->class_get_function = raw_env->napi_class_get_function;
+
+    raw_env->napi_set_instance_data(
+        raw_env, kOwnerMarkingKey, owner_data,
+        [](napi_env env, void *p, void *hint) {
+          delete static_cast<OwnerMarkingData *>(p);
+        },
+        nullptr);
+  }
+  raw_env->napi_create_function = &HookedCreateFunction;
+  auto HookedDefineClass =
+      [](napi_env env, const char *utf8name, size_t length,
+         napi_callback constructor, void *data, size_t property_count,
+         const napi_property_descriptor *properties, napi_class super_class,
+         napi_class *result) -> napi_status {
+    void *d = nullptr;
+    env->napi_get_instance_data(env, kOwnerMarkingKey, &d);
+    auto *owner = static_cast<OwnerMarkingData *>(d);
+    if (!owner || !owner->original_define_class) {
+      return napi_generic_failure;
+    }
+    auto status = owner->original_define_class(
+        env, utf8name, length, constructor, data, property_count, properties,
+        super_class, result);
+    if (status == napi_ok && result && owner->class_get_function &&
+        owner->set_named_property && owner->create_string_utf8) {
+      napi_value ctor_fn;
+      if (owner->class_get_function(env, *result, &ctor_fn) == napi_ok) {
+        napi_value owner_val;
+        owner->create_string_utf8(env, owner->owner_id.c_str(),
+                                  owner->owner_id.size(), &owner_val);
+        owner->set_named_property(env, ctor_fn, "___lynxNapiOwner", owner_val);
+      }
+    }
+    return status;
+  };
+  raw_env->napi_define_class = HookedDefineClass;
+}
+
+void TrackingNapiRuntimeProxyDecorator::RemoveLoader() {
+  proxy_->RemoveLoader();
+  Napi::Env env = proxy_->Env();
+  napi_env raw_env = env;
+  if (!raw_env) return;
+  void *d = nullptr;
+  raw_env->napi_get_instance_data(raw_env, kOwnerMarkingKey, &d);
+  auto *owner_data = static_cast<OwnerMarkingData *>(d);
+  if (owner_data && owner_data->original_create_function) {
+    raw_env->napi_create_function = owner_data->original_create_function;
+  }
+  if (owner_data && owner_data->original_define_class) {
+    raw_env->napi_define_class = owner_data->original_define_class;
+  }
+}
+
 }  // namespace piper
 }  // namespace lynx

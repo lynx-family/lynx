@@ -329,7 +329,10 @@ void LynxRuntime::PrepareNapiEnvironment() {
   LOGI("napi attaching with proxy: " << proxy.get()
                                      << ", id: " << GetRuntimeId());
   if (proxy) {
-    napi_environment_->SetRuntimeProxy(std::move(proxy));
+    auto tracking_proxy =
+        std::make_unique<piper::TrackingNapiRuntimeProxyDecorator>(
+            std::move(proxy));
+    napi_environment_->SetRuntimeProxy(std::move(tracking_proxy));
     napi_environment_->Attach();
   }
 

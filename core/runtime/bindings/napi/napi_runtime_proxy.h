@@ -87,6 +87,35 @@ class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
   static NapiRuntimeProxyJSVMFactory* s_jsvm_factory;
 };
 
+class TrackingNapiRuntimeProxyDecorator : public NapiRuntimeProxyInterface {
+ public:
+  explicit TrackingNapiRuntimeProxyDecorator(
+      std::unique_ptr<NapiRuntimeProxyInterface> proxy)
+      : proxy_(std::move(proxy)) {}
+  ~TrackingNapiRuntimeProxyDecorator() override = default;
+  void Attach() override { proxy_->Attach(); }
+  void Detach() override { proxy_->Detach(); }
+  Napi::Env Env() override { return proxy_->Env(); }
+  void SetJSRuntime(std::shared_ptr<Runtime> runtime) override {
+    proxy_->SetJSRuntime(std::move(runtime));
+  }
+  std::weak_ptr<Runtime> GetJSRuntime() override {
+    return proxy_->GetJSRuntime();
+  }
+  void SetupLoader() override;
+  void RemoveLoader() override;
+  void SetUncaughtExceptionHandler() override {
+    proxy_->SetUncaughtExceptionHandler();
+  }
+  Napi::Object GetGlobal();
+
+ private:
+  typedef napi_status (*NapiGetGlobalFunc)(napi_env env, napi_value* result);
+  std::unique_ptr<NapiRuntimeProxyInterface> proxy_;
+  std::string loader_;
+  NapiGetGlobalFunc get_global_func_{nullptr};
+};
+
 // A decorator for NapiRuntimeProxy, used to provide a restricted napi_env
 // (disabling capabilities like napi_run_script and napi_get_global) to external
 // users

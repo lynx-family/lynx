@@ -67,12 +67,49 @@ export function loadCard(
   return loadSuccess;
 }
 
+function clearUnexpectedGlobalNapi(id: string) {
+  try {
+    const globalObj: any = nativeGlobal as any;
+    const props = Object.getOwnPropertyNames(globalObj);
+    for (const name of props) {
+      const val = globalObj[name];
+      if (typeof val === 'function') {
+        const owner = (val as any).___lynxNapiOwner;
+        if (owner !== undefined && String(owner) === String(id)) {
+          const desc = Object.getOwnPropertyDescriptor(globalObj, name);
+          if (!desc || desc.configurable) {
+            try {
+              alog(`delete ${name}`);
+              // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+              delete globalObj[name];
+            } catch {}
+          } else {
+            try {
+              const stub = function () {
+                throw new Error('NAPI function disposed');
+              };
+              (stub as any).___lynxNapiOwner = undefined;
+              alog(
+                `globalObj[${name}] has no configurable property, set to stub`
+              );
+              globalObj[name] = stub;
+            } catch {}
+          }
+        }
+      }
+    }
+  } catch {}
+}
+
 export function destroyCard(id: string): void {
   alog(`destroy ${id}`);
   const appInstance = nativeGlobal.multiApps[id];
-  appInstance.destroy();
+  try {
+    appInstance.destroy();
+  } catch {}
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete nativeGlobal.multiApps[id];
+  clearUnexpectedGlobalNapi(id);
 }
 
 export function callDestroyLifetimeFun(id: string): void {
