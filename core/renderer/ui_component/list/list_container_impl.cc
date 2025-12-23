@@ -411,6 +411,8 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   } else if (key.IsEqual(list::kStickyBufferCount)) {
     // sticky-buffer-count
     sticky_buffer_count_ = static_cast<int>(value.Number());
+  } else if (key.IsEqual(list::kExperimentalPauseRemovedItemAnimation)) {
+    pause_removed_item_animation_ = value.Bool();
   } else if (key.IsEqual(list::kEnablePreloadSection)) {
     enable_preload_section_ = value.Bool();
     list_layout_manager_->SetEnablePreloadSection(enable_preload_section_);

@@ -668,6 +668,14 @@ class Element : public lepus::RefCounted {
 
   void ResolvePlaceHolder();
 
+  template <typename F>
+  void ApplyFunctionRecursive(F&& func) {
+    func(this);
+    for (Element* child : GetChildren()) {
+      child->ApplyFunctionRecursive(func);
+    }
+  }
+
   // Callback before style resolving. Return false to skip style resolving.
   virtual bool WillResolveStyle(StyleMap& merged_styles) { return true; }
   virtual void DidResolveStyle(StyleMap& merged_styles) {}

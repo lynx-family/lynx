@@ -216,6 +216,18 @@ void ListElement::EnqueueComponent(int32_t sign) {
                     lepus::Value(impl_id()), lepus::Value(sign));
 }
 
+void ListElement::EnqueueComponent(int32_t sign, bool notify_item_removed) {
+  Element* list_item = nullptr;
+  if (notify_item_removed &&
+      (list_item = element_manager_->node_manager()->Get(sign))) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, "ListElement::RemoveAnimationRecursive");
+    list_item->ApplyFunctionRecursive([this](Element* element) {
+      element_manager_->RemoveFromAnimationSet(element);
+    });
+  }
+  EnqueueComponent(sign);
+}
+
 void ListElement::TickElement(fml::TimePoint& time) {
   if (list_container_delegate() && DisableListPlatformImplementation()) {
     list_container_delegate()->OnNextFrame();

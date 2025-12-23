@@ -93,6 +93,9 @@ class ListContainerImpl : public ListContainer::Delegate {
   bool recycle_sticky_item() const { return recycle_sticky_item_; }
   float sticky_offset() const { return sticky_offset_; }
   void ResetLayoutID() { layout_id_ = -1; }
+  bool pause_removed_item_animation() const {
+    return pause_removed_item_animation_;
+  }
   bool should_request_state_restore() const {
     return should_request_state_restore_;
   }
@@ -153,6 +156,7 @@ class ListContainerImpl : public ListContainer::Delegate {
   bool need_update_item_holders_{false};
   bool enable_preload_section_{false};
   int layout_id_{-1};
+  bool pause_removed_item_animation_{false};
   bool should_request_state_restore_{false};
   bool has_valid_diff_{false};
 

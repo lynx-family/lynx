@@ -51,6 +51,8 @@ class ListNode {
    */
   virtual void EnqueueComponent(int32_t sign) {}
 
+  virtual void EnqueueComponent(int32_t sign, bool notify_item_removed) {}
+
   /*
    * Native list with fiber arch API.
    */

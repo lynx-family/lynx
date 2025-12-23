@@ -85,6 +85,8 @@ class ListElement : public FiberElement,
 
   void EnqueueComponent(int32_t sign) override;
 
+  void EnqueueComponent(int32_t sign, bool notify_item_removed) override;
+
   void UpdateCallbacks(const lepus::Value& component_at_index,
                        const lepus::Value& enqueue_component,
                        const lepus::Value& component_at_indexes);
