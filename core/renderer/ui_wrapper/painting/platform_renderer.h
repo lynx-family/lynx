@@ -14,6 +14,7 @@
 namespace lynx::tasm {
 
 class DisplayList;
+class PropBundle;
 
 // Abstract base class for platform-specific UI rendering operations.
 // Provides a common interface for cross-platform UI element management.
@@ -22,6 +23,11 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   ~PlatformRenderer() override = default;
   // Update the display list for this renderer
   virtual void UpdateDisplayList(DisplayList display_list) = 0;
+
+  // Update attribute bundle for this renderer. Default implementation is
+  // provided in PlatformRendererImpl.
+  virtual void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
+                                bool tends_to_flatten) = 0;
 
   // Add a child renderer
   virtual void AddChild(fml::RefPtr<PlatformRenderer> child) = 0;

@@ -42,6 +42,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
+  void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes,
+                        bool tend_to_flatten);
 
   void SetLynxEngineActorForPlatformRendererContext(
       std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor);

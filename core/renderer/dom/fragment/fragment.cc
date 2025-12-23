@@ -237,7 +237,10 @@ void Fragment::UpdatePaintingNode(
   if (behavior_) {
     behavior_->OnAttributeUpdate(painting_data);
   }
-  painting_context()->UpdatePaintingNode(id(), tend_to_flatten, painting_data);
+  if (has_platform_renderer_) {
+    painting_context()->UpdatePaintingNode(id(), tend_to_flatten,
+                                           painting_data);
+  }
 }
 
 void Fragment::InsertListItemPaintingNode(int32_t child_id) {

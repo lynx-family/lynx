@@ -10,6 +10,7 @@ import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.behavior.ui.PropBundle;
 
 public class Renderer {
   private final Rect mLynxFrame = new Rect();
@@ -100,4 +101,6 @@ public class Renderer {
     mDisplayListApplier.drawTillNextView(canvas);
     mDisplayListApplier.reset();
   }
+
+  public void updateAttributes(PropBundle props) {}
 }

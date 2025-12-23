@@ -23,6 +23,11 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
   // TODO: impl this function later.
 }
 
+void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
+                                                bool tends_to_flatten) {
+  // TODO: impl this function later.
+}
+
 void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
   // TODO: impl this function later.
 }

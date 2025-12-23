@@ -16,6 +16,7 @@
 namespace lynx::tasm {
 
 class DisplayList;
+class PropBundle;
 
 // Platform-agnostic base implementation that provides common functionality
 // for all platform-specific renderers. Platform-specific renderers should
@@ -33,6 +34,8 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   // PlatformRenderer interface
   void UpdateDisplayList(DisplayList display_list) override;
+  void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
+                        bool tends_to_flatten) override;
 
   const DisplayList& GetDisplayList() const { return display_list_; }
 
@@ -49,6 +52,8 @@ class PlatformRendererImpl : public PlatformRenderer {
  protected:
   // Platform-specific operations to be implemented by derived classes
   virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
+  virtual void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
+                                  bool tends_to_flatten) = 0;
   virtual void OnAddChild(PlatformRenderer* child) = 0;
   virtual void OnRemoveFromParent() = 0;
 

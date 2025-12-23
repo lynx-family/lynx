@@ -165,4 +165,13 @@ NativePaintingCtxPlatformRef::GetEventTargetHelper() {
   return event_target_helper_.get();
 }
 
+void NativePaintingCtxPlatformRef::UpdateAttributes(
+    int id, const fml::RefPtr<PropBundle> &attributes, bool tend_to_flatten) {
+  auto it = renderers_.find(id);
+  if (it == renderers_.end()) {
+    return;
+  }
+  it->second->UpdateAttributes(attributes, tend_to_flatten);
+}
+
 }  // namespace lynx::tasm

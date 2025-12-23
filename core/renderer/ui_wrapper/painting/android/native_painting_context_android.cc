@@ -140,7 +140,22 @@ void NativePaintingCtxAndroid::CreatePaintingNode(
 
 void NativePaintingCtxAndroid::UpdatePaintingNode(
     int id, bool tend_to_flatten,
-    const fml::RefPtr<PropBundle> &painting_data) {}
+    const fml::RefPtr<PropBundle> &painting_data) {
+  if (!painting_data) {
+    return;
+  }
+
+  auto platform_ref = platform_ref_;
+  Enqueue([platform_ref, id, tend_to_flatten, painting_data]() mutable {
+    auto android_ref =
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(platform_ref);
+    if (!android_ref) {
+      return;
+    }
+
+    android_ref->UpdateAttributes(id, painting_data, tend_to_flatten);
+  });
+}
 
 std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
     const std::string &content, const pub::Value &info) {

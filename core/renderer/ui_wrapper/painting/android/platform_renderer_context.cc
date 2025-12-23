@@ -10,7 +10,9 @@
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
+#include "core/event/event.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
+#include "core/shell/lynx_engine.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_register_jni.h"
 
@@ -136,6 +138,17 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
       static_cast<jint>(frame[1]), static_cast<jint>(frame[2]),
       static_cast<jint>(frame[3]), static_cast<jint>(render_offset[0]),
       static_cast<jint>(render_offset[1]));
+}
+
+void PlatformRendererContext::UpdatePlatformRendererAttributes(
+    int32_t id, jobject prop_bundle) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull() || !prop_bundle) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updatePlatformRendererAttributes(
+      env, local_ref.Get(), id, prop_bundle);
 }
 
 }  // namespace tasm

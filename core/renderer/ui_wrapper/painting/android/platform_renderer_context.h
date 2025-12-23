@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
@@ -34,6 +35,9 @@ class PlatformRendererContext {
   void UpdatePlatformRendererFrame(int32_t target, bool need_clip,
                                    const float frame[4],
                                    const float render_offset[2]);
+
+  // Update platform renderer attributes
+  void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
 
   // Get PlatformRendererAndroid by ID
   PlatformRendererAndroid* GetPlatformRenderer(int32_t id);

@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 
 namespace lynx::tasm {
 
@@ -26,6 +28,9 @@ PlatformRendererAndroid::PlatformRendererAndroid(
     const base::String& tag_name)
     : PlatformRendererImpl(id, type, tag_name), context_(context) {
   InitializeAndroidView();
+  // Set is_platform_extended_renderer_ flag
+  is_platform_extended_renderer_ =
+      (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
   // Register this renderer with the context
   if (context_) {
     context_->RegisterPlatformRenderer(id, this);
@@ -95,6 +100,28 @@ fml::RefPtr<PlatformRenderer>
 PlatformRendererAndroidFactory::CreateExtendedRenderer(
     int id, const base::String& tag_name) {
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name);
+}
+
+void PlatformRendererAndroid::OnUpdateAttributes(
+    const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
+  if (!context_ || !is_platform_extended_renderer_) {
+    return;
+  }
+
+  // Convert NativePropBundle to PropBundleAndroid
+  // The attributes should be a NativePropBundle from the pipeline
+  NativePropBundle* native_bundle =
+      static_cast<NativePropBundle*>(attributes.get());
+
+  // Create PropBundleAndroid from NativePropBundle
+  PropBundleAndroid prop_bundle_android(*native_bundle);
+
+  // Update attributes via JNI
+  // Get the Java object from PropBundleAndroid
+  jobject j_prop_bundle = prop_bundle_android.jni_object();
+  if (j_prop_bundle) {
+    context_->UpdatePlatformRendererAttributes(GetId(), j_prop_bundle);
+  }
 }
 
 }  // namespace lynx::tasm

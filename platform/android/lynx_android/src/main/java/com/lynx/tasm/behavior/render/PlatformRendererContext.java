@@ -14,6 +14,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
@@ -194,6 +195,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
     host.getView().requestLayout();
     host.getView().invalidate();
+  }
+
+  @CalledByNative
+  public void updatePlatformRendererAttributes(int sign, PropBundle propBundle) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null) {
+      LLog.d(TAG, "host renderer not found for sign: " + sign);
+      return;
+    }
+
+    // Get the renderer
+    Renderer renderer = host.getRenderer();
+    if (renderer != null) {
+      renderer.updateAttributes(propBundle);
+    }
   }
 
   public LynxImageManager getImage(int sign) {

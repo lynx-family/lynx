@@ -8172,6 +8172,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererAttributes(int sign, PropBundle propBundle);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
@@ -8881,6 +8882,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.beforeDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.render.Renderer.updateAttributes(PropBundle props);
 }
 
 public class abstract com::lynx::tasm::rendernode::compat::RenderNodeCompat :  {
