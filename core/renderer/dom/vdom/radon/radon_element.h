@@ -222,6 +222,7 @@ class RadonElement : public Element {
   std::unordered_set<CSSPropertyID> animation_props_{};
 
   bool is_view_{false};
+  void* some_pointer_member_{nullptr};
   bool is_image_{false};
   bool is_list_{false};
   bool is_page_{false};
