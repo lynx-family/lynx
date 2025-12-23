@@ -43,8 +43,12 @@ class FragmentTest : public ::testing::Test {
         std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
         lynx_env_config);
     auto config = std::make_shared<PageConfig>();
-    manager->enable_fragment_layer_render_ = true;
-    manager->enable_layout_in_element_mode_ = true;
+    manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+        static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+        static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER));
+    manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+        static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+        static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
     config->SetEnableZIndex(true);
     config->SetEnableFiberArch(true);
     manager->SetConfig(config);

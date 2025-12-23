@@ -494,7 +494,7 @@ class ElementManager : public ElementContextDelegate,
   bool GetEnableNewAnimatorForFiber() {
     // If enable fragment layer render, default enable new animation.
     // TODO(songshourui.null): support simple styling + new animation.
-    if (enable_fragment_layer_render_) {
+    if (IsFragmentLayerRenderModeOn()) {
       return true;
     }
     if (config_) {
@@ -1170,12 +1170,14 @@ class ElementManager : public ElementContextDelegate,
 
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
-  inline bool IsLayoutInElementModeOn() const {
-    return enable_layout_in_element_mode_;
+  bool IsLayoutInElementModeOn() const {
+    return page_options_.IsLayoutInElementModeOn();
   }
 
+  bool IsUsingTextService() const { return page_options_.IsUsingTextService(); }
+
   bool IsFragmentLayerRenderModeOn() const {
-    return enable_fragment_layer_render_;
+    return page_options_.IsFragmentLayerRender();
   }
 
   LayoutCtxPlatformImpl *layout_context() {
@@ -1320,8 +1322,6 @@ class ElementManager : public ElementContextDelegate,
   bool require_css_variables_{false};
 
   bool enable_fiber_element_memory_reporter_{false};
-  bool enable_layout_in_element_mode_{false};
-  bool enable_fragment_layer_render_{false};
   bool enable_property_based_simple_style_{false};
 
   bool has_viewport_ready_{false};

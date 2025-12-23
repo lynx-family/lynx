@@ -55,6 +55,11 @@ enum EmbeddedMode {
   FRAGMENT_LAYER_RENDER = 1 << 3,
 
   /**
+   * Use TextService to layout and render text.
+   */
+  USE_TEXT_SERVICE = 1 << 4,
+
+  /**
    * Combination of all optimization options
    *
    * Note: When adding new optimization options, update this value
@@ -102,6 +107,13 @@ struct PageOptions {
 
   bool IsLayoutInElementModeOn() const {
     return (embedded_mode_ & (EmbeddedMode::LAYOUT_IN_ELEMENT |
+                              EmbeddedMode::FRAGMENT_LAYER_RENDER)) > 0;
+  }
+
+  // When USE_TEXT_SERVICE or FRAGMENT_LAYER_RENDER is on, text layout and
+  // render will be done by TextService.
+  bool IsUsingTextService() const {
+    return (embedded_mode_ & (EmbeddedMode::USE_TEXT_SERVICE |
                               EmbeddedMode::FRAGMENT_LAYER_RENDER)) > 0;
   }
 

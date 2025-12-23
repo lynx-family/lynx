@@ -543,13 +543,11 @@ class Element : public lepus::RefCounted,
     // currently, radon element do no need to such kind of check
   }
 
-  bool EnableLayoutInElementMode() const {
-    return enable_layout_in_element_mode_;
-  }
+  bool EnableLayoutInElementMode() const;
 
-  bool EnableFragmentLayerRender() const {
-    return enable_fragment_layer_render_;
-  }
+  bool UsingTextService() const;
+
+  bool EnableFragmentLayerRender() const;
 
   virtual void WillResetCSSValue(CSSPropertyID& id) {}
 
@@ -853,9 +851,6 @@ class Element : public lepus::RefCounted,
   // But in Radon Arch, this switch should be get from page_config.
   bool enable_extended_layout_only_opt_{true};
   bool enable_component_layout_only_{true};
-
-  bool enable_layout_in_element_mode_{false};
-  bool enable_fragment_layer_render_{false};
 
   /**
    StyleResolver has no member variables and its size is 1 byte. Put it here

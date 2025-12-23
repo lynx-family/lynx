@@ -929,8 +929,9 @@ TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
 TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
-  manager->enable_fragment_layer_render_ = true;
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER));
   manager->SetConfig(config);
 
   auto element = manager->CreateNode("view", nullptr);

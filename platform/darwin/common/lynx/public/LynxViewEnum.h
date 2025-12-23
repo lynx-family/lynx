@@ -66,6 +66,12 @@ typedef NS_OPTIONS(NSInteger, LynxEmbeddedMode) {
    * Generate render content based native `Fragment` layer.
    */
   LynxEmbeddedModeFragmentLayerRender = 1 << 3,
+
+  /**
+   * Use TextService to layout and render text.
+   */
+  LynxEmbeddedModeUseTextService = 1 << 4,
+
   /**
    * Combination of all optimization options
    *

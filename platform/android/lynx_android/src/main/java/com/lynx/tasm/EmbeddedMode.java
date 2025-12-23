@@ -57,6 +57,12 @@ public final class EmbeddedMode {
    * Generate render content based native `Fragment` layer.
    */
   public static final int FRAGMENT_LAYER_RENDER = 1 << 3;
+
+  /**
+   * Use TextService to layout and render text.
+   */
+  public static final int USE_TEXT_SERVICE = 1 << 4;
+
   /**
    * Combination of all optimization options
    * <p>

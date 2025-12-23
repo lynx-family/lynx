@@ -1543,6 +1543,7 @@ public class com::lynx::tasm::EmbeddedMode :  {
   public final int com.lynx.tasm.EmbeddedMode.ENGINE_POOL ENGINE_POOL;
   public final int com.lynx.tasm.EmbeddedMode.LAYOUT_IN_ELEMENT LAYOUT_IN_ELEMENT;
   public final int com.lynx.tasm.EmbeddedMode.FRAGMENT_LAYER_RENDER FRAGMENT_LAYER_RENDER;
+  public final int com.lynx.tasm.EmbeddedMode.USE_TEXT_SERVICE USE_TEXT_SERVICE;
   public final int com.lynx.tasm.EmbeddedMode.EMBEDDED_MODE_ALL EMBEDDED_MODE_ALL;
   public static boolean com.lynx.tasm.EmbeddedMode.isEnginePoolEnable(@EmbeddedMode.Mode int mode);
   public static boolean com.lynx.tasm.EmbeddedMode.isBaseModeEnable(@EmbeddedMode.Mode int mode);

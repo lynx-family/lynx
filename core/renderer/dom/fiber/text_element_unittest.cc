@@ -238,7 +238,9 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
 
   auto page = manager->CreateFiberPage("page", 11);
 
@@ -286,7 +288,9 @@ TEST_P(TextElementTest, TestMeasureCase0) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
@@ -401,7 +405,9 @@ TEST_P(TextElementTest, LayoutInElementFontScale) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
@@ -455,7 +461,9 @@ TEST_P(TextElementTest, TextGradient) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
@@ -549,7 +557,9 @@ TEST_P(TextElementTest, LayoutInElementWrapperTestCase0) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
@@ -616,7 +626,9 @@ TEST_P(TextElementTest, LayoutInElementWrapperTestCase1) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
   manager->OnUpdateViewport(720, 1, 1080, 1, true);
 
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);

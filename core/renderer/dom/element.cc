@@ -125,8 +125,6 @@ Element::Element(const base::String& tag, ElementManager* manager,
   }
 
   record_parent_font_size_ = manager->GetLynxEnvConfig().PageDefaultFontSize();
-  enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
-  enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 
   if (EnableFragmentLayerRender()) {
     element_container_ = std::make_unique<Fragment>(this);
@@ -169,7 +167,6 @@ Element::Element(const Element& element, bool clone_resolved_props)
       enable_extended_layout_only_opt_(
           element.enable_extended_layout_only_opt_),
       enable_component_layout_only_(element.enable_component_layout_only_),
-      enable_layout_in_element_mode_(element.enable_layout_in_element_mode_),
       width_(element.width_),
       height_(element.height_),
       top_(element.top_),
@@ -216,8 +213,6 @@ void Element::AttachToElementManager(
         manager->GetEnableExtendedLayoutOnlyOpt();
     enable_component_layout_only_ = manager->GetEnableComponentLayoutOnly();
   }
-  enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
-  enable_fragment_layer_render_ = manager->IsFragmentLayerRenderModeOn();
 
   if (EnableFragmentLayerRender()) {
     element_container_ = std::make_unique<Fragment>(this);
@@ -475,6 +470,18 @@ void Element::CheckHasInlineContainer(Element* parent) {
     is_inline_element_ = true;
     has_layout_only_props_ = false;
   }
+}
+
+bool Element::EnableLayoutInElementMode() const {
+  return element_manager() && element_manager()->IsLayoutInElementModeOn();
+}
+
+bool Element::UsingTextService() const {
+  return element_manager() && element_manager()->IsUsingTextService();
+}
+
+bool Element::EnableFragmentLayerRender() const {
+  return element_manager() && element_manager()->IsFragmentLayerRenderModeOn();
 }
 
 void Element::ResetStyleInternal(CSSPropertyID css_id) {

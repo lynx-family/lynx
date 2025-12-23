@@ -1495,7 +1495,9 @@ TEST_P(FiberElementTest, TestComponentElement) {
 }
 
 TEST_P(FiberElementTest, TestMarkLayoutDirty) {
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
 
   auto page = manager->CreateFiberPage("page", 11);
 
@@ -1538,7 +1540,9 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
 
 TEST_P(FiberElementTest,
        TestUpdateLayoutNodeAttributeWhenEnableLayoutInElement) {
-  manager->enable_layout_in_element_mode_ = true;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
   manager->enable_native_list_ = true;
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
   manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
