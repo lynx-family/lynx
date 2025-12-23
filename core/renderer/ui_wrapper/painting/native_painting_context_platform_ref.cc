@@ -22,14 +22,17 @@ NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
     : view_factory_(std::move(view_factory)) {}
 
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
-    int id, PlatformRendererType type) {
-  renderers_.insert_or_assign(id, view_factory_->CreateRenderer(id, type));
+    int id, PlatformRendererType type,
+    const fml::RefPtr<PropBundle> &init_data) {
+  renderers_.insert_or_assign(
+      id, view_factory_->CreateRenderer(id, type, init_data));
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
-    int id, const base::String &tag_name) {
+    int id, const base::String &tag_name,
+    const fml::RefPtr<PropBundle> &init_data) {
   renderers_.insert_or_assign(
-      id, view_factory_->CreateExtendedRenderer(id, tag_name));
+      id, view_factory_->CreateExtendedRenderer(id, tag_name, init_data));
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(

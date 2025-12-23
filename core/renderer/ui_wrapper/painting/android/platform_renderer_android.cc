@@ -15,22 +15,23 @@ namespace lynx::tasm {
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
 PlatformRendererAndroid::PlatformRendererAndroid(
-    PlatformRendererContext* context, int id, PlatformRendererType type)
-    : PlatformRendererAndroid(context, id, type, base::String()) {}
+    PlatformRendererContext* context, int id, PlatformRendererType type,
+    const fml::RefPtr<PropBundle>& init_data)
+    : PlatformRendererAndroid(context, id, type, base::String(), init_data) {}
 
 PlatformRendererAndroid::PlatformRendererAndroid(
-    PlatformRendererContext* context, int id, const base::String& tag_name)
+    PlatformRendererContext* context, int id, const base::String& tag_name,
+    const fml::RefPtr<PropBundle>& init_data)
     : PlatformRendererAndroid(context, id, PlatformRendererType::kUnknown,
-                              tag_name) {}
+                              tag_name, init_data) {}
 
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
-    const base::String& tag_name)
+    const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data)
     : PlatformRendererImpl(id, type, tag_name), context_(context) {
-  InitializeAndroidView();
-  // Set is_platform_extended_renderer_ flag
   is_platform_extended_renderer_ =
       (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
+  InitializeAndroidView(init_data);
   // Register this renderer with the context
   if (context_) {
     context_->RegisterPlatformRenderer(id, this);
@@ -72,13 +73,28 @@ void PlatformRendererAndroid::OnRemoveFromParent() {
   }
 }
 
-void PlatformRendererAndroid::InitializeAndroidView() {
+void PlatformRendererAndroid::InitializeAndroidView(
+    const fml::RefPtr<PropBundle>& init_data) {
   if (!context_) {
     return;
   }
   if (type_ == PlatformRendererType::kUnknown && !tag_name_.empty()) {
-    // This is an extended platform renderer with a custom tag name
-    context_->CreatePlatformExtendedRenderer(GetId(), tag_name_);
+    NativePropBundle* native_bundle =
+        static_cast<NativePropBundle*>(init_data.get());
+
+    if (!native_bundle) {
+      context_->CreatePlatformExtendedRenderer(GetId(), tag_name_, nullptr);
+      return;
+    }
+    // Create PropBundleAndroid from NativePropBundle
+    PropBundleAndroid prop_bundle_android(*native_bundle);
+
+    // Update attributes via JNI
+    // Get the Java object from PropBundleAndroid
+    jobject j_prop_bundle = prop_bundle_android.jni_object();
+
+    context_->CreatePlatformExtendedRenderer(GetId(), tag_name_, j_prop_bundle);
+
   } else {
     // This is a standard platform renderer with a known type
     context_->CreatePlatformRenderer(GetId(), type_);
@@ -92,14 +108,18 @@ void PlatformRendererAndroid::CleanupAndroidView() {
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererAndroidFactory::CreateRenderer(
-    int id, PlatformRendererType type) {
-  return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, type);
+    int id, PlatformRendererType type,
+    const fml::RefPtr<PropBundle>& init_data) {
+  return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, type,
+                                                      init_data);
 }
 
 fml::RefPtr<PlatformRenderer>
 PlatformRendererAndroidFactory::CreateExtendedRenderer(
-    int id, const base::String& tag_name) {
-  return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name);
+    int id, const base::String& tag_name,
+    const fml::RefPtr<PropBundle>& init_data) {
+  return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name,
+                                                      init_data);
 }
 
 void PlatformRendererAndroid::OnUpdateAttributes(

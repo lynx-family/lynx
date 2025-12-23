@@ -143,7 +143,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void createPlatformExtendedRenderer(int sign, String tagName) {
+  public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
     // For extended platform renderers, we need to create a custom view based on the tag name
     // Currently, we'll create a ContainerRenderer as a fallback, but in the future
     // we should look up the actual class based on the tag name

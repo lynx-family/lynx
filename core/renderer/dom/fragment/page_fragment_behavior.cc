@@ -9,10 +9,11 @@
 
 namespace lynx::tasm {
 
-void PageFragmentBehavior::CreatePlatformRenderer() {
+void PageFragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& attributes) {
   if (painting_context_ && fragment_) {
-    painting_context_->CreatePlatformRenderer(fragment_->id(),
-                                              PlatformRendererType::kPage);
+    painting_context_->CreatePlatformRenderer(
+        fragment_->id(), PlatformRendererType::kPage, attributes);
   }
 }
 

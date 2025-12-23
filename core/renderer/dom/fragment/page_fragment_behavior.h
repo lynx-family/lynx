@@ -12,7 +12,8 @@ class PageFragmentBehavior : public FragmentBehavior {
  public:
   explicit PageFragmentBehavior(Fragment* fragment)
       : FragmentBehavior(fragment) {}
-  void CreatePlatformRenderer() override;
+  void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& attributes) override;
 };
 
 }  // namespace lynx::tasm

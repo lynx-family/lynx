@@ -8,10 +8,11 @@
 
 namespace lynx::tasm {
 
-void ViewFragmentBehavior::CreatePlatformRenderer() {
+void ViewFragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& init_data) {
   if (painting_context_) {
-    painting_context_->CreatePlatformRenderer(fragment_->id(),
-                                              PlatformRendererType::kView);
+    painting_context_->CreatePlatformRenderer(
+        fragment_->id(), PlatformRendererType::kView, init_data);
   }
 }
 

@@ -80,11 +80,13 @@ void NativePaintingCtxDarwin::FinishLayoutOperation(
 
 void NativePaintingCtxDarwin::Flush() { queue_->Flush(); }
 
-void NativePaintingCtxDarwin::CreatePlatformRenderer(int id, PlatformRendererType type) {
+void NativePaintingCtxDarwin::CreatePlatformRenderer(int id, PlatformRendererType type,
+                                                     const fml::RefPtr<PropBundle> &init_data) {
   // TODO: impl this function later.
 }
 
-void NativePaintingCtxDarwin::CreatePlatformExtendedRenderer(int id, const base::String &tag_name) {
+void NativePaintingCtxDarwin::CreatePlatformExtendedRenderer(
+    int id, const base::String &tag_name, const fml::RefPtr<PropBundle> &init_data) {
   // TODO: impl this function later.
 }
 

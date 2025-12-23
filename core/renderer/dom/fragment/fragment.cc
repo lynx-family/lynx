@@ -25,7 +25,7 @@ Fragment* Fragment::fragment_parent() const {
   return static_cast<Fragment*>(parent());
 }
 
-void Fragment::CreateLayerIfNeeded() {
+void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   if (has_platform_renderer_) {
     // If the fragment has a platform renderer, it means that the fragment
     // is already layerized.
@@ -54,7 +54,7 @@ void Fragment::CreateLayerIfNeeded() {
   }
 
   // TODO(zhongyr): abstract one behavior for layerize.
-  behavior_->CreatePlatformRenderer();
+  behavior_->CreatePlatformRenderer(init_data);
   has_platform_renderer_ = true;
 }
 
@@ -228,7 +228,7 @@ void Fragment::CreatePaintingNode(
   set_was_position_fixed(element()->is_fixed());
   MarkDirtyState(kNeedRedraw);
   element()->SetupFragmentBehavior(this);
-  CreateLayerIfNeeded();
+  CreateLayerIfNeeded(painting_data);
 }
 
 void Fragment::UpdatePaintingNode(

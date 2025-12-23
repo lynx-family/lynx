@@ -15,12 +15,15 @@ namespace lynx::tasm {
 class PlatformRendererAndroid : public PlatformRendererImpl {
  public:
   explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
-                                   PlatformRendererType type);
+                                   PlatformRendererType type,
+                                   const fml::RefPtr<PropBundle>& init_data);
   explicit PlatformRendererAndroid(PlatformRendererContext* context, int id,
-                                   const base::String& tag_name);
+                                   const base::String& tag_name,
+                                   const fml::RefPtr<PropBundle>& init_data);
   PlatformRendererAndroid(PlatformRendererContext* context, int id,
                           PlatformRendererType type,
-                          const base::String& tag_name);
+                          const base::String& tag_name,
+                          const fml::RefPtr<PropBundle>& init_data);
   ~PlatformRendererAndroid() override;
 
  protected:
@@ -38,7 +41,7 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   bool is_platform_extended_renderer_ = false;
 
   // Initialize the Android view
-  void InitializeAndroidView();
+  void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
 
   // Clean up Android resources
   void CleanupAndroidView();
@@ -54,10 +57,12 @@ class PlatformRendererAndroidFactory : public PlatformRendererFactory {
   ~PlatformRendererAndroidFactory() override = default;
 
   fml::RefPtr<PlatformRenderer> CreateRenderer(
-      int id, PlatformRendererType type) override;
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data) override;
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
-      int id, const base::String& tag_name) override;
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data) override;
 
  private:
   PlatformRendererContext* context_;

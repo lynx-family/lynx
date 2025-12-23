@@ -12,7 +12,8 @@ class ViewFragmentBehavior : public FragmentBehavior {
  public:
   explicit ViewFragmentBehavior(Fragment* fragment)
       : FragmentBehavior(fragment) {}
-  void CreatePlatformRenderer() override;
+  void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& init_data) override;
 };
 
 }  // namespace lynx::tasm

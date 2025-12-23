@@ -14,12 +14,13 @@ FragmentBehavior::FragmentBehavior(Fragment* fragment)
       painting_context_(
           fragment->painting_context()->impl()->CastToNativeCtx()) {}
 
-void FragmentBehavior::CreatePlatformRenderer() {
+void FragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& attributes) {
   if (!painting_context_) {
     return;
   }
-  painting_context_->CreatePlatformRenderer(fragment_->id(),
-                                            PlatformRendererType::kView);
+  painting_context_->CreatePlatformRenderer(
+      fragment_->id(), PlatformRendererType::kView, attributes);
 }
 
 }  // namespace lynx::tasm

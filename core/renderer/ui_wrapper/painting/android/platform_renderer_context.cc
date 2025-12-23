@@ -40,7 +40,7 @@ void PlatformRendererContext::CreatePlatformRenderer(
 }
 
 void PlatformRendererContext::CreatePlatformExtendedRenderer(
-    int32_t id, const base::String& tag_name) {
+    int32_t id, const base::String& tag_name, jobject init_data) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -49,7 +49,7 @@ void PlatformRendererContext::CreatePlatformExtendedRenderer(
   auto j_tag_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, tag_name.c_str());
   Java_PlatformRendererContext_createPlatformExtendedRenderer(
-      env, local_ref.Get(), id, j_tag_name.Get());
+      env, local_ref.Get(), id, j_tag_name.Get(), init_data);
 }
 
 void PlatformRendererContext::InsertPlatformRenderer(int32_t parent,

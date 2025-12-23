@@ -746,7 +746,6 @@ void FiberElement::DestroyPlatformNode() {
 // maintain two versions of the code: one for lvalues and one for rvalues.
 void FiberElement::SetClass(const base::String &clazz) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_CLASS);
-
   data_model_->SetClass(clazz);
   MarkStyleDirty(NeedForceClassChangeTransmit());
 }
@@ -4345,10 +4344,11 @@ void FiberElement::InvalidateChildrenIfNeeded() {
 void FiberElement::SetupFragmentBehavior(Fragment *fragment) {
   if (is_list_item()) {
     fragment->SetBehavior(std::make_unique<ListItemFragmentBehavior>(fragment));
-  } else if (is_platform_extended()) {
-    fragment->SetBehavior(
-        std::make_unique<PlatformExtendedFragmentBehavior>(fragment, GetTag()));
+    return;
   }
+
+  fragment->SetBehavior(
+      std::make_unique<PlatformExtendedFragmentBehavior>(fragment, GetTag()));
 }
 
 }  // namespace tasm

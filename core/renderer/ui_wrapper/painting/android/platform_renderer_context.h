@@ -24,7 +24,8 @@ class PlatformRendererContext {
       : java_ref_(env, j_this) {}
 
   void CreatePlatformRenderer(int32_t id, PlatformRendererType type);
-  void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name);
+  void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name,
+                                      jobject init_data);
 
   void InsertPlatformRenderer(int32_t parent, int32_t child, int32_t index);
 

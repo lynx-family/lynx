@@ -72,7 +72,7 @@ class Fragment : public BaseElementContainer {
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
 
-  void CreateLayerIfNeeded();
+  void CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data);
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;
 
   void UpdateLayout(LayoutResultForRendering layout_result_for_rendering);

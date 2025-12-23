@@ -14,11 +14,12 @@ PlatformExtendedFragmentBehavior::PlatformExtendedFragmentBehavior(
     Fragment* fragment, const base::String& tag_name)
     : FragmentBehavior(fragment), tag_name_(tag_name) {}
 
-void PlatformExtendedFragmentBehavior::CreatePlatformRenderer() {
+void PlatformExtendedFragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& attributes) {
   if (painting_context_ && fragment_) {
     // Create platform renderer with extended type for custom components
     painting_context_->CreatePlatformExtendedRenderer(fragment_->id(),
-                                                      tag_name_);
+                                                      tag_name_, attributes);
   }
 }
 

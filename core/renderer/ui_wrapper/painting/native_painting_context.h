@@ -15,9 +15,12 @@ class NativePaintingContext {
  public:
   NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
-  virtual void CreatePlatformRenderer(int id, PlatformRendererType type) = 0;
-  virtual void CreatePlatformExtendedRenderer(int id,
-                                              const base::String& tag_name) = 0;
+  virtual void CreatePlatformRenderer(
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data) = 0;
+  virtual void CreatePlatformExtendedRenderer(
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data) = 0;
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
   virtual void CreateImage(int id, base::String src, float width,
                            float height) = 0;

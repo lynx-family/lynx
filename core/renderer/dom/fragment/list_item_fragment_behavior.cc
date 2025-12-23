@@ -13,10 +13,11 @@ namespace tasm {
 ListItemFragmentBehavior::ListItemFragmentBehavior(Fragment* fragment)
     : FragmentBehavior(fragment) {}
 
-void ListItemFragmentBehavior::CreatePlatformRenderer() {
+void ListItemFragmentBehavior::CreatePlatformRenderer(
+    const fml::RefPtr<PropBundle>& attributes) {
   if (painting_context() && fragment()) {
-    painting_context()->CreatePlatformRenderer(fragment()->id(),
-                                               PlatformRendererType::kListItem);
+    painting_context()->CreatePlatformRenderer(
+        fragment()->id(), PlatformRendererType::kListItem, attributes);
   }
 }
 

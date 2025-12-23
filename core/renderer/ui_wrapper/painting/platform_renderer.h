@@ -9,6 +9,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/public/prop_bundle.h"
 #include "core/renderer/utils/base/base_def.h"
 
 namespace lynx::tasm {
@@ -52,10 +53,12 @@ class PlatformRendererFactory {
 
   // Create a new platform renderer with the given ID
   virtual fml::RefPtr<PlatformRenderer> CreateRenderer(
-      int id, PlatformRendererType type) = 0;
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data) = 0;
 
   virtual fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
-      int id, const base::String& tag_name) = 0;
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data) = 0;
 };
 
 }  // namespace lynx::tasm

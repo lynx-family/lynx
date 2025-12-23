@@ -15,7 +15,8 @@ class ListFragmentBehavior : public FragmentBehavior {
   ListFragmentBehavior(Fragment* fragment);
   ~ListFragmentBehavior() override = default;
 
-  void CreatePlatformRenderer() override;
+  void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& attributes) override;
 };
 
 }  // namespace tasm

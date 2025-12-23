@@ -9,6 +9,7 @@
 
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
+#include "core/public/prop_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
@@ -35,8 +36,10 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
       std::unique_ptr<PlatformRendererFactory> view_factory);
   ~NativePaintingCtxPlatformRef() override = default;
 
-  void CreatePlatformRenderer(int id, PlatformRendererType type);
-  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name);
+  void CreatePlatformRenderer(int id, PlatformRendererType type,
+                              const fml::RefPtr<PropBundle> &init_data);
+  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name,
+                                      const fml::RefPtr<PropBundle> &init_data);
   void UpdateDisplayList(int id, DisplayList &&display_list);
 
   void RemovePaintingNode(int parent, int child, int index,

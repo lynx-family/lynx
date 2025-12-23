@@ -18,10 +18,12 @@ class PlatformRendererDarwinFactory : public PlatformRendererFactory {
   ~PlatformRendererDarwinFactory() override = default;
 
   fml::RefPtr<PlatformRenderer> CreateRenderer(
-      int id, PlatformRendererType type) override;
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data) override;
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
-      int id, const base::String& tag_name) override;
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data) override;
 };
 
 }  // namespace tasm

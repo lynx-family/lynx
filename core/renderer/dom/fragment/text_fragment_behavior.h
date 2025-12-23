@@ -14,7 +14,8 @@ class TextFragmentBehavior : public FragmentBehavior {
  public:
   explicit TextFragmentBehavior(Fragment* fragment)
       : FragmentBehavior(fragment) {}
-  void CreatePlatformRenderer() override;
+  void CreatePlatformRenderer(
+      const fml::RefPtr<PropBundle>& attributes) override;
   void OnDraw(DisplayListBuilder& builder) override;
 };
 
