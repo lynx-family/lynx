@@ -412,7 +412,7 @@ GestureDetector InnerCreateGestureDetector(double gesture_id,
   BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
   BASE_STATIC_STRING_DECL(kConfig, "config");
   auto callbacks = callback_config->GetProperty(kCallbacks);
-  auto config = callback_config->GetProperty(kConfig).ToLepusValue();
+  auto config = callback_config->GetProperty(kConfig);
 
   // Initialize a vector to store gesture callbacks with their names and
   // functions.
