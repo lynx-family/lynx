@@ -120,6 +120,10 @@ class TimingHandler {
                        const PipelineOrigin& pipeline_origin,
                        TimestampUs pipeline_start_timestamp);
 
+  void OnPipelineEnd(const PipelineID& pipeline_id);
+
+  void OnPipelineNoPatch(const PipelineID& pipeline_id);
+
   void BindPipelineIDWithTimingFlag(const PipelineID& pipeline_id,
                                     const TimingFlag& timing_flag);
 

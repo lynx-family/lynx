@@ -175,6 +175,8 @@ class TasmMediator : public LynxEngine::Delegate {
       const tasm::PipelineOrigin& pipeline_origin,
       tasm::timing::TimestampUs pipeline_start_timestamp) override;
 
+  virtual void OnPipelineEnd(const tasm::PipelineID& pipeline_id) override;
+
   void RequestVsync(
       uintptr_t id,
       base::MoveOnlyClosure<void, int64_t, int64_t> callback) override;
@@ -183,7 +185,8 @@ class TasmMediator : public LynxEngine::Delegate {
       int32_t root_id, tasm::Viewport viewport = tasm::Viewport{}) override;
 
   void SetRootOnLayout(int32_t id) override;
-  void OnUpdateDataWithoutChange() override;
+  void OnUpdateDataWithoutChange(
+      const std::shared_ptr<tasm::PipelineOptions>& options) override;
   void OnUpdateViewport(float width, int width_mode, float height,
                         int height_mode, bool need_layout) override;
   void UpdateLynxEnvForLayoutThread(tasm::LynxEnvConfig env) override;

@@ -8,6 +8,8 @@
 #include <utility>
 
 #include "base/include/string/string_utils.h"
+#include "base/trace/native/trace_event.h"
+#include "core/base/lynx_trace_categories.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/timing_handler/timing_handler_delegate.h"
@@ -38,6 +40,31 @@ void TimingHandler::OnPipelineStart(const PipelineID& pipeline_id,
 
   std::string start_time_key(kPipelineStart);
   SetTiming(start_time_key, pipeline_start_timestamp, pipeline_id);
+}
+
+void TimingHandler::OnPipelineEnd(const PipelineID& pipeline_id) {
+  if (pipeline_id.empty()) {
+    return;
+  }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingHandler::OnPipelineEnd");
+  // Check if the specific ID exists in the map
+  auto it = pipeline_id_to_timing_flags_map_.find(pipeline_id);
+  if (it == pipeline_id_to_timing_flags_map_.end()) {
+    // A specific version of the front-end framework marks all pipelines as
+    // requiring timing, but lacks a timing flag. This data is of no value and
+    // needs to be cleared and not sent to developers.
+    ReleaseTiming(pipeline_id);
+  }
+  handler_ng_.OnPipelineEnd(pipeline_id);
+}
+
+void TimingHandler::OnPipelineNoPatch(const PipelineID& pipeline_id) {
+  if (pipeline_id.empty()) {
+    return;
+  }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingHandler::OnPipelineNoPatch");
+  ReleaseTiming(pipeline_id);
+  handler_ng_.OnPipelineNoPatch(pipeline_id);
 }
 
 void TimingHandler::BindPipelineIDWithTimingFlag(

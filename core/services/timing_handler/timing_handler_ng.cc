@@ -40,6 +40,23 @@ void TimingHandlerNg::OnPipelineStart(
   }
 }
 
+void TimingHandlerNg::OnPipelineEnd(const PipelineID& pipeline_id) {
+  if (pipeline_id.empty()) {
+    return;
+  }
+  auto it = pipeline_id_to_timing_flags_map_.find(pipeline_id);
+  if (it == pipeline_id_to_timing_flags_map_.end()) {
+    ReleasePipelineTiming(pipeline_id);
+  }
+}
+
+void TimingHandlerNg::OnPipelineNoPatch(const PipelineID& pipeline_id) {
+  if (pipeline_id.empty()) {
+    return;
+  }
+  ReleasePipelineTiming(pipeline_id);
+}
+
 void TimingHandlerNg::BindPipelineIDWithTimingFlag(
     const PipelineID& pipeline_id, const TimingFlag& timing_flag) {
   if (timing_flag.empty() || pipeline_id.empty()) {

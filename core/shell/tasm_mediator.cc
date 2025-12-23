@@ -186,6 +186,16 @@ void TasmMediator::OnPipelineStart(
   });
 }
 
+void TasmMediator::OnPipelineEnd(const tasm::PipelineID& pipeline_id) {
+  if (!perf_actor_ || pipeline_id.empty()) {
+    return;
+  }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingHandler::OnPipelineEnd");
+  perf_actor_->ActAsync([pipeline_id](auto& performance) {
+    performance->GetTimingHandler().OnPipelineEnd(pipeline_id);
+  });
+}
+
 void TasmMediator::ResetMediatorActor(
     const std::shared_ptr<LynxActor<tasm::LayoutContext>>& layout_actor,
     const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
@@ -568,7 +578,15 @@ void TasmMediator::SetRootOnLayout(int32_t id) {
   layout_actor_->ActLite([id](auto& layout) { layout->SetRoot(id); });
 }
 
-void TasmMediator::OnUpdateDataWithoutChange() {
+void TasmMediator::OnUpdateDataWithoutChange(
+    const std::shared_ptr<tasm::PipelineOptions>& options) {
+  if (perf_actor_) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingHandler::OnPipelineNoPatch");
+    perf_actor_->ActAsync(
+        [pipeline_id = options->pipeline_id](auto& performance) mutable {
+          performance->GetTimingHandler().OnPipelineNoPatch(pipeline_id);
+        });
+  }
   facade_actor_->Act([](auto& facade) { facade->OnUpdateDataWithoutChange(); });
 }
 

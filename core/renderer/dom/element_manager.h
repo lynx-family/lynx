@@ -227,11 +227,14 @@ class ElementManager : public ElementContextDelegate,
                                   int height_mode, bool need_layout) = 0;
     virtual void SetRootOnLayout(int32_t id) = 0;
 
-    virtual void OnUpdateDataWithoutChange() = 0;
+    virtual void OnUpdateDataWithoutChange(
+        const std::shared_ptr<PipelineOptions> &option) = 0;
     virtual void SetPageConfigForLayoutThread(
         const std::shared_ptr<PageConfig> &config) = 0;
 
     virtual void OnErrorOccurred(base::LynxError error) = 0;
+
+    virtual void OnPipelineEnd(const tasm::PipelineID &pipeline_id) = 0;
 
     virtual void BindPipelineIDWithTimingFlag(
         const tasm::PipelineID &pipeline_id,
