@@ -420,20 +420,36 @@ void BaseTextShadowNode::SetTextShadows(std::vector<Shadow>&& text_shadows) {
 }
 
 void BaseTextShadowNode::SetTextStrokeColor(Color color) {
+#ifndef CLAY_ENABLE_TTTEXT
   EnsureDefaultStyle();
   if (stroke_color_ != color) {
     stroke_color_ = color;
     MarkDirty();
   }
   text_style_->foreground_id = id_;
+#else
+  EnsureDefaultStyle();
+  if (text_style_->stroke_color != color) {
+    text_style_->stroke_color = color;
+    MarkDirty();
+  }
+#endif
 }
 void BaseTextShadowNode::SetTextStrokeWidth(double width) {
+#ifndef CLAY_ENABLE_TTTEXT
   EnsureDefaultStyle();
   if (stroke_width_ != width) {
     stroke_width_ = width;
     MarkDirty();
   }
   text_style_->foreground_id = id_;
+#else
+  EnsureDefaultStyle();
+  if (text_style_->stroke_width != width) {
+    text_style_->stroke_width = width;
+    MarkDirty();
+  }
+#endif
 }
 
 void BaseTextShadowNode::SetTextGradient(const Gradient& gradient) {

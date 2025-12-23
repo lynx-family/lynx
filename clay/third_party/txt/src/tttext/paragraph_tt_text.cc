@@ -190,7 +190,7 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForPlaceholders() {
         if (rect[2] != 0 && rect[3] != 0) {
           result.push_back(
               TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
-                      TextDirection::ltr));
+                      TextDirection::ltr, i));
         }
       }
     }
