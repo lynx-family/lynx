@@ -841,3 +841,24 @@ jobs:
         with:
           name: clay_glfw
           path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
+
+  macos-explorer-build:
+    timeout-minutes: 60
+    runs-on: lynx-darwin-14-medium
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build macOS Explorer
+        uses: ./lynx/.github/actions/macos-explorer-build
+        with:
+          build-arch: ${{ matrix.arch }}
+      - name: upload artifact
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        with:
+          name: macos-explorer-build-${{ matrix.arch }}
+          path: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz'
