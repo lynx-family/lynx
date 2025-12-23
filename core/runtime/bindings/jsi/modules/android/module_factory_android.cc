@@ -85,5 +85,20 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryAndroid::CreateModule(
   return std::shared_ptr<LynxNativeModule>(nullptr);
 }
 
+std::shared_ptr<ModuleFactoryAndroid> ModuleFactoryAndroid::CreateOrReuse(
+    JNIEnv* env, jobject moduleFactory) {
+  if (env->IsSameObject(moduleFactory, nullptr)) {
+    return std::shared_ptr<ModuleFactoryAndroid>(nullptr);
+  }
+  int64_t reuse_ptr = Java_LynxModuleFactory_getNativePtr(env, moduleFactory);
+  if (reuse_ptr != 0) {
+    LOGI("NativeModule: module factory reuse: " << reuse_ptr);
+    ModuleFactoryAndroid* module_factory_android =
+        reinterpret_cast<ModuleFactoryAndroid*>(reuse_ptr);
+    return module_factory_android->shared_from_this();
+  }
+  return std::make_shared<ModuleFactoryAndroid>(env, moduleFactory);
+}
+
 }  // namespace piper
 }  // namespace lynx

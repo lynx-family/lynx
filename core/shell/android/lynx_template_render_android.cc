@@ -411,8 +411,9 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
       std::make_shared<lynx::pub::LynxNativeModuleManager>();
   // Set platform module factory
   native_module_manager->SetPlatformModuleFactory(
-      std::make_shared<lynx::piper::ModuleFactoryAndroid>(env,
-                                                          java_module_factory));
+      lynx::piper::ModuleFactoryAndroid::CreateOrReuse(env,
+                                                       java_module_factory));
+  native_module_manager->SetContextID(shell->GetInstanceId());
   // Set native module factory
   if (ui_delegate_ptr != 0) {
     auto ui_delegate =

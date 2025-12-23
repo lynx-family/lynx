@@ -5,8 +5,12 @@ package com.lynx.tasm.group;
 
 import android.content.Context;
 import androidx.annotation.Nullable;
+import com.lynx.jsbridge.IModuleCreator;
 import com.lynx.jsbridge.LynxEmbeddedModule;
 import com.lynx.jsbridge.LynxModule;
+import com.lynx.jsbridge.LynxModuleFactory;
+import com.lynx.jsbridge.SharedContextFinder;
+import com.lynx.jsbridge.SharedModuleCreator;
 import com.lynx.tasm.DefaultLogicExecutor;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.ILynxEngine;
@@ -101,6 +105,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   /** Runtime Cache Manager **/
   private Future<Void> templateResultFutureTask;
 
+  /**
+   * shared LynxModuleFactory among multiple lynxViews config by the same LynxViewGroup;
+   */
+  private LynxModuleFactory mSharedModuleFactory;
+
   @Override
   public boolean hasPresetMeasureSpec() {
     return hasPresetMeasureSpec;
@@ -161,6 +170,19 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
     if (templateBundle == null) {
       this.fetchTemplateInternal();
+    }
+
+    if (mSharedModuleFactory == null) {
+      mSharedModuleFactory = new LynxModuleFactory();
+      // bind SharedContextFinder & SharedModuleCreator
+      IModuleCreator sharedModuleCreator = new SharedModuleCreator(new SharedContextFinder());
+      mSharedModuleFactory.bind(sharedModuleCreator);
+      // register ModuleAuthValidator if it is set in LynxRuntimeOptions
+      if (this.lynxRuntimeOptions != null
+          && this.lynxRuntimeOptions.getModuleAuthValidator() != null) {
+        mSharedModuleFactory.registerModuleAuthValidator(
+            this.lynxRuntimeOptions.getModuleAuthValidator());
+      }
     }
     if (logicExecutor instanceof DefaultLogicExecutor) {
       ((DefaultLogicExecutor) logicExecutor).init(this);
@@ -463,7 +485,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   @Override
   public void registerModule(String name, Class<? extends LynxModule> module, Object param) {
-    lynxRuntimeOptions.registerModule(name, module, param);
+    mSharedModuleFactory.registerModule(name, module, param);
   }
 
   private void setFetchResult(LynxResourceResponse<TemplateBundle> result) {
@@ -544,6 +566,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       }
       mFetchCallbacks.add(callback);
     }
+  }
+
+  @Override
+  public LynxModuleFactory getSharedModuleFactory() {
+    return mSharedModuleFactory;
   }
 
   public void release() {

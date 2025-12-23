@@ -52,6 +52,7 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
       pub::LynxNativeModuleManager &&native_module_manager)
       : pub::LynxNativeModuleManager(std::move(native_module_manager)) {
     delegate_ = pub::LynxNativeModuleManager::GetModuleDelegate();
+    context_id_ = pub::LynxNativeModuleManager::GetContextID();
     record_id_ = pub::LynxNativeModuleManager::record_id_;
   }
   virtual ~LynxModuleManager();
@@ -89,6 +90,7 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
       const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate);
 
  private:
+  int64_t context_id_ = -1;
   LynxModuleProviderFunction BindingFunc(
       std::weak_ptr<LynxModuleManager> weak_manager,
       const std::shared_ptr<ModuleDelegate> &delegate);

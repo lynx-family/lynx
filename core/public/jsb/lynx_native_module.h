@@ -81,6 +81,11 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
     runtime_proxy_ = proxy;
   }
 
+  // The `context_id_` is used to associate with `LynxContext`, which is linked
+  // to the corresponding `Context` through `findContext` in
+  // `LynxModuleWrapper`.
+  void SetContextID(int64_t context_id) { context_id_ = context_id; }
+
   virtual void Destroy() {}
 
   std::shared_ptr<pub::PubValueFactory> GetValueFactory() {
@@ -98,6 +103,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
 #endif
 
  protected:
+  // The `context_id_` is used to associate with `LynxContext`, which is linked
+  // to the corresponding `Context` through `findContext` in
+  // `LynxModuleWrapper`.
+  int64_t context_id_ = -1;
   std::weak_ptr<Delegate> delegate_;
   std::weak_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   NativeModuleMethods methods_;

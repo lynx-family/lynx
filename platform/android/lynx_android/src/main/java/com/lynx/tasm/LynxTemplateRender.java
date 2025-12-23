@@ -546,53 +546,64 @@ public class LynxTemplateRender
   }
 
   private void setUpBackgroundThreadModuleFactory() {
-    if (mRuntime != null) {
-      mModuleFactory = mRuntime.getModuleFactory();
+    if (mLynxViewGroup != null) {
+      LLog.v(TAG,
+          "NativeModule:LynxTemplateRender setUpBackgroundThreadModuleFactory mLynxViewGroup: "
+              + mLynxViewGroup);
+      mModuleFactory = mLynxViewGroup.getSharedModuleFactory();
+      IContextFinder contextFinder = mModuleFactory.currentContextFinder();
+      contextFinder.registerContext(
+          String.valueOf(mLynxContext.getInstanceId()), new WeakReference<>(mLynxContext));
     } else {
-      mModuleFactory = new LynxModuleFactory();
-      mModuleFactory.registerModuleAuthValidator(mLynxRuntimeOptions.getModuleAuthValidator());
-    }
-    final LynxViewClient client = mLynxContext.getLynxViewClient();
-    Runnable factoryRunnable = new Runnable() {
-      @Override
-      public void run() {
-        if (client != null) {
-          if (mDestroying || mHasDestroy) {
-            return;
+      if (mRuntime != null) {
+        mModuleFactory = mRuntime.getModuleFactory();
+      } else {
+        mModuleFactory = new LynxModuleFactory();
+        mModuleFactory.registerModuleAuthValidator(mLynxRuntimeOptions.getModuleAuthValidator());
+      }
+      final LynxViewClient client = mLynxContext.getLynxViewClient();
+      Runnable factoryRunnable = new Runnable() {
+        @Override
+        public void run() {
+          if (client != null) {
+            if (mDestroying || mHasDestroy) {
+              return;
+            }
+            LLog.i("LynxModuleFactory", "lynx invoke onLynxViewAndJSRuntimeDestroy");
+            client.onLynxViewAndJSRuntimeDestroy();
           }
-          LLog.i("LynxModuleFactory", "lynx invoke onLynxViewAndJSRuntimeDestroy");
-          client.onLynxViewAndJSRuntimeDestroy();
         }
-      }
-    };
-    mModuleFactory.setLifecycleListener(new LynxModuleFactory.AbstractLifecycleListener() {
-      @Override
-      public void onDestroy() {
-        UIThreadUtils.runOnUiThread(factoryRunnable);
-      }
-    });
-    // bind common module creator
-    IContextFinder contextFinder = new IContextFinder() {
-      private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
-      @NonNull
-      @Override
-      public WeakReference<Context> findContext(@Nullable String instanceId) {
-        return mContext;
-      }
+      };
+      mModuleFactory.setLifecycleListener(new LynxModuleFactory.AbstractLifecycleListener() {
+        @Override
+        public void onDestroy() {
+          UIThreadUtils.runOnUiThread(factoryRunnable);
+        }
+      });
+      // bind common module creator
+      IContextFinder contextFinder = new IContextFinder() {
+        private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
 
-      @Override
-      public void registerContext(
-          @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
-    };
-    mModuleFactory.bind(new CommonModuleCreator(contextFinder));
-    // set user modules
-    setUserModules(mModuleFactory);
-    // set internal modules
-    setLynxInternalModules(mModuleFactory);
-    // set fetch module , only in background thread
-    LynxFetchModuleEventSender eventSender = new LynxFetchModuleEventSender();
-    eventSender.setWeakContext(mLynxContext);
-    mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
+        @NonNull
+        @Override
+        public WeakReference<Context> findContext(@Nullable String instanceId) {
+          return mContext;
+        }
+
+        @Override
+        public void registerContext(
+            @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
+      };
+      mModuleFactory.bind(new CommonModuleCreator(contextFinder));
+      // set user modules
+      setUserModules(mModuleFactory);
+      // set internal modules
+      setLynxInternalModules(mModuleFactory);
+      // set fetch module , only in background thread
+      LynxFetchModuleEventSender eventSender = new LynxFetchModuleEventSender();
+      eventSender.setWeakContext(mLynxContext);
+      mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
+    }
   }
 
   private void tryReuseLynxEngineFromPool() {

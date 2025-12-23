@@ -61,11 +61,20 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
     auth_verify_ = std::move(validator);
   }
 
+  void SetContextFinder(
+      base::MoveOnlyClosure<base::android::ScopedLocalJavaRef<jobject>>
+          context_finder) {
+    context_finder_ = std::move(context_finder);
+  }
+
   inline std::string GetModuleName() const { return module_name_; }
   inline std::string GetMethodName() const { return method_name_; }
   inline bool ContainsPromise() const {
     return signature_[signature_.length() - 1] == 'P';
   }
+  // Check if the method signature contains LynxContext parameter.
+  // The LynxContext parameter is always the first parameter.
+  inline bool ContainsLynxContext() const { return signature_[2] == 'K'; }
 
   bool VerifySignature(const pub::Value* args, size_t args_count);
 
@@ -85,6 +94,10 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
   base::MoveOnlyClosure<bool, std::string,
                         const std::shared_ptr<base::android::JavaOnlyArray>>
       auth_verify_;
+
+  // Find LynxContext object from the Android platform.
+  base::MoveOnlyClosure<base::android::ScopedLocalJavaRef<jobject>>
+      context_finder_;
 };
 
 }  // namespace piper

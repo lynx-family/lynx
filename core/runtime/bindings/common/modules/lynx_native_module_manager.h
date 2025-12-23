@@ -85,6 +85,7 @@ class LynxNativeModuleManager {
   void SetFacadeActor(
       const std::shared_ptr<shell::LynxActor<shell::NativeFacade>>
           &facade_actor);
+  void SetContextID(int64_t context_id) { context_id_ = context_id; };
 
  protected:
   const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &GetEngineActor() {
@@ -94,8 +95,13 @@ class LynxNativeModuleManager {
   GetFacadeActor() {
     return facade_actor_;
   }
+  int64_t GetContextID() { return context_id_; };
 
  private:
+  // The `context_id_` is used to associate with `LynxContext`, which is linked
+  // to the corresponding `Context` through `findContext` in
+  // `LynxModuleWrapper`.
+  int64_t context_id_ = -1;
   // Managed by LynxNativeModuleManager
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
       module_factories_;

@@ -175,6 +175,27 @@ public class LynxModuleWrapper {
     return mAttributeDescriptors;
   }
 
+  @CalledByNative
+  public LynxContext getLynxContext(String instanceId) {
+    WeakReference<Context> contextRef = mContextFinder.findContext(instanceId);
+    LLog.d(TAG,
+        " GetLynxContext instanceId:" + instanceId + ", contextRef: " + contextRef
+            + ", module: " + mModule);
+
+    if (contextRef != null) {
+      Context context = contextRef.get();
+      if (context instanceof LynxContext) {
+        // Only LynxContext can ben used in LynxModule Method params.
+        return (LynxContext) context;
+      } else if (context != null) {
+        LLog.w(TAG,
+            "GetLynxContext , Context found but is not a LynxContext:"
+                + context.getClass().getName());
+      }
+    }
+    return null;
+  }
+
   public void destroy() {
     if (mModule != null) {
       mModule.destroy();

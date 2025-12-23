@@ -176,6 +176,7 @@ public class LynxModuleFactory {
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @CalledByNative
   public long getNativePtr() {
     return mNativePtr;
   }

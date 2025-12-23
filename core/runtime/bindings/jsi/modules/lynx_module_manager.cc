@@ -49,6 +49,7 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     // set delegate & proxy
     native_module->SetDelegate(lynx_jsi_module);
     native_module->SetRuntimeProxy(runtime_proxy);
+    native_module->SetContextID(context_id_);
     // set interceptor
     lynx_jsi_module->SetModuleInterceptor(group_interceptor_);
 #if ENABLE_TESTBENCH_RECORDER

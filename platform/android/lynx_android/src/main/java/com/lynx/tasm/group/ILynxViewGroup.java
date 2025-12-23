@@ -5,6 +5,7 @@ package com.lynx.tasm.group;
 
 import androidx.annotation.Nullable;
 import com.lynx.jsbridge.LynxModule;
+import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
@@ -46,4 +47,6 @@ public interface ILynxViewGroup extends ILynxViewConfigProvider {
    * @return TemplateBundle ready or not.
    */
   boolean isTemplateBundleReady();
+
+  LynxModuleFactory getSharedModuleFactory();
 }

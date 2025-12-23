@@ -16,8 +16,12 @@
 namespace lynx {
 namespace piper {
 
-class ModuleFactoryAndroid : public NativeModuleFactory {
+class ModuleFactoryAndroid
+    : public NativeModuleFactory,
+      std::enable_shared_from_this<ModuleFactoryAndroid> {
  public:
+  static std::shared_ptr<ModuleFactoryAndroid> CreateOrReuse(
+      JNIEnv* env, jobject moduleFactory);
   ModuleFactoryAndroid(JNIEnv* env, jobject moduleFactory);
   ~ModuleFactoryAndroid() override;
 

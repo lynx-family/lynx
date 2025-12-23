@@ -247,7 +247,6 @@ std::optional<base::LynxError> MethodInvoker::ReportPendingJniException() {
 
   lynx::base::android::ScopedLocalJavaRef<jthrowable> throwable(
       env, env->ExceptionOccurred());
-
   if (!throwable.Get()) {
     return std::make_optional<base::LynxError>(
         error::E_NATIVE_MODULES_EXCEPTION,
@@ -289,6 +288,8 @@ std::size_t CountJsArgs(const std::string& signature) {
   for (char c : signature) {
     switch (c) {
       case 'P':
+        break;
+      case 'K':
         break;
       default:
         count += 1;
@@ -452,7 +453,13 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
     first_arg_str = args->GetValueAtIndex(0)->str();
   }
 
-  auto required_arg_count = ContainsPromise() ? args_count_ + 1 : args_count_;
+  auto required_arg_count = args_count_;
+  if (ContainsPromise()) {
+    required_arg_count += 1;
+  }
+  if (ContainsLynxContext()) {
+    required_arg_count += 1;
+  }
   // Check Args Count
   if (args_count != args_count_) {
     // create JS error msg
@@ -485,8 +492,15 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
   // expanded.
   std::list<base::android::ScopedGlobalJavaRef<jobject>> callback_container;
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, PUB_VALUE_TO_JNI_VALUE);
+  base::android::ScopedLocalJavaRef<jobject> context;
+  size_t param_offset = 0;
+  if (ContainsLynxContext() && context_finder_) {
+    context = context_finder_();
+    java_arguments[0] = {.l = context.Get()};
+    param_offset += 1;
+  }
   for (size_t i = 0; i < args_count_; i++) {
-    char type = signature_[i + 2];
+    char type = signature_[i + 2 + param_offset];
     base::expected<jvalue, std::string> ret;
     transfer_method_params[i] = pub::ValueUtilsAndroid::ConvertValueToJavaValue(
         *(args->GetValueAtIndex(i)));
@@ -506,7 +520,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
       ret = ExtractPubValue(transfer_method_params[i], i, type);
     }
     if (ret.has_value()) {
-      java_arguments[i] = std::move(ret.value());
+      java_arguments[i + param_offset] = std::move(ret.value());
     } else {
       std::string error_message = std::move(ret.error());
       auto error = base::LynxError{

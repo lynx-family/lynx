@@ -210,6 +210,11 @@ void LynxModuleAndroid::buildMap(
                  const std::shared_ptr<base::android::JavaOnlyArray>& validator)
               -> bool { return Verify(method_name, validator); });
     }
+
+    method_invoker->SetContextFinder(
+        [this]() -> base::android::ScopedLocalJavaRef<jobject> {
+          return GetLynxContext();
+        });
     env->DeleteLocalRef(description_wrapper);
   }
 }
@@ -483,6 +488,18 @@ const std::shared_ptr<MethodInvoker> LynxModuleAndroid::GetMethodInvoker(
     }
   }
   return nullptr;
+}
+base::android::ScopedLocalJavaRef<jobject> LynxModuleAndroid::GetLynxContext() {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(wrapper_);
+  if (local_ref.IsNull()) {
+    return base::android::ScopedLocalJavaRef<jobject>();
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_LynxModuleWrapper_getLynxContext(
+      env, local_ref.Get(),
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+          env, std::to_string(context_id_))
+          .Get());
 }
 
 }  // namespace piper

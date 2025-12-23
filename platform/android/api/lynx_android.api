@@ -2614,6 +2614,7 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
   public TemplateBundle com.lynx.tasm.group.ILynxViewGroup.getTemplateBundleNonBlocking();
   public void com.lynx.tasm.group.ILynxViewGroup.fetchTemplateBundle(LynxResourceCallback< TemplateBundle > callback);
   public boolean com.lynx.tasm.group.ILynxViewGroup.isTemplateBundleReady();
+  public LynxModuleFactory com.lynx.tasm.group.ILynxViewGroup.getSharedModuleFactory();
 }
 
 public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
@@ -5806,6 +5807,7 @@ public class com::lynx::jsbridge::LynxModuleWrapper :  {
   public boolean com.lynx.jsbridge.LynxModuleWrapper.verify(String moduleName, String methodName, JavaOnlyArray methodParams);
   public Collection< MethodDescriptor > com.lynx.jsbridge.LynxModuleWrapper.getMethodDescriptors();
   public Collection< AttributeDescriptor > com.lynx.jsbridge.LynxModuleWrapper.getAttributeDescriptor();
+  public LynxContext com.lynx.jsbridge.LynxModuleWrapper.getLynxContext(String instanceId);
   public void com.lynx.jsbridge.LynxModuleWrapper.destroy();
 }
 
@@ -9193,6 +9195,19 @@ public class com::lynx::tasm::behavior::ui::UIShadowProxy::ShadowView : com.lynx
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.ShadowView.clearShadowDrawerList();
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.ShadowView.clearOutlineDrawer();
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.ShadowView.drawInset(Canvas canvas);
+}
+
+public class com::lynx::jsbridge::SharedContextFinder : com.lynx.jsbridge.IContextFinder {
+  public WeakReference< Context > com.lynx.jsbridge.SharedContextFinder.findContext(String instanceId);
+  public void com.lynx.jsbridge.SharedContextFinder.registerContext(String instanceId, WeakReference< Context > context);
+}
+
+public class com::lynx::jsbridge::SharedModuleCreator : com.lynx.jsbridge.IModuleCreator {
+  public com.lynx.jsbridge.SharedModuleCreator.SharedModuleCreator(IContextFinder contextFinder);
+  public IContextFinder com.lynx.jsbridge.SharedModuleCreator.currentContextFinder();
+  public LynxModuleWrapper com.lynx.jsbridge.SharedModuleCreator.create(String name, ConcurrentHashMap< String, ParamWrapper > ClassParams);
+  public void com.lynx.jsbridge.SharedModuleCreator.destroy();
+  public int com.lynx.jsbridge.SharedModuleCreator.Type();
 }
 
 public class com::lynx::ref::ShareRef : Cloneable {

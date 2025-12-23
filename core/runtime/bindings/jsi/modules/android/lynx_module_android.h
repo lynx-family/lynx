@@ -97,6 +97,9 @@ class LynxModuleAndroid
   bool Verify(const std::string &method_name,
               const std::shared_ptr<base::android::JavaOnlyArray> &params);
 
+  // Get the LynxContext object from the Android platform.
+  base::android::ScopedLocalJavaRef<jobject> GetLynxContext();
+
   const std::shared_ptr<MethodInvoker> GetMethodInvoker(
       const std::string &method_name, const pub::Value *args,
       size_t args_count);
