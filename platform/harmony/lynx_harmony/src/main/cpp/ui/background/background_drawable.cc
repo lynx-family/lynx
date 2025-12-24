@@ -1101,6 +1101,10 @@ const std::string& BackgroundDrawable::GetClipPath() {
   return inner_clip_path_->path_string;
 }
 
+OH_Drawing_Path* BackgroundDrawable::GetInnerClipPath() {
+  return inner_clip_path_->path;
+}
+
 BorderRadius* BackgroundDrawable::GetBorderRadius() {
   return border_radius_.get();
 }

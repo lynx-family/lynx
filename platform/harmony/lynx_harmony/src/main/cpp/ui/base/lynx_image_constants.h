@@ -16,6 +16,7 @@ namespace image {
 inline constexpr const char* const kModeAspectFit = "aspectFit";
 inline constexpr const char* const kModeAspectFill = "aspectFill";
 inline constexpr const char* const kModeScaleToFill = "scaleToFill";
+inline constexpr const char* const kModeCenter = "center";
 
 // image path protocol
 inline constexpr const char* const kBase64Scheme = "data:image";
@@ -46,22 +47,31 @@ inline constexpr const char* const kFormatErrorMsg =
 inline constexpr int32_t kPathErrorCode = 401;
 
 // dirty flag
-inline constexpr uint64_t kFlagSrcChanged = 1;
-inline constexpr uint64_t kFlagPlaceholderChanged = 1 << 1;
-inline constexpr uint64_t kFlagCapInsetsChanged = 1 << 2;
-inline constexpr uint64_t kFlagImageRenderingChanged = 1 << 3;
-inline constexpr uint64_t kFlagTintColorChanged = 1 << 4;
-inline constexpr uint64_t kFlagDropShadowChanged = 1 << 5;
-inline constexpr uint64_t kFlagPaddingChanged = 1 << 6;
-inline constexpr uint64_t kFlagFrameSizeChanged = 1 << 7;
-inline constexpr uint64_t kFlagModeChanged = 1 << 8;
+inline constexpr uint32_t kFlagSrcChanged = 1;
+inline constexpr uint32_t kFlagPlaceholderChanged = 1 << 1;
+inline constexpr uint32_t kFlagCapInsetsChanged = 1 << 2;
+inline constexpr uint32_t kFlagImageRenderingChanged = 1 << 3;
+inline constexpr uint32_t kFlagTintColorChanged = 1 << 4;
+inline constexpr uint32_t kFlagDropShadowChanged = 1 << 5;
+inline constexpr uint32_t kFlagPaddingChanged = 1 << 6;
+inline constexpr uint32_t kFlagFrameSizeChanged = 1 << 7;
+inline constexpr uint32_t kFlagModeChanged = 1 << 8;
+inline constexpr uint32_t kFlagEffectChanged = 1 << 9;
 
 // event flag
-inline constexpr uint64_t kFlagImageLoadEvent = 1;
-inline constexpr uint64_t kFlagImageErrorEvent = 1 << 1;
-inline constexpr uint64_t kFlagImageStartPlayEvent = 1 << 2;
-inline constexpr uint64_t kFlagImageCurrentLoopEvent = 1 << 3;
-inline constexpr uint64_t kFlagImageFinalLoopEvent = 1 << 4;
+inline constexpr uint32_t kFlagImageLoadEvent = 1;
+inline constexpr uint32_t kFlagImageErrorEvent = 1 << 1;
+inline constexpr uint32_t kFlagImageStartPlayEvent = 1 << 2;
+inline constexpr uint32_t kFlagImageCurrentLoopEvent = 1 << 3;
+inline constexpr uint32_t kFlagImageFinalLoopEvent = 1 << 4;
+inline constexpr uint32_t kFlagImageAnimationEvent =
+    kFlagImageStartPlayEvent | kFlagImageCurrentLoopEvent |
+    kFlagImageFinalLoopEvent;
+
+// effect flag
+inline constexpr uint8_t kFlagEffectDropShadow = 1;
+inline constexpr uint8_t kFlagEffectCapInsets = 1 << 1;
+
 }  // namespace image
 }  // namespace harmony
 }  // namespace tasm

@@ -13,6 +13,7 @@ export enum LynxServiceType {
   Security,
   Extension,
   DevTool,
+  Image,
 }
 
 class LynxServiceCenterImpl {

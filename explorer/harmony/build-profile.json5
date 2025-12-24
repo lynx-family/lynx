@@ -112,6 +112,18 @@
           ]
         }
       ]
+    },
+    {
+      "name": "lynx_image_service",
+      "srcPath": "../../platform/harmony/lynx_services/lynx_image_service",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
     }
   ]
 }

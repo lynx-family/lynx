@@ -1,0 +1,30 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("../../../../config.gni")
+
+lynx_image_service_sources =
+    rebase_path([
+                  "src/main/cpp/entry.cc",
+                  "src/main/cpp/image_service_harmony.cc",
+                  "src/main/cpp/image_service_harmony.h",
+                  "src/main/cpp/image_service_node.cc",
+                  "src/main/cpp/image_service_node.h",
+                  "src/main/cpp/image_transform.cc",
+                  "src/main/cpp/image_transform.h",
+                ])
+
+template("lynx_image_service_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker, "*")
+
+    sources = lynx_image_service_sources
+
+    libs = [
+      "ace_napi.z",
+      "rawfile.z",
+    ]
+  }
+}

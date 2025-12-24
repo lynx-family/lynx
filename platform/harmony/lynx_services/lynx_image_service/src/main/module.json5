@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "lynx_image_service",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}

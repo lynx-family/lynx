@@ -5,22 +5,28 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BASE_LYNX_IMAGE_EFFECT_PROCESSOR_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BASE_LYNX_IMAGE_EFFECT_PROCESSOR_H_
 #include <multimedia/image_framework/image/pixelmap_native.h>
+#include <native_drawing/drawing_path.h>
+#include <native_drawing/drawing_types.h>
 
+#include <format>
+#include <iomanip>
 #include <memory>
+#include <sstream>
+#include <string>
 #include <utility>
 
 #include "base/include/closure.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
-class LynxImageEffectProcessor {
+class LynxImageEffectProcessor : public ImageProcessor {
  public:
   enum class ImageEffect {
+    kNone = 0,
     kDropShadow,
-    kBlur,
     kCapInsets,
-    kNone,
   };
 
   struct CommonViewParams {
@@ -31,6 +37,18 @@ class LynxImageEffectProcessor {
     float padding_right;
     float padding_bottom;
     float scale_density;
+    std::string ToString() const {
+      std::ostringstream oss;
+      oss << std::fixed << std::setprecision(2);
+      oss << "w:" << view_width << ","
+          << "h:" << view_height << ","
+          << "pl:" << padding_left << ","
+          << "pt:" << padding_top << ","
+          << "pr:" << padding_right << ","
+          << "pb:" << padding_bottom << ","
+          << "scale:" << scale_density;
+      return oss.str();
+    }
   };
 
   struct DropShadowParams {
@@ -39,6 +57,15 @@ class LynxImageEffectProcessor {
     float offset_x;
     float offset_y;
     CommonViewParams common_params;
+    std::string ToString() const {
+      std::ostringstream oss;
+      oss << std::fixed << std::setprecision(2);
+      oss << "drop-shadow:{radius:" << radius << ","
+          << "color:" << color << ","
+          << "x:" << offset_x << ","
+          << "y:" << offset_y << ",";
+      return oss.str() + common_params.ToString() + "}";
+    }
   };
 
   struct CapInsetParams {
@@ -48,14 +75,20 @@ class LynxImageEffectProcessor {
     float cap_inset_bottom;
     float cap_inset_scale;
     CommonViewParams common_params;
+    std::string ToString() const {
+      std::ostringstream oss;
+      oss << std::fixed << std::setprecision(2);
+      oss << "cap-insets:{l:" << cap_inset_left << ","
+          << "t:" << cap_inset_top << ","
+          << "r:" << cap_inset_right << ","
+          << "b:" << cap_inset_bottom << ","
+          << "scale: " << cap_inset_scale << ",";
+      return oss.str() + common_params.ToString() + "}";
+    }
   };
 
-  struct BlurParams {
-    uint32_t radius;
-  };
-
-  using EffectParams = std::variant<std::monostate, DropShadowParams,
-                                    BlurParams, CapInsetParams>;
+  using EffectParams =
+      std::variant<std::monostate, DropShadowParams, CapInsetParams>;
   LynxImageEffectProcessor()
       : effect_(ImageEffect::kNone), params_(std::monostate{}) {}
 
@@ -64,7 +97,9 @@ class LynxImageEffectProcessor {
 
   const ImageEffect& GetEffectType() const { return effect_; };
 
-  OH_PixelmapNative* Process(OH_PixelmapNative* pixel_map) const;
+  OH_PixelmapNative* Process(OH_PixelmapNative* pixel_map) const override;
+
+  std::string Info() const override;
 
  private:
   ImageEffect effect_;

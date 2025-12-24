@@ -8,6 +8,7 @@ import { LynxBaseServiceCenter, LynxBaseServiceType } from '@lynx/lynx_base';
 import { LynxDevToolService } from '@lynx/lynx_devtool_service';
 import { LynxLogService } from '@lynx/lynx_log_service';
 import { LynxHttpService } from '@lynx/lynx_http_service';
+import { LynxImageService } from '@lynx/lynx_image_service';
 
 export class LynxInitProcessor {
   private context: common.UIAbilityContext;
@@ -29,6 +30,7 @@ export class LynxInitProcessor {
     this.initLogService();
     this.initDevToolService();
     this.initHttpService();
+    this.initImageService();
   }
 
   private initDevToolService(): void {
@@ -42,4 +44,8 @@ export class LynxInitProcessor {
   private initHttpService(): void {
     LynxServiceCenter.registerService(LynxServiceType.Http, LynxHttpService.instance);
   }
+
+  private initImageService() {
+      LynxServiceCenter.registerService(LynxServiceType.Image, LynxImageService.instance);
+    }
 }
