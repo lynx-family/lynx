@@ -24,10 +24,7 @@ PlatformRendererAndroid::PlatformRendererAndroid(
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
     const base::String& tag_name)
-    : PlatformRendererImpl(id),
-      context_(context),
-      type_(type),
-      tag_name_(tag_name) {
+    : PlatformRendererImpl(id, type, tag_name), context_(context) {
   InitializeAndroidView();
   // Register this renderer with the context
   if (context_) {

@@ -47,6 +47,8 @@ if (!enable_unittests) {
       "ios/native_painting_context_darwin.mm",
       "ios/painting_context_darwin.h",
       "ios/painting_context_darwin.mm",
+      "ios/platform_renderer_darwin.h",
+      "ios/platform_renderer_darwin.mm",
       "ios/ui_delegate_darwin.h",
       "ios/ui_delegate_darwin.mm",
     ]

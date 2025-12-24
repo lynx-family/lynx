@@ -23,8 +23,6 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
                           const base::String& tag_name);
   ~PlatformRendererAndroid() override;
 
-  const DisplayList& GetDisplayList() const { return display_list_; }
-
  protected:
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
@@ -34,10 +32,6 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
  private:
   // Android-specific context for managing native views via JNI
   PlatformRendererContext* context_;
-  DisplayList display_list_;
-
-  PlatformRendererType type_;
-  base::String tag_name_;
 
   // Initialize the Android view
   void InitializeAndroidView();
