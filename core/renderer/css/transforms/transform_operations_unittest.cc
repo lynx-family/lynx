@@ -138,7 +138,7 @@ static void CheckProgress(float progress, const Matrix44& from_matrix,
 
 std::vector<std::unique_ptr<TransformOperations>> GetIdentityOperations(
     lynx::tasm::ElementManager* manager) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   std::vector<std::unique_ptr<TransformOperations>> operations;
   std::unique_ptr<TransformOperations> to_add(
       std::make_unique<TransformOperations>(element.get()));
@@ -223,7 +223,7 @@ class TransformOperationsTest : public ::testing::Test {
     auto config = std::make_shared<tasm::PageConfig>();
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
-    element = manager->CreateNode("view", nullptr);
+    element = manager->CreateFiberElement("view");
   }
 };
 

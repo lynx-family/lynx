@@ -98,7 +98,7 @@ TEST_F(WorkletAPITest, TestLepusLynxTriggerLepusBridge) {
 }
 
 TEST_F(WorkletAPITest, TestLepusLynxSetTimeoutCrash) {
-  auto page = manager_->CreateNode("page", nullptr);
+  auto page = manager_->CreateFiberElement("page");
   manager_->SetRoot(page.get());
   manager_->SetRootOnLayout(page->impl_id());
   page->FlushProps();
@@ -139,8 +139,7 @@ TEST_F(WorkletAPITest, TestLepusLynxTriggerLepusBridgeSync) {
 
 // Test case for the LepusGesture API
 TEST_F(WorkletAPITest, TestLepusGestureAPI) {
-  // Create a RadonElement using the manager
-  auto element = manager_->CreateNode("view", nullptr);
+  auto element = manager_->CreateFiberElement("view");
 
   // Create a LepusGesture instance associated with the RadonElement
   auto lepus_gesture = std::unique_ptr<worklet::LepusGesture>(

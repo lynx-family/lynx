@@ -61,7 +61,7 @@ class CSSKeyframeManagerTest : public ::testing::Test {
         std::make_shared<animation::Animation>("test_animation");
     auto effect = animation::KeyframeEffect::Create();
     test_animation->SetKeyframeEffect(std::move(effect));
-    element_ = manager->CreateNode("view", nullptr);
+    element_ = manager->CreateFiberElement("view");
     test_animation->BindElement(element_.get());
     return test_animation;
   }
@@ -110,7 +110,7 @@ class CSSKeyframeManagerTest : public ::testing::Test {
   }
 
   fml::RefPtr<Element> InitElement() {
-    auto test_element = manager->CreateNode("view", nullptr);
+    auto test_element = manager->CreateFiberElement("view");
     test_element->SetAttribute(base::String("enable-new-animator"),
                                lepus::Value("true"));
     return test_element;
@@ -118,7 +118,7 @@ class CSSKeyframeManagerTest : public ::testing::Test {
 };
 
 TEST_F(CSSKeyframeManagerTest, ConstructModel) {
-  auto test_element = manager->CreateNode("view", nullptr);
+  auto test_element = manager->CreateFiberElement("view");
   auto test_manager = InitTestKeyframeManager(test_element.get());
   auto test_curve = animation::KeyframedOpacityAnimationCurve::Create();
   auto test_type = animation::AnimationCurve::CurveType::OPACITY;
@@ -136,7 +136,7 @@ TEST_F(CSSKeyframeManagerTest, ConstructModel) {
 }
 
 TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
-  auto test_element = manager->CreateNode("view", nullptr);
+  auto test_element = manager->CreateFiberElement("view");
   auto test_manager = InitTestKeyframeManager(test_element.get());
   auto test_offset = 0.0;
 

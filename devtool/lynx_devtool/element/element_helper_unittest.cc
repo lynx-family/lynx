@@ -67,7 +67,7 @@ TEST_F(ElementHelperTest, StyleTextParserTest) {
   style_sheet.css_properties_ = css_properties;
   style_sheet.style_value_range_ = {81, 10, 12, 10};
 
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
 
   EXPECT_EQ(lynx::devtool::StyleTextParser(
                 element.get(), "width:10px;height:10px", style_sheet)
@@ -93,7 +93,7 @@ TEST_F(ElementHelperTest, StyleTextParserTest) {
 }
 
 TEST_F(ElementHelperTest, GetDocumentBodyFromNodeTest) {
-  auto element1 = manager->CreateNode("view", nullptr);
+  auto element1 = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element1));
 
   auto document_body1 =
@@ -110,16 +110,16 @@ TEST_F(ElementHelperTest, GetDocumentBodyFromNodeTest) {
   res1["nodeValue"] = "";
   EXPECT_EQ(document_body1, res1);
 
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
   element->CreateElementContainer(false);
   auto element_container = element->element_container_impl();
 
-  auto child = manager->CreateNode("view", nullptr);
+  auto child = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(child.get()));
-  element->AddChildAt(child.get(), 0);
+  element->AddChildAt(child, 0);
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
@@ -156,7 +156,7 @@ TEST_F(ElementHelperTest, GetDocumentBodyFromNodeTest) {
 }
 
 TEST_F(ElementHelperTest, GetElementContentTest) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
 
   std::string content =
@@ -178,7 +178,7 @@ TEST_F(ElementHelperTest, GetElementContentTest) {
 }
 
 TEST_F(ElementHelperTest, PerformSearchFromNodeTest) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
 
   std::vector<int> results;
@@ -195,15 +195,15 @@ TEST_F(ElementHelperTest, PerformSearchFromNodeTest) {
   EXPECT_EQ(results.size(), 0);
 
   // for element tree
-  auto element1 = manager->CreateNode("view", nullptr);
+  auto element1 = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element1.get()));
   element1->CreateElementContainer(false);
 
-  auto child1 = manager->CreateNode("view", nullptr);
+  auto child1 = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(child1.get()));
-  element1->AddChildAt(child1.get(), 0);
+  element1->AddChildAt(child1, 0);
 
   child1->CreateElementContainer(false);
   auto child_container = child1->element_container_impl();
@@ -230,7 +230,8 @@ TEST_F(ElementHelperTest, GetStyleSheetAsTextOfNodeTest) {
 
   auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
   lynx::devtool::ElementInspector::UpdateStyle(element.get(), "width", "10px");
@@ -282,7 +283,8 @@ TEST_F(ElementHelperTest, GetStyleSheetAsTextOfNodeTest) {
 TEST_F(ElementHelperTest, GetMatchedStylesForNodeTest) {
   auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
 
@@ -450,7 +452,8 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeTest) {
 TEST_F(ElementHelperTest, SetStyleTextsTest) {
   auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
 
@@ -506,7 +509,7 @@ TEST_F(ElementHelperTest, SetStyleTextsTest) {
 }
 
 TEST_F(ElementHelperTest, InitStyleSheetTest) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
 
   std::unordered_map<std::string, std::string> styles = {
@@ -576,7 +579,8 @@ TEST_F(ElementHelperTest, GetBackGroundColorsOfNodeTest) {
   auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
 
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
 
   Json::Value res =
@@ -600,7 +604,7 @@ TEST_F(ElementHelperTest, GetBackGroundColorsOfNodeTest) {
 }
 
 TEST_F(ElementHelperTest, CreateStyleSheetTest) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
 
   Json::Value res =
@@ -625,7 +629,8 @@ TEST_F(ElementHelperTest, CreateStyleSheetTest) {
 TEST_F(ElementHelperTest, SetAttributesAsTextTest) {
   auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
   std::vector<Json::Value> res =
       lynx::devtool::ElementHelper::SetAttributesAsText(element.get(), "style",

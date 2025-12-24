@@ -57,14 +57,8 @@ class KeyframedAnimationCurveTest : public ::testing::Test {
     manager->SetConfig(config);
   }
 
-  fml::RefPtr<::lynx::tasm::RadonElement> InitRadonElement() {
-    auto test_element = manager->CreateNode("view", nullptr);
-    test_element->SetAttribute(base::String("enable-new-animator"),
-                               lepus::Value("true"));
-    return test_element;
-  }
-
   fml::RefPtr<::lynx::tasm::FiberElement> InitFiberElement() {
+    manager->SetEnableNewAnimatorRadon(true);
     auto test_element = manager->CreateFiberView();
     test_element->SetAttribute(base::String("enable-new-animator"),
                                lepus::Value("true"));
@@ -77,7 +71,7 @@ TEST_F(KeyframedAnimationCurveTest, TwoLayoutKeyframe) {
   std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
       KeyframedLayoutAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::LEFT;
-  auto test_element = InitRadonElement();
+  auto test_element = InitFiberElement();
   curve->SetElement(test_element.get());
 
   auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
@@ -106,7 +100,7 @@ TEST_F(KeyframedAnimationCurveTest, ThreeLayoutKeyframe) {
   std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
       KeyframedLayoutAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::LEFT;
-  auto test_element = InitRadonElement();
+  auto test_element = InitFiberElement();
   curve->SetElement(test_element.get());
 
   auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
@@ -147,7 +141,7 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedLayoutKeyTimes) {
   std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
       KeyframedLayoutAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::LEFT;
-  auto test_element = InitRadonElement();
+  auto test_element = InitFiberElement();
   curve->SetElement(test_element.get());
 
   auto test_frame1 = LayoutKeyframe::Create(fml::TimeDelta(), nullptr);
@@ -422,7 +416,7 @@ TEST_F(KeyframedAnimationCurveTest, UnsortedKeyframes) {
   std::unique_ptr<KeyframedLayoutAnimationCurve> curve(
       KeyframedLayoutAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::LEFT;
-  auto test_element = InitRadonElement();
+  auto test_element = InitFiberElement();
   curve->SetElement(test_element.get());
 
   auto test_frame1 =
@@ -535,10 +529,9 @@ TEST_F(KeyframedAnimationCurveTest, MakeEmptyKeyframe) {
 
 TEST_F(KeyframedAnimationCurveTest, HandleCSSVariableValueIfNeed) {
   ::lynx::tasm::RadonNode node(nullptr, "my_tag", 0);
-  auto test_element = manager->CreateNode("view", node.attribute_holder());
-
-  test_element->SetAttribute(base::String("enable-new-animator"),
-                             lepus::Value("true"));
+  manager->SetEnableNewAnimatorRadon(true);
+  auto test_element = manager->CreateFiberElement("view");
+  test_element->SetAttributeHolder(node.attribute_holder());
   auto test_value =
       ::lynx::tasm::CSSValue(0.8, ::lynx::tasm::CSSValuePattern::NUMBER);
   auto result_value_1 = HandleCSSVariableValueIfNeed(
@@ -565,7 +558,7 @@ TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
   std::unique_ptr<KeyframedFilterAnimationCurve> curve(
       KeyframedFilterAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::FILTER;
-  auto test_element = InitRadonElement();
+  auto test_element = InitFiberElement();
   curve->SetElement(test_element.get());
 
   auto start_arr = lepus::CArray::Create();

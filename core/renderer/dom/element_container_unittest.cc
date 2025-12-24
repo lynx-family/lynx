@@ -14,7 +14,6 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
-#include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -53,23 +52,23 @@ class ElementContainerTest : public ::testing::Test {
 };
 
 TEST_F(ElementContainerTest, Create) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   auto element_container = std::make_unique<ElementContainer>(element.get());
   EXPECT_EQ(element_container->element(), element.get());
 
-  auto child = manager->CreateNode("view", nullptr);
+  auto child = manager->CreateFiberElement("view");
   child->CreateElementContainer(false);
   auto child_container = child->element_container_impl();
   EXPECT_EQ(child_container->element(), child.get());
 }
 
 TEST_F(ElementContainerTest, InsertAndDestroy) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   element->CreateElementContainer(false);
   auto element_container = element->element_container_impl();
 
-  auto child = manager->CreateNode("view", nullptr);
-  element->AddChildAt(child.get(), 0);
+  auto child = manager->CreateFiberElement("view");
+  element->AddChildAt(child, 0);
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
@@ -84,12 +83,12 @@ TEST_F(ElementContainerTest, InsertAndDestroy) {
 }
 
 TEST_F(ElementContainerTest, Children) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   element->CreateElementContainer(false);
   auto element_container = element->element_container_impl();
 
-  auto child = manager->CreateNode("view", nullptr);
-  element->AddChildAt(child.get(), 0);
+  auto child = manager->CreateFiberElement("view");
+  element->AddChildAt(child, 0);
   child->CreateElementContainer(false);
   auto child_container = child->element_container_impl();
   child_container->InsertSelf();
@@ -103,15 +102,15 @@ TEST_F(ElementContainerTest, Children) {
 }
 
 TEST_F(ElementContainerTest, ZIndex) {
-  auto page = manager->CreateNode("page", nullptr);
+  auto page = manager->CreateFiberElement("page");
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
   auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
-  auto parent_element = manager->CreateNode("view", nullptr);
-  page->AddChildAt(parent_element.get(), 0);
+  auto parent_element = manager->CreateFiberElement("view");
+  page->AddChildAt(parent_element, 0);
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
@@ -120,8 +119,8 @@ TEST_F(ElementContainerTest, ZIndex) {
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
 
-  auto child = manager->CreateNode("view", nullptr);
-  parent_element->AddChildAt(child.get(), 0);
+  auto child = manager->CreateFiberElement("view");
+  parent_element->AddChildAt(child, 0);
   child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
                           tasm::CSSValue(1, CSSValuePattern::NUMBER));
 
@@ -139,40 +138,18 @@ TEST_F(ElementContainerTest, ZIndex) {
   ASSERT_FALSE(child->IsStackingContextNode());
   ASSERT_FALSE(child_container->IsStackingContextNode());
   EXPECT_EQ(child->ZIndex(), static_cast<int>(0));
-  child_container->StyleChanged();
-
-  // Attach to parent container
-  EXPECT_EQ(child_container->parent(), parent_container);
-
-  {
-    auto child = manager->CreateNode("view", nullptr);
-    parent_element->AddChildAt(child.get(), 1);
-    child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
-                            tasm::CSSValue(-1, CSSValuePattern::NUMBER));
-    child->FlushProps();
-
-    auto child_container = child->element_container_impl();
-    child_container->InsertSelf();
-    EXPECT_EQ(child_container->parent(), page_container);
-    // 0 parent_container 1 out child_container
-    EXPECT_EQ(page_container->children()[1], child_container);
-    auto pipeline_options = std::make_shared<PipelineOptions>();
-    manager->OnPatchFinish(pipeline_options);
-
-    EXPECT_EQ(page_container->children().size(), static_cast<size_t>(2));
-  }
 }
 
 TEST_F(ElementContainerTest, ZIndexMove) {
-  auto page = manager->CreateNode("page", nullptr);
+  auto page = manager->CreateFiberElement("page");
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
   auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
-  auto parent_element = manager->CreateNode("view", nullptr);
-  page->AddChildAt(parent_element.get(), 0);
+  auto parent_element = manager->CreateFiberElement("view");
+  page->AddChildAt(parent_element, 0);
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
@@ -181,8 +158,8 @@ TEST_F(ElementContainerTest, ZIndexMove) {
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
 
-  auto child = manager->CreateNode("view", nullptr);
-  parent_element->AddChildAt(child.get(), 0);
+  auto child = manager->CreateFiberElement("view");
+  parent_element->AddChildAt(child, 0);
   child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
                           tasm::CSSValue(1, CSSValuePattern::NUMBER));
 
@@ -195,26 +172,18 @@ TEST_F(ElementContainerTest, ZIndexMove) {
   ASSERT_TRUE(child_container->IsStackingContextNode());
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), page_container);
-
-  // Change stacking context, child_container attach to parent_container
-  parent_element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
-                                   tasm::CSSValue(1, CSSValuePattern::NUMBER));
-  parent_container->StyleChanged();
-
-  // Attach to parent container
-  EXPECT_EQ(child_container->parent(), parent_container);
 }
 
 TEST_F(ElementContainerTest, StackingContextChanged) {
-  auto page = manager->CreateNode("page", nullptr);
+  auto page = manager->CreateFiberElement("page");
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
   auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
-  auto parent_element = manager->CreateNode("view", nullptr);
-  page->AddChildAt(parent_element.get(), 0);
+  auto parent_element = manager->CreateFiberElement("view");
+  page->AddChildAt(parent_element, 0);
   parent_element->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
                                    tasm::CSSValue(1, CSSValuePattern::NUMBER));
   EXPECT_EQ(parent_element->parent(), page.get());
@@ -226,8 +195,8 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
 
   // Add z-index children to child element
-  auto child = manager->CreateNode("view", nullptr);
-  parent_element->AddChildAt(child.get(), 0);
+  auto child = manager->CreateFiberElement("view");
+  parent_element->AddChildAt(child, 0);
   child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
                           tasm::CSSValue(1, CSSValuePattern::NUMBER));
   child->FlushProps();
@@ -235,29 +204,22 @@ TEST_F(ElementContainerTest, StackingContextChanged) {
   ASSERT_TRUE(child_container->IsStackingContextNode());
   child_container->InsertSelf();
   EXPECT_EQ(child_container->parent(), parent_container);
-
-  // Change stacking context
-  parent_element->ResetStyle({CSSPropertyID::kPropertyIDZIndex});
-  parent_container->StyleChanged();
-
-  // The child attach to the page container
-  EXPECT_EQ(page_container->children().size(), static_cast<size_t>(2));
 }
 
 TEST_F(ElementContainerTest, TransitionToNativeView) {
-  auto page = manager->CreateNode("page", nullptr);
+  auto page = manager->CreateFiberElement("page");
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
 
-  auto element = manager->CreateNode("raw-text", nullptr);
+  auto element = manager->CreateFiberElement("raw-text");
   element->FlushProps();
   ASSERT_TRUE(element->IsLayoutOnly());
   element->TransitionToNativeView();
   // Virtual element should never create native view.
   ASSERT_TRUE(element->IsLayoutOnly());
 
-  element = manager->CreateNode("view", nullptr);
+  element = manager->CreateFiberElement("view");
   element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
                             tasm::CSSValue(starlight::OverflowType::kVisible));
   element->FlushProps();
@@ -631,15 +593,15 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   config->SetEnableFixedNew(true);
   config->SetEnableZIndex(true);
   manager->SetConfig(config);
-  auto page = manager->CreateNode("page", nullptr);
+  auto page = manager->CreateFiberElement("page");
   manager->SetRoot(page.get());
   manager->SetRootOnLayout(page->impl_id());
   page->FlushProps();
   auto page_container = page->element_container_impl();
   ASSERT_TRUE(page->IsStackingContextNode());
 
-  auto parent_element = manager->CreateNode("view", nullptr);
-  page->AddChildAt(parent_element.get(), 0);
+  auto parent_element = manager->CreateFiberElement("view");
+  page->AddChildAt(parent_element, 0);
   EXPECT_EQ(parent_element->parent(), page.get());
 
   parent_element->FlushProps();
@@ -648,8 +610,8 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   EXPECT_EQ(parent_container->parent(), page_container);
   EXPECT_EQ(page_container->children().size(), static_cast<size_t>(1));
 
-  auto fixed_child = manager->CreateNode("view", nullptr);
-  parent_element->AddChildAt(fixed_child.get(), 0);
+  auto fixed_child = manager->CreateFiberElement("view");
+  parent_element->AddChildAt(fixed_child, 0);
   fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
                                 tasm::CSSValue(2, CSSValuePattern::NUMBER));
 
@@ -673,8 +635,8 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   EXPECT_EQ(fixed_child_container->parent(), parent_container);
   EXPECT_EQ(manager->fixed_node_list_.size(), 0);
   {
-    auto child_sibling = manager->CreateNode("view", nullptr);
-    parent_element->AddChildAt(child_sibling.get(), 1);
+    auto child_sibling = manager->CreateFiberElement("view");
+    parent_element->AddChildAt(child_sibling, 1);
     child_sibling->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
                                     tasm::CSSValue(2, CSSValuePattern::NUMBER));
     child_sibling->FlushProps();
@@ -934,7 +896,7 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
       static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER));
   manager->SetConfig(config);
 
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   auto fragment = element->fragment_impl();
   EXPECT_FALSE(fragment->NeedRedraw());
 
@@ -948,7 +910,7 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
   fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
   EXPECT_FALSE(fragment->NeedRedraw());
 
-  // auto child_element = manager->CreateNode("view", nullptr);
+  // auto child_element = manager->CreateFiberElement("view");
   // child_element->CreateElementContainer(false);
   // auto child_fragment = child_element->fragment_impl();
   // fragment->AddChild(child_fragment, 0);
@@ -971,7 +933,6 @@ TEST_F(ElementContainerTest, FragmentMarkNeedRedraw) {
 TEST_F(ElementContainerTest, TestIsRootContainer) {
   auto config = std::make_shared<PageConfig>();
   manager->SetConfig(config);
-  manager->enable_fiber_element_for_radon_diff_ = true;
 
   auto element = manager->CreateFiberElement("view");
   auto container = element->element_container();
@@ -1009,7 +970,6 @@ TEST_F(ElementContainerTest, TestMarkDirty) {
 TEST_F(ElementContainerTest, TestMarkDirty0) {
   auto config = std::make_shared<PageConfig>();
   manager->SetConfig(config);
-  manager->enable_fiber_element_for_radon_diff_ = true;
 
   auto element = manager->CreateFiberElement("page");
   auto container = element->element_container();

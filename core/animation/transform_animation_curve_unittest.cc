@@ -96,7 +96,7 @@ class TransformAnimationCurveTest : public ::testing::Test {
   }
 
   fml::RefPtr<lynx::tasm::Element> InitTestElement() {
-    return manager->CreateNode("view", nullptr);
+    return manager->CreateFiberElement("view");
   }
 };
 
@@ -237,7 +237,7 @@ TEST_F(TransformAnimationCurveTest, CreateTransformKeyframe) {
 }
 
 TEST_F(TransformAnimationCurveTest, GetTransformKeyframeValueInElement) {
-  auto element1 = manager->CreateNode("view1", nullptr);
+  auto element1 = manager->CreateFiberElement("view");
   auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
   lynx::tasm::StyleMap output1;
   lynx::tasm::CSSParserConfigs configs;

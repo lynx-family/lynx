@@ -85,13 +85,14 @@ class WorkletEventTest : public ::testing::Test {
     tasm::Renderer::RegisterBuiltin(ctx_.get(), tasm::ArchOption::FIBER_ARCH);
   }
 
-  fml::RefPtr<tasm::RadonElement> CreateElement(const std::string& js_var_name,
-                                                int32_t tag) {
+  fml::RefPtr<tasm::Element> CreateElement(const std::string& js_var_name,
+                                           int32_t tag) {
     LEPUSValue node_raw_value = ctx_->SearchGlobalData(js_var_name);
     lepus::Value node_value =
         MK_JS_LEPUS_VALUE(ctx_->context(), node_raw_value);
     auto node = reinterpret_cast<tasm::RadonNode*>(node_value.CPoint());
-    auto view = manager_->CreateNode("view", node->attribute_holder());
+    auto view = manager_->CreateFiberElement("view");
+    view->SetAttributeHolder(node->attribute_holder());
     view->CreateElementContainer(false);
     manager_->node_manager()->Record(tag, view.get());
     return view;
@@ -121,7 +122,7 @@ TEST_F(WorkletEventTest, TestPropagation) {
   ctx_->RegisterGlobalProperty("$comp",
                                LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
 
-  auto page = manager_->CreateNode("page", nullptr);
+  auto page = manager_->CreateFiberElement("page");
   manager_->SetRoot(page.get());
   manager_->SetRootOnLayout(page->impl_id());
 
@@ -146,9 +147,9 @@ TEST_F(WorkletEventTest, TestPropagation) {
   auto view1 = CreateElement("view1", 1);
   auto view2 = CreateElement("view2", 2);
   auto view3 = CreateElement("view3", 3);
-  view1->InsertNode(view2.get());
-  view2->InsertNode(view3.get());
-  page->InsertNode(view1.get());
+  view1->InsertNode(view2);
+  view2->InsertNode(view3);
+  page->InsertNode(view1);
   page->FlushProps();
 
   SendTouchEvent("tap", 1);  // counter1++
@@ -174,7 +175,7 @@ TEST_F(WorkletEventTest, TestStopPropagation) {
   ctx_->RegisterGlobalProperty("$comp",
                                LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
 
-  auto page = manager_->CreateNode("page", nullptr);
+  auto page = manager_->CreateFiberElement("page");
   manager_->SetRoot(page.get());
   manager_->SetRootOnLayout(page->impl_id());
 
@@ -199,9 +200,9 @@ TEST_F(WorkletEventTest, TestStopPropagation) {
   auto view1 = CreateElement("view1", 1);
   auto view2 = CreateElement("view2", 2);
   auto view3 = CreateElement("view3", 3);
-  view1->InsertNode(view2.get());
-  view2->InsertNode(view3.get());
-  page->InsertNode(view1.get());
+  view1->InsertNode(view2);
+  view2->InsertNode(view3);
+  page->InsertNode(view1);
   page->FlushProps();
 
   SendTouchEvent("tap", 1);  // counter1++

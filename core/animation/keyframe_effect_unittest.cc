@@ -59,7 +59,7 @@ class KeyframeEffectTest : public ::testing::Test {
     animation::KeyframeEffect* keyframe_effect = effect.get();
     InitTestEffectInternal(keyframe_effect);
     animation_->SetKeyframeEffect(std::move(effect));
-    element_ = manager->CreateNode("view", nullptr);
+    element_ = manager->CreateFiberElement("view");
     animation_->BindElement(element_.get());
     return keyframe_effect;
   }

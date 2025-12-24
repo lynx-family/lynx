@@ -73,9 +73,8 @@ class CSSTransitionManagerTest : public ::testing::Test {
   }
 
   fml::RefPtr<Element> InitElement() {
-    auto test_element = manager->CreateNode("view", nullptr);
-    test_element->SetAttribute(base::String("enable-new-animator"),
-                               lepus::Value("true"));
+    manager->SetEnableNewAnimatorRadon(true);
+    auto test_element = manager->CreateFiberElement("view");
     return test_element;
   }
 };

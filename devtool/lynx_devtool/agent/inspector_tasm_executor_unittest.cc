@@ -113,16 +113,16 @@ TEST_F(InspectorTasmExecutorTest, LayerTreeDisableCase) {
 TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
   element_executor_->layer_tree_enabled_ = true;
 
-  auto element = manager_->CreateNode("view", nullptr);
+  auto element = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
   element->CreateElementContainer(false);
   auto element_container = element->element_container_impl();
 
-  auto child = manager_->CreateNode("view", nullptr);
+  auto child = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(child.get()));
-  element->AddChildAt(child.get(), 0);
+  element->AddChildAt(child, 0);
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
@@ -178,16 +178,16 @@ TEST_F(InspectorTasmExecutorTest, SendLayerTreeDidChangeEventCase) {
 }
 
 TEST_F(InspectorTasmExecutorTest, BuildLayerTreeFromElement) {
-  auto element = manager_->CreateNode("view", nullptr);
+  auto element = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(element.get()));
   element->CreateElementContainer(false);
   auto element_container = element->element_container_impl();
 
-  auto child = manager_->CreateNode("view", nullptr);
+  auto child = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(
       std::make_tuple(child.get()));
-  element->AddChildAt(child.get(), 0);
+  element->AddChildAt(child, 0);
   EXPECT_EQ(child->parent(), element.get());
 
   child->CreateElementContainer(false);
@@ -232,7 +232,7 @@ TEST_F(InspectorTasmExecutorTest, BuildLayerTreeFromElement) {
 
 TEST_F(InspectorTasmExecutorTest, GetLayerContentFromElementCase) {
   LOGI("InspectorTasmExecutorTest GetLayerContentFromElementCase start");
-  auto element = manager_->CreateNode("view", nullptr);
+  auto element = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
   auto res = element_executor_->GetLayerContentFromElement(element.get());
   Json::Value layer(Json::ValueType::objectValue);

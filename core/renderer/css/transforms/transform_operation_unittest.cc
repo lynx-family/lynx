@@ -104,7 +104,7 @@ class TransformOperationTest : public ::testing::Test {
 };
 
 TEST_F(TransformOperationTest, GetMatrix) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   std::array<float, 4> arr = {0, 0, 0, 0};
   element->UpdateLayout(0.0, 0.0, 100.0, 200.0, arr, arr, arr, &arr, 0);
 
@@ -130,7 +130,7 @@ TEST_F(TransformOperationTest, GetMatrix) {
 }
 
 TEST_F(TransformOperationTest, BlendTransformOperations) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   std::array<float, 4> arr = {0, 0, 0, 0};
   element->UpdateLayout(0.0, 0.0, 100.0, 200.0, arr, arr, arr, &arr, 0);
 

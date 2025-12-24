@@ -11093,7 +11093,6 @@ TEST_P(FiberElementTest, TestGenerateResponseChain2) {
 TEST_P(FiberElementTest, TestGenerateResponseChain3) {
   tasm->EnsureTouchEventHandler();
   manager->config_->enable_fiber_arch_ = false;
-  tasm->touch_event_handler_->enable_fiber_element_for_radon_diff_ = true;
 
   // parent
   auto page = manager->CreateFiberPage("page", 11);
@@ -11179,7 +11178,6 @@ TEST_P(FiberElementTest, TestGenerateResponseChain3) {
 TEST_P(FiberElementTest, TestGenerateResponseChain4) {
   tasm->EnsureTouchEventHandler();
   manager->config_->enable_fiber_arch_ = false;
-  tasm->touch_event_handler_->enable_fiber_element_for_radon_diff_ = true;
 
   // parent
   auto page = manager->CreateFiberPage("page", 11);
@@ -14415,7 +14413,8 @@ TEST_P(FiberElementTest, CheckNewAnimatorAttr) {
 
   auto comp = std::shared_ptr<RadonComponent>(
       new RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element1 = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element1 = manager->CreateFiberElement("view");
+  element1->SetAttributeHolder(comp.get()->attribute_holder());
   lepus::Value value6(true);
   element1->CheckNewAnimatorAttr(key, value6);
   EXPECT_TRUE(element1->enable_new_animator_);

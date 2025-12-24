@@ -57,7 +57,7 @@ TEST_F(ElementManagerTest, CreateFiberPage) {
   auto page = manager->CreateFiberPage(component_id, css_id);
 
   EXPECT_EQ(page->component_id().c_str(), component_id.c_str());
-  EXPECT_TRUE(page->is_fiber_element() && page->is_page());
+  EXPECT_TRUE(page->is_page());
   EXPECT_EQ(manager->GetComponent(component_id.str()), page.get());
 }
 
@@ -66,7 +66,6 @@ TEST_F(ElementManagerTest, CreateFiberNode) {
   auto node = manager->CreateFiberNode(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
 }
 
 TEST_F(ElementManagerTest, TestCalcTotalMemoryDiff) {
@@ -99,7 +98,7 @@ TEST_F(ElementManagerTest, CreateFiberComponent) {
                                             component_name, path);
 
   EXPECT_EQ(comp->GetTag(), "component");
-  EXPECT_TRUE(comp->is_fiber_element() && comp->is_component());
+  EXPECT_TRUE(comp->is_component());
   EXPECT_EQ(comp->component_path().c_str(), path.c_str());
   EXPECT_EQ(manager->GetComponent(component_id.str()), comp.get());
 }
@@ -113,14 +112,14 @@ TEST_F(ElementManagerTest, CreateFiberList) {
                                        enqueue_component, component_at_indexes);
 
   EXPECT_EQ(list->GetTag(), "list");
-  EXPECT_TRUE(list->is_fiber_element() && list->is_list());
+  EXPECT_TRUE(list->is_list());
 }
 
 TEST_F(ElementManagerTest, CreateFiberWrapperElement) {
   auto wrapper = manager->CreateFiberWrapperElement();
 
   EXPECT_EQ(wrapper->GetTag(), "wrapper");
-  EXPECT_TRUE(wrapper->is_fiber_element() && wrapper->is_wrapper());
+  EXPECT_TRUE(wrapper->is_wrapper());
 }
 
 TEST_F(ElementManagerTest, ComponentManagerFiber) {
@@ -161,7 +160,7 @@ TEST_F(ElementManagerTest, CreateFiberRawText) {
   auto raw_text = manager->CreateFiberRawText();
 
   EXPECT_EQ(raw_text->GetTag(), "raw-text");
-  EXPECT_TRUE(raw_text->is_fiber_element() && raw_text->is_raw_text());
+  EXPECT_TRUE(raw_text->is_raw_text());
 }
 
 TEST_F(ElementManagerTest, IsTagVirtual) {
@@ -195,14 +194,14 @@ TEST_F(ElementManagerTest, CreateFiberElementView) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_view());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_VIEW;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_view());
 }
 
@@ -211,14 +210,14 @@ TEST_F(ElementManagerTest, CreateFiberElementText) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_text());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_TEXT;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_text());
 }
 
@@ -227,14 +226,14 @@ TEST_F(ElementManagerTest, CreateFiberElementRawText) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_raw_text());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_RAW_TEXT;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_raw_text());
 }
 
@@ -243,14 +242,14 @@ TEST_F(ElementManagerTest, CreateFiberElementImage) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_image());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_IMAGE;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_image());
 }
 
@@ -259,14 +258,14 @@ TEST_F(ElementManagerTest, CreateFiberElementScrollView) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_scroll_view());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_SCROLL_VIEW;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_scroll_view());
 }
 
@@ -275,14 +274,14 @@ TEST_F(ElementManagerTest, CreateFiberElementList) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_list());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_LIST;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_list());
 }
 
@@ -291,14 +290,14 @@ TEST_F(ElementManagerTest, CreateFiberElementComponent) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_component());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_COMPONENT;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_component());
 }
 
@@ -310,14 +309,14 @@ TEST_F(ElementManagerTest, CreateFiberElementPage) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_page());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_PAGE;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_page());
 }
 
@@ -325,13 +324,11 @@ TEST_F(ElementManagerTest, CreateFiberElementNone) {
   base::String tag("none");
   auto node = manager->CreateFiberElement(tag);
 
-  EXPECT_TRUE(node->is_fiber_element());
   EXPECT_TRUE(node->is_none());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_NONE;
   node = manager->CreateFiberElement(tag_enum);
 
-  EXPECT_TRUE(node->is_fiber_element());
   EXPECT_TRUE(node->is_none());
 }
 
@@ -340,14 +337,14 @@ TEST_F(ElementManagerTest, CreateFiberElementWrapper) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_wrapper());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_WRAPPER;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_wrapper());
 }
 
@@ -356,14 +353,14 @@ TEST_F(ElementManagerTest, CreateFiberElementXText) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_text());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_X_TEXT;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_text());
 }
 
@@ -372,14 +369,14 @@ TEST_F(ElementManagerTest, CreateFiberElementXScrollView) {
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_scroll_view());
 
   ElementBuiltInTagEnum tag_enum = ElementBuiltInTagEnum::ELEMENT_X_SCROLL_VIEW;
   node = manager->CreateFiberElement(tag_enum);
 
   EXPECT_EQ(node->GetTag(), tag.str());
-  EXPECT_TRUE(node->is_fiber_element());
+
   EXPECT_TRUE(node->is_scroll_view());
 }
 

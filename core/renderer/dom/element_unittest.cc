@@ -46,38 +46,6 @@ class ElementTest : public ::testing::Test {
   }
 };
 
-TEST_F(ElementTest, CheckGlobalBindTarget) {
-  const auto key = base::String("global-target");
-  const auto value_emtpy = lepus::Value("");
-  auto element = manager->CreateNode("view", nullptr);
-  element->SetAttribute(key, value_emtpy);
-  EXPECT_EQ(element->GlobalBindTarget()->size(), static_cast<size_t>(0));
-  const auto value_id = lepus::Value("id");
-  element->SetAttribute(key, value_id);
-  EXPECT_EQ(element->GlobalBindTarget()->size(), static_cast<size_t>(1));
-  const auto values = lepus::Value("id, pager ");
-  element->SetAttribute(key, values);
-  const auto& set = *element->GlobalBindTarget();
-  EXPECT_EQ(set.size(), static_cast<size_t>(2));
-  ASSERT_TRUE(set.count("pager") > 0);
-  ASSERT_TRUE(set.count("id") > 0);
-}
-
-TEST_F(ElementTest, CheckConfigComponentLayoutOnly) {
-  auto config = std::make_shared<PageConfig>();
-  config->SetEnableComponentLayoutOnly(true);
-  config->SetDefaultOverflowVisible(true);
-  manager->SetConfig(config);
-  auto comp = std::shared_ptr<RadonComponent>(
-      new RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
-  ASSERT_TRUE(element->CanBeLayoutOnly());
-  config->SetEnableComponentLayoutOnly(false);
-  manager->SetConfig(config);
-  element = manager->CreateNode("view", comp.get()->attribute_holder());
-  ASSERT_TRUE(element->CanBeLayoutOnly() == false);
-}
-
 TEST_F(ElementTest, CheckHasFilterProps) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableComponentLayoutOnly(true);
@@ -86,7 +54,8 @@ TEST_F(ElementTest, CheckHasFilterProps) {
   manager->SetConfig(config);
   auto comp = std::shared_ptr<RadonComponent>(
       new RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
 
   bool ret =
       element->CheckTransitionProps(CSSPropertyID::kPropertyIDTransition);
@@ -140,11 +109,12 @@ TEST_F(ElementTest, CheckWillDestroy) {
 }
 
 TEST_F(ElementTest, GetCSSKeyframesToken) {
-  auto element0 = manager->CreateNode("view", nullptr);
+  auto element0 = manager->CreateFiberElement("view");
   EXPECT_TRUE(element0->GetCSSKeyframesToken("test") == nullptr);
   auto comp = std::shared_ptr<RadonComponent>(
       new RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element1 = manager->CreateNode("view", comp.get()->attribute_holder());
+  auto element1 = manager->CreateFiberElement("view");
+  element1->SetAttributeHolder(comp.get()->attribute_holder());
   EXPECT_TRUE(element1->GetCSSKeyframesToken("test") == nullptr);
 }
 
@@ -167,7 +137,7 @@ TEST_F(ElementTest, ResolveCSSKeyframesByNames) {
   lepus_value names = lepus::Value(array);
 
   lepus_value result;
-  auto test_element = manager->CreateNode("view", nullptr);
+  auto test_element = manager->CreateFiberElement("view");
   result = test_element->ResolveCSSKeyframesByNames(
       name, keyframes, length_context, configs, false);
   EXPECT_TRUE(result.IsTable() && result.Table()->size() == 0);
@@ -207,18 +177,8 @@ TEST_F(ElementTest, ResolveCSSKeyframesByNames) {
   EXPECT_TRUE(result.IsTable() && result.Table()->size() == 0);
 }
 
-TEST_F(ElementTest, GetRelatedCSSFragment) {
-  auto element = manager->CreateNode("view", nullptr);
-  EXPECT_TRUE(element->GetRelatedCSSFragment() == nullptr);
-
-  auto comp = std::shared_ptr<RadonComponent>(
-      new RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
-  auto element1 = manager->CreateNode("view", comp.get()->attribute_holder());
-  EXPECT_TRUE(element1->GetRelatedCSSFragment() != nullptr);
-}
-
 TEST_F(ElementTest, Animate_Array) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
 
   auto array1 = lepus::CArray::Create();
   array1->set(0, lepus_value(0));
@@ -270,48 +230,10 @@ TEST_F(ElementTest, Animate_Array) {
                 ->second->find(kPropertyIDLeft)
                 ->second.GetPattern(),
             CSSValuePattern::PX);
-
-  // 2.Check that the animation_data were passed in correctly.
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationDuration)->second.GetValue(),
-      lepus::Value(2000));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationDuration)->second.GetPattern(),
-      CSSValuePattern::NUMBER);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationFillMode)->second.GetValue(),
-      lepus::Value(1));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationFillMode)->second.GetPattern(),
-      CSSValuePattern::ENUM);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
-      lepus::Value(1));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
-      CSSValuePattern::ENUM);
-  array1->set(0, lepus_value(2));
-  auto pipeline_option1 = std::make_shared<PipelineOptions>();
-  element->Animate(test_animate_args, pipeline_option1);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
-      lepus::Value(0));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
-      CSSValuePattern::ENUM);
-  array1->set(0, lepus_value(3));
-  auto pipeline_option2 = std::make_shared<PipelineOptions>();
-  element->Animate(test_animate_args, pipeline_option2);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
-      lepus::Value(1));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
-      CSSValuePattern::ENUM);
 }
 
 TEST_F(ElementTest, Animate_Table) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
 
   auto array1 = lepus::CArray::Create();
   array1->set(0, lepus_value(0));
@@ -377,48 +299,10 @@ TEST_F(ElementTest, Animate_Table) {
                 ->second->find(kPropertyIDLeft)
                 ->second.GetPattern(),
             CSSValuePattern::PX);
-
-  // 2.Check that the animation_data were passed in correctly.
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationDuration)->second.GetValue(),
-      lepus::Value(2000));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationDuration)->second.GetPattern(),
-      CSSValuePattern::NUMBER);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationFillMode)->second.GetValue(),
-      lepus::Value(1));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationFillMode)->second.GetPattern(),
-      CSSValuePattern::ENUM);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
-      lepus::Value(1));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
-      CSSValuePattern::ENUM);
-  array1->set(0, lepus_value(2));
-  auto pipeline_option4 = std::make_shared<PipelineOptions>();
-  element->Animate(test_animate_args, pipeline_option4);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
-      lepus::Value(0));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
-      CSSValuePattern::ENUM);
-  array1->set(0, lepus_value(3));
-  auto pipeline_option5 = std::make_shared<PipelineOptions>();
-  element->Animate(test_animate_args, pipeline_option5);
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
-      lepus::Value(1));
-  EXPECT_EQ(
-      element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
-      CSSValuePattern::ENUM);
 }
 
 TEST_F(ElementTest, Animate_v2_Table) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
   element->enable_new_animator_ = true;
   auto array1 = lepus::CArray::Create();
   array1->set(0, lepus_value(0));
@@ -500,7 +384,7 @@ TEST_F(ElementTest, Animate_v2_Table) {
 }
 
 TEST_F(ElementTest, LayoutResult) {
-  auto element = manager->CreateNode("view", nullptr);
+  auto element = manager->CreateFiberElement("view");
 
   const float width = 200.0f;
   const float height = 150.0f;

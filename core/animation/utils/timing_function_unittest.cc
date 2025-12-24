@@ -58,10 +58,6 @@ class TimingFunctionTest : public ::testing::Test {
     manager->SetConfig(config);
   }
 
-  fml::RefPtr<lynx::tasm::Element> InitTestElement() {
-    return manager->CreateNode("view", nullptr);
-  }
-
   starlight::AnimationData InitAnimationData(
       starlight::TimingFunctionData timing_func) {
     starlight::AnimationData data;
