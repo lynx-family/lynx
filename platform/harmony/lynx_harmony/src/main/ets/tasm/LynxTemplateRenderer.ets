@@ -16,6 +16,7 @@ import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
+import { LLog } from '../base/LLog';
 
 const TAG = 'LynxTemplateRenderer';
 
@@ -43,7 +44,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     lynxView: LynxView,
     enableJSRuntime: boolean,
     moduleManager: LynxModuleManager,
-    sendableModuleManager: SendableLynxModuleManager) {
+    sendableModuleManager: SendableLynxModuleManager,
+    screenSize?: Size) {
     super();
     this.clients = clients;
     this.providers = providers;
@@ -55,6 +57,12 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.lynxView = lynxView;
     this.moduleManager = moduleManager;
     this.sendableModuleManager = sendableModuleManager;
+    if (screenSize) {
+      LLog.i(TAG, `screen size, w: ${screenSize.width}, h: ${screenSize.height}`);
+      this.displayInfo.updateDisplayInfo(screenSize.width, screenSize.height);
+    } else {
+      LLog.i(TAG, `display info, w: ${this.displayInfo.screenWidth}, h: ${this.displayInfo.screenHeight}`);
+    }
   }
 
   reset(uiDelegate: number[], perfController: PerformanceController) {
@@ -174,6 +182,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   override updateScreenMetrics(width: number, height: number) {
+    LLog.i(TAG, `updateScreenMetrics, w: ${width}, h: ${height}`);
     if (width != this.displayInfo.screenWidth || height != this.displayInfo.screenHeight) {
       this.displayInfo.updateDisplayInfo(width, height);
       super.updateScreenMetrics(width, height, LynxEnv.getDensity());

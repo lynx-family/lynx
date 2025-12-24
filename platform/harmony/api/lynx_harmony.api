@@ -52,6 +52,7 @@ export abstract class LynxNodeController extends NodeController {
   metaData: MetaData; = new MetaData()
   behaviors: BehaviorRegistryMap; = new Map()
   url: string; = ''
+  screenSize?: Size;
   buffer?: ArrayBuffer;
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
