@@ -32,7 +32,7 @@ import com.lynx.tasm.behavior.ui.scroll.UIScrollView
 import com.lynx.tasm.behavior.ui.view.AndroidView
 import com.lynx.tasm.behavior.ui.view.UIView
 import com.lynx.tasm.event.EventsListener
-import com.lynx.tasm.event.LynxDetailEvent
+import com.lynx.tasm.event.LynxCustomEvent
 import com.lynx.tasm.utils.ContextUtils
 import kotlin.math.abs
 
@@ -93,11 +93,11 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
     init {
         // do not dim the window behind
-        mDialog?.window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        mDialog?.window?.setDimAmount(0f)
+        mDialog.window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        mDialog.window?.setDimAmount(0f)
         mOverlayContainer.addView(mView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        mDialog?.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        mDialog?.setOnKeyListener { _, keyCode, event ->
+        mDialog.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        mDialog.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
                 requestDialogClose()
                 true
@@ -126,7 +126,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mEnableOverlayTouch = events.containsKey(EVENT_OVERLAY_TOUCH)
         if (mEnableOverlayMoved || mEnableOverlayTouch) {
             mVelocityTracker = VelocityTracker.obtain()
-            mDialog?.setTouchListener(object : LynxOverlayDialog.TouchEventListener {
+            mDialog.setTouchListener(object : LynxOverlayDialog.TouchEventListener {
                 override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
                     //track velocity if bindOverLayMoved, when vx is positive, it means move right, when vy is positive, it means move down
                     mVelocityTracker?.addMovement(ev)
@@ -291,8 +291,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or mDialog?.window?.decorView?.systemUiVisibility!!)
-            mDialog?.window?.decorView?.systemUiVisibility = flag
+                or mDialog.window?.decorView?.systemUiVisibility!!)
+            mDialog.window?.decorView?.systemUiVisibility = flag
         }
     }
 
@@ -310,10 +310,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or mDialog?.window?.decorView?.systemUiVisibility!!)
-            mDialog?.window?.decorView?.systemUiVisibility = flag
+                or mDialog.window?.decorView?.systemUiVisibility!!)
+            mDialog.window?.decorView?.systemUiVisibility = flag
         } else {
-            mDialog?.window?.decorView?.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            mDialog.window?.decorView?.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         }
     }
 
@@ -346,7 +346,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     @LynxProp(name = LynxUIOverlay.CUT_OUT_MODE)
     fun setCutOutMode(isCutOut: Boolean) {
         mIsCutOutMode = isCutOut
-        mDialog?.window?.attributes?.apply {
+        mDialog.window?.attributes?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode = if (isCutOut) {
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -521,9 +521,9 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             }
             val visibilityFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                     && mStatusBarTranslucentStyle == LynxUIOverlay.PROP_STATUS_BAR_TRANSLUCENT_STYLE_LITE) {
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or mDialog?.window?.decorView?.systemUiVisibility!!
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or mDialog.window?.decorView?.systemUiVisibility!!
             } else {
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or mDialog?.window?.decorView?.systemUiVisibility!!
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or mDialog.window?.decorView?.systemUiVisibility!!
             }
             if (translucent) {
                 mDialog.window?.decorView?.systemUiVisibility = visibilityFlag
@@ -545,7 +545,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
     private fun sendEventWithoutParam(eventName: String) {
         lynxContext.eventEmitter.sendCustomEvent(
-            LynxDetailEvent(sign, eventName)
+            OverlayCustomEvent(sign, eventName)
         )
     }
 
@@ -562,7 +562,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
     private fun sendOverlayErrorEvent(errorCode: Int, errorMsg: String) {
         lynxContext.eventEmitter.sendCustomEvent(
-            LynxDetailEvent(sign, EVENT_SHOW).apply {
+          OverlayCustomEvent(sign, EVENT_SHOW).apply {
                 addDetail("errorCode", errorCode)
                 addDetail("errorMsg", errorMsg)
             }
@@ -571,7 +571,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
     private fun sendOverlayMovedEvent(eventName: String, x: Float, y: Float, vx: Float, vy: Float, state: Int) {
         lynxContext.eventEmitter.sendCustomEvent(
-            LynxDetailEvent(sign, eventName).apply {
+          OverlayCustomEvent(sign, eventName).apply {
                 addDetail("x", x)
                 addDetail("y", y)
                 addDetail("vx", vx)
@@ -599,7 +599,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                         mDialog.show()
                     }
                     sendShowOverlayEvent(errorCode, activity)
-                    mObserver = mOverlayContainer?.viewTreeObserver
+                    mObserver = mOverlayContainer.viewTreeObserver
                     mGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener { lynxContext?.exposure?.requestCheckUI() }
                     mObserver?.addOnGlobalLayoutListener(mGlobalLayoutListener)
                     mScrollChangedListener = ViewTreeObserver.OnScrollChangedListener { lynxContext?.exposure?.requestCheckUI() }
@@ -778,10 +778,16 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     override fun getWindow(): Window? {
-        return mDialog?.window
+        return mDialog.window
     }
 
     override fun isOverlay(): Boolean {
         return true
+    }
+
+    private class OverlayCustomEvent(tag: Int, type: String) : LynxCustomEvent(tag, type) {
+        override fun paramsName(): String {
+            return "detail"
+        }
     }
 }
