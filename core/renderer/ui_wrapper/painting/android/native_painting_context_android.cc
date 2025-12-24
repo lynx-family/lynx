@@ -179,12 +179,17 @@ void NativePaintingCtxAndroid::UpdatePaintingNode(
 
 std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
     const std::string &content, const pub::Value &info) {
+  // TODO: impl this function later.
   return std::unique_ptr<pub::Value>();
 }
 
-void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {}
+void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {
+  // TODO: impl this function later.
+}
 
-void NativePaintingCtxAndroid::ResumeExposure() {}
+void NativePaintingCtxAndroid::ResumeExposure() {
+  // TODO: impl this function later.
+}
 
 void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name) {
@@ -201,7 +206,7 @@ void NativePaintingCtxAndroid::UpdateLayout(
 
 void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
     int32_t id, PlatformExtraBundle *bundle) {
-  PaintingCtxPlatformImpl::UpdatePlatformExtraBundle(id, bundle);
+  // TODO: impl this function later.
 }
 
 void NativePaintingCtxAndroid::SetKeyframes(

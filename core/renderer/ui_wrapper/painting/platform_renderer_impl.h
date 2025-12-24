@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
-#define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
+#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_IMPL_H_
+#define CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_IMPL_H_
 
 #include <cstddef>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "core/renderer/utils/base/base_def.h"
 
 namespace lynx::tasm {
@@ -58,4 +58,4 @@ class PlatformRendererImpl : public PlatformRenderer {
 
 }  // namespace lynx::tasm
 
-#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_IMPL_H_
+#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_IMPL_H_

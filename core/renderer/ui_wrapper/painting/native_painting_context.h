@@ -13,6 +13,7 @@ namespace lynx::tasm {
 class DisplayList;
 class NativePaintingContext {
  public:
+  NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
   virtual void CreatePlatformRenderer(int id, PlatformRendererType type) = 0;
   virtual void CreatePlatformExtendedRenderer(int id,

@@ -9,9 +9,13 @@ import("../../../Lynx.gni")
 ui_wrapper_painting_shared_sources = [
   "catalyzer.cc",
   "catalyzer.h",
+  "native_painting_context.cc",
   "native_painting_context.h",
   "painting_context.cc",
   "painting_context.h",
+  "platform_renderer.h",
+  "platform_renderer_impl.cc",
+  "platform_renderer_impl.h",
 ]
 
 if (!enable_unittests) {
@@ -23,18 +27,10 @@ if (!enable_unittests) {
       "android/painting_context_android.h",
 
       # The following implementations are used for FlattenView rendering.
-      "android/platform_renderer.h",
       "android/platform_renderer_android.cc",
       "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
       "android/platform_renderer_context.h",
-
-      # platform_renderer_impl class and its common iterface in header file can
-      # be moved to common sources to share with other platforms.
-      # We can put it here for android only since we don't have implementations
-      # on other platforms.
-      "android/platform_renderer_impl.cc",
-      "android/platform_renderer_impl.h",
       "android/ui_delegate_android.cc",
       "android/ui_delegate_android.h",
     ]
@@ -47,6 +43,8 @@ if (!enable_unittests) {
     ]
   } else if (is_ios) {
     ui_wrapper_painting_shared_sources += [
+      "ios/native_painting_context_darwin.h",
+      "ios/native_painting_context_darwin.mm",
       "ios/painting_context_darwin.h",
       "ios/painting_context_darwin.mm",
       "ios/ui_delegate_darwin.h",

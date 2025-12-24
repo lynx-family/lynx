@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_H_
-#define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_H_
+#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
+#define CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
@@ -51,4 +51,4 @@ class PlatformRendererFactory {
 
 }  // namespace lynx::tasm
 
-#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_H_
+#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_

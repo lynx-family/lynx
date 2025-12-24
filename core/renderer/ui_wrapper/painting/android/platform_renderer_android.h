@@ -7,7 +7,7 @@
 
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
-#include "core/renderer/ui_wrapper/painting/android/platform_renderer_impl.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
 namespace lynx::tasm {
 
