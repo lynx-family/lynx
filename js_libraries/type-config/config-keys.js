@@ -106,6 +106,7 @@ const configKeys = [
   'enableTouchRefactor',
   'enableUIOperationOptimize',
   'enableUnifiedPipeline',
+  'enableUnifyFixedBehavior',
   'enableUseContextPool',
   'enableUseMapBuffer',
   'enableViewReceiveTouch',

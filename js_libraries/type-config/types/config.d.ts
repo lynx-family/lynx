@@ -824,6 +824,17 @@ export interface Config {
   enableUnifiedPipeline?: boolean
 
   /**
+   * Unify behavior between old-fixed and new-fixed
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.7
+   *
+   * @defaultValue false
+   */
+  enableUnifyFixedBehavior?: boolean
+
+  /**
    * Enable Use Context Pool For LepusNG VM creation.
    *
    * Supported platform: Android, HarmonyOS, iOS

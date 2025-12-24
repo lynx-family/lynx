@@ -84,9 +84,12 @@ class LayoutObject : public ContainerNode {
   }
   inline bool IsNewFixed() const {
     return (css_style_->GetPosition() == PositionType::kFixed) &&
-           configs_.enable_fixed_new_;
+           (configs_.enable_fixed_new_ ||
+            configs_.enable_unify_fixed_behavior_);
   }
-  inline bool GetEnableFixedNew() const { return configs_.enable_fixed_new_; }
+  inline bool GetEnableFixedNew() const {
+    return configs_.enable_fixed_new_ || configs_.enable_unify_fixed_behavior_;
+  }
 
   bool HasExplicitDirectionStyle() const {
     return has_explicit_direction_style_;

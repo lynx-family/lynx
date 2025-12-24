@@ -1916,7 +1916,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
       for (const auto &child : scoped_children_) {
         if (!child->render_parent_) {
           // if no pending tree actions, we just do insertion here
-          if (!child->is_fixed_ || GetEnableFixedNew()) {
+          if (!child->is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
             this->HandleInsertChildAction(child.get(), -1, nullptr);
           } else {
             if (IsFiberArch()) {
@@ -1933,7 +1933,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
       switch (param.type_) {
         case Action::kInsertChildAct: {
           PrepareChildForInsertion(param.child_.get());
-          if (!param.is_fixed_ || GetEnableFixedNew()) {
+          if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
             HandleInsertChildAction(param.child_.get(),
                                     static_cast<int>(param.index_),
                                     param.ref_node_);
@@ -1947,7 +1947,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
         } break;
 
         case Action::kRemoveChildAct: {
-          if (!param.is_fixed_ || GetEnableFixedNew()) {
+          if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
             HandleRemoveChildAction(param.child_.get());
           } else {
             RemoveFixedElement(param.child_.get());
@@ -1958,7 +1958,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
           if (param.child_->parent_ == this) {
             break;
           }
-          if (param.is_fixed_ && !GetEnableFixedNew()) {
+          if (param.is_fixed_ && !IsFixedNewOrUnifiedEnabled()) {
             RemoveFixedElement(param.child_.get());
           } else if (param.child_->ZIndex() != 0 || param.is_fixed_) {
             if (param.is_fixed_) {
@@ -1988,7 +1988,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
   action_param_list_.clear_and_shrink();
 
   if (dirty_ & kDirtyReAttachContainer) {
-    if (is_fixed_ && !GetEnableFixedNew()) {
+    if (is_fixed_ && !IsFixedNewOrUnifiedEnabled()) {
       InsertFixedElement(this, nullptr);
     } else if (ZIndex() != 0 || is_fixed_) {
       // new fixed.
@@ -2016,6 +2016,7 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
               });
 
   auto *parent = this;
+  child->UpdateGlobalInsertionOrder(false);
 
   if (child->render_parent_ != nullptr) {
     LOGE("FiberElement do re-insert child action");
@@ -2023,7 +2024,7 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
     child->LogNodeInfo();
   }
 
-  if (!GetEnableFixedNew()) {
+  if (!IsFixedNewOrUnifiedEnabled()) {
     while (
         ref_node != nullptr &&
         (ref_node->is_fixed() || ref_node->fixed_changed_ ||
@@ -2060,6 +2061,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+  child->ResetGlobalInsertionOrder();
   auto *parent = this;
 
   if (child->render_parent_ != this) {
@@ -2071,7 +2073,7 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
 
   RestoreLayoutNode(child);
   if (!child->is_wrapper() && !child->attached_to_layout_parent_ &&
-      !child->IsNewFixed()) {
+      !child->IsFixedNewOrFiberUnified()) {
     // parent is detached, child is removed from parent, and then the parent is
     // inserted to view tree,but the action is still stored in its parent
 
@@ -2743,9 +2745,10 @@ void FiberElement::FlushProps() {
     PreparePropBundleIfNeed();
 
     // check is in inlineContainer before attachLayoutNode
-    auto *real_parent = static_cast<FiberElement *>(
-        (!is_fixed_ || GetEnableFixedNew()) ? parent_
-                                            : element_manager_->root());
+    auto *real_parent =
+        static_cast<FiberElement *>((!is_fixed_ || IsFixedNewOrUnifiedEnabled())
+                                        ? parent_
+                                        : element_manager_->root());
     while (real_parent && real_parent->is_wrapper()) {
       real_parent = static_cast<FiberElement *>(real_parent->parent());
     }
@@ -3591,6 +3594,10 @@ void FiberElement::ConvertToInlineElement() {
 }
 
 void FiberElement::TraversalInsertFixedElementOfTree() {
+  if (IsFixedUnifiedEnabled()) {
+    return;
+  }
+
   if (!is_page() && need_handle_fixed_) {
     HandleSelfFixedChange();
     need_handle_fixed_ = false;
@@ -3602,7 +3609,7 @@ void FiberElement::TraversalInsertFixedElementOfTree() {
 
 void FiberElement::HandleSelfFixedChange() {
   // 1. If enableFixedNew is `true`, return directly.
-  if (GetEnableFixedNew()) {
+  if (IsFixedNewOrUnifiedEnabled()) {
     return;
   }
   // 2. When Using NoDiff, if the element's fixed status is not changed or the

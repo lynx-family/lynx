@@ -460,7 +460,9 @@ LayoutNode* LayoutContext::CreateLayoutNode(int32_t id,
   if (tag.str() == kListNodeTag) {
     layout_node->slnode()->MarkList();
   }
-  if (layout_configs_.enable_fixed_new_ && root_) {
+  if ((layout_configs_.enable_fixed_new_ ||
+       layout_configs_.enable_unify_fixed_behavior_) &&
+      root_) {
     layout_node->slnode()->SetRoot(root_->slnode());
   }
   layout_node->slnode()->SetEventHandler(this);

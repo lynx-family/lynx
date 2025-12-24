@@ -51,6 +51,9 @@ static constexpr int32_t kInvalidImplId = 0;
 // initial element impl id
 static constexpr int32_t kInitialImplId = 10;
 
+// initial global insertion ID
+static constexpr uint32_t kInitialGlobalInsertionOrder = 0;
+
 // Enlarge `PseudoState` if has more states...
 
 #endif  // CORE_RENDERER_UTILS_BASE_BASE_INNER_DEF_H_

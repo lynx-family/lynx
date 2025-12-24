@@ -156,6 +156,12 @@ class Element : public lepus::RefCounted,
 
   int32_t impl_id() const { return id_; }
 
+  uint32_t GlobalInsertionOrder() const { return global_insertion_order_; }
+  void UpdateGlobalInsertionOrder(bool force_update);
+  void ResetGlobalInsertionOrder() {
+    global_insertion_order_ = kInitialGlobalInsertionOrder;
+  }
+
   void SetNodeIndex(uint32_t node_index) { node_index_ = node_index; }
   uint32_t NodeIndex() const { return node_index_; }
 
@@ -267,6 +273,12 @@ class Element : public lepus::RefCounted,
   inline bool IsLayoutOnly() { return is_layout_only_; }
   bool IsNewFixed() const;
   bool GetEnableFixedNew() const;
+  bool IsFixedUnified() const;
+  bool IsFixedUnifiedEnabled() const;
+  bool IsFixedNewOrFiberUnified() const;
+  bool IsFixedNewOrUnifiedEnabled() const;
+  bool IsFixedUnifiedOnly() const;
+
   inline bool is_virtual() { return is_virtual_; }
   virtual bool is_fixed_new() { return false; }
   LYNX_EXPORT_FOR_DEVTOOL virtual bool GetPageElementEnabled() { return false; }
@@ -771,6 +783,12 @@ class Element : public lepus::RefCounted,
   base::String tag_;
 
   int32_t id_;
+  /**
+   * A globally unique sequential identifier representing
+   * the chronological position at which this element was
+   * inserted into the DOM tree relative to all other elements.
+   */
+  uint32_t global_insertion_order_{kInitialGlobalInsertionOrder};
   uint32_t node_index_{0};
 
   constexpr const static int32_t kLayoutNodeTypeNotInit = -1;

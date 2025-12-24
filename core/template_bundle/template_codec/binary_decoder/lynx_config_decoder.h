@@ -818,6 +818,15 @@ class LynxConfigDecoder final {
       page_config->SetEnablePropertyBasedSimpleStyle(
           doc[config::kEnablePropertyBasedSimpleStyle].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableUnifyFixedBehavior) &&
+        doc[config::kEnableUnifyFixedBehavior].IsBool()) {
+      page_config->SetEnableUnifyFixedBehavior(
+          doc[config::kEnableUnifyFixedBehavior].GetBool());
+    } else {
+      page_config->SetEnableUnifyFixedBehavior(
+          LynxEnv::GetInstance().EnableUnifyFixedBehavior());
+    }
   };
 };
 }  // namespace tasm
