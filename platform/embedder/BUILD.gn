@@ -123,11 +123,13 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_template_bundle_capi.h",
     "./public/capi/lynx_template_data_capi.h",
     "./public/capi/lynx_trace_capi.h",
+    "./public/capi/lynx_types.h",
     "./public/capi/lynx_update_meta_capi.h",
     "./public/capi/lynx_view_builder_capi.h",
     "./public/capi/lynx_view_capi.h",
     "./public/capi/lynx_view_client_capi.h",
     "./public/capi/lynx_vsync_monitor_capi.h",
+    "./public/capi/lynx_windowless_renderer_capi.h",
   ]
   outputs = [ "$root_build_dir/include/capi/{{source_file_part}}" ]
 }
@@ -155,6 +157,7 @@ copy("lynx_embedder_cxxapi") {
     "./public/lynx_view.h",
     "./public/lynx_view_client.h",
     "./public/lynx_vsync_monitor.h",
+    "./public/lynx_windowless_renderer.h",
   ]
   outputs = [ "$root_build_dir/include/{{source_file_part}}" ]
 }
