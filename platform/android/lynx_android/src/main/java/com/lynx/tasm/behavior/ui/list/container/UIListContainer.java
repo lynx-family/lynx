@@ -1010,6 +1010,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
             lastScrollToCallback.invoke(LynxUIMethodConstants.PARAM_INVALID,
                 "the scroll has stopped, triggered by auto scroll");
           }
+          if (canScroll(mAutoRatePerFrame)) {
+            UIListContainer.this.mView.setScrollState(SCROLL_STATE_SCROLL_ANIMATION);
+          }
           callback.invoke(LynxUIMethodConstants.SUCCESS);
         }
 
@@ -1038,9 +1041,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     mAutoScroller.setAutoScrollParams(
         params.getBoolean("start", true), params.getBoolean("autoStop", true));
     mAutoScroller.execute(params.getString("rate", ""), getLynxContext());
-    if (mAutoScroller.canScroll(mAutoScroller.mAutoRatePerFrame)) {
-      mView.setScrollState(SCROLL_STATE_SCROLL_ANIMATION);
-    }
   }
 
   @Override
@@ -1049,7 +1049,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     // (1) If in fling or dragged status, the component in list will not respond to tap
     // event.
     // (2) If invoke autoScroll, the component in list will respond to tap event.
-    recognizeGesturere();
+    if (state != SCROLL_STATE_IDLE) {
+      recognizeGesturere();
+    }
     if (state == SCROLL_STATE_IDLE) {
       getLynxContext().getFluencyTraceHelper().stop(getSign());
       if (mScrollToCallback != null) {
