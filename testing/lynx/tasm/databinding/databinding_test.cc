@@ -491,16 +491,6 @@ void DataBindingDynamicComponentWithTemplateBundleShell::
       file_name, data, template_data, loader);
 }
 
-RadonFiberTest::RadonFiberTest() {
-  lynx::tasm::LynxEnv::GetInstance().external_env_map_
-      [lynx::tasm::LynxEnv::Key::ENABLE_FIBER_ELEMENT_FOR_RADON_DIFF] = "true";
-}
-
-RadonFiberTest::~RadonFiberTest() {
-  lynx::tasm::LynxEnv::GetInstance().external_env_map_
-      [lynx::tasm::LynxEnv::Key::ENABLE_FIBER_ELEMENT_FOR_RADON_DIFF] = "false";
-}
-
 UnifiedPipelineDataBindingTest::UnifiedPipelineDataBindingTest() {
   left_.reset(new UnifiedPipelineDataBindingShell());
   right_.reset(new UnifiedPipelineDataBindingShell());

@@ -104,23 +104,9 @@ lepus::Value ElementDumpHelper::DumpToSnapshot(Element* element,
   auto data_model = element->data_model();
   if (data_model) {
     DumpAttributeToLepusValue(props, data_model);
-    if (element->is_radon_element()) {
-      auto* radon_node = static_cast<RadonNode*>(data_model->radon_node_ptr());
-      if (radon_node->IsRadonComponent()) {
-        auto* component = static_cast<RadonComponent*>(radon_node);
-        if (component) {
-          props->SetValue("name", component->name());
-          props->SetValue("path", component->path());
-        }
-      }
-    }
 
     tasm::StyleMap computed_styles;
-    if (element->is_fiber_element()) {
-      static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
-    } else if (element->is_radon_element()) {
-      static_cast<RadonElement*>(element)->ResolveStyle(computed_styles);
-    }
+    static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
 
     if (computed_styles.size() > 0) {
       std::map<CSSPropertyID, CSSValue> ordered_computed_styles_map(
@@ -161,24 +147,10 @@ void ElementDumpHelper::DumpToMarkup(Element* element, std::ostringstream& ss,
 
   auto data_model = element->data_model();
   if (data_model) {
-    if (element->is_radon_element()) {
-      auto* radon_node = static_cast<RadonNode*>(data_model->radon_node_ptr());
-      if (radon_node->IsRadonComponent()) {
-        auto* component = static_cast<RadonComponent*>(radon_node);
-        if (component) {
-          ss << " name=\"" << component->name().str() << "\"";
-          ss << " path=\"" << component->path().str() << "\"";
-        }
-      }
-    }
     DumpAttributeToMarkup(ss, data_model);
 
     tasm::StyleMap computed_styles;
-    if (element->is_fiber_element()) {
-      static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
-    } else if (element->is_radon_element()) {
-      static_cast<RadonElement*>(element)->ResolveStyle(computed_styles);
-    }
+    static_cast<FiberElement*>(element)->DumpStyle(computed_styles);
     if (computed_styles.size() > 0) {
       std::map<CSSPropertyID, CSSValue> ordered_computed_styles_map(
           computed_styles.begin(), computed_styles.end());
@@ -215,10 +187,8 @@ std::string ElementDumpHelper::DumpTree(PageProxy* proxy) {
         dumped_document, proxy->radon_page_.get());
   } else if (proxy->client_ && proxy->client_->GetEnableFiberArch()) {
     auto page = proxy->client_->root();
-    if (page->is_fiber_element()) {
-      dumped_virtual_tree = DumpFiberElementToJSON(
-          dumped_document, static_cast<FiberElement*>(page));
-    }
+    dumped_virtual_tree = DumpFiberElementToJSON(
+        dumped_document, static_cast<FiberElement*>(page));
   } else {
     return std::string();
   }

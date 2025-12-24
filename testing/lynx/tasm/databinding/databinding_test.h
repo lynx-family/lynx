@@ -400,8 +400,8 @@ class DataBindingDynamicComponentWithTemplateBundleTest
 
 class RadonFiberTest {
  public:
-  RadonFiberTest();
-  ~RadonFiberTest();
+  RadonFiberTest(){};
+  ~RadonFiberTest(){};
 };
 
 class RadonFiberDataBindingTest : public DataBindingTest,
