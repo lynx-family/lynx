@@ -177,6 +177,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   std::unique_ptr<Scroller> scroller_;
 
   FloatSize last_scroll_offset_{};
+  bool needs_correct_scroll_offset_ = false;
 
   std::string next_scrollable_;
   std::string pre_scrollable_;

@@ -113,7 +113,6 @@ void ScrollView::AddChild(BaseView* child, int index) {
   if (delegate_) {
     delegate_->OnScrollViewChildAdded();
   }
-  CorrectScrollOffset();
   if (!page_view()->ImageDecodeWithPriority()) {
     auto func = [](BaseView* v) {
       if (v) {
@@ -122,6 +121,10 @@ void ScrollView::AddChild(BaseView* child, int index) {
     };
     child->VisitChildren(func);
   }
+  // There is such a case that the Lynx may first removes child nodes and then
+  // adds child nodes within a single diff cycle. So we move the correct scroll
+  // offset action to OnLayout.
+  needs_correct_scroll_offset_ = true;
 }
 
 void ScrollView::RemoveChild(BaseView* child) {
@@ -133,11 +136,18 @@ void ScrollView::RemoveChild(BaseView* child) {
   if (delegate_) {
     delegate_->OnScrollViewChildRemoved();
   }
-  CorrectScrollOffset();
+  // There is such a case that the Lynx may first removes child nodes and then
+  // adds child nodes within a single diff cycle. So we move the correct scroll
+  // offset action to OnLayout.
+  needs_correct_scroll_offset_ = true;
 }
 
 void ScrollView::OnLayout(LayoutContext* context) {
   BaseView::OnLayout(context);
+  if (needs_correct_scroll_offset_) {
+    needs_correct_scroll_offset_ = false;
+    CorrectScrollOffset();
+  }
   if (content_size_ != old_content_size_) {
     NotifyContentSizeChanged(content_size_);
     old_content_size_ = content_size_;
@@ -191,7 +201,8 @@ void ScrollView::CalculateOverFlow() {
 
 void ScrollView::OnLayoutUpdated() {
   CalculateOverFlow();
-  CorrectScrollOffset();
+  // The correct scroll offset will be called in OnLayout if necessary.
+  // CorrectScrollOffset();
 }
 
 #ifdef ENABLE_ACCESSIBILITY
