@@ -18,23 +18,29 @@ function toCamelCase(str: string): string {
 }
 
 /**
+ * Lynx-specific property classification criteria
+ * Properties are considered Lynx-specific if they:
+ * 1. Start with Lynx vendor prefixes (linear*, relative*, -x-*, X*)
+ * 2. Are part of Lynx-specific feature sets (layout animations, transitions)
+ */
+const LYNX_PREFIXES = ['linear', 'relative', '-x-', 'X'] as const;
+const LYNX_SPECIFIC_KEYWORDS = [
+  'adaptFontSize',
+  'layoutAnimation',
+  'implicitAnimation',
+  'enterTransitionName',
+  'exitTransitionName',
+  'pauseTransitionName',
+  'resumeTransitionName',
+] as const;
+
+/**
  * Determines if a property is Lynx-specific (not in standard CSS)
  */
 function isLynxSpecific(propertyName: string): boolean {
-  const lynxPrefixes = ['linear', 'relative', '-x-', 'X'];
-  const lynxSpecificProps = [
-    'adaptFontSize',
-    'layoutAnimation',
-    'implicitAnimation',
-    'enterTransitionName',
-    'exitTransitionName',
-    'pauseTransitionName',
-    'resumeTransitionName',
-  ];
-  
   return (
-    lynxPrefixes.some(prefix => propertyName.startsWith(prefix)) ||
-    lynxSpecificProps.some(prop => propertyName.includes(prop))
+    LYNX_PREFIXES.some(prefix => propertyName.startsWith(prefix)) ||
+    LYNX_SPECIFIC_KEYWORDS.some(keyword => propertyName.startsWith(keyword))
   );
 }
 
