@@ -50,7 +50,6 @@ public abstract class UIListAutoScroller {
       // stop last scroll by removing FrameCallback
       removeFrameCallback();
       onAutoScrollStart();
-
       autoScroll();
     } else {
       onAutoScrollEnd();
