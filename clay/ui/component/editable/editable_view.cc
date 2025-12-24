@@ -602,6 +602,10 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
       }
       return true;
 #else
+      if (key_event->GetSynthesized()) {
+        // For PC headless mode
+        return HandleSynthesizedKeyEvent(key_event);
+      }
       return false;
 #endif
     }
@@ -610,6 +614,11 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
         if (!is_down) {
           BeginEditingIfNeeded();
         }
+        return true;
+      } else if (is_down && key_event->GetSynthesized() &&
+                 key_event->GetCharacter() == "\r" && max_lines_ > 1) {
+        // Treat as line break in multi-line mode for PC headless mode.
+        OnCommitText("\n");
         return true;
       }
     }
@@ -626,16 +635,26 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
       }
 #else
       // We using synthesized key event for PC headless mode
-      if (is_down && key_event->GetSynthesized() &&
-          !key_event->GetCharacter().empty()) {
-        // Treat as utf8 character.
-        OnCommitText(key_event->GetCharacter());
-        return true;
+      if (key_event->GetSynthesized()) {
+        return HandleSynthesizedKeyEvent(key_event);
       }
       // PC IME will handle it.
       return false;
 #endif
     }
+  }
+  return false;
+}
+
+bool EditableView::HandleSynthesizedKeyEvent(const KeyEvent* key_event) {
+  if (!key_event->GetSynthesized()) {
+    return false;
+  }
+  if (key_event->GetType() == KeyEventType::kDown &&
+      !key_event->GetCharacter().empty()) {
+    // Treat as utf8 character.
+    OnCommitText(key_event->GetCharacter());
+    return true;
   }
   return false;
 }

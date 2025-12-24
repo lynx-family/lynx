@@ -166,6 +166,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void ApplyFilter(FilterFunc func, bool take_effect);
   void FilterInputIfNeeded(TextEditingValue* value);
   bool OnKeyEventInternal(const KeyEvent* event);
+  bool HandleSynthesizedKeyEvent(const KeyEvent* event);
 
   void DeleteSurroundingText(int before_length, int after_length);
 
