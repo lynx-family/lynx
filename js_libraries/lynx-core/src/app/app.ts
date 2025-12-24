@@ -491,16 +491,17 @@ export abstract class BaseApp<
 
   handleUserError(
     error?: Error,
-    cause?: unknown,
+    outerCause?: unknown,
     errorLevel?: LynxErrorLevel,
     prefix?: string
   ): void {
-    let { message, name, stack } = error || {};
+    let { message, name, stack, cause } = error || {};
     if (!message) {
       // If there is no error message in error, means that it is not an error-like object.
       // We construct a new Error using JSON.stringify
       ({ message, name, stack } = new Error(JSON.stringify(error)));
     }
+    cause = cause ?? outerCause;
     const userError = new UserRuntimeError(
       prefix ? `${prefix} ${name}: ${message}` : `${name}: ${message}`,
       stack
