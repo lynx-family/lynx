@@ -10,8 +10,6 @@ export class DisplayInfo {
   private _screenWidth: number;
   private _screenHeight: number;
   private _refreshRate: number;
-  private _viewportWidth: number;
-  private _viewportHeight: number;
 
   constructor(info?: DisplayInfo) {
     if (info) {
@@ -20,8 +18,6 @@ export class DisplayInfo {
       this._screenWidth = info._screenWidth;
       this._screenHeight = info._screenHeight;
       this._refreshRate = info._refreshRate;
-      this._viewportWidth = info._viewportWidth;
-      this._viewportHeight = info._viewportHeight;
     } else {
       const defaultDisplay = display.getDefaultDisplaySync();
       this._densityPixels = defaultDisplay.densityPixels;
@@ -29,16 +25,12 @@ export class DisplayInfo {
       this._screenWidth = defaultDisplay.width;
       this._screenHeight = defaultDisplay.height;
       this._refreshRate = defaultDisplay.refreshRate;
-      this._viewportWidth = defaultDisplay.width;
-      this._viewportHeight = defaultDisplay.height;
     }
   }
 
   updateDisplayInfo(width: number, height: number, densityPixels?: number, densityDPI?: number, refreshRate?: number) {
     this._screenWidth = width;
     this._screenHeight = height;
-    this._viewportWidth = width;
-    this._viewportHeight = height;
     if (densityPixels) {
       this._densityPixels = densityPixels;
     }
@@ -68,14 +60,6 @@ export class DisplayInfo {
 
   get refreshRate() {
     return this._refreshRate;
-  }
-
-  get viewportWidth() {
-    return this._viewportWidth;
-  }
-
-  get viewportHeight() {
-    return this._viewportHeight;
   }
 
   clone(): DisplayInfo {
