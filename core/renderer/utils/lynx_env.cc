@@ -564,6 +564,10 @@ bool LynxEnv::EnableHarmonyDrawBehind() {
   return GetBoolEnv(Key::ENABLE_HARMONY_DRAW_BEHIND, true);
 }
 
+bool LynxEnv::EnableHarmonyNewImage() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_NEW_IMAGE, false);
+}
+
 bool LynxEnv::EnableUnifyFixedBehavior() {
   return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
 }

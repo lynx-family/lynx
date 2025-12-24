@@ -1,0 +1,13 @@
+{
+  "name": "@lynx/lynx_image_service",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Lynx Image Service",
+  "main": "Index.ets",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+    "@ohos/imageknifepro": "1.0.9",
+  },
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx"
+}

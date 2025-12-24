@@ -111,6 +111,7 @@ class BackgroundDrawable {
     return has_border_ || has_image_ || !border_radius_->IsZero();
   }
   const std::string& GetClipPath();
+  OH_Drawing_Path* GetInnerClipPath();
   BorderRadius* GetBorderRadius();
   float GetBorderLeftWidth();
   float GetBorderRightWidth();

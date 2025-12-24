@@ -8,6 +8,8 @@ import type { NodeContent } from '@ohos.arkui.node';
 
 export const initGlobalEnv: (resourceManager: Object) => void;
 
+export const registerImageService: (instance: number[]) => void;
+
 export const getBaseTraceBackend: () => number;
 
 export const setTracingDirPath: (tracingDirPath: string) => void;

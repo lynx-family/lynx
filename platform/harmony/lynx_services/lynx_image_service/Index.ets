@@ -1,0 +1,1 @@
+export { LynxImageService } from './src/main/ets/LynxImageService'

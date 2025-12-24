@@ -55,6 +55,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
  public:
   UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
          const std::string& tag, bool has_customized_layout = false);
+  void InitNode(ArkUI_NodeHandle node);
   ~UIBase() override;
   static bool CanDrawBehind();
   ArkUI_NodeHandle Node() const { return node_; }
@@ -260,8 +261,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual const std::string& GetAccessibilityLabel() const {
     return accessibility_label_;
   }
+  void Destroy();
 
-  ArkUI_NodeHandle node_;
+  ArkUI_NodeHandle node_{nullptr};
   UIBase* parent_{nullptr};
   std::vector<UIBase*> children_;
   LynxContext* context_;
