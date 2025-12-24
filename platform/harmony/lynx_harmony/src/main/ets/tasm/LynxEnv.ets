@@ -213,6 +213,7 @@ class LynxEnvironment {
 
   public updateDisplayInfo(width: number, height: number, densityPixels?: number, densityDPI?: number,
     refreshRate?: number) {
+    LLog.i(TAG, `updateDisplayInfo, w: ${width}, h: ${height}, density: ${densityPixels}`);
     this.displayInfo.updateDisplayInfo(width, height, densityPixels, densityDPI, refreshRate);
     if (refreshRate) {
       EmbedderPlatform.updateRefreshRate(refreshRate);

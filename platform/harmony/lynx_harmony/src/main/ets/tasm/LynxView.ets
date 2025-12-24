@@ -118,6 +118,7 @@ export struct LynxView {
   metaData: MetaData = new MetaData();
   behaviors: BehaviorRegistryMap = new Map();
   url: string = '';
+  screenSize?: Size;
   buffer?: ArrayBuffer;
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
@@ -206,7 +207,7 @@ export struct LynxView {
       new LynxTemplateRenderer(this.clients, providers, !this.uiRendererCreator,
         this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
         this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
-        this.moduleManager, this.sendableModuleManager);
+        this.moduleManager, this.sendableModuleManager, this.screenSize);
     if (this.platformConfig) {
       this.templateRenderer.setPlatformConfig(this.platformConfig);
     }
