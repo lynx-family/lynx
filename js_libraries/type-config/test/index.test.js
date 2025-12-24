@@ -40,7 +40,7 @@ describe('type-config index', () => {
     `)
   })
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(122);
+    expect(configKeys.length).toBe(121);
     expect(configKeys).toMatchInlineSnapshot(`
       [
         "absoluteInContentBound",
@@ -85,7 +85,6 @@ describe('type-config index', () => {
         "enableListPlug",
         "enableLynxScrollFluency",
         "enableMicrotaskPromisePolyfill",
-        "enableMTSPreExecute",
         "enableMultiTouch",
         "enableMultiTouchParamsCompatible",
         "enableNativeList",
