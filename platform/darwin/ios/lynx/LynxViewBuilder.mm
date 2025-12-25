@@ -77,6 +77,8 @@
   return [super enableUIOperationQueue];
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
 - (BOOL)enablePendingJSTaskOnLayout {
   if (_hasPendingJsTaskSet) {
     return [super enablePendingJSTaskOnLayout];
@@ -86,6 +88,7 @@
   }
   return NO;
 }
+#pragma clang diagnostic pop
 
 - (BOOL)enableJSRuntime {
   if (_lynxViewGroup) {

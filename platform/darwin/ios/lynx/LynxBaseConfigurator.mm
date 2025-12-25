@@ -75,6 +75,15 @@
   _enablePendingJSTaskOnLayout = enablePendingJSTaskOnLayout;
 }
 
+@dynamic enablePendingJsTask;
+- (void)setEnablePendingJsTask:(BOOL)enablePendingJsTask {
+  [self setEnablePendingJSTaskOnLayout:enablePendingJsTask];
+}
+
+- (BOOL)enablePendingJsTask {
+  return [self enablePendingJSTaskOnLayout];
+}
+
 - (void)addLynxResourceProvider:(NSString*)resType provider:(id<LynxResourceProvider>)provider {
   [self.lynxBackgroundRuntimeOptions addLynxResourceProvider:resType provider:provider];
 }

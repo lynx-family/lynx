@@ -578,7 +578,7 @@ public class LynxBaseConfigurator : NSObject {
   public BOOL LynxBaseConfigurator::enableTextNonContiguousLayout enableTextNonContiguousLayout;
   public BOOL LynxBaseConfigurator::enableLayoutOnly enableLayoutOnly;
   public BOOL LynxBaseConfigurator::enableUIOperationQueue enableUIOperationQueue;
-  public BOOL LynxBaseConfigurator::enablePendingJSTaskOnLayout enablePendingJSTaskOnLayout;
+  public BOOL LynxBaseConfigurator::enablePendingJsTask enablePendingJsTask;
   public BOOL LynxBaseConfigurator::enableJSRuntime enableJSRuntime;
   public BOOL LynxBaseConfigurator::enableAirStrictMode enableAirStrictMode;
   public BOOL LynxBaseConfigurator::enableAsyncCreateRender enableAsyncCreateRender;
@@ -602,6 +602,7 @@ public class LynxBaseConfigurator : NSObject {
   public NSString* LynxBaseConfigurator::bytecodeUrl bytecodeUrl;
   public id<LynxUIRendererCreatorProtocol> LynxBaseConfigurator::uiRendererCreator uiRendererCreator;
   public LynxBackgroundRuntimeOptions* LynxBaseConfigurator()::lynxBackgroundRuntimeOptions lynxBackgroundRuntimeOptions;
+  public BOOL enablePendingJSTaskOnLayout LynxBaseConfigurator::__attribute__((deprecated("Use enablePendingJsTask instead.")));
   public void LynxBaseConfigurator::setThreadStrategyForRender:(LynxThreadStrategyForRender threadStrategy);
   public LynxThreadStrategyForRender LynxBaseConfigurator::getThreadStrategyForRender();
   public void LynxBaseConfigurator::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);

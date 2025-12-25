@@ -32,7 +32,11 @@
 @property(nonatomic, assign) BOOL enableTextNonContiguousLayout;
 @property(nonatomic, assign) BOOL enableLayoutOnly;
 @property(nonatomic, assign) BOOL enableUIOperationQueue;
-@property(nonatomic, assign) BOOL enablePendingJSTaskOnLayout;
+// PendingJS configuration. Use enablePendingJsTask as the unified cross-platform name.
+// enablePendingJSTaskOnLayout is kept for backward compatibility.
+@property(nonatomic, assign) BOOL enablePendingJsTask;
+@property(nonatomic, assign) BOOL enablePendingJSTaskOnLayout
+    __attribute__((deprecated("Use enablePendingJsTask instead.")));
 @property(nonatomic, assign) BOOL enableJSRuntime;
 @property(nonatomic, assign) BOOL enableAirStrictMode;
 @property(nonatomic, assign) BOOL enableAsyncCreateRender;
