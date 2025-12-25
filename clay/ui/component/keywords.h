@@ -256,7 +256,10 @@ enum class KeywordID {
   kExperimentalBatchRenderStrategy,
   kZIndex,
   kExperimentalRecycleStickyItem,
-  kExperimentalUpdateStickyForDiff
+  kExperimentalUpdateStickyForDiff,
+  kOffsetPath,
+  kOffsetRotate,
+  kOffsetDistance
 };
 
 KeywordID GetKeywordID(const std::string &str);

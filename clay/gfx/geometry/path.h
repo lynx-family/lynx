@@ -41,8 +41,18 @@ struct ClipPathData {
   std::vector<BorderRadius> radius = {};
 };
 
+using OffsetPathData = ClipPathData;
+
+struct MotionState {
+  float x;
+  float y;
+  float deg;
+};
+
 struct PathBuilder {
   static bool ParsePathString(const char data[], GrPath* result);
+
+  static MotionState CalculateMotionState(const GrPath& path, float percent);
 };
 
 }  // namespace clay

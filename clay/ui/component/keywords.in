@@ -240,3 +240,6 @@ experimental-batch-render-strategy
 z-index
 experimental-recycle-sticky-item
 experimental-update-sticky-for-diff
+offset-path
+offset-rotate
+offset-distance

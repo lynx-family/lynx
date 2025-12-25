@@ -135,7 +135,12 @@ class RenderObject : public AbstractNode {
   void SetOverflow(uint8_t overflow);
   void SetClipPath(const FloatRoundedRect& rrect);
   void SetClipPath(const GrPath& path);
+  void SetOffsetPath(const FloatRoundedRect& rrect);
+  void SetOffsetPath(const GrPath& path);
   void ClearClipPath();
+  void ClearOffsetPath();
+  void SetOffsetRotate(float rotate);
+  void SetOffsetDistance(float distance);
   virtual bool IsRenderBounceView() const { return false; }
   virtual bool IsScrollable() const { return false; }
 
@@ -314,9 +319,13 @@ class RenderObject : public AbstractNode {
   bool HasTransform() const {
     return transform_.has_value() && !transform_->IsIdentity();
   }
+  bool HasOffsetTransform() const { return offset_transform_.has_value(); }
   bool HasTransformOperations() const;
   const TransformOperations& GetTransformOperations() const {
     return *transform_;
+  }
+  const TransformOperations& GetOffsetTransformOperations() const {
+    return *offset_transform_;
   }
   Transform GetTransform() const {
     return transform_.has_value() ? (*transform_).Apply() : Transform();
@@ -382,9 +391,9 @@ class RenderObject : public AbstractNode {
   void SetRepaintBoundary(bool repaint_boundary);
   virtual bool IsRepaintBoundary() const {
     return repaint_boundary_ || HasShadow() || HasTransform() ||
-           HasPerspective() || HasOpacity() || HasClipOrOverflowClip() ||
-           HasBlur() || HasColorFilter() || HasClipPath() ||
-           HasBackgroundClipText() || HasMask();
+           HasOffsetTransform() || HasPerspective() || HasOpacity() ||
+           HasClipOrOverflowClip() || HasBlur() || HasColorFilter() ||
+           HasClipPath() || HasBackgroundClipText() || HasMask();
   }
 
   bool CanApplyAA() const;
@@ -516,6 +525,13 @@ class RenderObject : public AbstractNode {
   Renderer* renderer_ = nullptr;
 
  private:
+  struct MotionPath {
+    std::optional<GrPath> offset_path;
+    float offset_rotate = 0.f;
+    float offset_distance = 0.f;
+    bool offset_rotate_auto = true;
+  };
+
   FloatPoint PaintOffsetEx() const;
 
   bool WasRepaintBoundary();
@@ -529,6 +545,8 @@ class RenderObject : public AbstractNode {
   void RebuildSortedChildrenIfNeeded();
   void ClearColorFilter();
   void ClearImageFilter();
+
+  void UpdateOffsetTransform(const skity::Matrix& matrix);
 
   ElementId id_{-1};
 
@@ -563,6 +581,7 @@ class RenderObject : public AbstractNode {
   std::optional<BordersData> border_;
   std::optional<OutlineData> outline_;
   std::optional<std::vector<Shadow>> shadows_;
+  std::optional<TransformOperations> offset_transform_;
   std::optional<TransformOperations> transform_;
   std::optional<float> perspective_;
   FloatPoint transform_origin_;
@@ -570,6 +589,7 @@ class RenderObject : public AbstractNode {
   float blur_radius_ = 0.f;
   std::vector<float> current_color_filter_matrix_;
   ClipPathType clip_shape_;
+  MotionPath motion_path_;
   FilterMode image_filter_mode_ = FilterMode::kLinear;
   ClayAnimationPropertyType raster_transition_properties_;
   ClayAnimationPropertyType raster_animation_properties_;

@@ -331,10 +331,26 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
     }
     case KeywordID::kClipPath: {
       if (value.IsArray()) {
-        view->SetClipPath(utils::GetArray(value));
+        view->SetClipOffsetPath(utils::GetArray(value), true);
       } else {
         view->ClearClipPath();
       }
+      break;
+    }
+    case KeywordID::kOffsetPath: {
+      if (value.IsArray()) {
+        view->SetClipOffsetPath(utils::GetArray(value), false);
+      } else {
+        view->ClearOffsetPath();
+      }
+      break;
+    }
+    case KeywordID::kOffsetRotate: {
+      view->SetOffsetRotate(utils::GetDouble(value));
+      break;
+    }
+    case KeywordID::kOffsetDistance: {
+      view->SetOffsetDistance(utils::GetDouble(value));
       break;
     }
 #ifdef ENABLE_ACCESSIBILITY

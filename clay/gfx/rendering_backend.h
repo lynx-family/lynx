@@ -246,6 +246,9 @@ using GrPicturePtr = sk_sp<SkPicture>;
 // GrPathMeasure
 #define PATH_MEASURE_GET_LENGTH(measure) measure.getLength()
 #define PATH_MEASURE_NEXT_CONTOUR(measure) measure.nextContour()
+#define PATH_MEASURE_SET_PATH(measure, path) measure.setPath(path, false)
+#define PATH_MEASURE_GET_POS_TAN(measure, distance, position, tangent) \
+  measure.getPosTan(distance, position, tangent)
 
 // GrImage
 #define IMAGE_WIDTH(image) image->width()
@@ -465,6 +468,9 @@ using GrPicturePtr = std::shared_ptr<skity::DisplayList>;
 // GrPathMeasure
 #define PATH_MEASURE_GET_LENGTH(measure) measure.GetLength()
 #define PATH_MEASURE_NEXT_CONTOUR(measure) measure.NextContour()
+#define PATH_MEASURE_SET_PATH(measure, path) measure.SetPath(path, false)
+#define PATH_MEASURE_GET_POS_TAN(measure, distance, position, tangent) \
+  measure.GetPosTan(distance, position, tangent)
 
 // GrImage
 #define IMAGE_WIDTH(image) image->Width()

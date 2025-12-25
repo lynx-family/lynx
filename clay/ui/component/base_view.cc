@@ -863,8 +863,10 @@ static void AddLameCurveToPath(GrPath& path, float rx, float ry, float cx,
   }
 }
 
-void BaseView::SetClipPath(const clay::Value::Array& array) {
+void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
+                                 bool is_clip_path) {
   auto shape_type = static_cast<ClayBasicShapeType>(utils::GetInt(array[0]));
+  auto& path_data = is_clip_path ? clip_path_data_ : offset_path_data_;
   switch (shape_type) {
     case ClayBasicShapeType::kCircle: {
       ClayPlatformLength radius_length, x_pos_length, y_pos_length;
@@ -876,14 +878,14 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
         FML_DLOG(ERROR) << "Setting clip-path: error Circle format!";
         return;
       }
-      if (!clip_path_data_.has_value()) {
-        clip_path_data_ = ClipPathData{};
+      if (!path_data.has_value()) {
+        path_data = ClipPathData{};
       }
-      clip_path_data_->params.emplace_back(radius_length);
-      clip_path_data_->params.emplace_back(radius_length);
-      clip_path_data_->params.emplace_back(x_pos_length);
-      clip_path_data_->params.emplace_back(y_pos_length);
-      clip_path_data_->clip_type = ClipPathData::ClipType::kCircle;
+      path_data->params.emplace_back(radius_length);
+      path_data->params.emplace_back(radius_length);
+      path_data->params.emplace_back(x_pos_length);
+      path_data->params.emplace_back(y_pos_length);
+      path_data->clip_type = ClipPathData::ClipType::kCircle;
       break;
     }
     case ClayBasicShapeType::kEllipse: {
@@ -897,14 +899,14 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
         FML_DLOG(ERROR) << "Setting clip-path: error Ellipse format!";
         return;
       }
-      if (!clip_path_data_.has_value()) {
-        clip_path_data_ = ClipPathData{};
+      if (!path_data.has_value()) {
+        path_data = ClipPathData{};
       }
-      clip_path_data_->params.emplace_back(x_length);
-      clip_path_data_->params.emplace_back(y_length);
-      clip_path_data_->params.emplace_back(x_pos_length);
-      clip_path_data_->params.emplace_back(y_pos_length);
-      clip_path_data_->clip_type = ClipPathData::ClipType::kEllipse;
+      path_data->params.emplace_back(x_length);
+      path_data->params.emplace_back(y_length);
+      path_data->params.emplace_back(x_pos_length);
+      path_data->params.emplace_back(y_pos_length);
+      path_data->clip_type = ClipPathData::ClipType::kEllipse;
       break;
     }
     case ClayBasicShapeType::kPath: {
@@ -919,8 +921,12 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
       skity::Matrix density_scale =
           skity::Matrix::Scale(scaled_density, scaled_density);
       PATH_TRANSFORM(path, density_scale);
-      clip_path_data_.reset();
-      render_object()->SetClipPath(path);
+      path_data.reset();
+      if (is_clip_path) {
+        render_object()->SetClipPath(path);
+      } else {
+        render_object()->SetOffsetPath(path);
+      }
       break;
     }
     case ClayBasicShapeType::kSuperEllipse: {
@@ -935,16 +941,16 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
         FML_DLOG(ERROR) << "Setting clip-path: error inset format!";
         return;
       }
-      if (!clip_path_data_.has_value()) {
-        clip_path_data_ = ClipPathData{};
+      if (!path_data.has_value()) {
+        path_data = ClipPathData{};
       }
-      clip_path_data_->params.emplace_back(radius_x);
-      clip_path_data_->params.emplace_back(radius_y);
-      clip_path_data_->params.emplace_back(center_x);
-      clip_path_data_->params.emplace_back(center_y);
-      clip_path_data_->exponents.emplace_back(array[5].GetDouble());
-      clip_path_data_->exponents.emplace_back(array[6].GetDouble());
-      clip_path_data_->clip_type = ClipPathData::ClipType::kSuperEllipse;
+      path_data->params.emplace_back(radius_x);
+      path_data->params.emplace_back(radius_y);
+      path_data->params.emplace_back(center_x);
+      path_data->params.emplace_back(center_y);
+      path_data->exponents.emplace_back(array[5].GetDouble());
+      path_data->exponents.emplace_back(array[6].GetDouble());
+      path_data->clip_type = ClipPathData::ClipType::kSuperEllipse;
       break;
     }
     case ClayBasicShapeType::kInset: {
@@ -965,26 +971,26 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
         FML_DLOG(ERROR) << "Setting clip-path: error inset format!";
         return;
       }
-      if (!clip_path_data_.has_value()) {
-        clip_path_data_ = ClipPathData{};
+      if (!path_data.has_value()) {
+        path_data = ClipPathData{};
       }
-      clip_path_data_->params.emplace_back(top_length);
-      clip_path_data_->params.emplace_back(right_length);
-      clip_path_data_->params.emplace_back(bottom_length);
-      clip_path_data_->params.emplace_back(left_length);
+      path_data->params.emplace_back(top_length);
+      path_data->params.emplace_back(right_length);
+      path_data->params.emplace_back(bottom_length);
+      path_data->params.emplace_back(left_length);
       // rounded corner's radius value start at index 9
       int radius_offset = 9;
       if (array.size() == 9) {
         // Rect only has first 8 params.
-        clip_path_data_->corner_type = ClipPathData::CornerType::kCornerRect;
+        path_data->corner_type = ClipPathData::CornerType::kCornerRect;
       }
       if (array.size() == 27) {
         // super-ellipse has two more fields for exponents before border-radius.
         // | exponent-x | exponent-y | border-radius ...|
-        clip_path_data_->exponents.emplace_back(array[9].GetDouble());
-        clip_path_data_->exponents.emplace_back(array[10].GetDouble());
+        path_data->exponents.emplace_back(array[9].GetDouble());
+        path_data->exponents.emplace_back(array[10].GetDouble());
         radius_offset = 11;
-        clip_path_data_->corner_type =
+        path_data->corner_type =
             ClipPathData::CornerType::kCornerSuperElliptical;
       }
       if (array.size() == 27 || array.size() == 25) {
@@ -1014,19 +1020,18 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
         utils::TryGetPlatformLength(array, 14 + radius_offset,
                                     radius_bottom_left.y);
 
-        clip_path_data_->radius.emplace_back(radius_top_left);
-        clip_path_data_->radius.emplace_back(radius_top_right);
-        clip_path_data_->radius.emplace_back(radius_bottom_right);
-        clip_path_data_->radius.emplace_back(radius_bottom_left);
+        path_data->radius.emplace_back(radius_top_left);
+        path_data->radius.emplace_back(radius_top_right);
+        path_data->radius.emplace_back(radius_bottom_right);
+        path_data->radius.emplace_back(radius_bottom_left);
         if (array.size() == 25) {
-          clip_path_data_->corner_type =
-              ClipPathData::CornerType::kCornerRounded;
+          path_data->corner_type = ClipPathData::CornerType::kCornerRounded;
         }
       } else {
         // invalid params array
         return;
       }
-      clip_path_data_->clip_type = ClipPathData::ClipType::kInset;
+      path_data->clip_type = ClipPathData::ClipType::kInset;
       break;
     }
     case ClayBasicShapeType::kUnknown: {
@@ -1036,61 +1041,56 @@ void BaseView::SetClipPath(const clay::Value::Array& array) {
   }
 }
 
-void BaseView::DrawClipPath() {
-  switch (clip_path_data_->clip_type) {
+void BaseView::DrawClipPath(bool is_clip_path) {
+#define SET_PATH(path)                    \
+  if (is_clip_path) {                     \
+    render_object()->SetClipPath(path);   \
+  } else {                                \
+    render_object()->SetOffsetPath(path); \
+  }
+
+  auto& path_data = is_clip_path ? clip_path_data_ : offset_path_data_;
+  switch (path_data->clip_type) {
     case ClipPathData::ClipType::kCircle: {
-      if (clip_path_data_->params.size() != 4) {
+      if (path_data->params.size() != 4) {
         break;
       }
-      float x_len =
-          utils::ResolvePlatformLength(clip_path_data_->params[0], width_);
-      float y_len =
-          utils::ResolvePlatformLength(clip_path_data_->params[1], height_);
+      float x_len = utils::ResolvePlatformLength(path_data->params[0], width_);
+      float y_len = utils::ResolvePlatformLength(path_data->params[1], height_);
       float radius = std::min(x_len, y_len);
-      float x_pos =
-          utils::ResolvePlatformLength(clip_path_data_->params[2], width_);
-      float y_pos =
-          utils::ResolvePlatformLength(clip_path_data_->params[3], height_);
+      float x_pos = utils::ResolvePlatformLength(path_data->params[2], width_);
+      float y_pos = utils::ResolvePlatformLength(path_data->params[3], height_);
       FloatRoundedRect rrect;
       rrect.SetOval({x_pos - radius, y_pos - radius, 2 * radius, 2 * radius});
-      render_object()->SetClipPath(rrect);
+      SET_PATH(rrect);
       break;
     }
     case ClipPathData::ClipType::kEllipse: {
-      if (clip_path_data_->params.size() != 4) {
+      if (path_data->params.size() != 4) {
         break;
       }
-      float x_len =
-          utils::ResolvePlatformLength(clip_path_data_->params[0], width_);
-      float y_len =
-          utils::ResolvePlatformLength(clip_path_data_->params[1], height_);
-      float x_pos =
-          utils::ResolvePlatformLength(clip_path_data_->params[2], width_);
-      float y_pos =
-          utils::ResolvePlatformLength(clip_path_data_->params[3], height_);
+      float x_len = utils::ResolvePlatformLength(path_data->params[0], width_);
+      float y_len = utils::ResolvePlatformLength(path_data->params[1], height_);
+      float x_pos = utils::ResolvePlatformLength(path_data->params[2], width_);
+      float y_pos = utils::ResolvePlatformLength(path_data->params[3], height_);
       FloatRoundedRect rrect;
       rrect.SetOval({x_pos - x_len, y_pos - y_len, 2 * x_len, 2 * y_len});
-      render_object()->SetClipPath(rrect);
+      SET_PATH(rrect);
       break;
     }
     case ClipPathData::ClipType::kPath:
       break;
     case ClipPathData::ClipType::kSuperEllipse: {
-      if (clip_path_data_->params.size() != 4 ||
-          clip_path_data_->exponents.size() != 2) {
+      if (path_data->params.size() != 4 || path_data->exponents.size() != 2) {
         break;
       }
       GrPath path;
-      float rx =
-          utils::ResolvePlatformLength(clip_path_data_->params[0], width_);
-      float ry =
-          utils::ResolvePlatformLength(clip_path_data_->params[1], width_);
-      float cx =
-          utils::ResolvePlatformLength(clip_path_data_->params[2], width_);
-      float cy =
-          utils::ResolvePlatformLength(clip_path_data_->params[3], height_);
-      float ex = clip_path_data_->exponents[0];
-      float ey = clip_path_data_->exponents[1];
+      float rx = utils::ResolvePlatformLength(path_data->params[0], width_);
+      float ry = utils::ResolvePlatformLength(path_data->params[1], height_);
+      float cx = utils::ResolvePlatformLength(path_data->params[2], width_);
+      float cy = utils::ResolvePlatformLength(path_data->params[3], height_);
+      float ex = path_data->exponents[0];
+      float ey = path_data->exponents[1];
       if (rx == 0 && ry == 0) {
         // Nothing to do, keep the path empty.
         break;
@@ -1099,21 +1099,18 @@ void BaseView::DrawClipPath() {
       for (int i = 1; i <= 4; i++) {
         AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, i);
       }
-      render_object()->SetClipPath(path);
+      SET_PATH(path);
       break;
     }
     case ClipPathData::ClipType::kInset: {
-      if (clip_path_data_->params.size() != 4) {
+      if (path_data->params.size() != 4) {
         break;
       }
-      double top =
-          utils::ResolvePlatformLength(clip_path_data_->params[0], width_);
-      double right =
-          utils::ResolvePlatformLength(clip_path_data_->params[1], width_);
+      double top = utils::ResolvePlatformLength(path_data->params[0], width_);
+      double right = utils::ResolvePlatformLength(path_data->params[1], width_);
       double bottom =
-          utils::ResolvePlatformLength(clip_path_data_->params[2], width_);
-      double left =
-          utils::ResolvePlatformLength(clip_path_data_->params[3], width_);
+          utils::ResolvePlatformLength(path_data->params[2], width_);
+      double left = utils::ResolvePlatformLength(path_data->params[3], width_);
 
       // Adjust inset value, values are proportionally reduce the inset effect
       // to 100% if the pair of insets in either dimension add up to more than
@@ -1132,28 +1129,28 @@ void BaseView::DrawClipPath() {
       }
 
       float radius_top_left_x =
-          utils::ResolvePlatformLength(clip_path_data_->radius[0].x, width_);
+          utils::ResolvePlatformLength(path_data->radius[0].x, width_);
       float radius_top_left_y =
-          utils::ResolvePlatformLength(clip_path_data_->radius[0].y, width_);
+          utils::ResolvePlatformLength(path_data->radius[0].y, width_);
       float radius_top_right_x =
-          utils::ResolvePlatformLength(clip_path_data_->radius[1].x, width_);
+          utils::ResolvePlatformLength(path_data->radius[1].x, width_);
       float radius_top_right_y =
-          utils::ResolvePlatformLength(clip_path_data_->radius[1].y, width_);
+          utils::ResolvePlatformLength(path_data->radius[1].y, width_);
       float radius_bottom_right_x =
-          utils::ResolvePlatformLength(clip_path_data_->radius[2].x, width_);
+          utils::ResolvePlatformLength(path_data->radius[2].x, width_);
       float radius_bottom_right_y =
-          utils::ResolvePlatformLength(clip_path_data_->radius[2].y, width_);
+          utils::ResolvePlatformLength(path_data->radius[2].y, width_);
       float radius_bottom_left_x =
-          utils::ResolvePlatformLength(clip_path_data_->radius[3].x, width_);
+          utils::ResolvePlatformLength(path_data->radius[3].x, width_);
       float radius_bottom_left_y =
-          utils::ResolvePlatformLength(clip_path_data_->radius[3].y, width_);
-      switch (clip_path_data_->corner_type) {
+          utils::ResolvePlatformLength(path_data->radius[3].y, width_);
+      switch (path_data->corner_type) {
         case ClipPathData::CornerType::kCornerRect: {
           GrPath path;
           skity::Rect rect = skity::Rect::MakeLTRB(left, top, width_ - right,
                                                    height_ - bottom);
           PATH_ADD_RECT(path, rect);
-          render_object()->SetClipPath(path);
+          SET_PATH(path);
           break;
         }
         case ClipPathData::CornerType::kCornerRounded: {
@@ -1169,11 +1166,11 @@ void BaseView::DrawClipPath() {
                                     height_ - top - bottom),
               radii);
           PATH_ADD_RRECT(path, rrect);
-          render_object()->SetClipPath(path);
+          SET_PATH(path);
           break;
         }
         case ClipPathData::CornerType::kCornerSuperElliptical: {
-          if (clip_path_data_->exponents.size() != 2) {
+          if (path_data->exponents.size() != 2) {
             break;
           }
           GrPath path;
@@ -1188,8 +1185,8 @@ void BaseView::DrawClipPath() {
           float ry = radius[5];
           float cx = width_ - right - rx;
           float cy = width_ - bottom - ry;
-          float ex = clip_path_data_->exponents[0];
-          float ey = clip_path_data_->exponents[1];
+          float ex = path_data->exponents[0];
+          float ey = path_data->exponents[1];
           AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, 1);
 
           // bottom-left corner
@@ -1212,7 +1209,7 @@ void BaseView::DrawClipPath() {
           cx = width_ - right - rx;
           cy = top + ry;
           AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, 4);
-          render_object()->SetClipPath(path);
+          SET_PATH(path);
           break;
         }
         case ClipPathData::CornerType::kUnknown:
@@ -1225,11 +1222,17 @@ void BaseView::DrawClipPath() {
       break;
     }
   }
+#undef SET_PATH
 }
 
 void BaseView::ClearClipPath() {
   clip_path_data_.reset();
   render_object()->ClearClipPath();
+}
+
+void BaseView::ClearOffsetPath() {
+  offset_path_data_.reset();
+  render_object()->ClearOffsetPath();
 }
 
 void BaseView::SetFilter(const clay::Value::Array& array) {
@@ -1644,6 +1647,14 @@ void BaseView::SetProperty(ClayAnimationPropertyType type, const Color& value,
   }
 }
 
+void BaseView::SetOffsetDistance(float distance) {
+  render_object()->SetOffsetDistance(distance);
+}
+
+void BaseView::SetOffsetRotate(float rotate) {
+  render_object()->SetOffsetRotate(rotate);
+}
+
 void BaseView::SetTransformOperations(const TransformOperations& value,
                                       bool is_from_animation) {
   transform_ops_ = value;
@@ -1911,8 +1922,8 @@ void BaseView::SetTransform(const TransformOperations& ops,
   TransitionTo(ClayAnimationPropertyType::kTransform, ops);
 }
 
-void BaseView::SetTransform(const std::vector<TransformRaw>& transform_row) {
-  transform_raw_ = transform_row;
+void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
+  transform_raw_ = transform_raw;
   auto ops = clay::TransformOperations(*transform_raw_, width_, height_);
   TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
@@ -2282,7 +2293,10 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
   }
 
   if (clip_path_data_.has_value()) {
-    DrawClipPath();
+    DrawClipPath(true);
+  }
+  if (offset_path_data_.has_value()) {
+    DrawClipPath(false);
   }
 
   UpdateChildrenBounds();

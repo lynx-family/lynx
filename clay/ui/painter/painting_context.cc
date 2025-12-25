@@ -175,6 +175,15 @@ void PaintingContext::RepaintCompositedChild(
     };
   }
 
+  if (child->HasOffsetTransform()) {
+    FML_DCHECK(child->IsRepaintBoundary());
+    painter = [child, old_painter = painter](PaintingContext& ctx,
+                                             const FloatPoint& offset) {
+      ctx.PushTransform(child->GetOffsetTransformOperations(), {0, 0}, 0,
+                        FloatPoint(), old_painter);
+    };
+  }
+
   if (child->HasTransform() || child->HasTransformRasterAnimation()) {
     FML_DCHECK(child->IsRepaintBoundary());
     painter = [child, old_painter = painter](PaintingContext& ctx,

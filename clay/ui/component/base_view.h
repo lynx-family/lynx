@@ -216,8 +216,11 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetOutlineColor(unsigned int color);
   void SetCursor(const std::vector<std::string>& vec);
   void SetCursor(const clay::Value::Array& array);
-  void SetClipPath(const clay::Value::Array& array);
+  void SetClipOffsetPath(const clay::Value::Array& array, bool is_clip_path);
   void ClearClipPath();
+  void ClearOffsetPath();
+  void SetOffsetRotate(float rotate);
+  void SetOffsetDistance(float distance);
   void SetFilter(const clay::Value::Array& array);
   void ClearFilter();
   void SetImageRendering(ClayImageRendering image_rendering);
@@ -719,6 +722,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool enable_new_animator_ = false;
   bool remove_temporarily_ = false;
   std::optional<ClipPathData> clip_path_data_;
+  std::optional<OffsetPathData> offset_path_data_;
   bool delay_destroy_ = false;
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
 
@@ -727,7 +731,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void DirtyChildrenPaintingOrder() { sorted_children_.clear(); }
   void RebuildSortedChildrenIfNeeded();
   void NotifyBoundChangeIfNeeded(const FloatRect& old_bounds);
-  void DrawClipPath();
+  void DrawClipPath(bool is_clip_path);
 
   std::vector<BaseView*> sorted_children_;
   bool ignore_size_change_checks_ = false;

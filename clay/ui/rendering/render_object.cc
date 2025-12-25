@@ -11,6 +11,7 @@
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
+#include "clay/gfx/geometry/math_util.h"
 #include "clay/gfx/image/image_resource_client.h"
 #include "clay/gfx/style/borders_data.h"
 #include "clay/ui/component/component_constants.h"
@@ -18,6 +19,9 @@
 #include "clay/ui/compositing/pending_offset_layer.h"
 
 namespace clay {
+
+static const float kOffsetRotateAuto = -1024.0f;
+static const float kFloatEpsilon = 0.00001f;
 
 #define ENSURE_BACKGROUND()                                    \
   do {                                                         \
@@ -839,11 +843,80 @@ void RenderObject::SetClipPath(const GrPath& path) {
   MarkNeedsPaint();
 }
 
+void RenderObject::SetOffsetPath(const FloatRoundedRect& rrect) {
+  GrPath path;
+  PATH_ADD_RRECT(path, rrect);
+  if (path == motion_path_.offset_path) {
+    return;
+  }
+  motion_path_.offset_path = path;
+  MarkNeedsPaint();
+}
+
+void RenderObject::SetOffsetPath(const GrPath& path) {
+  if (motion_path_.offset_path == path) {
+    return;
+  }
+  motion_path_.offset_path = path;
+  MarkNeedsPaint();
+}
+
+void RenderObject::SetOffsetRotate(float rotate) {
+  bool is_auto = IsApproximatelyEqual(rotate, kOffsetRotateAuto, kFloatEpsilon);
+  if (motion_path_.offset_rotate == rotate &&
+      motion_path_.offset_rotate_auto == is_auto) {
+    return;
+  }
+  motion_path_.offset_rotate = rotate;
+  motion_path_.offset_rotate_auto = is_auto;
+  MarkNeedsPaint();
+}
+
+void RenderObject::SetOffsetDistance(float distance) {
+  if (motion_path_.offset_distance == distance) {
+    return;
+  }
+  motion_path_.offset_distance = distance;
+
+  // Calculate the x,y,deg
+  if (motion_path_.offset_path.has_value()) {
+    MotionState state =
+        PathBuilder::CalculateMotionState(*motion_path_.offset_path, distance);
+    float x = state.x;
+    float y = state.y;
+    float deg = motion_path_.offset_rotate_auto ? state.deg
+                                                : motion_path_.offset_rotate;
+    skity::Matrix matrix;
+    matrix.PostRotate(deg);
+    matrix.PostTranslate(x, y);
+    UpdateOffsetTransform(matrix);
+  }
+
+  MarkNeedsPaint();
+}
+
+void RenderObject::UpdateOffsetTransform(const skity::Matrix& matrix) {
+  Transform transform(matrix);
+  TransformOperations transform_ops;
+  transform_ops.AppendMatrix(transform);
+
+  offset_transform_ = transform_ops;
+}
+
 void RenderObject::ClearClipPath() {
   if (std::get_if<std::monostate>(&clip_shape_)) {
     return;
   }
   clip_shape_ = std::monostate{};
+  MarkNeedsPaint();
+}
+
+void RenderObject::ClearOffsetPath() {
+  if (!motion_path_.offset_path.has_value()) {
+    return;
+  }
+  motion_path_.offset_path.reset();
+  offset_transform_.reset();
   MarkNeedsPaint();
 }
 

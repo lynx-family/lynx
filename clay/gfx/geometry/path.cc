@@ -8,6 +8,7 @@
 #include "clay/gfx/geometry/path.h"
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/geometry/math_util.h"
 
 namespace clay {
 
@@ -268,6 +269,80 @@ bool PathBuilder::ParsePathString(const char data[], GrPath* result) {
   // we're good, go ahead and swap in the result
   PATH_SWAP(result, path);
   return true;
+}
+
+MotionState PathBuilder::CalculateMotionState(const GrPath& path,
+                                              float percent) {
+  percent = std::clamp(percent, 0.0f, 1.0f);
+
+  GrPathMeasure measure(path, false);
+
+  float total_length = 0;
+  do {
+    total_length += PATH_MEASURE_GET_LENGTH(measure);
+  } while (PATH_MEASURE_NEXT_CONTOUR(measure));
+
+  if (IsApproximatelyEqual(total_length, 0.0f, 1e-5f)) {
+    return {0, 0, 0};
+  }
+
+  float target_distance = total_length * percent;
+
+  // Reset measure to the start of the path
+  PATH_MEASURE_SET_PATH(measure, &path);
+
+#ifndef ENABLE_SKITY
+  SkPoint last_valid_pos = {0, 0};
+  SkVector last_valid_tan = {0, 0};
+#else
+  skity::Point last_valid_pos = {0, 0, 0, 0};
+  skity::Vector last_valid_tan = {0, 0, 0, 0};
+#endif
+  bool has_valid_data = false;
+
+  do {
+    float current_length = PATH_MEASURE_GET_LENGTH(measure);
+    if (target_distance <= current_length) {
+#ifndef ENABLE_SKITY
+      SkPoint position = {0, 0};
+      SkVector tangent = {0, 0};
+#else
+      skity::Point position = {0, 0, 0, 0};
+      skity::Vector tangent = {0, 0, 0, 0};
+#endif
+      if (PATH_MEASURE_GET_POS_TAN(measure, target_distance, &position,
+                                   &tangent)) {
+        float radian = atan2(POINT_GET_Y(tangent), POINT_GET_X(tangent));
+        float deg = RadToDeg(radian);
+        return {
+            POINT_GET_X(position),
+            POINT_GET_Y(position),
+            deg,
+        };
+      }
+    }
+
+    if (PATH_MEASURE_GET_POS_TAN(measure, current_length, &last_valid_pos,
+                                 &last_valid_tan)) {
+      has_valid_data = true;
+    }
+
+    target_distance -= current_length;
+  } while (PATH_MEASURE_NEXT_CONTOUR(measure));
+
+  // Fallback to the end of the path.
+  if (has_valid_data) {
+    float radian =
+        atan2(POINT_GET_Y(last_valid_tan), POINT_GET_X(last_valid_tan));
+    float deg = RadToDeg(radian);
+    return {
+        POINT_GET_X(last_valid_pos),
+        POINT_GET_Y(last_valid_pos),
+        deg,
+    };
+  }
+
+  return {0, 0, 0};
 }
 
 }  // namespace clay
