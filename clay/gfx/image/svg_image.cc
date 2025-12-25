@@ -17,7 +17,8 @@ std::shared_ptr<SVGImage> SVGImage::Make(const std::string& content) {
 
 SVGImage::SVGImage(const std::string& content) : content_(content) {
   svg_dom_ = SVGDom::Create(
-      GrData::MakeWithProc(content_.data(), content_.size(), nullptr, nullptr));
+      GrData::MakeWithProc(content_.data(), content_.size(), nullptr, nullptr),
+      [](std::string url) { return nullptr; });
 }
 
 void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
@@ -27,35 +28,13 @@ void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
   }
   if (!gpu_image_.object() || gpu_image_.object()->width() < size.width() ||
       gpu_image_.object()->height() < size.height()) {
-    auto data = svg_dom_->Render(size.width(), size.height());
-    if (!data) {
+    auto image = svg_dom_->Render(size.width(), size.height(), unref_queue);
+    if (!image) {
       FML_LOG(ERROR) << "SVGImage::Paint: " << size.width() << " "
                      << size.height();
       return;
     }
-    auto image_info = ImageInfo::makeWH(size.width(), size.height());
-    auto alpha_type = ConvertToSkityAlphaType(image_info.alphaType());
-    auto color_type = ConvertToSkityColorType(image_info.colorType());
-    std::shared_ptr<skity::Pixmap> pixmap = std::make_shared<skity::Pixmap>(
-        std::move(data), image_info.width() * image_info.bytesPerPixel(),
-        image_info.width(), image_info.height(), alpha_type, color_type);
-    auto image = skity::Image::MakeDeferredTextureImage(
-        skity::Texture::FormatFromColorType(color_type), image_info.width(),
-        image_info.height(), alpha_type);
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
-    unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
-                                            image, pixmap,
-                                            weak = weak_from_this()]() {
-      if (auto self = weak.lock()) {
-        auto texture = context->CreateTexture(
-            skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-            pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
-        if (texture) {
-          texture->DeferredUploadImage(std::move(pixmap));
-          image->SetTexture(texture);
-        }
-      }
-    });
   }
 }
 }  // namespace clay

@@ -74,7 +74,8 @@ void SVGImageHolder::CreateSVGDOM(GrDataPtr data) {
           }
 #else
           if (data) {
-            holder->svg_dom_promise_.set_value(SVGDom::Create(data));
+            holder->svg_dom_promise_.set_value(
+                SVGDom::Create(data, [](std::string url) { return nullptr; }));
           } else {
             FML_LOG(ERROR) << "Invalid svg data.";
             holder->svg_dom_promise_.set_value(nullptr);

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "clay/gfx/gpu_object.h"
 #include "clay/gfx/rendering_backend.h"
 #include "skity/include/skity/io/data.hpp"
 
@@ -16,12 +17,12 @@ class SVGDom : public std::enable_shared_from_this<SVGDom> {
  public:
   using ImageCallback =
       std::function<std::shared_ptr<skity::Image>(std::string url)>;
-
   virtual ~SVGDom() = default;
+  static std::shared_ptr<SVGDom> Create(std::shared_ptr<skity::Data> data,
+                                        ImageCallback callback);
 
-  static std::shared_ptr<SVGDom> Create(std::shared_ptr<skity::Data> data);
-
-  virtual std::shared_ptr<skity::Data> Render(int width, int height) = 0;
+  virtual std::shared_ptr<skity::Image> Render(
+      int width, int height, fml::RefPtr<GPUUnrefQueue> unref_queue) = 0;
 };
 }  // namespace clay
 

@@ -289,21 +289,13 @@ void ImageProducer::FetchHardwareSVGImage() {
             auto gpu_object = GPUObject(
                 GraphicsImage::Make(surface->makeImageSnapshot()), unref_queue);
 #else
-            auto data =
-                svg_dom->Render(render_info.width(), render_info.height());
-            if (!data) {
+            auto svg_image = svg_dom->Render(render_info.width(),
+                                             render_info.height(), unref_queue);
+            if (!svg_image) {
               FML_LOG(ERROR) << "Failed to render SVG";
               return;
             }
-            std::shared_ptr<skity::Pixmap> skity_pixmap =
-                std::make_shared<skity::Pixmap>(
-                    std::move(data),
-                    render_info.width() * render_info.bytesPerPixel(),
-                    render_info.width(), render_info.height(),
-                    ConvertToSkityAlphaType(render_info.alphaType()),
-                    ConvertToSkityColorType(render_info.colorType()));
-            auto image =
-                GraphicsImage::Make(skity::Image::MakeImage(skity_pixmap));
+            auto image = GraphicsImage::Make(svg_image);
             auto gpu_object = GPUObject(
                 image->makeTextureImage(unref_queue->GetContext().get()),
                 unref_queue);
@@ -387,22 +379,13 @@ void ImageProducer::FetchSoftwareSVGImage() {
             auto image = GraphicsImage::MakeRasterData(render_info, sk_data,
                                                        min_row_bytes);
 #else
-            auto data =
-                svg_dom->Render(render_info.width(), render_info.height());
-            if (!data) {
+            auto svg_image = svg_dom->Render(render_info.width(),
+                                             render_info.height(), nullptr);
+            if (!svg_image) {
               FML_LOG(ERROR) << "Failed to render SVG";
               return;
             }
-            std::shared_ptr<skity::Pixmap> skity_pixmap =
-                std::make_shared<skity::Pixmap>(
-                    std::move(data),
-                    render_info.width() * render_info.bytesPerPixel(),
-                    render_info.width(), render_info.height(),
-                    ConvertToSkityAlphaType(render_info.alphaType()),
-                    ConvertToSkityColorType(render_info.colorType()));
-            auto image =
-                GraphicsImage::Make(skity::Image::MakeImage(skity_pixmap));
-
+            auto image = GraphicsImage::Make(svg_image);
 #endif  // ENABLE_SKITY
             svg_frame->SetGraphicsImage(
                 fml::MakeRefCounted<CpuGraphicsImageWrapper>(image));
