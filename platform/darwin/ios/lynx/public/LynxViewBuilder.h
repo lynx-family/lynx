@@ -8,6 +8,7 @@
 
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxBaseConfigurator.h>
+#import <Lynx/LynxImageConfig.h>
 #import <Lynx/LynxViewGroup.h>
 
 /**
@@ -20,12 +21,6 @@ static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
  * deleted later.
  */
 static NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE = @"lynx_enable_fetch_UIImage";
-
-/**
- * Key for set image preview hash metadata to LynxViewConfig
- */
-static NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA =
-    @"lynx_image_preview_hash_metadata";
 
 @interface LynxViewBuilder : LynxBaseConfigurator
 
@@ -46,6 +41,11 @@ static NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA =
 @property(nonatomic, nullable) LynxBackgroundRuntime* lynxBackgroundRuntime;
 @property(nonatomic, nullable) LynxViewGroup* lynxViewGroup;
 @property(nonatomic, nullable, strong) NSMutableDictionary<NSString*, id>* lynxViewConfig;
+
+/**
+ * Image configuration to be parsed by LynxUIImage when loading images.
+ */
+@property(nonatomic, nullable) LynxImageConfig* imageConfig;
 
 /**
  * Pass extra data to LynxModule, the usage of data depends on module's implementation

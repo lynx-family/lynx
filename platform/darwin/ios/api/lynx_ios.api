@@ -2164,6 +2164,11 @@ public class LynxImageBlurUtils : NSObject {
   public UIImage * LynxImageBlurUtils::blurImage:withRadius:(UIImage *inputImage,[withRadius] CGFloat radius);
 }
 
+public class LynxImageConfig : NSObject {
+  public NSDictionary* LynxImageConfig::additionalCustomInfo additionalCustomInfo;
+  public NSString* LynxImageConfig::previewHashMetaData previewHashMetaData;
+}
+
 public protocol LynxImageFetcher-p : <NSObject> {
   public dispatch_block_t LynxImageFetcher-p::loadImageWithURL:size:contextInfo:completion:(NSURL *url,[size] CGSize targetSize,[contextInfo] nullable NSDictionary *contextInfo,[completion] LynxImageLoadCompletionBlock completionBlock);
   public dispatch_block_t LynxImageFetcher-p::loadImageWithURL:processors:size:contextInfo:completion:(NSURL *url,[processors] NSArray< id< LynxImageProcessor > > *processors,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[completion] LynxImageLoadCompletionBlock completionBlock);
@@ -4378,7 +4383,7 @@ public class LynxUIContext : NSObject {
   public id<LynxMediaResourceFetcher> LynxUIContext::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
   public BOOL LynxUIContext::enableFetchUIImage enableFetchUIImage;
-  public NSString* LynxUIContext::imagePreviewHashMetadata imagePreviewHashMetadata;
+  public LynxImageConfig* LynxUIContext::imageConfig imageConfig;
   public BOOL LynxUIContext::defaultOverflowVisible defaultOverflowVisible;
   public BOOL LynxUIContext::defaultImplicitAnimation defaultImplicitAnimation;
   public BOOL LynxUIContext::enableTextRefactor enableTextRefactor;
@@ -5230,6 +5235,7 @@ public class LynxViewBuilder : LynxBaseConfigurator {
   public LynxBackgroundRuntime* LynxViewBuilder::lynxBackgroundRuntime lynxBackgroundRuntime;
   public LynxViewGroup* LynxViewBuilder::lynxViewGroup lynxViewGroup;
   public NSMutableDictionary<NSString*, id>* LynxViewBuilder::lynxViewConfig lynxViewConfig;
+  public LynxImageConfig* LynxViewBuilder::imageConfig imageConfig;
   public id LynxViewBuilder::lynxModuleExtraData lynxModuleExtraData;
   public NSURL* LynxViewBuilder::uri uri;
   public BOOL isUIRunningMode LynxViewBuilder::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
@@ -6651,7 +6657,6 @@ public enum LynxImageRequestType {
 
   public NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG KEY_LYNX_PLATFORM_CONFIG;
   public NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE KEY_LYNX_ENABLE_FETCH_UIIMAGE;
-  public NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxTemplateBundleResultBlock) (LynxTemplateBundle *_Nullable data, NSError *_Nullable error) LynxTemplateBundleResultBlock;
 

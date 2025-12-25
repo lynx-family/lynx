@@ -71,6 +71,10 @@ typedef NS_ENUM(NSInteger, LynxImageOrigin) {
 
 @end
 
+@implementation LynxImageConfig
+
+@end
+
 /**
  Use to process image into image with border radius.
  */
@@ -777,6 +781,10 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   requestUrl.lastRequestUrl = url;
   [self initResourceLoaderInformation];
   [requestUrl initResourceInformation];
+  NSDictionary* customParams = self.context.imageConfig.additionalCustomInfo;
+  if (self.additional_custom_info) {
+    customParams = self.additional_custom_info;
+  }
   _cancelBlocks[@(requestUrl.type)] = [[LynxImageLoader sharedInstance]
       loadImageFromLynxURL:requestUrl
                       size:size
@@ -787,7 +795,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                  LynxImageRequestContextModuleExtraData : self.context.lynxModuleExtraData ?: @"",
                  LynxImageSkipRedirection : @(_skipRedirection),
                  LynxImageFixNewImageDownsampling : @(self.context.fixNewImageDownSampling),
-                 LynxImageAdditionalCustomInfo : self.additional_custom_info ?: [NSNull null],
+                 LynxImageAdditionalCustomInfo : customParams ?: [NSNull null],
                  LynxImagePlaceholderHashConfig : self.placeholder_hash_config ?: [NSNull null],
                  LynxImageEnableSR : @(_enableImageSR),
                  LynxImageCacheChoice : self.cache_choice ?: @"",
@@ -1547,8 +1555,9 @@ LYNX_PROP_SETTER("placeholder-hash-config", setPlaceHolderHash, NSDictionary*) {
   NSString* type = [_placeholder_hash_config objectForKey:@"type"];
   if (type && [type isEqualToString:@"preview"]) {
     NSString* metaData = [_placeholder_hash_config objectForKey:@"metaData"];
-    if (metaData == nil && self.context.imagePreviewHashMetadata != nil) {
-      [_placeholder_hash_config setObject:self.context.imagePreviewHashMetadata forKey:@"metaData"];
+    if (metaData == nil && self.context.imageConfig.previewHashMetaData != nil) {
+      [_placeholder_hash_config setObject:self.context.imageConfig.previewHashMetaData
+                                   forKey:@"metaData"];
     }
   }
 }

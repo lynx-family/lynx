@@ -7,6 +7,7 @@
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxImageConfig.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxMediaResourceFetcher.h>
 #import <Lynx/LynxScreenMetrics.h>
@@ -62,8 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) id<LynxTemplateResourceFetcher> templateResourceFetcher;
 @property(nonatomic, assign) BOOL enableFetchUIImage;
 
-// image global property
-@property(nonatomic, nullable) NSString* imagePreviewHashMetadata;
+@property(nonatomic, strong, nullable) LynxImageConfig* imageConfig;
 
 // settings
 @property(nonatomic, readonly) BOOL defaultOverflowVisible;
