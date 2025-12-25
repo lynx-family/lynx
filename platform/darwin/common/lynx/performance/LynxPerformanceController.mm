@@ -190,15 +190,19 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
     if (instanceIdNumber != nil) {
       int32_t instanceId = [instanceIdNumber intValue];
       [LynxEventReporter
-          getGenericInfo:instanceId
-              completion:^(NSDictionary* genericInfo) {
-                if (genericInfo) {
-                  [entryWithGenericInfo addEntriesFromDictionary:genericInfo];
-                  [self->_reporter
-                      onPerformanceEvent:[LynxPerformanceEntryConverter
-                                             makePerformanceEntry:entryWithGenericInfo]];
-                }
-              }];
+          getGenericInfoAndExtraParams:instanceId
+                            completion:^(NSDictionary* genericInfo, NSDictionary* extraParams) {
+                              if (extraParams) {
+                                [entryWithGenericInfo addEntriesFromDictionary:extraParams];
+                              }
+                              if (genericInfo) {
+                                [entryWithGenericInfo addEntriesFromDictionary:genericInfo];
+                                [self->_reporter
+                                    onPerformanceEvent:
+                                        [LynxPerformanceEntryConverter
+                                            makePerformanceEntry:[entryWithGenericInfo copy]]];
+                              }
+                            }];
     }
   }
 }
