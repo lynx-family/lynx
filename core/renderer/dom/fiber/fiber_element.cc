@@ -19,6 +19,7 @@
 #include "base/include/value/base_string.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
+#include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
@@ -73,6 +74,8 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
 FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
                            int32_t css_id)
     : Element(tag, manager), dirty_(kDirtyCreated), css_id_(css_id) {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_CONSTRUCTOR, "tag",
+                      tag.c_str(), "id", id_);
   InitLayoutBundle();
   SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
 
@@ -221,6 +224,7 @@ bool FiberElement::ShouldDestroy() const {
 }
 
 FiberElement::~FiberElement() {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DESTRUCTOR, "id", id_);
   if (ShouldDestroy()) {
     element_manager_->EraseGlobalBindElementId(global_bind_event_map(),
                                                impl_id());

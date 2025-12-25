@@ -441,6 +441,10 @@ inline constexpr const char* const LEPUS_DECODER_WRITE_JS_VALUE =
  * to the layout node. This stage will also create and modify layout node tree.
  * At the same time, it will also generate platform UI operations.
  */
+inline constexpr const char* const FIBER_ELEMENT_CONSTRUCTOR =
+    "FiberElement::Constructor";
+inline constexpr const char* const FIBER_ELEMENT_DESTRUCTOR =
+    "FiberElement::Destructor";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_ACTIONS =
     "FiberElement::FlushActions";
 inline constexpr const char* const COMPONENT_ELEMENT_PREPARE_ROOT_CSS =
