@@ -437,6 +437,8 @@ void BaseView::SetBound(float left, float top, float width, float height) {
   NotifyBoundChangeIfNeeded(old_bounds);
 
   OnLayoutChange();
+  // Force a request to repaint a frame.
+  Invalidate();
 #ifdef ENABLE_ACCESSIBILITY
   // TODO: Check if this logic can be moved to `NotifyBoundChangeIfNeeded `.
   FloatRect new_bounds = GetBounds();
