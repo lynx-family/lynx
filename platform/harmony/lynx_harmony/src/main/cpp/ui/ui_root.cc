@@ -52,6 +52,11 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
 }
 
 UIRoot::~UIRoot() {
+  if (node_content_) {
+    OH_ArkUI_NodeContent_RemoveNode(node_content_->NodeContentHandle(),
+                                    root_proxy_);
+  }
+
   NodeManager::Instance().RemoveNodeEventReceiver(transparent_sibling_,
                                                   UIBase::EventReceiver);
   NodeManager::Instance().UnregisterNodeEvent(transparent_sibling_,
