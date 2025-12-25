@@ -78,7 +78,7 @@ if (build_lynx_lepus_node) {
               "--bind",
               "-s ALLOW_MEMORY_GROWTH=1",
               "-s MODULARIZE=1",
-              "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['cwrap','ccall', 'allocateUTF8','UTF8ToString']\"",
+              "-s EXPORTED_RUNTIME_METHODS=\"['cwrap','ccall', 'allocateUTF8','UTF8ToString']\"",
               "-s EXPORTED_FUNCTIONS=\"['_quickjsCheck', '_reencode_template_debug', '_lepusCheck', '_createBufferPool', '_dropBufferPool', '_readBufferPool_data', '_readBufferPool_len']\"",
             ]),
       ]

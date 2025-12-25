@@ -14,6 +14,7 @@
       "index.js",
       "index.d.ts",
       "lepus.js",
+      "lepus.d.ts",
       "Changelog.md"
     ],
     "scripts": {

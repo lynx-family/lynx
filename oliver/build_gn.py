@@ -124,8 +124,10 @@ def copy_wasm_target(root_path, type):
   src_root_path = os.path.join(root_path, 'out', 'Default', 'wasm')
   lib_src_path = os.path.join(src_root_path, 'lib%s.a' % (output_name))
   js_src_path = os.path.join(src_root_path, '%s.js' % (output_name))
+  typing_src_path = os.path.join(src_root_path, '%s.d.ts' % (output_name))
   shutil.copy(lib_src_path, lib_dst_path)
   shutil.copy(js_src_path, dst_root_path)
+  shutil.copy(typing_src_path, dst_root_path)
 
 def build_target(platform, arch, debug, root_path, show_log, type, need_clean, sysroot):
   if need_clean:

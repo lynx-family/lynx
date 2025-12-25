@@ -64,11 +64,13 @@ def gen_js_file(emsdk_path, binary_path, output_name, flags):
   logging.info("gen js file in path:{} by emsdk:{}".format(binary_path, emsdk_path))
   path = os.path.join(binary_path, "lib{}.a".format(output_name))
   name = os.path.join(binary_path, "{}.js".format(output_name))
+  typing_name = "{}.d.ts".format(output_name)
 
   command = "{emsdk_path}/upstream/emscripten/emcc --bind {path} \
             -o {name} \
+            --emit-tsd {typing_name}  \
             -g \
-            {flags}".format(emsdk_path=emsdk_path, path=path, name=name, flags=flags)
+            {flags}".format(emsdk_path=emsdk_path, path=path, name=name, typing_name=typing_name, flags=flags)
   result = subprocess.call(command, shell=True)
   if result != 0:
     logging.error("execute command [{}] failed with error code {}".format(command, result))

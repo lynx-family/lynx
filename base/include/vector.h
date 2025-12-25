@@ -846,7 +846,7 @@ struct Vector
     BASE_VECTOR_DCHECK(first <= last);
     if (BASE_VECTOR_LIKELY(first != last)) {
       if constexpr (is_trivial || is_trivially_relocatable) {
-        std::memmove(first, last, (_end_iter() - last) * sizeof(T));
+        std::memmove((void*)first, last, (_end_iter() - last) * sizeof(T));
       } else {
         // Slow path, move elements one by one and skip destructors if possible.
         [[maybe_unused]] auto it =
@@ -1277,7 +1277,7 @@ struct Vector
       if (dest_pos < new_last) {
         if constexpr (is_trivially_relocatable) {
           // Fast path, use memmove to shift all elements to next slot.
-          std::memmove(dest_pos + 1, dest_pos,
+          std::memmove((void*)(dest_pos + 1), dest_pos,
                        sizeof(T) * (new_last - dest_pos));
         } else {
           // Slow path, construct new T at end, move previous back item to it.
