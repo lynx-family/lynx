@@ -22,7 +22,6 @@ namespace lynx {
 namespace tasm {
 
 class RadonComponent;
-class RadonElement;
 class PageProxy;
 
 class RadonNode : public RadonBase {
@@ -128,10 +127,6 @@ class RadonNode : public RadonBase {
 
   virtual Element* element() const override { return element_.get(); }
 
-  virtual RadonElement* radon_element() const override {
-    return static_cast<RadonElement*>(element_.get());
-  }
-
   FiberElement* fiber_element() const {
     return static_cast<FiberElement*>(element_.get());
   }
@@ -141,8 +136,6 @@ class RadonNode : public RadonBase {
   }
 
   virtual int ImplId() const override;
-
-  void ApplyDynamicCSSWhenParentIsReady(const RadonElement* parent);
 
   bool GetDevToolFlag() override;
 
@@ -397,8 +390,6 @@ class RadonNode : public RadonBase {
   fml::RefPtr<Element> element_;
 
  private:
-  friend class RadonElement;
-
   RadonNode* Sibling(int offset) const;
   bool DiffRawStyleForFiber(const RawLepusStyleMap& old_map,
                             const RawLepusStyleMap& new_map);

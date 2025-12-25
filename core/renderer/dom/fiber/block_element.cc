@@ -14,7 +14,7 @@ constexpr static int32_t kInvalidIndex = -1;
 void BlockElement::InsertNode(const fml::RefPtr<Element> &raw_child) {
   auto child = fml::static_ref_ptr_cast<FiberElement>(raw_child);
 
-  if (parent_ && parent_->is_fiber_element()) {
+  if (parent_) {
     child->set_virtual_parent(this);
     size_t index = FindInsertIndex(child);
     if (index == static_cast<FiberElement *>(parent_)->children().size()) {
@@ -35,7 +35,7 @@ void BlockElement::RemoveNode(const fml::RefPtr<Element> &raw_child,
 
   if (child->is_block()) {
     static_cast<BlockElement *>(child.get())->RemoveAllBlockNodes();
-  } else if (parent_ && parent_->is_fiber_element()) {
+  } else if (parent_) {
     static_cast<FiberElement *>(parent_)->RemoveNode(child);
   }
   child->set_virtual_parent(nullptr);

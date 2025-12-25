@@ -203,8 +203,6 @@ Element* RadonBase::PreviousSiblingElement() {
   return nullptr;
 }
 
-RadonElement* RadonBase::radon_element() const { return nullptr; }
-
 const fml::RefPtr<Element>& RadonBase::GetElementRef() const {
   base::NoDestructor<fml::RefPtr<Element>> kNullElement{nullptr};
   return *kNullElement;

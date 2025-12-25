@@ -30,7 +30,6 @@ lynx_core_source_set("dom") {
     "../css:css_dom",
     "../simple_styling",
     "../trace:renderer_trace",
-    "../ui_component/list/radon:radon_list_component",
     "../ui_wrapper",
     "../utils:renderer_dom_utils",
     "../utils:renderer_utils",
@@ -110,7 +109,6 @@ unittest_set("dom_testset") {
     "testing/fiber_mock_text_layout.cc",
     "testing/fiber_mock_text_layout.h",
     "testing/fiber_new_fixed_test.cc",
-    "vdom/radon/radon_element_unittest.cc",
     "vdom/radon/radon_node_unittest.cc",
   ]
   deps = [

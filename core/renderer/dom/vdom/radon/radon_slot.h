@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "base/include/linked_hash_map.h"
 #include "core/renderer/dom/vdom/radon/radon_base.h"
 
 namespace lynx {

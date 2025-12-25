@@ -136,19 +136,11 @@ void ElementContainer::RemoveFromParent(bool is_move) {
     painting_context()->RemovePaintingNode(parent()->id(), id(), 0, is_move);
   } else {
     // Layout only node remove children from parent recursively.
-    if (element()->is_radon_element()) {
-      for (int i = static_cast<int>(element()->GetChildCount()) - 1; i >= 0;
-           --i) {
-        Element* child = element()->GetChildAt(i);
-        child->element_container_impl()->RemoveFromParent(is_move);
-      }
-    } else {
-      // fiber element;
-      auto* child = static_cast<FiberElement*>(element())->first_render_child();
-      while (child) {
-        child->element_container_impl()->RemoveFromParent(is_move);
-        child = child->next_render_sibling();
-      }
+    // fiber element;
+    auto* child = static_cast<FiberElement*>(element())->first_render_child();
+    while (child) {
+      child->element_container_impl()->RemoveFromParent(is_move);
+      child = child->next_render_sibling();
     }
   }
   element_container_parent()->RemoveChild(this);
@@ -159,12 +151,6 @@ void ElementContainer::Destroy() {
   if (!element()->IsLayoutOnly()) {
     painting_context()->DestroyPaintingNode(parent() ? parent()->id() : -1,
                                             id(), 0);
-  } else if (element()->is_radon_element()) {
-    // fiber element's layout only children handle Destroy in self Destructor
-    for (int i = static_cast<int>(element()->GetChildCount()) - 1; i >= 0;
-         --i) {
-      element()->GetChildAt(i)->element_container_impl()->Destroy();
-    }
   }
   if (element_container_parent()) {
     element_container_parent()->RemoveChild(this);
@@ -242,8 +228,7 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
   // wrapper element should not create native view, but if add the layout-only
   // child to scroll-view, the child should create native view.
   if (!parent->element()->CanHasLayoutOnlyChildren() && child->IsLayoutOnly() &&
-      !(child->is_fiber_element() &&
-        static_cast<FiberElement*>(child)->is_wrapper()) &&
+      !(static_cast<FiberElement*>(child)->is_wrapper()) &&
       !child->is_virtual()) {
     child->TransitionToNativeView();
   }
@@ -253,17 +238,10 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
     return;
   }
   // Layout only node should add subtree to parent recursively.
-  if (parent->element()->is_radon_element()) {
-    for (size_t i = 0; i < child->GetChildCount(); ++i) {
-      Element* grand_child = child->GetChildAt(i);
-      AttachChildToTargetContainerRecursive(parent, grand_child, index);
-    }
-  } else {
-    auto* grand = static_cast<FiberElement*>(child)->first_render_child();
-    while (grand) {
-      AttachChildToTargetContainerRecursive(parent, grand, index);
-      grand = grand->next_render_sibling();
-    }
+  auto* grand = static_cast<FiberElement*>(child)->first_render_child();
+  while (grand) {
+    AttachChildToTargetContainerRecursive(parent, grand, index);
+    grand = grand->next_render_sibling();
   }
 }
 
@@ -298,11 +276,7 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
     return;
   }
   std::pair<ElementContainer*, int> result;
-  if (element()->is_radon_element()) {
-    result = FindParentForChild(child);
-  } else {
-    result = FindParentAndIndexForChildForFiber(element(), child, ref);
-  }
+  result = FindParentAndIndexForChildForFiber(element(), child, ref);
   if (result.first) {
     int index = result.second;
     AttachChildToTargetContainerRecursive(result.first, child, index);
@@ -326,8 +300,7 @@ void ElementContainer::UpdateLayout(float left, float top,
     left = element()->left();
     top = element()->top();
     auto* ui_parent = parent();
-    auto* parent = element()->is_radon_element() ? element()->parent()
-                                                 : element()->render_parent();
+    auto* parent = element()->render_parent();
     while (parent && ui_parent && ui_parent->element() != parent) {
       left += parent->left();
       top += parent->top();
@@ -368,24 +341,13 @@ void ElementContainer::UpdateLayout(float left, float top,
   // the left and top's value of child element is incorrect.
   if (!element()->DisableListPlatformImplementation()) {
     // Layout children
-    if (element()->is_radon_element()) {
-      for (size_t i = 0; i < element()->GetChildCount(); ++i) {
-        Element* child = element()->GetChildAt(i);
-        if (child->element_container_impl()) {
-          child->element_container_impl()->UpdateLayout(
-              child->left() + dx, child->top() + dy, transition_view);
-        }
+    auto* child = static_cast<FiberElement*>(element())->first_render_child();
+    while (child) {
+      if (child->element_container_impl()) {
+        child->element_container_impl()->UpdateLayout(
+            child->left() + dx, child->top() + dy, transition_view);
       }
-    } else {
-      // TDOO(linxs): need to uniform the usage for radonElement&FiberElement
-      auto* child = static_cast<FiberElement*>(element())->first_render_child();
-      while (child) {
-        if (child->element_container_impl()) {
-          child->element_container_impl()->UpdateLayout(
-              child->left() + dx, child->top() + dy, transition_view);
-        }
-        child = child->next_render_sibling();
-      }
+      child = child->next_render_sibling();
     }
   }
   element()->MarkUpdated();
@@ -398,20 +360,10 @@ void ElementContainer::UpdateLayoutWithoutChange() {
     painting_context()->OnNodeReady(element()->impl_id());
     props_changed_ = false;
   }
-  if (element()->is_radon_element()) {
-    for (size_t i = 0; i < element()->GetChildCount(); ++i) {
-      Element* child = element()->GetChildAt(i);
-      if (child->element_container_impl()) {
-        child->element_container_impl()->UpdateLayoutWithoutChange();
-      }
-    }
-  } else {
-    // TDOO(linxs): need to uniform the usage for radonElement&FiberElement
-    auto* child = static_cast<FiberElement*>(element())->first_render_child();
-    while (child) {
-      child->element_container_impl()->UpdateLayoutWithoutChange();
-      child = child->next_render_sibling();
-    }
+  auto* child = static_cast<FiberElement*>(element())->first_render_child();
+  while (child) {
+    child->element_container_impl()->UpdateLayoutWithoutChange();
+    child = child->next_render_sibling();
   }
 }
 
@@ -452,17 +404,10 @@ void ElementContainer::TransitionToNativeView(
   UpdateLayout(last_left_, last_top_, true);
 
   int ui_index = 0;
-  if (element()->is_radon_element()) {
-    for (size_t i = 0; i < element()->GetChildCount(); ++i) {
-      Element* child = element()->GetChildAt(i);
-      ReInsertChildForLayoutOnlyTransition(child, ui_index);
-    }
-  } else {
-    auto* child = static_cast<FiberElement*>(element())->first_render_child();
-    while (child) {
-      ReInsertChildForLayoutOnlyTransition(child, ui_index);
-      child = child->next_render_sibling();
-    }
+  auto* child = static_cast<FiberElement*>(element())->first_render_child();
+  while (child) {
+    ReInsertChildForLayoutOnlyTransition(child, ui_index);
+    child = child->next_render_sibling();
   }
 
   // the updateLayout is not in LayoutContext flow, just flush patching
@@ -512,8 +457,7 @@ void ElementContainer::ZIndexChanged() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_Z_INDEX_CHANGED);
   Element* element_parent = nullptr;
   if (element_manager()->FixFixedZIndexSwitchBug()) {
-    element_parent = element()->is_fiber_element() ? element()->render_parent()
-                                                   : element()->parent();
+    element_parent = element()->render_parent();
   } else {
     // TODO(linxs): remove below code after verification in next version
     element_parent = element()->parent();

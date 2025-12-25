@@ -423,37 +423,22 @@ void LepusElement::SetStyles(const Napi::Object& styles) {
     LOGE("LepusElement::SetStyles failed, since input para is not object.");
     return;
   }
-
-  if (element->is_radon_element()) {
-    // TODO(songshourui.null): do not need to UpdateDynamicElementStyle each
-    // time, fix this later.
-    for (const auto& pair : *(lepus_v.Table())) {
-      const auto& key = tasm::CSSProperty::GetPropertyID(pair.first);
-      element->ConsumeStyle(tasm::UnitHandler::Process(
-          key, pair.second, element->element_manager()->GetCSSParserConfigs()));
-    }
-    element->element_manager()->root()->UpdateDynamicElementStyle(
-        tasm::DynamicCSSStylesManager::kAllStyleUpdate, false);
-    element->FlushProps();
-  } else {
-    auto* fiber_element = static_cast<tasm::FiberElement*>(element);
-    for (const auto& pair : *(lepus_v.Table())) {
-      const auto& key = tasm::CSSProperty::GetPropertyID(pair.first);
-      const auto& val = pair.second;
-      if (fiber_element->IsRadonArch()) {
-        auto processed_values = tasm::UnitHandler::Process(
-            key, pair.second,
-            element->element_manager()->GetCSSParserConfigs());
-        if (processed_values.empty()) {
-          continue;
-        }
+  auto* fiber_element = static_cast<tasm::FiberElement*>(element);
+  for (const auto& pair : *(lepus_v.Table())) {
+    const auto& key = tasm::CSSProperty::GetPropertyID(pair.first);
+    const auto& val = pair.second;
+    if (fiber_element->IsRadonArch()) {
+      auto processed_values = tasm::UnitHandler::Process(
+          key, pair.second, element->element_manager()->GetCSSParserConfigs());
+      if (processed_values.empty()) {
+        continue;
       }
-      fiber_element->SetStyle(key, val);
     }
-    auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
-    fiber_element->element_manager()->OnPatchFinish(pipeline_options,
-                                                    fiber_element);
+    fiber_element->SetStyle(key, val);
   }
+  auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
+  fiber_element->element_manager()->OnPatchFinish(pipeline_options,
+                                                  fiber_element);
 }
 
 void LepusElement::SetAttributes(const Napi::Object& attributes) {
@@ -481,18 +466,11 @@ void LepusElement::SetAttributes(const Napi::Object& attributes) {
       for (size_t i = 0; i < element->GetChildCount(); ++i) {
         const auto& child = element->GetChildAt(i);
         child->SetAttribute(pair.first, pair.second);
-        if (child->is_radon_element()) {
-          child->FlushProps();
-        }
       }
     }
   }
-  if (element->is_radon_element()) {
-    element->FlushProps();
-  } else {
-    auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
-    element->element_manager()->OnPatchFinish(pipeline_options, element);
-  }
+  auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
+  element->element_manager()->OnPatchFinish(pipeline_options, element);
 }
 
 Napi::Object LepusElement::GetComputedStyles(

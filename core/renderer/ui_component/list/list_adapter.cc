@@ -122,19 +122,6 @@ std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateDataSource(
         OnItemHolderUpdateTo(child_holder, false);
       }
     }
-
-    // flush list-container-info
-    if (list_container_ && list_container_->element() &&
-        list_container_->element_manager()) {
-      auto* element = list_container_->element();
-      if (element != nullptr && element->is_radon_element()) {
-        // For FiberArch, no need to SetAttribute here,
-        // we will call FiberElement::SetAttributeInternal in
-        // ListElement::SetAttributeInternal.
-        element->SetAttribute(BASE_STATIC_STRING(list::kListContainerInfo),
-                              lepus::Value(list_container_info));
-      }
-    }
   }
   // For output list diff info before clear
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_OUTPUT_DATA_SOURCE_DIFF_INFO,

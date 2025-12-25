@@ -185,9 +185,6 @@ base::String AttributeHolder::GetCSSVariableValue(
 }
 
 const CustomPropertiesMap* AttributeHolder::GetCustomProperties() const {
-  if (!element_->is_fiber_element()) {
-    return nullptr;
-  }
   return static_cast<FiberElement*>(element_)
       ->GetInheritedProperty()
       .custom_properties_;
@@ -238,7 +235,6 @@ css::StyleNode* AttributeHolder::SelectorMatchingParent() const {
   if (!element_->parent()) {
     return nullptr;
   }
-  DCHECK(element_->is_fiber_element());
   // We know the element is fiber element,
   // descendant selector only works in current component scope
   if (static_cast<FiberElement*>(element_)->is_component() &&

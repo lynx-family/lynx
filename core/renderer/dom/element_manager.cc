@@ -36,7 +36,6 @@
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/renderer/ui_component/list/radon/radon_list_element.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -179,31 +178,8 @@ void ElementManager::ReportElementStatistic() {
 
 void ElementManager::WillDestroy() {
   LOGE("ElementManager::WillDestroy this:" << this);
-  if (UseFiberElement()) {
-    node_manager_->WillDestroy();
-  }
+  node_manager_->WillDestroy();
   EXEC_EXPR_FOR_INSPECTOR({ OnElementManagerWillDestroy(); });
-}
-
-fml::RefPtr<RadonElement> ElementManager::CreateNode(
-    const base::String &tag, const fml::RefPtr<AttributeHolder> &node,
-    uint32_t node_index, RadonNodeType radon_node_type) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_CREATE_NODE, "tag",
-              tag.str());
-  fml::RefPtr<RadonElement> element = nullptr;
-  RadonListBase *radon_list_base = nullptr;
-  if (radon_node_type == RadonNodeType::kRadonListNode && node &&
-      (radon_list_base =
-           static_cast<RadonListBase *>(node->radon_node_ptr())) &&
-      radon_list_base->DisablePlatformImplementation()) {
-    element = fml::MakeRefCounted<RadonListElement>(
-        tag, node, this, node_index, radon_list_base->EnableDecoupledList());
-  }
-  if (!element) {
-    element = fml::MakeRefCounted<RadonElement>(tag, node, this, node_index);
-  }
-  element->UpdatePlatformNodeTag();
-  return element;
 }
 
 void ElementManager::OnDocumentUpdated() {
@@ -477,19 +453,14 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_PREPARE_COMPONENT_FOR_INSPECTOR);
 
     const auto &create_element = [this, component](const std::string &tag) {
-      bool enable_fiber = this->UseFiberElement();
       Element *element = nullptr;
-      if (enable_fiber) {
-        element = new FiberElement(this, tag);
-        // The additional element created by the inspector needs to
-        // maintain a null data model to indicate that this element is
-        // created by inspector.
-        static_cast<FiberElement *>(element)->ResetDataModel();
-        static_cast<FiberElement *>(element)
-            ->SetParentComponentUniqueIdForFiber(component->impl_id());
-      } else {
-        element = new RadonElement(tag, nullptr, this, component->NodeIndex());
-      }
+      element = new FiberElement(this, tag);
+      // The additional element created by the inspector needs to
+      // maintain a null data model to indicate that this element is
+      // created by inspector.
+      static_cast<FiberElement *>(element)->ResetDataModel();
+      static_cast<FiberElement *>(element)->SetParentComponentUniqueIdForFiber(
+          component->impl_id());
       return element;
     };
 
@@ -519,61 +490,13 @@ void ElementManager::PrepareComponentNodeForInspector(Element *component) {
                          std::make_tuple(component, style_value));
     }
 
-    if (component->is_fiber_element() &&
-        static_cast<FiberElement *>(component)->is_wrapper()) {
+    if (static_cast<FiberElement *>(component)->is_wrapper()) {
       component->inspector_attribute()->wrapper_component_ = true;
     }
 
     std::string style_sheet_id = std::to_string(style_value->impl_id());
     OnCSSStyleSheetAddedForInspector(style_value);
   });
-}
-
-void ElementManager::ResolveAttributesAndStyle(AttributeHolder *node,
-                                               Element *shadow_node,
-                                               const StyleMap &styles) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, RESOLVE_ATTRIBUTES_AND_STYLE);
-  // FIXME: key frames should not be singleton
-  auto style_sheet = node->ParentStyleSheet();
-  if (preresolving_style_sheet_ != style_sheet && style_sheet && !style_sheet->HasFontFacesResolved() /* && TODO:(radon)
-      node->component()->is_first_patch() */) {
-    preresolving_style_sheet_ = style_sheet;
-    const auto &all_fontfaces = style_sheet->GetFontFaceRuleMap();
-    if (!all_fontfaces.empty()) {
-      root_->SetFontFaces(all_fontfaces);
-    }
-    style_sheet->MarkFontFacesResolved(true);
-  }
-
-  // Normally, all attributes should be consumed before consuming the style.
-  // This is because attributes are usually a switch, such as
-  // enable_new_animator, and the value of the attribute switch may be needed
-  // when consuming the style. However, due to historical legacy issues,
-  // attributes were consumed later than styles. If we directly exchange the
-  // order of the two, it will cause a breaking change. Therefore, here we check
-  // the new animator in advance.
-  for (const auto &attribute : node->attributes()) {
-    shadow_node->CheckNewAnimatorAttr(attribute.first, attribute.second);
-  }
-
-  shadow_node->ConsumeStyle(styles);
-
-  shadow_node->ReserveForAttribute(node->attributes().size());
-  for (const auto &attribute : node->attributes()) {
-    shadow_node->SetAttribute(attribute.first, attribute.second);
-  }
-
-  const DataMap &data_map = node->dataset();
-  if (!data_map.empty()) {
-    shadow_node->SetDataSet(node->dataset());
-  }
-
-  // Resolve other pseudo selectors
-  shadow_node->ResolvePlaceHolder();
-
-  ResolveEvents(node, shadow_node);
-  // resolve gesture detectors
-  ResolveGestures(node, shadow_node);
 }
 
 void ElementManager::ResolveEvents(AttributeHolder *node, Element *element) {
@@ -644,17 +567,8 @@ void ElementManager::OnFinishUpdateProps(
     Element *node, std::shared_ptr<PipelineOptions> &options) {
   // target_node is nullptr for radon by default;
   Element *target_node = nullptr;
-  if (node->is_radon_element()) {
-    SetNeedsLayout();
-    static_cast<RadonElement *>(node)
-        ->StylesManager()
-        .UpdateWithParentStatusForOnceInheritance(
-            static_cast<RadonElement *>(node->parent()));
-    node->FlushProps();
-  } else if (node->is_fiber_element()) {
-    static_cast<FiberElement *>(node)->MarkPropsDirty();
-    target_node = node;
-  }
+  static_cast<FiberElement *>(node)->MarkPropsDirty();
+  target_node = node;
 
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
@@ -1026,8 +940,7 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
     animation_element_set_.clear_keep_buffer();
     bool has_layout_animated_style = false;
     for (auto iter : temp_element_set) {
-      if (iter->is_fiber_element() &&
-          static_cast<FiberElement *>(iter)->IsDetached()) {
+      if (static_cast<FiberElement *>(iter)->IsDetached()) {
         continue;
       }
       // tick element, for List.
@@ -1339,14 +1252,9 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
           TickLayout(option);
         }
       };
-  if (element->is_radon_element()) {
-    // in radon, we just need to do requestLayout;
-    OnPatchFinishForRadon(option, std::move(patch_finish_callback));
-  } else if (element->is_fiber_element()) {
-    // in fiber, do element style resolve and request layout;
-    OnPatchFinishForFiber(option, std::move(patch_finish_callback),
-                          static_cast<FiberElement *>(element));
-  }
+  // in fiber, do element style resolve and request layout;
+  OnPatchFinishForFiber(option, std::move(patch_finish_callback),
+                        static_cast<FiberElement *>(element));
   if (option->need_timestamps && EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfo(
         instance_id_, kEventDomSizeKey,
@@ -1381,14 +1289,9 @@ void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
           option->layout_requested = false;
         }
       };
-  if (element->is_radon_element()) {
-    // in radon, we just need to do requestLayout;
-    OnPatchFinishForRadon(option, std::move(patch_finish_callback));
-  } else if (element->is_fiber_element()) {
-    // in fiber, do element style resolve and request layout;
-    OnPatchFinishForFiber(option, std::move(patch_finish_callback),
-                          static_cast<FiberElement *>(element));
-  }
+  // in fiber, do element style resolve and request layout;
+  OnPatchFinishForFiber(option, std::move(patch_finish_callback),
+                        static_cast<FiberElement *>(element));
   if (option->need_timestamps && EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfo(
         instance_id_, kEventDomSizeKey,
@@ -1638,7 +1541,7 @@ void ClearExtremeParsedStylesRecursively(FiberElement *cur) {
 }  // namespace
 
 void ElementManager::ClearExtremeParsedStyles() {
-  if (likely(root_ && root_->is_fiber_element())) {
+  if (likely(root_)) {
     ClearExtremeParsedStylesRecursively(static_cast<FiberElement *>(root()));
   }
 }

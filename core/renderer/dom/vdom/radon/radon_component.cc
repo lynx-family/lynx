@@ -1315,12 +1315,6 @@ bool RadonComponent::ShouldRemoveComponentElement() const {
   return remove_component_element_ == BooleanProp::TrueValue;
 }
 
-bool RadonComponent::NeedsElement() const {
-  return !ShouldRemoveComponentElement() ||
-         (page_proxy_ &&
-          page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff());
-}
-
 bool RadonComponent::NeedsExtraData() const {
   // remove extra data and need extra data are the opposite
   switch (remove_extra_data_) {
@@ -1419,7 +1413,7 @@ void RadonComponent::RadonDiffChildren(
     // Neither info update, nor component life cycle are executed during
     // hydration.
     radon_slots_helper_->FillUnattachedPlugs();
-    if (element() && element()->is_fiber_element()) {
+    if (element()) {
       component_element()->SetCSSID(GetCSSId());
     }
     RadonBase::RadonDiffChildren(old_radon_child, option);
@@ -1453,11 +1447,6 @@ void RadonComponent::RadonDiffChildren(
     // component's component_id_ should be generated like a new created
     // component when refresh lifecycle
     GenerateAndSetComponentId();
-    if (NeedsElement() && element() && option.need_update_element_) {
-      if (element()->is_radon_element()) {
-        element()->FlushProps();
-      }
-    }
   } else {
     // reuse old radon component's component_id_
     component_id_ = old_radon_component->ComponentId();
@@ -1585,10 +1574,6 @@ void RadonComponent::RadonReusableDiffChildren(
   } else {
     SetComponentId();
   }
-  // flush component to update the map of component_id -> view
-  if (NeedsElement() && element() && element()->is_radon_element()) {
-    element()->FlushProps();
-  }
   OnComponentUpdate(option);
   // continue diff the components' children
   RadonMyersDiff(old_radon_component->radon_children_, option);
@@ -1639,8 +1624,7 @@ void RadonComponent::GenerateAndSetComponentId() {
 }
 
 void RadonComponent::SetComponentId() {
-  if (element() && element()->is_fiber_element() &&
-      !page_proxy_->IsServerSideRendering()) {
+  if (element() && !page_proxy_->IsServerSideRendering()) {
     component_element()->set_component_id(ComponentStrId());
   }
 }

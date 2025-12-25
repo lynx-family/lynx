@@ -14,7 +14,6 @@
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/selector/selector_item.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
-#include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/dom/vdom/radon/radon_factory.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
 #include "core/renderer/utils/base/base_def.h"
@@ -60,8 +59,6 @@ class RadonBase : public SelectorItem {
   virtual bool NeedsElement() const { return false; }
 
   virtual Element* element() const { return nullptr; }
-
-  virtual RadonElement* radon_element() const;
 
   virtual const fml::RefPtr<Element>& GetElementRef() const;
 

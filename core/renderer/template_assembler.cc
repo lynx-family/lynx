@@ -585,15 +585,13 @@ void TemplateAssembler::RenderTemplate(
 
   bool enable_parallel_element =
       page_proxy()->element_manager()->GetEnableParallelElement();
-  bool enable_radon_fiber_arch =
-      page_proxy()->element_manager()->GetEnableFiberElementForRadonDiff();
   auto instance_id = page_proxy()->element_manager()->GetInstanceId();
   if (!enable_parallel_element) {
     if (EnableFiberArch()) {
       report::GlobalFeatureCounter::Count(
           report::LynxFeature::CPP_DISABLE_PARALLEL_FLUSH_FIBER_ARCH,
           instance_id);
-    } else if (enable_radon_fiber_arch) {
+    } else {
       report::GlobalFeatureCounter::Count(
           report::LynxFeature::CPP_DISABLE_PARALLEL_FLUSH_FIBER_RADON_ARCH,
           instance_id);
@@ -603,7 +601,7 @@ void TemplateAssembler::RenderTemplate(
       report::GlobalFeatureCounter::Count(
           report::LynxFeature::CPP_ENABLE_PARALLEL_FLUSH_FIBER_ARCH,
           instance_id);
-    } else if (enable_radon_fiber_arch) {
+    } else {
       report::GlobalFeatureCounter::Count(
           report::LynxFeature::CPP_ENABLE_PARALLEL_FLUSH_FIBER_RADON_ARCH,
           instance_id);
@@ -2393,8 +2391,7 @@ void TemplateAssembler::EnsureTouchEventHandler() {
     if (client != nullptr) {
       touch_event_handler_ = std::make_unique<TouchEventHandler>(
           client->node_manager(), delegate_, support_component_js_,
-          UseLepusNG(), client->GetEnableFiberElementForRadonDiff(),
-          target_sdk_version_);
+          UseLepusNG(), target_sdk_version_);
     } else {
       LYNX_ERROR(error::E_EVENT_EXCEPTION,
                  "Element manager of page proxy is nullptr",

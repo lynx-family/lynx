@@ -336,10 +336,7 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
   ResetComponentDispatchOrder();
   bool should_component_update = PrePageRender(table, update_page_option);
   DispatchOption option(page_proxy_);
-  ClassList old_class_list;
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    old_class_list = this->attribute_holder()->ReleaseClasses();
-  }
+  ClassList old_class_list = this->attribute_holder()->ReleaseClasses();
   this->attribute_holder()->Reset();
   {
     // using radon diff
@@ -350,13 +347,11 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       lepus::Value p1(this);
       lepus::Value p2(true);
       std::string ss = "$renderPage" + std::to_string(this->node_index_);
-      if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-        // In Radon-Fiber Arch, element is held by parent element and RadonNode
-        // together. So we should manually remove the old element from parent.
-        for (auto &node : radon_children_) {
-          if (node) {
-            node->RemoveElementFromParent();
-          }
+      // In Radon-Fiber Arch, element is held by parent element and RadonNode
+      // together. So we should manually remove the old element from parent.
+      for (auto &node : radon_children_) {
+        if (node) {
+          node->RemoveElementFromParent();
         }
       }
       radon_children_.clear();
@@ -377,12 +372,6 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       option.ignore_component_lifecycle_ = page_proxy_->GetPrePaintingStage() !=
                                            PrePaintingStage::kPrePaintingOFF;
       DispatchForDiff(option);
-      // In RadonDiff-Fiber arch, we should mark resolve end after
-      // OnPatchFinish.
-      if (!page_proxy_->element_manager()
-               ->GetEnableFiberElementForRadonDiff()) {
-        tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveEnd);
-      }
     } else if (need_update) {
       option.ignore_component_lifecycle_ = page_proxy_->GetPrePaintingStage() !=
                                            PrePaintingStage::kPrePaintingOFF;
@@ -432,20 +421,12 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
         tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
       }
 
-      if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff() &&
-          old_class_list != classes()) {
+      if (old_class_list != classes()) {
         for (auto &child : original_radon_children) {
           child->MarkChildStyleDirtyRecursively(option.ShouldForceUpdate());
         }
       }
       RadonMyersDiff(original_radon_children, option);
-      // In RadonDiff-Fiber arch, we should mark resolve end after
-      // OnPatchFinish.
-      if (pipeline_options->need_timestamps &&
-          !page_proxy_->element_manager()
-               ->GetEnableFiberElementForRadonDiff()) {
-        tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveEnd);
-      }
     }
     if (page_proxy_->GetPrePaintingStage() ==
         PrePaintingStage::kStartUpdatePage) {
@@ -524,9 +505,7 @@ void RadonPage::DispatchSelf(const DispatchOption &option) {
 void RadonPage::AttachSSRPageElement(RadonPage *ssr_page) {
   element_ = std::move(ssr_page->element_);
   element_->SetAttributeHolder(this->attribute_holder_);
-  if (element_->is_fiber_element()) {
-    fiber_element()->ResetSheetRecursively(style_sheet_manager());
-  }
+  fiber_element()->ResetSheetRecursively(style_sheet_manager());
 }
 
 void RadonPage::Dispatch(const DispatchOption &option) {

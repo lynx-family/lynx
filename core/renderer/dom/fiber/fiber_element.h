@@ -213,8 +213,6 @@ class FiberElement : public Element,
 
   bool is_inline_element() const { return is_inline_element_; }
 
-  bool is_fiber_element() const override { return true; }
-
   bool is_list_item() const { return is_list_item_; }
 
   int32_t dirty() const { return dirty_; }

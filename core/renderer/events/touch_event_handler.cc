@@ -64,13 +64,11 @@ static void AddTimestampProperty(lepus::Dictionary *params,
 TouchEventHandler::TouchEventHandler(
     NodeManager *node_manager,
     runtime::ContextProxy::Delegate &context_proxy_delegate,
-    bool support_component_js, bool use_lepus_ng,
-    bool enable_fiber_element_for_radon_diff, const std::string &version)
+    bool support_component_js, bool use_lepus_ng, const std::string &version)
     : node_manager_(node_manager),
       context_proxy_delegate_(context_proxy_delegate),
       support_component_js_(support_component_js),
       use_lepus_ng_(use_lepus_ng),
-      enable_fiber_element_for_radon_diff_(enable_fiber_element_for_radon_diff),
       version_(version),
       current_touches_(lepus_value(lepus::CArray::Create())) {
 #if ENABLE_LEPUSNG_WORKLET
@@ -706,8 +704,7 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
 
   // If the fiber element is currently in the detached state, then do not
   // generate the corresponding chain.
-  if (target_node->is_fiber_element() &&
-      static_cast<FiberElement *>(target_node)->IsDetached()) {
+  if (static_cast<FiberElement *>(target_node)->IsDetached()) {
     LOGE(
         "TouchEventHandler::GenerateResponseChain failed since the target node "
         << target_node->GetTag().str()
@@ -724,15 +721,14 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
       // elements between root and fixed element. However, when using RadonDiff
       // + FiberElement, fixed element's postion will not be changed and the
       // chain will contain the elements between root and fixed element. Thus,
-      // when enable_fiber_element_for_radon_diff_, to avoid break, we need to
+      // when in radon arch, to avoid break, we need to
       // stop the while loop when target node is fixed. And the following code
       // will be removed when there is no RadonDiff online. Not that we can add
       // a bubble_parent interface to the Element class. Then RadonElement can
       // return parent by default, while FiberElement implements compatible
       // logic. This approach avoids the need to modify the TouchEventHandler
       // itself.
-      if (enable_fiber_element_for_radon_diff_ && target_node->IsRadonArch() &&
-          target_node->is_fixed()) {
+      if (target_node->IsRadonArch() && target_node->is_fixed()) {
         auto root = proxy != nullptr && proxy->element_manager() != nullptr
                         ? proxy->element_manager()->root()
                         : nullptr;
@@ -1046,7 +1042,7 @@ lepus::Value TouchEventHandler::GetTargetInfo(int32_t impl_id,
   }
 
   // element ref needed in fiber element worklet
-  if (element != nullptr && !is_js_event && element->is_fiber_element()) {
+  if (element != nullptr && !is_js_event) {
     BASE_STATIC_STRING_DECL(kElementRefptr, "elementRefptr");
     FiberElement *fiberElement =
         static_cast<FiberElement *>(const_cast<Element *>(element));
@@ -1171,8 +1167,7 @@ bool TouchEventHandler::HandleEventInternal(
         continue;
       }
 
-      if ((cur_target->is_fiber_element() &&
-           static_cast<FiberElement *>(cur_target)->IsDetached())) {
+      if (static_cast<FiberElement *>(cur_target)->IsDetached()) {
         LOGI(
             "TouchEventHandler::HandleEventInternal global bind current target "
             "is detached, id is "

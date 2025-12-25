@@ -121,7 +121,6 @@ class TouchEventHandler {
   TouchEventHandler(NodeManager *node_manager,
                     runtime::ContextProxy::Delegate &context_proxy_delegate,
                     bool support_component_js, bool use_lepus_ng,
-                    bool enable_fiber_element_for_radon_diff,
                     const std::string &version);
 
   // TODO(songshourui.null) : unify the following three functions.
@@ -287,7 +286,6 @@ class TouchEventHandler {
   bool long_press_consumed_{false};
 
   bool use_lepus_ng_{false};
-  bool enable_fiber_element_for_radon_diff_;
   std::string version_;
 
   lepus::Value current_touches_;

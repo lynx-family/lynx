@@ -470,12 +470,7 @@ void PageProxy::SetCSSVariables(
     const std::string &component_id, const std::string &id_selector,
     const lepus::Value &properties,
     std::shared_ptr<PipelineOptions> &pipeline_options) {
-  if (Page() && !element_manager()->GetEnableFiberElementForRadonDiff()) {
-    Page()->SetCSSVariables(component_id, id_selector, properties,
-                            pipeline_options);
-  } else if ((client_ && client_->GetEnableFiberArch()) ||
-             (Page() &&
-              element_manager()->GetEnableFiberElementForRadonDiff())) {
+  if ((client_ && client_->GetEnableFiberArch()) || (Page())) {
     NodeSelectRoot root = NodeSelectRoot::ByComponentId(component_id);
     NodeSelectOptions options(NodeSelectOptions::IdentifierType::CSS_SELECTOR,
                               id_selector);

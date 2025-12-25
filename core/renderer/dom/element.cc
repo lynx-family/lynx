@@ -448,7 +448,7 @@ bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
     resolve_success = true;
   }
 
-  if (is_fiber_element() && EnableLayoutInElementMode()) {
+  if (EnableLayoutInElementMode()) {
     if (LayoutProperty::IsLayoutWanted(id)) {
       MarkLayoutDirtyLite();
     }
@@ -1033,8 +1033,6 @@ void Element::HandleCSSVariables(StyleMap& styles) {
   style_resolver_.HandleCSSVariables(styles);
 }
 
-void Element::ResolvePlaceHolder() { style_resolver_.ResolvePlaceHolder(); }
-
 bool Element::DisableFlattenWithOpacity() {
   return computed_css_style()->HasOpacity() && !is_text() && !is_image();
 }
@@ -1524,22 +1522,13 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
   }
   auto [need_layout, has_pending_bundle] = FlushAnimatedStyle();
   bool need_mark_props_dirty = need_layout;
-  if (element_manager_->FixNewAnimatorFlushBug() && is_fiber_element()) {
+  if (element_manager_->FixNewAnimatorFlushBug()) {
     // FIXME(linxs): remove this settings in next version
     need_mark_props_dirty = need_layout || has_pending_bundle;
   }
   if (need_mark_props_dirty) {
     if (tasm::LynxEnv::GetInstance().EnableNewAnimatorOnPatchFinishOpt()) {
-      if (is_radon_element()) {
-        element_manager_->SetNeedsLayout();
-        static_cast<RadonElement*>(this)
-            ->StylesManager()
-            .UpdateWithParentStatusForOnceInheritance(
-                static_cast<RadonElement*>(this->parent()));
-        this->FlushProps();
-      } else if (is_fiber_element()) {
-        static_cast<FiberElement*>(this)->MarkPropsDirty();
-      }
+      static_cast<FiberElement*>(this)->MarkPropsDirty();
     } else {
       element_manager_->OnFinishUpdateProps(this, options);
     }
@@ -1775,9 +1764,7 @@ bool Element::GetEnableFixedNew() const {
 bool Element::IsEventPathCatch() {
   // Compatible with the previous logic that position:fixed will modify
   // the structure of the element tree.
-  bool enable_fiber_element_for_radon_diff =
-      element_manager()->GetEnableFiberElementForRadonDiff();
-  if (enable_fiber_element_for_radon_diff && IsRadonArch() && is_fixed()) {
+  if (IsRadonArch() && is_fixed()) {
     auto root = element_manager()->root();
     if (this != root) {
       LOGI("Element::IsEventPathCatch fixed target.");
@@ -1889,7 +1876,7 @@ lepus::Value Element::GetEventTargetInfo(bool is_core_event) {
   }
 
   // element ref needed in fiber element worklet
-  if (is_core_event && is_fiber_element()) {
+  if (is_core_event) {
     BASE_STATIC_STRING_DECL(kElementRefptr, "elementRefptr");
     dict.get()->SetValue(kElementRefptr, fml::RefPtr<tasm::Element>(this));
   }

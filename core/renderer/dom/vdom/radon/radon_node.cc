@@ -80,16 +80,8 @@ bool RadonNode::CreateElementIfNeeded() {
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (element_ == nullptr) {
-    if (!page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-      element_ = page_proxy_->element_manager()->CreateNode(
-          tag(), attribute_holder_, GetOriginalNodeIndex(), node_type_);
-      if (IsRadonPage()) {
-        static_cast<RadonElement*>(element_.get())->set_is_page(true);
-      }
-    } else {
-      element_ = CreateFiberElement();
-      element_->SetNodeIndex(GetOriginalNodeIndex());
-    }
+    element_ = CreateFiberElement();
+    element_->SetNodeIndex(GetOriginalNodeIndex());
     if (page_proxy_->GetPageElementEnabled() && tag().IsEquals("page")) {
       page_proxy_->element_manager()->SetRootOnLayout(element_->impl_id());
       page_proxy_->element_manager()->catalyzer()->set_root(element_.get());
@@ -139,61 +131,10 @@ void RadonNode::RemoveElementFromParent() {
   }
 
   if (element_.get() != nullptr) {
-    if (element_->is_fiber_element()) {
-      EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeRemoved());
-      auto parent_element = element_->parent();
-      if (parent_element) {
-        parent_element->RemoveNode(element_);
-      }
-      return;
-    }
-    if (!element_->GetEnableFixedNew()) {
-      EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeRemoved());
-      auto parent_element = element_->parent();
-      if (parent_element) {
-        parent_element->RemoveNode(element_);
-      }
-    }
-    // delete fixed children of element node.
-    std::list<RadonBase*> radon_base_list;
-
-    for (auto& radon_base_child : radon_children_) {
-      radon_base_list.push_back(radon_base_child.get());
-    }
-    auto root_element = page_proxy_->element_manager()->root();
-
-    while (!radon_base_list.empty()) {
-      RadonBase* front = radon_base_list.front();
-      radon_base_list.pop_front();
-      if (front) {
-        for (auto& radon_base_child : front->radon_children_) {
-          radon_base_list.push_back(radon_base_child.get());
-        }
-        if (front->element() && front->element()->is_fixed()) {
-          EXEC_EXPR_FOR_INSPECTOR(
-              static_cast<RadonNode*>(front)->NotifyElementNodeRemoved());
-          if (!element_->GetEnableFixedNew()) {
-            root_element->RemoveNode(front->GetElementRef());
-          } else {
-            // In Fixed New Process: fixed node's parent is the same as dom
-            // structure, not the root
-            auto actual_parent_element = front->element()->parent();
-            if (actual_parent_element) {
-              actual_parent_element->RemoveNode(front->GetElementRef());
-            }
-          }
-        }
-      }
-    }
-
-    if (element_->GetEnableFixedNew()) {
-      // NOTE: Remove node after find fixed nodes recursively or crash will
-      // ocurr.
-      EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeRemoved());
-      auto parent_element = element_->parent();
-      if (parent_element) {
-        parent_element->RemoveNode(element_);
-      }
+    EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeRemoved());
+    auto parent_element = element_->parent();
+    if (parent_element) {
+      parent_element->RemoveNode(element_);
     }
   }
 }
@@ -219,91 +160,77 @@ void RadonNode::DispatchFirstTime() {
   if (it != attributes().end()) {
     need_transmit_class_dirty_ = it->second.Bool();
   }
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    auto* fiber_element = static_cast<FiberElement*>(element_.get());
-    // Using JSValue across multiple threads
-    // is not allowed. Therefore, JSValue needs to be converted to LepusValue
-    // before the parallel flush to prevent conversion through LepusContext
-    // during the parallel flush phase.
-    const auto should_convert_to_lepus_value =
-        page_proxy_->element_manager()->GetEnableParallelElement();
+  auto* fiber_element = static_cast<FiberElement*>(element_.get());
+  // Using JSValue across multiple threads
+  // is not allowed. Therefore, JSValue needs to be converted to LepusValue
+  // before the parallel flush to prevent conversion through LepusContext
+  // during the parallel flush phase.
+  const auto should_convert_to_lepus_value =
+      page_proxy_->element_manager()->GetEnableParallelElement();
 
-    // Id Selector
-    if (!id_selector().empty()) {
-      fiber_element->SetIdSelector(id_selector());
-    }
-
-    // Class
-    if (!classes().empty()) {
-      fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
-    }
-
-    // Attribute
-    if (!attributes().empty()) {
-      for (const auto& [key, value] : attributes()) {
-        // In first dispatch, should not flush empty attribute in RadonArch.
-        if (!value.IsEmpty()) {
-          if (should_convert_to_lepus_value) {
-            fiber_element->SetAttribute(key, value.ToLepusValue(), false);
-          } else {
-            fiber_element->SetAttribute(key, value, false);
-          }
-        }
-      }
-    }
-
-    // Data set
-    if (!data_set().empty()) {
-      fiber_element->MarkDirty(FiberElement::kDirtyDataset);
-    }
-
-    // Gesture
-    if (!gesture_detectors().empty()) {
-      fiber_element->MarkDirty(FiberElement::kDirtyGesture);
-    }
-
-    // Event
-    if (!static_events().empty()) {
-      fiber_element->MarkDirty(FiberElement::kDirtyEvent);
-    }
-    if (!lepus_events().empty()) {
-      fiber_element->MarkDirty(FiberElement::kDirtyEvent);
-    }
-    if (!global_bind_events().empty()) {
-      fiber_element->MarkDirty(FiberElement::kDirtyEvent);
-    }
-
-    // Raw Inline Styles
-    if (!raw_inline_styles().empty()) {
-      for (const auto& [key, value] : raw_inline_styles()) {
-        if (should_convert_to_lepus_value) {
-          fiber_element->SetStyle(key, value.ToLepusValue());
-        } else {
-          fiber_element->SetStyle(key, value);
-        }
-      }
-      // After setting the raw_inline_style in FiberElement,
-      // inline styles will be set in the AttributeHolder for use by DevTool.
-      // Therefore, it is necessary to call NotifyElementNodeSetted to notify
-      // the Inspector.
-      EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeSetted());
-    }
-    // tag selector is enabled by default in RadonDiff. Should Mark style dirty
-    // by default.
-    fiber_element->MarkStyleDirty();
-  } else {
-    element()->ResolveStyle(cached_styles_);
-
-    page_proxy_->element_manager()->ResolveAttributesAndStyle(
-        attribute_holder_.get(), element(), cached_styles_);
-
-    // get parent in advance, we need know whether the node is native inline
-    // view
-    auto parent_element = GetParentWithFixed(ParentElement());
-    ApplyDynamicCSSWhenParentIsReady(
-        static_cast<RadonElement*>(parent_element));
-    radon_element()->FlushPropsFirstTimeWithParentElement(parent_element);
+  // Id Selector
+  if (!id_selector().empty()) {
+    fiber_element->SetIdSelector(id_selector());
   }
+
+  // Class
+  if (!classes().empty()) {
+    fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
+  }
+
+  // Attribute
+  if (!attributes().empty()) {
+    for (const auto& [key, value] : attributes()) {
+      // In first dispatch, should not flush empty attribute in RadonArch.
+      if (!value.IsEmpty()) {
+        if (should_convert_to_lepus_value) {
+          fiber_element->SetAttribute(key, value.ToLepusValue(), false);
+        } else {
+          fiber_element->SetAttribute(key, value, false);
+        }
+      }
+    }
+  }
+
+  // Data set
+  if (!data_set().empty()) {
+    fiber_element->MarkDirty(FiberElement::kDirtyDataset);
+  }
+
+  // Gesture
+  if (!gesture_detectors().empty()) {
+    fiber_element->MarkDirty(FiberElement::kDirtyGesture);
+  }
+
+  // Event
+  if (!static_events().empty()) {
+    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+  }
+  if (!lepus_events().empty()) {
+    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+  }
+  if (!global_bind_events().empty()) {
+    fiber_element->MarkDirty(FiberElement::kDirtyEvent);
+  }
+
+  // Raw Inline Styles
+  if (!raw_inline_styles().empty()) {
+    for (const auto& [key, value] : raw_inline_styles()) {
+      if (should_convert_to_lepus_value) {
+        fiber_element->SetStyle(key, value.ToLepusValue());
+      } else {
+        fiber_element->SetStyle(key, value);
+      }
+    }
+    // After setting the raw_inline_style in FiberElement,
+    // inline styles will be set in the AttributeHolder for use by DevTool.
+    // Therefore, it is necessary to call NotifyElementNodeSetted to notify
+    // the Inspector.
+    EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeSetted());
+  }
+  // tag selector is enabled by default in RadonDiff. Should Mark style dirty
+  // by default.
+  fiber_element->MarkStyleDirty();
   ProcessEvents();
   class_dirty_ = false;
 }
@@ -461,10 +388,8 @@ void RadonNode::SwapElement(const std::unique_ptr<RadonBase>& old_radon_base,
     EXEC_EXPR_FOR_INSPECTOR(UpdateInlineStylesFromOldModel(
         old_radon_node->attribute_holder().get()));
     if (option.refresh_lifecycle_ || option.ssr_hydrating_) {
-      if (element_->is_fiber_element()) {
-        fiber_element()->SetParentComponentUniqueIdForFiber(
-            ParentComponentElementId());
-      }
+      fiber_element()->SetParentComponentUniqueIdForFiber(
+          ParentComponentElementId());
     }
     EXEC_EXPR_FOR_INSPECTOR({
       // when set RemoveComponentElement and open DevToolDebug and DomTree
@@ -500,16 +425,7 @@ void RadonNode::SwapElement(const std::unique_ptr<RadonBase>& old_radon_base,
             InsertElementIntoParent(ParentElement());
             EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeAdded());
           }
-          // Re-apply inheritance when fixed is changed.
-          if (!page_proxy_->element_manager()
-                   ->GetEnableFiberElementForRadonDiff()) {
-            ApplyDynamicCSSWhenParentIsReady(
-                static_cast<RadonElement*>(element()->parent()));
-          }
         }
-      }
-      if (element()->is_radon_element()) {
-        element_->FlushProps();
       }
       option.has_patched_ = true;
     }
@@ -569,46 +485,7 @@ bool RadonNode::ShouldFlushAttr(const RadonNode* old_radon_node) {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    return DiffAttrMapForFiber(old_radon_node->attributes(), attributes());
-  }
-  bool attr_updated = false;
-  if (id_dirty_ || has_dynamic_attr_) {
-    // attribute now can be updated, inserted or removed in compileNG.
-    const AttrMap& old_attrs = old_radon_node->attributes();
-    const AttrMap& new_attrs = attributes();
-    for (const auto& new_attr : new_attrs) {
-      auto old_iter = old_attrs.find(new_attr.first);
-      if (old_iter != old_attrs.end()) {
-        if (old_iter->second != new_attr.second) {
-          // Attribute is changed, so we update it.
-          attr_updated = true;
-          element()->SetAttribute(new_attr.first, new_attr.second);
-        }
-      } else {
-        // Attribute is inserted, so we update it.
-        attr_updated = true;
-        element()->SetAttribute(new_attr.first, new_attr.second);
-      }
-      // update need_transmit_class_dirty_
-      if (new_attr.first.IsEqual(kTransmitClassDirty)) {
-        need_transmit_class_dirty_ = new_attr.second.Bool();
-      }
-    }
-    for (const auto& old_attr : old_attrs) {
-      auto new_iter = new_attrs.find(old_attr.first);
-      if (new_iter == new_attrs.end()) {
-        // Attribute is removed, so we remove it in element node.
-        attr_updated = true;
-        element()->ResetAttribute(old_attr.first);
-        // remove need_transmit_class_dirty attr
-        if (old_attr.first.IsEqual(kTransmitClassDirty)) {
-          need_transmit_class_dirty_ = false;
-        }
-      }
-    }
-  }
-  return attr_updated;
+  return DiffAttrMapForFiber(old_radon_node->attributes(), attributes());
 }
 
 bool RadonNode::ShouldFlushDataSet(const RadonNode* old_radon_node) {
@@ -983,58 +860,23 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
                 UpdateTraceDebugInfo(ctx.event());
               });
   bool style_updated = false;
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    attribute_holder_->SetCSSVariableBundle(
-        *old_radon_node->attribute_holder());
-    auto* fiber_element = static_cast<FiberElement*>(element_.get());
-    if (id_dirty_) {
-      style_updated = true;
-      fiber_element->SetIdSelector(id_selector());
-    }
-    if (class_dirty_) {
-      style_updated = true;
-      fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
-      for (auto& child : old_radon_node->radon_children_) {
-        child->MarkChildStyleDirtyRecursively(option.ShouldForceUpdate());
-      }
-    }
-    if (has_dynamic_inline_style_) {
-      style_updated |= DiffRawStyleForFiber(old_radon_node->raw_inline_styles(),
-                                            raw_inline_styles());
-    }
-    return style_updated;
+  attribute_holder_->SetCSSVariableBundle(*old_radon_node->attribute_holder());
+  auto* fiber_element = static_cast<FiberElement*>(element_.get());
+  if (id_dirty_) {
+    style_updated = true;
+    fiber_element->SetIdSelector(id_selector());
   }
-  // TODO: check external class.
-  if (need_transmit_class_dirty_) {
-    for (const auto& clazz : classes()) {
-      class_transmit_option_->AddClass(clazz);
+  if (class_dirty_) {
+    style_updated = true;
+    fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
+    for (auto& child : old_radon_node->radon_children_) {
+      child->MarkChildStyleDirtyRecursively(option.ShouldForceUpdate());
     }
   }
-
-  if (force_calc_new_style_) {
-    // Default logic: use GetCachedStyleList to get new style every time.
-    const auto& old_style_list = old_radon_node->cached_styles_;
-    element()->ResolveStyle(cached_styles_);
-    style_updated |= DiffStyleImpl(old_style_list, cached_styles_, true);
-  } else {
-    // Optimized logic: use GetCachedStyleList to get new style only when
-    // needed.
-    style_updated |= OptimizedShouldFlushStyle(old_radon_node, option);
+  if (has_dynamic_inline_style_) {
+    style_updated |= DiffRawStyleForFiber(old_radon_node->raw_inline_styles(),
+                                          raw_inline_styles());
   }
-
-  if (class_transmit_option_.has_value() &&
-      !class_transmit_option_->IsEmpty()) {
-    for (const auto& iter : class_transmit_option_->added_classes()) {
-      option.class_transmit_.AddClass(iter);
-    }
-    class_transmit_option_->added_classes().clear();
-  }
-  if (!page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    ApplyDynamicCSSWhenParentIsReady(
-        static_cast<RadonElement*>(element_->parent()));
-  }
-  style_updated |= element_->HasPropsToBeFlush();
-
   return style_updated;
 }
 
@@ -1216,40 +1058,22 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
 void RadonNode::SetStaticInlineStyle(CSSPropertyID id,
                                      const base::String& string_value,
                                      const CSSParserConfigs& configs) {
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    SetRawInlineStyle(id, lepus::Value(string_value), configs);
-  } else {
-    attribute_holder_->SetInlineStyle(id, string_value, configs);
-  }
+  SetRawInlineStyle(id, lepus::Value(string_value), configs);
 }
 
 void RadonNode::SetStaticInlineStyle(CSSPropertyID id,
                                      base::String&& string_value,
                                      const CSSParserConfigs& configs) {
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    SetRawInlineStyle(id, lepus::Value(std::move(string_value)), configs);
-  } else {
-    attribute_holder_->SetInlineStyle(id, std::move(string_value), configs);
-  }
+  SetRawInlineStyle(id, lepus::Value(std::move(string_value)), configs);
 }
 
 void RadonNode::SetStaticInlineStyle(CSSPropertyID id,
                                      const tasm::CSSValue& value) {
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    SetRawInlineStyle(id,
-                      lepus::Value(CSSDecoder::CSSValueToString(id, value)));
-  } else {
-    attribute_holder_->SetInlineStyle(id, value);
-  }
+  SetRawInlineStyle(id, lepus::Value(CSSDecoder::CSSValueToString(id, value)));
 }
 
 void RadonNode::SetStaticInlineStyle(CSSPropertyID id, tasm::CSSValue&& value) {
-  if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    SetRawInlineStyle(id,
-                      lepus::Value(CSSDecoder::CSSValueToString(id, value)));
-  } else {
-    attribute_holder_->SetInlineStyle(id, std::move(value));
-  }
+  SetRawInlineStyle(id, lepus::Value(CSSDecoder::CSSValueToString(id, value)));
 }
 
 void RadonNode::SetRawInlineStyle(CSSPropertyID id, lepus::Value&& value,
@@ -1492,7 +1316,7 @@ void RadonNode::UpdateInlineStylesFromOldModel(
     if (GetDevToolFlag()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
                   DEVTOOL_UPDATE_INLINE_STYLES_FROM_OLD_MODEL);
-      if (element() && element()->is_fiber_element()) {
+      if (element()) {
         // In the Radon-Fiber architecture, new RadonNode nodes only store
         // raw_inline_style, which cannot be consumed by the devtool. The
         // inline_styles_ in DataModel stores the parsed inline styles, which
@@ -1534,27 +1358,19 @@ void RadonNode::CheckAndProcessComponentRemoveViewForInspector(
           // CheckAndProcessComponentRemoveViewForInspector can be removed after
           // switching to FiberElement in RadonDiff.
           fml::RefPtr<Element> component_element = nullptr;
-          if (page_proxy_->element_manager()
-                  ->GetEnableFiberElementForRadonDiff()) {
-            auto* parent_component = static_cast<RadonComponent*>(parent);
-            auto fiber_element =
-                page_proxy_->element_manager()->CreateFiberComponent(
-                    parent_component->ComponentStrId(),
-                    parent_component->GetCSSId(),
-                    parent_component->GetEntryName(), parent_component->name(),
-                    parent_component->path());
-            fiber_element->SetNodeIndex(parent_component->NodeIndex());
-            fiber_element->SetParentComponentUniqueIdForFiber(
-                parent_component->ParentComponentElementId());
-            fiber_element->set_style_sheet_manager(
-                parent_component->style_sheet_manager());
-            component_element = fiber_element;
-          } else {
-            component_element = page_proxy_->element_manager()->CreateNode(
-                BASE_STATIC_STRING(kRadonComponentTag),
-                static_cast<RadonNode*>(parent)->attribute_holder_,
-                GetOriginalNodeIndex(), parent->NodeType());
-          }
+          auto* parent_component = static_cast<RadonComponent*>(parent);
+          auto fiber_element =
+              page_proxy_->element_manager()->CreateFiberComponent(
+                  parent_component->ComponentStrId(),
+                  parent_component->GetCSSId(),
+                  parent_component->GetEntryName(), parent_component->name(),
+                  parent_component->path());
+          fiber_element->SetNodeIndex(parent_component->NodeIndex());
+          fiber_element->SetParentComponentUniqueIdForFiber(
+              parent_component->ParentComponentElementId());
+          fiber_element->set_style_sheet_manager(
+              parent_component->style_sheet_manager());
+          component_element = fiber_element;
           page_proxy_->element_manager()->PrepareNodeForInspector(
               component_element.get());
           component_element->inspector_attribute()->needs_erase_id_ = true;
@@ -1597,11 +1413,6 @@ RadonNodeIndexType RadonNode::GetOriginalNodeIndex() {
     }
     return kRadonInvalidNodeIndex;
   }
-}
-
-void RadonNode::ApplyDynamicCSSWhenParentIsReady(const RadonElement* parent) {
-  radon_element()->StylesManager().UpdateWithParentStatusForOnceInheritance(
-      parent);
 }
 
 }  // namespace tasm

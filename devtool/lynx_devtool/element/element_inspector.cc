@@ -116,8 +116,7 @@ void ElementInspector::SetStyleValueElement(const any& data) {
 bool ElementInspector::HasDataModel(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", false);
   return element->data_model() != nullptr &&
-         !(element->is_fiber_element() &&
-           static_cast<lynx::tasm::FiberElement*>(element)->is_wrapper());
+         !(static_cast<lynx::tasm::FiberElement*>(element)->is_wrapper());
 }
 
 void ElementInspector::InitForInspector(const any& data) {
@@ -372,55 +371,18 @@ Element* ElementInspector::GetParentComponentElementFromDataModel(
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", nullptr);
   // Get Element's parent, if the parent is component/page, return the parent.
   // Otherwise, return nullptr.
-  if (element->is_fiber_element()) {
-    auto parent = element->parent();
-    if (parent &&
-        static_cast<lynx::tasm::FiberElement*>(parent)->is_component()) {
-      return parent;
-    }
-    return nullptr;
-  } else {
-    auto* attribute_holder = element->data_model();
-    if (attribute_holder) {  // radon node
-      RadonNode* node = attribute_holder->radon_node_ptr();
-      if (node->Parent() &&
-          node->Parent()->NodeType() == lynx::tasm::kRadonComponent) {
-        return node->Parent()->element();
-      } else if (node->Parent() &&
-                 node->Parent()->NodeType() == lynx::tasm::kRadonPlug) {
-        RadonBase* slot = node->Parent()->Parent();
-        if (slot && slot->NodeType() == lynx::tasm::kRadonSlot) {
-          if (slot->Parent() &&
-              slot->Parent()->NodeType() == lynx::tasm::kRadonComponent) {
-            return slot->Parent()->element();
-          }
-        }
-      }
-    }
-    return nullptr;
+  auto parent = element->parent();
+  if (parent &&
+      static_cast<lynx::tasm::FiberElement*>(parent)->is_component()) {
+    return parent;
   }
+  return nullptr;
 }
 
 Element* ElementInspector::GetChildElementForComponentRemoveView(
     Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", nullptr);
-  if (element->is_fiber_element()) {
-    return nullptr;
-  }
-  auto* attribute_holder = element->data_model();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(attribute_holder, "attribute_holder is null",
-                                  nullptr);
-  RadonNode* component_node = attribute_holder->radon_node_ptr();
-  if (component_node->radon_children_.size() == 0) {
-    return nullptr;
-  }
-  RadonNode* component_child =
-      static_cast<RadonNode*>(component_node->radon_children_[0].get());
-  if (component_child && component_child->element()) {
-    return component_child->element();
-  } else {
-    return nullptr;
-  }
+  return nullptr;
 }
 
 void ElementInspector::Flush(Element* element) {
@@ -744,49 +706,26 @@ std::string ElementInspector::GetVirtualSlotName(Element* slot_plug) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(attribute_holder, "attribute_holder is null",
                                   "");
 
-  if (slot_plug->is_fiber_element()) {
-    constexpr const static char kSlot[] = "slot";
-    constexpr const static char kDefaultName[] = "default";
+  constexpr const static char kSlot[] = "slot";
+  constexpr const static char kDefaultName[] = "default";
 
-    // In fiber mode, lepus runtime will set slot name as a attribute to the
-    // elment, which's key is "slot". Then we can get slot name from the pulg
-    // element's attributes. If the attributes does not contain "slot", then
-    // return kDefaultName.
-    const auto& attr_map = attribute_holder->attributes();
-    auto iter = attr_map.find(BASE_STATIC_STRING(kSlot));
-    if (iter != attr_map.end()) {
-      return iter->second.StdString();
-    }
-    return kDefaultName;
+  // In fiber mode, lepus runtime will set slot name as a attribute to the
+  // elment, which's key is "slot". Then we can get slot name from the pulg
+  // element's attributes. If the attributes does not contain "slot", then
+  // return kDefaultName.
+  const auto& attr_map = attribute_holder->attributes();
+  auto iter = attr_map.find(BASE_STATIC_STRING(kSlot));
+  if (iter != attr_map.end()) {
+    return iter->second.StdString();
   }
-
-  // find radon slot
-  auto* current = static_cast<RadonBase*>(attribute_holder->radon_node_ptr());
-  auto* parent = current->Parent();
-  while (parent) {
-    if (parent->NodeType() == lynx::tasm::kRadonSlot) {
-      break;
-    } else {
-      parent = parent->Parent();
-    }
-  }
-
-  auto* node = static_cast<RadonSlot*>(parent);
-  return node ? node->name().str() : "";
+  return kDefaultName;
 }
 
 std::string ElementInspector::GetComponentName(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", "");
-  if (element->is_fiber_element()) {
-    return static_cast<lynx::tasm::ComponentElement*>(element)
-        ->component_name()
-        .str();
-  } else {
-    auto attribute_holder = element->data_model();
-    auto virtual_component =
-        static_cast<RadonComponent*>(attribute_holder->radon_node_ptr());
-    return virtual_component ? virtual_component->name().str() : "";
-  }
+  return static_cast<lynx::tasm::ComponentElement*>(element)
+      ->component_name()
+      .str();
 }
 
 Element* ElementInspector::GetElementByID(Element* element, int id) {
@@ -802,82 +741,31 @@ Element* ElementInspector::GetElementByID(Element* element, int id) {
 
 Element* ElementInspector::GetCSSStyleComponentElement(Element* element) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", nullptr);
-  if (element->is_radon_element() && element->GetRemoveCSSScopeEnabled()) {
-    auto* node = element->data_model()->radon_node_ptr();
-    CHECK_NULL_AND_LOG_RETURN_VALUE(node, "node is null", nullptr);
-    RadonComponent* comp = node->component();
-    while (comp && !comp->IsRadonPage()) {
-      comp = comp->component();
-    }
-    CHECK_NULL_AND_LOG_RETURN_VALUE(comp, "comp is null", nullptr);
-
-    if (element->GetPageElementEnabled()) {
-      return static_cast<RadonNode*>(comp->radon_children_[0].get())->element();
-    } else {
-      return comp->element();
-    }
-  } else {
-    return element->GetParentComponentElement();
-  }
+  return element->GetParentComponentElement();
 }
 
 std::string ElementInspector::GetComponentProperties(Element* element) {
   std::string res = "";
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", res);
-  if (element->is_fiber_element()) {
-    // TODO(wujintian): Get the properties of fiber component from lepus
-    // context.
-    return res;
-  }
-  auto* attribute_holder = element->data_model();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(attribute_holder, "attribute_holder is null",
-                                  res);
-  auto* node = attribute_holder->radon_node_ptr();
-  if (node->IsRadonComponent() || node->IsRadonPage()) {
-    std::ostringstream s;
-    static_cast<RadonComponent*>(node)->GetProperties().PrintValue(s, false,
-                                                                   true);
-    res = s.str();
-  }
+  // TODO(wujintian): Get the properties of fiber component from lepus
+  // context.
   return res;
 }
 
 std::string ElementInspector::GetComponentData(Element* element) {
   std::string res = "";
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", res);
-  if (element->is_fiber_element()) {
-    // TODO(wujintian): Get the properties of fiber component from lepus
-    // context.
-    return res;
-  }
-  auto* attribute_holder = element->data_model();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(attribute_holder, "attribute_holder is null",
-                                  res);
-  auto* node = attribute_holder->radon_node_ptr();
-  if (node->IsRadonComponent() || node->IsRadonPage()) {
-    std::ostringstream s;
-    static_cast<RadonComponent*>(node)->GetData().PrintValue(s, false, true);
-    res = s.str();
-  }
+  // TODO(wujintian): Get the properties of fiber component from lepus
+  // context.
   return res;
 }
 
 std::string ElementInspector::GetComponentId(Element* element) {
   std::string res = "-1";
   CHECK_NULL_AND_LOG_RETURN_VALUE(element, "element is null", res);
-  if (element->is_fiber_element()) {
-    return static_cast<lynx::tasm::ComponentElement*>(element)
-        ->component_id()
-        .str();
-  }
-  auto* attribute_holder = element->data_model();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(attribute_holder, "attribute_holder is null",
-                                  res);
-  auto* node = attribute_holder->radon_node_ptr();
-  if (node->IsRadonComponent() || node->IsRadonPage()) {
-    res = std::to_string(static_cast<RadonComponent*>(node)->ComponentId());
-  }
-  return res;
+  return static_cast<lynx::tasm::ComponentElement*>(element)
+      ->component_id()
+      .str();
 }
 
 std::unordered_map<std::string, std::string>
@@ -1275,27 +1163,12 @@ std::vector<Element*> ElementInspector::SelectElementAll(
       lynx::tasm::NodeSelectOptions::IdentifierType::CSS_SELECTOR, selector);
   options.first_only = false;
   options.only_current_component = false;
-  if (element->is_fiber_element()) {
-    auto nodes = lynx::tasm::FiberElementSelector::Select(
-                     static_cast<tasm::FiberElement*>(element), options)
-                     .nodes;
-    if (!nodes.empty()) {
-      for (auto* node : nodes) {
-        res.push_back(node);
-      }
-    }
-    return res;
-  } else {
-    auto attribute_holder = element->data_model();
-    if (attribute_holder) {
-      auto* radon_node = attribute_holder->radon_node_ptr();
-      auto nodes =
-          lynx::tasm::RadonNodeSelector::Select(radon_node, options).nodes;
-      if (!nodes.empty()) {
-        for (RadonNode* node : nodes) {
-          res.push_back(node->element());
-        }
-      }
+  auto nodes = lynx::tasm::FiberElementSelector::Select(
+                   static_cast<tasm::FiberElement*>(element), options)
+                   .nodes;
+  if (!nodes.empty()) {
+    for (auto* node : nodes) {
+      res.push_back(node);
     }
   }
   return res;

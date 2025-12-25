@@ -39,8 +39,6 @@ class RadonPage : public RadonComponent {
   virtual void DispatchSelf(const DispatchOption &) override;
   virtual void Dispatch(const DispatchOption &) override;
   virtual void DispatchForDiff(const DispatchOption &) override;
-  // for remove component element
-  virtual bool NeedsElement() const override { return true; }
   virtual bool UpdateConfig(const lepus::Value &config, bool to_refresh,
                             std::shared_ptr<PipelineOptions> &pipeline_options);
   void UpdateSystemInfo(const lynx::lepus::Value &config);

@@ -5,10 +5,7 @@
 import("../../../../../testing/test.gni")
 import("../../../../Lynx.gni")
 
-radon_list_component_shared_sources = [
-  "radon_list_element.cc",
-  "radon_list_element.h",
-]
+radon_list_component_shared_sources = []
 
 lynx_core_source_set("radon_list_component") {
   sources = radon_list_component_shared_sources

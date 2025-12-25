@@ -37,7 +37,6 @@
 #include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/page_element.h"
-#include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
 #include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/pipeline/pipeline_layout_data.h"
@@ -254,11 +253,6 @@ class ElementManager : public ElementContextDelegate,
   // std::unique_ptr object
   virtual ~ElementManager();
 
-  virtual fml::RefPtr<RadonElement> CreateNode(
-      const base::String &tag, const fml::RefPtr<AttributeHolder> &node,
-      uint32_t node_index = 0,
-      RadonNodeType radon_node_type = RadonNodeType::kRadonUnknown);
-
   LYNX_EXPORT_FOR_DEVTOOL void OnFinishUpdateProps(
       Element *node, std::shared_ptr<PipelineOptions> &options);
 
@@ -289,9 +283,6 @@ class ElementManager : public ElementContextDelegate,
   void RecordComponent(const std::string &id, Element *node);
   void EraseComponentRecord(const std::string &id, Element *node);
   Element *GetComponent(const std::string &id);
-
-  void ResolveAttributesAndStyle(AttributeHolder *node, Element *shadow_node,
-                                 const StyleMap &styles);
 
   void ResolveEvents(AttributeHolder *node, Element *element);
 
@@ -572,10 +563,6 @@ class ElementManager : public ElementContextDelegate,
       return config_->GetEnableNewGesture();
     }
     return false;
-  }
-
-  bool UseFiberElement() {
-    return GetEnableFiberArch() || GetEnableFiberElementForRadonDiff();
   }
 
   bool GetEnableFiberArch() {
@@ -975,10 +962,6 @@ class ElementManager : public ElementContextDelegate,
     enable_report_threaded_element_flush_statistic_ = value;
   }
 
-  bool GetEnableFiberElementForRadonDiff() {
-    return enable_fiber_element_for_radon_diff_;
-  }
-
   bool GetEnableOptPushStyleToBundle() {
     return enable_opt_push_style_to_bundle_;
   }
@@ -1286,8 +1269,6 @@ class ElementManager : public ElementContextDelegate,
   bool enable_parallel_element_{false};
 
   bool enable_report_threaded_element_flush_statistic_{false};
-
-  bool enable_fiber_element_for_radon_diff_{true};
 
   bool settings_enable_use_mapbuffer_for_ui_op_;
 

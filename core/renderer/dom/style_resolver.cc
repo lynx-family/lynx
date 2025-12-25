@@ -15,7 +15,6 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
-#include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -207,17 +206,8 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
   if (fragment != nullptr) {
     if (fragment->enable_css_selector()) {
       GetCSSStyleNew(element_->data_model(), fragment);
-    } else if (element_->is_fiber_element()) {
-      GetCSSStyleForFiber(static_cast<FiberElement*>(element_), fragment);
     } else {
-      /**
-       CSS Selector Specificity Rules
-       ID Selector > Class Selector > Tag Selector
-       The specificity of the :not() selector is related to the content inside
-       the parentheses, refer to the W3C specification
-       https://www.w3.org/TR/selectors/#specificity-rules
-       */
-      GetCSSStyleCompatible(element_, fragment);
+      GetCSSStyleForFiber(static_cast<FiberElement*>(element_), fragment);
     }
   }
 
@@ -227,13 +217,11 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
   element_->MergeInlineStyles(result);
 
   HandleCSSVariables(result);
-
-  element_->DidResolveStyle(result);
 }
 
 void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
   Element* element_ = element();
-  if (!fragment || !element_->is_fiber_element()) {
+  if (!fragment) {
     return;
   }
   // Determine whether there are pseudo-elements according to the rule set when
@@ -319,13 +307,12 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
     LOGE("StyleResolver::HandleCSSVariables failed since data_model is null.");
     return;
   }
-  bool is_fiber_arch = element_->is_fiber_element();
 
-  CSSVariableHandler handler(is_fiber_arch);
+  CSSVariableHandler handler(true);
   bool has_css_variable_in_style_map = false;
   bool is_css_inline_variables_enabled =
       element_->IsCSSInlineVariablesEnabled();
-  if (is_fiber_arch && element_->is_greedy_parallel_flush()) {
+  if (element_->is_greedy_parallel_flush()) {
     has_css_variable_in_style_map = handler.HasCSSVariableInStyleMap(styles);
     if (has_css_variable_in_style_map ||
         (is_css_inline_variables_enabled &&
@@ -335,7 +322,7 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
       static_cast<FiberElement*>(element_)->MarkRefreshCSSStyles();
     }
   } else {
-    if (is_fiber_arch && is_css_inline_variables_enabled) {
+    if (is_css_inline_variables_enabled) {
       static_cast<FiberElement*>(element_)->CollectCustomProperties(
           element_->data_model());
     }
@@ -361,113 +348,6 @@ void StyleResolver::SetCSSVariableToNode(const CSSVariableMap& matched) {
     return;
   }
   matched_variable_map.emplace_back(&matched);
-}
-
-void StyleResolver::GetCSSStyleCompatible(Element* element,
-                                          CSSFragment* style_sheet) {
-  ElementManager* manager_ = manager();
-
-  auto* node = element->data_model();
-  // absort the selector styles in :not(), then store the correspond selector
-  // and scope the InitPseudoNotStyle function only judge once
-  style_sheet->InitPseudoNotStyle();
-  // If has_pseudo_not_style means the pseudo_not_style is not empty
-  const bool has_pseudo_not_style = style_sheet->HasPseudoNotStyle();
-
-  GetCSSByRule(CSSSheet::ALL_SELECT, style_sheet, node, "*");
-
-  // first, handle the tag selector
-  const base::String& tag_node = node->tag();
-  if (!tag_node.empty()) {
-    const std::string& rule_tag_selector = tag_node.str();
-    if (has_pseudo_not_style) {
-      PreSetGlobalPseudoNotCSS(
-          CSSSheet::NAME_SELECT, rule_tag_selector,
-          style_sheet->pseudo_not_style().pseudo_not_global_map, style_sheet,
-          node);
-    }
-
-    GetCSSByRule(CSSSheet::NAME_SELECT, style_sheet, node, rule_tag_selector);
-
-    if (has_pseudo_not_style) {
-      report::GlobalFeatureCounter::Count(
-          report::LynxFeature::CPP_ENABLE_PSEUDO_NOT_CSS,
-          manager_->GetInstanceId());
-      ApplyPseudoNotCSSStyle(node,
-                             style_sheet->pseudo_not_style().pseudo_not_for_tag,
-                             style_sheet, rule_tag_selector);
-    }
-    ApplyPseudoClassChildSelectorStyle(element, style_sheet, rule_tag_selector);
-  }
-  // Class selector
-  if (has_pseudo_not_style) {
-    // if the node doesnt contains andy class selectors, then apply the class
-    // selectors from global :not() selector
-    PreSetGlobalPseudoNotCSS(
-        CSSSheet::CLASS_SELECT, "",
-        style_sheet->pseudo_not_style().pseudo_not_global_map, style_sheet,
-        node);
-  }
-
-  for (const auto& cls : node->classes()) {
-    const auto rule_class_selector = GetClassSelectorRule(cls);
-    GetCSSByRule(CSSSheet::CLASS_SELECT, style_sheet, node,
-                 rule_class_selector);
-
-    if (has_pseudo_not_style) {
-      report::GlobalFeatureCounter::Count(
-          report::LynxFeature::CPP_ENABLE_PSEUDO_NOT_CSS,
-          manager_->GetInstanceId());
-      ApplyPseudoNotCSSStyle(
-          node, style_sheet->pseudo_not_style().pseudo_not_for_class,
-          style_sheet, rule_class_selector);
-    }
-    ApplyPseudoClassChildSelectorStyle(element, style_sheet,
-                                       rule_class_selector);
-  }
-
-  if (node->HasPseudoState(kPseudoStateFocus)) {
-    GetPseudoClassStyle(PseudoClassType::kFocus, style_sheet, node);
-  }
-
-  if (node->HasPseudoState(kPseudoStateHover)) {
-    GetPseudoClassStyle(PseudoClassType::kHover, style_sheet, node);
-  }
-
-  if (node->HasPseudoState(kPseudoStateActive)) {
-    GetPseudoClassStyle(PseudoClassType::kActive, style_sheet, node);
-  }
-
-  // ID selector
-  const base::String& id_node = node->idSelector();
-  if (!id_node.empty()) {
-    const std::string rule_id_selector = GetIDSelectorRule(id_node);
-    if (has_pseudo_not_style) {
-      PreSetGlobalPseudoNotCSS(
-          CSSSheet::ID_SELECT, rule_id_selector,
-          style_sheet->pseudo_not_style().pseudo_not_global_map, style_sheet,
-          node);
-    }
-
-    GetCSSByRule(CSSSheet::ID_SELECT, style_sheet, node, rule_id_selector);
-
-    if (has_pseudo_not_style) {
-      report::GlobalFeatureCounter::Count(
-          report::LynxFeature::CPP_ENABLE_PSEUDO_NOT_CSS,
-          manager_->GetInstanceId());
-      ApplyPseudoNotCSSStyle(node,
-                             style_sheet->pseudo_not_style().pseudo_not_for_id,
-                             style_sheet, rule_id_selector);
-    }
-    ApplyPseudoClassChildSelectorStyle(element, style_sheet, rule_id_selector);
-  } else if (has_pseudo_not_style) {
-    // if the node doesnt contains the id selector, then try to apply the id
-    // selecotr form global :not() selector
-    PreSetGlobalPseudoNotCSS(
-        CSSSheet::ID_SELECT, "",
-        style_sheet->pseudo_not_style().pseudo_not_global_map, style_sheet,
-        node);
-  }
 }
 
 static bool CompareRules(const css::MatchedRule& matched_rule1,
@@ -631,19 +511,7 @@ void StyleResolver::ApplyPseudoClassChildSelectorStyle(
     return;
   }
   Element* parent = nullptr;
-  if (current_node->is_fiber_element()) {
-    parent = current_node->parent();
-  } else {
-    auto* radon_node = current_node->data_model()->radon_node_ptr();
-    if (!radon_node) {
-      return;
-    }
-    auto* radon_parent = radon_node->NodeParent();
-    if (!radon_parent) {
-      return;
-    }
-    parent = radon_parent->element();
-  }
+  parent = current_node->parent();
   if (!parent) {
     return;
   }
@@ -829,52 +697,6 @@ void StyleResolver::GetPseudoClassStyle(PseudoClassType pseudo_type,
   if (!node->idSelector().empty()) {
     auto rule_name = GetIDSelectorRule(node->idSelector()) + pseudo_class_name;
     GetCSSByRule(CSSSheet::PSEUDO_FOCUS_SELECT, style_sheet, node, rule_name);
-  }
-}
-
-void StyleResolver::ResolvePlaceHolder() {
-  Element* element_ = element();
-  if (element_->data_model() == nullptr) {
-    LOGE("CSSPatching::ResolvePlaceHolder failed since data_model is null.");
-    return;
-  }
-
-  CSSFragment* fragment = element_->GetRelatedCSSFragment();
-  if (fragment == nullptr) {
-    LOGE("StyleResolver::ResolvePlaceHolder failed since fragment is nullptr.");
-    return;
-  }
-
-  if (element_->is_fiber_element()) {
-    return;
-  }
-
-  if (!element_->HasPlaceHolder()) {
-    return;
-  }
-
-  auto* radon_element = static_cast<RadonElement*>(element_);
-
-  // Resolve other pseudo selectors
-  //::placeholder styles
-  if (fragment->enable_css_selector()) {
-    AttributeHolder placeholder;
-    placeholder.AddPseudoState(kPseudoStatePlaceHolder);
-    placeholder.SetPseudoElementOwner(radon_element->data_model());
-    GetCSSStyleNew(&placeholder, fragment);
-
-    StyleMap result;
-    DidCollectMatchedRules(element_->data_model(), result, nullptr);
-
-    PseudoPlaceHolderStyles style;
-    ParsePlaceHolderTokens(style, result);
-    radon_element->SetPlaceHolderStyles(style);
-  } else {
-    auto tokens = ParsePseudoCSSTokens(radon_element->data_model(),
-                                       kCSSSelectorPlaceholder);
-    // process ::placeholder tokens
-    const auto& placeholder_value = ParsePlaceHolderTokens(tokens);
-    radon_element->SetPlaceHolderStyles(placeholder_value);
   }
 }
 
@@ -1069,54 +891,6 @@ const tasm::CSSParserConfigs& StyleResolver::GetCSSParserConfigs() {
   return *kDefaultCSSConfigs;
 }
 
-void StyleResolver::UpdateContentNode(const StyleMap& attrs,
-                                      RadonElement* element) {
-  if (!element->IsPseudoNode() || !element->content_data()) return;
-
-  ElementManager* manager_ = manager();
-  ContentData* data = element->content_data();
-  while (data) {
-    RadonElement* node = nullptr;
-
-    if (data->isText()) {
-      BASE_STATIC_STRING_DECL(kRawText, "raw-text");
-      BASE_STATIC_STRING_DECL(kText, "text");
-      BASE_STATIC_STRING_DECL(kPseudo, "pseudo");
-      node = new RadonElement(kRawText, nullptr, manager_);
-      TextContentData* text_data = static_cast<TextContentData*>(data);
-      node->SetAttribute(kText, lepus::Value(text_data->text()));
-      // For reason: lepus string c++ do not support unicode convert now
-      // so we pass a flag to RawTextShadowNode
-      node->SetAttribute(kPseudo, lepus::Value(true));
-    } else if (data->isImage()) {
-      BASE_STATIC_STRING_DECL(kInlineImage, "inline-image");
-      node = new RadonElement(kInlineImage, nullptr, manager_);
-      ImageContentData* image_data = static_cast<ImageContentData*>(data);
-      BASE_STATIC_STRING_DECL(kSrc, "src");
-      node->SetAttribute(kSrc, lepus::Value(image_data->url()));
-    } else if (data->isAttr()) {
-      AttrContentData* content_data = static_cast<AttrContentData*>(data);
-      auto content = content_data->attr_content();
-      if (content.IsString()) {
-        BASE_STATIC_STRING_DECL(kRawText, "raw-text");
-        BASE_STATIC_STRING_DECL(kText, "text");
-        node = new RadonElement(kRawText, nullptr, manager_);
-        node->SetAttribute(kText, content);
-      }
-    }
-
-    if (node) {
-      EXEC_EXPR_FOR_INSPECTOR({ manager_->PrepareNodeForInspector(node); });
-      node->SetIsPseudoNode();
-      node->ConsumeStyle(attrs);
-      node->FlushProps();
-      element->InsertNode(node);
-    }
-
-    data = data->next();
-  }
-}
-
 void StyleResolver::ParsePlaceHolderTokens(PseudoPlaceHolderStyles& result,
                                            const StyleMap& map) {
   for (const auto& i : map) {
@@ -1242,132 +1016,6 @@ void StyleResolver::ParsePseudoCSSTokensForFiber(FiberElement* element,
     if (token) {
       map.merge(token->GetAttributes());
     }
-  }
-}
-
-void StyleResolver::GenerateContentData(const lepus::Value& value,
-                                        const AttributeHolder* vnode,
-                                        RadonElement* node) {
-  struct Content {
-    enum ContentType {
-      TEXT = 0,
-      URL,
-      ATTR,
-    };
-
-    ContentType type;
-    std::string content;
-  };
-
-  if (!value.IsString()) return;
-
-  std::string_view quote = "\"";
-  std::string_view right_brackets = ")";
-  std::string_view url_key = "url(";
-  std::string_view attr_key = "attr(";
-
-  base::InlineVector<Content, 8> pseudo_contents;
-  std::string tmp = value.StdString();
-  bool left_match = false;
-  bool right_match = false;
-  size_t left_pos = 0;
-  size_t right_pos = 0;
-
-  bool invalidate_str = false;
-
-  while (!tmp.empty() && !invalidate_str) {
-    size_t quote_pos = tmp.find(quote);
-    size_t url_pos = tmp.find(url_key);
-    size_t attr_pos = tmp.find(attr_key);
-    size_t blank_pos = tmp.find(" ");
-    if (quote_pos == 0) {
-      left_pos = quote_pos;
-      left_match = (left_pos != std::string::npos);
-      right_pos = tmp.find(quote, left_pos + 1);
-      right_match = (right_pos != std::string::npos);
-
-      if (left_match && right_match) {
-        std::string sub_str =
-            tmp.substr(left_pos + 1, right_pos - left_pos - 1);
-        Content curr;
-        curr.type = Content::TEXT;
-        curr.content = sub_str;
-        pseudo_contents.push_back(curr);
-        tmp.erase(left_pos, right_pos - left_pos + 1);
-        left_match = right_match = false;
-      } else {
-        invalidate_str = true;
-      }
-    } else if (url_pos == 0) {
-      left_pos = url_pos;
-      right_pos = tmp.find(right_brackets, left_pos + 4);
-      CSSStringParser parser(tmp.c_str(), static_cast<int>(tmp.size()),
-                             GetCSSParserConfigs());
-      std::string sub_str = parser.ParseUrl();
-      if (!sub_str.empty()) {
-        Content curr;
-        curr.type = Content::URL;
-        curr.content = sub_str;
-        pseudo_contents.push_back(curr);
-        tmp.erase(left_pos, right_pos - left_pos + 1);
-      } else {
-        invalidate_str = true;
-      }
-    } else if (attr_pos == 0) {
-      left_pos = attr_pos;
-      left_match = (left_pos != std::string::npos);
-      right_pos = tmp.find(right_brackets, left_pos + 5);
-      right_match = (right_pos != std::string::npos);
-
-      if (left_match && right_match) {
-        std::string sub_str =
-            tmp.substr(left_pos + 5, right_pos - left_pos - 5);
-        Content curr;
-        curr.type = Content::ATTR;
-        curr.content = sub_str;
-        pseudo_contents.push_back(curr);
-        tmp.erase(left_pos, right_pos - left_pos + 1);
-        left_match = right_match = false;
-      } else {
-        invalidate_str = true;
-      }
-    } else if (blank_pos == 0) {
-      do {
-        tmp.erase(0, 1);
-        blank_pos = tmp.find(" ");
-      } while (blank_pos == 0);
-    } else {
-      std::string result;
-      for (auto c : tmp) {
-        if (c != '\'') {
-          result.push_back(c);
-        }
-      }
-      Content curr;
-      curr.type = Content::TEXT;
-      curr.content = result;
-      pseudo_contents.push_back(curr);
-      tmp.clear();
-    }
-  }
-
-  if (invalidate_str) pseudo_contents.clear();
-
-  ContentData* pre = nullptr;
-  for (const auto& pseudo_content : pseudo_contents) {
-    ContentData* cur = nullptr;
-    if (pseudo_content.type == Content::TEXT)
-      cur =
-          ContentData::createTextContent(base::String(pseudo_content.content));
-    else if (pseudo_content.type == Content::URL)
-      cur = ContentData::createImageContent(pseudo_content.content);
-    else
-      cur = ContentData::createAttrContent(vnode, pseudo_content.content);
-    if (pre)
-      pre->set_next(cur);
-    else
-      node->SetContentData(cur);
-    pre = cur;
   }
 }
 

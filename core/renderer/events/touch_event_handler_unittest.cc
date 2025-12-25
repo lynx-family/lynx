@@ -49,7 +49,7 @@ void TouchEventHandlerTest::SetUp() {
                                        delegate_.get(), lynx_env_config);
 
   touch_event_handler_ = std::make_unique<TouchEventHandler>(
-      manager->node_manager(), *delegate_, true, true, false, "2.12");
+      manager->node_manager(), *delegate_, true, true, "2.12");
   tasm_ = std::make_unique<lynx::tasm::TemplateAssembler>(
       *delegate_, std::move(manager), delegate_.get(), 0);
 }

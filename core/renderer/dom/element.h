@@ -104,11 +104,6 @@ class InspectorAttribute {
   std::unique_ptr<Element> style_value_;
 };
 
-struct BindEventCatch {
-  int capture_catch{0};
-  int bubble_catch{0};
-};
-
 class Element : public lepus::RefCounted,
                 public fml::EnableWeakFromThis<Element>,
                 public event::EventTarget {
@@ -140,9 +135,6 @@ class Element : public lepus::RefCounted,
     data_model_->set_tag(tag_);
   }
   AttributeHolder* data_model() const { return data_model_.get(); };
-
-  virtual bool is_radon_element() const { return false; }
-  virtual bool is_fiber_element() const { return false; }
 
   bool is_fixed() { return is_fixed_; }
   // TODO(ZHOUZHITAO): Move parallel_flush_ flag from element to
@@ -703,14 +695,11 @@ class Element : public lepus::RefCounted,
 
   void HandleCSSVariables(StyleMap& styles);
 
-  void ResolvePlaceHolder();
-
   // Callback before style resolving. Return false to skip style resolving.
   virtual bool WillResolveStyle(StyleMap& merged_styles,
                                 CSSVariableMap* changed_css_vars) {
     return true;
   }
-  virtual void DidResolveStyle(StyleMap& merged_styles) {}
 
   // Style resolver will firstly call `CountInlineStyles` to get count
   // of inline styles to be merged. Then it will merge styles from CSS

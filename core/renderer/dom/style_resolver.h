@@ -26,7 +26,6 @@ class StyleObject;
 }  // namespace style
 namespace tasm {
 class FiberElement;
-class RadonElement;
 class ElementManager;
 
 class StyleResolver {
@@ -44,8 +43,6 @@ class StyleResolver {
   void HandleCSSVariables(StyleMap& styles);
 
   void HandlePseudoElement(CSSFragment* fragment);
-
-  void ResolvePlaceHolder();
   /**
    * @brief Resolves differences between an old and new list of style objects,
    *        applying changes to a target node.
@@ -75,8 +72,6 @@ class StyleResolver {
   void GetCSSStyleNew(AttributeHolder* node, CSSFragment* style_sheet);
 
   void GetCSSStyleForFiber(FiberElement* node, CSSFragment* style_sheet);
-
-  void GetCSSStyleCompatible(Element* element, CSSFragment* style_sheet);
 
   void DidCollectMatchedRules(AttributeHolder* holder, StyleMap& result,
                               CSSVariableMap* changed_css_vars,
@@ -124,8 +119,6 @@ class StyleResolver {
 
   const tasm::CSSParserConfigs& GetCSSParserConfigs();
 
-  void UpdateContentNode(const StyleMap& attrs, RadonElement* element);
-
   void ParsePlaceHolderTokens(PseudoPlaceHolderStyles& result,
                               const StyleMap& map);
 
@@ -136,10 +129,6 @@ class StyleResolver {
 
   InlineTokenVector ParsePseudoCSSTokens(AttributeHolder* node,
                                          const char* selector);
-
-  void GenerateContentData(const lepus::Value& value,
-                           const AttributeHolder* vnode,
-                           RadonElement* shadow_node);
 
   void ResolvePseudoElement(PseudoState state, CSSFragment* fragment,
                             FiberElement* fiber_element,

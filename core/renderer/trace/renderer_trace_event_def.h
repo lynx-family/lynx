@@ -296,11 +296,6 @@ inline constexpr const char* const STYLE_SHEET_MANAGER_GET_STYLE_SHEET =
     "CSSStyleSheetManager::GetCSSStyleSheet";
 inline constexpr const char* const CSS_HANDLER_GET_VARIABLE_BY_RULE =
     "CSSVariableHandler::GetCSSVariableByRule";
-inline constexpr const char* const DYNAMIC_STYLE_MANAGER_ADOPT_SHEET =
-    "DynamicCSSStylesManager::AdoptStyle";
-inline constexpr const char* const
-    DYNAMIC_STYLE_MANAGER_UPDATE_RESOLVING_STATUS =
-        "DynamicCSSStylesManager::UpdateWithResolvingStatus";
 inline constexpr const char* const SHARED_FRAGMENT_INIT_PSEUDO_NOT_STYLE =
     "SharedCSSFragment::InitPseudoNotStyle";
 inline constexpr const char* const UNIT_HANDLER_PROCESS =
@@ -351,8 +346,6 @@ inline constexpr const char* const ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST =
     "ElementManager::UpdateZIndexList";
 inline constexpr const char* const ELEMENT_VSYNC_PROXY_FRAME_TIME =
     "ElementVsyncProxy::VsyncFrameTime";
-inline constexpr const char* const RESOLVE_ATTRIBUTES_AND_STYLE =
-    "ResolveAttributesAndStyle";
 inline constexpr const char* const ELEMENT_UPDATE_LAYOUT =
     "Element::UpdateLayout";
 inline constexpr const char* const ELEMENT_SET_STYLE_INTERNAL =
@@ -768,19 +761,6 @@ inline constexpr const char* const RADON_LIST_BASE_UPDATE_COMPONENT =
     "RadonListBase::UpdateComponent";
 inline constexpr const char* const RADON_LIST_BASE_DIFF_COMPONENTS =
     "RadonListBase::DiffListComponents";
-
-inline constexpr const char* const RADON_ELEMENT_SET_NATIVE_PROPS =
-    "RadonElement::SetNativeProps";
-inline constexpr const char* const RADON_ELEMENT_UPDATE_DYNAMIC_STYLE =
-    "Element.PreparePropsBundleForDynamicCSS";
-inline constexpr const char* const RADON_ELEMENT_FLUSH_PROPS =
-    "RadonElement::FlushProps";
-inline constexpr const char* const RADON_ELEMENT_ON_PSEUDO_STATUS_CHANGED =
-    "RadonElement::OnPseudoStatusChanged";
-inline constexpr const char* const RADON_ELEMENT_CONSUME_STYLE =
-    "RadonElement::ConsumeStyle";
-inline constexpr const char* const RADON_ELEMENT_FLUSH_ANIMATED_STYLE =
-    "RadonElement::FlushAnimatedStyleInternal";
 
 inline constexpr const char* const LAZY_COMPONENT_DERIVE_FROM_MOULD =
     "LazyComponent::DeriveFromMould";

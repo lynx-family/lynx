@@ -111,7 +111,7 @@ bool RadonDiffListNode::ShouldFlush(
         *old->components_[from], *components_[to]);
   }
   // For Radon-Fiber Arch, should force flush props.
-  if (list_updated && element()->is_fiber_element()) {
+  if (list_updated) {
     // forcibly trigger a UI update, even if there is no valid content within
     // the prop_bundle.
     fiber_element()->MarkPropsDirty();

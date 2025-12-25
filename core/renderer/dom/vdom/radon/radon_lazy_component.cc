@@ -157,7 +157,7 @@ bool RadonLazyComponent::SetContext(TemplateAssembler* tasm) {
   UpdateDynamicCompTopLevelVariables(cm, tasm->GetGlobalProps());
   style_sheet_.reset();
   style_sheet_manager_ = entry->GetStyleSheetManager();
-  if (element() && element()->is_fiber_element()) {
+  if (element()) {
     component_element()->SetComponentCSSID(cm->css_id());
     component_element()->set_style_sheet_manager(style_sheet_manager_);
   }

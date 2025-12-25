@@ -210,9 +210,6 @@ class RadonComponent : public RadonNode, public BaseComponent {
 
   void AddRadonSlot(const base::String& name, RadonSlot* slot);
 
-  // for remove component element
-  bool NeedsElement() const override;
-
   // RadonPage & RadonLazyComponent will override this function
   virtual bool NeedsExtraData() const;
 

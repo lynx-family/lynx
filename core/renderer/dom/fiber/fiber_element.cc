@@ -2759,12 +2759,12 @@ void FiberElement::FlushProps() {
     is_virtual_ = IsShadowNodeVirtual();
     bool platform_is_flatten = true;
     base::MoveOnlyClosure<bool, bool> func =
-        [radon_element = this, has_z_props = has_z_props(),
+        [element = this, has_z_props = has_z_props(),
          is_fixed = is_fixed_](bool judge_by_props) {
           if (judge_by_props) {
             return !(has_z_props || is_fixed);
           } else {
-            return radon_element->TendToFlatten();
+            return element->TendToFlatten();
           }
         };
     if (!is_virtual_) {

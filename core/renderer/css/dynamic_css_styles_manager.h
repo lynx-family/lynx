@@ -34,7 +34,6 @@ struct PseudoPlaceHolderStyles {
 };
 
 class Element;
-class RadonElement;
 class LayoutNode;
 
 struct PropertiesResolvingStatus {
@@ -72,9 +71,7 @@ class DynamicCSSStylesManager {
   };
 
  public:
-  DynamicCSSStylesManager(RadonElement* element,
-                          const DynamicCSSConfigs& configs,
-                          float default_font_size);
+  DynamicCSSStylesManager(){};
 
   enum StyleUpdateFlag : uint32_t {
     kUpdateEm = 1 << kEmType,
@@ -95,156 +92,15 @@ class DynamicCSSStylesManager {
 
   static const std::unordered_set<CSSPropertyID>& GetInheritableProps();
 
-  static bool CheckIsDirectionAwareStyle(CSSPropertyID css_id);
-
   static CSSPropertyID ResolveDirectionAwarePropertyID(
       CSSPropertyID id, starlight::DirectionType direction);
 
-  static std::pair<CSSPropertyID, IsLogic> ResolveLogicPropertyID(
-      CSSPropertyID id);
-  static CSSPropertyID ResolveDirectionRelatedPropertyID(
-      CSSPropertyID id, starlight::DirectionType direction,
-      IsLogic is_logic_style);
-  static void UpdateDirectionAwareDefaultStyles(
-      Element* element, starlight::DirectionType direction);
   static void UpdateDirectionAwareDefaultStyles(
       Element* element, starlight::DirectionType direction,
       const CSSValue& text_align_value);
 
-  static bool IsPropertySimpleInheritable(CSSPropertyID id,
-                                          const CSSValue& value);
-
-  static bool IsPropertyComplexInheritable(CSSPropertyID id,
-                                           const CSSValue& value);
-
   static StyleUpdateFlags GetValueFlags(CSSPropertyID id, const CSSValue& value,
                                         bool unify_vw_vh_behavior);
-
-  void SetInitialResolvingStatus(const PropertiesResolvingStatus& status) {
-    resolving_data_ = status;
-  }
-  void AdoptStyle(CSSPropertyID id, const tasm::CSSValue& value);
-
-  void SetPlaceHolderStyle(const PseudoPlaceHolderStyles& styles);
-
-  void UpdateFontSizeStyle(const tasm::CSSValue* value);
-  void UpdateDirectionStyle(const tasm::CSSValue& value);
-
-  bool UpdateWithParentStatus(const RadonElement* parent);
-  void UpdateWithParentStatusForOnceInheritance(const RadonElement* parent) {
-    if (!DynamicCSSConfigs::GetDefaultDynamicCSSConfigs()
-             .OnceInheritanceDisabled()) {
-      UpdateWithParentStatus(parent);
-    }
-  }
-
-  void MarkNewlyInserted();
-
-  void ClearChildrenStatus() { status_for_child_.Clear(); }
-
- private:
-  void MarkDirtyRecursively();
-  void ClearDirtyFlags() {
-    font_size_need_update_ = false;
-    direction_need_update_ = false;
-    force_reapply_inheritance_ = false;
-    dirty_ = false;
-  }
-
-  using FlagsMap = std::map<CSSPropertyID, StyleUpdateFlags>;
-  using ValueStorage = std::map<CSSPropertyID, CSSValue>;
-  struct InheritablePropsState {
-    CSSValue value_;
-    bool dirty_;
-  };
-  using InheritMap = std::map<CSSPropertyID, InheritablePropsState>;
-  class InheritedProps {
-   public:
-    InheritedProps() { inherited_props_ = std::make_shared<InheritMap>(); }
-    InheritedProps(const InheritedProps& other) = default;
-    InheritedProps(InheritedProps&& other) = default;
-    InheritedProps& operator=(InheritedProps&&) = default;
-    InheritedProps& operator=(const InheritedProps&) = default;
-
-    InheritedProps(std::shared_ptr<InheritMap>&& to_be_inherited)
-        : inherited_props_(std::move(to_be_inherited)) {}
-    void Inherit(const InheritedProps& to_be_inherited) {
-      inherited_props_ = to_be_inherited.inherited_props_;
-    }
-
-    const InheritMap& Get() const { return *inherited_props_; }
-
-   private:
-    //        std::map<CSSPropertyID, InheritablePropsState> data_;
-    std::shared_ptr<InheritMap> inherited_props_ = nullptr;
-  };
-
-  struct StatusForChild {
-    StatusForChild() = default;
-    StatusForChild(const PropertiesResolvingStatus& parent_status)
-        : resolving_data(parent_status) {}
-    StatusForChild& operator=(const StatusForChild&) = default;
-    void Clear() {
-      inherit_result.first = false;
-      force_apply_inheritance = false;
-    }
-    PropertiesResolvingStatus resolving_data;
-    std::pair<bool, DynamicCSSStylesManager::InheritedProps> inherit_result = {
-        false, DynamicCSSStylesManager::InheritedProps()};
-    bool force_apply_inheritance = false;
-  };
-
-  bool IsInheritable(CSSPropertyID id) const;
-
-  bool UpdateWithResolvingStatus(const StatusForChild& status,
-                                 const Element* parent_element);
-  std::pair<bool, InheritedProps> ApplyInheritance(const InheritedProps& props,
-                                                   bool was_dirty,
-                                                   StyleUpdateFlags env_changes,
-                                                   bool force_apply_inheritance,
-                                                   const Element* parent);
-
-  void ApplyDirection(const PropertiesResolvingStatus& status,
-                      StyleUpdateFlags& current_updates,
-                      PropertiesResolvingStatus& next_resolving_data);
-
-  void ApplyFontSizeUpdateResolvingData(
-      const PropertiesResolvingStatus& status,
-      StyleUpdateFlags& current_updates,
-      PropertiesResolvingStatus& next_resolving_data, const Element* parent);
-
-  void UpdatePlaceHolderStyle(StyleUpdateFlags current_updates);
-
-  void ForEachFlagDo(
-      StyleUpdateFlags flags,
-      const base::MoveOnlyClosure<void, std::map<CSSPropertyID, CSSValue>&>&
-          func);
-  void ResetAllDirectionAwareProperty();
-
-  void SetStyleToElement(CSSPropertyID id, const CSSValue& css_value);
-
-  void ResetStyleToElement(CSSPropertyID id);
-
-  // Assuming each of the field will contains only a few styles
-  FlagsMap flag_maps_;
-  std::map<CSSPropertyID, std::pair<CSSValue, StyleUpdateFlags>> must_updates_;
-  std::array<ValueStorage, kDynamicTypeCount> value_storage_;
-  std::map<CSSPropertyID, InheritablePropsState> inheritable_props_;
-  PropertiesResolvingStatus resolving_data_;
-  RadonElement* element_;
-  CSSValue font_size_;
-  StyleUpdateFlags font_size_flags_ = kNoUpdate;
-  bool font_size_need_update_ = false;
-  bool dirty_ = true;
-  const DynamicCSSConfigs& configs_;
-
-  // direction aware style
-  bool direction_need_update_ = false;
-  CSSValue direction_;
-  PseudoPlaceHolderStyles placeholder_styles_;
-  bool force_reapply_inheritance_ = true;
-
-  StatusForChild status_for_child_;
 };
 
 }  // namespace tasm
