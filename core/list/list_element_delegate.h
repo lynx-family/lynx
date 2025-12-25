@@ -58,6 +58,10 @@ class ElementDelegate {
   virtual void UpdateScrollInfo(float estimated_offset, bool smooth,
                                 bool scrolling) = 0;
 
+  virtual void ComponentAtIndexes(
+      std::unique_ptr<pub::Value> index_array,
+      std::unique_ptr<pub::Value> operation_id_array,
+      bool enable_reuse_notification = false) {}
   virtual int GetThreadStrategy() const {
     return base::ThreadStrategyForRendering::ALL_ON_UI;
   }

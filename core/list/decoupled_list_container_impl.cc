@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "core/list/decoupled_batch_list_adapter.h"
 #include "core/list/decoupled_default_list_adapter.h"
 #include "core/list/decoupled_grid_layout_manager.h"
 #include "core/list/decoupled_linear_layout_manager.h"
@@ -467,13 +468,13 @@ void ListContainerImpl::PropsUpdateFinish() {
   list_event_manager_->SendDiffDebugEventIfNeeded();
 
   // Handle experimental-batch-render-strategy attr.
+
   // Note: need to move from DefaultListAdapter to BatchListAdapter before
   // invoke UpdateItemHolderToLatest().
   if (enable_batch_render() && !batch_adapter_initialized_) {
     // Move construct from DefaultListAdapter to BatchListAdapter.
-    // TODO(dingwang.wxx): impl BatchListAdapter
-    // list_adapter_ =
-    // std::make_unique<BatchListAdapter>(std::move(*list_adapter_));
+    list_adapter_ =
+        std::make_unique<BatchListAdapter>(std::move(*list_adapter_));
     // Note: set new list adapter to AnchorManager.
     list_layout_manager_->CreateOrUpdateListAnchorManager();
     batch_adapter_initialized_ = true;

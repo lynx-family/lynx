@@ -114,7 +114,45 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
 }
 
 void StaggeredGridLayoutManager::OnBatchLayoutChildren() {
-  // TODO(dingwang.wxx): impl
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, GRID_LAYOUT_MANAGER_BATCH_CHILDREN,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
+  OnPrepareForLayoutChildren();
+
+  // Note: To avoid nested invoking OnBatchLayoutChildren,
+  // StartInterceptListElementUpdated() and StopInterceptListElementUpdated()
+  // need to be invoked at the begin or end of OnBatchLayoutChildren().
+  list_container_->StartInterceptListElementUpdated();
+
+  LayoutState layout_state(span_count_);
+  layout_state.latest_updated_content_offset_ = content_offset_;
+
+  // step 1. Update anchor info and layout all item_holders
+  ListAnchorManager::AnchorInfo anchor_info;
+  InitLayoutAndAnchor(anchor_info, kInvalidIndex);
+  list_container_->list_event_manager()->SendAnchorDebugInfoIfNeeded(
+      anchor_info);
+
+  // step 2. Invoke batch render.
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, GRID_LAYOUT_MANAGER_BATCH_RENDER);
+  LayoutInvalidItemHolder(0);
+  list_children_helper_->UpdateOnScreenChildren(list_orientation_helper_.get(),
+                                                content_offset_);
+  list_container_->list_adapter()->BindItemHolders(
+      list_children_helper_->on_screen_children());
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
+
+  // step 3. Invoke OnLayoutChildren after batch render.
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
+                    GRID_LAYOUT_MANAGER_LAYOUT_CHILDREN_INTERNAL);
+  OnLayoutChildrenInternal(anchor_info, layout_state);
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
+
+  // step 4. Handle layout result: recycle and update layout to platform.
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, GRID_LAYOUT_MANAGER_LAYOUT_AFTER);
+  OnLayoutAfter();
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
 }
 
 void StaggeredGridLayoutManager::OnLayoutChildren(
