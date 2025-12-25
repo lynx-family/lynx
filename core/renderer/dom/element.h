@@ -260,15 +260,11 @@ class Element : public lepus::RefCounted,
   bool IsNewFixed() const;
   bool GetEnableFixedNew() const;
   inline bool is_virtual() { return is_virtual_; }
-  virtual bool is_fixed_new() { return false; }
   LYNX_EXPORT_FOR_DEVTOOL virtual bool GetPageElementEnabled() { return false; }
   LYNX_EXPORT_FOR_DEVTOOL virtual bool GetRemoveCSSScopeEnabled() {
     return false;
   }
 
-  void SetArchType(ElementArchTypeEnum arch_type) { arch_type_ = arch_type; }
-
-  bool GetArchType() { return arch_type_; }
   bool IsRadonArch() const { return arch_type_ == RadonArch; }
   bool IsFiberArch() const { return arch_type_ == FiberArch; }
 
@@ -330,7 +326,6 @@ class Element : public lepus::RefCounted,
                                      PseudoState current_status) {}
 
   ContentData* content_data() const { return content_data_.get(); }
-  void SetContentData(ContentData* data) { content_data_.reset(data); }
 
   virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update) = 0;
 
@@ -498,7 +493,6 @@ class Element : public lepus::RefCounted,
   void CheckHasNonFlattenCSSProps(CSSPropertyID id);
   void CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value);
 
-  void CheckBoxShadowOrOutline(CSSPropertyID id);
   bool DisableFlattenWithOpacity();
 
   inline starlight::ComputedCSSStyle* computed_css_style() {
@@ -672,7 +666,6 @@ class Element : public lepus::RefCounted,
 
   // When list component finishes all props update
   virtual void PropsUpdateFinish() {}
-  bool HasPropsToBeFlush() const { return prop_bundle_ != nullptr; }
 
   void PushToBundle(CSSPropertyID id);
 

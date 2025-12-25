@@ -1210,11 +1210,6 @@ class ElementManager : public ElementContextDelegate,
   std::shared_ptr<InspectorElementObserver> inspector_element_observer_;
 
  private:
-  // Do not call this function directly; it needs to be called from
-  // OnPatchFinish.
-  void OnPatchFinishForRadon(
-      std::shared_ptr<PipelineOptions> &option,
-      base::MoveOnlyClosure<void, bool> patch_finish_callback);
   /**
    * a special onPatchFinish function for fiber
    * @param option options for onPatchFinish

@@ -367,7 +367,6 @@ class RadonComponent : public RadonNode, public BaseComponent {
   bool compile_render_{false};
   bool data_dirty_{true};
   bool properties_dirty_{true};
-  bool update_function_called_{false};
 
   bool need_reset_data_{false};
 
@@ -448,7 +447,6 @@ class RadonComponent : public RadonNode, public BaseComponent {
   bool GetNeedElementByEntry();
 
   virtual void RenderRadonComponent(RenderOption&);
-  void DisableCallOnElementRemovedInDestructor();
 
   /*
    * RadonReusableDiffChildren is only used in radon diff list new arch.

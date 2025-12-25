@@ -3664,19 +3664,6 @@ void FiberElement::RemoveFixedElement(FiberElement *child) {
   child->fixed_changed_ = false;
 }
 
-// FIXME(baiqiang): CALC info should be parsed before, and uniftied with
-// DynamicCSSStylesManager::GetValueFlags
-bool CheckCALCValueHasViewPortUnit(const CSSValue &value) {
-  const auto &str = value.AsStdString();
-  if (str.find("vw") != std::string::npos ||
-      str.find("vh") != std::string::npos ||
-      str.find("view_width") != std::string::npos ||
-      str.find("view_height") != std::string::npos) {
-    return true;
-  }
-  return false;
-}
-
 void FiberElement::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
                                     bool reset) {
   if (reset && parsed_styles_map_.empty()) {

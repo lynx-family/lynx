@@ -106,7 +106,6 @@ class RadonSlotsHelper {
   void RemoveAllSlots();
 
  private:
-  bool CheckPlugElementValid(RadonSlot* slot);
   RadonComponent* radon_component_;
 };
 
