@@ -148,7 +148,7 @@ public class LynxTemplateRender
   private ILynxViewRuntimeCacheManager mCacheManager;
   private ILynxLogicExecutor mLogicExecutor;
 
-  private LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
+  protected LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
   protected LynxModuleFactory mModuleFactory;
   private LynxIntersectionObserverManager mIntersectionObserverManager;
   private boolean mHasEnvPrepared;
@@ -168,8 +168,6 @@ public class LynxTemplateRender
   private long mInitEnd;
   private volatile boolean mIsMemoryCollecting = false;
 
-  protected boolean mEnableBytecode = false;
-  protected String mBytecodeSourceUrl;
   private boolean mEnablePendingJsTask = false;
   private boolean mEnableGenericResourceFetcher = false;
 
@@ -351,7 +349,8 @@ public class LynxTemplateRender
     if (mBodyView != null) {
       mBodyView.setTimingCollector(mPerformanceController);
     }
-    mLynxRuntimeOptions = mLynxViewConfigProvider.getLynxRuntimeOptions();
+    mLynxRuntimeOptions =
+        new LynxBackgroundRuntimeOptions(mLynxViewConfigProvider.getLynxRuntimeOptions());
 
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
         || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
@@ -368,11 +367,6 @@ public class LynxTemplateRender
         && isThreadStrategySupportVsyncAlignedFlush();
     mFontScale = mLynxViewConfigProvider.getFontScale();
     mOriginLynxViewConfig = builder.lynxViewConfig;
-    // To support modify `bytecode` settings for LynxView reuse,
-    // these properties may differ from themself in LynxBackgroundRuntimeOptions,
-    // thus store them as properties of LynxTemplateRender
-    mEnableBytecode = mLynxRuntimeOptions.isEnableUserBytecode();
-    mBytecodeSourceUrl = mLynxRuntimeOptions.getBytecodeSourceUrl();
     mEnablePendingJsTask = mLynxViewConfigProvider.isEnablePendingJsTask();
 
     // Caller may to set up virtual screen metrics, so we have to get screen_metrics with
@@ -1005,8 +999,7 @@ public class LynxTemplateRender
           mRuntime = null;
 
         } else {
-          initPiper(mModuleFactory, mResourceLoader, mLynxRuntimeOptions.useQuickJSEngine(), false,
-              mEnableBytecode, mBytecodeSourceUrl, mEnablePendingJsTask, lynxUIRenderer);
+          initPiper();
         }
         // extension dependent on piper, should init after piper init.
         setUpExtensionModules();
@@ -3394,11 +3387,12 @@ public class LynxTemplateRender
   }
 
   public void setEnableBytecode(boolean enableUserBytecode, String url) {
-    if (mEnableBytecode == enableUserBytecode && Objects.equals(mBytecodeSourceUrl, url)) {
+    if (mLynxRuntimeOptions.isEnableUserBytecode() == enableUserBytecode
+        && Objects.equals(mLynxRuntimeOptions.getBytecodeSourceUrl(), url)) {
       return;
     }
-    mEnableBytecode = enableUserBytecode;
-    mBytecodeSourceUrl = url;
+    mLynxRuntimeOptions.setEnableUserBytecode(enableUserBytecode);
+    mLynxRuntimeOptions.setBytecodeSourceUrl(url);
     if (mNativePtr != 0) {
       nativeSetEnableBytecode(mNativePtr, mNativeLifecycle, enableUserBytecode, url);
     }
@@ -3739,29 +3733,25 @@ public class LynxTemplateRender
     return mEngineProxy;
   }
 
-  private void initPiper(LynxModuleFactory moduleFactory, LynxResourceLoader resourceLoader,
-      boolean useQuickJSEngine, boolean forceReloadJSCore, boolean enableUserBytecode,
-      String bytecodeSourceUrl, boolean enablePendingJsTask, ILynxUIRenderer lynxUIRenderer) {
+  private void initPiper() {
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_INIT_PIPER);
-    initPiperInternal(moduleFactory, resourceLoader, useQuickJSEngine, forceReloadJSCore,
-        enableUserBytecode, bytecodeSourceUrl, enablePendingJsTask, lynxUIRenderer);
+    initPiperInternal();
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_INIT_PIPER);
   }
 
-  private void initPiperInternal(LynxModuleFactory moduleFactory, LynxResourceLoader resourceLoader,
-      boolean useQuickJSEngine, boolean forceReloadJSCore, boolean enableUserBytecode,
-      String bytecodeSourceUrl, boolean enablePendingJsTask, ILynxUIRenderer lynxUIRenderer) {
-    mNativeFacade.setModuleFactory(moduleFactory);
+  private void initPiperInternal() {
+    mNativeFacade.setModuleFactory(mModuleFactory);
+    boolean useQuickJSEngine = mLynxRuntimeOptions.useQuickJSEngine();
     if (useQuickJSEngine) {
       LLog.i(TAG, "force use quick js engine");
     } else {
       LLog.i(TAG, "useQuickJSEngine is false");
     }
 
-    final int runtimeFlags = LynxBackgroundRuntimeOptions.calcRuntimeFlags(
-        forceReloadJSCore, useQuickJSEngine, enablePendingJsTask, enableUserBytecode, null, null);
-    nativeInitRuntime(mNativePtr, resourceLoader, moduleFactory, getGroupID(), getPreloadJSPath(),
-        bytecodeSourceUrl, runtimeFlags, lynxUIRenderer.getUIDelegatePtr());
+    nativeInitRuntime(mNativePtr, mResourceLoader, mModuleFactory, getGroupID(), getPreloadJSPath(),
+        mLynxRuntimeOptions.getBytecodeSourceUrl(),
+        mLynxRuntimeOptions.calcRuntimeFlags(false, mEnablePendingJsTask),
+        lynxUIRenderer().getUIDelegatePtr());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
     WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();
     if (mNativeFacade.getEnableJSRuntime()) {

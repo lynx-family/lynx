@@ -143,9 +143,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     // same life-span as LynxBackgroundRuntime Java Object. `Destroy` will not modify
     // this wrapper, its release will be handled by mCleanupReference on UI Thread when
     // LynxBackgroundRuntime has no reference on it.
-    final int runtimeFlags =
-        LynxBackgroundRuntimeOptions.calcRuntimeFlags(false, options.useQuickJSEngine(), false,
-            options.isEnableUserBytecode(), enableJSGroupThread, options.isPendingCoreJsLoad());
+    final int runtimeFlags = options.calcRuntimeFlags(false, false);
     long globalPropsPtr = 0;
     TemplateData globalProps = options.getGlobalProps();
     if (globalProps != null) {

@@ -49,6 +49,22 @@ public class LynxBackgroundRuntimeOptions {
     mWrappers = new ArrayList<>();
   }
 
+  public LynxBackgroundRuntimeOptions(@NonNull LynxBackgroundRuntimeOptions other) {
+    this.mEnableUserBytecode = other.mEnableUserBytecode;
+    this.mBytecodeSourceUrl = other.mBytecodeSourceUrl;
+    this.mLynxGroup = other.mLynxGroup;
+    this.mWrappers = new ArrayList<>(other.mWrappers);
+    this.mResourceProviders = new HashMap<>(other.mResourceProviders);
+    this.mPresetData = other.mPresetData;
+    this.mGlobalProps = other.mGlobalProps;
+    this.genericResourceFetcher = other.genericResourceFetcher;
+    this.mediaResourceFetcher = other.mediaResourceFetcher;
+    this.templateResourceFetcher = other.templateResourceFetcher;
+    this.enableGenericResourceFetcher = other.enableGenericResourceFetcher;
+    this.mPendingCoreJsLoad = other.mPendingCoreJsLoad;
+    this.mAuthValidator = other.mAuthValidator;
+  }
+
   public void registerModule(String name, Class<? extends LynxModule> module, Object param) {
     ParamWrapper wrapper = new ParamWrapper();
     wrapper.setModuleClass(module);
@@ -220,28 +236,23 @@ public class LynxBackgroundRuntimeOptions {
   /**
    * calc runtime flags for native side.
    * @param forceReloadJSCore
-   * @param useQuickJSEngine
    * @param enablePendingJsTask
-   * @param enableUserBytecode
-   * @param enableJSGroupThread
-   * @param enablePendingCoreJsLoad
    * @return flags
    */
   @RestrictTo(RestrictTo.Scope.LIBRARY)
-  public static int calcRuntimeFlags(boolean forceReloadJSCore, boolean useQuickJSEngine,
-      boolean enablePendingJsTask, boolean enableUserBytecode,
-      @Nullable Boolean enableJSGroupThread, @Nullable Boolean enablePendingCoreJsLoad) {
+  public int calcRuntimeFlags(boolean forceReloadJSCore, boolean enablePendingJsTask) {
     int flags = RUNTIME_FLAG_INIT;
     flags = setRuntimeFlag(flags, forceReloadJSCore, RUNTIME_FLAG_FORCE_RELOAD_CORE_JS);
-    flags = setRuntimeFlag(flags, useQuickJSEngine, RUNTIME_FLAG_FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
+    flags =
+        setRuntimeFlag(flags, useQuickJSEngine(), RUNTIME_FLAG_FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
     flags = setRuntimeFlag(flags, enablePendingJsTask, RUNTIME_FLAG_PENDING_JS_TASK);
-    flags = setRuntimeFlag(flags, enableUserBytecode, RUNTIME_FLAG_ENABLE_USER_BYTECODE);
-    if (enableJSGroupThread != null) {
-      flags = setRuntimeFlag(flags, enableJSGroupThread, RUNTIME_FLAG_ENABLE_JS_GROUP_THREAD);
+    flags = setRuntimeFlag(flags, isEnableUserBytecode(), RUNTIME_FLAG_ENABLE_USER_BYTECODE);
+    LynxGroup group = getLynxGroup();
+    if (group != null) {
+      flags =
+          setRuntimeFlag(flags, group.enableJSGroupThread(), RUNTIME_FLAG_ENABLE_JS_GROUP_THREAD);
     }
-    if (enablePendingCoreJsLoad != null) {
-      flags = setRuntimeFlag(flags, enablePendingCoreJsLoad, RUNTIME_FLAG_PENDING_CORE_JS_LOAD);
-    }
+    flags = setRuntimeFlag(flags, isPendingCoreJsLoad(), RUNTIME_FLAG_PENDING_CORE_JS_LOAD);
     return flags;
   }
 

@@ -3755,6 +3755,7 @@ public class abstract com::lynx::tasm::LynxBackgroundRuntimeClient :  {
 
 public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {
   public com.lynx.tasm.LynxBackgroundRuntimeOptions.LynxBackgroundRuntimeOptions();
+  public com.lynx.tasm.LynxBackgroundRuntimeOptions.LynxBackgroundRuntimeOptions(@NonNull LynxBackgroundRuntimeOptions other);
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.registerModule(String name, Class<? extends LynxModule > module, Object param);
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
   public LynxModule.AuthValidator com.lynx.tasm.LynxBackgroundRuntimeOptions.getModuleAuthValidator();
@@ -3781,7 +3782,7 @@ public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {
   public LynxTemplateResourceFetcher com.lynx.tasm.LynxBackgroundRuntimeOptions.getTemplateResourceFetcher();
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.setEnableGenericResourceFetcher(LynxBooleanOption enabled);
   public LynxBooleanOption com.lynx.tasm.LynxBackgroundRuntimeOptions.isEnableGenericResourceFetcher();
-  public static int com.lynx.tasm.LynxBackgroundRuntimeOptions.calcRuntimeFlags(boolean forceReloadJSCore, boolean useQuickJSEngine, boolean enablePendingJsTask, boolean enableUserBytecode, @Nullable Boolean enableJSGroupThread, @Nullable Boolean enablePendingCoreJsLoad);
+  public int com.lynx.tasm.LynxBackgroundRuntimeOptions.calcRuntimeFlags(boolean forceReloadJSCore, boolean enablePendingJsTask);
 }
 
 public class com::lynx::tasm::group::LynxBaseConfigurator< T extends LynxBaseConfigurator :  {
