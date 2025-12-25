@@ -31,7 +31,7 @@ export interface FrameProps extends StandardProps {
   bindload?: (e: FrameLoadEvent) => void;
 
   /**
-   * Pass global props to the nested Lynx page within the frame.
+   * Passes `globalProps` to the Lynx page embedded in the frame. The embedded page can read it via `lynx.__globalProps`.
    * @iOS
    * @Android
    * @since 3.6
