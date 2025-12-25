@@ -47,6 +47,9 @@ class PlatformRendererFactory {
   // Create a new platform renderer with the given ID
   virtual fml::RefPtr<PlatformRenderer> CreateRenderer(
       int id, PlatformRendererType type) = 0;
+
+  virtual fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
+      int id, const base::String& tag_name) = 0;
 };
 
 }  // namespace lynx::tasm

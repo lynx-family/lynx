@@ -53,7 +53,7 @@ class PlatformRendererAndroidFactory : public PlatformRendererFactory {
       int id, PlatformRendererType type) override;
 
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
-      int id, const base::String& tag_name);
+      int id, const base::String& tag_name) override;
 
  private:
   PlatformRendererContext* context_;

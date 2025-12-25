@@ -11,6 +11,8 @@ ui_wrapper_painting_shared_sources = [
   "catalyzer.h",
   "native_painting_context.cc",
   "native_painting_context.h",
+  "native_painting_context_platform_ref.cc",
+  "native_painting_context_platform_ref.h",
   "painting_context.cc",
   "painting_context.h",
   "platform_renderer.h",
@@ -23,6 +25,8 @@ if (!enable_unittests) {
     ui_wrapper_painting_shared_sources += [
       "android/native_painting_context_android.cc",
       "android/native_painting_context_android.h",
+      "android/native_painting_context_platform_android_ref.cc",
+      "android/native_painting_context_platform_android_ref.h",
       "android/painting_context_android.cc",
       "android/painting_context_android.h",
 
@@ -49,6 +53,8 @@ if (!enable_unittests) {
       "ios/painting_context_darwin.mm",
       "ios/platform_renderer_darwin.h",
       "ios/platform_renderer_darwin.mm",
+      "ios/platform_renderer_darwin_factory.h",
+      "ios/platform_renderer_darwin_factory.mm",
       "ios/ui_delegate_darwin.h",
       "ios/ui_delegate_darwin.mm",
     ]

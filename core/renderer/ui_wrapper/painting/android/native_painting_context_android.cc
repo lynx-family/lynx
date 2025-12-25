@@ -4,8 +4,6 @@
 
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
-#include <algorithm>
-#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,9 +13,9 @@
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
+#include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
-#include "core/renderer/utils/diff_algorithm.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_register_jni.h"
 
@@ -41,125 +39,11 @@ bool RegisterJNIForNativePaintingContext(JNIEnv *env) {
 
 namespace tasm {
 
-class NativePaintingCtxAndroidRef : public PaintingCtxPlatformRef {
- public:
-  explicit NativePaintingCtxAndroidRef(PlatformRendererContext *view_manager)
-      : view_factory_(view_manager) {}
-
-  ~NativePaintingCtxAndroidRef() override = default;
-
-  void CreatePlatformRenderer(int id, PlatformRendererType type) {
-    renderers_.insert_or_assign(id, view_factory_.CreateRenderer(id, type));
-  }
-
-  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name) {
-    renderers_.insert_or_assign(
-        id, view_factory_.CreateExtendedRenderer(id, tag_name));
-  }
-
-  void UpdateDisplayList(int id, DisplayList &&display_list) {
-    auto it = renderers_.find(id);
-    if (it == renderers_.end()) {
-      return;
-    }
-
-    const auto &layer = it->second;
-    // Rebuild the sublayers according to the new SubLayers in the display list
-    // with MyersDiff. And generate actual addChild and removeChild actions for
-    // PlatformRenderer here.
-    RebuildSubLayers(layer, display_list.SubLayers());
-
-    layer->UpdateDisplayList(std::move(display_list));
-  }
-
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override {
-    if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
-      it_child->second->RemoveFromParent();
-    }
-  }
-
-  void DestroyPaintingNode(int parent, int child, int index) override {
-    if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
-      it_child->second->RemoveFromParent();
-      renderers_.erase(child);
-    }
-  }
-
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override {
-    PaintingCtxPlatformRef::UpdateNodeReadyPatching(ready_ids, remove_ids);
-  }
-
-  void UpdateFlattenStatus(int id, bool flatten) override {
-    PaintingCtxPlatformRef::UpdateFlattenStatus(id, flatten);
-  }
-
- private:
-  void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
-                        const base::InlineVector<int, 16> &new_children);
-
-  PlatformRendererAndroidFactory view_factory_;
-  base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformRenderer>, 64>
-      renderers_;
-};
-
-void NativePaintingCtxAndroidRef::RebuildSubLayers(
-    const fml::RefPtr<PlatformRenderer> &renderer,
-    const base::InlineVector<int, 16> &new_children) {
-  const auto &existing_children = renderer->Children();
-
-  if (existing_children.empty()) {
-    // If there are no existing children, simply add all new sublayers.
-    for (int child_id : new_children) {
-      auto child_it = renderers_.find(child_id);
-      if (child_it != renderers_.end()) {
-        renderer->AddChild(child_it->second);
-      }
-    }
-    return;
-  }
-
-  // Use MyersDiff to compare existing children with new display_list
-  // SubLayers Custom comparator: compare existing child's ID with new child
-  // ID
-  auto id_compare = [](const fml::RefPtr<PlatformRenderer> &existing_child,
-                       int new_child_id) {
-    return existing_child->GetId() == new_child_id;
-  };
-
-  // Perform diff
-  auto diff_result = myers_diff::MyersDiffWithoutUpdate(
-      existing_children.begin(), existing_children.end(), new_children.begin(),
-      new_children.end(), id_compare);
-
-  // Apply removals: process in reverse order to avoid index shifting
-  std::sort(diff_result.removals_.begin(), diff_result.removals_.end(),
-            std::greater<>());
-  for (int idx : diff_result.removals_) {
-    if (idx >= 0 && static_cast<size_t>(idx) < existing_children.size()) {
-      existing_children[idx]->RemoveFromParent();
-    }
-  }
-
-  // Apply insertions
-  for (int insert_pos : diff_result.insertions_) {
-    if (insert_pos < 0 ||
-        static_cast<size_t>(insert_pos) >= new_children.size()) {
-      continue;
-    }
-    int child_id = new_children[insert_pos];
-    auto child_it = renderers_.find(child_id);
-    if (child_it != renderers_.end()) {
-      renderer->AddChild(child_it->second);
-    }
-  }
-}
-
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
     JNIEnv *env, jobject text_layout, PlatformRendererContext *view_manager)
     : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)) {
-  platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(view_manager);
+  platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(
+      std::make_unique<PlatformRendererAndroidFactory>(view_manager_.get()));
   text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
 }
 

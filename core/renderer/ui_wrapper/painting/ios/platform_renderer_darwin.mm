@@ -22,9 +22,11 @@ PlatformRendererDarwin::PlatformRendererDarwin(int id, PlatformRendererType type
 void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
   // TODO: impl this function later.
 }
+
 void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child) {
   // TODO: impl this function later.
 }
+
 void PlatformRendererDarwin::OnRemoveFromParent() {
   // TODO: impl this function later.
 }
