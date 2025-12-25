@@ -82,6 +82,7 @@ export abstract class LynxNodeController extends NodeController {
   }
 
   dispose() {
+    this.renderer = undefined;
     this.builderNode?.dispose();
     this.builderNode = undefined;
   }
@@ -143,7 +144,7 @@ export struct LynxView {
   private perfController?: PerformanceController;
   private uiRenderer!: LynxUIRenderer;
   private templateRenderer!: LynxTemplateRenderer;
-  private context: LynxContext = new LynxContext(this);
+  private context: LynxContext = new LynxContext();
   private moduleManager: LynxModuleManager = new LynxModuleManager(this.context);
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
   private currentWindow?: window.Window;
@@ -279,8 +280,8 @@ export struct LynxView {
         return this.templateRenderer.getAllJsSource();
       });
     }
+    this.context.setLynxView(this);
     this.reInitTemplateRenderer();
-
     if (this.onCreate) {
       this.onCreate(this.context)
     }
@@ -310,9 +311,15 @@ export struct LynxView {
   aboutToDisappear() {
     LLog.d(TAG, 'aboutToDisappear.')
     this.perfController?.destroy();
+    this.perfController = undefined;
     this.uiRenderer.aboutToDisappear();
     this.templateRenderer.aboutToDisappear();
     this.nodeController?.dispose();
+    this.nodeController = undefined;
+    this.context.setLynxView(undefined);
+    this.context.setRenderer(undefined);
+    this.context.setUIOwner(undefined);
+    this.context.setShadowNodeOwner(undefined);
     try {
       this.currentWindow?.off('keyboardHeightChange', this.keyboardHeightChangeCallback);
     } catch (e) {

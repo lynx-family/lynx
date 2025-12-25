@@ -16,7 +16,6 @@ import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
-import { LynxBackgroundRuntime } from '../Index';
 
 const TAG = 'LynxTemplateRenderer';
 
@@ -30,7 +29,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private enableJSRuntime: boolean;
   private readonly threadMode: ThreadStrategyForRendering;
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
-  private lynxView: LynxView;
+  private lynxView?: LynxView;
   private lynxDevTool?: LynxDevTool;
   private moduleManager: LynxModuleManager;
   private sendableModuleManager: SendableLynxModuleManager;
@@ -69,29 +68,32 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
-      convertModuleArgs(this.sendableModuleManager), this.lynxView.backgroundRuntime);
-    // release backgroundRuntime
-    this.lynxView.backgroundRuntime = undefined;
+      convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime);
   }
 
   aboutToDisappear() {
     this.nativeDetach();
     this.destroyed = true;
     this.clients.forEach(client => client.onDestroy());
-    this.lynxDevTool?.destroy(this.lynxView);
+    if (this.lynxView) {
+      this.lynxDevTool?.destroy(this.lynxView);
+    }
+    this.lynxView = undefined;
   }
 
   // Called by native, EmbedderEngineClient
   onLoaded(url: string) {
     this.url = url;
     this.clients.forEach(client => client.onLoadSuccess(url));
-    this.lynxDevTool?.onLoaded(this.lynxView);
+    if (this.lynxView) {
+      this.lynxDevTool?.onLoaded(this.lynxView);
+    }
     this.lynxView?.logBox?.onLoaded(url);
   }
 
   onReloadTemplate() {
-    this.lynxView.prepareForLoadTemplate();
-    this.lynxView.loadTemplate();
+    this.lynxView?.prepareForLoadTemplate();
+    this.lynxView?.loadTemplate();
   }
 
   onRuntimeReady() {
@@ -120,7 +122,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     customInfo: Record<string, string>, logboxOnly: boolean) {
     let err = new LynxError(LynxErrorLevel[level], errorCode, message, suggestion, LynxError.NATIVE_ERROR, customInfo);
     err.setTemplateUrl(this.url);
-    this.lynxView.logBox?.reportError(err);
+    this.lynxView?.logBox?.reportError(err);
     if (logboxOnly) {
       return;
     }
