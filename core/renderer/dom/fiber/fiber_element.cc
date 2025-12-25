@@ -2778,6 +2778,13 @@ void FiberElement::FlushProps() {
 void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
     const lepus::Value &css_variable_updated) {
   for (const auto &child : scoped_children_) {
+    if (IsCSSInlineVariablesEnabled()) {
+      // Entering RecursivelyMarkChildrenCSSVariableDirty means current
+      // element's CSS variables changed.
+      // Mark children's custom_properties dirty so CollectCustomProperties can
+      // pick up the latest values.
+      child->MarkCustomPropertiesDirty();
+    }
     if (child->is_raw_text()) {
       continue;
     }
