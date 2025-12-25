@@ -35,7 +35,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
         inline_styles_(holder.inline_styles_),
         attributes_(holder.attributes_),
         id_selector_(holder.id_selector_),
-        is_ssr_attribute_holder_(holder.is_ssr_attribute_holder_),
         pseudo_state_(holder.pseudo_state_),
         pseudo_element_owner_(holder.pseudo_element_owner_),
         element_(holder.element_),
@@ -233,8 +232,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   const StyleMap& inline_styles() const { return inline_styles_; }
 
-  StyleMap& MutableInlineStyles() { return inline_styles_; }
-
   const AttrMap& attributes() const { return attributes_; }
 
   AttrMap& attributes() { return attributes_; }
@@ -398,10 +395,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   bool HasClass() const { return !classes_.empty(); }
 
-  bool IsSSRAttrHolder() { return is_ssr_attribute_holder_; }
-
-  void SetSSRAttrHolder(bool flag) { is_ssr_attribute_holder_ = flag; }
-
   RadonNode* radon_node_ptr() const { return radon_node_ptr_; }
   void set_radon_node_ptr(RadonNode* radon_node_ptr) {
     radon_node_ptr_ = radon_node_ptr;
@@ -478,7 +471,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   // Should be unique in component
   base::String id_selector_;
 
-  bool is_ssr_attribute_holder_{false};
   PseudoState pseudo_state_{kPseudoStateNone};
   AttributeHolder* pseudo_element_owner_{nullptr};
 

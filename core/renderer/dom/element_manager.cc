@@ -581,45 +581,6 @@ void ElementManager::OnFinishUpdateProps(
   }
 }
 
-void ElementManager::OnPatchFinishForRadon(
-    std::shared_ptr<PipelineOptions> &options,
-    base::MoveOnlyClosure<void, bool> patch_finish_callback) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, ELEMENT_MANAGER_ON_PATCH_FINISH);
-  catalyzer_->painting_context()->FinishTasmOperation(options);
-
-  if (options->is_reload_template) {
-    catalyzer_->painting_context()->UpdateNodeReloadPatching();
-  }
-
-  if (!need_layout_) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_NO_PATCH);
-    LOGI("ElementManager::OnPatchFinishNoPatch!");
-    catalyzer_->painting_context()->FinishLayoutOperation(options);
-    delegate_->OnUpdateDataWithoutChange();
-    patch_finish_callback(false);
-  } else {
-    LOGI("ElementManager::OnPatchFinish");
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_INNER,
-                [&options](lynx::perfetto::EventContext ctx) {
-                  options->UpdateTraceDebugInfo(ctx.event());
-                });
-    BindTimingFlagToPipelineOptions(options);
-    PatchEventRelatedInfo();
-    root()->UpdateDynamicElementStyle(DynamicCSSStylesManager::kAllStyleUpdate,
-                                      false);
-    {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_SORT_Z_INDEX);
-      // sort z-index children
-      for (const auto &context : dirty_stacking_contexts_) {
-        context->UpdateZIndexList();
-      }
-    }
-    dirty_stacking_contexts_.clear();
-    patch_finish_callback(true);
-  }
-  need_layout_ = false;
-}
-
 void ElementManager::PatchEventRelatedInfo() {
   if (push_touch_pseudo_flag_) {
     catalyzer_->painting_context()->UpdateEventInfo(true);

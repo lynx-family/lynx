@@ -83,10 +83,6 @@ class RadonNode : public RadonBase {
     has_dynamic_inline_style_ = true;
   }
 
-  void SetSSRAttrHolder(bool flag) {
-    attribute_holder_->SetSSRAttrHolder(flag);
-  }
-
   void UpdateIdSelector(const base::String& id_selector);
 
   PageProxy* page_proxy() const { return page_proxy_; }

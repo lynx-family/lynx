@@ -1027,8 +1027,6 @@ class FiberElement : public Element,
 
   inline void MarkPlatformNodeDestroyed();
 
-  void ConsumeTransitionStyles(const StyleMap& styles) {}
-
   bool CheckHasIdMapInCSSFragment();
 
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
