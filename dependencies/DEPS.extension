@@ -1,0 +1,20 @@
+import os
+import platform
+
+machine = platform.machine().lower()
+machine = "x86_64" if machine == "amd64" else machine
+system = platform.system().lower()
+
+deps = {
+    'third_party/cef_binary': {
+        "type": "http",
+        "url": {
+            "darwin-x86_64": "https://cef-builds.spotifycdn.com/cef_binary_142.0.17%2Bg60aac24%2Bchromium-142.0.7444.176_macosx64.tar.bz2",
+            "darwin-arm64": "https://cef-builds.spotifycdn.com/cef_binary_142.0.17%2Bg60aac24%2Bchromium-142.0.7444.176_macosarm64.tar.bz2",
+            "windows-x86_64": "https://cef-builds.spotifycdn.com/cef_binary_142.0.17%2Bg60aac24%2Bchromium-142.0.7444.176_windows64.tar.bz2",
+            "windows-x86": "https://cef-builds.spotifycdn.com/cef_binary_142.0.17%2Bg60aac24%2Bchromium-142.0.7444.176_windows32.tar.bz2"
+        }.get(f'{system}-{machine}', None),
+        "ignore_in_git": True,
+        "condition": system in ['darwin', 'windows']
+    }
+}
