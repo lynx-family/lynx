@@ -148,7 +148,11 @@ class RadonBase : public SelectorItem {
    */
   void ClearChildrenRecursivelyInPostOrder();
 
-  virtual void MarkChildStyleDirtyRecursively(bool mark_whole_tree){};
+  virtual void MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
+    for (auto& child : radon_children_) {
+      child->MarkChildStyleDirtyRecursively(mark_whole_tree);
+    }
+  };
 
   /* Recursively call Component removed lifecycle in post order.
    * But save the original radon tree structure.
