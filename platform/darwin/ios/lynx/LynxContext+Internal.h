@@ -26,6 +26,7 @@
 @property(nonatomic, weak) id<LUIBodyView> _Nullable containerView;
 @property(nonatomic, weak) LynxKeyboardEventDispatcher* _Nullable keyboardEventDispatcher;
 @property(nonatomic, weak) LynxPerformanceController* _Nullable perfController;
+@property(nonatomic, readonly) bool isFragmentLayerRenderOn;
 
 // Generated in the LynxShell, id of template instance.
 // instanceId is a value greater than or equal to 0, the initial value is -1.

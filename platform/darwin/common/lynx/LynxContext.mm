@@ -160,4 +160,8 @@ NSString *const kDefaultComponentID = @"-1";
   return (self.lynxEmbeddedMode & LynxEmbeddedModeBase) > 0;
 }
 
+- (bool)isFragmentLayerRenderOn {
+  return (self.lynxEmbeddedMode & LynxEmbeddedModeFragmentLayerRender) > 0;
+}
+
 @end

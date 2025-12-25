@@ -141,7 +141,8 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
 
 - (void)setupUIDelegate:(LynxShadowNodeOwner *)owner {
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateDarwin>(
-      _uiOwner, [[LynxEnv sharedInstance] enableCreateUIAsync], owner);
+      _uiOwner, _lynxContext.isFragmentLayerRenderOn,
+      [[LynxEnv sharedInstance] enableCreateUIAsync], owner);
 }
 
 - (void *)uiDelegate {

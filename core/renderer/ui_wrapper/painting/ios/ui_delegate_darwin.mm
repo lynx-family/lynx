@@ -5,12 +5,16 @@
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/layout/ios/layout_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 
 namespace lynx {
 namespace tasm {
 
 std::unique_ptr<PaintingCtxPlatformImpl> UIDelegateDarwin::CreatePaintingContext() {
+  if (use_native_painting_context_) {
+    return std::make_unique<NativePaintingCtxDarwin>();
+  }
   return std::make_unique<PaintingContextDarwin>(ui_owner_, enable_create_ui_async_);
 }
 

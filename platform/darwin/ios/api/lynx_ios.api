@@ -1109,6 +1109,7 @@ public class LynxContext : NSObject {
   public id<LUIBodyView> _Nullable LynxContext()::containerView containerView;
   public LynxKeyboardEventDispatcher* _Nullable LynxContext()::keyboardEventDispatcher keyboardEventDispatcher;
   public LynxPerformanceController* _Nullable LynxContext()::perfController perfController;
+  public bool LynxContext()::isFragmentLayerRenderOn isFragmentLayerRenderOn;
   public int32_t LynxContext()::instanceId instanceId;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
@@ -1331,6 +1332,12 @@ public class LynxDevToolUtils : NSObject {
   public BOOL LynxDevToolUtils::getDevtoolEnv:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
   public void LynxDevToolUtils::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
   public NSSet * LynxDevToolUtils::getDevtoolEnvWithGroupName:(NSString *groupKey);
+}
+
+public class LynxDisplayListApplier : NSObject {
+  public instancetype LynxDisplayListApplier::init();
+  public void LynxDisplayListApplier::applyDisplayList:toView:(lynx::tasm::DisplayList *list,[toView] UIView *view);
+  public void LynxDisplayListApplier::reset();
 }
 
 public protocol LynxDynamicComponentFetcher-p : <NSObject> {
