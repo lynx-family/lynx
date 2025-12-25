@@ -64,11 +64,12 @@ FOUNDATION_EXPORT NSString *const kLynxSDKErrorEvent;
 /// @param instanceId  id of template instance.
 + (void)removeGenericInfo:(int32_t)instanceId;
 
-/// get generic info of template instance by id.
+/// Get generic info and extra params of template instance by id.
 /// Can call on any thread.
-/// @param instanceId  id of template instance.
-+ (void)getGenericInfo:(int32_t)instanceId
-            completion:(void (^)(NSDictionary *genericInfo))completion;
+/// @param instanceId id of template instance.
++ (void)getGenericInfoAndExtraParams:(int32_t)instanceId
+                          completion:(void (^)(NSDictionary *_Nullable genericInfo,
+                                               NSDictionary *_Nullable extraParams))completion;
 
 /// Put extra parameters for reporting events, overriding old values if the parameters already
 /// exist.
