@@ -866,7 +866,7 @@ jobs:
 
   macos-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: macos-latest
     strategy:
       matrix:
         arch: [arm64, x64]
@@ -879,6 +879,9 @@ jobs:
         uses: ./lynx/.github/actions/macos-explorer-build
         with:
           build-arch: ${{ matrix.arch }}
+          macos_certificate: ${{ secrets.MACOS_CERTIFICATE }}
+          macos_certificate_password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          keychain_password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - name: upload artifact
         uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
         with:

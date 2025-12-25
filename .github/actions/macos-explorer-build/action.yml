@@ -6,7 +6,15 @@ inputs:
   build-arch:
     description: The architecture of explorer we are building. It could be x64,arm64
     required: true
-
+  macos_certificate:
+    description: The macos certificate for signing
+    required: true
+  macos_certificate_password:
+    description: The password of macos certificate for signing
+    required: true
+  keychain_password:
+    description: The password of keychain for signing
+    required: true
 runs:
   using: composite
   steps:
@@ -22,4 +30,70 @@ runs:
         pnpm install
         buildtools/gn/gn gen out/Default --args='target_cpu = "${{ inputs.build-arch }}" desktop_enable_embedder_layer = true enable_clay_standalone = true disable_visibility_hidden = true use_ndk_static_cxx = false enable_linker_map = false enable_clay = true is_headless = true skia_enable_flutter_defines = true skia_use_dng_sdk = false skia_use_sfntly = false skia_enable_pdf = false skia_enable_svg = true enable_svg = true skia_enable_skottie = true skia_use_x11 = false skia_use_wuffs = true skia_use_expat = true skia_use_fontconfig = false clay_enable_skshaper = true skia_use_icu = true skia_gl_standard = "" skia_use_metal = true shell_enable_metal = true allow_deprecated_api_calls = true stripped_symbols = true is_official_build = true use_clang_static_analyzer = false enable_lto = false enable_lepusng_worklet = true enable_napi_binding = true enable_inspector = true jsengine_type="quickjs" use_flutter_cxx = false is_debug = false'
         buildtools/ninja/ninja -C out/Default explorer platform/darwin/macos:package_sdk
+    - name: Sign and Package macOS Explorer
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ inputs.macos_certificate }}
+        P12_PASSWORD: ${{ inputs.macos_certificate_password }}
+        KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+
+        set +e
+        TEMP_KEYCHAIN="temp-build.keychain"
+        # delete old keychain if any
+        security delete-keychain "$TEMP_KEYCHAIN" || true
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$TEMP_KEYCHAIN"
+        security default-keychain -s "$TEMP_KEYCHAIN"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$TEMP_KEYCHAIN"
+
+        # echo "Install Apple Worldwide Developer Relations Certification Authority And Root Certificate"
+        # CERT_URLS=(
+        #     "AppleWWDRCAG3.cer|https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer"
+        #     "AppleWWDRCAG6.cer|https://www.apple.com/certificateauthority/AppleWWDRCAG6.cer"
+        #     "AppleIncRootCertificate.cer|https://www.apple.com/appleca/AppleIncRootCertificate.cer"
+        # )
+        # for CERT_URL in "${CERT_URLS[@]}"; do
+        #     CERT_NAME=$(echo $CERT_URL | cut -d '|' -f 1)
+        #     CERT_URL=$(echo $CERT_URL | cut -d '|' -f 2)
+        #     curl -O $CERT_URL
+        #     echo "Import $CERT_NAME to keychain"
+        #     security import $CERT_NAME -k "$TEMP_KEYCHAIN" -T /usr/bin/codesign
+        #     security add-trusted-cert -d -r trustRoot -k "$TEMP_KEYCHAIN" $CERT_NAME
+        #     rm $CERT_NAME
+        # done
+
+        echo "Install User Certificate"
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+
+        security import certificate.p12 -k "$TEMP_KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$TEMP_KEYCHAIN"
+        echo "$TEMP_KEYCHAIN certificate info $(security find-identity $TEMP_KEYCHAIN)"
+        security list-keychains -d user -s "$TEMP_KEYCHAIN" login.keychain-db
+        rm certificate.p12
+        echo "list-keychains after $(security list-keychains -d user)"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$TEMP_KEYCHAIN"
+
+        CERT_INFO=$(security find-identity -v -p codesigning | head -1)
+        echo "certificate info $CERT_INFO"
+
+        CERT_IDENTITY=$(echo "$CERT_INFO" | awk '{print $2}')
+        echo "Use certificate identity $CERT_IDENTITY"
+        if [ -z "$CERT_IDENTITY" ] || [ "$CERT_IDENTITY" == "valid" ]; then
+          echo "No certificate identity found, skip signing"
+        else
+          echo "Sign explorer with certificate identity $CERT_IDENTITY"
+          codesign --sign "$CERT_IDENTITY" --verbose=4 --force --timestamp --options runtime --deep out/Default/LynxExplorer.app
+          echo "Sign explorer done"
+        fi
+        set -e
+
+        # Package explorer
         tar --strip-components 2 -czvf LynxExplorer-macos-${{ inputs.build-arch }}.app.tar.gz out/Default/LynxExplorer.app
+
+    - name: Cleanup Keychain
+      shell: bash
+      run: |-
+        TEMP_KEYCHAIN="temp-build.keychain"
+        security delete-keychain "$TEMP_KEYCHAIN" || true
+        security list-keychains -d user -s login.keychain-db || true
