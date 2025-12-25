@@ -362,10 +362,23 @@ public class LynxEventReporter {
     return genericInfo;
   }
 
-  public static HashMap<String, Object> getGenericInfo(Integer instanceId) {
-    HashMap<String, Object> original = getGenericInfoInternal(instanceId);
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public static HashMap<String, Object> getGenericInfoWithExtraParams(Integer instanceId) {
+    HashMap<String, Object> res = new HashMap<>();
+    if (instanceId < 0) {
+      return res;
+    }
     // return a copy of genericInfo
-    return new HashMap<>(original);
+    HashMap<String, Object> extraParams =
+        LynxEventReporter.getInstance().mAllExtraParams.get(instanceId);
+    if (extraParams != null) {
+      res.putAll(extraParams);
+    }
+    HashMap<String, Object> genericInfo = getGenericInfoInternal(instanceId);
+    if (genericInfo != null) {
+      res.putAll(genericInfo);
+    }
+    return res;
   }
 
   /**
