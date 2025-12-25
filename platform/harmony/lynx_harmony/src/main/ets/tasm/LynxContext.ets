@@ -36,24 +36,23 @@ export class LynxContext implements IContext {
   private genericResourceFetcher?: LynxGenericResourceFetcher;
   private mediaResourceFetcher?: LynxMediaResourceFetcher;
   private uiOwner?: UIOwner;
-  private lynxView: LynxView;
+  private lynxView?: LynxView;
   private contextData?: Record<string, Object>;
   private extensionModule?: LynxExtensionModule;
 
-  constructor(view: LynxView) {
+  constructor() {
     this._screenMetrics = new LynxScreenMetrics();
-    this.lynxView = view;
   }
 
   findJSShadowNodeBySign(sign: number): Object | undefined {
     return this.shadowNodeOwner?.findJSShadowNodeBySign(sign);
   }
 
-  public setShadowNodeOwner(nodeOwner: ShadowNodeOwner) {
+  public setShadowNodeOwner(nodeOwner?: ShadowNodeOwner) {
     this.shadowNodeOwner = nodeOwner;
   }
 
-  public setUIOwner(uiOwner: UIOwner) {
+  public setUIOwner(uiOwner?: UIOwner) {
     this.uiOwner = uiOwner;
   }
 
@@ -72,8 +71,12 @@ export class LynxContext implements IContext {
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_ALIGN_NATIVE);
   }
 
-  setRenderer(renderer: LynxTemplateRenderer) {
+  setRenderer(renderer?: LynxTemplateRenderer) {
     this.renderer = renderer;
+  }
+
+  setLynxView(lynxView?: LynxView) {
+    this.lynxView = lynxView;
   }
 
   /**
@@ -84,7 +87,7 @@ export class LynxContext implements IContext {
    * @param params Parameters carried by global events.
    */
   sendGlobalEvent(name: string, params: Object[]) {
-    this.lynxView.sendGlobalEvent(name, params);
+    this.lynxView?.sendGlobalEvent(name, params);
   }
 
   public callJSFunction(moduleName: string, method: string, params: Object[]) {
@@ -103,11 +106,11 @@ export class LynxContext implements IContext {
    * @param data Lynx template update metadata, developers use this data structure to specify the optional data content of the update template.
    */
   updateMetaData(data: MetaData) {
-    if (this.lynxView.templateLoaded) {
+    if (this.lynxView?.templateLoaded) {
       this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
         data.globalProps?.data);
     } else {
-      this.lynxView.metaData.merge(data);
+      this.lynxView?.metaData.merge(data);
     }
   }
 
@@ -164,6 +167,10 @@ export class LynxContext implements IContext {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
     if (!url && (bundle || buffer)) {
       LLog.e(TAG, 'loadTemplate invalid url');
+      return;
+    }
+    if (!this.lynxView) {
+      LLog.e(TAG, 'loadTemplate invalid lynxView');
       return;
     }
     if (url) {

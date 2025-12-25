@@ -93,13 +93,14 @@ export enum ThreadStrategyForRendering {
 }
 
 export class LynxContext implements IContext {
-  constructor(view: LynxView);
+  constructor();
   findJSShadowNodeBySign(sign: number): Object | undefined;
   public setShadowNodeOwner(nodeOwner: ShadowNodeOwner): void;
   public setUIOwner(uiOwner: UIOwner): void;
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): void;
   public alignNativeNode(sign: number, left: number, top: number): void;
   setRenderer(renderer: LynxTemplateRenderer): void;
+  setLynxView(lynxView: LynxView): void;
   sendGlobalEvent(name: string, params: Object[]): void;
   public callJSFunction(moduleName: string, method: string, params: Object[]): void;
   sendCustomEvent(name: string, id: number, params: Object, paramName: string): void;

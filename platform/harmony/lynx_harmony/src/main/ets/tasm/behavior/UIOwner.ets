@@ -94,6 +94,7 @@ export class UIOwner {
   }
 
   destroy() {
+    this.setAvoidKeyboardListener(undefined);
     this.native.destroy(this.id);
     if (this.fluencyTraceHelper) {
       this.fluencyTraceHelper.destroy();
@@ -108,7 +109,7 @@ export class UIOwner {
     this.native.keyboardStatusChanged(height);
   }
 
-  setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number) => void):void {
+  setAvoidKeyboardListener(avoidKeyboardListener?: (translateY: number) => void):void {
     this.avoidKeyboardListener = avoidKeyboardListener;
   }
 
@@ -116,7 +117,7 @@ export class UIOwner {
     this.avoidKeyboardListener?.(translateY)
   }
 
-    canConsumeTouchEvent(x: number, y: number): boolean {
+  canConsumeTouchEvent(x: number, y: number): boolean {
     return this.native.canConsumeTouchEvent(x, y);
   }
 
