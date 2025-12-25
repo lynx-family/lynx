@@ -1239,6 +1239,13 @@ public class com::lynx::tasm::behavior::shadow::ChoreographerLayoutTick : com.ly
   public void com.lynx.tasm.behavior.shadow.ChoreographerLayoutTick.request(final Runnable runnable);
 }
 
+public enum com::lynx::tasm::behavior::ClayRenderMode {
+  public com.lynx.tasm.behavior.ClayRenderMode.SURFACE SURFACE;
+  public com.lynx.tasm.behavior.ClayRenderMode.TEXTURE TEXTURE;
+  public com.lynx.tasm.behavior.ClayRenderMode.SYNC SYNC;
+  public com.lynx.tasm.behavior.ClayRenderMode.DELEGATE DELEGATE;
+}
+
 public class com::lynx::tasm::base::CleanupReference : PhantomReference< Object > {
   public com.lynx.tasm.base.CleanupReference.CleanupReference(Object obj, Runnable cleanupTask, boolean cleanupOnUiThread);
   public void com.lynx.tasm.base.CleanupReference.cleanupNow();
@@ -3001,6 +3008,14 @@ public interface com::lynx::tasm::performance::timing::ITimingCollector {
 
 public interface com::lynx::tasm::IUIRendererCreator {
   public ILynxUIRenderer com.lynx.tasm.IUIRendererCreator.createLynxUIRender();
+  public default void com.lynx.tasm.IUIRendererCreator.setLowEndImageTextureCacheMaxLimit(int limit);
+  public default void com.lynx.tasm.IUIRendererCreator.setImageTextureCacheMaxLimit(int limit);
+  public default void com.lynx.tasm.IUIRendererCreator.setUseTextureViewInClayMode(boolean useTextureView);
+  public default void com.lynx.tasm.IUIRendererCreator.setEnableGLFunctorInClayMode(boolean enable);
+  public default void com.lynx.tasm.IUIRendererCreator.setClayRenderMode(ClayRenderMode mode);
+  public default void com.lynx.tasm.IUIRendererCreator.setEnableDelegateInClayMode(boolean enable);
+  public default void com.lynx.tasm.IUIRendererCreator.setEnableClayRecycleEngine(boolean enable);
+  public default void com.lynx.tasm.IUIRendererCreator.setEnableClayCompatMode(boolean enable);
 }
 
 public interface com::lynx::tasm::behavior::ui::text::IUIText {
