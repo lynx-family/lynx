@@ -14,6 +14,7 @@ public_shared_sources = [
   "LynxBooleanOption.h",
   "LynxFatImageProcessor.h",
   "LynxImageBlurUtils.h",
+  "LynxImageConfig.h",
   "LynxImageLoader.h",
   "LynxImageProcessor.h",
   "LynxNinePatchImageProcessor.h",

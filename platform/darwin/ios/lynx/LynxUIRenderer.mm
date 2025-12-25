@@ -91,11 +91,7 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   _uiOwner.uiContext.lynxContext = _lynxContext;
   _uiOwner.uiContext.contextDict = [builder.config.contextDict copy];
   _uiOwner.uiContext.lynxModuleExtraData = builder.lynxModuleExtraData;
-  _uiOwner.uiContext.imagePreviewHashMetadata = nil;
-  if ([builder.lynxViewConfig objectForKey:KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA]) {
-    _uiOwner.uiContext.imagePreviewHashMetadata =
-        [[builder.lynxViewConfig objectForKey:KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA] copy];
-  }
+  _uiOwner.uiContext.imageConfig = builder.imageConfig;
 }
 
 - (void)setupResourceProviderWithBuilder:(LynxViewBuilder *)builder {
