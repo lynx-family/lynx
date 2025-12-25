@@ -113,7 +113,9 @@ lepus::Value RenderFatal(lepus::Context* ctx, const char* fmt, Args&&... a) {
           .append(std::to_string(error::E_MTS_RENDERER_FUNCTION_FATAL))
           .append("\nerror message: ")
           .append(lynx::base::FormatString(fmt, std::forward<Args>(a)...));
+  // Abort the renderer if it is running in debug mode but not enable log box.
   bool should_abort = tasm::LynxEnv::GetInstance().IsLynxDebugEnabled() &&
+                      tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
                       !tasm::LynxEnv::GetInstance().IsLogBoxEnabled();
   return ctx->ReportFatalError(err_msg, should_abort,
                                error::E_MTS_RENDERER_FUNCTION_FATAL);
