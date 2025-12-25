@@ -46,6 +46,6 @@ Value& Value::operator=(Value&& that) {
   return *this;
 }
 
-Value::~Value() = default;
+CLAY_EXPORT Value::~Value() = default;
 
 }  // namespace clay

@@ -1040,7 +1040,7 @@ public class LynxTemplateRender
       nativeSetFontScale(mNativePtr, mNativeLifecycle, mFontScale);
     }
     nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
-
+    lynxUIRenderer().onLynxEngineProxyCreated(mEngineProxy.getNativePtr());
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
   }
 

@@ -22,7 +22,7 @@ class ClayValueWrapper;
 }
 
 namespace clay {
-class Value {
+class CLAY_EXPORT Value {
  public:
   enum Type {
     kNone = 0,  // Internal usage. Means invalid.

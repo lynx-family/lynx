@@ -2581,6 +2581,7 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public void com.lynx.tasm.behavior.ILynxUIRenderer.attachBodyView(UIBodyView bodyView, LynxContext lynxContext, Context context);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.attachNativeFacade(NativeFacade nativeFacade);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.setLynxEngineForPlatformContextRef(long ptr);
+  public default void com.lynx.tasm.behavior.ILynxUIRenderer.onLynxEngineProxyCreated(long ptr);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onReloadAndInitUIThreadPart();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onReloadAndInitAnyThreadPart();
   public long com.lynx.tasm.behavior.ILynxUIRenderer.getUIDelegatePtr();
@@ -2624,6 +2625,7 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public void com.lynx.tasm.behavior.ILynxUIRenderer.drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas);
   public int com.lynx.tasm.behavior.ILynxUIRenderer.getNodeForLocation(float x, float y, String mode);
   public float[] com.lynx.tasm.behavior.ILynxUIRenderer.getTransformValue(int sign, float[] padBorderMarginLayout);
+  public default LynxUIRendererBuilder.LynxUIRenderMode com.lynx.tasm.behavior.ILynxUIRenderer.getRenderMode();
 }
 
 public interface com::lynx::tasm::group::ILynxViewConfigProvider {

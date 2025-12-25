@@ -66,6 +66,20 @@ double UIDelegateClay::GetScreenScaleFactor() const {
   return page_view ? page_view->DevicePixelRatio() : 1.0;
 }
 
+CLAY_EXPORT void UIDelegateClay::SetFunctionDelegate(
+    clay::FunctionDelegate* delegate) {
+  if (view_context_) {
+    view_context_->SetFunctionDelegate(delegate);
+  }
+}
+
+CLAY_EXPORT void UIDelegateClay::RemoveFunctionDelegate(
+    clay::FunctionDelegate* delegate) {
+  if (view_context_) {
+    view_context_->RemoveFunctionDelegate(delegate);
+  }
+}
+
 void UIDelegateClay::OnLynxCreate(
     const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
     const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,

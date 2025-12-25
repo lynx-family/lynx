@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxGroup;
+import com.lynx.tasm.LynxUIRendererBuilder;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.NativeFacade;
 import com.lynx.tasm.PageConfig;
@@ -41,6 +42,8 @@ public interface ILynxUIRenderer {
   void attachNativeFacade(NativeFacade nativeFacade);
 
   void setLynxEngineForPlatformContextRef(long ptr);
+
+  default void onLynxEngineProxyCreated(long ptr){};
 
   void onReloadAndInitUIThreadPart();
 
@@ -111,6 +114,7 @@ public interface ILynxUIRenderer {
   boolean disableBindDrawChildHook();
 
   boolean needHandleDispatchKeyEvent();
+
   boolean dispatchKeyEvent(KeyEvent event);
 
   void scrollIntoViewFromUI(int nodeId);
@@ -126,4 +130,8 @@ public interface ILynxUIRenderer {
   int getNodeForLocation(float x, float y, String mode);
 
   float[] getTransformValue(int sign, float[] padBorderMarginLayout);
+
+  default LynxUIRendererBuilder.LynxUIRenderMode getRenderMode() {
+    return LynxUIRendererBuilder.LynxUIRenderMode.Native;
+  }
 }

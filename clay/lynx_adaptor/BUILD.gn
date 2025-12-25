@@ -26,6 +26,7 @@ source_set("lynx_adaptor") {
     "value_converter.cc",
     "value_converter.h",
   ]
+
   sources += rebase_path(clay_native_module_sources, "", "native_module")
 
   # lynx_websocket_module.cc requires boringssl
@@ -59,7 +60,7 @@ source_set("lynx_adaptor") {
     public_deps += [ "../../base/src:base_values" ]
   }
 
-  defines = []
+  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
   if (is_mac || is_android || is_ios) {
     defines += [ "TRACE_EVENT_HIDE_MACROS" ]
   }
