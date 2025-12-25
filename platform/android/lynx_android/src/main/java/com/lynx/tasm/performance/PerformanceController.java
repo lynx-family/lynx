@@ -387,7 +387,8 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     if (reporter != null) {
       int instanceId = entryMap.getInt("instanceId", -1);
       if (instanceId != -1) {
-        HashMap<String, Object> newEntryMap = LynxEventReporter.getGenericInfo(instanceId);
+        HashMap<String, Object> newEntryMap =
+            LynxEventReporter.getGenericInfoWithExtraParams(instanceId);
         newEntryMap.putAll(entryMap.asHashMap());
         PerformanceEntry newEntry =
             PerformanceEntryConverter.makePerformanceEntry(JavaOnlyMap.from(newEntryMap));

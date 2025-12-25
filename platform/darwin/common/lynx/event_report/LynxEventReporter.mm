@@ -169,13 +169,14 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
   }];
 }
 
-+ (void)getGenericInfo:(int32_t)instanceId
-            completion:(void (^)(NSDictionary *genericInfo))completion {
++ (void)getGenericInfoAndExtraParams:(int32_t)instanceId
+                          completion:(void (^)(NSDictionary *genericInfo,
+                                               NSDictionary *extraParams))completion {
   if (completion == nil) {
     return;
   }
   if (instanceId < 0) {
-    completion(nil);
+    completion(nil, nil);
     return;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_REPORTER_GET_GENERIC_INFO,
@@ -193,7 +194,9 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
                 });
     NSDictionary *genericInfo =
         [[[[self sharedInstance] allGenericInfo] objectForKey:@(instanceId)] copy];
-    completion(genericInfo);
+    NSDictionary *extraParams =
+        [[[[self sharedInstance] allExtraParams] objectForKey:@(instanceId)] copy];
+    completion(genericInfo, extraParams);
   }];
 }
 

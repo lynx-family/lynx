@@ -1619,7 +1619,7 @@ public class LynxEventReporter : NSObject {
   public void LynxEventReporter::onEvent:instanceId:propsBuilder:(nonnull NSString *eventName,[instanceId] int32_t instanceId,[propsBuilder] NSDictionary< NSString *, NSObject * > *(^ propsBuilder)(void));
   public void LynxEventReporter::updateGenericInfo:key:instanceId:(nonnull NSObject *value,[key] nonnull NSString *key,[instanceId] int32_t instanceId);
   public void LynxEventReporter::removeGenericInfo:(int32_t instanceId);
-  public void LynxEventReporter::getGenericInfo:completion:(int32_t instanceId,[completion] void(^ completion)(NSDictionary *genericInfo));
+  public void LynxEventReporter::getGenericInfoAndExtraParams:completion:(int32_t instanceId,[completion] void(^ completion)(NSDictionary *_Nullable genericInfo, NSDictionary *_Nullable extraParams));
   public void LynxEventReporter::putExtraParams:forInstanceId:(NSDictionary< NSString *, NSObject * > *params,[forInstanceId] int32_t instanceId);
   public void LynxEventReporter::moveExtraParams:toInstanceId:(int32_t originInstanceId,[toInstanceId] int32_t targetInstanceId);
   public void LynxEventReporter::clearCacheForInstanceId:(int32_t instanceId);
