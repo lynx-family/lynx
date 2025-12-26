@@ -219,8 +219,6 @@ class LynxDevToolMediator
   void RunOnJSThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnTASMThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnDevToolThread(lynx::base::closure&& closure, bool run_now = true);
-  bool RunOnCDPEventListenerThread(lynx::base::closure&& closure,
-                                   bool run_now = true);
 
  public:
   std::vector<double> GetBoxModel(tasm::Element* element);
