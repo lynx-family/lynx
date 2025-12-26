@@ -675,7 +675,7 @@ enableMicrotaskPromisePolyfill:
   description:
     'This configuration item enableMicrotaskPromisePolyfill is used to
     determine whether to enable the micro - task Promise polyfill. Its value type
-    is TernaryBool, and the default value is TernaryBool::UNDEFINE_VALUE. '
+    is TernaryBool, and the default value is TernaryBool::UNDEFINE_VALUE.'
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
@@ -774,8 +774,8 @@ dataStrictMode:
     - iOS
 enableAsyncDisplay:
   description:
-    'Globally enable async rendering for software rendering contents on
-    iOS, this can largely optimize the frame rate and reduce janks. '
+    Globally enable async rendering for software rendering contents on
+    iOS, this can largely optimize the frame rate and reduce janks.
   defaultValue: 'true'
   valueType: bool
   author: zhongyr
@@ -801,7 +801,7 @@ enableNewImage:
     - Android
     - iOS
 enableTextNonContiguousLayout:
-  description: 'Whether enable text noncontiguous layout '
+  description: Whether enable text noncontiguous layout
   defaultValue: 'true'
   valueType: bool
   author: Randycn
@@ -913,7 +913,7 @@ enableListNewArchitecture:
     setter: SetListNewArchitecture
     getter: GetListNewArchitecture
   author: keweibing
-  since: 2.4.4
+  since: '2.4'
   supportPlatform:
     - Android
     - iOS
@@ -937,7 +937,7 @@ enableListPlug:
     - Android
     - iOS
 enableListMoveOperation:
-  description: Does diffResult have moveAction?
+  description: Does diffResult have moveAction
   defaultValue: 'false'
   valueType: bool
   nameAs:
@@ -949,9 +949,7 @@ enableListMoveOperation:
     - HarmonyOS
     - iOS
 enableCreateViewAsync:
-  description:
-    'Create Android platform UIs in lynx built-in thread-pool to optimize
-    UI Operation Execution '
+  description: Create Android platform UIs in lynx built-in thread-pool to optimize UI Operation Execution
   defaultValue: 'true'
   valueType: bool
   author: usczz
@@ -966,7 +964,9 @@ enableVsyncAlignedFlush:
   defaultValue: 'false'
   valueType: bool
   author: Yellow5A5
-  since: 'Android: 2.11, iOS: 3.2'
+  since:
+    - Android: '2.11'
+    - iOS: '3.2'
   supportPlatform:
     - Android
     - iOS
@@ -1025,7 +1025,7 @@ enableGlobalComponentMap:
   author: DragonDragonDDD
   deprecated: '3.5'
 enableTextRefactor:
-  description: 'Enable text refactor, with behavior more aligned with web. '
+  description: Enable text refactor, with behavior more aligned with web.
   defaultValue: 'false'
   valueType: bool
   versionOverrides:
@@ -1230,8 +1230,8 @@ compileRender:
   deprecated: '3.5'
 enableTextLanguageAlignment:
   description:
-    'Enable a more accurate text alignment judgment method, but it will
-    increase the time taken for text layout. '
+    Enable a more accurate text alignment judgment method, but it will
+    increase the time taken for text layout.
   defaultValue: 'false'
   valueType: bool
   author: Randycn
@@ -1534,7 +1534,7 @@ absoluteInContentBound:
     - HarmonyOS
     - iOS
 enableFixedNew:
-  description: 'A better and stable position fixed handling. '
+  description: A better and stable position fixed handling.
   defaultValue: 'false'
   valueType: bool
   bindMemberTo: layout_configs_.enable_fixed_new_
