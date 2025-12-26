@@ -22,11 +22,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef CUTILS_H
-#define CUTILS_H
+
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_CUTILS_H_
+#define SRC_INTERPRETER_QUICKJS_INCLUDE_CUTILS_H_
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "base_export.h"
 
@@ -51,6 +56,19 @@
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+#ifndef container_of
+/* return the pointer of type 'type *' containing 'ptr' as field 'member' */
+#define container_of(ptr, type, member) \
+  ((type *)((uint8_t *)(ptr)-offsetof(type, member)))
+#endif
+
+#if !defined(_MSC_VER) && defined(__STDC_VERSION__) && \
+    __STDC_VERSION__ >= 199901L
+#define minimum_length(n) static n
+#else
+#define minimum_length(n) n
+#endif
+
 typedef int BOOL;
 
 #ifndef FALSE
@@ -62,8 +80,13 @@ enum {
 
 QJS_HIDE void pstrcpy(char *buf, int buf_size, const char *str);
 QJS_HIDE char *pstrcat(char *buf, int buf_size, const char *s);
-QJS_HIDE int strstart(const char *str, const char *val, const char **ptr);
+int strstart(const char *str, const char *val, const char **ptr);
 QJS_HIDE int has_suffix(const char *str, const char *suffix);
+
+/* Prevent UB when n == 0 and (src == NULL or dest == NULL) */
+static inline void memcpy_no_ub(void *dest, const void *src, size_t n) {
+  if (n) memcpy(dest, src, n);
+}
 
 static inline int max_int(int a, int b) {
   if (a > b)
@@ -173,13 +196,18 @@ static inline int32_t get_i8(const uint8_t *tab) { return (int8_t)*tab; }
 
 static inline void put_u8(uint8_t *tab, uint8_t val) { *tab = val; }
 
+#ifndef bswap16
 static inline uint16_t bswap16(uint16_t x) { return (x >> 8) | (x << 8); }
+#endif
 
+#ifndef bswap32
 static inline uint32_t bswap32(uint32_t v) {
   return ((v & 0xff000000) >> 24) | ((v & 0x00ff0000) >> 8) |
          ((v & 0x0000ff00) << 8) | ((v & 0x000000ff) << 24);
 }
+#endif
 
+#ifndef bswap64
 static inline uint64_t bswap64(uint64_t v) {
   return ((v & ((uint64_t)0xff << (7 * 8))) >> (7 * 8)) |
          ((v & ((uint64_t)0xff << (6 * 8))) >> (5 * 8)) |
@@ -190,6 +218,7 @@ static inline uint64_t bswap64(uint64_t v) {
          ((v & ((uint64_t)0xff << (1 * 8))) << (5 * 8)) |
          ((v & ((uint64_t)0xff << (0 * 8))) << (7 * 8));
 }
+#endif
 
 /* XXX: should take an extra argument to pass slack information to the caller */
 typedef void *DynBufReallocFunc(void *opaque, void *ptr, size_t size,
@@ -228,11 +257,36 @@ int __attribute__((format(printf, 2, 3))) QJS_HIDE dbuf_printf(DynBuf *s,
                                                                ...);
 QJS_HIDE void dbuf_free(DynBuf *s);
 static inline BOOL dbuf_error(DynBuf *s) { return s->error; }
+static inline void dbuf_set_error(DynBuf *s) { s->error = TRUE; }
 
 #define UTF8_CHAR_LEN_MAX 6
 
 int unicode_to_utf8(uint8_t *buf, unsigned int c);
 int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp);
+
+static inline BOOL is_surrogate(uint32_t c) {
+  return (c >> 11) == (0xD800 >> 11);  // 0xD800-0xDFFF
+}
+
+static inline BOOL is_hi_surrogate(uint32_t c) {
+  return (c >> 10) == (0xD800 >> 10);  // 0xD800-0xDBFF
+}
+
+static inline BOOL is_lo_surrogate(uint32_t c) {
+  return (c >> 10) == (0xDC00 >> 10);  // 0xDC00-0xDFFF
+}
+
+static inline uint32_t get_hi_surrogate(uint32_t c) {
+  return (c >> 10) - (0x10000 >> 10) + 0xD800;
+}
+
+static inline uint32_t get_lo_surrogate(uint32_t c) {
+  return (c & 0x3FF) | 0xDC00;
+}
+
+static inline uint32_t from_surrogate(uint32_t hi, uint32_t lo) {
+  return 0x10000 + 0x400 * (hi - 0xD800) + (lo - 0xDC00);
+}
 
 static inline int from_hex(int c) {
   if (c >= '0' && c <= '9')
@@ -248,4 +302,22 @@ static inline int from_hex(int c) {
 void rqsort(void *base, size_t nmemb, size_t size,
             int (*cmp)(const void *, const void *, void *), void *arg);
 
-#endif /* CUTILS_H */
+static inline uint64_t float64_as_uint64(double d) {
+  union {
+    double d;
+    uint64_t u64;
+  } u;
+  u.d = d;
+  return u.u64;
+}
+
+static inline double uint64_as_float64(uint64_t u64) {
+  union {
+    double d;
+    uint64_t u64;
+  } u;
+  u.u64 = u64;
+  return u.d;
+}
+
+#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_CUTILS_H_

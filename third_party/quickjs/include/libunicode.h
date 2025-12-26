@@ -21,8 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef LIBUNICODE_H
-#define LIBUNICODE_H
+
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_LIBUNICODE_H_
+#define SRC_INTERPRETER_QUICKJS_INCLUDE_LIBUNICODE_H_
 
 #include <inttypes.h>
 #include <stddef.h>
@@ -124,4 +128,4 @@ int unicode_prop(CharRange *cr, const char *prop_name);
 
 #undef LRE_BOOL
 
-#endif /* LIBUNICODE_H */
+#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_LIBUNICODE_H_

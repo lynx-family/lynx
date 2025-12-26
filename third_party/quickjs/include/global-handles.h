@@ -1,5 +1,13 @@
-#ifndef HANDLES_GLOBAL_HANDLES_H_
-#define HANDLES_GLOBAL_HANDLES_H_
+// Copyright 2009 the V8 project authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef SRC_GC_GLOBAL_HANDLES_H_
+#define SRC_GC_GLOBAL_HANDLES_H_
 
 // #include <vector>
 
@@ -51,4 +59,4 @@ class GlobalHandles final {
   NodeSpace* regular_nodes_;
 };
 
-#endif  // HANDLES_GLOBAL_HANDLES_H_
+#endif  // SRC_GC_GLOBAL_HANDLES_H_

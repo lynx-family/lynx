@@ -1,5 +1,23 @@
-#ifndef ALLOCATE_H
-#define ALLOCATE_H
+/*
+  This is a version of malloc/free/realloc written by
+  Doug Lea and released to the public domain, as explained at
+  http://creativecommons.org/publicdomain/zero/1.0/ Send questions,
+  comments, complaints, performance data, etc to dl@cs.oswego.edu
+* Version 2.8.6 Wed Aug 29 06:57:58 2012  Doug Lea
+   Note: There may be an updated version of this malloc obtainable at
+           ftp://gee.cs.oswego.edu/pub/misc/malloc.c
+         Check before installing!
+ */
+/*
+ * PackageLicenseDeclared: CC0-1.0
+ */
+
+// Copyright 2023 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef SRC_GC_ALLOCATOR_H_
+#define SRC_GC_ALLOCATOR_H_
 #include <errno.h>
 #ifndef _WIN32
 #include <pthread.h>
@@ -75,6 +93,9 @@ struct malloc_state {
   size_t footprint;
   size_t max_footprint;
   size_t footprint_limit;
+  size_t outer_heap_size;
+  size_t gc_info_threshold;
+  size_t gc_info_interval_size;
   flag_t mflags;
 #if USE_LOCKS
   MLOCK_T mutex;
@@ -261,4 +282,4 @@ void clear_mark(void* ptr);
 int get_tag(void* ptr);
 void local_insert_chunk(mstate m, mchunkptr mchunk, size_t size, int local_idx);
 
-#endif  // ALLOCATE_H
+#endif  // SRC_GC_ALLOCATOR_H_

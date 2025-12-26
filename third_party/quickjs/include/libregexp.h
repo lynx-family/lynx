@@ -21,8 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef LIBREGEXP_H
-#define LIBREGEXP_H
+
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_LIBREGEXP_H_
+#define SRC_INTERPRETER_QUICKJS_INCLUDE_LIBREGEXP_H_
 
 #include <stddef.h>
 
@@ -90,4 +94,4 @@ static inline int lre_js_is_ident_next(int c) {
 
 #undef LRE_BOOL
 
-#endif /* LIBREGEXP_H */
+#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_LIBREGEXP_H_

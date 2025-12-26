@@ -1,9 +1,9 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 
-#ifndef QJS_BASE_EXPORT_H_
-#define QJS_BASE_EXPORT_H_
+#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_BASE_EXPORT_H_
+#define SRC_INTERPRETER_QUICKJS_INCLUDE_BASE_EXPORT_H_
 
 #if defined(WIN32)
 #define QJS_EXPORT __declspec(dllimport)
@@ -15,4 +15,4 @@
 #define QJS_HIDE __attribute__((visibility("hidden")))
 #endif  // defined(WIN32)
 
-#endif  // QJS_BASE_EXPORT_H_
+#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_BASE_EXPORT_H_
