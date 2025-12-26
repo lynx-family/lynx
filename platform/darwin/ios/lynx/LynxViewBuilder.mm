@@ -152,31 +152,43 @@
 }
 
 - (LynxBooleanOption)enableGenericResourceFetcher {
+  if (_enableGenericResourceFetcher != LynxBooleanOptionUnset) {
+    return _enableGenericResourceFetcher;
+  }
   if (_lynxViewGroup) {
     return _lynxViewGroup.enableGenericResourceFetcher;
   }
-  return [super enableGenericResourceFetcher];
+  return LynxBooleanOptionUnset;
 }
 
 - (id<LynxGenericResourceFetcher>)genericResourceFetcher {
+  if (_genericResourceFetcher) {
+    return _genericResourceFetcher;
+  }
   if (_lynxViewGroup) {
     return _lynxViewGroup.genericResourceFetcher;
   }
-  return [super genericResourceFetcher];
+  return nil;
 }
 
 - (id<LynxMediaResourceFetcher>)mediaResourceFetcher {
+  if (_mediaResourceFetcher) {
+    return _mediaResourceFetcher;
+  }
   if (_lynxViewGroup) {
     return _lynxViewGroup.mediaResourceFetcher;
   }
-  return [super mediaResourceFetcher];
+  return nil;
 }
 
 - (id<LynxTemplateResourceFetcher>)templateResourceFetcher {
+  if (_templateResourceFetcher) {
+    return _templateResourceFetcher;
+  }
   if (_lynxViewGroup) {
     return _lynxViewGroup.templateResourceFetcher;
   }
-  return [super templateResourceFetcher];
+  return nil;
 }
 
 - (CGSize)screenSize {

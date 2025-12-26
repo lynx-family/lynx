@@ -554,7 +554,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   _LogI(@"LynxTemplateRender loadTemplate url after process is %@", url);
   [weakSelf markTiming:[kTimingPrepareTemplateStart UTF8String] pipelineID:[@"" UTF8String]];
-  if (_lynxViewGroup != nil) {
+  if (_lynxViewGroup != nil && _lynxViewGroup.templateResourceFetcher != nil) {
     _LogI(@"loadTemplateFromURL with lynxViewGroup.");
     [_lynxViewGroup fetchTemplate:^(LynxTemplateBundle* bundle, NSError* error) {
       if (!error) {
