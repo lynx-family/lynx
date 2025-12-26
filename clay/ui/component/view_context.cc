@@ -1179,6 +1179,13 @@ void ViewContext::SetPipelineTimingDelegate(
   }
 }
 
+void ViewContext::SetScrollFluencyMonitorDelegate(
+    std::shared_ptr<ScrollFluencyMonitorDelegate> delegate) {
+  if (page_view_) {
+    page_view_->SetScrollFluencyMonitorDelegate(delegate);
+  }
+}
+
 void ViewContext::SyncNativeViewTags(std::unordered_set<std::string> tags) {
   for (const auto& tag : tags) {
     ViewRegistry::GetInstance()->RegisterView(

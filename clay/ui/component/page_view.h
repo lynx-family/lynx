@@ -67,6 +67,7 @@ class ServiceManager;
 class ViewContext;
 class NativeView;
 class OverlayManager;
+class ScrollFluencyMonitorDelegate;
 class PipelineTimingDelegate;
 
 class PageView : public BaseView,
@@ -96,6 +97,9 @@ class PageView : public BaseView,
       std::shared_ptr<PipelineTimingDelegate> delegate) {
     pipeline_timing_delegate_ = delegate;
   }
+
+  void SetScrollFluencyMonitorDelegate(
+      std::shared_ptr<ScrollFluencyMonitorDelegate> delegate);
 
   BaseView* FindViewByViewId(int view_id);
 
@@ -446,6 +450,9 @@ class PageView : public BaseView,
 #if !defined(ENABLE_CLAY_LITE)
   OverlayManager* overlay_manager() { return overlay_manager_.get(); }
 #endif
+  void StartFluencyMonitor(uintptr_t id, const std::string& scene,
+                           const std::string& scroll_monitor_tag);
+  void EndFluencyMonitor(uintptr_t id);
 
  protected:
   void OnDestroy() override;
@@ -566,6 +573,8 @@ class PageView : public BaseView,
   RenderDelegate* render_delegate_ = nullptr;
 
   std::shared_ptr<PipelineTimingDelegate> pipeline_timing_delegate_;
+  std::shared_ptr<ScrollFluencyMonitorDelegate>
+      scroll_fluency_monitor_delegate_;
 
   friend class ViewContext;
   ViewContext* view_context_ = nullptr;

@@ -43,6 +43,7 @@ source_set("common") {
     "scheduler/scheduler_state_machine.h",
     "screenshot_utils.cc",
     "screenshot_utils.h",
+    "scroll_fluency_monitor_delegate.h",
     "serialization_callbacks.cc",
     "serialization_callbacks.h",
     "services/animation_event_service_impl.cc",

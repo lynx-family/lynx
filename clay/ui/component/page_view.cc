@@ -37,7 +37,10 @@
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/public/clay.h"
 #include "clay/shell/common/pipeline_timing_delegate.h"
+#include "clay/shell/common/scroll_fluency_monitor_delegate.h"
+#include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/common/services/raster_frame_service.h"
+#include "clay/shell/common/services/vsync_waiter_service.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/common/utils/watch_dog.h"
@@ -1885,6 +1888,45 @@ void PageView::OnPlatformUpdateEditState(int client_id, uint64_t selection_base,
 
 void PageView::OnPlatformPerformInputAction(int client_id) {
   input_client_manager_->InvokePerformAction(client_id);
+}
+
+void PageView::SetScrollFluencyMonitorDelegate(
+    std::shared_ptr<ScrollFluencyMonitorDelegate> delegate) {
+  clay::Puppet<clay::Owner::kPlatform, InstrumentationService> instrumentation =
+      service_manager_->GetService<InstrumentationService>();
+
+  if (scroll_fluency_monitor_delegate_) {
+    auto old_listener = scroll_fluency_monitor_delegate_;
+    instrumentation.Act([old_listener](auto& impl) {
+      impl.RemoveFrameTimingListener(old_listener);
+    });
+  }
+
+  scroll_fluency_monitor_delegate_ = std::move(delegate);
+  if (!scroll_fluency_monitor_delegate_) {
+    return;
+  }
+
+  auto new_listener = scroll_fluency_monitor_delegate_;
+  instrumentation.Act([new_listener](auto& impl) {
+    impl.AddFrameTimingListener(new_listener);
+  });
+}
+
+void PageView::StartFluencyMonitor(uintptr_t id, const std::string& scene,
+                                   const std::string& scroll_monitor_tag) {
+  if (scroll_fluency_monitor_delegate_) {
+    clay::Puppet<clay::Owner::kUI, VsyncWaiterService> vsync_waiter_service =
+        service_manager_->GetService<VsyncWaiterService>();
+    scroll_fluency_monitor_delegate_->StartFluencyMonitor(
+        id, scene, scroll_monitor_tag, vsync_waiter_service->GetRefreshRate());
+  }
+}
+
+void PageView::EndFluencyMonitor(uintptr_t id) {
+  if (scroll_fluency_monitor_delegate_) {
+    scroll_fluency_monitor_delegate_->EndFluencyMonitor(id);
+  }
 }
 
 void PageView::ResignFirstResponderIfNeeded(BaseView* current_responder) {

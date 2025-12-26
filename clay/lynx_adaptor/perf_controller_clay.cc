@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/include/fml/task_runner.h"
-#include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/trace/service_trace_event_def.h"
@@ -18,6 +17,19 @@ namespace tasm {
 
 namespace {
 inline constexpr const char* const kHostPlatformSurface = "Clay";
+constexpr int32_t kMinSessionDurationInMs = 200;  // 200ms
+constexpr int32_t kMaxSessionDurationInSec = 10;  // 10s
+constexpr std::string_view kLynxFluencyEvent = "lynxsdk_fluency_event";
+
+uint64_t GenerateSessionID() {
+  static uint64_t session_id = 0;
+  ++session_id;
+  if (session_id == 0) {
+    ++session_id;
+  }
+  return session_id;
+}
+
 }  // namespace
 
 PerfControllerClay::PerfControllerClay(
@@ -97,6 +109,169 @@ void PerfControllerClay::OnPipelineEnd(
               timing::kPipelineEnd, timestamp, pipeline_id);
         }
       });
+}
+
+void PerfControllerClay::StartFluencyMonitor(
+    int id, const std::string& scene, const std::string& scroll_monitor_tag,
+    int max_refresh_rate) {
+  DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
+
+  if (!enable_fluency_monitor_ || !perf_controller_proxy_) {
+    return;
+  }
+
+  if (fps_tracers_.find(id) != fps_tracers_.end()) {
+    return;
+  }
+
+  // Generate a unique session ID for this monitor
+  uint64_t session_id = GenerateSessionID();
+  fluency_monitor_session_ids_[id] = session_id;
+
+  fps_tracers_[id] = std::make_unique<clay::FpsTracer>(
+      scene, scroll_monitor_tag, max_refresh_rate, kMaxSessionDurationInSec);
+  fps_tracers_[id]->Start();
+
+  std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
+  // If one scroll event does not stop after 10 seconds, we stop it manually.
+  ui_task_runner_->PostDelayedTask(
+      [weak_self, id, session_id]() {
+        auto strong_self = weak_self.lock();
+        if (!strong_self) {
+          return;
+        }
+
+        // Check if this session is still active
+        auto it = strong_self->fluency_monitor_session_ids_.find(id);
+        if (it != strong_self->fluency_monitor_session_ids_.end() &&
+            it->second == session_id) {
+          // Only stop if the session ID matches (it's the same session)
+          strong_self->EndFluencyMonitor(id);
+        }
+      },
+      fml::TimeDelta::FromSeconds(kMaxSessionDurationInSec));
+}
+
+void PerfControllerClay::EndFluencyMonitor(int id) {
+  DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
+
+  if (!enable_fluency_monitor_ || !perf_controller_proxy_) {
+    return;
+  }
+
+  // Remove the session ID from the map
+  auto it = fluency_monitor_session_ids_.find(id);
+  if (it != fluency_monitor_session_ids_.end()) {
+    // Remove the session ID from the map
+    fluency_monitor_session_ids_.erase(it);
+  }
+
+  if (fps_tracers_.find(id) != fps_tracers_.end()) {
+    auto fps_tracer = std::move(fps_tracers_[id]);
+    fps_tracers_.erase(id);
+    if (!fps_tracer) {
+      return;
+    }
+
+    fps_tracer->Stop();
+    std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
+    perf_controller_proxy_->RunTaskInReportThread(
+        [weak_self, fps_tracer = std::move(fps_tracer)] {
+          auto strong_self = weak_self.lock();
+          if (!strong_self) {
+            return;
+          }
+
+          clay::FpsRawMetrics metrics;
+          fps_tracer->GetFpsMetrics(metrics);
+          // just ignore scroll event with duration less than 200ms.
+          if (metrics.duration_ms < kMinSessionDurationInMs) {
+            return;
+          }
+
+          shell::ReportEvent event;
+          event.event_name = std::string(kLynxFluencyEvent);
+
+          // string props
+          event.string_props.insert_or_assign("lynxsdk_fluency_scene",
+                                              fps_tracer->GetConfig().scene);
+          event.string_props.insert_or_assign("lynxsdk_fluency_tag",
+                                              fps_tracer->GetConfig().tag);
+
+          // int props
+          event.int_props.insert_or_assign("max_refresh_rate",
+                                           metrics.max_refresh_rate);
+          event.int_props.insert_or_assign("lynxsdk_fluency_frames_number",
+                                           metrics.frames);
+          event.int_props.insert_or_assign("lynxsdk_fluency_fps", metrics.fps);
+          event.int_props.insert_or_assign("lynxsdk_fluency_dur",
+                                           metrics.duration_ms);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop1_count",
+                                           metrics.drop1_count);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop1_duration",
+                                           metrics.drop1_duration_ms);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop3_count",
+                                           metrics.drop3_count);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop3_duration",
+                                           metrics.drop3_duration_ms);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop7_count",
+                                           metrics.drop7_count);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop7_duration",
+                                           metrics.drop7_duration_ms);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop25_count",
+                                           metrics.drop25_count);
+          event.int_props.insert_or_assign("lynxsdk_fluency_drop25_duration",
+                                           metrics.drop25_duration_ms);
+
+          // double props
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop1_count_per_second",
+              1000.0 * metrics.drop1_count / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop3_count_per_second",
+              1000.0 * metrics.drop3_count / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop7_count_per_second",
+              1000.0 * metrics.drop7_count / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop25_count_per_second",
+              1000.0 * metrics.drop25_count / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop1_ratio",
+              1000.0 * metrics.drop1_duration_ms / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop3_ratio",
+              1000.0 * metrics.drop3_duration_ms / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop7_ratio",
+              1000.0 * metrics.drop7_duration_ms / metrics.duration_ms);
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_drop25_ratio",
+              1000.0 * metrics.drop25_duration_ms / metrics.duration_ms);
+
+          // TODO(zuojinglong.9): use real page config probability.
+          event.double_props.insert_or_assign(
+              "lynxsdk_fluency_pageconfig_probability", 0.0);
+          event.int_props.insert_or_assign(
+              "lynxsdk_fluency_enabled_by_sampling", 0);
+
+          strong_self->perf_controller_proxy_->OnEvent(
+              strong_self->instance_id_, event);
+        });
+  }
+}
+
+void PerfControllerClay::OnFrameTiming(int64_t frame_start_time_nanos,
+                                       int64_t frame_end_time_nanos) {
+  DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
+
+  if (!enable_fluency_monitor_ || !perf_controller_proxy_) {
+    return;
+  }
+
+  for (auto& fps_tracer : fps_tracers_) {
+    fps_tracer.second->AddFrameTimeSample(frame_start_time_nanos);
+  }
 }
 
 }  // namespace tasm

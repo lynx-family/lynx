@@ -110,6 +110,13 @@ void Scrollable::SetClampedOverscrollOffset(FloatPoint offset) {
 
 void Scrollable::SetScrollStatus(ScrollStatus status) {
   if (status_ != status) {
+    if (status == ScrollStatus::kIdle) {
+      page_view_->EndFluencyMonitor(GetCallbackId());
+    } else {
+      page_view_->StartFluencyMonitor(GetCallbackId(), "scroll",
+                                      scroll_monitor_tag_);
+    }
+
     auto old_status = status_;
     status_ = status;
     OnScrollStatusChange(old_status);

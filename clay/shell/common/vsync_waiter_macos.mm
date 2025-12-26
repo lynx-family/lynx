@@ -48,6 +48,7 @@
 
   callback_(frame_start_time, frame_target_time);
 }
+
 @end
 
 namespace clay {
@@ -57,6 +58,8 @@ class API_AVAILABLE(macos(14.0)) MacOSVsyncWaiterService : public VsyncWaiterSer
       fml::RefPtr<fml::TaskRunner> task_runner) const override {
     return std::make_unique<VsyncWaiterMacOS>(std::move(task_runner));
   }
+
+  double GetRefreshRate() const override { return [NSScreen mainScreen].maximumFramesPerSecond; }
 };
 
 std::shared_ptr<VsyncWaiterService> VsyncWaiterService::Create() {

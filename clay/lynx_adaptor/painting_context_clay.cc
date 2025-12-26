@@ -96,6 +96,7 @@ void PaintingContextClayRef::SetPerfController(
     const std::shared_ptr<PerfControllerClay>& controller) {
   perf_controller_ = controller;
   view_context_->SetPipelineTimingDelegate(perf_controller_);
+  view_context_->SetScrollFluencyMonitorDelegate(perf_controller_);
   if (perf_controller_) {
     perf_controller_->SetUITaskRunner(view_context_->GetUITaskRunner());
   }

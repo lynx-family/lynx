@@ -69,6 +69,10 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
   FloatPoint ClampedOverscrollOffset() const {
     return clamped_overscroll_offset_;
   }
+  void SetScrollMonitorTag(const std::string& tag) {
+    scroll_monitor_tag_ = tag;
+  }
+  const std::string& ScrollMonitorTag() const { return scroll_monitor_tag_; }
   RenderScroll* GetRenderScroll() const {
     return static_cast<RenderScroll*>(render_object());
   }
@@ -119,6 +123,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
   bool upper_overscroll_enabled_ = false;
   bool lower_overscroll_enabled_ = false;
   FloatPoint overscroll_offset_ = {0, 0};
+  std::string scroll_monitor_tag_;
 
   // The difference between overscroll_offset_ and clamped_overscroll_offset_ is
   // that overscroll_offset_ is used on dragging, and clamped_overscroll_offset_

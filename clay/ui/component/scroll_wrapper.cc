@@ -27,6 +27,7 @@ const std::unordered_set<KeywordID> kProxyAttributes = {
     KeywordID::kUpperThreshold,
     KeywordID::kEnableScroll,
     KeywordID::kEnableNestedScroll,
+    KeywordID::kScrollMonitorTag,
     KeywordID::kScrollTop,
     KeywordID::kScrollLeft,
     KeywordID::kScrollToIndex,

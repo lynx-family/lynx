@@ -13,7 +13,6 @@
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/viscous_fluid_interpolator.h"
-#include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -324,6 +323,11 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
   } else if (kw == KeywordID::kEnableScroll) {
     bool enabled = attribute_utils::GetBool(value, true);
     SetScrollEnabled(enabled);
+  } else if (kw == KeywordID::kScrollMonitorTag) {
+    std::string tag;
+    if (attribute_utils::TryGetString(value, tag)) {
+      SetScrollMonitorTag(tag);
+    }
   } else if (kw == KeywordID::kScrollOrientation) {
     std::string orientation;
     attribute_utils::TryGetString(value, orientation);

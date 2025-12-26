@@ -68,6 +68,7 @@ struct BackgroundData;
 class ServiceManager;
 class CustomFilterDecoder;
 class PipelineTimingDelegate;
+class ScrollFluencyMonitorDelegate;
 
 class FrameObserver {
  public:
@@ -259,6 +260,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   void SetPipelineTimingDelegate(
       std::shared_ptr<PipelineTimingDelegate> delegate);
+  void SetScrollFluencyMonitorDelegate(
+      std::shared_ptr<ScrollFluencyMonitorDelegate> delegate);
 
   void SetExternalScreenshotCallback(ExternalScreenshotCallback callback);
 

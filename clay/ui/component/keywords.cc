@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 245
+#define TOTAL_KEYWORDS 246
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 29
@@ -70,7 +70,7 @@ inline unsigned int KeywordHash::hash(const char *str, unsigned int len) {
       666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
       666, 666, 666, 666, 666, 666, 666, 666, 6,   666, 666, 666, 666, 666, 666,
       666, 666, 666, 666, 666, 666, 666, 102, 51,  76,  213, 1,   270, 105, 204,
-      110, 2,   1,   115, 13,  84,  173, 26,  666, 11,  6,   3,   100, 60,  41,
+      110, 2,   10,  115, 13,  84,  173, 26,  666, 11,  6,   3,   100, 60,  41,
       107, 167, 4,   666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
       666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
       666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
@@ -122,11 +122,11 @@ struct StringPool_t {
   char StringPool_str58[sizeof("exposure-screen-margin-left")];
   char StringPool_str59[sizeof("exposure-screen-margin-right")];
   char StringPool_str61[sizeof("scroll-bar-track-color")];
-  char StringPool_str63[sizeof("word-break")];
   char StringPool_str66[sizeof("exposure-ui-margin-left")];
   char StringPool_str67[sizeof("exposure-ui-margin-right")];
   char StringPool_str69[sizeof("bottom-inset")];
   char StringPool_str70[sizeof("exposure-screen-margin-bottom")];
+  char StringPool_str72[sizeof("word-break")];
   char StringPool_str74[sizeof("visible")];
   char StringPool_str75[sizeof("border-style")];
   char StringPool_str76[sizeof("border-left")];
@@ -272,7 +272,7 @@ struct StringPool_t {
   char StringPool_str308[sizeof("custom-context-menu")];
   char StringPool_str310[sizeof("scroll-bar-auto-hide-delay")];
   char StringPool_str312[sizeof("enable-exposure-ui-margin")];
-  char StringPool_str313[sizeof("next-focus-fallback")];
+  char StringPool_str313[sizeof("scroll-monitor-tag")];
   char StringPool_str314[sizeof("list-container-info")];
   char StringPool_str315[sizeof("transform-origin")];
   char StringPool_str316[sizeof("line-spacing")];
@@ -281,6 +281,7 @@ struct StringPool_t {
   char StringPool_str319[sizeof("text-decoration")];
   char StringPool_str320[sizeof("next-focus-right")];
   char StringPool_str321[sizeof("letter-spacing")];
+  char StringPool_str322[sizeof("next-focus-fallback")];
   char StringPool_str324[sizeof("border-left-width")];
   char StringPool_str326[sizeof("intersection-observers")];
   char StringPool_str327[sizeof("background-color")];
@@ -369,11 +370,11 @@ static const struct StringPool_t StringPool_contents = {
     "exposure-screen-margin-left",
     "exposure-screen-margin-right",
     "scroll-bar-track-color",
-    "word-break",
     "exposure-ui-margin-left",
     "exposure-ui-margin-right",
     "bottom-inset",
     "exposure-screen-margin-bottom",
+    "word-break",
     "visible",
     "border-style",
     "border-left",
@@ -519,7 +520,7 @@ static const struct StringPool_t StringPool_contents = {
     "custom-context-menu",
     "scroll-bar-auto-hide-delay",
     "enable-exposure-ui-margin",
-    "next-focus-fallback",
+    "scroll-monitor-tag",
     "list-container-info",
     "transform-origin",
     "line-spacing",
@@ -528,6 +529,7 @@ static const struct StringPool_t StringPool_contents = {
     "text-decoration",
     "next-focus-right",
     "letter-spacing",
+    "next-focus-fallback",
     "border-left-width",
     "intersection-observers",
     "background-color",
@@ -679,8 +681,7 @@ static const struct TokenValue wordlist[] = {
     {offsetof(struct StringPool_t, StringPool_str61),
      (short)KeywordID::kScrollBarTrackColor},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str63),
-     (short)KeywordID::kWordBreak},
+    {-1},
     {-1},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str66),
@@ -693,7 +694,8 @@ static const struct TokenValue wordlist[] = {
     {offsetof(struct StringPool_t, StringPool_str70),
      (short)KeywordID::kExposureScreenMarginBottom},
     {-1},
-    {-1},
+    {offsetof(struct StringPool_t, StringPool_str72),
+     (short)KeywordID::kWordBreak},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str74),
      (short)KeywordID::kVisible},
@@ -1075,7 +1077,7 @@ static const struct TokenValue wordlist[] = {
     {offsetof(struct StringPool_t, StringPool_str312),
      (short)KeywordID::kEnableExposureUiMargin},
     {offsetof(struct StringPool_t, StringPool_str313),
-     (short)KeywordID::kNextFocusFallback},
+     (short)KeywordID::kScrollMonitorTag},
     {offsetof(struct StringPool_t, StringPool_str314),
      (short)KeywordID::kListContainerInfo},
     {offsetof(struct StringPool_t, StringPool_str315),
@@ -1091,7 +1093,8 @@ static const struct TokenValue wordlist[] = {
      (short)KeywordID::kNextFocusRight},
     {offsetof(struct StringPool_t, StringPool_str321),
      (short)KeywordID::kLetterSpacing},
-    {-1},
+    {offsetof(struct StringPool_t, StringPool_str322),
+     (short)KeywordID::kNextFocusFallback},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str324),
      (short)KeywordID::kBorderLeftWidth},

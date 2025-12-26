@@ -5,6 +5,7 @@
 #ifndef CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
 #define CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,6 +15,8 @@
 #include "base/include/fml/task_runner.h"
 #include "base/include/log/logging.h"
 #include "clay/shell/common/pipeline_timing_delegate.h"
+#include "clay/shell/common/scroll_fluency_monitor_delegate.h"
+#include "clay/ui/common/fps_tracer.h"
 #include "core/public/perf_controller_proxy.h"
 
 namespace lynx {
@@ -21,7 +24,8 @@ namespace tasm {
 
 class PerfControllerClay
     : public std::enable_shared_from_this<PerfControllerClay>,
-      public clay::PipelineTimingDelegate {
+      public clay::PipelineTimingDelegate,
+      public clay::ScrollFluencyMonitorDelegate {
  public:
   PerfControllerClay(
       const std::shared_ptr<shell::PerfControllerProxy>& controller,
@@ -74,6 +78,14 @@ class PerfControllerClay
   void OnPipelineEnd(std::vector<std::pair<std::string, uint64_t>> timings,
                      std::vector<std::string> pipeline_id_list) override;
 
+  // Overrides ScrollFluencyMonitorDelegate
+  void StartFluencyMonitor(int id, const std::string& scene,
+                           const std::string& scroll_monitor_tag,
+                           int max_refresh_rate) override;
+  void EndFluencyMonitor(int id) override;
+  void OnFrameTiming(int64_t frame_start_time_nanos,
+                     int64_t frame_end_time_nanos) override;
+
  private:
   const std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
 
@@ -81,6 +93,12 @@ class PerfControllerClay
 
   std::vector<tasm::PipelineID> pipeline_id_list_;
   std::atomic<int32_t> instance_id_ = {-1};
+
+  std::map<int, std::unique_ptr<clay::FpsTracer>> fps_tracers_;
+  // Map to track session IDs for each fluency monitor
+  std::map<int, uint64_t> fluency_monitor_session_ids_;
+  // TODO: Get this value from config.
+  bool enable_fluency_monitor_ = false;
 };
 
 }  // namespace tasm

@@ -240,6 +240,11 @@ void BaseListView::SetAttribute(const char* attr_c, const clay::Value& value) {
   } else if (kw == KeywordID::kEnableScroll) {
     bool enabled = attribute_utils::GetBool(value);
     SetScrollEnabled(enabled);
+  } else if (kw == KeywordID::kScrollMonitorTag) {
+    std::string tag;
+    if (attribute_utils::TryGetString(value, tag)) {
+      SetScrollMonitorTag(tag);
+    }
   } else if (kw == KeywordID::kUpdateAnimation) {
     bool update_animation = attribute_utils::GetCString(value) ==
                             attr_value::kListUpdateAnimationDefault;

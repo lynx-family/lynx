@@ -10,6 +10,8 @@ ui_common_sources = [
   "background_data.cc",
   "background_data.h",
   "editing_misc.h",
+  "fps_tracer.cc",
+  "fps_tracer.h",
   "frame_timing_collector.cc",
   "frame_timing_collector.h",
   "gap_task.h",
