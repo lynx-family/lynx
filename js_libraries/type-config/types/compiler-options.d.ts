@@ -10,13 +10,17 @@
 
 export interface CompilerOptions {
   /**
+   * NA
+   *
    * @defaultValue false
    *
    */
   debugInfoOutside?: boolean
 
   /**
-   * Since: LynxSDK 2.2
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    *
@@ -24,7 +28,9 @@ export interface CompilerOptions {
   defaultDisplayLinear?: boolean
 
   /**
-   * Since: LynxSDK 1.6
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    *
@@ -32,7 +38,9 @@ export interface CompilerOptions {
   defaultOverflowVisible?: boolean
 
   /**
-   * Since: LynxSDK 2.0
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -40,7 +48,9 @@ export interface CompilerOptions {
   disableMultipleCascadeCSS?: boolean
 
   /**
-   * Since: LynxSDK 2.6
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -48,13 +58,17 @@ export interface CompilerOptions {
   enableComponentConfig?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue undefined
    *
    */
   enableCSSAsyncDecode?: boolean
 
   /**
-   * Since: LynxSDK 2.1
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -62,13 +76,17 @@ export interface CompilerOptions {
   enableCSSClassMerge?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue true
    *
    */
   enableCSSEngine?: boolean
 
   /**
-   * Since: LynxSDK 1.6
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    *
@@ -78,7 +96,7 @@ export interface CompilerOptions {
   /**
    * If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -86,6 +104,8 @@ export interface CompilerOptions {
   enableCSSInvalidation?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue undefined
    *
    */
@@ -94,7 +114,7 @@ export interface CompilerOptions {
   /**
    * This switch will enable the css module in blink standard mode.
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -102,7 +122,9 @@ export interface CompilerOptions {
   enableCSSSelector?: boolean
 
   /**
-   * Since: LynxSDK 1.6
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -110,7 +132,9 @@ export interface CompilerOptions {
   enableCSSStrictMode?: boolean
 
   /**
-   * Since: LynxSDK 2.0
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    *
@@ -118,7 +142,9 @@ export interface CompilerOptions {
   enableCSSVariable?: boolean
 
   /**
-   * Since: LynxSDK 2.5
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    *
@@ -126,6 +152,8 @@ export interface CompilerOptions {
   enableEventRefactor?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue false
    *
    */
@@ -134,7 +162,7 @@ export interface CompilerOptions {
   /**
    * If enable this value, the template will be encoded as flexible template.
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -142,7 +170,9 @@ export interface CompilerOptions {
   enableFlexibleTemplate?: boolean
 
   /**
-   * Since: LynxSDK 2.1
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -150,6 +180,8 @@ export interface CompilerOptions {
   enableKeepPageData?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue false
    *
    */
@@ -168,7 +200,7 @@ export interface CompilerOptions {
   /**
    * Allow encoding quickjs bytecode instead of source code in template.
    *
-   * Since: LynxSDK 2.12
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -176,7 +208,9 @@ export interface CompilerOptions {
   experimental_encodeQuickjsBytecode?: boolean
 
   /**
-   * Since: LynxSDK 2.6
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    *
@@ -184,7 +218,9 @@ export interface CompilerOptions {
   forceCalcNewStyle?: boolean
 
   /**
-   * Since: LynxSDK 1.4
+   * NA
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    *
@@ -192,18 +228,24 @@ export interface CompilerOptions {
   implicitAnimation?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue false
    *
    */
   removeCSSParserLog?: boolean
 
   /**
+   * NA
+   *
    * @defaultValue ""
    *
    */
   targetSdkVersion?: string
 
   /**
+   * NA
+   *
    * @defaultValue ""
    *
    */

@@ -5,25 +5,25 @@
 # /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
+from pathlib import Path
 import sys
 import shutil
 import subprocess
 
-_this_dir = os.path.dirname(os.path.abspath(__file__))
-_root_dir = os.path.abspath(os.path.join(_this_dir, os.pardir, os.pardir, os.pardir))
+_this_dir = Path(__file__).resolve().parent
+_root_dir = _this_dir.parents[2]
 _clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang-format"
 
 
 def _get_clang_format_path():
     # 1. Check pre-defined paths in the repository
     candidate_paths = [
-        os.path.join(_root_dir, "buildtools", "llvm", _clang_format_binary),
-        os.path.join(_root_dir, "lynx", "buildtools", "llvm", _clang_format_binary),
+        _root_dir / "buildtools" / "llvm" / _clang_format_binary,
+        _root_dir / "lynx" / "buildtools" / "llvm" / _clang_format_binary,
     ]
     for path in candidate_paths:
-        if os.path.exists(path):
-            return path
+        if path.exists():
+            return str(path)
 
     # 2. Fallback to system PATH
     return shutil.which(_clang_format_binary) or _clang_format_binary

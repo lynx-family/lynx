@@ -5,6 +5,7 @@
 # /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import copy
 import yaml
 import re
 import sys
@@ -24,19 +25,16 @@ from config_env import (
 from pathlib import Path
 
 
-_compile_options: list[Config] = None
-
-
 def _construct_config_object(key: str, value: dict) -> Config:
     return Config(
         name=key,
-        desc=value.get("description", None),
+        desc=value.get("description", "NA"),
         default_value=value.get("defaultValue", None),
         js_default_value=value.get("jsDefaultValue", "undefined"),
         value_type=value.get("valueType", None),
         js_value_type=value.get("jsValueType", "undefined"),
-        since=value.get("since", None),
-        deprecated=value.get("deprecated", ""),
+        since=value.get("since", []),
+        deprecated=value.get("deprecated", []),
         support_platform=value.get("supportPlatform", ["Android", "iOS", "HarmonyOS"]),
         sync_to=value.get("syncTo", []),
         version_overrides=value.get("versionOverrides", []),
@@ -50,14 +48,13 @@ def _construct_config_object(key: str, value: dict) -> Config:
     )
 
 
-def parse_config() -> list[Config]:
-    with open(CONFIG_YAML_PATH, "r") as f:
-        config = yaml.safe_load(f)
+def parse_config() -> tuple[list[Config], list[Config]]:
+    config = yaml.safe_load(CONFIG_YAML_PATH.read_text())
     configs: list[Config] = []
+    compiler_options: list[Config] = []
     for key, value in config.items():
         if key == "compilerOptions":
-            global _compile_options
-            _compile_options = [
+            compiler_options = [
                 _construct_config_object(key, value) for key, value in value.items()
             ]
             continue
@@ -65,7 +62,39 @@ def parse_config() -> list[Config]:
     for config in configs:
         if not config.is_invalid():
             return []
-    return configs
+    return configs, compiler_options
+
+
+def _validate_export_version(items: list[Config]) -> list[Config]:
+    if not items:
+        return items
+
+    def check_version(v_str):
+        try:
+            return [int(x) for x in v_str.split(".")] >= [3, 2]
+        except Exception:
+            return True
+
+    items_copy = copy.deepcopy(items)
+    for item in items_copy:
+        if isinstance(item.since, str) and item.since:
+            if not check_version(item.since):
+                item.since = "3.2"
+        elif isinstance(item.since, list):
+            for i, sub in enumerate(item.since):
+                for k, v in sub.items():
+                    if not check_version(v):
+                        item.since[i][k] = "3.2"
+
+        if isinstance(item.deprecated, str) and item.deprecated:
+            if not check_version(item.deprecated):
+                item.deprecated = "3.2"
+        elif isinstance(item.deprecated, list):
+            for i, sub in enumerate(item.deprecated):
+                for k, v in sub.items():
+                    if not check_version(v):
+                        item.deprecated[i][k] = "3.2"
+    return items_copy
 
 
 def render_code_content(
@@ -78,24 +107,20 @@ def render_code_content(
     if not template_path.exists():
         print(f"{template_path} not found when gen config")
         sys.exit(1)
-    with open(template_path, "r") as f:
-        lynx_config_tmpl = f.read()
+    lynx_config_tmpl = template_path.read_text()
 
     rendered_content = Template(
         lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True
     ).render(configs=configs, options=options, export=export)
-    if str(output_path).endswith(".cc") or str(output_path).endswith(".h"):
+    if output_path.suffix == ".cc" or output_path.suffix == ".h":
         rendered_content = clang_format(rendered_content, file_extension=".h")
 
     if not output_path.exists():
-        with open(output_path, "w") as f:
-            f.write(rendered_content)
+        output_path.write_text(rendered_content)
     else:
-        with open(output_path, "r") as f:
-            existing_content = f.read()
+        existing_content = output_path.read_text()
         if existing_content != rendered_content:
-            with open(output_path, "w") as f:
-                f.write(rendered_content)
+            output_path.write_text(rendered_content)
         else:
             print(f"No need to update {output_path}")
 
@@ -124,14 +149,15 @@ def _gen_lynx_config_constants(configs: list[Config]):
     render_code_content(config_const_tmpl_path, lynx_config_const_header_path, configs)
 
 
-def _gen_config_types(configs: list[Config]):
+def _gen_config_types(configs: list[Config], export_configs: list[Config]):
     config_types_tmpl_path = JINJA_TEMPLATES_PATH / "config_types.tmpl"
     config_types_header_path = JS_LIBRARIES_CONFIG_PATH / "types" / "config.d.ts"
 
     render_code_content(
         config_types_tmpl_path,
         config_types_header_path,
-        sort_by_deprecated_and_alphabetical(configs),
+        sort_by_deprecated_and_alphabetical(export_configs),
+        export=True,
     )
 
     config_types_header_path = OLIVER_CONFIG_PATH / "types" / "config.d.ts"
@@ -144,7 +170,7 @@ def _gen_config_types(configs: list[Config]):
         )
 
 
-def _gen_compile_options():
+def _gen_compile_options(options: list[Config]):
     compile_options_header_path = TEMPLATE_CODEC_PATH / "compile_options.h"
 
     template_content = """{% for option in options %}
@@ -154,17 +180,11 @@ def _gen_compile_options():
     {% endfor %}
     """
 
-    global _compile_options
-    if _compile_options is None:
-        print("Compile options not parsed. Run parse_config first.", file=sys.stderr)
-        return
-
     rendered_content = Template(
         template_content, trim_blocks=True, lstrip_blocks=True
-    ).render(options=_compile_options)
+    ).render(options=options)
 
-    with open(compile_options_header_path, "r") as f:
-        header_content = f.read()
+    header_content = compile_options_header_path.read_text()
 
     pattern = r"(\s*// Compile options auto generated start\s*)(.*?)(^\s*// Compile options auto generated end\s*)"
     replacement = r"\1" + rendered_content + r"\3"
@@ -178,24 +198,25 @@ def _gen_compile_options():
 
     new_header_content = clang_format(new_header_content, file_extension=".h")
     if new_header_content != header_content:
-        with open(compile_options_header_path, "w") as f:
-            f.write(new_header_content)
+        compile_options_header_path.write_text(new_header_content)
     else:
         print(f"No need to update {compile_options_header_path}")
 
 
-def _gen_compile_options_types():
+def _gen_compile_options_types(options: list[Config], export_options: list[Config]):
     compile_options_types_tmpl_path = (
         JINJA_TEMPLATES_PATH / "compiler_options_types.tmpl"
     )
-    config_types_header_path = JS_LIBRARIES_CONFIG_PATH / "types" / "compiler-options.d.ts"
+    config_types_header_path = (
+        JS_LIBRARIES_CONFIG_PATH / "types" / "compiler-options.d.ts"
+    )
 
     global _compile_options
     render_code_content(
         compile_options_types_tmpl_path,
         config_types_header_path,
         None,
-        sort_by_deprecated_and_alphabetical(_compile_options),
+        sort_by_deprecated_and_alphabetical(export_options),
     )
 
     config_types_header_path = OLIVER_CONFIG_PATH / "types" / "compiler-options.d.ts"
@@ -204,33 +225,114 @@ def _gen_compile_options_types():
             compile_options_types_tmpl_path,
             config_types_header_path,
             None,
-            sort_by_deprecated_and_alphabetical(_compile_options),
+            sort_by_deprecated_and_alphabetical(options),
             export=False,
         )
 
 
-def gen_config_doc(configs: list[Config]):
+def _prepare_config_doc(configs: list[Config]):
+    platform_doc_map = {
+        "Android": "<AndroidOnly /> ",
+        "iOS": "<IOSOnly /> ",
+        "HarmonyOS": "<HarmonyOnly /> ",
+    }
+    platform_badge_map = {
+        "Android": "android",
+        "iOS": "ios",
+        "HarmonyOS": "harmony",
+    }
+
+    def _get_badge_doc(data):
+        if isinstance(data, list):
+            doc_parts = []
+            for item in data:
+                for platform, badge_name in platform_badge_map.items():
+                    if platform in item:
+                        version = item[platform]
+                        doc_parts.append(
+                            f'<PlatformBadge platform="{badge_name}" version="{version}" />'
+                        )
+                        break
+            return "".join(doc_parts)
+        elif isinstance(data, str):
+            return f"<VersionBadge v={{{data}}}/>"
+        return ""
+
+    for config in configs:
+        config.support_platform_doc = "".join(
+            platform_doc_map.get(platform, "") for platform in config.support_platform
+        )
+        config.since_doc = _get_badge_doc(config.since)
+        config.deprecated_doc = _get_badge_doc(config.deprecated)
+
+
+def gen_config_doc(
+    configs: list[Config], internal_path: Path = None, external_path: Path = None
+):
+    _prepare_config_doc(configs)
+    export_configs = _validate_export_version(configs)
+    _prepare_config_doc(export_configs)
     config_doc_tmpl_path = JINJA_TEMPLATES_PATH / "lynx_config_doc.tmpl"
-    config_doc_header_path = LYNX_CONFIG_TOOLS_PATH / "lynx_config_doc.mdx"
+    if internal_path and internal_path.exists():
+        internal_doc_path = (
+            internal_path
+            / "internal_docs"
+            / "en"
+            / "api"
+            / "lynx-config"
+            / "config-reference.mdx"
+        )
+    else:
+        print(
+            f"Internal path {internal_path} not found. Use default path {LYNX_CONFIG_TOOLS_PATH}"
+        )
+        internal_doc_path = LYNX_CONFIG_TOOLS_PATH / "config-reference.mdx"
+    if external_path and external_path.exists():
+        external_doc_path = (
+            external_path
+            / "docs"
+            / "en"
+            / "api"
+            / "lynx-config"
+            / "config-reference.mdx"
+        )
+    else:
+        print(
+            f"External path {external_path} not found. Use default path {LYNX_CONFIG_TOOLS_PATH / 'config-reference.mdx'}"
+        )
+        external_doc_path = LYNX_CONFIG_TOOLS_PATH / "config-reference.mdx"
 
     render_code_content(
         config_doc_tmpl_path,
-        config_doc_header_path,
+        internal_doc_path,
         sort_by_deprecated_and_alphabetical(configs),
+        None,
+        export=False,
+    )
+
+    render_code_content(
+        config_doc_tmpl_path,
+        external_doc_path,
+        sort_by_deprecated_and_alphabetical(export_configs),
+        None,
+        export=True,
     )
 
 
-def _gen_config_keys(configs: list[Config]):
+def _gen_config_keys(
+    configs: list[Config],
+    export_configs: list[Config],
+    options: list[Config],
+    export_options: list[Config],
+):
     config_keys_tmpl_path = JINJA_TEMPLATES_PATH / "config_keys.tmpl"
     config_keys_header_path = JS_LIBRARIES_CONFIG_PATH / "config-keys.js"
 
-
-    global _compile_options
     render_code_content(
         config_keys_tmpl_path,
         config_keys_header_path,
-        sort_by_deprecated_and_alphabetical(configs),
-        sort_by_deprecated_and_alphabetical(_compile_options),
+        sort_by_deprecated_and_alphabetical(export_configs),
+        sort_by_deprecated_and_alphabetical(export_options),
     )
 
     config_keys_header_path = OLIVER_CONFIG_PATH / "config-keys.js"
@@ -239,49 +341,56 @@ def _gen_config_keys(configs: list[Config]):
             config_keys_tmpl_path,
             config_keys_header_path,
             sort_by_deprecated_and_alphabetical(configs),
-            sort_by_deprecated_and_alphabetical(_compile_options),
+            sort_by_deprecated_and_alphabetical(options),
             export=False,
         )
 
 
-def gen_lynx_config(configs: list[Config]):
+def gen_lynx_config(configs: list[Config], options: list[Config]):
     # gen page config decode
     _gen_page_config_decode(configs)
     # gen lynx config constants
     _gen_lynx_config_constants(configs)
     # gen compile options
-    _gen_compile_options()
+    _gen_compile_options(options)
 
 
-def gen_types(configs: list[Config]):
+def gen_types(configs: list[Config], options: list[Config]):
+    export_configs = _validate_export_version(configs)
+    export_options = _validate_export_version(options)
     # gen config types
-    _gen_config_types(configs)
+    _gen_config_types(configs, export_configs)
     # gen compile options types
-    _gen_compile_options_types()
+    _gen_compile_options_types(options, export_options)
     # gen config keys
-    _gen_config_keys(configs)
+    _gen_config_keys(configs, export_configs, options, export_options)
 
 
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--gen-lynx-config", default=True, action="store_true")
     arg_parser.add_argument("--gen-config-types", action="store_true")
-    arg_parser.add_argument("--gen-config-doc", action="store_true")
+
+    subparsers = arg_parser.add_subparsers(dest="command")
+    doc_parser = subparsers.add_parser("gen-config-doc")
+    doc_parser.add_argument("--internal-path", type=Path)
+    doc_parser.add_argument("--external-path", type=Path)
+
     args = arg_parser.parse_args()
 
-    configs: list[Config] = parse_config()
+    configs, options = parse_config()
     if not configs:
         sys.exit(-1)
 
     if args.gen_lynx_config:
         # gen lynx config
-        gen_lynx_config(configs)
+        gen_lynx_config(configs, options)
         # gen lynx types npm
-        gen_types(configs)
+        gen_types(configs, options)
 
-    if args.gen_config_doc:
+    if args.command == "gen-config-doc":
         # gen config doc
-        gen_config_doc(configs)
+        gen_config_doc(configs + options, args.internal_path, args.external_path)
     sys.exit(0)
 
 
