@@ -5,21 +5,14 @@
 # /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import yaml
 import re
 import sys
+from pathlib import Path
 
 _accounts_set = None
-_accounts_mapping_path = os.path.normpath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        os.path.pardir,
-        os.path.pardir,
-        os.path.pardir,
-        "accounts-mapping.yml",
-    )
-)
+_accounts_mapping_path = Path(__file__).resolve().parents[3] / "accounts-mapping.yml"
+
 
 class Config:
     _type_known_list = [
@@ -88,7 +81,7 @@ class Config:
         self.js_value_type = js_value_type
         self.since = since
         self.deprecated = deprecated
-        self.support_platform = ", ".join(support_platform)
+        self.support_platform = support_platform
 
         if self.value_type == "bool" or self.value_type == "boolean":
             self.value_type = "bool"
@@ -161,7 +154,9 @@ class Config:
                 file=sys.stderr,
             )
             return False
-        if not (self.since and isinstance(self.since, str)):
+        if not (
+            self.since and (isinstance(self.since, str) or isinstance(self.since, list))
+        ):
             print(
                 f"Config {self.name} since field '{self.since}' is invalid, please ensure it is not empty and configured as a string.",
                 file=sys.stderr,
@@ -173,22 +168,29 @@ class Config:
                 file=sys.stderr,
             )
             return False
+        if self.deprecated and not (
+            isinstance(self.deprecated, str) or isinstance(self.deprecated, list)
+        ):
+            print(
+                f"Config {self.name} deprecated field '{self.deprecated}' is invalid, please ensure it is not empty and configured as a string.",
+                file=sys.stderr,
+            )
+            return False
         return True
 
     def _check_author(self) -> bool:
         global _accounts_set
         if _accounts_set is None:
             _accounts_set = set()
-            if not os.path.exists(_accounts_mapping_path):
+            if not _accounts_mapping_path.exists():
                 print(
                     f"please ensure {_accounts_mapping_path} file exists.",
                     file=sys.stderr,
                 )
             else:
-                with open(_accounts_mapping_path, "r") as f:
-                    accounts_mapping = yaml.safe_load(f)
-                    for account in accounts_mapping.get("mappings"):
-                        _accounts_set.add(account.get("external_username"))
+                accounts_mapping = yaml.safe_load(_accounts_mapping_path.read_text())
+                for account in accounts_mapping.get("mappings"):
+                    _accounts_set.add(account.get("external_username"))
         if not _accounts_set or self.author in _accounts_set:
             return True
         else:

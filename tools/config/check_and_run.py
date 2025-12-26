@@ -5,9 +5,9 @@
 # /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import subprocess
 import sys
+from pathlib import Path
 
 
 def check_and_run():
@@ -20,36 +20,34 @@ def check_and_run():
             gen_types
         )
 
-        configs = parse_config()
+        configs, compiler_options = parse_config()
         if not configs:
             sys.exit(-1)
 
-        gen_lynx_config(configs)
-        gen_types(configs)
+        gen_lynx_config(configs, compiler_options)
+        gen_types(configs, compiler_options)
 
         sys.exit(0)
     except ImportError:
         print("Required dependencies not found. Running gen_config.py...")
         # The directory of this script
-        this_dir = os.path.dirname(os.path.abspath(__file__))
+        this_dir = Path(__file__).resolve().parent
         # The project root directory
-        root_dir = os.path.abspath(
-            os.path.join(this_dir, os.pardir, os.pardir, os.pardir)
-        )
+        root_dir = this_dir.parents[2]
 
         if sys.platform == "win32":
-            python_executable = os.path.join(root_dir, ".venv", "Scripts", "python.exe")
-            envsetup_script = os.path.join(root_dir, "tools", "envsetup.ps1")
+            python_executable = root_dir / ".venv" / "Scripts" / "python.exe"
+            envsetup_script = root_dir / "tools" / "envsetup.ps1"
         else:
-            python_executable = os.path.join(root_dir, ".venv", "bin", "python3")
-            envsetup_script = os.path.join(root_dir, "tools", "envsetup.sh")
-        gen_config_script = os.path.join(this_dir, "gen_config.py")
+            python_executable = root_dir / ".venv" / "bin" / "python3"
+            envsetup_script = root_dir / "tools" / "envsetup.sh"
+        gen_config_script = this_dir / "gen_config.py"
 
         # Execute envsetup_script and gen_config_script in the same shell environment
         if sys.platform == "win32":
             command = f'powershell -ExecutionPolicy Bypass -File "{envsetup_script}" & "{python_executable}" "{gen_config_script}"'
         else:
-            command = f'bash -c "source "{envsetup_script}" && "{python_executable}" "{gen_config_script}""'
+            command = f'bash -c "source \\"{envsetup_script}\\" && \\"{python_executable}\\" \\"{gen_config_script}\\""'
 
         print(f"Executing command: {command}")
         result = subprocess.run(command, shell=True, cwd=root_dir)

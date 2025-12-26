@@ -1,4 +1,4 @@
-import { Deprecated } from '@lynx';
+import { Deprecated, VersionBadge, PlatformBadge, AndroidOnly, IOSOnly, HarmonyOnly } from '@lynx';
 
 # Lynx Config Reference
 
@@ -14,56 +14,56 @@ Auto-generated documentation for Lynx Configs.
 | Config | Description|
 | ---- | ----|
 {% for config in configs %}
+{% if not export or (export and config.export)%}
 {% if not config.deprecated %}
 | [{{ config.name }}](#{{ config.name|lower }}) | {{ config.desc|e }} |
 {% else %}
 | [{{ config.name }}](#{{ config.name|lower }}) <Deprecated/> | {{ config.desc|e }} |
+{% endif %}
 {% endif %}
 {% endfor %}
 
 ## Config Reference
 
 {% for config in configs %}
+{% if not export or (export and config.export)%}
 {% if not config.deprecated %}
 ---
 ### {{ config.name }}
+  {{ config.support_platform_doc }}{{config.since_doc}}
+  {% if config.desc %}
   {{ config.desc|e }}
-  ```ts
+  {% endif %}
+
+  ```typescript
   {{ config.name }}?: {{ config.js_value_type }} | undefined;
   ```
 
   * **`valueType:`** {{ config.js_value_type|e }} | undefined
 
   * **`defaultValue:`** {{ config.js_default_value|e }}
-
-  * **`since:`** {{ config.since|e }}
-
-  * **`supportPlatform:`** {{ config.support_platform|e }}
+{% endif %}
 {% endif %}
 {% endfor %}
 
 ## Deprecated Config
 {% for config in configs %}
+{% if not export or (export and config.export)%}
 {% if config.deprecated %}
 ---
-### {{ config.name }} <Deprecated/>
+### {{ config.name }} <Deprecated/>{{config.deprecated_doc}}
+  {{ config.support_platform_doc }}{{config.since_doc}}
   {% if config.desc %}
   {{ config.desc|e }}
   {% endif %}
-  ```ts
+
+  ```typescript
   {{ config.name }}?: {{ config.js_value_type }} | undefined;
   ```
 
   * **`valueType:`** {{ config.js_value_type|e }} | undefined
 
   * **`defaultValue:`** {{ config.js_default_value|e }}
-
-  * **`since:`** {{ config.since|e }}
-
-  * **`supportPlatform:`** {{ config.support_platform|e }}
-
-  {% if config.deprecated %}
-  * **`deprecated:`** {{ config.deprecated|e }}
-  {% endif %}
+{% endif %}
 {% endif %}
 {% endfor %}

@@ -14,7 +14,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -25,7 +25,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -36,7 +36,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -47,7 +47,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -58,7 +58,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -69,7 +69,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -80,7 +80,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.5
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -102,7 +102,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.12
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -113,7 +113,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.0
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -124,7 +124,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -135,7 +135,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.12
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -157,7 +157,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -168,7 +168,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -179,7 +179,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -190,7 +190,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.14
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -201,18 +201,18 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.9
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
   enableComponentNullProp?: boolean
 
   /**
-   * Create Android platform UIs in lynx built-in thread-pool to optimize UI Operation Execution 
+   * Create Android platform UIs in lynx built-in thread-pool to optimize UI Operation Execution
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.0
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -223,7 +223,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -245,7 +245,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.18
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -267,7 +267,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -278,7 +278,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.9
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -300,7 +300,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -311,7 +311,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -322,7 +322,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -340,11 +340,11 @@ export interface Config {
   enableExposureWhenReload?: boolean
 
   /**
-   * A better and stable position fixed handling. 
+   * A better and stable position fixed handling.
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -377,7 +377,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.16
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -388,7 +388,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.0
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -399,7 +399,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.14
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -410,18 +410,18 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.12
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
   enableJSDataProcessor?: boolean
 
   /**
-   * Does diffResult have moveAction?
+   * Does diffResult have moveAction
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.2
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -432,7 +432,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.4.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -443,7 +443,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.5
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -454,18 +454,18 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.15
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
   enableLynxScrollFluency?: boolean | number
 
   /**
-   * This configuration item enableMicrotaskPromisePolyfill is used to determine whether to enable the micro - task Promise polyfill. Its value type is TernaryBool, and the default value is TernaryBool::UNDEFINE_VALUE. 
+   * This configuration item enableMicrotaskPromisePolyfill is used to determine whether to enable the micro - task Promise polyfill. Its value type is TernaryBool, and the default value is TernaryBool::UNDEFINE_VALUE.
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 3.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -487,7 +487,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.14
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -520,7 +520,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.18
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -531,7 +531,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -542,7 +542,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.16
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -553,7 +553,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -564,7 +564,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -575,7 +575,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.13
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -586,7 +586,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -619,7 +619,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.14
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -630,7 +630,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.2
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -641,7 +641,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -652,7 +652,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.17
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -663,7 +663,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.7
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -685,7 +685,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 3.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -696,7 +696,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -707,7 +707,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.17
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -725,11 +725,11 @@ export interface Config {
   enableTextGradientOpt?: boolean
 
   /**
-   * Enable a more accurate text alignment judgment method, but it will increase the time taken for text layout. 
+   * Enable a more accurate text alignment judgment method, but it will increase the time taken for text layout.
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -740,7 +740,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.3
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -758,11 +758,11 @@ export interface Config {
   enableTextLayoutCache?: boolean
 
   /**
-   * Whether enable text noncontiguous layout 
+   * Whether enable text noncontiguous layout
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 1.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -773,18 +773,18 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
   enableTextOverflow?: boolean
 
   /**
-   * Enable text refactor, with behavior more aligned with web. 
+   * Enable text refactor, with behavior more aligned with web.
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 2.2
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -795,7 +795,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -806,7 +806,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.16
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -839,7 +839,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.14
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -850,7 +850,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.14
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -861,7 +861,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -872,7 +872,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK Android: 2.11, iOS: 3.2
+   * Since: LynxSDK [{'Android': '3.2'}, {'iOS': '3.2'}]
    *
    * @defaultValue false
    */
@@ -883,7 +883,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.9
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -894,7 +894,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.11
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -905,7 +905,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -916,7 +916,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -927,7 +927,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -938,7 +938,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -949,7 +949,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -960,7 +960,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.2
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -971,7 +971,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.8
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -982,7 +982,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.5
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -993,7 +993,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS
    *
-   * Since: LynxSDK 3.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -1004,7 +1004,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 3.0
+   * Since: LynxSDK 3.2
    *
    * @defaultValue "auto"
    */
@@ -1015,7 +1015,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.4
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -1026,7 +1026,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.0
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -1037,7 +1037,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.10
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -1048,7 +1048,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS
    *
-   * Since: LynxSDK 2.0
+   * Since: LynxSDK 3.2
    *
    * @defaultValue "50px"
    */
@@ -1059,7 +1059,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    */
@@ -1070,7 +1070,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.3
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -1081,7 +1081,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.7
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    */
@@ -1092,7 +1092,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 1.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    */
@@ -1139,7 +1139,7 @@ export interface Config {
    *
    * Supported platform: Android, iOS, HarmonyOS
    *
-   * Since: LynxSDK 2.18
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    * @deprecated 3.5
@@ -1147,11 +1147,11 @@ export interface Config {
   enableA11yIDMutationObserver?: boolean
 
   /**
-   * Globally enable async rendering for software rendering contents on iOS, this can largely optimize the frame rate and reduce janks. 
+   * Globally enable async rendering for software rendering contents on iOS, this can largely optimize the frame rate and reduce janks.
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    * @deprecated 3.5
@@ -1163,7 +1163,7 @@ export interface Config {
    *
    * Supported platform: iOS
    *
-   * Since: LynxSDK 2.3
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    * @deprecated 3.5
@@ -1175,7 +1175,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    * @deprecated 3.5
@@ -1193,7 +1193,7 @@ export interface Config {
   /**
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.5
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    * @deprecated 3.5
@@ -1221,7 +1221,7 @@ export interface Config {
   /**
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.7
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    * @deprecated 3.5
@@ -1249,7 +1249,7 @@ export interface Config {
   /**
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.3
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    * @deprecated 3.5
@@ -1259,7 +1259,7 @@ export interface Config {
   /**
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 3.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    * @deprecated 3.5
@@ -1277,7 +1277,7 @@ export interface Config {
   /**
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 2.1
+   * Since: LynxSDK 3.2
    *
    * @defaultValue ""
    * @deprecated 3.5
@@ -1297,7 +1297,7 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
-   * Since: LynxSDK 1.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue false
    * @deprecated 3.5
@@ -1309,7 +1309,7 @@ export interface Config {
    *
    * Supported platform: Android
    *
-   * Since: LynxSDK 2.6
+   * Since: LynxSDK 3.2
    *
    * @defaultValue true
    * @deprecated 3.5

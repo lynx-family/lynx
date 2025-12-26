@@ -17,7 +17,7 @@ export interface Config {
    *
    {% endif %}
    {% if config.support_platform %}
-   * Supported platform: {{ config.support_platform }}
+   * Supported platform: {{ config.support_platform | map('string') | join(", ") }}
    {% endif %}
    {% if config.since %}
    *
