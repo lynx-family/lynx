@@ -7,6 +7,12 @@ import("../../../Lynx.gni")
 
 lynx_core_source_set("fragment") {
   sources = [
+    "event/platform_event_emitter.cc",
+    "event/platform_event_emitter.h",
+    "event/platform_event_target.cc",
+    "event/platform_event_target.h",
+    "event/platform_event_target_helper.cc",
+    "event/platform_event_target_helper.h",
     "fragment.cc",
     "fragment.h",
     "fragment_behavior.cc",

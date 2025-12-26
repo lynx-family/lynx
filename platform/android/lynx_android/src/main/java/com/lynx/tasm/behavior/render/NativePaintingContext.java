@@ -56,20 +56,42 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
+  public void setLynxEngineActorForPlatformRendererContext(long ptr) {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    nativeSetLynxEngineActorForPlatformRendererContext(mNativePtr, ptr);
+  }
+
+  @Override
   public boolean dispatchPlatformMotionEvent(MotionEvent ev) {
+    if (mNativePtr == 0 || mDestroyed) {
+      return false;
+    }
+
     // TODO(hexionghui): handle multi-pointer event.
     // iEventData: [event_type, action_type, event_source, pointer_count, ...]
     int[] iEventData = {0, ev.getActionMasked(), ev.getSource(), ev.getPointerCount()};
     // fEventData: [pointer_id, pointer_x, pointer_y, ...]
     float[] fEventData = {ev.getPointerId(0), ev.getX(), ev.getY()};
-    return mPlatformRendererContext.dispatchPlatformInputEvent(iEventData, fEventData);
+    return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
   }
 
   @Override
-  public void setLynxEngineActorForPlatformRendererContext(long ptr) {
-    mPlatformRendererContext.setLynxEngineActorForPlatformRendererContext(ptr);
+  public int getPlatformEventHandlerState() {
+    if (mDestroyed || mNativePtr == 0) {
+      return 0;
+    }
+    return nativeGetPlatformEventHandlerState(mNativePtr);
   }
 
   private native long nativeCreatePaintingContext(
       NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout);
+
+  native void nativeSetLynxEngineActorForPlatformRendererContext(long nativePtr, long ptr);
+
+  native boolean nativeDispatchPlatformInputEvent(
+      long nativePtr, int[] iEventData, float[] fEventData);
+
+  native int nativeGetPlatformEventHandlerState(long nativePtr);
 }

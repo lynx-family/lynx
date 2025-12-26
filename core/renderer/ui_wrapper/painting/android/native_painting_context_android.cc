@@ -16,6 +16,7 @@
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
+#include "core/shell/lynx_shell.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_register_jni.h"
 
@@ -30,6 +31,86 @@ jlong CreatePaintingContext(JNIEnv *env, jobject jcaller, jobject jThis,
       reinterpret_cast<lynx::tasm::PlatformRendererContext *>(
           platformRendererContextPtr)));
 }
+
+void SetLynxEngineActorForPlatformRendererContext(JNIEnv *env,
+                                                  jobject /*jcaller*/,
+                                                  jlong nativePtr, jlong ptr) {
+  // Get the NativePaintingCtxAndroid instance from the native pointer
+  if (nativePtr == 0 || ptr == 0) {
+    return;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  auto *shell = reinterpret_cast<lynx::shell::LynxShell *>(ptr);
+  if (shell == nullptr) {
+    return;
+  }
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return;
+  }
+  platform_ref->SetLynxEngineActorForPlatformRendererContext(
+      shell->GetEngineActor());
+}
+
+jboolean DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
+                                    jlong nativePtr, jintArray iEventData,
+                                    jfloatArray fEventData) {
+  // Get the NativePaintingCtxAndroid instance from the native pointer
+  if (nativePtr == 0 || iEventData == nullptr || fEventData == nullptr) {
+    return JNI_FALSE;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  jint *i_event_data = env->GetIntArrayElements(iEventData, JNI_FALSE);
+  if (i_event_data == nullptr) {
+    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
+    return JNI_FALSE;
+  }
+  jfloat *f_event_data = env->GetFloatArrayElements(fEventData, JNI_FALSE);
+  if (f_event_data == nullptr) {
+    env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
+    return JNI_FALSE;
+  }
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return JNI_FALSE;
+  }
+
+  auto res =
+      platform_ref->DispatchPlatformInputEvent(i_event_data, f_event_data);
+  env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
+  env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
+  return res;
+}
+
+jint GetPlatformEventHandlerState(JNIEnv *env, jobject /*jcaller*/,
+                                  jlong nativePtr) {
+  // Get the NativePaintingCtxAndroid instance from the native pointer
+  if (nativePtr == 0) {
+    return 0;
+  }
+
+  lynx::tasm::NativePaintingCtxAndroid *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return 0;
+  }
+  return platform_ref->GetPlatformEventHandlerState();
+}
+
 namespace lynx {
 namespace jni {
 bool RegisterJNIForNativePaintingContext(JNIEnv *env) {

@@ -8,9 +8,12 @@
 #include <functional>
 #include <utility>
 
+#include "core/event/event.h"
 #include "core/renderer/dom/fragment/display_list.h"
-#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/diff_algorithm.h"
+#include "core/shell/lynx_engine.h"
+#include "core/shell/lynx_shell.h"
 
 namespace lynx::tasm {
 
@@ -110,6 +113,56 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
       renderer->AddChild(child_it->second);
     }
   }
+}
+
+void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformRendererContext(
+    std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
+  engine_actor_ = engine_actor;
+}
+
+bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
+    int int_event_data[], float float_event_data[]) {
+  auto page_renderer = renderers_.find(kRootId);
+  if (page_renderer == renderers_.end() || page_renderer->second == nullptr) {
+    return false;
+  }
+  auto event_target_tree =
+      event_target_helper_->ReconstructEventTargetTreeRecursively(
+          fml::RefPtr<PlatformRendererImpl>(static_cast<PlatformRendererImpl *>(
+              page_renderer->second.get())));
+  return false;
+}
+
+int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() { return 0; }
+
+void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,
+                                             fml::RefPtr<event::Event> event) {
+  if (engine_actor_ == nullptr) {
+    return;
+  }
+  engine_actor_->Act([target_id, event = std::move(event)](auto &engine) {
+    engine->SendEvent(target_id, event);
+  });
+}
+
+void NativePaintingCtxPlatformRef::UpdatePseudoStatusStatus(
+    int32_t target_id, uint32_t pre_status, uint32_t current_status) {
+  if (engine_actor_ == nullptr) {
+    return;
+  }
+  engine_actor_->Act([target_id, pre_status, current_status](auto &engine) {
+    engine->OnPseudoStatusChanged(target_id, static_cast<int>(pre_status),
+                                  static_cast<int>(current_status));
+  });
+}
+
+PlatformEventEmitter *NativePaintingCtxPlatformRef::GetEventEmitter() {
+  return event_emitter_.get();
+}
+
+PlatformEventTargetHelper *
+NativePaintingCtxPlatformRef::GetEventTargetHelper() {
+  return event_target_helper_.get();
 }
 
 }  // namespace lynx::tasm

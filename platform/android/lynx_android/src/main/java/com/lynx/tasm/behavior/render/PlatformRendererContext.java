@@ -68,12 +68,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  public void setLynxEngineActorForPlatformRendererContext(long ptr) {
-    if (ptr != 0) {
-      nativeSetLynxEngineActorForPlatformRendererContext(mNativePtr, ptr);
-    }
-  }
-
   public void setRootView(@NonNull UIBody.UIBodyView rootView) {
     this.mRootView = new WeakReference<>(rootView);
   }
@@ -243,20 +237,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  public boolean dispatchPlatformInputEvent(int[] iEventData, float[] fEventData) {
-    if (mDestroyed || mNativePtr == 0) {
-      return false;
-    }
-    return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
-  }
-
-  public int getPlatformEventHandlerState() {
-    if (mDestroyed || mNativePtr == 0) {
-      return PlatformEventHandlerState.kNone;
-    }
-    return nativeGetPlatformEventHandlerState(mNativePtr);
-  }
-
   public void getDisplayList(int id, DisplayList displayList) {
     if (displayList == null || mDestroyed || mNativePtr == 0) {
       return;
@@ -321,8 +301,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
 
-  native void nativeSetLynxEngineActorForPlatformRendererContext(long nativePtr, long ptr);
-
   native int[] nativeGetDisplayListLengths(long nativePtr, int id);
 
   /**
@@ -331,11 +309,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
    */
   native void nativeGetDisplayListData(
       long nativePtr, int id, int[] ops, int[] iArgv, float[] fArgv);
-
-  native boolean nativeDispatchPlatformInputEvent(
-      long nativePtr, int[] iEventData, float[] fEventData);
-
-  native int nativeGetPlatformEventHandlerState(long nativePtr);
 
   public void destroy() {
     mDestroyed = true;

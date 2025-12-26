@@ -9,12 +9,24 @@
 
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
+#include "core/renderer/dom/fragment/event/platform_event_emitter.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
+constexpr const static int32_t kRootId = 10;
+
 namespace lynx {
+
+namespace shell {
+class LynxEngine;
+}
+
+namespace event {
+class Event;
+}
+
 namespace tasm {
 
-class PlatformRenderer;
 class DisplayList;
 
 class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
@@ -31,6 +43,25 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
 
+  void SetLynxEngineActorForPlatformRendererContext(
+      std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor);
+  // The event data from the platform layer is forwarded to PlatformEventHandler
+  // for subsequent event processing.
+  bool DispatchPlatformInputEvent(int int_event_data[],
+                                  float float_event_data[]);
+  // The current state of PlatformEventHandler is obtained to determine the
+  // gesture handling at the platform layer.
+  int GetPlatformEventHandlerState();
+  // Send event to the target element.
+  void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
+  // Update the pseudo status of the target element.
+  void UpdatePseudoStatusStatus(int32_t target_id, uint32_t pre_status,
+                                uint32_t current_status);
+  // Get PlatformEventEmitter instance.
+  PlatformEventEmitter *GetEventEmitter();
+  // Get PlatformEventTargetHelper instance.
+  PlatformEventTargetHelper *GetEventTargetHelper();
+
  protected:
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);
@@ -38,6 +69,11 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   std::unique_ptr<PlatformRendererFactory> view_factory_;
   base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformRenderer>, 64>
       renderers_;
+  std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_{nullptr};
+  std::unique_ptr<PlatformEventEmitter> event_emitter_ =
+      std::make_unique<PlatformEventEmitter>(this);
+  std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =
+      std::make_unique<PlatformEventTargetHelper>();
 };
 
 }  // namespace tasm
