@@ -151,12 +151,17 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public void setLynxEngineActorForPlatformRendererContext(long ptr) {}
+
+  @Override
   public boolean dispatchPlatformMotionEvent(MotionEvent ev) {
     return false;
   }
 
   @Override
-  public void setLynxEngineActorForPlatformRendererContext(long ptr) {}
+  public int getPlatformEventHandlerState() {
+    return 0;
+  }
 
   @CalledByNative
   public void rebuildViewTree() {

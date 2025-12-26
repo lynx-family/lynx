@@ -10,10 +10,7 @@
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
-#include "core/event/event.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
-#include "core/shell/lynx_engine.h"
-#include "core/shell/lynx_shell.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_register_jni.h"
 
@@ -29,11 +26,6 @@ bool RegisterJNIForPlatformRendererContext(JNIEnv* env) {
 }
 }  // namespace jni
 namespace tasm {
-void PlatformRendererContext::SetLynxEngineActorForPlatformRendererContext(
-    std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
-  engine_actor_ = engine_actor;
-}
-
 void PlatformRendererContext::CreatePlatformRenderer(
     int32_t id, PlatformRendererType type) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
@@ -146,98 +138,10 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
       static_cast<jint>(render_offset[1]));
 }
 
-bool PlatformRendererContext::DispatchPlatformInputEvent(
-    int int_event_data[], float float_event_data[]) {
-  return false;
-}
-
-int PlatformRendererContext::GetPlatformEventHandlerState() { return 0; }
-
-void PlatformRendererContext::SendEvent(int32_t target_id,
-                                        fml::RefPtr<event::Event> event) {
-  if (engine_actor_ == nullptr) {
-    return;
-  }
-  engine_actor_->Act([target_id, event = std::move(event)](auto& engine) {
-    engine->SendEvent(target_id, event);
-  });
-}
-
-void PlatformRendererContext::UpdatePseudoStatusStatus(
-    int32_t target_id, uint32_t pre_status, uint32_t current_status) {
-  if (engine_actor_ == nullptr) {
-    return;
-  }
-  engine_actor_->Act([target_id, pre_status, current_status](auto& engine) {
-    engine->OnPseudoStatusChanged(target_id, static_cast<int>(pre_status),
-                                  static_cast<int>(current_status));
-  });
-}
-
 }  // namespace tasm
 }  // namespace lynx
 
 // JNI function implementations
-void SetLynxEngineActorForPlatformRendererContext(JNIEnv* env,
-                                                  jobject /*jcaller*/,
-                                                  jlong nativePtr, jlong ptr) {
-  // Get the PlatformRendererContext instance from the native pointer
-  if (nativePtr == 0 || ptr == 0) {
-    return;
-  }
-
-  lynx::tasm::PlatformRendererContext* context =
-      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
-
-  auto* shell = reinterpret_cast<lynx::shell::LynxShell*>(ptr);
-  if (shell == nullptr) {
-    return;
-  }
-  context->SetLynxEngineActorForPlatformRendererContext(
-      shell->GetEngineActor());
-}
-
-jboolean DispatchPlatformInputEvent(JNIEnv* env, jobject /*jcaller*/,
-                                    jlong nativePtr, jintArray iEventData,
-                                    jfloatArray fEventData) {
-  // Get the PlatformRendererContext instance from the native pointer
-  if (nativePtr == 0 || iEventData == nullptr || fEventData == nullptr) {
-    return JNI_FALSE;
-  }
-
-  lynx::tasm::PlatformRendererContext* context =
-      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
-
-  jint* i_event_data = env->GetIntArrayElements(iEventData, JNI_FALSE);
-  if (i_event_data == nullptr) {
-    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
-    return JNI_FALSE;
-  }
-  jfloat* f_event_data = env->GetFloatArrayElements(fEventData, JNI_FALSE);
-  if (f_event_data == nullptr) {
-    env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
-    return JNI_FALSE;
-  }
-
-  auto res = context->DispatchPlatformInputEvent(i_event_data, f_event_data);
-  env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
-  env->ReleaseFloatArrayElements(fEventData, f_event_data, 0);
-  return res;
-}
-
-jint GetPlatformEventHandlerState(JNIEnv* env, jobject /*jcaller*/,
-                                  jlong nativePtr) {
-  // Get the PlatformRendererContext instance from the native pointer
-  if (nativePtr == 0) {
-    return 0;
-  }
-
-  lynx::tasm::PlatformRendererContext* context =
-      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
-
-  return context->GetPlatformEventHandlerState();
-}
-
 jintArray GetDisplayListLengths(JNIEnv* env, jobject /*jcaller*/,
                                 jlong nativePtr, jint id) {
   // Get the PlatformRendererContext instance from the native pointer
