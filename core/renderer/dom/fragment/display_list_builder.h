@@ -32,7 +32,7 @@ class DisplayListBuilder {
   DisplayListBuilder& End();
 
   // Fill with color
-  DisplayListBuilder& Fill(uint32_t color);
+  DisplayListBuilder& Fill(uint32_t color, int32_t clip_index = -1);
 
   // Draw a view
   DisplayListBuilder& DrawView(int view_id);
@@ -60,6 +60,12 @@ class DisplayListBuilder {
   // Record box model
   DisplayListBuilder& RecordBoxModel(const RoundedRectangle& rect,
                                      int32_t& index);
+
+  // Draw linear gradient
+  DisplayListBuilder& LinearGradient(float angle,
+                                     const base::Vector<uint32_t>& colors,
+                                     const base::Vector<float>& stops,
+                                     int32_t tiling_index, int32_t clip_index);
 
   DisplayListBuilder& MarkRootNeedClipBounds();
 

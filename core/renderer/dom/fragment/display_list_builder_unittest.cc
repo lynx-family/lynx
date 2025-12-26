@@ -88,10 +88,11 @@ TEST_F(DisplayListBuilderTest, FillOperation) {
 
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kFill));
   // With optimized AddOperation: [int_count, float_count, param]
-  EXPECT_EQ(int_data_data[0], 1);  // int_count
+  EXPECT_EQ(int_data_data[0], 2);  // int_count
   EXPECT_EQ(int_data_data[1], 0);  // float_count
   EXPECT_EQ(int_data_data[2],
             static_cast<int32_t>(color));                 // actual param
+  EXPECT_EQ(int_data_data[3], -1);                        // clip_index
   EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
 }
 
@@ -347,18 +348,9 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
     if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kImage)) {
       // Find corresponding data - need to calculate data index based on
       // position
-      size_t data_index = 3;            // Skip Begin operation data
-      for (size_t j = 1; j < i; ++j) {  // Skip Begin operation
-        if (op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kFill) ||
-            op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kDrawView) ||
-            op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kImage) ||
-            op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kText)) {
-          data_index += 3;  // Each content operation uses 3 data elements
-        }
+      size_t data_index = 0;
+      for (size_t j = 0; j < i; ++j) {
+        data_index += 2 + int_data_data[data_index];
       }
       EXPECT_EQ(int_data_data[data_index + 2],
                 0);  // First DrawImage should have image_id=0
@@ -373,18 +365,9 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
     if (op_types_data[i] == static_cast<int32_t>(DisplayListOpType::kText)) {
       // Find corresponding data - need to calculate data index based on
       // position
-      size_t data_index = 3;            // Skip Begin operation data
-      for (size_t j = 1; j < i; ++j) {  // Skip Begin operation
-        if (op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kFill) ||
-            op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kDrawView) ||
-            op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kImage) ||
-            op_types_data[j] ==
-                static_cast<int32_t>(DisplayListOpType::kText)) {
-          data_index += 3;  // Each content operation uses 3 data elements
-        }
+      size_t data_index = 0;
+      for (size_t j = 0; j < i; ++j) {
+        data_index += 2 + int_data_data[data_index];
       }
       EXPECT_EQ(int_data_data[data_index + 2],
                 0);  // First DrawText should have text_id=0
@@ -437,26 +420,27 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[2], 0.0f);
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[3], 0.0f);
 
-  // Fill operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[3], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[4], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[5], 0);  // Fill color param
+  // Fill operation: [int_count=2, float_count=0, 2 int params]
+  EXPECT_EQ(display_list.GetContentIntData()[3], 2);   // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[4], 0);   // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[5], 0);   // Fill color param
+  EXPECT_EQ(display_list.GetContentIntData()[6], -1);  // clip_index
 
   // DrawView operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[6], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[7], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[8], 0);  // DrawView param
+  EXPECT_EQ(display_list.GetContentIntData()[7], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[8], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[9], 0);  // DrawView param
 
-  // DrawImage operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[9], 2);    // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[10], 0);   // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[11], 0);   // DrawImage param
-  EXPECT_EQ(display_list.GetContentIntData()[12], -1);  // int_count
+  // DrawImage operation: [int_count=2, float_count=0, 2 int params]
+  EXPECT_EQ(display_list.GetContentIntData()[10], 2);   // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[11], 0);   // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[12], 0);   // DrawImage param
+  EXPECT_EQ(display_list.GetContentIntData()[13], -1);  // box_index
 
   // DrawText operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[13], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[14], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[15], 0);  // DrawText param
+  EXPECT_EQ(display_list.GetContentIntData()[14], 1);  // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[15], 0);  // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[16], 0);  // DrawText param
 
   // Transform operation: [int_count=0, float_count=6, 6 float params]
   EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);  // int_count
@@ -924,6 +908,48 @@ TEST_F(DisplayListBuilderTest, TestCallMarkRootNeedClipBounds) {
 TEST_F(DisplayListBuilderTest, TestNotCallMarkRootNeedClipBounds) {
   DisplayList display_list = builder_->Build();
   EXPECT_FALSE(display_list.RootNeedClipBounds());
+}
+
+TEST_F(DisplayListBuilderTest, LinearGradientOperation) {
+  float angle = 45.0f;
+  base::Vector<uint32_t> colors = {0xFFFF0000, 0xFF00FF00, 0xFF0000FF};
+  base::Vector<float> stops = {0.0f, 0.5f, 1.0f};
+  int32_t tiling_index = 1;
+  int32_t clip_index = 2;
+
+  builder_->LinearGradient(angle, colors, stops, tiling_index, clip_index);
+
+  DisplayList display_list = builder_->Build();
+
+  const int32_t* op_types_data = display_list.GetContentOpTypesData();
+  const int32_t* int_data_data = display_list.GetContentIntData();
+  const float* float_data_data = display_list.GetContentFloatData();
+
+  EXPECT_NE(op_types_data, nullptr);
+  EXPECT_NE(int_data_data, nullptr);
+  EXPECT_NE(float_data_data, nullptr);
+
+  EXPECT_EQ(op_types_data[0],
+            static_cast<int32_t>(DisplayListOpType::kLinearGradient));
+
+  // int_data layout: [int_count, float_count, stop_count, colors...,
+  // tiling_index, clip_index]
+  EXPECT_EQ(int_data_data[0],
+            1 + 3 + 2);  // int_count: 1 (stop_count) + 3 (colors) + 2 (indices)
+  EXPECT_EQ(int_data_data[1], 1 + 3);  // float_count: 1 (angle) + 3 (stops)
+
+  EXPECT_EQ(int_data_data[2], 3);  // stop_count
+  EXPECT_EQ(static_cast<uint32_t>(int_data_data[3]), 0xFFFF0000);
+  EXPECT_EQ(static_cast<uint32_t>(int_data_data[4]), 0xFF00FF00);
+  EXPECT_EQ(static_cast<uint32_t>(int_data_data[5]), 0xFF0000FF);
+  EXPECT_EQ(int_data_data[6], tiling_index);
+  EXPECT_EQ(int_data_data[7], clip_index);
+
+  // float_data layout: [angle, positions...]
+  EXPECT_FLOAT_EQ(float_data_data[0], angle);
+  EXPECT_FLOAT_EQ(float_data_data[1], 0.0f);
+  EXPECT_FLOAT_EQ(float_data_data[2], 0.5f);
+  EXPECT_FLOAT_EQ(float_data_data[3], 1.0f);
 }
 
 }  // namespace tasm

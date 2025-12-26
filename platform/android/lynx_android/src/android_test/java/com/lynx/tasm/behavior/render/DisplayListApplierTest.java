@@ -255,7 +255,7 @@ public class DisplayListApplierTest {
   @Test
   public void testOpFill() {
     testDisplayList.ops = new int[] {0, 2}; // OP_BEGIN, OP_FILL
-    testDisplayList.iArgv = new int[] {1, 4, 0, 1, 0, 0xFF0000FF}; // intParamCounts
+    testDisplayList.iArgv = new int[] {1, 4, 0, 2, 0, 0xFF0000FF, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -432,7 +432,7 @@ public class DisplayListApplierTest {
     DisplayList newDisplayList = new DisplayList();
     newDisplayList.ops = new int[] {0, 2, 1}; // Begin, OP_FILL, end
     newDisplayList.iArgv =
-        new int[] {1, 4, 0, 1, 0, 0xFF00FF00, 0, 0}; // 1 int param, 4 float params
+        new int[] {1, 4, 0, 2, 0, 0xFF00FF00, 0, 0, 0}; // 1 int param, 4 float params
     newDisplayList.fArgv = new float[] {0f, 0f, 32f, 32f}; // Green color
 
     displayListApplier.setDisplayList(newDisplayList);
@@ -497,7 +497,7 @@ public class DisplayListApplierTest {
   public void testMultipleOperations() {
     testDisplayList.ops = new int[] {0, 2, 6, 1}; // OP_BEGIN, OP_FILL, OP_TEXT, OP_END
     testDisplayList.iArgv =
-        new int[] {1, 4, 0, 1, 0, 0xFF0000FF, 1, 0, 999, 0, 0}; // intParamCounts
+        new int[] {1, 4, 0, 2, 0, 0xFF0000FF, 0, 1, 0, 999, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {
         10f,
         20f,

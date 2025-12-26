@@ -314,8 +314,30 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   if (!element()->computed_css_style()->GetBackgroundData()) {
     return;
   }
-  display_list_builder.Fill(
-      element()->computed_css_style()->GetBackgroundData()->color);
+  const auto& background_data =
+      element()->computed_css_style()->GetBackgroundData();
+  int32_t clip_index = -1;
+  starlight::BackgroundClipType clip_type =
+      starlight::BackgroundClipType::kBorderBox;
+  if (background_data->image_data &&
+      !background_data->image_data->clip.empty()) {
+    clip_type = background_data->image_data->clip.back();
+  }
+  switch (clip_type) {
+    case starlight::BackgroundClipType::kPaddingBox:
+      clip_index = DefinePaddingBox(display_list_builder);
+      break;
+    case starlight::BackgroundClipType::kBorderBox:
+      clip_index = DefineBorderBox(display_list_builder);
+      break;
+    case starlight::BackgroundClipType::kContentBox:
+      clip_index = DefineContentBox(display_list_builder);
+      break;
+    default:
+      clip_index = DefineBorderBox(display_list_builder);
+      break;
+  }
+  display_list_builder.Fill(background_data->color, clip_index);
 }
 
 void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {

@@ -32,6 +32,7 @@ enum class DisplayListOpType : int32_t {
   kBorder = 9,
   kClipRect = 10,
   kRecordBox = 11,
+  kLinearGradient = 12,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -155,6 +156,10 @@ class DisplayList {
 
   void ClearSubtreeProperties();
 
+  void AddLinearGradient(float angle, const base::Vector<uint32_t>& colors,
+                         const base::Vector<float>& stops, int32_t tiling_index,
+                         int32_t clip_index);
+
   template <typename OpType, typename... Args>
   auto AddOperation(OpType type, Args... args) -> std::enable_if_t<
       std::is_same_v<OpType, DisplayListOpType> ||
@@ -217,19 +222,15 @@ void DisplayList::AddOperationToData(
     constexpr size_t float_count =
         (... + (std::is_same_v<std::decay_t<Args>, float> ? 1 : 0));
 
-    // Store counts
-    op_data->int_data.push_back(static_cast<int32_t>(int_count));
-    op_data->int_data.push_back(static_cast<int32_t>(float_count));
-
-    // Reserve space for int parameters if needed
-    if constexpr (int_count > 0) {
-      op_data->int_data.reserve(op_data->int_data.size() + int_count);
-    }
-
-    // Reserve space for float parameters if needed
+    // Pre-calculate and reserve space to avoid multiple reallocations
+    op_data->int_data.reserve(op_data->int_data.size() + 2 + int_count);
     if constexpr (float_count > 0) {
       op_data->float_data.reserve(op_data->float_data.size() + float_count);
     }
+
+    // Store counts
+    op_data->int_data.push_back(static_cast<int32_t>(int_count));
+    op_data->int_data.push_back(static_cast<int32_t>(float_count));
 
     // Store parameters using fold expression - no runtime type checking needed
     ((std::is_same_v<std::decay_t<Args>, int32_t>

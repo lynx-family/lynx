@@ -172,11 +172,23 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_FILL:
           mPaint.reset();
-          if (intParamCount == 1) {
-            // Fill: color (1 int)
-            int color = nextContentInt();
+          // Fill: color (1 int), clip_index (1 int)
+          int color = nextContentInt();
+          int clipIndex = nextContentInt();
+          mPaint.setColor(color);
+
+          if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
+            RoundedRectangle roundedRectangle = mRoundedRectangleArray.get(clipIndex);
+            if (roundedRectangle.hasBorderRadius()) {
+              Path path = new Path();
+              path.addRoundRect(roundedRectangle.getRectF(), roundedRectangle.getBorderRadii(),
+                  Path.Direction.CW);
+              canvas.drawPath(path, mPaint);
+            } else {
+              canvas.drawRect(roundedRectangle.getRectF(), mPaint);
+            }
+          } else if (!mBounds.isEmpty()) {
             // This would fill the entire fragment bound
-            mPaint.setColor(color);
             // Need to get bounds from the Begin operation or context
             canvas.drawRect(mBounds.peek(), mPaint);
           }

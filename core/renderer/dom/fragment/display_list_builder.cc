@@ -31,9 +31,10 @@ DisplayListBuilder& DisplayListBuilder::End() {
   return *this;
 }
 
-DisplayListBuilder& DisplayListBuilder::Fill(uint32_t color) {
+DisplayListBuilder& DisplayListBuilder::Fill(uint32_t color,
+                                             int32_t clip_index) {
   display_list_.AddOperation(DisplayListOpType::kFill,
-                             static_cast<int32_t>(color));
+                             static_cast<int32_t>(color), clip_index);
   return *this;
 }
 
@@ -123,6 +124,15 @@ DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
   }
 
   index = current_index_of_box_model++;
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::LinearGradient(
+    float angle, const base::Vector<uint32_t>& colors,
+    const base::Vector<float>& stops, int32_t tiling_index,
+    int32_t clip_index) {
+  display_list_.AddLinearGradient(angle, colors, stops, tiling_index,
+                                  clip_index);
   return *this;
 }
 
