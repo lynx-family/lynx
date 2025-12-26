@@ -1564,6 +1564,25 @@ LYNX_PROP_SETTER("placeholder-hash-config", setPlaceHolderHash, NSDictionary*) {
   }
 }
 
+/**
+ * @name: progressive-rendering
+ * @description:  If set, will enable the progressive rendering capability for images.
+ *                Support formats: awebp (animated), gif(animated), heif(animated), heic (static)
+ * @category: different
+ * @standardAction: keep
+ * @supportVersion: 3.7
+ **/
+LYNX_PROP_SETTER("progressive-rendering", setProgressiveRendering, BOOL) {
+  if (requestReset) {
+    value = NO;
+  }
+  if (value) {
+    _requestOptions = _requestOptions | LynxImageProgressiveRendering;
+  } else if (_requestOptions & LynxImageProgressiveRendering) {
+    _requestOptions ^= LynxImageProgressiveRendering;
+  }
+}
+
 #pragma mark UI_Method
 
 LYNX_UI_METHOD(startAnimate) {

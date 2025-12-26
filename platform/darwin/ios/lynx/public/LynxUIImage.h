@@ -18,6 +18,7 @@ typedef NS_OPTIONS(NSInteger, LynxRequestOptions) {
   LynxImageNotCacheToDisk = 1 << 4,     // don't store to disk cache
   LynxImageIgnoreCDNDowngradeCachePolicy =
       1 << 5,  // if not set, the CDN downgraded image will not store to disk cache
+  LynxImageProgressiveRendering = 1 << 6,  // enable progressive rendering
 };
 
 @interface LynxUIImage : LynxUI <UIImageView*>
