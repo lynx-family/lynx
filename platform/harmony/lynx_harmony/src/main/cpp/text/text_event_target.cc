@@ -63,8 +63,16 @@ bool TextEventTarget::IgnoreFocus() {
   return false;
 }
 
-ConsumeSlideDirection TextEventTarget::ConsumeSlideEvent() {
-  return ConsumeSlideDirection::kNone;
+LynxConsumeSlideDirection TextEventTarget::ConsumeSlideEvent() {
+  return LynxConsumeSlideDirection::kNone;
+}
+
+LynxPanInterceptDirection TextEventTarget::PanInterceptDirection() {
+  return LynxPanInterceptDirection::kNone;
+}
+
+LynxPanInterceptScope TextEventTarget::PanInterceptScope() {
+  return LynxPanInterceptScope::kNone;
 }
 
 EventTarget* TextEventTarget::HitTest(float point[2]) {

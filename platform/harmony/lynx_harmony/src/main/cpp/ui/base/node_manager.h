@@ -21,7 +21,8 @@
 
 typedef ArkUI_GestureInterruptResult (*GestureInterrupter)(
     ArkUI_GestureInterruptInfo* info);
-typedef void (*GestureReceiver)(ArkUI_GestureEvent* event, void* extraParams);
+
+typedef void (*GestureReceiver)(ArkUI_GestureEvent* event, void* user_data);
 
 namespace lynx {
 namespace tasm {
@@ -73,6 +74,7 @@ class BASE_EXPORT NodeManager {
   void RequestLayout(ArkUI_NodeHandle node);
   void Invalidate(ArkUI_NodeHandle node);
   ArkUI_NodeHandle GetParent(ArkUI_NodeHandle node);
+  bool NodeIsParentOfAnotherNode(ArkUI_NodeHandle node, ArkUI_NodeHandle other);
 
   /**
    * Add event to the target node.
@@ -119,7 +121,7 @@ class BASE_EXPORT NodeManager {
                                                   bool repeat_result = false,
                                                   int32_t duration_num = 500);
 
-  ArkUI_GestureRecognizer* createTapGestureWithDistanceThreshold(
+  ArkUI_GestureRecognizer* CreateTapGestureWithDistanceThreshold(
       int32_t count_num = 1, int32_t fingers_num = 1,
       double distance_threshold = 5);
 
@@ -128,15 +130,15 @@ class BASE_EXPORT NodeManager {
       ArkUI_GestureDirectionMask directions = GESTURE_DIRECTION_ALL,
       double distance_num = 5);
 
+  ArkUI_GestureRecognizerType GetGestureType(
+      ArkUI_GestureRecognizer* recognizer);
+
   void SetGestureEventTarget(ArkUI_GestureRecognizer* recognizer,
                              ArkUI_GestureEventActionTypeMask action_type_mask,
-                             void* extra_params,
-                             void (*target_receiver)(ArkUI_GestureEvent* event,
-                                                     void* extra_params));
+                             void* extra_params, GestureReceiver receiver);
 
   void SetGestureInterrupterToNode(ArkUI_NodeHandle node,
-                                   ArkUI_GestureInterruptResult (*interrupter)(
-                                       ArkUI_GestureInterruptInfo* info));
+                                   GestureInterrupter interrupter);
 
   void AddGestureToNode(ArkUI_NodeHandle node,
                         ArkUI_GestureRecognizer* recognizer,

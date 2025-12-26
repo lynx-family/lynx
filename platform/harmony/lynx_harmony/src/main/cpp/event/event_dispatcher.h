@@ -104,7 +104,16 @@ class EventDispatcher {
 
   bool ContainGestureNode();
 
-  ConsumeSlideDirection ShouldConsumeSlideEvent();
+  LynxConsumeSlideDirection ShouldConsumeSlideEvent();
+
+  EventTarget* GetFirstPanInterceptDirectionTarget(
+      LynxPanInterceptDirection direction);
+
+  LynxPanInterceptScope GetTargetPanInterceptScope(EventTarget* target);
+
+  bool ShouldInterceptPanGesture(ArkUI_NodeHandle recognizer_node,
+                                 ArkUI_NodeHandle intercept_node,
+                                 LynxPanInterceptScope intercept_scope);
 
   void AttachGesturesToRoot(UIBase* root);
 
@@ -158,7 +167,7 @@ class EventDispatcher {
 
   void ActivePseudoStatus();
 
-  void DeactivatePseudoStatus(PseudoStatus status);
+  void DeactivatePseudoStatus(LynxPseudoStatus status);
 
   bool IsTouchMoveOutside(EventTarget* target);
 

@@ -55,6 +55,21 @@ ArkUI_NodeHandle NodeManager::GetParent(ArkUI_NodeHandle node) {
   return native_node_api_->getParent(node);
 }
 
+bool NodeManager::NodeIsParentOfAnotherNode(ArkUI_NodeHandle node,
+                                            ArkUI_NodeHandle another) {
+  if (!node || !another || node == another) {
+    return false;
+  }
+  auto current = NodeManager::Instance().GetParent(another);
+  while (current) {
+    if (current == node) {
+      return true;
+    }
+    current = NodeManager::Instance().GetParent(current);
+  }
+  return false;
+}
+
 bool NodeManager::InsertNodeAfter(ArkUI_NodeHandle parent,
                                   ArkUI_NodeHandle child,
                                   ArkUI_NodeHandle after) {
@@ -152,7 +167,7 @@ ArkUI_GestureRecognizer* NodeManager::CreateLongPressGesture(
                                                      duration_num);
 }
 
-ArkUI_GestureRecognizer* NodeManager::createTapGestureWithDistanceThreshold(
+ArkUI_GestureRecognizer* NodeManager::CreateTapGestureWithDistanceThreshold(
     int32_t count_num, int32_t fingers_num, double distance_threshold) {
   return native_gesture_api_->createTapGestureWithDistanceThreshold(
       count_num, fingers_num, distance_threshold);
@@ -165,17 +180,21 @@ ArkUI_GestureRecognizer* NodeManager::CreatePanGesture(
                                                distance_num);
 }
 
+ArkUI_GestureRecognizerType NodeManager::GetGestureType(
+    ArkUI_GestureRecognizer* recognizer) {
+  return native_gesture_api_->getGestureType(recognizer);
+}
+
 void NodeManager::SetGestureEventTarget(
     ArkUI_GestureRecognizer* recognizer,
     ArkUI_GestureEventActionTypeMask action_type_mask, void* extra_params,
-    void (*target_receiver)(ArkUI_GestureEvent* event, void* extra_params)) {
+    GestureReceiver receiver) {
   native_gesture_api_->setGestureEventTarget(recognizer, action_type_mask,
-                                             extra_params, target_receiver);
+                                             extra_params, receiver);
 }
 
-void NodeManager::SetGestureInterrupterToNode(
-    ArkUI_NodeHandle node, ArkUI_GestureInterruptResult (*interrupter)(
-                               ArkUI_GestureInterruptInfo* info)) {
+void NodeManager::SetGestureInterrupterToNode(ArkUI_NodeHandle node,
+                                              GestureInterrupter interrupter) {
   native_gesture_api_->setGestureInterrupterToNode(node, interrupter);
 }
 

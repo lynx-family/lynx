@@ -735,13 +735,13 @@ void UIOwner::HandleCustomEvent(const CustomEvent& custom_event) const {
   context_->HandleCustomEvent(custom_event);
 }
 
-void UIOwner::SendPseudoStatusEvent(int id, PseudoStatus pre_status,
-                                    PseudoStatus current_status) const {
+void UIOwner::SendPseudoStatusEvent(int id, LynxPseudoStatus pre_status,
+                                    LynxPseudoStatus current_status) const {
   event_emitter_->SendPseudoStatusEvent(id, pre_status, current_status);
 }
 
-void UIOwner::OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                                    PseudoStatus current_status) const {
+void UIOwner::OnPseudoStatusChanged(int id, LynxPseudoStatus pre_status,
+                                    LynxPseudoStatus current_status) const {
   context_->OnPseudoStatusChanged(id, pre_status, current_status);
 }
 

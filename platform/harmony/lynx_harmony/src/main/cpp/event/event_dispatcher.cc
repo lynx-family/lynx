@@ -85,37 +85,99 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
   }
 
   switch (event_dispatcher->ShouldConsumeSlideEvent()) {
-    case ConsumeSlideDirection::kHorizontal:
+    case LynxConsumeSlideDirection::kHorizontal:
       return gesture == event_dispatcher->consume_horizontal_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
-    case ConsumeSlideDirection::kVertical:
+    case LynxConsumeSlideDirection::kVertical:
       return gesture == event_dispatcher->consume_vertical_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
-    case ConsumeSlideDirection::kUp:
+    case LynxConsumeSlideDirection::kUp:
       return gesture == event_dispatcher->consume_up_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
-    case ConsumeSlideDirection::kRight:
+    case LynxConsumeSlideDirection::kRight:
       return gesture == event_dispatcher->consume_right_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
-    case ConsumeSlideDirection::kDown:
+    case LynxConsumeSlideDirection::kDown:
       return gesture == event_dispatcher->consume_down_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
-    case ConsumeSlideDirection::kLeft:
+    case LynxConsumeSlideDirection::kLeft:
       return gesture == event_dispatcher->consume_left_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
-    case ConsumeSlideDirection::kAll:
+    case LynxConsumeSlideDirection::kAll:
       return gesture == event_dispatcher->consume_all_pan_gesture_
                  ? GESTURE_INTERRUPT_RESULT_CONTINUE
                  : GESTURE_INTERRUPT_RESULT_REJECT;
     default:
-      return GESTURE_INTERRUPT_RESULT_REJECT;
+      break;
   }
+
+  ArkUI_GestureRecognizerHandleArray response_chain = nullptr;
+  int32_t count = 0;
+  OH_ArkUI_GetResponseRecognizersFromInterruptInfo(info, &response_chain,
+                                                   &count);
+  if (response_chain) {
+    auto handle_pan_intercept =
+        [&](ArkUI_GestureRecognizer* target_gesture,
+            LynxPanInterceptDirection intercept_direction,
+            ArkUI_GestureDirectionMask target_mask) {
+          if (gesture != target_gesture) {
+            return;
+          }
+          auto pan_intercept_target =
+              event_dispatcher->GetFirstPanInterceptDirectionTarget(
+                  intercept_direction);
+          if (pan_intercept_target == nullptr) {
+            return;
+          }
+          auto intercept_node =
+              static_cast<UIBase*>(pan_intercept_target)->DrawNode();
+          auto pan_intercept_scope = pan_intercept_target->PanInterceptScope();
+          for (int32_t i = 0; i < count; ++i) {
+            auto recognizer = response_chain[i];
+            if (NodeManager::Instance().GetGestureType(recognizer) ==
+                PAN_GESTURE) {
+              ArkUI_GestureDirectionMask direction = 0;
+              OH_ArkUI_GetPanGestureDirectionMask(recognizer, &direction);
+              auto recognizer_node =
+                  OH_ArkUI_TouchRecognizer_GetNodeHandle(recognizer);
+              if (direction == target_mask &&
+                  event_dispatcher->ShouldInterceptPanGesture(
+                      recognizer_node, intercept_node, pan_intercept_scope)) {
+                OH_ArkUI_PreventGestureRecognizerBegin(recognizer);
+              }
+            }
+          }
+        };
+
+    handle_pan_intercept(event_dispatcher->consume_horizontal_pan_gesture_,
+                         LynxPanInterceptDirection::kHorizontal,
+                         GESTURE_DIRECTION_HORIZONTAL);
+    handle_pan_intercept(event_dispatcher->consume_vertical_pan_gesture_,
+                         LynxPanInterceptDirection::kVertical,
+                         GESTURE_DIRECTION_VERTICAL);
+    handle_pan_intercept(event_dispatcher->consume_up_pan_gesture_,
+                         LynxPanInterceptDirection::kUp, GESTURE_DIRECTION_UP);
+    handle_pan_intercept(event_dispatcher->consume_right_pan_gesture_,
+                         LynxPanInterceptDirection::kRight,
+                         GESTURE_DIRECTION_RIGHT);
+    handle_pan_intercept(event_dispatcher->consume_down_pan_gesture_,
+                         LynxPanInterceptDirection::kDown,
+                         GESTURE_DIRECTION_DOWN);
+    handle_pan_intercept(event_dispatcher->consume_left_pan_gesture_,
+                         LynxPanInterceptDirection::kLeft,
+                         GESTURE_DIRECTION_LEFT);
+    handle_pan_intercept(event_dispatcher->consume_all_pan_gesture_,
+                         LynxPanInterceptDirection::kAll,
+                         GESTURE_DIRECTION_ALL);
+  }
+
+  return GESTURE_INTERRUPT_RESULT_REJECT;
 };
 
 EventDispatcher::EventTargetDetail::EventTargetDetail(
@@ -232,9 +294,6 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
   NodeManager::Instance().AddGestureToNode(root->RootNode(),
                                            velocity_tracker_pan_gesture_,
                                            PARALLEL, NORMAL_GESTURE_MASK);
-
-  NodeManager::Instance().SetGestureInterrupterToNode(
-      root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_);
 }
 
 void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
@@ -411,7 +470,7 @@ void EventDispatcher::OnTouchMove(const ArkUI_UIInputEvent* event) {
           !CanRespondTap(!first_active_target_.expired()
                              ? first_active_target_.lock().get()
                              : nullptr)) {
-        DeactivatePseudoStatus(PseudoStatus::kActive);
+        DeactivatePseudoStatus(LynxPseudoStatus::kActive);
       }
     }
   }
@@ -434,7 +493,7 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
       OnClickEvent(event);
       ResetClickEnv();
       UpdateFocusedTarget();
-      DeactivatePseudoStatus(PseudoStatus::kAll);
+      DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
     }
   }
@@ -450,7 +509,7 @@ void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
       ResetClickEnv();
       UpdateFocusedTarget();
-      DeactivatePseudoStatus(PseudoStatus::kAll);
+      DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
     }
   }
@@ -586,7 +645,7 @@ void EventDispatcher::SetTapSlop(const std::string& tap_slop) {
   tap_slop_ = LynxUnitUtils::ToVPFromUnitValue(
       tap_slop, screen_size[0], ui_owner_->Context()->DevicePixelRatio(), 5.f);
   tap_slop_ = tap_slop_ > 0 ? tap_slop_ : 5.f;
-  tap_gesture_ = NodeManager::Instance().createTapGestureWithDistanceThreshold(
+  tap_gesture_ = NodeManager::Instance().CreateTapGestureWithDistanceThreshold(
       1, 1, tap_slop_);
   if (tap_gesture_ == nullptr) {
     return;
@@ -686,10 +745,11 @@ void EventDispatcher::ActivePseudoStatus() {
   EventTarget* current = first_active_target_.lock().get();
   while (current != nullptr && current->ParentTarget() != current) {
     event_target_chain_.push_back(current->WeakTarget());
-    current->OnPseudoStatusChanged(PseudoStatus::kNone, PseudoStatus::kActive);
+    current->OnPseudoStatusChanged(LynxPseudoStatus::kNone,
+                                   LynxPseudoStatus::kActive);
     if (has_touch_pseudo_) {
-      ui_owner_->SendPseudoStatusEvent(current->Sign(), PseudoStatus::kNone,
-                                       PseudoStatus::kActive);
+      ui_owner_->SendPseudoStatusEvent(current->Sign(), LynxPseudoStatus::kNone,
+                                       LynxPseudoStatus::kActive);
     }
     if (!current->TouchPseudoPropagation()) {
       break;
@@ -698,7 +758,7 @@ void EventDispatcher::ActivePseudoStatus() {
   }
 }
 
-void EventDispatcher::DeactivatePseudoStatus(PseudoStatus status) {
+void EventDispatcher::DeactivatePseudoStatus(LynxPseudoStatus status) {
   int32_t int_status = static_cast<int32_t>(status);
   for (auto target : event_target_chain_) {
     if (target.expired()) {
@@ -707,12 +767,12 @@ void EventDispatcher::DeactivatePseudoStatus(PseudoStatus status) {
     auto current = target.lock();
     int32_t current_status = static_cast<int32_t>(current->GetPseudoStatus());
     current->OnPseudoStatusChanged(
-        static_cast<PseudoStatus>(current_status),
-        static_cast<PseudoStatus>(current_status & ~int_status));
+        static_cast<LynxPseudoStatus>(current_status),
+        static_cast<LynxPseudoStatus>(current_status & ~int_status));
     if (has_touch_pseudo_) {
       ui_owner_->SendPseudoStatusEvent(
-          current->Sign(), static_cast<PseudoStatus>(current_status),
-          static_cast<PseudoStatus>(current_status & ~int_status));
+          current->Sign(), static_cast<LynxPseudoStatus>(current_status),
+          static_cast<LynxPseudoStatus>(current_status & ~int_status));
     }
   }
 }
@@ -961,20 +1021,82 @@ bool EventDispatcher::ShouldBlockNativeEvent() {
   return false;
 }
 
-ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
+LynxConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
   if (first_active_target_.expired()) {
-    return ConsumeSlideDirection::kNone;
+    return LynxConsumeSlideDirection::kNone;
   }
 
   auto target = first_active_target_.lock().get();
   while (target != nullptr && target->ParentTarget() != target) {
-    if (target->ConsumeSlideEvent() != ConsumeSlideDirection::kNone) {
+    if (target->ConsumeSlideEvent() != LynxConsumeSlideDirection::kNone) {
       // TODO(hexionghui): Should collect all consume-slide-event.
       return target->ConsumeSlideEvent();
     }
     target = target->ParentTarget();
   }
-  return ConsumeSlideDirection::kNone;
+  return LynxConsumeSlideDirection::kNone;
+}
+
+EventTarget* EventDispatcher::GetFirstPanInterceptDirectionTarget(
+    LynxPanInterceptDirection direction) {
+  if (first_active_target_.expired()) {
+    return nullptr;
+  }
+  auto target = first_active_target_.lock().get();
+  while (target != nullptr && target->ParentTarget() != target) {
+    if (target->PanInterceptDirection() == direction) {
+      return target;
+    }
+    target = target->ParentTarget();
+  }
+  return nullptr;
+}
+
+LynxPanInterceptScope EventDispatcher::GetTargetPanInterceptScope(
+    EventTarget* target) {
+  if (target == nullptr) {
+    return LynxPanInterceptScope::kNone;
+  }
+  return target->PanInterceptScope();
+}
+
+bool EventDispatcher::ShouldInterceptPanGesture(
+    ArkUI_NodeHandle recognizer_node, ArkUI_NodeHandle intercept_node,
+    LynxPanInterceptScope intercept_scope) {
+  if (!recognizer_node || !intercept_node) {
+    return false;
+  }
+
+  switch (static_cast<int>(intercept_scope)) {
+    case static_cast<int>(LynxPanInterceptScope::kAll): {
+      return true;
+    }
+    case static_cast<int>(LynxPanInterceptScope::kSelf):
+    case static_cast<int>(LynxPanInterceptScope::kSelfAndAncestors):
+    case static_cast<int>(LynxPanInterceptScope::kSelfAndDescendants): {
+      if (recognizer_node == intercept_node) {
+        return true;
+      }
+      auto node = intercept_scope == LynxPanInterceptScope::kSelfAndAncestors
+                      ? recognizer_node
+                      : intercept_node;
+      auto another = intercept_scope == LynxPanInterceptScope::kSelfAndAncestors
+                         ? intercept_node
+                         : recognizer_node;
+      return NodeManager::Instance().NodeIsParentOfAnotherNode(node, another);
+    }
+    case static_cast<int>(LynxPanInterceptScope::kAncestors): {
+      return NodeManager::Instance().NodeIsParentOfAnotherNode(recognizer_node,
+                                                               intercept_node);
+    }
+    case static_cast<int>(LynxPanInterceptScope::kDescendants): {
+      return NodeManager::Instance().NodeIsParentOfAnotherNode(intercept_node,
+                                                               recognizer_node);
+    }
+    default:
+      break;
+  }
+  return false;
 }
 
 void EventDispatcher::UpdateRootTarget(UIBase* root) {

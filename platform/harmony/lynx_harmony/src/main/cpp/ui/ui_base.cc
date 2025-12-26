@@ -123,6 +123,8 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"block-native-event", &UIBase::SetBlockNativeEvent},
     {"block-native-event-areas", &UIBase::SetBlockNativeEventAreas},
     {"consume-slide-event", &UIBase::SetConsumeSlideEvent},
+    {"pan-intercept-direction", &UIBase::SetPanInterceptDirection},
+    {"pan-intercept-scope", &UIBase::SetPanInterceptScope},
     {"enable-touch-pseudo-propagation",
      &UIBase::SetEnableTouchPseudoPropagation},
     {"filter", &UIBase::SetFilter},
@@ -1219,11 +1221,12 @@ void UIBase::SetBlockNativeEventAreas(const lepus::Value& value) {
 
 void UIBase::SetConsumeSlideEvent(const lepus::Value& value) {
   if (value.IsNumber()) {
-    consume_slide_event_ = static_cast<ConsumeSlideDirection>(value.Number());
+    consume_slide_event_ =
+        static_cast<LynxConsumeSlideDirection>(value.Number());
     return;
   }
   if (!value.IsArrayOrJSArray()) {
-    consume_slide_event_ = ConsumeSlideDirection::kNone;
+    consume_slide_event_ = LynxConsumeSlideDirection::kNone;
     return;
   }
 
@@ -1355,33 +1358,62 @@ void UIBase::SetConsumeSlideEvent(const lepus::Value& value) {
   bool direction_down = direction_down_left || direction_down_right;
   bool direction_left = direction_left_top || direction_left_bottom;
   if (direction_up && direction_right && direction_down && direction_left) {
-    consume_slide_event_ = ConsumeSlideDirection::kAll;
+    consume_slide_event_ = LynxConsumeSlideDirection::kAll;
     return;
   }
   if (direction_left && direction_right) {
-    consume_slide_event_ = ConsumeSlideDirection::kHorizontal;
+    consume_slide_event_ = LynxConsumeSlideDirection::kHorizontal;
     return;
   }
   if (direction_up && direction_down) {
-    consume_slide_event_ = ConsumeSlideDirection::kVertical;
+    consume_slide_event_ = LynxConsumeSlideDirection::kVertical;
     return;
   }
   if (direction_up) {
-    consume_slide_event_ = ConsumeSlideDirection::kUp;
+    consume_slide_event_ = LynxConsumeSlideDirection::kUp;
     return;
   }
   if (direction_right) {
-    consume_slide_event_ = ConsumeSlideDirection::kRight;
+    consume_slide_event_ = LynxConsumeSlideDirection::kRight;
     return;
   }
   if (direction_down) {
-    consume_slide_event_ = ConsumeSlideDirection::kDown;
+    consume_slide_event_ = LynxConsumeSlideDirection::kDown;
     return;
   }
   if (direction_left) {
-    consume_slide_event_ = ConsumeSlideDirection::kLeft;
+    consume_slide_event_ = LynxConsumeSlideDirection::kLeft;
     return;
   }
+}
+
+void UIBase::SetPanInterceptDirection(const lepus::Value& value) {
+  if (value.IsNumber()) {
+    int int_value = value.Number();
+    if (int_value >= static_cast<int>(LynxPanInterceptDirection::kHorizontal) &&
+        int_value < static_cast<int>(LynxPanInterceptDirection::kNone)) {
+      pan_intercept_direction_ =
+          static_cast<LynxPanInterceptDirection>(int_value);
+    }
+  }
+}
+
+LynxPanInterceptDirection UIBase::PanInterceptDirection() {
+  return pan_intercept_direction_;
+}
+
+void UIBase::SetPanInterceptScope(const lepus::Value& value) {
+  if (value.IsNumber()) {
+    int int_value = value.Number();
+    if (int_value >= static_cast<int>(LynxPanInterceptScope::kSelf) &&
+        int_value < static_cast<int>(LynxPanInterceptScope::kNone)) {
+      pan_intercept_scope_ = static_cast<LynxPanInterceptScope>(int_value);
+    }
+  }
+}
+
+LynxPanInterceptScope UIBase::PanInterceptScope() {
+  return pan_intercept_scope_;
 }
 
 void UIBase::SetEnableTouchPseudoPropagation(const lepus::Value& value) {
@@ -2411,7 +2443,7 @@ bool UIBase::IgnoreFocus() {
   return false;
 }
 
-ConsumeSlideDirection UIBase::ConsumeSlideEvent() {
+LynxConsumeSlideDirection UIBase::ConsumeSlideEvent() {
   return consume_slide_event_;
 }
 
@@ -2424,12 +2456,12 @@ bool UIBase::TouchPseudoPropagation() {
   return enable_touch_pseudo_propagation_;
 }
 
-void UIBase::OnPseudoStatusChanged(PseudoStatus pre_status,
-                                   PseudoStatus current_status) {
+void UIBase::OnPseudoStatusChanged(LynxPseudoStatus pre_status,
+                                   LynxPseudoStatus current_status) {
   pseudo_status_ = current_status;
 }
 
-PseudoStatus UIBase::GetPseudoStatus() { return pseudo_status_; }
+LynxPseudoStatus UIBase::GetPseudoStatus() { return pseudo_status_; }
 
 std::vector<float> UIBase::ScrollBy(float delta_x, float delta_y) {
   return std::vector<float>{0, 0, delta_x, delta_y};

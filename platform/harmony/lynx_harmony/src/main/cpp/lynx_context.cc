@@ -183,8 +183,8 @@ void LynxContext::HandleCustomEvent(const CustomEvent& custom_event) const {
                                  custom_event.ParamName());
 }
 
-void LynxContext::OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                                        PseudoStatus current_status) const {
+void LynxContext::OnPseudoStatusChanged(int id, LynxPseudoStatus pre_status,
+                                        LynxPseudoStatus current_status) const {
   if (!engine_proxy_) {
     return;
   }
