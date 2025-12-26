@@ -21,6 +21,11 @@
   LynxThreadStrategyForRender _threadStrategy;
   BOOL _hasThreadStrategySet;
   BOOL _hasPendingJsTaskSet;
+
+  LynxBooleanOption _enableGenericResourceFetcher;
+  id<LynxGenericResourceFetcher> _genericResourceFetcher;
+  id<LynxMediaResourceFetcher> _mediaResourceFetcher;
+  id<LynxTemplateResourceFetcher> _templateResourceFetcher;
 }
 
 @property(nonatomic, nullable) LynxConfig* config;
