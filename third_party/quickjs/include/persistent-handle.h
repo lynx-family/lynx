@@ -1,6 +1,13 @@
+// Copyright 2009 the V8 project authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 
-#ifndef INCLUDE_PERSISTENT_HANDLE_H_
-#define INCLUDE_PERSISTENT_HANDLE_H_
+#ifndef SRC_GC_PERSISTENT_HANDLE_H_
+#define SRC_GC_PERSISTENT_HANDLE_H_
 extern "C" {
 #include "quickjs.h"
 }
@@ -128,9 +135,9 @@ class WASMGCPersistent : public PersistentBase {
   }
 
   WASMGCPersistent& operator=(const WASMGCPersistent& that) {
-    if (val_)
+    if (val_) {
       *val_ = that.Get();
-    else {
+    } else {
       val_ = PersistentBase::New(that.GetRT(), that.Get(), false);
     }
     rt = that.GetRT();
@@ -175,7 +182,7 @@ LEPUSValue* PersistentBase::New(LEPUSRuntime* runtime, LEPUSValue that,
 }
 
 bool PersistentBase::IsWeak() const {
-  *(int*)(0xdead) = 0;
+  *reinterpret_cast<int*>(0xdead) = 0;
   return false;
 }
 
@@ -209,8 +216,8 @@ class QJSValueValueAllocator {
     return AllocateQJSValueValue(runtime);
   }
   static void Delete(LEPUSRuntime* runtime, void* instance) {
-    FreeQJSValueValue(runtime, (LEPUSValue*)instance);
+    FreeQJSValueValue(runtime, reinterpret_cast<LEPUSValue*>(instance));
   }
 };
 
-#endif  // INCLUDE_PERSISTENT_HANDLE_H_
+#endif  // SRC_GC_PERSISTENT_HANDLE_H_

@@ -476,7 +476,7 @@ static inline LEPUSValue __JS_NewFloat64(LEPUSContext *ctx, double d) {
 }
 
 #define LEPUS_TAG_IS_FLOAT64(tag) \
-  ((unsigned)((tag) - LEPUS_TAG_FIRST) >= (LEPUS_TAG_FLOAT64 - LEPUS_TAG_FIRST))
+  ((unsigned)((tag)-LEPUS_TAG_FIRST) >= (LEPUS_TAG_FLOAT64 - LEPUS_TAG_FIRST))
 
 /* same as LEPUS_VALUE_GET_TAG, but return LEPUS_TAG_FLOAT64 with NaN boxing */
 static inline int LEPUS_VALUE_GET_NORM_TAG(LEPUSValue v) {
@@ -720,6 +720,7 @@ void LEPUS_FreeRuntime(LEPUSRuntime *rt);
 void LEPUS_MarkValue(LEPUSRuntime *rt, LEPUSValueConst val,
                      LEPUS_MarkFunc *mark_func, uint64_t trace_tool);
 void LEPUS_RunGC(LEPUSRuntime *rt);
+void LEPUS_RunAllGC();
 LEPUS_BOOL LEPUS_IsInGCSweep(LEPUSRuntime *rt);
 
 LEPUSContext *LEPUS_NewContext(LEPUSRuntime *rt);
@@ -1444,6 +1445,8 @@ typedef struct LEPUSCFunctionListEntry {
 #define LEPUS_DEF_PROP_UNDEFINED 7
 #define LEPUS_DEF_OBJECT 8
 #define LEPUS_DEF_ALIAS 9
+#define LEPUS_DEF_PROP_ATOM 10
+#define LEPUS_DEF_PROP_BOOL 11
 
 #define LEPUS_CFUNC_DEF(name, length, func1)                                 \
   {                                                                          \
@@ -1521,6 +1524,16 @@ typedef struct LEPUSCFunctionListEntry {
           from,                                                              \
           base                                                               \
         }                                                                    \
+  }
+
+#define LEPUS_PROP_ATOM_DEF(name, val, prop_flags)               \
+  {                                                              \
+    name, prop_flags, LEPUS_DEF_PROP_ATOM, 0, .u = {.i32 = val } \
+  }
+
+#define LEPUS_PROP_BOOL_DEF(name, val, prop_flags)               \
+  {                                                              \
+    name, prop_flags, LEPUS_DEF_PROP_BOOL, 0, .u = {.i32 = val } \
   }
 
 void LEPUS_SetPropertyFunctionList(LEPUSContext *ctx, LEPUSValueConst obj,

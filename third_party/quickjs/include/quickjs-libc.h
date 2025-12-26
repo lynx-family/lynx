@@ -21,8 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef QUICKJS_LIBC_H
-#define QUICKJS_LIBC_H
+
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_LIBC_H_
+#define SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_LIBC_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,4 +63,4 @@ void lepus_std_eval_binary(LEPUSContext *ctx, const uint8_t *buf,
 int gettimeofday(struct timeval *tp, void *tzp);
 #endif
 
-#endif /* QUICKJS_LIBC_H */
+#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_QUICKJS_LIBC_H_

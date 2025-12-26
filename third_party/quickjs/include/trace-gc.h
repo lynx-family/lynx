@@ -1,5 +1,9 @@
-#ifndef TRACE_GC_H
-#define TRACE_GC_H
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef SRC_GC_TRACE_GC_H_
+#define SRC_GC_TRACE_GC_H_
 #include <string>
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +61,19 @@ class PtrHandles {
   LEPUSRuntime *rt_;
   void InitialHandles();
   void ResizeHandles();
+};
+
+class CheckTools {
+ public:
+  CheckTools();
+  ~CheckTools();
+  bool PushTid(int tid);
+  bool IsValidTid(int tid);
+
+ private:
+  int tid_idx;
+  int tid_size;
+  int *tids;
 };
 
 class HandleScope {
@@ -136,4 +153,13 @@ class GCObserver {
   virtual void OnGC(std::string mem_info) = 0;
 };
 
-#endif /* TRACE_GC_H */
+
+void HeapObjStore(LEPUSContext *ctx, void *fieldAddr, LEPUSValue value);
+void HeapObjStore(LEPUSContext *ctx, void *fieldAddr, void *value);
+void WriteBarrierNoStore(LEPUSRuntime *rt, void *value);
+void WriteBarrierNoStore(LEPUSContext *ctx, LEPUSValue value);
+void WriteBarrierNoStore(LEPUSContext *ctx, void *value);
+void HeapObjStoreNoCtx(void *fieldAddr, LEPUSValue value);
+void HeapObjStoreNoCtx(void *fieldAddr, void *value);
+
+#endif  // SRC_GC_TRACE_GC_H_

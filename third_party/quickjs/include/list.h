@@ -21,8 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef LIST_H
-#define LIST_H
+
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+#ifndef SRC_INTERPRETER_QUICKJS_INCLUDE_LIST_H_
+#define SRC_INTERPRETER_QUICKJS_INCLUDE_LIST_H_
 
 #ifndef NULL
 #include <stddef.h>
@@ -37,8 +41,7 @@ struct list_head {
   { &(el), &(el) }
 
 /* return the pointer of type 'type *' containing 'el' as field 'member' */
-#define list_entry(el, type, member) \
-  ((type *)((uint8_t *)(el)-offsetof(type, member)))
+#define list_entry(el, type, member) container_of(el, type, member)
 
 static inline void init_list_head(struct list_head *head) {
   head->prev = head;
@@ -90,4 +93,4 @@ static inline int list_empty(struct list_head *el) { return el->next == el; }
   for (el = (head)->prev, el1 = el->prev; el != (head); \
        el = el1, el1 = el->prev)
 
-#endif /* LIST_H */
+#endif  // SRC_INTERPRETER_QUICKJS_INCLUDE_LIST_H_
