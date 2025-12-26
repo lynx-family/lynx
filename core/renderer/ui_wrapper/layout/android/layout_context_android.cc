@@ -13,6 +13,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LayoutContext_jni.h"
@@ -65,7 +66,13 @@ LayoutContextAndroid::~LayoutContextAndroid() = default;
 int LayoutContextAndroid::CreateLayoutNode(int id, const std::string& tag,
                                            PropBundle* painting_data,
                                            bool is_parent_inline_container) {
-  PropBundleAndroid* pda = static_cast<PropBundleAndroid*>(painting_data);
+  PropBundleAndroid* pda;
+  if (painting_data->IsNative()) {
+    auto* a = static_cast<NativePropBundle*>(painting_data);
+    pda = new PropBundleAndroid(*a);
+  } else {
+    pda = static_cast<PropBundleAndroid*>(painting_data);
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
   if (local_ref.IsNull()) {

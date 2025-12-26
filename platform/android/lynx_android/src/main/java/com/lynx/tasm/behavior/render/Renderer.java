@@ -59,6 +59,14 @@ public class Renderer {
     mRenderHost = renderHost;
   }
 
+  public IRendererHost getRendererHost() {
+    return mRenderHost;
+  }
+
+  public com.lynx.tasm.behavior.LynxContext getLynxContext() {
+    return mPlatformRendererContext.getLynxContext();
+  }
+
   int getSign() {
     return mSign;
   }
@@ -103,4 +111,5 @@ public class Renderer {
   }
 
   public void updateAttributes(PropBundle props) {}
+  public void updateExtraData(Object extraData) {}
 }

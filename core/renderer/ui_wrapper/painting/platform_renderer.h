@@ -16,6 +16,7 @@ namespace lynx::tasm {
 
 class DisplayList;
 class PropBundle;
+class PlatformExtraBundle;
 
 // Abstract base class for platform-specific UI rendering operations.
 // Provides a common interface for cross-platform UI element management.

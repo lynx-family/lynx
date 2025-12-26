@@ -58,6 +58,14 @@ void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   has_platform_renderer_ = true;
 }
 
+void Fragment::UpdatePlatformExtraBundle(PlatformExtraBundle* bundle) {
+  if (!has_platform_renderer_) {
+    return;
+  }
+
+  painting_context()->UpdatePlatformExtraBundle(id(), bundle);
+}
+
 void Fragment::StyleChanged() {
   if (element() == nullptr) {
     return;

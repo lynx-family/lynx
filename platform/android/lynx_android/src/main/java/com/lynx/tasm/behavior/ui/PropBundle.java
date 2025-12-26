@@ -52,8 +52,17 @@ public class PropBundle {
   }
 
   @CalledByNative
-  void putString(String key, String value) {
+  public void putString(String key, String value) {
     props_map_.putString(key, value);
+  }
+
+  public String getString(String key) {
+    return props_map_.getString(key);
+  }
+
+  @CalledByNative
+  public boolean contains(String key) {
+    return props_map_.containsKey(key);
   }
 
   @CalledByNative
@@ -74,11 +83,6 @@ public class PropBundle {
   @CalledByNative
   void putArray(String key, JavaOnlyArray array) {
     props_map_.putArray(key, array);
-  }
-
-  @CalledByNative
-  boolean contains(String key) {
-    return props_map_.containsKey(key);
   }
 
   @CalledByNative

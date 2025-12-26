@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
 #include <memory>
+#include <string>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/platform/android/scoped_java_ref.h"
@@ -14,6 +15,9 @@
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
 namespace lynx {
+namespace event {
+class Event;
+}
 namespace tasm {
 
 class PlatformRendererAndroid;
@@ -40,6 +44,8 @@ class PlatformRendererContext {
   // Update platform renderer attributes
   void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
 
+  void UpdatePlatformRendererExtraData(int32_t id, jobject extra_bundle);
+
   // Get PlatformRendererAndroid by ID
   PlatformRendererAndroid* GetPlatformRenderer(int32_t id);
 
@@ -48,6 +54,21 @@ class PlatformRendererContext {
   void UnregisterPlatformRenderer(int32_t id);
   void CreateImage(int32_t id, base::String src, float width, float height);
   void DestroyImage(int32_t id);
+
+  // The event data from the platform layer is forwarded to PlatformEventHandler
+  // for subsequent event processing.
+  bool DispatchPlatformInputEvent(int int_event_data[],
+                                  float float_event_data[]);
+  // The current state of PlatformEventHandler is obtained to determine the
+  // gesture handling at the platform layer.
+  int GetPlatformEventHandlerState();
+  // Send event to the target element.
+  void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
+  // Update the pseudo status of the target element.
+  void UpdatePseudoStatusStatus(int32_t target_id, uint32_t pre_status,
+                                uint32_t current_status);
+
+  int32_t GetTagInfo(const std::string& tag_name);
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;

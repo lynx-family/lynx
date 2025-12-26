@@ -8188,16 +8188,19 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public TextMeasurer com.lynx.tasm.behavior.render.PlatformRendererContext.getTextMeasurer();
   public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
+  public LynxContext com.lynx.tasm.behavior.render.PlatformRendererContext.getLynxContext();
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformRenderer(int sign, int type);
+  public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTagInfo(String tagName);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererAttributes(int sign, PropBundle propBundle);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformExtraData(int sign, Object extraData);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int sign);
@@ -8272,6 +8275,9 @@ public class com::lynx::tasm::behavior::ui::PropBundle :  {
   public ReadableMap com.lynx.tasm.behavior.ui.PropBundle.getProps();
   public ReadableArray com.lynx.tasm.behavior.ui.PropBundle.getEventHandlers();
   public ReadableArray com.lynx.tasm.behavior.ui.PropBundle.getGestures();
+  public void com.lynx.tasm.behavior.ui.PropBundle.putString(String key, String value);
+  public String com.lynx.tasm.behavior.ui.PropBundle.getString(String key);
+  public boolean com.lynx.tasm.behavior.ui.PropBundle.contains(String key);
 }
 
 public interface com::lynx::tasm::behavior::PropertiesDispatcher {
@@ -8914,12 +8920,15 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public Point com.lynx.tasm.behavior.render.Renderer.getRenderOffset();
   public Rect com.lynx.tasm.behavior.render.Renderer.getLynxFrame();
   public com.lynx.tasm.behavior.render.Renderer.Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign);
+  public IRendererHost com.lynx.tasm.behavior.render.Renderer.getRendererHost();
+  public com.lynx.tasm.behavior.LynxContext com.lynx.tasm.behavior.render.Renderer.getLynxContext();
   public void com.lynx.tasm.behavior.render.Renderer.onLayout(boolean changed, int l, int t, int r, int b);
   public void com.lynx.tasm.behavior.render.Renderer.onDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.render.Renderer.beforeDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.render.Renderer.updateAttributes(PropBundle props);
+  public void com.lynx.tasm.behavior.render.Renderer.updateExtraData(Object extraData);
 }
 
 public class abstract com::lynx::tasm::rendernode::compat::RenderNodeCompat :  {

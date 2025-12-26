@@ -93,6 +93,8 @@ class Fragment : public BaseElementContainer {
 
   void RemoveChild(Fragment* child);
 
+  void UpdatePlatformExtraBundle(PlatformExtraBundle* bundle) override;
+
   bool IsReliableSibling() const;
 
   const auto& LayoutResult() const { return layout_info_; }
