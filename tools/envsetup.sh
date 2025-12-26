@@ -38,9 +38,15 @@ function android_env_setup() {
     export ANDROID_NDK=$ANDROID_HOME/ndk/21.1.6352462
     export ANDROID_NDK_21=$ANDROID_HOME/ndk/21.1.6352462
     export ANDROID_SDK=$ANDROID_HOME
+    
+    local local_properties_file1="${LYNX_DIR}/platform/android/local.properties"
+    local local_properties_file2="${LYNX_DIR}/explorer/android/local.properties"
+    local CMAKE_DIR="${LYNX_DIR}/buildtools/cmake"
+    python3 $LYNX_DIR/tools_shared/android_tools/update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$ANDROID_NDK" sdk.dir="$ANDROID_SDK" cmake.dir="$CMAKE_DIR"
   else
     echo "Please setup ANDROID_HOME for android build first."
   fi
+
 }
 
 HARMONY_SDK_VERSION='6.0.0.868'
@@ -60,9 +66,18 @@ function harmony_home_setup_for_ci() {
     echo "harmony_home_setup_for_ci done"
 }
 
+function download_tools_shared_if_needed() {
+  if [ ! -d "$LYNX_DIR/tools_shared" ]; then
+    $LYNX_DIR/tools/hab sync . --target tools_shared --target-only --no-history
+  fi
+}
+
 function python_env_setup() {
+  
+  download_tools_shared_if_needed
+
   VENV_PATH=$LYNX_DIR/.venv
-  python3 $LYNX_DIR/tools/vpython_tools/vpython_env_setup.py --root_dir $LYNX_DIR
+  python3 $LYNX_DIR/tools_shared/vpython_tools/vpython_env_setup.py --root_dir $LYNX_DIR --requirements-path $LYNX_DIR/tools/vpython_tools/requirements.txt
   source $VENV_PATH/bin/activate
 }
 

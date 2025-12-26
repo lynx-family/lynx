@@ -13,43 +13,14 @@ If the value of TARGET is not specified, all podspecs will be generated.
 """
 
 import argparse
-import os
-import subprocess
 import sys
+import os
 
-def clean_gn_project_json_file(gn_out_dir):
-  project_json_file = os.path.join(gn_out_dir, 'project.json')
-  if os.path.exists(project_json_file):
-    os.remove(project_json_file)
+root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(root_path)
+from tools_shared.ios_tools.generate_podspec_scripts_from_gn import generate_compile_products
 
-def generate_compile_products(root_path, args, gn_args, target_exclude_patterns:list=None):
-  is_debug = args.is_debug
-  enable_trace = args.enable_trace
-  target = args.target
-    
 
-  gn_args += f' target_os=\\\"ios\\\" '
-  gn_args += f' is_debug=true ' if is_debug else f' is_debug=false '
-  gn_args += f' enable_trace=\\\"perfetto\\\" ' if enable_trace else ''
-  if target_exclude_patterns is not None:
-    patterns = []
-    for pattern in target_exclude_patterns:
-      patterns.append(f'\\\"{pattern}\\\"')
-    gn_args +=' target_exclude_patterns=[%s]' % (','.join(patterns))
-
-  args = ' --args="%s"' % (gn_args)
-  gn_out_path = os.path.join(root_path, 'out', 'gn_to_podspec')
-  if os.path.exists(gn_out_path) and os.path.isdir(gn_out_path):
-    clean_gn_project_json_file(gn_out_path)
-  current_dir = os.path.dirname(os.path.realpath(__file__))
-  gn_path = os.path.join(current_dir, '..', 'gn_tools', 'gn_wrapper.py')
-  set_podspec_target = '--podspec-target=%s' % (target) if target else ''
-  gn_command = 'python3 %s gen %s %s --ide=podspec %s' % (gn_path, gn_out_path, args, set_podspec_target)
-
-  print(gn_command)
-
-  r = subprocess.call(gn_command, shell=True)
-  return r
 
 def main():
   parser = argparse.ArgumentParser()
@@ -59,13 +30,14 @@ def main():
   parser.add_argument('--enable-trace', default=False, action='store_true', help='Whether to set the enable_trace flag to true, which will be used by the gn script.')
   args = parser.parse_args()
 
-  gn_args = f'use_xcode=true enable_air=true enable_testbench_replay=true enable_inspector=true \
+  args.gn_args = f'use_xcode=true enable_air=true enable_testbench_replay=true enable_inspector=true \
               enable_napi_binding=true enable_lepusng_worklet=true \
               enable_recorder=true arm_use_neon=false build_lepus_compile=false'
 
   root_path = args.root
+  args.target_exclude_patterns = []
 
-  return generate_compile_products(root_path, args, gn_args)
+  return generate_compile_products(root_path, args)
 
 if __name__ == "__main__":
   sys.exit(main())

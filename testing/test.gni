@@ -5,7 +5,7 @@
 import("//$lynx_dir/testing/FuzzFramework/fuzz_test.gni")
 
 gn_check_target_name_script =
-    rebase_path("../tools/gn_tools/gn_check_target_name.py")
+    rebase_path("//tools_shared/gn_tools/gn_check_target_name.py")
 gtest_main = rebase_path("utils:gtest_main")
 gtest_custom_init = rebase_path("utils:gtest_custom_init")
 gmock_main = rebase_path("utils:gmock_main")
