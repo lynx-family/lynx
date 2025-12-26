@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "clay/lynx_adaptor/timing_collector_clay.h"
+#include "clay/lynx_adaptor/perf_controller_clay.h"
 #include "clay/public/event_delegate.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/public/lynx_runtime_proxy.h"
@@ -33,9 +33,9 @@ class LynxEventDispatcher : public EventDelegate {
     runtime_proxy_ = runtime_proxy;
   }
 
-  void SetTimingCollector(
-      const std::shared_ptr<lynx::tasm::TimingCollectorClay>& collector) {
-    timing_collector_ = collector;
+  void SetPerfController(
+      const std::shared_ptr<lynx::tasm::PerfControllerClay>& controller) {
+    perf_controller_ = controller;
   }
 
   // clay::EventDelegate override
@@ -86,7 +86,7 @@ class LynxEventDispatcher : public EventDelegate {
  private:
   std::shared_ptr<lynx::shell::LynxEngineProxy> engine_proxy_ = nullptr;
   std::shared_ptr<lynx::shell::LynxRuntimeProxy> runtime_proxy_ = nullptr;
-  std::shared_ptr<lynx::tasm::TimingCollectorClay> timing_collector_;
+  std::shared_ptr<lynx::tasm::PerfControllerClay> perf_controller_;
 };
 
 }  // namespace clay

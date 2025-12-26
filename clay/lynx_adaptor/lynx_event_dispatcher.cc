@@ -296,10 +296,10 @@ void LynxEventDispatcher::OnSendGlobalEvent(const std::string& event_name,
 }
 
 void LynxEventDispatcher::OnDrawEndEvent() {
-  if (!timing_collector_) {
+  if (!perf_controller_) {
     return;
   }
-  timing_collector_->OnPaintEnd();
+  perf_controller_->OnPaintEnd();
 }
 
 void LynxEventDispatcher::OnFirstMeaningfulPaint() {

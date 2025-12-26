@@ -25,6 +25,7 @@ source_set("common") {
     "one_shot_callback.h",
     "output_surface.cc",
     "output_surface.h",
+    "pipeline_timing_delegate.h",
     "platform_view.cc",
     "platform_view.h",
     "pointer_data_dispatcher.cc",

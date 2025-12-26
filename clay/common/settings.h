@@ -25,61 +25,11 @@
 
 namespace clay {
 
-class FrameTiming {
- public:
-  enum Phase {
-    kVsyncStart,
-    kBuildStart,
-    kBuildFinish,
-    kRasterStart,
-    kRasterFinish,
-    kRasterFinishWallTime,
-    kCount
-  };
-
-  static constexpr Phase kPhases[kCount] = {
-      kVsyncStart,  kBuildStart,   kBuildFinish,
-      kRasterStart, kRasterFinish, kRasterFinishWallTime};
-
-  static constexpr int kStatisticsCount = kCount + 5;
-
-  fml::TimePoint Get(Phase phase) const { return data_[phase]; }
-  fml::TimePoint Set(Phase phase, fml::TimePoint value) {
-    return data_[phase] = value;
-  }
-
-  uint64_t GetFrameNumber() const { return frame_number_; }
-  void SetFrameNumber(uint64_t frame_number) { frame_number_ = frame_number; }
-  uint64_t GetLayerCacheCount() const { return layer_cache_count_; }
-  uint64_t GetLayerCacheBytes() const { return layer_cache_bytes_; }
-  uint64_t GetPictureCacheCount() const { return picture_cache_count_; }
-  uint64_t GetPictureCacheBytes() const { return picture_cache_bytes_; }
-  void SetRasterCacheStatistics(size_t layer_cache_count,
-                                size_t layer_cache_bytes,
-                                size_t picture_cache_count,
-                                size_t picture_cache_bytes) {
-    layer_cache_count_ = layer_cache_count;
-    layer_cache_bytes_ = layer_cache_bytes;
-    picture_cache_count_ = picture_cache_count;
-    picture_cache_bytes_ = picture_cache_bytes;
-  }
-
- private:
-  fml::TimePoint data_[kCount];
-  uint64_t frame_number_;
-  size_t layer_cache_count_;
-  size_t layer_cache_bytes_;
-  size_t picture_cache_count_;
-  size_t picture_cache_bytes_;
-};
-
 // TODO(26783): Deprecate all the "path" struct members in favor of the
 // callback that generates the mapping from these paths.
 using MappingCallback = std::function<std::unique_ptr<fml::Mapping>(void)>;
 using Mappings = std::vector<std::unique_ptr<const fml::Mapping>>;
 using MappingsCallback = std::function<Mappings(void)>;
-
-using FrameRasterizedCallback = std::function<void(const FrameTiming&)>;
 
 struct Settings {
   Settings();
@@ -133,10 +83,6 @@ struct Settings {
   fml::UniqueFD::element_type assets_dir =
       fml::UniqueFD::traits_type::InvalidValue();
   std::string assets_path;
-
-  // Callback to handle the timings of a rasterized frame. This is called as
-  // soon as a frame is rasterized.
-  FrameRasterizedCallback frame_rasterized_callback;
 
   // This data will be available to the isolate immediately on launch via the
   // PlatformDispatcher.getPersistentIsolateData callback. This is meant for

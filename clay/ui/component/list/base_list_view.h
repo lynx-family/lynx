@@ -427,7 +427,7 @@ class BaseListView : public WithTypeInfo<BaseListView, NestedScrollable>,
   bool update_animation_enabled_ = false;
   std::unique_ptr<ListAdapterUpdater> updater_;
 
-  double traversal_perf_start_ = 0.0;
+  int64_t traversal_perf_start_ = 0;
   float unconsumed_x_ = 0.f;
   float unconsumed_y_ = 0.f;
 
