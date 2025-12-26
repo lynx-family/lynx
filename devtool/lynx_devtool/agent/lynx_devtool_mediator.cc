@@ -711,15 +711,6 @@ bool LynxDevToolMediator::RunOnDevToolThread(lynx::base::closure&& closure,
   return false;
 }
 
-bool LynxDevToolMediator::RunOnCDPEventListenerThread(
-    lynx::base::closure&& closure, bool run_now) {
-  if (cdp_event_listener_runner_) {
-    RunOnTaskRunner(cdp_event_listener_runner_, std::move(closure), run_now);
-    return true;
-  }
-  return false;
-}
-
 void LynxDevToolMediator::StartScreencast(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
@@ -1003,9 +994,7 @@ void LynxDevToolMediator::SendCDPEventImpl(const MsgType& msg) {
   // send cdp event message to the SDK-side listener
   std::lock_guard<std::mutex> lock(cdp_event_listener_mutex_);
   for (auto& listener : cdp_event_listener_map_) {
-    std::shared_ptr<MessageSender> sender = listener.second;
-    RunOnCDPEventListenerThread(
-        [sender, msg] { sender->SendMessage("CDP", msg); });
+    listener.second->SendMessage("CDP", msg);
   }
 }
 
