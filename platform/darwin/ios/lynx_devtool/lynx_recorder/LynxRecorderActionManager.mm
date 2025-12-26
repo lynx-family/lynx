@@ -890,6 +890,9 @@ static const int kVirtual = 1 << 2;
     if ([[self replayConfig] enableTextGradientOpt]) {
       [nativeConfig setObject:@YES forKey:@"enableTextGradientOpt"];
     }
+    if ([[self replayConfig] enableUnifyFixedBehavior]) {
+      [nativeConfig setObject:@YES forKey:@"enableUnifyFixedBehavior"];
+    }
     [loadMeta.lynxViewConfig setObject:[self convertNSDictToJsonString:nativeConfig]
                                 forKey:@"platform_config"];
     loadMeta.binaryData = _source;
@@ -961,6 +964,9 @@ static const int kVirtual = 1 << 2;
     }
     if ([[self replayConfig] enableTextGradientOpt]) {
       [nativeConfig setObject:@YES forKey:@"enableTextGradientOpt"];
+    }
+    if ([[self replayConfig] enableUnifyFixedBehavior]) {
+      [nativeConfig setObject:@YES forKey:@"enableUnifyFixedBehavior"];
     }
     [loadMeta.lynxViewConfig setObject:[self convertNSDictToJsonString:nativeConfig]
                                 forKey:@"platform_config"];

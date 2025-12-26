@@ -1761,6 +1761,27 @@ bool Element::GetEnableFixedNew() const {
   return element_manager()->GetEnableFixedNew();
 }
 
+bool Element::IsFixedUnified() const {
+  return is_fixed_ && element_manager()->GetEnableUnifyFixedBehavior();
+}
+
+bool Element::IsFixedUnifiedEnabled() const {
+  return element_manager()->GetEnableUnifyFixedBehavior();
+}
+
+bool Element::IsFixedNewOrUnifiedEnabled() const {
+  return element_manager()->GetEnableFixedNew() ||
+         element_manager()->GetEnableUnifyFixedBehavior();
+}
+
+bool Element::IsFixedNewOrUnified() const {
+  return IsNewFixed() || IsFixedUnified();
+}
+
+bool Element::IsFixedUnifiedOnly() const {
+  return IsFixedUnified() && !IsNewFixed();
+}
+
 bool Element::IsEventPathCatch() {
   // Compatible with the previous logic that position:fixed will modify
   // the structure of the element tree.
@@ -1918,6 +1939,10 @@ starlight::LayoutResultForRendering Element::layout_result() {
   layout_result.margin_ = ConvertToDirectionValue(margins_);
   layout_result.border_ = ConvertToDirectionValue(borders_);
   return layout_result;
+}
+
+void Element::UpdateGlobalInsertionOrder() {
+  global_insertion_order_ = element_manager()->GenerateGlobalInsertionOrder();
 }
 
 }  // namespace tasm

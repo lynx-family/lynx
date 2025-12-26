@@ -1384,6 +1384,10 @@ void ElementManager::FlushLevelOrderTasks() {
 
 int32_t ElementManager::GenerateElementID() { return element_id_++; }
 
+uint32_t ElementManager::GenerateGlobalInsertionOrder() {
+  return ++next_global_insertion_order_;
+}
+
 void ElementManager::ReuseElementID(int32_t reuse_id) {
   element_id_ = element_id_ > reuse_id ? element_id_ : reuse_id + 1;
 }

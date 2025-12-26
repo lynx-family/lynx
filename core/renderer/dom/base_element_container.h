@@ -132,6 +132,7 @@ class BaseElementContainer {
   virtual void FinishLayoutOperation(
       const std::shared_ptr<PipelineOptions>& options);
   virtual void MarkLayoutUIOperationQueueFlushStartIfNeed();
+  void UpdateGlobalInsertionOrder();
 
  protected:
   bool IsRootContainer() const;
@@ -168,6 +169,14 @@ class BaseElementContainer {
   bool has_fixed_child_{false};
 
   DirtyState dirty_state_{0};
+
+  /**
+   * A globally unique sequential identifier representing
+   * the chronological position at which this element container  was
+   * inserted into the parent element container relative to all other element
+   * containers..
+   */
+  uint32_t global_insertion_order_{kInitialGlobalInsertionOrder};
 
  private:
   Element* element_{nullptr};

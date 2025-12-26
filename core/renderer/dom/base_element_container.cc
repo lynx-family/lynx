@@ -262,5 +262,9 @@ int BaseElementContainer::CompareElementOrder(Element* left, Element* right) {
   return 0;
 }
 
+void BaseElementContainer::UpdateGlobalInsertionOrder() {
+  global_insertion_order_ = element_manager()->GenerateGlobalInsertionOrder();
+}
+
 }  // namespace tasm
 }  // namespace lynx

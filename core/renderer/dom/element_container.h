@@ -115,6 +115,11 @@ class ElementContainer : public BaseElementContainer {
   bool is_layouted_{false};
   // true if the Element's props has changed during this patch
   bool props_changed_{true};
+
+ private:
+  void CalcUIIndexForFixed(ElementContainer* child, int& index);
+  void CalcUIIndexForFixedNew(ElementContainer* child, int& index);
+  void CalcUIIndexForFixedUnified(ElementContainer* child, int& index);
 };
 
 }  // namespace tasm

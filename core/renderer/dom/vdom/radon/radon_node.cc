@@ -251,12 +251,16 @@ void RadonNode::InsertElementIntoParent(Element* parent_element) {
   if (!parent) {
     return;
   }
+  auto child_ref = GetElementRef();
+  child_ref->UpdateGlobalInsertionOrder();
   if (element()->is_fixed() && !element()->GetEnableFixedNew()) {
-    parent->InsertNode(GetElementRef());
+    parent->InsertNode(child_ref);
   } else {
+    // When FiberElementForRadonDiff is enabled, element is not marked as fixed,
+    // thus it is always inserted into its DOM parent.
     auto previous_element = PreviousSiblingElement();
     const auto base_index = parent->IndexOf(previous_element) + 1;
-    parent->InsertNode(GetElementRef(), base_index);
+    parent->InsertNode(child_ref, base_index);
   }
 }
 
@@ -406,7 +410,7 @@ void RadonNode::SwapElement(const std::unique_ptr<RadonBase>& old_radon_base,
     // handle node's diff logic in ShouldFlush
     if (ShouldFlush(old_radon_base, option)) {
       EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeSetted());
-      if (!element()->GetEnableFixedNew()) {
+      if (!element()->IsFixedNewOrUnifiedEnabled()) {
         // should modify element tree structure if the node's fixed style has
         // been changed
         // In Fixed New Process, don't need to modify element tree structure

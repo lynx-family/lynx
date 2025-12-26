@@ -714,6 +714,10 @@ class ElementManager : public ElementContextDelegate,
     return config_ && config_->GetEnableFixedNew();
   }
 
+  bool GetEnableUnifyFixedBehavior() {
+    return config_ && config_->GetEnableUnifyFixedBehavior();
+  }
+
   bool GetEnableReloadLifecycle() const {
     return config_ ? config_->GetEnableReloadLifecycle() : false;
   }
@@ -922,6 +926,12 @@ class ElementManager : public ElementContextDelegate,
    * Generate ID for element
    */
   int32_t GenerateElementID();
+
+  /**
+   * Generate global insertion order for element
+   */
+  uint32_t GenerateGlobalInsertionOrder();
+
   /**
    * Reuse ID for element when hydrate element bundle
    */
@@ -1228,6 +1238,7 @@ class ElementManager : public ElementContextDelegate,
 
   const int instance_id_;
   int32_t element_id_{kInitialImplId};
+  uint32_t next_global_insertion_order_{kInitialGlobalInsertionOrder};
 
   // Current thread strategy
   int thread_strategy_;

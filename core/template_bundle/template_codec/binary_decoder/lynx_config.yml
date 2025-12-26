@@ -1793,3 +1793,20 @@ enablePropertyBasedSimpleStyle:
   readNative: false
   author: 'zhongyr'
   since: '3.5'
+enableUnifyFixedBehavior:
+  description: Unify behavior between old-fixed and new-fixed
+  defaultValue: 'false'
+  valueType: bool
+  bindMemberTo: layout_configs_.enable_unify_fixed_behavior_
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+  readSettings: true
+  readNative: true
+  author: usczz
+  since: '3.7'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS

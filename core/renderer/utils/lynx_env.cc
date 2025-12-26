@@ -565,5 +565,9 @@ bool LynxEnv::EnableLevelOrderTraversing() {
 bool LynxEnv::EnableHarmonyDrawBehind() {
   return GetBoolEnv(Key::ENABLE_HARMONY_DRAW_BEHIND, true);
 }
+
+bool LynxEnv::EnableUnifyFixedBehavior() {
+  return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
+}
 }  // namespace tasm
 }  // namespace lynx

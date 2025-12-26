@@ -298,6 +298,77 @@ TEST_F(ElementContainerTest, FiberElementCase0) {
               element_after_yellow->impl_id());
 }
 
+TEST_F(ElementContainerTest, FiberElementCase0_UnifiedBehavior) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableUnifyFixedBehavior(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->SetAttribute("enable-layout", lepus::Value("false"));
+
+  auto element_before_black = manager->CreateFiberNode("view");
+  element_before_black->SetAttribute("enable-layout", lepus::Value("false"));
+
+  auto text = manager->CreateFiberNode("text");
+
+  // layout_only node
+  auto ref = manager->CreateFiberWrapperElement();
+  ref->InsertNode(text);
+
+  auto element_after_yellow = manager->CreateFiberNode("view");
+  element_after_yellow->SetAttribute("enable-layout", lepus::Value("false"));
+
+  page->InsertNode(element0);
+  page->InsertNode(element_before_black);
+  page->InsertNode(ref);
+  page->InsertNode(element_after_yellow);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(ref->IsLayoutOnly());
+
+  auto page_container = page->element_container_impl();
+  auto page_container_children = page_container->children();
+
+  EXPECT_TRUE(static_cast<int>(page_container_children.size()) == 5);
+  EXPECT_TRUE(page_container->none_layout_only_children_size_ == 4);
+
+  auto element0_container_index =
+      ElementContainer::GetUIIndexForChildForFiber(page.get(), element0.get());
+  auto element_before_black_index =
+      ElementContainer::GetUIIndexForChildForFiber(page.get(),
+                                                   element_before_black.get());
+  auto ref_container_index =
+      ElementContainer::GetUIIndexForChildForFiber(page.get(), ref.get());
+  auto element_after_yellow_index =
+      ElementContainer::GetUIIndexForChildForFiber(page.get(),
+                                                   element_after_yellow.get());
+
+  EXPECT_TRUE(element0_container_index == 0);
+  EXPECT_TRUE(element_before_black_index == 1);
+  EXPECT_TRUE(ref_container_index == 2);
+  EXPECT_TRUE(element_after_yellow_index == 3);
+
+  auto painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto page_painting_children = page_painting_node->children_;
+  EXPECT_TRUE(page_painting_children.size() == 4);
+  EXPECT_TRUE(page_painting_children[0]->id_ == element0->impl_id());
+  EXPECT_TRUE(page_painting_children[1]->id_ ==
+              element_before_black->impl_id());
+
+  EXPECT_TRUE(page_painting_children[2]->id_ == text->impl_id());
+
+  EXPECT_TRUE(page_painting_children[3]->id_ ==
+              element_after_yellow->impl_id());
+}
+
 TEST_F(ElementContainerTest, FiberElementLayoutOnlyTransitionCase0) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

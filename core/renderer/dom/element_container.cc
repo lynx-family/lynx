@@ -47,21 +47,8 @@ ElementContainer::~ElementContainer() {
   }
 }
 
-void ElementContainer::AddChild(ElementContainer* child, int index) {
-  if (child->parent()) {
-    child->RemoveFromParent(true);
-  }
-  children_.push_back(child);
-
-  if (!child->element()->IsLayoutOnly()) {
-    none_layout_only_children_size_++;
-  }
-  // If the index is equal to -1 should add to the last. The node could be
-  // position: fixed or with z-index.
-  if (index != -1) {
-    index = index + static_cast<int>(negative_z_children_.size());
-  }
-
+void ElementContainer::CalcUIIndexForFixedNew(ElementContainer* child,
+                                              int& index) {
   if (child->element()->IsNewFixed() && child->ZIndex() == 0) {
     int fixed_node_offset = 0;
     for (const ElementContainer* el : children_) {
@@ -90,6 +77,54 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
     element_manager()->fixed_node_list_.insert(it, child);
     index = fixed_node_offset + index_of_fixed;
   }
+}
+
+void ElementContainer::CalcUIIndexForFixedUnified(ElementContainer* child,
+                                                  int& index) {
+  if (child->element()->IsFixedUnified() && child->ZIndex() == 0) {
+    int fixed_node_offset = 0;
+    bool is_fiber_arch = child->element()->IsFiberArch();
+    for (const ElementContainer* el : children_) {
+      bool compare_result =
+          is_fiber_arch
+              ? (el->global_insertion_order_ < child->global_insertion_order_)
+              : (el->element()->GlobalInsertionOrder() <
+                 child->element()->GlobalInsertionOrder());
+      if (!el->element()->IsLayoutOnly() && el->ZIndex() == 0 &&
+          compare_result) {
+        fixed_node_offset++;
+      }
+    }
+    element_manager()->fixed_node_list_.emplace_back(child);
+    index = fixed_node_offset;
+  }
+}
+
+void ElementContainer::CalcUIIndexForFixed(ElementContainer* child,
+                                           int& index) {
+  if (child->element()->IsNewFixed()) {
+    CalcUIIndexForFixedNew(child, index);
+  } else if (child->element()->IsFixedUnified()) {
+    CalcUIIndexForFixedUnified(child, index);
+  }
+}
+
+void ElementContainer::AddChild(ElementContainer* child, int index) {
+  if (child->parent()) {
+    child->RemoveFromParent(true);
+  }
+  children_.push_back(child);
+
+  if (!child->element()->IsLayoutOnly()) {
+    none_layout_only_children_size_++;
+  }
+  // If the index is equal to -1 should add to the last. The node could be
+  // position: fixed or with z-index.
+  if (index != -1) {
+    index = index + static_cast<int>(negative_z_children_.size());
+  }
+
+  CalcUIIndexForFixed(child, index);
 
   child->set_parent(this);
   if ((child->ZIndex() != 0 || child->IsSticky()) && need_update_) {
@@ -111,7 +146,8 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
         negative_z_children_.erase(z_it);
       }
     }
-    if ((child->element()->IsNewFixed() || child->was_position_fixed_) &&
+    if ((child->element()->IsFixedNewOrUnified() ||
+         child->was_position_fixed_) &&
         child->ZIndex() == 0) {
       element()->element_manager()->fixed_node_list_.remove(child);
     }
@@ -210,8 +246,8 @@ std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
 
 void ElementContainer::AttachChildToTargetContainerRecursive(
     ElementContainer* parent, Element* child, int& index) {
-  if (child->ZIndex() != 0 || child->IsNewFixed()) {
-    if (child->IsNewFixed()) {
+  if (child->ZIndex() != 0 || child->IsFixedNewOrUnified()) {
+    if (child->IsFixedNewOrUnified()) {
       // fixed node should attach to page root.
       parent = parent->element()
                    ->element_manager()
@@ -264,7 +300,7 @@ bool ElementContainer::HasUIPrimitive() const {
 
 void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
                                                                 Element* ref) {
-  if (child->IsNewFixed()) {
+  if (child->IsFixedNewOrUnified()) {
     element_manager()->root()->element_container_impl()->AddChild(
         child->element_container_impl(), -1);
     return;
@@ -289,7 +325,7 @@ void ElementContainer::UpdateLayout(float left, float top,
   // Self is updated or self position is changed because of parent's frame
   // changing.
 
-  if (element()->IsNewFixed()) {
+  if (element()->IsFixedNewOrUnified()) {
     // new fixed node's parent should always be root node. And layout params are
     // calculated by starlight.
     left = element()->left();
@@ -447,7 +483,7 @@ void ElementContainer::StyleChanged() {
   if (element()->GetEnableZIndex()) {
     ZIndexChanged();
   }
-  if (element()->GetEnableFixedNew()) {
+  if (element()->GetEnableFixedNew() || element()->IsFixedUnifiedEnabled()) {
     PositionFixedChanged();
   }
 }
@@ -541,7 +577,7 @@ bool ElementContainer::IsStackingContextNode() {
 void ElementContainer::CreatePaintingNode(
     bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) {
   set_was_stacking_context(IsStackingContextNode());
-  set_was_position_fixed(element()->IsNewFixed());
+  set_was_position_fixed(element()->IsFixedNewOrUnified());
   set_old_z_index(ZIndex());
   if (element()->IsLayoutOnly()) {
     return;
@@ -584,7 +620,13 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
                                                      Element* child,
                                                      Element* ref) {
   auto* real_parent = parent;
-  while (real_parent && real_parent->IsLayoutOnly()) {
+  // Traverse up the render tree to find the nearest ancestor that has a
+  // corresponding UI node. Layout-only elements do not have UI nodes, so we
+  // must attach to an ancestor. However, if we encounter a layout-only element
+  // that is also fixed (unified behavior), it behaves as if attached to the
+  // root, so we handle it specially.
+  while (real_parent && real_parent->IsLayoutOnly() &&
+         !real_parent->IsFixedUnifiedOnly()) {
     // For element container tree a quick check for determine if need to append
     // the container to the end(check ref is null) ref is null, find the first
     // none-wrapper ancestor's next sibling as ref! ref_node: null means to
@@ -595,6 +637,12 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
     }
     real_parent = real_parent->render_parent();
   }
+
+  if (real_parent && real_parent->IsLayoutOnly() &&
+      real_parent->IsFixedUnifiedOnly()) {
+    real_parent = real_parent->element_manager()->root();
+  }
+
   if (!real_parent) {
     return {nullptr, -1};
   }
@@ -619,16 +667,25 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
     index =
         real_parent->element_container_impl()->none_layout_only_children_size_;
   } else {
+    // Calculate the cumulative UI index.
+    // Since the direct parent might be a layout-only element (which is skipped
+    // in the UI hierarchy), the child's actual UI index is the sum of its
+    // relative index in the layout-only parent plus that parent's relative
+    // index in the next ancestor, recursively up to the 'real_parent'.
+
     // insert to the middle, child is already inserted in Element, just use
     // child to get index
     index = GetUIIndexForChildForFiber(parent, child);
-    while (parent->IsLayoutOnly()) {
+    while (parent->IsLayoutOnly() && !parent->IsFixedUnifiedOnly()) {
       auto* up_parent = parent->render_parent();
       if (!up_parent) {
         return {nullptr, -1};
       }
       index += GetUIIndexForChildForFiber(up_parent, parent);
       parent = up_parent;
+    }
+    if (parent->IsLayoutOnly() && parent->IsFixedUnifiedOnly()) {
+      index += GetUIIndexForChildForFiber(real_parent, parent);
     }
   }
 
@@ -647,7 +704,7 @@ int ElementContainer::GetUIIndexForChildForFiber(Element* parent,
       found = true;
       break;
     }
-    if (node->ZIndex() != 0 || node->IsNewFixed()) {
+    if (node->ZIndex() != 0 || node->IsFixedNewOrUnified()) {
       node = node->next_render_sibling();
       continue;
     }
@@ -668,7 +725,7 @@ int ElementContainer::GetUIChildrenCountForFiber(Element* parent) {
   while (child) {
     if (child->IsLayoutOnly()) {
       ret += GetUIChildrenCountForFiber(child);
-    } else if (child->ZIndex() == 0 && !child->IsNewFixed()) {
+    } else if (child->ZIndex() == 0 && !child->IsFixedNewOrUnified()) {
       ret++;
     }
     child = child->next_render_sibling();

@@ -148,6 +148,12 @@ class Element : public lepus::RefCounted,
 
   int32_t impl_id() const { return id_; }
 
+  uint32_t GlobalInsertionOrder() const { return global_insertion_order_; }
+  void UpdateGlobalInsertionOrder();
+  void ResetGlobalInsertionOrder() {
+    global_insertion_order_ = kInitialGlobalInsertionOrder;
+  }
+
   void SetNodeIndex(uint32_t node_index) { node_index_ = node_index; }
   uint32_t NodeIndex() const { return node_index_; }
 
@@ -257,8 +263,26 @@ class Element : public lepus::RefCounted,
   virtual const std::string& ParentComponentEntryName() const = 0;
 
   inline bool IsLayoutOnly() { return is_layout_only_; }
+  // Check if this element is a fixed element using the new fixed positioning
+  // system
   bool IsNewFixed() const;
+  // Get whether the new fixed positioning system is enabled
   bool GetEnableFixedNew() const;
+  // Check if this element is a fixed element using the unified fixed behavior
+  bool IsFixedUnified() const;
+  // Get whether the unified fixed behavior is enabled, to be removed when
+  // enable_unify_fixed_behavior is default enabled
+  bool IsFixedUnifiedEnabled() const;
+  // Check if either new fixed or unified fixed behavior is enabled, to be
+  // removed when enable_unify_fixed_behavior is default enabled
+  bool IsFixedNewOrUnifiedEnabled() const;
+  // Check if this element uses either new fixed positioning or
+  // unified fixed
+  bool IsFixedNewOrUnified() const;
+  // Check if this element uses unified fixed behavior but not new fixed
+  // positioning
+  bool IsFixedUnifiedOnly() const;
+
   inline bool is_virtual() { return is_virtual_; }
   LYNX_EXPORT_FOR_DEVTOOL virtual bool GetPageElementEnabled() { return false; }
   LYNX_EXPORT_FOR_DEVTOOL virtual bool GetRemoveCSSScopeEnabled() {
@@ -753,6 +777,12 @@ class Element : public lepus::RefCounted,
   base::String tag_;
 
   int32_t id_;
+  /**
+   * A globally unique sequential identifier representing
+   * the chronological position at which this element was
+   * inserted into the DOM tree relative to all other elements.
+   */
+  uint32_t global_insertion_order_{kInitialGlobalInsertionOrder};
   uint32_t node_index_{0};
 
   constexpr const static int32_t kLayoutNodeTypeNotInit = -1;

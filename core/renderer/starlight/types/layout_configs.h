@@ -143,6 +143,7 @@ struct LayoutConfigs {
   bool font_scale_sp_only_ = false;
   bool default_display_linear_ = false;
   bool enable_fixed_new_ = false;
+  bool enable_unify_fixed_behavior_ = false;
 
  private:
   bool is_target_sdk_verion_higher_than_2_1_ = false;

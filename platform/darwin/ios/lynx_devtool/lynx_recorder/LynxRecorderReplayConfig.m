@@ -50,6 +50,11 @@
                                                    forKey:@"lynx_text_gradient_opt"
                                              defaultValue:NO];
 
+    _enableUnifyFixedBehavior =
+        [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
+                                                   forKey:@"enable_unify_fixed_behavior"
+                                             defaultValue:NO];
+
     NSString* threadModeStr = [LynxRecorderURLAnalyzer getQueryStringParameter:baseURL
                                                                         forKey:@"thread_mode"];
     if (threadModeStr != nil) {
