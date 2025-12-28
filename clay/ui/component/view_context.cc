@@ -203,7 +203,6 @@ void ViewContext::AddView(int id, int parent_id, int index) {
 }
 
 void ViewContext::InsertListItemPaintingNode(int list_id, int child_id) {
-#ifndef ENABLE_CLAY_LITE
   auto parent = view_map_.find(list_id);
   auto child = view_map_.find(child_id);
   if (parent == view_map_.end()) {
@@ -218,11 +217,9 @@ void ViewContext::InsertListItemPaintingNode(int list_id, int child_id) {
     static_cast<ListContainerWrapper*>(parent->second)
         ->InsertListItemPaintingNode(child->second);
   }
-#endif
 }
 
 void ViewContext::RemoveListItemPaintingNode(int list_id, int child_id) {
-#ifndef ENABLE_CLAY_LITE
   auto parent = view_map_.find(list_id);
   auto child = view_map_.find(child_id);
   if (parent == view_map_.end()) {
@@ -237,7 +234,6 @@ void ViewContext::RemoveListItemPaintingNode(int list_id, int child_id) {
     static_cast<ListContainerWrapper*>(parent->second)
         ->RemoveListItemPaintingNode(child->second);
   }
-#endif
 }
 
 void ViewContext::RemoveView(int id, int parent_id,
@@ -984,25 +980,21 @@ void ViewContext::InvokeUIMethod(int view_id, const std::string& method,
 void ViewContext::UpdateContentOffsetForListContainer(
     int id, float content_size, float target_content_offset_x,
     float target_content_offset_y) {
-#ifndef ENABLE_CLAY_LITE
   auto it = view_map_.find(id);
   if (it != view_map_.end()) {
     auto list_container_view = static_cast<ListContainerWrapper*>(it->second);
     list_container_view->UpdateContentOffsetForListContainer(
         content_size, target_content_offset_x, target_content_offset_y);
   }
-#endif
 }
 
 void ViewContext::UpdateScrollInfo(int id, bool smooth, float estimated_offset,
                                    bool scrolling) {
-#ifndef ENABLE_CLAY_LITE
   auto it = view_map_.find(id);
   if (it != view_map_.end()) {
     auto list_container_view = static_cast<ListContainerWrapper*>(it->second);
     list_container_view->UpdateScrollInfo(smooth, estimated_offset, scrolling);
   }
-#endif
 }
 
 void ViewContext::FinishLayoutOperation(int child_view_id, int parent_view_id) {

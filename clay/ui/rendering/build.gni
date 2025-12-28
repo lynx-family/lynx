@@ -19,6 +19,8 @@ ui_rendering_sources = [
   "render_external_view.h",
   "render_image.cc",
   "render_image.h",
+  "render_list.cc",
+  "render_list.h",
   "render_object.cc",
   "render_object.h",
   "render_object_child_list.cc",
@@ -40,6 +42,4 @@ ui_rendering_sources = [
 ui_extended_rendering_sources = [
   "editable/render_editable.cc",
   "editable/render_editable.h",
-  "render_list.cc",
-  "render_list.h",
 ]

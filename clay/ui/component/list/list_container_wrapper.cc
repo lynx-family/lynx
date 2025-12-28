@@ -14,8 +14,6 @@
 
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/base_view.h"
-#include "clay/ui/component/component_constants.h"
-#include "clay/ui/component/list/list_layout_manager.h"
 #include "clay/ui/component/list/list_scroller.h"
 #include "clay/ui/component/scrollbar/scrollbar_orientation_helper.h"
 #include "clay/ui/lynx_module/type_utils.h"

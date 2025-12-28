@@ -45,6 +45,8 @@ REGISTER_CLAY_ELEMENT("x-inline-truncation", View, InlineTruncationShadowNode);
 REGISTER_CLAY_ELEMENT("scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("x-scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("component", Component, void);
+REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
+REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
 #ifndef ENABLE_CLAY_LITE
 REGISTER_CLAY_ELEMENT("x-input-ng", InputNGView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-textarea-ng", TextAreaNGView, EditableShadowNode);
@@ -52,9 +54,7 @@ REGISTER_CLAY_ELEMENT("x-textarea", TextAreaView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("textarea", TextAreaView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("input", InputView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-input", InputView, EditableShadowNode);
-REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
 REGISTER_CLAY_ELEMENT("list", ListWrapper, void);
-REGISTER_CLAY_ELEMENT("list-item", ListItemView, void)
 #endif  // ENABLE_CLAY_LITE
 
 }  // namespace clay

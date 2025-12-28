@@ -26,9 +26,7 @@
 #include "clay/ui/component/list/list_children_helper.h"
 #include "clay/ui/component/list/list_item_view_holder.h"
 #include "clay/ui/component/list/list_layout_manager.h"
-#include "clay/ui/component/list/list_layout_manager_grid.h"
 #include "clay/ui/component/list/list_layout_manager_linear.h"
-#include "clay/ui/component/list/list_layout_manager_staggered_grid.h"
 #include "clay/ui/component/list/list_orientation_helper.h"
 #include "clay/ui/component/list/list_recycler.h"
 #include "clay/ui/component/list/list_scroller.h"
@@ -36,7 +34,6 @@
 #include "clay/ui/component/list/macros.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/event/focus_manager.h"
-#include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/rendering/render_list.h"
 
 namespace clay {
