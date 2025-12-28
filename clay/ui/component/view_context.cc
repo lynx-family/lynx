@@ -280,14 +280,14 @@ void ViewContext::DestroyAnonymousView(BaseView* view) {
   }
   view->Destroy();
   auto& children = view->GetChildren();
-  auto iter = children.begin();
-  while (iter != children.end()) {
-    if (!DestroyView((*iter)->id())) {
-      DestroyAnonymousView(*iter);
+  std::vector<BaseView*> children_copy(children.begin(), children.end());
+  for (auto* child : children_copy) {
+    if (!DestroyView(child->id())) {
+      DestroyAnonymousView(child);
     }
-    // Remove child dangling pointer in parent.
-    iter = children.erase(iter);
   }
+  // Remove child dangling pointer in parent.
+  children.clear();
   delete view;
 }
 
@@ -308,14 +308,14 @@ bool ViewContext::DestroyView(int id) {
 
   view->Destroy();
   auto& children = view->GetChildren();
-  auto iter = children.begin();
-  while (iter != children.end()) {
-    if (!DestroyView((*iter)->id())) {
-      DestroyAnonymousView(*iter);
+  std::vector<BaseView*> children_copy(children.begin(), children.end());
+  for (auto* child : children_copy) {
+    if (!DestroyView(child->id())) {
+      DestroyAnonymousView(child);
     }
-    // Remove child dangling pointer in parent.
-    iter = children.erase(iter);
   }
+  // Remove child dangling pointer in parent.
+  children.clear();
 
   delete view;
   view_map_.erase(id);
@@ -326,14 +326,15 @@ void ViewContext::ResetPageView() {
   CTX_LOG << "ResetPageView";
 
   auto& children = page_view_->GetChildren();
-  auto iter = children.begin();
-  while (iter != children.end()) {
-    if (!DestroyView((*iter)->id())) {
-      DestroyAnonymousView(*iter);
+  // Copy pointers to avoid container mutation during recursion.
+  std::vector<BaseView*> children_copy(children.begin(), children.end());
+  for (auto* child : children_copy) {
+    if (!DestroyView(child->id())) {
+      DestroyAnonymousView(child);
     }
-    // Remove child dangling pointer in parent.
-    iter = children.erase(iter);
   }
+  // Remove child dangling pointer in parent.
+  children.clear();
 
   page_view_->ResetPageView();
   component_id_to_ui_id_map_.clear();
