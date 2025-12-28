@@ -185,6 +185,11 @@ void BaseView::Destroy() {
   SetFocusable(false);
   // incase of double release
   data_set_ = clay::Value::Null();
+  if (parent_) {
+    // destroyed node should dettached from view tree
+    parent_->RemoveChild(this);
+    parent_ = nullptr;
+  }
 }
 
 BaseViewAnimationMutator* BaseView::GetAnimationMutator() {
@@ -2435,12 +2440,13 @@ void BaseView::DestroyChildrenRecursively(BaseView* view) {
     view->Destroy();
   }
   auto& children = view->GetChildren();
-  auto iter = children.begin();
-  while (iter != children.end()) {
-    DestroyChildrenRecursively(*iter);
-    // Remove child dangling pointer in parent.
-    iter = children.erase(iter);
+  // Copy pointers to avoid container mutation during recursion.
+  std::vector<BaseView*> children_copy(children.begin(), children.end());
+  for (auto* child : children_copy) {
+    DestroyChildrenRecursively(child);
   }
+  // Remove child dangling pointer in parent.
+  children.clear();
   if (view != this) {
     delete view;
   }
