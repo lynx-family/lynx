@@ -232,6 +232,9 @@ public class PageReloadHelper {
       }
       url = currentUrl;
     }
+    if (TextUtils.isEmpty(url)) {
+      url = "";
+    }
 
     if (templateBin != null) {
       lynxView.renderTemplateWithBaseUrl(templateBin, mInitTemplateData, url);
