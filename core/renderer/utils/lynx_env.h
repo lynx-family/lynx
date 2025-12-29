@@ -100,18 +100,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT,
     ENABLE_JSVM_RUNTIME,
     ENABLE_UNIFIED_PIXEL_PIPELINE,
-    FIX_PARALLEL_Z_INDEX_CRASH,
-    FIX_INSERT_BEFORE_FIXED_BUG,
     ENABLE_REPORT_BTS_CONTEXT_EVENT,
     ENABLE_FIBER_ELEMENT_MEMORY_REPORT,
-    FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
     ENABLE_HARMONY_NEW_OVERLAY,
-    // FIXME(linxs): remove this config in the next version(remove in 3.5)
-    FIX_NEGATIVE_Z_INDEX_INSERT_BUG,
-    // FIXME(linxs): remove this config int the next version
-    FIX_FIXED_Z_INDEX_SWITCH_BUG,
     // FIXME(linxs): remove this config in the next version(remove in 3.6)
-    FIX_STACKING_CONTEXT_FLAG_BUG,
     FIX_NEW_ANIMATOR_FLUSH_BUG,
     ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
     ENABLE_EVENT_HANDLE_REFACTOR,
@@ -241,19 +233,11 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_JSVM_RUNTIME, kLyneEnableJSVMRuntime},
             {Key::ENABLE_UNIFIED_PIXEL_PIPELINE,
              "enable_unified_pixel_pipeline"},
-            {Key::FIX_PARALLEL_Z_INDEX_CRASH, "fix_parallel_z_index_crash"},
-            {Key::FIX_INSERT_BEFORE_FIXED_BUG, "fix_insert_before_fixed_bug"},
             {Key::ENABLE_REPORT_BTS_CONTEXT_EVENT,
              "enable_report_mts_context_event"},
             {Key::ENABLE_FIBER_ELEMENT_MEMORY_REPORT,
              "enable_fiber_element_memory_report"},
-            {Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
-             "fix_font_size_override_direction_change_bug"},
             {Key::ENABLE_HARMONY_NEW_OVERLAY, "enable_harmony_new_overlay"},
-            {Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, "fix_negative_z_index_bug"},
-            {Key::FIX_FIXED_Z_INDEX_SWITCH_BUG, "fix_fixed_z_index_switch_bug"},
-            {Key::FIX_STACKING_CONTEXT_FLAG_BUG,
-             "fix_stacking_context_flag_bug"},
             {Key::FIX_NEW_ANIMATOR_FLUSH_BUG, "fix_new_animator_flush_bug"},
             {Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
              "enable_new_animator_on_patch_finish_opt"},
@@ -405,11 +389,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableBatchLayoutTaskWithSyncLayout();
   bool EnableJSVMRuntime();
   bool EnableUnifiedPixelPipeline();
-  bool FixParallelZIndexCrash();
-  bool FixInsertBeforeFixedBug();
   bool EnableReportMTSContextEvent();
   bool EnableFiberElementMemoryReport();
-  bool FixFontSizeOverrideDirectionChangeBug();
   bool EnableHarmonyNewOverlay();
   bool EnableNewAnimatorOnPatchFinishOpt();
   bool EnableEventHandleRefactor();

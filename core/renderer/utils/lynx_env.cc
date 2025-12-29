@@ -467,14 +467,6 @@ bool LynxEnv::EnableBatchLayoutTaskWithSyncLayout() {
   return GetBoolEnv(Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT, false);
 }
 
-bool LynxEnv::FixParallelZIndexCrash() {
-  return GetBoolEnv(Key::FIX_PARALLEL_Z_INDEX_CRASH, true);
-}
-
-bool LynxEnv::FixInsertBeforeFixedBug() {
-  return GetBoolEnv(Key::FIX_INSERT_BEFORE_FIXED_BUG, true);
-}
-
 bool LynxEnv::EnableJSVMRuntime() {
   return GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false) ||
          GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false, EnvType::LOCAL);
@@ -498,10 +490,6 @@ bool LynxEnv::EnableReportMTSContextEvent() {
 
 bool LynxEnv::EnableFiberElementMemoryReport() {
   return GetBoolEnv(Key::ENABLE_FIBER_ELEMENT_MEMORY_REPORT, true);
-}
-
-bool LynxEnv::FixFontSizeOverrideDirectionChangeBug() {
-  return GetBoolEnv(Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG, true);
 }
 
 bool LynxEnv::EnableNewAnimatorOnPatchFinishOpt() {

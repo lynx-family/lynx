@@ -23,8 +23,7 @@ ElementContainer::ElementContainer(Element* element)
 
 ElementContainer::~ElementContainer() {
   if (!element()->will_destroy()) {
-    if (element_manager()->FixStackingContextDirtyFlagBug() &&
-        NeedSortZChild()) {
+    if (NeedSortZChild()) {
       element_manager()->RemoveDirtyContext(this);
     } else if (was_stacking_context_) {
       // FIXME(linxs): to remove below code in next version!
@@ -491,13 +490,7 @@ void ElementContainer::StyleChanged() {
 void ElementContainer::ZIndexChanged() {
   if (!parent() || !element()->parent() || element()->IsLayoutOnly()) return;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_Z_INDEX_CHANGED);
-  Element* element_parent = nullptr;
-  if (element_manager()->FixFixedZIndexSwitchBug()) {
-    element_parent = element()->render_parent();
-  } else {
-    // TODO(linxs): remove below code after verification in next version
-    element_parent = element()->parent();
-  }
+  Element* element_parent = element()->render_parent();
   bool is_stacking_context = IsStackingContextNode();
   auto* parent_stacking_context = element_container_parent()
                                       ->EnclosingStackingContextNode()
@@ -650,17 +643,9 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   // We can skip index calculation if the target parent doesn't have any child
   // need adjust z order. And dirty_ context will sort its children. We don't
   // need to calculate the index here.
-  bool should_skip_index_calculation = false;
-  if (parent->element_manager()->FixNegativeZIndexBug()) {
-    should_skip_index_calculation =
-        (!real_parent->element_container_impl()->has_z_child()) && !ref;
-  } else {
-    // FIXME (linxs): Remove this code in the next version！！！
-    should_skip_index_calculation =
-        ((!real_parent->element_container_impl()->has_z_child()) ||
-         real_parent->element_container_impl()->NeedSortZChild()) &&
-        !ref;
-  }
+  bool should_skip_index_calculation =
+      (!real_parent->element_container_impl()->has_z_child()) && !ref;
+  ;
 
   int index = 0;
   if (should_skip_index_calculation) {
