@@ -1375,9 +1375,6 @@ void FiberElement::ResolveCSSStyles(
       TryDoDirectionRelatedCSSChange(style_pair.first, style_pair.second.first,
                                      style_pair.second.second);
     }
-    if (!element_manager_->FixFontSizeOverrideDirectionChangeBug()) {
-      pending_updated_direction_related_styles_.reset();
-    }
   }
 
   // Handle font size change
@@ -1441,7 +1438,6 @@ void FiberElement::ResolveCSSStyles(
 
       for (const auto &style : parsed_styles_map_) {
         bool need_handle_pending_updated_direction_related_style =
-            element_manager_->FixFontSizeOverrideDirectionChangeBug() &&
             pending_updated_direction_related_styles_.has_value() &&
             pending_updated_direction_related_styles_->find(style.first) !=
                 pending_updated_direction_related_styles_->end();
@@ -1463,8 +1459,7 @@ void FiberElement::ResolveCSSStyles(
     dirty_ &= ~kDirtyFontSize;
   }
 
-  if (element_manager_->FixFontSizeOverrideDirectionChangeBug() &&
-      pending_updated_direction_related_styles_.has_value()) {
+  if (pending_updated_direction_related_styles_.has_value()) {
     // reset cached style map impacted by direction
     pending_updated_direction_related_styles_.reset();
   }
@@ -2029,11 +2024,9 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
   }
 
   if (!IsFixedNewOrUnifiedEnabled()) {
-    while (
-        ref_node != nullptr &&
-        (ref_node->is_fixed() || ref_node->fixed_changed_ ||
-         (element_manager() && element_manager()->FixInsertBeforeFixedBug() &&
-          ref_node->render_parent() == nullptr))) {
+    while (ref_node != nullptr &&
+           (ref_node->is_fixed() || ref_node->fixed_changed_ ||
+            ref_node->render_parent() == nullptr)) {
       // Two cases:
       // 1. `ref_node` is a fixed node, find its `next_sibling`.
       // 2. `ref_node` changed from fixed to non-fixed; since
@@ -2397,13 +2390,9 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
 
     // TODO(songshourui.null): Later, determine whether to call StyleChanged
     // based on whether ComputedCSSStyle is dirty.
-    if (element_manager() && element_manager()->FixZIndexCrash()) {
-      HandleBeforeFlushActionsTask(
-          [this]() { element_container()->StyleChanged(); },
-          kFlagGreedyParallel | kFlagLevelOrderParallel);
-    } else {
-      HandleDelayTask([this]() { element_container()->StyleChanged(); });
-    }
+    HandleBeforeFlushActionsTask(
+        [this]() { element_container()->StyleChanged(); },
+        kFlagGreedyParallel | kFlagLevelOrderParallel);
   }
   dirty_ &= ~kDirtyForceUpdate;
 

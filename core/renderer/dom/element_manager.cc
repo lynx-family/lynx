@@ -85,17 +85,6 @@ ElementManager::ElementManager(
   // TODO(songshourui.null): The following temporary configs are being
   // introduced with the responsive bugfix to avoid breaks. These configs will
   // be removed after verifying the bugfix online.
-  fix_parallel_z_index_crash_ = LynxEnv::GetInstance().FixParallelZIndexCrash();
-  fix_insert_before_fixed_bug_ =
-      LynxEnv::GetInstance().FixInsertBeforeFixedBug();
-  fix_font_size_override_direction_change_bug_ =
-      LynxEnv::GetInstance().FixFontSizeOverrideDirectionChangeBug();
-  fix_negative_z_index_bug_ = LynxEnv::GetInstance().GetBoolEnv(
-      LynxEnv::Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, true);
-  fix_fixed_z_index_switch_bug_ = LynxEnv::GetInstance().GetBoolEnv(
-      LynxEnv::Key::FIX_FIXED_Z_INDEX_SWITCH_BUG, true);
-  fix_stacking_context_dirty_flag_ = LynxEnv::GetInstance().GetBoolEnv(
-      LynxEnv::Key::FIX_STACKING_CONTEXT_FLAG_BUG, true);
   fix_new_animator_flush_bug_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::FIX_NEW_ANIMATOR_FLUSH_BUG, true);
   enable_fiber_element_memory_reporter_ =
