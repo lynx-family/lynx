@@ -4,6 +4,7 @@
 #
 
 import("../../config.gni")
+import("//${lynx_dir}/build_overrides/build.gni")
 
 if (is_win) {
   import("//build/config/win/win.gni")
@@ -57,7 +58,7 @@ if (enable_primjs_prebuilt_lib) {
 
     if (is_win && use_flutter_cxx) {
       # Ensure MSVC C++ runtime and system libs are linked when building NAPI.
-      configs += [ "../../../core/platform/windows:win_libs_config" ]
+      configs += napi_win_libs_config
       libs = [ "msvcprt.lib" ]
     }
   }
