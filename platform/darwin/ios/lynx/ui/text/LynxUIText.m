@@ -340,6 +340,7 @@ LYNX_PROPS_GROUP_DECLARE(
   } else {
     [self _lynxUIRequestDisplay];
   }
+  _isDirty = false;
 }
 
 - (void)calcOverflowLayerFrame {
