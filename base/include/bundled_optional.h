@@ -11,6 +11,8 @@
 #include <numeric>
 #include <utility>
 
+#include "base/include/type_traits_addon.h"
+
 namespace lynx {
 namespace base {
 
@@ -268,9 +270,24 @@ struct BundledOptionals {
         new (reinterpret_cast<void*>(na)) F();
       } else {
         uintptr_t oa = reinterpret_cast<uintptr_t>(od) + oo[ci] * sizeof(void*);
-        new (reinterpret_cast<void*>(na))
-            F(std::move(*reinterpret_cast<F*>(oa)));
-        reinterpret_cast<F*>(oa)->~F();
+        static constexpr auto is_trivially_relocatable =
+            IsTriviallyRelocatable<F, is_instance<F, std::pair>{}>::value;
+        static constexpr auto is_trivially_destructible_after_move =
+            is_trivially_relocatable ||
+            IsTriviallyDestructibleAfterMove<
+                F, is_instance<F, std::pair>{}>::value;
+        if constexpr (is_trivially_relocatable) {
+          // Trivially copy as plain bytes and skip destructor.
+          using TrivialFType = TypeOfPlainBytes<F>;
+          *reinterpret_cast<TrivialFType*>(na) =
+              *reinterpret_cast<TrivialFType*>(oa);
+        } else {
+          new (reinterpret_cast<void*>(na))
+              F(std::move(*reinterpret_cast<F*>(oa)));
+          if constexpr (!is_trivially_destructible_after_move) {
+            reinterpret_cast<F*>(oa)->~F();
+          }
+        }
       }
     }
   };

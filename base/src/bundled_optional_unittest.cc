@@ -9,6 +9,7 @@
 #define private public
 
 #include "base/include/bundled_optional.h"
+#include "base/include/value/base_string.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -48,9 +49,13 @@ struct AgeField {
   using Type = int;
 };
 
+struct HobbyField {
+  using Type = String;
+};
+
 struct Person {
   char id;
-  BundledOptionals<NameField, SchoolsField, AgeField> optionals;
+  BundledOptionals<NameField, SchoolsField, AgeField, HobbyField> optionals;
 
   Person() : id(-1) {}
   Person(const Person& other) = default;
@@ -78,36 +83,43 @@ TEST(BundledOptional, Empty) {
   EXPECT_FALSE(p.optionals.HasValue<NameField>());
   EXPECT_FALSE(p.optionals.HasValue<SchoolsField>());
   EXPECT_FALSE(p.optionals.HasValue<AgeField>());
+  EXPECT_FALSE(p.optionals.HasValue<HobbyField>());
   EXPECT_TRUE(p.optionals.GetOrNull<NameField>() == nullptr);
   EXPECT_TRUE(p.optionals.GetOrNull<SchoolsField>() == nullptr);
   EXPECT_TRUE(p.optionals.GetOrNull<AgeField>() == nullptr);
+  EXPECT_TRUE(p.optionals.GetOrNull<HobbyField>() == nullptr);
 
   const Person p2;
   EXPECT_TRUE(p2.optionals.GetOrNull<NameField>() == nullptr);
   EXPECT_TRUE(p2.optionals.GetOrNull<SchoolsField>() == nullptr);
   EXPECT_TRUE(p2.optionals.GetOrNull<AgeField>() == nullptr);
+  EXPECT_TRUE(p2.optionals.GetOrNull<HobbyField>() == nullptr);
 
   const Person p3 = p;
   EXPECT_TRUE(p3.optionals.GetOrNull<NameField>() == nullptr);
   EXPECT_TRUE(p3.optionals.GetOrNull<SchoolsField>() == nullptr);
   EXPECT_TRUE(p3.optionals.GetOrNull<AgeField>() == nullptr);
+  EXPECT_TRUE(p3.optionals.GetOrNull<HobbyField>() == nullptr);
 
   Person p4(std::move(p));
   EXPECT_TRUE(p4.optionals.GetOrNull<NameField>() == nullptr);
   EXPECT_TRUE(p4.optionals.GetOrNull<SchoolsField>() == nullptr);
   EXPECT_TRUE(p4.optionals.GetOrNull<AgeField>() == nullptr);
+  EXPECT_TRUE(p4.optionals.GetOrNull<HobbyField>() == nullptr);
 
   Person p5;
   p5 = p3;
   EXPECT_FALSE(p5.optionals.HasValue<NameField>());
   EXPECT_FALSE(p5.optionals.HasValue<SchoolsField>());
   EXPECT_FALSE(p5.optionals.HasValue<AgeField>());
+  EXPECT_FALSE(p5.optionals.HasValue<HobbyField>());
 
   Person p6;
   p6 = std::move(p4);
   EXPECT_FALSE(p6.optionals.HasValue<NameField>());
   EXPECT_FALSE(p6.optionals.HasValue<SchoolsField>());
   EXPECT_FALSE(p6.optionals.HasValue<AgeField>());
+  EXPECT_FALSE(p6.optionals.HasValue<HobbyField>());
 
   AssertInstanceCount<NameField>(0);
   AssertInstanceCount<SchoolsField>(0);
@@ -120,19 +132,24 @@ TEST(BundledOptional, Construct) {
     EXPECT_FALSE(p_empty2.optionals.HasValue<NameField>());
     EXPECT_FALSE(p_empty2.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p_empty2.optionals.HasValue<AgeField>());
+    EXPECT_FALSE(p_empty2.optionals.HasValue<HobbyField>());
 
     Person p_empty3(std::move(p_empty));
     EXPECT_FALSE(p_empty3.optionals.HasValue<NameField>());
     EXPECT_FALSE(p_empty3.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p_empty3.optionals.HasValue<AgeField>());
+    EXPECT_FALSE(p_empty3.optionals.HasValue<HobbyField>());
   }
 
   Person p0;
   p0.optionals.Get<NameField>().value = "name0";
+  p0.optionals.Get<HobbyField>() = String("basketball");
   p0.optionals.Get<SchoolsField>().value.push_back("elementary school");
   p0.optionals.Get<SchoolsField>().value.push_back("middle school");
   EXPECT_TRUE(p0.optionals.GetOrNull<NameField>()->value == "name0");
   EXPECT_TRUE(p0.optionals.HasValue<NameField>());
+  EXPECT_TRUE(p0.optionals.GetOrNull<HobbyField>()->str() == "basketball");
+  EXPECT_TRUE(p0.optionals.HasValue<HobbyField>());
   EXPECT_TRUE(p0.optionals.HasValue<SchoolsField>());
   EXPECT_FALSE(p0.optionals.HasValue<AgeField>());
   AssertInstanceCount<NameField>(1);
@@ -141,9 +158,11 @@ TEST(BundledOptional, Construct) {
   {
     Person p1(p0);
     EXPECT_TRUE(p1.optionals.HasValue<NameField>());
+    EXPECT_TRUE(p1.optionals.HasValue<HobbyField>());
     EXPECT_TRUE(p1.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p1.optionals.HasValue<AgeField>());
     EXPECT_TRUE(p1.optionals.Get<NameField>().value == "name0");
+    EXPECT_TRUE(p1.optionals.Get<HobbyField>().str() == "basketball");
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value.size() == 2);
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value[0] ==
                 "elementary school");
@@ -155,9 +174,11 @@ TEST(BundledOptional, Construct) {
   {
     Person p1 = p0;
     EXPECT_TRUE(p1.optionals.HasValue<NameField>());
+    EXPECT_TRUE(p1.optionals.HasValue<HobbyField>());
     EXPECT_TRUE(p1.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p1.optionals.HasValue<AgeField>());
     EXPECT_TRUE(p1.optionals.Get<NameField>().value == "name0");
+    EXPECT_TRUE(p1.optionals.Get<HobbyField>().str() == "basketball");
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value.size() == 2);
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value[0] ==
                 "elementary school");
@@ -167,6 +188,7 @@ TEST(BundledOptional, Construct) {
   }
 
   EXPECT_TRUE(p0.optionals.Get<NameField>().value == "name0");
+  EXPECT_TRUE(p0.optionals.Get<HobbyField>().str() == "basketball");
   EXPECT_TRUE(p0.optionals.Get<SchoolsField>().value.size() == 2);
   EXPECT_TRUE(p0.optionals.Get<SchoolsField>().value[0] == "elementary school");
   EXPECT_TRUE(p0.optionals.Get<SchoolsField>().value[1] == "middle school");
@@ -176,9 +198,11 @@ TEST(BundledOptional, Construct) {
   {
     Person p2(std::move(p0));
     EXPECT_TRUE(p2.optionals.HasValue<NameField>());
+    EXPECT_TRUE(p2.optionals.HasValue<HobbyField>());
     EXPECT_TRUE(p2.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p2.optionals.HasValue<AgeField>());
     EXPECT_TRUE(p2.optionals.Get<NameField>().value == "name0");
+    EXPECT_TRUE(p2.optionals.Get<HobbyField>().str() == "basketball");
     EXPECT_TRUE(p2.optionals.Get<SchoolsField>().value.size() == 2);
     EXPECT_TRUE(p2.optionals.Get<SchoolsField>().value[0] ==
                 "elementary school");
@@ -188,6 +212,7 @@ TEST(BundledOptional, Construct) {
   }
 
   EXPECT_FALSE(p0.optionals.HasValue<NameField>());
+  EXPECT_FALSE(p0.optionals.HasValue<HobbyField>());
   EXPECT_FALSE(p0.optionals.HasValue<SchoolsField>());
   AssertInstanceCount<NameField>(0);
   AssertInstanceCount<SchoolsField>(0);
@@ -198,23 +223,28 @@ TEST(BundledOptional, Assign) {
     Person p_empty;
     Person p_empty2;
     p_empty2.optionals.Get<NameField>().value = "name_empty2";
+    p_empty2.optionals.Get<HobbyField>() = String("reading");
     p_empty2.optionals.Get<AgeField>() = 13;
     AssertInstanceCount<NameField>(1);
     p_empty2 = p_empty;
     EXPECT_FALSE(p_empty2.optionals.HasValue<NameField>());
+    EXPECT_FALSE(p_empty2.optionals.HasValue<HobbyField>());
     EXPECT_FALSE(p_empty2.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p_empty2.optionals.HasValue<AgeField>());
     AssertInstanceCount<NameField>(0);
 
     Person p_empty3;
     p_empty3.optionals.Get<NameField>().value = "name_empty3";
+    p_empty3.optionals.Get<HobbyField>() = String("reading");
     p_empty3.optionals.Get<AgeField>() = 13;
     AssertInstanceCount<NameField>(1);
     p_empty3 = std::move(p_empty);
     EXPECT_FALSE(p_empty3.optionals.HasValue<NameField>());
+    EXPECT_FALSE(p_empty2.optionals.HasValue<HobbyField>());
     EXPECT_FALSE(p_empty3.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p_empty3.optionals.HasValue<AgeField>());
     EXPECT_FALSE(p_empty.optionals.HasValue<NameField>());
+    EXPECT_FALSE(p_empty.optionals.HasValue<HobbyField>());
     EXPECT_FALSE(p_empty.optionals.HasValue<SchoolsField>());
     EXPECT_FALSE(p_empty.optionals.HasValue<AgeField>());
     AssertInstanceCount<NameField>(0);
@@ -227,14 +257,17 @@ TEST(BundledOptional, Assign) {
   EXPECT_TRUE(p0.optionals.HasValue<NameField>());
   EXPECT_TRUE(p0.optionals.HasValue<SchoolsField>());
   EXPECT_FALSE(p0.optionals.HasValue<AgeField>());
+  EXPECT_FALSE(p0.optionals.HasValue<HobbyField>());
   AssertInstanceCount<NameField>(1);
   AssertInstanceCount<SchoolsField>(1);
 
   {
     Person p1;
     p1.optionals.Get<NameField>().value = "name1";
+    p1.optionals.Get<HobbyField>() = String("football");
     p1.optionals.Get<AgeField>() = 13;
     EXPECT_TRUE(p1.optionals.HasValue<AgeField>());
+    EXPECT_TRUE(p1.optionals.HasValue<HobbyField>());
     p1 = p0;
     EXPECT_TRUE(p1.optionals.Get<NameField>().value == "name0");
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value.size() == 2);
@@ -242,6 +275,7 @@ TEST(BundledOptional, Assign) {
                 "elementary school");
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value[1] == "middle school");
     EXPECT_FALSE(p1.optionals.HasValue<AgeField>());
+    EXPECT_FALSE(p1.optionals.HasValue<HobbyField>());
     p1.optionals.Get<NameField>().value = "name1";
     EXPECT_TRUE(p0.optionals.Get<NameField>().value == "name0");
     AssertInstanceCount<NameField>(2);
@@ -252,14 +286,17 @@ TEST(BundledOptional, Assign) {
   EXPECT_TRUE(p0.optionals.Get<SchoolsField>().value.size() == 2);
   EXPECT_TRUE(p0.optionals.Get<SchoolsField>().value[0] == "elementary school");
   EXPECT_TRUE(p0.optionals.Get<SchoolsField>().value[1] == "middle school");
+  EXPECT_FALSE(p0.optionals.HasValue<HobbyField>());
   AssertInstanceCount<NameField>(1);
   AssertInstanceCount<SchoolsField>(1);
 
   {
     Person p1;
     p1.optionals.Get<NameField>().value = "name1";
+    p1.optionals.Get<HobbyField>() = String("football");
     p1.optionals.Get<AgeField>() = 13;
     EXPECT_TRUE(p1.optionals.HasValue<AgeField>());
+    EXPECT_TRUE(p1.optionals.HasValue<HobbyField>());
     p1 = std::move(p0);
     EXPECT_TRUE(p1.optionals.Get<NameField>().value == "name0");
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value.size() == 2);
@@ -267,6 +304,7 @@ TEST(BundledOptional, Assign) {
                 "elementary school");
     EXPECT_TRUE(p1.optionals.Get<SchoolsField>().value[1] == "middle school");
     EXPECT_FALSE(p1.optionals.HasValue<AgeField>());
+    EXPECT_FALSE(p1.optionals.HasValue<HobbyField>());
     EXPECT_FALSE(p0.optionals.HasValue<NameField>());
     EXPECT_FALSE(p0.optionals.HasValue<SchoolsField>());
     AssertInstanceCount<NameField>(1);
