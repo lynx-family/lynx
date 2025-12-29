@@ -1654,5 +1654,10 @@ void LynxTemplateRenderer::SetInspectorOwner(
   inspector_owner_ = owner;
 }
 
+void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
+                                        int y, const std::string& button,
+                                        float delta_x, float delta_y,
+                                        int modifiers, int click_count) {}
+
 }  // namespace harmony
 }  // namespace lynx

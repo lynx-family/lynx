@@ -124,6 +124,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override;
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override;
 
   void SetUpLynxShell(
       napi_env env, tasm::UIDelegate* ui_delegate,

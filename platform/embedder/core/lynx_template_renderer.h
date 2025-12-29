@@ -80,6 +80,19 @@ class TemplateRendererClient {
   virtual void OnTemplateBundleReady(const tasm::LynxTemplateBundle& bundle) {}
 };
 
+class TemplateRendererEventSimulationProxy {
+ public:
+  static const std::string kMousePressed;
+  static const std::string kMouseMoved;
+  static const std::string kMouseReleased;
+  static const std::string kMouseWheel;
+  static const std::string kMouseLeftButton;
+  static const std::string kMouseRightButton;
+  virtual void EmulateTouch(const std::string& event_type, int x, int y,
+                            const std::string& button, float delta_x,
+                            float delta_y, int modifiers, int click_count) {}
+};
+
 using TemplateVerification =
     std::function<bool(uint8_t* content, size_t length, const std::string url,
                        const char** error_msg)>;
@@ -236,6 +249,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override;
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override;
 
   std::shared_ptr<shell::LynxRuntimeProxy> GetRuntimeProxy() const;
   std::shared_ptr<piper::LynxModuleManager> GetModuleManager() const;
@@ -245,6 +261,11 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
         : renderer(template_renderer) {}
     LynxTemplateRenderer* renderer;
   };
+
+  void SetTemplateRendererEventSimulationProxy(
+      TemplateRendererEventSimulationProxy* event_proxy) {
+    event_proxy_ = event_proxy;
+  }
 
  protected:
   std::vector<uint8_t> LoadJSSource(const std::string& url);
@@ -270,6 +291,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 #if ENABLE_INSPECTOR
   std::unique_ptr<devtool::DevtoolsEmbedder> devtools_;
 #endif  // ENABLE_INSPECTOR
+  TemplateRendererEventSimulationProxy* event_proxy_{nullptr};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
 };
 
