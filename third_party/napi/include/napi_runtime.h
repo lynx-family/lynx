@@ -5,6 +5,10 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
 #ifndef SRC_NAPI_ENV_NAPI_RUNTIME_H_
 #define SRC_NAPI_ENV_NAPI_RUNTIME_H_
 
@@ -72,6 +76,12 @@ NAPI_EXTERN napi_status napi_runtime_call_threadsafe_function(
 
 NAPI_EXTERN napi_status
 napi_runtime_delete_threadsafe_function(napi_threadsafe_function func);
+
+NAPI_EXTERN napi_status
+napi_runtime_acquire_threadsafe_function(napi_threadsafe_function func);
+
+NAPI_EXTERN napi_status napi_runtime_release_threadsafe_function(
+    napi_threadsafe_function func, napi_threadsafe_function_release_mode mode);
 
 EXTERN_C_END
 

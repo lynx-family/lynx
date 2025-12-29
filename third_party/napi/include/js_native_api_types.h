@@ -5,6 +5,9 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 #ifndef SRC_NAPI_JS_NATIVE_API_TYPES_H_
 #define SRC_NAPI_JS_NATIVE_API_TYPES_H_
 
@@ -61,6 +64,11 @@ typedef enum {
   napi_tsfn_nonblocking,
   napi_tsfn_blocking
 } napi_threadsafe_function_call_mode;
+
+typedef enum {
+  napi_tsfn_release,
+  napi_tsfn_abort
+} napi_threadsafe_function_release_mode;
 
 typedef enum {
   napi_default = 0,

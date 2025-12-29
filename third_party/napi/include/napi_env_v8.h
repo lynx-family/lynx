@@ -5,6 +5,10 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
 #if !defined(SRC_NAPI_V8_NAPI_ENV_V8_H_) && \
     !defined(_NAPI_V8_EXPORT_SOURCE_ONLY_)
 #define SRC_NAPI_V8_NAPI_ENV_V8_H_

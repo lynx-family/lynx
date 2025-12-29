@@ -5,6 +5,9 @@
  * found in the LICENSE file in the root of the source tree.
  */
 
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 #ifndef SRC_NAPI_JS_NATIVE_API_H_
 #define SRC_NAPI_JS_NATIVE_API_H_
 
@@ -498,6 +501,57 @@ struct napi_env__ {
                                      size_t script_len, const uint8_t** data,
                                      int* length);
 #endif  // ENABLE_CODECACHE
+
+  napi_status (*napi_set_instance_data_spec_compliant)(
+      napi_env env, uint64_t key, void* data, napi_finalize finalize_cb,
+      void* finalize_hint);
+
+  napi_status (*napi_define_properties_spec_compliant)(
+      napi_env env, napi_value object, size_t property_count,
+      const napi_property_descriptor* properties);
+
+  napi_status (*napi_define_class_spec_compliant)(
+      napi_env env, const char* utf8name, size_t length,
+      napi_callback constructor, void* data, size_t property_count,
+      const napi_property_descriptor* properties, napi_class super_class,
+      napi_class* result);
+
+  napi_status (*napi_call_function_spec_compliant)(napi_env env,
+                                                   napi_value recv,
+                                                   napi_value func, size_t argc,
+                                                   const napi_value* argv,
+                                                   napi_value* result);
+
+  napi_status (*napi_wrap_spec_compliant)(napi_env env, napi_value js_object,
+                                          void* native_object,
+                                          napi_finalize finalize_cb,
+                                          void* finalize_hint,
+                                          napi_ref* result);
+  napi_status (*napi_unwrap_spec_compliant)(napi_env env, napi_value js_object,
+                                            void** result);
+  napi_status (*napi_remove_wrap_spec_compliant)(napi_env env,
+                                                 napi_value js_object,
+                                                 void** result);
+
+  napi_status (*napi_create_date)(napi_env env, double time,
+                                  napi_value* result);
+
+  napi_status (*napi_is_date)(napi_env env, napi_value value, bool* is_date);
+
+  napi_status (*napi_get_date_value)(napi_env env, napi_value value,
+                                     double* result);
+
+  napi_status (*napi_get_all_property_names)(napi_env env, napi_value object,
+                                             napi_key_collection_mode key_mode,
+                                             napi_key_filter key_filter,
+                                             napi_key_conversion key_conversion,
+                                             napi_value* result);
+
+  napi_status (*napi_create_threadsafe_function_spec_compliant)(
+      napi_env env, void* thread_finalize_data,
+      napi_finalize thread_finalize_cb, void* context,
+      napi_threadsafe_function_call_js call_js_cb, size_t max_queue_size,
+      size_t thread_count, napi_threadsafe_function* result);
 };
 
 #ifdef ENABLE_CODECACHE
@@ -624,6 +678,17 @@ struct napi_env__ {
   V(open_context_scope)                \
   V(close_context_scope)               \
   V(get_own_property_descriptor)       \
+  V(set_instance_data_spec_compliant)  \
+  V(define_properties_spec_compliant)  \
+  V(define_class_spec_compliant)       \
+  V(call_function_spec_compliant)      \
+  V(wrap_spec_compliant)               \
+  V(unwrap_spec_compliant)             \
+  V(remove_wrap_spec_compliant)        \
+  V(create_date)                       \
+  V(is_date)                           \
+  V(get_date_value)                    \
+  V(get_all_property_names)            \
   NAPI_ENGINE_CACHE_CALL(V)
 
 // These functions share same implementations across JS engines
@@ -645,7 +710,8 @@ struct napi_env__ {
   V(call_threadsafe_function)         \
   V(delete_threadsafe_function)       \
   V(open_error_scope)                 \
-  V(close_error_scope)
+  V(close_error_scope)                \
+  V(create_threadsafe_function_spec_compliant)
 
 #define NAPI_ENV_CALL(API, ENV, ...) \
   napi_env(ENV)->napi_##API((ENV), __VA_ARGS__)
