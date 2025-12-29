@@ -176,6 +176,7 @@ UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
         Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW,
         ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
   }
+  OH_ArkUI_NodeUtils_AddCustomProperty(Node(), "tag", tag_.c_str());
   NodeManager::Instance().AddNodeEventReceiver(Node(), UIBase::EventReceiver);
 }
 
