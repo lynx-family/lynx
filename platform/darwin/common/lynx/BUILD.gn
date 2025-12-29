@@ -98,6 +98,8 @@ common_lynx_shared_sources = [
   "performance/memory/LynxMemoryMonitorProtocol.h",
   "performance/memory/LynxMemoryRecord.h",
   "performance/memory/LynxMemoryRecord.m",
+  "performance/timing/LynxEmbeddedTimingCollector.h",
+  "performance/timing/LynxEmbeddedTimingCollector.mm",
   "performance/timing/LynxExtraTiming.m",
   "performance/timing/LynxTimingCollectorProtocol.h",
   "performance/timing/LynxTimingConstants.h",

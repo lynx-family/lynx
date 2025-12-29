@@ -836,6 +836,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Update data
 
 - (void)updateMetaData:(LynxUpdateMeta*)meta {
+  if (_context && _context.isEmbeddedModeOn) {
+    [self markTiming:lynx::tasm::timing::kUpdateTriggeredByNative pipelineID:nil];
+  }
   if (meta.data) {
     [_devTool onUpdateDataWithTemplateData:meta.data];
   }

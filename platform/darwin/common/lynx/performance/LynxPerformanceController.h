@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @return An initialized LynxPerformanceController instance.
  */
 - (instancetype)initWithObserver:(id<LynxPerformanceObserverProtocol>)observer;
+- (void)setEmbeddedModeEnabled:(BOOL)enable;
 
 @end
 

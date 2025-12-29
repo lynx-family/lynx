@@ -1349,6 +1349,12 @@ public class LynxEmbeddedModule : NSObject, <LynxContextModule> {
   public instancetype LynxEmbeddedModule::initWithLynxContext:WithParam:(LynxContext *context,[WithParam] id param);
 }
 
+public class LynxEmbeddedTimingCollector : NSObject, <LynxPerformanceObserverProtocol> {
+  public id<LynxPerformanceObserverProtocol> LynxEmbeddedTimingCollector::observer observer;
+  public instancetype LynxEmbeddedTimingCollector::initWithObserver:(id< LynxPerformanceObserverProtocol > observer);
+  public void LynxEmbeddedTimingCollector::setTiming:key:(uint64_t timestamp,[key] NSString *key);
+}
+
 public class LynxEngine : NSObject {
   public LynxTemplateRender* LynxEngine::lynxTemplateRender lynxTemplateRender;
   public LynxTemplateBundle* LynxEngine::templateBundle templateBundle;
@@ -2962,6 +2968,7 @@ public class LynxPerformanceController : NSObject, <LynxTimingCollectorProtocol>
   public id<LynxPerformanceObserverProtocol> LynxPerformanceController::observer observer;
   public LynxFSPTracer* LynxPerformanceController::fspTracer fspTracer;
   public instancetype LynxPerformanceController::initWithObserver:(id< LynxPerformanceObserverProtocol > observer);
+  public void LynxPerformanceController::setEmbeddedModeEnabled:(BOOL enable);
   public void LynxPerformanceController()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
 }
 
