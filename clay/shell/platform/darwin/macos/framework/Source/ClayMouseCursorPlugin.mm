@@ -2,6 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+// Copyright 2012 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #import <objc/message.h>
 
 #import "clay/shell/platform/darwin/macos/framework/Source/ClayMouseCursorPlugin.h"
@@ -14,6 +18,82 @@ static NSString* const kTypeKey = @"type";
 static NSString* const kPathKey = @"path";
 
 static NSDictionary* systemCursors;
+
+// code from chromium/src/ui/base/cocoa/cursor_utils.mm
+// Private interface to CoreCursor. See
+// https://github.com/WebKit/WebKit/blob/main/Source/WebCore/PAL/pal/spi/mac/HIServicesSPI.h
+//
+// Note that the column/row resize cursors have a bar in the middle (e.g. <-|->)
+// whereas the frame resize cursors have no bar in the middle (e.g. <-->).
+enum class CrCoreCursorType : int32_t {
+  kArrow = 0,                           // NSCursor.arrowCursor
+  kIBeam = 1,                           // NSCursor.IBeamCursor
+  kMakeAlias = 2,                       // NSCursor.dragLinkCursor
+  kOperationNotAllowed = 3,             // NSCursor.operationNotAllowedCursor
+  kBusyButClickable = 4,                // NSCursor.busyButClickableCursor (private)
+  kCopy = 5,                            // NSCursor.dragCopyCursor
+  kScreenShotSelection = 7,             // -
+  kScreenShotSelectionToClip = 8,       // -
+  kScreenShotWindow = 9,                // -
+  kScreenShotWindowToClip = 10,         // -
+  kClosedHand = 11,                     // NSCursor.closedHandCursor
+  kOpenHand = 12,                       // NSCursor.openHandCursor
+  kPointingHand = 13,                   // NSCursor.pointingHandCursor
+  kCountingUpHand = 14,                 // -
+  kCountingDownHand = 15,               // -
+  kCountingUpAndDownHand = 16,          // -
+  kColumnResizeLeft = 17,               // [NSCursor columnResizeCursorInDirections:]
+  kColumnResizeRight = 18,              // [NSCursor columnResizeCursorInDirections:]
+  kColumnResizeLeftRight = 19,          // NSCursor.columnResizeCursor
+  kCrosshair = 20,                      // NSCursor.crosshairCursor
+  kRowResizeUp = 21,                    // [NSCursor rowResizeCursorInDirections:]
+  kRowResizeDown = 22,                  // [NSCursor rowResizeCursorInDirections:]
+  kRowResizeUpDown = 23,                // NSCursor.rowResizeCursor
+  kContextualMenu = 24,                 // NSCursor.contextualMenuCursor
+  kDisappearingItem = 25,               // NSCursor.disappearingItemCursor
+  kVerticalIBeam = 26,                  // NSCursor.IBeamCursorForVerticalLayout
+  kFrameResizeEast = 27,                // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeEastWest = 28,            // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeNortheast = 29,           // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeNortheastSouthwest = 30,  // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeNorth = 31,               // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeNorthSouth = 32,          // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeNorthwest = 33,           // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeNorthwestSoutheast = 34,  // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeSoutheast = 35,           // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeSouth = 36,               // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeSouthwest = 37,           // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kFrameResizeWest = 38,                // [NSCursor frameResizeCursorFromPosition:inDirections:]
+  kMove = 39,                           // oddly, not NSCursor._moveCursor (private)
+  kHelp = 40,                           // NSCursor._helpCursor (private)
+  kCell = 41,                           // -
+  kZoomIn = 42,                         // NSCursor.zoomInCursor
+  kZoomOut = 43,                        // NSCursor.zoomOutCursor
+};
+
+@interface CrCoreCursor : NSCursor
+
++ (id)cursorWithType:(CrCoreCursorType)type;
+@property(readonly, nonatomic) CrCoreCursorType _coreCursorType;
+
+@end
+
+@implementation CrCoreCursor
+
+@synthesize _coreCursorType = _type;
+
++ (id)cursorWithType:(CrCoreCursorType)type {
+  return [[CrCoreCursor alloc] initWithType:type];
+}
+
+- (id)initWithType:(CrCoreCursorType)type {
+  if ((self = [super init])) {
+    _type = type;
+  }
+  return self;
+}
+
+@end
 
 /**
  * Maps a Flutter's constant to a platform's cursor object.
@@ -61,7 +141,12 @@ static NSCursor* GetCursorByType(CursorTypes type) {
       result = [NSCursor IBeamCursor];
       break;
     case CursorTypes::kResizecolumn:
-      result = [NSCursor resizeLeftRightCursor];
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *))
+        result = [NSCursor columnResizeCursor];
+      else
+#endif
+        result = [NSCursor resizeLeftRightCursor];
       break;
     case CursorTypes::kResizedown:
       result = [NSCursor resizeDownCursor];
@@ -70,13 +155,24 @@ static NSCursor* GetCursorByType(CursorTypes type) {
       result = [NSCursor resizeLeftCursor];
       break;
     case CursorTypes::kResizeleftright:
-      result = [NSCursor resizeLeftRightCursor];
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *)) {
+        result = [NSCursor frameResizeCursorFromPosition:NSCursorFrameResizePositionLeft
+                                            inDirections:NSCursorFrameResizeDirectionsAll];
+      } else
+#endif
+        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeEastWest];
       break;
     case CursorTypes::kResizeright:
       result = [NSCursor resizeRightCursor];
       break;
     case CursorTypes::kResizerow:
-      result = [NSCursor resizeUpDownCursor];
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *))
+        result = NSCursor.rowResizeCursor;
+      else
+#endif
+        result = NSCursor.resizeUpDownCursor;
       break;
     case CursorTypes::kResizeup:
       result = [NSCursor resizeUpCursor];

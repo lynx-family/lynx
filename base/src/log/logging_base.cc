@@ -136,7 +136,11 @@ void SetJSLogsFromExternalChannels(bool is_open) {
 
 int GetMinimumLoggingLevel() { return lynx_alog_min_level_; }
 
-int LynxSetLogFunction(LynxLogFunction log_function) {
+// TODO: remove this exporting when lynxtron migrated to C API
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+    int LynxSetLogFunction(LynxLogFunction log_function) {
   LynxLogDelegate* delegate = new LynxLogDelegate();
   delegate->log_function = log_function;
   lynx_default_delegate_id_ = AddLoggingDelegate(delegate);
