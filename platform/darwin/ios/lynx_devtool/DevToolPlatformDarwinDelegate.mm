@@ -242,7 +242,12 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  void Navigate(const std::string& url) override {}
+  void Navigate(const std::string& url) override {
+    __strong typeof(_darwin) darwin = _darwin;
+    if (darwin != nil) {
+      [darwin navigateLynxView:[NSString stringWithUTF8String:url.c_str()]];
+    }
+  }
 
   std::vector<double> GetBoxModel(Element* element) override {
     if (element->GetTag() == "x-overlay-ng" || element->GetTag() == "overlay") {
@@ -602,6 +607,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
                   fromFragments:fromFragments
                        withSize:size
                   withReloadUrl:reload_url];
+}
+
+- (void)navigateLynxView:(nonnull NSString*)url {
+  [_reloadHelper navigateLynxView:url];
 }
 
 - (void)sendConsoleEvent:(NSString*)message

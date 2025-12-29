@@ -66,7 +66,6 @@ class DevToolPlatformFacade
                                     std::shared_ptr<ScreenMetadata> metadata);
   void SendPageScreencastVisibilityChangedEvent(bool status);
   void SendLynxScreenshotCapturedEvent(const std::string& data);
-  void SendPageFrameNavigatedEvent(const std::string& url);
   void SendConsoleEvent(const lynx::piper::ConsoleMessage& message);
   void SendLayerTreeDidChangeEvent();
   void SendCDPEvent(const std::string& message);

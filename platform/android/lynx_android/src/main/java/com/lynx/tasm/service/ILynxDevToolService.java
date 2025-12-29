@@ -31,18 +31,16 @@ public interface ILynxDevToolService extends IServiceProvider {
   LynxBaseInspectorOwnerNG createInspectorOwner(@Nullable LynxView view, boolean debuggable);
   ILynxLogBox createLogBox(@NonNull LynxDevtool devtool);
   Class<? extends com.lynx.jsbridge.LynxModule> getDevToolSetModuleClass();
-  Class<? extends com.lynx.jsbridge.LynxModule> getDevToolWebSocketModuleClass();
+  Class<? extends com.lynx.jsbridge.LynxModule> getLynxWebSocketModuleClass();
 
   Class<? extends com.lynx.jsbridge.LynxModule> getLynxTrailModule();
 
   Boolean globalDebugBridgeShouldPrepareRemoteDebug(String url);
   Boolean globalDebugBridgePrepareRemoteDebug(String scheme);
-  void globalDebugBridgeSetContext(Context ctx);
   void globalDebugBridgeRegisterCardListener(LynxDevtoolCardListener listener);
   void globalDebugBridgeSetAppInfo(Context ctx, Map<String, String> appInfo);
   void globalDebugBridgeOnPerfMetricsEvent(
       String eventName, @NonNull JSONObject data, int instanceId);
-  void globalDebugBridgeStartRecord();
 
   void devtoolEnvSetDevToolLibraryLoader(INativeLibraryLoader loader);
   void setDevtoolEnv(String key, Object value);

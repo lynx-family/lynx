@@ -41,34 +41,15 @@ typedef void (^CDPResultCallback)(NSString *result);
 
 - (void)handleLongPress;
 
-- (void)stopCasting;
-
 - (void)continueCasting;
 
 - (void)pauseCasting;
-
-- (void)setPostUrl:(nullable NSString *)postUrl;
 
 - (void)onLoadFinished;
 
 - (void)reloadLynxView:(BOOL)ignoreCache;
 
-- (void)navigateLynxView:(nonnull NSString *)url;
-
-- (void)emulateTouch:(nonnull NSString *)type
-         coordinateX:(int)x
-         coordinateY:(int)y
-              button:(nonnull NSString *)button
-              deltaX:(CGFloat)dx
-              deltaY:(CGFloat)dy
-           modifiers:(int)modifiers
-          clickCount:(int)clickCount;
-
-- (void)call:(NSString *_Nonnull)function withParam:(NSString *_Nullable)params;
-
 - (void)attach:(nonnull LynxView *)lynxView;
-
-- (nonnull NSString *)groupID __attribute__((deprecated("Deprecated after Lynx2.18")));
 
 - (void)reloadLynxView:(BOOL)ignoreCache
           withTemplate:(nullable NSString *)templateBin
@@ -158,8 +139,6 @@ typedef void (^CDPResultCallback)(NSString *result);
  */
 - (void)removeCDPEventListener:(nonnull NSString *)name;
 
-- (void)onReceiveTemplateFragment:(nullable NSString *)data withEof:(BOOL)eof;
-
 - (void)attachDebugBridge:(NSString *)url;
 
 - (void)endTestbench:(NSString *_Nonnull)filePath;
@@ -169,8 +148,6 @@ typedef void (^CDPResultCallback)(NSString *result);
 #if TARGET_OS_IOS
 - (void)attachLynxUIOwnerToAgent:(nullable LynxUIOwner *)uiOwner;
 #endif
-
-- (void)downloadResource:(NSString *_Nonnull)url callback:(LynxResourceLoadBlock _Nonnull)callback;
 
 - (void)setLynxInspectorConsoleDelegate:(id _Nonnull)delegate;
 
@@ -202,17 +179,6 @@ typedef void (^CDPResultCallback)(NSString *result);
 - (void)showMessageOnConsole:(NSString *)message withLevel:(int32_t)level;
 
 - (void)setDebugTag:(NSString *)debugTag;
-
-@end
-
-@protocol LynxViewStateListener <NSObject>
-
-@required
-- (void)onLoadFinished;
-- (void)onMovedToWindow;
-- (void)onEnterForeground;
-- (void)onEnterBackground;
-- (void)onDestroy;
 
 @end
 

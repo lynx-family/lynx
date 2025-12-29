@@ -22,7 +22,6 @@ import com.lynx.basedevtool.utils.DownloadCallback;
 import com.lynx.debugrouter.DebugRouter;
 import com.lynx.devtool.helper.TestbenchDumpFileHelper;
 import com.lynx.devtool.helper.UITreeHelper;
-import com.lynx.devtool.module.DevtoolWebSocketModule;
 import com.lynx.devtool.tracing.FrameViewTrace;
 import com.lynx.devtool.utils.ErrorUtils;
 import com.lynx.devtoolwrapper.CDPEventListener;
@@ -174,11 +173,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     mLynxDevToolNG.removeCDPEventListener(name);
   }
 
-  @Override
-  public void onRegisterModule(LynxModuleFactory moduleFactory) {
-    moduleFactory.registerModule(DevtoolWebSocketModule.NAME, DevtoolWebSocketModule.class, null);
-  }
-
   public boolean isDebugging() {
     return mIsDebugging;
   }
@@ -220,15 +214,10 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
         dir.getPath(), mLynxDevToolNG.getSessionId(), screenWidth, screenHeight, mRecordID);
   }
 
-  public void sendConsoleMessage(String text, int level, long timestamp) {
+  private void sendConsoleMessage(String text, int level, long timestamp) {
     if (mPlatform != null) {
       mPlatform.sendConsoleEvent(text, level, timestamp);
     }
-  }
-
-  @Override
-  public void savePostURL(@NonNull final String postUrl) {
-    // deprecated
   }
 
   @CalledByNative
@@ -252,25 +241,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
       mReloadHelper.reload(
           ignoreCache, templateBin, fromTemplateFragments, templateSize, reloadUrl);
     }
-  }
-
-  public void onReceiveTemplateFragment(String data, boolean eof) {
-    if (mReloadHelper != null) {
-      mReloadHelper.onReceiveTemplateFragment(data, eof);
-    }
-  }
-
-  public void navigate(String url) {
-    if (mReloadHelper != null) {
-      mNavigatePending = true;
-      mReloadHelper.navigate(url);
-    }
-  }
-
-  @Override
-  @Deprecated
-  public String getGroupID() {
-    return LynxGroup.SINGNLE_GROUP;
   }
 
   public void destroy() {
@@ -320,8 +290,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     return false;
   }
 
-  @Override
-  public void stopCasting() {
+  private void stopCasting() {
     try {
       mPlatform.stopCasting();
     } catch (Throwable e) {
@@ -353,14 +322,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
 
   public LynxView getLynxView() {
     return mLynxView.get();
-  }
-
-  @Deprecated
-  public void sendResponse(String response) {
-    Log.v(TAG, response);
-    if (mLynxDevToolNG != null) {
-      mLynxDevToolNG.sendMessageToDebugPlatform("CDP", response);
-    }
   }
 
   public int getSessionID() {
@@ -495,7 +456,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
   }
 
   // android send file api
-  public void sendFileByAgent(String type, String file) {
+  private void sendFileByAgent(String type, String file) {
     nativeSendFileByAgent(type, file);
   }
 
@@ -512,25 +473,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     if (mPlatform != null) {
       mPlatform.sendLayerTreeDidChangeEvent();
     }
-  }
-
-  @Override
-  public void downloadResource(final String url, final LynxResourceCallback<byte[]> callback) {
-    new DevToolDownloader(url, new DownloadCallback() {
-      @Override
-      public void onResponse(int status, int contentLength) {}
-
-      @Override
-      public void onData(byte[] bytes, int length) {
-        callback.onResponse(LynxResourceResponse.success(bytes));
-      }
-
-      @Override
-      public void onFailure(String reason) {
-        callback.onResponse(LynxResourceResponse.failed(LynxResourceResponse.FAILED,
-            new Exception("download fail with url: " + url + ", the reason is: " + reason)));
-      }
-    });
   }
 
   @Override

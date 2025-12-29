@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBaseInspectorOwner.h>
-#import <Lynx/LynxBaseInspectorOwnerNG.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEnvKey.h>

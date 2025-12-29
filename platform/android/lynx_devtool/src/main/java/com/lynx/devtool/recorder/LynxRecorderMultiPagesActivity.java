@@ -19,7 +19,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import com.example.lynxdevtool.R;
 import com.google.gson.Gson;
-import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.provider.AbsTemplateProvider;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
@@ -111,8 +110,6 @@ public class LynxRecorderMultiPagesActivity
   @Override
   protected void onResume() {
     super.onResume();
-    LynxDevtoolGlobalHelper helper = LynxDevtoolGlobalHelper.getInstance();
-    helper.setContext(getApplicationContext());
   }
 
   @Override

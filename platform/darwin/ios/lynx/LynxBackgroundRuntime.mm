@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBackgroundRuntime.h>
-#import <Lynx/LynxDevtool+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxLog.h>

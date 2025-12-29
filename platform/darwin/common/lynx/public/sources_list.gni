@@ -44,7 +44,6 @@ common_lynx_public_headers =
                     "devtool_wrapper/LynxBaseInspectorOwnerNG.h",
                     "devtool_wrapper/LynxBaseInspectorOwner.h",
                     "devtool_wrapper/LynxMemoryListener.h",
-                    "devtool_wrapper/LynxDevtool+Internal.h",
                     "devtool_wrapper/LynxDevtool.h",
                     "devtool_wrapper/LynxDevToolUtils.h",
                     "devtool_wrapper/CustomizedMessage.h",

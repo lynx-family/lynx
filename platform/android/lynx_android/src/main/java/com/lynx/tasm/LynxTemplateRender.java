@@ -3074,9 +3074,6 @@ public class LynxTemplateRender
         });
       }
       mRenderPhase = RENDER_PHASE_UPDATE;
-      if (mDevTool != null) {
-        mDevTool.onLoadFinished();
-      }
     }
 
     @Override

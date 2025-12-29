@@ -80,14 +80,14 @@ class LynxDevToolService : ILynxDevToolService {
         }
     }
 
-    override fun getDevToolWebSocketModuleClass(): Class<out LynxModule>? {
+    override fun getLynxWebSocketModuleClass(): Class<out LynxModule>? {
         try {
             return LynxWebSocketModule::class.java
         } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "getDevToolWebSocketModuleClass failed, ${e.message}")
+            LLog.e(TAG, "getLynxWebSocketModuleClass failed, ${e.message}")
             return null
         } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "getDevToolWebSocketModuleClass failed, ${e.message}")
+            LLog.e(TAG, "getLynxWebSocketModuleClass failed, ${e.message}")
             return null
         }
     }
@@ -128,16 +128,6 @@ class LynxDevToolService : ILynxDevToolService {
         }
     }
 
-    override fun globalDebugBridgeSetContext(ctx: Context?) {
-        try {
-            LynxGlobalDebugBridge.getInstance().setContext(ctx)
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "globalDebugBridgeSetContext failed, ${e.message}")
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "globalDebugBridgeSetContext failed, ${e.message}")
-        }
-    }
-
     override fun globalDebugBridgeRegisterCardListener(listener: LynxDevtoolCardListener?) {
         try {
             LynxGlobalDebugBridge.getInstance().registerCardListener(listener)
@@ -169,16 +159,6 @@ class LynxDevToolService : ILynxDevToolService {
             LLog.e(TAG, "globalDebugBridgeOnPerfMetricsEvent failed, ${e.message}")
         } catch (e: NoClassDefFoundError) {
             LLog.e(TAG, "globalDebugBridgeOnPerfMetricsEvent failed, ${e.message}")
-        }
-    }
-
-    override fun globalDebugBridgeStartRecord() {
-        try {
-            LynxGlobalDebugBridge.getInstance().startRecord()
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "globalDebugBridgeStartRecord failed, ${e.message}")
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "globalDebugBridgeStartRecord failed, ${e.message}")
         }
     }
 

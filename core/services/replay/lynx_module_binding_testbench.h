@@ -40,7 +40,6 @@ class LynxJSIModuleBindingTestBench : public piper::HostObject {
       "NavigationModule",
       "IntersectionObserverModule",
       "LynxSetModule",
-      "DevtoolWebSocketModule",
       "NetworkingModule",
       "BDLynxModule",
       "JSBTestModule",

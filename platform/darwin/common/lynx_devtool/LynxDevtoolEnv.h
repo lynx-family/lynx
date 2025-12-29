@@ -20,9 +20,6 @@
 
 - (BOOL)getDefaultValue:(NSString *)key;
 
-// support iOS platform now
-- (void)prepareConfig:(LynxConfig *)config;
-
 @property(nonatomic, readwrite) BOOL showDevtoolBadge
     __attribute__((deprecated("Deprecated after Lynx2.9")));
 @property(nonatomic, readwrite) BOOL v8Enabled

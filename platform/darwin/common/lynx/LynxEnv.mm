@@ -340,10 +340,6 @@
   _config = config;
 #if OS_IOS
   [_config.componentRegistry makeIntoGloabl];
-  // notify devtool
-  if (self.lynxDebugEnabled) {
-    [LynxService(LynxServiceDevToolProtocol) devtoolEnvPrepareWithConfig:config];
-  }
 #endif
 }
 

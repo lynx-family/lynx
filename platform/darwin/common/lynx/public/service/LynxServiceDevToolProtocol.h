@@ -38,7 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (Class<LynxContextModule>)devtoolSetModuleClass;
 
-- (Class<LynxContextModule>)devtoolWebSocketModuleClass;
+- (Class<LynxContextModule>)lynxWebSocketModuleClass;
 
 - (Class<LynxContextModule>)devtoolTrailModuleClass;
 
@@ -47,8 +47,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (Class<LynxDebuggerProtocol>)debuggerBridgeClass;
 
 - (id)devtoolEnvSharedInstance;
-
-- (void)devtoolEnvPrepareWithConfig:(LynxConfig *)lynxConfig;
 
 - (void)devtoolEnvSetValue:(BOOL)value forKey:(NSString *)key;
 

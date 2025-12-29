@@ -21,8 +21,6 @@ subspec_target("devtool") {
     "DevToolMonitorView.m",
     "DevToolPlatformDarwinDelegate.h",
     "DevToolPlatformDarwinDelegate.mm",
-    "DevtoolWebSocketModule.h",
-    "DevtoolWebSocketModule.m",
     "GlobalDevToolPlatformDarwinDelegate.h",
     "GlobalDevToolPlatformDarwinDelegate.mm",
     "Helper/LepusDebugInfoHelper.h",

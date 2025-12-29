@@ -9,7 +9,6 @@
 #include <memory>
 #include <unordered_map>
 
-#import <BaseDevTool/DevToolToast.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLog.h>
@@ -74,7 +73,7 @@ typedef LynxInspectorOwner DevToolAgentDispatcher;
 
 - (BOOL)enable:(NSURL *)url withOptions:(NSDictionary *)options {
   if (!LynxEnv.sharedInstance.devtoolEnabled) {
-    [DevToolToast showToast:@"DevTool not enabled, turn on the switch!"];
+    LLogWarn(@"DevTool not enabled! url: %@", url.absoluteString);
     return NO;
   }
 
