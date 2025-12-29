@@ -900,6 +900,9 @@ public class ListCustomScroller {
         case SPLINE: {
           final float t = (float) currentTime / mSplineDuration;
           final int index = (int) (NB_SAMPLES * t);
+          if (index < 0) {
+            break;
+          }
           float distanceCoef = 1.f;
           float velocityCoef = 0.f;
           if (index < NB_SAMPLES) {
