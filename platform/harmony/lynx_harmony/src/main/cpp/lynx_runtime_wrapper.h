@@ -106,6 +106,9 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override {
     inspector_owner_ = owner;
   };
+  void EmulateTouch(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override {}
   // LynxDevToolProxy override end
 
   shell::RuntimeStandalone& RuntimeStandalone() { return *runtime_standalone_; }

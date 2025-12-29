@@ -68,6 +68,9 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
   }
 
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->EmulateTouch(input);
   }
 
   std::vector<float> GetRectToWindow() const override { return {}; }
@@ -260,6 +263,14 @@ std::vector<float> DevtoolPlatformEmbedder::GetTransformValue(
     int id, const std::vector<float>& pad_border_margin_layout) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(proxy_, "proxy_ is null", {});
   return proxy_->GetTransformValue(id, pad_border_margin_layout);
+}
+
+void DevtoolPlatformEmbedder::EmulateTouch(
+    std::shared_ptr<lynx::devtool::MouseEvent> input) {
+  CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
+  proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
+                       input->delta_x_, input->delta_y_, input->modifiers_,
+                       input->click_count_);
 }
 
 void DevtoolPlatformEmbedder::FlushConsoleMessages() {
