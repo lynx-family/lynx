@@ -126,21 +126,6 @@ int64_t ClayHeadlessRendererSharedImageGL::FBO(
   return fbo_name;
 }
 
-namespace {
-static skity::Rect SkIRectToSkityRect(const SkIRect& sk_rect) {
-  skity::Rect rect(static_cast<double>(sk_rect.fLeft),
-                   static_cast<double>(sk_rect.fTop),
-                   static_cast<double>(sk_rect.fRight),
-                   static_cast<double>(sk_rect.fBottom));
-  return rect;
-}
-
-static SkIRect SkityRectToSKIRect(const skity::Rect& rect) {
-  return SkIRect::MakeLTRB(rect.Left(), rect.Top(), rect.Right(),
-                           rect.Bottom());
-}
-}  // namespace
-
 // |GPUSurfaceGLDelegate|
 bool ClayHeadlessRendererSharedImageGL::GLContextPresent(
     const GLPresentInfo& present_info) {
@@ -158,9 +143,9 @@ bool ClayHeadlessRendererSharedImageGL::GLContextPresent(
   }
 
   if (present_info.frame_damage) {
-    damage_history_.push_back(SkityRectToSKIRect(*present_info.frame_damage));
+    damage_history_.push_back(*present_info.frame_damage);
   } else {
-    damage_history_.push_back(SkIRect::MakeWH(size_.width, size_.height));
+    damage_history_.push_back(skity::Rect(0, 0, size_.width, size_.height));
   }
 
   if (damage_history_.size() > kMaxHistorySize) {
@@ -207,13 +192,13 @@ ClayHeadlessRendererSharedImageGL::PopulateExistingDamage(int64_t fbo_id) {
   if (buffer_age == 0 || damage_history_.size() < buffer_age) {
     return std::nullopt;
   }
-  SkIRect damage = SkIRect::MakeEmpty();
+  skity::Rect damage = skity::Rect::MakeEmpty();
   // join up to (age - 1) last rects from damage history
   --buffer_age;
   for (auto i = damage_history_.rbegin(); buffer_age > 0; ++i, --buffer_age) {
-    damage.join(*i);
+    damage.Join(*i);
   }
-  fbo_storage_->damage_rect = SkIRectToSkityRect(damage);
+  fbo_storage_->damage_rect = damage;
 
   return fbo_storage_->damage_rect;
 }

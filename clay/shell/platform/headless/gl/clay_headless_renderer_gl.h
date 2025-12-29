@@ -12,7 +12,6 @@
 
 #include "base/include/fml/macros.h"
 #include "clay/shell/platform/headless/clay_headless_renderer.h"
-#include "third_party/skia/include/core/SkRect.h"
 
 namespace clay {
 
@@ -88,7 +87,7 @@ class ClayHeadlessRendererSharedImageGL : public ClayHeadlessRendererGL {
   bool disable_partial_repaint_ = false;
   std::optional<FBOSlot> fbo_storage_;
   ClaySize size_ = {0, 0};
-  std::list<SkIRect> damage_history_;
+  std::list<skity::Rect> damage_history_;
   ClaySharedImageSinkAccessorRef surface_accessor_ = nullptr;
 
   static constexpr uint32_t kMaxHistorySize = 10;
