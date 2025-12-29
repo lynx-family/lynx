@@ -115,7 +115,7 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
   }
 }
 
-void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformRendererContext(
+void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
   engine_actor_ = engine_actor;
 }
@@ -130,10 +130,13 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
       event_target_helper_->ReconstructEventTargetTreeRecursively(
           fml::RefPtr<PlatformRendererImpl>(static_cast<PlatformRendererImpl *>(
               page_renderer->second.get())));
-  return false;
+  return event_handler_->OnInputEvent(event_target_tree, int_event_data,
+                                      float_event_data);
 }
 
-int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() { return 0; }
+int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {
+  return event_handler_->EventHandlerState();
+}
 
 void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,
                                              fml::RefPtr<event::Event> event) {

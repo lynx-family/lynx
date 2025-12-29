@@ -10,6 +10,7 @@
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
+#include "core/renderer/dom/fragment/event/platform_event_handler.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
@@ -43,7 +44,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
 
-  void SetLynxEngineActorForPlatformRendererContext(
+  // Set the engine actor for the painting context ref.
+  void SetLynxEngineActorForPlatformContextRef(
       std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor);
   // The event data from the platform layer is forwarded to PlatformEventHandler
   // for subsequent event processing.
@@ -70,6 +72,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformRenderer>, 64>
       renderers_;
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_{nullptr};
+  std::unique_ptr<PlatformEventHandler> event_handler_ =
+      std::make_unique<PlatformEventHandler>(this);
   std::unique_ptr<PlatformEventEmitter> event_emitter_ =
       std::make_unique<PlatformEventEmitter>(this);
   std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =

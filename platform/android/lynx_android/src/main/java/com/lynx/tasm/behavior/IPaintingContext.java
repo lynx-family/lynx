@@ -18,9 +18,9 @@ public interface IPaintingContext {
 
   int getTargetHeight(int sign);
 
-  boolean dispatchPlatformMotionEvent(MotionEvent ev);
+  void setLynxEngineActorForPlatformContextRef(long ptr);
 
-  void setLynxEngineActorForPlatformRendererContext(long ptr);
+  boolean dispatchPlatformMotionEvent(MotionEvent ev);
 
   int getPlatformEventHandlerState();
 }

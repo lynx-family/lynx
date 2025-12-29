@@ -32,9 +32,8 @@ jlong CreatePaintingContext(JNIEnv *env, jobject jcaller, jobject jThis,
           platformRendererContextPtr)));
 }
 
-void SetLynxEngineActorForPlatformRendererContext(JNIEnv *env,
-                                                  jobject /*jcaller*/,
-                                                  jlong nativePtr, jlong ptr) {
+void SetLynxEngineActorForPlatformContextRef(JNIEnv *env, jobject /*jcaller*/,
+                                             jlong nativePtr, jlong ptr) {
   // Get the NativePaintingCtxAndroid instance from the native pointer
   if (nativePtr == 0 || ptr == 0) {
     return;
@@ -53,7 +52,7 @@ void SetLynxEngineActorForPlatformRendererContext(JNIEnv *env,
   if (platform_ref == nullptr) {
     return;
   }
-  platform_ref->SetLynxEngineActorForPlatformRendererContext(
+  platform_ref->SetLynxEngineActorForPlatformContextRef(
       shell->GetEngineActor());
 }
 

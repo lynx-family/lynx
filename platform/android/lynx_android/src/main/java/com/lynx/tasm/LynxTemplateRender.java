@@ -936,7 +936,7 @@ public class LynxTemplateRender
         mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
 
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
-    lynxUIRenderer.setLynxEngineForPlatformRendererContext(mNativePtr);
+    lynxUIRenderer.setLynxEngineForPlatformContextRef(mNativePtr);
     mNativeLifecycle = nativeLifecycleCreate();
     mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
     mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this));

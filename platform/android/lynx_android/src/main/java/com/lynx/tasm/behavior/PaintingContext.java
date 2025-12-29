@@ -151,7 +151,7 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
-  public void setLynxEngineActorForPlatformRendererContext(long ptr) {}
+  public void setLynxEngineActorForPlatformContextRef(long ptr) {}
 
   @Override
   public boolean dispatchPlatformMotionEvent(MotionEvent ev) {

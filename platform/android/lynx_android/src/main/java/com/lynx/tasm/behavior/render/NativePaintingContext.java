@@ -56,11 +56,11 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
-  public void setLynxEngineActorForPlatformRendererContext(long ptr) {
+  public void setLynxEngineActorForPlatformContextRef(long ptr) {
     if (mNativePtr == 0 || mDestroyed) {
       return;
     }
-    nativeSetLynxEngineActorForPlatformRendererContext(mNativePtr, ptr);
+    nativeSetLynxEngineActorForPlatformContextRef(mNativePtr, ptr);
   }
 
   @Override
@@ -70,10 +70,17 @@ public class NativePaintingContext implements IPaintingContext {
     }
 
     // TODO(hexionghui): handle multi-pointer event.
+    int pointerCount = ev.getPointerCount();
     // iEventData: [event_type, action_type, event_source, pointer_count, ...]
-    int[] iEventData = {0, ev.getActionMasked(), ev.getSource(), ev.getPointerCount()};
+    int[] iEventData = {0, ev.getActionMasked(), ev.getSource(), pointerCount};
     // fEventData: [pointer_id, pointer_x, pointer_y, ...]
-    float[] fEventData = {ev.getPointerId(0), ev.getX(), ev.getY()};
+    float[] fEventData = new float[pointerCount * 3];
+    for (int i = 0; i < pointerCount; i++) {
+      int base = i * 3;
+      fEventData[base] = ev.getPointerId(i);
+      fEventData[base + 1] = ev.getX(i);
+      fEventData[base + 2] = ev.getY(i);
+    }
     return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
   }
 
@@ -88,7 +95,7 @@ public class NativePaintingContext implements IPaintingContext {
   private native long nativeCreatePaintingContext(
       NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout);
 
-  native void nativeSetLynxEngineActorForPlatformRendererContext(long nativePtr, long ptr);
+  native void nativeSetLynxEngineActorForPlatformContextRef(long nativePtr, long ptr);
 
   native boolean nativeDispatchPlatformInputEvent(
       long nativePtr, int[] iEventData, float[] fEventData);

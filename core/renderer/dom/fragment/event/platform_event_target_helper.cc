@@ -59,7 +59,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
           height = float_data[float_data_idx++];
         }
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
-            sign, left, top, width, height);
+            this, sign, left, top, width, height);
         // the root event target.
         if (ops_idx == 1) {
           event_target->SetRendererOffsetX(renderer_offset[0]);

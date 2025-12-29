@@ -13,6 +13,8 @@
 namespace lynx {
 namespace tasm {
 
+class PlatformEventTargetHelper;
+
 enum class LynxEventPropStatus {
   kUndefined,
   kDisable,
@@ -53,9 +55,14 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
       base::InlineVector<fml::RefPtr<PlatformEventTarget>, 4>;
 
  public:
-  PlatformEventTarget(int32_t sign, float left, float top, float width,
-                      float height)
-      : sign_(sign), left_(left), top_(top), width_(width), height_(height) {}
+  PlatformEventTarget(PlatformEventTargetHelper* target_helper, int32_t sign,
+                      float left, float top, float width, float height)
+      : sign_(sign),
+        left_(left),
+        top_(top),
+        width_(width),
+        height_(height),
+        target_helper_(target_helper) {}
   void ReleaseSelf() const override { delete this; }
   // because the target may be reconstructed, we need to check if the current
   // parent is the target with sign.
@@ -100,27 +107,28 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   }
 
   fml::RefPtr<PlatformEventTarget> HitTest(float point[2]);
-  bool ShouldHitTest();
+  bool ShouldHitTest() const;
   void GetPointInTarget(float target_point[2],
                         fml::RefPtr<PlatformEventTarget> parent_target,
                         float point[2]);
-  bool ContainsPoint(float point[2]);
+  bool ContainsPoint(float point[2]) const;
   void OnResponseChain();
   void OffResponseChain();
-  bool IsOnResponseChain();
+  bool IsOnResponseChain() const;
+
   void OnFocusChange(bool has_focus, bool is_focus_transition);
-  bool Focusable();
+  bool Focusable() const;
   void OnPseudoStatusChanged(LynxPseudoStatus pre_status,
                              LynxPseudoStatus current_status);
-  LynxPseudoStatus GetPseudoStatus();
-  bool TouchPseudoPropagation();
-  std::vector<std::string> EventSet();
+  LynxPseudoStatus GetPseudoStatus() const;
+  bool TouchPseudoPropagation() const;
+  const std::vector<std::string>& EventSet() const;
 
-  bool BlockNativeEvent(float point[2]);
-  bool EventThrough(float point[2]);
-  bool IgnoreFocus();
-  LynxConsumeSlideDirection ConsumeSlideEvent();
-  LynxPointerEventsValue PointerEvents();
+  bool EventThrough(float point[2]) const;
+  bool IgnoreFocus() const;
+  LynxPointerEventsValue PointerEvents() const;
+  bool BlockNativeEvent(float point[2]) const;
+  LynxConsumeSlideDirection ConsumeSlideEvent() const;
 
  private:
   // target props
@@ -136,10 +144,12 @@ class PlatformEventTarget : public fml::RefCountedThreadSafeStorage {
   float scroll_offset_y_{0.f};
   float offset_x_for_calc_position_{0.f};
   float offset_y_for_calc_position_{0.f};
+  std::vector<std::string> event_set_;
 
   // event/expose target tree
   fml::RefPtr<PlatformEventTarget> parent_{nullptr};
   ChildrenTargetVec children_;
+  PlatformEventTargetHelper* target_helper_{nullptr};
 };
 
 }  // namespace tasm

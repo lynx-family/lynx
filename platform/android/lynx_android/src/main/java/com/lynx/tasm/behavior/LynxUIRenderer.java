@@ -176,9 +176,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   @Override
-  public void setLynxEngineForPlatformRendererContext(long ptr) {
+  public void setLynxEngineForPlatformContextRef(long ptr) {
     if (mPaintingContext != null) {
-      mPaintingContext.setLynxEngineActorForPlatformRendererContext(ptr);
+      mPaintingContext.setLynxEngineActorForPlatformContextRef(ptr);
     }
   }
 
