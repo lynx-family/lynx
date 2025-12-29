@@ -289,25 +289,12 @@ void ListElement::ResolvePlatformNodeTag() {
   auto it = attr_map.find(BASE_STATIC_STRING(list::kCustomLisName));
   if (it != attr_map.end()) {
     platform_node_tag_ = it->second.String();
-
-    // add feature count for custom-list or list-container or list
-    if (platform_node_tag_.IsEqual(BASE_STATIC_STRING(list::kListContainer))) {
-      // list-container
-      tasm::report::FeatureCounter::Instance()->Count(
-          tasm::report::LynxFeature::CPP_LIST_CONTAINER);
-    } else if (!platform_node_tag_.IsEqual(list::kList)) {
-      // custom-list
-      tasm::report::FeatureCounter::Instance()->Count(
-          tasm::report::LynxFeature::CPP_CUSTOM_LIST);
-    }
     return;
   }
   // Case 2: If get enable native list from page config, we modify
   // platform_node_tag_ to "list-container".
   if (element_manager_->GetEnableNativeListFromPageConfig()) {
     platform_node_tag_ = BASE_STATIC_STRING(list::kListContainer);
-    tasm::report::FeatureCounter::Instance()->Count(
-        tasm::report::LynxFeature::CPP_LIST_CONTAINER);
   }
 }
 
@@ -319,11 +306,28 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     ResolveEnableNativeList();
     // Resolve platform node tag.
     ResolvePlatformNodeTag();
+    HandleDelayTask([platform_node_tag = platform_node_tag_,
+                     disable_list_platform_implementation =
+                         *disable_list_platform_implementation_]() {
+      // add feature count for cpp list
+      if (disable_list_platform_implementation) {
+        tasm::report::FeatureCounter::Instance()->Count(
+            tasm::report::LynxFeature::CPP_ENABLE_NATIVE_LIST);
+      }
+      // add feature count for custom-list-name
+      if (platform_node_tag.IsEqual(BASE_STATIC_STRING(list::kListContainer))) {
+        // list-container
+        tasm::report::FeatureCounter::Instance()->Count(
+            tasm::report::LynxFeature::CPP_LIST_CONTAINER);
+      } else if (!platform_node_tag.IsEqual(list::kList)) {
+        // custom-list
+        tasm::report::FeatureCounter::Instance()->Count(
+            tasm::report::LynxFeature::CPP_CUSTOM_LIST);
+      }
+    });
     if (*disable_list_platform_implementation_) {
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kListContainer,
                                 lepus::Value(true));
-      tasm::report::FeatureCounter::Instance()->Count(
-          tasm::report::LynxFeature::CPP_ENABLE_NATIVE_LIST);
     }
   }
   // Handle experimental-batch-render-strategy property.
