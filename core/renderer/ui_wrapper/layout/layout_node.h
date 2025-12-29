@@ -70,6 +70,7 @@ class LayoutNode {
 
   void SetTag(const base::String& tag);
   starlight::ComputedCSSStyle* GetCSSMutableStyle() { return css_style_.get(); }
+  inline const base::String& tag() const { return tag_; }
 
  protected:
   int id_;
