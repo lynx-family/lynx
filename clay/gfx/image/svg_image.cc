@@ -21,6 +21,10 @@ SVGImage::SVGImage(const std::string& content) : content_(content) {
 }
 
 void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
+  if (!unref_queue || !unref_queue->GetContext()) {
+    FML_LOG(ERROR) << "SVGImage::Upload: unref_queue or context is null";
+    return;
+  }
   if (!gpu_image_.object() || gpu_image_.object()->width() < size.width() ||
       gpu_image_.object()->height() < size.height()) {
     auto data = svg_dom_->Render(size.width(), size.height());

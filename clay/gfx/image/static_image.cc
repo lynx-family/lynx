@@ -19,6 +19,10 @@ std::shared_ptr<StaticImage> StaticImage::Make(
 }
 
 void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
+  if (!unref_queue || !unref_queue->GetContext()) {
+    FML_LOG(ERROR) << "StaticImage::Upload: unref_queue or context is null";
+    return;
+  }
   if (!gpu_image_.object()) {
     auto pixmap = image_->ToBitmap();
     if (!pixmap) {

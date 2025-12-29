@@ -21,6 +21,10 @@ std::shared_ptr<AnimatedImage> AnimatedImage::Make(
 }
 
 void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
+  if (!unref_queue || !unref_queue->GetContext()) {
+    FML_LOG(ERROR) << "AnimatedImage::Upload: unref_queue or context is null";
+    return;
+  }
   auto pixmap = image_->ToBitmap();
   if (!pixmap) {
     return;
