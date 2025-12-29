@@ -2303,15 +2303,13 @@ public interface com::lynx::tasm::service::ILynxDevToolService {
   public LynxBaseInspectorOwnerNG com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view, boolean debuggable);
   public ILynxLogBox com.lynx.tasm.service.ILynxDevToolService.createLogBox(@NonNull LynxDevtool devtool);
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolSetModuleClass();
-  public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolWebSocketModuleClass();
+  public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getLynxWebSocketModuleClass();
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getLynxTrailModule();
   public Boolean com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeShouldPrepareRemoteDebug(String url);
   public Boolean com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgePrepareRemoteDebug(String scheme);
-  public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeSetContext(Context ctx);
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeRegisterCardListener(LynxDevtoolCardListener listener);
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeSetAppInfo(Context ctx, Map< String, String > appInfo);
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeOnPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId);
-  public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeStartRecord();
   public void com.lynx.tasm.service.ILynxDevToolService.devtoolEnvSetDevToolLibraryLoader(INativeLibraryLoader loader);
   public void com.lynx.tasm.service.ILynxDevToolService.setDevtoolEnv(String key, Object value);
   public void com.lynx.tasm.service.ILynxDevToolService.setDevtoolGroupEnv(String groupKey, Set< String > newGroupValues);
@@ -2648,13 +2646,6 @@ public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
   public ILynxEngine com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getLynxEngine();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setBitmapSizeCache(String source, int width, int height);
   public BitmapSize com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getBitmapSizeCache(String source);
-}
-
-public interface com::lynx::tasm::ILynxViewStateListener {
-  public void com.lynx.tasm.ILynxViewStateListener.onLoadFinished();
-  public void com.lynx.tasm.ILynxViewStateListener.onEnterForeground();
-  public void com.lynx.tasm.ILynxViewStateListener.onEnterBackground();
-  public void com.lynx.tasm.ILynxViewStateListener.onDestroy();
 }
 
 public class com::lynx::tasm::image::model::ImageBlurPostProcessor : com.lynx.tasm.image.model.BitmapPostProcessor {
@@ -3820,20 +3811,13 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize, String reloadUrl);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.navigate(String url);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.stopCasting();
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.continueCasting();
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.pauseCasting();
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.sendResponse(String response);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.savePostURL(@NonNull final String postUrl);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onRootViewInputEvent(InputEvent ev);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.destroy();
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.attach(LynxView view);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.sendConsoleMessage(String text, int level, long timestamp);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.updateScreenMetrics(int width, int height, float density);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.attachToDebugBridge(String url);
-  public String com.lynx.devtoolwrapper.LynxBaseInspectorOwner.getGroupID();
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.sendFileByAgent(String type, String file);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.endTestbench(String filePath);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onPageUpdate();
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.attachLynxUIOwnerToAgent(LynxUIOwner uiOwner);
@@ -3858,8 +3842,6 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwnerNG {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG.sendMessage(CustomizedMessage message);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG.subscribeMessage(String type, MessageHandler handler);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG.unsubscribeMessage(String type);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG.onRegisterModule(LynxModuleFactory moduleFactory);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG.downloadResource(String url, LynxResourceCallback< byte[]> callback);
 }
 
 public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollView : com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
@@ -4758,7 +4740,6 @@ public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public void com.lynx.devtoolwrapper.LynxDevtool.onEnterForeground();
   public void com.lynx.devtoolwrapper.LynxDevtool.onEnterBackground();
   public void com.lynx.devtoolwrapper.LynxDevtool.showErrorMessage(final LynxError error);
-  public void com.lynx.devtoolwrapper.LynxDevtool.onLoadFinished();
   public void com.lynx.devtoolwrapper.LynxDevtool.onRegisterModule(LynxModuleFactory moduleFactory);
   public void com.lynx.devtoolwrapper.LynxDevtool.attach(LynxView lynxView);
   public void com.lynx.devtoolwrapper.LynxDevtool.attach(@NonNull LynxView lynxView, @NonNull LynxTemplateRender render);
@@ -4766,7 +4747,6 @@ public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public void com.lynx.devtoolwrapper.LynxDevtool.updateScreenMetrics(int width, int height, float density);
   public void com.lynx.devtoolwrapper.LynxDevtool.attachToDebugBridge(String url);
   public void com.lynx.devtoolwrapper.LynxDevtool.onPageUpdate();
-  public void com.lynx.devtoolwrapper.LynxDevtool.downloadResource(String url, LynxResourceCallback callback);
   public String com.lynx.devtoolwrapper.LynxDevtool.getTemplateUrl();
   public Map< String, Object > com.lynx.devtoolwrapper.LynxDevtool.getAllJsSource();
   public LynxContext com.lynx.devtoolwrapper.LynxDevtool.getLynxContext();
@@ -4801,8 +4781,6 @@ public class com::lynx::devtoolwrapper::LynxDevtoolGlobalHelper :  {
   public boolean com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.isRemoteDebugAvailable();
   public boolean com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.shouldPrepareRemoteDebug(String url);
   public boolean com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.prepareRemoteDebug(String scheme);
-  public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.setContext(Context context);
-  public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.showDebugView(ViewGroup root);
   public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.registerCardListener(LynxDevtoolCardListener listener);
   public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.onPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId);
 }

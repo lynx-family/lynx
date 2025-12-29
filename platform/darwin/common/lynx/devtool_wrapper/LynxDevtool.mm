@@ -8,7 +8,6 @@
 
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxContextModule.h>
-#import <Lynx/LynxDevtool+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxPageReloadHelper+Internal.h>
@@ -30,7 +29,6 @@
   id<LynxLogBoxProtocol> _logbox;
 
   LynxPageReloadHelper *_reloader;
-  id<LynxViewStateListener> _lynxViewStateListener;
 }
 
 - (nonnull instancetype)initWithLynxView:(LynxView *)view debuggable:(BOOL)debuggable {
@@ -78,7 +76,7 @@
   } else {
     _LogE(@"failed to register LynxDevToolSetModule!");
   }
-  Class socketModuleClass = [devtoolService devtoolWebSocketModuleClass];
+  Class socketModuleClass = [devtoolService lynxWebSocketModuleClass];
   if ([socketModuleClass conformsToProtocol:@protocol(LynxContextModule)]) {
     [render registerModule:socketModuleClass param:nil];
   } else {
@@ -165,17 +163,11 @@
   if (_owner != nil) {
     [_owner continueCasting];
   }
-  if (_lynxViewStateListener) {
-    [_lynxViewStateListener onEnterForeground];
-  }
 }
 
 - (void)onEnterBackground {
   if (_owner != nil) {
     [_owner pauseCasting];
-  }
-  if (_lynxViewStateListener) {
-    [_lynxViewStateListener onEnterBackground];
   }
 }
 
@@ -183,18 +175,12 @@
   if ([_owner respondsToSelector:@selector(onMovedToWindow)]) {
     [_owner performSelector:@selector(onMovedToWindow)];
   }
-  if (_lynxViewStateListener) {
-    [_lynxViewStateListener onMovedToWindow];
-  }
   [_logbox onMovedToWindow];
 }
 
 - (void)onLoadFinished {
   if (_owner != nil) {
     [_owner onLoadFinished];
-  }
-  if (_lynxViewStateListener) {
-    [_lynxViewStateListener onLoadFinished];
   }
 }
 
@@ -221,21 +207,12 @@
 }
 
 - (void)dealloc {
-  if (_lynxViewStateListener) {
-    [_lynxViewStateListener onDestroy];
-  }
   [_logbox destroy];
 }
 
 - (void)onPageUpdate {
   if (_owner != nil) {
     [_owner onPageUpdate];
-  }
-}
-
-- (void)downloadResource:(NSString *)url callback:(LynxResourceLoadBlock)callback {
-  if (_owner != nil) {
-    [_owner downloadResource:url callback:callback];
   }
 }
 

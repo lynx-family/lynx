@@ -58,7 +58,7 @@
   return NSClassFromString(@"LynxDevToolSetModule");
 }
 
-- (Class<LynxContextModule>)devtoolWebSocketModuleClass {
+- (Class<LynxContextModule>)lynxWebSocketModuleClass {
   return NSClassFromString(@"LynxWebSocketModule");
 }
 
@@ -89,21 +89,6 @@
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
   return [envClass performSelector:sharedInstanceSelector];
 #pragma clang diagnostic pop
-}
-
-- (void)devtoolEnvPrepareWithConfig:(LynxConfig *)lynxConfig {
-  id sharedInstance = [self devtoolEnvSharedInstance];
-  if (!sharedInstance) {
-    return;
-  }
-
-  SEL prepareSelector = NSSelectorFromString(@"prepareConfig:");
-  if ([sharedInstance respondsToSelector:prepareSelector]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    [sharedInstance performSelector:prepareSelector withObject:lynxConfig];
-#pragma clang diagnostic pop
-  }
 }
 
 - (void)devtoolEnvSetValue:(BOOL)value forKey:(NSString *)key {

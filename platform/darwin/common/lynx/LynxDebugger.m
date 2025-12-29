@@ -52,15 +52,6 @@
   return NO;
 }
 
-+ (BOOL)openDebugSettingPanel {
-  /*
-   * This method used to get the `DebugSettingPanelManager` instance and call `openSettingPanel` on
-   * OSX platform.
-   * Since `DebugSettingPanelManager` has been removed, this method is no longer needed.
-   */
-  return NO;
-}
-
 + (void)onPerfMetricsEvent:(NSString *)eventName
                   withData:(NSDictionary<NSString *, NSObject *> *)data
                 instanceId:(int32_t)instanceId {

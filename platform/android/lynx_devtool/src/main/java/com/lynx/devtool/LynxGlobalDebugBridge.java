@@ -40,8 +40,6 @@ public class LynxGlobalDebugBridge
   private static final String CUSTOM_FOR_SET_GLOBAL_SWITCH = "SetGlobalSwitch";
   private static final String CUSTOM_FOR_GET_GLOBAL_SWITCH = "GetGlobalSwitch";
 
-  private boolean mHasContext = false;
-
   private DevToolAgentDispatcher mAgentDispatcher;
 
   private Set<LynxDevtoolCardListener> mCardListeners = new HashSet<>();
@@ -66,13 +64,9 @@ public class LynxGlobalDebugBridge
     DebugRouter.getInstance().addGlobalHandler(this);
     DebugRouter.getInstance().addStateListener(this);
     LynxEventReporter.addObserver(this);
-  }
-
-  public void setContext(Context ctx) {
-    if (mHasContext) {
-      return;
+    if (LynxEnv.inst().isLaunchRecordEnabled()) {
+      startRecord();
     }
-    mHasContext = true;
   }
 
   public boolean shouldPrepareRemoteDebug(String url) {

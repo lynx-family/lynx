@@ -39,7 +39,4 @@ public interface LynxBaseInspectorOwnerNG extends LynxBaseInspectorOwner {
    */
   void subscribeMessage(String type, MessageHandler handler);
   void unsubscribeMessage(String type);
-  void onRegisterModule(LynxModuleFactory moduleFactory);
-  // download resource(for example, download "update.template.js" for HotModuleReplace)
-  void downloadResource(String url, LynxResourceCallback<byte[]> callback);
 }

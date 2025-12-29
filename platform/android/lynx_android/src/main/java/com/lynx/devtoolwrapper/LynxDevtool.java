@@ -13,7 +13,6 @@ import androidx.annotation.RestrictTo;
 import androidx.core.util.Consumer;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.react.bridge.ReadableMap;
-import com.lynx.tasm.ILynxViewStateListener;
 import com.lynx.tasm.LynxDevToolDelegateImpl;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxError;
@@ -48,7 +47,6 @@ public class LynxDevtool {
   private PageReloadHelper mReloader = null;
   private WeakReference<LynxView> mView = null;
   private WeakReference<LynxTemplateRender> mRender = null;
-  private ILynxViewStateListener mStateListener;
 
   public LynxDevtool(LynxView view, LynxTemplateRender render, boolean debuggable) {
     init(view, render, debuggable, render.getLynxContext().getContext());
@@ -115,10 +113,6 @@ public class LynxDevtool {
   }
 
   public void destroy() {
-    if (mStateListener != null) {
-      mStateListener.onDestroy();
-      mStateListener = null;
-    }
     if (mOwner != null) {
       mOwner.destroy();
       mOwner = null;
@@ -206,17 +200,11 @@ public class LynxDevtool {
     if (mOwner != null) {
       mOwner.continueCasting();
     }
-    if (mStateListener != null) {
-      mStateListener.onEnterForeground();
-    }
   }
 
   public void onEnterBackground() {
     if (mOwner != null) {
       mOwner.pauseCasting();
-    }
-    if (mStateListener != null) {
-      mStateListener.onEnterBackground();
     }
   }
 
@@ -226,12 +214,6 @@ public class LynxDevtool {
     }
     if (mOwner != null) {
       mOwner.showErrorMessageOnConsole(error);
-    }
-  }
-
-  public void onLoadFinished() {
-    if (mStateListener != null) {
-      mStateListener.onLoadFinished();
     }
   }
 
@@ -251,7 +233,7 @@ public class LynxDevtool {
       LLog.i(TAG, "register LynxDevToolSetModule!");
     }
 
-    Class webSocketModuleClass = sDevToolService.getDevToolWebSocketModuleClass();
+    Class webSocketModuleClass = sDevToolService.getLynxWebSocketModuleClass();
     if (webSocketModuleClass != null) {
       moduleFactory.registerModule(
           webSocketModuleClass.getSimpleName(), webSocketModuleClass, null);
@@ -263,11 +245,6 @@ public class LynxDevtool {
       moduleFactory.registerModule(
           lynxTrailModuleClass.getSimpleName(), lynxTrailModuleClass, null);
       LLog.i(TAG, "register LynxTrailModule!");
-    }
-
-    if (mOwner != null) {
-      LLog.i(TAG, "owner onRegisterModule");
-      mOwner.onRegisterModule(moduleFactory);
     }
   }
 
@@ -317,12 +294,6 @@ public class LynxDevtool {
   public void onPageUpdate() {
     if (mOwner != null) {
       mOwner.onPageUpdate();
-    }
-  }
-
-  public void downloadResource(String url, LynxResourceCallback callback) {
-    if (mOwner != null) {
-      mOwner.downloadResource(url, callback);
     }
   }
 

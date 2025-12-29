@@ -34,7 +34,6 @@ public class LynxDevtoolGlobalHelper {
     return SingletonHolder.INSTANCE;
   }
 
-  private Context mContext;
   private Map<String, String> mAppInfo;
 
   private static class SingletonHolder {
@@ -55,9 +54,6 @@ public class LynxDevtoolGlobalHelper {
       return false;
     }
     if (!LynxEnv.inst().isNativeLibraryLoaded()) {
-      if (mContext != null) {
-        Toast.makeText(mContext, "Lynx initialization not finished!", Toast.LENGTH_SHORT).show();
-      }
       LLog.w(TAG, "liblynx.so not loaded!");
       return false;
     }
@@ -66,14 +62,6 @@ public class LynxDevtoolGlobalHelper {
       return true;
     }
 
-    if (LynxEnv.inst().isLaunchRecordEnabled()) {
-      if (sDevToolService != null) {
-        sDevToolService.globalDebugBridgeStartRecord();
-      } else {
-        LLog.e(TAG, "failed to get DevToolService");
-        return remoteDebugAvailable;
-      }
-    }
     remoteDebugAvailable = true;
 
     return remoteDebugAvailable;
@@ -129,24 +117,14 @@ public class LynxDevtoolGlobalHelper {
     }
 
     if (!LynxEnv.inst().isLynxDebugEnabled()) {
-      if (mContext != null) {
-        Toast.makeText(mContext, "Debugging not supported in this package", Toast.LENGTH_SHORT)
-            .show();
-      }
       LLog.w(TAG, "Debugging not supported in this package");
       return false;
     }
 
     if (!LynxEnv.inst().isDevtoolEnabled()) {
-      if (mContext != null) {
-        Toast.makeText(mContext, "DevTool not enabled, turn on the switch!", Toast.LENGTH_SHORT)
-            .show();
-      }
       LLog.w(TAG, "DevTool not enabled, turn on the switch!");
       return false;
     }
-
-    setAppInfo(mContext, null);
 
     if (sDevToolService != null) {
       return sDevToolService.globalDebugBridgePrepareRemoteDebug(scheme);
@@ -155,21 +133,6 @@ public class LynxDevtoolGlobalHelper {
     }
     return false;
   }
-
-  public void setContext(Context context) {
-    mContext = context;
-    if (!initRemoteDebugIfNecessary()) {
-      return;
-    }
-    if (sDevToolService != null) {
-      sDevToolService.globalDebugBridgeSetContext(context);
-    } else {
-      LLog.e(TAG, "failed to get DevToolService");
-    }
-  }
-
-  @Deprecated
-  public void showDebugView(ViewGroup root) {}
 
   public void registerCardListener(LynxDevtoolCardListener listener) {
     if (!initRemoteDebugIfNecessary()) {

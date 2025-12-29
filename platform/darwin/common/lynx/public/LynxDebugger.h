@@ -35,9 +35,6 @@ typedef void (^LynxOpenCardCallback)(NSString *);
 
 + (BOOL)hasSetOpenCardCallback;
 
-// only be used by macOS
-+ (BOOL)openDebugSettingPanel;
-
 + (void)onPerfMetricsEvent:(NSString *_Nonnull)eventName
                   withData:(NSDictionary<NSString *, NSObject *> *_Nonnull)data
                 instanceId:(int32_t)instanceId;

@@ -138,10 +138,6 @@
   self->record_id = ptr;
 }
 
-- (void)setPostUrl:(nullable NSString*)postUrl {
-  // deprecated
-}
-
 - (void)onLoadFinished {
   // Attach debug bridge if necessary
   if ([[LynxDebugBridge singleton] isEnabled]) {
@@ -177,14 +173,6 @@
                   fromFragments:fromFragments
                        withSize:size
                   withReloadUrl:reload_url];
-}
-
-- (void)onReceiveTemplateFragment:(NSString*)data withEof:(BOOL)eof {
-  [_reloadHelper onReceiveTemplateFragment:data withEof:eof];
-}
-
-- (void)navigateLynxView:(nonnull NSString*)url {
-  [_reloadHelper navigateLynxView:url];
 }
 
 - (void)stopCasting {
@@ -386,19 +374,6 @@
   if (_platform != nil) {
     [_platform sendLayerTreeDidChangeEvent];
   }
-}
-
-- (void)downloadResource:(NSString* _Nonnull)url callback:(LynxResourceLoadBlock _Nonnull)callback {
-  [DevToolDownloader
-          download:url
-      withCallback:^(NSData* _Nullable data, NSError* _Nullable error) {
-        if (!error) {
-          callback([[LynxResourceResponse alloc] initWithData:data]);
-        } else {
-          callback([[LynxResourceResponse alloc] initWithError:error
-                                                          code:LynxResourceResponseCodeFailed]);
-        }
-      }];
 }
 
 - (void)setLynxInspectorConsoleDelegate:(id)delegate {

@@ -163,13 +163,6 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
   return res;
 }
 
-void DevToolPlatformFacade::SendPageFrameNavigatedEvent(
-    const std::string& url) {
-  auto ui_executor = inspector_ui_executor_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(ui_executor, "ui_executor is null");
-  ui_executor->SendPageFrameNavigatedEvent(url);
-}
-
 std::string DevToolPlatformFacade::GetLepusDebugInfoUrl(
     const std::string& file_name) {
   auto debugger = lepus_debugger_wp_.lock();

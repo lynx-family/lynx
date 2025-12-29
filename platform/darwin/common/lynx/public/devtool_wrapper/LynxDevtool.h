@@ -66,8 +66,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)onPageUpdate;
 
-- (void)downloadResource:(NSString *_Nonnull)url callback:(LynxResourceLoadBlock _Nonnull)callback;
-
 - (void)onPerfMetricsEvent:(NSString *_Nonnull)eventName
                   withData:(NSDictionary<NSString *, NSObject *> *_Nonnull)data;
 
@@ -76,6 +74,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onReceiveMessageEvent:(NSDictionary *)event;
 
 - (void)setDispatchMessageEventBlock:(void (^)(NSDictionary *))block;
+
+- (void)onTemplateLoadSuccess:(nullable NSData *)tem;
+
+- (void)onGlobalPropsUpdated:(LynxTemplateData *)props;
+
 @end
 
 NS_ASSUME_NONNULL_END

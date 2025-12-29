@@ -38,15 +38,11 @@ NS_ASSUME_NONNULL_BEGIN
          fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size
          withReloadUrl:(NSString *)reload_url;
-- (void)onReceiveTemplateFragment:(nullable NSString *)data withEof:(BOOL)eof;
-
-- (void)navigateLynxView:(nonnull NSString *)url;
 
 - (void)startCasting:(int)quality
                width:(int)maxWidth
               height:(int)maxGeight
                 mode:(int)screenshot_mode;
-- (void)stopCasting;
 - (void)continueCasting;
 - (void)pauseCasting;
 - (LynxView *)getLynxView;

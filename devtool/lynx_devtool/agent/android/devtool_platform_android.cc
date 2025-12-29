@@ -85,14 +85,6 @@ void SendPageScreencastFrameEvent(JNIEnv* env, jobject jcaller, jlong facadePtr,
       metadata);
 }
 
-void SendPageFrameNavigatedEvent(JNIEnv* env, jobject jcaller, jlong facadePtr,
-                                 jstring url) {
-  auto platform_facade = *reinterpret_cast<
-      std::shared_ptr<lynx::devtool::DevToolPlatformAndroid>*>(facadePtr);
-  platform_facade->SendPageFrameNavigatedEvent(
-      lynx::base::android::JNIConvertHelper::ConvertToString(env, url));
-}
-
 void DispatchScreencastVisibilityChanged(JNIEnv* env, jobject jcaller,
                                          jlong facadePtr, jboolean status) {
   auto platform_facade = *reinterpret_cast<

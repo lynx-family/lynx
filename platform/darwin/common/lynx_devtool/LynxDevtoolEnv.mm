@@ -9,9 +9,6 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <LynxDevtool/LynxDevtoolEnv.h>
-#if OS_IOS
-#import <LynxDevtool/DevtoolWebSocketModule.h>
-#endif
 
 #include <LynxDevtool/LynxDebugBridge.h>
 #include "core/renderer/utils/lynx_env.h"
@@ -387,12 +384,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     return [[arr objectAtIndex:2] boolValue];
   }
   return NO;
-}
-
-- (void)prepareConfig:(LynxConfig *)config {
-#if OS_IOS
-  [config registerModule:[DevtoolWebSocketModule class]];
-#endif
 }
 
 - (void)setShowDevtoolBadge:(BOOL)show __attribute__((deprecated("Deprecated after Lynx2.9"))) {

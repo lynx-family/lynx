@@ -25,7 +25,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleRegistry;
 import com.example.lynxdevtool.R;
-import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
@@ -129,9 +128,6 @@ public class LynxRecorderActivity
     if (mLynxView != null) {
       mLynxView.onEnterForeground();
     }
-    // Pass context to debug bridge
-    LynxDevtoolGlobalHelper helper = LynxDevtoolGlobalHelper.getInstance();
-    helper.setContext(getApplicationContext());
 
     mLifecycleRegistry.markState(androidx.lifecycle.Lifecycle.State.RESUMED);
   }

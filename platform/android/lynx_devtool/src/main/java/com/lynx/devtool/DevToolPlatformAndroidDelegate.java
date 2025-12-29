@@ -50,8 +50,6 @@ public class DevToolPlatformAndroidDelegate {
 
   private LepusDebugInfoHelper mLepusDebugInfoHelper;
 
-  private boolean mNavigatePending;
-
   // DebugInfo
   private LynxDebugInfoRecorder mDebugInfoRecorder;
 
@@ -69,8 +67,6 @@ public class DevToolPlatformAndroidDelegate {
     mTouchHelper = new EmulateTouchHelper(mLynxView);
 
     mReloadHelper = null;
-
-    mNavigatePending = false;
 
     mDebugInfoRecorder = null;
   }
@@ -282,21 +278,7 @@ public class DevToolPlatformAndroidDelegate {
   @CalledByNative
   void navigate(String url) {
     if (mReloadHelper != null) {
-      mNavigatePending = true;
       mReloadHelper.navigate(url);
-    }
-  }
-
-  public void onLoadFinished() {
-    if (mNavigatePending) {
-      mNavigatePending = false;
-      dispatchFrameNavigated();
-    }
-  }
-
-  public void dispatchFrameNavigated() {
-    if (mFacadePtr != 0) {
-      nativeSendPageFrameNavigatedEvent(mFacadePtr, getTemplateUrl());
     }
   }
 
@@ -421,7 +403,6 @@ public class DevToolPlatformAndroidDelegate {
   private native void nativeSendPageScreencastFrameEvent(long facadePtr, String data,
       float offsetTop, float pageScaleFactor, float deviceWidth, float deviceHeight,
       float scrollOffsetX, float scrollOffsetY, float timestamp);
-  private native void nativeSendPageFrameNavigatedEvent(long facadePtr, String url);
   private native void nativeDispatchScreencastVisibilityChanged(long facadePtr, boolean status);
   private native void nativeSendLynxScreenshotCapturedEvent(long facadePtr, String data);
   public native void nativeFlushConsoleMessages(long facadePtr);

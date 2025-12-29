@@ -28,22 +28,15 @@ public interface LynxBaseInspectorOwner {
       boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
   void reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments,
       int templateSize, String reloadUrl);
-  void navigate(String url);
-  void stopCasting();
   void continueCasting();
   void pauseCasting();
-  void sendResponse(String response);
-  void savePostURL(@NonNull final String postUrl);
   void onRootViewInputEvent(InputEvent ev);
   void destroy();
   void attach(LynxView view);
-  void sendConsoleMessage(String text, int level, long timestamp);
   void updateScreenMetrics(int width, int height, float density);
 
   void attachToDebugBridge(String url);
-  @Deprecated String getGroupID();
 
-  void sendFileByAgent(String type, String file);
   void endTestbench(String filePath);
 
   void onPageUpdate();
