@@ -5,6 +5,7 @@
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
+#import "LynxEmbeddedTimingCollector.h"
 #import "LynxMemoryMonitorProtocol.h"
 #import "LynxPerformanceController+Native.h"
 #include "base/trace/native/trace_event.h"
@@ -33,11 +34,14 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 
 @implementation LynxPerformanceController {
   id<LynxServiceEventReporterProtocol> _reporter;
+  LynxEmbeddedTimingCollector* _embeddedCollector;
+  BOOL _embeddedModeEnabled;
 }
 
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
   if (self = [super init]) {
     _observer = observer;
+    _embeddedModeEnabled = NO;
   }
   return self;
 }
@@ -46,9 +50,19 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   _nativeWeakActorPtr = nativeActor;
 }
 
+- (void)setEmbeddedModeEnabled:(BOOL)enabled {
+  _embeddedModeEnabled = enabled;
+  if (enabled) {
+    _embeddedCollector = [[LynxEmbeddedTimingCollector alloc] initWithObserver:_observer];
+  }
+}
+
 #pragma mark - LynxMemoryMonitorProtocol
 
 - (void)allocateMemory:(LynxMemoryRecordBuilder)recordBuilder {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   if (!recordBuilder) {
     return;
   }
@@ -66,6 +80,9 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 }
 
 - (void)deallocateMemory:(LynxMemoryRecordBuilder)recordBuilder {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   if (!recordBuilder) {
     return;
   }
@@ -83,6 +100,9 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 }
 
 - (void)updateMemoryUsage:(LynxMemoryRecordBuilder)recordBuilder {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   if (!recordBuilder) {
     return;
   }
@@ -97,6 +117,9 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 }
 
 - (void)updateMemoryUsageWithRecords:(NSDictionary<NSString*, LynxMemoryRecord*>*)records {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   if (!records) {
     return;
   }
@@ -144,6 +167,10 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
                                              std::to_string(actorPtr->GetInstanceId()));
         }
       });
+  if (_embeddedModeEnabled) {
+    [_embeddedCollector setTiming:timestamp key:key];
+    return;
+  }
   [self ActAsync:^(const std::unique_ptr<performance::PerformanceController>& controller) {
     auto timingKey = timing::TimestampKey([key UTF8String]);
     auto timingPipelineID = pipelineID ? PipelineID([pipelineID UTF8String]) : PipelineID();
@@ -155,6 +182,9 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 - (void)onPipelineStart:(NSString*)pipelineId
          pipelineOrigin:(NSString*)pipelineOrigin
               timestamp:(uint64_t)timestamp {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   [self ActAsync:^(const std::unique_ptr<performance::PerformanceController>& controller) {
     auto timingPipelineOrigin = PipelineOrigin([pipelineOrigin UTF8String]);
     auto timingPipelineId = pipelineId ? PipelineID([pipelineId UTF8String]) : PipelineID();
@@ -165,6 +195,9 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 }
 
 - (void)resetTimingBeforeReload {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   [self ActAsync:^(const std::unique_ptr<performance::PerformanceController>& controller) {
     controller->GetTimingHandler().ResetTimingBeforeReload();
   }];
@@ -172,6 +205,9 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 
 #pragma mark - LynxPerformanceObserverProtocol
 - (void)onPerformanceEvent:(nonnull LynxPerformanceEntry*)entry {
+  if (_embeddedModeEnabled) {
+    return;
+  }
   [_observer onPerformanceEvent:entry];
 
   if (_reporter == nil) {

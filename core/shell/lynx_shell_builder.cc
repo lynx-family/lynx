@@ -242,8 +242,10 @@ LynxShell* LynxShellBuilder::build() {
   // object of the platform layer to establish a mapping relationship.
   if (performance_controller_platform_) {
     performance_controller_platform_->SetActor(shell->perf_controller_actor_);
-    shell->perf_controller_actor_->Impl()->SetPlatformImpl(
-        std::move(this->performance_controller_platform_));
+    if (shell->perf_controller_actor_->Impl() != nullptr) {
+      shell->perf_controller_actor_->Impl()->SetPlatformImpl(
+          std::move(this->performance_controller_platform_));
+    }
   }
   if (loader_ != nullptr) {
     loader_->SetPerfControllerActor(shell->perf_controller_actor_);
