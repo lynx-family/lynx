@@ -923,10 +923,10 @@ void LynxRuntime::OnRuntimeReady() {
             [is_foreground = std::weak_ptr<bool>(is_running_foreground_),
              url = template_url_]() mutable {
               auto lock_is_foreground = is_foreground.lock();
-              if (lock_is_foreground && *lock_is_foreground) {
+              if (lock_is_foreground && !(*lock_is_foreground)) {
                 tasm::report::EventTracker::OnEvent(
                     [url = std::move(url)](tasm::report::MoveOnlyEvent& event) {
-                      event.SetName("lynx_bts_load_type");
+                      event.SetName("lynxsdk_bts_load_type");
                       event.SetProps("template_url", url);
                       event.SetProps("is_preload", 1);
                     });
