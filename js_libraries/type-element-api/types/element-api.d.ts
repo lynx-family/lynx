@@ -2,35 +2,35 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-export interface ElementRef extends Record<string, unknown> {}
+export interface ElementRef extends Record<string, unknown> { }
 
-export interface ComponentElementRef extends ElementRef {}
+export interface ComponentElementRef extends ElementRef { }
 
-export interface PageElementRef extends ComponentElementRef {}
+export interface PageElementRef extends ComponentElementRef { }
 
-export interface ListElementRef extends ElementRef {}
+export interface ListElementRef extends ElementRef { }
 
-export interface ViewElementRef extends ElementRef {}
+export interface ViewElementRef extends ElementRef { }
 
-export interface TextElementRef extends ElementRef {}
+export interface TextElementRef extends ElementRef { }
 
-export interface RawTextElementRef extends ElementRef {}
+export interface RawTextElementRef extends ElementRef { }
 
-export interface ImageElementRef extends ElementRef {}
+export interface ImageElementRef extends ElementRef { }
 
-export interface ScrollElementRef extends ElementRef {}
+export interface ScrollElementRef extends ElementRef { }
 
-export interface WrapperElementRef extends ElementRef {}
+export interface WrapperElementRef extends ElementRef { }
 
-export interface NoneElementRef extends ElementRef {}
+export interface NoneElementRef extends ElementRef { }
 
-export interface IfElementRef extends ElementRef {}
+export interface IfElementRef extends ElementRef { }
 
-export interface ForElementRef extends ElementRef {}
+export interface ForElementRef extends ElementRef { }
 
-export interface BlockElementRef extends ElementRef {}
+export interface BlockElementRef extends ElementRef { }
 
-export interface StyleObjectRef extends ElementRef {}
+export interface StyleObjectRef extends ElementRef { }
 
 export type ElementInfo = Record<string, any>;
 
@@ -62,7 +62,7 @@ export type ComponentAtIndexCallback = (
   enableReuseNotification?: boolean,
   enableBatchRender?: boolean,
   asyncFlush?: boolean,
-) => number | undefined
+) => number | undefined | Promise<number>
 
 export type ComponentAtIndexesCallback = (
   listRef: ElementRef,
@@ -106,6 +106,15 @@ export interface AnimationTimingOptions {
  * Keyframe definition for animation
  */
 export type Keyframe = Record<string, string | number>;
+
+export interface GestureConfig {
+  callbacks: {
+    name: string;
+    callback: unknown;
+  }[];
+  config?: Record<string, unknown>;
+}
+
 
 declare global {
   function __CreatePage(componentId: string, cssId: number, info?: ElementInfo): PageElementRef;
@@ -161,7 +170,7 @@ declare global {
 
   function __RemoveElement(parent: ElementRef, current: ElementRef): ElementRef;
 
-  function __InsertElementBefore(parent: ElementRef, current: ElementRef, marker: ElementRef): ElementRef;
+  function __InsertElementBefore(parent: ElementRef, current: ElementRef, marker?: ElementRef): ElementRef;
 
   function __SwapElement(a: ElementRef, b: ElementRef): void;
 
@@ -197,13 +206,13 @@ declare global {
 
   function __GetInlineStyles(node: ElementRef): string;
 
-  function __SetID(node: ElementRef, id: string | undefined): void;
+  function __SetID(node: ElementRef, id: string | null): void;
 
   function __GetID(node: ElementRef): string;
 
-  function __SetCSSId(node: ElementRef, cssId: number, entryName?: string): void;
+  function __SetCSSId(node: ElementRef | ElementRef[], cssId: number, entryName?: string): void;
 
-  function __AddEvent(node: ElementRef, type: string, name: string, func: string | Object): void;
+  function __AddEvent(node: ElementRef, type: string, name: string, func: string | Object | undefined): void;
 
   function __SetEvents(node: ElementRef, events: Record<string, unknown>[] | undefined): void;
 
@@ -293,7 +302,7 @@ declare global {
 
   function __GetElementConfig(ele: ElementRef): Record<string, unknown>;
 
-  function __QueryComponent(source: string, callback: (evalResult: DynamicComponentResult) => void): { evalResult: unknown };
+  function __QueryComponent(source: string, callback?: (evalResult: DynamicComponentResult) => void): { evalResult: unknown };
 
   function __AddInlineStyle(e: ElementRef, key: number | string, value: unknown): void;
 
@@ -313,7 +322,7 @@ declare global {
     node: ElementRef,
     gestureID: number,
     gestureType: number,
-    callbackArray: [name: string, script: string, func: Function],
+    config: GestureConfig,
     relationMap: Record<string, number[]>
   ): void;
 
@@ -321,7 +330,7 @@ declare global {
     node: ElementRef,
     gestureID: number,
     gestureType: number,
-    callbackArray: [name: string, script: string, func: Function],
+    config: GestureConfig,
     relationMap: Record<string, number[]>
   ): void;
 
