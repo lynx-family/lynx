@@ -430,7 +430,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
   // and ComponentElement. And this function will be moved to the utility.
   base::auto_create_optional<SetCSSVariableOpVector> set_variable_ops_;
 
-  NameToSlotMap slots_{kRadonSlotMapAllocationSize};
+  NameToSlotMap slots_;
   NameToPlugMap plugs_;
   std::unique_ptr<RadonSlotsHelper> radon_slots_helper_;
 

@@ -5,9 +5,8 @@
 #define CORE_RENDERER_DOM_VDOM_RADON_RADON_SLOT_H_
 
 #include <memory>
-#include <unordered_map>
 
-#include "base/include/linked_hash_map.h"
+#include "base/include/vector.h"
 #include "core/renderer/dom/vdom/radon/radon_base.h"
 
 namespace lynx {
@@ -83,12 +82,8 @@ class RadonPlug : public RadonBase {
 };
 
 using NameToPlugMap =
-    std::unordered_map<base::String, std::unique_ptr<RadonBase>>;
-using NameToSlotMap = base::LinkedHashMap<base::String, RadonSlot*>;
-
-// For most scenarios, ensure that the capacity of the radon slot map is
-// large enough to accommodate all elements in the same block of memory.
-constexpr size_t kRadonSlotMapAllocationSize = 6;
+    base::LinearFlatMap<base::String, std::unique_ptr<RadonBase>>;
+using NameToSlotMap = base::LinearFlatMap<base::String, RadonSlot*>;
 
 // radon compatible slot&plug help function
 class RadonSlotsHelper {
