@@ -256,8 +256,13 @@ void TemplateAssembler::UpdateGlobalProps(
   tasm::recorder::TemplateAssemblerRecorder::RecordSetGlobalProps(data,
                                                                   record_id_);
 #endif
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_GLOBAL_PROPS, "need_render",
-              need_render);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_GLOBAL_PROPS,
+              [&need_render, &data](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("need_render",
+                                                   std::to_string(need_render));
+                ctx.event()->add_debug_annotations("keys",
+                                                   ConcatenateTableKeys(data));
+              });
   PipelineScope pipeline_scope(this, pipeline_options);
   LOGI("UpdateGlobalProps " << data.GetLength() << " this: " << this);
   global_props_ = data;

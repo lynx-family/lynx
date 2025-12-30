@@ -197,5 +197,18 @@ lepus::Value PipelineOptionsToLepusValue(
   return pipeline_options_obj;
 }
 
+std::string ConcatenateTableKeys(const lepus::Value& value) {
+  std::stringstream ss;
+  if (value.IsObject()) {
+    ForEachLepusValue(value,
+                      [&ss](const lepus::Value& key, const lepus::Value& val) {
+                        const auto& key_str = key.StdString();
+                        ss << key_str << ",";
+                      });
+  }
+
+  return ss.str();
+}
+
 }  // namespace tasm
 }  // namespace lynx

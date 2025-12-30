@@ -41,6 +41,8 @@ lepus::Value ConvertJSValueToLepusValue(const lepus::Value& value);
 lepus::Value PipelineOptionsToLepusValue(
     const std::shared_ptr<PipelineOptions>& pipeline_options);
 
+std::string ConcatenateTableKeys(const lepus::Value& value);
+
 }  // namespace tasm
 }  // namespace lynx
 
