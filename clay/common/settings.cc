@@ -11,8 +11,6 @@
 
 namespace clay {
 
-constexpr FrameTiming::Phase FrameTiming::kPhases[FrameTiming::kCount];
-
 bool Settings::enable_stencil_buffer;
 bool Settings::use_sdft_for_text;
 

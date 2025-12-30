@@ -49,7 +49,7 @@
 #include "clay/shell/common/resource_cache_limit_calculator.h"
 
 namespace clay {
-class PerfCollector;
+class FrameTimingCollector;
 class ResourceLoaderIntercept;
 }  // namespace clay
 
@@ -422,8 +422,9 @@ class Shell final : public PlatformView::Delegate,
     return service_manager_;
   }
 
-  const std::shared_ptr<clay::PerfCollector>& GetPerfCollector() const {
-    return perf_collector_;
+  const std::shared_ptr<clay::FrameTimingCollector>& GetFrameTimingCollector()
+      const {
+    return frame_timing_collector_;
   }
 
   double GetDevicePixelRatio() const { return device_pixel_ratio_; }
@@ -455,7 +456,7 @@ class Shell final : public PlatformView::Delegate,
 
   std::shared_ptr<fml::SyncSwitch> is_gpu_disabled_sync_switch_;
 
-  std::shared_ptr<clay::PerfCollector> perf_collector_;
+  std::shared_ptr<clay::FrameTimingCollector> frame_timing_collector_;
   std::unique_ptr<clay::DevtoolsInstrumentation> devtool_instrumentation_;
 
   fml::WeakPtr<Engine> weak_engine_;  // to be shared across threads

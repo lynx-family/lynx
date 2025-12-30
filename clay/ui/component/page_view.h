@@ -25,10 +25,10 @@
 #include "clay/public/event_delegate.h"
 #include "clay/public/ui_component_delegate.h"
 #include "clay/public/value.h"
+#include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/gap_worker.h"
 #include "clay/ui/common/input_client_manager.h"
 #include "clay/ui/common/isolate.h"
-#include "clay/ui/common/perf_collector.h"
 #include "clay/ui/common/render_settings.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
@@ -66,8 +66,8 @@ typedef std::vector<std::unique_ptr<clay::Value::Map>> ExposureDataList;
 class ServiceManager;
 class ViewContext;
 class NativeView;
-class TimingCollectorDelegate;
 class OverlayManager;
+class PipelineTimingDelegate;
 
 class PageView : public BaseView,
                  public RendererClient,
@@ -91,6 +91,12 @@ class PageView : public BaseView,
   UIComponentDelegate* GetUIComponentDelegate() {
     return ui_component_delegate_;
   }
+
+  void SetPipelineTimingDelegate(
+      std::shared_ptr<PipelineTimingDelegate> delegate) {
+    pipeline_timing_delegate_ = delegate;
+  }
+
   BaseView* FindViewByViewId(int view_id);
 
   BaseView* FindViewByIdSelector(std::string_view id_selector) {
@@ -226,10 +232,13 @@ class PageView : public BaseView,
   void OnOutputSurfaceDestroyed();
   void OnFirstMeaningfulLayout();
 
-  void SetPerfCollector(std::shared_ptr<PerfCollector> perf_collector) {
-    perf_collector_ = perf_collector;
+  void SetFrameTimingCollector(
+      std::shared_ptr<FrameTimingCollector> frame_timing_collector) {
+    frame_timing_collector_ = frame_timing_collector;
   }
-  PerfCollector* GetPerfCollector() const { return perf_collector_.get(); }
+  FrameTimingCollector* GetFrameTimingCollector() const {
+    return frame_timing_collector_.get();
+  }
   void ReportTiming(const std::unordered_map<std::string, int64_t>& timing,
                     const std::string& flag);
 
@@ -530,7 +539,7 @@ class PageView : public BaseView,
   fml::RefPtr<RenderSettings> render_settings_;
   std::unique_ptr<InputClientManager> input_client_manager_;
   std::unique_ptr<ViewTreeObserver> view_tree_observer_;
-  std::shared_ptr<PerfCollector> perf_collector_;
+  std::shared_ptr<FrameTimingCollector> frame_timing_collector_;
   std::unique_ptr<IntersectionObserverManager> intersection_observer_manager_;
   std::vector<std::function<void()>> ui_method_tasks_;
   bool raster_animation_enabled_ = true;
@@ -556,7 +565,7 @@ class PageView : public BaseView,
   UIComponentDelegate* ui_component_delegate_ = nullptr;
   RenderDelegate* render_delegate_ = nullptr;
 
-  std::shared_ptr<TimingCollectorDelegate> timing_collector_delegate_;
+  std::shared_ptr<PipelineTimingDelegate> pipeline_timing_delegate_;
 
   friend class ViewContext;
   ViewContext* view_context_ = nullptr;

@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "clay/lynx_adaptor/timing_collector_clay.h"
+#include "clay/lynx_adaptor/perf_controller_clay.h"
 #include "clay/ui/component/view_context.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/public/lynx_runtime_proxy.h"
@@ -43,12 +43,11 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
-  void SetTimingCollector(
-      const std::shared_ptr<TimingCollectorClay>& collector);
+  void SetPerfController(const std::shared_ptr<PerfControllerClay>& collector);
 
  private:
   clay::ViewContext* view_context_ = nullptr;
-  std::shared_ptr<TimingCollectorClay> timing_collector_;
+  std::shared_ptr<PerfControllerClay> perf_controller_;
 };
 
 class PaintingContextClay : public PaintingCtxPlatformImpl,

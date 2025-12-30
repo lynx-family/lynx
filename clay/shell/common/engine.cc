@@ -324,9 +324,9 @@ std::shared_ptr<clay::FontCollection> Engine::GetFontCollection() {
   return clay::FontCollection::Instance();
 }
 
-void Engine::SetPerfCollector(
-    std::shared_ptr<clay::PerfCollector> perf_collector) {
-  page_view_->SetPerfCollector(perf_collector);
+void Engine::SetFrameTimingCollector(
+    std::shared_ptr<clay::FrameTimingCollector> frame_timing_collector) {
+  page_view_->SetFrameTimingCollector(frame_timing_collector);
 }
 
 void Engine::SetFontFaceCache(const char* font_family, const char* local_path) {

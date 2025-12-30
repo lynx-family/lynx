@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_LYNX_ADAPTOR_TIMING_COLLECTOR_CLAY_H_
-#define CLAY_LYNX_ADAPTOR_TIMING_COLLECTOR_CLAY_H_
+#ifndef CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
+#define CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
 
 #include <memory>
 #include <string>
@@ -13,20 +13,20 @@
 #include "base/include/concurrent_queue.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/log/logging.h"
-#include "clay/public/timing_collector_delegate.h"
+#include "clay/shell/common/pipeline_timing_delegate.h"
 #include "core/public/perf_controller_proxy.h"
 
 namespace lynx {
 namespace tasm {
 
-class TimingCollectorClay
-    : public std::enable_shared_from_this<TimingCollectorClay>,
-      public clay::TimingCollectorDelegate {
+class PerfControllerClay
+    : public std::enable_shared_from_this<PerfControllerClay>,
+      public clay::PipelineTimingDelegate {
  public:
-  explicit TimingCollectorClay(
+  PerfControllerClay(
       const std::shared_ptr<shell::PerfControllerProxy>& controller,
       int32_t instance_id);
-  ~TimingCollectorClay() override = default;
+  ~PerfControllerClay() override = default;
 
   void SetUITaskRunner(fml::RefPtr<fml::TaskRunner> ui_task_runner) {
     ui_task_runner_ = ui_task_runner;
@@ -46,7 +46,7 @@ class TimingCollectorClay
 
   /**
    * @brief Check if there are any pipeline ids to be processed.
-   * Overrides TimingCollectorDelegate::HasPipelineIds.
+   * Overrides PipelineTimingDelegate::HasPipelineIds.
    * this interface can only be called in the UI thread.
    */
   bool HasPipelineIds() const override {
@@ -56,7 +56,7 @@ class TimingCollectorClay
 
   /**
    * @brief Get cached pipeline ids to be process.
-   * Overrides TimingCollectorDelegate::GetPipelineIds.
+   * Overrides PipelineTimingDelegate::GetPipelineIds.
    * this interface can only be called in the UI thread.
    */
   std::vector<tasm::PipelineID> GetPipelineIds() const override {
@@ -66,7 +66,7 @@ class TimingCollectorClay
 
   /**
    * @brief Mark pipeline-end event with additional clay timing events.
-   * Overrides TimingCollectorDelegate::OnPipelineEnd.
+   * Overrides PipelineTimingDelegate::OnPipelineEnd.
    * this interface can be called in the UI or raster thread.
    * @param timings The timing data collected by clay
    * @param pipeline_id_list pipelineIDs associated with the timing event.
@@ -76,6 +76,7 @@ class TimingCollectorClay
 
  private:
   const std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
+
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
 
   std::vector<tasm::PipelineID> pipeline_id_list_;
@@ -85,4 +86,4 @@ class TimingCollectorClay
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CLAY_LYNX_ADAPTOR_TIMING_COLLECTOR_CLAY_H_
+#endif  // CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_

@@ -10,8 +10,8 @@
 
 #include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
+#include "clay/lynx_adaptor/perf_controller_clay.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
-#include "clay/lynx_adaptor/timing_collector_clay.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "core/services/timing_handler/timing.h"
@@ -76,8 +76,8 @@ void UIDelegateClay::OnLynxCreate(
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
     bool is_embedded_mode) {
-  auto timing_collector =
-      std::make_shared<TimingCollectorClay>(perf_controller_proxy, instance_id);
+  auto perf_controller =
+      std::make_shared<PerfControllerClay>(perf_controller_proxy, instance_id);
   if (painting_context_) {
     painting_context_->SetListEngineProxy(list_engine_proxy);
     painting_context_->SetEngineProxy(engine_proxy);
@@ -86,7 +86,7 @@ void UIDelegateClay::OnLynxCreate(
     if (ref) {
       auto* painting_context_ref =
           static_cast<PaintingContextClayRef*>(ref.get());
-      painting_context_ref->SetTimingCollector(timing_collector);
+      painting_context_ref->SetPerfController(perf_controller);
     }
   }
   if (layout_context_) {
@@ -96,7 +96,7 @@ void UIDelegateClay::OnLynxCreate(
   if (event_dispatcher_) {
     event_dispatcher_->SetEngineProxy(engine_proxy);
     event_dispatcher_->SetRuntimeProxy(runtime_proxy);
-    event_dispatcher_->SetTimingCollector(timing_collector);
+    event_dispatcher_->SetPerfController(perf_controller);
   }
 }
 

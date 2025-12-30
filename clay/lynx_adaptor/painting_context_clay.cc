@@ -92,19 +92,19 @@ void PaintingContextClayRef::UpdateContentOffsetForListContainer(
                                                      delta_x, delta_y);
 }
 
-void PaintingContextClayRef::SetTimingCollector(
-    const std::shared_ptr<TimingCollectorClay>& collector) {
-  timing_collector_ = collector;
-  view_context_->SetTimingCollectorDelegate(timing_collector_);
-  if (timing_collector_) {
-    timing_collector_->SetUITaskRunner(view_context_->GetUITaskRunner());
+void PaintingContextClayRef::SetPerfController(
+    const std::shared_ptr<PerfControllerClay>& controller) {
+  perf_controller_ = controller;
+  view_context_->SetPipelineTimingDelegate(perf_controller_);
+  if (perf_controller_) {
+    perf_controller_->SetUITaskRunner(view_context_->GetUITaskRunner());
   }
 }
 
 void PaintingContextClayRef::SetNeedMarkPaintEndTiming(
     const tasm::PipelineID& pipeline_id) {
-  if (timing_collector_) {
-    timing_collector_->SetNeedMarkPaintEndTiming(pipeline_id);
+  if (perf_controller_) {
+    perf_controller_->SetNeedMarkPaintEndTiming(pipeline_id);
   }
 }
 

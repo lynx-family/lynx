@@ -24,8 +24,8 @@
 #include "clay/shell/common/services/raster_frame_service.h"
 #include "clay/shell/common/services/ui_frame_service.h"
 #include "clay/shell/common/vsync_waiter.h"
+#include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/isolate.h"
-#include "clay/ui/common/perf_collector.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/gesture_event.h"
@@ -190,7 +190,8 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
     return service_manager_;
   }
 
-  void SetPerfCollector(std::shared_ptr<clay::PerfCollector> perf_collector);
+  void SetFrameTimingCollector(
+      std::shared_ptr<clay::FrameTimingCollector> frame_timing_collector);
 
   void OnPlatformViewCreated();
 

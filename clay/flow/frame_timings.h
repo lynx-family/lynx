@@ -70,6 +70,54 @@ inline constexpr std::string_view ToStringView(FrameTimingKey key) {
   }
 }
 
+class FrameTiming {
+ public:
+  enum Phase {
+    kVsyncStart,
+    kBuildStart,
+    kBuildFinish,
+    kRasterStart,
+    kRasterFinish,
+    kRasterFinishWallTime,
+    kCount
+  };
+
+  static constexpr Phase kPhases[kCount] = {
+      kVsyncStart,  kBuildStart,   kBuildFinish,
+      kRasterStart, kRasterFinish, kRasterFinishWallTime};
+
+  static constexpr int kStatisticsCount = kCount + 5;
+
+  fml::TimePoint Get(Phase phase) const { return data_[phase]; }
+  fml::TimePoint Set(Phase phase, fml::TimePoint value) {
+    return data_[phase] = value;
+  }
+
+  uint64_t GetFrameNumber() const { return frame_number_; }
+  void SetFrameNumber(uint64_t frame_number) { frame_number_ = frame_number; }
+  uint64_t GetLayerCacheCount() const { return layer_cache_count_; }
+  uint64_t GetLayerCacheBytes() const { return layer_cache_bytes_; }
+  uint64_t GetPictureCacheCount() const { return picture_cache_count_; }
+  uint64_t GetPictureCacheBytes() const { return picture_cache_bytes_; }
+  void SetRasterCacheStatistics(size_t layer_cache_count,
+                                size_t layer_cache_bytes,
+                                size_t picture_cache_count,
+                                size_t picture_cache_bytes) {
+    layer_cache_count_ = layer_cache_count;
+    layer_cache_bytes_ = layer_cache_bytes;
+    picture_cache_count_ = picture_cache_count;
+    picture_cache_bytes_ = picture_cache_bytes;
+  }
+
+ private:
+  fml::TimePoint data_[kCount];
+  uint64_t frame_number_;
+  size_t layer_cache_count_;
+  size_t layer_cache_bytes_;
+  size_t picture_cache_count_;
+  size_t picture_cache_bytes_;
+};
+
 class RasterCache;
 
 /// Records timestamps for various phases of a frame rendering process.

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_PUBLIC_TIMING_COLLECTOR_DELEGATE_H_
-#define CLAY_PUBLIC_TIMING_COLLECTOR_DELEGATE_H_
+#ifndef CLAY_SHELL_COMMON_PIPELINE_TIMING_DELEGATE_H_
+#define CLAY_SHELL_COMMON_PIPELINE_TIMING_DELEGATE_H_
 
 #include <string>
 #include <utility>
@@ -11,9 +11,9 @@
 
 namespace clay {
 
-class TimingCollectorDelegate {
+class PipelineTimingDelegate {
  public:
-  virtual ~TimingCollectorDelegate() = default;
+  virtual ~PipelineTimingDelegate() = default;
   virtual bool HasPipelineIds() const = 0;
   virtual std::vector<std::string> GetPipelineIds() const = 0;
   virtual void OnPipelineEnd(
@@ -23,4 +23,4 @@ class TimingCollectorDelegate {
 
 }  // namespace clay
 
-#endif  // CLAY_PUBLIC_TIMING_COLLECTOR_DELEGATE_H_
+#endif  // CLAY_SHELL_COMMON_PIPELINE_TIMING_DELEGATE_H_

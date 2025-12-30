@@ -26,8 +26,8 @@
 #include "clay/gfx/shared_image/shared_image_sink.h"
 #include "clay/shell/common/services/animation_event_service_impl.h"
 #include "clay/shell/common/services/sync_compositor_service.h"
+#include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/isolate.h"
-#include "clay/ui/common/perf_collector.h"
 #include "clay/ui/common/render_settings.h"
 #ifdef ENABLE_NET_LOADER
 #include "clay/net/net_loader_manager.h"
@@ -350,7 +350,7 @@ Shell::Shell(std::shared_ptr<clay::ServiceManager> service_manager,
   resource_cache_limit_calculator->AddResourceCacheLimitItem(
       weak_factory_.GetWeakPtr());
 
-  perf_collector_ = std::make_shared<clay::PerfCollector>(
+  frame_timing_collector_ = std::make_shared<clay::FrameTimingCollector>(
       task_runners_.GetPlatformTaskRunner());
 }
 
@@ -534,15 +534,15 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
                                       });
   }
 
-  // Create PerfCollector and set to engine
+  // Create FrameTimingCollector and set to engine
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_.GetUITaskRunner(),
-      [perf_collector = perf_collector_, engine = weak_engine_,
+      [frame_timing_collector = frame_timing_collector_, engine = weak_engine_,
        ui_task_runner = task_runners_.GetUITaskRunner(),
        raster_task_runner = task_runners_.GetRasterTaskRunner()] {
         if (engine) {
-          engine->SetPerfCollector(perf_collector);
-          perf_collector->SetPageView(engine->GetPageView());
+          engine->SetFrameTimingCollector(frame_timing_collector);
+          frame_timing_collector->SetPageView(engine->GetPageView());
         }
       });
 
@@ -1263,7 +1263,7 @@ void Shell::PrepareForRecycle() {
     engine_->PrepareForRecycle();
   }
 
-  perf_collector_ = std::make_shared<clay::PerfCollector>(
+  frame_timing_collector_ = std::make_shared<clay::FrameTimingCollector>(
       task_runners_.GetPlatformTaskRunner());
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_.GetUITaskRunner(),
@@ -1271,8 +1271,8 @@ void Shell::PrepareForRecycle() {
        ui_task_runner = task_runners_.GetUITaskRunner(),
        raster_task_runner = task_runners_.GetRasterTaskRunner()] {
         if (engine) {
-          engine->SetPerfCollector(perf_collector_);
-          perf_collector_->SetPageView(engine->GetPageView());
+          engine->SetFrameTimingCollector(frame_timing_collector_);
+          frame_timing_collector_->SetPageView(engine->GetPageView());
         }
       });
 

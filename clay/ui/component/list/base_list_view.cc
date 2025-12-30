@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_point.h"
@@ -616,7 +617,7 @@ bool BaseListView::OnScrollBy(const FloatSize& distance) {
   DCHECK_RET1(adapter_, false);
   // Move the round operation to RenderBox.
   const FloatSize& converted_distance = distance;
-  double start = PerfCollector::NowInMilliseconds();
+  int64_t start = lynx::base::CurrentSystemTimeMilliseconds();
   recycler_->SetListPerfFlag(false);
   // Early out. And this is necessary for sticky to work correctly.
   if (!((converted_distance.width() != 0 &&
@@ -676,11 +677,11 @@ bool BaseListView::OnScrollBy(const FloatSize& distance) {
 
   recycler_->RecycleScrappedItems(this);
   if (recycler_->GetListPerfFlag()) {
-    double end = PerfCollector::NowInMilliseconds();
-    auto record = PerfCollector::PerfMap();
+    int64_t end = lynx::base::CurrentSystemTimeMilliseconds();
+    auto record = FrameTimingCollector::PerfMap();
     record.emplace(Perf::kListLayoutNewItem, end - start);
-    if (page_view()->GetPerfCollector()) {
-      page_view()->GetPerfCollector()->InsertForceRecord(record);
+    if (page_view()->GetFrameTimingCollector()) {
+      page_view()->GetFrameTimingCollector()->InsertForceRecord(record);
     }
   }
   recycler_->SetListPerfFlag(false);
@@ -790,9 +791,9 @@ FocusManager::TraversalResult BaseListView::OnTraversalOnScopeInternal(
     FocusManager::Direction direction,
     FocusManager::TraversalType traversal_type) {
   // to pass the test case add two condition
-  if (page_view()->GetPerfCollector() &&
-      page_view()->GetPerfCollector()->GetReceivedFocusTime() == 0.0) {
-    traversal_perf_start_ = PerfCollector::NowInMilliseconds();
+  if (page_view()->GetFrameTimingCollector() &&
+      page_view()->GetFrameTimingCollector()->GetReceivedFocusTime() == 0.0) {
+    traversal_perf_start_ = lynx::base::CurrentSystemTimeMilliseconds();
   }
   FocusManager::TraversalResult result =
       FocusNode::OnTraversalOnScope(direction, traversal_type);
@@ -873,11 +874,11 @@ FocusManager::TraversalResult BaseListView::OnTraversalOnScope(
     FocusManager::Direction direction,
     FocusManager::TraversalType traversal_type) {
   auto result = OnTraversalOnScopeInternal(direction, traversal_type);
-  if (result.succeed && page_view() && page_view()->GetPerfCollector()) {
-    page_view()->GetPerfCollector()->SetReceivedFocusTime(traversal_perf_start_,
-                                                          direction);
+  if (result.succeed && page_view() && page_view()->GetFrameTimingCollector()) {
+    page_view()->GetFrameTimingCollector()->SetReceivedFocusTime(
+        traversal_perf_start_, direction);
   }
-  traversal_perf_start_ = 0.0;
+  traversal_perf_start_ = 0;
   return result;
 }
 

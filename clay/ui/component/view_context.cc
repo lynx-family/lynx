@@ -1179,10 +1179,10 @@ void ViewContext::SetLayoutDelegate(LayoutDelegate* delegate) {
   shadow_node_owner_->SetLayoutDelegate(delegate);
 }
 
-void ViewContext::SetTimingCollectorDelegate(
-    std::shared_ptr<TimingCollectorDelegate> delegate) {
+void ViewContext::SetPipelineTimingDelegate(
+    std::shared_ptr<PipelineTimingDelegate> delegate) {
   if (page_view_) {
-    page_view_->timing_collector_delegate_ = delegate;
+    page_view_->SetPipelineTimingDelegate(delegate);
   }
 }
 
