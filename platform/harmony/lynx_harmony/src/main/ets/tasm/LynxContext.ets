@@ -300,7 +300,7 @@ export class LynxContext implements IContext {
     return this.renderer?.getPageDataByKey(keys);
   }
 
-  public setExtensionModule(module: LynxExtensionModule) {
+  public setExtensionModule(module?: LynxExtensionModule) {
     this.extensionModule = module;
   }
 
@@ -316,5 +316,15 @@ export class LynxContext implements IContext {
       }
     }
     return null;
+  }
+
+  aboutToDisappear() {
+    this.setLynxView(undefined);
+    this.setRenderer(undefined);
+    this.setUIOwner(undefined);
+    this.setShadowNodeOwner(undefined);
+    this.setGenericResourceFetcher(undefined);
+    this.setMediaResourceFetcher(undefined);
+    this.setExtensionModule(undefined);
   }
 }

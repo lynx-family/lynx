@@ -133,6 +133,7 @@ export class LynxContext implements IContext {
   public setExtensionModule(module: LynxExtensionModule): void;
   public getExtensionModule(): LynxExtensionModule | undefined;
   public getBaseInspectorOwner(): LynxBaseInspectorOwner | null;
+  aboutToDisappear(): void;
   screenMetrics(): LynxScreenMetrics;
 }
 

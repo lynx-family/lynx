@@ -316,10 +316,6 @@ export struct LynxView {
     this.templateRenderer.aboutToDisappear();
     this.nodeController?.dispose();
     this.nodeController = undefined;
-    this.context.setLynxView(undefined);
-    this.context.setRenderer(undefined);
-    this.context.setUIOwner(undefined);
-    this.context.setShadowNodeOwner(undefined);
     try {
       this.currentWindow?.off('keyboardHeightChange', this.keyboardHeightChangeCallback);
     } catch (e) {
@@ -331,6 +327,7 @@ export struct LynxView {
     if (!this.enableAirStrictMode && extensionService != undefined) {
       extensionService.onLynxViewDestroy(this.context);
     }
+    this.context.aboutToDisappear();
   }
 
   aboutToReuse(params: Record<string, ESObject>): void {
