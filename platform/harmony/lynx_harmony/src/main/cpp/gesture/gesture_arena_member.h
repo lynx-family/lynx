@@ -24,7 +24,7 @@ class GestureArenaMember {
    * @param delta_x The delta value for scrolling in the x-axis.
    * @param delta_y The delta value for scrolling in the y-axis.
    */
-  virtual std::vector<float> ScrollBy(float delta_x, float delta_y) = 0;
+  virtual std::vector<float> GestureScrollBy(float delta_x, float delta_y) = 0;
 
   /**
    * Checks if the gesture can consume the specified delta values.
