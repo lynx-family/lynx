@@ -444,6 +444,9 @@ const lepus::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
     /* 121 */ {kRequestAnimationFrame, &RendererFunctions::RequestAnimationFrame, true, true},
     /* 122 */ {kCancelAnimationFrame, &RendererFunctions::CancelAnimationFrame, true, true},
     /* 123 */ {kCFunctionElementAnimate, &RendererFunctions::ElementAnimate, true, true},
+    /* 124 */ {kCFuncLoadStyleSheet, &RendererFunctions::LoadStyleSheet, true, true},
+    /* 125 */ {kCFuncAdoptStyleSheet, &RendererFunctions::AdoptStyleSheet, true, true},
+    /* 126 */ {kCFuncReplaceStyleSheets, &RendererFunctions::ReplaceStyleSheets, true, true},
   };
   // clang-format on
   size = sizeof(kFuncs) / sizeof(kFuncs[0]);

@@ -221,5 +221,8 @@
   V(FetchBundle)                      \
   V(GetModule)                        \
   V(InvokeModuleMethod)               \
-  V(FiberGetComputedStyleByKey)
+  V(FiberGetComputedStyleByKey)       \
+  V(LoadStyleSheet)                   \
+  V(AdoptStyleSheet)                  \
+  V(ReplaceStyleSheets)
 #endif  // CORE_RUNTIME_BINDINGS_LEPUS_RENDERER_FUNCTIONS_DEF_H_

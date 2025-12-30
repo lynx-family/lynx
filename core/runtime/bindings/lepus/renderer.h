@@ -266,6 +266,9 @@ constexpr static const char* kCFunctionElementFromBinary =
     "__ElementFromBinary";
 constexpr static const char* kCFunctionElementFromBinaryAsync =
     "__ElementFromBinaryAsync";
+constexpr static const char* kCFuncLoadStyleSheet = "__LoadStyleSheet";
+constexpr static const char* kCFuncAdoptStyleSheet = "__AdoptStyleSheet";
+constexpr static const char* kCFuncReplaceStyleSheets = "__ReplaceStyleSheets";
 constexpr static const char* kCFunctionQueryComponent = "__QueryComponent";
 constexpr static const char* kCFunctionSetLepusInitData = "__SetLepusInitData";
 constexpr static const char* kCFunctionGetDiffData = "__GetDiffData";

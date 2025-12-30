@@ -816,6 +816,12 @@ RENDERER_FUNCTION_CC(InvokeModuleMethod) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(LoadStyleSheet) { RETURN_UNDEFINED(); }
+
+RENDERER_FUNCTION_CC(AdoptStyleSheet) { RETURN_UNDEFINED(); }
+
+RENDERER_FUNCTION_CC(ReplaceStyleSheets) { RETURN_UNDEFINED(); }
+
 /* NativeModule Lynx API END */
 
 RENDERER_FUNCTION_CC(FiberAddEventListener) {
