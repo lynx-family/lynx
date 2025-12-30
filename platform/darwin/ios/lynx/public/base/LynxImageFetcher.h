@@ -9,6 +9,12 @@
 NS_ASSUME_NONNULL_BEGIN
 @class LynxUI;
 
+// Deprecated. Please use LynxImageLoadCompletionBlock instead.
+typedef void (^LynxCanvasImageLoadCompletionBlock)(NSData* _Nullable image,
+                                                   NSError* _Nullable error,
+                                                   NSURL* _Nullable imageURL)
+    __attribute__((deprecated("Use LynxImageLoadCompletionBlock instead.")));
+
 typedef void (^LynxImageLoadCompletionBlock)(UIImage* _Nullable image, NSError* _Nullable error,
                                              NSURL* _Nullable imageURL);
 
