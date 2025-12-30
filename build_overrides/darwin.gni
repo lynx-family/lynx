@@ -37,10 +37,6 @@ devtool_darwin_config =
 lynx_public_extend_sources =
     rebase_path([ "../platform/darwin/common/lynx/public/LynxGroup.h" ])
 
-public_shared_extend_sources =
-    rebase_path(
-        [ "../platform/darwin/ios/lynx/public/base/LynxImageFetcher.h" ])
-
 tasm_extend_deps = []
 
 Framework_deps = [
