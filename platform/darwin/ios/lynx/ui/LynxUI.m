@@ -2196,10 +2196,10 @@ LYNX_PROP_DEFINE("border-style", setBorderStyle, LynxBorderStyle) {
   if (requestReset) {
     value = LynxBorderStyleSolid;
   }
-  bool res = [_backgroundManager updateBorderStyle:LynxBorderLeft value:value] ||
-             [_backgroundManager updateBorderStyle:LynxBorderTop value:value] ||
-             [_backgroundManager updateBorderStyle:LynxBorderRight value:value] ||
-             [_backgroundManager updateBorderStyle:LynxBorderBottom value:value];
+  bool res = (NSInteger)[_backgroundManager updateBorderStyle:LynxBorderLeft value:value] |
+             (NSInteger)[_backgroundManager updateBorderStyle:LynxBorderTop value:value] |
+             (NSInteger)[_backgroundManager updateBorderStyle:LynxBorderRight value:value] |
+             (NSInteger)[_backgroundManager updateBorderStyle:LynxBorderBottom value:value];
   if (res) {
     [self markNeedDisplay];
   }
