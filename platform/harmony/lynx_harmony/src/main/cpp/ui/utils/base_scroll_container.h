@@ -36,6 +36,7 @@ class BaseScrollContainer : public UIView {
   float ScrollY() override;
   bool IsScrollable() override;
   std::vector<float> ScrollBy(float delta_x, float delta_y) override;
+  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
   virtual void AutoScrollStopped(){};
   void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
   bool IsAtBorder(bool isStart) override;
