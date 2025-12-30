@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/ui_component/list/list_container_impl.h"
 
@@ -68,6 +69,20 @@ void ListContainerAnimationManager::OnLayoutChildren() {
             }
           },
           animation::basic::Animation::EventType::End);
+      // The destroy of the animation will trigger the cancel event of the
+      // animation.
+      animator_->RegisterEventCallback(
+          [weak_ptr = weak_factory_.GetWeakPtr()]() {
+            if (auto ptr = weak_ptr.get()) {
+              ptr->EndAnimation();
+            }
+          },
+          animation::basic::Animation::EventType::Cancel);
+    }
+    // TODO(dongjiajian): using lynx animator instead of the basic animator.
+    // the basic animator won't handle the case of the repeat `start()`.
+    if (animator_->IsRunning()) {
+      animator_->DestroyAnimation();
     }
     animator_->Start();
   }
@@ -86,10 +101,19 @@ void ListContainerAnimationManager::InitializeAnimator() {
 }
 
 void ListContainerAnimationManager::DoAnimationFrame(float progress) {
-  for (auto& it :
-       list_container_impl_->list_children_helper_->on_screen_children()) {
-    if (it) {
-      it->DoAnimationFrame(progress);
+  std::vector<fml::WeakPtr<ItemHolder>> on_screen_children_snapshot;
+  const auto& on_screen_children =
+      list_container_impl_->list_children_helper_->on_screen_children();
+  on_screen_children_snapshot.reserve(on_screen_children.size());
+  for (auto* child : on_screen_children) {
+    if (child) {
+      on_screen_children_snapshot.emplace_back(child->GetSelfWeakPtr());
+    }
+  }
+
+  for (auto& weak_child : on_screen_children_snapshot) {
+    if (auto child = weak_child.get()) {
+      child->DoAnimationFrame(progress);
     }
   }
   list_container_impl_->list_children_helper_

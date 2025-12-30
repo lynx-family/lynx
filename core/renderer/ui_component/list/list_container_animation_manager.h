@@ -36,13 +36,12 @@ class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
 
   void OnLayoutChildren();
 
-  void EndAnimation();
-
   void InitializeAnimator();
 
   void DoAnimationFrame(float progress);
 
  private:
+  void EndAnimation();
   // TODO(dongjiajian): Support modify `update_animation_` multiple times.
   std::optional<bool> update_animation_;
   list::ListContainerAnimationType animation_type_{
