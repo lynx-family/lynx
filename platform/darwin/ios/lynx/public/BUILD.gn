@@ -38,6 +38,7 @@ public_shared_sources = [
   "base/LynxConverter+Transform.h",
   "base/LynxFontFaceManager.h",
   "base/LynxGradient.h",
+  "base/LynxImageFetcher.h",
   "base/LynxLayoutStyle.h",
   "base/LynxPreprocessingUtils.h",
   "base/LynxPropsProcessor.h",
@@ -181,8 +182,6 @@ public_shared_sources = [
   "utils/LynxUIKitAPIAdapter.h",
   "utils/LynxUIUnitUtils.h",
 ]
-
-public_shared_sources += public_shared_extend_sources
 
 # public_shared_sources end
 
