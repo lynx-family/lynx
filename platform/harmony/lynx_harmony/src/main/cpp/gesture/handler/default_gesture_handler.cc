@@ -25,11 +25,19 @@ DefaultGestureHandler::DefaultGestureHandler(
 
       is_invoked_begin_(false),
       is_invoked_start_(false),
-      is_invoked_end_(false) {
+      is_invoked_end_(false),
+      tap_slop_(3) {
   HandleConfigMap(gesture_detector->gesture_config());
 }
 
-void DefaultGestureHandler::HandleConfigMap(const lepus::Value& config) {}
+void DefaultGestureHandler::HandleConfigMap(const lepus::Value& config) {
+  if (config.IsObject()) {
+    auto tap_slop = config.GetProperty("tapSlop");
+    if (tap_slop.IsNumber()) {
+      tap_slop_ = tap_slop.Int32();
+    }
+  }
+}
 
 void DefaultGestureHandler::OnHandle(
     const ArkUI_UIInputEvent* event,
@@ -45,7 +53,7 @@ void DefaultGestureHandler::OnHandle(
   if (handle_by_simultaneous && extra_bundle != nullptr) {
     if (extra_bundle->IsNeedConsumedSimultaneousGesture()) {
       if (gesture_arena_member_.lock() != nullptr) {
-        gesture_arena_member_.lock()->ScrollBy(
+        gesture_arena_member_.lock()->GestureScrollBy(
             extra_bundle->SimultaneousDeltaX(),
             extra_bundle->SimultaneousDeltaY());
       }
@@ -240,12 +248,19 @@ void DefaultGestureHandler::OnUpdate(
     const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   auto member = gesture_arena_member_.lock();
   if (member != nullptr) {
-    member->ScrollBy(delta_x, delta_y);
+    member->GestureScrollBy(delta_x, delta_y);
   }
   if (extra_bundle != nullptr) {
     extra_bundle->SetIsNeedConsumedSimultaneousGesture(true);
     extra_bundle->SetSimultaneousDeltaX(delta_x);
     extra_bundle->SetSimultaneousDeltaY(delta_y);
+  }
+
+  if (std::abs(static_cast<int>(delta_x)) > tap_slop_ ||
+      std::abs(static_cast<int>(delta_y)) > tap_slop_) {
+    if (lynx_context_) {
+      lynx_context_->OnGestureRecognizedWithSign(sign_);
+    }
   }
 
   if (!IsOnUpdateEnable()) {
