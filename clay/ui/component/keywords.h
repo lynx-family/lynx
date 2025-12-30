@@ -173,6 +173,7 @@ enum class KeywordID {
   kNeedVisibleItemInfo,
   kItemKey,
   kContent,
+  kContentId,
   kSkipRedirection,
   kVisible,
   kFullScreen,

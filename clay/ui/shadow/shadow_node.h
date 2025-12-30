@@ -97,7 +97,7 @@ class ShadowNode {
 
   void Destroy() { RemoveAllChildren(); }
 
-  bool IsDirty() { return is_dirty_; }
+  bool IsDirty() const { return is_dirty_; }
 
   virtual void MarkDirty();
 

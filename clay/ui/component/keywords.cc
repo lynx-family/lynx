@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 246
+#define TOTAL_KEYWORDS 247
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 29
@@ -313,6 +313,7 @@ struct StringPool_t {
   char StringPool_str373[sizeof("accessibility-elements")];
   char StringPool_str381[sizeof("text-selection")];
   char StringPool_str382[sizeof("use-soft-keyboard")];
+  char StringPool_str383[sizeof("content-id")];
   char StringPool_str392[sizeof("border-top-width")];
   char StringPool_str395[sizeof("animation-style")];
   char StringPool_str399[sizeof("clip-path")];
@@ -561,6 +562,7 @@ static const struct StringPool_t StringPool_contents = {
     "accessibility-elements",
     "text-selection",
     "use-soft-keyboard",
+    "content-id",
     "border-top-width",
     "animation-style",
     "clip-path",
@@ -1186,7 +1188,8 @@ static const struct TokenValue wordlist[] = {
      (short)KeywordID::kTextSelection},
     {offsetof(struct StringPool_t, StringPool_str382),
      (short)KeywordID::kUseSoftKeyboard},
-    {-1},
+    {offsetof(struct StringPool_t, StringPool_str383),
+     (short)KeywordID::kContentId},
     {-1},
     {-1},
     {-1},
