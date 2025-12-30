@@ -58,6 +58,8 @@ ImageFetcher::ImageFetcher(clay::TaskRunners task_runners,
       image_cache_(std::make_shared<ImageCache<BaseImage>>(
           task_runners_.GetUITaskRunner())) {}
 
+ImageFetcher::~ImageFetcher() = default;
+
 uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
                                   const ImageCallback& callback) {
   auto fetchID = NextUniqueID();

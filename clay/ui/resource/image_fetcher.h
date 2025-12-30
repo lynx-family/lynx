@@ -24,7 +24,7 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
   static fml::RefPtr<ImageFetcher> Create(
       clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue);
 
-  virtual ~ImageFetcher() = default;
+  virtual ~ImageFetcher();
   ImageFetcher(clay::TaskRunners task_runners,
                fml::RefPtr<GPUUnrefQueue> unref_queue);
   uint64_t FetchImage(const std::string& url, bool is_svg,
