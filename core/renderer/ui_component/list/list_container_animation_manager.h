@@ -35,12 +35,12 @@ class ListContainerAnimationManager
 
   void SetUpdateAnimation(bool update_animation);
 
-  void EndAnimation();
-
   void DoAnimationFrame(float progress);
 
  private:
   void InitializeAnimator();
+  void InitializeAnimatorEvent();
+  void EndAnimation();
 
   bool update_animation_{false};
   list::ListContainerAnimationType animation_type_{

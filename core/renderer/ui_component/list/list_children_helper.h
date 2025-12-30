@@ -9,6 +9,7 @@
 #include <set>
 #include <unordered_map>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/ui_component/list/item_holder.h"
 #include "core/renderer/ui_component/list/list_orientation_helper.h"
@@ -17,6 +18,16 @@ namespace lynx {
 namespace tasm {
 
 using ItemHolderSet = std::set<ItemHolder*, ItemHolder::Compare>;
+
+struct WeakItemHolderCompare {
+  bool operator()(const fml::WeakPtr<ItemHolder>& lhs,
+                  const fml::WeakPtr<ItemHolder>& rhs) const {
+    return ItemHolder::Compare()(lhs.get(), rhs.get());
+  }
+};
+
+using WeakItemHolderSet =
+    std::set<fml::WeakPtr<ItemHolder>, WeakItemHolderCompare>;
 
 // Utility class for traversing all child nodes.
 class ListChildrenHelper {
@@ -151,7 +162,8 @@ class ListChildrenHelper {
   // NOTE: there are maybe some item holders which cant be destroyed in diff
   // process because of animation. And because they are managed by unique_ptr,
   // they cant be managed by themselves.
-  ItemHolderSet deferred_destroy_children_;
+  // And we need to ensure the children's safety during animation process.
+  WeakItemHolderSet deferred_destroy_children_;
 };
 
 }  // namespace tasm

@@ -59,19 +59,15 @@ void ListContainerAnimationManager::UpdateDiffResult(
 
   if (!animator_) {
     InitializeAnimator();
-    animator_->RegisterCustomCallback(
-        [weak_ptr = WeakFromThis()](float progress) {
-          if (auto ptr = weak_ptr.get()) {
-            ptr->DoAnimationFrame(progress);
-          }
-        });
-    animator_->RegisterEventCallback(
-        [weak_ptr = WeakFromThis()]() {
-          if (auto ptr = weak_ptr.get()) {
-            ptr->EndAnimation();
-          }
-        },
-        animation::basic::Animation::EventType::End);
+    InitializeAnimatorEvent();
+  } else if (animator_->IsRunning()) {
+    // TODO(dongjiajian): using lynx animator instead of the basic animator.
+    // the basic animator won't handle the case of the repeat `start()`.
+    // The destroy of the animation will trigger the cancel event of the
+    // animation.
+    animator_->DestroyAnimation();
+    InitializeAnimator();
+    InitializeAnimatorEvent();
   }
   animator_->Start();
 }
@@ -86,6 +82,31 @@ void ListContainerAnimationManager::InitializeAnimator() {
   // basic animator requires a shared_ptr.
   animator_ =
       std::make_shared<animation::basic::LynxBasicAnimator>(std::move(data));
+}
+
+void ListContainerAnimationManager::InitializeAnimatorEvent() {
+  animator_->RegisterCustomCallback(
+      [weak_ptr = WeakFromThis()](float progress) {
+        if (auto ptr = weak_ptr.get()) {
+          ptr->DoAnimationFrame(progress);
+        }
+      });
+  animator_->RegisterEventCallback(
+      [weak_ptr = WeakFromThis()]() {
+        if (auto ptr = weak_ptr.get()) {
+          ptr->EndAnimation();
+        }
+      },
+      animation::basic::Animation::EventType::End);
+  // The destroy of the animation will trigger the cancel event of the
+  // animation.
+  animator_->RegisterEventCallback(
+      [weak_ptr = WeakFromThis()]() {
+        if (auto ptr = weak_ptr.get()) {
+          ptr->EndAnimation();
+        }
+      },
+      animation::basic::Animation::EventType::Cancel);
 }
 
 void ListContainerAnimationManager::DoAnimationFrame(float progress) {

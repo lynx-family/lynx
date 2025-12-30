@@ -153,14 +153,14 @@ bool ListChildrenHelper::AddToStickyItemHolderSet(ItemHolder* item_holder) {
 }
 
 void ListChildrenHelper::AddDeferredDestroyItemHolder(ItemHolder* holder) {
-  deferred_destroy_children_.insert(holder);
+  deferred_destroy_children_.insert(holder->WeakFromThis());
 }
 
 void ListChildrenHelper::TraverseDeferredDestroyItemHolder(
     std::function<void(ItemHolder*)> fn) {
   if (!deferred_destroy_children_.empty()) {
     for (auto& child : deferred_destroy_children_) {
-      fn(child);
+      fn(child.get());
     }
   }
 }

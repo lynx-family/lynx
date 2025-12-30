@@ -66,6 +66,12 @@ class LynxBasicAnimator : public basic::AnimatorTarget {
     }
   }
 
+  void DestroyAnimation() {
+    if (animation_) {
+      animation_->Destroy();
+    }
+  }
+
   void UpdateAnimatedStyle(const Keyframe::PropertyValueMap& styles) override;
 
   std::unique_ptr<basic::PropertyValue> GetStyle(
