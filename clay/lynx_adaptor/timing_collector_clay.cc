@@ -2,13 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/lynx_adaptor/perf_controller_clay.h"
+#include "clay/lynx_adaptor/timing_collector_clay.h"
 
 #include <string>
 #include <utility>
 
-#include "base/include/fml/task_runner.h"
-#include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/trace/service_trace_event_def.h"
@@ -18,9 +16,9 @@ namespace tasm {
 
 namespace {
 inline constexpr const char* const kHostPlatformSurface = "Clay";
-}  // namespace
+}
 
-PerfControllerClay::PerfControllerClay(
+TimingCollectorClay::TimingCollectorClay(
     const std::shared_ptr<shell::PerfControllerProxy>& controller,
     int32_t instance_id)
     : perf_controller_proxy_(controller), instance_id_(instance_id) {
@@ -30,7 +28,7 @@ PerfControllerClay::PerfControllerClay(
   }
 }
 
-void PerfControllerClay::SetNeedMarkPaintEndTiming(
+void TimingCollectorClay::SetNeedMarkPaintEndTiming(
     const tasm::PipelineID& pipeline_id) {
   DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
@@ -42,7 +40,7 @@ void PerfControllerClay::SetNeedMarkPaintEndTiming(
   pipeline_id_list_.push_back(pipeline_id);
 }
 
-void PerfControllerClay::OnPaintEnd() {
+void TimingCollectorClay::OnPaintEnd() {
   DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
   if (pipeline_id_list_.empty() || !perf_controller_proxy_) {
@@ -53,7 +51,7 @@ void PerfControllerClay::OnPaintEnd() {
   std::vector<tasm::PipelineID> pipeline_id_list;
   pipeline_id_list.swap(pipeline_id_list_);
 
-  std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
+  std::weak_ptr<TimingCollectorClay> weak_self = shared_from_this();
   perf_controller_proxy_->RunTaskInReportThread(
       [weak_self, pipeline_id_list = std::move(pipeline_id_list),
        timestamp_us]() {
@@ -69,7 +67,7 @@ void PerfControllerClay::OnPaintEnd() {
       });
 }
 
-void PerfControllerClay::OnPipelineEnd(
+void TimingCollectorClay::OnPipelineEnd(
     std::vector<std::pair<std::string, uint64_t>> timings,
     std::vector<std::string> pipeline_id_list) {
   if (pipeline_id_list.empty() || !perf_controller_proxy_) {
@@ -77,7 +75,7 @@ void PerfControllerClay::OnPipelineEnd(
   }
 
   auto timestamp = lynx::base::CurrentSystemTimeMicroseconds();
-  std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
+  std::weak_ptr<TimingCollectorClay> weak_self = shared_from_this();
   perf_controller_proxy_->RunTaskInReportThread(
       [weak_self, timings = std::move(timings),
        pipeline_id_list = std::move(pipeline_id_list), timestamp]() {

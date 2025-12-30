@@ -20,9 +20,9 @@ void InstrumentationService::OnInit(clay::ServiceManager& service_manager,
 
 void InstrumentationService::OnDestroy() { frame_timing_listeners_.clear(); }
 
-const std::shared_ptr<clay::FrameTimingCollector>&
-InstrumentationService::GetFrameTimingCollector() const {
-  return shell_->GetFrameTimingCollector();
+const std::shared_ptr<clay::PerfCollector>&
+InstrumentationService::GetPerfCollector() const {
+  return shell_->GetPerfCollector();
 }
 
 void InstrumentationService::AddFrameTimingListener(
@@ -31,17 +31,6 @@ void InstrumentationService::AddFrameTimingListener(
     return;
   }
   frame_timing_listeners_.push_back(listener);
-}
-
-void InstrumentationService::RemoveFrameTimingListener(
-    std::shared_ptr<FrameTimingListener> listener) {
-  if (!listener) {
-    return;
-  }
-  frame_timing_listeners_.erase(
-      std::remove(frame_timing_listeners_.begin(),
-                  frame_timing_listeners_.end(), listener),
-      frame_timing_listeners_.end());
 }
 
 void InstrumentationService::UpdateRasterCacheInfo(
@@ -58,6 +47,10 @@ void InstrumentationService::OnFrameRasterized(const FrameTiming& timing) {
     for (const auto& listener : frame_timing_listeners_) {
       listener->OnFrameTiming(frame_start_time_in_ns, frame_finish_time_in_ns);
     }
+  }
+
+  if (auto callback = shell_->GetSettings().frame_rasterized_callback) {
+    callback(timing);
   }
 }
 

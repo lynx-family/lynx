@@ -25,8 +25,8 @@
 #include "clay/fml/base64.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/shell/common/serialization_callbacks.h"
-#include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/isolate.h"
+#include "clay/ui/common/perf_collector.h"
 #include "clay/ui/resource/gpu_resource_cache.h"
 
 namespace clay {
@@ -175,10 +175,9 @@ RasterStatus Rasterizer::Draw(std::shared_ptr<LayerTree> layer_tree,
   if (report_instrumentation) {
     instrumentation.SetClosure([this] {
       instrumentation_service_.Act([](auto& impl) {
-        impl.GetFrameTimingCollector()
-            ->InsertFocusChangedUntilFirstRasterFinish();
-        impl.GetFrameTimingCollector()->SetReceivedFocusTime(
-            0, clay::FocusManager::Direction::kUnknown);
+        impl.GetPerfCollector()->InsertFocusChangedUntilFirstRasterFinish();
+        impl.GetPerfCollector()->SetReceivedFocusTime(
+            0.0, clay::FocusManager::Direction::kUnknown);
       });
     });
   }
@@ -319,14 +318,14 @@ RasterStatus Rasterizer::DrawToSurface(
   TRACE_EVENT("clay", "Rasterizer::DrawToSurface");
   FML_DCHECK(surface_);
 
-  instrumentation_service_.Act([raster_time = raster_time_,
-                                now = fml::TimePoint::Now()](auto& impl) {
-    if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
-      impl.GetFrameTimingCollector()->BeginRecord(clay::Perf::kFirstRasterCost);
-    } else {
-      raster_time->Start(now);
-    }
-  });
+  instrumentation_service_.Act(
+      [raster_time = raster_time_, now = fml::TimePoint::Now()](auto& impl) {
+        if (impl.GetPerfCollector()->IsRecordingFirstFramePerf()) {
+          impl.GetPerfCollector()->BeginRecord(clay::Perf::kFirstRasterCost);
+        } else {
+          raster_time->Start(now);
+        }
+      });
 
   RasterStatus raster_status;
   if (surface_->AllowsDrawingWhenGpuDisabled()) {
@@ -394,8 +393,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   instrumentation_service_.Act(
       [supports_partial_repaint =
            frame->framebuffer_info().supports_partial_repaint](auto& impl) {
-        if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
-          impl.GetFrameTimingCollector()->InsertRecord(
+        if (impl.GetPerfCollector()->IsRecordingFirstFramePerf()) {
+          impl.GetPerfCollector()->InsertRecord(
               clay::Perf::kEnablePartialRepaint, supports_partial_repaint);
         }
       });
@@ -472,10 +471,10 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
                          std::chrono::system_clock::now().time_since_epoch())
                          .count();
     instrumentation_service_.Act([timestamp](auto& impl) {
-      if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf()) {
-        impl.GetFrameTimingCollector()->InsertRecord(
-            clay::Perf::kFirstRasterEnd, timestamp);
-        impl.GetFrameTimingCollector()->EndRecord(clay::Perf::kFirstRasterCost);
+      if (impl.GetPerfCollector()->IsRecordingFirstFramePerf()) {
+        impl.GetPerfCollector()->InsertRecord(clay::Perf::kFirstRasterEnd,
+                                              timestamp);
+        impl.GetPerfCollector()->EndRecord(clay::Perf::kFirstRasterCost);
       }
     });
     if (raster_status == RasterStatus::kFailed) {
@@ -522,15 +521,15 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
          sync_compositor =
              platform_const_service_->GetSettings().enable_sync_compositor,
          timestamp](auto& impl) {
-          if (impl.GetFrameTimingCollector()->IsRecordingFirstFramePerf() &&
+          if (impl.GetPerfCollector()->IsRecordingFirstFramePerf() &&
               !sync_compositor) {
-            impl.GetFrameTimingCollector()->InsertRecord(
-                clay::Perf::kFirstPresentEnd, timestamp);
+            impl.GetPerfCollector()->InsertRecord(clay::Perf::kFirstPresentEnd,
+                                                  timestamp);
           } else {
             raster_time->Stop(now);
-            impl.GetFrameTimingCollector()->InsertRasterRecord(*raster_time);
+            impl.GetPerfCollector()->InsertRasterRecord(*raster_time);
             frame_total_time->SetLapTime(lap_time);
-            impl.GetFrameTimingCollector()->InsertFrameTotalCostRecord(
+            impl.GetPerfCollector()->InsertFrameTotalCostRecord(
                 *frame_total_time);
           }
         });

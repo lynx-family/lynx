@@ -2,14 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/ui/common/frame_timing_collector.h"
+#include "clay/ui/common/perf_collector.h"
 
 #include <cstdint>
 #include <string>
 
 #include "base/include/fml/task_runner.h"
 #include "base/include/fml/time/time_point.h"
-#include "base/include/timer/time_utils.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/component/page_view.h"
 
@@ -40,8 +39,8 @@ static constexpr const char* FORCE_UPDATE_FLAG = "clay_force_update";
 static constexpr const char* UPDATE_FLAG = "clay_update";
 }  // namespace
 
-const std::unordered_map<Perf, const char*>
-    FrameTimingCollector::perf_to_string_map = {
+const std::unordered_map<Perf, const char*> PerfCollector::perf_to_string_map =
+    {
         {Perf::kEnablePartialRepaint, "rk_enable_partial_repaint"},
 
         {Perf::kFirstLayoutCost, "rk_first_layout"},
@@ -69,21 +68,24 @@ const std::unordered_map<Perf, const char*>
         {Perf::kFrameTotalBadLevel2, "rk_frame_total_bad_level_2"},
         {Perf::kFrameTotalBadLevel3, "rk_frame_total_bad_level_3"},
 
+        {Perf::kMemoryAvailable, "memory_available"},
+        {Perf::kMemoryFree, "memory_free"},
+        {Perf::kMemoryTotal, "memory_total"},
+
         {Perf::kListLayoutNewItem, "rk_list_layout_new_item"},
         {Perf::kMoveFocusUntilDraw, "rk_move_focus_until_draw"},
         {Perf::kMoveFocusUntilRaster, "rk_move_focus_until_raster"},
         {Perf::kMoveFocusDirection, "rk_move_focus_direction"},
 };
 
-FrameTimingCollector::FrameTimingCollector(
-    fml::RefPtr<fml::TaskRunner> platform_task_runner)
+PerfCollector::PerfCollector(fml::RefPtr<fml::TaskRunner> platform_task_runner)
     : weak_factory_(this),
       weak_(weak_factory_.GetWeakPtr()),
       platform_task_runner_(platform_task_runner) {}
 
-FrameTimingCollector::~FrameTimingCollector() = default;
+PerfCollector::~PerfCollector() = default;
 
-bool FrameTimingCollector::FirstPerfReady() const {
+bool PerfCollector::FirstPerfReady() const {
   int64_t error_code = 0;
   auto error_code_iter =
       first_perf_container_.find(PerfToString(Perf::kErrorCode));
@@ -94,15 +96,15 @@ bool FrameTimingCollector::FirstPerfReady() const {
   return (first_perf_container_.size() == FIRST_THRESHOLD) || (error_code > 0);
 }
 
-bool FrameTimingCollector::UpdatePerfReady() const {
+bool PerfCollector::UpdatePerfReady() const {
   return update_perf_container_.size() == UPDATE_THRESHOLD;
 }
 
-const char* FrameTimingCollector::PerfToString(Perf perf) const {
+const char* PerfCollector::PerfToString(Perf perf) const {
   return perf_to_string_map.at(perf);
 }
 
-void FrameTimingCollector::BeginRecord(Perf perf) {
+void PerfCollector::BeginRecord(Perf perf) {
   int64_t begin = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::system_clock::now().time_since_epoch())
                       .count();
@@ -114,7 +116,7 @@ void FrameTimingCollector::BeginRecord(Perf perf) {
                                     });
 }
 
-void FrameTimingCollector::EndRecord(Perf perf) {
+void PerfCollector::EndRecord(Perf perf) {
   int64_t end = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
@@ -128,7 +130,7 @@ void FrameTimingCollector::EndRecord(Perf perf) {
       });
 }
 
-void FrameTimingCollector::InsertRecord(Perf perf, int64_t cost) {
+void PerfCollector::InsertRecord(Perf perf, int64_t cost) {
   if (is_recording_first_frame_perf_ && perf == Perf::kFirstPresentEnd) {
     // Finish recording first frame perf
     is_recording_first_frame_perf_ = false;
@@ -141,7 +143,7 @@ void FrameTimingCollector::InsertRecord(Perf perf, int64_t cost) {
                                     });
 }
 
-void FrameTimingCollector::InsertForceRecord(const PerfMap& perf_map) {
+void PerfCollector::InsertForceRecord(const PerfMap& perf_map) {
   fml::TaskRunner::RunNowOrPostTask(
       platform_task_runner_, [weak = weak_, perf_map]() {
         if (weak) {
@@ -150,7 +152,7 @@ void FrameTimingCollector::InsertForceRecord(const PerfMap& perf_map) {
       });
 }
 
-void FrameTimingCollector::InsertLayoutAndAnimationRecord(
+void PerfCollector::InsertLayoutAndAnimationRecord(
     const clay::Stopwatch& stopwatch) {
   // Record performance of 120 samples.
   if (!stopwatch.CheckIfLastSampleInCycle()) {
@@ -176,8 +178,7 @@ void FrameTimingCollector::InsertLayoutAndAnimationRecord(
       });
 }
 
-void FrameTimingCollector::InsertRasterRecord(
-    const clay::Stopwatch& stopwatch) {
+void PerfCollector::InsertRasterRecord(const clay::Stopwatch& stopwatch) {
   // Record performance of 120 samples.
   if (!stopwatch.CheckIfLastSampleInCycle()) {
     return;
@@ -214,7 +215,7 @@ void FrameTimingCollector::InsertRasterRecord(
       });
 }
 
-void FrameTimingCollector::InsertFocusChangedUntilFirstRasterFinish() {
+void PerfCollector::InsertFocusChangedUntilFirstRasterFinish() {
   InsertForceTimeRecordUntilNow(receive_focus_time_,
                                 Perf::kMoveFocusUntilRaster);
   // this method is the last one which is the consumption of
@@ -222,7 +223,7 @@ void FrameTimingCollector::InsertFocusChangedUntilFirstRasterFinish() {
   receive_focus_time_ = 0;
 }
 
-void FrameTimingCollector::InsertFocusChangedUntilFirstPaintFinish() {
+void PerfCollector::InsertFocusChangedUntilFirstPaintFinish() {
   if (has_reported_after_focus_) {
     return;
   }
@@ -230,9 +231,8 @@ void FrameTimingCollector::InsertFocusChangedUntilFirstPaintFinish() {
   has_reported_after_focus_ = true;
 }
 
-void FrameTimingCollector::InsertForceTimeRecordUntilNow(int64_t from,
-                                                         Perf perf) {
-  int64_t now = lynx::base::CurrentSystemTimeMilliseconds();
+void PerfCollector::InsertForceTimeRecordUntilNow(int64_t from, Perf perf) {
+  int64_t now = NowInMilliseconds();
   if (now > from) {
     auto record_map = std::unordered_map<Perf, int64_t>();
     record_map.emplace(perf, now - from);
@@ -242,7 +242,7 @@ void FrameTimingCollector::InsertForceTimeRecordUntilNow(int64_t from,
   }
 }
 
-void FrameTimingCollector::InsertFrameTotalCostRecord(
+void PerfCollector::InsertFrameTotalCostRecord(
     const clay::Stopwatch& stopwatch) {
   // Record performance of 120 samples.
   if (!stopwatch.CheckIfLastSampleInCycle()) {
@@ -280,7 +280,7 @@ void FrameTimingCollector::InsertFrameTotalCostRecord(
       });
 }
 
-void FrameTimingCollector::InsertRecordInternal(Perf perf, int64_t cost) {
+void PerfCollector::InsertRecordInternal(Perf perf, int64_t cost) {
   if (is_first_send_ && perf < Perf::kFirstSep) {
     first_perf_container_.emplace(PerfToString(perf), cost);
   } else if (perf > Perf::kFirstSep && perf < Perf::kUpdateSep) {
@@ -292,14 +292,14 @@ void FrameTimingCollector::InsertRecordInternal(Perf perf, int64_t cost) {
   MaybeReport();
 }
 
-bool FrameTimingCollector::IsForcePushRecord(Perf perf) {
+bool PerfCollector::IsForcePushRecord(Perf perf) {
   if (perf > Perf::kUpdateSep && perf < Perf::kForceSep) {
     return true;
   }
   return false;
 }
 
-void FrameTimingCollector::InsertForceRecordInternal(const PerfMap& perf_map) {
+void PerfCollector::InsertForceRecordInternal(const PerfMap& perf_map) {
   if (perf_map.empty()) {
     return;
   }
@@ -315,7 +315,7 @@ void FrameTimingCollector::InsertForceRecordInternal(const PerfMap& perf_map) {
   MaybeReport(true);
 }
 
-void FrameTimingCollector::MaybeReport(bool is_force) {
+void PerfCollector::MaybeReport(bool is_force) {
   if (page_view_) {
     if (is_force) {
       page_view_->ReportTiming(force_perf_container_, FORCE_UPDATE_FLAG);

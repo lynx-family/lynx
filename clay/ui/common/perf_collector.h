@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_COMMON_FRAME_TIMING_COLLECTOR_H_
-#define CLAY_UI_COMMON_FRAME_TIMING_COLLECTOR_H_
+#ifndef CLAY_UI_COMMON_PERF_COLLECTOR_H_
+#define CLAY_UI_COMMON_PERF_COLLECTOR_H_
 
 #include <chrono>
 #include <cstdint>
@@ -58,6 +58,9 @@ enum class Perf {
 
   kUpdateSep,  // DON'T USE THIS! THIS SHOULD ONLY BE USED BY PERFCOLLECTOR SELF
 
+  kMemoryAvailable,
+  kMemoryFree,
+  kMemoryTotal,
   kListLayoutNewItem,
   kMoveFocusUntilDraw,
   kMoveFocusUntilRaster,
@@ -65,14 +68,19 @@ enum class Perf {
   kForceSep,  // DON'T USE THIS! THIS SHOULD ONLY BE USED BY PERFCOLLECTOR SELF
 };
 
-class FrameTimingCollector {
+class PerfCollector {
  public:
   using PerfMap = std::unordered_map<Perf, int64_t>;
 
-  explicit FrameTimingCollector(
-      fml::RefPtr<fml::TaskRunner> platform_task_runner);
+  explicit PerfCollector(fml::RefPtr<fml::TaskRunner> platform_task_runner);
 
-  ~FrameTimingCollector();
+  ~PerfCollector();
+
+  static int64_t NowInMilliseconds() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+  }
 
   void SetPageView(PageView* page_view) { page_view_ = page_view; }
 
@@ -110,8 +118,8 @@ class FrameTimingCollector {
 
   void MaybeReport(bool is_force = false);
 
-  fml::WeakPtrFactory<FrameTimingCollector> weak_factory_;
-  fml::WeakPtr<FrameTimingCollector> weak_;
+  fml::WeakPtrFactory<PerfCollector> weak_factory_;
+  fml::WeakPtr<PerfCollector> weak_;
 
   fml::RefPtr<fml::TaskRunner> platform_task_runner_;
 
@@ -134,4 +142,4 @@ class FrameTimingCollector {
 
 }  // namespace clay
 
-#endif  // CLAY_UI_COMMON_FRAME_TIMING_COLLECTOR_H_
+#endif  // CLAY_UI_COMMON_PERF_COLLECTOR_H_

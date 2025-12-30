@@ -36,7 +36,7 @@
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/public/clay.h"
-#include "clay/shell/common/pipeline_timing_delegate.h"
+#include "clay/public/timing_collector_delegate.h"
 #include "clay/shell/common/services/raster_frame_service.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/overlay_manager.h"
@@ -319,9 +319,8 @@ void PageView::TriggerFirstPaintCallback() {
 void PageView::OnPlatformViewCreated() {}
 
 void PageView::OnOutputSurfaceCreated() {
-  if (frame_timing_collector_) {
-    frame_timing_collector_->InsertRecord(clay::Perf::kErrorCode,
-                                          kPerfErrorCodeOK);
+  if (perf_collector_) {
+    perf_collector_->InsertRecord(clay::Perf::kErrorCode, kPerfErrorCodeOK);
   }
   Isolate::Instance().GetResourceCache()->SetIsLowMemory(false);
   // Repaint page when LynxView enter foreground.
@@ -332,9 +331,9 @@ void PageView::OnOutputSurfaceCreated() {
 void PageView::OnOutputSurfaceCreateFailed() {
   FML_LOG(ERROR) << "OnOutputSurfaceCreateFailed!";
   // Insert error code with empty perf record and trigger first perf.
-  if (frame_timing_collector_) {
-    frame_timing_collector_->InsertRecord(clay::Perf::kErrorCode,
-                                          kPerfErrorCodeSurfaceFailed);
+  if (perf_collector_) {
+    perf_collector_->InsertRecord(clay::Perf::kErrorCode,
+                                  kPerfErrorCodeSurfaceFailed);
   }
 }
 
@@ -382,8 +381,7 @@ bool PageView::BeginFrame(
 
   TriggerFirstPaintCallback();
   render_phase_ = RenderPhase::kLayout;
-  if (frame_timing_collector_ &&
-      !frame_timing_collector_->IsRecordingFirstFramePerf()) {
+  if (perf_collector_ && !perf_collector_->IsRecordingFirstFramePerf()) {
     layout_and_animation_time_.Start();
   }
 
@@ -407,11 +405,9 @@ bool PageView::BeginFrame(
     recorder->RecordFrameTime(FrameTimingKey::kDoAnimationEnd);
   }
 
-  if (frame_timing_collector_ &&
-      !frame_timing_collector_->IsRecordingFirstFramePerf()) {
+  if (perf_collector_ && !perf_collector_->IsRecordingFirstFramePerf()) {
     layout_and_animation_time_.Stop();
-    frame_timing_collector_->InsertLayoutAndAnimationRecord(
-        layout_and_animation_time_);
+    perf_collector_->InsertLayoutAndAnimationRecord(layout_and_animation_time_);
   }
 
   if (render_settings_) {
@@ -470,16 +466,14 @@ bool PageView::BeginFrame(
 }
 
 void PageView::LayoutInternal() {
-  if (frame_timing_collector_ &&
-      frame_timing_collector_->IsRecordingFirstFramePerf()) {
-    frame_timing_collector_->BeginRecord(Perf::kFirstLayoutCost);
+  if (perf_collector_ && perf_collector_->IsRecordingFirstFramePerf()) {
+    perf_collector_->BeginRecord(Perf::kFirstLayoutCost);
   }
 
   layout_controller_->Layout();
 
-  if (frame_timing_collector_ &&
-      frame_timing_collector_->IsRecordingFirstFramePerf()) {
-    frame_timing_collector_->EndRecord(Perf::kFirstLayoutCost);
+  if (perf_collector_ && perf_collector_->IsRecordingFirstFramePerf()) {
+    perf_collector_->EndRecord(Perf::kFirstLayoutCost);
   }
 }
 
@@ -583,32 +577,29 @@ void PageView::UpdateRootSize(int32_t width, int32_t height) {
 
 void PageView::Paint() {
   // Paint the dirty render objects and build the composited layer tree.
-  if (frame_timing_collector_ &&
-      frame_timing_collector_->IsRecordingFirstFramePerf()) {
-    frame_timing_collector_->BeginRecord(Perf::kFirstPaintCost);
+  if (perf_collector_ && perf_collector_->IsRecordingFirstFramePerf()) {
+    perf_collector_->BeginRecord(Perf::kFirstPaintCost);
   }
 
   renderer_->Paint();
 
-  if (frame_timing_collector_ &&
-      frame_timing_collector_->IsRecordingFirstFramePerf()) {
-    frame_timing_collector_->EndRecord(Perf::kFirstPaintCost);
+  if (perf_collector_ && perf_collector_->IsRecordingFirstFramePerf()) {
+    perf_collector_->EndRecord(Perf::kFirstPaintCost);
   }
   ReportAfterPaint();
 }
 
 void PageView::ReportAfterPaint() {
-  if (frame_timing_collector_) {
-    frame_timing_collector_->InsertFocusChangedUntilFirstPaintFinish();
+  if (perf_collector_) {
+    perf_collector_->InsertFocusChangedUntilFirstPaintFinish();
   }
 }
 
 void PageView::CompositeFrame(
     std::unique_ptr<clay::FrameTimingsRecorder> recorder) {
   // Build a frame for the composited layer tree.
-  if (frame_timing_collector_ &&
-      frame_timing_collector_->IsRecordingFirstFramePerf()) {
-    frame_timing_collector_->BeginRecord(Perf::kFirstBuildFrameCost);
+  if (perf_collector_ && perf_collector_->IsRecordingFirstFramePerf()) {
+    perf_collector_->BeginRecord(Perf::kFirstBuildFrameCost);
   }
 
   recorder->RecordFrameTime(FrameTimingKey::kBuildFrameStart);
@@ -619,9 +610,8 @@ void PageView::CompositeFrame(
                                           physical_size_.height() / 5);
   }
 
-  if (frame_timing_collector_ &&
-      frame_timing_collector_->IsRecordingFirstFramePerf()) {
-    frame_timing_collector_->EndRecord(Perf::kFirstBuildFrameCost);
+  if (perf_collector_ && perf_collector_->IsRecordingFirstFramePerf()) {
+    perf_collector_->EndRecord(Perf::kFirstBuildFrameCost);
   }
 
 #ifndef NDEBUG
@@ -637,12 +627,12 @@ void PageView::CompositeFrame(
   if (layer_tree) {
     layer_tree->SetVsyncTimeOnGeneration(recorder->GetVsyncStartTime());
     layer_tree->AppendFrameTimings(recorder->TakeFrameTimings());
-    if (pipeline_timing_delegate_ &&
-        pipeline_timing_delegate_->HasPipelineIds()) {
+    if (timing_collector_delegate_ &&
+        timing_collector_delegate_->HasPipelineIds()) {
       layer_tree->SetPipelineIdList(
-          pipeline_timing_delegate_->GetPipelineIds());
-      std::weak_ptr<PipelineTimingDelegate> weak_delegate =
-          pipeline_timing_delegate_;
+          timing_collector_delegate_->GetPipelineIds());
+      std::weak_ptr<TimingCollectorDelegate> weak_delegate =
+          timing_collector_delegate_;
       layer_tree->SetPipelineEndCallback(
           [weak_delegate](const std::vector<FrameTimingItem>& timings,
                           const std::vector<std::string>& pipeline_ids) {
@@ -1660,7 +1650,7 @@ void PageView::ResetPageView(bool recycle) {
   if (recycle) {
     first_paint_ = false;
     first_meaningful_layout_ = false;
-    frame_timing_collector_.reset();
+    perf_collector_.reset();
     image_resource_fetcher_ = nullptr;
   }
 

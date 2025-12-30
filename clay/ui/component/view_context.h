@@ -67,7 +67,7 @@ class PageView;
 struct BackgroundData;
 class ServiceManager;
 class CustomFilterDecoder;
-class PipelineTimingDelegate;
+class TimingCollectorDelegate;
 
 class FrameObserver {
  public:
@@ -257,8 +257,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void SetUIComponentDelegate(UIComponentDelegate* delegate);
   void SetLayoutDelegate(LayoutDelegate* delegate);
 
-  void SetPipelineTimingDelegate(
-      std::shared_ptr<PipelineTimingDelegate> delegate);
+  void SetTimingCollectorDelegate(
+      std::shared_ptr<TimingCollectorDelegate> delegate);
 
   void SetExternalScreenshotCallback(ExternalScreenshotCallback callback);
 

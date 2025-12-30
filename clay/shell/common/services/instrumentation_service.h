@@ -11,8 +11,8 @@
 #include "clay/common/service/service.h"
 
 namespace clay {
-class FrameTimingCollector;
-}  // namespace clay
+class PerfCollector;
+}
 
 namespace clay {
 
@@ -29,11 +29,9 @@ class InstrumentationService
       const std::vector<RasterCacheInfo>& raster_cache_info);
   void OnFrameRasterized(const FrameTiming& timing);
 
-  const std::shared_ptr<clay::FrameTimingCollector>& GetFrameTimingCollector()
-      const;
+  const std::shared_ptr<clay::PerfCollector>& GetPerfCollector() const;
 
   void AddFrameTimingListener(std::shared_ptr<FrameTimingListener> listener);
-  void RemoveFrameTimingListener(std::shared_ptr<FrameTimingListener> listener);
 
  private:
   void OnInit(clay::ServiceManager& service_manager,
