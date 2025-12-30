@@ -66,6 +66,7 @@ class DefaultGestureHandler : public BaseGestureHandler {
   bool is_invoked_begin_;
   bool is_invoked_start_;
   bool is_invoked_end_;
+  int tap_slop_;
   std::shared_ptr<TouchEvent> last_touch_event_;
 };
 

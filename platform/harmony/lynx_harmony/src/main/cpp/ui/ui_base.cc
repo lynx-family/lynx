@@ -2436,6 +2436,10 @@ std::vector<float> UIBase::ScrollBy(float delta_x, float delta_y) {
   return std::vector<float>{0, 0, delta_x, delta_y};
 }
 
+std::vector<float> UIBase::GestureScrollBy(float delta_x, float delta_y) {
+  return std::vector<float>{0, 0, delta_x, delta_y};
+}
+
 starlight::ImageRenderingType UIBase::RenderingType() {
   return rendering_type_;
 }

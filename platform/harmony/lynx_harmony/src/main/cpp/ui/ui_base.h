@@ -112,6 +112,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetGestureDetectorState(int gesture_id, int state) override;
   void ConsumeGesture(int gesture_id, const lepus::Value& params) override;
   bool CanConsumeGesture(float deltaX, float deltaY) override { return false; };
+  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
   std::vector<float> ScrollBy(float delta_x, float delta_y) override;
   int GestureArenaMemberId() override { return gesture_arena_member_id_; };
   bool IsAtBorder(bool isStart) override { return false; };

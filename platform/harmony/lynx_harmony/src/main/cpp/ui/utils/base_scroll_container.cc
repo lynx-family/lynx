@@ -230,9 +230,9 @@ bool BaseScrollContainer::IsAtStart() const {
 
 bool BaseScrollContainer::IsVerticalScrollView() { return !is_horizontal_; }
 
-// for worklet or gesture
-std::vector<float> BaseScrollContainer::ScrollBy(float delta_x, float delta_y) {
-  GestureRecognized();
+// for gesture
+std::vector<float> BaseScrollContainer::GestureScrollBy(float delta_x,
+                                                        float delta_y) {
   std::vector<float> res(4, 0);
   float last_scroll_offset = GetScrollDistance();
   if (IsHorizontal()) {
@@ -251,6 +251,12 @@ std::vector<float> BaseScrollContainer::ScrollBy(float delta_x, float delta_y) {
     res[3] = delta_y - res[1];
   }
   return res;
+}
+
+// for worklet
+std::vector<float> BaseScrollContainer::ScrollBy(float delta_x, float delta_y) {
+  GestureRecognized();
+  return GestureScrollBy(delta_x, delta_y);
 }
 
 }  // namespace harmony
