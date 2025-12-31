@@ -56,7 +56,9 @@ void NestedScrollManager::DragUpdate(NestedScrollable* source_scrollable,
   }
 
   DispatchScroll(delta, true);
-  current_scrollable_->DecodeImagesRecursively();
+  if (current_scrollable_) {
+    current_scrollable_->DecodeImagesRecursively();
+  }
 }
 
 void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
@@ -76,7 +78,9 @@ void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
   } else {
     SetScrollStatus(Scrollable::ScrollStatus::kIdle);
   }
-  current_scrollable_->DecodeImagesRecursively();
+  if (current_scrollable_) {
+    current_scrollable_->DecodeImagesRecursively();
+  }
 }
 
 NestedScrollable* NestedScrollManager::FindOuterScrollable(

@@ -3517,7 +3517,8 @@ SemanticsOwner* BaseView::GetSemanticsOwner() const {
 #endif
 
 void BaseView::VisitChildren(const std::function<void(BaseView*)>& visitor) {
-  for (auto* child : children_) {
+  std::vector<BaseView*> children_copy(children_.begin(), children_.end());
+  for (auto* child : children_copy) {
     visitor(child);
     child->VisitChildren(visitor);
   }
