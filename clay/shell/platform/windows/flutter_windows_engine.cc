@@ -670,6 +670,9 @@ SurfaceFrame::FramebufferInfo FlutterWindowsEngine::GLContextFramebufferInfo()
   auto info = SurfaceFrame::FramebufferInfo{};
   info.supports_readback = true;
   info.supports_partial_repaint = true;
+  // Unspecified damage (nullopt) invokes full-frame rasterization (no partial
+  // redraw); use an empty skity::Rect to indicate no existing damage.
+  info.existing_damage = skity::Rect();
   return info;
 }
 
