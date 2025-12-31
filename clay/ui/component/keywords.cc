@@ -46,12 +46,12 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 247
+#define TOTAL_KEYWORDS 252
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
-#define MIN_HASH_VALUE 29
-#define MAX_HASH_VALUE 665
-/* maximum key range = 637, duplicates = 0 */
+#define MIN_HASH_VALUE 24
+#define MAX_HASH_VALUE 653
+/* maximum key range = 630, duplicates = 0 */
 
 class KeywordHash {
  private:
@@ -63,24 +63,24 @@ class KeywordHash {
 
 inline unsigned int KeywordHash::hash(const char *str, unsigned int len) {
   static const unsigned short asso_values[] = {
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      185, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 6,   666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 102, 51,  76,  213, 1,   270, 105, 204,
-      110, 2,   10,  115, 13,  84,  173, 26,  666, 11,  6,   3,   100, 60,  41,
-      107, 167, 4,   666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666, 666,
-      666};
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      202, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 0,   654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 89,  48,  77,  259, 0,   242, 70,  215,
+      87,  3,   9,   104, 9,   69,  172, 16,  654, 1,   17,  4,   84,  1,   77,
+      205, 249, 0,   654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654, 654,
+      654};
   unsigned int hval = len;
 
   switch (hval) {
@@ -108,502 +108,512 @@ inline unsigned int KeywordHash::hash(const char *str, unsigned int len) {
 }
 
 struct StringPool_t {
-  char StringPool_str29[sizeof("mask-size")];
-  char StringPool_str30[sizeof("mask-image")];
-  char StringPool_str31[sizeof("scroll-left")];
-  char StringPool_str32[sizeof("scroll-enable")];
-  char StringPool_str33[sizeof("mask-repeat")];
-  char StringPool_str34[sizeof("type")];
-  char StringPool_str46[sizeof("repeat")];
-  char StringPool_str48[sizeof("scroll-forward-mode")];
-  char StringPool_str49[sizeof("perspective")];
-  char StringPool_str53[sizeof("scroll-top")];
-  char StringPool_str54[sizeof("mask-clip")];
-  char StringPool_str58[sizeof("exposure-screen-margin-left")];
-  char StringPool_str59[sizeof("exposure-screen-margin-right")];
-  char StringPool_str61[sizeof("scroll-bar-track-color")];
-  char StringPool_str66[sizeof("exposure-ui-margin-left")];
-  char StringPool_str67[sizeof("exposure-ui-margin-right")];
-  char StringPool_str69[sizeof("bottom-inset")];
-  char StringPool_str70[sizeof("exposure-screen-margin-bottom")];
-  char StringPool_str72[sizeof("word-break")];
-  char StringPool_str74[sizeof("visible")];
-  char StringPool_str75[sizeof("border-style")];
-  char StringPool_str76[sizeof("border-left")];
-  char StringPool_str77[sizeof("border-right")];
-  char StringPool_str78[sizeof("exposure-ui-margin-bottom")];
-  char StringPool_str79[sizeof("border")];
-  char StringPool_str80[sizeof("exposure-screen-margin-top")];
-  char StringPool_str82[sizeof("border-top-style")];
-  char StringPool_str85[sizeof("border-color")];
-  char StringPool_str86[sizeof("border-left-style")];
-  char StringPool_str87[sizeof("border-radius")];
-  char StringPool_str88[sizeof("exposure-ui-margin-top")];
-  char StringPool_str91[sizeof("border-top-left-radius")];
-  char StringPool_str94[sizeof("prev-scrollable")];
-  char StringPool_str95[sizeof("border-bottom-style")];
-  char StringPool_str96[sizeof("richtype")];
-  char StringPool_str98[sizeof("border-top")];
-  char StringPool_str101[sizeof("border-bottom")];
-  char StringPool_str102[sizeof("name")];
-  char StringPool_str104[sizeof("cursor")];
-  char StringPool_str105[sizeof("border-bottom-color")];
-  char StringPool_str106[sizeof("border-bottom-left-radius")];
-  char StringPool_str107[sizeof("border-bottom-right-radius")];
-  char StringPool_str108[sizeof("tint-color")];
-  char StringPool_str109[sizeof("caret-color")];
-  char StringPool_str110[sizeof("min-height")];
-  char StringPool_str111[sizeof("needs-visible-cells")];
-  char StringPool_str114[sizeof("mask-origin")];
-  char StringPool_str115[sizeof("auto-size")];
-  char StringPool_str116[sizeof("adjust-mode")];
-  char StringPool_str117[sizeof("text")];
-  char StringPool_str118[sizeof("cap-insets")];
-  char StringPool_str119[sizeof("scroll-bar-enable")];
-  char StringPool_str120[sizeof("scroll-direction")];
-  char StringPool_str122[sizeof("scroll-orientation")];
-  char StringPool_str123[sizeof("text-maxline")];
-  char StringPool_str124[sizeof("text-indent")];
-  char StringPool_str125[sizeof("itemkeys")];
-  char StringPool_str126[sizeof("exposure-scene")];
-  char StringPool_str127[sizeof("transform")];
-  char StringPool_str129[sizeof("text-gradient")];
-  char StringPool_str130[sizeof("select")];
-  char StringPool_str131[sizeof("list-type")];
-  char StringPool_str132[sizeof("scroll-x")];
-  char StringPool_str133[sizeof("max-height")];
-  char StringPool_str134[sizeof("maxlines")];
-  char StringPool_str135[sizeof("sticky-offset")];
-  char StringPool_str136[sizeof("edit-on-focus")];
-  char StringPool_str137[sizeof("idSelector")];
-  char StringPool_str138[sizeof("scroll-bar-auto-hide")];
-  char StringPool_str140[sizeof("scroll-backward-mode")];
-  char StringPool_str143[sizeof("scroll-without-focus")];
-  char StringPool_str148[sizeof("background-repeat")];
-  char StringPool_str150[sizeof("placeholder")];
-  char StringPool_str154[sizeof("markdown-style")];
-  char StringPool_str157[sizeof("background-image")];
-  char StringPool_str158[sizeof("bounce")];
-  char StringPool_str161[sizeof("src")];
-  char StringPool_str162[sizeof("text-shadow")];
-  char StringPool_str163[sizeof("white-space")];
-  char StringPool_str164[sizeof("bounces")];
-  char StringPool_str166[sizeof("border-left-color")];
-  char StringPool_str168[sizeof("blur-radius")];
-  char StringPool_str170[sizeof("content")];
-  char StringPool_str173[sizeof("confirm-type")];
-  char StringPool_str174[sizeof("controls")];
-  char StringPool_str176[sizeof("vertical-orientation")];
-  char StringPool_str181[sizeof("value")];
-  char StringPool_str183[sizeof("consume-slide-event")];
-  char StringPool_str184[sizeof("outline")];
-  char StringPool_str191[sizeof("outline-style")];
-  char StringPool_str192[sizeof("scroll-y")];
-  char StringPool_str193[sizeof("custom-text-selection")];
-  char StringPool_str195[sizeof("cap-insets-scale")];
-  char StringPool_str197[sizeof("send-composing-input")];
-  char StringPool_str199[sizeof("transition")];
-  char StringPool_str200[sizeof("mask-position")];
-  char StringPool_str201[sizeof("border-top-right-radius")];
-  char StringPool_str204[sizeof("text-align")];
-  char StringPool_str205[sizeof("text-overflow")];
-  char StringPool_str206[sizeof("column-count")];
-  char StringPool_str207[sizeof("color")];
-  char StringPool_str209[sizeof("box-shadow")];
-  char StringPool_str210[sizeof("next-focus-left")];
-  char StringPool_str211[sizeof("outline-color")];
-  char StringPool_str212[sizeof("ignore-focus")];
-  char StringPool_str213[sizeof("line-height")];
-  char StringPool_str214[sizeof("text-stroke-color")];
-  char StringPool_str216[sizeof("tag")];
-  char StringPool_str217[sizeof("enable-new-animator")];
-  char StringPool_str219[sizeof("skip-redirection")];
-  char StringPool_str220[sizeof("auto-fix")];
-  char StringPool_str221[sizeof("uiappear")];
-  char StringPool_str223[sizeof("overflow")];
-  char StringPool_str224[sizeof("scroll-event-throttle")];
-  char StringPool_str225[sizeof("speed")];
-  char StringPool_str226[sizeof("dataset")];
-  char StringPool_str227[sizeof("enable-insert-platform-view-operation")];
-  char StringPool_str228[sizeof("z-index")];
-  char StringPool_str229[sizeof("align-focus")];
-  char StringPool_str230[sizeof("allow-escape")];
-  char StringPool_str231[sizeof("mode")];
-  char StringPool_str232[sizeof("placeholder-color")];
-  char StringPool_str233[sizeof("enable-font-scaling")];
-  char StringPool_str234[sizeof("show-soft-input-onfocus")];
-  char StringPool_str235[sizeof("smart-scroll")];
-  char StringPool_str238[sizeof("image-transition-style")];
-  char StringPool_str239[sizeof("background-origin")];
-  char StringPool_str241[sizeof("hit-slop")];
-  char StringPool_str242[sizeof("scroll-to-id")];
-  char StringPool_str243[sizeof("visibility")];
-  char StringPool_str244[sizeof("exposure-area")];
-  char StringPool_str245[sizeof("enable-scrollbar")];
-  char StringPool_str247[sizeof("preload")];
-  char StringPool_str250[sizeof("scroll-bar-thumb-radius")];
-  char StringPool_str251[sizeof("exposure-id")];
-  char StringPool_str253[sizeof("background-size")];
-  char StringPool_str254[sizeof("scroll-bar-thumb-color")];
-  char StringPool_str256[sizeof("next-focus-up")];
-  char StringPool_str257[sizeof("experimental-recycle-sticky-item")];
-  char StringPool_str258[sizeof("next-scrollable")];
-  char StringPool_str260[sizeof("scroll-bar-thumb-hover-color")];
-  char StringPool_str261[sizeof("scroll-bar-thumb-active-color")];
-  char StringPool_str262[sizeof("border-top-color")];
-  char StringPool_str266[sizeof("border-right-style")];
-  char StringPool_str273[sizeof("list-cross-axis-gap")];
-  char StringPool_str274[sizeof("vertical-align")];
-  char StringPool_str275[sizeof("list-main-axis-gap")];
-  char StringPool_str276[sizeof("border-right-color")];
-  char StringPool_str278[sizeof("border-width")];
-  char StringPool_str280[sizeof("autoplay")];
-  char StringPool_str282[sizeof("prevent-loading-on-list-scroll")];
-  char StringPool_str283[sizeof("background-clip")];
-  char StringPool_str286[sizeof("item-key")];
-  char StringPool_str288[sizeof("readonly")];
-  char StringPool_str289[sizeof("sticky")];
-  char StringPool_str291[sizeof("overflow-x")];
-  char StringPool_str295[sizeof("level")];
-  char StringPool_str297[sizeof("enable-report-info")];
-  char StringPool_str298[sizeof("border-bottom-width")];
-  char StringPool_str301[sizeof("loop-count")];
-  char StringPool_str305[sizeof("animation")];
-  char StringPool_str308[sizeof("custom-context-menu")];
-  char StringPool_str310[sizeof("scroll-bar-auto-hide-delay")];
-  char StringPool_str312[sizeof("enable-exposure-ui-margin")];
-  char StringPool_str313[sizeof("scroll-monitor-tag")];
-  char StringPool_str314[sizeof("list-container-info")];
-  char StringPool_str315[sizeof("transform-origin")];
-  char StringPool_str316[sizeof("line-spacing")];
-  char StringPool_str317[sizeof("direction")];
-  char StringPool_str318[sizeof("loop")];
-  char StringPool_str319[sizeof("text-decoration")];
-  char StringPool_str320[sizeof("next-focus-right")];
-  char StringPool_str321[sizeof("letter-spacing")];
-  char StringPool_str322[sizeof("next-focus-fallback")];
-  char StringPool_str324[sizeof("border-left-width")];
-  char StringPool_str326[sizeof("intersection-observers")];
-  char StringPool_str327[sizeof("background-color")];
-  char StringPool_str328[sizeof("upper-threshold-item-count")];
-  char StringPool_str329[sizeof("image-config")];
-  char StringPool_str331[sizeof("text-maxlength")];
-  char StringPool_str333[sizeof("maxlength")];
-  char StringPool_str334[sizeof("low-quality")];
-  char StringPool_str335[sizeof("uidisappear")];
-  char StringPool_str337[sizeof("preferred-focus-child")];
-  char StringPool_str340[sizeof("text-single-line-vertical-align")];
-  char StringPool_str341[sizeof("user-interaction-enabled")];
-  char StringPool_str344[sizeof("auto-save-last-child")];
-  char StringPool_str346[sizeof("enable-scroll")];
-  char StringPool_str347[sizeof("scroll-bar-width")];
-  char StringPool_str350[sizeof("background")];
-  char StringPool_str351[sizeof("overflow-y")];
-  char StringPool_str352[sizeof("scroll-to-index")];
-  char StringPool_str356[sizeof("focusable")];
-  char StringPool_str357[sizeof("focus")];
-  char StringPool_str358[sizeof("lower-threshold-item-count")];
-  char StringPool_str359[sizeof("initial-scroll-offset")];
-  char StringPool_str364[sizeof("font-size")];
-  char StringPool_str365[sizeof("font-style")];
-  char StringPool_str368[sizeof("font-weight")];
-  char StringPool_str369[sizeof("accessibility-element")];
-  char StringPool_str371[sizeof("downsampling")];
-  char StringPool_str372[sizeof("text-stroke-width")];
-  char StringPool_str373[sizeof("accessibility-elements")];
-  char StringPool_str381[sizeof("text-selection")];
-  char StringPool_str382[sizeof("use-soft-keyboard")];
-  char StringPool_str383[sizeof("content-id")];
-  char StringPool_str392[sizeof("border-top-width")];
-  char StringPool_str395[sizeof("animation-style")];
-  char StringPool_str399[sizeof("clip-path")];
-  char StringPool_str402[sizeof("filter")];
-  char StringPool_str403[sizeof("background-position")];
-  char StringPool_str413[sizeof("experimental-batch-render-strategy")];
-  char StringPool_str416[sizeof("update-animation")];
-  char StringPool_str420[sizeof("placeholder-font-size")];
-  char StringPool_str423[sizeof("event-through")];
-  char StringPool_str424[sizeof("placeholder-font-weight")];
-  char StringPool_str430[sizeof("block-native-event")];
-  char StringPool_str438[sizeof("drop-shadow")];
-  char StringPool_str440[sizeof("disabled")];
-  char StringPool_str442[sizeof("image-rendering")];
-  char StringPool_str447[sizeof("scroll-bar-thumb-width")];
-  char StringPool_str449[sizeof("opacity")];
-  char StringPool_str451[sizeof("enable-nested-scroll")];
-  char StringPool_str452[sizeof("scroll-bar-thumb-min-length")];
-  char StringPool_str458[sizeof("offset-rotate")];
-  char StringPool_str462[sizeof("initial-scroll-index")];
-  char StringPool_str463[sizeof("next-focus-down")];
-  char StringPool_str464[sizeof("focus-index")];
+  char StringPool_str24[sizeof("type")];
+  char StringPool_str25[sizeof("visible")];
+  char StringPool_str27[sizeof("repeat")];
+  char StringPool_str28[sizeof("perspective")];
+  char StringPool_str31[sizeof("scroll-enable")];
+  char StringPool_str33[sizeof("scroll-left")];
+  char StringPool_str35[sizeof("mask-size")];
+  char StringPool_str36[sizeof("mask-image")];
+  char StringPool_str38[sizeof("scroll-forward-mode")];
+  char StringPool_str41[sizeof("mask-repeat")];
+  char StringPool_str42[sizeof("scroll-bar-track-color")];
+  char StringPool_str44[sizeof("scroll-top")];
+  char StringPool_str47[sizeof("exposure-screen-margin-left")];
+  char StringPool_str48[sizeof("exposure-screen-margin-right")];
+  char StringPool_str51[sizeof("mask-clip")];
+  char StringPool_str52[sizeof("exposure-ui-margin-left")];
+  char StringPool_str53[sizeof("exposure-ui-margin-right")];
+  char StringPool_str54[sizeof("exposure-screen-margin-bottom")];
+  char StringPool_str56[sizeof("border")];
+  char StringPool_str58[sizeof("exposure-screen-margin-top")];
+  char StringPool_str59[sizeof("exposure-ui-margin-bottom")];
+  char StringPool_str61[sizeof("border-style")];
+  char StringPool_str62[sizeof("border-color")];
+  char StringPool_str63[sizeof("exposure-ui-margin-top")];
+  char StringPool_str64[sizeof("border-left")];
+  char StringPool_str65[sizeof("border-right")];
+  char StringPool_str68[sizeof("bottom-inset")];
+  char StringPool_str69[sizeof("border-top-style")];
+  char StringPool_str75[sizeof("border-top")];
+  char StringPool_str77[sizeof("border-bottom-style")];
+  char StringPool_str78[sizeof("border-bottom-color")];
+  char StringPool_str79[sizeof("prev-scrollable")];
+  char StringPool_str80[sizeof("border-bottom")];
+  char StringPool_str82[sizeof("name")];
+  char StringPool_str83[sizeof("border-left-style")];
+  char StringPool_str84[sizeof("tint-color")];
+  char StringPool_str85[sizeof("cursor")];
+  char StringPool_str86[sizeof("richtype")];
+  char StringPool_str88[sizeof("border-top-left-radius")];
+  char StringPool_str90[sizeof("caret-color")];
+  char StringPool_str91[sizeof("vertical-orientation")];
+  char StringPool_str92[sizeof("min-height")];
+  char StringPool_str96[sizeof("border-radius")];
+  char StringPool_str97[sizeof("word-break")];
+  char StringPool_str98[sizeof("idSelector")];
+  char StringPool_str99[sizeof("exposure-scene")];
+  char StringPool_str100[sizeof("border-bottom-left-radius")];
+  char StringPool_str101[sizeof("border-bottom-right-radius")];
+  char StringPool_str102[sizeof("auto-size")];
+  char StringPool_str103[sizeof("adjust-mode")];
+  char StringPool_str104[sizeof("scroll-bar-enable")];
+  char StringPool_str105[sizeof("needs-visible-cells")];
+  char StringPool_str106[sizeof("mask-origin")];
+  char StringPool_str107[sizeof("scroll-direction")];
+  char StringPool_str109[sizeof("scroll-orientation")];
+  char StringPool_str110[sizeof("value")];
+  char StringPool_str111[sizeof("transform")];
+  char StringPool_str112[sizeof("itemkeys")];
+  char StringPool_str117[sizeof("placeholder")];
+  char StringPool_str120[sizeof("cap-insets")];
+  char StringPool_str122[sizeof("scroll-bar-auto-hide")];
+  char StringPool_str125[sizeof("sticky-offset")];
+  char StringPool_str126[sizeof("typewriter-height-transition-duration")];
+  char StringPool_str127[sizeof("scroll-backward-mode")];
+  char StringPool_str128[sizeof("markdown-style")];
+  char StringPool_str130[sizeof("list-type")];
+  char StringPool_str131[sizeof("select")];
+  char StringPool_str134[sizeof("edit-on-focus")];
+  char StringPool_str138[sizeof("bounce")];
+  char StringPool_str139[sizeof("scroll-without-focus")];
+  char StringPool_str144[sizeof("border-left-color")];
+  char StringPool_str146[sizeof("background-repeat")];
+  char StringPool_str147[sizeof("tag")];
+  char StringPool_str150[sizeof("background-image")];
+  char StringPool_str155[sizeof("vertical-align")];
+  char StringPool_str156[sizeof("bounces")];
+  char StringPool_str157[sizeof("content")];
+  char StringPool_str158[sizeof("confirm-type")];
+  char StringPool_str160[sizeof("blur-radius")];
+  char StringPool_str169[sizeof("consume-slide-event")];
+  char StringPool_str171[sizeof("controls")];
+  char StringPool_str172[sizeof("transition")];
+  char StringPool_str174[sizeof("src")];
+  char StringPool_str175[sizeof("white-space")];
+  char StringPool_str176[sizeof("border-top-right-radius")];
+  char StringPool_str177[sizeof("mask-position")];
+  char StringPool_str178[sizeof("enable-new-animator")];
+  char StringPool_str179[sizeof("send-composing-input")];
+  char StringPool_str182[sizeof("uiappear")];
+  char StringPool_str183[sizeof("outline")];
+  char StringPool_str185[sizeof("ignore-focus")];
+  char StringPool_str186[sizeof("cap-insets-scale")];
+  char StringPool_str187[sizeof("color")];
+  char StringPool_str188[sizeof("line-height")];
+  char StringPool_str189[sizeof("outline-style")];
+  char StringPool_str191[sizeof("outline-color")];
+  char StringPool_str193[sizeof("skip-redirection")];
+  char StringPool_str195[sizeof("enable-font-scaling")];
+  char StringPool_str197[sizeof("column-count")];
+  char StringPool_str199[sizeof("enable-insert-platform-view-operation")];
+  char StringPool_str200[sizeof("placeholder-color")];
+  char StringPool_str201[sizeof("custom-text-selection")];
+  char StringPool_str202[sizeof("image-transition-style")];
+  char StringPool_str204[sizeof("align-focus")];
+  char StringPool_str205[sizeof("allow-escape")];
+  char StringPool_str206[sizeof("animation-type")];
+  char StringPool_str207[sizeof("exposure-area")];
+  char StringPool_str210[sizeof("enable-scrollbar")];
+  char StringPool_str212[sizeof("background-origin")];
+  char StringPool_str214[sizeof("level")];
+  char StringPool_str217[sizeof("text")];
+  char StringPool_str221[sizeof("text-maxline")];
+  char StringPool_str222[sizeof("smart-scroll")];
+  char StringPool_str224[sizeof("text-indent")];
+  char StringPool_str227[sizeof("background-size")];
+  char StringPool_str228[sizeof("max-height")];
+  char StringPool_str230[sizeof("text-gradient")];
+  char StringPool_str231[sizeof("scroll-x")];
+  char StringPool_str237[sizeof("prevent-loading-on-list-scroll")];
+  char StringPool_str238[sizeof("border-top-color")];
+  char StringPool_str239[sizeof("maxlines")];
+  char StringPool_str241[sizeof("scroll-event-throttle")];
+  char StringPool_str242[sizeof("list-main-axis-gap")];
+  char StringPool_str243[sizeof("hit-slop")];
+  char StringPool_str245[sizeof("show-soft-input-onfocus")];
+  char StringPool_str254[sizeof("animation")];
+  char StringPool_str255[sizeof("line-spacing")];
+  char StringPool_str256[sizeof("scroll-bar-thumb-color")];
+  char StringPool_str257[sizeof("overflow")];
+  char StringPool_str258[sizeof("image-config")];
+  char StringPool_str259[sizeof("experimental-recycle-sticky-item")];
+  char StringPool_str260[sizeof("background-clip")];
+  char StringPool_str261[sizeof("letter-spacing")];
+  char StringPool_str262[sizeof("scroll-bar-thumb-hover-color")];
+  char StringPool_str263[sizeof("scroll-bar-thumb-active-color")];
+  char StringPool_str265[sizeof("transform-origin")];
+  char StringPool_str266[sizeof("content-complete")];
+  char StringPool_str267[sizeof("enable-exposure-ui-margin")];
+  char StringPool_str269[sizeof("border-right-style")];
+  char StringPool_str270[sizeof("border-right-color")];
+  char StringPool_str272[sizeof("mode")];
+  char StringPool_str273[sizeof("scroll-bar-thumb-radius")];
+  char StringPool_str274[sizeof("dataset")];
+  char StringPool_str275[sizeof("scroll-y")];
+  char StringPool_str276[sizeof("border-width")];
+  char StringPool_str277[sizeof("visibility")];
+  char StringPool_str278[sizeof("scroll-monitor-tag")];
+  char StringPool_str281[sizeof("speed")];
+  char StringPool_str282[sizeof("preload")];
+  char StringPool_str283[sizeof("enable-report-info")];
+  char StringPool_str285[sizeof("animation-frame-rate")];
+  char StringPool_str286[sizeof("exposure-id")];
+  char StringPool_str288[sizeof("text-align")];
+  char StringPool_str289[sizeof("scroll-to-id")];
+  char StringPool_str290[sizeof("loop-count")];
+  char StringPool_str292[sizeof("border-bottom-width")];
+  char StringPool_str293[sizeof("next-focus-left")];
+  char StringPool_str296[sizeof("loop")];
+  char StringPool_str297[sizeof("text-shadow")];
+  char StringPool_str298[sizeof("typewriter-dynamic-height")];
+  char StringPool_str299[sizeof("z-index")];
+  char StringPool_str301[sizeof("initial-animation-step")];
+  char StringPool_str302[sizeof("upper-threshold-item-count")];
+  char StringPool_str303[sizeof("initial-scroll-offset")];
+  char StringPool_str304[sizeof("text-stroke-color")];
+  char StringPool_str306[sizeof("auto-fix")];
+  char StringPool_str310[sizeof("enable-scroll")];
+  char StringPool_str312[sizeof("list-container-info")];
+  char StringPool_str314[sizeof("background-color")];
+  char StringPool_str319[sizeof("next-focus-up")];
+  char StringPool_str320[sizeof("font-size")];
+  char StringPool_str321[sizeof("font-style")];
+  char StringPool_str326[sizeof("font-weight")];
+  char StringPool_str328[sizeof("focusable")];
+  char StringPool_str332[sizeof("intersection-observers")];
+  char StringPool_str336[sizeof("scroll-bar-width")];
+  char StringPool_str337[sizeof("next-scrollable")];
+  char StringPool_str338[sizeof("direction")];
+  char StringPool_str340[sizeof("box-shadow")];
+  char StringPool_str341[sizeof("focus")];
+  char StringPool_str344[sizeof("item-key")];
+  char StringPool_str347[sizeof("readonly")];
+  char StringPool_str348[sizeof("image-rendering")];
+  char StringPool_str350[sizeof("autoplay")];
+  char StringPool_str353[sizeof("filter")];
+  char StringPool_str355[sizeof("uidisappear")];
+  char StringPool_str358[sizeof("border-left-width")];
+  char StringPool_str359[sizeof("sticky")];
+  char StringPool_str361[sizeof("list-cross-axis-gap")];
+  char StringPool_str367[sizeof("border-top-width")];
+  char StringPool_str368[sizeof("placeholder-font-size")];
+  char StringPool_str371[sizeof("user-interaction-enabled")];
+  char StringPool_str373[sizeof("preferred-focus-child")];
+  char StringPool_str374[sizeof("placeholder-font-weight")];
+  char StringPool_str376[sizeof("text-overflow")];
+  char StringPool_str377[sizeof("scroll-bar-auto-hide-delay")];
+  char StringPool_str380[sizeof("text-decoration")];
+  char StringPool_str381[sizeof("next-focus-right")];
+  char StringPool_str383[sizeof("lower-threshold-item-count")];
+  char StringPool_str385[sizeof("background-position")];
+  char StringPool_str387[sizeof("overflow-x")];
+  char StringPool_str388[sizeof("clip-path")];
+  char StringPool_str389[sizeof("auto-save-last-child")];
+  char StringPool_str391[sizeof("next-focus-fallback")];
+  char StringPool_str394[sizeof("background")];
+  char StringPool_str402[sizeof("custom-context-menu")];
+  char StringPool_str408[sizeof("use-soft-keyboard")];
+  char StringPool_str413[sizeof("text-single-line-vertical-align")];
+  char StringPool_str415[sizeof("content-id")];
+  char StringPool_str418[sizeof("downsampling")];
+  char StringPool_str426[sizeof("full-screen")];
+  char StringPool_str427[sizeof("offset-rotate")];
+  char StringPool_str431[sizeof("overflow-y")];
+  char StringPool_str432[sizeof("update-animation")];
+  char StringPool_str438[sizeof("maxlength")];
+  char StringPool_str440[sizeof("accessibility-element")];
+  char StringPool_str441[sizeof("low-quality")];
+  char StringPool_str442[sizeof("text-maxlength")];
+  char StringPool_str443[sizeof("event-through")];
+  char StringPool_str444[sizeof("block-native-event")];
+  char StringPool_str454[sizeof("accessibility-elements")];
+  char StringPool_str464[sizeof("text-selection")];
   char StringPool_str465[sizeof("need-visible-item-info")];
-  char StringPool_str469[sizeof("border-right-width")];
-  char StringPool_str479[sizeof("accessibility-label")];
-  char StringPool_str480[sizeof("full-screen")];
-  char StringPool_str512[sizeof("animation-velocity")];
-  char StringPool_str517[sizeof("experimental-update-sticky-for-diff")];
-  char StringPool_str527[sizeof("upper-threshold")];
-  char StringPool_str532[sizeof("font-family")];
-  char StringPool_str543[sizeof("offset-distance")];
-  char StringPool_str551[sizeof("-x-app-region")];
-  char StringPool_str557[sizeof("lower-threshold")];
-  char StringPool_str573[sizeof("-x-auto-font-size")];
-  char StringPool_str574[sizeof("fullscreen-mode")];
-  char StringPool_str591[sizeof("-x-auto-font-size-preset-sizes")];
-  char StringPool_str597[sizeof("outline-width")];
-  char StringPool_str612[sizeof("update-list-info")];
-  char StringPool_str649[sizeof("defer-src-invalidation")];
-  char StringPool_str658[sizeof("offset-path")];
-  char StringPool_str665[sizeof("focus-smooth-scroll")];
+  char StringPool_str470[sizeof("scroll-bar-thumb-width")];
+  char StringPool_str472[sizeof("enable-nested-scroll")];
+  char StringPool_str475[sizeof("scroll-bar-thumb-min-length")];
+  char StringPool_str484[sizeof("border-right-width")];
+  char StringPool_str495[sizeof("experimental-update-sticky-for-diff")];
+  char StringPool_str497[sizeof("scroll-to-index")];
+  char StringPool_str498[sizeof("offset-distance")];
+  char StringPool_str501[sizeof("experimental-batch-render-strategy")];
+  char StringPool_str503[sizeof("initial-scroll-index")];
+  char StringPool_str517[sizeof("opacity")];
+  char StringPool_str518[sizeof("text-stroke-width")];
+  char StringPool_str519[sizeof("drop-shadow")];
+  char StringPool_str530[sizeof("next-focus-down")];
+  char StringPool_str533[sizeof("fullscreen-mode")];
+  char StringPool_str535[sizeof("focus-index")];
+  char StringPool_str538[sizeof("accessibility-label")];
+  char StringPool_str543[sizeof("disabled")];
+  char StringPool_str546[sizeof("upper-threshold")];
+  char StringPool_str547[sizeof("animation-velocity")];
+  char StringPool_str555[sizeof("-x-app-region")];
+  char StringPool_str571[sizeof("font-family")];
+  char StringPool_str593[sizeof("defer-src-invalidation")];
+  char StringPool_str618[sizeof("update-list-info")];
+  char StringPool_str619[sizeof("outline-width")];
+  char StringPool_str623[sizeof("-x-auto-font-size")];
+  char StringPool_str627[sizeof("lower-threshold")];
+  char StringPool_str640[sizeof("offset-path")];
+  char StringPool_str644[sizeof("focus-smooth-scroll")];
+  char StringPool_str653[sizeof("-x-auto-font-size-preset-sizes")];
 };
 static const struct StringPool_t StringPool_contents = {
+    "type",
+    "visible",
+    "repeat",
+    "perspective",
+    "scroll-enable",
+    "scroll-left",
     "mask-size",
     "mask-image",
-    "scroll-left",
-    "scroll-enable",
-    "mask-repeat",
-    "type",
-    "repeat",
     "scroll-forward-mode",
-    "perspective",
+    "mask-repeat",
+    "scroll-bar-track-color",
     "scroll-top",
-    "mask-clip",
     "exposure-screen-margin-left",
     "exposure-screen-margin-right",
-    "scroll-bar-track-color",
+    "mask-clip",
     "exposure-ui-margin-left",
     "exposure-ui-margin-right",
-    "bottom-inset",
     "exposure-screen-margin-bottom",
-    "word-break",
-    "visible",
-    "border-style",
-    "border-left",
-    "border-right",
-    "exposure-ui-margin-bottom",
     "border",
     "exposure-screen-margin-top",
-    "border-top-style",
+    "exposure-ui-margin-bottom",
+    "border-style",
     "border-color",
-    "border-left-style",
-    "border-radius",
     "exposure-ui-margin-top",
-    "border-top-left-radius",
-    "prev-scrollable",
-    "border-bottom-style",
-    "richtype",
+    "border-left",
+    "border-right",
+    "bottom-inset",
+    "border-top-style",
     "border-top",
+    "border-bottom-style",
+    "border-bottom-color",
+    "prev-scrollable",
     "border-bottom",
     "name",
+    "border-left-style",
+    "tint-color",
     "cursor",
-    "border-bottom-color",
+    "richtype",
+    "border-top-left-radius",
+    "caret-color",
+    "vertical-orientation",
+    "min-height",
+    "border-radius",
+    "word-break",
+    "idSelector",
+    "exposure-scene",
     "border-bottom-left-radius",
     "border-bottom-right-radius",
-    "tint-color",
-    "caret-color",
-    "min-height",
-    "needs-visible-cells",
-    "mask-origin",
     "auto-size",
     "adjust-mode",
-    "text",
-    "cap-insets",
     "scroll-bar-enable",
+    "needs-visible-cells",
+    "mask-origin",
     "scroll-direction",
     "scroll-orientation",
-    "text-maxline",
-    "text-indent",
-    "itemkeys",
-    "exposure-scene",
+    "value",
     "transform",
-    "text-gradient",
-    "select",
-    "list-type",
-    "scroll-x",
-    "max-height",
-    "maxlines",
-    "sticky-offset",
-    "edit-on-focus",
-    "idSelector",
-    "scroll-bar-auto-hide",
-    "scroll-backward-mode",
-    "scroll-without-focus",
-    "background-repeat",
+    "itemkeys",
     "placeholder",
+    "cap-insets",
+    "scroll-bar-auto-hide",
+    "sticky-offset",
+    "typewriter-height-transition-duration",
+    "scroll-backward-mode",
     "markdown-style",
-    "background-image",
+    "list-type",
+    "select",
+    "edit-on-focus",
     "bounce",
-    "src",
-    "text-shadow",
-    "white-space",
-    "bounces",
+    "scroll-without-focus",
     "border-left-color",
-    "blur-radius",
+    "background-repeat",
+    "tag",
+    "background-image",
+    "vertical-align",
+    "bounces",
     "content",
     "confirm-type",
-    "controls",
-    "vertical-orientation",
-    "value",
+    "blur-radius",
     "consume-slide-event",
-    "outline",
-    "outline-style",
-    "scroll-y",
-    "custom-text-selection",
-    "cap-insets-scale",
-    "send-composing-input",
+    "controls",
     "transition",
-    "mask-position",
+    "src",
+    "white-space",
     "border-top-right-radius",
-    "text-align",
-    "text-overflow",
-    "column-count",
-    "color",
-    "box-shadow",
-    "next-focus-left",
-    "outline-color",
-    "ignore-focus",
-    "line-height",
-    "text-stroke-color",
-    "tag",
+    "mask-position",
     "enable-new-animator",
-    "skip-redirection",
-    "auto-fix",
+    "send-composing-input",
     "uiappear",
-    "overflow",
-    "scroll-event-throttle",
-    "speed",
-    "dataset",
+    "outline",
+    "ignore-focus",
+    "cap-insets-scale",
+    "color",
+    "line-height",
+    "outline-style",
+    "outline-color",
+    "skip-redirection",
+    "enable-font-scaling",
+    "column-count",
     "enable-insert-platform-view-operation",
-    "z-index",
+    "placeholder-color",
+    "custom-text-selection",
+    "image-transition-style",
     "align-focus",
     "allow-escape",
-    "mode",
-    "placeholder-color",
-    "enable-font-scaling",
-    "show-soft-input-onfocus",
-    "smart-scroll",
-    "image-transition-style",
-    "background-origin",
-    "hit-slop",
-    "scroll-to-id",
-    "visibility",
+    "animation-type",
     "exposure-area",
     "enable-scrollbar",
-    "preload",
-    "scroll-bar-thumb-radius",
-    "exposure-id",
+    "background-origin",
+    "level",
+    "text",
+    "text-maxline",
+    "smart-scroll",
+    "text-indent",
     "background-size",
+    "max-height",
+    "text-gradient",
+    "scroll-x",
+    "prevent-loading-on-list-scroll",
+    "border-top-color",
+    "maxlines",
+    "scroll-event-throttle",
+    "list-main-axis-gap",
+    "hit-slop",
+    "show-soft-input-onfocus",
+    "animation",
+    "line-spacing",
     "scroll-bar-thumb-color",
-    "next-focus-up",
+    "overflow",
+    "image-config",
     "experimental-recycle-sticky-item",
-    "next-scrollable",
+    "background-clip",
+    "letter-spacing",
     "scroll-bar-thumb-hover-color",
     "scroll-bar-thumb-active-color",
-    "border-top-color",
-    "border-right-style",
-    "list-cross-axis-gap",
-    "vertical-align",
-    "list-main-axis-gap",
-    "border-right-color",
-    "border-width",
-    "autoplay",
-    "prevent-loading-on-list-scroll",
-    "background-clip",
-    "item-key",
-    "readonly",
-    "sticky",
-    "overflow-x",
-    "level",
-    "enable-report-info",
-    "border-bottom-width",
-    "loop-count",
-    "animation",
-    "custom-context-menu",
-    "scroll-bar-auto-hide-delay",
-    "enable-exposure-ui-margin",
-    "scroll-monitor-tag",
-    "list-container-info",
     "transform-origin",
-    "line-spacing",
-    "direction",
+    "content-complete",
+    "enable-exposure-ui-margin",
+    "border-right-style",
+    "border-right-color",
+    "mode",
+    "scroll-bar-thumb-radius",
+    "dataset",
+    "scroll-y",
+    "border-width",
+    "visibility",
+    "scroll-monitor-tag",
+    "speed",
+    "preload",
+    "enable-report-info",
+    "animation-frame-rate",
+    "exposure-id",
+    "text-align",
+    "scroll-to-id",
+    "loop-count",
+    "border-bottom-width",
+    "next-focus-left",
     "loop",
-    "text-decoration",
-    "next-focus-right",
-    "letter-spacing",
-    "next-focus-fallback",
-    "border-left-width",
-    "intersection-observers",
-    "background-color",
+    "text-shadow",
+    "typewriter-dynamic-height",
+    "z-index",
+    "initial-animation-step",
     "upper-threshold-item-count",
-    "image-config",
-    "text-maxlength",
-    "maxlength",
-    "low-quality",
-    "uidisappear",
-    "preferred-focus-child",
-    "text-single-line-vertical-align",
-    "user-interaction-enabled",
-    "auto-save-last-child",
-    "enable-scroll",
-    "scroll-bar-width",
-    "background",
-    "overflow-y",
-    "scroll-to-index",
-    "focusable",
-    "focus",
-    "lower-threshold-item-count",
     "initial-scroll-offset",
+    "text-stroke-color",
+    "auto-fix",
+    "enable-scroll",
+    "list-container-info",
+    "background-color",
+    "next-focus-up",
     "font-size",
     "font-style",
     "font-weight",
-    "accessibility-element",
+    "focusable",
+    "intersection-observers",
+    "scroll-bar-width",
+    "next-scrollable",
+    "direction",
+    "box-shadow",
+    "focus",
+    "item-key",
+    "readonly",
+    "image-rendering",
+    "autoplay",
+    "filter",
+    "uidisappear",
+    "border-left-width",
+    "sticky",
+    "list-cross-axis-gap",
+    "border-top-width",
+    "placeholder-font-size",
+    "user-interaction-enabled",
+    "preferred-focus-child",
+    "placeholder-font-weight",
+    "text-overflow",
+    "scroll-bar-auto-hide-delay",
+    "text-decoration",
+    "next-focus-right",
+    "lower-threshold-item-count",
+    "background-position",
+    "overflow-x",
+    "clip-path",
+    "auto-save-last-child",
+    "next-focus-fallback",
+    "background",
+    "custom-context-menu",
+    "use-soft-keyboard",
+    "text-single-line-vertical-align",
+    "content-id",
     "downsampling",
-    "text-stroke-width",
+    "full-screen",
+    "offset-rotate",
+    "overflow-y",
+    "update-animation",
+    "maxlength",
+    "accessibility-element",
+    "low-quality",
+    "text-maxlength",
+    "event-through",
+    "block-native-event",
     "accessibility-elements",
     "text-selection",
-    "use-soft-keyboard",
-    "content-id",
-    "border-top-width",
-    "animation-style",
-    "clip-path",
-    "filter",
-    "background-position",
-    "experimental-batch-render-strategy",
-    "update-animation",
-    "placeholder-font-size",
-    "event-through",
-    "placeholder-font-weight",
-    "block-native-event",
-    "drop-shadow",
-    "disabled",
-    "image-rendering",
+    "need-visible-item-info",
     "scroll-bar-thumb-width",
-    "opacity",
     "enable-nested-scroll",
     "scroll-bar-thumb-min-length",
-    "offset-rotate",
-    "initial-scroll-index",
-    "next-focus-down",
-    "focus-index",
-    "need-visible-item-info",
     "border-right-width",
-    "accessibility-label",
-    "full-screen",
-    "animation-velocity",
     "experimental-update-sticky-for-diff",
-    "upper-threshold",
-    "font-family",
+    "scroll-to-index",
     "offset-distance",
-    "-x-app-region",
-    "lower-threshold",
-    "-x-auto-font-size",
+    "experimental-batch-render-strategy",
+    "initial-scroll-index",
+    "opacity",
+    "text-stroke-width",
+    "drop-shadow",
+    "next-focus-down",
     "fullscreen-mode",
-    "-x-auto-font-size-preset-sizes",
-    "outline-width",
-    "update-list-info",
+    "focus-index",
+    "accessibility-label",
+    "disabled",
+    "upper-threshold",
+    "animation-velocity",
+    "-x-app-region",
+    "font-family",
     "defer-src-invalidation",
+    "update-list-info",
+    "outline-width",
+    "-x-auto-font-size",
+    "lower-threshold",
     "offset-path",
-    "focus-smooth-scroll"};
+    "focus-smooth-scroll",
+    "-x-auto-font-size-preset-sizes"};
 #define StringPool ((const char *)&StringPool_contents)
 
 static const struct TokenValue wordlist[] = {
@@ -631,622 +641,639 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str24), (short)KeywordID::kType},
+    {offsetof(struct StringPool_t, StringPool_str25),
+     (short)KeywordID::kVisible},
     {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str29),
-     (short)KeywordID::kMaskSize},
-    {offsetof(struct StringPool_t, StringPool_str30),
-     (short)KeywordID::kMaskImage},
-    {offsetof(struct StringPool_t, StringPool_str31),
-     (short)KeywordID::kScrollLeft},
-    {offsetof(struct StringPool_t, StringPool_str32),
-     (short)KeywordID::kScrollEnable},
-    {offsetof(struct StringPool_t, StringPool_str33),
-     (short)KeywordID::kMaskRepeat},
-    {offsetof(struct StringPool_t, StringPool_str34), (short)KeywordID::kType},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str46),
+    {offsetof(struct StringPool_t, StringPool_str27),
      (short)KeywordID::kRepeat},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str48),
-     (short)KeywordID::kScrollForwardMode},
-    {offsetof(struct StringPool_t, StringPool_str49),
+    {offsetof(struct StringPool_t, StringPool_str28),
      (short)KeywordID::kPerspective},
     {-1},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str31),
+     (short)KeywordID::kScrollEnable},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str53),
-     (short)KeywordID::kScrollTop},
-    {offsetof(struct StringPool_t, StringPool_str54),
-     (short)KeywordID::kMaskClip},
+    {offsetof(struct StringPool_t, StringPool_str33),
+     (short)KeywordID::kScrollLeft},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str35),
+     (short)KeywordID::kMaskSize},
+    {offsetof(struct StringPool_t, StringPool_str36),
+     (short)KeywordID::kMaskImage},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str38),
+     (short)KeywordID::kScrollForwardMode},
     {-1},
     {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str58),
-     (short)KeywordID::kExposureScreenMarginLeft},
-    {offsetof(struct StringPool_t, StringPool_str59),
-     (short)KeywordID::kExposureScreenMarginRight},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str61),
+    {offsetof(struct StringPool_t, StringPool_str41),
+     (short)KeywordID::kMaskRepeat},
+    {offsetof(struct StringPool_t, StringPool_str42),
      (short)KeywordID::kScrollBarTrackColor},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str44),
+     (short)KeywordID::kScrollTop},
     {-1},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str47),
+     (short)KeywordID::kExposureScreenMarginLeft},
+    {offsetof(struct StringPool_t, StringPool_str48),
+     (short)KeywordID::kExposureScreenMarginRight},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str66),
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str51),
+     (short)KeywordID::kMaskClip},
+    {offsetof(struct StringPool_t, StringPool_str52),
      (short)KeywordID::kExposureUiMarginLeft},
-    {offsetof(struct StringPool_t, StringPool_str67),
+    {offsetof(struct StringPool_t, StringPool_str53),
      (short)KeywordID::kExposureUiMarginRight},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str69),
-     (short)KeywordID::kBottomInset},
-    {offsetof(struct StringPool_t, StringPool_str70),
+    {offsetof(struct StringPool_t, StringPool_str54),
      (short)KeywordID::kExposureScreenMarginBottom},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str72),
-     (short)KeywordID::kWordBreak},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str74),
-     (short)KeywordID::kVisible},
-    {offsetof(struct StringPool_t, StringPool_str75),
-     (short)KeywordID::kBorderStyle},
-    {offsetof(struct StringPool_t, StringPool_str76),
-     (short)KeywordID::kBorderLeft},
-    {offsetof(struct StringPool_t, StringPool_str77),
-     (short)KeywordID::kBorderRight},
-    {offsetof(struct StringPool_t, StringPool_str78),
-     (short)KeywordID::kExposureUiMarginBottom},
-    {offsetof(struct StringPool_t, StringPool_str79),
+    {offsetof(struct StringPool_t, StringPool_str56),
      (short)KeywordID::kBorder},
-    {offsetof(struct StringPool_t, StringPool_str80),
-     (short)KeywordID::kExposureScreenMarginTop},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str82),
+    {offsetof(struct StringPool_t, StringPool_str58),
+     (short)KeywordID::kExposureScreenMarginTop},
+    {offsetof(struct StringPool_t, StringPool_str59),
+     (short)KeywordID::kExposureUiMarginBottom},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str61),
+     (short)KeywordID::kBorderStyle},
+    {offsetof(struct StringPool_t, StringPool_str62),
+     (short)KeywordID::kBorderColor},
+    {offsetof(struct StringPool_t, StringPool_str63),
+     (short)KeywordID::kExposureUiMarginTop},
+    {offsetof(struct StringPool_t, StringPool_str64),
+     (short)KeywordID::kBorderLeft},
+    {offsetof(struct StringPool_t, StringPool_str65),
+     (short)KeywordID::kBorderRight},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str68),
+     (short)KeywordID::kBottomInset},
+    {offsetof(struct StringPool_t, StringPool_str69),
      (short)KeywordID::kBorderTopStyle},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str85),
-     (short)KeywordID::kBorderColor},
-    {offsetof(struct StringPool_t, StringPool_str86),
-     (short)KeywordID::kBorderLeftStyle},
-    {offsetof(struct StringPool_t, StringPool_str87),
-     (short)KeywordID::kBorderRadius},
-    {offsetof(struct StringPool_t, StringPool_str88),
-     (short)KeywordID::kExposureUiMarginTop},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str91),
-     (short)KeywordID::kBorderTopLeftRadius},
     {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str94),
-     (short)KeywordID::kPrevScrollable},
-    {offsetof(struct StringPool_t, StringPool_str95),
-     (short)KeywordID::kBorderBottomStyle},
-    {offsetof(struct StringPool_t, StringPool_str96),
-     (short)KeywordID::kRichtype},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str98),
+    {offsetof(struct StringPool_t, StringPool_str75),
      (short)KeywordID::kBorderTop},
     {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str101),
-     (short)KeywordID::kBorderBottom},
-    {offsetof(struct StringPool_t, StringPool_str102), (short)KeywordID::kName},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str104),
-     (short)KeywordID::kCursor},
-    {offsetof(struct StringPool_t, StringPool_str105),
+    {offsetof(struct StringPool_t, StringPool_str77),
+     (short)KeywordID::kBorderBottomStyle},
+    {offsetof(struct StringPool_t, StringPool_str78),
      (short)KeywordID::kBorderBottomColor},
-    {offsetof(struct StringPool_t, StringPool_str106),
-     (short)KeywordID::kBorderBottomLeftRadius},
-    {offsetof(struct StringPool_t, StringPool_str107),
-     (short)KeywordID::kBorderBottomRightRadius},
-    {offsetof(struct StringPool_t, StringPool_str108),
+    {offsetof(struct StringPool_t, StringPool_str79),
+     (short)KeywordID::kPrevScrollable},
+    {offsetof(struct StringPool_t, StringPool_str80),
+     (short)KeywordID::kBorderBottom},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str82), (short)KeywordID::kName},
+    {offsetof(struct StringPool_t, StringPool_str83),
+     (short)KeywordID::kBorderLeftStyle},
+    {offsetof(struct StringPool_t, StringPool_str84),
      (short)KeywordID::kTintColor},
-    {offsetof(struct StringPool_t, StringPool_str109),
+    {offsetof(struct StringPool_t, StringPool_str85),
+     (short)KeywordID::kCursor},
+    {offsetof(struct StringPool_t, StringPool_str86),
+     (short)KeywordID::kRichtype},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str88),
+     (short)KeywordID::kBorderTopLeftRadius},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str90),
      (short)KeywordID::kCaretColor},
-    {offsetof(struct StringPool_t, StringPool_str110),
+    {offsetof(struct StringPool_t, StringPool_str91),
+     (short)KeywordID::kVerticalOrientation},
+    {offsetof(struct StringPool_t, StringPool_str92),
      (short)KeywordID::kMinHeight},
-    {offsetof(struct StringPool_t, StringPool_str111),
-     (short)KeywordID::kNeedsVisibleCells},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str114),
-     (short)KeywordID::kMaskOrigin},
-    {offsetof(struct StringPool_t, StringPool_str115),
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str96),
+     (short)KeywordID::kBorderRadius},
+    {offsetof(struct StringPool_t, StringPool_str97),
+     (short)KeywordID::kWordBreak},
+    {offsetof(struct StringPool_t, StringPool_str98),
+     (short)KeywordID::kIdselector},
+    {offsetof(struct StringPool_t, StringPool_str99),
+     (short)KeywordID::kExposureScene},
+    {offsetof(struct StringPool_t, StringPool_str100),
+     (short)KeywordID::kBorderBottomLeftRadius},
+    {offsetof(struct StringPool_t, StringPool_str101),
+     (short)KeywordID::kBorderBottomRightRadius},
+    {offsetof(struct StringPool_t, StringPool_str102),
      (short)KeywordID::kAutoSize},
-    {offsetof(struct StringPool_t, StringPool_str116),
+    {offsetof(struct StringPool_t, StringPool_str103),
      (short)KeywordID::kAdjustMode},
-    {offsetof(struct StringPool_t, StringPool_str117), (short)KeywordID::kText},
-    {offsetof(struct StringPool_t, StringPool_str118),
-     (short)KeywordID::kCapInsets},
-    {offsetof(struct StringPool_t, StringPool_str119),
+    {offsetof(struct StringPool_t, StringPool_str104),
      (short)KeywordID::kScrollBarEnable},
-    {offsetof(struct StringPool_t, StringPool_str120),
+    {offsetof(struct StringPool_t, StringPool_str105),
+     (short)KeywordID::kNeedsVisibleCells},
+    {offsetof(struct StringPool_t, StringPool_str106),
+     (short)KeywordID::kMaskOrigin},
+    {offsetof(struct StringPool_t, StringPool_str107),
      (short)KeywordID::kScrollDirection},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str122),
+    {offsetof(struct StringPool_t, StringPool_str109),
      (short)KeywordID::kScrollOrientation},
-    {offsetof(struct StringPool_t, StringPool_str123),
-     (short)KeywordID::kTextMaxline},
-    {offsetof(struct StringPool_t, StringPool_str124),
-     (short)KeywordID::kTextIndent},
-    {offsetof(struct StringPool_t, StringPool_str125),
-     (short)KeywordID::kItemkeys},
-    {offsetof(struct StringPool_t, StringPool_str126),
-     (short)KeywordID::kExposureScene},
-    {offsetof(struct StringPool_t, StringPool_str127),
+    {offsetof(struct StringPool_t, StringPool_str110),
+     (short)KeywordID::kValue},
+    {offsetof(struct StringPool_t, StringPool_str111),
      (short)KeywordID::kTransform},
+    {offsetof(struct StringPool_t, StringPool_str112),
+     (short)KeywordID::kItemkeys},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str129),
-     (short)KeywordID::kTextGradient},
-    {offsetof(struct StringPool_t, StringPool_str130),
-     (short)KeywordID::kSelect},
-    {offsetof(struct StringPool_t, StringPool_str131),
-     (short)KeywordID::kListType},
-    {offsetof(struct StringPool_t, StringPool_str132),
-     (short)KeywordID::kScrollX},
-    {offsetof(struct StringPool_t, StringPool_str133),
-     (short)KeywordID::kMaxHeight},
-    {offsetof(struct StringPool_t, StringPool_str134),
-     (short)KeywordID::kMaxlines},
-    {offsetof(struct StringPool_t, StringPool_str135),
-     (short)KeywordID::kStickyOffset},
-    {offsetof(struct StringPool_t, StringPool_str136),
-     (short)KeywordID::kEditOnFocus},
-    {offsetof(struct StringPool_t, StringPool_str137),
-     (short)KeywordID::kIdselector},
-    {offsetof(struct StringPool_t, StringPool_str138),
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str117),
+     (short)KeywordID::kPlaceholder},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str120),
+     (short)KeywordID::kCapInsets},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str122),
      (short)KeywordID::kScrollBarAutoHide},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str140),
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str125),
+     (short)KeywordID::kStickyOffset},
+    {offsetof(struct StringPool_t, StringPool_str126),
+     (short)KeywordID::kTypewriterHeightTransitionDuration},
+    {offsetof(struct StringPool_t, StringPool_str127),
      (short)KeywordID::kScrollBackwardMode},
+    {offsetof(struct StringPool_t, StringPool_str128),
+     (short)KeywordID::kMarkdownStyle},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str130),
+     (short)KeywordID::kListType},
+    {offsetof(struct StringPool_t, StringPool_str131),
+     (short)KeywordID::kSelect},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str143),
+    {offsetof(struct StringPool_t, StringPool_str134),
+     (short)KeywordID::kEditOnFocus},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str138),
+     (short)KeywordID::kBounce},
+    {offsetof(struct StringPool_t, StringPool_str139),
      (short)KeywordID::kScrollWithoutFocus},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str148),
-     (short)KeywordID::kBackgroundRepeat},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str150),
-     (short)KeywordID::kPlaceholder},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str154),
-     (short)KeywordID::kMarkdownStyle},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str157),
-     (short)KeywordID::kBackgroundImage},
-    {offsetof(struct StringPool_t, StringPool_str158),
-     (short)KeywordID::kBounce},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str161), (short)KeywordID::kSrc},
-    {offsetof(struct StringPool_t, StringPool_str162),
-     (short)KeywordID::kTextShadow},
-    {offsetof(struct StringPool_t, StringPool_str163),
-     (short)KeywordID::kWhiteSpace},
-    {offsetof(struct StringPool_t, StringPool_str164),
-     (short)KeywordID::kBounces},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str166),
+    {offsetof(struct StringPool_t, StringPool_str144),
      (short)KeywordID::kBorderLeftColor},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str168),
+    {offsetof(struct StringPool_t, StringPool_str146),
+     (short)KeywordID::kBackgroundRepeat},
+    {offsetof(struct StringPool_t, StringPool_str147), (short)KeywordID::kTag},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str150),
+     (short)KeywordID::kBackgroundImage},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str155),
+     (short)KeywordID::kVerticalAlign},
+    {offsetof(struct StringPool_t, StringPool_str156),
+     (short)KeywordID::kBounces},
+    {offsetof(struct StringPool_t, StringPool_str157),
+     (short)KeywordID::kContent},
+    {offsetof(struct StringPool_t, StringPool_str158),
+     (short)KeywordID::kConfirmType},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str160),
      (short)KeywordID::kBlurRadius},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str170),
-     (short)KeywordID::kContent},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str173),
-     (short)KeywordID::kConfirmType},
-    {offsetof(struct StringPool_t, StringPool_str174),
-     (short)KeywordID::kControls},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str176),
-     (short)KeywordID::kVerticalOrientation},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str181),
-     (short)KeywordID::kValue},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str183),
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str169),
      (short)KeywordID::kConsumeSlideEvent},
-    {offsetof(struct StringPool_t, StringPool_str184),
-     (short)KeywordID::kOutline},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str171),
+     (short)KeywordID::kControls},
+    {offsetof(struct StringPool_t, StringPool_str172),
+     (short)KeywordID::kTransition},
     {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str191),
-     (short)KeywordID::kOutlineStyle},
-    {offsetof(struct StringPool_t, StringPool_str192),
-     (short)KeywordID::kScrollY},
-    {offsetof(struct StringPool_t, StringPool_str193),
-     (short)KeywordID::kCustomTextSelection},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str195),
-     (short)KeywordID::kCapInsetsScale},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str197),
+    {offsetof(struct StringPool_t, StringPool_str174), (short)KeywordID::kSrc},
+    {offsetof(struct StringPool_t, StringPool_str175),
+     (short)KeywordID::kWhiteSpace},
+    {offsetof(struct StringPool_t, StringPool_str176),
+     (short)KeywordID::kBorderTopRightRadius},
+    {offsetof(struct StringPool_t, StringPool_str177),
+     (short)KeywordID::kMaskPosition},
+    {offsetof(struct StringPool_t, StringPool_str178),
+     (short)KeywordID::kEnableNewAnimator},
+    {offsetof(struct StringPool_t, StringPool_str179),
      (short)KeywordID::kSendComposingInput},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str199),
-     (short)KeywordID::kTransition},
-    {offsetof(struct StringPool_t, StringPool_str200),
-     (short)KeywordID::kMaskPosition},
-    {offsetof(struct StringPool_t, StringPool_str201),
-     (short)KeywordID::kBorderTopRightRadius},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str182),
+     (short)KeywordID::kUiappear},
+    {offsetof(struct StringPool_t, StringPool_str183),
+     (short)KeywordID::kOutline},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str185),
+     (short)KeywordID::kIgnoreFocus},
+    {offsetof(struct StringPool_t, StringPool_str186),
+     (short)KeywordID::kCapInsetsScale},
+    {offsetof(struct StringPool_t, StringPool_str187),
+     (short)KeywordID::kColor},
+    {offsetof(struct StringPool_t, StringPool_str188),
+     (short)KeywordID::kLineHeight},
+    {offsetof(struct StringPool_t, StringPool_str189),
+     (short)KeywordID::kOutlineStyle},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str191),
+     (short)KeywordID::kOutlineColor},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str193),
+     (short)KeywordID::kSkipRedirection},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str195),
+     (short)KeywordID::kEnableFontScaling},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str197),
+     (short)KeywordID::kColumnCount},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str199),
+     (short)KeywordID::kEnableInsertPlatformViewOperation},
+    {offsetof(struct StringPool_t, StringPool_str200),
+     (short)KeywordID::kPlaceholderColor},
+    {offsetof(struct StringPool_t, StringPool_str201),
+     (short)KeywordID::kCustomTextSelection},
+    {offsetof(struct StringPool_t, StringPool_str202),
+     (short)KeywordID::kImageTransitionStyle},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str204),
-     (short)KeywordID::kTextAlign},
-    {offsetof(struct StringPool_t, StringPool_str205),
-     (short)KeywordID::kTextOverflow},
-    {offsetof(struct StringPool_t, StringPool_str206),
-     (short)KeywordID::kColumnCount},
-    {offsetof(struct StringPool_t, StringPool_str207),
-     (short)KeywordID::kColor},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str209),
-     (short)KeywordID::kBoxShadow},
-    {offsetof(struct StringPool_t, StringPool_str210),
-     (short)KeywordID::kNextFocusLeft},
-    {offsetof(struct StringPool_t, StringPool_str211),
-     (short)KeywordID::kOutlineColor},
-    {offsetof(struct StringPool_t, StringPool_str212),
-     (short)KeywordID::kIgnoreFocus},
-    {offsetof(struct StringPool_t, StringPool_str213),
-     (short)KeywordID::kLineHeight},
-    {offsetof(struct StringPool_t, StringPool_str214),
-     (short)KeywordID::kTextStrokeColor},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str216), (short)KeywordID::kTag},
-    {offsetof(struct StringPool_t, StringPool_str217),
-     (short)KeywordID::kEnableNewAnimator},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str219),
-     (short)KeywordID::kSkipRedirection},
-    {offsetof(struct StringPool_t, StringPool_str220),
-     (short)KeywordID::kAutoFix},
-    {offsetof(struct StringPool_t, StringPool_str221),
-     (short)KeywordID::kUiappear},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str223),
-     (short)KeywordID::kOverflow},
-    {offsetof(struct StringPool_t, StringPool_str224),
-     (short)KeywordID::kScrollEventThrottle},
-    {offsetof(struct StringPool_t, StringPool_str225),
-     (short)KeywordID::kSpeed},
-    {offsetof(struct StringPool_t, StringPool_str226),
-     (short)KeywordID::kDataset},
-    {offsetof(struct StringPool_t, StringPool_str227),
-     (short)KeywordID::kEnableInsertPlatformViewOperation},
-    {offsetof(struct StringPool_t, StringPool_str228),
-     (short)KeywordID::kZIndex},
-    {offsetof(struct StringPool_t, StringPool_str229),
      (short)KeywordID::kAlignFocus},
-    {offsetof(struct StringPool_t, StringPool_str230),
+    {offsetof(struct StringPool_t, StringPool_str205),
      (short)KeywordID::kAllowEscape},
-    {offsetof(struct StringPool_t, StringPool_str231), (short)KeywordID::kMode},
-    {offsetof(struct StringPool_t, StringPool_str232),
-     (short)KeywordID::kPlaceholderColor},
-    {offsetof(struct StringPool_t, StringPool_str233),
-     (short)KeywordID::kEnableFontScaling},
-    {offsetof(struct StringPool_t, StringPool_str234),
-     (short)KeywordID::kShowSoftInputOnfocus},
-    {offsetof(struct StringPool_t, StringPool_str235),
-     (short)KeywordID::kSmartScroll},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str238),
-     (short)KeywordID::kImageTransitionStyle},
-    {offsetof(struct StringPool_t, StringPool_str239),
-     (short)KeywordID::kBackgroundOrigin},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str241),
-     (short)KeywordID::kHitSlop},
-    {offsetof(struct StringPool_t, StringPool_str242),
-     (short)KeywordID::kScrollToId},
-    {offsetof(struct StringPool_t, StringPool_str243),
-     (short)KeywordID::kVisibility},
-    {offsetof(struct StringPool_t, StringPool_str244),
+    {offsetof(struct StringPool_t, StringPool_str206),
+     (short)KeywordID::kAnimationType},
+    {offsetof(struct StringPool_t, StringPool_str207),
      (short)KeywordID::kExposureArea},
-    {offsetof(struct StringPool_t, StringPool_str245),
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str210),
      (short)KeywordID::kEnableScrollbar},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str247),
-     (short)KeywordID::kPreload},
+    {offsetof(struct StringPool_t, StringPool_str212),
+     (short)KeywordID::kBackgroundOrigin},
     {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str250),
-     (short)KeywordID::kScrollBarThumbRadius},
-    {offsetof(struct StringPool_t, StringPool_str251),
-     (short)KeywordID::kExposureId},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str253),
-     (short)KeywordID::kBackgroundSize},
-    {offsetof(struct StringPool_t, StringPool_str254),
-     (short)KeywordID::kScrollBarThumbColor},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str256),
-     (short)KeywordID::kNextFocusUp},
-    {offsetof(struct StringPool_t, StringPool_str257),
-     (short)KeywordID::kExperimentalRecycleStickyItem},
-    {offsetof(struct StringPool_t, StringPool_str258),
-     (short)KeywordID::kNextScrollable},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str260),
-     (short)KeywordID::kScrollBarThumbHoverColor},
-    {offsetof(struct StringPool_t, StringPool_str261),
-     (short)KeywordID::kScrollBarThumbActiveColor},
-    {offsetof(struct StringPool_t, StringPool_str262),
-     (short)KeywordID::kBorderTopColor},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str266),
-     (short)KeywordID::kBorderRightStyle},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str273),
-     (short)KeywordID::kListCrossAxisGap},
-    {offsetof(struct StringPool_t, StringPool_str274),
-     (short)KeywordID::kVerticalAlign},
-    {offsetof(struct StringPool_t, StringPool_str275),
-     (short)KeywordID::kListMainAxisGap},
-    {offsetof(struct StringPool_t, StringPool_str276),
-     (short)KeywordID::kBorderRightColor},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str278),
-     (short)KeywordID::kBorderWidth},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str280),
-     (short)KeywordID::kAutoplay},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str282),
-     (short)KeywordID::kPreventLoadingOnListScroll},
-    {offsetof(struct StringPool_t, StringPool_str283),
-     (short)KeywordID::kBackgroundClip},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str286),
-     (short)KeywordID::kItemKey},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str288),
-     (short)KeywordID::kReadonly},
-    {offsetof(struct StringPool_t, StringPool_str289),
-     (short)KeywordID::kSticky},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str291),
-     (short)KeywordID::kOverflowX},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str295),
+    {offsetof(struct StringPool_t, StringPool_str214),
      (short)KeywordID::kLevel},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str297),
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str217), (short)KeywordID::kText},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str221),
+     (short)KeywordID::kTextMaxline},
+    {offsetof(struct StringPool_t, StringPool_str222),
+     (short)KeywordID::kSmartScroll},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str224),
+     (short)KeywordID::kTextIndent},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str227),
+     (short)KeywordID::kBackgroundSize},
+    {offsetof(struct StringPool_t, StringPool_str228),
+     (short)KeywordID::kMaxHeight},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str230),
+     (short)KeywordID::kTextGradient},
+    {offsetof(struct StringPool_t, StringPool_str231),
+     (short)KeywordID::kScrollX},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str237),
+     (short)KeywordID::kPreventLoadingOnListScroll},
+    {offsetof(struct StringPool_t, StringPool_str238),
+     (short)KeywordID::kBorderTopColor},
+    {offsetof(struct StringPool_t, StringPool_str239),
+     (short)KeywordID::kMaxlines},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str241),
+     (short)KeywordID::kScrollEventThrottle},
+    {offsetof(struct StringPool_t, StringPool_str242),
+     (short)KeywordID::kListMainAxisGap},
+    {offsetof(struct StringPool_t, StringPool_str243),
+     (short)KeywordID::kHitSlop},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str245),
+     (short)KeywordID::kShowSoftInputOnfocus},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str254),
+     (short)KeywordID::kAnimation},
+    {offsetof(struct StringPool_t, StringPool_str255),
+     (short)KeywordID::kLineSpacing},
+    {offsetof(struct StringPool_t, StringPool_str256),
+     (short)KeywordID::kScrollBarThumbColor},
+    {offsetof(struct StringPool_t, StringPool_str257),
+     (short)KeywordID::kOverflow},
+    {offsetof(struct StringPool_t, StringPool_str258),
+     (short)KeywordID::kImageConfig},
+    {offsetof(struct StringPool_t, StringPool_str259),
+     (short)KeywordID::kExperimentalRecycleStickyItem},
+    {offsetof(struct StringPool_t, StringPool_str260),
+     (short)KeywordID::kBackgroundClip},
+    {offsetof(struct StringPool_t, StringPool_str261),
+     (short)KeywordID::kLetterSpacing},
+    {offsetof(struct StringPool_t, StringPool_str262),
+     (short)KeywordID::kScrollBarThumbHoverColor},
+    {offsetof(struct StringPool_t, StringPool_str263),
+     (short)KeywordID::kScrollBarThumbActiveColor},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str265),
+     (short)KeywordID::kTransformOrigin},
+    {offsetof(struct StringPool_t, StringPool_str266),
+     (short)KeywordID::kContentComplete},
+    {offsetof(struct StringPool_t, StringPool_str267),
+     (short)KeywordID::kEnableExposureUiMargin},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str269),
+     (short)KeywordID::kBorderRightStyle},
+    {offsetof(struct StringPool_t, StringPool_str270),
+     (short)KeywordID::kBorderRightColor},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str272), (short)KeywordID::kMode},
+    {offsetof(struct StringPool_t, StringPool_str273),
+     (short)KeywordID::kScrollBarThumbRadius},
+    {offsetof(struct StringPool_t, StringPool_str274),
+     (short)KeywordID::kDataset},
+    {offsetof(struct StringPool_t, StringPool_str275),
+     (short)KeywordID::kScrollY},
+    {offsetof(struct StringPool_t, StringPool_str276),
+     (short)KeywordID::kBorderWidth},
+    {offsetof(struct StringPool_t, StringPool_str277),
+     (short)KeywordID::kVisibility},
+    {offsetof(struct StringPool_t, StringPool_str278),
+     (short)KeywordID::kScrollMonitorTag},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str281),
+     (short)KeywordID::kSpeed},
+    {offsetof(struct StringPool_t, StringPool_str282),
+     (short)KeywordID::kPreload},
+    {offsetof(struct StringPool_t, StringPool_str283),
      (short)KeywordID::kEnableReportInfo},
-    {offsetof(struct StringPool_t, StringPool_str298),
-     (short)KeywordID::kBorderBottomWidth},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str285),
+     (short)KeywordID::kAnimationFrameRate},
+    {offsetof(struct StringPool_t, StringPool_str286),
+     (short)KeywordID::kExposureId},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str301),
+    {offsetof(struct StringPool_t, StringPool_str288),
+     (short)KeywordID::kTextAlign},
+    {offsetof(struct StringPool_t, StringPool_str289),
+     (short)KeywordID::kScrollToId},
+    {offsetof(struct StringPool_t, StringPool_str290),
      (short)KeywordID::kLoopCount},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str292),
+     (short)KeywordID::kBorderBottomWidth},
+    {offsetof(struct StringPool_t, StringPool_str293),
+     (short)KeywordID::kNextFocusLeft},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str305),
-     (short)KeywordID::kAnimation},
+    {offsetof(struct StringPool_t, StringPool_str296), (short)KeywordID::kLoop},
+    {offsetof(struct StringPool_t, StringPool_str297),
+     (short)KeywordID::kTextShadow},
+    {offsetof(struct StringPool_t, StringPool_str298),
+     (short)KeywordID::kTypewriterDynamicHeight},
+    {offsetof(struct StringPool_t, StringPool_str299),
+     (short)KeywordID::kZIndex},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str301),
+     (short)KeywordID::kInitialAnimationStep},
+    {offsetof(struct StringPool_t, StringPool_str302),
+     (short)KeywordID::kUpperThresholdItemCount},
+    {offsetof(struct StringPool_t, StringPool_str303),
+     (short)KeywordID::kInitialScrollOffset},
+    {offsetof(struct StringPool_t, StringPool_str304),
+     (short)KeywordID::kTextStrokeColor},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str306),
+     (short)KeywordID::kAutoFix},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str308),
-     (short)KeywordID::kCustomContextMenu},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str310),
-     (short)KeywordID::kScrollBarAutoHideDelay},
+     (short)KeywordID::kEnableScroll},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str312),
-     (short)KeywordID::kEnableExposureUiMargin},
-    {offsetof(struct StringPool_t, StringPool_str313),
-     (short)KeywordID::kScrollMonitorTag},
-    {offsetof(struct StringPool_t, StringPool_str314),
      (short)KeywordID::kListContainerInfo},
-    {offsetof(struct StringPool_t, StringPool_str315),
-     (short)KeywordID::kTransformOrigin},
-    {offsetof(struct StringPool_t, StringPool_str316),
-     (short)KeywordID::kLineSpacing},
-    {offsetof(struct StringPool_t, StringPool_str317),
-     (short)KeywordID::kDirection},
-    {offsetof(struct StringPool_t, StringPool_str318), (short)KeywordID::kLoop},
-    {offsetof(struct StringPool_t, StringPool_str319),
-     (short)KeywordID::kTextDecoration},
-    {offsetof(struct StringPool_t, StringPool_str320),
-     (short)KeywordID::kNextFocusRight},
-    {offsetof(struct StringPool_t, StringPool_str321),
-     (short)KeywordID::kLetterSpacing},
-    {offsetof(struct StringPool_t, StringPool_str322),
-     (short)KeywordID::kNextFocusFallback},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str324),
-     (short)KeywordID::kBorderLeftWidth},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str326),
-     (short)KeywordID::kIntersectionObservers},
-    {offsetof(struct StringPool_t, StringPool_str327),
+    {offsetof(struct StringPool_t, StringPool_str314),
      (short)KeywordID::kBackgroundColor},
-    {offsetof(struct StringPool_t, StringPool_str328),
-     (short)KeywordID::kUpperThresholdItemCount},
-    {offsetof(struct StringPool_t, StringPool_str329),
-     (short)KeywordID::kImageConfig},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str331),
-     (short)KeywordID::kTextMaxlength},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str333),
-     (short)KeywordID::kMaxlength},
-    {offsetof(struct StringPool_t, StringPool_str334),
-     (short)KeywordID::kLowQuality},
-    {offsetof(struct StringPool_t, StringPool_str335),
-     (short)KeywordID::kUidisappear},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str337),
-     (short)KeywordID::kPreferredFocusChild},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str340),
-     (short)KeywordID::kTextSingleLineVerticalAlign},
-    {offsetof(struct StringPool_t, StringPool_str341),
-     (short)KeywordID::kUserInteractionEnabled},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str344),
-     (short)KeywordID::kAutoSaveLastChild},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str346),
-     (short)KeywordID::kEnableScroll},
-    {offsetof(struct StringPool_t, StringPool_str347),
-     (short)KeywordID::kScrollBarWidth},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str350),
-     (short)KeywordID::kBackground},
-    {offsetof(struct StringPool_t, StringPool_str351),
-     (short)KeywordID::kOverflowY},
-    {offsetof(struct StringPool_t, StringPool_str352),
-     (short)KeywordID::kScrollToIndex},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str356),
-     (short)KeywordID::kFocusable},
-    {offsetof(struct StringPool_t, StringPool_str357),
-     (short)KeywordID::kFocus},
-    {offsetof(struct StringPool_t, StringPool_str358),
-     (short)KeywordID::kLowerThresholdItemCount},
-    {offsetof(struct StringPool_t, StringPool_str359),
-     (short)KeywordID::kInitialScrollOffset},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str364),
+    {offsetof(struct StringPool_t, StringPool_str319),
+     (short)KeywordID::kNextFocusUp},
+    {offsetof(struct StringPool_t, StringPool_str320),
      (short)KeywordID::kFontSize},
-    {offsetof(struct StringPool_t, StringPool_str365),
+    {offsetof(struct StringPool_t, StringPool_str321),
      (short)KeywordID::kFontStyle},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str368),
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str326),
      (short)KeywordID::kFontWeight},
-    {offsetof(struct StringPool_t, StringPool_str369),
-     (short)KeywordID::kAccessibilityElement},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str328),
+     (short)KeywordID::kFocusable},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str332),
+     (short)KeywordID::kIntersectionObservers},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str336),
+     (short)KeywordID::kScrollBarWidth},
+    {offsetof(struct StringPool_t, StringPool_str337),
+     (short)KeywordID::kNextScrollable},
+    {offsetof(struct StringPool_t, StringPool_str338),
+     (short)KeywordID::kDirection},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str340),
+     (short)KeywordID::kBoxShadow},
+    {offsetof(struct StringPool_t, StringPool_str341),
+     (short)KeywordID::kFocus},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str344),
+     (short)KeywordID::kItemKey},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str347),
+     (short)KeywordID::kReadonly},
+    {offsetof(struct StringPool_t, StringPool_str348),
+     (short)KeywordID::kImageRendering},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str350),
+     (short)KeywordID::kAutoplay},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str353),
+     (short)KeywordID::kFilter},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str355),
+     (short)KeywordID::kUidisappear},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str358),
+     (short)KeywordID::kBorderLeftWidth},
+    {offsetof(struct StringPool_t, StringPool_str359),
+     (short)KeywordID::kSticky},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str361),
+     (short)KeywordID::kListCrossAxisGap},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str367),
+     (short)KeywordID::kBorderTopWidth},
+    {offsetof(struct StringPool_t, StringPool_str368),
+     (short)KeywordID::kPlaceholderFontSize},
+    {-1},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str371),
-     (short)KeywordID::kDownsampling},
-    {offsetof(struct StringPool_t, StringPool_str372),
-     (short)KeywordID::kTextStrokeWidth},
+     (short)KeywordID::kUserInteractionEnabled},
+    {-1},
     {offsetof(struct StringPool_t, StringPool_str373),
-     (short)KeywordID::kAccessibilityElements},
+     (short)KeywordID::kPreferredFocusChild},
+    {offsetof(struct StringPool_t, StringPool_str374),
+     (short)KeywordID::kPlaceholderFontWeight},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str376),
+     (short)KeywordID::kTextOverflow},
+    {offsetof(struct StringPool_t, StringPool_str377),
+     (short)KeywordID::kScrollBarAutoHideDelay},
     {-1},
     {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
+    {offsetof(struct StringPool_t, StringPool_str380),
+     (short)KeywordID::kTextDecoration},
     {offsetof(struct StringPool_t, StringPool_str381),
-     (short)KeywordID::kTextSelection},
-    {offsetof(struct StringPool_t, StringPool_str382),
-     (short)KeywordID::kUseSoftKeyboard},
+     (short)KeywordID::kNextFocusRight},
+    {-1},
     {offsetof(struct StringPool_t, StringPool_str383),
-     (short)KeywordID::kContentId},
+     (short)KeywordID::kLowerThresholdItemCount},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str385),
+     (short)KeywordID::kBackgroundPosition},
     {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str392),
-     (short)KeywordID::kBorderTopWidth},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str395),
-     (short)KeywordID::kAnimationStyle},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str399),
+    {offsetof(struct StringPool_t, StringPool_str387),
+     (short)KeywordID::kOverflowX},
+    {offsetof(struct StringPool_t, StringPool_str388),
      (short)KeywordID::kClipPath},
+    {offsetof(struct StringPool_t, StringPool_str389),
+     (short)KeywordID::kAutoSaveLastChild},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str391),
+     (short)KeywordID::kNextFocusFallback},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str394),
+     (short)KeywordID::kBackground},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
     {-1},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str402),
-     (short)KeywordID::kFilter},
-    {offsetof(struct StringPool_t, StringPool_str403),
-     (short)KeywordID::kBackgroundPosition},
+     (short)KeywordID::kCustomContextMenu},
     {-1},
     {-1},
     {-1},
     {-1},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str408),
+     (short)KeywordID::kUseSoftKeyboard},
     {-1},
     {-1},
     {-1},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str413),
-     (short)KeywordID::kExperimentalBatchRenderStrategy},
+     (short)KeywordID::kTextSingleLineVerticalAlign},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str415),
+     (short)KeywordID::kContentId},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str416),
+    {offsetof(struct StringPool_t, StringPool_str418),
+     (short)KeywordID::kDownsampling},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str426),
+     (short)KeywordID::kFullScreen},
+    {offsetof(struct StringPool_t, StringPool_str427),
+     (short)KeywordID::kOffsetRotate},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str431),
+     (short)KeywordID::kOverflowY},
+    {offsetof(struct StringPool_t, StringPool_str432),
      (short)KeywordID::kUpdateAnimation},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str420),
-     (short)KeywordID::kPlaceholderFontSize},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str423),
+    {offsetof(struct StringPool_t, StringPool_str438),
+     (short)KeywordID::kMaxlength},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str440),
+     (short)KeywordID::kAccessibilityElement},
+    {offsetof(struct StringPool_t, StringPool_str441),
+     (short)KeywordID::kLowQuality},
+    {offsetof(struct StringPool_t, StringPool_str442),
+     (short)KeywordID::kTextMaxlength},
+    {offsetof(struct StringPool_t, StringPool_str443),
      (short)KeywordID::kEventThrough},
-    {offsetof(struct StringPool_t, StringPool_str424),
-     (short)KeywordID::kPlaceholderFontWeight},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str430),
+    {offsetof(struct StringPool_t, StringPool_str444),
      (short)KeywordID::kBlockNativeEvent},
     {-1},
     {-1},
@@ -1255,50 +1282,45 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str438),
-     (short)KeywordID::kDropShadow},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str440),
-     (short)KeywordID::kDisabled},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str442),
-     (short)KeywordID::kImageRendering},
+    {offsetof(struct StringPool_t, StringPool_str454),
+     (short)KeywordID::kAccessibilityElements},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str447),
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str464),
+     (short)KeywordID::kTextSelection},
+    {offsetof(struct StringPool_t, StringPool_str465),
+     (short)KeywordID::kNeedVisibleItemInfo},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str470),
      (short)KeywordID::kScrollBarThumbWidth},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str449),
-     (short)KeywordID::kOpacity},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str451),
+    {offsetof(struct StringPool_t, StringPool_str472),
      (short)KeywordID::kEnableNestedScroll},
-    {offsetof(struct StringPool_t, StringPool_str452),
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str475),
      (short)KeywordID::kScrollBarThumbMinLength},
     {-1},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str458),
-     (short)KeywordID::kOffsetRotate},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str462),
-     (short)KeywordID::kInitialScrollIndex},
-    {offsetof(struct StringPool_t, StringPool_str463),
-     (short)KeywordID::kNextFocusDown},
-    {offsetof(struct StringPool_t, StringPool_str464),
-     (short)KeywordID::kFocusIndex},
-    {offsetof(struct StringPool_t, StringPool_str465),
-     (short)KeywordID::kNeedVisibleItemInfo},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str469),
+    {offsetof(struct StringPool_t, StringPool_str484),
      (short)KeywordID::kBorderRightWidth},
     {-1},
     {-1},
@@ -1309,10 +1331,21 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str479),
-     (short)KeywordID::kAccessibilityLabel},
-    {offsetof(struct StringPool_t, StringPool_str480),
-     (short)KeywordID::kFullScreen},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str495),
+     (short)KeywordID::kExperimentalUpdateStickyForDiff},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str497),
+     (short)KeywordID::kScrollToIndex},
+    {offsetof(struct StringPool_t, StringPool_str498),
+     (short)KeywordID::kOffsetDistance},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str501),
+     (short)KeywordID::kExperimentalBatchRenderStrategy},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str503),
+     (short)KeywordID::kInitialScrollIndex},
     {-1},
     {-1},
     {-1},
@@ -1322,36 +1355,16 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str512),
-     (short)KeywordID::kAnimationVelocity},
     {-1},
     {-1},
     {-1},
     {-1},
     {offsetof(struct StringPool_t, StringPool_str517),
-     (short)KeywordID::kExperimentalUpdateStickyForDiff},
+     (short)KeywordID::kOpacity},
+    {offsetof(struct StringPool_t, StringPool_str518),
+     (short)KeywordID::kTextStrokeWidth},
+    {offsetof(struct StringPool_t, StringPool_str519),
+     (short)KeywordID::kDropShadow},
     {-1},
     {-1},
     {-1},
@@ -1361,13 +1374,57 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str527),
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str530),
+     (short)KeywordID::kNextFocusDown},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str533),
+     (short)KeywordID::kFullscreenMode},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str535),
+     (short)KeywordID::kFocusIndex},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str538),
+     (short)KeywordID::kAccessibilityLabel},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str543),
+     (short)KeywordID::kDisabled},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str546),
      (short)KeywordID::kUpperThreshold},
+    {offsetof(struct StringPool_t, StringPool_str547),
+     (short)KeywordID::kAnimationVelocity},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str532),
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str555),
+     (short)KeywordID::kXAppRegion},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str571),
      (short)KeywordID::kFontFamily},
     {-1},
     {-1},
@@ -1379,8 +1436,6 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str543),
-     (short)KeywordID::kOffsetDistance},
     {-1},
     {-1},
     {-1},
@@ -1388,14 +1443,49 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str551),
-     (short)KeywordID::kXAppRegion},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str593),
+     (short)KeywordID::kDeferSrcInvalidation},
     {-1},
     {-1},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str557),
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str618),
+     (short)KeywordID::kUpdateListInfo},
+    {offsetof(struct StringPool_t, StringPool_str619),
+     (short)KeywordID::kOutlineWidth},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str623),
+     (short)KeywordID::kXAutoFontSize},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str627),
      (short)KeywordID::kLowerThreshold},
     {-1},
     {-1},
@@ -1409,110 +1499,23 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str573),
-     (short)KeywordID::kXAutoFontSize},
-    {offsetof(struct StringPool_t, StringPool_str574),
-     (short)KeywordID::kFullscreenMode},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str591),
-     (short)KeywordID::kXAutoFontSizePresetSizes},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str597),
-     (short)KeywordID::kOutlineWidth},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str612),
-     (short)KeywordID::kUpdateListInfo},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str649),
-     (short)KeywordID::kDeferSrcInvalidation},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {-1},
-    {offsetof(struct StringPool_t, StringPool_str658),
+    {offsetof(struct StringPool_t, StringPool_str640),
      (short)KeywordID::kOffsetPath},
     {-1},
     {-1},
     {-1},
+    {offsetof(struct StringPool_t, StringPool_str644),
+     (short)KeywordID::kFocusSmoothScroll},
     {-1},
     {-1},
     {-1},
-    {offsetof(struct StringPool_t, StringPool_str665),
-     (short)KeywordID::kFocusSmoothScroll}};
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {-1},
+    {offsetof(struct StringPool_t, StringPool_str653),
+     (short)KeywordID::kXAutoFontSizePresetSizes}};
 
 const struct TokenValue *KeywordHash::find(const char *str, unsigned int len) {
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH) {

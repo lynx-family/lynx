@@ -157,6 +157,7 @@ need-visible-item-info
 item-key
 content
 content-id
+content-complete
 skip-redirection
 visible
 full-screen
@@ -170,8 +171,12 @@ cap-insets-scale
 defer-src-invalidation
 auto-size
 markdown-style
-animation-style
+animation-type
 animation-velocity
+animation-frame-rate
+initial-animation-step
+typewriter-dynamic-height
+typewriter-height-transition-duration
 show-soft-input-onfocus
 use-soft-keyboard
 value
