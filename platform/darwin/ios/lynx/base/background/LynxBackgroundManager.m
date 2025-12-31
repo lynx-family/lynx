@@ -440,7 +440,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
                         size:self.ui.view.bounds.size
                  contextInfo:@{
                    LynxImageFetcherContextKeyUI : self.ui,
-                   LynxImagePreloadAllFrames : @(YES)
+                   LynxImagePreloadAllFrames : @(YES),
+                   LynxImageEnableFetchUIImage : @(self.ui.context.enableFetchUIImage)
                  }
                   processors:processors
                 imageFetcher:self.ui.context.imageFetcher
