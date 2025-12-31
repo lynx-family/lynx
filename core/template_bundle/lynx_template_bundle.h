@@ -169,6 +169,8 @@ class LynxTemplateBundle final {
     return page_configs_;
   };
 
+  const CompileOptions &GetCompileOptions() const { return compile_options_; }
+
  private:
   void EnsureParseTaskScheduler();
 

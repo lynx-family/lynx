@@ -307,11 +307,15 @@ bool LynxBinaryReader::DecodeCustomSectionsByRoute(
         if (type_num ==
             static_cast<int>(CustomSectionEncodingType::JS_BYTECODE)) {
           encoding_type = CustomSectionEncodingType::JS_BYTECODE;
+        } else if (type_num ==
+                   static_cast<int>(CustomSectionEncodingType::CSS)) {
+          encoding_type = CustomSectionEncodingType::CSS;
         }
       }
     }
     switch (encoding_type) {
       case CustomSectionEncodingType::STRING:
+      case CustomSectionEncodingType::CSS:
         ERROR_UNLESS(DecodeValue(&content, false));
         break;
       case CustomSectionEncodingType::JS_BYTECODE:

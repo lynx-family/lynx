@@ -144,9 +144,9 @@ class BaseBinaryReader : public BinaryReader {
   // base::String section
   bool DeserializeStringSection();
 
-  bool DecodeUtf8Str(base::String&);
-  bool DecodeUtf8Str(std::string*);
-  bool DecodeUtf8Str(lynx_value&);
+  virtual bool DecodeUtf8Str(base::String&);
+  virtual bool DecodeUtf8Str(std::string*);
+  virtual bool DecodeUtf8Str(lynx_value&);
   bool DecodeTable(fml::RefPtr<Dictionary>&, bool = false);
   bool DecodeArray(fml::RefPtr<CArray>&);
   bool DecodeValue(Value*, bool = false);

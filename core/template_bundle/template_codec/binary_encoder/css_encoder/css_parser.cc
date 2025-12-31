@@ -45,6 +45,33 @@ bool CSSParser::ParseCSSForFiber(const rapidjson::Value &css_map,
   return true;
 }
 
+std::unique_ptr<encoder::SharedCSSFragment> CSSParser::ParseExternalFragment(
+    const rapidjson::Value &rule_list, const std::string &path) {
+  CSSParserTokenMap css;
+  encoder::CSSKeyframesTokenMapForEncode keyframes;
+  encoder::CSSFontFaceTokenMapForEncode fontfaces;
+  std::vector<encoder::LynxCSSSelectorTuple> selector_tuple_list;
+  for (int i = 0; i < rule_list.Size(); i++) {
+    const auto &rule = rule_list[i];
+    if (CSSParseTokenGroup::IsCSSParseToken(rule)) {
+      if (compile_options_.enable_css_selector_) {
+        ParseCSSTokensNew(selector_tuple_list, css, rule, path);
+      } else {
+        ParseCSSTokens(css, rule, path);
+      }
+    } else if (encoder::CSSKeyframesToken::IsCSSKeyframesToken(rule)) {
+      ParseCSSKeyframes(keyframes, rule, path);
+    } else if (CSSFontFaceToken::IsCSSFontFaceToken(rule)) {
+      ParseCSSFontFace(fontfaces, rule, path);
+    }
+  }
+  auto parse_result = std::make_unique<encoder::SharedCSSFragment>(
+      0, std::vector<int32_t>(), std::move(css), std::move(keyframes),
+      std::move(fontfaces));
+  parse_result->SetSelectorTuple(std::move(selector_tuple_list));
+  return parse_result;
+}
+
 bool CSSParser::ParseOtherTTSS(const rapidjson::Value &value) {
   for (auto it = value.GetObject().begin(); it != value.GetObject().end();
        ++it) {

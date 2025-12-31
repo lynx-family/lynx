@@ -165,6 +165,9 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   void EncodeSimpleStyleObjects();
   void EncodeSimpleStyleObjectsRoute(const StyleObjectRoute& route);
 
+  const std::vector<uint8_t> EncodeCSSFragmentToVector(
+      encoder::SharedCSSFragment* fragment);
+
  private:
   static int FindJSFileInDirectory(
       const char* path, const char* relationPath,

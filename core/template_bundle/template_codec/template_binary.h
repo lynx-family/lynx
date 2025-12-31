@@ -77,7 +77,7 @@ enum PageSection {
 
 enum DynamicComponentSection { DYNAMIC_MOULD, DYNAMIC_CONTEXT, DYNAMIC_CONFIG };
 
-enum class CustomSectionEncodingType { STRING, JS_BYTECODE };
+enum class CustomSectionEncodingType { STRING, JS_BYTECODE, CSS };
 
 enum class StyleObjectSectionType {
   STYLE_OBJECT,

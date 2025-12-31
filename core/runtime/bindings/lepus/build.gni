@@ -8,6 +8,8 @@ lynx_lepus_binding_sources = [
   "renderer.h",
   "renderer_functions.h",
   "renderer_functions_def.h",
+  "style/runtime_css_reader.h",
+  "style/shared_css_fragment_wrapper.h",
 ]
 
 if (is_android && enable_lite) {

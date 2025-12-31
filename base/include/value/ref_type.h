@@ -34,6 +34,7 @@ enum class RefType : int32_t {
   kClosure,
   kCDate,
   kRegExp,
+  kCSSFragment,
 };
 
 }  // namespace lepus

@@ -509,6 +509,18 @@ void TemplateBinaryWriter::EncodeSimpleStyleObjects() {
   stream_->Move(descriptor_offset, start, end - start);
 }
 
+const std::vector<uint8_t> TemplateBinaryWriter::EncodeCSSFragmentToVector(
+    encoder::SharedCSSFragment* fragment) {
+  auto original_stream = std::move(stream_);
+  stream_ = std::make_unique<lepus::ByteArrayOutputStream>();
+
+  EncodeCSSFragment(fragment);
+
+  auto buffer = stream_->byte_array();
+  stream_ = std::move(original_stream);
+  return buffer;
+}
+
 void TemplateBinaryWriter::EncodeSimpleStyleObjectsRoute(
     const StyleObjectRoute& route) {
   WriteCompactU32(route.style_object_ranges.size());
@@ -683,6 +695,9 @@ void TemplateBinaryWriter::EncodeCustomSection() {
                   "CustomSections's encoding:JS_BYTECODE only support "
                   "LepusNG!");
             }
+          } else if (encoding_iter->second.IsString() &&
+                     encoding_iter->second.StdString() == "CSS") {
+            encoding_type = CustomSectionEncodingType::CSS;
           }
         }
 
@@ -690,7 +705,7 @@ void TemplateBinaryWriter::EncodeCustomSection() {
           case CustomSectionEncodingType::STRING:
             EncodeValue(&content_iter->second, false);
             break;
-          case CustomSectionEncodingType::JS_BYTECODE:
+          case CustomSectionEncodingType::JS_BYTECODE: {
             auto error = lepus::BytecodeGenerator::GenerateBytecode(
                 context_, content_iter->second.StdString(),
                 compile_options_.target_sdk_version_);
@@ -705,6 +720,27 @@ void TemplateBinaryWriter::EncodeCustomSection() {
             }
             ContextBinaryWriter::encode();
             break;
+          }
+          case CustomSectionEncodingType::CSS: {
+            const auto& json_content = it.value["content"];
+            if (json_content.IsObject() && json_content.HasMember("ruleList") &&
+                json_content["ruleList"].IsArray()) {
+              auto fragment = css_parser_->ParseExternalFragment(
+                  json_content["ruleList"], it.name.GetString());
+              auto buffer = EncodeCSSFragmentToVector(fragment.get());
+              const size_t length = buffer.size();
+              std::unique_ptr<uint8_t[]> ptr;
+              if (length > 0) {
+                ptr.reset(new uint8_t[length]);
+                std::memcpy(ptr.get(), buffer.data(), length);
+              }
+              auto byte_array =
+                  lepus::ByteArray::Create(std::move(ptr), length);
+              lepus::Value byte_array_value(byte_array);
+              EncodeValue(&byte_array_value, false);
+            }
+            break;
+          }
         }
 
         // Record end, update start, and write these info into route.

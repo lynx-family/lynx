@@ -49,6 +49,10 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
 
   bool DecodeStyleObject(StyleMap& attr, const CSSRange& range) override;
 
+  bool DecodeUtf8Str(base::String& result) override;
+  bool DecodeUtf8Str(std::string* result) override;
+  bool DecodeUtf8Str(lynx_value& result) override;
+
  protected:
   // Utils for decode css.
   bool DecodeCSSRoute(CSSRoute& css_router);
@@ -85,6 +89,7 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
   std::string absetting_disable_css_lazy_decode_;
   bool enable_pre_process_attributes_{false};
   bool enable_css_inline_variables_{false};
+  bool decode_string_directly_{false};
 };
 
 }  // namespace tasm

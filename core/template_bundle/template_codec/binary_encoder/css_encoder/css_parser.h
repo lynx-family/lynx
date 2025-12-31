@@ -28,6 +28,9 @@ class CSSParser {
   bool ParseCSSForFiber(const rapidjson::Value &css_map,
                         const rapidjson::Value &css_source);
 
+  std::unique_ptr<encoder::SharedCSSFragment> ParseExternalFragment(
+      const rapidjson::Value &rule_list, const std::string &path);
+
   ~CSSParser() {}
 
   static void MergeCSSParseToken(fml::RefPtr<CSSParseToken> &originToken,

@@ -79,6 +79,8 @@
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/bindings/lepus/resource/response_handler_in_lepus.h"
+#include "core/runtime/bindings/lepus/style/runtime_css_reader.h"
+#include "core/runtime/bindings/lepus/style/shared_css_fragment_wrapper.h"
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/builtin.h"
@@ -87,6 +89,7 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_delegate.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -816,7 +819,66 @@ RENDERER_FUNCTION_CC(InvokeModuleMethod) {
   RETURN_UNDEFINED();
 }
 
-RENDERER_FUNCTION_CC(LoadStyleSheet) { RETURN_UNDEFINED(); }
+RENDERER_FUNCTION_CC(LoadStyleSheet) {
+  CHECK_ARGC_GE(LoadStyleSheet, 2);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, LoadStyleSheet);
+  CONVERT_ARG_AND_CHECK(arg1, 1, String, LoadStyleSheet);
+
+  std::string key = arg0->StdString();
+  std::string bundle_name = arg1->StdString();
+
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+
+  auto page_config = tasm->GetPageConfig();
+  auto entry = tasm->FindTemplateEntry(DEFAULT_ENTRY_NAME);
+  CompileOptions options = entry->compile_options();
+
+  auto bundle = tasm->FindTemplateBundle(bundle_name);
+  if (bundle) {
+    auto& bundle_options = bundle->GetCompileOptions();
+    if (page_config) {
+      if (options.target_sdk_version_ != bundle_options.target_sdk_version_ ||
+          options.enable_css_parser_ != bundle_options.enable_css_parser_ ||
+          options.enable_css_selector_ != bundle_options.enable_css_selector_ ||
+          options.enable_css_invalidation_ !=
+              bundle_options.enable_css_invalidation_ ||
+          options.enable_css_strict_mode_ !=
+              bundle_options.enable_css_strict_mode_ ||
+          options.enable_css_variable_ != bundle_options.enable_css_variable_) {
+        LOGI(
+            "LoadStyleSheet failed, the compile options in the bundle is not "
+            "compatible with the current page config.");
+        RETURN_UNDEFINED();
+      }
+    }
+  }
+
+  auto source_code = tasm->GetCustomSectionByKey(key, bundle_name);
+  if (!source_code.IsByteArray()) {
+    LOGI(
+        "LoadStyleSheet failed, the content of the specific key is not binary");
+    RETURN_UNDEFINED();
+  }
+
+  auto byte_array = source_code.ByteArray();
+
+  std::vector<uint8_t> data(byte_array->GetPtr(),
+                            byte_array->GetPtr() + byte_array->GetLength());
+  auto input_stream =
+      std::make_unique<lepus::ByteArrayInputStream>(std::move(data));
+  RuntimeCSSReader reader(std::move(input_stream), options,
+                          tasm->GetPageConfig()->GetEnableCSSInlineVariables());
+
+  auto fragment = std::make_unique<SharedCSSFragment>();
+
+  if (reader.DecodeCSSFragment(fragment.get(), byte_array->GetLength())) {
+    RETURN(lepus::Value(
+        fml::MakeRefCounted<SharedCSSFragmentWrapper>(std::move(fragment))));
+  }
+
+  RETURN_UNDEFINED();
+}
 
 RENDERER_FUNCTION_CC(AdoptStyleSheet) { RETURN_UNDEFINED(); }
 
