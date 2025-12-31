@@ -6,6 +6,13 @@ import("../../../testing/test.gni")
 import("../../Lynx.gni")
 import("build.gni")
 
+config("lepus_test_macro_config") {
+  defines = [
+    "LEPUS_PC",
+    "LEPUS_TEST",
+  ]
+}
+
 lynx_core_source_set("lepus") {
   sources = lynx_lepus_common_sources_path + lynx_context_pool_sources_path
   if (is_android) {
@@ -16,11 +23,12 @@ lynx_core_source_set("lepus") {
     sources += lynx_lepus_core_sources_path
   }
 
+  deps = []
   if (build_lepus_compile) {
     sources += lynx_lepus_compile_sources_path
+    deps += [ "../../../third_party/llvh" ]
   }
 
-  deps = []
   if (is_mac || is_linux) {
     deps += [ "../../../third_party/quickjs" ]
   } else if (is_ios) {
@@ -40,13 +48,23 @@ lynx_core_source_set("lepus") {
   }
 
   # The following macro is used for local debugging and prints the log to the console. please don't delete
-  # if(is_test) {
-  #   sources += [
-  #     "ast_dump.h",
-  #     "ast_dump.cc"
-  #   ]
-  #   defines = ["LEPUS_PC", "LEPUS_TEST"]
-  # }
+  #if (is_test) {
+  #sources += [
+  #  "ast_dump.cc",
+  #  "ast_dump.h",
+  #  "bytecode_print.cc",
+  #  "bytecode_print.h",
+  #  "ir/dialects/mir/mir_dumper.cc",
+  #  "ir/dialects/mir/mir_dumper.h",
+  #  "ir/ir_dumper.cc",
+  #  "ir/ir_dumper.h",
+  #  "ir/transformer/common/cfg_raw_viewer.cc",
+  #]
+  #if (!defined(public_configs)) {
+  #  public_configs = []
+  #}
+  #public_configs += [ ":lepus_test_macro_config" ]
+  #}
 }
 
 shared_library("lepus_shared") {
@@ -70,6 +88,41 @@ unittest_set("lepus_testset") {
     "context_decoder_unittests.cc",
     "context_pool_unittest.cc",
     "function_api_unittest.cc",
+    "ir/unittests/ir_test_base.cc",
+    "ir/unittests/register_allocator/ra_test.cc",
+    "ir/unittests/register_allocator/test_call_register_alloc.cc",
+    "ir/unittests/register_allocator/test_process_call_inst_optimization.cc",
+    "ir/unittests/register_allocator/test_redundant_call_mov_elimination.cc",
+    "ir/unittests/register_allocator/test_toplevel_reg_protection.cc",
+    "ir/unittests/register_allocator/test_unary_register_alloc.cc",
+    "ir/unittests/register_allocator/test_verify_call_register.cc",
+    "ir/unittests/test_attributes.cc",
+    "ir/unittests/test_bytecode_analysis.cc",
+    "ir/unittests/test_deep_clone_opcode.cc",
+    "ir/unittests/test_func_op.cc",
+    "ir/unittests/test_mir_dialect.cc",
+    "ir/unittests/test_op_builder.cc",
+    "ir/unittests/test_optimization_stability.cc",
+    "ir/unittests/test_toplevel_closure_variable.cc",
+    "ir/unittests/test_try_catch_finally_layout.cc",
+    "ir/unittests/test_type.cc",
+    "ir/unittests/test_type_specification.cc",
+    "ir/unittests/transformer/test_const_elimination.cc",
+    "ir/unittests/transformer/test_enhanced_opts.cc",
+    "ir/unittests/transformer/test_inst_combine.cc",
+    "ir/unittests/transformer/test_ir_opts.cc",
+    "ir/unittests/transformer/test_load_store_elimination.cc",
+    "ir/unittests/transformer/test_load_store_elimination_attr.cc",
+    "ir/unittests/transformer/test_load_store_elimination_complex.cc",
+    "ir/unittests/transformer/test_load_store_elimination_precision.cc",
+    "ir/unittests/transformer/test_lse_closure.cc",
+    "ir/unittests/transformer/test_lse_closure_rse.cc",
+    "ir/unittests/transformer/test_lse_redundant_store.cc",
+    "ir/unittests/transformer/test_normalize_phi.cc",
+    "ir/unittests/transformer/test_opt_indirect_jmp.cc",
+    "ir/unittests/transformer/test_toplevel_cse.cc",
+    "ir/unittests/transformer/test_toplevel_passes.cc",
+    "ir/unittests/transformer/test_update_toplevel.cc",
     "json_parser_unittest.cc",
     "lepus_error_helper_unittest.cc",
     "lepus_value_unittest.cc",
@@ -80,8 +133,6 @@ unittest_set("lepus_testset") {
     "value_utils_unittest.cc",
   ]
 
-  public_configs = [ "../../:lynx_public_config" ]
-
   public_deps = [
     ":lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
@@ -89,6 +140,7 @@ unittest_set("lepus_testset") {
   deps = [
     ":lepus_unittest_sources",
     ":value_utils_sources",
+    "../../../third_party/llvh",
     "../../../third_party/rapidjson:rapidjson",
     "../lepusng:lepus_ng",
     "../lepusng:lepusng_unittest_sources",

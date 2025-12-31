@@ -258,8 +258,48 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepus) {
     auto vm_ctx =
         lepus::Context::CreateContext(lepus::ContextType::VMContextType);
     TestUtils::RegisterBuiltin(vm_ctx.get());
+    static_cast<lepus::VMContext*>(vm_ctx->GetMTSContext())
+        ->SetOptBytecode(false);
     lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
-                                               target_sdk_version);
+                                               target_sdk_version, "");
+    auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
+    binary_writer.encode();
+    auto byte_array =
+        const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();
+
+    auto binary_reader = LynxBinaryReaderTest(
+        std::make_unique<lepus::ByteArrayInputStream>(std::move(byte_array)),
+        false);
+    ASSERT_TRUE(binary_reader.DecodeContextTest());
+    std::shared_ptr<lepus::Context> decode_ctx =
+        lepus::Context::CreateContext(lepus::ContextType::VMContextType);
+    auto entry = TemplateEntry(decode_ctx, target_sdk_version);
+    TestUtils::RegisterBuiltin(decode_ctx.get());
+    ASSERT_TRUE(decode_ctx->DeSerialize(
+        *binary_reader.GetTemplateBundle().context_bundle_, true, nullptr));
+    ASSERT_TRUE(decode_ctx->Execute());
+  }
+}
+
+TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepusOptBytecode) {
+  auto all_test_file =
+      TestUtils::GetTestFileLists("core/runtime/lepus/compiler/unit_test/");
+
+  if (all_test_file.empty()) {
+    GTEST_SKIP()
+        << "No test files found under core/runtime/lepus/compiler/unit_test/";
+  }
+
+  for (const auto& test_file : all_test_file) {
+    std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
+    auto src = TestUtils::ReadFileFromPath(test_file);
+    auto vm_ctx =
+        lepus::Context::CreateContext(lepus::ContextType::VMContextType);
+    TestUtils::RegisterBuiltin(vm_ctx.get());
+    static_cast<lepus::VMContext*>(vm_ctx->GetMTSContext())
+        ->SetOptBytecode(true);
+    lepus::BytecodeGenerator::GenerateBytecode(vm_ctx->GetMTSContext(), src,
+                                               target_sdk_version, "");
     auto binary_writer = ContextBinaryWriterTest(vm_ctx.get());
     binary_writer.encode();
     auto byte_array =

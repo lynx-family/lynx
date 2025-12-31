@@ -92,6 +92,13 @@ class VMContext : public MTSContext {
     root_function_ = std::move(func);
   }
 
+  const std::unordered_map<base::String, long>& GetToplevelVariables() const;
+  void UpdateToplevelVarReg(const base::String& key, long new_reg);
+  void UpdateToplevelVarRegToOffset(long reg, long offset) {
+    top_level_reg_to_offset_[reg] = offset;
+  }
+  long GetToplevelVarOffset(long reg) const;
+
 #ifdef LEPUS_TEST
   void Dump();
 #endif
@@ -124,6 +131,8 @@ class VMContext : public MTSContext {
 
   void SetClosureFix(bool val) { closure_fix_ = val; }
   bool GetClosureFix() { return closure_fix_; }
+  void SetOptBytecode(bool val) { opt_bytecode_ = val; }
+  bool OptBytecode() { return opt_bytecode_; }
 
   inline Global* global() { return &global_; }
   inline Global* builtin() { return &builtin_; }
@@ -162,7 +171,7 @@ class VMContext : public MTSContext {
   bool ExecuteBinaryWithBundle(const ContextBundle* bundle,
                                Value* ret_val) override;
 
-  void BindCurrentThread() override{};
+  void BindCurrentThread() override {};
 
   class DebugDelegate {
    public:
@@ -196,7 +205,7 @@ class VMContext : public MTSContext {
     void AddClosure(fml::RefPtr<lepus::Closure>& closure,
                     bool context_executed);
     ~ClosureManager();
-    ClosureManager() : itr_(0){};
+    ClosureManager() : itr_(0) {};
     void CleanUpClosuresCreatedAfterExecuted();
 
    private:
@@ -253,6 +262,10 @@ class VMContext : public MTSContext {
   Global builtin_;
 
   std::unordered_map<base::String, long> top_level_variables_;
+  // key: vreg for toplevel variable; value: first bytecode offset that writes
+  // it. Used by the IR pipeline to keep toplevel vregs stable across
+  // transforms.
+  std::unordered_map<long, long> top_level_reg_to_offset_{};
   fml::RefPtr<Function> root_function_;
   base::InlineStack<RestrictedValue, 32> context_;
   RestrictedValue closure_context_;
@@ -261,6 +274,7 @@ class VMContext : public MTSContext {
   bool enable_top_var_strict_mode_;
   bool enable_null_prop_as_undef_ = false;
   bool closure_fix_ = false;
+  bool opt_bytecode_ = true;
 
   bool executed_ = false;
 

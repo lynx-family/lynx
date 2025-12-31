@@ -84,21 +84,24 @@ struct RestrictedValue {
                                  const RestrictedValue& right) {
     if (likely(&left != &right)) {
       right.DupValue();
+      auto right_value = right.value_;
       left.FreeValue();
-      left.value_ = right.value_;
+      left.value_ = right_value;
     }
   }
 
   static BASE_INLINE void Assign(RestrictedValue& left, const Value& right) {
     right.DupValue();
+    auto right_storage = right.value();
     left.FreeValue();
-    left.value_ = right.value();
+    left.value_ = right_storage;
   }
 
   static BASE_INLINE void Assign(Value& left, const RestrictedValue& right) {
     right.DupValue();
+    auto right_value = right.value_;
     left.FreeValue();
-    std::move(left).value() = right.value_;
+    std::move(left).value() = right_value;
   }
 
   static BASE_INLINE void Assign(Value& left, RestrictedValue&& right) {
@@ -455,6 +458,10 @@ struct RestrictedValue {
 
       static BASE_INLINE int64_t GetInt64(const RestrictedValue& value) {
         return value.value_.val_int64;
+      }
+
+      static BASE_INLINE bool GetBool(const RestrictedValue& value) {
+        return value.value_.val_bool;
       }
 
       static BASE_INLINE void SetInt64(RestrictedValue& value, int64_t v) {
