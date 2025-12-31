@@ -264,8 +264,6 @@ void LynxBinaryConfigDecoder::ReportGlobalFeatureSwitch(
                    page_config->GetEnableCSSInheritance());
     event.SetProps(config::kEnableListNewArchitecture,
                    page_config->GetListNewArchitecture());
-    event.SetProps(config::kEnableCSSStrictMode,
-                   page_config->GetEnableCSSStrictMode());
     event.SetProps(config::kEnableReactOnlyPropsId,
                    page_config->GetEnableReactOnlyPropsId());
     event.SetProps(config::kEnableCircularDataCheck,
