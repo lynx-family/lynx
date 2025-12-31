@@ -274,6 +274,12 @@ targets({
         "coverage": True,
         "enable_parallel":True,
     },
+    "list_container_testset_exec":{
+        "cwd": ".",
+        "owners":["dingwang.wxx"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
     "pipeline_test_exec": {
         "cwd": ".",
         "owners":["yangguangzhao.solace", "nihao.royal"],

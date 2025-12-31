@@ -196,13 +196,13 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   }
 
   // Send scroll to upper/lower edge event.
-  if (is_lower_edge &&
-      NotAtBouncesArea(original_offset, content_size, list_size)) {
-    SendCustomScrollEvent(kEventScrollToLowerEdge, 0, event_source);
-  }
   if (is_upper_edge &&
       NotAtBouncesArea(original_offset, content_size, list_size)) {
     SendCustomScrollEvent(kEventScrollToUpperEdge, 0, event_source);
+  }
+  if (is_lower_edge &&
+      NotAtBouncesArea(original_offset, content_size, list_size)) {
+    SendCustomScrollEvent(kEventScrollToLowerEdge, 0, event_source);
   }
   if (!is_lower_edge && !is_upper_edge) {
     SendCustomScrollEvent(kEventScrollToNormalState, 0, event_source);
@@ -306,14 +306,14 @@ void ListEventManager::SendAnchorDebugInfoIfNeeded(
       } else {
         anchor_info_map->PushInt32ToMap(kDebugInfoAnchorIndex,
                                         anchor_info.index_);
-        anchor_info_map->PushInt32ToMap(kDebugInfoAnchorStartOffset,
-                                        anchor_info.start_offset_);
-        anchor_info_map->PushInt32ToMap(kDebugInfoAnchorStartAlignmentDelta,
-                                        anchor_info.start_alignment_delta_);
-        anchor_info_map->PushInt32ToMap(
+        anchor_info_map->PushDoubleToMap(kDebugInfoAnchorStartOffset,
+                                         anchor_info.start_offset_);
+        anchor_info_map->PushDoubleToMap(kDebugInfoAnchorStartAlignmentDelta,
+                                         anchor_info.start_alignment_delta_);
+        anchor_info_map->PushBoolToMap(
             kDebugInfoAnchorDirty,
             list_container_->list_adapter()->IsDirty(anchor_info.item_holder_));
-        anchor_info_map->PushInt32ToMap(
+        anchor_info_map->PushBoolToMap(
             kDebugInfoAnchorBinding, list_container_->list_adapter()->IsBinding(
                                          anchor_info.item_holder_));
       }

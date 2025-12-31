@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../testing/test.gni")
 import("../Lynx.gni")
 
 list_container_shared_sources = [
@@ -56,5 +57,46 @@ lynx_core_source_set("list_container") {
   public_deps = [
     "../build:build",
     "../renderer/trace:renderer_trace",
+  ]
+}
+
+list_container_testset_shared_sources = []
+
+if (disable_list_platform_implementation) {
+  list_container_testset_shared_sources += [
+    "decoupled_default_list_adapter_unittest.cc",
+    "decoupled_list_adapter_unittest.cc",
+    "decoupled_list_anchor_manager_unittest.cc",
+    "decoupled_list_children_helper_unittest.cc",
+    "decoupled_list_container_impl_unittest.cc",
+    "decoupled_list_event_manager_unittest.cc",
+    "decoupled_list_layout_manager_unittest.cc",
+    "decoupled_staggered_grid_layout_manager_unittest.cc",
+    "testing/fiber_diff_info.h",
+    "testing/mock_list_element.h",
+    "testing/radon_data_source.h",
+    "testing/utils.h",
+  ]
+}
+
+unittest_set("list_container_testset") {
+  sources = list_container_testset_shared_sources
+  public_deps = [ ":list_container" ]
+  deps = [
+    "../public",
+    "../renderer/dom:dom",
+  ]
+}
+
+unittest_exec("list_container_testset_exec") {
+  sources = []
+  deps = [ ":list_container_testset" ]
+}
+
+group("list_container_testset_group") {
+  testonly = true
+  deps = [
+    ":list_container_testset",
+    ":list_container_testset_exec",
   ]
 }

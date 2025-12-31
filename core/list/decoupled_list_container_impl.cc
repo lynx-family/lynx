@@ -361,7 +361,6 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
              value.IsBool()) {
     // enable-insert-platform-view-operation
     enable_insert_platform_view_operation_ = value.Bool();
-    should_set_props = true;
   } else if (key_str == kPropExperimentalBatchRenderStrategy) {
     // experimental-batch-render-strategy
     // Note: If parse experimental-batch-render-strategy in list property, we
@@ -378,6 +377,12 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
              value.IsBool()) {
     // experimental-recycle-available-item-before-layout
     recycle_available_item_before_layout_ = value.Bool();
+    should_set_props = false;
+  } else if (key_str == kPropExperimentalSearchRefAnchorStrategy &&
+             value.IsNumber()) {
+    // experimental-search-ref-anchor-strategy
+    search_ref_anchor_strategy_ =
+        static_cast<SearchRefAnchorStrategy>(static_cast<int>(value.Number()));
     should_set_props = false;
   }
   if (should_mark_layout_dirty) {

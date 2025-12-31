@@ -13,6 +13,7 @@ group("lynx_test") {
     "../../core/animation/utils:animation_utils_unittests_exec",
     "../../core/event:event_tests",
     "../../core/inspector:inspector_group",
+    "../../core/list:list_container_testset_group",
     "../../core/renderer/css:css_tests",
     "../../core/renderer/dom:dom_tests",
     "../../core/renderer/events:events_test_exec",

@@ -97,6 +97,8 @@ static constexpr const char* const kPropExperimentalContinuousResolveTree =
     "experimental-continuous-resolve-tree";
 static constexpr const char* const kPropListDebugInfoLevel =
     "list-debug-info-level";
+static constexpr const char* const kPropExperimentalSearchRefAnchorStrategy =
+    "experimental-search-ref-anchor-strategy";
 
 // prop value
 static constexpr const char* const kPropValueListTypeSingle = "single";
@@ -106,11 +108,13 @@ static constexpr const char* const kPropValueListContainer = "list-container";
 static constexpr const char* const kPropValueUpdateAnimationDefault = "default";
 static constexpr const char* const kPropValueScrollOrientationHorizontal =
     "horizontal";
+static constexpr const char* const kPropValueScrollOrientationVertical =
+    "vertical";
 static constexpr const char* const kPropValueAnchorPriorityFromBegin =
     "fromBegin";
 static constexpr const char* const kPropValueAnchorPriorityFromEnd = "fromEnd";
 static constexpr const char* const kPropValueAnchorAlignToBottom = "toBottom";
-static constexpr const char* const kPropValueAnchorAlignTop = "toTop";
+static constexpr const char* const kPropValueAnchorAlignToTop = "toTop";
 static constexpr const char* const kPropValueAnchorVisibilityHide = "hide";
 static constexpr const char* const kPropValueAnchorVisibilityShow = "show";
 
