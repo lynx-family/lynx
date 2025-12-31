@@ -252,17 +252,6 @@ export interface Config {
   enableCSSLazyImport?: boolean
 
   /**
-   * CSS Length should be <number> follows a unit. Under strict mode, invalid <length> values are dropped.
-   *
-   * Supported platform: Android, HarmonyOS, iOS
-   *
-   * Since: LynxSDK 3.2
-   *
-   * @defaultValue false
-   */
-  enableCSSStrictMode?: boolean
-
-  /**
    * Enables the disexposure event to fire when LynxView is in the hidden state.
    *
    * Supported platform: Android
@@ -353,7 +342,7 @@ export interface Config {
   /**
    * Enable harmony new overlay based overlayManager to handle events pass through.
    *
-   * Supported platform: Harmony
+   * Supported platform: HarmonyOS
    *
    * Since: LynxSDK 3.6
    *
@@ -1081,6 +1070,8 @@ export interface Config {
    *
    * Supported platform: Android, iOS, HarmonyOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue true
    * @deprecated 3.5
    */
@@ -1091,6 +1082,8 @@ export interface Config {
    *
    * Supported platform: Android, HarmonyOS, iOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue ""
    * @deprecated 3.5
    */
@@ -1099,6 +1092,8 @@ export interface Config {
   /**
    * Supported platform: Android, iOS, HarmonyOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue false
    * @deprecated 3.5
    */
@@ -1106,6 +1101,8 @@ export interface Config {
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue ""
    * @deprecated 3.5
@@ -1163,6 +1160,8 @@ export interface Config {
   /**
    * Supported platform: Android, HarmonyOS, iOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue true
    * @deprecated 3.5
    */
@@ -1181,6 +1180,8 @@ export interface Config {
   /**
    * Supported platform: Android, iOS, HarmonyOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue false
    * @deprecated 3.5
    */
@@ -1190,6 +1191,8 @@ export interface Config {
    * Enable create ui async form C++ PaintingContext
    *
    * Supported platform: Android
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    * @deprecated 3.5
@@ -1209,6 +1212,8 @@ export interface Config {
   /**
    * Supported platform: Android, HarmonyOS, iOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue true
    * @deprecated 3.5
    */
@@ -1218,6 +1223,8 @@ export interface Config {
    * Enable using PropBundleStyleWriter to write style to PropBundle.
    *
    * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    * @deprecated 3.5
@@ -1247,6 +1254,8 @@ export interface Config {
   /**
    * Supported platform: Android, iOS, HarmonyOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue true
    * @deprecated 3.5
    */
@@ -1264,6 +1273,8 @@ export interface Config {
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue undefined
    * @deprecated 3.5
@@ -1297,6 +1308,8 @@ export interface Config {
   /**
    * Supported platform: Android, iOS
    *
+   * Since: LynxSDK 3.2
+   *
    * @defaultValue undefined
    * @deprecated 3.5
    */
@@ -1304,6 +1317,8 @@ export interface Config {
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.2
    *
    * @defaultValue ""
    * @deprecated 3.5

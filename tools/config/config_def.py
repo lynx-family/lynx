@@ -168,6 +168,8 @@ class Config:
                 file=sys.stderr,
             )
             return False
+        if not self._check_support_platform():
+            return False
         if self.deprecated and not (
             isinstance(self.deprecated, str) or isinstance(self.deprecated, list)
         ):
@@ -199,3 +201,16 @@ class Config:
                 file=sys.stderr,
             )
             return False
+
+    def _check_support_platform(self) -> bool:
+        _support_platform_set = {"iOS", "Android", "HarmonyOS"}
+        if not self.support_platform:
+            return True
+        for platform in self.support_platform:
+            if platform not in _support_platform_set:
+                print(
+                    f"Config {self.name} supportPlatform field '{self.support_platform}' is invalid, please ensure it is in {list(_support_platform_set)}.",
+                    file=sys.stderr,
+                )
+                return False
+        return True
