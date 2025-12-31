@@ -44,10 +44,7 @@ class ListContainerDefault : public list::ListContainerDelegateInternal {
   void PropsUpdateFinish() override {}
   void OnAttachToElementManager(ElementManager* manager) override {}
   void OnListItemLayoutUpdated(Element* component) override {}
-  void UpdateBatchRenderStrategy(list::BatchRenderStrategy strategy) override {}
-  list::BatchRenderStrategy GetBatchRenderStrategy() override {
-    return list::BatchRenderStrategy::kDefault;
-  }
+  void SetEnableBatchRender(bool enable_batch_render) override {}
 
  protected:
   // Currently, the list container does not copy any member variables and is an

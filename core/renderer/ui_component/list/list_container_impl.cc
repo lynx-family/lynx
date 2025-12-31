@@ -668,15 +668,6 @@ void ListContainerImpl::ResolveListAxisGap(CSSPropertyID id, float gap) {
   }
 }
 
-void ListContainerImpl::UpdateBatchRenderStrategy(
-    list::BatchRenderStrategy strategy) {
-  list_option_.batch_render_strategy = strategy;
-}
-
-list::BatchRenderStrategy ListContainerImpl::GetBatchRenderStrategy() {
-  return list_option_.batch_render_strategy;
-}
-
 namespace list {
 
 std::unique_ptr<ListContainerDelegateInternal>

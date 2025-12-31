@@ -14560,8 +14560,8 @@ TEST_P(FiberElementTest, MarkRenderRootElementTest) {
   list->disable_list_platform_implementation_ = true;
   list->list_container_delegate_internal_ =
       list::CreateListContainerDelegateInternal(list.get());
-  list->list_container_delegate_internal_->UpdateBatchRenderStrategy(
-      list::BatchRenderStrategy::kAsyncResolveProperty);
+  list->batch_render_strategy_ =
+      list::BatchRenderStrategy::kAsyncResolveProperty;
   EXPECT_TRUE(list->render_root_element_ == nullptr);
 
   base::String component_id("21");

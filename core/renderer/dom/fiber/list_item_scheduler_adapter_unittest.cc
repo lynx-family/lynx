@@ -478,9 +478,8 @@ TEST_P(ListItemSchedulerAdapterTest,
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kAsyncResolveProperty);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kAsyncResolveProperty);
 }
 
 TEST_P(ListItemSchedulerAdapterTest,
@@ -498,9 +497,8 @@ TEST_P(ListItemSchedulerAdapterTest,
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kBatchRender);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kBatchRender);
 }
 
 TEST_P(ListItemSchedulerAdapterTest,
@@ -517,9 +515,8 @@ TEST_P(ListItemSchedulerAdapterTest,
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kDefault);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kDefault);
 }
 
 TEST_P(ListItemSchedulerAdapterTest,
@@ -536,9 +533,8 @@ TEST_P(ListItemSchedulerAdapterTest,
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kDefault);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kDefault);
 }
 
 TEST_P(ListItemSchedulerAdapterTest,
@@ -556,9 +552,8 @@ TEST_P(ListItemSchedulerAdapterTest,
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree);
 }
 
 TEST_P(ListItemSchedulerAdapterTest,
@@ -574,9 +569,8 @@ TEST_P(ListItemSchedulerAdapterTest,
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kBatchRender);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kBatchRender);
 }
 
 TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue) {
@@ -593,9 +587,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue) {
   list->disable_list_platform_implementation_ = true;
   list->SetAttributeInternal(list::kExperimentalBatchRenderStrategy,
                              lepus::Value(-2));
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kBatchRender);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kBatchRender);
 }
 
 TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue1) {
@@ -610,31 +603,30 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue1) {
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
   list->disable_list_platform_implementation_ = true;
-
+  list->batch_render_strategy_flushed_ = false;
   auto& updated_attr_map = const_cast<AttrUMap&>(list->updated_attr_map());
   updated_attr_map[list::kExperimentalBatchRenderStrategy] = lepus::Value(0);
   list->PrepareForCreateOrUpdate();
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kDefault);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kDefault);
 
+  list->batch_render_strategy_flushed_ = false;
   updated_attr_map[list::kExperimentalBatchRenderStrategy] = lepus::Value(1);
   list->PrepareForCreateOrUpdate();
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kBatchRender);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kBatchRender);
 
+  list->batch_render_strategy_flushed_ = false;
   updated_attr_map[list::kExperimentalBatchRenderStrategy] = lepus::Value(2);
   list->PrepareForCreateOrUpdate();
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kAsyncResolveProperty);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kAsyncResolveProperty);
 
+  list->batch_render_strategy_flushed_ = false;
   updated_attr_map[list::kExperimentalBatchRenderStrategy] = lepus::Value(3);
   list->PrepareForCreateOrUpdate();
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree);
 }
 
 TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue2) {
@@ -651,9 +643,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue2) {
   list->disable_list_platform_implementation_ = true;
   list->SetAttributeInternal(list::kExperimentalBatchRenderStrategy,
                              lepus::Value(4));
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kBatchRender);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kBatchRender);
 }
 
 TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue3) {
@@ -672,9 +663,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue3) {
   list->disable_list_platform_implementation_ = true;
   list->SetAttributeInternal(list::kExperimentalBatchRenderStrategy,
                              lepus::Value(4));
-  EXPECT_TRUE(
-      list->list_container_delegate_internal_->GetBatchRenderStrategy() ==
-      list::BatchRenderStrategy::kBatchRender);
+  EXPECT_TRUE(list->batch_render_strategy_ ==
+              list::BatchRenderStrategy::kBatchRender);
 }
 
 INSTANTIATE_TEST_SUITE_P(
