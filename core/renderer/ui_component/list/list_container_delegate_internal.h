@@ -59,10 +59,7 @@ class ListContainerDelegateInternal {
 
   virtual void OnListItemLayoutUpdated(Element* component) = 0;
 
-  virtual void UpdateBatchRenderStrategy(
-      list::BatchRenderStrategy strategy) = 0;
-
-  virtual list::BatchRenderStrategy GetBatchRenderStrategy() = 0;
+  virtual void SetEnableBatchRender(bool enable_batch_render) = 0;
 };
 
 namespace list {

@@ -33,14 +33,10 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
   if (manager == nullptr) {
     return;
   }
-  auto batch_render_strategy =
+  batch_render_strategy_ =
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
           manager->GetEnableParallelElement());
-  if (list_container_delegate_internal_) {
-    list_container_delegate_internal_->UpdateBatchRenderStrategy(
-        batch_render_strategy);
-  }
 }
 
 ListNode* ListElement::GetListNode() {
@@ -54,7 +50,7 @@ ListNode* ListElement::GetListNode() {
 bool ListElement::NeedAsyncResolveListItem() {
   auto batch_render_strategy =
       DisableListPlatformImplementation() && list_container_delegate_internal_
-          ? list_container_delegate_internal_->GetBatchRenderStrategy()
+          ? batch_render_strategy_
           : list::BatchRenderStrategy::kDefault;
   return batch_render_strategy ==
              list::BatchRenderStrategy::kAsyncResolveProperty ||
@@ -71,9 +67,9 @@ void ListElement::OnNodeAdded(FiberElement* child) {
   child->MarkAsListItem();
   // Create scheduler for each list-item
   if (NeedAsyncResolveListItem()) {
-    child->CreateListItemScheduler(
-        list_container_delegate_internal_->GetBatchRenderStrategy(),
-        element_context_delegate_, continuous_resolve_tree_);
+    child->CreateListItemScheduler(batch_render_strategy_,
+                                   element_context_delegate_,
+                                   continuous_resolve_tree_);
     // Mark inserted child as render_root of its subtree
     // TODO: Override UpdateRenderRootElementIfNecessary when list-item-element
     // concept is introduced.
@@ -330,9 +326,10 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
                                 lepus::Value(true));
     }
   }
-  // Handle experimental-batch-render-strategy property.
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  // Only handle experimental-batch-render-strategy property once time
+  if (DisableListPlatformImplementation() && !batch_render_strategy_flushed_) {
+    batch_render_strategy_flushed_ = true;
+    // Get batch_render_strategy from prop.
     auto it = attr_map.find(
         BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy));
     if (it != attr_map.end()) {
@@ -340,48 +337,44 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       if (value >= static_cast<int>(list::BatchRenderStrategy::kDefault) &&
           value <= static_cast<int>(list::BatchRenderStrategy::
                                         kAsyncResolvePropertyAndElementTree)) {
-        list::BatchRenderStrategy batch_render_strategy_from_prop =
-            static_cast<list::BatchRenderStrategy>(value);
+        batch_render_strategy_ = static_cast<list::BatchRenderStrategy>(value);
         if (!element_manager()->GetEnableParallelElement() &&
-            batch_render_strategy_from_prop !=
-                list::BatchRenderStrategy::kDefault) {
+            batch_render_strategy_ != list::BatchRenderStrategy::kDefault) {
           // If not enable parallel element, we should reset
           // batch_render_strategy_from_prop to batch render.
-          batch_render_strategy_from_prop =
-              list::BatchRenderStrategy::kBatchRender;
+          batch_render_strategy_ = list::BatchRenderStrategy::kBatchRender;
         }
-        list_container_delegate_internal_->UpdateBatchRenderStrategy(
-            batch_render_strategy_from_prop);
       }
     }
-    if (!batch_render_strategy_flushed_) {
-      // Flush to platform ui once time.
-      batch_render_strategy_flushed_ = true;
-      list::BatchRenderStrategy batch_render_strategy =
-          list_container_delegate_internal_->GetBatchRenderStrategy();
-      FiberElement::SetAttributeInternal(
-          BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy),
-          lepus::Value(static_cast<int>(batch_render_strategy)));
-      HandleDelayTask([this, batch_render_strategy]() {
-        std::string id_selector = data_model_->idSelector().str();
-        bool enable_parallel_element =
-            element_manager_->GetEnableParallelElement();
-        report::EventTracker::OnEvent([batch_render_strategy, id_selector,
-                                       enable_parallel_element](
-                                          report::MoveOnlyEvent& event) {
-          event.SetName("lynxsdk_list_batch_render_statistic");
-          event.SetProps("id_selector", id_selector);
-          event.SetProps("strategy", static_cast<int>(batch_render_strategy));
-          event.SetProps("enable_parallel_element", enable_parallel_element);
-        });
-      });
+    // Flush to platform ui and list container once time.
+    if (list_container_delegate_internal_) {
+      list_container_delegate_internal_->SetEnableBatchRender(
+          batch_render_strategy_ > list::BatchRenderStrategy::kDefault);
     }
-    // Handle experimental-continuous-resolve-tree
-    it = attr_map.find(
-        BASE_STATIC_STRING(list::kExperimentalContinuousResolveTree));
-    if (it != attr_map.end() && it->second.IsBool()) {
-      continuous_resolve_tree_ = it->second.Bool();
-    }
+    FiberElement::SetAttributeInternal(
+        BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy),
+        lepus::Value(static_cast<int>(batch_render_strategy_)));
+    // Report batch render statistic.
+    HandleDelayTask([this]() {
+      std::string id_selector = data_model_->idSelector().str();
+      bool enable_parallel_element =
+          element_manager_->GetEnableParallelElement();
+      list::BatchRenderStrategy batch_render_strategy = batch_render_strategy_;
+      report::EventTracker::OnEvent(
+          [batch_render_strategy, id_selector,
+           enable_parallel_element](report::MoveOnlyEvent& event) {
+            event.SetName("lynxsdk_list_batch_render_statistic");
+            event.SetProps("id_selector", id_selector);
+            event.SetProps("strategy", static_cast<int>(batch_render_strategy));
+            event.SetProps("enable_parallel_element", enable_parallel_element);
+          });
+    });
+  }
+  // Handle experimental-continuous-resolve-tree
+  auto it = attr_map.find(
+      BASE_STATIC_STRING(list::kExperimentalContinuousResolveTree));
+  if (it != attr_map.end() && it->second.IsBool()) {
+    continuous_resolve_tree_ = it->second.Bool();
   }
   return FiberElement::PrepareForCreateOrUpdate();
 }
@@ -609,15 +602,13 @@ void ListElement::AttachToElementManager(
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
-  auto batch_render_strategy =
+  batch_render_strategy_ =
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
           manager->GetEnableParallelElement());
   if (DisableListPlatformImplementation() &&
       list_container_delegate_internal_) {
     list_container_delegate_internal_->OnAttachToElementManager(manager);
-    list_container_delegate_internal_->UpdateBatchRenderStrategy(
-        batch_render_strategy);
   }
 }
 

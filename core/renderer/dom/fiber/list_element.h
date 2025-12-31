@@ -23,8 +23,6 @@ namespace tasm {
 class TemplateAssembler;
 class ListElement;
 
-using ListActions = std::vector<int32_t>;
-
 class ListElementSSRHelper {
  public:
   explicit ListElementSSRHelper(ListElement* list) : list_element_(list) {}
@@ -199,6 +197,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
       uint64_t pipeline_scheduler_config, bool enable_parallel_element);
 
+ private:
   bool continuous_resolve_tree_{false};
   tasm::TemplateAssembler* tasm_{nullptr};
   lepus::Value component_at_index_{};
@@ -210,6 +209,8 @@ class ListElement : public FiberElement, public tasm::ListNode {
   bool batch_render_strategy_flushed_{false};
   std::unique_ptr<ListContainerDelegateInternal>
       list_container_delegate_internal_;
+  list::BatchRenderStrategy batch_render_strategy_{
+      list::BatchRenderStrategy::kDefault};
 };
 
 }  // namespace tasm
