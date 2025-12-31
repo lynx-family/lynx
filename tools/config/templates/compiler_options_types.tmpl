@@ -26,6 +26,10 @@ export interface CompilerOptions {
    * {{ option.desc }}
    *
    {% endif %}
+    {% if option.support_platform %}
+   * Supported platform: {{ option.support_platform | map('string') | join(", ") }}
+   *
+   {% endif %}
    {% if option.since %}
    * Since: LynxSDK {{ option.since }}
    *

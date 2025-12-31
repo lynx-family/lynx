@@ -33,7 +33,7 @@ def _construct_config_object(key: str, value: dict) -> Config:
         js_default_value=value.get("jsDefaultValue", "undefined"),
         value_type=value.get("valueType", None),
         js_value_type=value.get("jsValueType", "undefined"),
-        since=value.get("since", []),
+        since=value.get("since", ""),
         deprecated=value.get("deprecated", []),
         support_platform=value.get("supportPlatform", ["Android", "iOS", "HarmonyOS"]),
         sync_to=value.get("syncTo", []),
@@ -85,6 +85,8 @@ def _validate_export_version(items: list[Config]) -> list[Config]:
                 for k, v in sub.items():
                     if not check_version(v):
                         item.since[i][k] = "3.2"
+        else:
+            item.since = "3.2"
 
         if isinstance(item.deprecated, str) and item.deprecated:
             if not check_version(item.deprecated):

@@ -725,12 +725,6 @@ class LynxConfigDecoder final {
           doc[config::kCSSAlignWithLegacyW3C].GetBool());
     }
 
-    if (doc.HasMember(config::kEnableCSSStrictMode) &&
-        doc[config::kEnableCSSStrictMode].IsBool()) {
-      page_config->SetEnableCSSStrictMode(
-          doc[config::kEnableCSSStrictMode].GetBool());
-    }
-
     if (doc.HasMember(config::kUnifyVWVHBehavior) &&
         doc[config::kUnifyVWVHBehavior].IsBool()) {
       page_config->SetUnifyVWVH(doc[config::kUnifyVWVHBehavior].GetBool());

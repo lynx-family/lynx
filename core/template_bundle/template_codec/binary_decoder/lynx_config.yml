@@ -54,10 +54,15 @@ compilerOptions:
     since: '1.6'
     export: false
   enableCSSStrictMode:
+    description: CSS Length should be <number> follows a unit. Under strict mode, invalid <length> values are dropped.
     defaultValue: 'false'
     valueType: boolean
     since: '1.6'
     author: zhongyr
+    supportPlatform:
+      - Android
+      - HarmonyOS
+      - iOS
   defaultOverflowVisible:
     defaultValue: 'true'
     valueType: boolean
@@ -1296,7 +1301,7 @@ enableHarmonyNewOverlay:
   since: '3.6'
   author: AdrianLCA
   supportPlatform:
-    - Harmony
+    - HarmonyOS
 enableCheckLocalImage:
   description: Determine whether redirection is needed for local image resources.
   defaultValue: 'true'
@@ -1578,23 +1583,6 @@ CSSAlignWithLegacyW3C:
     - DECODE
   author: givemefive9
   since: '1.4'
-  supportPlatform:
-    - Android
-    - HarmonyOS
-    - iOS
-enableCSSStrictMode:
-  description:
-    CSS Length should be <number> follows a unit. Under strict mode, invalid
-    <length> values are dropped.
-  defaultValue: 'false'
-  valueType: bool
-  bindMemberTo: css_parser_configs_.enable_css_strict_mode
-  codeGen:
-    - SETTER
-    - GETTER
-    - DECODE
-  author: zhongyr
-  since: '3.2'
   supportPlatform:
     - Android
     - HarmonyOS

@@ -26,7 +26,6 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableCSSInheritance').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSInlineVariables').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableCSSLazyImport').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('enableCSSStrictMode').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableDisexposureWhenLynxHidden').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEndGestureAtLastFingerUp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableEventHandleRefactor').toEqualTypeOf<boolean | undefined>();
