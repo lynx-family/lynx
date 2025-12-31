@@ -27,7 +27,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private providers: (LynxResourceProvider | undefined)[];
   private readonly threadMode: ThreadStrategyForRendering;
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
-  private lynxView: LynxView;
+  private lynxView?: LynxView;
   private lynxDevTool?: LynxDevTool;
   private moduleManager: LynxModuleManager;
   private destroyed = false;
@@ -62,19 +62,24 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.nativeDetach();
     this.destroyed = true;
     this.clients.forEach(client => client.onDestroy());
-    this.lynxDevTool?.destroy(this.lynxView);
+    if (this.lynxView) {
+      this.lynxDevTool?.destroy(this.lynxView);
+    }
+    this.lynxView = undefined;
   }
 
   // Called by native, EmbedderEngineClient
   onLoaded(url: string) {
     this.url = url;
     this.clients.forEach(client => client.onLoadSuccess(url));
-    this.lynxDevTool?.onLoaded(this.lynxView);
+    if (this.lynxView) {
+      this.lynxDevTool?.onLoaded(this.lynxView);
+    }
     this.lynxView?.logBox?.onLoaded(url);
   }
 
   onReloadTemplate() {
-    this.lynxView.reload();
+    this.lynxView?.reload();
   }
 
   onRuntimeReady() {
@@ -103,7 +108,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     customInfo: Record<string, string>, logboxOnly: boolean) {
     let err = new LynxError(LynxErrorLevel[level], errorCode, message, suggestion, LynxError.NATIVE_ERROR, customInfo);
     err.setTemplateUrl(this.url);
-    this.lynxView.logBox?.reportError(err);
+    this.lynxView?.logBox?.reportError(err);
     if (logboxOnly) {
       return;
     }
