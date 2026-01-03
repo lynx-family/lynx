@@ -5,6 +5,7 @@
 package com.lynx.devtoolwrapper;
 
 import androidx.annotation.RestrictTo;
+import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 
 /**
@@ -59,6 +60,7 @@ public class DevToolLifecycle {
     if (mState == DevToolState.UNAVAILABLE) {
       LLog.i(TAG, "DevTool attached. Transitioning to ATTACHED.");
       mState = DevToolState.ATTACHED;
+      syncStateToNative();
     } else {
       LLog.w(TAG, "onAttached() called but state is " + mState);
     }
@@ -72,6 +74,7 @@ public class DevToolLifecycle {
     if (mState == DevToolState.ATTACHED) {
       LLog.i(TAG, "DevTool enabled. Transitioning to ENABLED.");
       mState = DevToolState.ENABLED;
+      syncStateToNative();
     } else if (mState == DevToolState.UNAVAILABLE) {
       LLog.w(TAG, "Cannot enable DevTool because it is " + mState);
     } else {
@@ -89,6 +92,7 @@ public class DevToolLifecycle {
         || mState == DevToolState.CONNECTED) {
       LLog.i(TAG, "DevTool disabled. Transitioning to ATTACHED.");
       mState = DevToolState.ATTACHED;
+      syncStateToNative();
     }
   }
 
@@ -100,6 +104,7 @@ public class DevToolLifecycle {
     if (mState == DevToolState.ENABLED) {
       LLog.i(TAG, "DevTool env initialized. Transitioning to INITIALIZED.");
       mState = DevToolState.INITIALIZED;
+      syncStateToNative();
     }
   }
 
@@ -111,6 +116,7 @@ public class DevToolLifecycle {
     if (mState == DevToolState.INITIALIZED) {
       LLog.i(TAG, "DevTool client connected. Transitioning to CONNECTED.");
       mState = DevToolState.CONNECTED;
+      syncStateToNative();
     }
   }
 
@@ -122,12 +128,41 @@ public class DevToolLifecycle {
     if (mState == DevToolState.CONNECTED) {
       LLog.i(TAG, "DevTool client disconnected. Transitioning to INITIALIZED.");
       mState = DevToolState.INITIALIZED;
+      syncStateToNative();
     }
   }
 
-  private synchronized void syncStateWithNative() {
-    // TODO(mitchilling): Implement the logic to sync the DevTool state with the native side.
+  private synchronized void syncStateToNative() {
     // This method should be called each time the state changes.
+    try {
+      nativeSyncStateToNative(mState.ordinal());
+    } catch (UnsatisfiedLinkError e) {
+      LLog.w(TAG,
+          "UnsatisfiedLinkError! "
+              + "Trying to sync state [" + mState + "] before native library is loaded.");
+    }
+  }
+
+  private native void nativeSyncStateToNative(int value);
+  @CalledByNative
+  private synchronized static void syncStateFromNative(int value) {
+    DevToolLifecycle instance = getInstance();
+    DevToolState state = instance.mState;
+    try {
+      // Warning: this line is fragile. It works only when definitions are identical.
+      state = DevToolState.values()[value];
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LLog.e(TAG,
+          "Invalid value during state sync. "
+              + "The definition of states in Android platform and native are not identical");
+      return;
+    }
+
+    if (instance.mState != state) {
+      LLog.i(TAG, "SyncStateFromNative: Transitioning from " + instance.mState + " to " + state);
+      instance.mState = state;
+      // Do NOT sync to native again to avoid circular call.
+    }
   }
 
   /**
@@ -135,5 +170,6 @@ public class DevToolLifecycle {
    */
   void reset() {
     mState = DevToolState.UNAVAILABLE;
+    // Since this method is for testing only, we don't call syncStateToNative();
   }
 }

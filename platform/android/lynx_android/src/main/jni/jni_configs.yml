@@ -22,6 +22,7 @@ gn_configs:
 jni_class_configs:
   output_dir: platform/android/lynx_android/src/main/jni/gen
   jni_classes:
+    - java: platform/android/lynx_android/src/main/java/com/lynx/devtoolwrapper/DevToolLifecycle.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/utils/BlurUtils.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxEnv.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxTemplateRender.java

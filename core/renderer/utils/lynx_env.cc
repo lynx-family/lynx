@@ -12,6 +12,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_trail_hub.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
@@ -204,11 +205,17 @@ std::unordered_set<std::string> LynxEnv::GetGroupedEnv(
 }
 
 bool LynxEnv::IsDevToolComponentAttach() {
-  return GetBoolEnv(Key::DEVTOOL_COMPONENT_ATTACH, false, EnvType::LOCAL);
+  // TODO(mitchilling): remove value check after lifecycle implemented on all
+  // platforms
+  return DevToolLifecycle::GetInstance().IsAttached() ||
+         GetBoolEnv(Key::DEVTOOL_COMPONENT_ATTACH, false, EnvType::LOCAL);
 }
 
 bool LynxEnv::IsLynxDebugEnabled() {
-  return GetBoolEnv(Key::LYNX_DEBUG_ENABLED, false, EnvType::LOCAL);
+  // TODO(mitchilling): remove value check after lifecycle implemented on all
+  // platforms
+  return DevToolLifecycle::GetInstance().IsEnabled() ||
+         GetBoolEnv(Key::LYNX_DEBUG_ENABLED, false, EnvType::LOCAL);
 }
 
 bool LynxEnv::IsDevToolEnabled() {
@@ -308,7 +315,10 @@ uint32_t LynxEnv::GetMemoryReportIntervalSec() {
 }
 
 bool LynxEnv::IsDevToolConnected() {
-  return GetBoolEnv(Key::DEVTOOL_CONNECTED, false, EnvType::LOCAL);
+  // TODO(mitchilling): remove value check after lifecycle implemented on all
+  // platforms
+  return DevToolLifecycle::GetInstance().IsConnected() ||
+         GetBoolEnv(Key::DEVTOOL_CONNECTED, false, EnvType::LOCAL);
 }
 
 bool LynxEnv::EnableHarmonyNewOverlay() {

@@ -65,6 +65,9 @@ lynx_renderer_utils_mock_sources = [
 ]
 
 lynx_env_shared_sources = [
+  "devtool_lifecycle.cc",
+  "devtool_lifecycle.h",
+  "devtool_state.h",
   "lynx_env.cc",
   "lynx_env.h",
   "lynx_trail_hub.cc",
@@ -77,6 +80,8 @@ if (is_apple || is_android || is_linux) {
 
 if (is_android) {
   lynx_env_shared_sources += [
+    "android/devtool_lifecycle_android.cc",
+    "android/devtool_lifecycle_android.h",
     "android/lynx_env_android.cc",
     "android/lynx_env_android.h",
     "android/lynx_trail_hub_impl_android.cc",

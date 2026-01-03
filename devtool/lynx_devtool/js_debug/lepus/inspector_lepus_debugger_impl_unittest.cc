@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/inspector_client_ng_mock.h"
@@ -92,7 +93,10 @@ TEST_F(InspectorLepusDebuggerImplTest, OnInspectorInited) {
   EXPECT_EQ(delegate->target_created_, false);
   EXPECT_EQ(client1->message_queue_.size(), 0);
 
-  tasm::LynxEnv::GetInstance().SetBoolLocalEnv("devtool_connected", true);
+  tasm::DevToolLifecycle::GetInstance().OnAttached();
+  tasm::DevToolLifecycle::GetInstance().OnEnabled();
+  tasm::DevToolLifecycle::GetInstance().OnInitialized();
+  tasm::DevToolLifecycle::GetInstance().OnConnected();
   std::shared_ptr<lynx::testing::InspectorClientNGMock> client2 =
       std::make_shared<lynx::testing::InspectorClientNGMock>();
   debugger_->OnInspectorInited(kKeyEngineLepus, kKeyEngineLepus, client2);
@@ -134,7 +138,10 @@ TEST_F(InspectorLepusDebuggerImplTest, PrepareForScriptEval) {
   debugger_->PrepareForScriptEval(kKeyEngineLepus);
   EXPECT_EQ(client->stop_at_entry_, false);
 
-  tasm::LynxEnv::GetInstance().SetBoolLocalEnv("devtool_connected", true);
+  tasm::DevToolLifecycle::GetInstance().OnAttached();
+  tasm::DevToolLifecycle::GetInstance().OnEnabled();
+  tasm::DevToolLifecycle::GetInstance().OnInitialized();
+  tasm::DevToolLifecycle::GetInstance().OnConnected();
   debugger_->PrepareForScriptEval("test");
   EXPECT_EQ(client->stop_at_entry_, false);
   debugger_->PrepareForScriptEval(kKeyEngineLepus);

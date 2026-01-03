@@ -18,6 +18,8 @@ lynx_core_source_set("build") {
     "gen/CallbackImpl_register_jni.h",
     "gen/ColorUtils_jni.h",
     "gen/ColorUtils_register_jni.h",
+    "gen/DevToolLifecycle_jni.h",
+    "gen/DevToolLifecycle_register_jni.h",
     "gen/DeviceUtils_jni.h",
     "gen/DeviceUtils_register_jni.h",
     "gen/DisplayMetricsHolder_jni.h",

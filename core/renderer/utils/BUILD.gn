@@ -49,6 +49,7 @@ unittest_exec("renderer_utils_unittests_exec") {
   testonly = true
 
   sources = [
+    "devtool_lifecycle_unittest.cc",
     "prop_bundle_style_writer_unittest.cc",
     "prop_bundle_style_writer_unittest.h",
   ]

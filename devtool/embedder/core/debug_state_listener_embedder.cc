@@ -4,6 +4,7 @@
 
 #include "devtool/embedder/core/debug_state_listener_embedder.h"
 
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 
 namespace lynx {
@@ -13,6 +14,9 @@ using DebugRouter = debugrouter::common::DebugRouter;
 
 void DebugStateListenerEmbedder::OnOpen(
     debugrouter::common::ConnectionType type) {
+  tasm::DevToolLifecycle::GetInstance().OnConnected();
+  // TODO(mitchilling): remove this value set after lifecycle implemented on all
+  // platforms
   tasm::LynxEnv::GetInstance().SetBoolLocalEnv("devtool_connected", true);
 }
 

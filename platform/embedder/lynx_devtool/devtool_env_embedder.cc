@@ -4,6 +4,7 @@
 
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/env_embedder.h"
@@ -57,11 +58,21 @@ bool DevToolEnvEmbedder::NeedPersist(std::string key) {
 }
 
 void DevToolEnvEmbedder::EnableLynxDebug(bool enable) {
+  // TODO(mitchilling): remove this value set after lifecycle implemented on all
+  // platforms
   SetDevToolSwitch(tasm::LynxEnv::kLynxDebugEnabled, enable);
+  if (enable) {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
+  } else {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnDisabled();
+  }
 }
 
 bool DevToolEnvEmbedder::IsLynxDebugEnabled() const {
-  return GetDevToolSwitch(tasm::LynxEnv::kLynxDebugEnabled);
+  // TODO(mitchilling): remove this value get after lifecycle implemented on all
+  // platforms
+  return lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled() ||
+         GetDevToolSwitch(tasm::LynxEnv::kLynxDebugEnabled);
 }
 
 void DevToolEnvEmbedder::EnableDevTool(bool enabled) {

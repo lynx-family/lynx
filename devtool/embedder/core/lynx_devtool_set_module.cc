@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "core/public/pub_value.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "devtool/embedder/core/env_embedder.h"
@@ -85,12 +86,32 @@ LynxDevToolSetModule::InvokeMethod(const std::string &method_name,
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLynxDebugEnabled(
     std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
-  return GetSwitch(tasm::LynxEnv::kLynxDebugEnabled);
+  bool enabled = tasm::DevToolLifecycle::GetInstance().IsEnabled();
+  // TODO(mitchilling): remove this value merge after lifecycle implemented on
+  // all platforms
+  enabled |= EnvEmbedder::GetSwitch(tasm::LynxEnv::kLynxDebugEnabled);
+  lepus::Value lepus_value = lepus::Value(enabled);
+  return std::make_unique<PubLepusValue>(std::move(lepus_value));
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLynxDebug(
     std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
-  return SetSwitch(std::move(args), tasm::LynxEnv::kLynxDebugEnabled);
+  // TODO(mitchilling): remove this value set after lifecycle implemented on all
+  // platforms
+  SetSwitch(std::move(args), tasm::LynxEnv::kLynxDebugEnabled);
+  // FIXME(mitchilling): Trying to enable may not take effect.
+  auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
+  if (lepus_args.Array()->size() != 1) {
+    return std::unique_ptr<pub::Value>(nullptr);
+  }
+
+  bool switch_value = lepus_args.Array()->get(0).Bool();
+  if (switch_value) {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
+  } else {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnDisabled();
+  }
+  return std::unique_ptr<pub::Value>(nullptr);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsDevToolEnabled(
