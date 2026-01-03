@@ -190,8 +190,13 @@ public class LynxEnv {
 
   protected final Object mLazyInitLock = new Object();
 
-  // FIXME(mitchilling): devtoolService is retrieved every time when it's about to be used.
   private static ILynxDevToolService devtoolService = null;
+  private static ILynxDevToolService getDevtoolService() {
+    if (devtoolService == null) {
+      devtoolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    }
+    return devtoolService;
+  }
 
   private Boolean mHasV8BridgeLoadSuccess = false;
 
@@ -678,11 +683,10 @@ public class LynxEnv {
   protected void initDevtoolEnv() {
     if (isLynxDebugEnabled() && mContext != null) {
       try {
-        devtoolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-        if (devtoolService != null) {
-          devtoolService.devtoolEnvInit(mContext);
+        if (getDevtoolService() != null) {
+          getDevtoolService().devtoolEnvInit(mContext);
         } else {
-          LLog.e(TAG, "failed to get DevtoolService");
+          LLog.w(TAG, "DevtoolService not yet registered when initDevtoolEnv");
         }
       } catch (Exception e) {
         LLog.e(TAG, "initDevtoolEnv failed: " + e.toString());
@@ -789,10 +793,8 @@ public class LynxEnv {
     if (!DevToolLifecycle.getInstance().isAttached()) {
       // DevTool is UNAVAILABLE (i.e. before ATTACHED)
       // We need to take advantage of preset value.
-      ILynxDevToolService devtoolService =
-          LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-      if (devtoolService != null) {
-        devtoolService.setLynxDebugPresetValue(enableLynxDebug);
+      if (getDevtoolService() != null) {
+        getDevtoolService().setLynxDebugPresetValue(enableLynxDebug);
       }
       // No further action required
       return;
@@ -812,10 +814,9 @@ public class LynxEnv {
   }
 
   protected void initDevtoolComponentAttachSwitch() {
-    devtoolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
     boolean attached = false;
-    if (devtoolService != null) {
-      attached = devtoolService.isDevtoolAttached();
+    if (getDevtoolService() != null) {
+      attached = getDevtoolService().isDevtoolAttached();
     }
     if (attached) {
       DevToolLifecycle.getInstance().onAttached();
@@ -834,14 +835,11 @@ public class LynxEnv {
       // Wrong state, shortcut.
       return;
     }
-    if (devtoolService == null) {
-      devtoolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-    }
-    if (devtoolService == null) {
+    if (getDevtoolService() == null) {
       // service not registered, thus there won't be preset value. We'll just ignore it.
       return;
     }
-    if (devtoolService.getLynxDebugPresetValue()) {
+    if (getDevtoolService().getLynxDebugPresetValue()) {
       DevToolLifecycle.getInstance().onEnabled();
     }
   }
@@ -896,10 +894,8 @@ public class LynxEnv {
   // 2. The environment flag 'SP_KEY_ENABLE_LOGBOX' is true (defaults to true if not set).
   // 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
   public boolean isLogBoxEnabled() {
-    ILynxDevToolService devToolService =
-        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
     return isLynxDebugEnabled() && getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true)
-        && (devToolService != null && devToolService.getLogBoxPresetValue());
+        && (getDevtoolService() != null && getDevtoolService().getLogBoxPresetValue());
   }
 
   /**
