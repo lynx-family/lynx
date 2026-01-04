@@ -427,7 +427,7 @@ class TextStyleHarmony {
   OH_Drawing_Pen* foreground_pen_{nullptr};
   OH_Drawing_Brush* foreground_brush_{nullptr};
   std::unique_ptr<ShadowLayerHarmony> shadow_layer_{nullptr};
-  uint32_t color_{0};
+  std::optional<uint32_t> color_;
   std::optional<uint32_t> stroke_color_;
   float stroke_width_{-1};
   std::unique_ptr<BackgroundGradientLayer> gradient_color_ = nullptr;

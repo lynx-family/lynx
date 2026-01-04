@@ -127,6 +127,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_QUICKJS_THREAD_CHECKER,
     LYNX_DEBUG_ENABLED,
     ENABLE_JS_CALLBACK_MANAGER,
+    FIX_COLOR_OVERRIDE_INCONSISTENT,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -269,6 +270,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_QUICKJS_THREAD_CHECKER,
              "enable_quickjs_thread_checker"},
             {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
+            {Key::FIX_COLOR_OVERRIDE_INCONSISTENT,
+             "fix_color_override_inconsistent"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -413,6 +416,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool DisableJSModeStrip();
   bool EnablePlatformDataFix();
   bool EnableQuickJsThreadChecker();
+  bool FixColorOverrideInconsistent();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
