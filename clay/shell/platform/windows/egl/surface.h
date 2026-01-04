@@ -60,7 +60,7 @@ class Surface {
 
   // Resizes the underlying surface or resource to the specified width and
   // height.
-  virtual bool Resize(int width, int height) { return true; }
+  virtual bool Resize(int width, int height);
 
   virtual uint32_t buffer_count() const { return 1; }
 

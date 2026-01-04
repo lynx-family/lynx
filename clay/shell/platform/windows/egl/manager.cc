@@ -363,8 +363,7 @@ std::unique_ptr<WindowSurface> Manager::CreateWindowSurface(
     if (TryInitializeDirectCompositionDevice()) {
       surface = std::make_unique<DirectCompositionSurface>(
           display_, render_context_->GetHandle(), config_,
-          static_cast<EGLNativeWindowType>(hwnd), dcomp_device_, width, height,
-          true, false);
+          static_cast<EGLNativeWindowType>(hwnd), dcomp_device_, width, height);
     } else {
       surface = std::make_unique<WindowSurface>(
           display_, render_context_->GetHandle(), config_,

@@ -102,5 +102,12 @@ void Surface::AddDamageRegion(const clay::Rect& region) {
   current_buffer_index_ = (current_buffer_index_ + 1) % buffer_count();
 }
 
+bool Surface::Resize(int width, int height) {
+  buffers_.clear();
+  buffers_.resize(buffer_count());
+  current_buffer_index_ = 0;
+  return true;
+}
+
 }  // namespace egl
 }  // namespace clay
