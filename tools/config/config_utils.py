@@ -18,8 +18,8 @@ _clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang
 def _get_clang_format_path():
     # 1. Check pre-defined paths in the repository
     candidate_paths = [
-        _root_dir / "buildtools" / "llvm" / _clang_format_binary,
-        _root_dir / "lynx" / "buildtools" / "llvm" / _clang_format_binary,
+        _root_dir / "buildtools" / "llvm" / "bin" / _clang_format_binary,
+        _root_dir / "lynx" / "buildtools" / "llvm" / "bin" / _clang_format_binary,
     ]
     for path in candidate_paths:
         if path.exists():
