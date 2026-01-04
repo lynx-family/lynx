@@ -90,6 +90,7 @@ class BaseTextShadowNode : public ShadowNode, public ParagraphContent {
   std::vector<std::string>& GetRawFontFamilies() { return raw_font_families_; }
 
   void SetCustomFontFamiliesToStyle();
+  void UpdateColor(uint32_t color);
 
   std::optional<TextProps> text_props_;
   mutable TextStyleHarmony style_;

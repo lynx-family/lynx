@@ -31,7 +31,9 @@ void BaseTextShadowNode::OnContextReady() {
   const auto font_manager = context_->GetFontFaceManager();
   style_.SetDefaultFontFamily(
       font_manager ? font_manager->GetDefaultFontFamily() : "");
-  style_.SetColor(starlight::DefaultColor::DEFAULT_TEXT_COLOR);
+  if (!tasm::LynxEnv::GetInstance().FixColorOverrideInconsistent()) {
+    style_.SetColor(starlight::DefaultColor::DEFAULT_TEXT_COLOR);
+  }
   style_.SetFontSize(context_->DefaultFontSize() * ScaleDensity());
 }
 
@@ -275,8 +277,9 @@ void BaseTextShadowNode::SetTextShadow(const lepus::Value& shadow) {
 
 void BaseTextShadowNode::SetColor(const lepus::Value& color) {
   if (color.IsUInt32()) {
-    text_props_->color = color.UInt32();
-    style_.SetColor(text_props_->color);
+    uint32_t color_value = color.UInt32();
+    text_props_->color = color_value;
+    style_.SetColor(color_value);
     style_.SetGradientColor(nullptr);
   } else if (color.IsArray()) {
     text_props_->color = 0;
@@ -299,6 +302,9 @@ void BaseTextShadowNode::SetColor(const lepus::Value& color) {
           new BackgroundRadialGradientLayer(val_array->get(1))));
     }
     text_props_->gradient_color = style_.GradientColor();
+  } else {
+    text_props_->color.reset();
+    style_.SetGradientColor(nullptr);
   }
 }
 
@@ -322,6 +328,19 @@ void BaseTextShadowNode::AddTextToBuilder(ParagraphBuilderHarmony& builder,
     }
     const auto converted_text = UnicodeDecodeUtils::Decode(text_, property);
     builder.AddText(converted_text.c_str());
+  }
+}
+
+void BaseTextShadowNode::UpdateColor(uint32_t color) {
+  if (text_props_.has_value() && text_props_->color.has_value()) {
+    color = text_props_->color.value();
+  } else {
+    style_.SetColor(color);
+  }
+
+  for (const auto& child : GetChildren()) {
+    auto* text_node = static_cast<BaseTextShadowNode*>(child);
+    text_node->UpdateColor(color);
   }
 }
 

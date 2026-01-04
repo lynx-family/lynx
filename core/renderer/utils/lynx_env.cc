@@ -541,5 +541,12 @@ bool LynxEnv::EnableQuickJsThreadChecker() {
       GetBoolEnv(Key::ENABLE_QUICKJS_THREAD_CHECKER, false);
   return enable_quickjs_thread_checker || IsDevToolEnabled();
 }
+
+bool LynxEnv::FixColorOverrideInconsistent() {
+  static bool fix_color_override_inconsistent =
+      GetBoolEnv(Key::FIX_COLOR_OVERRIDE_INCONSISTENT, true);
+  return fix_color_override_inconsistent;
+}
+
 }  // namespace tasm
 }  // namespace lynx
