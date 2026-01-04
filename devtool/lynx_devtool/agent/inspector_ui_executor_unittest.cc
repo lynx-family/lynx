@@ -106,5 +106,50 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
   }
 }
 
+TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
+  LOGI("InspectorUIExecutorTest StartScreencastTest start");
+
+  std::shared_ptr<testing::DevToolPlatformFacadeMock> facade =
+      std::make_shared<testing::DevToolPlatformFacadeMock>();
+  ui_executor_->SetDevToolPlatformFacade(facade);
+  EXPECT_EQ(ui_executor_->devtool_platform_facade_.get(), facade.get());
+
+  {
+    Json::Value message;
+    message["id"] = 31;
+    ui_executor_->StartScreencast(message_sender_, message);
+    EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+              "{\n   \"id\" : 31,\n   \"result\" : {}\n}\n");
+  }
+
+  {
+    Json::Value message;
+    message["id"] = 32;
+    Json::Value params;
+    params["format"] = "jpeg";
+    params["quality"] = 80;
+    message["params"] = params;
+    ui_executor_->StartScreencast(message_sender_, message);
+    EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+              "{\n   \"id\" : 32,\n   \"result\" : {}\n}\n");
+  }
+
+  {
+    Json::Value message;
+    message["id"] = 33;
+    Json::Value params;
+    params["format"] = "png";
+    params["quality"] = 100;
+    params["maxWidth"] = 720;
+    params["maxHeight"] = 1280;
+    params["everyNthFrame"] = 2;
+    params["mode"] = "lynxview";
+    message["params"] = params;
+    ui_executor_->StartScreencast(message_sender_, message);
+    EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+              "{\n   \"id\" : 33,\n   \"result\" : {}\n}\n");
+  }
+}
+
 }  // namespace testing
 }  // namespace lynx
