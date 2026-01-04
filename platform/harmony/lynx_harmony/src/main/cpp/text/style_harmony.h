@@ -398,11 +398,15 @@ class TextStyleHarmony {
     return gradient_color_.get();
   }
 
+  const std::shared_ptr<BackgroundGradientLayer>& GradientColorShared() const {
+    return gradient_color_;
+  }
+
   const fml::RefPtr<ShaderEffect>& GradientShaderEffect() const {
     return gradient_shader_effect_;
   }
 
-  void SetGradientColor(std::unique_ptr<BackgroundGradientLayer> gradient);
+  void SetGradientColor(std::shared_ptr<BackgroundGradientLayer> gradient);
 
  private:
   void EnsureForegroundPenAndBrush() {
@@ -427,10 +431,10 @@ class TextStyleHarmony {
   OH_Drawing_Pen* foreground_pen_{nullptr};
   OH_Drawing_Brush* foreground_brush_{nullptr};
   std::unique_ptr<ShadowLayerHarmony> shadow_layer_{nullptr};
-  uint32_t color_{0};
+  std::optional<uint32_t> color_;
   std::optional<uint32_t> stroke_color_;
   float stroke_width_{-1};
-  std::unique_ptr<BackgroundGradientLayer> gradient_color_ = nullptr;
+  std::shared_ptr<BackgroundGradientLayer> gradient_color_ = nullptr;
   fml::RefPtr<ShaderEffect> gradient_shader_effect_ = nullptr;
 };
 

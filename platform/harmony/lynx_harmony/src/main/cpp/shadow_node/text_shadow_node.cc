@@ -16,6 +16,7 @@
 #include "base/include/value/base_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "core/style/color.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_placeholder_shadow_node.h"
@@ -113,8 +114,7 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::HandleTextOverflowAndTruncation(
     MeasureMode width_mode, float height, MeasureMode height_mode,
     bool final_measure) {
   auto layout_max_height = ConstructTextHeightConstraint(height_mode, height);
-  if (!paragraph->DidExceedMaxLines() &&
-      base::FloatsLargerOrEqual(layout_max_height, paragraph->GetHeight())) {
+  if (!IsTextOverflow(paragraph.get(), layout_max_height)) {
     // not overflow
     return paragraph;
   }
@@ -126,7 +126,9 @@ fml::RefPtr<ParagraphHarmony> TextShadowNode::HandleTextOverflowAndTruncation(
     // ellipsis has been added.
     return paragraph;
   }
-  float layout_max_width = ConstructTextWidthConstraint(width_mode, width);
+  float layout_max_width = width_mode == MeasureMode::Indefinite
+                               ? TEXT_MAX_LAYOUT_WIDTH
+                               : width * ScaleDensity();
   bool need_truncation = true;
   fml::RefPtr<ParagraphHarmony> truncation_paragraph = nullptr;
   if (inline_truncation_shadow_node_ == nullptr) {
@@ -323,6 +325,18 @@ void TextShadowNode::OnLayoutBefore() {
       static_cast<int64_t>(text_props_->line_height) != kLineHeightNormal) {
     UpdateLineHeight(this, text_props_->line_height);
   }
+
+  uint32_t color = starlight::DefaultColor::DEFAULT_TEXT_COLOR;
+  std::shared_ptr<BackgroundGradientLayer> gradient = nullptr;
+  if (text_props_.has_value()) {
+    if (text_props_->gradient_color != nullptr) {
+      color = 0;
+      gradient = style_.GradientColorShared();
+    } else if (text_props_->color.has_value()) {
+      color = text_props_->color.value();
+    }
+  }
+  UpdateInheritedTextStyle(color, std::move(gradient), {});
 }
 
 void TextShadowNode::UpdateLayout(float left, float top, float width,
@@ -509,6 +523,14 @@ void TextShadowNode::DispatchLayoutEvent() {
   CustomEvent event{Signature(), kLayout, kDetail.str(),
                     lepus::Value(std::move(param))};
   context_->RunOnUIThread([this, event]() { context_->SendEvent(event); });
+}
+
+bool TextShadowNode::IsTextOverflow(ParagraphHarmony* paragraph,
+                                    float layout_max_height) {
+  return paragraph->DidExceedMaxLines() ||
+         base::FloatsLarger(paragraph->GetHeight(), layout_max_height) ||
+         base::FloatsLarger(paragraph->GetLongestLine() / ScaleDensity(),
+                            paragraph->GetMeasuredWidth());
 }
 
 }  // namespace harmony

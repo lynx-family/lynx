@@ -20,7 +20,8 @@ void TextStyleHarmony::UpdateTextPaint(float width, float height,
   }
   EnsureForegroundPenAndBrush();
   if (stroke_width_ >= 0) {
-    uint32_t color = stroke_color_.value_or(color_);
+    uint32_t color =
+        stroke_color_.value_or(color_.has_value() ? color_.value() : 0);
     OH_Drawing_PenSetColor(foreground_pen_, color);
     OH_Drawing_PenSetWidth(foreground_pen_, stroke_width_);
     OH_Drawing_PenSetShadowLayer(
@@ -35,8 +36,8 @@ void TextStyleHarmony::UpdateTextPaint(float width, float height,
     gradient_shader_effect_ = gradient_color_->GetShaderEffect();
     OH_Drawing_BrushSetShaderEffect(
         foreground_brush_, gradient_shader_effect_->HarmonyShaderEffect());
-  } else {
-    OH_Drawing_BrushSetColor(foreground_brush_, color_);
+  } else if (color_.has_value()) {
+    OH_Drawing_BrushSetColor(foreground_brush_, color_.value());
     gradient_shader_effect_ = nullptr;
   }
   OH_Drawing_BrushSetShadowLayer(
@@ -46,7 +47,7 @@ void TextStyleHarmony::UpdateTextPaint(float width, float height,
 }
 
 void TextStyleHarmony::SetGradientColor(
-    std::unique_ptr<BackgroundGradientLayer> gradient) {
+    std::shared_ptr<BackgroundGradientLayer> gradient) {
   gradient_color_ = std::move(gradient);
 }
 }  // namespace harmony
