@@ -71,6 +71,8 @@ class CEFWebview : public lynx::pub::LynxNativeView {
 
   CefRefPtr<CefBrowser> GetBrowser() { return browser_; }
 
+  void RegisterImeHandler(void* ime_handler, void* arg);
+
  protected:
   friend CEFWebviewClient;
   // The client_ will be managered by CefBrowser.

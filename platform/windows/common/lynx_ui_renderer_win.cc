@@ -26,6 +26,8 @@
 #include "third_party/rapidjson/writer.h"
 #endif
 
+constexpr UINT kRequestIME = WM_USER + 9;
+
 namespace lynx {
 namespace embedder {
 
@@ -190,6 +192,13 @@ void LynxUIRendererWin::RegisterNativeView(const char* name,
 
 lynx::tasm::UIDelegate* LynxUIRendererWin::GetUIDelegate() {
   return ui_delegate_.get();
+}
+
+void LynxUIRendererWin::RegisterImeHandler(void* ime_handler, void* arg) {
+  HWND native_window = std::get<HWND>(*flutter_view_->GetRenderTarget());
+  PostMessageW(native_window, kRequestIME,
+               reinterpret_cast<WPARAM>(ime_handler),
+               reinterpret_cast<LPARAM>(arg));
 }
 
 }  // namespace embedder

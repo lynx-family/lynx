@@ -34,7 +34,6 @@ class CEFWebviewMac : public CEFWebview {
   void AddSubview(NSView* view);
 
   bool IsAttachedToView() const { return attached_to_view_; }
-  void RequestIME(void* callback, void* opaque);
 
  private:
   friend CEFWebviewClientMac;

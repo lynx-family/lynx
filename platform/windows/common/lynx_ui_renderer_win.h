@@ -37,6 +37,8 @@ class LynxUIRendererWin : public LynxUIRenderer {
 
   lynx::tasm::UIDelegate* GetUIDelegate() override;
 
+  void RegisterImeHandler(void* ime_handler, void* arg) override;
+
  private:
   std::unique_ptr<clay::FlutterWindowsEngine> engine_;
   std::unique_ptr<clay::FlutterWindowsView> flutter_view_;

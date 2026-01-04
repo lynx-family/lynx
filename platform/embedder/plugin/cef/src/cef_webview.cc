@@ -377,6 +377,10 @@ void CEFWebview::OnMethodInvoked(
   }
 }
 
+void CEFWebview::RegisterImeHandler(void* ime_handler, void* arg) {
+  lynx_view_register_ime_handler(lynx_view_, ime_handler, arg);
+}
+
 }  // namespace embedder
 }  // namespace plugin
 }  // namespace lynx

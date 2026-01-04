@@ -41,6 +41,9 @@ class LynxUIRenderer {
                                   void* opaque) {}
 
   virtual lynx::tasm::UIDelegate* GetUIDelegate() = 0;
+
+  virtual void RegisterImeHandler(void* ime_handler, void* arg) = 0;
+
   // TODO: Add more methods.
 };
 }  // namespace embedder

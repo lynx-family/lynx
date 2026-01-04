@@ -298,3 +298,10 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->lynx_ui_renderer.reset();
   delete view;
 }
+
+LYNX_EXTERN_C LYNX_CAPI_EXPORT void lynx_view_register_ime_handler(
+    lynx_view_t* view, void* ime_handler, void* arg) {
+  if (view != nullptr && view->lynx_ui_renderer != nullptr) {
+    view->lynx_ui_renderer->RequestIME(ime_handler, arg);
+  }
+}

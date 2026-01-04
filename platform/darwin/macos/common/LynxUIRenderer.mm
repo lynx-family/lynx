@@ -158,6 +158,11 @@
     [self.clayViewProvider performSelector:@selector(mouseUp:) withObject:event];
   }
 }
+
+- (void)RegisterImeHandler:(void*)handler arg:(void*)arg {
+  [self.clayViewProvider requestIME:handler arg:arg];
+}
+
 #endif
 
 @end
@@ -314,6 +319,14 @@ void LynxUIRendererImpl::RegisterNativeView(const char* name, lynx_native_view_c
 }
 
 lynx::tasm::UIDelegate* LynxUIRendererImpl::GetUIDelegate() { return ui_delegate_.get(); }
+
+void LynxUIRendererImpl::RegisterImeHandler(void* ime_handler, void* arg) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  [lynx_ui_renderer RegisterImeHandler:ime_handler arg:arg];
+}
 
 }  // namespace embedder
 }  // namespace lynx
