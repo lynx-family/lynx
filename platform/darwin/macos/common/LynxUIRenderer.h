@@ -34,6 +34,8 @@ class LynxUIRendererImpl : public LynxUIRenderer {
 
   lynx::tasm::UIDelegate* GetUIDelegate() override;
 
+  void RegisterIMEHandler(void* handler, void* opaque) override;
+
  private:
   void* lynx_ui_renderer_ = nullptr;
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;

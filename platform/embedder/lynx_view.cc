@@ -284,6 +284,12 @@ LYNX_EXTERN_C void lynx_view_set_custom_vsync_monitor(
   view->custom_vsync_monitor = monitor;
 }
 
+LYNX_EXTERN_C void lynx_view_register_ime_handler(lynx_view_t* view,
+                                                  void* ime_handler,
+                                                  void* opaque) {
+  view->lynx_ui_renderer->RegisterIMEHandler(ime_handler, opaque);
+}
+
 LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->user_data = nullptr;
 #if ENABLE_NAPI_BINDING

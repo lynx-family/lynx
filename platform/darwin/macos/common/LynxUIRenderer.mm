@@ -61,6 +61,10 @@
   [view addSubview:_clayViewProvider.flutterView];
 }
 
+- (void)RegisterIMEHandler:(void*)handler arg:(void*)arg {
+  [self.clayViewProvider requestIME:handler arg:arg];
+}
+
 #if ENABLE_TESTBENCH_REPLAY
 - (NSEvent*)generateMouseDownEvent:(NSPoint)locationInWindow {
   NSEvent* downEvent =
@@ -314,6 +318,14 @@ void LynxUIRendererImpl::RegisterNativeView(const char* name, lynx_native_view_c
 }
 
 lynx::tasm::UIDelegate* LynxUIRendererImpl::GetUIDelegate() { return ui_delegate_.get(); }
+
+void LynxUIRendererImpl::RegisterIMEHandler(void* handler, void* opaque) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  [lynx_ui_renderer RegisterIMEHandler:handler arg:opaque];
+}
 
 }  // namespace embedder
 }  // namespace lynx

@@ -46,6 +46,8 @@ static const char kMethodReload[] = "reload";
 // JavaScript execution context
 static const char kJsExecutionContext[] = "<host>";
 
+static const char LOG_TAG[] = "cef-x-webview"
+
 }  // namespace embedder
 }  // namespace plugin
 }  // namespace lynx

@@ -21,6 +21,8 @@ class MockLynxUIRenderer : public LynxUIRenderer {
 
   void OnEnterBackground() override {}
 
+  void RegisterIMEHandler(void* handler, void* opaque) override {}
+
   lynx::tasm::UIDelegate* GetUIDelegate() override { return nullptr; }
 };
 

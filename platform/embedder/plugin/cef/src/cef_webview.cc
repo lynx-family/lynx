@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "platform/embedder/plugin/cef/src/cef_webview_constants.h"
+#include "platform/embedder/public/capi/lynx_log_capi.h"
 
 namespace lynx {
 namespace plugin {
@@ -377,7 +378,12 @@ void CEFWebview::OnMethodInvoked(
 }
 
 void CEFWebview::RegisterIMEHandler(void* handler, void* opaque) {
-  // TODO(chenyouhui): Add implementation
+  if (!lynx_view_) {
+    LYNX_CAPI_LOG(LYNX_LOG_ERROR, LOG_TAG,
+                  "RegisterIMEHandler but lynx view is null");
+    return;
+  }
+  lynx_view_register_ime_handler(lynx_view_, handler, opaque);
 }
 
 }  // namespace embedder

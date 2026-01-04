@@ -191,10 +191,6 @@ void CEFWebviewMac::AddSubview(NSView* view) {
   }
 }
 
-void CEFWebviewMac::RequestIME(void* callback, void* opaque) {
-  // TODO(chenyouhui): Add implementation.
-}
-
 }  // namespace embedder
 }  // namespace plugin
 }  // namespace lynx

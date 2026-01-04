@@ -122,6 +122,14 @@ LYNX_CAPI_EXPORT void lynx_view_register_native_view(
     lynx_view_t*, const char* name, lynx_native_view_creator creator,
     void* opaque);
 
+// Register Input Method Editor (IME) handler for the LynxView.
+// When registering IME (handler != NULL), the provided handler will be invoked
+// to handle keyboard events. When releasing IME (handler == NULL), the IME
+// will be hidden and no further keyboard events will be sent.
+LYNX_CAPI_EXPORT void lynx_view_register_ime_handler(lynx_view_t* view,
+                                                     void* handler,
+                                                     void* opaque);
+
 // Set a custom vsync monitor to request a synchronous vsync signal
 LYNX_CAPI_EXPORT void lynx_view_set_custom_vsync_monitor(
     lynx_view_t*, lynx_vsync_monitor_t* monitor);
