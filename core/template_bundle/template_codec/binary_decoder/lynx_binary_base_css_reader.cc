@@ -13,6 +13,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
+#include "core/runtime/vm/lepus/base_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 
 namespace lynx {
@@ -391,6 +392,33 @@ bool LynxBinaryBaseCSSReader::DecodeCSSValue(
     }
   }
   return true;
+}
+
+bool LynxBinaryBaseCSSReader::DecodeUtf8Str(base::String& result) {
+  if (decode_string_directly_) {
+    return ReadStringDirectly(result);
+  }
+  return lepus::BaseBinaryReader::DecodeUtf8Str(result);
+}
+
+bool LynxBinaryBaseCSSReader::DecodeUtf8Str(std::string* result) {
+  if (decode_string_directly_) {
+    return ReadStringDirectly(result);
+  }
+  return lepus::BaseBinaryReader::DecodeUtf8Str(result);
+}
+
+bool LynxBinaryBaseCSSReader::DecodeUtf8Str(lynx_value& result) {
+  if (decode_string_directly_) {
+    base::String tmp;
+    ERROR_UNLESS(ReadStringDirectly(tmp));
+    auto* ptr = base::String::Unsafe::GetUntaggedStringRawRef(tmp);
+    result.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
+    result.type = lynx_value_string;
+    base::String::Unsafe::SetStringToEmpty(tmp);
+    return true;
+  }
+  return lepus::BaseBinaryReader::DecodeUtf8Str(result);
 }
 
 bool LynxBinaryBaseCSSReader::GetEnableNewImportRule() {

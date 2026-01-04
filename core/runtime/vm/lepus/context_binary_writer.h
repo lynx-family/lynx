@@ -47,8 +47,9 @@ class ContextBinaryWriter : public BinaryWriter {
   void EncodeTable(fml::RefPtr<Dictionary> dictionary, bool is_header = false);
   void EncodeArray(fml::RefPtr<CArray> ary);
   void EncodeDate(fml::RefPtr<CDate> date);
-  void EncodeUtf8Str(const char* value, size_t length);
-  void EncodeUtf8Str(const char* value);
+
+  virtual void EncodeUtf8Str(const char* value, size_t length);
+  virtual void EncodeUtf8Str(const char* value);
   void EncodeValue(const Value* value, bool is_header = false);
   void EncodeCSSValue(const tasm::CSSValue& css_value);
   void EncodeCSSValue(const tasm::CSSValue& css_value, bool enable_css_parser,

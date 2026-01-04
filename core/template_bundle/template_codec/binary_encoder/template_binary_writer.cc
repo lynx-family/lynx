@@ -1254,5 +1254,21 @@ void TemplateBinaryWriter::EncodeJsBytecode() {
   }
 }
 
+void TemplateBinaryWriter::EncodeUtf8Str(const char* value, size_t length) {
+  if (write_string_directly_) {
+    WriteStringDirectly(value, length);
+  } else {
+    ContextBinaryWriter::EncodeUtf8Str(value, length);
+  }
+}
+
+void TemplateBinaryWriter::EncodeUtf8Str(const char* value) {
+  if (write_string_directly_) {
+    WriteStringDirectly(value);
+  } else {
+    ContextBinaryWriter::EncodeUtf8Str(value);
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx
