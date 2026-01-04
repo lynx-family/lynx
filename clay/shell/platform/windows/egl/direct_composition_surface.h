@@ -34,8 +34,7 @@ class DirectCompositionSurface : public WindowSurface {
   DirectCompositionSurface(EGLDisplay display, EGLContext context,
                            EGLConfig config, EGLNativeWindowType window,
                            Microsoft::WRL::ComPtr<IDCompositionDevice2> device,
-                           int width, int height, bool force_full_damage,
-                           bool force_full_damage_always);
+                           int width, int height);
 
   ~DirectCompositionSurface() override;
 
@@ -80,9 +79,6 @@ class DirectCompositionSurface : public WindowSurface {
   Microsoft::WRL::ComPtr<ID3D11Texture2D> draw_texture_;
   Microsoft::WRL::ComPtr<IDCompositionVisual2> dcomp_root_visual_;
   Microsoft::WRL::ComPtr<IDCompositionTarget> dcomp_target_;
-
-  bool force_full_damage_ = true;
-  bool force_full_damage_always_ = false;
 
   std::unique_ptr<ChildWindowWin> child_window_;
 };

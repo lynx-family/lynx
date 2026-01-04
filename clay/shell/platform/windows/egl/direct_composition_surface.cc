@@ -30,12 +30,9 @@ static constexpr float kForceFullDamageThreshold = 0.6f;
 DirectCompositionSurface::DirectCompositionSurface(
     EGLDisplay display, EGLContext context, EGLConfig config,
     EGLNativeWindowType window,
-    Microsoft::WRL::ComPtr<IDCompositionDevice2> device, int width, int height,
-    bool force_full_damage, bool force_full_damage_always)
+    Microsoft::WRL::ComPtr<IDCompositionDevice2> device, int width, int height)
     : WindowSurface(display, context, config, window, width, height),
-      dcomp_device_(device),
-      force_full_damage_(force_full_damage),
-      force_full_damage_always_(force_full_damage_always) {
+      dcomp_device_(device) {
   d3d11_device_ = QueryD3D11DeviceObjectFromANGLE(display);
 }
 
@@ -142,6 +139,10 @@ bool DirectCompositionSurface::SwapBuffers() {
 }
 
 bool DirectCompositionSurface::Resize(int width, int height) {
+  if (size_.width() != width || size_.height() != height) {
+    Surface::Resize(width, height);
+    size_ = {width, height};
+  }
   child_window_->Resize(width, height);
   if (!Surface::Destroy()) {
     FML_LOG(ERROR) << "Surface resize failed to destroy surface";
@@ -149,7 +150,6 @@ bool DirectCompositionSurface::Resize(int width, int height) {
   }
   is_valid_ = true;
   draw_texture_.Reset();
-  size_ = {width, height};
   // This will release indirect references to swap chain (|real_surface_|) by
   // binding |default_surface_| as the default framebuffer.
   if (!ReleaseDrawTexture(true /* will_discard */)) return false;
@@ -219,27 +219,12 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
           first_swap_ || !vsync_enabled() || use_swap_chain_tearing ? 0 : 1;
       UINT flags = use_swap_chain_tearing ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
-      bool actually_force_full_damage = false;
-      if (force_full_damage_) {
-        if (force_full_damage_always_) {
-          actually_force_full_damage = true;
-        } else {
-          float percentage = swap_rect_.size().GetArea();
-          percentage /= size_.GetArea();
-          if (percentage >= kForceFullDamageThreshold)
-            actually_force_full_damage = true;
-        }
-      }
-      if (actually_force_full_damage) {
-        hr = swap_chain_->Present(interval, flags);
-      } else {
-        DXGI_PRESENT_PARAMETERS params = {};
-        RECT dirty_rect = ToRECT(swap_rect_);
-        params.DirtyRectsCount = 1;
-        params.pDirtyRects = &dirty_rect;
+      DXGI_PRESENT_PARAMETERS params = {};
+      RECT dirty_rect = ToRECT(swap_rect_);
+      params.DirtyRectsCount = 1;
+      params.pDirtyRects = &dirty_rect;
 
-        hr = swap_chain_->Present1(interval, flags, &params);
-      }
+      hr = swap_chain_->Present1(interval, flags, &params);
       if (FAILED(hr) && hr != DXGI_STATUS_OCCLUDED) {
         FML_LOG(ERROR) << "swap_chain_->Present failed. "
                        << "hr=0x" << std::hex << hr << ", interval=" << interval
