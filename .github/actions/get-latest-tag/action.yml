@@ -25,6 +25,17 @@ runs:
         ANCESTOR_TAG=$(git describe --tags --exclude=${{ inputs.current-tag }} --abbrev=0 2>/dev/null)
         echo "ANCESTOR_TAG=$ANCESTOR_TAG" >> $GITHUB_ENV
 
+    - name: install jq if missing
+      shell: bash
+      run: |
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "jq not found, installing..."
+          sudo apt-get update
+          sudo apt-get install -y jq
+        else
+          echo "jq already installed"
+        fi
+
     - name: get latest tag from api
       id: get-latest-tag-from-api
       shell: bash
