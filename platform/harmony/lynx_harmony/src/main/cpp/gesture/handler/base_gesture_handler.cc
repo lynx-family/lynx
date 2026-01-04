@@ -202,7 +202,11 @@ void BaseGestureHandler::Reset() {
   status_ = GestureConstants::LYNX_STATE_INIT;
 }
 
-void BaseGestureHandler::Fail() { status_ = GestureConstants::LYNX_STATE_FAIL; }
+void BaseGestureHandler::Fail() {
+  if (status_ != GestureConstants::LYNX_STATE_END) {
+    status_ = GestureConstants::LYNX_STATE_FAIL;
+  }
+}
 
 void BaseGestureHandler::Begin() {
   status_ = GestureConstants::LYNX_STATE_BEGIN;

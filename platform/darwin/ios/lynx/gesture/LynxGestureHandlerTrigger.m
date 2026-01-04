@@ -296,7 +296,9 @@
     if (_duplicatedMember == node) {
       _duplicatedMember = nil;
     } else {
-      [self resetGestureHandlerAndSimultaneous:node];
+      if ([self getCurrentMemberState:node] != LynxGestureHandlerStateEnd) {
+        [self resetGestureHandlerAndSimultaneous:node];
+      }
     }
 
     LynxGestureHandlerState state = [self getCurrentMemberState:node];
@@ -318,7 +320,9 @@
     if (_duplicatedMember == node) {
       _duplicatedMember = nil;
     } else {
-      [self resetGestureHandlerAndSimultaneous:node];
+      if ([self getCurrentMemberState:node] != LynxGestureHandlerStateEnd) {
+        [self resetGestureHandlerAndSimultaneous:node];
+      }
     }
 
     LynxGestureHandlerState state = [self getCurrentMemberState:node];
@@ -618,6 +622,10 @@
                    touchEvent:nil
                         delta:CGPointZero
        competeChainCandidates:[_gestureArenaManager getCompetitionChainCandidates]];
+
+  if (_winner == nil) {
+    _lastFlingWinner = nil;
+  }
 
   if (_lastFlingWinner) {
     switch (sender.state) {

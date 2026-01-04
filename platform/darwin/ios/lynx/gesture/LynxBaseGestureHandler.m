@@ -139,10 +139,13 @@
 }
 
 - (void)fail {
-  if (_status == LynxGestureHandlerStateBegin) {
-    _status = LynxGestureHandlerStateCancel;
-  } else {
-    _status = LynxGestureHandlerStateCancel;
+  // When in the end state, the process ends directly.
+  if (_status != LynxGestureHandlerStateEnd) {
+    if (_status == LynxGestureHandlerStateBegin) {
+      _status = LynxGestureHandlerStateCancel;
+    } else {
+      _status = LynxGestureHandlerStateCancel;
+    }
   }
   if (_gestureMember) {
     [_gestureMember onPlatformGestureStatusChanged:_status];
