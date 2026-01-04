@@ -55,7 +55,7 @@ struct TextIndent {
 };
 
 struct TextProps {
-  uint32_t color{0};
+  std::optional<uint32_t> color;
   double font_size{-1};
   double line_height{kLineHeightNormal};
   FontWeight font_weight{starlight::FontWeightType::kNormal};

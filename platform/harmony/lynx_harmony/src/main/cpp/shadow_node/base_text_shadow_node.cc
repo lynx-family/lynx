@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/base_text_shadow_node.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -32,7 +33,6 @@ void BaseTextShadowNode::OnContextReady() {
   const auto font_manager = context_->GetFontFaceManager();
   style_.SetDefaultFontFamily(
       font_manager ? font_manager->GetDefaultFontFamily() : "");
-  style_.SetColor(starlight::DefaultColor::DEFAULT_TEXT_COLOR);
   style_.SetFontSize(context_->DefaultFontSize() * ScaleDensity());
 }
 
@@ -124,6 +124,69 @@ void BaseTextShadowNode::SetCustomFontFamiliesToStyle() {
   }
 }
 
+void BaseTextShadowNode::UpdateInheritedTextStyle(
+    uint32_t color, std::shared_ptr<BackgroundGradientLayer> gradient,
+    const std::vector<std::string>& raw_font_families) {
+  const std::vector<std::string>& effective_raw_font_families =
+      raw_font_families_.empty() ? raw_font_families : raw_font_families_;
+
+  if (effective_raw_font_families.empty()) {
+    style_.ClearCustomFontFamilies();
+    const auto font_manager =
+        context_ ? context_->GetFontFaceManager() : nullptr;
+    const std::string default_font_family =
+        font_manager ? font_manager->GetDefaultFontFamily() : "";
+    if (!default_font_family.empty()) {
+      style_.SetDefaultFontFamily(default_font_family);
+    } else {
+      style_.SetCustomFontFamilyVector({});
+    }
+  } else if (!LynxEnv::GetInstance().EnableGlobalFontCollection()) {
+    style_.SetCustomFontFamilyVector(effective_raw_font_families);
+  } else {
+    const auto font_manager =
+        context_ ? context_->GetFontFaceManager() : nullptr;
+    if (font_manager) {
+      style_.SetCustomFontFamilyVector(
+          font_manager->GetCustomFamiliesFromRawVector(
+              effective_raw_font_families));
+    } else {
+      style_.SetCustomFontFamilyVector(effective_raw_font_families);
+    }
+  }
+
+  const bool has_props = text_props_.has_value();
+  const bool has_explicit_gradient =
+      has_props && text_props_->gradient_color != nullptr;
+  const bool has_explicit_solid_color =
+      has_props && text_props_->color.has_value() && !has_explicit_gradient;
+
+  if (has_explicit_solid_color) {
+    gradient = nullptr;
+    color = text_props_->color.value();
+    style_.SetGradientColor(nullptr);
+    style_.SetColor(color);
+  } else if (has_explicit_gradient) {
+    gradient = style_.GradientColorShared();
+    color = 0;
+    style_.SetColor(0);
+    style_.SetGradientColor(gradient);
+  } else if (gradient) {
+    color = 0;
+    style_.SetColor(0);
+    style_.SetGradientColor(gradient);
+  } else {
+    style_.SetGradientColor(nullptr);
+    style_.SetColor(color);
+  }
+
+  for (const auto& child : GetChildren()) {
+    auto* text_node = static_cast<BaseTextShadowNode*>(child);
+    text_node->UpdateInheritedTextStyle(color, gradient,
+                                        effective_raw_font_families);
+  }
+}
+
 void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
                                            float width, float height) {
   if (text_props_.has_value() &&
@@ -139,7 +202,9 @@ void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
 
   // we need to set font families before PushTextStyle!
   if (!LynxEnv::GetInstance().EnableGlobalFontCollection()) {
-    style_.SetCustomFontFamilyVector(raw_font_families_);
+    if (!raw_font_families_.empty()) {
+      style_.SetCustomFontFamilyVector(raw_font_families_);
+    }
   } else {
     SetCustomFontFamiliesToStyle();
   }
@@ -279,11 +344,14 @@ void BaseTextShadowNode::SetTextShadow(const lepus::Value& shadow) {
 
 void BaseTextShadowNode::SetColor(const lepus::Value& color) {
   if (color.IsUInt32()) {
-    text_props_->color = color.UInt32();
-    style_.SetColor(text_props_->color);
+    uint32_t color_value = color.UInt32();
+    text_props_->color = color_value;
+    text_props_->gradient_color = nullptr;
+    style_.SetColor(color_value);
     style_.SetGradientColor(nullptr);
   } else if (color.IsArray()) {
     text_props_->color = 0;
+    text_props_->gradient_color = nullptr;
     // text with gradient color should set the color to transparent here.
     style_.SetColor(0);
     // TODO(renzhongyue): Add gradient to text_props_ to gen hash key.
@@ -293,19 +361,30 @@ void BaseTextShadowNode::SetColor(const lepus::Value& color) {
       return;
     }
 
+    bool set_gradient = true;
     if (const auto type = static_cast<starlight::BackgroundImageType>(
             val_array->get(0).Number());
         type == starlight::BackgroundImageType::kLinearGradient) {
-      style_.SetGradientColor(std::unique_ptr<BackgroundGradientLayer>(
-          new BackgroundLinearGradientLayer(val_array->get(1))));
+      style_.SetGradientColor(
+          std::make_shared<BackgroundLinearGradientLayer>(val_array->get(1)));
     } else if (type == starlight::BackgroundImageType::kRadialGradient) {
-      style_.SetGradientColor(std::unique_ptr<BackgroundGradientLayer>(
-          new BackgroundRadialGradientLayer(val_array->get(1))));
+      style_.SetGradientColor(
+          std::make_shared<BackgroundRadialGradientLayer>(val_array->get(1)));
     } else if (type == starlight::BackgroundImageType::kConicGradient) {
-      style_.SetGradientColor(std::unique_ptr<BackgroundGradientLayer>(
-          new BackgroundConicGradientLayer(val_array->get(1))));
+      style_.SetGradientColor(
+          std::make_shared<BackgroundConicGradientLayer>(val_array->get(1)));
+    } else {
+      set_gradient = false;
     }
-    text_props_->gradient_color = style_.GradientColor();
+    if (set_gradient) {
+      text_props_->gradient_color = style_.GradientColor();
+    } else {
+      style_.SetGradientColor(nullptr);
+    }
+  } else {
+    text_props_->color.reset();
+    text_props_->gradient_color = nullptr;
+    style_.SetGradientColor(nullptr);
   }
 }
 

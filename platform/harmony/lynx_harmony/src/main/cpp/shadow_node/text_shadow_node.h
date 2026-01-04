@@ -63,6 +63,7 @@ class TextShadowNode final : public BaseTextShadowNode,
                           float text_max_width);
   void UpdateLineHeight(BaseTextShadowNode* node, double line_height);
   void DispatchLayoutEvent();
+  bool IsTextOverflow(ParagraphHarmony* paragraph, float layout_max_height);
 
   fml::RefPtr<ParagraphHarmony> ReBuildParagraph(
       ParagraphBuilderHarmony* builder, const LayoutResult result,
