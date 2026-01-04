@@ -20,6 +20,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 class ParagraphBuilderHarmony;
+class BackgroundGradientLayer;
 
 class BaseTextShadowNode : public ShadowNode, public ParagraphContent {
  public:
@@ -90,6 +91,9 @@ class BaseTextShadowNode : public ShadowNode, public ParagraphContent {
   std::vector<std::string>& GetRawFontFamilies() { return raw_font_families_; }
 
   void SetCustomFontFamiliesToStyle();
+  void UpdateInheritedTextStyle(
+      uint32_t color, std::shared_ptr<BackgroundGradientLayer> gradient,
+      const std::vector<std::string>& raw_font_families);
 
   std::optional<TextProps> text_props_;
   mutable TextStyleHarmony style_;
