@@ -271,10 +271,13 @@ public abstract class BaseGestureHandler {
    * coordinates and touch event.
    */
   public void fail() {
-    if (mStatus == GestureConstants.LYNX_STATE_BEGIN) {
-      mStatus = GestureConstants.LYNX_STATE_CANCELLED;
-    } else {
-      mStatus = GestureConstants.LYNX_STATE_FAIL;
+    // When in the end state, the process ends directly.
+    if (mStatus != GestureConstants.LYNX_STATE_END) {
+      if (mStatus == GestureConstants.LYNX_STATE_BEGIN) {
+        mStatus = GestureConstants.LYNX_STATE_CANCELLED;
+      } else {
+        mStatus = GestureConstants.LYNX_STATE_FAIL;
+      }
     }
     if (mGestureArenaMember != null) {
       mGestureArenaMember.onPlatformGestureStatusChanged(mStatus);
