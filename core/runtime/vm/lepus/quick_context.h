@@ -67,8 +67,6 @@ class QuickContext : private LEPUSRuntimeData,
   virtual void TriggerVmGC() override;
   virtual void UpdateGCTiming(bool is_start) override;
 
-  virtual long GetParamsSize() override;
-  virtual Value* GetParam(long index) override;
   virtual const std::string& name() const override;
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const lepus::Value& val) override;

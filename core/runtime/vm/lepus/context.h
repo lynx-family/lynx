@@ -163,8 +163,6 @@ class Context {
   virtual bool GetTopLevelVariableByName(const base::String& name,
                                          lepus::Value* ret) = 0;
 
-  virtual long GetParamsSize() = 0;
-  virtual Value* GetParam(long index) = 0;
   virtual void SetGlobalData(const base::String& name, Value value) = 0;
   /**
    * This value will overwrite the origin value

@@ -65,11 +65,11 @@ class VMContext : public Context {
   virtual bool GetTopLevelVariableByName(const base::String& name,
                                          lepus::Value* ret) override;
 
-  LEPUS_INLINE long GetParamsSize() override final {
+  LEPUS_INLINE long GetParamsSize() {
     return heap().top_ - current_frame_->register_;
   }
 
-  LEPUS_INLINE Value* GetParam(long index) override final {
+  LEPUS_INLINE Value* GetParam(long index) {
     return current_frame_->register_ + index;
   }
 

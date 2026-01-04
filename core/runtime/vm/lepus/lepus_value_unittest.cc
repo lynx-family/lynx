@@ -610,8 +610,7 @@ TEST_F(LepusValueTest, LepusValuePointer) {
     ASSERT_TRUE(v3.Type() == Value_CFunction);
     ASSERT_TRUE(!v3.IsReference());
     auto func = v3.Function();
-    auto ret =
-        func(&quick_ctx_, quick_ctx_.GetParam(0), quick_ctx_.GetParamsSize());
+    auto ret = func(&quick_ctx_, nullptr, 0);
     ASSERT_TRUE(ret.IsString());
 
     lepus::Value v4;

@@ -826,16 +826,6 @@ Value QuickContext::CallClosureArgs(const Value& closure, const Value* args[],
   return ret;
 }
 
-long QuickContext::GetParamsSize() {
-  assert(false);
-  return 0;
-}
-
-Value* QuickContext::GetParam(long index) {
-  assert(false);
-  return nullptr;
-}
-
 const std::string& QuickContext::name() const { return name_; }
 
 bool QuickContext::CheckTableShadowUpdatedWithTopLevelVariable(

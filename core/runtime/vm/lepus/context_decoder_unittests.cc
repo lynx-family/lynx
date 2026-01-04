@@ -74,8 +74,8 @@ class TestUtils {
   static lepus::Value Print(lepus::Context* context, lepus::Value* val,
                             int params_count) {
     for (long i = 0; i < params_count; i++) {
-      lepus::Value* v = context->GetParam(i);
-      v->Print();
+      lepus::Value v(*lepus::VMContext::Cast(context)->GetParam(i));
+      v.Print();
     }
     return lepus::Value();
   }
@@ -123,7 +123,7 @@ class TestUtils {
                               int argc) {
     if (parm1->String().IsEqual("lepusNullPropAsUndef")) {
       lepus::VMContext::Cast(context)->SetNullPropAsUndef(
-          context->GetParam(1)->Bool());
+          lepus::VMContext::Cast(context)->GetParam(1)->Bool());
     }
     return lepus::Value();
   }
