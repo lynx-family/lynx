@@ -950,11 +950,10 @@ void QuickContext::ResetTopLevelVariableByVal(const Value& val) {
   // TODO(nihao) lepus NG support reset top var.
 }
 
-std::unique_ptr<lepus::Value> QuickContext::GetTopLevelVariable(
-    bool ignore_callable) {
+lepus::Value QuickContext::GetTopLevelVariable(bool ignore_callable) {
   // assert(false);
   LOGE("GetTopLevelVariable.... \n");
-  return std::make_unique<lepus::Value>();
+  return lepus::Value();
 }
 
 LEPUSValue QuickContext::GetProperty(const std::string& name,

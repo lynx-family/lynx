@@ -163,7 +163,7 @@ std::unique_ptr<lepus::Value> RadonPage::GetPageData() {
   if (ShouldKeepPageData()) {
     return std::make_unique<lepus::Value>(lepus::Value::Clone(data_));
   } else {
-    return context_->GetTopLevelVariable(true);
+    return std::make_unique<lepus::Value>(context_->GetTopLevelVariable(true));
   }
 }
 

@@ -77,7 +77,7 @@ class QuickContext : private LEPUSRuntimeData,
   virtual void ResetTopLevelVariable() override;
   virtual void ResetTopLevelVariableByVal(const Value& val) override;
 
-  virtual std::unique_ptr<lepus::Value> GetTopLevelVariable(
+  virtual lepus::Value GetTopLevelVariable(
       bool ignore_callable = false) override;
 
   LEPUSContext* context() const { return lepus_context_; }

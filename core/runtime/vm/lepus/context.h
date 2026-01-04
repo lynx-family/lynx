@@ -158,8 +158,7 @@ class Context {
     return CallClosureArgs(closure, p_args, n_args);
   }
 
-  virtual std::unique_ptr<Value> GetTopLevelVariable(
-      bool ignore_callable = false) = 0;
+  virtual lepus::Value GetTopLevelVariable(bool ignore_callable = false) = 0;
   virtual bool GetTopLevelVariableByName(const base::String& name,
                                          lepus::Value* ret) = 0;
 

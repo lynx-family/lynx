@@ -60,7 +60,7 @@ class VMContext : public Context {
   virtual void ResetTopLevelVariable() override;
   virtual void ResetTopLevelVariableByVal(const Value& val) override;
 
-  virtual std::unique_ptr<lepus::Value> GetTopLevelVariable(
+  virtual lepus::Value GetTopLevelVariable(
       bool ignore_callable = false) override;
   virtual bool GetTopLevelVariableByName(const base::String& name,
                                          lepus::Value* ret) override;

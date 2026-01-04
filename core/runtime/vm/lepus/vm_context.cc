@@ -364,8 +364,7 @@ void VMContext::ResetTopLevelVariableByVal(const Value& val) {
   }
 }
 
-std::unique_ptr<lepus::Value> VMContext::GetTopLevelVariable(
-    bool ignore_callable) {
+lepus::Value VMContext::GetTopLevelVariable(bool ignore_callable) {
   auto dictionary = lepus::Dictionary::Create();
   for (auto it : top_level_variables_) {
     if (!base::BeginsWith(it.first.str(), "$")) {
@@ -376,7 +375,7 @@ std::unique_ptr<lepus::Value> VMContext::GetTopLevelVariable(
       dictionary->SetValue(it.first, std::move(value));
     }
   }
-  return std::make_unique<lepus::Value>(dictionary);
+  return Value(std::move(dictionary));
 }
 
 bool VMContext::GetTopLevelVariableByName(const base::String& name,
@@ -850,7 +849,7 @@ void VMContext::RunFrame() {
         if (enable_null_prop_as_undef_ && reg_b == 1) {
           a->SetUndefined();
         } else if (reg_b == 2) {
-          *a = *GetTopLevelVariable();
+          *a = GetTopLevelVariable();
         } else if (reg_b == 3) {
           // Now, only generate reg_b==3 when targetSdkVersion >= 2.8.
           // Detail can be seen in code_generator.c. So the possible
