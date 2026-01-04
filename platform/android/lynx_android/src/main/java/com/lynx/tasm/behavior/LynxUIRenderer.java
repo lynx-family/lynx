@@ -52,15 +52,12 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
-import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 enum BoxModelOffset {
   PAD_LEFT,
@@ -103,15 +100,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private boolean mEnableNewGesture;
   private boolean mEnablePlatformGesture;
   private boolean mHasInited;
-
-  private int getInstanceId() {
-    LynxContext context = mLynxContext.get();
-    if (context != null) {
-      return context.getInstanceId();
-    } else {
-      return LynxEventReporter.INSTANCE_ID_UNKNOWN;
-    }
-  }
 
   public static synchronized void startPixelCopyHandlerThreadIfNecessary() {
     if (mPixelCopyHandlerThread == null && LynxEnv.inst().isLynxDebugEnabled()) {
@@ -742,15 +730,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private Bitmap getBitmapOfScreen() {
     View view = mLynxContext.get().getLynxView();
     if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
-      if (LynxEnv.inst().isLynxDebugEnabled()) {
-        // Only report the event when LynxDebug is enabled.
-        LynxEventReporter.onEvent(
-            "lynxsdk_getBitmapOfScreen_lynxView_failed", getInstanceId(), () -> {
-              Map<String, Object> data = new HashMap<>();
-              data.put("reason", "lynxView is invalid");
-              return data;
-            });
-      }
       return null;
     }
 
@@ -759,28 +738,11 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     // overlayDecoderView: array store all overlay's DecoderView
     Bitmap screenBitmap = createScreenBitmap(view);
     if (screenBitmap == null) {
-      if (LynxEnv.inst().isLynxDebugEnabled()) {
-        // Only report the event when LynxDebug is enabled.
-        LynxEventReporter.onEvent("lynxsdk_createScreenBitmap_failed", getInstanceId(), () -> {
-          Map<String, Object> data = new HashMap<>();
-          data.put("reason", "get null from createScreenBitmap");
-          return data;
-        });
-      }
       LLog.i(TAG, "getBitmapOfScreen: get null from createScreenBitmap");
       return null;
     }
     View lynxDecoderView = view.getRootView();
     if (lynxDecoderView == null) {
-      if (LynxEnv.inst().isLynxDebugEnabled()) {
-        // Only report the event when LynxDebug is enabled.
-        LynxEventReporter.onEvent(
-            "lynxsdk_getBitmapOfScreen_decoderView_failed", getInstanceId(), () -> {
-              Map<String, Object> data = new HashMap<>();
-              data.put("reason", "lynxDecoderView is null");
-              return data;
-            });
-      }
       LLog.e(TAG, "getBitmapOfScreen: lynxDecoderView is null");
       return null;
     }
@@ -815,15 +777,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   public Bitmap getBitmapOfView() {
     View view = mLynxContext.get().getLynxView();
     if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
-      if (LynxEnv.inst().isLynxDebugEnabled()) {
-        // Only report the event when LynxDebug is enabled.
-        LynxEventReporter.onEvent(
-            "lynxsdk_getBitmapOfView_lynxView_failed", getInstanceId(), () -> {
-              Map<String, Object> data = new HashMap<>();
-              data.put("reason", "lynxView is invalid");
-              return data;
-            });
-      }
       return null;
     }
     Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.RGB_565);

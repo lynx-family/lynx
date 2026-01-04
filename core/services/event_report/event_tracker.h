@@ -168,9 +168,8 @@ class EventTracker {
   /// @param instance_id The unique id of template instance.
   /// @param key key of the generic info
   /// @param value string value of the generic info
-  LYNX_EXPORT_FOR_DEVTOOL static void UpdateGenericInfo(int32_t instance_id,
-                                                        std::string key,
-                                                        std::string value);
+  static void UpdateGenericInfo(int32_t instance_id, std::string key,
+                                std::string value);
   /// Update the generic info of template instance.
   /// @param instance_id The unique id of template instance.
   /// @param key key of the generic info
