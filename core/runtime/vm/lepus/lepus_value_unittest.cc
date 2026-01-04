@@ -73,7 +73,7 @@ TEST_F(LepusValueTest, LepusValueNull) {
 
 TEST_F(LepusValueTest, LepusValueNumber) {
   {
-    lepus::Value v1(true, true);
+    lepus::Value v1(lepus::Value::kCreateAsNanTag);
     ASSERT_TRUE(v1.IsNaN());
     ASSERT_TRUE(v1.NaN());
     ASSERT_TRUE(v1.Type() == Value_NaN);

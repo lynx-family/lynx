@@ -143,12 +143,14 @@ class BASE_EXPORT Value {
       explicit Value(uint8_t data);
 #undef NumberConstructor
 
+  enum CreateAsNanTag { kCreateAsNanTag };
+  explicit Value(CreateAsNanTag);
+
   explicit Value(bool val);
   explicit Value(void* data);
   explicit Value(CFunction val);
   explicit Value(BuiltinFunctionTable* data);
-  explicit Value(bool for_nan, bool val);
-  explicit Value(lynx_value&& value);
+  explicit Value(const lynx_value& value) : value_(value) {}
   Value(lynx_api_env env, int64_t val, int32_t tag);
   Value(lynx_api_env env, const lynx_value& value);
   Value(lynx_api_env env, lynx_value&& value);

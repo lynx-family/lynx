@@ -65,7 +65,7 @@ static Value ParseInt(VMContext* context, Value*, int) {
   if (params_count == 2) {
     radix = static_cast<int32_t>(context->GetParam(1)->Number());
     if (radix < 2 || radix > 36) {
-      return Value(true, true);
+      return Value(Value::kCreateAsNanTag);
     }
   }
   if (context->GetParam(0)->IsString()) {
@@ -73,7 +73,7 @@ static Value ParseInt(VMContext* context, Value*, int) {
     if (ParseStringToInt(context->GetParam(0)->StdString(), radix, ret)) {
       return Value(ret);
     }
-    return Value(true, true);
+    return Value(Value::kCreateAsNanTag);
   }
 
   std::string str;
@@ -92,7 +92,7 @@ static Value ParseInt(VMContext* context, Value*, int) {
   if (ParseStringToInt(str, radix, ret)) {
     return Value(ret);
   }
-  return Value(true, true);
+  return Value(Value::kCreateAsNanTag);
 }
 
 static Value ParseFloat(VMContext* context, Value*, int) {
@@ -109,7 +109,7 @@ static Value ParseFloat(VMContext* context, Value*, int) {
         return Value(static_cast<int64_t>(ret));
       }
     }
-    return Value(true, true);
+    return Value(Value::kCreateAsNanTag);
   }
 
   std::string str;
@@ -125,7 +125,7 @@ static Value ParseFloat(VMContext* context, Value*, int) {
       return Value(static_cast<int64_t>(ret));
     }
   }
-  return Value(true, true);
+  return Value(Value::kCreateAsNanTag);
 }
 
 static Value IsNan(VMContext* context, Value*, int) {

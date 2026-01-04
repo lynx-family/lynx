@@ -172,13 +172,6 @@ Value::Value(BuiltinFunctionTable* data)
     : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data),
               .type = lynx_value_function_table}) {}
 
-Value::Value(bool for_nan, bool val) {
-  if (for_nan) {
-    value_.val_bool = val;
-    value_.type = lynx_value_nan;
-  }
-}
-
 Value::Value(double val)
     : value_({.val_double = val, .type = lynx_value_double}) {}
 Value::Value(int32_t val)
@@ -191,6 +184,11 @@ Value::Value(uint64_t val)
     : value_({.val_uint64 = val, .type = lynx_value_uint64}) {}
 Value::Value(uint8_t data)
     : value_({.val_uint32 = data, .type = lynx_value_uint32}) {}
+
+Value::Value(CreateAsNanTag) {
+  value_.type = lynx_value_nan;
+  value_.val_bool = true;
+}
 
 Value::Value(const fml::RefPtr<Dictionary>& data)
     : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
@@ -223,8 +221,6 @@ Value::Value(const fml::WeakRefPtr<CArray>& data)
               .type = lynx_value_array}) {
   data.get()->AddRef();
 }
-
-Value::Value(lynx_value&& value) : value_(std::move(value)) {}
 
 Value::Value(lynx_api_env env, int64_t val, int32_t tag) : env_(env) {
   value_.val_int64 = val;
@@ -840,7 +836,7 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
     case lynx_value_bool:
       return Value(src.Bool());
     case lynx_value_nan:
-      return Value(true, src.NaN());
+      return Value(Value::kCreateAsNanTag);
     case lynx_value_string: {
       return Value(src.String());
     }

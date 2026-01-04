@@ -55,8 +55,15 @@ struct lynx_value {
   LYNX_VALUE_BASE_STORAGE_DEFINITION
   lynx_value_type type;
 
+  uint8_t __unnamed0__;
+  uint8_t __unnamed1__;
+  uint8_t __unnamed2__;
+
   int32_t tag;
 };
+
+static_assert(sizeof(lynx_value) == 16,
+              "The lynx_value was precisely designed to be 16 bytes.");
 
 typedef void (*lynx_value_iterator_callback)(lynx_api_env env, lynx_value key,
                                              lynx_value val, void* pfunc,
