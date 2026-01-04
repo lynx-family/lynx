@@ -8,14 +8,19 @@ import("../../Lynx.gni")
 import("v8/v8.gni")
 
 jsi_sources = [
-  "../../resource/lynx_resource_setting.cc",
-  "../../resource/lynx_resource_setting.h",
   "instrumentation.h",
   "jsi-inl.h",
   "jsi.cc",
   "jsi.h",
   "jslib.h",
 ]
+
+if (!is_harmony) {
+  jsi_sources += [
+    "../../resource/lynx_resource_setting.cc",
+    "../../resource/lynx_resource_setting.h",
+  ]
+}
 
 lynx_core_source_set("jsi") {
   sources = jsi_sources

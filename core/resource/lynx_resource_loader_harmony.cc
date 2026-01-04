@@ -17,7 +17,9 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lynx_info_reporter_helper_harmony.h"
+#include "core/resource/lynx_resource_setting.h"
 
 namespace {
 
@@ -58,18 +60,39 @@ std::vector<uint8_t> LoadJSSource(const std::string& url) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_JS_SOURCE, "url", url);
   static const std::string FILE_SCHEME = "file://";
   static const std::string ASSETS_SCHEME = "assets://";
+  static const std::string CORE_JS = "assets://lynx_core.js";
+  static const char* CORE_DEBUG_JS = "lynx_core_dev.js";
   std::vector<uint8_t> result;
   std::unique_ptr<uint8_t[]> data;
   size_t len = 0;
   bool success = false;
   if (url.length() > ASSETS_SCHEME.length() && url.find(ASSETS_SCHEME) == 0) {
-    RawFile* raw_file = OH_ResourceManager_OpenRawFile(
-        lynx::harmony::LynxResourceLoaderHarmony::resource_manager,
-        url.substr(ASSETS_SCHEME.length()).c_str());
-    len = OH_ResourceManager_GetRawFileSize(raw_file);
-    data = std::make_unique<uint8_t[]>(len);
-    success = OH_ResourceManager_ReadRawFile(raw_file, data.get(), len) > 0;
-    OH_ResourceManager_CloseRawFile(raw_file);
+    if (url == CORE_JS &&
+        lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+      RawFile* raw_file_dev = OH_ResourceManager_OpenRawFile(
+          lynx::harmony::LynxResourceLoaderHarmony::resource_manager,
+          CORE_DEBUG_JS);
+      if (raw_file_dev != nullptr) {
+        len = OH_ResourceManager_GetRawFileSize(raw_file_dev);
+        data = std::make_unique<uint8_t[]>(len);
+        success =
+            OH_ResourceManager_ReadRawFile(raw_file_dev, data.get(), len) > 0;
+        OH_ResourceManager_CloseRawFile(raw_file_dev);
+        if (success) {
+          lynx::piper::LynxResourceSetting::getInstance()->is_debug_resource_ =
+              true;
+        }
+      }
+    }
+    if (!success) {
+      RawFile* raw_file = OH_ResourceManager_OpenRawFile(
+          lynx::harmony::LynxResourceLoaderHarmony::resource_manager,
+          url.substr(ASSETS_SCHEME.length()).c_str());
+      len = OH_ResourceManager_GetRawFileSize(raw_file);
+      data = std::make_unique<uint8_t[]>(len);
+      success = OH_ResourceManager_ReadRawFile(raw_file, data.get(), len) > 0;
+      OH_ResourceManager_CloseRawFile(raw_file);
+    }
   } else if (url.length() > FILE_SCHEME.length() &&
              url.find(FILE_SCHEME) == 0) {
     success =
