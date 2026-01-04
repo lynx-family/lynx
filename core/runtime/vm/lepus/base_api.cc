@@ -21,8 +21,8 @@ static std::string GetPrintStr(VMContext* context) {
   std::ostringstream s;
   s << "[main-thread.js] ";
   for (long i = 0; i < params_count; i++) {
-    Value* v = context->GetParam(i);
-    v->PrintValue(s);
+    Value v(*context->GetParam(i));
+    v.PrintValue(s);
     if (i < params_count - 1) {
       s << " ";
     }
@@ -76,8 +76,8 @@ static Value Console_Alog(VMContext* context, Value*, int) {
 }
 
 static Value Assert(VMContext* context, Value*, int) {
-  UNUSED_LOG_VARIABLE Value* condition = context->GetParam(1);
-  Value* msg = context->GetParam(2);
+  UNUSED_LOG_VARIABLE auto* condition = context->GetParam(1);
+  auto* msg = context->GetParam(2);
   std::string s = "Assertion failed:" + msg->StdString();
   assert(condition->IsTrue() && s.c_str());
   return Value();
@@ -189,8 +189,8 @@ void RegisterBaseAPI(Context* ctx) {
 static Value toFixed(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
-  Value n;                          // for precision
-  Value* v = context->GetParam(1);  // for value
+  Value n;                         // for precision
+  auto* v = context->GetParam(1);  // for value
   if (params_count == 1) {
     n = Value(0);
     v = context->GetParam(0);

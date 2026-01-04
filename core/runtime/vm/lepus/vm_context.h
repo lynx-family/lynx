@@ -193,6 +193,9 @@ class VMContext : public Context {
     std::vector<fml::RefPtr<lepus::Closure>>::size_type itr_;
   };
 
+  Heap& heap() { return heap_; }
+
+  bool ExecuteBinaryInternal(lepus::Value* result);
   Value* CallPrologue(const base::String& name);
   Value CallEpilogue(Value* function, size_t arg_count);
 
@@ -229,9 +232,6 @@ class VMContext : public Context {
   bool is_debug_enabled_{false};
   std::string debug_info_url_;
 
- protected:
-  bool ExecuteBinaryInternal(lepus::Value* result);
-
   friend class CodeGenerator;
   friend class ContextBinaryWriter;
   friend class LexicalFunction;
@@ -239,7 +239,6 @@ class VMContext : public Context {
 
   friend class tasm::TemplateEntry;
   friend class tasm::TemplateBinaryReader;
-  Heap& heap() { return heap_; }
 
   Global global_;
   Global builtin_;
@@ -262,7 +261,6 @@ class VMContext : public Context {
   std::optional<std::string> current_exception_{};
   int32_t err_code_ = error::E_MTS_RUNTIME_ERROR;
 
- private:
   // To reduce arguments need to be passed.
   struct RunFrameContext {
     Value*& regs;

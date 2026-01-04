@@ -30,7 +30,7 @@ static Value Freeze(VMContext* context, Value*, int) {
 static Value Keys(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
-  Value* param = context->GetParam(0);
+  auto* param = context->GetParam(0);
   Value result = Value(CArray::Create());
   auto result_array = result.Array();
   if (param->IsArray()) {
@@ -51,7 +51,7 @@ static Value Keys(VMContext* context, Value*, int) {
 static Value Assign(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count >= 1);
-  Value* target = context->GetParam(0);
+  auto* target = context->GetParam(0);
   switch (target->Type()) {
     case Value_Table: {
       auto target_table = target->Table();

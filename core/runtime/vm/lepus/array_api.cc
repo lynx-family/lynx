@@ -18,7 +18,7 @@ namespace lepus {
 static Value Push(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count >= 1);
-  Value* this_obj = context->GetParam(params_count - 1);
+  auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
 
   auto this_array = this_obj->Array();
@@ -29,7 +29,7 @@ static Value Push(VMContext* context, Value*, int) {
     this_array->reserve(this_array->size() + params_count - 1);
   }
   for (auto i = 0; i < params_count - 1; i++) {
-    Value* val = context->GetParam(i);
+    auto* val = context->GetParam(i);
     this_array->push_back(*val);
   }
   return Value(static_cast<uint64_t>(this_array->size()));
@@ -38,7 +38,7 @@ static Value Push(VMContext* context, Value*, int) {
 static Value Pop(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
-  Value* this_obj = context->GetParam(params_count - 1);
+  auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
   auto this_array = this_obj->Array();
   this_array->pop_back();
@@ -48,7 +48,7 @@ static Value Pop(VMContext* context, Value*, int) {
 static Value Shift(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
-  Value* this_obj = context->GetParam(params_count - 1);
+  auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
   return this_obj->Array()->get_shift();
 }
@@ -56,10 +56,10 @@ static Value Shift(VMContext* context, Value*, int) {
 static Value Map(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
-  Value* map_function = context->GetParam(0);
-  Value* this_obj = context->GetParam(1);
-  Value* index = this_obj + 1;
-  Value* this_array = this_obj + 2;
+  auto* map_function = context->GetParam(0);
+  auto* this_obj = context->GetParam(1);
+  auto* index = this_obj + 1;
+  auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
   Value array_temp_ = (*this_obj), ret, map_ret;
@@ -69,7 +69,7 @@ static Value Map(VMContext* context, Value*, int) {
   for (size_t i = 0; i < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
-    static_cast<VMContext*>(context)->CallFunction(map_function, 3, &map_ret);
+    context->CallFunction(map_function, 3, &map_ret);
     ret_array->emplace_back(std::move(map_ret));
   }
   ret.SetArray(std::move(ret_array));
@@ -79,10 +79,10 @@ static Value Map(VMContext* context, Value*, int) {
 static Value Filter(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
-  Value* filter_function = context->GetParam(0);
-  Value* this_obj = context->GetParam(1);
-  Value* index = this_obj + 1;
-  Value* this_array = this_obj + 2;
+  auto* filter_function = context->GetParam(0);
+  auto* this_obj = context->GetParam(1);
+  auto* index = this_obj + 1;
+  auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
   Value array_temp_ = (*this_obj), ret, filter_ret;
@@ -91,8 +91,7 @@ static Value Filter(VMContext* context, Value*, int) {
   for (size_t i = 0; i < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
-    static_cast<VMContext*>(context)->CallFunction(filter_function, 3,
-                                                   &filter_ret);
+    context->CallFunction(filter_function, 3, &filter_ret);
     if (filter_ret.Bool()) {
       ret_array->push_back(*this_obj);
     }
@@ -103,7 +102,7 @@ static Value Filter(VMContext* context, Value*, int) {
 
 static Value Concat(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
-  Value* this_obj = context->GetParam(params_count - 1);
+  auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
 
   auto ret_array = CArray::Create();
@@ -113,7 +112,7 @@ static Value Concat(VMContext* context, Value*, int) {
     ret_array->push_back(this_array->get(i));
   }
   for (int i = 1; i < params_count; i++) {
-    Value* param_i = context->GetParam(i - 1);
+    auto* param_i = context->GetParam(i - 1);
     if (param_i->IsArray()) {
       auto array_i = param_i->Array();
       ret_array->reserve(ret_array->size() + array_i->size());
@@ -210,7 +209,7 @@ static std::string CastToString(const Value& v) {
 
 static Value Join(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
-  Value* this_obj = context->GetParam(params_count - 1);
+  auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
 
   std::string result = "";
@@ -233,10 +232,10 @@ static Value Join(VMContext* context, Value*, int) {
 static Value FindIndex(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
-  Value* find_index_function = context->GetParam(0);
-  Value* this_obj = context->GetParam(1);
-  Value* index = this_obj + 1;
-  Value* this_array = this_obj + 2;
+  auto* find_index_function = context->GetParam(0);
+  auto* this_obj = context->GetParam(1);
+  auto* index = this_obj + 1;
+  auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
   Value array_temp_ = (*this_obj), find_index_ret;
@@ -245,8 +244,7 @@ static Value FindIndex(VMContext* context, Value*, int) {
   for (int i = 0; static_cast<size_t>(i) < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
-    static_cast<VMContext*>(context)->CallFunction(find_index_function, 3,
-                                                   &find_index_ret);
+    context->CallFunction(find_index_function, 3, &find_index_ret);
     if ((find_index_ret.IsTrue())) {
       ret = Value(i);
       break;
@@ -258,10 +256,10 @@ static Value FindIndex(VMContext* context, Value*, int) {
 static Value Find(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
-  Value* find_index_function = context->GetParam(0);
-  Value* this_obj = context->GetParam(1);
-  Value* index = this_obj + 1;
-  Value* this_array = this_obj + 2;
+  auto* find_index_function = context->GetParam(0);
+  auto* this_obj = context->GetParam(1);
+  auto* index = this_obj + 1;
+  auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
   Value array_temp_ = (*this_obj), ret, find_index_ret;
@@ -269,8 +267,7 @@ static Value Find(VMContext* context, Value*, int) {
   for (size_t i = 0; i < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
-    static_cast<VMContext*>(context)->CallFunction(find_index_function, 3,
-                                                   &find_index_ret);
+    context->CallFunction(find_index_function, 3, &find_index_ret);
     if ((find_index_ret.IsTrue())) {
       ret = *this_obj;
       break;
@@ -281,7 +278,7 @@ static Value Find(VMContext* context, Value*, int) {
 
 static Value Includes(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
-  Value* this_obj = context->GetParam(params_count - 1);
+  auto* this_obj = context->GetParam(params_count - 1);
   DCHECK(this_obj->IsArray());
 
   if (params_count == 1) {
@@ -301,7 +298,7 @@ static Value Includes(VMContext* context, Value*, int) {
     }
   }
 
-  Value* param1 = context->GetParam(0);
+  auto* param1 = context->GetParam(0);
   for (size_t i = static_cast<size_t>(start_find); i < this_array->size();
        i++) {
     if (this_array->get(i) == *param1) {
@@ -313,7 +310,7 @@ static Value Includes(VMContext* context, Value*, int) {
 
 static Value ArraySlice(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
-  Value* this_val = context->GetParam(params_count - 1);
+  auto* this_val = context->GetParam(params_count - 1);
   DCHECK(this_val->IsArray());
   auto this_array = this_val->Array();
   int64_t start_index = 0;
@@ -356,10 +353,10 @@ static Value ArraySlice(VMContext* context, Value*, int) {
 static Value ForEach(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 2);
-  Value* foreach_function = context->GetParam(0);
-  Value* this_obj = context->GetParam(1);
-  Value* index = this_obj + 1;
-  Value* this_array = this_obj + 2;
+  auto* foreach_function = context->GetParam(0);
+  auto* this_obj = context->GetParam(1);
+  auto* index = this_obj + 1;
+  auto* this_array = this_obj + 2;
   size_t length = this_obj->Array()->size();
   *this_array = *this_obj;
   Value array_temp_ = (*this_obj), foreach_ret;
@@ -367,8 +364,7 @@ static Value ForEach(VMContext* context, Value*, int) {
   for (size_t i = 0; i < length; i++) {
     *this_obj = array_temp_ptr->get(i);
     index->SetNumber(static_cast<int64_t>(i));
-    static_cast<VMContext*>(context)->CallFunction(foreach_function, 3,
-                                                   &foreach_ret);
+    context->CallFunction(foreach_function, 3, &foreach_ret);
   }
   return Value();
 }

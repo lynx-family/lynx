@@ -634,11 +634,11 @@ static Value Replace(VMContext* context, Value*, int) {
     DCHECK(params_count == 3);
   }
 
-  Value* param1 = context->GetParam(0);
+  auto* param1 = context->GetParam(0);
   DCHECK(param1->IsRegExp() || param1->IsString());
 
   // Prepare param2
-  Value* param2 = context->GetParam(1);
+  auto* param2 = context->GetParam(1);
   const std::string* param2_str_ptr;
   switch (param2->Type()) {
     case Value_String: {
@@ -758,26 +758,26 @@ static Value Replace(VMContext* context, Value*, int) {
                             *array_global_ptr);
 
         if (param2->IsClosure()) {
-          Value* call_function = param2;
+          auto* call_function = param2;
           int param_len = -1;
-          Value* this_obj = context->GetParam(params_count - 1);
-          Value* match = this_obj + (++param_len);
+          auto* this_obj = context->GetParam(params_count - 1);
+          auto* match = this_obj + (++param_len);
           *match =
               Value(array_global_ptr->get(find_match).Array()->get(1).String());
           size_t parentheses_match_size =
               (array_global_ptr->get(find_match).Array()->size() - 1) / 3 - 1;
           for (size_t i = 0; i < parentheses_match_size; i++) {
-            Value* p = this_obj + (++param_len);
+            auto* p = this_obj + (++param_len);
             *p = Value(array_global_ptr->get(find_match)
                            .Array()
                            ->get(3 * i + 4)
                            .String());
           }
 
-          Value* offset = this_obj + (++param_len);
+          auto* offset = this_obj + (++param_len);
           offset->SetNumber(static_cast<int64_t>(
               array_global_ptr->get(find_match).Array()->get(2).Number()));
-          Value* string = this_obj + (++param_len);
+          auto* string = this_obj + (++param_len);
           *string =
               Value(array_global_ptr->get(find_match).Array()->get(0).String());
           Value call_function_ret;
@@ -897,8 +897,8 @@ static Value SubString(VMContext* context, Value*, int) {
 static Value IndexOf(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count > 1);
-  Value* this_obj = context->GetParam(0);
-  Value* arg = context->GetParam(1);
+  auto* this_obj = context->GetParam(0);
+  auto* arg = context->GetParam(1);
   long index = params_count == 2 ? 0 : context->GetParam(2)->Number();
 
   if (this_obj->IsString() && arg->IsString()) {

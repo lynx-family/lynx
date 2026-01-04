@@ -44,9 +44,9 @@ namespace lepus {
 #define GET_CONST_VALUE(i) (function->GetConstValue(Instruction::GetParamBx(i)))
 #define GET_Global_VALUE(i) (global()->Get(Instruction::GetParamBx(i)))
 #define GET_Builtin_VALUE(i) (builtin()->Get(Instruction::GetParamBx(i)))
-#define GET_REGISTER_A(i) Value* a = (regs + Instruction::GetParamA(i));
-#define GET_REGISTER_B(i) Value* b = (regs + Instruction::GetParamB(i));
-#define GET_REGISTER_C(i) Value* c = (regs + Instruction::GetParamC(i));
+#define GET_REGISTER_A(i) auto* a = (regs + Instruction::GetParamA(i));
+#define GET_REGISTER_B(i) auto* b = (regs + Instruction::GetParamB(i));
+#define GET_REGISTER_C(i) auto* c = (regs + Instruction::GetParamC(i));
 
 #define GET_REGISTER_A_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamA(ctx.i))
 #define GET_REGISTER_B_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamB(ctx.i))
@@ -58,10 +58,10 @@ namespace lepus {
   GET_REGISTER_B(i);        \
   GET_REGISTER_C(i);
 
-#define GET_REGISTER_ABC_FROM_CTX(ctx)     \
-  Value* a = GET_REGISTER_A_FROM_CTX(ctx); \
-  Value* b = GET_REGISTER_B_FROM_CTX(ctx); \
-  Value* c = GET_REGISTER_C_FROM_CTX(ctx);
+#define GET_REGISTER_ABC_FROM_CTX(ctx)    \
+  auto* a = GET_REGISTER_A_FROM_CTX(ctx); \
+  auto* b = GET_REGISTER_B_FROM_CTX(ctx); \
+  auto* c = GET_REGISTER_C_FROM_CTX(ctx);
 
 #define DECL_ABC_FROM_CTX(ctx) \
   auto& a = ctx.a;             \
@@ -95,7 +95,7 @@ bool VMContext::ExecuteBinaryInternal(Value* ret_val) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_EXECUTE);
   EnsureLynx();
 
-  Value* top = heap().top_++;
+  auto* top = heap().top_++;
   top->SetRefCounted(
       Closure::Create(fml::RefPtr<Function>(root_function_.get())));
 
@@ -126,7 +126,7 @@ Value* VMContext::CallPrologue(const base::String& name) {
     return nullptr;
   }
   long reg = reg_info->second;
-  Value* function = heap_.top_;
+  auto* function = heap_.top_;
   *(heap_.top_++) = *(heap_.base() + reg + 1);
   return function;
 }
@@ -172,7 +172,7 @@ Value VMContext::CallClosureArgs(const Value& closure, const Value* args[],
   ScriptingScope scope(this);
 
   Value ret;
-  Value* function = heap_.top_;
+  auto* function = heap_.top_;
   *(heap_.top_++) = closure;
   for (size_t i = 0; i < args_count; ++i) {
     *(heap_.top_++) = *args[i];
@@ -248,7 +248,7 @@ bool VMContext::UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
     reg = reg_info->second;
   }
   path.erase(front_value_iter);
-  Value* ptr = heap_.base() + reg + 1;
+  auto* ptr = heap_.base() + reg + 1;
   if (!path.empty() && ((ptr->IsTable() && ptr->Table()->IsConst()) ||
                         (ptr->IsArray() && ptr->Array()->IsConst()))) {
     *(heap_.base() + reg + 1) = Value::Clone(*ptr);
@@ -290,7 +290,7 @@ bool VMContext::CheckTableShadowUpdatedWithTopLevelVariable(
       reg = reg_info->second;
     }
     result.erase(front_value_iter);
-    const Value* ptr = heap_.base() + reg + 1;
+    const auto* ptr = heap_.base() + reg + 1;
 
     for (auto it = result.begin(); it != result.end(); ++it) {
       if (ptr->IsTable()) {
@@ -760,7 +760,7 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_GetTable_UnlikelyPath_String(
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_CreateBlockContext(
     RunFrameContext& ctx) {
-  Value* a = GET_REGISTER_A_FROM_CTX(ctx);
+  auto* a = GET_REGISTER_A_FROM_CTX(ctx);
   long array_size = Instruction::GetParamB(ctx.i) + 1;
 
   *a = Value(CArray::Create());
@@ -819,7 +819,7 @@ void VMContext::RunFrame() {
     }
     return;
   }
-  Value* regs = current_frame_->register_;
+  auto* regs = current_frame_->register_;
   __builtin_prefetch(base);
   __builtin_prefetch(regs);
   int length =
@@ -881,7 +881,7 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_LoadConst) : {
         GET_REGISTER_A(i);
-        Value* b = GET_CONST_VALUE(i);
+        auto* b = GET_CONST_VALUE(i);
         *a = *b;
       }
       BREAK;
@@ -910,26 +910,26 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_GetUpvalue) : {
         GET_REGISTER_A(i);
-        Value* b = GET_UPVALUE_B(i);
+        auto* b = GET_UPVALUE_B(i);
         *a = *b;
       }
       BREAK;
       CASE(TypeOp_SetUpvalue) : {
         GET_REGISTER_A(i);
-        Value* b = GET_UPVALUE_B(i);
+        auto* b = GET_UPVALUE_B(i);
         *b = *a;
       }
       BREAK;
       CASE(TypeOp_GetGlobal) : {
         GET_REGISTER_A(i);
-        Value* b = GET_Global_VALUE(i);
+        auto* b = GET_Global_VALUE(i);
         *a = *b;
       }
       BREAK;
       CASE(TypeOp_SetGlobal) : BREAK;
       CASE(TypeOp_GetBuiltin) : {
         GET_REGISTER_A(i);
-        Value* b = GET_Builtin_VALUE(i);
+        auto* b = GET_Builtin_VALUE(i);
         *a = *b;
       }
       BREAK;
@@ -1500,7 +1500,7 @@ void VMContext::GenerateClosure(Value* value, long index) {
   for (int i = 0; static_cast<size_t>(i) < upvalues_count; ++i) {
     UpvalueInfo* info = function->GetUpvalue(i);
     if (info->in_parent_vars_) {
-      Value* v = frame->register_ + info->register_;
+      auto* v = frame->register_ + info->register_;
       closure->AddUpvalue(v);
     } else {
       closure->AddUpvalue(current_closure->GetUpvalue(info->register_));

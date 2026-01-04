@@ -14,7 +14,7 @@ namespace lepus {
 Value Stringify(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
-  Value* arg = context->GetParam(0);
+  auto* arg = context->GetParam(0);
   if (arg->IsString()) {
     return Value(arg->String());
   } else if (arg->IsNil() || arg->IsUndefined()) {
@@ -28,7 +28,7 @@ Value Stringify(VMContext* context, Value*, int) {
 Value Parse(VMContext* context, Value*, int) {
   long params_count = context->GetParamsSize();
   DCHECK(params_count == 1);
-  Value* arg = context->GetParam(0);
+  auto* arg = context->GetParam(0);
   Value res;
   if (arg->IsString()) {
     res = jsonValueTolepusValue(arg->CString());

@@ -38,9 +38,9 @@ static bool ParseStringToDouble(const std::string& str, double& ret) {
   return true;
 }
 
-static void getArrayNumber(const Value* param, std::string& str) {
-  if (param->IsArray() && param->Array()->size() > 0) {
-    const auto& array0 = param->Array()->get(0);
+static void getArrayNumber(const Value& param, std::string& str) {
+  if (param.IsArray() && param.Array()->size() > 0) {
+    const auto& array0 = param.Array()->get(0);
     if (array0.IsString()) {
       str = array0.StdString();
     } else if (array0.IsNumber()) {
@@ -52,7 +52,7 @@ static void getArrayNumber(const Value* param, std::string& str) {
         str = "false";
       }
     } else {
-      getArrayNumber(&array0, str);
+      getArrayNumber(array0, str);
     }
   }
 }
@@ -86,7 +86,8 @@ static Value ParseInt(VMContext* context, Value*, int) {
       str = "false";
     }
   } else {
-    getArrayNumber(context->GetParam(0), str);
+    Value tmp(*context->GetParam(0));
+    getArrayNumber(tmp, str);
   }
 
   if (ParseStringToInt(str, radix, ret)) {
@@ -116,7 +117,8 @@ static Value ParseFloat(VMContext* context, Value*, int) {
   if (context->GetParam(0)->IsNumber()) {
     str = std::to_string(context->GetParam(0)->Number());
   } else {
-    getArrayNumber(context->GetParam(0), str);
+    Value tmp(*context->GetParam(0));
+    getArrayNumber(tmp, str);
   }
   if (ParseStringToDouble(str, ret)) {
     if (ret != static_cast<int64_t>(ret)) {

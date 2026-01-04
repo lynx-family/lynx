@@ -30,7 +30,7 @@ const std::vector<std::string>& DateContent() {
 static Value ParseStringToDate(VMContext* context, Value*, int) {
   auto params_count = context->GetParamsSize();
   DCHECK(params_count == 1 || params_count == 2);
-  Value* parsed = context->GetParam(0);
+  auto* parsed = context->GetParam(0);
   DCHECK(parsed->IsNumber() || parsed->IsString());
   if (parsed->IsNumber()) {
     DCHECK(params_count == 1);
