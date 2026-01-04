@@ -252,6 +252,9 @@ public class GestureHandlerTrigger {
       mLastFlingScrollY = computeY;
       mLastFlingWinner = reCompeteByGestures(competeChainCandidates, mLastFlingWinner);
       findNextWinnerInBegin(null, competeChainCandidates, 0, 0, null);
+      if (mWinner == null) {
+        mLastFlingWinner = null;
+      }
       if (mLastFlingWinner != null) {
         mLastFlingTargetId = mLastFlingWinner.getGestureArenaMemberId();
         dispatchMotionEventWithSimultaneous(mLastFlingWinner, deltaX, deltaY, null, null);
@@ -349,7 +352,9 @@ public class GestureHandlerTrigger {
       if (mDuplicatedMember == node) {
         mDuplicatedMember = null;
       } else {
-        resetGestureHandlerAndSimultaneous(node);
+        if (getCurrentMemberState(node) != GestureConstants.LYNX_STATE_END) {
+          resetGestureHandlerAndSimultaneous(node);
+        }
       }
 
       int state = getCurrentMemberState(node);
@@ -370,7 +375,9 @@ public class GestureHandlerTrigger {
       if (mDuplicatedMember == node) {
         mDuplicatedMember = null;
       } else {
-        resetGestureHandlerAndSimultaneous(node);
+        if (getCurrentMemberState(node) != GestureConstants.LYNX_STATE_END) {
+          resetGestureHandlerAndSimultaneous(node);
+        }
       }
 
       int state = getCurrentMemberState(node);

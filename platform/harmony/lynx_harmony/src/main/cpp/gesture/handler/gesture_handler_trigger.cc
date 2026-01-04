@@ -340,7 +340,9 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
     if (duplicated_member_.lock() == node.lock()) {
       duplicated_member_.reset();
     } else {
-      ResetGestureHandlerAndSimultaneous(node);
+      if (GetCurrentMemberState(node) != GestureConstants::LYNX_STATE_END) {
+        ResetGestureHandlerAndSimultaneous(node);
+      }
     }
 
     int state = GetCurrentMemberState(node);
@@ -360,7 +362,9 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
     if (duplicated_member_.lock() == node.lock()) {
       duplicated_member_.reset();
     } else {
-      ResetGestureHandlerAndSimultaneous(node);
+      if (GetCurrentMemberState(node) != GestureConstants::LYNX_STATE_END) {
+        ResetGestureHandlerAndSimultaneous(node);
+      }
     }
 
     int state = GetCurrentMemberState(node);
