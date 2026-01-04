@@ -256,7 +256,7 @@ def _prepare_config_doc(configs: list[Config]):
                         )
                         break
             return "".join(doc_parts)
-        elif isinstance(data, str):
+        elif isinstance(data, str) and data:
             return f"<VersionBadge v={{{data}}}/>"
         return ""
 
