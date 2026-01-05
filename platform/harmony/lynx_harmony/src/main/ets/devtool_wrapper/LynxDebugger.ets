@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 import { LLog } from '../../../../Index';
 
-import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from '../tasm/service/Index';
 import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
 
 export class LynxDebugger {

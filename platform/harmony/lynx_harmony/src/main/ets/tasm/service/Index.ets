@@ -6,9 +6,11 @@
  * export public interface about Lynx Service
  */
 
-export { LynxServiceCenter, LynxServiceType } from './LynxServiceCenter'
+export { LynxServiceCenter } from './LynxServiceCenter'
 
-export { ILynxTrailService } from './ILynxTrailService'
+export { LynxServiceType } from './LynxServiceType'
+
+export { ILynxTrailService, ILynxTrailServiceExtension, LynxTrailServiceExtensionType } from './ILynxTrailService'
 
 export { ILynxEventReporterService } from './ILynxEventReporterService'
 
@@ -23,3 +25,7 @@ export { LynxExtensionModule } from '../../extension/LynxExtensionModule'
 export { ExtensionModule } from 'liblynx.so'
 
 export { ILynxDevToolService } from './ILynxDevToolService'
+
+export { IServiceProvider, ServiceType } from './IServiceProvider';
+
+export { IServiceExtension, ServiceExtensionType } from './IServiceExtension';

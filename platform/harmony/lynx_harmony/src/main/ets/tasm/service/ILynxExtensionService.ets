@@ -4,9 +4,12 @@
 
 import { IServiceProvider } from './IServiceProvider';
 import { LynxContext } from '../LynxContext';
+import { LynxServiceCenter } from './Index';
 
 export interface ILynxExtensionService extends IServiceProvider {
   onLynxViewSetup(context: LynxContext, uiDelegate: number[], isHostRenderer: boolean): void;
 
   onLynxViewDestroy(context: LynxContext): void;
 }
+
+export const LynxExtensionServiceType = LynxServiceCenter.defineServiceType<ILynxExtensionService>();

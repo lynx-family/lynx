@@ -864,7 +864,6 @@ export interface IContext {
 
 export class LynxTrailHub {
   public static getInstance(): LynxTrailHub;
-  public init(context: common.ApplicationContext): void;
   public stringValueForTrailKey(key: LynxTrailKey): string | undefined;
   public setTrailMap(trailValues: Record<string, string>): void;
 }
@@ -1095,6 +1094,7 @@ export class LynxDevToolService implements ILynxDevToolService {
   public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null;
   public registerWebSocketModule(moduleManager: LynxModuleManager): void;
+  extensions?: Set<ServiceExtensionType>;
   static instance: any; = new LynxDevToolService()
 }
 
@@ -1106,23 +1106,29 @@ export class LynxLogService implements ILynxBaseLogService {
   static logOutputChannel: LogOutputChannelType; = LogOutputChannelType.Platform
 }
 
-export enum LynxServiceType {
-  Trail
-  EventReporter
-  Http
-  Security
-  Extension
-  DevTool
+export const LynxServiceCenter: LynxServiceCenterImpl {
+  initialize(context: common.ApplicationContext): void;
+  defineServiceType<T extends IServiceProvider>(): ServiceType<T>;
+  defineServiceExtensionType<T extends IServiceExtension>(): ServiceExtensionType<T>;
+  getService<T extends IServiceProvider>(serviceType: ServiceType<T>): T | undefined;
+  registerService<T extends IServiceProvider>(serviceType: ServiceType<T>, instance: T): void;
+  unregisterService<T extends IServiceProvider>(serviceType: ServiceType<T>): void;
+  getServiceAsExtension<ST extends IServiceProvider, ET extends IServiceExtension>(serviceType: ServiceType<ST>, extensionType: ServiceExtensionType<ET>): ET | undefined;
 }
 
-export const LynxServiceCenter: LynxServiceCenterImpl {
-  getService<T>(serviceType: LynxServiceType): T | undefined;
-  registerService(serviceType: LynxServiceType, instance: IServiceProvider): void;
-  unregisterService(serviceType: LynxServiceType): void;
+export class LynxServiceType {
+  static Trail: any; = LynxTrailServiceType
+  static EventReporter: any; = LynxEventReporterServiceType
+  static Http: any; = LynxHttpServiceType
+  static Security: any; = LynxSecurityServiceType
+  static Extension: any; = LynxExtensionServiceType
+  static DevTool: any; = LynxDevToolServiceType
 }
 
 export interface ILynxTrailService {
-  initialize(context: common.ApplicationContext): void;
+}
+
+export interface ILynxTrailServiceExtension {
   parseLynxView(view: LynxView): void;
 }
 
@@ -1170,5 +1176,19 @@ export interface ILynxDevToolService {
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null;
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
+}
+
+export class ServiceType<T extends IServiceProvider> {
+}
+
+export interface IServiceProvider {
+  extensions?: Set<ServiceExtensionType>;
+  onInitialize?: (context: common.ApplicationContext) => void;
+}
+
+export class ServiceExtensionType<T extends IServiceExtension = IServiceExtension> {
+}
+
+export interface IServiceExtension {
 }
 

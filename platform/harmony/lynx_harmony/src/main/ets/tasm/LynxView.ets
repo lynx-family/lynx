@@ -35,7 +35,7 @@ import { LynxBackgroundRuntimeOptions } from '../jsbridge/LynxBackgroundRuntimeO
 import { LynxInfoReporterHelper, LynxTemplateType } from './eventreport/LynxInfoReporterHelper';
 import { TemplateBundle } from './TemplateBundle';
 import { LynxLoadOption } from './LynxLoadOption';
-import { LynxServiceCenter, LynxServiceType } from './service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from './service/Index';
 import { ILynxSecurityService, LynxTasmType, SecurityResult } from './service/ILynxSecurityService';
 import { LynxSetModule } from '../jsbridge/LynxSetModule';
 import { ILynxExtensionService } from './service/ILynxExtensionService';
@@ -45,6 +45,7 @@ import { ILynxTrailService, LynxBackgroundRuntime } from '../Index';
 import { ILogBox } from '../devtool_wrapper/ILogBox';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
+import { LynxTrailServiceExtensionType } from './service/ILynxTrailService';
 
 export enum MeasureMode {
   INDEFINITE = 0,
@@ -270,7 +271,7 @@ export struct LynxView {
 
   aboutToAppear() {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_CREATE);
-    LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
+    LynxServiceCenter.getServiceAsExtension(LynxServiceType.Trail, LynxTrailServiceExtensionType)?.parseLynxView(this);
     this.nodeController =
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
     this.enableLogBox = LynxEnv.isLynxDebugEnabled() && LynxEnv.isLogBoxEnabled();

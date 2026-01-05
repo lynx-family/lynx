@@ -7,7 +7,7 @@ import { LLog } from '../../base/LLog';
 import { TraceCategory, TraceEvent } from '../../base/TraceEvent';
 import { TraceEventDef } from '../../base/TraceEventDef';
 import { LynxEnv } from '../LynxEnv';
-import { LynxServiceCenter, LynxServiceType } from '../service/LynxServiceCenter';
+import { LynxServiceCenter, LynxServiceType } from '../service/Index';
 import { ILynxEventReportObserver, LynxReportEventPropValue } from './ILynxEventReportObserver';
 
 type PropsBuilder = () => Map<string, LynxReportEventPropValue>;
@@ -324,7 +324,7 @@ export class LynxEventReporter {
       return
     }
     this.eventReporterService =
-      LynxServiceCenter.getService<ILynxEventReportObserver>(LynxServiceType.EventReporter);
+      LynxServiceCenter.getService(LynxServiceType.EventReporter);
     if (this.eventReporterService) {
       this.addObserver(this.eventReporterService);
     } else {
