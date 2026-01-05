@@ -44,6 +44,7 @@ class XElementBehaviors : BehaviorBundle {
     val GENERATOR_FILE_NAME_SETS: HashSet<String> = object : HashSet<String>() {
       init {
         add("com.lynx.xelement")
+        add("com.lynx.xelement.svg")
       }
     }
   }
