@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_CSS_MEASURE_CONTEXT_H_
 #define CORE_RENDERER_CSS_MEASURE_CONTEXT_H_
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/layout/layout_global.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/tasm/config.h"
@@ -21,11 +22,11 @@ class CssMeasureContext {
  public:
   CssMeasureContext(const tasm::LynxEnvConfig& config, float root_font_size,
                     float cur_font_size);
-  CssMeasureContext(float screen_width, float layouts_unit_per_px,
-                    float physical_pixels_per_layout_unit, float root_font_size,
-                    float cur_font_size,
-                    const starlight::LayoutUnit& viewport_width_,
-                    const starlight::LayoutUnit& viewport_height_);
+  LYNX_EXPORT CssMeasureContext(float screen_width, float layouts_unit_per_px,
+                                float physical_pixels_per_layout_unit,
+                                float root_font_size, float cur_font_size,
+                                const starlight::LayoutUnit& viewport_width_,
+                                const starlight::LayoutUnit& viewport_height_);
   ~CssMeasureContext() {}
   float screen_width_;
   float layouts_unit_per_px_;
