@@ -293,12 +293,20 @@ LynxShell* LynxShellBuilder::build() {
             this->lynx_env_config_, shell_option_.page_options_),
         shell->runners_.GetLayoutTaskRunner(), shell->instance_id_);
 
+    std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker;
+    if (tasm_platform_invoker_provider_) {
+      tasm_platform_invoker = tasm_platform_invoker_provider_->Create();
+    }
+    if (!tasm_platform_invoker) {
+      tasm_platform_invoker = std::move(tasm_platform_invoker_);
+    }
+
     TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
                       LYNX_SHELL_BUILDER_CREATE_ENGINE_ACTOR);
     // create engine actor
     auto tasm_mediator = std::make_unique<TasmMediator>(
         shell->facade_actor_, shell->card_cached_data_mgr_,
-        shell->layout_actor_, std::move(tasm_platform_invoker_),
+        shell->layout_actor_, std::move(tasm_platform_invoker),
         shell->perf_controller_actor_);
     tasm_mediator->SetPageOptions(shell_option_.page_options_);
     shell->tasm_mediator_ = tasm_mediator.get();
@@ -386,7 +394,12 @@ LynxShell* LynxShellBuilder::build() {
                                     shell->tasm_mediator_,
                                     shell->layout_mediator_);
   }
-  return shell;
+  -return shell;
+  +if (shell->tasm_mediator_) {
+    +shell->tasm_mediator_->PostBuildHook(shell);
+    +
+  }
+  +return shell;
 }
 
 void LynxShellBuilder::AttachLynxEngine(LynxShell* shell) {
@@ -443,6 +456,12 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
       std::move(tasm), std::move(tasm_mediator), card_cached_data_mgr,
       instance_id);
   return lynx_engine;
+}
+
+LynxShellBuilder& LynxShellBuilder::SetTasmPlatformInvokerProvider(
+    const std::shared_ptr<TasmPlatformInvokerProvider>& provider) {
+  this->tasm_platform_invoker_provider_ = provider;
+  return *this;
 }
 
 LynxShellBuilder& LynxShellBuilder::SetTasmPlatformInvoker(

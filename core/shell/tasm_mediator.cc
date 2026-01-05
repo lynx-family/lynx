@@ -47,6 +47,13 @@ TasmMediator::~TasmMediator() {
   }
 }
 
+void TasmMediator::PostBuildHook(LynxShell* shell) {
+  if (!tasm_platform_invoker_) {
+    return;
+  }
+  tasm_platform_invoker_->OnShellPostBuild(shell);
+}
+
 void TasmMediator::OnDataUpdated() {
   facade_actor_->Act([](auto& facade) { facade->OnDataUpdated(); });
 }

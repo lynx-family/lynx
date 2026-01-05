@@ -9,7 +9,7 @@
 #include "core/shell/module_delegate_impl.h"
 #include "platform/embedder/core/native_facade_impl.h"
 #include "platform/embedder/core/performance/performance_controller_impl.h"
-#include "platform/embedder/core/tasm_platform_invoker_impl.h"
+#include "platform/embedder/core/tasm_platform_invoker_provider_impl.h"
 #if ENABLE_INSPECTOR
 #include "devtool/embedder/core/lynx_devtool_set_module.h"
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
@@ -124,9 +124,10 @@ void LynxTemplateRenderer::Reset() {
           .SetPropBundleCreator(ui_delegate_->CreatePropBundleCreator())
           .SetEngineActor(
               [loader](auto& actor) { loader->SetEngineActor(actor); })
-          .SetShellOption(shell_option)
-          .SetTasmPlatformInvoker(std::make_unique<TasmPlatformInvokerImpl>(
-              weak_flag_->weak_from_this()))
+          .SetShellOption(shell_option) +
+          .SetTasmPlatformInvokerProvider(
+              +std::make_shared<shell::TasmPlatformInvokerProviderImpl>(
+                  +weak_flag_->weak_from_this()))
           .SetPerformanceControllerPlatform(std::move(perf_controller_ptr_))
           .build());
 

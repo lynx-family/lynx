@@ -78,6 +78,7 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/icu/ICURegister.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/PlatformCallBack.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/TasmPlatformInvoker.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/TasmPlatformInvokerFactory.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/mapbuffer/ReadableMapBuffer.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/mapbuffer/ReadableCompactArrayBuffer.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/PaintingContext.java

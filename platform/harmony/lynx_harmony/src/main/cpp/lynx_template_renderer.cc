@@ -24,6 +24,7 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/harmony/native_facade_harmony.h"
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
+#include "core/shell/harmony/tasm_platform_invoker_provider_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
@@ -131,9 +132,6 @@ void LynxTemplateRenderer::SetUpLynxShell(
       runtime_wrapper ? runtime_wrapper->RuntimeStandalone().GetRuntimeId()
                       : -1;
 
-  auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
-      weak_flag_->weak_from_this());
-  auto* invoker_ptr = invoker.get();
   shell_.reset(
       shell::LynxShellBuilder()
           .SetNativeFacade(std::make_unique<NativeFacadeHarmony>(this))
@@ -152,7 +150,9 @@ void LynxTemplateRenderer::SetUpLynxShell(
           .SetEngineActor(
               [loader](auto& actor) { loader->SetEngineActor(actor); })
           .SetShellOption(shell_option)
-          .SetTasmPlatformInvoker(std::move(invoker))
+          .SetTasmPlatformInvokerProvider(
+              std::make_shared<shell::TasmPlatformInvokerProviderHarmony>(
+                  weak_flag_->weak_from_this()))
           .SetPerformanceControllerPlatform(
               std::make_unique<tasm::performance::PerformanceControllerHarmony>(
                   std::shared_ptr<
@@ -167,7 +167,6 @@ void LynxTemplateRenderer::SetUpLynxShell(
                                             .GetPerfControllerActor()
                                       : nullptr)
           .build());
-  invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
   if (inspector_owner_ != nullptr) {
     inspector_owner_->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());

@@ -14,6 +14,8 @@
 namespace lynx {
 namespace shell {
 
+class LynxShell;
+
 // Invoke platform directly from the TASM thread.
 class TasmPlatformInvoker {
  public:
@@ -33,6 +35,10 @@ class TasmPlatformInvoker {
       const std::string& res_id, const std::string& theme_key) = 0;
   virtual void GetI18nResource(const std::string& channel,
                                const std::string& fallback_url) = 0;
+
+  // Called after LynxShell has finished core initialization, so that
+  // platform-specific invokers can bind runners or contexts.
+  virtual void OnShellPostBuild(LynxShell* shell) {}
 };
 
 }  // namespace shell
