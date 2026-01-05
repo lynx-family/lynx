@@ -67,6 +67,9 @@
   BOOL _enableTouchPseudo;
   BOOL _enableMultiTouch;
   NSMutableSet<UITouch*>* _touches;
+  // In single-finger mode, when multiple fingers are raised at the same time, touches need to be
+  // tracked in touchesBegan to ensure that touches received by touchesEnded are not missed.
+  NSSet<UITouch*>* _other_touches;
   UIEvent* _event;
   // Touch -> Target, a target corresponds to multiple touches.
   std::map<UITouch*, EventTargetDetail*> touches_map_;
@@ -522,6 +525,7 @@
   } else if (self.state == UIGestureRecognizerStateBegan) {
     self.state = UIGestureRecognizerStateChanged;
   }
+  _other_touches = nil;
   if (_eventHandler.touchTarget == nil) {
     return;
   }
@@ -541,6 +545,7 @@
     [self deactivatePseudoState:LynxTouchPseudoStateActive];
     // The method only dispatch multiple touch events to sepcific view.
     [_target dispatchTouch:LynxEventTouchStart touches:touches withEvent:event];
+    _other_touches = touches;
     return;
   }
 
