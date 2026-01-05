@@ -136,9 +136,21 @@ typedef enum {
   napi_date_expected,
   napi_arraybuffer_expected,
   napi_detachable_arraybuffer_expected,
-  napi_conflict_instance_data,
-  napi_context_scope_mismatch
+  napi_would_deadlock,  // unused
+  napi_no_external_buffers_allowed,
+  napi_cannot_run_js,
 } napi_status;
+
+// `napi_conflict_instance_data` and `napi_context_scope_mismatch` are
+// non-NAPI-standard statuses, so they are moved from `napi_status` to
+// `napi_status_legacy`. To avoid runtime breaking changes for users of the
+// primjs napi dynamic library who have not updated their headers, the enum
+// values in `napi_status_legacy` remain unchanged.
+typedef enum {
+  napi_ok_legacy = 0,
+  napi_conflict_instance_data_legacy = 21,
+  napi_context_scope_mismatch_legacy = 22,
+} napi_status_legacy;
 
 // Note: when adding a new enum value to `napi_status`, please also update
 // `const int last_status` in `napi_get_last_error_info()' definition,

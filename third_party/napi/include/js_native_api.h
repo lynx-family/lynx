@@ -398,9 +398,10 @@ struct napi_env__ {
                                     void* finalize_hint, napi_ref* result);
 
   // Instance data
-  napi_status (*napi_set_instance_data)(napi_env env, uint64_t key, void* data,
-                                        napi_finalize finalize_cb,
-                                        void* finalize_hint);
+  napi_status_legacy (*napi_set_instance_data)(napi_env env, uint64_t key,
+                                               void* data,
+                                               napi_finalize finalize_cb,
+                                               void* finalize_hint);
 
   napi_status (*napi_get_instance_data)(napi_env env, uint64_t key,
                                         void** data);
@@ -461,8 +462,8 @@ struct napi_env__ {
 
   napi_status (*napi_open_context_scope)(napi_env env,
                                          napi_context_scope* result);
-  napi_status (*napi_close_context_scope)(napi_env env,
-                                          napi_context_scope scope);
+  napi_status_legacy (*napi_close_context_scope)(napi_env env,
+                                                 napi_context_scope scope);
 
   napi_status (*napi_open_error_scope)(napi_env env, napi_error_scope* result);
   napi_status (*napi_close_error_scope)(napi_env env, napi_error_scope scope);
@@ -552,6 +553,22 @@ struct napi_env__ {
       napi_finalize thread_finalize_cb, void* context,
       napi_threadsafe_function_call_js call_js_cb, size_t max_queue_size,
       size_t thread_count, napi_threadsafe_function* result);
+
+  napi_status (*napi_create_bigint_int64)(napi_env env, int64_t value,
+                                          napi_value* result);
+  napi_status (*napi_create_bigint_uint64)(napi_env env, uint64_t value,
+                                           napi_value* result);
+  napi_status (*napi_get_value_bigint_int64)(napi_env env, napi_value value,
+                                             int64_t* result, bool* lossless);
+  napi_status (*napi_get_value_bigint_uint64)(napi_env env, napi_value value,
+                                              uint64_t* result, bool* lossless);
+  napi_status (*napi_create_bigint_words)(napi_env env, int sign_bit,
+                                          size_t word_count,
+                                          const uint64_t* words,
+                                          napi_value* result);
+  napi_status (*napi_get_value_bigint_words)(napi_env env, napi_value value,
+                                             int* sign_bit, size_t* word_count,
+                                             uint64_t* words);
 };
 
 #ifdef ENABLE_CODECACHE
@@ -689,6 +706,12 @@ struct napi_env__ {
   V(is_date)                           \
   V(get_date_value)                    \
   V(get_all_property_names)            \
+  V(create_bigint_int64)               \
+  V(create_bigint_uint64)              \
+  V(get_value_bigint_int64)            \
+  V(get_value_bigint_uint64)           \
+  V(create_bigint_words)               \
+  V(get_value_bigint_words)            \
   NAPI_ENGINE_CACHE_CALL(V)
 
 // These functions share same implementations across JS engines

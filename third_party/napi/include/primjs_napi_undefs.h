@@ -231,3 +231,6 @@
 #undef napi_get_value_bigint_uint64
 #undef napi_get_value_bigint_words
 #undef napi_get_all_property_names
+#undef napi_would_deadlock
+#undef napi_no_external_buffers_allowed
+#undef napi_cannot_run_js
