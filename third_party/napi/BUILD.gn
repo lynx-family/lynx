@@ -4,7 +4,7 @@
 #
 
 import("../../config.gni")
-import("//${lynx_dir}/build_overrides/build.gni")
+import("//${lynx_dir}/build_overrides/windows.gni")
 
 if (is_win) {
   import("//build/config/win/win.gni")

@@ -6,5 +6,3 @@
 # dependencies (e.g, ANGLE, abseil) to use their GN build files, but we don't
 # want the Chromium-specific parts of the build.
 build_with_chromium = false
-
-napi_win_libs_config = []
