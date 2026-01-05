@@ -34,6 +34,7 @@ namespace lynx {
 namespace lepus {
 
 class Value;
+struct RestrictedValue;
 
 using LepusValueIterator =
     base::MoveOnlyClosure<void, const lepus::Value&, const lepus::Value&>;
@@ -85,13 +86,20 @@ enum ValueType {
 };
 
 class Context;
+class VMContext;
 class CArray;
 class Dictionary;
 class ByteArray;
 class RefCounted;
 class BuiltinFunctionTable;
 
+enum CFunctionType {
+  CFunctionType_Default,
+  CFunctionType_Builtin,
+};
+
 typedef Value (*CFunction)(Context*, lepus::Value*, int);
+typedef RestrictedValue (*CFunctionBuiltin)(VMContext*);
 
 class BASE_EXPORT Value {
  private:
@@ -149,6 +157,7 @@ class BASE_EXPORT Value {
   explicit Value(bool val);
   explicit Value(void* data);
   explicit Value(CFunction val);
+  explicit Value(CFunctionBuiltin val);
   explicit Value(BuiltinFunctionTable* data);
   explicit Value(const lynx_value& value) : value_(value) {}
   Value(lynx_api_env env, int64_t val, int32_t tag);
@@ -272,6 +281,9 @@ class BASE_EXPORT Value {
     return value_.type == lynx_value_undefined || IsJSUndefined();
   }
   inline bool IsCFunction() const { return value_.type == lynx_value_function; }
+  inline CFunctionType GetCFunctionType() const {
+    return static_cast<CFunctionType>(value_.tag);
+  }
   inline bool IsBuiltinFunctionTable() const {
     return value_.type == lynx_value_function_table;
   }
@@ -375,6 +387,7 @@ class BASE_EXPORT Value {
   fml::RefPtr<lepus::RefCounted> RefCounted() &&;
 
   CFunction Function() const;
+  CFunctionBuiltin FunctionBuiltin() const;
   BuiltinFunctionTable* FunctionTable() const;
   void* CPoint() const;
 

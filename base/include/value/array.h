@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #ifndef BASE_INCLUDE_VALUE_ARRAY_H_
 #define BASE_INCLUDE_VALUE_ARRAY_H_
+#include <type_traits>
 #include <utility>
 
 #include "base/include/base_defines.h"
@@ -44,6 +45,16 @@ class BASE_EXPORT CArray : public RefCountedBase {
       return false;
     }
     vec_.push_back(std::move(value));
+    return true;
+  }
+
+  template <class ValueType, typename = typename std::enable_if<!std::is_same_v<
+                                 std::decay_t<ValueType>, Value>>::type>
+  bool push_back(ValueType&& v) {
+    if (IsConstLog()) {
+      return false;
+    }
+    vec_.emplace_back(std::forward<ValueType>(v));
     return true;
   }
 
@@ -141,6 +152,19 @@ class BASE_EXPORT CArray : public RefCountedBase {
       resize(index + 1);
     }
     vec_[index] = std::move(v);
+    return true;
+  }
+
+  template <class ValueType, typename = typename std::enable_if<!std::is_same_v<
+                                 std::decay_t<ValueType>, Value>>::type>
+  bool set(size_t index, ValueType&& v) {
+    if (IsConstLog()) {
+      return false;
+    }
+    if (index >= vec_.size()) {
+      resize(index + 1);
+    }
+    std::decay_t<ValueType>::Assign(vec_[index], std::forward<ValueType>(v));
     return true;
   }
 

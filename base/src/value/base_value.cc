@@ -164,9 +164,17 @@ Value::Value(void* data)
     : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data),
               .type = lynx_value_external}) {}
 
-Value::Value(CFunction val)
-    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(val),
-              .type = lynx_value_function}) {}
+Value::Value(CFunction val) {
+  value_.type = lynx_value_function;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(val);
+  value_.tag = static_cast<int32_t>(CFunctionType_Default);
+}
+
+Value::Value(CFunctionBuiltin val) {
+  value_.type = lynx_value_function;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(val);
+  value_.tag = static_cast<int32_t>(CFunctionType_Builtin);
+}
 
 Value::Value(BuiltinFunctionTable* data)
     : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data),
@@ -430,7 +438,16 @@ fml::RefPtr<lepus::RefCounted> Value::RefCounted() && {
 
 CFunction Value::Function() const {
   if (likely(value_.type == lynx_value_function)) {
+    DCHECK(value_.tag == static_cast<int32_t>(CFunctionType_Default));
     return reinterpret_cast<CFunction>(Ptr());
+  }
+  return nullptr;
+}
+
+CFunctionBuiltin Value::FunctionBuiltin() const {
+  if (likely(value_.type == lynx_value_function)) {
+    DCHECK(value_.tag == static_cast<int32_t>(CFunctionType_Builtin));
+    return reinterpret_cast<CFunctionBuiltin>(Ptr());
   }
   return nullptr;
 }
@@ -468,6 +485,7 @@ void Value::SetCFunction(CFunction func) {
   FreeValue();
   value_.type = lynx_value_function;
   value_.val_ptr = reinterpret_cast<lynx_value_ptr>(func);
+  value_.tag = static_cast<int32_t>(CFunctionType_Default);
 }
 
 void Value::SetBool(bool value) {

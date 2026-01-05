@@ -65,6 +65,8 @@ lynx_lepus_core_sources = [
   "regexp.h",
   "regexp_api.cc",
   "regexp_api.h",
+  "restricted_value.cc",
+  "restricted_value.h",
   "string_api.cc",
   "string_api.h",
   "switch.cc",
