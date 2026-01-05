@@ -22,6 +22,7 @@ skip_prefixes = [
     "//config.gni",
     "//tools/idl_parser",
     "//out/",
+    "//tools_shared",
 ]
 
 def convert_absolute_to_relative_path(absolute_path, current_file_dir, project_root):
