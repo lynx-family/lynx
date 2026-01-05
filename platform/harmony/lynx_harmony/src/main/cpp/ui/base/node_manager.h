@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 
 typedef ArkUI_GestureInterruptResult (*GestureInterrupter)(
     ArkUI_GestureInterruptInfo* info);
@@ -57,22 +58,26 @@ class BASE_EXPORT NodeManager {
     return height;
   }
 
-  ArkUI_NodeHandle CreateNode(ArkUI_NodeType type);
-  void DisposeNode(ArkUI_NodeHandle node);
-  bool SetAttribute(ArkUI_NodeHandle node, ArkUI_NodeAttributeType type,
-                    const ArkUI_AttributeItem* item);
-  const ArkUI_AttributeItem* GetAttribute(ArkUI_NodeHandle node,
-                                          ArkUI_NodeAttributeType type);
+  LYNX_EXPORT ArkUI_NodeHandle CreateNode(ArkUI_NodeType type);
+  LYNX_EXPORT void DisposeNode(ArkUI_NodeHandle node);
+  LYNX_EXPORT bool SetAttribute(ArkUI_NodeHandle node,
+                                ArkUI_NodeAttributeType type,
+                                const ArkUI_AttributeItem* item);
+  LYNX_EXPORT const ArkUI_AttributeItem* GetAttribute(
+      ArkUI_NodeHandle node, ArkUI_NodeAttributeType type);
 
-  bool ResetAttribute(ArkUI_NodeHandle node, ArkUI_NodeAttributeType type);
+  LYNX_EXPORT bool ResetAttribute(ArkUI_NodeHandle node,
+                                  ArkUI_NodeAttributeType type);
 
-  bool InsertNode(ArkUI_NodeHandle parent, ArkUI_NodeHandle child, int index);
-  bool InsertNodeAfter(ArkUI_NodeHandle parent, ArkUI_NodeHandle child,
-                       ArkUI_NodeHandle after);
-  bool RemoveNode(ArkUI_NodeHandle parent, ArkUI_NodeHandle child);
-  void RequestLayout(ArkUI_NodeHandle node);
-  void Invalidate(ArkUI_NodeHandle node);
-  ArkUI_NodeHandle GetParent(ArkUI_NodeHandle node);
+  LYNX_EXPORT bool InsertNode(ArkUI_NodeHandle parent, ArkUI_NodeHandle child,
+                              int index);
+  LYNX_EXPORT bool InsertNodeAfter(ArkUI_NodeHandle parent,
+                                   ArkUI_NodeHandle child,
+                                   ArkUI_NodeHandle after);
+  LYNX_EXPORT bool RemoveNode(ArkUI_NodeHandle parent, ArkUI_NodeHandle child);
+  LYNX_EXPORT void RequestLayout(ArkUI_NodeHandle node);
+  LYNX_EXPORT void Invalidate(ArkUI_NodeHandle node);
+  LYNX_EXPORT ArkUI_NodeHandle GetParent(ArkUI_NodeHandle node);
 
   /**
    * Add event to the target node.
@@ -84,24 +89,26 @@ class BASE_EXPORT NodeManager {
    * the default event receiver.
    * @return
    */
-  bool RegisterNodeEvent(ArkUI_NodeHandle node, ArkUI_NodeEventType type,
-                         uint32_t id, void* data);
-  bool RegisterNodeCustomEvent(ArkUI_NodeHandle node,
-                               ArkUI_NodeCustomEventType type, uint32_t id,
-                               void* data);
+  LYNX_EXPORT bool RegisterNodeEvent(ArkUI_NodeHandle node,
+                                     ArkUI_NodeEventType type, uint32_t id,
+                                     void* data);
+  LYNX_EXPORT bool RegisterNodeCustomEvent(ArkUI_NodeHandle node,
+                                           ArkUI_NodeCustomEventType type,
+                                           uint32_t id, void* data);
 
-  void UnregisterNodeEvent(ArkUI_NodeHandle node, ArkUI_NodeEventType type);
-  void UnregisterNodeCustomEvent(ArkUI_NodeHandle node,
-                                 ArkUI_NodeCustomEventType type);
+  LYNX_EXPORT void UnregisterNodeEvent(ArkUI_NodeHandle node,
+                                       ArkUI_NodeEventType type);
+  LYNX_EXPORT void UnregisterNodeCustomEvent(ArkUI_NodeHandle node,
+                                             ArkUI_NodeCustomEventType type);
 
-  void AddNodeEventReceiver(ArkUI_NodeHandle node,
-                            void (*eventReceiver)(ArkUI_NodeEvent* event));
-  void AddNodeCustomEventReceiver(
+  LYNX_EXPORT void AddNodeEventReceiver(
+      ArkUI_NodeHandle node, void (*eventReceiver)(ArkUI_NodeEvent* event));
+  LYNX_EXPORT void AddNodeCustomEventReceiver(
       ArkUI_NodeHandle node,
       void (*eventReceiver)(ArkUI_NodeCustomEvent* event));
-  void RemoveNodeEventReceiver(ArkUI_NodeHandle node,
-                               void (*eventReceiver)(ArkUI_NodeEvent* event));
-  void RemoveNodeCustomEventReceiver(
+  LYNX_EXPORT void RemoveNodeEventReceiver(
+      ArkUI_NodeHandle node, void (*eventReceiver)(ArkUI_NodeEvent* event));
+  LYNX_EXPORT void RemoveNodeCustomEventReceiver(
       ArkUI_NodeHandle node,
       void (*eventReceiver)(ArkUI_NodeCustomEvent* event));
 
@@ -115,34 +122,34 @@ class BASE_EXPORT NodeManager {
 
   int32_t LayoutNode(ArkUI_NodeHandle node, int32_t x, int32_t y);
 
-  ArkUI_GestureRecognizer* CreateLongPressGesture(int32_t fingers_num = 1,
-                                                  bool repeat_result = false,
-                                                  int32_t duration_num = 500);
+  LYNX_EXPORT ArkUI_GestureRecognizer* CreateLongPressGesture(
+      int32_t fingers_num = 1, bool repeat_result = false,
+      int32_t duration_num = 500);
 
-  ArkUI_GestureRecognizer* createTapGestureWithDistanceThreshold(
+  LYNX_EXPORT ArkUI_GestureRecognizer* createTapGestureWithDistanceThreshold(
       int32_t count_num = 1, int32_t fingers_num = 1,
       double distance_threshold = 5);
 
-  ArkUI_GestureRecognizer* CreatePanGesture(
+  LYNX_EXPORT ArkUI_GestureRecognizer* CreatePanGesture(
       int32_t fingers_num = 1,
       ArkUI_GestureDirectionMask directions = GESTURE_DIRECTION_ALL,
       double distance_num = 5);
 
-  void SetGestureEventTarget(ArkUI_GestureRecognizer* recognizer,
-                             ArkUI_GestureEventActionTypeMask action_type_mask,
-                             void* extra_params,
-                             void (*target_receiver)(ArkUI_GestureEvent* event,
-                                                     void* extra_params));
+  LYNX_EXPORT void SetGestureEventTarget(
+      ArkUI_GestureRecognizer* recognizer,
+      ArkUI_GestureEventActionTypeMask action_type_mask, void* extra_params,
+      void (*target_receiver)(ArkUI_GestureEvent* event, void* extra_params));
 
-  void SetGestureInterrupterToNode(ArkUI_NodeHandle node,
-                                   ArkUI_GestureInterruptResult (*interrupter)(
-                                       ArkUI_GestureInterruptInfo* info));
+  LYNX_EXPORT void SetGestureInterrupterToNode(
+      ArkUI_NodeHandle node, ArkUI_GestureInterruptResult (*interrupter)(
+                                 ArkUI_GestureInterruptInfo* info));
 
-  void AddGestureToNode(ArkUI_NodeHandle node,
-                        ArkUI_GestureRecognizer* recognizer,
-                        ArkUI_GesturePriority mode, ArkUI_GestureMask mask);
+  LYNX_EXPORT void AddGestureToNode(ArkUI_NodeHandle node,
+                                    ArkUI_GestureRecognizer* recognizer,
+                                    ArkUI_GesturePriority mode,
+                                    ArkUI_GestureMask mask);
 
-  void DisposeGesture(ArkUI_GestureRecognizer* recognizer);
+  LYNX_EXPORT void DisposeGesture(ArkUI_GestureRecognizer* recognizer);
 
   void SetEventDispatcher(EventDispatcher* dispatcher) {
     event_dispatcher_ = dispatcher;
@@ -208,7 +215,7 @@ class BASE_EXPORT NodeManager {
   }
 
  private:
-  NodeManager();
+  LYNX_EXPORT NodeManager();
   template <typename T>
   ArkUI_NumberValue NumberValue(T val) {
     if constexpr (std::is_arithmetic_v<T>) {

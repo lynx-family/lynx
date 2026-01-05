@@ -166,17 +166,17 @@ class LynxContext {
 
   UIBase* FindUIBySign(int sign) const;
 
-  UIBase* FindUIByIdSelector(const std::string& id_selector) const;
+  LYNX_EXPORT UIBase* FindUIByIdSelector(const std::string& id_selector) const;
 
-  napi_env GetNapiEnv() const;
+  LYNX_EXPORT napi_env GetNapiEnv() const;
 
   void InvokeUIMethod(
       const std::string& component_id, const std::string& node,
       const std::string& method, const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   ShadowNode* FindShadowNodeBySign(int sign) const;
-  void FindShadowNodeAndRunTask(int sign,
-                                base::MoveOnlyClosure<void, ShadowNode*>) const;
+  LYNX_EXPORT void FindShadowNodeAndRunTask(
+      int sign, base::MoveOnlyClosure<void, ShadowNode*>) const;
 
   void ScrollByListContainer(int32_t tag, float x, float y, float original_x,
                              float original_y);
@@ -208,7 +208,7 @@ class LynxContext {
 
   void NotifyUIScroll();
 
-  void ScreenSize(float size[2]) const;
+  LYNX_EXPORT void ScreenSize(float size[2]) const;
 
   float DevicePixelRatio() const { return ScaledDensity(); }
 
@@ -262,11 +262,11 @@ class LynxContext {
 
   // The task will run immediately if on main thread, or it will post to ui task
   // runner.
-  void RunOnUIThread(base::closure task) const;
+  LYNX_EXPORT void RunOnUIThread(base::closure task) const;
 
   // The task will run immediately if on layout thread, or it will post to
   // layout task runner.
-  void RunOnLayoutThread(base::closure task) const;
+  LYNX_EXPORT void RunOnLayoutThread(base::closure task) const;
 
   const fml::RefPtr<fml::TaskRunner>& GetUITaskRunner() const {
     return ui_task_runner_;
@@ -299,7 +299,8 @@ class LynxContext {
 
   void SetEnableTextOverflow(bool enable) { enable_text_overflow_ = enable; }
   bool IsEnableTextOverflow() const { return enable_text_overflow_; }
-  static std::unordered_map<std::string, NodeInfo>& GetCAPINodeInfoMap();
+  LYNX_EXPORT static std::unordered_map<std::string, NodeInfo>&
+  GetCAPINodeInfoMap();
 
   void SetExtensionDelegate(pub::LynxExtensionDelegate* extension_delegate) {
     extension_delegate_ = extension_delegate;

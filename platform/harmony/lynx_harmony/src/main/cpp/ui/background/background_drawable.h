@@ -13,6 +13,7 @@
 #include <string>
 
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/box_shadow_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/layer_manager.h"
@@ -113,10 +114,10 @@ class BackgroundDrawable {
   const std::string& GetClipPath();
   OH_Drawing_Path* GetInnerClipPath();
   BorderRadius* GetBorderRadius();
-  float GetBorderLeftWidth();
-  float GetBorderRightWidth();
-  float GetBorderTopWidth();
-  float GetBorderBottomWidth();
+  LYNX_EXPORT float GetBorderLeftWidth();
+  LYNX_EXPORT float GetBorderRightWidth();
+  LYNX_EXPORT float GetBorderTopWidth();
+  LYNX_EXPORT float GetBorderBottomWidth();
 
   void AdjustBorder();
 

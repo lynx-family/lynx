@@ -16,12 +16,13 @@
 #include <utility>
 
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
-class LynxImageEffectProcessor : public ImageProcessor {
+class LYNX_EXPORT LynxImageEffectProcessor : public ImageProcessor {
  public:
   enum class ImageEffect {
     kNone = 0,

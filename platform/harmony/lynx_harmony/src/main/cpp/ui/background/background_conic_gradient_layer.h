@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_CONIC_GRADIENT_LAYER_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_CONIC_GRADIENT_LAYER_H_
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_value.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_gradient_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/platform_length.h"
@@ -14,12 +15,14 @@ namespace tasm {
 namespace harmony {
 class BackgroundConicGradientLayer : public BackgroundGradientLayer {
  public:
-  explicit BackgroundConicGradientLayer(const lepus::Value& data);
+  LYNX_EXPORT explicit BackgroundConicGradientLayer(const lepus::Value& data);
 
-  ~BackgroundConicGradientLayer() override = default;
+  LYNX_EXPORT ~BackgroundConicGradientLayer() override;
 
-  void OnSizeChange(float width, float height, float scale_density) override;
-  void Draw(OH_Drawing_Canvas* canvas, OH_Drawing_Path* path) override;
+  LYNX_EXPORT void OnSizeChange(float width, float height,
+                                float scale_density) override;
+  LYNX_EXPORT void Draw(OH_Drawing_Canvas* canvas,
+                        OH_Drawing_Path* path) override;
 
  private:
   float angle_{0};

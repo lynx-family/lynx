@@ -18,6 +18,8 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+BackgroundConicGradientLayer::~BackgroundConicGradientLayer() = default;
+
 void BackgroundConicGradientLayer::OnSizeChange(float width, float height,
                                                 float scale_density) {
   BackgroundGradientLayer::OnSizeChange(width, height, scale_density);

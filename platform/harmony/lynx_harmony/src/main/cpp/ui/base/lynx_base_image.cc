@@ -23,6 +23,8 @@ LynxBaseImage::LynxBaseImage(
   }
 }
 
+LynxBaseImage::~LynxBaseImage() = default;
+
 LynxPixelMap* LynxBaseImage::FirstFrame() {
   if (!pixelmap_data_.empty()) {
     return pixelmap_data_[0].get();

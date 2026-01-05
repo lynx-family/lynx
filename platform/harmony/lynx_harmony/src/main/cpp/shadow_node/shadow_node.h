@@ -16,6 +16,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/public/layout_node_manager.h"
 #include "core/public/layout_node_value.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
@@ -51,7 +52,7 @@ class MeasureFuncHarmony : public MeasureFunc {
   CustomMeasureFunc* custom_measure_func_;
 };
 
-class ShadowNode : public fml::RefCountedThreadSafeStorage {
+class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
  public:
   explicit ShadowNode(const int sign, const std::string& tag)
       : sign_(sign), tag_(tag) {}

@@ -13,6 +13,7 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/flex_optional.h"
 #include "base/include/value/array.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_font_face_token.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_keyframes_token.h"
@@ -279,7 +280,7 @@ class CSSStyleUtils {
                                    const tasm::CssMeasureContext& context,
                                    const tasm::CSSParserConfigs& configs);
 
-  static lepus::Value GetGradientArrayFromString(
+  static LYNX_EXPORT lepus::Value GetGradientArrayFromString(
       const char* gradient_def, size_t gradient_def_length,
       const tasm::CssMeasureContext& context,
       const tasm::CSSParserConfigs& configs);
