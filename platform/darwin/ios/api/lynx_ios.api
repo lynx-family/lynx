@@ -1442,6 +1442,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableImageEventReport();
   public BOOL LynxEnv::enableImageAsyncLayout();
   public BOOL LynxEnv::enableImageCancelRequest();
+  public BOOL LynxEnv::getUseNewImage();
   public BOOL LynxEnv::enableGenericResourceFetcher();
   public BOOL LynxEnv::enableTextContainerOpt();
   public BOOL LynxEnv::enableTextGradientOpt();

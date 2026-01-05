@@ -527,6 +527,15 @@
   return enableImageCancelRequest;
 }
 
+- (BOOL)getUseNewImage {
+  static dispatch_once_t onceToken;
+  static BOOL useNewImage = NO;
+  dispatch_once(&onceToken, ^{
+    useNewImage = [[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvUseNewImage defaultValue:NO];
+  });
+  return useNewImage;
+}
+
 - (BOOL)enableTextContainerOpt {
   static dispatch_once_t onceToken;
   static BOOL enableTextContainerOpt = NO;

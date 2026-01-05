@@ -11,6 +11,7 @@
 #import <Lynx/LynxBoxShadowLayer.h>
 #import <Lynx/LynxBoxShadowManager.h>
 #import <Lynx/LynxColorUtils.h>
+#import <Lynx/LynxEnv.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageProcessor.h>
 #import <Lynx/LynxService.h>
@@ -404,6 +405,14 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
                       onlyGradient:&onlyHasGradient];
 }
 
+- (BOOL)shouldUseImageService {
+  if ([LynxEnv.sharedInstance getUseNewImage] &&
+      (self.ui.context.trailUseNewImage || self.ui.context.mediaResourceFetcher)) {
+    return YES;
+  }
+  return NO;
+}
+
 - (void)tryToLoadImagesAutoRefresh:(BOOL)autoRefresh
                           drawable:(NSMutableArray*)curArray
                              layer:(LynxBackgroundSubBackgroundLayer*)layer
@@ -444,7 +453,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
                    LynxImageEnableFetchUIImage : @(self.ui.context.enableFetchUIImage)
                  }
                   processors:processors
-                imageFetcher:self.ui.context.imageFetcher
+                imageFetcher:[self shouldUseImageService] ? nil : self.ui.context.imageFetcher
                  LynxUIImage:nil
         enableGenericFetcher:self.ui.context.mediaResourceFetcher != nil
                    completed:^(UIImage* _Nullable image, NSError* _Nullable error,

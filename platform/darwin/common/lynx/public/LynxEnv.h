@@ -138,6 +138,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)enableImageCancelRequest;
 
+- (BOOL)getUseNewImage;
+
 - (BOOL)enableGenericResourceFetcher;
 
 - (BOOL)enableTextContainerOpt;
