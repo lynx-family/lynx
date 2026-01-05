@@ -64,6 +64,22 @@ std::unique_ptr<lynx::pub::Value> TimingMap::ToPubMap(
   return dict;
 }
 
+void TimingMap::PushAllToPubMap(
+    bool as_milliseconds, std::unique_ptr<lynx::pub::Value>& pub_map) const {
+  if (!pub_map) {
+    return;
+  }
+  if (as_milliseconds) {
+    for (const auto& [timing_key, timestamp] : timing_infos_) {
+      pub_map->PushUInt64ToMap(timing_key, ConvertUsToMS(timestamp));
+    }
+  } else {
+    for (const auto& [timing_key, timestamp] : timing_infos_) {
+      pub_map->PushDoubleToMap(timing_key, ConvertUsToDouble(timestamp));
+    }
+  }
+}
+
 // Method to merge other TimingMap
 void TimingMap::Merge(const TimingMap& other) {
   timing_infos_.insert(other.timing_infos_.begin(), other.timing_infos_.end());

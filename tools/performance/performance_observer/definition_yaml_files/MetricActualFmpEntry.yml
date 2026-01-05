@@ -1,6 +1,7 @@
 MetricActualFmpEntry:
   x-type: metric
   x-name: actualFmp
+  x-deprecated: 'PipelineEntry contain all properties of MetricActualFmpEntry'
   allOf:
     - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
     - type: object

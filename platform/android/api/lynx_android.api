@@ -3536,6 +3536,18 @@ public class com::lynx::tasm::performance::performanceobserver::LoadBundleEntry 
   public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.verifyTasmEnd verifyTasmEnd;
   public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.ffiStart ffiStart;
   public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.ffiEnd ffiEnd;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.createLynxStart createLynxStart;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.createLynxEnd createLynxEnd;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.loadCoreStart loadCoreStart;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.loadCoreEnd loadCoreEnd;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.openTime openTime;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.containerInitStart containerInitStart;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.containerInitEnd containerInitEnd;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.prepareTemplateStart prepareTemplateStart;
+  public double com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.prepareTemplateEnd prepareTemplateEnd;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.fcp fcp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.lynxFcp lynxFcp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.totalFcp totalFcp;
   public com.lynx.tasm.performance.performanceobserver.LoadBundleEntry.LoadBundleEntry(HashMap< String, Object > props);
 }
 
@@ -8076,6 +8088,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
 public class com::lynx::tasm::performance::performanceobserver::PerformanceEntry :  {
   public String com.lynx.tasm.performance.performanceobserver.PerformanceEntry.name name;
   public String com.lynx.tasm.performance.performanceobserver.PerformanceEntry.entryType entryType;
+  public boolean com.lynx.tasm.performance.performanceobserver.PerformanceEntry.typeResolved typeResolved;
   public HashMap<String,Object> com.lynx.tasm.performance.performanceobserver.PerformanceEntry.rawMap rawMap;
   public com.lynx.tasm.performance.performanceobserver.PerformanceEntry.PerformanceEntry(HashMap< String, Object > props);
   public HashMap< String, Object > com.lynx.tasm.performance.performanceobserver.PerformanceEntry.toHashMap();
@@ -8112,6 +8125,9 @@ public class com::lynx::tasm::performance::performanceobserver::PipelineEntry : 
   public double com.lynx.tasm.performance.performanceobserver.PipelineEntry.paintEnd paintEnd;
   public HashMap<String, Object> com.lynx.tasm.performance.performanceobserver.PipelineEntry.frameworkRenderingTiming frameworkRenderingTiming;
   public HostPlatformTiming com.lynx.tasm.performance.performanceobserver.PipelineEntry.hostPlatformTiming hostPlatformTiming;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.PipelineEntry.actualFmp actualFmp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.PipelineEntry.lynxActualFmp lynxActualFmp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.PipelineEntry.totalActualFmp totalActualFmp;
   public com.lynx.tasm.performance.performanceobserver.PipelineEntry.PipelineEntry(HashMap< String, Object > props);
 }
 
@@ -8872,6 +8888,18 @@ public class com::lynx::tasm::performance::performanceobserver::ReloadBundleEntr
   public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.reloadBackgroundEnd reloadBackgroundEnd;
   public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.ffiStart ffiStart;
   public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.ffiEnd ffiEnd;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.createLynxStart createLynxStart;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.createLynxEnd createLynxEnd;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.loadCoreStart loadCoreStart;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.loadCoreEnd loadCoreEnd;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.openTime openTime;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.containerInitStart containerInitStart;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.containerInitEnd containerInitEnd;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.prepareTemplateStart prepareTemplateStart;
+  public double com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.prepareTemplateEnd prepareTemplateEnd;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.fcp fcp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.lynxFcp lynxFcp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.totalFcp totalFcp;
   public com.lynx.tasm.performance.performanceobserver.ReloadBundleEntry.ReloadBundleEntry(HashMap< String, Object > props);
 }
 

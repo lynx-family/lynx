@@ -1,6 +1,7 @@
 InitContainerEntry:
   x-type: init
   x-name: container
+  x-deprecated: 'LoadBundleEntry and ReloadBundleEntry contain all properties of InitContainerEntry'
   allOf:
     - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
     - type: object

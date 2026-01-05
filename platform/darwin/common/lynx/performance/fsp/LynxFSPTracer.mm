@@ -25,7 +25,6 @@ using namespace lynx::tasm::performance;
 
 @property(nonatomic, assign) BOOL isRunning;
 @property(nonatomic, assign) int snapshotIntervalMs;
-@property(nonatomic, strong) LynxMetricFcpEntry* fcp;
 
 @end
 

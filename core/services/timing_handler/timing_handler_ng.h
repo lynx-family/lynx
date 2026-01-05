@@ -108,15 +108,7 @@ class TimingHandlerNg {
   // functions to complete this task.
   void DispatchPerformanceEventIfNeeded(const TimestampKey &current_key,
                                         const PipelineID &pipeline_id = "");
-  void DispatchInitContainerEntryIfNeeded(const TimestampKey &current_key);
-  void DispatchInitLynxViewEntryIfNeeded(const TimestampKey &current_key);
-  void DispatchInitBackgroundRuntimeEntryIfNeeded(
-      const TimestampKey &current_key);
-  void DispatchMetricFcpEntryIfNeeded(const TimestampKey &current_key,
-                                      const PipelineID &pipeline_id);
   void DispatchMetricFspEntryIfNeeded(const TimestampKey &current_key);
-  void DispatchMetricFmpEntryIfNeeded(const TimestampKey &current_key,
-                                      const PipelineID &pipeline_id);
   void DispatchPipelineEntryIfNeeded(const TimestampKey &current_key,
                                      const PipelineID &pipeline_id);
   // Send all pending performance entries. Note that the pending queue will be

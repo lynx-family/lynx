@@ -53,17 +53,15 @@ class TimingInfoNg {
   inline bool GetEnableBackgroundRuntime() const {
     return enable_background_runtime_;
   }
-  inline void SetLoadBundlePipelineId(const PipelineID& pipeline_id) {
-    load_bundle_pipeline_id_ = pipeline_id;
-  }
+
   inline PipelineID GetLoadBundlePipelineId() const {
     return load_bundle_pipeline_id_;
   }
 
-  inline void BindPipelineOriginWithPipelineId(
-      const PipelineID& pipeline_id, const PipelineOrigin& pipeline_origin) {
-    pipeline_id_to_origin_map_.emplace(pipeline_id, pipeline_origin);
-  }
+  inline bool HasReload() const { return has_reload_; }
+
+  void BindPipelineOriginWithPipelineId(const PipelineID& pipeline_id,
+                                        const PipelineOrigin& pipeline_origin);
 
   // This logic is to ensure compatibility with the old js_app markTiming
   // API. The old js_app markTiming API takes TimingFlag as a parameter and
@@ -110,14 +108,6 @@ class TimingInfoNg {
                                       const std::string& key,
                                       const std::string& value);
 
-  // Send the time consumption of the Init phase. They will be sent when entry
-  // is ready.
-  std::unique_ptr<lynx::pub::Value> GetInitContainerEntry(
-      const TimestampKey& current_key);
-  std::unique_ptr<lynx::pub::Value> GetInitLynxViewEntry(
-      const TimestampKey& current_key);
-  std::unique_ptr<lynx::pub::Value> GetInitBackgroundRuntimeEntry(
-      const TimestampKey& current_key);
   // Send metrics. All metrics except fsp will be sent when kPaintEnd, fsp will
   // be sent at the end of fsp, while actualFmp will only be sent if the
   // timing_flag: __lynx_timing_flag_actual_fmp exists.
@@ -125,12 +115,8 @@ class TimingInfoNg {
   // actions: "determine whether the metric can be calculated" and "calculate
   // the metric and then return a performence entry". Should it be changed to
   // GetMetricsXXXEntryIfNeeded?
-  std::unique_ptr<lynx::pub::Value> GetMetricFcpEntry(
-      const TimestampKey& current_key, const PipelineID& pipeline_id);
   std::unique_ptr<lynx::pub::Value> GetMetricFspEntry(
       const TimestampKey& current_key);
-  std::unique_ptr<lynx::pub::Value> GetMetricFmpEntry(
-      const TimestampKey& current_key, const PipelineID& pipeline_id);
   // Send the time consumption of the Pipeline phase. They will be sent after
   // PipelineEnd occurs. When pipeline.origin is loadBundle, reloadBundle, etc.,
   // LoadBundleEntry will be sent particularly.
@@ -138,6 +124,8 @@ class TimingInfoNg {
       const TimestampKey& current_key, const PipelineID& pipeline_id);
   std::unique_ptr<lynx::pub::Value> GetPipelineEntry(
       const TimestampKey& current_key, const PipelineID& pipeline_id);
+  void PushFmpToPubMap(std::unique_ptr<lynx::pub::Value>& entry_map,
+                       const PipelineID& pipeline_id);
 
   void ClearPipelineTimingInfo();
   void ClearContainerTimingInfo();
@@ -150,6 +138,13 @@ class TimingInfoNg {
   bool UpdateMetrics(const std::string& name, const std::string& start_name,
                      const std::string& end_name, uint64_t start_time,
                      uint64_t end_time);
+  void PushMetricToPubMap(std::unique_ptr<lynx::pub::Value>& entry_map,
+                          const std::string& name,
+                          const std::string& start_name,
+                          const std::string& end_name, uint64_t start_time,
+                          uint64_t end_time);
+
+  void PushFcpToPubMap(std::unique_ptr<lynx::pub::Value>& entry_map);
 
   // Note: All data is not meant to be overwritten! If you need to overwrite any
   // data, you must clear it first using ClearInitTimingInfo or
@@ -159,6 +154,7 @@ class TimingInfoNg {
   // that pipelines other than the LoadBundlePipeline can also obtain
   // loadBundle-related timing, such as for the calculation of metrics like FMP.
   PipelineID load_bundle_pipeline_id_{""};
+  bool has_reload_{false};
   // pipeline_timing_info_ stores all the related data of each pipeline, from
   // loadBundleStart to paintEnd, indexed by pipelineId.
   std::unordered_map<PipelineID, TimingMap> pipeline_timing_info_;

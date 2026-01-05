@@ -36,15 +36,18 @@ def generate_java_converter(entry_mapping, file_imports):
         if not branch_codes:
             branch_statement = f'        if (type.equals("{entry_type}") && name.equals("{entry_name}")) {{\n' \
                             f'            entry = new {class_name}(map.asHashMap());\n' \
+                            f'            entry.typeResolved = true;\n' \
                             f'        }}'
         else:
             branch_statement = f'        else if (type.equals("{entry_type}") && name.equals("{entry_name}")) {{\n' \
                             f'            entry = new {class_name}(map.asHashMap());\n' \
+                            f'            entry.typeResolved = true;\n' \
                             f'        }}'
         branch_codes.append(branch_statement)
     # default convert
     default_branch = f'        else {{\n' \
                     f'            entry = new PerformanceEntry(map.asHashMap());\n' \
+                    f'            entry.typeResolved = false;\n' \
                     f'        }}'
     branch_codes.append(default_branch)
     
@@ -63,6 +66,7 @@ def generate_java_converter(entry_mapping, file_imports):
 # @file_imports is a list, used to store import statements.
 def generate_java_prop(class_name, properties, java_code, file_imports):
     for prop, value in properties.items():
+        is_optional = bool(value.get('x-optional'))
         origin_type = value.get('type')
         if origin_type == 'map':
             # process type of key and value, default is Object
@@ -89,14 +93,48 @@ def generate_java_prop(class_name, properties, java_code, file_imports):
                     update_import_statements(file_imports, ref_type)
         else:
             prop_type = process_primary_type(origin_type)[0]
+            if is_optional:
+                prop_type = convert_to_java_type(prop_type)
 
         if prop_type is not None:
+            nullability_annotation = None
+            if not is_java_primitive(prop_type):
+                if is_optional:
+                    nullability_annotation = '@Nullable'
+                    nullable_import = 'import androidx.annotation.Nullable;'
+                    if nullable_import not in file_imports:
+                        file_imports.append(nullable_import)
+                else:
+                    nullability_annotation = '@NonNull'
+                    nonnull_import = 'import androidx.annotation.NonNull;'
+                    if nonnull_import not in file_imports:
+                        file_imports.append(nonnull_import)
+
+            if 'x-deprecated' in value:
+                java_code += '    /**\n'
+                java_code += f'     * @deprecated {value["x-deprecated"]}\n'
+                java_code += '     */\n'
+                java_code += '    @Deprecated\n'
+            if nullability_annotation is not None:
+                java_code += f'    {nullability_annotation}\n'
             java_code += f'    public {prop_type} {prop};\n'
     # If this is a base class, add a rawMap to store the original data.
     if class_name == 'PerformanceEntry':
         java_code += '    public HashMap<String,Object> rawMap;\n'
 
     return java_code
+
+def _escape_java_string(value):
+    return str(value).replace('\\', '\\\\').replace('"', '\\"')
+
+
+def _format_java_default_value(origin_type, value):
+    if origin_type == 'string':
+        return f'"{_escape_java_string(value)}"'
+    if origin_type == 'boolean':
+        return 'true' if bool(value) else 'false'
+    return str(value)
+
 
 # constructor generator, generate the code for constructor
 # @class_name is class name
@@ -113,6 +151,7 @@ def generate_java_constructor(class_name, definition, properties, java_code, fil
         java_code += '        super(props);\n';
     # Generate initial value setting statements for properties 
     for prop, value in properties.items():
+        is_optional = bool(value.get('x-optional'))
         origin_type = value.get('type')
         if origin_type == 'map':
             # process type of key and value
@@ -131,7 +170,7 @@ def generate_java_constructor(class_name, definition, properties, java_code, fil
         }}\n'''
                 # add Map dependency
                 import_map_statement = f'import java.util.Map;'
-                if file_imports not in file_imports:
+                if import_map_statement not in file_imports:
                     file_imports.append(import_map_statement)
                 continue
             else:
@@ -145,17 +184,29 @@ def generate_java_constructor(class_name, definition, properties, java_code, fil
                 ref_type = prop_type.split('/')[-1]
                 if ref_type == 'FrameworkRenderingTiming':
                     prop_type = 'HashMap<String, Object>'
-                    default_value = 'new HashMap<>()'
-                    java_code += f'        this.{prop} = props.get("{prop}") != null ? ({prop_type}) props.get("{prop}") : {default_value};\n'
+                    if is_optional:
+                        java_code += f'        this.{prop} = props.get("{prop}") != null ? ({prop_type}) props.get("{prop}") : null;\n'
+                    else:
+                        default_value = 'new HashMap<>()'
+                        java_code += f'        this.{prop} = props.get("{prop}") != null ? ({prop_type}) props.get("{prop}") : {default_value};\n'
                 else:
                     prop_type = ref_type
-                    default_value = f'new {prop_type}(new HashMap<>())'
-                    java_code += f'        this.{prop} = props.get("{prop}") != null ? new {prop_type}((HashMap<String, Object>) props.get("{prop}")) : {default_value};\n'
+                    if is_optional:
+                        java_code += f'        this.{prop} = props.get("{prop}") != null ? new {prop_type}((HashMap<String, Object>) props.get("{prop}")) : null;\n'
+                    else:
+                        default_value = f'new {prop_type}(new HashMap<>())'
+                        java_code += f'        this.{prop} = props.get("{prop}") != null ? new {prop_type}((HashMap<String, Object>) props.get("{prop}")) : {default_value};\n'
         else:
             prop_type, default_value = process_primary_type(origin_type)
+            yaml_default = value.get('default')
+            if (not is_optional) and (yaml_default is not None) and (default_value is not None):
+                default_value = _format_java_default_value(origin_type, yaml_default)
             if prop_type is not None:
-                java_code += f'        this.{prop} = props.get("{prop}") != null ? ({prop_type}) props.get("{prop}") : {default_value};\n'
-
+                if is_optional:
+                    boxed = convert_to_java_type(prop_type)
+                    java_code += f'        this.{prop} = props.get("{prop}") != null ? ({boxed}) props.get("{prop}") : null;\n'
+                else:
+                    java_code += f'        this.{prop} = props.get("{prop}") != null ? ({prop_type}) props.get("{prop}") : {default_value};\n'
     # If this is a base class, add a rawMap to store the original data.
     if class_name == 'PerformanceEntry':
         java_code += '        this.rawMap = props;\n'
@@ -173,8 +224,15 @@ def generate_java_constructor(class_name, definition, properties, java_code, fil
 # @definition is the definition of the class
 # @file_imports is a list, used to store import statements.
 def generate_java(class_name, definition, file_imports):
+    java_code = ''
+    if 'x-deprecated' in definition:
+        java_code += '/**\n'
+        java_code += f' * @deprecated {definition["x-deprecated"]}\n'
+        java_code += ' */\n'
+        java_code += '@Deprecated\n'
+
     # Define the class name
-    java_code = f'public class {class_name} '
+    java_code += f'public class {class_name} '
 
     # Define the parent class type for the interface, if any
     if 'allOf' in definition:
@@ -244,6 +302,9 @@ def convert_to_java_type(type_name):
     else:
         prop_type = type_name
     return prop_type
+
+def is_java_primitive(type_name):
+    return type_name in ('int', 'double', 'boolean', 'long', 'float', 'short', 'byte', 'char')
 
 def update_import_statements(file_imports, class_name):
     import_statement = f'import {base_package_name}.{class_name};'

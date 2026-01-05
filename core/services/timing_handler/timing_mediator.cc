@@ -22,47 +22,17 @@
 namespace lynx {
 namespace tasm {
 namespace timing {
-namespace {
-// Define an enum for error codes.
-enum DurationError {
-  kErrorNotTables = 0,
-  kErrorStartIsZero = -1,
-  kErrorEndIsZero = -2,
-  kErrorStartAndEndAreZero = -3,
-  kErrorStartTimeGreaterThanEndTime = -4
-};
 // Helper function to calculate duration.
 TimestampMsFraction CalculateDuration(const lepus::Value& startTable,
                                       const base::String& startKey,
                                       const lepus::Value& endTable,
                                       const base::String& endKey) {
-  if (!startTable.IsTable() || !endTable.IsTable()) {
-    return kErrorNotTables;
-  }
-  auto end_time = endTable.GetProperty(endKey).Number();
-  auto start_time = startTable.GetProperty(startKey).Number();
-  // Check for abnormal or error cases and handle them.
-  if (start_time == 0) {
-    if (end_time != 0) {
-      // Case 1.start = 0, end != 0,  duration = -1
-      return kErrorStartIsZero;
-    }
-    // Case 2.start == 0, end = 0,  duration = -3
-    return kErrorStartAndEndAreZero;
-  }
-  if (end_time == 0) {
-    // Case 3. start != 0, end = 0,  duration = -2
-    return kErrorEndIsZero;
-  }
-  if (start_time > end_time) {
-    // Case 4. start > end > 0, duration = -4
-    return kErrorStartTimeGreaterThanEndTime;
-  }
-  // Normal case: both times are valid and start is before end.
-  return end_time - start_time;
+  auto end_time =
+      endTable.IsTable() ? endTable.GetProperty(endKey).Number() : 0;
+  auto start_time =
+      startTable.IsTable() ? startTable.GetProperty(startKey).Number() : 0;
+  return CalculateDuration(start_time, end_time);
 };
-
-}  // namespace
 
 TimingMediator::TimingMediator(int32_t instance_id)
     : instance_id_(instance_id) {}

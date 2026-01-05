@@ -24,8 +24,13 @@ def generate_ts_union_type(class_name, definition, definitions):
 # prop generator
 def generate_ts_prop(properties, ts_code):
     for prop, value in properties.items():
+        is_optional = bool(value.get('x-optional'))
+        opt = '?' if is_optional else ''
+        deprecated_msg = value.get('x-deprecated')
+        if deprecated_msg is not None:
+            ts_code += f'    /** @deprecated {deprecated_msg} */\n'
         if 'ts-literal-type' in value:
-            ts_code += f'    {prop}: \'{value.get("ts-literal-type")}\';\n'  
+            ts_code += f'    {prop}{opt}: \'{value.get("ts-literal-type")}\';\n'
             continue
         prop_type = value.get('type')
         if prop_type == 'map':
@@ -51,8 +56,8 @@ def generate_ts_prop(properties, ts_code):
         else:
             prop_type = process_primary_type(prop_type)
         # default is any, do not handle with 'None'
-        ts_code += f'    {prop}: {prop_type};\n'  
-    
+        ts_code += f'    {prop}{opt}: {prop_type};\n'
+
     return ts_code
 
 # main generator
@@ -98,7 +103,7 @@ def generate_ts(class_name, definition, definitions):
 
 # Tool Functions
 def process_primary_type(type_name):
-    if type_name == 'integer' or type_name == 'number' or type_name == 'timestamp':
+    if type_name == 'integer' or type_name == 'number' or type_name == 'timestamp' or type_name == 'long':
         prop_type = 'number'
     elif type_name == 'boolean':
         prop_type = 'boolean'

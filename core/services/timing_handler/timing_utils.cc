@@ -130,6 +130,31 @@ bool TryUpdatePolyfillTimingKey(const TimestampKey& timing_key,
   polyfill_key = camelToSnake(timing_key);
   return true;
 }
+
+// Helper function to calculate duration.
+TimestampMsFraction CalculateDuration(TimestampUs start_time,
+                                      TimestampUs end_time) {
+  // Check for abnormal or error cases and handle them.
+  if (start_time == 0) {
+    if (end_time != 0) {
+      // Case 1.start = 0, end != 0,  duration = -1
+      return kErrorStartIsZero;
+    }
+    // Case 2.start == 0, end = 0,  duration = -3
+    return kErrorStartAndEndAreZero;
+  }
+  if (end_time == 0) {
+    // Case 3. start != 0, end = 0,  duration = -2
+    return kErrorEndIsZero;
+  }
+  if (start_time > end_time) {
+    // Case 4. start > end > 0, duration = -4
+    return kErrorStartTimeGreaterThanEndTime;
+  }
+  // Normal case: both times are valid and start is before end.
+  return ConvertUsToDouble(end_time - start_time);
+};
+
 }  // namespace timing
 }  // namespace tasm
 }  // namespace lynx

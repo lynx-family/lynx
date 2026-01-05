@@ -1,6 +1,7 @@
 InitBackgroundRuntimeEntry:
   x-type: init
   x-name: backgroundRuntime
+  x-deprecated: 'LoadBundleEntry and ReloadBundleEntry contain all properties of InitBackgroundRuntimeEntry'
   allOf:
     - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
     - type: object

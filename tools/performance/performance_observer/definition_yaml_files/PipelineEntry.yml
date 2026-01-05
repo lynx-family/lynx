@@ -73,3 +73,12 @@ PipelineEntry:
           $ref: '#/FrameworkRenderingTiming'
         hostPlatformTiming:
           $ref: 'PerformanceEntry.yml#/HostPlatformTiming'
+        actualFmp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+          x-optional: true
+        lynxActualFmp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+          x-optional: true
+        totalActualFmp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+          x-optional: true

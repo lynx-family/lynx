@@ -5,3 +5,6 @@ PerformanceEntry:
       type: string
     entryType:
       type: string
+    typeResolved:
+      type: boolean
+      default: true

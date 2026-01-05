@@ -21,9 +21,12 @@ namespace timing {
 void TimingInfoNg::ClearPipelineTimingInfo() {
   pipeline_timing_info_.clear();
   framework_timing_info_.clear();
+  framework_extra_info_.clear();
   host_platform_timing_info_.clear();
+  host_platform_extra_info_.clear();
   metrics_.clear();
   load_bundle_pipeline_id_ = "";
+  has_reload_ = false;
   pipeline_id_to_origin_map_.clear();
   fsp_info_.clear();
   fsp_end_timing_ = 0;
@@ -41,7 +44,9 @@ void TimingInfoNg::ClearContainerTimingInfo() {
 void TimingInfoNg::ReleasePipelineTiming(const PipelineID& pipeline_id) {
   pipeline_timing_info_.erase(pipeline_id);
   framework_timing_info_.erase(pipeline_id);
+  framework_extra_info_.erase(pipeline_id);
   host_platform_timing_info_.erase(pipeline_id);
+  host_platform_extra_info_.erase(pipeline_id);
   framework_extra_info_.erase(pipeline_id);
   pipeline_id_to_origin_map_.erase(pipeline_id);
 }
@@ -77,6 +82,19 @@ bool TimingInfoNg::SetHostPlatformTimingExtraInfo(
       .second;
 }
 
+void TimingInfoNg::BindPipelineOriginWithPipelineId(
+    const PipelineID& pipeline_id, const PipelineOrigin& pipeline_origin) {
+  pipeline_id_to_origin_map_.emplace(pipeline_id, pipeline_origin);
+  if (pipeline_origin == kLoadBundle) {
+    load_bundle_pipeline_id_ = pipeline_id;
+    has_reload_ = false;
+  } else if (pipeline_origin == kReloadBundleFromNative ||
+             pipeline_origin == kReloadBundleFromBts) {
+    load_bundle_pipeline_id_ = pipeline_id;
+    has_reload_ = true;
+  }
+}
+
 bool TimingInfoNg::SetPipelineTiming(
     const lynx::tasm::timing::TimestampKey& timing_key,
     const lynx::tasm::timing::TimestampUs us_timestamp,
@@ -106,84 +124,6 @@ bool TimingInfoNg::SetFSPInfo(const std::string& key,
   return fsp_info_.emplace(key, value).second;
 }
 
-std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetInitContainerEntry(
-    const TimestampKey& current_key) {
-  static const std::initializer_list<std::string> pick_keys = {
-      kOpenTime, kContainerInitStart, kContainerInitEnd, kPrepareTemplateStart,
-      kPrepareTemplateEnd};
-  // check is
-  if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
-      pick_keys.end()) {
-    return nullptr;
-  }
-  // check ready
-  static const std::initializer_list<std::string> check_keys = {
-      kOpenTime, kPrepareTemplateEnd};
-  bool ready = init_timing_info_.CheckAllKeysExist(check_keys);
-  if (!ready) {
-    return nullptr;
-  }
-
-  // pick timing
-  TimingMap entry_map = init_timing_info_.GetSubMap(pick_keys);
-  // make entry
-  auto entry = entry_map.ToPubMap(false, value_factory_);
-  entry->PushStringToMap(kEntryType, kEntryTypeInit);
-  entry->PushStringToMap(kEntryName, kEntryNameContainer);
-
-  return entry;
-}
-
-std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetInitLynxViewEntry(
-    const TimestampKey& current_key) {
-  static const std::initializer_list<std::string> pick_keys = {kCreateLynxStart,
-                                                               kCreateLynxEnd};
-  // check is
-  if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
-      pick_keys.end()) {
-    return nullptr;
-  }
-  // check ready
-  static const std::initializer_list<std::string> check_keys = {kCreateLynxEnd};
-  bool ready = init_timing_info_.CheckAllKeysExist(check_keys);
-  if (!ready) {
-    return nullptr;
-  }
-  // pick timing
-  TimingMap entry_map = init_timing_info_.GetSubMap(pick_keys);
-  // make entry
-  auto entry = entry_map.ToPubMap(false, value_factory_);
-  entry->PushStringToMap(kEntryType, kEntryTypeInit);
-  entry->PushStringToMap(kEntryName, kEntryNameLynxView);
-
-  return entry;
-}
-
-std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetInitBackgroundRuntimeEntry(
-    const TimestampKey& current_key) {
-  static const std::initializer_list<std::string> pick_keys = {kLoadCoreStart,
-                                                               kLoadCoreEnd};
-  // check is
-  if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
-      pick_keys.end()) {
-    return nullptr;
-  }
-  // check ready
-  static const std::initializer_list<std::string> check_keys = {kLoadCoreEnd};
-  bool ready = init_timing_info_.CheckAllKeysExist(check_keys);
-  if (!ready) {
-    return nullptr;
-  }
-  // pick timing
-  TimingMap entry_map = init_timing_info_.GetSubMap(pick_keys);
-  // make entry
-  auto entry = entry_map.ToPubMap(false, value_factory_);
-  entry->PushStringToMap(kEntryType, kEntryTypeInit);
-  entry->PushStringToMap(kEntryName, kEntryNameBackgroundRuntime);
-
-  return entry;
-}
-
 std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
     const TimestampKey& current_key, const PipelineID& pipeline_id) {
   // get timing map
@@ -206,6 +146,7 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
   if (!ready) {
     return nullptr;
   }
+  std::unique_ptr<lynx::pub::Value> entry_ptr = nullptr;
   // check special pipeline is ready
   if (pipeline_origin == kLoadBundle) {
     // check loadBundle is ready
@@ -223,6 +164,8 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
     if (!ready) {
       return nullptr;
     }
+    entry_ptr = init_timing_info_.ToPubMap(false, value_factory_);
+    PushFcpToPubMap(entry_ptr);
   } else if (pipeline_origin == kReloadBundleFromBts ||
              pipeline_origin == kReloadBundleFromNative) {
     // check reloadBundle is ready
@@ -240,9 +183,15 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
     if (!ready) {
       return nullptr;
     }
+    entry_ptr = init_timing_info_.ToPubMap(false, value_factory_);
+    PushFcpToPubMap(entry_ptr);
   }
   // 1.0 make entry
-  auto entry = timing_map.ToPubMap(false, value_factory_);
+  if (entry_ptr) {
+    timing_map.PushAllToPubMap(false, entry_ptr);
+  } else {
+    entry_ptr = timing_map.ToPubMap(false, value_factory_);
+  }
   // 2.0 merge framework, framework-pipeline may don't have item.
   TimingMap framework_info_map;
   auto framework_info_it = framework_timing_info_.find(pipeline_id);
@@ -277,14 +226,14 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
   // 3.2 merge kHostPlatformType
   host_platform_info_value->PushStringToMap(kHostPlatformType,
                                             GetHostPlatformType());
-  entry->PushValueToMap(kFrameworkRenderingTiming,
-                        std::move(framework_info_value));
-  entry->PushValueToMap(kHostPlatformTiming,
-                        std::move(host_platform_info_value));
-  entry->PushStringToMap(kEntryType, kEntryTypePipeline);
-  entry->PushStringToMap(kEntryName, pipeline_origin);
+  entry_ptr->PushValueToMap(kFrameworkRenderingTiming,
+                            std::move(framework_info_value));
+  entry_ptr->PushValueToMap(kHostPlatformTiming,
+                            std::move(host_platform_info_value));
+  entry_ptr->PushStringToMap(kEntryType, kEntryTypePipeline);
+  entry_ptr->PushStringToMap(kEntryName, pipeline_origin);
 
-  return entry;
+  return entry_ptr;
 }
 
 bool TimingInfoNg::UpdateMetrics(const std::string& name,
@@ -306,96 +255,106 @@ bool TimingInfoNg::UpdateMetrics(const std::string& name,
   return true;
 }
 
-std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFcpEntry(
-    const TimestampKey& current_key, const PipelineID& pipeline_id) {
-  if (!value_factory_) {
-    LOGE(
-        "PerformanceObserver. GetMetricFcpEntry failed. The ValueFactory is "
-        "empty.")
-    return nullptr;
-  }
-  bool has_update_metrics = false;
+void TimingInfoNg::PushMetricToPubMap(
+    std::unique_ptr<lynx::pub::Value>& entry_map,
+    const std::string& metric_name, const std::string& start_name,
+    const std::string& end_name, uint64_t start_time, uint64_t end_time) {
+  auto metric_map = value_factory_->CreateMap();
+  metric_map->PushStringToMap(kName, metric_name);
+  metric_map->PushStringToMap(kStartTimestampName, start_name);
+  metric_map->PushDoubleToMap(kStartTimestamp, ConvertUsToDouble(start_time));
+  metric_map->PushStringToMap(kEndTimestampName, end_name);
+  metric_map->PushDoubleToMap(kEndTimestamp, ConvertUsToDouble(end_time));
+  metric_map->PushDoubleToMap(kDuration,
+                              CalculateDuration(start_time, end_time));
+  entry_map->PushValueToMap(metric_name, std::move(metric_map));
+}
 
+void TimingInfoNg::PushFcpToPubMap(
+    std::unique_ptr<lynx::pub::Value>& entry_map) {
   auto it = pipeline_timing_info_.find(load_bundle_pipeline_id_);
   if (it == pipeline_timing_info_.end()) {
-    LOGE("TimingInfoNg: fcp must be calculated after loadBundle/reloadBundle.")
-    return nullptr;
+    return;
   }
-  // get stop time for all fcp and start timg for lynxFcp
+  // get stop time for all fcp and start time for lynxFcp
   auto& load_bundle_timing_map = it->second;
   uint64_t fcp_stop_time =
       load_bundle_timing_map.GetTimestamp(kPaintEnd).value_or(0);
   if (fcp_stop_time == 0) {
-    LOGE(
-        "TimingHandlerNg: loadBundle pipeline has not yet ended when fcp is "
-        "calculated.")
-    return nullptr;
+    return;
   }
 
-  /* Calculation formula:
-   * lynxFcp = (Re)LoadBundleEntry.paintEnd -
-   * (Re)LoadBundleEntry.loadBundleStart fcp = (Re)LoadBundleEntry.paintEnd -
-   * InitContainerEntry.prepareTemplateStart totalFcp =
-   * (Re)LoadBundleEntry.paintEnd - InitContainerEntry.openTime
-   */
-  if (metrics_.find(kLynxFCP) == metrics_.end()) {
-    // determine use reload or load
-    std::string lynx_fcp_start_name;
-    auto pipeline_origin =
-        pipeline_id_to_origin_map_.find(load_bundle_pipeline_id_);
-    if (pipeline_origin != pipeline_id_to_origin_map_.end()) {
-      if (pipeline_origin->second == kLoadBundle) {
-        lynx_fcp_start_name = kLoadBundleStart;
-      } else if (pipeline_origin->second == kReloadBundleFromBts ||
-                 pipeline_origin->second == kReloadBundleFromNative) {
-        lynx_fcp_start_name = kReloadBundleStart;
-      } else {
-        LOGE("TimingInfoNg: only loadBundle/reloadBundle could calc fcp.")
-      }
-    } else {
-      LOGE(
-          "TimingInfoNg: fcp must be calculated after loadBundle/reloadBundle.")
-    }
+  // 1. calculate lynxFcp = LoadBundleEntry.paintEnd -
+  // loadBundleStart/reloadBundleStart
+  const TimestampKey lynx_fcp_start_name =
+      has_reload_ ? kReloadBundleStart : kLoadBundleStart;
+  uint64_t lynx_fcp_start_time =
+      load_bundle_timing_map.GetTimestamp(lynx_fcp_start_name).value_or(0);
+  if (lynx_fcp_start_time != 0) {
+    PushMetricToPubMap(entry_map, kLynxFCP, lynx_fcp_start_name, kPaintEnd,
+                       lynx_fcp_start_time, fcp_stop_time);
+  }
+
+  // 2. calculate fcp = LoadBundleEntry.paintEnd - prepareTemplateStart
+  auto prepare_template_start =
+      init_timing_info_.GetTimestamp(kPrepareTemplateStart).value_or(0);
+  if (prepare_template_start != 0) {
+    PushMetricToPubMap(entry_map, kFCP, kPrepareTemplateStart, kPaintEnd,
+                       prepare_template_start, fcp_stop_time);
+  }
+
+  // 3. calculate totalFcp = LoadBundleEntry.paintEnd - openTime
+  auto open_time = init_timing_info_.GetTimestamp(kOpenTime).value_or(0);
+  if (open_time != 0) {
+    PushMetricToPubMap(entry_map, kTotalFCP, kOpenTime, kPaintEnd, open_time,
+                       fcp_stop_time);
+  }
+}
+
+void TimingInfoNg::PushFmpToPubMap(std::unique_ptr<lynx::pub::Value>& entry_map,
+                                   const PipelineID& pipeline_id) {
+  if (pipeline_id.empty()) {
+    return;
+  }
+  auto it = pipeline_timing_info_.find(pipeline_id);
+  if (it == pipeline_timing_info_.end()) {
+    return;
+  }
+  // If there's a pipeline ID, retrieve the timing map associated with the
+  // current ID.
+  auto& pipeline_timing_map = it->second;
+  uint64_t paint_end = pipeline_timing_map.GetTimestamp(kPaintEnd).value_or(0);
+  if (paint_end == 0) {
+    return;
+  }
+  // 1. calculate lynxActualFMP = pipeline.paintEnd -
+  // loadBundleEnd/reloadBundleEnd
+  auto load_bundle_it = pipeline_timing_info_.find(load_bundle_pipeline_id_);
+  if (load_bundle_it != pipeline_timing_info_.end()) {
+    auto& load_bundle_timing_map = load_bundle_it->second;
+    const TimestampKey lynx_fcp_start_name =
+        has_reload_ ? kReloadBundleStart : kLoadBundleStart;
     uint64_t lynx_fcp_start_time =
         load_bundle_timing_map.GetTimestamp(lynx_fcp_start_name).value_or(0);
-
     if (lynx_fcp_start_time != 0) {
-      has_update_metrics |=
-          UpdateMetrics(kLynxFCP, lynx_fcp_start_name, kPaintEnd,
-                        lynx_fcp_start_time, fcp_stop_time);
+      PushMetricToPubMap(entry_map, kLynxActualFMP, lynx_fcp_start_name,
+                         kPaintEnd, lynx_fcp_start_time, paint_end);
     }
   }
-  if (metrics_.find(kFCP) == metrics_.end()) {
-    auto prepare_template_start =
-        init_timing_info_.GetTimestamp(kPrepareTemplateStart);
-    if (prepare_template_start.has_value()) {
-      has_update_metrics |=
-          UpdateMetrics(kFCP, kPrepareTemplateStart, kPaintEnd,
-                        *prepare_template_start, fcp_stop_time);
-    }
-  }
-  if (metrics_.find(kTotalFCP) == metrics_.end()) {
-    auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
-    if (open_time.has_value()) {
-      has_update_metrics |= UpdateMetrics(kTotalFCP, kOpenTime, kPaintEnd,
-                                          *open_time, fcp_stop_time);
-    }
+  // 2. calculate actualFmp = PipelineEntry.paintEnd - prepareTemplateStart
+  auto prepare_template_start =
+      init_timing_info_.GetTimestamp(kPrepareTemplateStart).value_or(0);
+  if (prepare_template_start != 0) {
+    PushMetricToPubMap(entry_map, kActualFMP, kPrepareTemplateStart, kPaintEnd,
+                       prepare_template_start, paint_end);
   }
 
-  if (has_update_metrics) {
-    const char* keys[] = {kLynxFCP, kFCP, kTotalFCP};
-    auto entry = value_factory_->CreateMap();
-    for (const auto& key : keys) {
-      auto it = metrics_.find(key);
-      if (it != metrics_.end() && it->second != nullptr) {
-        entry->PushValueToMap(key, *it->second);
-      }
-    }
-    entry->PushStringToMap(kEntryType, kEntryTypeMetric);
-    entry->PushStringToMap(kEntryName, kEntryNameFCP);
-    return entry;
+  // 3. calculate totalActualFmp = PipelineEntry.paintEnd - openTime
+  auto open_time = init_timing_info_.GetTimestamp(kOpenTime).value_or(0);
+  if (open_time != 0) {
+    PushMetricToPubMap(entry_map, kTotalActualFMP, kOpenTime, kPaintEnd,
+                       open_time, paint_end);
   }
-  return nullptr;
 }
 
 std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFspEntry(
@@ -483,119 +442,6 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFspEntry(
     for (const auto& [key, value] : fsp_info_) {
       entry->PushStringToMap(key, value);
     }
-    return entry;
-  }
-  return nullptr;
-}
-
-std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFmpEntry(
-    const TimestampKey& current_key, const PipelineID& pipeline_id) {
-  if (!value_factory_) {
-    LOGE(
-        "PerformanceObserver. GetMetricFmpEntry failed. The ValueFactory is "
-        "empty.")
-    return nullptr;
-  }
-  bool has_update_metrics = false;
-
-  uint64_t paint_end = 0;
-  if (pipeline_id.empty()) {
-    // If there's no pipeline ID, check if metrics_[kLynxActualFMP] exists.
-    //      If not, exit; if it exists, extract kPaintEnd for calculation.
-    auto it = metrics_.find(kLynxActualFMP);
-    if (it == metrics_.end() || it->second == nullptr) {
-      return nullptr;
-    }
-    paint_end =
-        metrics_[kLynxActualFMP]->GetValueForKey(kEndTimestamp)->Double() *
-        1000;
-  } else {
-    // If there's a pipeline ID, retrieve the timing map associated with the
-    // current ID.
-    auto it = pipeline_timing_info_.find(pipeline_id);
-    if (it == pipeline_timing_info_.end()) {
-      return nullptr;
-    }
-    auto& timing_map = it->second;
-    paint_end = timing_map.GetTimestamp(kPaintEnd).value_or(0);
-  }
-  if (paint_end == 0) {
-    LOGE(
-        "TimingHandlerNg: loadBundle pipeline has not yet ended when fmp is "
-        "calculated.")
-    return nullptr;
-  }
-
-  /* Calculation formula:
-   * lynxActualFmp = PipelineEntry.paintEnd -
-   (Re)LoadBundleEntry.loadBundleStart
-   * actualFmp = PipelineEntry.paintEnd
-                 - InitContainerEntry.prepareTemplateStart
-   * totalActualFmp = PipelineEntry.paintEnd - InitContainerEntry.openTime
-   */
-  if (metrics_.find(kLynxActualFMP) == metrics_.end()) {
-    // LynxActualFmp require LoadBundleStart or ReloadBundleStart
-    // Since reloadBundle typically follows a loadBundle, we prioritize using
-    // kReloadBundleStart
-    std::string lynx_actual_fmp_start_name;
-    auto pipeline_origin =
-        pipeline_id_to_origin_map_.find(load_bundle_pipeline_id_);
-    if (pipeline_origin != pipeline_id_to_origin_map_.end()) {
-      if (pipeline_origin->second == kLoadBundle) {
-        lynx_actual_fmp_start_name = kLoadBundleStart;
-      } else if (pipeline_origin->second == kReloadBundleFromBts ||
-                 pipeline_origin->second == kReloadBundleFromNative) {
-        lynx_actual_fmp_start_name = kReloadBundleStart;
-      } else {
-        LOGE("TimingInfoNg: only loadBundle/reloadBundle could calc actualFmp.")
-      }
-    } else {
-      LOGE(
-          "TimingInfoNg: actualFmp must be calculated after "
-          "loadBundle/reloadBundle.")
-    }
-
-    auto it = pipeline_timing_info_.find(load_bundle_pipeline_id_);
-
-    if (it != pipeline_timing_info_.end() && lynx_actual_fmp_start_name != "") {
-      auto& timing_map = it->second;
-      uint64_t start_time =
-          timing_map.GetTimestamp(lynx_actual_fmp_start_name).value_or(0);
-      if (start_time != 0) {
-        has_update_metrics |=
-            UpdateMetrics(kLynxActualFMP, lynx_actual_fmp_start_name, kPaintEnd,
-                          start_time, paint_end);
-      }
-    }
-  }
-  if (metrics_.find(kActualFMP) == metrics_.end()) {
-    auto prepare_template_start =
-        init_timing_info_.GetTimestamp(kPrepareTemplateStart);
-    if (prepare_template_start.has_value()) {
-      has_update_metrics |=
-          UpdateMetrics(kActualFMP, kPrepareTemplateStart, kPaintEnd,
-                        *prepare_template_start, paint_end);
-    }
-  }
-  if (metrics_.find(kTotalActualFMP) == metrics_.end()) {
-    auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
-    if (open_time.has_value()) {
-      has_update_metrics |= UpdateMetrics(kTotalActualFMP, kOpenTime, kPaintEnd,
-                                          *open_time, paint_end);
-    }
-  }
-
-  if (has_update_metrics) {
-    const char* keys[] = {kLynxActualFMP, kActualFMP, kTotalActualFMP};
-    auto entry = value_factory_->CreateMap();
-    for (const auto& key : keys) {
-      auto it = metrics_.find(key);
-      if (it != metrics_.end() && it->second != nullptr) {
-        entry->PushValueToMap(key, *it->second);
-      }
-    }
-    entry->PushStringToMap(kEntryType, kEntryTypeMetric);
-    entry->PushStringToMap(kEntryName, kEntryNameActualFMP);
     return entry;
   }
   return nullptr;

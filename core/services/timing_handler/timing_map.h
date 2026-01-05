@@ -61,6 +61,8 @@ class TimingMap {
   std::unique_ptr<lynx::pub::Value> ToPubMap(
       bool as_milliseconds,
       const std::shared_ptr<pub::PubValueFactory>& value_factory) const;
+  void PushAllToPubMap(bool as_milliseconds,
+                       std::unique_ptr<lynx::pub::Value>& pub_map) const;
   // Method to merge other TimingMap
   void Merge(const TimingMap& other);
 

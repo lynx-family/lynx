@@ -28,3 +28,29 @@ LoadBundleEntry:
           type: number
         ffiEnd:
           type: number
+        createLynxStart:
+          type: number
+        createLynxEnd:
+          type: number
+        loadCoreStart:
+          type: number
+        loadCoreEnd:
+          type: number
+        openTime:
+          type: number
+        containerInitStart:
+          type: number
+        containerInitEnd:
+          type: number
+        prepareTemplateStart:
+          type: number
+        prepareTemplateEnd:
+          type: number
+        fcp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+          x-optional: true
+        lynxFcp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        totalFcp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+          x-optional: true

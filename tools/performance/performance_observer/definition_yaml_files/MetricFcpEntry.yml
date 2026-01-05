@@ -1,6 +1,7 @@
 MetricFcpEntry:
   x-type: metric
   x-name: fcp
+  x-deprecated: 'LoadBundleEntry and ReloadBundleEntry contain all properties of MetricFcpEntry'
   allOf:
     - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
     - type: object

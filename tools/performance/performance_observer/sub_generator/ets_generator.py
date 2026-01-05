@@ -28,15 +28,18 @@ def generate_ets_converter(entry_mapping, file_imports):
         if not branch_codes:
             branch_statement = f'    if (type === \'{entry_type}\' && name === \'{entry_name}\') {{\n' \
                             f'      entry = new {class_name}(record);\n' \
+                            f'      entry.typeResolved = true;\n' \
                             f'    }}'
         else:
             branch_statement = f'    else if (type === \'{entry_type}\' && name === \'{entry_name}\') {{\n' \
                             f'      entry = new {class_name}(record);\n' \
+                            f'      entry.typeResolved = true;\n' \
                             f'    }}'
         branch_codes.append(branch_statement)
     # Default convert
     default_branch = f'    else {{\n' \
                     f'      entry = new PerformanceEntry(record);\n' \
+                    f'      entry.typeResolved = false;\n' \
                     f'    }}'
     branch_codes.append(default_branch)
 
@@ -54,6 +57,8 @@ def generate_ets_converter(entry_mapping, file_imports):
 # @file_imports is a list, used to store import statements.
 def generate_ets_prop(class_name, properties, ets_code, file_imports):
     for prop, value in properties.items():
+        is_optional = bool(value.get('x-optional'))
+        opt = '?' if is_optional else ''
         origin_type = value.get('type')
         if origin_type == 'map':
             # process type of key and value, default is Object
@@ -77,9 +82,12 @@ def generate_ets_prop(class_name, properties, ets_code, file_imports):
                     update_import_statements(file_imports, ref_type)
         else:
             prop_type = process_primary_type(origin_type)[0]
-
+        
+        deprecated_msg = value.get('x-deprecated')
+        if deprecated_msg is not None:
+            ets_code += f'    /** @deprecated {deprecated_msg} */\n'
         if prop_type is not None:
-            ets_code += f'    public {prop}: {prop_type};\n'
+            ets_code += f'    public {prop}{opt}: {prop_type};\n'
     # If this is a base class, add a rawMap to store the original data.
     if class_name == 'PerformanceEntry':
         ets_code += '    public rawRecord: Record<string, Object>;\n'
@@ -92,6 +100,18 @@ def generate_ets_prop(class_name, properties, ets_code, file_imports):
 # @properties is properties of class
 # @java_code is the java code what we need to generate
 # @file_imports is a list, used to store import statements.
+def _escape_ets_string(value):
+    return str(value).replace('\\', '\\\\').replace('\'', "\\'")
+
+
+def _format_ets_default_value(origin_type, value):
+    if origin_type == 'string':
+        return f'\'{_escape_ets_string(value)}\''
+    if origin_type == 'boolean':
+        return 'true' if bool(value) else 'false'
+    return str(value)
+
+
 def generate_ets_constructor(class_name, definition, properties, ets_code):
     ets_code += f'    constructor(props: Record<string, Object>) {{\n'
     # If a base class exists, the base class needs to be constructed first
@@ -99,6 +119,7 @@ def generate_ets_constructor(class_name, definition, properties, ets_code):
         ets_code += '        super(props);\n'
     # Generate initial value setting statements for properties
     for prop, value in properties.items():
+        is_optional = bool(value.get('x-optional'))
         origin_type = value.get('type')
         if origin_type == 'map':
             # process type of key and value, default is Object
@@ -117,7 +138,10 @@ def generate_ets_constructor(class_name, definition, properties, ets_code):
             else:
                 valueType = process_primary_type(valueType)[0]
                 prop_type = f'Record<{keyType}, {valueType}>'
-                default_value = '{}'
+                if is_optional:
+                    default_value = 'undefined'
+                else:
+                    default_value = '{}'
                 ets_code += f'        this.{prop} = (props[\'{prop}\']!== undefined)? props[\'{prop}\'] as {prop_type} : {default_value};\n'
         elif origin_type is None:
             prop_type = value.get('$ref')
@@ -125,15 +149,27 @@ def generate_ets_constructor(class_name, definition, properties, ets_code):
                 ref_type = prop_type.split('/')[-1]
                 if ref_type == 'FrameworkRenderingTiming':
                     prop_type = 'Record<string, Object>'
-                    default_value = '{}'
+                    if is_optional:
+                        default_value = 'undefined'
+                    else:
+                        default_value = '{}'
                     ets_code += f'        this.{prop} = (props[\'{prop}\']!== undefined)? props[\'{prop}\'] as {prop_type} : {default_value};\n'
                 else:
                     prop_type = ref_type
-                    ets_code += f'        this.{prop} = (props[\'{prop}\'] !== undefined) ? new {prop_type}(props[\'{prop}\'] as Record<string, Object>) : new {prop_type}({{}});\n'
+                    if is_optional:
+                        ets_code += f'        this.{prop} = (props[\'{prop}\'] !== undefined) ? new {prop_type}(props[\'{prop}\'] as Record<string, Object>) : undefined;\n'
+                    else:
+                        ets_code += f'        this.{prop} = (props[\'{prop}\'] !== undefined) ? new {prop_type}(props[\'{prop}\'] as Record<string, Object>) : new {prop_type}({{}});\n'
         else:
             prop_type, default_value = process_primary_type(origin_type)
+            yaml_default = value.get('default')
+            if (not is_optional) and (yaml_default is not None) and (default_value is not None):
+                default_value = _format_ets_default_value(origin_type, yaml_default)
             if prop_type is not None:
-                ets_code += f'        this.{prop} = (props[\'{prop}\'] !== undefined && typeof props[\'{prop}\'] === \'{prop_type}\') ? props[\'{prop}\'] : {default_value};\n'
+                if is_optional:
+                    ets_code += f'        this.{prop} = (props[\'{prop}\'] !== undefined && typeof props[\'{prop}\'] === \'{prop_type}\') ? props[\'{prop}\'] : undefined;\n'
+                else:
+                    ets_code += f'        this.{prop} = (props[\'{prop}\'] !== undefined && typeof props[\'{prop}\'] === \'{prop_type}\') ? props[\'{prop}\'] : {default_value};\n'
     # If this is a base class, add a rawMap to store the original data.
     if class_name == 'PerformanceEntry':
         ets_code += '        this.rawRecord = props;\n'
@@ -148,8 +184,13 @@ def generate_ets_constructor(class_name, definition, properties, ets_code):
 
 # main generate
 def generate_ets_class(class_name, definition, file_imports):
+    ets_code = ''
+    if 'x-deprecated' in definition:
+        ets_code += '/**\n'
+        ets_code += f' * @deprecated {definition["x-deprecated"]}\n'
+        ets_code += ' */\n'
     # Define the class name
-    ets_code = f'export class {class_name} '
+    ets_code += f'export class {class_name} '
 
     # Define the parent class type for the interface, if any
     if 'allOf' in definition:
@@ -190,8 +231,11 @@ def process_primary_type(type_name):
     elif type_name == 'number' or type_name == 'timestamp':
         default_value = '-1.0'
         prop_type = 'number'
+    elif type_name == 'boolean':
+        default_value = 'false'
+        prop_type = 'boolean'
     elif type_name == 'string':
-        default_value = '\'\''
+        default_value = "''"
         prop_type = 'string'
     else:
         prop_type = None

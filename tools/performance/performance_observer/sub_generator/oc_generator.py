@@ -12,7 +12,12 @@ from utils import *
 def generate_objc_interface(class_name, definition, file_imports):
     lynx_class_name = objc_lynx_prefix + class_name
     file_imports.append('#import <Foundation/Foundation.h>')
-    objc_header = f'@interface {lynx_class_name} : NSObject\n'
+    objc_header = 'NS_ASSUME_NONNULL_BEGIN\n\n'
+    if 'x-deprecated' in definition:
+        msg = str(definition["x-deprecated"]).replace('"', '\\"')
+        objc_header += f'/// Deprecated: {definition["x-deprecated"]}\n'
+        objc_header += f'__attribute__((deprecated("{msg}")))\n'
+    objc_header += f'@interface {lynx_class_name} : NSObject\n'
 
     # Handle inheritance relationships and add references
     if 'allOf' in definition:
@@ -23,7 +28,12 @@ def generate_objc_interface(class_name, definition, file_imports):
                 import_statement = f'#import "{ref_lynx_class_name}.h"'
                 if import_statement not in file_imports:
                     file_imports.append(import_statement)
-                objc_header = f'@interface {lynx_class_name} : {ref_lynx_class_name}\n'
+                objc_header = 'NS_ASSUME_NONNULL_BEGIN\n\n'
+                if 'x-deprecated' in definition:
+                    msg = str(definition["x-deprecated"]).replace('"', '\\"')
+                    objc_header += f'/// Deprecated: {definition["x-deprecated"]}\n'
+                    objc_header += f'__attribute__((deprecated("{msg}")))\n'
+                objc_header += f'@interface {lynx_class_name} : {ref_lynx_class_name}\n'
 
     # Collect all properties
     properties = {}
@@ -66,19 +76,38 @@ def generate_objc_interface(class_name, definition, file_imports):
         else:
             prop_type = process_primary_type(origin_type)[0]
         property_attribute = 'nonatomic, strong'
-        # the type of input param is NSDictionary*, so the type of value is id _Null_unspecified.
-        # therefore, we have to process the value which is not a object.
         if prop_type == 'BOOL':
             property_attribute = 'nonatomic, assign'
-        objc_header += f'@property({property_attribute}) {prop_type} {prop};\n'
+        else:
+            if bool(value.get('x-optional')):
+                property_attribute = f'{property_attribute}, nullable'
+
+        deprecated_attr = ''
+        if 'x-deprecated' in value:
+            msg = str(value['x-deprecated']).replace('"', '\\"')
+            objc_header += f'/// Deprecated: {value["x-deprecated"]}\n'
+            deprecated_attr = f' __attribute__((deprecated("{msg}")))'
+        objc_header += f'@property({property_attribute}) {prop_type} {prop}{deprecated_attr};\n'
     # If this is a base class, add a rawDictionary to store the original data.
     if class_name == 'PerformanceEntry':
         objc_header += f'@property(nonatomic, strong) NSDictionary* rawDictionary;\n'
     objc_header += f'- (instancetype)initWithDictionary:(NSDictionary*)dictionary;\n'
     if class_name == 'PerformanceEntry':
         objc_header += f'- (NSDictionary*)toDictionary;\n'
-    objc_header += '@end\n'
+    objc_header += '@end\n\nNS_ASSUME_NONNULL_END\n'
     return objc_header
+
+def _escape_objc_string(value):
+    return str(value).replace('\\', '\\\\').replace('"', '\\"')
+
+
+def _format_objc_default_value(origin_type, value):
+    if origin_type == 'string':
+        return f'@"{_escape_objc_string(value)}"'
+    if origin_type == 'boolean':
+        return 'YES' if bool(value) else 'NO'
+    return f'@({value})'
+
 
 # Object-C Implementation Generator
 # @class_name is the name of the class
@@ -88,7 +117,13 @@ def generate_objc_implementation(class_name, definition, file_imports):
     lynx_class_name = objc_lynx_prefix + class_name
     file_imports.append('#import <Foundation/Foundation.h>')
     file_imports.append(f'#import "{lynx_class_name}.h"')
-    objc_implementation = f'@implementation {lynx_class_name}\n\n'
+
+    objc_implementation = ''
+    if 'x-deprecated' in definition:
+        objc_implementation += '#pragma clang diagnostic push\n'
+        objc_implementation += '#pragma clang diagnostic ignored "-Wdeprecated-implementations"\n'
+
+    objc_implementation += f'@implementation {lynx_class_name}\n\n'
 
     # Collect all properties
     properties = {}
@@ -150,11 +185,18 @@ def generate_objc_implementation(class_name, definition, file_imports):
                     update_import_statements(file_imports, ref_type)
         else:
             prop_type, default_value = process_primary_type(origin_type)
-            # the type of input param is NSDictionary*, so the type of value is id _Null_unspecified.
-            # therefore, we have to process the value which is not a object.
+            yaml_default = value.get('default')
+            if yaml_default is not None and default_value is not None:
+                if origin_type == 'boolean':
+                    default_value = _format_objc_default_value(origin_type, yaml_default)
+                elif origin_type in ('integer', 'long', 'number', 'timestamp'):
+                    default_value = _format_objc_default_value(origin_type, yaml_default)
+                elif origin_type == 'string':
+                    default_value = _format_objc_default_value(origin_type, yaml_default)
             if prop_type is not None:
                 if (prop_type == 'BOOL'):
-                    objc_implementation += f'        self.{prop} = [dictionary[@"{prop}"] boolValue];\n'
+                    objc_implementation += f'        id value_{prop} = dictionary[@"{prop}"];\n'
+                    objc_implementation += f'        self.{prop} = value_{prop} != nil ? [value_{prop} boolValue] : {default_value};\n'
                 else:
                     objc_implementation += f'        self.{prop} = dictionary[@"{prop}"]?: {default_value};\n'
     # If this is a base class, add a rawDictionary to store the original data.
@@ -168,6 +210,8 @@ def generate_objc_implementation(class_name, definition, file_imports):
         objc_implementation += '  return self.rawDictionary;\n'
         objc_implementation += '}\n'
     objc_implementation += f'@end\n'
+    if 'x-deprecated' in definition:
+        objc_implementation += '\n#pragma clang diagnostic pop\n'
     return objc_implementation
 
 # Object-C PerformanceEntryConverter Header Generator
@@ -184,7 +228,11 @@ def generate_objc_converter_header():
 # @entry_mapping is a dict, key is 'PerformanceEntry.entryType' + '.' + 'PerformanceEntry.name', value is class name.
 # @file_imports is a list, used to store import statements.
 def generate_objc_converter(entry_mapping, file_imports):
-    oc_code = '@implementation LynxPerformanceEntryConverter\n' \
+    oc_code = ''
+    oc_code += '#pragma clang diagnostic push\n'
+    oc_code += '#pragma clang diagnostic ignored "-Wdeprecated-declarations"\n'
+
+    oc_code += '@implementation LynxPerformanceEntryConverter\n' \
               '+ (LynxPerformanceEntry *)makePerformanceEntry:(NSDictionary *)dict {\n' \
               '    NSString *name = dict[@"name"];\n' \
               '    NSString *type = dict[@"entryType"];\n' \
@@ -207,20 +255,24 @@ def generate_objc_converter(entry_mapping, file_imports):
         if not branch_codes:
             branch_statement = f'    if ([type isEqualToString:@"{entry_type}"] && [name isEqualToString:@"{entry_name}"]) {{\n' \
                                f'        entry = [[{lynx_class_name} alloc] initWithDictionary:dict];\n' \
+                               f'        entry.typeResolved = YES;\n' \
                                f'    }}'
         else:
             branch_statement = f'    else if ([type isEqualToString:@"{entry_type}"] && [name isEqualToString:@"{entry_name}"]) {{\n' \
                                f'        entry = [[{lynx_class_name} alloc] initWithDictionary:dict];\n' \
+                               f'        entry.typeResolved = YES;\n' \
                                f'    }}'
         branch_codes.append(branch_statement)
     default_branch = '    else {\n' \
                      '        entry = [[LynxPerformanceEntry alloc] initWithDictionary:dict];\n' \
+                     '        entry.typeResolved = NO;\n' \
                      '    }'
     branch_codes.append(default_branch)
 
     return_code = '    return entry;\n' \
                   '}\n' \
-                  '@end\n'
+                  '@end\n' \
+                  '#pragma clang diagnostic pop\n'
     oc_code += '\n'.join(branch_codes) + '\n' + return_code
 
     return oc_code

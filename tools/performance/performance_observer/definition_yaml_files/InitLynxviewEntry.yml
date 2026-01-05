@@ -1,6 +1,7 @@
 InitLynxviewEntry:
   x-type: init
   x-name: lynxview
+  x-deprecated: 'LoadBundleEntry and ReloadBundleEntry contain all properties of InitLynxviewEntry'
   allOf:
     - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
     - type: object

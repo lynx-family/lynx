@@ -2194,28 +2194,6 @@ public protocol LynxImpressionParentView-p : <NSObject> {
 public class LynxImpressionView : LynxUI, <LynxInnerImpressionView> {
 }
 
-public class LynxInitBackgroundRuntimeEntry : LynxPerformanceEntry {
-  public NSNumber* LynxInitBackgroundRuntimeEntry::loadCoreStart loadCoreStart;
-  public NSNumber* LynxInitBackgroundRuntimeEntry::loadCoreEnd loadCoreEnd;
-  public instancetype LynxInitBackgroundRuntimeEntry::initWithDictionary:(NSDictionary *dictionary);
-}
-
-public class LynxInitContainerEntry : LynxPerformanceEntry {
-  public NSNumber* LynxInitContainerEntry::openTime openTime;
-  public NSNumber* LynxInitContainerEntry::containerInitStart containerInitStart;
-  public NSNumber* LynxInitContainerEntry::containerInitEnd containerInitEnd;
-  public NSNumber* LynxInitContainerEntry::prepareTemplateStart prepareTemplateStart;
-  public NSNumber* LynxInitContainerEntry::prepareTemplateEnd prepareTemplateEnd;
-  public NSDictionary<NSString*, NSNumber*>* LynxInitContainerEntry::extraTiming extraTiming;
-  public instancetype LynxInitContainerEntry::initWithDictionary:(NSDictionary *dictionary);
-}
-
-public class LynxInitLynxviewEntry : LynxPerformanceEntry {
-  public NSNumber* LynxInitLynxviewEntry::createLynxStart createLynxStart;
-  public NSNumber* LynxInitLynxviewEntry::createLynxEnd createLynxEnd;
-  public instancetype LynxInitLynxviewEntry::initWithDictionary:(NSDictionary *dictionary);
-}
-
 public class LynxInlineImageShadowNode : LynxShadowNode {
 }
 
@@ -2700,6 +2678,18 @@ public class LynxLoadBundleEntry : LynxPipelineEntry {
   public NSNumber* LynxLoadBundleEntry::verifyTasmEnd verifyTasmEnd;
   public NSNumber* LynxLoadBundleEntry::ffiStart ffiStart;
   public NSNumber* LynxLoadBundleEntry::ffiEnd ffiEnd;
+  public NSNumber* LynxLoadBundleEntry::createLynxStart createLynxStart;
+  public NSNumber* LynxLoadBundleEntry::createLynxEnd createLynxEnd;
+  public NSNumber* LynxLoadBundleEntry::loadCoreStart loadCoreStart;
+  public NSNumber* LynxLoadBundleEntry::loadCoreEnd loadCoreEnd;
+  public NSNumber* LynxLoadBundleEntry::openTime openTime;
+  public NSNumber* LynxLoadBundleEntry::containerInitStart containerInitStart;
+  public NSNumber* LynxLoadBundleEntry::containerInitEnd containerInitEnd;
+  public NSNumber* LynxLoadBundleEntry::prepareTemplateStart prepareTemplateStart;
+  public NSNumber* LynxLoadBundleEntry::prepareTemplateEnd prepareTemplateEnd;
+  public LynxPerformanceMetric* LynxLoadBundleEntry::fcp fcp;
+  public LynxPerformanceMetric* LynxLoadBundleEntry::lynxFcp lynxFcp;
+  public LynxPerformanceMetric* LynxLoadBundleEntry::totalFcp totalFcp;
   public instancetype LynxLoadBundleEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
@@ -2824,20 +2814,6 @@ public class LynxMemoryUsageItem : NSObject {
   public NSNumber* LynxMemoryUsageItem::sizeBytes sizeBytes;
   public NSDictionary<NSString*, NSString*>* LynxMemoryUsageItem::detail detail;
   public instancetype LynxMemoryUsageItem::initWithDictionary:(NSDictionary *dictionary);
-}
-
-public class LynxMetricActualFmpEntry : LynxPerformanceEntry {
-  public LynxPerformanceMetric* LynxMetricActualFmpEntry::actualFmp actualFmp;
-  public LynxPerformanceMetric* LynxMetricActualFmpEntry::lynxActualFmp lynxActualFmp;
-  public LynxPerformanceMetric* LynxMetricActualFmpEntry::totalActualFmp totalActualFmp;
-  public instancetype LynxMetricActualFmpEntry::initWithDictionary:(NSDictionary *dictionary);
-}
-
-public class LynxMetricFcpEntry : LynxPerformanceEntry {
-  public LynxPerformanceMetric* LynxMetricFcpEntry::fcp fcp;
-  public LynxPerformanceMetric* LynxMetricFcpEntry::lynxFcp lynxFcp;
-  public LynxPerformanceMetric* LynxMetricFcpEntry::totalFcp totalFcp;
-  public instancetype LynxMetricFcpEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
 public class LynxMetricFspEntry : LynxPerformanceEntry {
@@ -2965,6 +2941,7 @@ public class LynxPerformanceController : NSObject, <LynxTimingCollectorProtocol>
 public class LynxPerformanceEntry : NSObject {
   public NSString* LynxPerformanceEntry::name name;
   public NSString* LynxPerformanceEntry::entryType entryType;
+  public BOOL LynxPerformanceEntry::typeResolved typeResolved;
   public NSDictionary* LynxPerformanceEntry::rawDictionary rawDictionary;
   public instancetype LynxPerformanceEntry::initWithDictionary:(NSDictionary *dictionary);
   public NSDictionary * LynxPerformanceEntry::toDictionary();
@@ -3005,6 +2982,9 @@ public class LynxPipelineEntry : LynxPerformanceEntry {
   public NSNumber* LynxPipelineEntry::paintEnd paintEnd;
   public NSDictionary* LynxPipelineEntry::frameworkRenderingTiming frameworkRenderingTiming;
   public LynxHostPlatformTiming* LynxPipelineEntry::hostPlatformTiming hostPlatformTiming;
+  public LynxPerformanceMetric* LynxPipelineEntry::actualFmp actualFmp;
+  public LynxPerformanceMetric* LynxPipelineEntry::lynxActualFmp lynxActualFmp;
+  public LynxPerformanceMetric* LynxPipelineEntry::totalActualFmp totalActualFmp;
   public instancetype LynxPipelineEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
@@ -3080,6 +3060,18 @@ public class LynxReloadBundleEntry : LynxPipelineEntry {
   public NSNumber* LynxReloadBundleEntry::reloadBackgroundEnd reloadBackgroundEnd;
   public NSNumber* LynxReloadBundleEntry::ffiStart ffiStart;
   public NSNumber* LynxReloadBundleEntry::ffiEnd ffiEnd;
+  public NSNumber* LynxReloadBundleEntry::createLynxStart createLynxStart;
+  public NSNumber* LynxReloadBundleEntry::createLynxEnd createLynxEnd;
+  public NSNumber* LynxReloadBundleEntry::loadCoreStart loadCoreStart;
+  public NSNumber* LynxReloadBundleEntry::loadCoreEnd loadCoreEnd;
+  public NSNumber* LynxReloadBundleEntry::openTime openTime;
+  public NSNumber* LynxReloadBundleEntry::containerInitStart containerInitStart;
+  public NSNumber* LynxReloadBundleEntry::containerInitEnd containerInitEnd;
+  public NSNumber* LynxReloadBundleEntry::prepareTemplateStart prepareTemplateStart;
+  public NSNumber* LynxReloadBundleEntry::prepareTemplateEnd prepareTemplateEnd;
+  public LynxPerformanceMetric* LynxReloadBundleEntry::fcp fcp;
+  public LynxPerformanceMetric* LynxReloadBundleEntry::lynxFcp lynxFcp;
+  public LynxPerformanceMetric* LynxReloadBundleEntry::totalFcp totalFcp;
   public instancetype LynxReloadBundleEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
@@ -6265,6 +6257,27 @@ public enum LynxUIMeaningfulContentStatus {
   kLynxUIMeaningfulContentStatusPresented
 }
 
+
+  public NS_ASSUME_NONNULL_BEGIN __attribute__ ((deprecated("LoadBundleEntry and ReloadBundleEntry contain all properties of InitBackgroundRuntimeEntry"))) @interface LynxInitBackgroundRuntimeEntry NSNumber* loadCoreEnd loadCoreEnd;
+  public instancetype initWithDictionary initWithDictionary;
+
+  public NS_ASSUME_NONNULL_BEGIN __attribute__ ((deprecated("LoadBundleEntry and ReloadBundleEntry contain all properties of InitContainerEntry"))) @interface LynxInitContainerEntry NSNumber* containerInitStart containerInitStart;
+  public NSNumber* containerInitEnd containerInitEnd;
+  public NSNumber* prepareTemplateStart prepareTemplateStart;
+  public NSNumber* prepareTemplateEnd prepareTemplateEnd;
+  public NSDictionary<NSString*, NSNumber*>* extraTiming extraTiming;
+  public instancetype initWithDictionary initWithDictionary;
+
+  public NS_ASSUME_NONNULL_BEGIN __attribute__ ((deprecated("LoadBundleEntry and ReloadBundleEntry contain all properties of InitLynxviewEntry"))) @interface LynxInitLynxviewEntry NSNumber* createLynxEnd createLynxEnd;
+  public instancetype initWithDictionary initWithDictionary;
+
+  public NS_ASSUME_NONNULL_BEGIN __attribute__ ((deprecated("PipelineEntry contain all properties of MetricActualFmpEntry"))) @interface LynxMetricActualFmpEntry LynxPerformanceMetric* lynxActualFmp lynxActualFmp;
+  public LynxPerformanceMetric* totalActualFmp totalActualFmp;
+  public instancetype initWithDictionary initWithDictionary;
+
+  public NS_ASSUME_NONNULL_BEGIN __attribute__ ((deprecated("LoadBundleEntry and ReloadBundleEntry contain all properties of MetricFcpEntry"))) @interface LynxMetricFcpEntry LynxPerformanceMetric* lynxFcp lynxFcp;
+  public LynxPerformanceMetric* totalFcp totalFcp;
+  public instancetype initWithDictionary initWithDictionary;
 
   typedef void(^ LynxGenericResourcePathCompletionBlock) (NSString *_Nullable path, NSError *_Nullable error)
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxGenericResourceCompletionBlock) (NSData *_Nullable data, NSError *_Nullable error) LynxGenericResourceCompletionBlock;

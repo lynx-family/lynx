@@ -757,6 +757,7 @@ export class PerformanceEntry {
   public toRecord(): Record<string, Object>;
   public name: string;
   public entryType: string;
+  public typeResolved: boolean;
   public rawRecord: Record<string, Object>;
 }
 
@@ -778,6 +779,9 @@ export class PipelineEntry extends PerformanceEntry {
   public paintEnd: number;
   public frameworkRenderingTiming: Record<string, Object>;
   public hostPlatformTiming: HostPlatformTiming;
+  public actualFmp?: PerformanceMetric;
+  public lynxActualFmp?: PerformanceMetric;
+  public totalActualFmp?: PerformanceMetric;
 }
 
 export class LoadBundleEntry extends PipelineEntry {
@@ -792,6 +796,18 @@ export class LoadBundleEntry extends PipelineEntry {
   public verifyTasmEnd: number;
   public ffiStart: number;
   public ffiEnd: number;
+  public createLynxStart: number;
+  public createLynxEnd: number;
+  public loadCoreStart: number;
+  public loadCoreEnd: number;
+  public openTime: number;
+  public containerInitStart: number;
+  public containerInitEnd: number;
+  public prepareTemplateStart: number;
+  public prepareTemplateEnd: number;
+  public fcp?: PerformanceMetric;
+  public lynxFcp: PerformanceMetric;
+  public totalFcp?: PerformanceMetric;
 }
 
 export class InitContainerEntry extends PerformanceEntry {
