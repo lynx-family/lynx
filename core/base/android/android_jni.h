@@ -6,11 +6,13 @@
 #define CORE_BASE_ANDROID_ANDROID_JNI_H_
 
 #include <jni.h>
-#include <cstdint>
 
-#include "core/base/lynx_export.h"
+#include <cstdint>
+#include <string>
+
 #include "base/include/platform/android/jni_utils.h"
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
@@ -25,7 +27,8 @@ bool &HasJNIException();
 
 // Get message and stack of a throwable, and append the results to
 // parameters error_msg and error_stack respectively
-void GetExceptionInfo(JNIEnv *env, lynx::base::android::ScopedLocalJavaRef<jthrowable> &throwable,
+void GetExceptionInfo(
+    JNIEnv *env, lynx::base::android::ScopedLocalJavaRef<jthrowable> &throwable,
     std::string &error_msg, std::string &error_stack);
 
 int GetJNILocalFrameCapacity();

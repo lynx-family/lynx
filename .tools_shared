@@ -1,4 +1,7 @@
 checker-config:
+  default-disable-checkers:
+    - 'deps'
+    - 'spell'
   file-type-checker:
     binary-files-allow-list:
       - 'core/renderer/css/testing/*'
@@ -32,18 +35,84 @@ checker-config:
     ignore-dirs:
       - '^core/build/gen/*'
       - '^third_party/*'
-      - '^lynx/base/trace/native/perfetto/*'
       - '^build/*'
-      - '^lynx/base/include/boost/*'
-      - '^lynx/third_party/(aes|double-conversion|modp_b64|rapidjson|binding|quickjs|napi)/*'
-      - '^lynx/explorer/darwin/ios/Lynx_explorer/LynxExplorer/Resource/'
       - '^base/include/boost/*'
+      - '^third_party/(aes|double-conversion|modp_b64|rapidjson|binding|quickjs|napi)/*'
+      - '^explorer/darwin/ios/Lynx_explorer/LynxExplorer/Resource/'
+      - '^clay/testing/*'
+      - '^clay/third_party/txt/*'
+
+  cpplint-checker:
+    ignore-suffixes:
+      - '_jni.h'
+      - 'pnpm-lock.yaml'
+      - 'Podfile.yml'
+      - '.d.ts'
+      - '.r.ts'
+    ignore-dirs:
+      - '^core/build/gen/*'
+      - '^third_party/*'
+      - '^build/*'
+      - '^base/include/boost/*'
+      - '^third_party/(aes|double-conversion|modp_b64|rapidjson|binding|quickjs|napi)/*'
+      - '^explorer/darwin/ios/Lynx_explorer/LynxExplorer/Resource/'
       - '^clay/testing/*'
       - '^clay/third_party/txt/*'
 
   api-checker:
-    api-dirs:
-      android: 'platform/android/lynx_android/src/main'
-      ios: 'platform/darwin/ios/lynx'
-      ios-common: 'platform/darwin/common/lynx'
+    java-path:
+      - 'platform/android/lynx_android/src/main'
+    cpp-path:
+      - 'platform/darwin/ios/lynx'
+      - 'platform/darwin/common/lynx'
     instruction-doc: https://github.com/lynx-family/lynx/blob/develop/CONTRIBUTING.md#static-code-analysis-tasks
+
+  gn-relative-path-checker:
+    skip-prefixes:
+      - "//PODS_ROOT"
+      - "//PODS_CONFIGURATION_BUILD_DIR"
+      - "//TARGET_BUILD_DIR"
+      - "//PODS_TARGET_SRCROOT"
+      - "//build_overrides"
+      - "//build"
+      - "//$lynx_dir"
+      - "//${lynx_dir}"
+      - "//third_party"
+      - "//config.gni"
+      - "//tools/idl_parser"
+      - "//out/"
+      - "//tools_shared"
+
+  header-path-checker:
+    processed-file-dirs:
+      - "base"
+      - "clay"
+      - "core"
+      - "devtool"
+      - "explorer"
+      - "oliver"
+      - "platform"
+    header-search-paths:
+      - "base"
+      - "clay"
+      - "core"
+      - "devtool"
+      - "explorer"
+      - "oliver"
+      - "platform"
+      - "third_party"
+    exclude-processed-file-dirs:
+      - "core/include/starlight_standalone"
+      - "/public/"
+      - "clay/third_party/"
+    header-extend-prefixes:
+      - "public"
+    ignore-header-files:
+      - "skity/"
+      - "napi.h"
+      - "v8.h"
+      - "v8-inspector.h"
+      - "v8-profiler.h"
+      - "quickjs/include/"
+      - "persistent-handle.h"
+      - "trace-gc.h"

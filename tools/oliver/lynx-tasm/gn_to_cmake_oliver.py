@@ -32,7 +32,7 @@ def copy_cmake_files(main_target):
   shutil.copy(file_full_path, dest_full_path)
 
 def gen_cmake_file(main_target, platform, debug, output_path):
-  gn_path = os.path.join(ROOT_PATH, 'tools','gn_tools', 'gn_wrapper.py')
+  gn_path = os.path.join(ROOT_PATH, 'tools_shared','gn_tools', 'gn_wrapper.py')
   is_debug = 'true' if debug else 'false'
 
   args = 'disallow_undefined_symbol=false enable_security_protection=false use_flutter_cxx=false \
