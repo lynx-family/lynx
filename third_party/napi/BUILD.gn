@@ -40,6 +40,14 @@ config("private_config") {
   ]
 }
 
+source_set("adapter") {
+  sources = [ "../quickjs/src/src/napi/adapter/js_native_api_adapter.cc" ]
+  public = [ "../quickjs/src/src/napi/adapter/js_native_api_adapter.h" ]
+  public_configs = [ ":napi_config" ]
+  configs += [ ":private_config" ]
+  include_dirs = [ "include" ]
+}
+
 source_set("common") {
   public = [ "include/napi_state.h" ]
 }
