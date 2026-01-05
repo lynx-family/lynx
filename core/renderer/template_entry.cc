@@ -369,6 +369,31 @@ void TemplateEntry::SetTemplateAssembler(TemplateAssembler* assembler) {
       lepus::Value(static_cast<lepus::Context::Delegate*>(assembler)));
 }
 
+ParallelParseTaskScheduler* TemplateEntry::GetTaskSchedular() {
+  if (reader_) {
+    return reader_->GetTaskScheduler();
+  }
+  template_bundle_.EnsureParseTaskScheduler();
+  return template_bundle_.task_schedular_.get();
+}
+
+base::OnceTaskRefptr<Elements> TemplateEntry::GenerateElements(
+    const std::string& key, int64_t pid, ElementManager* manager) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateEntry::GenerateElement");
+  std::promise<Elements> out_promise;
+  std::future<Elements> out_future = out_promise.get_future();
+  auto task = fml::MakeRefCounted<base::OnceTask<Elements>>(
+      [task_scheduler = GetTaskSchedular(), key = std::move(key),
+       out_promise = std::move(out_promise)]() mutable {
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateEntry::AsyncGenerateElement");
+        out_promise.set_value(task_scheduler->GenerateElements(key));
+      },
+      std::move(out_future));
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [task]() { task->Run(); }, base::ConcurrentTaskType::HIGH_PRIORITY);
+  return task;
+}
+
 lepus::Value TemplateEntry::ElementFromBinary(const std::string& key,
                                               int64_t pid,
                                               ElementManager* manager) {

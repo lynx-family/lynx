@@ -178,6 +178,8 @@ class FiberElement : public Element,
   // Flag used for cloned element, need to re-apply animation styles.
   static constexpr uint32_t kDirtyCloned = 0x01 << 14;
 
+  static constexpr uint32_t kNeedReplaceTemplate = 0x01 << 15;
+
   // TODO(zhouzhitao): kSyncResolving and kResolving status will be merged later
   // with the removal of parallel_flush_ flag
   enum class AsyncResolveStatus : uint8_t {
@@ -841,13 +843,11 @@ class FiberElement : public Element,
 
   bool IsTemplateElement() const { return is_template_; }
 
-  void MarkPartElement(base::String&& part_id) {
-    part_id_ = std::move(part_id);
-  }
+  void MarkPartElement(int32_t part_id) { part_id_ = part_id; }
 
-  bool IsPartElement() const { return !part_id_.empty(); }
+  bool IsPartElement() const { return part_id_ >= 0; }
 
-  const base::String& GetPartID() const { return part_id_; }
+  int32_t GetPartID() const { return part_id_; }
 
   // current element is inserted to DOM tree
   virtual void InsertedInto(FiberElement* insertion_point);
@@ -1209,7 +1209,7 @@ class FiberElement : public Element,
 
   std::unique_ptr<LayoutBundle> layout_bundle_;
 
-  base::String part_id_;
+  int32_t part_id_{-1};
 
   base::auto_create_optional<
       base::LinearFlatMap<PseudoState, std::unique_ptr<PseudoElement>>>

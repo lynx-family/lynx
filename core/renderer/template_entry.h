@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "core/base/thread/once_task.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/data/template_data.h"
@@ -140,6 +141,10 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   }
 
   void SetIsCard(bool is_card) { is_card_ = is_card; }
+
+  base::OnceTaskRefptr<base::Vector<fml::RefPtr<FiberElement>>>
+  GenerateElements(const std::string& key, int64_t pid,
+                   ElementManager* manager);
 
   lepus::Value ElementFromBinary(const std::string& key, int64_t pid,
                                  ElementManager* manager);
@@ -285,6 +290,8 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
                         const PageOptions& page_options = PageOptions());
 
   std::string GenerateLepusJSFileName(const std::string& name);
+
+  ParallelParseTaskScheduler* GetTaskSchedular();
 
   std::string name_;
   bool is_card_{true};

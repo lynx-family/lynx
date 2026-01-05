@@ -99,10 +99,10 @@ void CSRElementBinaryWriter::EncodeTemplatesBody(
                                             start_offset);
 
     // Encode Template array
-    WriteCompactU32(pair.value.GetArray().Size());
-    for (const auto& e : pair.value.GetArray()) {
-      EncodeElementRecursively(&e);
-    }
+    // WriteCompactU32(pair.value.GetArray().Size());
+    // for (const auto& e : pair.value.GetArray()) {
+    EncodeElementRecursively(&pair.value);
+    // }
 
     // update start offset
     start_offset = stream()->size() - descriptor_offset;
@@ -353,7 +353,7 @@ void CSRElementBinaryWriter::EncodeElementTagSection(
             ElementBuiltInTagEnum::ELEMENT_WRAPPER}});
 
   auto obj = element->GetObject();
-  auto iter = obj.FindMember(kElementType);
+  auto iter = obj.FindMember(kElementTag);
   if (iter == obj.MemberEnd() || !iter->value.IsString()) {
     throw lepus::EncodeException(
         "element must have a type, or the value of type must be string!");

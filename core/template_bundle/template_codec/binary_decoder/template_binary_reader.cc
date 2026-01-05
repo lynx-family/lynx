@@ -227,7 +227,9 @@ void TemplateBinaryReader::CopyForAsyncDecode(TemplateBinaryReader& other) {
 
 void TemplateBinaryReader::EnsureParallelParseTaskScheduler() {
   if (task_schedular_ == nullptr) {
-    task_schedular_ = std::make_unique<ParallelParseTaskScheduler>();
+    task_schedular_ = std::make_unique<ParallelParseTaskScheduler>(
+        &element_templates_router_, this,
+        &(template_bundle().element_template_infos_));
   }
 }
 
@@ -363,14 +365,18 @@ bool TemplateBinaryReader::DecodeElementTemplateSection() {
 
 bool TemplateBinaryReader::ParallelDecodeElementTemplate() {
   EnsureParallelParseTaskScheduler();
-  return task_schedular_->ParallelParseElementTemplate(
-      &element_templates_router_, this);
+  return task_schedular_->ParallelParseElementTemplate();
 }
 
 ElementTemplateResult TemplateBinaryReader::GetElementTemplateParseResult(
     const std::string& key) {
   EnsureParallelParseTaskScheduler();
   return task_schedular_->TryGetElementTemplateParseResult(key);
+}
+
+ParallelParseTaskScheduler* TemplateBinaryReader::GetTaskScheduler() {
+  EnsureParallelParseTaskScheduler();
+  return task_schedular_.get();
 }
 
 bool TemplateBinaryReader::DecodeLepusChunk() {

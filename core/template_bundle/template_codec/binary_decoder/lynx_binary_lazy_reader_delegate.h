@@ -72,6 +72,8 @@ class LynxBinaryLazyReaderDelegate : public LynxBinaryRecyclerDelegate {
   // Get Element Template's parallel parsing result.
   virtual ElementTemplateResult GetElementTemplateParseResult(
       const std::string& key) = 0;
+
+  virtual ParallelParseTaskScheduler* GetTaskScheduler() = 0;
 };
 
 }  // namespace tasm

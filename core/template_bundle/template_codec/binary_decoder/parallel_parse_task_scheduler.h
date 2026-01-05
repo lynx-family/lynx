@@ -28,28 +28,36 @@ struct ElementTemplateInfo;
 using Elements = base::Vector<fml::RefPtr<FiberElement>>;
 using ElementTemplateResult =
     std::pair<std::shared_ptr<ElementTemplateInfo>, Elements>;
+using TemplateInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<ElementTemplateInfo>>;
 
 class ParallelParseTaskScheduler {
  public:
-  ParallelParseTaskScheduler();
+  ParallelParseTaskScheduler(OrderedStringKeyRouter* router,
+                             ElementBinaryReader* reader,
+                             TemplateInfoMap* info_map);
+
   ~ParallelParseTaskScheduler();
 
-  bool ParallelParseElementTemplate(OrderedStringKeyRouter* router,
-                                    ElementBinaryReader* reader);
+  bool ParallelParseElementTemplate();
+
+  Elements GenerateElements(const std::string& key);
 
   ElementTemplateResult TryGetElementTemplateParseResult(
       const std::string& key);
 
-  void ConstructElement(const std::string& key,
-                        const std::shared_ptr<ElementTemplateInfo>& info,
-                        bool sync);
-  std::optional<Elements> TryGetElements(
-      const std::string& key, const std::shared_ptr<ElementTemplateInfo>& info);
+  void ConstructElement(const std::string& key, bool sync);
+
+  std::optional<Elements> TryGetElements(const std::string& key);
 
   void AsyncDecodeStyleObjects(
       const std::shared_ptr<style::StyleObject*>& style_object_list);
 
  private:
+  OrderedStringKeyRouter* router_{nullptr};
+  ElementBinaryReader* reader_{nullptr};
+  [[maybe_unused]] TemplateInfoMap* info_map_{nullptr};
+
   base::OnceTaskRefptr<int32_t> generate_element_template_parse_task_;
   std::unordered_map<std::string,
                      base::OnceTaskRefptr<std::pair<

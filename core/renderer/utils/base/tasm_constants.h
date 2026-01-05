@@ -60,6 +60,7 @@ static constexpr const char* kElementID = "id";
 static constexpr const char* kElementTempID = "tempID";
 static constexpr const char kElementIdSelector[] = "idSelector";
 static constexpr const char* kElementType = "type";
+static constexpr const char* kElementTag = "tag";
 static constexpr const char* kElementChildren = "children";
 static constexpr const char* kElementClass = "class";
 static constexpr const char* kElementStyles = "styles";

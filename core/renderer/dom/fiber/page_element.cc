@@ -91,6 +91,13 @@ void PageElement::FlushActionsAsRoot() {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+
+  // 1. Post Task, Cache Template Element
+  // 2. Async Create Element Tree
+  // 3. Ensure Async Task Done
+  // 4. Process OP Code and Replace Template Element with root
+  // 5. Clear.
+
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   FiberElement::ParallelFlushAsRoot();
   FiberElement::FlushActions();

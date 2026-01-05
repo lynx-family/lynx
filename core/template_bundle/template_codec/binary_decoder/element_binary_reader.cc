@@ -17,6 +17,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -556,12 +557,9 @@ ElementBinaryReader::DecodeTemplatesInfoWithKey(const std::string& key) {
 
 bool ElementBinaryReader::DecodeTemplates(ElementTemplateInfo& info) {
   // 1. Decode array size
-  DECODE_COMPACT_U32(size);
-  info.elements_.reserve(size);
-  for (uint32_t index = 0; index < size; ++index) {
-    if (!DecodeElementRecursively(info.elements_.emplace_back())) {
-      return false;
-    }
+  info.elements_.reserve(1);
+  if (!DecodeElementRecursively(info.elements_.emplace_back())) {
+    return false;
   }
   info.exist_ = true;
   return true;
@@ -732,7 +730,31 @@ bool ElementBinaryReader::DecodeAttributesSection(ElementInfo& info) {
   info.attrs_.reserve(size);
   for (uint32_t i = 0; i < size; ++i) {
     DECODE_STR(key);
-    DECODE_VALUE_INTO(info.attrs_[std::move(key)]);
+    if (key.IsEqual("class")) {
+      DECODE_VALUE(clazz);
+      info.class_selector_ =
+          SplitClasses(clazz.String().c_str(), clazz.String().length());
+    } else if (key.IsEqual("style")) {
+      DECODE_VALUE(style);
+      ParseStyleDeclarationList(
+          style.String().c_str(),
+          static_cast<uint32_t>(style.String().str().size()),
+          [&info](const char* key_start, uint32_t key_length,
+                  const char* value_start, uint32_t value_length) {
+            auto id = CSSProperty::GetPropertyID(
+                base::static_string::GenericCacheKey(key_start, key_length));
+            if (CSSProperty::IsPropertyValid(id)) {
+              info.inline_styles_.emplace(
+                  static_cast<CSSPropertyID>(id),
+                  base::String(value_start, value_length));
+            }
+          });
+    } else if (key.IsEqual("part-id")) {
+      DECODE_VALUE(id);
+      info.part_id_ = id.Number();
+    } else {
+      DECODE_VALUE_INTO(info.attrs_[std::move(key)]);
+    }
   }
   return true;
 }
@@ -786,6 +808,7 @@ bool ElementBinaryReader::DecodeEnumTagSection(ElementInfo& info) {
 
 bool ElementBinaryReader::DecodeStrTagSection(ElementInfo& info) {
   DECODE_STR_INTO(info.tag_);
+  info.tag_enum_ = ElementProperty::ConvertStringTagToEnumTag(info.tag_);
   return true;
 }
 
