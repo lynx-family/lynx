@@ -58,7 +58,6 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder) {
   engine_ = std::make_unique<clay::FlutterWindowsEngine>(project_bundle);
 
   flutter_view_->SetEngine(engine_.get());
-  flutter_view_->CreateRenderSurface();
   if (!flutter_view_->GetEngine()->running()) {
     if (!flutter_view_->GetEngine()->Run()) {
       NOTREACHED();

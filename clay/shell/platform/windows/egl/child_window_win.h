@@ -25,10 +25,11 @@ class ChildWindowWin {
   void Initialize();
   HWND window() const { return window_; }
 
-  void Resize(int width, int height);
+  bool Resize(int width, int height);
 
  private:
   fml::RefPtr<fml::TaskRunner> task_runner_;
+  std::unique_ptr<std::thread> child_ui_thread_;
 
   HWND parent_window_ = nullptr;
   HWND window_ = nullptr;

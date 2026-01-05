@@ -215,6 +215,25 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
     kDone,
   };
 
+  // A thread-safe holder for an `egl::WindowSurface`, protecting access with a
+  // mutex.
+  class SurfaceHolder {
+   public:
+    SurfaceHolder() = default;
+    void SetSurface(std::unique_ptr<egl::WindowSurface> surface) {
+      std::lock_guard<std::mutex> locker(surface_mutex_);
+      surface_ = std::move(surface);
+    }
+    egl::WindowSurface* GetSurface() {
+      std::lock_guard<std::mutex> locker(surface_mutex_);
+      return surface_.get();
+    }
+
+   private:
+    std::mutex surface_mutex_;
+    std::unique_ptr<egl::WindowSurface> surface_ = nullptr;
+  };
+
   // Resize the surface to the desired size.
   //
   // If the dimensions have changed, this destroys the original surface and
@@ -308,6 +327,13 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   void SendPointerEventWithData(const ClayPointerEvent& event_data,
                                 PointerState* state);
 
+  /// Creates a rendering surface for the view with the specified properties.
+  void CreateWindowSurface(egl::GLImplementationType type, HWND hwnd,
+                           size_t width, size_t height, bool enable_vsync);
+
+  /// Destroys a rendering surface that backs a Flutter view.
+  void DestroyWindowSurface();
+
   // Currently configured WindowsRenderTarget for this view used by
   // surface_manager for creation of render surfaces and bound to the physical
   // os window.
@@ -326,7 +352,7 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   //
   // Null if using software rasterization, the surface hasn't been created
   // yet, or if surface creation failed.
-  std::unique_ptr<egl::WindowSurface> surface_ = nullptr;
+  std::unique_ptr<SurfaceHolder> surface_holder_ = nullptr;
 
   // Resize events are synchronized using this mutex and the corresponding
   // condition variable.
