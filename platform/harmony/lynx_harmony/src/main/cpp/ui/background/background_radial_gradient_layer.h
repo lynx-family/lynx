@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_RADIAL_GRADIENT_LAYER_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_BACKGROUND_BACKGROUND_RADIAL_GRADIENT_LAYER_H_
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_gradient_layer.h"
@@ -24,11 +25,12 @@ class BackgroundRadialGradientLayer : public BackgroundGradientLayer {
   };
 
  public:
-  explicit BackgroundRadialGradientLayer(const lepus::Value& data);
-  ~BackgroundRadialGradientLayer() override;
+  LYNX_EXPORT explicit BackgroundRadialGradientLayer(const lepus::Value& data);
+  LYNX_EXPORT ~BackgroundRadialGradientLayer() override;
 
  protected:
-  void OnSizeChange(float width, float height, float scale_density) override;
+  LYNX_EXPORT void OnSizeChange(float width, float height,
+                                float scale_density) override;
 
  private:
   RadialGradientShapeType shape_{starlight::RadialGradientShapeType::kEllipse};

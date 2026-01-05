@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "core/base/lynx_export.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_pixel_map.h"
 
 namespace lynx {
@@ -15,16 +16,19 @@ namespace tasm {
 namespace harmony {
 class LynxBaseImage {
  public:
-  LynxBaseImage(std::vector<std::unique_ptr<LynxPixelMap>> pixelmap_data,
-                uint32_t frame_count);
+  LYNX_EXPORT LynxBaseImage(
+      std::vector<std::unique_ptr<LynxPixelMap>> pixelmap_data,
+      uint32_t frame_count);
   uint32_t Width() { return width_; };
   uint32_t Height() { return height_; };
   uint32_t FrameCount() { return frame_count_; };
   int32_t LoopDuration() { return loop_duration_; };
-  int32_t FrameDuration(int32_t frame_number);
+  LYNX_EXPORT int32_t FrameDuration(int32_t frame_number);
   bool isAnimImage() { return frame_count_ > 1; };
-  LynxPixelMap* FirstFrame();
-  LynxPixelMap* FramePixelMap(int32_t frame_number);
+  LYNX_EXPORT LynxPixelMap* FirstFrame();
+  LYNX_EXPORT LynxPixelMap* FramePixelMap(int32_t frame_number);
+
+  LYNX_EXPORT ~LynxBaseImage();
 
   std::vector<std::unique_ptr<LynxPixelMap>> pixelmap_data_;
 
