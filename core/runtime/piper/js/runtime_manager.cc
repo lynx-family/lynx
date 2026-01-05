@@ -291,7 +291,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
 
     piper::GCPauseSuppressionMode mode(global_runtime.get());
     auto js_pre_sources = js_pre_sources_getter();
-    context_wrapper->loadPreJS(js_runtime, js_pre_sources);
+    context_wrapper->prepareJSEnv(js_runtime, js_pre_sources);
   } else {
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
@@ -333,18 +333,16 @@ void RuntimeManager::OnRelease(const std::string& group_id) {
   }
 }
 
+JSContextWrapper* RuntimeManager::GetContextWrapper(
+    const std::string& group_id) {
+  auto it = shared_context_map_.find(group_id);
+  return it == shared_context_map_.end() ? nullptr : it->second.get();
+}
+
 std::shared_ptr<piper::JSIContext> RuntimeManager::GetSharedJSContext(
     const std::string& group_id) {
-  if (shared_context_map_.find(group_id) == shared_context_map_.end()) {
-    return std::shared_ptr<piper::JSIContext>(nullptr);
-  }
-
-  auto context_wrapper = shared_context_map_[group_id];
-  auto js_context = context_wrapper->getJSContext();
-
-  // TODO: check !js_context
-
-  return js_context;
+  auto it = shared_context_map_.find(group_id);
+  return it == shared_context_map_.end() ? nullptr : it->second->getJSContext();
 }
 
 std::shared_ptr<piper::JSIContext> RuntimeManager::CreateJSIContext(

@@ -65,7 +65,7 @@ class NapiEnvironment {
   };
   LYNX_EXPORT static NapiEnvironment* From(Napi::Env env);
 
-  NapiEnvironment(std::unique_ptr<Delegate> delegate);
+  explicit NapiEnvironment(std::unique_ptr<Delegate> delegate);
   ~NapiEnvironment();
 
   void Attach();

@@ -29,7 +29,9 @@ class DelegateObserver {
  public:
   DelegateObserver(runtime::TemplateDelegate* delegate) : delegate_(delegate) {}
   void PostJSTask(base::closure closure) {
-    delegate_->RunOnJSThread(std::move(closure));
+    if (delegate_) {
+      delegate_->RunOnJSThread(std::move(closure));
+    }
   }
 
  private:
@@ -64,6 +66,7 @@ class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
   void SetJSRuntime(std::shared_ptr<Runtime> runtime) override {
     js_runtime_ = runtime;
   }
+  void MarkSafeNapi() { is_safe_napi_ = true; }
 
   std::weak_ptr<Runtime> GetJSRuntime() override { return js_runtime_; }
 
@@ -85,6 +88,7 @@ class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  private:
   static NapiRuntimeProxyV8Factory* s_factory;
   static NapiRuntimeProxyJSVMFactory* s_jsvm_factory;
+  bool is_safe_napi_{false};
 };
 
 // A decorator for NapiRuntimeProxy, used to provide a restricted napi_env

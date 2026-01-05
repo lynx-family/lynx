@@ -13,6 +13,10 @@ export type LynxClearTimeout = (timeoutId: number) => void;
 
 export type AnyObject = Record<string, any>;
 
+export interface LynxNapiLoader {
+  load: (moduleName: string) => any;
+}
+
 export interface GlobalProps {}
 
 export type UnsafeLynx = BackgroundLynx & MainThreadLynx;
@@ -40,6 +44,8 @@ declare global {
    * below Lynx 3.0, use lynx.cancelAnimationFrame.
    */
   function cancelAnimationFrame(requestID?: number): void;
+
+  function getNapiLoader(): LynxNapiLoader | undefined;
 }
 
 declare function setTimeout(callback: (...args: unknown[]) => unknown, number: number): number;

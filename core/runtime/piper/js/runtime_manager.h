@@ -74,7 +74,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
   ~RuntimeManager() override;
 
-  bool IsSingleJSContext(const std::string& group_id);
+  static bool IsSingleJSContext(const std::string& group_id);
 
   std::shared_ptr<piper::Runtime> CreateJSRuntime(
       const std::string& group_id,
@@ -98,6 +98,8 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       std::unique_ptr<RuntimeManagerDelegate> runtime_manager_delegate) {
     runtime_manager_delegate_ = std::move(runtime_manager_delegate);
   }
+
+  JSContextWrapper* GetContextWrapper(const std::string& group_id);
 
  private:
   RuntimeManager() = default;

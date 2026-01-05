@@ -93,12 +93,14 @@ std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxy::Create(
 void PostNAPIJSTask(napi_foreground_cb js_cb, void *data, void *task_ctx) {
   auto delegate_observer = std::weak_ptr<DelegateObserver>(
       *static_cast<std::shared_ptr<DelegateObserver> *>(task_ctx));
-  delegate_observer.lock().get()->PostJSTask(
-      [delegate_observer, js_cb, data]() {
-        if (delegate_observer.lock()) {
-          js_cb(data);
-        }
-      });
+  auto locked_observer = delegate_observer.lock();
+  if (locked_observer) {
+    locked_observer->PostJSTask([delegate_observer, js_cb, data]() {
+      if (delegate_observer.lock()) {
+        js_cb(data);
+      }
+    });
+  }
 }
 
 NapiRuntimeProxy::NapiRuntimeProxy(runtime::TemplateDelegate *delegate)
@@ -122,11 +124,19 @@ void NapiRuntimeProxy::SetupLoader() {
   napi_env raw_env = env_;
   if (runtime && raw_env && raw_env->ctx) {
     Napi::ContextScope context_scope(env_);
-    loader_ = "napiLoaderOnRT" + std::to_string(runtime->getRuntimeId());
+    if (is_safe_napi_) {
+      loader_ = "__lynxNapiLoader";
+    } else {
+      loader_ = "napiLoaderOnRT" + std::to_string(runtime->getRuntimeId());
+    }
     LOGI("NAPI Setup Loader: " << loader_);
     napi_setup_loader(env_, loader_.c_str());
     const char *kNapiMarker = "napiSharedMarker";
     Napi::HandleScope scope(env_);
+    // compatible with single context
+    if (runtime->getGroupId() == "-1") {
+      env_.Global().Set("__lynxNapiLoader", env_.Global().Get(loader_.c_str()));
+    }
     if (env_.Global().Has(kNapiMarker).FromMaybe(false)) {
       LOGW("NAPI used in shared context");
     } else {
