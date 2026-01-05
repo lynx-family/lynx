@@ -8,9 +8,9 @@ deps = {
     'buildtools/android_sdk_manager': {
         "type": "http",
         "url": {
-            "darwin": "https://dl.google.com/android/repository/commandlinetools-mac-8512546_latest.zip",
-            "linux": "https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip",
-            "windows": "https://dl.google.com/android/repository/commandlinetools-win-8512546_latest.zip"
+            "darwin": "https://github.com/lynx-family/buildtools/releases/download/android-sdk-manager-8512546/commandlinetools-mac-8512546_latest.zip",
+            "linux": "https://github.com/lynx-family/buildtools/releases/download/android-sdk-manager-8512546/commandlinetools-linux-8512546_latest.zip",
+            "windows": "https://github.com/lynx-family/buildtools/releases/download/android-sdk-manager-8512546/commandlinetools-win-8512546_latest.zip"
         }.get(system, None),
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
