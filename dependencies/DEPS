@@ -128,7 +128,7 @@ deps = {
     'build': {
         "type": "git",
         "url": "https://github.com/lynx-family/buildroot.git",
-        "commit": "2b6a631306054a2ff884b978ead2eafeaf0b328f",
+        "commit": "07a628cd2feeb7f9248a5d2b105d3ec5da4f541b",
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
     },
@@ -267,6 +267,7 @@ deps = {
         "env": {
             'NODE_CHANNEL_FD': '1' if not system == 'windows' else '',
             'COREPACK_HOME': os.path.join(root_dir, 'buildtools', 'corepack'),
+            "COREPACK_ENABLE_NETWORK": "1",
             # Windows does not have `node/bin` dir
             # And it also use `;` as seperator of PATH
             'PATH': f"{os.path.join(root_dir, 'buildtools', 'node')};{os.environ.get('PATH')}"
