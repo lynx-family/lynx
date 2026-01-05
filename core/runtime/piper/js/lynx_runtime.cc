@@ -21,6 +21,7 @@
 #include "core/runtime/piper/js/js_executor.h"
 #include "core/runtime/piper/js/lynx_api_handler.h"
 #include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/piper/js/runtime_manager.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/json_parser.h"
@@ -332,7 +333,6 @@ void LynxRuntime::PrepareNapiEnvironment() {
     napi_environment_->SetRuntimeProxy(std::move(proxy));
     napi_environment_->Attach();
   }
-
   RegisterNapiModules();
 }
 
@@ -685,7 +685,7 @@ void LynxRuntime::OnJSSourcePrepared(
     // bind icu for js env
     if (bundle.enable_bind_icu) {
 #if ENABLE_NAPI_BINDING
-      if (group_id_ != PAGE_GROUP_ID) {
+      if (!RuntimeManager::IsSingleJSContext(group_id_)) {
         delegate_->OnErrorOccurred(base::LynxError(
             error::E_BTS_RUNTIME_ERROR,
             "enable_bind_icu is not supported in shared context env"));
@@ -782,6 +782,11 @@ void LynxRuntime::DestroyAppAndNapi() {
   app_->destroy();
   app_ = nullptr;
 #if ENABLE_NAPI_BINDING
+  lifecycle_observer_->OnRuntimeDetach();
+  auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
+  if (factory) {
+    factory->OnRuntimeDetach();
+  }
   if (napi_environment_) {
     LOGI("napi detaching runtime, id: " << GetRuntimeId());
     napi_environment_->Detach();
@@ -793,11 +798,6 @@ void LynxRuntime::DestroyAppAndNapi() {
     napi_restricted_environment_.reset();
   }
 #endif
-  lifecycle_observer_->OnRuntimeDetach();
-  auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
-  if (factory) {
-    factory->OnRuntimeDetach();
-  }
 }
 
 void LynxRuntime::OnAppReload(
@@ -1123,7 +1123,17 @@ void LynxRuntime::QueueOrExecAppTask(base::closure&& task) {
 
 void LynxRuntime::AddLifecycleListener(
     std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) {
-  lifecycle_observer_->AddEventListener(std::move(listener));
+  if (listener &&
+      listener->Type() ==
+          RuntimeLifecycleListenerDelegate::DelegateType::PART &&
+      !RuntimeManager::IsSingleJSContext(group_id_)) {
+    auto* wrapper = RuntimeManager::Instance()->GetContextWrapper(group_id_);
+    if (wrapper) {
+      wrapper->AddLifecycleListener(std::move(listener));
+    }
+  } else {
+    lifecycle_observer_->AddEventListener(std::move(listener));
+  }
 }
 
 void LynxRuntime::AddModuleFactory(

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.7.1
+
+- Add global `getNapiLoader()` function.
+
 ## 3.7.0
 
 ### Minor Changes

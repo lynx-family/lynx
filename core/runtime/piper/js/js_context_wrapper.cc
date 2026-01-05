@@ -3,9 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/runtime/piper/js/js_context_wrapper.h"
 
+#include "base/lynx_trace_categories.h"
+#include "base/trace/native/trace_event.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/runtime/bindings/jsi/global.h"
+#include "core/runtime/bindings/napi/napi_environment.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
+#include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {
 namespace runtime {
@@ -13,7 +17,7 @@ namespace runtime {
 JSContextWrapper::JSContextWrapper(std::shared_ptr<piper::JSIContext> context)
     : js_context_(context), js_core_loaded_(false), global_inited_(false) {}
 
-void JSContextWrapper::loadPreJS(
+void JSContextWrapper::prepareJSEnv(
     std::weak_ptr<piper::Runtime> js_runtime,
     std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>&
         js_preload) {
@@ -36,6 +40,7 @@ void JSContextWrapper::loadPreJS(
     }
   }
   js_core_loaded_ = true;
+  InitNapi(rt);
 }
 
 #if ENABLE_TRACE_PERFETTO
@@ -65,6 +70,14 @@ void SharedJSContextWrapper::Def() {
         listener_->OnRelease(group_id_);
       }
     }
+#if ENABLE_NAPI_BINDING
+    if (napi_environment_) {
+      LOGI("global napi detaching runtime");
+      lifecycle_observer_->OnRuntimeDetach();
+      napi_environment_->Detach();
+      napi_environment_.reset();
+    }
+#endif
 #if ENABLE_TRACE_PERFETTO
     profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
         runtime_profiler_);
@@ -93,6 +106,32 @@ void SharedJSContextWrapper::initGlobal(
   global->Init(rt, post_man, page_options);
   global_inited_ = true;
   global_ = global;
+}
+
+void SharedJSContextWrapper::InitNapi(
+    std::shared_ptr<piper::Runtime>& js_runtime) {
+#if ENABLE_NAPI_BINDING
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, PREPARE_NAPI_ENV);
+  napi_environment_ = std::make_unique<piper::NapiEnvironment>(
+      std::make_unique<piper::NapiEnvironment::Delegate>());
+  auto proxy = piper::NapiRuntimeProxy::Create(js_runtime, nullptr);
+  proxy->MarkSafeNapi();
+  LOGI("napi attaching with proxy: " << proxy.get());
+  if (proxy) {
+    napi_environment_->SetRuntimeProxy(std::move(proxy));
+    napi_environment_->Attach();
+  }
+  lifecycle_observer_ = std::make_unique<RuntimeLifecycleObserverImpl>();
+  lifecycle_observer_->OnRuntimeAttach(napi_environment_->proxy()->Env());
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
+#endif
+}
+
+void SharedJSContextWrapper::AddLifecycleListener(
+    std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) {
+#if ENABLE_NAPI_BINDING
+  lifecycle_observer_->AddEventListener(std::move(listener));
+#endif
 }
 
 NoneSharedJSContextWrapper::NoneSharedJSContextWrapper(
