@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 
+#include "devtool/js_inspect/inspector_const.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -14,43 +16,84 @@ JSDebugHelper* JSDebugHelper::GetInstance() {
 
 std::unique_ptr<piper::RuntimeInspectorManager>
 JSDebugHelper::CreateRuntimeInspectorManager(const std::string& vm_type) {
-  if (proxy_ == nullptr) {
-    return nullptr;
+  if (vm_type == kKeyEngineV8) {
+    if (v8_proxy_ != nullptr) {
+      return v8_proxy_->CreateRuntimeInspectorManager();
+    } else if (quickjs_proxy_ != nullptr) {
+      LOGW("js debug: v8_proxy_ is not set, use quickjs_proxy_ instead");
+      return quickjs_proxy_->CreateRuntimeInspectorManager();
+    }
+  } else if (vm_type == kKeyEngineQuickjs) {
+    if (quickjs_proxy_ != nullptr) {
+      return quickjs_proxy_->CreateRuntimeInspectorManager();
+    } else if (v8_proxy_ != nullptr) {
+      LOGW("js debug: quickjs_proxy_ is not set, use v8_proxy_ instead");
+      return v8_proxy_->CreateRuntimeInspectorManager();
+    }
   }
-  return proxy_->CreateRuntimeInspectorManager(vm_type);
+  LOGW("js debug: no proxy_ set for vm_type: " << vm_type);
+  return nullptr;
 }
 
 std::unique_ptr<lepus::LepusInspectorManager>
 JSDebugHelper::CreateLepusInspectorManager() {
-  if (proxy_ == nullptr) {
+  if (lepus_proxy_ == nullptr) {
+    LOGW("js debug: lepus_proxy_ is not set");
     return nullptr;
   }
-  return proxy_->CreateLepusInspectorManager();
+  return lepus_proxy_->CreateLepusInspectorManager();
 }
 
 void JSDebugHelper::RegisterNapiRuntimeProxy() {
-  if (proxy_ == nullptr) {
+  if (v8_proxy_ == nullptr) {
+    LOGW("js debug: v8_proxy_ is not set");
     return;
   }
-  proxy_->RegisterNapiRuntimeProxy();
+  v8_proxy_->RegisterNapiRuntimeProxy();
 }
 
 std::shared_ptr<piper::Runtime> JSDebugHelper::MakeRuntime(
     const std::string& vm_type) {
-  if (proxy_ == nullptr) {
-    return nullptr;
+  if (vm_type == kKeyEngineV8) {
+    if (v8_proxy_ != nullptr) {
+      return v8_proxy_->MakeRuntime();
+    } else if (quickjs_proxy_ != nullptr) {
+      LOGW("js debug: v8_proxy_ is not set, use quickjs_proxy_ instead");
+      return quickjs_proxy_->MakeRuntime();
+    }
+  } else if (vm_type == kKeyEngineQuickjs) {
+    if (quickjs_proxy_ != nullptr) {
+      return quickjs_proxy_->MakeRuntime();
+    } else if (v8_proxy_ != nullptr) {
+      LOGW("js debug: quickjs_proxy_ is not set, use v8_proxy_ instead");
+      return v8_proxy_->MakeRuntime();
+    }
   }
-  return proxy_->MakeRuntime(vm_type);
+  LOGW("js debug: no proxy_ set for vm_type: " << vm_type);
+  return nullptr;
 }
 
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<runtime::profile::RuntimeProfiler>
 JSDebugHelper::MakeRuntimeProfiler(
     std::shared_ptr<piper::JSIContext> js_context, const std::string& vm_type) {
-  if (proxy_ == nullptr) {
-    return nullptr;
+  if (vm_type == kKeyEngineV8) {
+    if (v8_proxy_ != nullptr) {
+      return v8_proxy_->MakeRuntimeProfiler(js_context);
+    } else if (quickjs_proxy_ != nullptr) {
+      LOGW("js debug: v8_proxy_ is not set, use quickjs_proxy_ instead");
+      return quickjs_proxy_->MakeRuntimeProfiler(js_context);
+    }
+  } else if (vm_type == kKeyEngineQuickjs) {
+    if (quickjs_proxy_ != nullptr) {
+      return quickjs_proxy_->MakeRuntimeProfiler(js_context);
+    } else if (v8_proxy_ != nullptr) {
+      LOGW("js debug: quickjs_proxy_ is not set, use v8_proxy_ instead");
+      return v8_proxy_->MakeRuntimeProfiler(js_context);
+    }
   }
-  return proxy_->MakeRuntimeProfiler(js_context, vm_type);
+  LOGW("js debug: no proxy_ set for vm_type: " << vm_type);
+  return nullptr;
 }
 #endif
 

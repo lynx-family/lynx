@@ -10,6 +10,7 @@
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
+#include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
 #include "devtool/testing/mock/lynx_devtool_mediator_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -41,6 +42,11 @@ class InspectorRuntimeObserverImplTest : public ::testing::Test {
   std::shared_ptr<InspectorJavaScriptDebuggerImpl> debugger_;
   std::shared_ptr<lynx::testing::LynxDevToolNGMock> devtool_;
 };
+
+TEST_F(InspectorRuntimeObserverImplTest, CreateRuntimeManagerDelegate) {
+  auto runtime_manager_delegate = observer_->CreateRuntimeManagerDelegate();
+  EXPECT_EQ(runtime_manager_delegate, nullptr);
+}
 
 TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {
   devtool_->devtool_mediator_->devtool_executor_->console_msg_manager_

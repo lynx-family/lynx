@@ -23,7 +23,10 @@ InspectorRuntimeObserverImpl::InspectorRuntimeObserverImpl(
 
 std::unique_ptr<runtime::RuntimeManagerDelegate>
 InspectorRuntimeObserverImpl::CreateRuntimeManagerDelegate() {
-  if (!JSDebugHelper::GetInstance()->IsHelperAvailable()) {
+  if (!JSDebugHelper::GetInstance()->IsJSDebugAvailable()) {
+    LOGI(
+        "js debug: CreateRuntimeManagerDelegate failed, JS debugging is not "
+        "available");
     return nullptr;
   }
   return std::make_unique<RuntimeManagerDelegateImpl>();

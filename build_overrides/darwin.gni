@@ -101,7 +101,7 @@ JSDebug_deps = rebase_path(
           "../devtool/lynx_devtool/js_debug:devtool_quickjs_debug",
           "../devtool/lynx_devtool/js_debug:devtool_lepus_debug",
           "../devtool/lynx_devtool/js_debug:devtool_lepus_debug_manager",
-          "../devtool/lynx_devtool/js_debug:js_debug_bridge",
+          "../devtool/lynx_devtool/js_debug:devtool_qjs_bridge",
         ])
 
 js_debug_dependency = [

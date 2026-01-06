@@ -9,7 +9,8 @@ import("lynx_devtool.gni")
 group("LynxDevtool") {
   deps = [
     ":lynxdevtool",
-    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_js_bridge",
+    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge",
+    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge",
   ]
 }
 
@@ -38,8 +39,10 @@ cmake_target("lynxdevtool") {
     "../:16kb_page",
   ]
 
-  sub_cmake_target =
-      [ "../../../devtool/lynx_devtool/js_debug:lynxdevtool_js_bridge" ]
+  sub_cmake_target = [
+    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_qjs_bridge",
+    "../../../devtool/lynx_devtool/js_debug:lynxdevtool_v8_bridge",
+  ]
 }
 
 group("lynxdevtool_lib") {

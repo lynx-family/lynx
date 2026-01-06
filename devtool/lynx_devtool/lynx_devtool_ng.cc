@@ -35,7 +35,11 @@
 
 #if !OS_ANDROID && !ENABLE_UNITTESTS
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
-#include "devtool/lynx_devtool/js_debug/helper/js_debug_proxy_impl.h"
+#include "devtool/lynx_devtool/js_debug/js/quickjs/proxy/js_debug_proxy_quickjs.h"
+#include "devtool/lynx_devtool/js_debug/lepus/proxy/js_debug_proxy_lepus.h"
+#if JS_ENGINE_TYPE == 0
+#include "devtool/lynx_devtool/js_debug/js/v8/proxy/js_debug_proxy_v8.h"
+#endif
 #endif
 
 namespace lynx {
@@ -68,8 +72,14 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
         kTypeSetFetchDebugInfo, std::make_unique<FetchDebugInfoHandler>());
 
 #if !OS_ANDROID && !ENABLE_UNITTESTS
-    auto proxy = std::make_unique<JSDebugProxyImpl>();
-    JSDebugHelper::GetInstance()->SetJSDebugProxy(std::move(proxy));
+    auto quickjs_proxy = std::make_unique<JSDebugProxyQuickJS>();
+    JSDebugHelper::GetInstance()->SetQuickJSProxy(std::move(quickjs_proxy));
+    auto lepus_proxy = std::make_unique<JSDebugProxyLepus>();
+    JSDebugHelper::GetInstance()->SetLepusProxy(std::move(lepus_proxy));
+#if JS_ENGINE_TYPE == 0
+    auto v8_proxy = std::make_unique<JSDebugProxyV8>();
+    JSDebugHelper::GetInstance()->SetV8Proxy(std::move(v8_proxy));
+#endif
 #endif
   });
   if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||

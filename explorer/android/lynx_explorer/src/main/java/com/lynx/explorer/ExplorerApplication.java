@@ -49,7 +49,8 @@ public class ExplorerApplication extends Application {
     // set devtool preset values
     LynxDevToolService.getINSTANCE().setLynxDebugPresetValue(true);
     LynxDevToolService.getINSTANCE().setLogBoxPresetValue(true);
-    LynxDevToolService.getINSTANCE().setLoadJsBridge(true);
+    LynxDevToolService.getINSTANCE().setLoadQJSBridge(true);
+    LynxDevToolService.getINSTANCE().setLoadV8Bridge(true);
   }
 
   // merge it into InitProcessor later.

@@ -42,7 +42,8 @@ class LynxDevToolService : ILynxDevToolService {
 
     private var lynxDebugPresetValue: Boolean = false
     private var logBoxPresetValue: Boolean = false
-    private var loadJsBridge: Boolean = false
+    private var loadQJSBridge: Boolean = false
+    private var loadV8Bridge: Boolean = false
 
     override fun createInspectorOwner(view: LynxView?, debuggable: Boolean): LynxBaseInspectorOwnerNG? {
         try {
@@ -267,11 +268,19 @@ class LynxDevToolService : ILynxDevToolService {
         logBoxPresetValue = value
     }
 
-    override fun getLoadJsBridge(): Boolean {
-        return loadJsBridge
+    override fun getLoadQJSBridge(): Boolean {
+        return loadQJSBridge
     }
 
-    override fun setLoadJsBridge(value: Boolean) {
-        loadJsBridge = value
+    override fun setLoadQJSBridge(value: Boolean) {
+        loadQJSBridge = value
+    }
+
+    override fun getLoadV8Bridge(): Boolean {
+        return loadV8Bridge
+    }
+
+    override fun setLoadV8Bridge(value: Boolean) {
+        loadV8Bridge = value
     }
 }

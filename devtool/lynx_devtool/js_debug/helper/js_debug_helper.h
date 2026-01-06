@@ -22,11 +22,22 @@ class JSDebugHelper {
  public:
   BASE_EXPORT static JSDebugHelper* GetInstance();
 
-  BASE_EXPORT void SetJSDebugProxy(std::unique_ptr<JSDebugProxy> proxy) {
-    proxy_ = std::move(proxy);
+  BASE_EXPORT void SetV8Proxy(std::unique_ptr<JSDebugProxy> proxy) {
+    v8_proxy_ = std::move(proxy);
   }
 
-  bool IsHelperAvailable() const { return proxy_ != nullptr; }
+  BASE_EXPORT void SetQuickJSProxy(std::unique_ptr<JSDebugProxy> proxy) {
+    quickjs_proxy_ = std::move(proxy);
+  }
+
+  BASE_EXPORT void SetLepusProxy(std::unique_ptr<JSDebugProxy> proxy) {
+    lepus_proxy_ = std::move(proxy);
+  }
+
+  bool IsJSDebugAvailable() const {
+    return v8_proxy_ != nullptr || quickjs_proxy_ != nullptr;
+  }
+  bool IsLepusDebugAvailable() const { return lepus_proxy_ != nullptr; }
 
   std::unique_ptr<piper::RuntimeInspectorManager> CreateRuntimeInspectorManager(
       const std::string& vm_type);
@@ -48,7 +59,9 @@ class JSDebugHelper {
  private:
   JSDebugHelper() = default;
 
-  std::unique_ptr<JSDebugProxy> proxy_;
+  std::unique_ptr<JSDebugProxy> v8_proxy_;
+  std::unique_ptr<JSDebugProxy> quickjs_proxy_;
+  std::unique_ptr<JSDebugProxy> lepus_proxy_;
 };
 
 }  // namespace devtool

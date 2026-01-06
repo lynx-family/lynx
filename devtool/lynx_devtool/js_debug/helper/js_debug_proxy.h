@@ -6,7 +6,6 @@
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_HELPER_JS_DEBUG_PROXY_H_
 
 #include <memory>
-#include <string>
 
 namespace lynx {
 
@@ -34,7 +33,7 @@ class JSDebugProxy {
   virtual ~JSDebugProxy() = default;
 
   virtual std::unique_ptr<piper::RuntimeInspectorManager>
-  CreateRuntimeInspectorManager(const std::string& vm_type) {
+  CreateRuntimeInspectorManager() {
     return nullptr;
   }
   virtual std::unique_ptr<lepus::LepusInspectorManager>
@@ -43,14 +42,10 @@ class JSDebugProxy {
   }
 
   virtual void RegisterNapiRuntimeProxy() {}
-  virtual std::shared_ptr<piper::Runtime> MakeRuntime(
-      const std::string& vm_type) {
-    return nullptr;
-  }
+  virtual std::shared_ptr<piper::Runtime> MakeRuntime() { return nullptr; }
 #if ENABLE_TRACE_PERFETTO
   virtual std::shared_ptr<runtime::profile::RuntimeProfiler>
-  MakeRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context,
-                      const std::string& vm_type) {
+  MakeRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
     return nullptr;
   }
 #endif

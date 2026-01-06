@@ -70,7 +70,7 @@ devtool_v8_debug_sources = [
   "js/v8/manager/v8_inspector_manager_impl.h",
 ]
 
-devtool_source_set("devtool_js_v8_bridge") {
+devtool_source_set("lynx_v8_bridge") {
   include_dirs = [ v8_headers_search_path ]
   sources = js_v8_bridge_shared_sources
   deps = [ "../../../base/src:base_log_headers" ]
@@ -80,7 +80,7 @@ devtool_source_set("devtool_v8_debug") {
   sources = devtool_v8_debug_sources
   include_dirs = [ v8_headers_search_path ]
   deps = [
-    ":devtool_js_v8_bridge",
+    ":lynx_v8_bridge",
     "../../../base/src:base_log_headers",
     "../../js_inspect/v8:v8_debug",
   ]
@@ -130,26 +130,39 @@ devtool_source_set("js_debug") {
     "../../../third_party/rapidjson:rapidjson",
   ]
   if (!is_android && !enable_unittests) {
-    deps += [ ":js_debug_bridge" ]
+    deps += [ ":devtool_qjs_bridge" ]
+    if (jsengine_type == "v8") {
+      deps += [ ":devtool_v8_bridge" ]
+    }
   }
 }
 
-devtool_source_set("js_debug_bridge") {
+devtool_source_set("devtool_qjs_bridge") {
   sources = [
-    "helper/js_debug_proxy_impl.cc",
-    "helper/js_debug_proxy_impl.h",
+    "js/quickjs/proxy/js_debug_proxy_quickjs.cc",
+    "js/quickjs/proxy/js_debug_proxy_quickjs.h",
+    "lepus/proxy/js_debug_proxy_lepus.cc",
+    "lepus/proxy/js_debug_proxy_lepus.h",
   ]
   if (is_android) {
-    sources += [ "../android/devtool_js_bridge.cc" ]
+    sources += [ "../android/devtool_qjs_bridge.cc" ]
   }
   deps = [
     ":devtool_lepus_debug_manager",
     ":devtool_quickjs_debug",
   ]
-  if (is_android || jsengine_type == "v8") {
-    deps += [ ":devtool_v8_debug" ]
-    include_dirs = [ v8_headers_search_path ]
+}
+
+devtool_source_set("devtool_v8_bridge") {
+  sources = [
+    "js/v8/proxy/js_debug_proxy_v8.cc",
+    "js/v8/proxy/js_debug_proxy_v8.h",
+  ]
+  if (is_android) {
+    sources += [ "../android/devtool_v8_bridge.cc" ]
   }
+  deps = [ ":devtool_v8_debug" ]
+  include_dirs = [ v8_headers_search_path ]
 }
 
 unittest_set("js_debug_testset") {
@@ -158,6 +171,7 @@ unittest_set("js_debug_testset") {
     "../:devtool_common_config",
   ]
   sources = [
+    "helper/js_debug_helper_unittest.cc",
     "inspector_client_delegate_impl_unittest.cc",
     "java_script_debugger_ng_unittest.cc",
     "js/inspector_runtime_observer_impl_unittest.cc",
@@ -183,34 +197,28 @@ group("js_debug_unit_test") {
 }
 
 if (is_android) {
-  cmake_target("lynxdevtool_js_bridge") {
+  cmake_target("lynxdevtool_qjs_bridge") {
     is_only_sub_cmake = true
     cmake_version = "3.4.1"
     target_type = "shared_library"
-    output_name = "lynxdevtool_js_bridge"
+    output_name = "lynxdevtool_qjs_bridge"
     deps = [
-      ":lynxdevtool_js_bridge_lib",
+      ":lynxdevtool_qjs_bridge_lib",
+      "../../../base/platform/android:LynxBase",
       "../../../platform/android/lynx_android:lynx_android",
       "../../../platform/android/lynx_devtool:lynxdevtool",
     ]
 
-    lib_dirs = [
-      "${primjs_native_lib_dir}",
-      "${v8_native_lib_dir}",
-    ]
+    lib_dirs = [ "${primjs_native_lib_dir}" ]
     libs = [
       "android",
       "dl",
       "log",
       "quick",
-      "v8_libfull.cr",
     ]
 
     if (enable_napi_binding) {
-      libs += [
-        "napi",
-        "napi_v8",
-      ]
+      libs += [ "napi" ]
     }
 
     configs = [
@@ -221,9 +229,50 @@ if (is_android) {
     ]
   }
 
-  devtool_source_set("lynxdevtool_js_bridge_lib") {
+  devtool_source_set("lynxdevtool_qjs_bridge_lib") {
     public_deps = [
-      ":js_debug_bridge",
+      ":devtool_qjs_bridge",
+      "../../../core/build:build",
+    ]
+  }
+
+  cmake_target("lynxdevtool_v8_bridge") {
+    is_only_sub_cmake = true
+    cmake_version = "3.4.1"
+    target_type = "shared_library"
+    output_name = "lynxdevtool_v8_bridge"
+    deps = [
+      ":lynxdevtool_v8_bridge_lib",
+      "../../../base/platform/android:LynxBase",
+      "../../../base/trace/android:LynxTrace",
+      "../../../platform/android/lynx_android:lynx_android",
+      "../../../platform/android/lynx_devtool:lynxdevtool",
+    ]
+
+    lib_dirs = [ "${v8_native_lib_dir}" ]
+    libs = [
+      "android",
+      "dl",
+      "log",
+      "v8_libfull.cr",
+    ]
+
+    if (enable_napi_binding) {
+      lib_dirs += [ "${primjs_native_lib_dir}" ]  # used to find napi_v8.so
+      libs += [ "napi_v8" ]
+    }
+
+    configs = [
+      "../../../platform/android/lynx_devtool:devtool_common_defines",
+      "../../../platform/android/lynx_devtool:devtool_flag_config",
+      "../../../platform/android/lynx_devtool:devtool_ldflag_config",
+      "../../../platform/android:16kb_page",
+    ]
+  }
+
+  devtool_source_set("lynxdevtool_v8_bridge_lib") {
+    public_deps = [
+      ":devtool_v8_bridge",
       ":v8_profile_devtool",
       "../../../core/build:build",
     ]

@@ -30,7 +30,7 @@ shared_library("lynx_shared_library") {
 
   if (jsengine_type == "v8") {
     deps += [
-      "../../../devtool/lynx_devtool/js_debug:devtool_js_v8_bridge",
+      "../../../devtool/lynx_devtool/js_debug:lynx_v8_bridge",
       "../../../third_party/NativeScript:NativeScript",
     ]
     if (enable_napi_binding) {
