@@ -240,6 +240,15 @@ bool LynxContext::EnableExposureWhenReload() {
   return enable_exposure_when_reload_;
 }
 
+void LynxContext::SetEnableTransformedTouchPosition(
+    bool enable_transformed_touch_position) {
+  enable_transformed_touch_position_ = enable_transformed_touch_position;
+}
+
+bool LynxContext::EnableTransformedTouchPosition() {
+  return enable_transformed_touch_position_;
+}
+
 void LynxContext::CallJSApiCallbackWithValue(int32_t callback_id,
                                              const lepus::Value& params) const {
   if (!runtime_proxy_) {
