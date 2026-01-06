@@ -180,6 +180,44 @@ static NSCursor* GetCursorByType(CursorTypes type) {
     case CursorTypes::kResizeupdown:
       result = [NSCursor resizeUpDownCursor];
       break;
+    // cspell:disable-next-line
+    case CursorTypes::kResizedownleft:
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *)) {
+        result = [NSCursor frameResizeCursorFromPosition:NSCursorFrameResizePositionBottomLeft
+                                            inDirections:NSCursorFrameResizeDirectionsOutward];
+      } else
+#endif
+        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSouthwest];
+      break;
+    // cspell:disable-next-line
+    case CursorTypes::kResizedownright:
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *)) {
+        result = [NSCursor frameResizeCursorFromPosition:NSCursorFrameResizePositionBottomRight
+                                            inDirections:NSCursorFrameResizeDirectionsOutward];
+      } else
+#endif
+        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSoutheast];
+      break;
+    case CursorTypes::kResizeupleft:
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *)) {
+        result = [NSCursor frameResizeCursorFromPosition:NSCursorFrameResizePositionTopLeft
+                                            inDirections:NSCursorFrameResizeDirectionsOutward];
+      } else
+#endif
+        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNorthwest];
+      break;
+    case CursorTypes::kResizeupright:
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+      if (@available(macOS 15.0, *)) {
+        result = [NSCursor frameResizeCursorFromPosition:NSCursorFrameResizePositionTopRight
+                                            inDirections:NSCursorFrameResizeDirectionsOutward];
+      } else
+#endif
+        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNortheast];
+      break;
     case CursorTypes::kVerticaltext:
       result = [NSCursor IBeamCursorForVerticalLayout];
       break;
