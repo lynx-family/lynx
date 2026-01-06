@@ -103,6 +103,7 @@ const configKeys = [
   'enableTextOverflow',
   'enableTextRefactor',
   'enableTouchRefactor',
+  'enableTransformedTouchPosition',
   'enableUIOperationOptimize',
   'enableUnifiedPipeline',
   'enableUnifyFixedBehavior',

@@ -821,6 +821,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableUnifyFixedBehavior(
           LynxEnv::GetInstance().EnableUnifyFixedBehavior());
     }
+
+    if (doc.HasMember(config::kEnableTransformedTouchPosition) &&
+        doc[config::kEnableTransformedTouchPosition].IsBool()) {
+      page_config->SetEnableTransformedTouchPosition(
+          doc[config::kEnableTransformedTouchPosition].GetBool());
+    }
   };
 };
 }  // namespace tasm

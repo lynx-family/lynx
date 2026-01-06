@@ -791,6 +791,17 @@ export interface Config {
   enableTouchRefactor?: boolean
 
   /**
+   * Make the touch point coordinates of Lynx or Canvas's TouchEvent to take into account the transformation.
+   *
+   * Supported platform: Android, HarmonyOS
+   *
+   * Since: LynxSDK 3.7
+   *
+   * @defaultValue false
+   */
+  enableTransformedTouchPosition?: boolean
+
+  /**
    * Enable the optimization about UIOperation batching and CreateViewAsync at Android.
    *
    * Supported platform: Android, HarmonyOS, iOS

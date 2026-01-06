@@ -363,6 +363,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return -1.0;
   }
 
+  public boolean getEnableTransformedTouchPosition() {
+    if (null != mPageConfig) {
+      return mPageConfig.getEnableTransformedTouchPosition();
+    }
+    return false;
+  }
+
   /**
    * @brief switch for enable VsyncAlignedFlush
    */

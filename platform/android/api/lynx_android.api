@@ -4347,6 +4347,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.boundingClientRect(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.uiOwnerDidPerformLayout();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.requestUIInfo(ReadableMap params, Callback callback);
+  public JavaOnlyMap com.lynx.tasm.behavior.ui.LynxBaseUI.getPositionInfo(boolean enableTransformProps);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.scrollIntoView(ReadableMap params);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.scrollIntoView(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.scrollIntoView(boolean isSmooth, String block, String inline);
@@ -4538,6 +4539,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getAutoExpose();
   public String com.lynx.tasm.behavior.LynxContext.getPageVersion();
   public double com.lynx.tasm.behavior.LynxContext.getEnableLynxScrollFluency();
+  public boolean com.lynx.tasm.behavior.LynxContext.getEnableTransformedTouchPosition();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableVsyncAlignedFlush();
   public boolean com.lynx.tasm.behavior.LynxContext.isAsyncRedirect();
   public boolean com.lynx.tasm.behavior.LynxContext.isSyncImageAttach();
@@ -6751,6 +6753,7 @@ public class com::lynx::tasm::behavior::ui::utils::LynxUIHelper :  {
   public static PointF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertPointFromUIToRootUI(final LynxBaseUI descendant, PointF point);
   public static PointF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertPointFromUIToScreen(final LynxBaseUI ui, PointF point);
   public static RectF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertRectFromUIToRootUI(final LynxBaseUI descendant, RectF rect);
+  public static PointF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertPointFromUIToAnotherUI(final LynxBaseUI ui, final LynxBaseUI another, PointF point);
   public static RectF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertRectFromUIToAnotherUI(final LynxBaseUI ui, final LynxBaseUI another, RectF rect);
   public static RectF com.lynx.tasm.behavior.ui.utils.LynxUIHelper.convertRectFromUIToScreen(final LynxBaseUI ui, RectF rect);
   public static int com.lynx.tasm.behavior.ui.utils.LynxUIHelper.px2dip(Context context, float pxValue);
@@ -7964,6 +7967,7 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableFiberArc();
   public boolean com.lynx.tasm.PageConfig.getEnableMultiTouch();
   public double com.lynx.tasm.PageConfig.getEnableLynxScrollFluency();
+  public boolean com.lynx.tasm.PageConfig.getEnableTransformedTouchPosition();
   public String com.lynx.tasm.PageConfig.toString();
   public static void com.lynx.tasm.PageConfig.attachPageConfig(PageConfig config, LynxContext lynxContext, ILynxUIRenderer uiRenderer);
 }
