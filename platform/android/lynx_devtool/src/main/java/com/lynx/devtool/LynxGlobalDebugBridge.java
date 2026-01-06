@@ -131,6 +131,7 @@ public class LynxGlobalDebugBridge
 
   @Override
   public void onClose(int code, String reason) {
+    LLog.i(TAG, "Connection closed. Code: " + code + ". Reason: " + reason);
     enableTraceMode(false);
     // FIXME(mitchilling): Theoretically, we should notify the DevToolLifecycle
     // to update the state to DISCONNECTED.
@@ -149,12 +150,13 @@ public class LynxGlobalDebugBridge
 
   @Override
   public void onError(String error) {
+    LLog.i(TAG, "Connection closed. Error: " + error);
     enableTraceMode(false);
   }
 
   @Override
   public void onOpen(ConnectionType type) {
-    LynxDevtoolEnv.inst().setDevtoolEnv(LynxEnvKey.SP_KEY_DEVTOOL_CONNECTED, true);
+    LLog.i(TAG, "Connection opened. Type: " + type);
     DevToolLifecycle.getInstance().onConnected();
   }
 

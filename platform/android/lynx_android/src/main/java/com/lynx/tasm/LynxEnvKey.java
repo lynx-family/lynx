@@ -19,8 +19,6 @@ public enum LynxEnvKey {
   ENABLE_IMAGE_MEMORY_REPORT("enable_image_memory_report"),
   ENABLE_COMPONENT_STATISTIC_REPORT("enable_component_statistic_report"),
   ENABLE_TRANSFORM_FOR_POSITION_CALCULATION("enable_transform_for_position_calculation"),
-  // TODO(mitchilling): Remove deprecated keys after setting up state machine in native
-  @Deprecated DEVTOOL_COMPONENT_ATTACH("devtool_component_attach"),
   ENABLE_GENERIC_LYNX_RESOURCE_FETCHER_FONT_KEY("enable_generic_lynx_resource_fetcher_font"),
   ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP_GLOBAL("enable_vsync_aligned_message_loop_global"),
   FORCE_LAYOUT_ON_BACKGROUND_THREAD("force_layout_on_background_thread"),
@@ -47,7 +45,6 @@ public enum LynxEnvKey {
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
   FSP_ENABLE("enable_fsp"),
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),
-  @Deprecated LYNX_DEBUG_ENABLED("lynx_debug_enabled"),
   INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env");
 
   private final String description;
@@ -69,10 +66,6 @@ public enum LynxEnvKey {
       ENABLE_VSYNC_ALIGNED_FLUSH.getDescription();
 
   // Keys for devtool.
-  @Deprecated public static final String KEY_LYNX_DEBUG_ENABLED = "lynx_debug_enabled";
-  @Deprecated
-  public static final String KEY_DEVTOOL_COMPONENT_ATTACH =
-      DEVTOOL_COMPONENT_ATTACH.getDescription();
   public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
   public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
   public static final String SP_KEY_ENABLE_HIGHLIGHT_TOUCH = "enable_highlight_touch";
@@ -85,7 +78,6 @@ public enum LynxEnvKey {
   public static final String SP_KEY_IGNORE_ERROR_TYPES = "ignore_error_types";
   public static final String SP_KEY_ENABLE_IGNORE_ERROR_CSS = "error_code_css";
   public static final String SP_KEY_ENABLE_PIXEL_COPY = "enable_pixel_copy";
-  @Deprecated public static final String SP_KEY_DEVTOOL_CONNECTED = "devtool_connected";
   public static final String SP_KEY_ENABLE_QUICKJS_DEBUG = "enable_quickjs_debug";
   public static final String SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = "enable_preview_screen_shot";
   public static final String SP_KEY_ACTIVATED_CDP_DOMAINS = "activated_cdp_domains";

@@ -95,28 +95,6 @@ public class LynxEnv {
   protected ThemeResourceProvider mThemeResourceProvider;
   protected BehaviorBundle mViewManagerBundle;
   protected final AtomicBoolean hasInit = new AtomicBoolean(false);
-  /**
-   * TODO(mitchilling): Remove this comment block after DevToolLifecycle is refactored.
-   * mDevToolComponentAttach: indicates whether DevTool Component is attached to
-   * the host.
-   * mDevToolEnabled: control whether to enable DevTool Debug
-   * eg:
-   * when host client attach DevTool, mDevToolComponentAttach is set true by
-   * reflection to find
-   * class defined in DevTool and now if we set mDevToolEnabled switch true,
-   * DevTool Debug is
-   * usable. if set mDevToolEnabled false, DevTool Debug is unavailable.
-   * when host client doesn't attach DevTool, can't find class defined in DevTool
-   * and
-   * mDevToolComponentAttach is set false in this case, no matter mDevToolEnabled
-   * switch is set true
-   * or false ,DevTool Debug is unavailable
-   * To sum up, mDevToolComponentAttach indicates host package type, online
-   * package without DevTool
-   * or localtest with DevTool mDevToolEnabled switch is controlled by user to
-   * enable/disable
-   * DevTool Debug, and useless is host doesn't attach DevTool
-   */
   protected boolean mDebugModeEnabled = false;
   protected boolean mLayoutOnlyEnabled = true;
   protected boolean mRecordEnable = false;
@@ -282,7 +260,7 @@ public class LynxEnv {
     initBehaviors();
 
     // Calling sequence:
-    // initDevtoolEnv() > loadNativeLibraries() > syncDevtoolComponentAttachSwitch()
+    // initDevtoolEnv() > loadNativeLibraries()
     //
     // initDevtoolEnv():
     // This function will initialize LynxDevtoolEnv, and lynx_debug.so may be loaded
@@ -294,13 +272,6 @@ public class LynxEnv {
     // initialized
     // before, such as the DevTool Component isn't attached or mlynxDebugEnabled is
     // set to false.
-    //
-    // syncDevtoolComponentAttachSwitch():
-    // This function will sync the value of mDevToolComponentAttach to native. It
-    // needs to be called
-    // after the function loadNativeLibraries(), because at this time we can ensure
-    // that the native
-    // libraries have been loaded.
     initDevtoolEnv();
 
     if (!initNativeLibraries(nativeLibraryLoader)) {
@@ -309,8 +280,6 @@ public class LynxEnv {
       // Thus a crash is coming right away.
       return;
     }
-
-    syncDevtoolComponentAttachSwitch();
 
     // init Trace
     initTrace(mContext);
@@ -778,7 +747,6 @@ public class LynxEnv {
   public void initDevtool() {
     initDevtoolComponentAttachSwitch();
     initDevtoolEnv();
-    syncDevtoolComponentAttachSwitch();
   }
 
   /*
@@ -806,10 +774,6 @@ public class LynxEnv {
       initDevtoolEnv();
     } else {
       DevToolLifecycle.getInstance().onDisabled();
-    }
-
-    if (mIsNativeLibraryLoaded) {
-      setBooleanLocalEnv(LynxEnvKey.LYNX_DEBUG_ENABLED, isLynxDebugEnabled());
     }
   }
 
@@ -842,23 +806,6 @@ public class LynxEnv {
     if (getDevtoolService().getLynxDebugPresetValue()) {
       DevToolLifecycle.getInstance().onEnabled();
     }
-  }
-
-  // TODO(mitchilling): Remove this method after DevToolLifecycle is refactored.
-  protected void syncDevtoolComponentAttachSwitch() {
-    // Since the default value in native is false, we only sync to native when the
-    // value is true,
-    // which can reduce native calls.
-    if (isNativeLibraryLoaded() && isDevtoolComponentAttach()) {
-      setBooleanLocalEnv(LynxEnvKey.DEVTOOL_COMPONENT_ATTACH, true);
-      setBooleanLocalEnv(LynxEnvKey.LYNX_DEBUG_ENABLED, isLynxDebugEnabled());
-    }
-  }
-
-  // TODO(mitchilling): Remove this method after DevToolLifecycle is refactored.
-  @Deprecated
-  public boolean isDevtoolComponentAttach() {
-    return DevToolLifecycle.getInstance().isAttached();
   }
 
   public boolean isDevtoolEnabled() {

@@ -145,8 +145,6 @@ public class LynxDevtoolEnv {
             new ArrayList<Object>(Arrays.asList(true, true, true)));
         put(LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU,
             new ArrayList<Object>(Arrays.asList(true, false, true)));
-        put(LynxEnvKey.SP_KEY_DEVTOOL_CONNECTED,
-            new ArrayList<Object>(Arrays.asList(false, true, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT,
             new ArrayList<Object>(Arrays.asList(false, false, true)));
         put(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE,
@@ -172,8 +170,6 @@ public class LynxDevtoolEnv {
     syncToNative(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, isDomTreeEnabled());
     syncToNative(
         LynxEnvKey.SP_KEY_ENABLE_LOGBOX, getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true));
-    syncToNative(
-        LynxEnvKey.SP_KEY_DEVTOOL_CONNECTED, LynxGlobalDebugBridge.getInstance().isEnabled());
   }
 
   private void setDefaultAppInfo(Context context) {
