@@ -866,7 +866,7 @@ class FiberElement : public Element,
   int32_t GetCSSID() const override;
 
   virtual size_t CountInlineStyles() override;
-  virtual void MergeInlineStyles(StyleMap& new_styles) override;
+  bool MergeInlineStyles(StyleMap& new_styles) final;
 
   virtual bool WillResolveStyle(StyleMap& merged_styles,
                                 CSSVariableMap* changed_css_vars) override;

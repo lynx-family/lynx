@@ -214,9 +214,13 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
   DidCollectMatchedRules(element_->data_model(), result, changed_css_vars,
                          element_->CountInlineStyles());
 
-  element_->MergeInlineStyles(result);
-
   HandleCSSVariables(result);
+  // Inline styles may contain CSS variables that are not present in the other
+  // styles. We need to re-resolve CSS variables if they are present in inline
+  // styles.
+  if (element_->MergeInlineStyles(result)) {
+    HandleCSSVariables(result);
+  }
 }
 
 void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {

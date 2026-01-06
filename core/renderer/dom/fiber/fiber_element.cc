@@ -400,10 +400,11 @@ size_t FiberElement::CountInlineStyles() {
              : 0;
 }
 
-void FiberElement::MergeInlineStyles(StyleMap &new_styles) {
+bool FiberElement::MergeInlineStyles(StyleMap &new_styles) {
   // Styles stored by full_raw_inline_style_ had already been parsed to
   // current_raw_inline_styles_. So we only handle current_raw_inline_styles_
   // here.
+  bool res = false;
   if (current_raw_inline_styles_.has_value()) {
     auto &configs = element_manager_->GetCSSParserConfigs();
     for (const auto &[id, style_value] : *current_raw_inline_styles_) {
@@ -417,10 +418,12 @@ void FiberElement::MergeInlineStyles(StyleMap &new_styles) {
         CSSValue css_value = parser.ParseVariable();
         if (parser.HasMetVarToken()) {
           new_styles[id] = std::move(css_value);
+          res = true;
         }
       }
     }
   }
+  return res;
 }
 
 void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {

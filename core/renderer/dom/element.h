@@ -723,7 +723,9 @@ class Element : public lepus::RefCounted,
   // selectors and finally calls `MergeInlineStyles` to merge the inline
   // styles.
   virtual size_t CountInlineStyles() = 0;
-  virtual void MergeInlineStyles(StyleMap& merged_styles) = 0;
+
+  // Returns true if CSS variables were merged and need to be resolved.
+  virtual bool MergeInlineStyles(StyleMap& merged_styles) = 0;
 
   virtual int32_t GetMemoryUsage() const { return sizeof(*this); }
 
