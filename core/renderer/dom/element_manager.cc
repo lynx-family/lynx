@@ -29,6 +29,7 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
@@ -1066,6 +1067,9 @@ fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
       element = fml::AdoptRef<PageElement>(
           new PageElement(nullptr, base::String(), -1));
       break;
+    case ELEMENT_SLOT:
+      element = fml::AdoptRef<SlotElement>(new SlotElement(nullptr));
+      break;
     default:
       element = fml::AdoptRef<FiberElement>(new FiberElement(nullptr, raw_tag));
   }
@@ -1143,6 +1147,11 @@ fml::RefPtr<WrapperElement> ElementManager::CreateFiberWrapperElement() {
 
 fml::RefPtr<FrameElement> ElementManager::CreateFiberFrame() {
   auto res = fml::AdoptRef<FrameElement>(new FrameElement(this));
+  return res;
+}
+
+fml::RefPtr<TemplateElement> ElementManager::CreateFiberTemplate() {
+  auto res = fml::AdoptRef<TemplateElement>(new TemplateElement(this));
   return res;
 }
 

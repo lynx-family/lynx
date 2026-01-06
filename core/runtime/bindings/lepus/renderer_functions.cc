@@ -40,6 +40,7 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -3340,7 +3341,7 @@ RENDERER_FUNCTION_CC(FiberMarkPartElement) {
   CONVERT_ARG(arg1, 1);
   if (arg0->IsRefCounted() && arg1->IsString()) {
     auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-    element->MarkPartElement(arg1->String());
+    element->MarkPartElement(arg1->Int32());
   }
   RETURN_UNDEFINED();
 }
@@ -4954,47 +4955,59 @@ RENDERER_FUNCTION_CC(FiberElementFromBinary) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FROM_BINARY);
   // parameter size >= 2
   // [0] String -> template id
-  // [1] Number -> component id
-  CHECK_ARGC_GE(FiberElementFromBinary, 2);
-  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
-                                        FiberElementFromBinary);
-  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Number,
-                                        FiberElementFromBinary);
+  // [1] String -> bundle url
+  // [2] Array -> op codes
+  CHECK_ARGC_GE(FiberElementFromBinary, 3);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+  CONVERT_ARG(arg2, 2);
 
-  std::string entry_name = tasm::DEFAULT_ENTRY_NAME;
-  if (argc >= 3) {
-    CONVERT_ARG(arg2, 2);
-    if (arg2->IsString()) {
-      entry_name = arg2->StdString();
-    }
+  auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
+  auto element = manager->CreateFiberTemplate();
+
+  element->SetTASM(GET_TASM_POINTER());
+  element->SetTemplateKey(arg0->String());
+
+  if (arg1->IsString()) {
+    element->SetBundleUrl(arg1->String());
   }
 
-  const auto& self = GET_TASM_POINTER();
-  const auto& entry = self->FindEntry(entry_name);
-  auto node_ary =
-      entry->ElementFromBinary(arg0->StdString(), arg1->Int64(),
-                               self->page_proxy()->element_manager().get());
+  element->SetOpCodes(*arg2);
 
-  // Call manager->PrepareNodeForInspector to init inspector attr for the
-  // element tree.
-  EXEC_EXPR_FOR_INSPECTOR(
-      auto* manager = self->page_proxy()->element_manager().get();
-      if (manager->GetDevToolFlag() && manager->IsDomTreeEnabled()) {
-        tasm::ForEachLepusValue(node_ary, [manager](const auto& index,
-                                                    const auto& value) {
-          std::function<void(FiberElement*)> prepare_node_f =
-              [manager, &prepare_node_f](const auto& element) {
-                manager->PrepareNodeForInspector(element);
-                for (const auto& child : element->children()) {
-                  prepare_node_f(child.get());
-                }
-              };
-          prepare_node_f(
-              fml::static_ref_ptr_cast<FiberElement>(value.RefCounted()).get());
-        });
-      });
+  element->AsyncCreateElementTree();
 
-  RETURN(node_ary);
+  ON_NODE_CREATE(element);
+  RETURN(lepus::Value(element));
+
+  //  auto entry_name =
+  //      arg1->IsString() ? arg1->String().str() : tasm::DEFAULT_ENTRY_NAME;
+  //
+  //  const auto& self = GET_TASM_POINTER();
+  //  const auto& entry = self->FindEntry(entry_name);
+  //  auto node_ary =
+  //      entry->ElementFromBinary(arg0->StdString(), arg1->Int64(),
+  //                               self->page_proxy()->element_manager().get());
+  //
+  //  // Call manager->PrepareNodeForInspector to init inspector attr for the
+  //  // element tree.
+  //  EXEC_EXPR_FOR_INSPECTOR(
+  //      auto* manager = self->page_proxy()->element_manager().get();
+  //      if (manager->GetDevToolFlag() && manager->IsDomTreeEnabled()) {
+  //        tasm::ForEachLepusValue(node_ary, [manager](const auto& index,
+  //                                                    const auto& value) {
+  //          std::function<void(FiberElement*)> prepare_node_f =
+  //              [manager, &prepare_node_f](const auto& element) {
+  //                manager->PrepareNodeForInspector(element);
+  //                for (const auto& child : element->children()) {
+  //                  prepare_node_f(child.get());
+  //                }
+  //              };
+  //          prepare_node_f(
+  //              fml::static_ref_ptr_cast<FiberElement>(value.RefCounted()).get());
+  //        });
+  //      });
+  //
+  //  RETURN(node_ary);
 }
 
 RENDERER_FUNCTION_CC(FiberElementFromBinaryAsync) {
@@ -5368,7 +5381,7 @@ RENDERER_FUNCTION_CC(FiberCreateFrame) {
   // parameter size >= 1
   // [0] Number -> parent component/page's unique id
   // [1] Object|Undefined -> optional info, not used now
-  CHECK_ARGC_GE(FiberCreateView, 1);
+  CHECK_ARGC_GE(FiberCreateFrame, 1);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, Number, FiberCreateFrame);
 
   auto element =

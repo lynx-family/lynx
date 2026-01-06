@@ -296,13 +296,22 @@ fml::RefPtr<FiberElement> TreeResolver::CloneElements(
 base::Vector<fml::RefPtr<FiberElement>> TreeResolver::FromTemplateInfo(
     const ElementTemplateInfo& info) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_TEMPLATE_INFO);
-  base::Vector<fml::RefPtr<FiberElement>> res;
+  base::Vector<fml::RefPtr<FiberElement>> res(1);
   for (const auto& element_info : info.elements_) {
-    auto element_node = FromElementInfo(-1, element_info);
+    auto element_node = FromElementInfo(-1, element_info, res);
     element_node->MarkTemplateElement();
-    res.emplace_back(std::move(element_node));
+    res[0] = element_node;
   }
   return res;
+}
+
+void TreeResolver::InitElementTree(
+    fml::RefPtr<FiberElement>& element, int64_t pid, ElementManager* manager,
+    const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
+  element->ApplyFunctionRecursive([manager, style_manager](FiberElement* e) {
+    e->AttachToElementManager(manager, style_manager, false);
+  });
+  element->SetParentComponentUniqueIdRecursively(pid);
 }
 
 lepus::Value TreeResolver::InitElementTree(
@@ -360,7 +369,7 @@ void TreeResolver::GetPartsRecursively(
     const fml::RefPtr<FiberElement>& root,
     fml::RefPtr<lepus::Dictionary>& parts_map) {
   if (root->IsPartElement()) {
-    parts_map->SetValue(root->GetPartID(), root);
+    parts_map->SetValue(std::to_string(root->GetPartID()), root);
   }
   if (root->IsTemplateElement()) {
     return;
@@ -371,7 +380,8 @@ void TreeResolver::GetPartsRecursively(
 }
 
 fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
-    int64_t parent_component_id, const ElementInfo& info) {
+    int64_t parent_component_id, const ElementInfo& info,
+    base::Vector<fml::RefPtr<FiberElement>>& vec) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_FROM_ELEMENT_INFO);
   fml::RefPtr<FiberElement> res =
       ElementManager::StaticCreateFiberElement(info.tag_enum_, info.tag_);
@@ -432,8 +442,20 @@ fml::RefPtr<FiberElement> TreeResolver::FromElementInfo(
   if (info.tag_enum_ == ELEMENT_COMPONENT || info.tag_enum_ == ELEMENT_PAGE) {
     parent_component_id = res->impl_id();
   }
+
+  if (info.part_id_ >= 0) {
+    res->MarkPartElement(info.part_id_);
+    vec.resize(info.part_id_ + 2);
+    vec[info.part_id_ + 1] = res;
+  }
+
   for (const auto& child : info.children_) {
-    res->InsertNode(FromElementInfo(parent_component_id, child));
+    auto child_node = FromElementInfo(parent_component_id, child, vec);
+    if (child_node->is_slot()) {
+      res->InsertNode(child_node);
+    } else {
+      res->InsertNode(child_node);
+    }
   }
 
   if (info.css_id_ != kInvalidCssId) {

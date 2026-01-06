@@ -64,6 +64,7 @@ class ImageElement;
 class ListElement;
 class NoneElement;
 class ScrollElement;
+class TemplateElement;
 class TextElement;
 class RawTextElement;
 class ViewElement;
@@ -911,6 +912,12 @@ class ElementManager : public ElementContextDelegate,
    * @return the refCounted type
    */
   fml::RefPtr<FrameElement> CreateFiberFrame();
+
+  /**
+   * create Template
+   * @return the refCounted type
+   */
+  fml::RefPtr<TemplateElement> CreateFiberTemplate();
 
   LYNX_EXPORT_FOR_DEVTOOL void OnPatchFinish(
       std::shared_ptr<PipelineOptions> &option, Element *root = nullptr);

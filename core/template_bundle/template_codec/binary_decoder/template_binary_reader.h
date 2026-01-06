@@ -100,6 +100,8 @@ class TemplateBinaryReader : public LynxBinaryReader,
   ElementTemplateResult GetElementTemplateParseResult(
       const std::string& key) override;
 
+  ParallelParseTaskScheduler* GetTaskScheduler() override;
+
   // lepus chunk
   bool DecodeLepusChunk() override;
   bool DecodeLepusChunkAsync(std::shared_ptr<LepusChunkManager> manager);

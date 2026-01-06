@@ -75,6 +75,10 @@ class TreeResolver {
   static base::Vector<fml::RefPtr<FiberElement>> FromTemplateInfo(
       const ElementTemplateInfo& info);
 
+  static void InitElementTree(
+      fml::RefPtr<FiberElement>& elements, int64_t pid, ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager);
+
   static lepus::Value InitElementTree(
       base::Vector<fml::RefPtr<FiberElement>>&& elements, int64_t pid,
       ElementManager* manager,
@@ -110,8 +114,9 @@ class TreeResolver {
                                   fml::RefPtr<lepus::Dictionary>& parts_map);
 
   // Construct element according to the element info.
-  static fml::RefPtr<FiberElement> FromElementInfo(int64_t parent_component_id,
-                                                   const ElementInfo& info);
+  static fml::RefPtr<FiberElement> FromElementInfo(
+      int64_t parent_component_id, const ElementInfo& info,
+      base::Vector<fml::RefPtr<FiberElement>>& res);
 
  private:
   static std::list<ParallelFlushReturn> StyleTrees(

@@ -169,7 +169,6 @@ class LynxTemplateBundle final {
     return page_configs_;
   };
 
- private:
   void EnsureParseTaskScheduler();
 
   // header info.

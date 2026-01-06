@@ -39,6 +39,8 @@ fiber_shared_sources = [
   "raw_text_element.h",
   "scroll_element.cc",
   "scroll_element.h",
+  "template_element.cc",
+  "template_element.h",
   "text_element.cc",
   "text_element.h",
   "text_props.h",

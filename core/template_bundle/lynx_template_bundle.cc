@@ -107,14 +107,15 @@ bool LynxTemplateBundle::ShouldReuseLepusContext() const {
 
 void LynxTemplateBundle::EnsureParseTaskScheduler() {
   if (task_schedular_ == nullptr) {
-    task_schedular_ = std::make_shared<ParallelParseTaskScheduler>();
+    task_schedular_ = std::make_shared<ParallelParseTaskScheduler>(
+        nullptr, nullptr, &element_template_infos_);
   }
 }
 
 void LynxTemplateBundle::GreedyConstructElements() {
   EnsureParseTaskScheduler();
   for (const auto &pair : element_template_infos_) {
-    task_schedular_->ConstructElement(pair.first, pair.second, true);
+    task_schedular_->ConstructElement(pair.first, true);
   }
 }
 
@@ -123,7 +124,7 @@ std::optional<Elements> LynxTemplateBundle::TryGetElements(
   if (task_schedular_ == nullptr) {
     return std::nullopt;
   }
-  return task_schedular_->TryGetElements(key, element_template_infos_[key]);
+  return task_schedular_->TryGetElements(key);
 }
 
 static void StyleObjectArrayDeleter(style::StyleObject **obj) {

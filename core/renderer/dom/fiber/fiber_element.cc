@@ -39,6 +39,7 @@
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
+#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -872,7 +873,7 @@ void FiberElement::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
       css_id_ = static_cast<int32_t>(value.Number());
       break;
     case ElementBuiltInAttributeEnum::DIRTY_ID:
-      MarkPartElement(value.String());
+      MarkPartElement(value.Int32());
       break;
     case ElementBuiltInAttributeEnum::CONFIG:
       if (value.IsTable()) {
@@ -1688,6 +1689,27 @@ void FiberElement::FlushActions() {
   // Step I: Handle Action for current element: Prepare&HandleFixedChange
   FlushSelf();
 
+  if (dirty_ & kNeedReplaceTemplate) {
+    for (auto iter = scoped_children_.begin(); iter != scoped_children_.end();
+         ++iter) {
+      if ((*iter)->is_template()) {
+        element_manager()->OnElementNodeRemovedForInspector(iter->get());
+
+        auto template_element = static_cast<TemplateElement *>(iter->get());
+        *iter = template_element->GetRoot();
+
+        auto child = iter->get();
+
+        OnNodeAdded(child);
+        TreeResolver::NotifyNodeInserted(this, child);
+        child->set_parent(this);
+
+        element_manager()->OnElementNodeAddedForInspector(child);
+      }
+    }
+    dirty_ &= ~kNeedReplaceTemplate;
+  }
+
   // Step II: process insert or remove related actions
   PrepareAndGenerateChildrenActions();
 
@@ -2175,6 +2197,20 @@ const std::string &FiberElement::ParentComponentEntryName() const {
 }
 
 void FiberElement::AddChildAt(fml::RefPtr<FiberElement> child, int index) {
+  if (child->is_template()) {
+    dirty_ |= kNeedReplaceTemplate;
+  } else if (child->is_slot()) {
+    auto *slot = static_cast<SlotElement *>(child.get());
+    if (!scoped_children_.empty()) {
+      slot->pre_ = scoped_children_.back().get();
+    }
+  }
+
+  if (!scoped_children_.empty() && scoped_children_.back()->is_slot()) {
+    static_cast<SlotElement *>(scoped_children_.back().get())->after_ =
+        child.get();
+  }
+
   if (index == -1) {
     scoped_children_.push_back(child);
   } else {

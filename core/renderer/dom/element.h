@@ -667,6 +667,10 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_wrapper() const { return false; }
 
+  virtual bool is_template() const { return false; }
+
+  virtual bool is_slot() const { return false; }
+
   virtual void MarkAsListItem() { is_list_item_ = true; }
 
   virtual int32_t GetBuiltInNodeInfo() const { return 0; }

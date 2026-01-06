@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
+#include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -38,6 +39,7 @@ struct ElementInfo {
   ElementInfo& operator=(ElementInfo&&) = default;
 
   bool is_component_{false};
+  int32_t part_id_{-1};
 
   // If the element is built-in type, the tag_enum_ will not be
   // ElementBuiltInTagEnum::ELEMENT_OTHER.
@@ -48,7 +50,8 @@ struct ElementInfo {
   // Element's id selector
   base::String id_selector_;
   // Element's class selector
-  std::vector<base::String> class_selector_;
+  base::InlineVector<base::String, 4> class_selector_;
+
   // Element's inline style
   std::unordered_map<CSSPropertyID, base::String> inline_styles_;
   // Element's builtin attribute
