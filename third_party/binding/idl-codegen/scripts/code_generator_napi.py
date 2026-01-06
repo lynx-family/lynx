@@ -240,6 +240,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
 
         remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
         template_context['remote_ids_filename'] = 'remote' + NameStyleConverter(template_context['component'] + 'Ids').to_upper_camel_case()
+        template_context['fixed_remote_method_ids'] = self.hardcoded_includes.get(template_context['component'], {}).get('fixed_remote_method_ids', False)
         for js_class in template_context.get('interfaces', []):
             if js_class['shared_impl']:
                 continue
@@ -273,6 +274,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 'remote_type_id': js_class['remote_type_id'],
                 'remote_constructor_num': js_class['remote_constructor_num'],
                 'remote_ids_filename': template_context['remote_ids_filename'],
+                'fixed_remote_method_ids': template_context['fixed_remote_method_ids'],
             }
             js_template = self.jinja_env.get_template('opts.js.tmpl')
             js_path = self.js_output_path(js_class['type_name'])
@@ -295,10 +297,11 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 template_context['component'])
             out.append((remote_cpp_path, remote_cpp_text))
 
-            remote_js_template = self.jinja_env.get_template('remote_ids.js.tmpl')
-            remote_js_path = self.js_output_path(template_context['remote_ids_filename'], remote_js_outdir)
-            remote_js_text = render_template(remote_js_template, template_context)
-            out.append((remote_js_path, remote_js_text))
+            if not template_context['fixed_remote_method_ids']:
+                remote_js_template = self.jinja_env.get_template('remote_ids.js.tmpl')
+                remote_js_path = self.js_output_path(template_context['remote_ids_filename'], remote_js_outdir)
+                remote_js_text = render_template(remote_js_template, template_context)
+                out.append((remote_js_path, remote_js_text))
         return out
 
     def generate_interface_code(self, definitions, interface_name, interface):
