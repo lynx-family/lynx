@@ -14,15 +14,17 @@ namespace harmony {
 AutoScroller::AutoScroller(BaseScrollContainer* scroll_container)
     : scroll_container_(scroll_container) {}
 
-void OnVSync(const std::weak_ptr<AutoScroller>& weak_this) {
+void OnVSync(const std::weak_ptr<AutoScroller>& weak_this,
+             int64_t frame_start_time_ns, int64_t frame_target_time_ns) {
   auto auto_scroller = weak_this.lock();
   if (!auto_scroller || auto_scroller->GetScrollContainer() == nullptr) {
     return;
   }
-  auto_scroller->AutoScrollInternal();
+  auto_scroller->AutoScrollInternal(frame_start_time_ns, frame_target_time_ns);
 }
 
-void AutoScroller::AutoScrollInternal() {
+void AutoScroller::AutoScrollInternal(int64_t frame_start_time_ns,
+                                      int64_t frame_target_time_ns) {
   auto result = scroll_container_->GetScrollOffset();
   if (auto_stop_) {
     if (scroll_container_->IsAtEnd() && rate_ >= 0) {
@@ -40,10 +42,20 @@ void AutoScroller::AutoScrollInternal() {
     return;
   }
   float offset_x{result.first}, offset_y{result.second};
+  if (last_frame_start_time_ns_ == 0) {
+    last_frame_start_time_ns_ = frame_target_time_ns;
+  }
+  double dt =
+      static_cast<double>(frame_start_time_ns - last_frame_start_time_ns_) /
+      1e9;
+  if (dt <= 0.0) {
+    dt = 1.0 / 60.0;
+  }
+  last_frame_start_time_ns_ = frame_start_time_ns;
   if (scroll_container_->IsHorizontal()) {
-    offset_x = result.first + rate_ / 60.0;
+    offset_x = result.first + rate_ * static_cast<float>(dt);
   } else {
-    offset_y = result.second + rate_ / 60.0;
+    offset_y = result.second + rate_ * static_cast<float>(dt);
   }
   // scroll
   NodeManager::Instance().SetAttributeWithNumberValue(
@@ -55,8 +67,8 @@ void AutoScroller::AutoScrollInternal() {
   if (vsync_monitor) {
     vsync_monitor->ScheduleVSyncSecondaryCallback(
         reinterpret_cast<uintptr_t>(this),
-        [weak_this = weak_from_this()](int64_t, int64_t) {
-          OnVSync(weak_this);
+        [weak_this = weak_from_this()](int64_t start_ts, int64_t target_ts) {
+          OnVSync(weak_this, start_ts, target_ts);
         });
   }
 }
@@ -66,6 +78,7 @@ void AutoScroller::AutoScroll(
     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
   auto_stop_ = auto_stop;
   rate_ = rate;
+  last_frame_start_time_ns_ = 0;
   if (start) {
     if (rate == 0) {
       callback(
@@ -83,8 +96,8 @@ void AutoScroller::AutoScroll(
     if (vsync_monitor) {
       vsync_monitor->ScheduleVSyncSecondaryCallback(
           reinterpret_cast<uintptr_t>(this),
-          [weak_this = weak_from_this()](int64_t, int64_t) {
-            OnVSync(weak_this);
+          [weak_this = weak_from_this()](int64_t start_ts, int64_t target_ts) {
+            OnVSync(weak_this, start_ts, target_ts);
           });
     }
   } else {
