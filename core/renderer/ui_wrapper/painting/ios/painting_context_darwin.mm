@@ -310,7 +310,8 @@ PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_cre
     : uiOwner_(owner), enable_create_ui_async_(enable_create_ui_async) {
   platform_ref_ = std::make_shared<PaintingContextDarwinRef>(owner);
   if ([owner isLayoutInElementModeOn]) {
-    text_layout_impl_ = std::make_unique<TextLayoutDarwin>(owner);
+    text_layout_impl_ =
+        std::make_unique<TextLayoutDarwin>(owner.textRenderManager, owner.fontFaceContext);
   }
 }
 

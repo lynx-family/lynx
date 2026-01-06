@@ -4,12 +4,19 @@
 
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
 namespace lynx {
 namespace tasm {
 
-NativePaintingCtxDarwin::NativePaintingCtxDarwin() = default;
+NativePaintingCtxDarwin::NativePaintingCtxDarwin() {
+  platform_ref_ = std::make_shared<NativePaintingCtxPlatformRef>(
+      std::make_unique<PlatformRendererDarwinFactory>());
+  text_layout_impl_ = std::make_unique<TextLayoutDarwin>(nil, nil);
+}
 
 std::unique_ptr<pub::Value> NativePaintingCtxDarwin::GetTextInfo(const std::string &content,
                                                                  const pub::Value &info) {

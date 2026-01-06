@@ -49,6 +49,8 @@ if (!enable_unittests) {
     ui_wrapper_painting_shared_sources += [
       "ios/native_painting_context_darwin.h",
       "ios/native_painting_context_darwin.mm",
+      "ios/native_painting_context_platform_darwin_ref.h",
+      "ios/native_painting_context_platform_darwin_ref.mm",
       "ios/painting_context_darwin.h",
       "ios/painting_context_darwin.mm",
       "ios/platform_renderer_darwin.h",

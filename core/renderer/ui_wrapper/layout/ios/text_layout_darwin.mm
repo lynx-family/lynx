@@ -33,12 +33,12 @@ LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_
 
   LynxMeasureMode widthMode = (LynxMeasureMode)width_mode;
   LynxMeasureMode heightMode = (LynxMeasureMode)height_mode;
-  MeasureResult result = [uiOwner_.textRenderManager measureTextWithSign:element->impl_id()
-                                                                   width:width
-                                                               widthMode:widthMode
-                                                                  height:height
-                                                              heightMode:heightMode
-                                                         childrenSizeDic:childrenLayoutResultDic];
+  MeasureResult result = [_textRenderManager measureTextWithSign:element->impl_id()
+                                                           width:width
+                                                       widthMode:widthMode
+                                                          height:height
+                                                      heightMode:heightMode
+                                                 childrenSizeDic:childrenLayoutResultDic];
   return LayoutResult{(float)result.size.width, (float)result.size.height, (float)result.baseline};
 }
 
@@ -59,8 +59,7 @@ void TextLayoutDarwin::MeasureChildrenRecursively(Element* element,
 }
 
 void TextLayoutDarwin::Align(Element* element) {
-  NSDictionary* offsetDic =
-      [uiOwner_.textRenderManager getInlineElementOffsetDic:element->impl_id()];
+  NSDictionary* offsetDic = [_textRenderManager getInlineElementOffsetDic:element->impl_id()];
   AlignChildrenRecursively(element, offsetDic);
 }
 
@@ -88,7 +87,7 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   HandleParagraphStyle(text_element, textStyle, textBundle);
 
   NSDictionary<NSAttributedStringKey, id>* baseAttributes =
-      [textStyle toAttributesWithFontFaceContext:uiOwner_.fontFaceContext withFontFaceObserver:nil];
+      [textStyle toAttributesWithFontFaceContext:_fontFaceContext withFontFaceObserver:nil];
 
   NSMutableAttributedString* attributedString = [[NSMutableAttributedString alloc] init];
   NSMutableSet* inlineElementSigns = [[NSMutableSet alloc] init];
@@ -109,7 +108,7 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   textBundle.attributedString = attributedString;
   textBundle.inlineElementSigns = inlineElementSigns;
   textBundle.textStyle = textStyle;
-  [uiOwner_.textRenderManager putAttributedTextBundle:element->impl_id() textBundle:textBundle];
+  [_textRenderManager putAttributedTextBundle:element->impl_id() textBundle:textBundle];
 }
 
 void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextStyle* textStyle,
@@ -197,8 +196,7 @@ void TextLayoutDarwin::ProcessChildAttribute(
     NSMutableDictionary<NSAttributedStringKey, id>* textAttributes =
         [NSMutableDictionary dictionaryWithDictionary:baseAttributes];
     NSDictionary<NSAttributedStringKey, id>* attributes =
-        [inlineTextStyle toAttributesWithFontFaceContext:uiOwner_.fontFaceContext
-                                    withFontFaceObserver:nil];
+        [inlineTextStyle toAttributesWithFontFaceContext:_fontFaceContext withFontFaceObserver:nil];
     [textAttributes addEntriesFromDictionary:attributes];
 
     GenerateAttributedString(attributedString, textElement, textAttributes, inlineElementSigns,

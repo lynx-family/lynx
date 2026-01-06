@@ -6,8 +6,8 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_IOS_TEXT_LAYOUT_DARWIN_H_
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxTextRenderManager.h>
-#import <Lynx/LynxUIOwner.h>
 
 #include "core/public/text_layout_impl.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
@@ -20,7 +20,9 @@ class TextElement;
 
 class TextLayoutDarwin : public TextLayoutImpl {
  public:
-  explicit TextLayoutDarwin(LynxUIOwner* uiOwner) : uiOwner_(uiOwner) {}
+  explicit TextLayoutDarwin(LynxTextRenderManager* textRenderManager,
+                            LynxFontFaceContext* fontFaceContext)
+      : _textRenderManager(textRenderManager), _fontFaceContext(fontFaceContext) {}
 
   ~TextLayoutDarwin() override = default;
 
@@ -46,7 +48,8 @@ class TextLayoutDarwin : public TextLayoutImpl {
 
   void AlignChildrenRecursively(Element* element, NSDictionary* offsetDic);
 
-  __weak LynxUIOwner* uiOwner_;
+  LynxTextRenderManager* _textRenderManager;
+  LynxFontFaceContext* _fontFaceContext;
 };
 
 }  // namespace tasm
