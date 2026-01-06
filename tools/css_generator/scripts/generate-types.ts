@@ -17,10 +17,38 @@ function toCamelCase(str: string): string {
   return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
 }
 
-function generateTypeDefinition(property: CSSDefine): string {
+/**
+ * Lynx-specific property classification criteria
+ * Properties are considered Lynx-specific if they:
+ * 1. Start with Lynx vendor prefixes (linear*, relative*, -x-*, X*)
+ * 2. Are part of Lynx-specific feature sets (layout animations, transitions)
+ */
+const LYNX_PREFIXES = ['linear', 'relative', '-x-', 'X'] as const;
+const LYNX_SPECIFIC_KEYWORDS = [
+  'adaptFontSize',
+  'layoutAnimation',
+  'implicitAnimation',
+  'enterTransitionName',
+  'exitTransitionName',
+  'pauseTransitionName',
+  'resumeTransitionName',
+] as const;
+
+/**
+ * Determines if a property is Lynx-specific (not in standard CSS)
+ */
+function isLynxSpecific(propertyName: string): boolean {
+  return (
+    LYNX_PREFIXES.some(prefix => propertyName.startsWith(prefix)) ||
+    LYNX_SPECIFIC_KEYWORDS.some(keyword => propertyName.startsWith(keyword))
+  );
+}
+
+function generateTypeDefinition(property: CSSDefine, mode: 'strict' | 'loose' = 'loose'): string {
   const name = property.name;
   if (!name) return '';
   const camelName = toCamelCase(name);
+  const isLynxProp = isLynxSpecific(name);
 
   // Handle numeric types
   if (property.type === 'number' || property.type === 'integer') {
@@ -37,6 +65,11 @@ function generateTypeDefinition(property: CSSDefine): string {
         return `'${v}'`;
       })
       .join(' | ');
+    
+    // For loose mode and non-Lynx-specific properties, allow broader types
+    if (mode === 'loose' && !isLynxProp) {
+      return `${camelName}?: ${values} | (string & {});`;
+    }
     return `${camelName}?: ${values};`;
   }
 
@@ -140,13 +173,25 @@ function generateTypeDefinitions(): string {
   });
 
   const groups = groupProperties(cssDefines);
-  const typeDefinitions = Object.entries(groups)
+  
+  // Generate both strict and loose type definitions
+  const looseTypeDefinitions = Object.entries(groups)
     .map(([category, props]) => {
       const types = props
-        .map(generateTypeDefinition)
+        .map(p => generateTypeDefinition(p, 'loose'))
         .filter(Boolean)
-        .join('\n  ');
-      return `  // ${category}\n  ${types}`;
+        .join('\n    ');
+      return `    // ${category}\n    ${types}`;
+    })
+    .join('\n\n');
+
+  const strictTypeDefinitions = Object.entries(groups)
+    .map(([category, props]) => {
+      const types = props
+        .map(p => generateTypeDefinition(p, 'strict'))
+        .filter(Boolean)
+        .join('\n    ');
+      return `    // ${category}\n    ${types}`;
     })
     .join('\n\n');
 
@@ -159,21 +204,110 @@ function generateTypeDefinitions(): string {
 
 /**
  * This file is auto-generated from CSS define files in the css_defines directory.
- * Each property's type is determined by:
- * 1. For enum types: Uses the values array from the CSS define file
- * 2. For properties with keywords: Uses the keywords array as enum values, with (string & {}) for open-ended types
- * 3. For other types: Uses string type
+ * 
+ * Type System Design:
+ * ===================
+ * This module provides a gradual type strengthening system for inline styles:
+ * 
+ * 1. CSSProperties (default, loose mode):
+ *    - Lynx-specific properties have strict types for better autocomplete
+ *    - Standard CSS properties accept both specific values AND loose string types
+ *    - Backward compatible with existing code
+ *    - Recommended for most use cases
+ * 
+ * 2. StrictCSSProperties (strict mode):
+ *    - All properties have strict enum types
+ *    - Better type safety but may require code changes
+ *    - Use when you want maximum type checking
+ * 
+ * 3. Compatibility with csstype:
+ *    - CSSProperties can be used alongside CSS.Properties from 'csstype'
+ *    - Uses the Modify helper type to override specific properties
+ * 
+ * Migration Path:
+ * ===============
+ * - Start with CSSProperties (loose mode) for backward compatibility
+ * - Gradually migrate to StrictCSSProperties as your codebase matures
+ * - Use utility types (Shorthands, Longhands) for specific use cases
  */
 
-export type CSSProperties = {
-${typeDefinitions}
+import type * as CSS from 'csstype';
+
+export type Modify<T, R> = Omit<T, keyof R> & R;
+
+/**
+ * Lynx-specific CSS properties defined strictly.
+ * These properties are not part of standard CSS.
+ */
+type LynxSpecificProperties = {
+${Object.entries(groups)
+    .map(([category, props]) => {
+      const lynxProps = props.filter(p => isLynxSpecific(p.name));
+      if (lynxProps.length === 0) return '';
+      const types = lynxProps
+        .map(p => generateTypeDefinition(p, 'strict'))
+        .filter(Boolean)
+        .join('\n    ');
+      return `    // ${category}\n    ${types}`;
+    })
+    .filter(Boolean)
+    .join('\n\n')}
+};
+
+/**
+ * Override types for standard CSS properties that Lynx implements differently.
+ * Uses loose typing to allow both Lynx-specific values and standard CSS values.
+ */
+type LynxCSSOverrides = {
+${Object.entries(groups)
+    .map(([category, props]) => {
+      const nonLynxProps = props.filter(p => !isLynxSpecific(p.name));
+      if (nonLynxProps.length === 0) return '';
+      const types = nonLynxProps
+        .map(p => generateTypeDefinition(p, 'loose'))
+        .filter(Boolean)
+        .join('\n    ');
+      return `    // ${category}\n    ${types}`;
+    })
+    .filter(Boolean)
+    .join('\n\n')}
+};
+
+/**
+ * Default CSSProperties type with loose typing for backward compatibility.
+ * Recommended for most use cases.
+ * 
+ * This type:
+ * - Inherits from csstype's CSS.Properties for standard CSS support
+ * - Overrides specific properties with Lynx implementations (loose mode)
+ * - Adds Lynx-specific properties
+ */
+export type CSSProperties = Modify<
+  CSS.Properties<string | number>,
+  LynxCSSOverrides
+> & LynxSpecificProperties;
+
+/**
+ * Strict CSSProperties type for maximum type safety.
+ * Use when you want strict enum checking for all properties.
+ * 
+ * This type:
+ * - Uses strict enum types for all properties
+ * - Better autocomplete and type checking
+ * - May require code changes for existing projects
+ */
+export type StrictCSSProperties = {
+${strictTypeDefinitions}
 };
 
 export type Shorthands = ${shorthandDefinitions};
 export type Longhands = ${longhandsDefinitions};
 
-export type CSSPropertiesWithShorthands = Pick<CSSProperties, Shorthands>;
-export type CSSPropertiesWithLonghands = Pick<CSSProperties, Longhands>;
+// Since \`Shorthands\` and \`Longhands\` are auto generated, there may be properties
+// such as \`gridColumnSpan\` is not manually defined in \`CSSProperties\` yet.
+// Use \`& keyof CSSProperties\` to ensure only the defined keys are included to avoid type error.
+export type CSSPropertiesWithShorthands = Pick<CSSProperties, Shorthands & keyof CSSProperties>;
+export type CSSPropertiesWithLonghands = Pick<CSSProperties, Longhands & keyof CSSProperties>;
 `;
 }
 

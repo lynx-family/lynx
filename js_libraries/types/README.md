@@ -2,6 +2,55 @@
 
 @lynx-js/types is a type package of all public APIs officially provided by the Lynx team. Using this package can help you better use Lynx APIs to develop your applications.
 
+# CSS Type System
+
+This package provides a **gradual type strengthening system** for inline styles in Lynx:
+
+## Type Modes
+
+### CSSProperties (Default - Loose Mode)
+Recommended for most use cases. Provides backward compatibility while offering good type safety.
+
+```typescript
+import { CSSProperties } from '@lynx-js/types';
+
+const styles: CSSProperties = {
+  // ✅ Lynx-specific values work
+  position: 'absolute',
+  display: 'flex',
+  
+  // ✅ Standard CSS values also work for backward compatibility
+  position: 'static',
+  display: 'inline-block',
+  
+  // ✅ Lynx-specific properties remain strict
+  linearGravity: 'center',
+};
+```
+
+### StrictCSSProperties (Strict Mode)
+Opt-in strict type checking for maximum type safety.
+
+```typescript
+import { StrictCSSProperties } from '@lynx-js/types';
+
+const styles: StrictCSSProperties = {
+  // ✅ Only Lynx-supported enum values allowed
+  position: 'absolute',
+  display: 'flex',
+  
+  // ❌ TypeScript error: Value not in Lynx enum
+  position: 'static',
+};
+```
+
+**Key Differences:**
+- **Loose Mode** (`CSSProperties`): Standard CSS properties accept both Lynx-specific and broader types - backward compatible
+- **Strict Mode** (`StrictCSSProperties`): All properties have strict enum types - maximum type safety
+- **Lynx-Specific Properties**: Always strict in both modes (e.g., `linearGravity`, `linearWeight`)
+
+For detailed migration guide, see [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md).
+
 # Implementation
 
 There are three pieces of content in the entire package, namely:

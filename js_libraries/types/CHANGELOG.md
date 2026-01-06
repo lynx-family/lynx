@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 3.8.0
+
+### Major Changes
+
+- **Gradual Type Strengthening System**: Introduced a hybrid type system that balances type safety with backward compatibility
+  - `CSSProperties` (default): Loose mode with backward compatibility - standard CSS properties accept both Lynx-specific and broader types
+  - `StrictCSSProperties`: Strict mode for maximum type safety - all properties have strict enum types
+  - Lynx-specific properties remain strict in both modes
+  - Uses `(string & {})` pattern for open-ended types in loose mode
+  - Full backward compatibility with existing code
+
+### Features
+
+- Added `StrictCSSProperties` type for opt-in strict type checking
+- Improved type generation script to support multiple strictness levels
+- Added comprehensive documentation in `MIGRATION_GUIDE.md`
+- Enhanced test coverage with tests for both loose and strict modes
+
+### Breaking Changes
+
+- None - This release is fully backward compatible
+
+### Migration
+
+- **No action required** - Existing code using `CSSProperties` continues to work unchanged
+- See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for information on adopting strict mode
+
 ## 3.7.0
 
 ### Minor Changes
