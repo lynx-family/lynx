@@ -24,13 +24,15 @@ class AutoScroller : public std::enable_shared_from_this<AutoScroller> {
       float rate, bool start, bool auto_stop,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   BaseScrollContainer* GetScrollContainer() { return scroll_container_; }
-  void AutoScrollInternal();
+  void AutoScrollInternal(int64_t frame_start_time_ns,
+                          int64_t frame_target_time_ns);
 
  private:
   BaseScrollContainer* scroll_container_{nullptr};
   bool block_auto_scroll_{false};
   float rate_{0};
   bool auto_stop_{true};
+  int64_t last_frame_start_time_ns_{0};
 };
 }  // namespace harmony
 }  // namespace tasm
