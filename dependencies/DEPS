@@ -1,5 +1,6 @@
 import os
 import platform
+from pathlib import Path
 
 system = platform.system().lower()
 machine = platform.machine().lower()
@@ -8,6 +9,14 @@ machine = "x86_64" if machine == "amd64" else machine
 python_path = "python3"
 if system == "windows":
     python_path = "python"
+
+is_ci = os.environ.get("CI", "0") in ["1", "true"]
+
+# This is a temporary solution for GitHub Actions. Simply running pip install will access pypi even the dependencies
+# were cached. Therefore, add a argument to install dependencies from local wheels.
+vpython_extra_args = ''
+if is_ci:
+    vpython_extra_args = f'--pip_install_args "--no-index --find-links={str(Path.home() / Path(".local/vpython/wheels"))}"'
 
 deps = {
     'platform/android/gradle/wrapper/gradle-6.7.1-all.zip': {
@@ -64,7 +73,7 @@ deps = {
     'python_venv_set': {
         "type": "action",
         "commands": [
-            python_path + " tools/vpython_tools/vpython_env_setup.py --root_dir " + root_dir,
+            f'{python_path} tools/vpython_tools/vpython_env_setup.py --root_dir {root_dir} {vpython_extra_args}'
         ],
     },
     'change_executable_permission': {

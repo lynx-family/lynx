@@ -54,17 +54,12 @@ runs:
         restore-keys: |
           hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}
 
-    - name: Get Python Cache Directory
-      id: pip
-      shell: bash
-      if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      run: echo "PIP_CACHE_DIR=$(python3 -m pip cache dir)" >> $GITHUB_OUTPUT
-
     - name: Python Requirements Cache
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
-        path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
+        # ~/.local/vpython/wheels is hardcoded in dependencies/DEPS
+        path: ~/.local/vpython/wheels
         key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/tools/vpython_tools/requirements.txt', 'lynx/testing/integration_test/test_script/requirements.txt') }}
         restore-keys: |
           pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-
@@ -82,12 +77,15 @@ runs:
     - name: Install Python dependencies
       shell: bash
       run: |
+        # ~/.local/vpython/wheels is hardcoded in dependencies/DEPS
+        python3 -m pip download -d ~/.local/vpython/wheels -r lynx/tools/vpython_tools/requirements.txt
+        python3 -m pip download -d ~/.local/vpython/wheels -r lynx/testing/integration_test/test_script/requirements.txt
         if [ "$RUNNER_OS" == "macOS" ]; then
-          python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages
-          python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages
+          python3 -m pip install --no-index --find-links=~/.local/vpython/wheels -r lynx/tools/vpython_tools/requirements.txt --break-system-packages
+          python3 -m pip install --no-index --find-links=~/.local/vpython/wheels -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages
         else
-          python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt
-          python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
+          python3 -m pip install --no-index --find-links=~/.local/vpython/wheels -r lynx/tools/vpython_tools/requirements.txt
+          python3 -m pip install --no-index --find-links=~/.local/vpython/wheels -r lynx/testing/integration_test/test_script/requirements.txt
         fi
 
     - name: run habitat sync
