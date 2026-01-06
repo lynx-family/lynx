@@ -624,12 +624,6 @@ void TasmMediator::SendNativeCustomEvent(const std::string& name, int tag,
   });
 };
 
-void TasmMediator::RemoveLayoutNodeAtIndex(int32_t parent_id, int index) {
-  layout_actor_->ActLite([parent_id, index](auto& layout) {
-    layout->RemoveLayoutNodeAtIndex(parent_id, index);
-  });
-}
-
 void TasmMediator::InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                           int32_t ref_id) {
   layout_actor_->ActLite([parent_id, child_id, ref_id](auto& layout) {

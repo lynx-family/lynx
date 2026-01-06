@@ -196,7 +196,6 @@ class ElementManager : public ElementContextDelegate,
                                   int index) = 0;
     virtual void SendAnimationEvent(const std::string &type, int tag,
                                     const lepus::Value &dict) = 0;
-    virtual void RemoveLayoutNodeAtIndex(int32_t parent_id, int index) = 0;
     virtual void SendNativeCustomEvent(const std::string &name, int tag,
                                        const lepus::Value &param_value,
                                        const std::string &param_name) = 0;
@@ -311,7 +310,6 @@ class ElementManager : public ElementContextDelegate,
   void UpdateLayoutNodeFontSize(int32_t id, double cur_node_font_size,
                                 double root_node_font_size);
   void InsertLayoutNode(int32_t parent_id, int32_t child_id, int index);
-  void RemoveLayoutNodeAtIndex(int32_t parent_id, int index);
   void InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                               int32_t ref_id);
   void RemoveLayoutNode(int32_t parent_id, int32_t child_id);

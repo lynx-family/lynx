@@ -700,10 +700,6 @@ void ElementManager::InsertLayoutNode(int32_t parent_id, int32_t child_id,
   delegate_->InsertLayoutNode(parent_id, child_id, index);
 }
 
-void ElementManager::RemoveLayoutNodeAtIndex(int32_t parent_id, int index) {
-  delegate_->RemoveLayoutNodeAtIndex(parent_id, index);
-}
-
 void ElementManager::InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                             int32_t ref_id) {
   delegate_->InsertLayoutNodeBefore(parent_id, child_id, ref_id);

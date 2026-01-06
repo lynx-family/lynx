@@ -148,9 +148,6 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   MOCK_METHOD(void, InsertLayoutNode,
               (int32_t parent_id, int32_t child_id, int index), (override));
 
-  MOCK_METHOD(void, RemoveLayoutNodeAtIndex, (int32_t parent_id, int index),
-              (override));
-
   MOCK_METHOD(void, InsertLayoutNodeBefore,
               (int32_t parent_id, int32_t child_id, int32_t ref_id),
               (override));
