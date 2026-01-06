@@ -191,27 +191,32 @@ class BASE_EXPORT Value {
 
   void SetNumber(double val) {
     FreeValue();
-    value_ = {.val_double = val, .type = lynx_value_double};
+    value_.type = lynx_value_double;
+    value_.val_double = val;
   }
 
   void SetNumber(int32_t val) {
     FreeValue();
-    value_ = {.val_int32 = val, .type = lynx_value_int32};
+    value_.type = lynx_value_int32;
+    value_.val_int32 = val;
   }
 
   void SetNumber(uint32_t val) {
     FreeValue();
-    value_ = {.val_uint32 = val, .type = lynx_value_uint32};
+    value_.type = lynx_value_uint32;
+    value_.val_uint32 = val;
   }
 
   void SetNumber(int64_t val) {
     FreeValue();
-    value_ = {.val_int64 = val, .type = lynx_value_int64};
+    value_.type = lynx_value_int64;
+    value_.val_int64 = val;
   }
 
   void SetNumber(uint64_t val) {
     FreeValue();
-    value_ = {.val_uint64 = val, .type = lynx_value_uint64};
+    value_.type = lynx_value_uint64;
+    value_.val_uint64 = val;
   }
 
   inline ValueType Type() const { return LegacyTypeFromLynxValue(value_); }
