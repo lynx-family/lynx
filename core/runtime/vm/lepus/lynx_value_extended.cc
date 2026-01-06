@@ -97,7 +97,7 @@ lynx_api_status lynx_value_get_int64_ext(lynx_api_env env, lynx_value value,
                                          int64_t* result) {
   auto js_value = WrapJSValue(value);
   if (LEPUS_VALUE_IS_BIG_INT(js_value)) {
-    int ret = LEPUS_ToInt64(env->ctx->ctx, result, js_value);
+    int ret = LEPUS_ToBigInt64(env->ctx->ctx, result, js_value);
     if (ret != -1) {
       return lynx_api_ok;
     }
@@ -158,7 +158,9 @@ lynx_api_status lynx_value_get_number_ext(lynx_api_env env, lynx_value value,
   } else if (LEPUS_VALUE_IS_FLOAT64(js_value)) {
     *result = LEPUS_VALUE_GET_FLOAT64(js_value);
   } else if (LEPUS_VALUE_IS_BIG_INT(js_value)) {
-    LEPUS_ToFloat64(env->ctx->ctx, result, js_value);
+    int64_t ret;
+    LEPUS_ToBigInt64(env->ctx->ctx, &ret, js_value);
+    *result = static_cast<double>(ret);
   }
   return lynx_api_ok;
 }
