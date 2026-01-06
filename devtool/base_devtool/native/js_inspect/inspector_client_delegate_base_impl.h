@@ -63,8 +63,9 @@ class LYNX_EXPORT InspectorClientDelegateBaseImpl
 
   void DispatchMessageAsyncWithLockHeld(const std::string& message,
                                         int instance_id);
-  void FlushMessageQueue();              // Must be called on JS thread.
-  void FlushMessageQueueWithLockHeld();  // Must be called on JS thread.
+  void FlushMessageQueue();  // Must be called on JS thread.
+  void FlushMessageQueueWithLockHeld(
+      std::unique_lock<std::mutex>& lock);  // Must be called on JS thread.
 
   // Dispatch enable and cached breakpoints messages.
   // You can call this function if you want to initialize before receiving

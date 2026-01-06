@@ -41,8 +41,8 @@ void InspectorClientDelegateBaseImpl::RunMessageLoopOnPause(
     return;
   }
   paused_ = true;
-  cv_.wait(lock, [this] {
-    FlushMessageQueueWithLockHeld();
+  cv_.wait(lock, [this, &lock] {
+    FlushMessageQueueWithLockHeld(lock);
     return !this->paused_;
   });
 }
@@ -106,15 +106,16 @@ void InspectorClientDelegateBaseImpl::DispatchMessageAsyncWithLockHeld(
 
 void InspectorClientDelegateBaseImpl::FlushMessageQueue() {
   std::unique_lock<std::mutex> lock(mutex_);
-  FlushMessageQueueWithLockHeld();
+  FlushMessageQueueWithLockHeld(lock);
 }
 
-void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld() {
+void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld(
+    std::unique_lock<std::mutex> &lock) {
   while (!message_queue_.empty()) {
     int instance_id = message_queue_.front().first;
     std::string mes = message_queue_.front().second;
     message_queue_.pop();
-    mutex_.unlock();  // Unlock to dispatch message to js engine.
+    lock.unlock();
     {
       TRACE_EVENT(
           LYNX_TRACE_CATEGORY_DEVTOOL,
@@ -122,7 +123,7 @@ void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld() {
           "vm_type", vm_type_, "instance_id", instance_id, "message", mes);
       DispatchMessage(mes, instance_id);
     }
-    mutex_.lock();
+    lock.lock();
   }
 }
 
