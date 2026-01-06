@@ -125,7 +125,10 @@ void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextS
         static_cast<LynxTextOverflowType>(computed_css_style->GetTextAttributes()->text_overflow);
   }
   if (props_set.Has(kPropertyIDLineHeight)) {
-    textStyle.lineHeight = computed_css_style->GetTextAttributes()->computed_line_height;
+    constexpr float kLineHeightNormalSentinelThreshold = 10E8;
+    float line_height = computed_css_style->GetTextAttributes()->computed_line_height;
+    textStyle.lineHeight =
+        (line_height < kLineHeightNormalSentinelThreshold && line_height >= 0) ? line_height : NAN;
   }
   if (props_set.Has(kPropertyIDWhiteSpace)) {
     textBundle.whiteSpace =
