@@ -1254,7 +1254,7 @@ void ElementManager::OnPatchFinishForFiber(
     base::MoveOnlyClosure<void, bool> patch_finish_callback,
     FiberElement *element) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_FOR_FIBER);
-  if (options->need_timestamps) {
+  if (options->need_timestamps && !page_options_.IsEmbeddedModeOn()) {
     painting_context()->MarkUIOperationQueueFlushTiming(
         tasm::timing::kPaintingUiOperationExecuteStart, options->pipeline_id);
     // In RadonDiff-Fiber arch, we have marked resolve start at RadonPage
