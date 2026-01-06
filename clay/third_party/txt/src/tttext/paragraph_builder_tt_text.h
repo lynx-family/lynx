@@ -11,7 +11,7 @@
 #ifdef ENABLE_SKITY
 #include "txt/font_collection_skity.h"
 #else
-#include "txt/font_collection.h"
+#include "txt/font_collection_skia.h"
 #endif
 #include <textra/paragraph_style.h>
 #include "txt/paragraph_builder.h"

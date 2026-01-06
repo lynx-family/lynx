@@ -62,7 +62,9 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   if (!context) {
     return;
   }
+#ifndef CLAY_ENABLE_TTTEXT
   text_ = ProcessWordBreakIfNeed(origin_text_);
+#endif
   auto need_text_indent = IfNeedTextIndent();
   LayoutContextText* text_context = static_cast<LayoutContextText*>(context);
   if (parent_ && parent_->IsInlineTextShadowNode()) {

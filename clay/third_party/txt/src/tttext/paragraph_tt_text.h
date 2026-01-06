@@ -14,7 +14,7 @@
 #ifdef ENABLE_SKITY
 #include "tttext/tttext_headers.h"
 #else
-#include "third_party/textlayout/src/ports/platform/skia/skia_painter.h"
+#include "third_party/textlayout/textra/public/textra/platform/skia/skia_painter.h"
 #endif
 #include "txt/paragraph.h"
 

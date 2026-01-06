@@ -26,14 +26,16 @@
 #include <vector>
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
+#if defined(CLAY_ENABLE_MINIKIN)
 #include "font_skia.h"
+#endif
 #include "txt/platform.h"
 #include "txt/text_style.h"
 
 namespace txt {
 
 namespace {
-#if defined(CLAY_ENABLE_MINIKIN) || defined(CLAY_ENABLE_TTTEXT)
+#if defined(CLAY_ENABLE_MINIKIN)
 const std::shared_ptr<minikin::FontFamily> g_null_family;
 #endif  // CLAY_ENABLE_SKSHAPER
 
@@ -400,34 +402,29 @@ void FontCollection::ClearFontFamilyCache() {
 
 #if defined(CLAY_ENABLE_TTTEXT)
 
-std::shared_ptr<ttoffice::textlayout::FontCollection>
+std::shared_ptr<ttoffice::tttext::FontmgrCollection>
 FontCollection::CreateTTFontCollection() {
   if (!skt_collection_) {
-    skt_collection_ = std::make_shared<ttoffice::textlayout::FontCollection>();
+    skt_collection_ = std::make_shared<ttoffice::tttext::FontmgrCollection>();
 
-    std::vector<ttoffice::textlayout::TTString> default_font_families;
-    for (const std::string& family : GetDefaultFontFamilies()) {
-      default_font_families.emplace_back(family);
-    }
     if (default_font_manager_ != nullptr) {
-      skt_collection_->setDefaultFontManager(
-          std::make_shared<ttoffice::textlayout::SkiaFontManager>(
-              default_font_manager_),
-          default_font_families);
+      skt_collection_->SetDefaultFontManager(
+          std::make_shared<ttoffice::tttext::SkiaFontManager>(
+              default_font_manager_));
     }
     if (asset_font_manager_ != nullptr) {
-      skt_collection_->setAssetFontManager(
-          std::make_shared<ttoffice::textlayout::SkiaFontManager>(
+      skt_collection_->SetAssetFontManager(
+          std::make_shared<ttoffice::tttext::SkiaFontManager>(
               asset_font_manager_));
     }
     if (dynamic_font_manager_ != nullptr) {
-      skt_collection_->setDynamicFontManager(
-          std::make_shared<ttoffice::textlayout::SkiaFontManager>(
+      skt_collection_->SetDynamicFontManager(
+          std::make_shared<ttoffice::tttext::SkiaFontManager>(
               dynamic_font_manager_));
     }
     if (test_font_manager_ != nullptr) {
-      skt_collection_->setTestFontManager(
-          std::make_shared<ttoffice::textlayout::SkiaFontManager>(
+      skt_collection_->SetTestFontManager(
+          std::make_shared<ttoffice::tttext::SkiaFontManager>(
               test_font_manager_));
     }
     if (!enable_font_fallback_) {

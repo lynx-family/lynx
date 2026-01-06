@@ -13,7 +13,9 @@
 #ifdef ENABLE_SKITY
 #include "txt/font_collection_skity.h"
 #else
-#include "src/ports/platform/skia/skia_canvas_helper.h"
+#include "third_party/textlayout/textra/public/textra/platform/skia/skia_canvas_helper.h"
+#include "third_party/textlayout/textra/public/textra/run_delegate.h"
+#include "txt/font_collection_skia.h"
 #endif
 
 namespace txt {
@@ -88,8 +90,13 @@ bool ParagraphTTText::DidExceedMaxLines() {
 }
 
 void ParagraphTTText::Layout(double width) {
+#if defined(ENABLE_SKITY)
   auto i_font_collection = font_collection_->GetIFontCollection();
   tttext::TextLayout layout(&i_font_collection, tttext::kSelfRendering);
+#else
+  auto i_font_collection = font_collection_->CreateTTFontCollection();
+  tttext::TextLayout layout(i_font_collection.get(), tttext::kSelfRendering);
+#endif
   auto halign = paragraph_->GetParagraphStyle().GetHorizontalAlign();
   auto width_mode =
       std::isinf(width) || halign == tttext::ParagraphHorizontalAlignment::kLeft
@@ -235,7 +242,7 @@ void ParagraphTTText::UpdateForegroundPaint(size_t text_size,
 #ifdef ENABLE_SKITY
   tt_painter_.platform_painter_ = std::make_unique<skity::Paint>(sk_paint_);
 #else
-  tt_painter_.sk_paint_ = &sk_paint_;
+  tt_painter_.sk_paint_ = std::make_unique<SkPaint>(sk_paint_);
 #endif
   tttext::Style style;
   style.SetForegroundPainter(&tt_painter_);

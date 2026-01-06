@@ -39,8 +39,8 @@
 #if CLAY_ENABLE_SKSHAPER
 #include "third_party/skia/modules/skparagraph/include/FontCollection.h"  // nogncheck
 #elif defined(CLAY_ENABLE_TTTEXT)
-#include "third_party/textlayout/src/ports/platform/skia/skia_font_manager.h"
-#include "third_party/textlayout/src/ports/shaper/skshaper/font_collection.h"  // nogncheck
+#include "third_party/textlayout/textra/public/textra/fontmgr_collection.h"  // nogncheck
+#include "third_party/textlayout/textra/public/textra/platform/skia/skia_font_manager.h"
 #endif
 
 namespace txt {
@@ -81,8 +81,7 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
 #if defined(CLAY_ENABLE_TTTEXT)
 
   // Construct a Skia text layout FontCollection based on this collection.
-  std::shared_ptr<ttoffice::textlayout::FontCollection>
-  CreateTTFontCollection();
+  std::shared_ptr<ttoffice::tttext::FontmgrCollection> CreateTTFontCollection();
 
 #endif  // CLAY_ENABLE_SKSHAPER
 
@@ -132,7 +131,7 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
 
 #if defined(CLAY_ENABLE_TTTEXT)
   // An equivalent font collection usable by the Skia text shaper library.
-  std::shared_ptr<ttoffice::textlayout::FontCollection> skt_collection_;
+  std::shared_ptr<ttoffice::tttext::FontmgrCollection> skt_collection_;
 #endif
 
 #if defined(CLAY_ENABLE_SKSHAPER)
