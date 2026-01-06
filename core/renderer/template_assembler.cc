@@ -3481,7 +3481,7 @@ void TemplateAssembler::RequestLayout(
         ->MarkUIOperationQueueFlushForRecreateEngine(false);
   }
 
-  if (pipeline_options->need_timestamps) {
+  if (pipeline_options->need_timestamps && !page_options_.IsEmbeddedModeOn()) {
     page_proxy()
         ->element_manager()
         ->painting_context()
