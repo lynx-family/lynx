@@ -47,6 +47,7 @@
     "@lynx-js/types": "workspace:*",
     "@lynx-js/runtime-shared": "workspace:*",
     "@lynx-js/ios-polyfill": "workspace:*",
-    "@lynx-js/ios-polyfill-promise": "workspace:*"
+    "@lynx-js/ios-polyfill-promise": "workspace:*",
+    "typescript": "5.8.3"
   }
 }

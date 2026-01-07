@@ -19,5 +19,8 @@
   "author": "Lynx Authors",
   "dependencies": {
     "tslib": "2.5.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
   }
 }
