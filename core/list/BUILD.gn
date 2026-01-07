@@ -31,8 +31,6 @@ if (disable_list_platform_implementation) {
     "decoupled_list_anchor_manager.h",
     "decoupled_list_children_helper.cc",
     "decoupled_list_children_helper.h",
-    "decoupled_list_container_animation_manager.cc",
-    "decoupled_list_container_animation_manager.h",
     "decoupled_list_container_impl.cc",
     "decoupled_list_container_impl.h",
     "decoupled_list_event_manager.cc",
@@ -44,7 +42,21 @@ if (disable_list_platform_implementation) {
     "decoupled_list_types.h",
     "decoupled_staggered_grid_layout_manager.cc",
     "decoupled_staggered_grid_layout_manager.h",
+    "list_animation_manager.cc",
+    "list_animation_manager.h",
   ]
+  if (!defined(enable_list_container_animation) ||
+      enable_list_container_animation) {
+    list_container_shared_sources += [
+      "list_animation_manager_impl.cc",
+      "list_animation_manager_impl.h",
+    ]
+  } else {
+    list_container_shared_sources += [
+      "list_animation_manager_default.cc",
+      "list_animation_manager_default.h",
+    ]
+  }
 } else {
   list_container_shared_sources += [
     "decoupled_list_container_default.cc",
@@ -58,6 +70,10 @@ lynx_core_source_set("list_container") {
     "../build:build",
     "../renderer/trace:renderer_trace",
   ]
+  if (!defined(enable_list_container_animation) ||
+      enable_list_container_animation) {
+    deps = [ "../animation/lynx_basic_animator:lynx_basic_animator" ]
+  }
 }
 
 list_container_testset_shared_sources = []
