@@ -17,7 +17,7 @@ enum PixelType {
 
 // The pixel type used on the framework side (i.e. Lynx).
 // Currently we use physical pixels on Android and logical pixels on others.
-#if defined(OS_ANDROID)
+#if defined(OS_ANDROID) && !defined(ENABLE_HEADLESS)
 static constexpr PixelType kPixelTypeFramework = kPixelTypePhysical;
 #else
 static constexpr PixelType kPixelTypeFramework = kPixelTypeLogical;
@@ -27,7 +27,7 @@ static constexpr PixelType kPixelTypeFramework = kPixelTypeLogical;
 // For now we use the same pixel type with the framework side.
 static constexpr PixelType kPixelTypeClay = kPixelTypeFramework;
 
-#if defined(OS_ANDROID)
+#if defined(OS_ANDROID) && !defined(ENABLE_HEADLESS)
 static constexpr PixelType kPixelTypePlatform = kPixelTypePhysical;
 #else
 static constexpr PixelType kPixelTypePlatform = kPixelTypeLogical;
