@@ -150,7 +150,7 @@ SharedImageSinkManaged::AcquireBack(
       }
 
       if (back_backings_.front().shared_image->GetSize() != size ||
-          gfx_handle.has_value()) {
+          (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
         back_backings_.front() = SharedImageSlot{
             .shared_image = shared_image_factory_(size, gfx_handle)};
@@ -199,7 +199,7 @@ SharedImageSinkManaged::TryAcquireBack(
       }
     } else {
       if (back_backings_.front().shared_image->GetSize() != size ||
-          gfx_handle.has_value()) {
+          (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
         back_backings_.front() = SharedImageSlot{
             .shared_image = shared_image_factory_(size, gfx_handle)};
@@ -259,7 +259,7 @@ SharedImageSinkManaged::AcquireBackForced(
       }
 
       if (back_backings_.front().shared_image->GetSize() != size ||
-          gfx_handle.has_value()) {
+          (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
         back_backings_.front() = SharedImageSlot{
             .shared_image = shared_image_factory_(size, gfx_handle)};
@@ -379,7 +379,7 @@ void SharedImageSinkUnmanaged::ReleaseFront(
 std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t>
 SharedImageSinkUnmanaged::AcquireBack(
     skity::Vec2 size, std::optional<GraphicsMemoryHandle> gfx_handle) {
-  if (gfx_handle.has_value()) {
+  if (gfx_handle.has_value() && gfx_handle.value()) {
     FML_LOG(ERROR) << "SharedImageSinkUnmanaged::AcquireBack can not "
                       "retain gfx_handle";
   }

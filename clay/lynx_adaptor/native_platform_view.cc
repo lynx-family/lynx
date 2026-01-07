@@ -116,7 +116,7 @@ ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(int width,
   }
 
   SharedImageSink* sink = reinterpret_cast<SharedImageSink*>(sink_ref_);
-  auto [backing, buffer_age] = sink->AcquireBack({width, height}, nullptr);
+  auto [backing, buffer_age] = sink->AcquireBack({width, height});
   if (!backing) {
     return nullptr;
   }
