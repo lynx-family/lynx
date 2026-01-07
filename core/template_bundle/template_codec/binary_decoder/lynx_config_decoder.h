@@ -827,6 +827,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableTransformedTouchPosition(
           doc[config::kEnableTransformedTouchPosition].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableBatchLayoutTaskWithSyncLayout) &&
+        doc[config::kEnableBatchLayoutTaskWithSyncLayout].IsBool()) {
+      page_config->SetEnableBatchLayoutTaskWithSyncLayout(
+          doc[config::kEnableBatchLayoutTaskWithSyncLayout].GetBool());
+    } else {
+      page_config->SetEnableBatchLayoutTaskWithSyncLayout(
+          LynxEnv::GetInstance().EnableBatchLayoutTaskWithSyncLayout());
+    }
   };
 };
 }  // namespace tasm

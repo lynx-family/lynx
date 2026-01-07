@@ -45,6 +45,7 @@ const configKeys = [
   'enableAsyncInitVideoEngine',
   'enableAsyncRequestImage',
   'enableAsyncResolveSubtree',
+  'enableBatchLayoutTaskWithSyncLayout',
   'enableCheckExposureOptimize',
   'enableCheckLocalImage',
   'enableCircularDataCheck',

@@ -218,6 +218,7 @@ public class LynxRecorderActionManager {
   private boolean mPreDecode;
   private boolean mDisableOptPushStyleToBundle;
   private boolean mEnableUnifyFixedBehavior;
+  private boolean mEnableBatchLayoutTaskWithSyncLayout;
   private boolean mEnableNativeScheduleCreateViewAsync;
   private int mDelayEndInterval;
   private LynxRecorderReplayStateView mStateView;
@@ -569,6 +570,9 @@ public class LynxRecorderActionManager {
     mDisableOptPushStyleToBundle = queryMap.getInt("disable_opt_push_style_to_bundle", 0) == 1;
 
     mEnableUnifyFixedBehavior = queryMap.getInt("enable_unify_fixed_behavior", 0) == 1;
+
+    mEnableBatchLayoutTaskWithSyncLayout =
+        queryMap.getInt("enable_batch_layout_task_with_sync_layout", 0) == 1;
 
     mEnableNativeScheduleCreateViewAsync =
         queryMap.getInt("enable_native_schedule_create_view_async", 0) == 1;
@@ -1234,6 +1238,9 @@ public class LynxRecorderActionManager {
           if (mEnableUnifyFixedBehavior) {
             nativeConfig.put("enableUnifyFixedBehavior", true);
           }
+          if (mEnableBatchLayoutTaskWithSyncLayout) {
+            nativeConfig.put("enableBatchLayoutTaskWithSyncLayout", true);
+          }
           Map lynxConfig = new HashMap<>();
           lynxConfig.put(LynxViewBuilderProperty.PLATFORM_CONFIG.getKey(), nativeConfig.toString());
           builder.setLynxViewConfig(lynxConfig);
@@ -1360,6 +1367,9 @@ public class LynxRecorderActionManager {
         }
         if (mEnableUnifyFixedBehavior) {
           nativeConfig.put("enableUnifyFixedBehavior", true);
+        }
+        if (mEnableBatchLayoutTaskWithSyncLayout) {
+          nativeConfig.put("enableBatchLayoutTaskWithSyncLayout", true);
         }
         Map lynxConfig = new HashMap<>();
         lynxConfig.put(LynxViewBuilderProperty.PLATFORM_CONFIG.getKey(), nativeConfig.toString());

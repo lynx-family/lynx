@@ -1093,7 +1093,7 @@ class ElementManager : public ElementContextDelegate,
       int32_t id, const std::shared_ptr<PipelineOptions> &options);
 
   inline bool GetEnableBatchLayoutTaskWithSyncLayout() {
-    return enable_batch_layout_task_with_sync_layout_;
+    return config_ ? config_->GetEnableBatchLayoutTaskWithSyncLayout() : false;
   }
 
   bool FixNewAnimatorFlushBug() const { return fix_new_animator_flush_bug_; }
@@ -1277,7 +1277,6 @@ class ElementManager : public ElementContextDelegate,
 
   bool enable_layout_only_{true};
   bool dom_tree_enabled_{true};
-  bool enable_batch_layout_task_with_sync_layout_{false};
   bool fix_new_animator_flush_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
   bool enable_level_order_traversing_{false};

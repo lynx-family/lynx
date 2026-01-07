@@ -51,26 +51,16 @@ void FiberElementTest::SetUp() {
   }
 
   enable_batch_layout_operation = std::get<2>(current_parameter_);
-  if (enable_batch_layout_operation) {
-    LynxEnv::GetInstance().external_env_map_
-        [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "true";
-    manager->enable_batch_layout_task_with_sync_layout_ = true;
-  } else {
-    LynxEnv::GetInstance().external_env_map_
-        [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "false";
-    manager->enable_batch_layout_task_with_sync_layout_ = false;
-  }
+  config->SetEnableBatchLayoutTaskWithSyncLayout(enable_batch_layout_operation);
   const_cast<DynamicCSSConfigs&>(manager->GetDynamicCSSConfigs())
       .unify_vw_vh_behavior_ = true;
 }
 
 void FiberElementTest::TearDown() {
-  LynxEnv::GetInstance().external_env_map_
-      [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "false";
   LynxEnv::GetInstance()
       .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] = "false";
   manager->enable_level_order_traversing_ = false;
-  manager->enable_batch_layout_task_with_sync_layout_ = false;
+  manager->config_->SetEnableBatchLayoutTaskWithSyncLayout(false);
 }
 
 bool FiberElementTest::HasCapturePlatformNodeTag(int32_t target_id,

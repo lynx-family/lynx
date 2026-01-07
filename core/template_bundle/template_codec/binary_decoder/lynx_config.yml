@@ -1807,3 +1807,15 @@ enableTransformedTouchPosition:
   supportPlatform:
     - Android
     - HarmonyOS
+enableBatchLayoutTaskWithSyncLayout:
+  description: Enable batch layout task with sync layout.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  readNative: true
+  author: usczz
+  since: '3.7'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS

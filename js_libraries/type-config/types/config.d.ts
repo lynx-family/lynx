@@ -153,6 +153,17 @@ export interface Config {
   enableAsyncResolveSubtree?: boolean
 
   /**
+   * Enable batch layout task with sync layout.
+   *
+   * Supported platform: Android, HarmonyOS, iOS
+   *
+   * Since: LynxSDK 3.7
+   *
+   * @defaultValue false
+   */
+  enableBatchLayoutTaskWithSyncLayout?: boolean
+
+  /**
    * Enable exposure detection optimization so that exposure detection is not performed when the page is static.
    *
    * Supported platform: iOS

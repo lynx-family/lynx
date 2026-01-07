@@ -80,8 +80,6 @@ ElementManager::ElementManager(
   enable_new_animator_radon_ = false;
   element_context_task_queue_ = std::make_unique<ElementContextTaskQueue>(
       [this]() { return GetParallelWithSyncLayout(); });
-  enable_batch_layout_task_with_sync_layout_ =
-      LynxEnv::GetInstance().EnableBatchLayoutTaskWithSyncLayout();
   // TODO(songshourui.null): The following temporary configs are being
   // introduced with the responsive bugfix to avoid breaks. These configs will
   // be removed after verifying the bugfix online.
