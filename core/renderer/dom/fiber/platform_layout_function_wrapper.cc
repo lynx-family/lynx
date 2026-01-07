@@ -64,7 +64,7 @@ void PlatformLayoutFunctionWrapper::UpdateLayoutNodeProps(
 }
 
 void PlatformLayoutFunctionWrapper::Destroy() {
-  element_.element_manager()->DestroyLayoutNode(id_);
+  // Destroy related layout node is handled in FiberElement destructor
   measure_func_ = nullptr;
 }
 
