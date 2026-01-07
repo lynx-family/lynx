@@ -6,6 +6,7 @@
 #define PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_CEF_WEBVIEW_CLIENT_H_
 
 #include <string>
+#include <vector>
 
 #include "include/capi/cef_app_capi.h"
 #include "include/cef_base.h"
@@ -22,6 +23,7 @@ class CEFWebview;
 
 class CEFWebviewClient : public CefClient,
                          public CefLifeSpanHandler,
+                         public CefDragHandler,
                          public CefDisplayHandler,
                          public CefRenderHandler,
                          public CefFrameHandler,
@@ -55,21 +57,22 @@ class CEFWebviewClient : public CefClient,
   // CefLifeSpanHandler
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;
 
-  bool OnBeforePopup(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
-                     int popup_id, const CefString& target_url,
-                     const CefString& target_frame_name,
-                     WindowOpenDisposition target_disposition,
-                     bool user_gesture, const CefPopupFeatures& popupFeatures,
-                     CefWindowInfo& windowInfo, CefRefPtr<CefClient>& client,
-                     CefBrowserSettings& settings,
-                     CefRefPtr<CefDictionaryValue>& extra_info,
-                     bool* no_javascript_access) override;
+  bool OnBeforePopup(
+      CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int popup_id,
+      const CefString& target_url, const CefString& target_frame_name,
+      CefLifeSpanHandler::WindowOpenDisposition target_disposition,
+      bool user_gesture, const CefPopupFeatures& popupFeatures,
+      CefWindowInfo& windowInfo, CefRefPtr<CefClient>& client,
+      CefBrowserSettings& settings, CefRefPtr<CefDictionaryValue>& extra_info,
+      bool* no_javascript_access) override;
 
   void OnBeforeClose(CefRefPtr<CefBrowser> browser) override;
 
   bool OnBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
                       CefRefPtr<CefRequest> request, bool user_gesture,
                       bool is_redirect) override;
+
+  bool DoClose(CefRefPtr<CefBrowser> browser) override;
 
   // CefDisplayHandler
   void OnAddressChange(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
@@ -107,6 +110,19 @@ class CEFWebviewClient : public CefClient,
                            CefRefPtr<CefFrame> frame,
                            CefRefPtr<CefContextMenuParams> params,
                            CefRefPtr<CefMenuModel> model) override;
+  bool OnContextMenuCommand(CefRefPtr<CefBrowser> browser,
+                            CefRefPtr<CefFrame> frame,
+                            CefRefPtr<CefContextMenuParams> params,
+                            int command_id, EventFlags event_flags) override;
+
+  // CefDragHandler
+  bool OnDragEnter(CefRefPtr<CefBrowser> browser,
+                   CefRefPtr<CefDragData> dragData,
+                   CefDragHandler::DragOperationsMask mask) override;
+
+  void OnDraggableRegionsChanged(
+      CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+      const std::vector<CefDraggableRegion>& regions) override;
 
   void Reset() { webview_ = nullptr; }
   bool IsImeShown() const { return ime_shown_; }

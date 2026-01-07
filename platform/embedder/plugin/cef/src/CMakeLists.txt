@@ -28,6 +28,19 @@ set(CEF_WEBVIEW_SRCS_MAC
   macos/NSApplication+HandlingSendEvent.h
   macos/NSApplication+HandlingSendEvent.m
   )
+
+set(CEF_WEBVIEW_SRCS_WINDOWS
+  win/cef_webview_client_win.cc
+  win/cef_webview_client_win.h
+  win/cef_webview_initializer.cc
+  win/cef_webview_win.cc
+  win/cef_webview_win.h
+  win/dpi_utils_win32.cc
+  win/dpi_utils_win32.h
+  win/osr_ime_handler_win.cc
+  win/osr_ime_handler_win.h
+  )
+
 LIBCEF_APPEND_PLATFORM_SOURCES(CEF_WEBVIEW_SRCS)
 
 add_library(${CEF_WEBVIEW_TARGET} STATIC ${CEF_WEBVIEW_SRCS})
@@ -40,8 +53,9 @@ target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE USE_PRIMJS_NAPI)
 if(OS_MAC)
   target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE OS_MAC)
 endif()
-if(OS_WIN)
-  target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE OS_WIN)
+if(OS_WINDOWS)
+  target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE OS_WIN lynx_EXPORTS)
+  target_compile_options(${CEF_WEBVIEW_TARGET} PRIVATE /wd4267)
 endif()
 
 

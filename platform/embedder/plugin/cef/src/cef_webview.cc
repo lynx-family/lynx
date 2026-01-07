@@ -24,7 +24,6 @@ static bool strequals(const cef_string_t& a, const cef_string_t& b) {
   return false;
 }
 
-#if defined(OS_MAC)
 static std::string Utf8(const cef_string_t& s) {
   cef_string_utf8_t cstr;
   memset(&cstr, 0, sizeof(cstr));
@@ -36,7 +35,6 @@ static std::string Utf8(const cef_string_t& s) {
   cef_string_utf8_clear(&cstr);
   return str;
 }
-#endif
 
 class GetCookieVisitor : public CefCookieVisitor {
  public:
@@ -310,8 +308,8 @@ void CEFWebview::OnMethodInvoked(
     return;
   }
   if (strcmp(method, kMethodCookiesSet) == 0) {
-    SetCookieMethod method = SetCookieMethod::build(attrs);
-    if (!method.valid()) {
+    SetCookieMethod set_cookie_method = SetCookieMethod::build(attrs);
+    if (!set_cookie_method.valid()) {
       callback(kInvalidParameter,
                lynx::pub::LynxValue(
                    lynx::pub::LynxValue::CreateAsNullTag::kCreateAsNullTag));
@@ -321,7 +319,8 @@ void CEFWebview::OnMethodInvoked(
     auto set_callback = new SetCookieCallback([callback](bool success) {
       callback(kSuccess, lynx::pub::LynxValue(success));
     });
-    cookie_manager->SetCookie(method.url, method.cookie, set_callback);
+    cookie_manager->SetCookie(set_cookie_method.url, set_cookie_method.cookie,
+                              set_callback);
   } else if (strcmp(method, kMethodCookiesRemove) == 0) {
     std::string name = attrs.GetProperty(kCookieName).StdString();
     auto cookie_manager = CefCookieManager::GetGlobalManager(nullptr);
@@ -375,6 +374,10 @@ void CEFWebview::OnMethodInvoked(
              lynx::pub::LynxValue(
                  lynx::pub::LynxValue::CreateAsNullTag::kCreateAsNullTag));
   }
+}
+
+void CEFWebview::RegisterIMEHandler(void* handler, void* opaque) {
+  // TODO(chenyouhui): Add implementation
 }
 
 }  // namespace embedder

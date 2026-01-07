@@ -265,7 +265,7 @@ void CEFWebviewClientMac::OnVirtualKeyboardRequested(CefRefPtr<CefBrowser> brows
       if (!ime_shown_) {
         return;
       }
-      static_cast<CEFWebviewMac*>(webview_)->RequestIME(nullptr, nullptr);
+      webview_->RegisterIMEHandler(nullptr, nullptr);
       text_input_context_osr_mac_ = nullptr;
       text_input_client_ = nullptr;
       ime_shown_ = false;
@@ -279,8 +279,7 @@ void CEFWebviewClientMac::OnVirtualKeyboardRequested(CefRefPtr<CefBrowser> brows
           [[CefTextInputClientOSRMac alloc] initWithBrowser:webview_->GetBrowser()];
       text_input_context_osr_mac_ = [[NSTextInputContext alloc] initWithClient:text_input_client_];
       webview_->RequestFocus();
-      static_cast<CEFWebviewMac*>(webview_)->RequestIME(reinterpret_cast<void*>(ime_callback),
-                                                        this);
+      webview_->RegisterIMEHandler(reinterpret_cast<void*>(ime_callback), this);
       [text_input_context_osr_mac_ activate];
       break;
   }

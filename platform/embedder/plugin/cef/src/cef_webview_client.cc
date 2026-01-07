@@ -8,6 +8,8 @@
 
 #include "platform/embedder/plugin/cef/src/cef_webview.h"
 
+static const int kOpenDevtoolCommandID = 1001;
+static const char kOpenDevToolsText[] = "Open DevTools";
 namespace lynx {
 namespace plugin {
 namespace embedder {
@@ -58,10 +60,11 @@ void CEFWebviewClient::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
 bool CEFWebviewClient::OnBeforePopup(
     CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int popup_id,
     const CefString& target_url, const CefString& target_frame_name,
-    WindowOpenDisposition target_disposition, bool user_gesture,
-    const CefPopupFeatures& popupFeatures, CefWindowInfo& windowInfo,
-    CefRefPtr<CefClient>& client, CefBrowserSettings& settings,
-    CefRefPtr<CefDictionaryValue>& extra_info, bool* no_javascript_access) {
+    CefLifeSpanHandler::WindowOpenDisposition target_disposition,
+    bool user_gesture, const CefPopupFeatures& popupFeatures,
+    CefWindowInfo& windowInfo, CefRefPtr<CefClient>& client,
+    CefBrowserSettings& settings, CefRefPtr<CefDictionaryValue>& extra_info,
+    bool* no_javascript_access) {
   if (target_disposition == CEF_WOD_NEW_PICTURE_IN_PICTURE) {
     client = nullptr;
     return false;
@@ -91,6 +94,13 @@ bool CEFWebviewClient::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefRequest> request,
                                       bool user_gesture, bool is_redirect) {
   message_router_->OnBeforeBrowse(browser, frame);
+  return false;
+}
+
+bool CEFWebviewClient::DoClose(CefRefPtr<CefBrowser> browser) {
+  if (webview_) {
+    webview_->SetClosing(true);
+  }
   return false;
 }
 
@@ -177,7 +187,35 @@ void CEFWebviewClient::OnBeforeContextMenu(
     model->Clear();
     // model->Remove(IDC_VIEW_SOURCE);
     // model->Remove(IDC_CONTENT_CONTEXT_INSPECTELEMENT);
+  } else {
+    model->AddSeparator();
+    model->AddItem(kOpenDevtoolCommandID, kOpenDevToolsText);
+    model->SetEnabled(kOpenDevtoolCommandID, true);
   }
+}
+
+bool CEFWebviewClient::OnContextMenuCommand(
+    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    CefRefPtr<CefContextMenuParams> params, int command_id,
+    EventFlags event_flags) {
+  if (command_id == kOpenDevtoolCommandID) {
+    // TODO(chenyouhui): Add implementation.
+    // OpenDevTools(browser);
+    return true;
+  }
+  return false;
+}
+
+bool CEFWebviewClient::OnDragEnter(CefRefPtr<CefBrowser> browser,
+                                   CefRefPtr<CefDragData> dragData,
+                                   CefDragHandler::DragOperationsMask mask) {
+  return true;
+}
+
+void CEFWebviewClient::OnDraggableRegionsChanged(
+    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    const std::vector<CefDraggableRegion>& regions) {
+  // TODO(chenyouhui): Add implementation.
 }
 
 }  // namespace embedder

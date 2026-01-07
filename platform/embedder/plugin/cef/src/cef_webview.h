@@ -67,9 +67,14 @@ class CEFWebview : public lynx::pub::LynxNativeView {
   }
   virtual void OnMouseClickEvent(int x, int y, int buttons, bool mouse_up) {}
 
+  void RegisterIMEHandler(void* handler, void* opaque);
+
   lynx_view_t* GetLynxView() const { return lynx_view_; }
 
   CefRefPtr<CefBrowser> GetBrowser() { return browser_; }
+
+  void SetClosing(bool closing) { closing_ = closing; }
+  bool IsClosing() const { return closing_; }
 
  protected:
   friend CEFWebviewClient;
@@ -84,6 +89,7 @@ class CEFWebview : public lynx::pub::LynxNativeView {
   bool enable_devtool_ = false;
   std::string url_;
   std::string init_js_;
+  bool closing_ = false;
 };
 
 }  // namespace embedder
