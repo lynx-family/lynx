@@ -29,7 +29,7 @@ const compilerOptionsKeys = [
   'removeCSSParserLog',
   'targetSdkVersion',
   'templateDebugUrl',
-]
+];
 
 const configKeys = [
   'absoluteInContentBound',
@@ -152,9 +152,9 @@ const configKeys = [
   'syncImageAttach',
   'useNewImage',
   'version',
-]
+];
 
 module.exports = {
   compilerOptionsKeys,
   configKeys,
-}
+};
