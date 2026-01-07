@@ -685,14 +685,28 @@ void LynxRuntime::OnJSSourcePrepared(
     // bind icu for js env
     if (bundle.enable_bind_icu) {
 #if ENABLE_NAPI_BINDING
-      if (!RuntimeManager::IsSingleJSContext(group_id_)) {
-        delegate_->OnErrorOccurred(base::LynxError(
-            error::E_BTS_RUNTIME_ERROR,
-            "enable_bind_icu is not supported in shared context env"));
-      } else {
+      if (RuntimeManager::IsSingleJSContext(group_id_)) {
         Napi::Env env = napi_environment_->proxy()->Env();
         tasm::I18n::Bind(
             reinterpret_cast<intptr_t>(static_cast<napi_env>(env)));
+      } else {
+        if (tasm::LynxEnv::GetInstance().GetBoolEnv(
+                tasm::LynxEnv::Key::ENABLE_SHARE_CONTEXT_ICU, false)) {
+          auto* wrapper =
+              RuntimeManager::Instance()->GetContextWrapper(group_id_);
+          if (wrapper) {
+            auto napi_environment = wrapper->GetNapiEnvironment();
+            if (napi_environment) {
+              LOGI("register icu on shared context.");
+              tasm::I18n::Bind(reinterpret_cast<intptr_t>(
+                  static_cast<napi_env>(napi_environment->proxy()->Env())));
+            }
+          }
+        } else {
+          delegate_->OnErrorOccurred(base::LynxError(
+              error::E_BTS_RUNTIME_ERROR,
+              "enable_bind_icu is not supported in shared context env"));
+        }
       }
 #endif
     }

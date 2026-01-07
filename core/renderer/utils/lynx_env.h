@@ -123,6 +123,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_JS_CALLBACK_MANAGER,
     ENABLE_HARMONY_DRAW_BEHIND,
     ENABLE_UNIFY_FIXED_BEHAVIOR,
+    ENABLE_SHARE_CONTEXT_ICU,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -259,6 +260,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
             {Key::ENABLE_HARMONY_DRAW_BEHIND, "enable_harmony_draw_behind"},
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
+            {Key::ENABLE_SHARE_CONTEXT_ICU, "enable_share_context_icu"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());

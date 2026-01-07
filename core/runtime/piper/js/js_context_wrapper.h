@@ -38,6 +38,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
       const tasm::PageOptions& page_options) = 0;
   virtual void AddLifecycleListener(
       std::unique_ptr<RuntimeLifecycleListenerDelegate> listener){};
+  virtual piper::NapiEnvironment* GetNapiEnvironment() { return nullptr; };
 
   bool isGlobalInited() { return global_inited_; }
   bool isJSCoreLoaded() { return js_core_loaded_; }
@@ -85,6 +86,13 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
 
   void AddLifecycleListener(
       std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) override;
+  piper::NapiEnvironment* GetNapiEnvironment() override {
+#if ENABLE_NAPI_BINDING
+    return napi_environment_.get();
+#else
+    return nullptr;
+#endif
+  };
 
  protected:
   void InitNapi(std::shared_ptr<piper::Runtime>& js_runtime) override;
