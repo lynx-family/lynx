@@ -8,7 +8,8 @@ solutions = [
             'clay': 'dependencies/DEPS.clay',
             'dev': 'dependencies/DEPS.dev',
             'extension': 'dependencies/DEPS.extension',
-            'tasm': 'dependencies/DEPS.tasm'
+            'tasm': 'dependencies/DEPS.tasm',
+            'tools_shared': 'dependencies/DEPS.tools_shared'
         },
     }
 ]
