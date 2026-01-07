@@ -113,6 +113,9 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl,
 #pragma endregion  // NativePaintingContext
 
  private:
+  template <typename F>
+  void Enqueue(F &&func);
+
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
 };
 
