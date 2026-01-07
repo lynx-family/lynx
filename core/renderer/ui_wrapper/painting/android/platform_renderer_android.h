@@ -38,8 +38,6 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   // Android-specific context for managing native views via JNI
   PlatformRendererContext* context_;
 
-  bool is_platform_extended_renderer_ = false;
-
   // Initialize the Android view
   void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
 

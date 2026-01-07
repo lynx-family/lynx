@@ -27,8 +27,7 @@ class PlatformRendererImpl : public PlatformRenderer {
 
  public:
   explicit PlatformRendererImpl(int id, PlatformRendererType type,
-                                const base::String& tag)
-      : id_(id), type_(type), tag_name_(tag) {}
+                                const base::String& tag);
 
   ~PlatformRendererImpl() override = default;
 
@@ -49,6 +48,12 @@ class PlatformRendererImpl : public PlatformRenderer {
  protected:
   void ReleaseSelf() const override;
 
+  bool IsPlatformExtendedRenderer() const {
+    return is_platform_extended_renderer_;
+  }
+
+  PlatformRendererType GetPlatformRendererType() const { return type_; }
+
  protected:
   // Platform-specific operations to be implemented by derived classes
   virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
@@ -68,6 +73,8 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   DisplayList display_list_;
   ChildVecT children_;
+
+  bool is_platform_extended_renderer_ = false;
 };
 
 }  // namespace lynx::tasm

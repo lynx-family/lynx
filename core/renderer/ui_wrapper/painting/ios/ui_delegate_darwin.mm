@@ -8,12 +8,14 @@
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 
+#import <Lynx/LynxUIOwner+Private.h>
+
 namespace lynx {
 namespace tasm {
 
 std::unique_ptr<PaintingCtxPlatformImpl> UIDelegateDarwin::CreatePaintingContext() {
   if (use_native_painting_context_) {
-    return std::make_unique<NativePaintingCtxDarwin>();
+    return std::make_unique<NativePaintingCtxDarwin>([ui_owner_ tryGetContainerView]);
   }
   return std::make_unique<PaintingContextDarwin>(ui_owner_, enable_create_ui_async_);
 }

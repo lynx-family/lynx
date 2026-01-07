@@ -12,9 +12,11 @@
 namespace lynx {
 namespace tasm {
 
+class PlatformRendererContextDarwin;
+
 class PlatformRendererDarwinFactory : public PlatformRendererFactory {
  public:
-  PlatformRendererDarwinFactory() = default;
+  PlatformRendererDarwinFactory(PlatformRendererContextDarwin* context);
   ~PlatformRendererDarwinFactory() override = default;
 
   fml::RefPtr<PlatformRenderer> CreateRenderer(
@@ -24,6 +26,9 @@ class PlatformRendererDarwinFactory : public PlatformRendererFactory {
   fml::RefPtr<PlatformRenderer> CreateExtendedRenderer(
       int id, const base::String& tag_name,
       const fml::RefPtr<PropBundle>& init_data) override;
+
+ private:
+  PlatformRendererContextDarwin* context_;
 };
 
 }  // namespace tasm

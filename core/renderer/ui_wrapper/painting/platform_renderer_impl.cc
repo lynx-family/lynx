@@ -10,6 +10,13 @@
 
 namespace lynx::tasm {
 
+PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
+                                           const base::String& tag)
+    : id_(id), type_(type), tag_name_(tag) {
+  is_platform_extended_renderer_ =
+      (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
+}
+
 void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
   // Call platform-specific implementation
   OnUpdateDisplayList(std::move(display_list));

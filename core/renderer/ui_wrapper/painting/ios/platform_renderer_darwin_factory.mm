@@ -8,14 +8,17 @@
 namespace lynx {
 namespace tasm {
 
+PlatformRendererDarwinFactory::PlatformRendererDarwinFactory(PlatformRendererContextDarwin* context)
+    : context_(context) {}
+
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data) {
-  return fml::MakeRefCounted<PlatformRendererDarwin>(id, type);
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type);
 }
 
 fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateExtendedRenderer(
     int id, const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data) {
-  return fml::MakeRefCounted<PlatformRendererDarwin>(id, tag_name);
+  return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, tag_name);
 }
 
 }  // namespace tasm

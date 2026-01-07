@@ -8,15 +8,19 @@
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
+
+#import <Lynx/LUIBodyView.h>
 
 namespace lynx {
 namespace tasm {
 
-NativePaintingCtxDarwin::NativePaintingCtxDarwin() {
+NativePaintingCtxDarwin::NativePaintingCtxDarwin(UIView<LUIBodyView> *body_view)
+    : context_(std::make_unique<PlatformRendererContextDarwin>(body_view)) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
-      std::make_unique<PlatformRendererDarwinFactory>());
+      std::make_unique<PlatformRendererDarwinFactory>(context_.get()));
   text_layout_impl_ = std::make_unique<TextLayoutDarwin>(nil, nil);
 }
 

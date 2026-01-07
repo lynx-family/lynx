@@ -10,15 +10,17 @@
 #include <vector>
 
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
+
+@protocol LUIBodyView;
 
 namespace lynx {
 namespace tasm {
 
-class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl,
-                                public NativePaintingContext {
+class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePaintingContext {
  public:
-  NativePaintingCtxDarwin();
+  NativePaintingCtxDarwin(UIView<LUIBodyView> *body_view);
   ~NativePaintingCtxDarwin() override = default;
 
   NativePaintingCtxDarwin(const NativePaintingCtxDarwin &) = delete;
@@ -31,21 +33,17 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl,
 
   // NativePaintingContextDarwin do not need impl this interface.
   void CreatePaintingNode(int id, const std::string &tag,
-                          const fml::RefPtr<PropBundle> &painting_data,
-                          bool flatten, bool create_node_async,
-                          uint32_t node_index) override {}
+                          const fml::RefPtr<PropBundle> &painting_data, bool flatten,
+                          bool create_node_async, uint32_t node_index) override {}
 
   // NativePaintingContextDarwin do not need impl this interface.
-  void UpdatePaintingNode(
-      int id, bool tend_to_flatten,
-      const fml::RefPtr<PropBundle> &painting_data) override {}
+  void UpdatePaintingNode(int id, bool tend_to_flatten,
+                          const fml::RefPtr<PropBundle> &painting_data) override {}
 
   // NativePaintingContextDarwin do not need impl this interface.
-  void UpdateLayout(int tag, float x, float y, float width, float height,
-                    const float *paddings, const float *margins,
-                    const float *borders, const float *bounds,
-                    const float *sticky, float max_height,
-                    uint32_t node_index) override {}
+  void UpdateLayout(int tag, float x, float y, float width, float height, const float *paddings,
+                    const float *margins, const float *borders, const float *bounds,
+                    const float *sticky, float max_height, uint32_t node_index) override {}
 
   // NativePaintingContextDarwin do not need impl this interface.
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
@@ -73,20 +71,16 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl,
   bool NeedAnimationProps() override;
 
   void Invoke(int64_t id, const std::string &method, const pub::Value &params,
-              const std::function<void(int32_t, const pub::Value &)> &callback)
-      override;
+              const std::function<void(int32_t, const pub::Value &)> &callback) override;
 
   void StopExposure(const pub::Value &options) override;
   void ResumeExposure() override;
 
-  void UpdatePlatformExtraBundle(int32_t id,
-                                 PlatformExtraBundle *bundle) override;
+  void UpdatePlatformExtraBundle(int32_t id, PlatformExtraBundle *bundle) override;
 
-  void FinishTasmOperation(
-      const std::shared_ptr<PipelineOptions> &options) override;
+  void FinishTasmOperation(const std::shared_ptr<PipelineOptions> &options) override;
 
-  void FinishLayoutOperation(
-      const std::shared_ptr<PipelineOptions> &options) override;
+  void FinishLayoutOperation(const std::shared_ptr<PipelineOptions> &options) override;
 
   void Flush() override;
 
@@ -98,17 +92,14 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl,
 
 #pragma region NativePaintingContext
 
-  void CreatePlatformRenderer(
-      int id, PlatformRendererType type,
-      const fml::RefPtr<PropBundle> &init_data) override;
-  void CreatePlatformExtendedRenderer(
-      int id, const base::String &tag_name,
-      const fml::RefPtr<PropBundle> &init_data) override;
+  void CreatePlatformRenderer(int id, PlatformRendererType type,
+                              const fml::RefPtr<PropBundle> &init_data) override;
+  void CreatePlatformExtendedRenderer(int id, const base::String &tag_name,
+                                      const fml::RefPtr<PropBundle> &init_data) override;
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
 
-  void CreateImage(int id, base::String src, float width,
-                   float height) override;
+  void CreateImage(int id, base::String src, float width, float height) override;
 
 #pragma endregion  // NativePaintingContext
 
@@ -117,6 +108,8 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl,
   void Enqueue(F &&func);
 
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+
+  std::unique_ptr<PlatformRendererContextDarwin> context_;
 };
 
 }  // namespace tasm

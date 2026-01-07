@@ -19,6 +19,9 @@ typedef enum : NSInteger {
 
 @interface LynxUIOwner (Private)
 
+// Try to get the container view for the current LynxUIOwner.
+- (UIView<LUIBodyView>*)tryGetContainerView;
+
 // Given a specific tagName and props, return the corresponding Class and whether the tag is
 // supported or not.
 - (Class)getTargetClass:(NSString*)tagName

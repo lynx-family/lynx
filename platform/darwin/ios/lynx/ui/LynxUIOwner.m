@@ -219,6 +219,10 @@ extern NSString* const kDefaultComponentID;
   return LynxThreadStrategyForRenderAllOnUI;
 }
 
+- (UIView<LUIBodyView>*)tryGetContainerView {
+  return _containerView;
+}
+
 #pragma mark - A11y
 - (NSArray<UIView*>*)viewsWithA11yID:(NSString*)a11yID {
   NSMutableArray<UIView*>* ret = [NSMutableArray array];

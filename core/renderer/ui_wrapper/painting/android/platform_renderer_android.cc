@@ -29,8 +29,6 @@ PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
     const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data)
     : PlatformRendererImpl(id, type, tag_name), context_(context) {
-  is_platform_extended_renderer_ =
-      (type_ == PlatformRendererType::kUnknown && !tag_name_.empty());
   InitializeAndroidView(init_data);
   // Register this renderer with the context
   if (context_) {

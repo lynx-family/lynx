@@ -4855,6 +4855,7 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner(Accessibility)::listenAccessibilityFocused();
   public void LynxUIOwner(Accessibility)::setA11yFilter:(NSSet< NSString * > *filter);
   public BOOL LynxUIOwner(Accessibility)::checkNestedAccessibilityElements:(LynxUI *subTree);
+  public UIView< LUIBodyView > * LynxUIOwner(Private)::tryGetContainerView();
   public Class LynxUIOwner(Private)::getTargetClass:props:supportedState:(NSString *tagName, [props] NSDictionary *props, [supportedState] TagSupportedState *state);
   public BOOL LynxUIOwner(Private)::needCreateUIAsync:(NSString *tagName);
   public BOOL LynxUIOwner(Private)::needProcessDirection:(NSString *tagName);
@@ -4876,6 +4877,7 @@ public interface LynxUIOwner(Accessibility) {
 }
 
 public interface LynxUIOwner(Private) {
+  public UIView< LUIBodyView > * LynxUIOwner(Private)::tryGetContainerView();
   public Class LynxUIOwner(Private)::getTargetClass:props:supportedState:(NSString *tagName,[props] NSDictionary *props,[supportedState] TagSupportedState *state);
   public BOOL LynxUIOwner(Private)::needCreateUIAsync:(NSString *tagName);
   public BOOL LynxUIOwner(Private)::needProcessDirection:(NSString *tagName);
