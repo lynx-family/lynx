@@ -5,7 +5,6 @@
 
 $tools_path = Split-Path -Parent $MyInvocation.MyCommand.Path
 $lynx_dir_path = Split-Path -Parent $tools_path
-$lynx_root_dir_path = Split-Path -Parent $lynx_dir_path
 
 function Setup-Environment($environ_key, $environ_value) {
   [Environment]::SetEnvironmentVariable($environ_key, $environ_value, "User")
@@ -30,8 +29,9 @@ function Add-Environ($key, $value) {
 }
 
 function Lynx-Env-Setup {
-    $buildtoolsDir = Join-Path $lynx_root_dir_path 'buildtools'
+    $buildtoolsDir = Join-Path $lynx_dir_path 'buildtools'
     Add-Environ 'PATH' (Join-Path $buildtoolsDir 'ninja')
+    Add-Environ 'PATH' (Join-Path $lynx_dir_path 'tools_shared')
 }
 
 
@@ -41,6 +41,11 @@ function Android-Env-Setup {
   if ($androidHome) {
     $androidNdk = Join-Path $androidHome 'ndk/21.1.6352462'
     Setup-Environment 'ANDROID_NDK' $androidNdk
+    
+    $local_properties_file1 = Join-Path $lynx_dir_path 'platform\android\local.properties'
+    $local_properties_file2 = Join-Path $lynx_dir_path 'explorer\android\local.properties'
+    $cmake_dir = Join-Path $lynx_dir_path 'buildtools\cmake'
+    python $lynx_dir_path\tools\android_tools\update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$androidNdk" sdk.dir="$androidHome" cmake.dir="$cmake_dir"
   } else {
     Write-Host "Please setup ANDROID_HOME environment variable for android build first."
   }

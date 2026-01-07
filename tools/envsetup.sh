@@ -38,6 +38,11 @@ function android_env_setup() {
     export ANDROID_NDK=$ANDROID_HOME/ndk/21.1.6352462
     export ANDROID_NDK_21=$ANDROID_HOME/ndk/21.1.6352462
     export ANDROID_SDK=$ANDROID_HOME
+    
+    local local_properties_file1="${LYNX_DIR}/platform/android/local.properties"
+    local local_properties_file2="${LYNX_DIR}/explorer/android/local.properties"
+    local CMAKE_DIR="${LYNX_DIR}/buildtools/cmake"
+    python3 $LYNX_DIR/tools/android_tools/update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$ANDROID_NDK" sdk.dir="$ANDROID_SDK" cmake.dir="$CMAKE_DIR"
   else
     echo "Please setup ANDROID_HOME for android build first."
   fi
