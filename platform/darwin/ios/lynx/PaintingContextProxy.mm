@@ -6,10 +6,10 @@
 
 @implementation PaintingContextProxy {
   // not owned, LynxShell released after platform, ensure life cycle
-  lynx::tasm::PaintingContextDarwin* painting_context_;
+  lynx::tasm::PaintingCtxPlatformImpl* painting_context_;
 }
 
-- (instancetype)initWithPaintingContext:(lynx::tasm::PaintingContextDarwin*)paintingContext {
+- (instancetype)initWithPaintingContext:(lynx::tasm::PaintingCtxPlatformImpl*)paintingContext {
   if (self = [super init]) {
     painting_context_ = paintingContext;
   }
@@ -30,7 +30,6 @@
 }
 
 - (void)finishLayoutOperation {
-  painting_context_->LayoutDidFinish();
   painting_context_->Flush();
 }
 

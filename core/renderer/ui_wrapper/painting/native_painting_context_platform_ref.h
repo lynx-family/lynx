@@ -69,6 +69,8 @@ class NativePaintingCtxPlatformRef : public PaintingCtxPlatformRef {
   // Get PlatformEventTargetHelper instance.
   PlatformEventTargetHelper *GetEventTargetHelper();
 
+  bool IsNativePaintingCtxPlatformRef() override { return true; }
+
  protected:
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);

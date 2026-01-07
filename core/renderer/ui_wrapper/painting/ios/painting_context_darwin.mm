@@ -16,6 +16,7 @@
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
 #include "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"
 #include "core/services/feature_count/feature.h"
@@ -58,34 +59,6 @@ namespace lynx {
 namespace tasm {
 
 namespace {
-
-template <typename F>
-void ExecuteSafely(const F& func) {
-  @try {
-    func();
-  } @catch (NSException* e) {
-    std::string msg = [[NSString stringWithFormat:@"%@:%@", [e name], [e reason]] UTF8String];
-    if (LYNX_ERROR(error::E_EXCEPTION_PLATFORM, msg, "")) {
-      auto& instance = lynx::base::ErrorStorage::GetInstance();
-      std::string stack;
-      NSString* rawStack = [LynxCallStackUtil getCallStack:e];
-      stack = lynx::base::debug::GetBacktraceInfo(stack);
-      instance.AddCustomInfoToError("error_stack", stack);
-      if (rawStack) {
-        instance.AddCustomInfoToError("raw_stack", rawStack.UTF8String);
-      }
-      NSDictionary* info = [e userInfo];
-      NSDictionary* customInfo = [info objectForKey:@"LynxErrorCustomInfo"];
-      if (customInfo) {
-        for (NSString* key in customInfo) {
-          instance.AddCustomInfoToError([key UTF8String],
-                                        [[customInfo objectForKey:key] UTF8String]);
-        }
-      }
-    }
-  }
-}
-
 #if ENABLE_TRACE_PERFETTO
 rapidjson::Value DumpUITreeLayoutRecursively(LynxUI* root, rapidjson::Document& doc) {
   rapidjson::Document::AllocatorType& allocator = doc.GetAllocator();
@@ -699,7 +672,7 @@ void PaintingContextDarwin::UpdatePlatformExtraBundle(int32_t signature,
 }
 
 void PaintingContextDarwin::FinishLayoutOperation(const std::shared_ptr<PipelineOptions>& options) {
-  is_layout_finish_ = true;
+  MarkLayoutFinish();
   __weak LynxUIOwner* uiOwner = uiOwner_;
   Enqueue([uiOwner, weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_), options]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_FINISH_LAYOUT_OPERATION);
@@ -725,20 +698,13 @@ void PaintingContextDarwin::FinishTasmOperation(const std::shared_ptr<PipelineOp
   }
 }
 
-bool PaintingContextDarwin::IsLayoutFinish() { return is_layout_finish_; }
-
-void PaintingContextDarwin::ResetLayoutStatus() { is_layout_finish_ = false; }
-
-// TODO(heshan):remove related invocation
-void PaintingContextDarwin::LayoutDidFinish() {}
-
 void PaintingContextDarwin::ForceFlush() { queue_->ForceFlush(); }
 
 template <typename F>
 void PaintingContextDarwin::Enqueue(F&& func) {
   queue_->EnqueueUIOperation([func = std::move(func)]() {
     @autoreleasepool {
-      ExecuteSafely(func);
+      PaintingContextDarwinUtils::ExecuteSafely(func);
     }
   });
 }
@@ -747,7 +713,7 @@ template <typename F>
 void PaintingContextDarwin::EnqueueHighPriorityUIOperation(F&& func) {
   queue_->EnqueueHighPriorityUIOperation([func = std::move(func)]() {
     @autoreleasepool {
-      ExecuteSafely(func);
+      PaintingContextDarwinUtils::ExecuteSafely(func);
     }
   });
 }
@@ -755,7 +721,7 @@ void PaintingContextDarwin::EnqueueHighPriorityUIOperation(F&& func) {
 shell::UIOperation PaintingContextDarwin::ExecuteOperationSafely(shell::UIOperation op) {
   return [func = std::move(op)]() {
     @autoreleasepool {
-      ExecuteSafely(func);
+      PaintingContextDarwinUtils::ExecuteSafely(func);
     }
   };
 }

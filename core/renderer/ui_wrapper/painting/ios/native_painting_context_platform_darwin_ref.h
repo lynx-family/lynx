@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_NATIVE_PAINTING_CONTEXT_PLATFORM_DARWIN_REF_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_NATIVE_PAINTING_CONTEXT_PLATFORM_DARWIN_REF_H_
 
+#import <Lynx/LynxPerformanceController.h>
+
 #include <memory>
 
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
@@ -19,6 +21,13 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   explicit NativePaintingCtxPlatformDarwinRef(
       std::unique_ptr<PlatformRendererFactory> view_factory);
   ~NativePaintingCtxPlatformDarwinRef() override = default;
+
+  void SetPerformanceController(LynxPerformanceController* controller) {
+    perf_controller_ = controller;
+  }
+
+ private:
+  __weak LynxPerformanceController* perf_controller_;
 };
 
 }  // namespace tasm

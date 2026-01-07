@@ -5365,7 +5365,7 @@ public protocol OverlayService-p : <NSObject> {
 }
 
 public class PaintingContextProxy : NSObject, <LynxShadowNodeDelegate> {
-  public instancetype PaintingContextProxy::initWithPaintingContext:(lynx::tasm::PaintingContextDarwin *paintingContext);
+  public instancetype PaintingContextProxy::initWithPaintingContext:(lynx::tasm::PaintingCtxPlatformImpl *paintingContext);
   public BOOL PaintingContextProxy::isLayoutFinish();
   public void PaintingContextProxy::resetLayoutStatus();
 }

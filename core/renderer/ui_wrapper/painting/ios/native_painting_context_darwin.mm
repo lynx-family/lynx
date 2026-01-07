@@ -3,9 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
+#include "base/include/debug/lynx_error.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
+#include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
@@ -13,7 +15,7 @@ namespace lynx {
 namespace tasm {
 
 NativePaintingCtxDarwin::NativePaintingCtxDarwin() {
-  platform_ref_ = std::make_shared<NativePaintingCtxPlatformRef>(
+  platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
       std::make_unique<PlatformRendererDarwinFactory>());
   text_layout_impl_ = std::make_unique<TextLayoutDarwin>(nil, nil);
 }
@@ -89,20 +91,38 @@ void NativePaintingCtxDarwin::Flush() { queue_->Flush(); }
 
 void NativePaintingCtxDarwin::CreatePlatformRenderer(int id, PlatformRendererType type,
                                                      const fml::RefPtr<PropBundle> &init_data) {
-  // TODO: impl this function later.
+  Enqueue([ref = platform_ref_, id, type, init_data]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->CreatePlatformRenderer(
+        id, type, init_data);
+  });
 }
 
 void NativePaintingCtxDarwin::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name, const fml::RefPtr<PropBundle> &init_data) {
-  // TODO: impl this function later.
+  Enqueue([ref = platform_ref_, id, tag_name, init_data]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)
+        ->CreatePlatformExtendedRenderer(id, tag_name, init_data);
+  });
 }
 
 void NativePaintingCtxDarwin::UpdateDisplayList(int id, DisplayList display_list) {
-  // TODO: impl this function later.
+  Enqueue([ref = platform_ref_, id, dl = std::move(display_list)]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->UpdateDisplayList(
+        id, std::move(const_cast<DisplayList &>(dl)));
+  });
 }
 
 void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height) {
   // TODO: impl this function later.
+}
+
+template <typename F>
+void NativePaintingCtxDarwin::Enqueue(F &&func) {
+  queue_->EnqueueUIOperation([func = std::move(func)]() {
+    @autoreleasepool {
+      PaintingContextDarwinUtils::ExecuteSafely(func);
+    }
+  });
 }
 
 }  // namespace tasm

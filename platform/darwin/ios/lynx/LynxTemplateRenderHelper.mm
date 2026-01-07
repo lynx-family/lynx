@@ -42,6 +42,7 @@
 #include "core/public/lynx_extension_delegate.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
 #include "core/shell/ios/js_proxy_darwin.h"
@@ -107,15 +108,14 @@
     painting_context = ui_delegate->CreatePaintingContext();
     if ([_lynxUIRenderer needPaintingContextProxy]) {
       painting_context = ui_delegate->CreatePaintingContext();
-      _paintingContextProxy = [[PaintingContextProxy alloc]
-          initWithPaintingContext:reinterpret_cast<lynx::tasm::PaintingContextDarwin*>(
-                                      painting_context.get())];
+      _paintingContextProxy =
+          [[PaintingContextProxy alloc] initWithPaintingContext:painting_context.get()];
       [_shadowNodeOwner setDelegate:_paintingContextProxy];
-      auto* painting_context_ref = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
-          painting_context->GetPlatformRef().get());
+
       _performanceController =
           [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
-      painting_context_ref->SetPerformanceController(_performanceController);
+      lynx::tasm::PaintingContextDarwinUtils::SetPerformanceController(
+          painting_context->GetPlatformRef().get(), _performanceController);
       _context.perfController = _performanceController;
       if (_embeddedMode == LynxEmbeddedModeBase) {
         [_performanceController setEmbeddedModeEnabled:YES];

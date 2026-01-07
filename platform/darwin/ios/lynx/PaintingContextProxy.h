@@ -3,13 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxShadowNode.h>
-#include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
+#include "core/public/painting_ctx_platform_impl.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PaintingContextProxy : NSObject <LynxShadowNodeDelegate>
 
-- (instancetype)initWithPaintingContext:(lynx::tasm::PaintingContextDarwin*)paintingContext;
+- (instancetype)initWithPaintingContext:(lynx::tasm::PaintingCtxPlatformImpl*)paintingContext;
 
 /**
  * Get layout status
