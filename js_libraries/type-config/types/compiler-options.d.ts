@@ -19,7 +19,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  debugInfoOutside?: boolean
+  debugInfoOutside?: boolean;
 
   /**
    * NA
@@ -31,7 +31,7 @@ export interface CompilerOptions {
    * @defaultValue true
    *
    */
-  defaultDisplayLinear?: boolean
+  defaultDisplayLinear?: boolean;
 
   /**
    * NA
@@ -43,7 +43,7 @@ export interface CompilerOptions {
    * @defaultValue true
    *
    */
-  defaultOverflowVisible?: boolean
+  defaultOverflowVisible?: boolean;
 
   /**
    * NA
@@ -55,7 +55,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  disableMultipleCascadeCSS?: boolean
+  disableMultipleCascadeCSS?: boolean;
 
   /**
    * NA
@@ -67,7 +67,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableComponentConfig?: boolean
+  enableComponentConfig?: boolean;
 
   /**
    * NA
@@ -79,7 +79,7 @@ export interface CompilerOptions {
    * @defaultValue undefined
    *
    */
-  enableCSSAsyncDecode?: boolean
+  enableCSSAsyncDecode?: boolean;
 
   /**
    * NA
@@ -91,7 +91,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableCSSClassMerge?: boolean
+  enableCSSClassMerge?: boolean;
 
   /**
    * NA
@@ -103,7 +103,7 @@ export interface CompilerOptions {
    * @defaultValue true
    *
    */
-  enableCSSEngine?: boolean
+  enableCSSEngine?: boolean;
 
   /**
    * NA
@@ -115,7 +115,7 @@ export interface CompilerOptions {
    * @defaultValue true
    *
    */
-  enableCSSExternalClass?: boolean
+  enableCSSExternalClass?: boolean;
 
   /**
    * If enable CSS invalidation we use RuleInvalidationSet to gather the selector invalidation.
@@ -127,7 +127,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableCSSInvalidation?: boolean
+  enableCSSInvalidation?: boolean;
 
   /**
    * NA
@@ -139,7 +139,7 @@ export interface CompilerOptions {
    * @defaultValue undefined
    *
    */
-  enableCSSLazyDecode?: boolean
+  enableCSSLazyDecode?: boolean;
 
   /**
    * This switch will enable the css module in blink standard mode.
@@ -151,7 +151,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableCSSSelector?: boolean
+  enableCSSSelector?: boolean;
 
   /**
    * CSS Length should be <number> follows a unit. Under strict mode, invalid <length> values are dropped.
@@ -163,7 +163,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableCSSStrictMode?: boolean
+  enableCSSStrictMode?: boolean;
 
   /**
    * NA
@@ -175,7 +175,7 @@ export interface CompilerOptions {
    * @defaultValue true
    *
    */
-  enableCSSVariable?: boolean
+  enableCSSVariable?: boolean;
 
   /**
    * NA
@@ -187,7 +187,7 @@ export interface CompilerOptions {
    * @defaultValue undefined
    *
    */
-  enableEventRefactor?: boolean
+  enableEventRefactor?: boolean;
 
   /**
    * NA
@@ -199,7 +199,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableFiberArch?: boolean
+  enableFiberArch?: boolean;
 
   /**
    * If enable this value, the template will be encoded as flexible template.
@@ -211,7 +211,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableFlexibleTemplate?: boolean
+  enableFlexibleTemplate?: boolean;
 
   /**
    * NA
@@ -223,7 +223,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableKeepPageData?: boolean
+  enableKeepPageData?: boolean;
 
   /**
    * NA
@@ -235,7 +235,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableRemoveCSSScope?: boolean
+  enableRemoveCSSScope?: boolean;
 
   /**
    * Using the simplified styling module.
@@ -247,7 +247,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  enableSimpleStyling?: boolean
+  enableSimpleStyling?: boolean;
 
   /**
    * Allow encoding quickjs bytecode instead of source code in template.
@@ -259,7 +259,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  experimental_encodeQuickjsBytecode?: boolean
+  experimental_encodeQuickjsBytecode?: boolean;
 
   /**
    * NA
@@ -271,7 +271,7 @@ export interface CompilerOptions {
    * @defaultValue undefined
    *
    */
-  forceCalcNewStyle?: boolean
+  forceCalcNewStyle?: boolean;
 
   /**
    * NA
@@ -283,7 +283,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  implicitAnimation?: boolean
+  implicitAnimation?: boolean;
 
   /**
    * NA
@@ -295,7 +295,7 @@ export interface CompilerOptions {
    * @defaultValue false
    *
    */
-  removeCSSParserLog?: boolean
+  removeCSSParserLog?: boolean;
 
   /**
    * NA
@@ -307,7 +307,7 @@ export interface CompilerOptions {
    * @defaultValue ""
    *
    */
-  targetSdkVersion?: string
+  targetSdkVersion?: string;
 
   /**
    * NA
@@ -319,6 +319,5 @@ export interface CompilerOptions {
    * @defaultValue ""
    *
    */
-  templateDebugUrl?: string
-
+  templateDebugUrl?: string;
 }

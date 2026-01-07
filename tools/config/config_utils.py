@@ -13,6 +13,7 @@ import subprocess
 _this_dir = Path(__file__).resolve().parent
 _root_dir = _this_dir.parents[2]
 _clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang-format"
+_npx_binary = "npx.exe" if sys.platform == "win32" else "npx"
 
 
 def _get_clang_format_path():
@@ -28,8 +29,21 @@ def _get_clang_format_path():
     # 2. Fallback to system PATH
     return shutil.which(_clang_format_binary) or _clang_format_binary
 
+def _get_npx_path():
+    # 1. Check pre-defined paths in the repository
+    candidate_paths = [
+        _root_dir / "buildtools" / "node" / "bin" / _npx_binary,
+        _root_dir / "lynx" / "buildtools" / "node" / "bin" / _npx_binary,
+    ]
+    for path in candidate_paths:
+        if path.exists():
+            return str(path)
+
+    # 2. Fallback to system PATH
+    return shutil.which(_npx_binary) or _npx_binary
 
 CLANG_FORMAT_PATH = _get_clang_format_path()
+NPX_PATH = _get_npx_path()
 
 
 def clang_format(file: str, style="Google", file_extension=None) -> str:
@@ -73,3 +87,21 @@ def sort_by_deprecated_and_alphabetical(configs):
 
     configs_sorted = valid_configs + deprecated_configs
     return configs_sorted
+
+
+def prettier_format(directory: Path):
+    """Run prettier on a directory to format JS/TS files."""
+    if not directory.exists():
+        return
+    try:
+        subprocess.run(
+            [NPX_PATH, "prettier", "--write", str(directory)],
+            cwd=directory,
+            capture_output=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"prettier format failed: {e.stderr}", file=sys.stderr)
+    except FileNotFoundError:
+        print("npx not found, skipping prettier format", file=sys.stderr)
+
