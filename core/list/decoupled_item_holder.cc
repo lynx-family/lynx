@@ -37,12 +37,12 @@ void ItemHolder::UpdateLayoutFromItemDelegate(
 }
 
 void ItemHolder::UpdateLayoutToPlatform(float content_size,
-                                        float container_size) {
-  UpdateLayoutToPlatform(content_size, container_size, item_delegate_);
+                                        float container_width) {
+  UpdateLayoutToPlatform(content_size, container_width, item_delegate_);
 }
 
 void ItemHolder::UpdateLayoutToPlatform(float content_size,
-                                        float container_size,
+                                        float container_width,
                                         ItemElementDelegate* item_delegate) {
   if (item_delegate) {
     if (animation_delegate_->UpdateAnimation() &&
@@ -51,15 +51,15 @@ void ItemHolder::UpdateLayoutToPlatform(float content_size,
       // need the new item holder to also run the transform animation.
     } else {
       if (direction_ == Direction::kRTL) {
-        item_delegate_->UpdateLayoutToPlatform(
-            GetRTLLeft(content_size, container_size, left_, width_), top_);
+        item_delegate->UpdateLayoutToPlatform(
+            GetRTLLeft(content_size, container_width, left_, width_), top_);
       } else {
-        item_delegate_->UpdateLayoutToPlatform(left_, top_);
+        item_delegate->UpdateLayoutToPlatform(left_, top_);
       }
     }
     // Record current content size and container width.
     content_size_ = content_size;
-    container_width_ = container_size;
+    container_width_ = container_width;
   }
 }
 
@@ -69,8 +69,7 @@ void ItemHolder::UpdateLayoutFromManager(float left, float top) {
     return;
   }
   if (animation_delegate_->UpdateAnimation() &&
-      animation_delegate_->AnimationType() !=
-          ListContainerAnimationType::kNone &&
+      animation_delegate_->AnimationType() != ListAnimationType::kNone &&
       std::isnan(animation_origin_left_) && std::isnan(animation_origin_top_)) {
     animation_origin_left_ = left_;
     animation_origin_top_ = top_;
@@ -86,21 +85,91 @@ void ItemHolder::UpdateLayoutFromManager(float left, float top) {
 }
 
 void ItemHolder::DoAnimationFrame(float progress) {
-  // TODO(dingwang.wxx): impl animation
+  ItemElementDelegate* item_delegate =
+      animation_delegate_->GetItemElementDelegate(this);
+  if (item_delegate) {
+    if (animation_type_ == ItemHolderAnimationType::kNone) {
+      return;
+    }
+    DCHECK((animation_type_ == ItemHolderAnimationType::kTransform) ==
+               !std::isnan(animation_origin_left_) &&
+           (animation_type_ == ItemHolderAnimationType::kTransform) ==
+               !std::isnan(animation_origin_top_));
+    DCHECK((animation_type_ == ItemHolderAnimationType::kOpacity) ==
+           !std::isnan(animation_origin_opacity_));
+    if (animation_type_ == ItemHolderAnimationType::kTransform &&
+        !std::isnan(animation_origin_left_) &&
+        !std::isnan(animation_origin_top_)) {
+      float l =
+          animation_origin_left_ + (left_ - animation_origin_left_) * progress;
+      const float t =
+          animation_origin_top_ + (top_ - animation_origin_top_) * progress;
+      if (direction_ == Direction::kRTL) {
+        l = GetRTLLeft(content_size_, container_width_, l, width_);
+      }
+      item_delegate->UpdateLayoutToPlatform(l, t);
+      item_delegate->FlushPatching();
+    } else if (animation_type_ == ItemHolderAnimationType::kOpacity &&
+               !std::isnan(animation_origin_opacity_)) {
+      item_delegate->FlushAnimatedStyle(
+          tasm::CSSPropertyID::kPropertyIDOpacity,
+          tasm::CSSValue(std::fabs(animation_origin_opacity_ - progress),
+                         tasm::CSSValuePattern::NUMBER));
+    }
+  }
 }
 
 void ItemHolder::EndAnimation() {
-  // TODO(dingwang.wxx): impl animation
+  ItemElementDelegate* item_delegate =
+      animation_delegate_->GetItemElementDelegate(this);
+  if (animation_type_ == ItemHolderAnimationType::kTransform) {
+    if (item_delegate && (left_ != item_delegate->GetLeft() ||
+                          top_ != item_delegate->GetTop())) {
+      if (direction_ == Direction::kRTL) {
+        item_delegate->UpdateLayoutToPlatform(
+            GetRTLLeft(content_size_, container_width_, left_, width_), top_);
+      } else {
+        item_delegate->UpdateLayoutToPlatform(left_, top_);
+      }
+    }
+    animation_origin_left_ = std::numeric_limits<float>::quiet_NaN();
+    animation_origin_top_ = std::numeric_limits<float>::quiet_NaN();
+    content_size_ = std::numeric_limits<float>::quiet_NaN();
+    container_width_ = std::numeric_limits<float>::quiet_NaN();
+  } else if (animation_type_ == ItemHolderAnimationType::kOpacity) {
+    if (item_delegate) {
+      item_delegate->FlushAnimatedStyle(
+          tasm::CSSPropertyID::kPropertyIDOpacity,
+          tasm::CSSValue(1, tasm::CSSValuePattern::NUMBER));
+    }
+    if (animation_origin_opacity_ == 1.f) {
+      animation_delegate_->RecycleItemHolder(this);
+    }
+    animation_origin_opacity_ = std::numeric_limits<float>::quiet_NaN();
+  }
+  DCHECK(std::isnan(animation_origin_top_));
+  DCHECK(std::isnan(animation_origin_left_));
+  DCHECK(std::isnan(animation_origin_opacity_));
+  animation_type_ = ItemHolderAnimationType::kNone;
 }
 
 // Animation here means the `animation` of *this* item holder, nor all the list
 // animations.
 void ItemHolder::RecycleAfterAnimation(ItemHolderAnimationType type) {
-  // TODO(dingwang.wxx): impl animation
+  if (!animation_delegate_->UpdateAnimation()) {
+    return;
+  }
+  animation_type_ = type;
+  if (type == ItemHolderAnimationType::kOpacity) {
+    animation_origin_opacity_ = 1.f;
+  }
+  animation_delegate_->DeferredDestroyItemHolder(this);
 }
 
 void ItemHolder::MarkInsertOpacity() {
-  // TODO(dingwang.wxx): impl animation
+  DCHECK(animation_type_ == ItemHolderAnimationType::kNone);
+  animation_type_ = ItemHolderAnimationType::kOpacity;
+  animation_origin_opacity_ = 0.f;
 }
 
 float ItemHolder::height() const {
@@ -142,12 +211,12 @@ float ItemHolder::GetMargin(FrameDirection frame_direction) const {
   return margins_[static_cast<uint32_t>(frame_direction)];
 }
 
-float ItemHolder::GetRTLLeft(float content_size, float container_size,
+float ItemHolder::GetRTLLeft(float content_size, float container_width,
                              float left, float width) const {
   if (orientation_ == Orientation::kHorizontal) {
-    return std::max(content_size, container_size) - left - width;
+    return std::max(content_size, container_width) - left - width;
   }
-  return container_size - left - width;
+  return container_width - left - width;
 }
 
 bool ItemHolder::IsAtStickyPosition(float content_offset, float list_height,

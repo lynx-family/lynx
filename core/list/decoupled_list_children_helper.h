@@ -11,12 +11,13 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/list/decoupled_item_holder.h"
-#include "core/list/decoupled_list_orientation_helper.h"
 
 namespace lynx {
 namespace list {
 
 using ItemHolderSet = std::set<ItemHolder*, ItemHolder::Compare>;
+using WeakItemHolderSet =
+    std::set<fml::WeakPtr<ItemHolder>, ItemHolder::WeakCompare>;
 
 // Utility class for traversing all child nodes.
 class ListChildrenHelper {
@@ -56,11 +57,15 @@ class ListChildrenHelper {
   void UpdateTraceDebugInfo(TraceEvent* event);
 #endif
   void AddChild(const ItemHolderSet& children, ItemHolder* item_holder);
+  void AddChild(const WeakItemHolderSet& children, ItemHolder* item_holder);
   void AttachChild(ItemHolder* item_holder, ItemElementDelegate* item_delegate);
   void DetachChild(ItemHolder* item_holder, ItemElementDelegate* item_delegate);
   void ForEachChild(const std::function<bool(ItemHolder*)>& func,
                     bool reverse = false) const;
   void ForEachChild(const ItemHolderSet& children,
+                    const std::function<bool(ItemHolder*)>& func,
+                    bool reverse = false) const;
+  void ForEachChild(const WeakItemHolderSet& children,
                     const std::function<bool(ItemHolder*)>& func,
                     bool reverse = false) const;
   const ItemHolderSet& children() const { return children_; }
@@ -107,6 +112,9 @@ class ListChildrenHelper {
   const ItemHolderSet& last_binding_children() const {
     return last_binding_children_;
   }
+  const WeakItemHolderSet& deferred_destroy_children() const {
+    return deferred_destroy_children_;
+  }
   void EraseFromLastBindingChildren(ItemHolder* item_holder);
   void HandleLayoutOrScrollResult(
       const std::function<bool(ItemHolder*)>& insert_handler,
@@ -146,7 +154,8 @@ class ListChildrenHelper {
   // NOTE: there are maybe some item holders which cant be destroyed in diff
   // process because of animation. And because they are managed by unique_ptr,
   // they cant be managed by themselves.
-  ItemHolderSet deferred_destroy_children_;
+  // And we need to ensure the children's safety during animation process.
+  WeakItemHolderSet deferred_destroy_children_;
 };
 
 }  // namespace list

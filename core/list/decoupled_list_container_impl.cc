@@ -14,9 +14,6 @@
 #include "core/list/decoupled_linear_layout_manager.h"
 #include "core/list/decoupled_staggered_grid_layout_manager.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/renderer/ui_wrapper/layout/list_node.h"
-#include "core/renderer/utils/lynx_env.h"
-#include "core/services/timing_handler/timing_constants_deprecated.h"
 
 namespace lynx {
 namespace list {
@@ -29,8 +26,7 @@ ListContainerImpl::ListContainerImpl(
       list_adapter_(std::make_unique<DefaultListAdapter>(this)),
       list_children_helper_(std::make_unique<ListChildrenHelper>()),
       list_event_manager_(std::make_unique<ListEventManager>(this)),
-      list_animation_manager_(
-          std::make_unique<ListContainerAnimationManager>(this)),
+      list_animation_manager_(CreateListAnimationManager(this)),
       value_factory_(value_factory) {
   DLIST_LOGI("ListContainerImpl::ListContainerImpl() this=" << this);
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
@@ -473,7 +469,6 @@ void ListContainerImpl::PropsUpdateFinish() {
   list_event_manager_->SendDiffDebugEventIfNeeded();
 
   // Handle experimental-batch-render-strategy attr.
-
   // Note: need to move from DefaultListAdapter to BatchListAdapter before
   // invoke UpdateItemHolderToLatest().
   if (enable_batch_render() && !batch_adapter_initialized_) {

@@ -336,7 +336,7 @@ enum class SearchRefAnchorStrategy {
 
 enum class ItemHolderAnimationType { kNone, kTransform, kOpacity };
 
-enum class ListContainerAnimationType { kNone, kRemove, kInsert, kUpdate };
+enum class ListAnimationType { kNone, kRemove, kInsert, kUpdate };
 
 enum class ListAdapterDiffResult {
   kNone = 0,

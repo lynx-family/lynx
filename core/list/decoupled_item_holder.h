@@ -25,9 +25,10 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
    public:
     virtual ~AnimationDelegate() = default;
     // Animation running currently.
-    virtual ListContainerAnimationType AnimationType() const = 0;
+    virtual ListAnimationType AnimationType() const = 0;
     virtual void DeferredDestroyItemHolder(ItemHolder* holder) = 0;
     virtual void RecycleItemHolder(ItemHolder* holder) = 0;
+    virtual ItemElementDelegate* GetItemElementDelegate(ItemHolder* holder) = 0;
     // Whether enable update animation in frontend, distinguish this from
     // `AnimationType()` plz.
     virtual bool UpdateAnimation() const = 0;
@@ -56,14 +57,22 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
     }
   };
 
+  class WeakCompare {
+   public:
+    bool operator()(const fml::WeakPtr<ItemHolder>& lhs,
+                    const fml::WeakPtr<ItemHolder>& rhs) const {
+      return Compare()(lhs.get(), rhs.get());
+    }
+  };
+
   ItemHolder(int index, const std::string& item_key,
              AnimationDelegate* delegate);
   virtual ~ItemHolder() = default;
 
   void UpdateLayoutFromItemDelegate();
   void UpdateLayoutFromItemDelegate(ItemElementDelegate* item_delegate);
-  void UpdateLayoutToPlatform(float content_size, float container_size);
-  void UpdateLayoutToPlatform(float content_size, float container_size,
+  void UpdateLayoutToPlatform(float content_size, float container_width);
+  void UpdateLayoutToPlatform(float content_size, float container_width,
                               ItemElementDelegate* item_delegate);
   void UpdateLayoutFromManager(float left, float top);
   bool IsAtStickyPosition(float content_offset, float list_height,
@@ -133,7 +142,7 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   bool recyclable() const { return recyclable_; }
 
  private:
-  float GetRTLLeft(float content_size, float container_size, float left,
+  float GetRTLLeft(float content_size, float container_width, float left,
                    float width) const;
   float GetSizeInMainAxis() const;
   void SetItemDelegate(ItemElementDelegate* item_delegate) {

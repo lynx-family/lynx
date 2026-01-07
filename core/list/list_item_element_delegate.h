@@ -6,11 +6,12 @@
 #define CORE_LIST_LIST_ITEM_ELEMENT_DELEGATE_H_
 
 #include <array>
-#include <cstdint>
 #include <memory>
 #include <string>
 
 #include "core/public/pub_value.h"
+#include "core/renderer/css/css_property_id.h"
+#include "core/renderer/css/css_value.h"
 
 namespace lynx {
 namespace list {
@@ -23,6 +24,8 @@ class ItemElementDelegate {
   virtual std::string GetIdSelector() const = 0;
   virtual float GetWidth() const = 0;
   virtual float GetHeight() const = 0;
+  virtual float GetLeft() const = 0;
+  virtual float GetTop() const = 0;
   virtual const std::array<float, 4>& GetPaddings() const = 0;
   virtual const std::array<float, 4>& GetMargins() const = 0;
   virtual const std::array<float, 4>& GetBorders() const = 0;
@@ -34,6 +37,9 @@ class ItemElementDelegate {
   virtual void OnListItemWillAppear(const std::string& item_key) = 0;
   virtual void OnListItemDisappear(bool is_exist,
                                    const std::string& item_key) = 0;
+  virtual void FlushPatching() {}
+  virtual void FlushAnimatedStyle(tasm::CSSPropertyID id,
+                                  tasm::CSSValue value) {}
 };
 
 }  // namespace list

@@ -292,13 +292,12 @@ void ListAdapter::UpdateItemHolderToLatest(
         OnItemHolderReInsert(item_holder);
       }
     } else {
-      ListContainerAnimationManager* list_animation_manager =
+      ListAnimationManager* list_animation_manager =
           list_container_->list_animation_manager();
       (*item_holder_map_)[item_key] = std::make_unique<ItemHolder>(
           new_index, item_key, list_animation_manager);
       item_holder = (*item_holder_map_)[item_key].get();
-      if (list_animation_manager->AnimationType() !=
-          ListContainerAnimationType::kNone) {
+      if (list_animation_manager->AnimationType() != ListAnimationType::kNone) {
         item_holder->MarkInsertOpacity();
       }
       OnItemHolderInserted(item_holder);
@@ -572,15 +571,14 @@ void ListAdapter::RecycleAllItemHolders() {
 
 void ListAdapter::RecycleRemovedItemHolders() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_RECYCLE_REMOVED_ITEM_HOLDER);
-  ListContainerAnimationManager* list_animation_manager =
+  ListAnimationManager* list_animation_manager =
       list_container_->list_animation_manager();
   for (auto it = item_holder_map_->begin(); it != item_holder_map_->end();) {
     const auto& item_holder = it->second.get();
     if (item_holder && IsRemoved(item_holder)) {
       RecycleItemHolder(item_holder);
       if (list_animation_manager->UpdateAnimation() &&
-          list_animation_manager->AnimationType() !=
-              ListContainerAnimationType::kNone) {
+          list_animation_manager->AnimationType() != ListAnimationType::kNone) {
         ++it;
       } else {
         it = item_holder_map_->erase(it);
@@ -633,10 +631,10 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
     return;
   }
   if (auto type = list_container_->list_animation_manager()->AnimationType();
-      type != ListContainerAnimationType::kNone) {
-    if (type == ListContainerAnimationType::kRemove) {
+      type != ListAnimationType::kNone) {
+    if (type == ListAnimationType::kRemove) {
       item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kOpacity);
-    } else if (type == ListContainerAnimationType::kInsert) {
+    } else if (type == ListAnimationType::kInsert) {
       // The insert animation in a list may push a child off the screen, but at
       // that moment we still need a transform animation, so deferred destroy is
       // still necessary.

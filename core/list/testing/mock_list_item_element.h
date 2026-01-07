@@ -27,10 +27,15 @@ class MockListItemElement : public ItemElementDelegate {
   }
   float GetWidth() const override { return width_; }
   float GetHeight() const override { return height_; }
+  float GetLeft() const override { return left_; }
+  float GetTop() const override { return top_; }
   const std::array<float, 4>& GetPaddings() const override { return paddings_; }
   const std::array<float, 4>& GetMargins() const override { return margins_; }
   const std::array<float, 4>& GetBorders() const override { return borders_; }
-  void UpdateLayoutToPlatform(float left, float top) override {}
+  void UpdateLayoutToPlatform(float left, float top) override {
+    left_ = left;
+    top_ = top;
+  }
   bool HasBoundEvent(const std::string& event_name) const override {
     return events_.find(event_name) != events_.end();
   }
@@ -44,6 +49,8 @@ class MockListItemElement : public ItemElementDelegate {
 
  private:
   int32_t impl_id_{-1};
+  float left_{0.f};
+  float top_{0.f};
   float width_{500.f};
   float height_{100.f};
   std::array<float, 4> paddings_{0.f, 0.f, 0.f, 0.f};
