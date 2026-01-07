@@ -16,11 +16,13 @@ To add a new configuration option, you should not modify the files in this packa
     Run the generation script to update the `d.ts` files and key lists in this package.
 
     From the `lynx` directory:
+
     ```bash
     python3 tools/config/check_and_run.py
     ```
 
     This script will automatically update:
+
     - `js_libraries/type-config/types/*.d.ts`
     - `js_libraries/type-config/config-keys.js`
 
@@ -45,8 +47,8 @@ it('should have correct configKeys', () => {
       // ...
       "yourNewConfig",
     ]
-  `)
-})
+  `);
+});
 ```
 
 ### 2. Add Type Tests
@@ -54,6 +56,7 @@ it('should have correct configKeys', () => {
 The file `test/index.test-d.ts` ensures that the generated TypeScript definitions are correct.
 
 Add a type check for your new property:
+
 ```typescript
 // test/index.test-d.ts
 
@@ -72,5 +75,6 @@ npm test
 ```
 
 This command executes:
+
 1.  `vitest`: Verifies that the exported keys match the snapshots.
 2.  `tsc --noEmit`: Verifies that the type definitions match the expectations in `index.test-d.ts`.

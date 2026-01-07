@@ -10,7 +10,7 @@ import yaml
 import re
 import sys
 from jinja2 import Template
-from config_utils import clang_format, sort_by_deprecated_and_alphabetical
+from config_utils import clang_format, sort_by_deprecated_and_alphabetical, prettier_format
 import argparse
 from config_def import Config
 from config_env import (
@@ -348,6 +348,53 @@ def _gen_config_keys(
         )
 
 
+def _gen_test_files(configs: list[Config], export_configs: list[Config], options: list[Config], export_options: list[Config]):
+    """Generate test files from templates."""
+    # Generate index.test.js
+    test_js_tmpl_path = JINJA_TEMPLATES_PATH / "test_js.tmpl"
+    test_js_path = JS_LIBRARIES_CONFIG_PATH / "test" / "index.test.js"
+    render_code_content(
+        test_js_tmpl_path,
+        test_js_path,
+        sort_by_deprecated_and_alphabetical(export_configs),
+        sort_by_deprecated_and_alphabetical(export_options),
+        export=True
+    )
+
+    # Generate index.test-d.ts
+    test_types_tmpl_path = JINJA_TEMPLATES_PATH / "test_types.tmpl"
+    test_types_path = JS_LIBRARIES_CONFIG_PATH / "test" / "index.test-d.ts"
+    render_code_content(
+        test_types_tmpl_path,
+        test_types_path,
+        sort_by_deprecated_and_alphabetical(export_configs),
+        sort_by_deprecated_and_alphabetical(export_options),
+        export=True
+    )
+
+    # Generate index.test.js
+    test_js_path = OLIVER_CONFIG_PATH / "test" / "index.test.js"
+    if test_js_path.exists():
+        render_code_content(
+            test_js_tmpl_path,
+            test_js_path,
+            sort_by_deprecated_and_alphabetical(export_configs),
+            sort_by_deprecated_and_alphabetical(export_options),
+            export=False
+        )
+
+    # Generate index.test-d.ts
+    test_types_path = OLIVER_CONFIG_PATH / "test" / "index.test-d.ts"
+    if test_types_path.exists():
+        render_code_content(
+            test_types_tmpl_path,
+            test_types_path,
+            sort_by_deprecated_and_alphabetical(export_configs),
+            sort_by_deprecated_and_alphabetical(export_options),
+            export=False
+        )
+
+
 def gen_lynx_config(configs: list[Config], options: list[Config]):
     # gen page config decode
     _gen_page_config_decode(configs)
@@ -366,6 +413,11 @@ def gen_types(configs: list[Config], options: list[Config]):
     _gen_compile_options_types(options, export_options)
     # gen config keys
     _gen_config_keys(configs, export_configs, options, export_options)
+    # gen test files
+    _gen_test_files(configs, export_configs, options, export_options)
+    # format generated files with prettier
+    prettier_format(JS_LIBRARIES_CONFIG_PATH)
+    prettier_format(OLIVER_CONFIG_PATH)
 
 
 def main():

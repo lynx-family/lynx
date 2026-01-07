@@ -18,7 +18,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  absoluteInContentBound?: boolean
+  absoluteInContentBound?: boolean;
 
   /**
    * Enable Android Lynx Image URL asynchronous redirect
@@ -29,7 +29,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  asyncRedirect?: boolean
+  asyncRedirect?: boolean;
 
   /**
    * if this flag is true, onShow/onHide will be automatically triggered by attachToView/detachFromWindow calls
@@ -40,7 +40,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  autoExpose?: boolean
+  autoExpose?: boolean;
 
   /**
    * When set to true, for compatibility, some layout behaviors are consistent with the previous incorrect behaviors.
@@ -51,7 +51,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  CSSAlignWithLegacyW3C?: boolean
+  CSSAlignWithLegacyW3C?: boolean;
 
   /**
    * Custom Inheritable CSS Properties
@@ -62,7 +62,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  customCSSInheritanceList?: string[]
+  customCSSInheritanceList?: string[];
 
   /**
    * ReactLynx cannot opt top_level_variables used in lepus. So we cannot forbid updateData when variable not in top_level_variables. User can use this config to close the check.
@@ -73,7 +73,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  dataStrictMode?: boolean
+  dataStrictMode?: boolean;
 
   /**
    * Prevent the long press event from being triggered during inertial scrolling.
@@ -84,7 +84,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  disableLongpressAfterScroll?: boolean
+  disableLongpressAfterScroll?: boolean;
 
   /**
    * Disable tracing gc mode in quick context.
@@ -95,7 +95,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  disableQuickTracingGC?: boolean
+  disableQuickTracingGC?: boolean;
 
   /**
    * Enable Android A11y
@@ -106,7 +106,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableA11y?: boolean
+  enableA11y?: boolean;
 
   /**
    * Indicates whether all ui  enable a11y
@@ -117,7 +117,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableAccessibilityElement?: boolean
+  enableAccessibilityElement?: boolean;
 
   /**
    * Whether to enable asynchronous initialization of videoEngine
@@ -128,7 +128,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableAsyncInitVideoEngine?: boolean
+  enableAsyncInitVideoEngine?: boolean;
 
   /**
    * If true, supports initiating image requests in asynchronous threads.
@@ -139,7 +139,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableAsyncRequestImage?: boolean
+  enableAsyncRequestImage?: boolean;
 
   /**
    * FE Framework use this config to notify Engine that resolve subtree binding will be triggered when render DOM (Not exposed to normal user)
@@ -150,7 +150,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableAsyncResolveSubtree?: boolean
+  enableAsyncResolveSubtree?: boolean;
 
   /**
    * Enable exposure detection optimization so that exposure detection is not performed when the page is static.
@@ -161,7 +161,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableCheckExposureOptimize?: boolean
+  enableCheckExposureOptimize?: boolean;
 
   /**
    * Determine whether redirection is needed for local image resources.
@@ -172,7 +172,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableCheckLocalImage?: boolean
+  enableCheckLocalImage?: boolean;
 
   /**
    * If this flag is true, circular data check will enable when convert js value to other vale.
@@ -183,7 +183,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableCircularDataCheck?: boolean
+  enableCircularDataCheck?: boolean;
 
   /**
    * Enable dynamic components to be decoded in child threads before they are delivered into tasm in async-loading.
@@ -194,7 +194,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableComponentAsyncDecode?: boolean
+  enableComponentAsyncDecode?: boolean;
 
   /**
    * Support component can be passed null props, null props only supported in LepusNG now. Open this switch to support lepus use null prop.
@@ -205,7 +205,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableComponentNullProp?: boolean
+  enableComponentNullProp?: boolean;
 
   /**
    * Create Android platform UIs in lynx built-in thread-pool to optimize UI Operation Execution
@@ -216,7 +216,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableCreateViewAsync?: boolean
+  enableCreateViewAsync?: boolean;
 
   /**
    * Enable CSS inheritance
@@ -227,7 +227,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableCSSInheritance?: boolean
+  enableCSSInheritance?: boolean;
 
   /**
    * Enable CSS inline variables.
@@ -238,7 +238,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableCSSInlineVariables?: boolean
+  enableCSSInlineVariables?: boolean;
 
   /**
    * Under scoped CSS, the imported CSS declarations by import rules are lazily decoded at the first time the scope takes effect.
@@ -249,7 +249,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableCSSLazyImport?: boolean
+  enableCSSLazyImport?: boolean;
 
   /**
    * Enables the disexposure event to fire when LynxView is in the hidden state.
@@ -260,7 +260,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableDisexposureWhenLynxHidden?: boolean
+  enableDisexposureWhenLynxHidden?: boolean;
 
   /**
    * Enable the Lynx touch event to be triggered normally after the last finger is lifted in a multi-finger scenario.
@@ -271,7 +271,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableEndGestureAtLastFingerUp?: boolean
+  enableEndGestureAtLastFingerUp?: boolean;
 
   /**
    * Enable new event processing logic to support dynamic registration of event listeners, interception of events, etc.
@@ -282,7 +282,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableEventHandleRefactor?: boolean
+  enableEventHandleRefactor?: boolean;
 
   /**
    * Enable the client-slide touch event penetrate Lynx when touching the root node area of the Lynx page.
@@ -293,7 +293,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableEventThrough?: boolean
+  enableEventThrough?: boolean;
 
   /**
    * Enable exposure-ui-margin-* properties to take effect.
@@ -304,7 +304,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableExposureUIMargin?: boolean
+  enableExposureUIMargin?: boolean;
 
   /**
    * Enable exposure check when LynxView is layoutRequest
@@ -315,7 +315,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableExposureWhenLayout?: boolean
+  enableExposureWhenLayout?: boolean;
 
   /**
    * Enables exposure and disexposure events to be triggered when reloading the Lynx page.
@@ -326,7 +326,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableExposureWhenReload?: boolean
+  enableExposureWhenReload?: boolean;
 
   /**
    * A better and stable position fixed handling.
@@ -337,7 +337,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableFixedNew?: boolean
+  enableFixedNew?: boolean;
 
   /**
    * Enable harmony new overlay based overlayManager to handle events pass through.
@@ -348,7 +348,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableHarmonyNewOverlay?: boolean
+  enableHarmonyNewOverlay?: boolean;
 
   /**
    * Enable Harmony to detect exposure with visible area change event.
@@ -359,7 +359,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableHarmonyVisibleAreaChangeForExposure?: boolean
+  enableHarmonyVisibleAreaChangeForExposure?: boolean;
 
   /**
    * Enable Bind PRIMJS-ICU
@@ -370,7 +370,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableICU?: boolean
+  enableICU?: boolean;
 
   /**
    * If true,  downsampling will be enabled for all images on this LynxView
@@ -381,7 +381,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableImageDownsampling?: boolean
+  enableImageDownsampling?: boolean;
 
   /**
    * Enable js binding api throw exception
@@ -392,7 +392,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableJsBindingApiThrowException?: boolean
+  enableJsBindingApiThrowException?: boolean;
 
   /**
    * Enable data processor on JS thread
@@ -403,7 +403,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableJSDataProcessor?: boolean
+  enableJSDataProcessor?: boolean;
 
   /**
    * Does diffResult have moveAction
@@ -414,7 +414,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableListMoveOperation?: boolean
+  enableListMoveOperation?: boolean;
 
   /**
    * Indicates whether to use new architecture for the  platform list
@@ -425,7 +425,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableListNewArchitecture?: boolean
+  enableListNewArchitecture?: boolean;
 
   /**
    * Indicates whether to use list plug
@@ -436,7 +436,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableListPlug?: boolean
+  enableListPlug?: boolean;
 
   /**
    * Force report lynx scroll fluency event. When setting pageConfig.enableLynxScrollFluency to a double value in the range [0, 1], we will monitor the fluency metrics for this LynxUI based on this probability. The probability indicates the likelihood of enabling fluency monitoring, and the metrics will be reported unconditionally through the applogService.
@@ -447,7 +447,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableLynxScrollFluency?: boolean | number
+  enableLynxScrollFluency?: boolean | number;
 
   /**
    * This configuration item enableMicrotaskPromisePolyfill is used to determine whether to enable the micro - task Promise polyfill. Its value type is TernaryBool, and the default value is TernaryBool::UNDEFINE_VALUE.
@@ -458,7 +458,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableMicrotaskPromisePolyfill?: boolean
+  enableMicrotaskPromisePolyfill?: boolean;
 
   /**
    * Enable support multi-finger events so that event parameters can contain information about multiple fingers.
@@ -469,7 +469,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableMultiTouch?: boolean
+  enableMultiTouch?: boolean;
 
   /**
    * Enable the parameters of multi-finger events compatible with single-finger events
@@ -480,7 +480,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableMultiTouchParamsCompatible?: boolean
+  enableMultiTouchParamsCompatible?: boolean;
 
   /**
    * Indicates whether use c++ list.
@@ -491,7 +491,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableNativeList?: boolean
+  enableNativeList?: boolean;
 
   /**
    * If this flag is false, will use platform animation ability.
@@ -502,7 +502,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableNewAnimator?: boolean
+  enableNewAnimator?: boolean;
 
   /**
    * Whether enable new clip mode.
@@ -513,7 +513,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableNewClipMode?: boolean
+  enableNewClipMode?: boolean;
 
   /**
    * if want to use gesture handler api, you need to set true
@@ -524,7 +524,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableNewGesture?: boolean
+  enableNewGesture?: boolean;
 
   /**
    * Enable load image from image service
@@ -535,7 +535,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableNewImage?: boolean
+  enableNewImage?: boolean;
 
   /**
    * Enable the new IntersectionObserver detection logic so that observe can be triggered normally without binding to scroll events.
@@ -546,7 +546,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableNewIntersectionObserver?: boolean
+  enableNewIntersectionObserver?: boolean;
 
   /**
    * Implement the platform-level list based on scrollView on the IOS platform
@@ -557,7 +557,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableNewListContainer?: boolean
+  enableNewListContainer?: boolean;
 
   /**
    * If this flag is true, new transform origin algorithm will apply.
@@ -568,7 +568,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableNewTransformOrigin?: boolean
+  enableNewTransformOrigin?: boolean;
 
   /**
    * Enable shadow platform gesture to handle gesture conflict.
@@ -579,7 +579,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enablePlatformGesture?: boolean
+  enablePlatformGesture?: boolean;
 
   /**
    * SimpleStyle mode will incrementally update styles based on properties if this config set to TRUE. Otherwise it will incrementally update based on StyleObjects. The StyleObject based updating has a better performance but not allow StyleObjects bound to the same element has intersect properties.
@@ -590,7 +590,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enablePropertyBasedSimpleStyle?: boolean
+  enablePropertyBasedSimpleStyle?: boolean;
 
   /**
    * Enable query component sync in background runtime
@@ -601,7 +601,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableQueryComponentSync?: boolean
+  enableQueryComponentSync?: boolean;
 
   /**
    * If we got propsId, we could only pass propsId and a flag to JS thread. JS thread will use a propsMap to get correct props
@@ -612,7 +612,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableReactOnlyPropsId?: boolean
+  enableReactOnlyPropsId?: boolean;
 
   /**
    * If this flag is true, do not copy init data, instead copy Object.keys of init data for efficiency.
@@ -623,7 +623,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableReduceInitDataCopy?: boolean
+  enableReduceInitDataCopy?: boolean;
 
   /**
    * Enable LynxUI onNodeReload lifecycle.
@@ -634,7 +634,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableReloadLifecycle?: boolean
+  enableReloadLifecycle?: boolean;
 
   /**
    * If this flag is true, remove the globalProps & systemInfo from component data for efficiency.
@@ -645,7 +645,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableRemoveComponentExtraData?: boolean
+  enableRemoveComponentExtraData?: boolean;
 
   /**
    * Enable reuse loadScript's result.
@@ -656,7 +656,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableReuseLoadScriptExports?: boolean
+  enableReuseLoadScriptExports?: boolean;
 
   /**
    * Enable using native signal API
@@ -667,7 +667,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableSignalAPI?: boolean
+  enableSignalAPI?: boolean;
 
   /**
    * Enable the client's tap gesture to be triggered simultaneously with Lynx's tap gesture.
@@ -678,7 +678,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableSimultaneousTap?: boolean
+  enableSimultaneousTap?: boolean;
 
   /**
    * Enable using BoringLayout on Android.
@@ -689,7 +689,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableTextBoringLayout?: boolean
+  enableTextBoringLayout?: boolean;
 
   /**
    * Enable text gradient optimization for iOS.
@@ -700,7 +700,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableTextGradientOpt?: boolean
+  enableTextGradientOpt?: boolean;
 
   /**
    * Enable a more accurate text alignment judgment method, but it will increase the time taken for text layout.
@@ -711,7 +711,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableTextLanguageAlignment?: boolean
+  enableTextLanguageAlignment?: boolean;
 
   /**
    * Enable using text layer render on iOS.
@@ -722,7 +722,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableTextLayerRender?: boolean
+  enableTextLayerRender?: boolean;
 
   /**
    * Whether enable text layout cache.
@@ -733,7 +733,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableTextLayoutCache?: boolean
+  enableTextLayoutCache?: boolean;
 
   /**
    * Whether enable text noncontiguous layout
@@ -744,7 +744,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableTextNonContiguousLayout?: boolean
+  enableTextNonContiguousLayout?: boolean;
 
   /**
    * Set text overflow as visible if true.
@@ -755,7 +755,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableTextOverflow?: boolean
+  enableTextOverflow?: boolean;
 
   /**
    * Enable text refactor, with behavior more aligned with web.
@@ -766,7 +766,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableTextRefactor?: boolean
+  enableTextRefactor?: boolean;
 
   /**
    * Enable Lynx's touchend event to be triggered normally.
@@ -777,7 +777,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  enableTouchRefactor?: boolean
+  enableTouchRefactor?: boolean;
 
   /**
    * Enable the optimization about UIOperation batching and CreateViewAsync at Android.
@@ -788,7 +788,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableUIOperationOptimize?: boolean
+  enableUIOperationOptimize?: boolean;
 
   /**
    * Enable the unified pixel pipeline for Lynx Engine.
@@ -799,7 +799,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableUnifiedPipeline?: boolean
+  enableUnifiedPipeline?: boolean;
 
   /**
    * Enable Use Context Pool For LepusNG VM creation.
@@ -810,7 +810,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableUseContextPool?: boolean
+  enableUseContextPool?: boolean;
 
   /**
    * Enable the mapbuffer structure for LynxProps.
@@ -821,7 +821,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  enableUseMapBuffer?: boolean
+  enableUseMapBuffer?: boolean;
 
   /**
    * Enable touchesBegan and other methods to be triggered when touching the client-slide custom components.
@@ -832,7 +832,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableViewReceiveTouch?: boolean
+  enableViewReceiveTouch?: boolean;
 
   /**
    * Drive the execution of UI tasks in the pipeline according to the VSync signal, bringing a certain progressive rendering effect. It is suitable for scenarios where JS-driven updates are frequent. Turn it on as needed.
@@ -843,7 +843,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableVsyncAlignedFlush?: boolean
+  enableVsyncAlignedFlush?: boolean;
 
   /**
    * Whether enable x-text layout reused.
@@ -854,7 +854,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  enableXTextLayoutReused?: boolean
+  enableXTextLayoutReused?: boolean;
 
   /**
    * A config to force make some special properties can be used to layout only (such as direction&text-align,etc.).
@@ -865,7 +865,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  extendedLayoutOnlyOpt?: boolean
+  extendedLayoutOnlyOpt?: boolean;
 
   /**
    * user defined extraInfo.
@@ -876,7 +876,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  extraInfo?: Record<string, unknown>
+  extraInfo?: Record<string, unknown>;
 
   /**
    * Control whether the node requires creating a corresponding Android View. Default is true.
@@ -887,7 +887,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  flatten?: boolean
+  flatten?: boolean;
 
   /**
    * Make font scale only apply to sp units.
@@ -898,7 +898,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  fontScaleEffectiveOnlyOnSp?: boolean
+  fontScaleEffectiveOnlyOnSp?: boolean;
 
   /**
    * Control whether implicit animations are allowed on the iOS platform.
@@ -909,7 +909,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  implicit?: boolean
+  implicit?: boolean;
 
   /**
    * Control the top and bottom padding of text on Android, which affects the text's height and vertical centering effect.
@@ -920,7 +920,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  includeFontPadding?: boolean
+  includeFontPadding?: boolean;
 
   /**
    * The outer decor view that wraps lynx view may change due to that virtual navigation bar is shielded or drawn. Change the returning value of keyboard event to return absolute keyboard height and the offset from keyboard to to lynx view bottom
@@ -931,7 +931,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  keyboardCallbackPassRelativeHeight?: boolean
+  keyboardCallbackPassRelativeHeight?: boolean;
 
   /**
    * Specify the interval for triggering the long press event.
@@ -942,7 +942,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  longPressDuration?: number
+  longPressDuration?: number;
 
   /**
    * Specifies the frequency of exposure detection.
@@ -953,7 +953,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  observerFrameRate?: number
+  observerFrameRate?: number;
 
   /**
    * Scheduler config for pipeline, including enableParallelElement/list-framework batch render and other scheduler config.
@@ -964,7 +964,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  pipelineSchedulerConfig?: number
+  pipelineSchedulerConfig?: number;
 
   /**
    * Control the frame rate of CSS animations
@@ -975,7 +975,7 @@ export interface Config {
    *
    * @defaultValue "auto"
    */
-  preferredFps?: string
+  preferredFps?: string;
 
   /**
    * Supports string value. It is equal to TargetSDKVersion by default. The mode is for compatibility with old pages that do not conform to CSS layout specifications produced.
@@ -986,7 +986,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  quirksMode?: boolean | string
+  quirksMode?: boolean | string;
 
   /**
    * If false, descendant selector only works in component scope.
@@ -997,7 +997,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  removeDescendantSelectorScope?: boolean
+  removeDescendantSelectorScope?: boolean;
 
   /**
    * if this flag is true, if component's prop type mismatch, will use default value.
@@ -1008,7 +1008,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  strictPropType?: boolean
+  strictPropType?: boolean;
 
   /**
    * Specify the sliding distance threshold at which the tap event is not triggered.
@@ -1019,7 +1019,7 @@ export interface Config {
    *
    * @defaultValue "50px"
    */
-  tapSlop?: string
+  tapSlop?: string;
 
   /**
    * Enable the iOS image refactor
@@ -1030,7 +1030,7 @@ export interface Config {
    *
    * @defaultValue undefined
    */
-  trailNewImage?: boolean
+  trailNewImage?: boolean;
 
   /**
    * Control whether the vw and vh units dynamically adjust with the viewport in properties like font-size; enabled by default for targetSdkVersion >= 2.3
@@ -1041,7 +1041,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  unifyVWVHBehavior?: boolean
+  unifyVWVHBehavior?: boolean;
 
   /**
    * Whether use image post processor
@@ -1052,7 +1052,7 @@ export interface Config {
    *
    * @defaultValue false
    */
-  useImagePostProcessor?: boolean
+  useImagePostProcessor?: boolean;
 
   /**
    * Indicates whether to use new swiper
@@ -1063,7 +1063,7 @@ export interface Config {
    *
    * @defaultValue true
    */
-  useNewSwiper?: boolean
+  useNewSwiper?: boolean;
 
   /**
    * deprecated
@@ -1075,7 +1075,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  autoResumeAnimation?: boolean
+  autoResumeAnimation?: boolean;
 
   /**
    * cli version
@@ -1087,7 +1087,7 @@ export interface Config {
    * @defaultValue ""
    * @deprecated 3.5
    */
-  cli?: string
+  cli?: string;
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
@@ -1097,7 +1097,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  compileRender?: boolean
+  compileRender?: boolean;
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
@@ -1107,7 +1107,7 @@ export interface Config {
    * @defaultValue ""
    * @deprecated 3.5
    */
-  customData?: string
+  customData?: string;
 
   /**
    * Enable MutationObserver for accessibility.
@@ -1119,7 +1119,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  enableA11yIDMutationObserver?: boolean
+  enableA11yIDMutationObserver?: boolean;
 
   /**
    * Globally enable async rendering for software rendering contents on iOS, this can largely optimize the frame rate and reduce janks.
@@ -1131,7 +1131,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  enableAsyncDisplay?: boolean
+  enableAsyncDisplay?: boolean;
 
   /**
    * Enable iOS background manager to apply shape layer optimization. Deprecated and to be removed since this optimization becomes a fixed setting.
@@ -1143,7 +1143,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  enableBackgroundShapeLayer?: boolean
+  enableBackgroundShapeLayer?: boolean;
 
   /**
    * Deprecated, this is for legacy CSS selector to enable a cascading.
@@ -1155,7 +1155,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  enableCascadePseudo?: boolean
+  enableCascadePseudo?: boolean;
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
@@ -1165,7 +1165,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  enableCheckDataWhenUpdatePage?: boolean
+  enableCheckDataWhenUpdatePage?: boolean;
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
@@ -1175,7 +1175,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  enableComponentLayoutOnly?: boolean
+  enableComponentLayoutOnly?: boolean;
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
@@ -1185,7 +1185,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  enableGlobalComponentMap?: boolean
+  enableGlobalComponentMap?: boolean;
 
   /**
    * Enable create ui async form C++ PaintingContext
@@ -1197,7 +1197,7 @@ export interface Config {
    * @defaultValue undefined
    * @deprecated 3.5
    */
-  enableNativeScheduleCreateViewAsync?: boolean
+  enableNativeScheduleCreateViewAsync?: boolean;
 
   /**
    * Supported platform: Android
@@ -1207,7 +1207,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  enableNewAccessibility?: boolean
+  enableNewAccessibility?: boolean;
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
@@ -1217,7 +1217,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  enableNewLayoutOnly?: boolean
+  enableNewLayoutOnly?: boolean;
 
   /**
    * Enable using PropBundleStyleWriter to write style to PropBundle.
@@ -1229,7 +1229,7 @@ export interface Config {
    * @defaultValue undefined
    * @deprecated 3.5
    */
-  enableOptPushStyleToBundle?: boolean
+  enableOptPushStyleToBundle?: boolean;
 
   /**
    * Supported platform: Android
@@ -1239,7 +1239,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  enableOverlapForAccessibilityElement?: boolean
+  enableOverlapForAccessibilityElement?: boolean;
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
@@ -1249,7 +1249,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  fixCSSImportRuleOrder?: boolean
+  fixCSSImportRuleOrder?: boolean;
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
@@ -1259,7 +1259,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  forceCalcNewStyle?: boolean
+  forceCalcNewStyle?: boolean;
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
@@ -1269,7 +1269,7 @@ export interface Config {
    * @defaultValue ""
    * @deprecated 3.5
    */
-  reactVersion?: string
+  reactVersion?: string;
 
   /**
    * Supported platform: Android, iOS, HarmonyOS
@@ -1279,7 +1279,7 @@ export interface Config {
    * @defaultValue undefined
    * @deprecated 3.5
    */
-  redBoxImageSizeWarningThreshold?: number
+  redBoxImageSizeWarningThreshold?: number;
 
   /**
    * deprecated
@@ -1291,7 +1291,7 @@ export interface Config {
    * @defaultValue false
    * @deprecated 3.5
    */
-  removeComponentElement?: boolean
+  removeComponentElement?: boolean;
 
   /**
    * If true and on the main thread, image requests will be initiated immediately; otherwise, image requests will be posted after the next frame of the main thread to delay the requests.
@@ -1303,7 +1303,7 @@ export interface Config {
    * @defaultValue true
    * @deprecated 3.5
    */
-  syncImageAttach?: boolean
+  syncImageAttach?: boolean;
 
   /**
    * Supported platform: Android, iOS
@@ -1313,7 +1313,7 @@ export interface Config {
    * @defaultValue undefined
    * @deprecated 3.5
    */
-  useNewImage?: boolean
+  useNewImage?: boolean;
 
   /**
    * Supported platform: Android, HarmonyOS, iOS
@@ -1323,6 +1323,5 @@ export interface Config {
    * @defaultValue ""
    * @deprecated 3.5
    */
-  version?: string
-
+  version?: string;
 }
