@@ -7,13 +7,12 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "core/list/decoupled_item_holder.h"
 #include "core/list/decoupled_list_adapter.h"
+#include "core/list/decoupled_list_animation_manager.h"
 #include "core/list/decoupled_list_children_helper.h"
-#include "core/list/decoupled_list_container_animation_manager.h"
 #include "core/list/decoupled_list_event_manager.h"
 #include "core/list/decoupled_list_layout_manager.h"
 #include "core/list/decoupled_list_types.h"
@@ -91,7 +90,7 @@ class ListContainerImpl : public ContainerDelegate {
   ListChildrenHelper* list_children_helper() const {
     return list_children_helper_.get();
   }
-  ListContainerAnimationManager* list_animation_manager() const {
+  ListAnimationManager* list_animation_manager() const {
     return list_animation_manager_.get();
   }
   bool IsRTL() const { return list_delegate_->IsRTL(); }
@@ -157,7 +156,7 @@ class ListContainerImpl : public ContainerDelegate {
   std::unique_ptr<ListAdapter> list_adapter_;
   std::unique_ptr<ListChildrenHelper> list_children_helper_;
   std::unique_ptr<ListEventManager> list_event_manager_;
-  std::unique_ptr<ListContainerAnimationManager> list_animation_manager_;
+  std::unique_ptr<ListAnimationManager> list_animation_manager_;
   bool need_recycle_all_item_holders_before_layout_{false};
   bool need_update_item_holders_{false};
   int layout_id_{kInvalidIndex};

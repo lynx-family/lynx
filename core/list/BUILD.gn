@@ -29,10 +29,10 @@ if (disable_list_platform_implementation) {
     "decoupled_list_adapter.h",
     "decoupled_list_anchor_manager.cc",
     "decoupled_list_anchor_manager.h",
+    "decoupled_list_animation_manager.cc",
+    "decoupled_list_animation_manager.h",
     "decoupled_list_children_helper.cc",
     "decoupled_list_children_helper.h",
-    "decoupled_list_container_animation_manager.cc",
-    "decoupled_list_container_animation_manager.h",
     "decoupled_list_container_impl.cc",
     "decoupled_list_container_impl.h",
     "decoupled_list_event_manager.cc",
@@ -58,6 +58,7 @@ lynx_core_source_set("list_container") {
     "../build:build",
     "../renderer/trace:renderer_trace",
   ]
+  deps = [ "../animation/lynx_basic_animator:lynx_basic_animator" ]
 }
 
 list_container_testset_shared_sources = []
