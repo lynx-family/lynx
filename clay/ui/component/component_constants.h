@@ -177,6 +177,7 @@ extern const char* kEventMarkdownLink;
 extern const char* kEventMarkdownImageTap;
 extern const char* kEventMarkdownParseEnd;
 extern const char* kEventMarkdownAnimationStep;
+extern const char* kEventMarkdownTextClick;
 
 // x-overlay-ng events
 extern const char* kEventShowOverlay;

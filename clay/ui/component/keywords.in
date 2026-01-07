@@ -171,12 +171,16 @@ cap-insets-scale
 defer-src-invalidation
 auto-size
 markdown-style
+markdown-effect
 animation-type
 animation-velocity
 animation-frame-rate
 initial-animation-step
 typewriter-dynamic-height
 typewriter-height-transition-duration
+allow-break-around-punctuation
+text-mark-attachments
+content-range
 show-soft-input-onfocus
 use-soft-keyboard
 value

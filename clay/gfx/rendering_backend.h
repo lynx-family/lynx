@@ -220,6 +220,13 @@ using GrPicturePtr = sk_sp<SkPicture>;
 #define PATH_ADD_RRECT(path, round_rect) \
   path.addRRect(clay::ConvertSkityRRectToSkia(round_rect))
 #define PATH_ADD_PATH(path, drawing_path) path.addPath(drawing_path)
+#define PATH_ADD_OVAL(path, oval, direction) \
+  path.addOval(clay::ConvertSkityRectToSkRect(oval), direction)
+#define PATH_ADD_OVAL_START(path, oval, direction, start) \
+  path.addOval(clay::ConvertSkityRectToSkRect(oval), direction, start)
+#define PATH_ADD_ROUND_RECT(path, rect, radius_x, radius_y, direction)        \
+  path.addRoundRect(clay::ConvertSkityRectToSkRect(rect), radius_x, radius_y, \
+                    direction)
 #define PATH_IS_EMPTY(path) path.isEmpty()
 #define PATH_IS_RECT(path, rect) path.isRect(rect)
 #define PATH_SET_FILL_TYPE(path, fill_type) \
@@ -237,9 +244,15 @@ using GrPicturePtr = sk_sp<SkPicture>;
   path.transform(clay::ConvertSkityMatrixToSkMatrix(matrix))
 #define PATH_CUBIC_TO_POINT(path, point1, point2, point3) \
   path.cubicTo(point1, point2, point3)
+#define PATH_CUBIC_TO(path, x1, y1, x2, y2, x3, y3) \
+  path.cubicTo(x1, y1, x2, y2, x3, y3)
 #define PATH_QUAD_TO_POINT(path, point1, point2) path.quadTo(point1, point2)
+#define PATH_QUAD_TO(path, x1, y1, x2, y2) path.quadTo(x1, y1, x2, y2)
 #define PATH_ARC_TO(path, point1, axis, arc, sweep, point2) \
   path.arcTo(point1, axis, arc, sweep, point2)
+#define PATH_ARC_TO_ANGLE(path, oval, start_angle, sweep_angle, force_move)  \
+  path.arcTo(clay::ConvertSkityRectToSkRect(oval), start_angle, sweep_angle, \
+             force_move)
 #define PATH_GET_LAST_POINT(path, point) path.getLastPt(point)
 #define PATH_SWAP(path, other) path->swap(other)
 
@@ -436,6 +449,11 @@ using GrPicturePtr = std::shared_ptr<skity::DisplayList>;
 #define PATH_ADD_RECT(path, rect) path.AddRect(rect)
 #define PATH_ADD_RRECT(path, round_rect) path.AddRRect(round_rect)
 #define PATH_ADD_PATH(path, drawing_path) path.AddPath(drawing_path)
+#define PATH_ADD_OVAL(path, oval, direction) path.AddOval(oval, direction)
+#define PATH_ADD_OVAL_START(path, oval, direction, start) \
+  path.AddOval(oval, direction, start)
+#define PATH_ADD_ROUND_RECT(path, rect, radius_x, radius_y, direction) \
+  path.AddRoundRect(rect, radius_x, radius_y, direction)
 #define PATH_IS_EMPTY(path) path.IsEmpty()
 #define PATH_IS_RECT(path, rect) path.IsRect(rect)
 #define PATH_SET_FILL_TYPE(path, fill_type) \
@@ -459,9 +477,14 @@ using GrPicturePtr = std::shared_ptr<skity::DisplayList>;
 #define PATH_TRANSFORM(path, matrix) path = path.CopyWithMatrix(matrix)
 #define PATH_CUBIC_TO_POINT(path, point1, point2, point3) \
   path.CubicTo(point1, point2, point3)
+#define PATH_CUBIC_TO(path, x1, y1, x2, y2, x3, y3) \
+  path.CubicTo(x1, y1, x2, y2, x3, y3)
 #define PATH_QUAD_TO_POINT(path, point1, point2) path.QuadTo(point1, point2)
+#define PATH_QUAD_TO(path, x1, y1, x2, y2) path.QuadTo(x1, y1, x2, y2)
 #define PATH_ARC_TO(path, point1, axis, arc, sweep, point2) \
   path.ArcTo(point1.x, point1.y, axis, arc, sweep, point2.x, point2.y)
+#define PATH_ARC_TO_ANGLE(path, oval, start_angle, sweep_angle, force_move) \
+  path.ArcTo(oval, start_angle, sweep_angle, force_move)
 #define PATH_GET_LAST_POINT(path, point) path.GetLastPt(point)
 #define PATH_SWAP(path, other) path->Swap(other)
 

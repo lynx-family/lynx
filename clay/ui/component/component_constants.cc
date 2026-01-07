@@ -167,6 +167,7 @@ const char* kEventMarkdownLink = "link";
 const char* kEventMarkdownImageTap = "imageTap";
 const char* kEventMarkdownParseEnd = "parseEnd";
 const char* kEventMarkdownAnimationStep = "animationStep";
+const char* kEventMarkdownTextClick = "textClick";
 
 const char* kEventShowOverlay = "showoverlay";
 const char* kEventDismissOverlay = "dismissoverlay";
