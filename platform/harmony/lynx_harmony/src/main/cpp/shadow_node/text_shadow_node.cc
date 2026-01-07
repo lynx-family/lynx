@@ -522,9 +522,9 @@ void TextShadowNode::DispatchLayoutEvent() {
 bool TextShadowNode::IsTextOverflow(ParagraphHarmony* paragraph,
                                     float layout_max_height) {
   return paragraph->DidExceedMaxLines() ||
-         base::FloatsLargerOrEqual(paragraph->GetHeight(), layout_max_height) ||
-         base::FloatsLargerOrEqual(paragraph->GetLongestLine() / ScaleDensity(),
-                                   paragraph->GetMeasuredWidth());
+         base::FloatsLarger(paragraph->GetHeight(), layout_max_height) ||
+         base::FloatsLarger(paragraph->GetLongestLine() / ScaleDensity(),
+                            paragraph->GetMeasuredWidth());
 }
 
 }  // namespace harmony
