@@ -2006,8 +2006,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)markTiming:(const char*)key pipelineID:(const char*)pipelineID {
-  [_performanceController markTiming:[NSString stringWithUTF8String:key]
-                          pipelineID:[NSString stringWithUTF8String:pipelineID]];
+  NSString* keyStr = key ? [NSString stringWithUTF8String:key] : nil;
+  NSString* pipelineIDStr = pipelineID ? [NSString stringWithUTF8String:pipelineID] : nil;
+  [_performanceController markTiming:keyStr pipelineID:pipelineIDStr];
 }
 
 /**
