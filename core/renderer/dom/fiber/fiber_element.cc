@@ -230,13 +230,21 @@ FiberElement::~FiberElement() {
                                                impl_id());
     element_manager()->NotifyElementDestroy(this);
     DestroyPlatformNode();
-    if (!EnableLayoutInElementMode() || customized_layout_node_) {
-      element_manager()->DestroyLayoutNode(impl_id());
+    if (!EnableLayoutInElementMode()) {
+      EnqueueLayoutTask([manager = element_manager(), id = impl_id()]() {
+        manager->DestroyLayoutNode(id);
+      });
+    } else if (customized_layout_node_) {
+      EnqueueLayoutTask([layout_node_ = std::move(customized_layout_node_),
+                         manager = element_manager(),
+                         id = impl_id()]() mutable {
+        manager->DestroyLayoutNode(id);
+        if (layout_node_) {
+          layout_node_->Destroy();
+        }
+      });
     }
     element_manager()->node_manager()->Erase(id_);
-    if (customized_layout_node_) {
-      customized_layout_node_->Destroy();
-    }
     // If FiberElement to be destroyed is the root of its ElementContext, need
     // to remove corresponding ElementContext from tree
     if (element_context_delegate_ &&
