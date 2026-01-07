@@ -599,6 +599,8 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
     override fun onLayoutUpdated() {
         super.onLayoutUpdated()
+        mView.width = width
+        mView.height = height
         mView.setPadding(mPaddingLeft, mPaddingTop, mPaddingRight, mPaddingBottom)
         mAvoidKeyboardDist += handleAvoidKeyboard(mView.isFocused)
     }
