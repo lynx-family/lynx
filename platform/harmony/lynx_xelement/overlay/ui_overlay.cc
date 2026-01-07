@@ -85,9 +85,6 @@ void UIOverlay::SetParent(UIBase* parent) {
 UIOverlay::~UIOverlay() {
   LOGI("overlay destruction sign=" << Sign() << " this="
                                    << static_cast<const void*>(this));
-  if (is_show_) {
-    RestoreRootTarget();
-  }
   if (native_dialog_ != nullptr) {
     LOGI("overlay destruction close dialog sign="
          << Sign() << " this=" << static_cast<const void*>(this)
@@ -300,6 +297,14 @@ void UIOverlay::OnNodeReady() {
 }
 
 void UIOverlay::RestoreRootTarget() {
+  if (!context_) {
+    return;
+  }
+  auto* ui_owner = context_->GetUIOwner();
+  if (!ui_owner) {
+    return;
+  }
+
   UIOverlay* top = nullptr;
   for (auto it = global_dialogs.rbegin(); it != global_dialogs.rend(); ++it) {
     if (*it != this && (*it)->IsVisible()) {
@@ -307,10 +312,13 @@ void UIOverlay::RestoreRootTarget() {
       break;
     }
   }
+
   if (top) {
-    context_->GetUIOwner()->UpdateRootTarget(top);
+    ui_owner->UpdateRootTarget(top);
   } else {
-    context_->GetUIOwner()->UpdateRootTarget(context_->Root());
+    if (auto* root = context_->Root()) {
+      ui_owner->UpdateRootTarget(root);
+    }
   }
 }
 
