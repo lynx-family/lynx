@@ -777,32 +777,26 @@ public class LynxEnv {
     }
   }
 
+  // TODO(mitchilling): rename this method to attachDevToolComponent
   protected void initDevtoolComponentAttachSwitch() {
-    boolean attached = false;
-    if (getDevtoolService() != null) {
-      attached = getDevtoolService().isDevtoolAttached();
-    }
-    if (attached) {
-      DevToolLifecycle.getInstance().onAttached();
-      enableDevToolIfPreset();
-    }
-    LLog.i(TAG, "The current application has embedded the DevTool Component: " + attached);
-  }
-
-  /*
-   * In some cases, e.g. DevTool working as a plugin,
-   * callers would enable DevTool via presetting before attaching.
-   * So we ought to check the preset value and change to state `ENABLED`.
-   */
-  private void enableDevToolIfPreset() {
-    if (!DevToolLifecycle.getInstance().isAttached()) {
-      // Wrong state, shortcut.
-      return;
-    }
     if (getDevtoolService() == null) {
-      // service not registered, thus there won't be preset value. We'll just ignore it.
+      LLog.i(TAG, "attachDevToolComponent: DevTool service is null.");
       return;
     }
+
+    boolean attached = getDevtoolService().isDevtoolAttached();
+    if (!attached) {
+      LLog.i(TAG, "attachDevToolComponent: we are asked not to.");
+      return;
+    }
+
+    DevToolLifecycle.getInstance().onAttached();
+    LLog.i(TAG, "attachDevToolComponent: done.");
+    /*
+     * In some cases, e.g. DevTool working as a plugin,
+     * callers would enable DevTool via presetting before attaching.
+     * So we ought to check the preset value and change to state `ENABLED`.
+     */
     if (getDevtoolService().getLynxDebugPresetValue()) {
       DevToolLifecycle.getInstance().onEnabled();
     }
