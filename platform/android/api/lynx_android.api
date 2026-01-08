@@ -2370,6 +2370,7 @@ public interface com::lynx::tasm::service::ILynxDevToolService {
   public Set< String > com.lynx.tasm.service.ILynxDevToolService.getDevtoolGroupEnv(String key);
   public void com.lynx.tasm.service.ILynxDevToolService.devtoolEnvInit(Context ctx);
   public boolean com.lynx.tasm.service.ILynxDevToolService.isDevtoolAttached();
+  public void com.lynx.tasm.service.ILynxDevToolService.enableAllSessions();
   public boolean com.lynx.tasm.service.ILynxDevToolService.getLynxDebugPresetValue();
   public void com.lynx.tasm.service.ILynxDevToolService.setLynxDebugPresetValue(boolean value);
   public boolean com.lynx.tasm.service.ILynxDevToolService.getLogBoxPresetValue();

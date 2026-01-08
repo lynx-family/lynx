@@ -165,7 +165,7 @@ subspec_target("Framework") {
   ]
   dependency = [ [
         "DebugRouter",
-        ">= 5.0.13",
+        ">= 5.0.15",
       ] ]
   if (use_flatten_deps) {
     flatten_deps += [

@@ -260,7 +260,7 @@ dependencies {
 
     api project(':LynxJSSDK')
 
-    implementation 'org.lynxsdk.lynx:debug-router:0.0.18'
+    implementation 'org.lynxsdk.lynx:debug-router:0.0.20'
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.4'
     
     compileOnly("com.squareup.okhttp3:okhttp:3.10.0")

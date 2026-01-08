@@ -68,6 +68,8 @@ typedef void (^LynxOpenCardCallback)(NSString *);
 
 - (NSSet *)devtoolEnvGetGroup:(NSString *)groupKey;
 
+- (void)enableAllSessions;
+
 @end
 
 NS_ASSUME_NONNULL_END

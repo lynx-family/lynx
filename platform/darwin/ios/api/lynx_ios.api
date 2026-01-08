@@ -3343,6 +3343,7 @@ public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
   public BOOL LynxServiceDevToolProtocol-p::devtoolEnvGetValue:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
   public void LynxServiceDevToolProtocol-p::devtoolEnvSet:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
   public NSSet * LynxServiceDevToolProtocol-p::devtoolEnvGetGroup:(NSString *groupKey);
+  public void LynxServiceDevToolProtocol-p::enableAllSessions();
 }
 
 public protocol LynxServiceEventReporterProtocol-p : <LynxServiceProtocol>, <LynxEventReportObserverProtocol>, <LynxPerformanceObserverProtocol> {

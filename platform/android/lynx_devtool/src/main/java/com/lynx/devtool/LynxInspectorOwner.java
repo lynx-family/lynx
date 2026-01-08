@@ -86,12 +86,16 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
   private GlobalPropsObserver globalPropsObserver = null;
   private TemplateData cachedGlobalProps = null;
   private TemplateData cachedTemplateData = TemplateData.fromMap(new HashMap<>());
+  // only used for DebugRouter activeSession collection when debuggable is true
+  private boolean mDebuggable = false;
 
   public LynxInspectorOwner(boolean debuggable) {
+    mDebuggable = debuggable;
     init(debuggable);
   }
 
   public LynxInspectorOwner(LynxView lynxView, boolean debuggable) {
+    mDebuggable = debuggable;
     init(debuggable);
 
     // Base Data
@@ -183,6 +187,9 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
     if (mLynxDevToolNG != null) {
       if (!mLynxDevToolNG.isAttachToDebugRouter()) {
         int sessionId = mLynxDevToolNG.attachToDebug(url == null ? "" : url);
+        if (mDebuggable) {
+          DebugRouter.getInstance().enableSingleSession(sessionId);
+        }
         LynxView lynxView = getLynxView();
         if (sessionId > 0 && lynxView != null) {
           DebugRouter.getInstance().setSessionIdOfView(lynxView, sessionId);

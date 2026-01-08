@@ -24,6 +24,7 @@
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "devtool/embedder/core/lynx_devtool_set_module.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
 namespace lynx {
 namespace devtool {
@@ -43,6 +44,7 @@ std::unordered_map<std::string, bool>
         {"enable_pixel_copy", false}};
 
 DevToolEnvHarmony::DevToolEnvHarmony() {
+  debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
   if (!InitPreferences()) {
     LOGW("InitPreferences failed");
   }

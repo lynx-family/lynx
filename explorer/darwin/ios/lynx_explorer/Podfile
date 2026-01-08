@@ -53,8 +53,8 @@ target 'LynxExplorer' do
   pod 'SDWebImage','5.15.5'
   pod 'SDWebImageWebPCoder', '0.11.0'
 
-  pod 'DebugRouter', '5.0.13'
-
+  pod 'DebugRouter', '5.0.15'
+  pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
   pod 'MJRefresh', '3.6.1'
 end
 

@@ -9,6 +9,7 @@
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "platform/embedder/lynx_devtool/switch_persist.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
 namespace lynx {
 namespace embedder {
@@ -19,6 +20,7 @@ DevToolEnvEmbedder& DevToolEnvEmbedder::GetInstance() {
 }
 
 DevToolEnvEmbedder::DevToolEnvEmbedder() {
+  debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
   devtool::DebugBridgeEmbedder::GetInstance();
   /**
    switch_persistent_default_: a map indicating switches' attributes.

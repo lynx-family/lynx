@@ -286,6 +286,34 @@
   return nil;
 }
 
+- (void)initializeDebugRouterSessions {
+  Class debugRouterClass = NSClassFromString(@"DebugRouter");
+  if (!debugRouterClass) {
+    return;
+  }
+
+  SEL instanceSelector = NSSelectorFromString(@"instance");
+  id debugRouterInstance = nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+  debugRouterInstance = [debugRouterClass performSelector:instanceSelector];
+#pragma clang diagnostic pop
+
+  if (debugRouterInstance) {
+    SEL enableSessionsSelector = NSSelectorFromString(@"enableAllSessions");
+    if ([debugRouterInstance respondsToSelector:enableSessionsSelector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+      [debugRouterInstance performSelector:enableSessionsSelector];
+#pragma clang diagnostic pop
+    }
+  }
+}
+
+- (void)enableAllSessions {
+  [self initializeDebugRouterSessions];
+}
+
 #pragma mark - LynxServiceProtocol
 
 @end

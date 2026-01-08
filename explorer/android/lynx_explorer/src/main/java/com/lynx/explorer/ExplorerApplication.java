@@ -46,6 +46,9 @@ public class ExplorerApplication extends Application {
     LynxServiceCenter.inst().registerService(LynxHttpService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxDevToolService.getINSTANCE());
 
+    // enable all sessions debug
+    LynxDevToolService.getINSTANCE().enableAllSessions();
+
     // set devtool preset values
     LynxDevToolService.getINSTANCE().setLynxDebugPresetValue(true);
     LynxDevToolService.getINSTANCE().setLogBoxPresetValue(true);
