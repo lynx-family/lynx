@@ -142,7 +142,7 @@ deps = {
         'commit': '04cf2989168a3f9218d463bea6f15f8ade2032fd',
         'ignore_in_git': True,
     },
-    'third_party/checkstyle/checkstyle.jar':{
+    'buildtools/checkstyle/checkstyle.jar':{
         "type": "http",
         "url": "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-9.2.1/checkstyle-9.2.1-all.jar",
         "ignore_in_git": True,
@@ -314,10 +314,9 @@ deps = {
         "condition": system in ['darwin'],
     },
     "./tools_shared": {
-        "type": "solution",
+        "type": "git",
         "url": "https://github.com/lynx-family/tools-shared.git",
         "commit": "99c58ed78f15f0d29fae10b4ee74dfc71f1001a1",
-        'deps_file': 'dependencies/DEPS',
         "ignore_in_git": True,
     },
     'buildtools/doxygen': {
