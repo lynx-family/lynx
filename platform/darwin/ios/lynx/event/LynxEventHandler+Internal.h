@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setLongPressDuration:(int32_t)value;
 - (void)dispatchPanEvent:(UIPanGestureRecognizer *)sender;
 - (void)needCheckConsumeSlideEvent;
+- (BOOL)hasConsumeSlideEvent;
 
 - (id<LynxEventTarget>)hitTestInner:(CGPoint)point withEvent:(nullable UIEvent *)event;
 - (NSInteger)checkCanRespondTapOrClick:(id<LynxEventTarget>)ui withSet:(NSSet *)set;

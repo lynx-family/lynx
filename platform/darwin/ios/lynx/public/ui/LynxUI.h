@@ -167,6 +167,7 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 - (void)finishLayoutOperation;
 - (BOOL)hasCustomLayout;
 - (BOOL)hasTranslateDiff:(NSArray*)transform;
+- (BOOL)hasConsumeSlideEvent;
 - (void)didInsertChild:(LynxUI*)child atIndex:(NSInteger)index;
 
 - (void)onReceiveUIOperation:(nullable id)value;

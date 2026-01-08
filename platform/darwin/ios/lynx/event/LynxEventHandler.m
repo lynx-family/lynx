@@ -213,7 +213,12 @@
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer*)gestureRecognizer {
-  return YES;
+  // Gesture recognition is triggered only if a node in the event response chain has a valid
+  // consume-slide-event set.
+  if ([self.eventHandler hasConsumeSlideEvent]) {
+    return YES;
+  }
+  return NO;
 }
 
 - (instancetype)initWithEventHandler:(LynxEventHandler*)eventHandler {
@@ -582,6 +587,22 @@
   _panGestureRecognizer.delegate = _panGestureDelegate;
   _panGestureRecognizer.cancelsTouchesInView = self.tapRecognizer.cancelsTouchesInView;
   [_rootView addGestureRecognizer:_panGestureRecognizer];
+}
+
+- (BOOL)hasConsumeSlideEvent {
+  id<LynxEventTarget> target = _touchTarget;
+  BOOL res = NO;
+  while (target != nil) {
+    if ([target isKindOfClass:[LynxUI class]]) {
+      LynxUI* ui = (LynxUI*)target;
+      if ([ui hasConsumeSlideEvent]) {
+        res = YES;
+        break;
+      }
+    }
+    target = target.parentTarget;
+  }
+  return res;
 }
 
 - (void)setEnablePlatformGesture:(BOOL)enablePlatformGesture {

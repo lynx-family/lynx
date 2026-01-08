@@ -1601,6 +1601,7 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::setLongPressDuration:(int32_t value);
   public void LynxEventHandler()::dispatchPanEvent:(UIPanGestureRecognizer *sender);
   public void LynxEventHandler()::needCheckConsumeSlideEvent();
+  public BOOL LynxEventHandler()::hasConsumeSlideEvent();
   public id< LynxEventTarget > LynxEventHandler()::hitTestInner:withEvent:(CGPoint point, [withEvent] nullable UIEvent *event);
   public NSInteger LynxEventHandler()::checkCanRespondTapOrClick:withSet:(id< LynxEventTarget > ui, [withSet] NSSet *set);
   public void LynxEventHandler()::removeEventGestures();
@@ -4148,6 +4149,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI::finishLayoutOperation();
   public BOOL LynxUI::hasCustomLayout();
   public BOOL LynxUI::hasTranslateDiff:(NSArray *transform);
+  public BOOL LynxUI::hasConsumeSlideEvent();
   public void LynxUI::didInsertChild:atIndex:(LynxUI *child,[atIndex] NSInteger index);
   public void LynxUI::onReceiveUIOperation:(nullable id value);
   public void LynxUI::prepareKeyframeManager();

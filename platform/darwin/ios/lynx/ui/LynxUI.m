@@ -1106,8 +1106,9 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 }
 
 - (CGRect)getBoundingClientRectToScreen {
-  CALayer* layer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
-  return [layer convertRect:layer.bounds toLayer:nil];
+  //  CALayer* layer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+  //  return [layer convertRect:layer.bounds toLayer:nil];
+  return [self.view convertRect:self.view.bounds toView:nil];
 }
 
 - (void)removeChildrenExposureUI {
@@ -2817,6 +2818,10 @@ LYNX_PROP_DEFINE("consume-slide-event", setConsumeSlideEvent, NSArray*) {
       [ui.context.eventHandler needCheckConsumeSlideEvent];
     }];
   }
+}
+
+- (BOOL)hasConsumeSlideEvent {
+  return _angleArray != nil;
 }
 
 - (BOOL)consumeSlideEvent:(CGFloat)angle {
