@@ -355,7 +355,7 @@ void JSUIBase::RemoveChild(UIBase* child) {
     }
     NativeNodeContent* content = child->NodeContent();
     if (content) {
-      argv[0] = content->JSNodeContent();
+      argv[0] = content->JSObject();
     }
     napi_call_function(env_, js_recv, remove, argc, argv, nullptr);
   } else {
