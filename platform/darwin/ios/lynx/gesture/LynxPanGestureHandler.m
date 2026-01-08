@@ -77,8 +77,8 @@
       [self onBegin:_lastPoint touchEvent:touchEvent];
     }
     if ([self shouldActive]) {
-      [self onStart:_lastPoint touchEvent:touchEvent];
       [self activate];
+      [self onStart:_lastPoint touchEvent:touchEvent];
     }
     if (self.status == LynxGestureHandlerStateActive) {
       [self onUpdate:_lastPoint touchEvent:touchEvent];
