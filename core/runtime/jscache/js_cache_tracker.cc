@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 
 namespace lynx {

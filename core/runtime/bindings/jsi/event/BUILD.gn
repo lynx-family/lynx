@@ -25,7 +25,7 @@ lynx_core_source_set("js_runtime") {
 
 unittest_set("js_runtime_testset") {
   sources = [
-    "../../../piper/js/mock_template_delegate.h",
+    "../../../js/mock_template_delegate.h",
     "context_proxy_in_js_test.cc",
     "context_proxy_in_js_test.h",
     "js_event_listener_test.cc",

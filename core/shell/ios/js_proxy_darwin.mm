@@ -14,7 +14,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/ios/runtime_lifecycle_listener_delegate_darwin.h"
 
 namespace lynx {

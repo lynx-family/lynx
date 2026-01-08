@@ -8,7 +8,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/bindings/jsi/modules/module_interceptor.h"
-#include "core/runtime/piper/js/template_delegate.h"
+#include "core/runtime/js/template_delegate.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if ENABLE_TESTBENCH_RECORDER

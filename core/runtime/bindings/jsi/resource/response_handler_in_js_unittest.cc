@@ -9,9 +9,9 @@
 #include "core/runtime/bindings/common/resource/response_promise.h"
 #include "core/runtime/bindings/jsi/js_app.h"
 #include "core/runtime/bindings/jsi/resource/response_handler_in_js.h"
+#include "core/runtime/js/mock_template_delegate.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/jsi/jsi_unittest.h"
-#include "core/runtime/piper/js/mock_template_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

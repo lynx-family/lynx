@@ -13,7 +13,7 @@
 
 #include "core/public/lynx_resource_loader.h"
 #include "core/resource/external_resource/external_resource_loader.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_engine.h"
 

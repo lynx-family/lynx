@@ -51,7 +51,7 @@ lynx_core_source_set("jsi") {
 
 unittest_set("bindings_unittests_testset") {
   sources = [
-    "../../piper/js/mock_template_delegate.h",
+    "../../js/mock_template_delegate.h",
     "api_call_back_unittest.cc",
     "js_app_unittest.cc",
     "js_task_adapter_unittest.cc",

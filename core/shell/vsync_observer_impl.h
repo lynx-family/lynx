@@ -14,7 +14,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
 #include "core/public/vsync_observer_interface.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 
 namespace lynx {
 

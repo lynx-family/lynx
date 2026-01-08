@@ -15,7 +15,7 @@
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/template_themed.h"
 #include "core/renderer/utils/base/element_template_info.h"
-#include "core/runtime/piper/js/js_bundle.h"
+#include "core/runtime/js/js_bundle.h"
 #include "core/template_bundle/template_codec/binary_decoder/element_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder.h"
 #include "core/template_bundle/template_codec/header_ext_info.h"

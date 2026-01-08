@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_PIPER_JS_UPDATE_DATA_TYPE_H_
-#define CORE_RUNTIME_PIPER_JS_UPDATE_DATA_TYPE_H_
+#ifndef CORE_RUNTIME_JS_UPDATE_DATA_TYPE_H_
+#define CORE_RUNTIME_JS_UPDATE_DATA_TYPE_H_
 
 #include <cstdint>
 
@@ -88,4 +88,4 @@ struct UpdateDataType {
 
 }  // namespace lynx::runtime
 
-#endif  // CORE_RUNTIME_PIPER_JS_UPDATE_DATA_TYPE_H_
+#endif  // CORE_RUNTIME_JS_UPDATE_DATA_TYPE_H_

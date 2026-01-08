@@ -10,8 +10,8 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/lynx_runtime.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/trace/service_trace_event_def.h"
 #include "core/shell/lynx_engine.h"

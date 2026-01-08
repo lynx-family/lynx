@@ -49,7 +49,7 @@
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/common/js_error_reporter.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/binary_input_stream.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/json_parser.h"

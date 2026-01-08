@@ -8,8 +8,8 @@
 #include <mutex>
 
 #include "core/runtime/bindings/napi/napi_runtime_proxy_v8.h"
+#include "core/runtime/js/lynx_runtime_helper.h"
 #include "core/runtime/jsi/v8/v8_api.h"
-#include "core/runtime/piper/js/lynx_runtime_helper.h"
 
 #if ENABLE_NAPI_BINDING
 extern void RegisterV8RuntimeProxyFactory(

@@ -20,7 +20,7 @@
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/jsi/modules/android/callback_impl.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
 namespace lynx {

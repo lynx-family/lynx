@@ -1,7 +1,7 @@
 // Copyright 2017 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 
 #include <memory>
 
@@ -18,11 +18,11 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/piper/js/js_executor.h"
-#include "core/runtime/piper/js/lynx_api_handler.h"
-#include "core/runtime/piper/js/runtime_constant.h"
-#include "core/runtime/piper/js/runtime_manager.h"
-#include "core/runtime/piper/js/template_delegate.h"
+#include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/lynx_api_handler.h"
+#include "core/runtime/js/runtime_constant.h"
+#include "core/runtime/js/runtime_manager.h"
+#include "core/runtime/js/template_delegate.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/services/long_task_timing/long_task_monitor.h"

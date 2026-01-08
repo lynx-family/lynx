@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "base/include/fml/memory/ref_counted.h"
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "platform/embedder/public/capi/lynx_runtime_lifecycle_observer_capi.h"
 
 #ifdef USE_PRIMJS_NAPI

@@ -11,7 +11,7 @@
 
 #include "core/public/prop_bundle.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"

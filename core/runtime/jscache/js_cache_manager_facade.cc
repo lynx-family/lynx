@@ -10,10 +10,10 @@
 #include <vector>
 
 #include "core/runtime/bindings/jsi/js_app.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/jscache/js_cache_manager.h"
 #include "core/runtime/jscache/quickjs/quickjs_cache_generator.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/runtime_constant.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
