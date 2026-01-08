@@ -73,9 +73,12 @@ void FSPTracer::OnCaptureSnapshot(FSPSnapshot current_snapshot) {
   }
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY_VITALS, FSP_TRACER_ON_VALUABLE_SNAPSHOT,
-      [&current_snapshot](lynx::perfetto::EventContext ctx) {
+      [&current_snapshot,
+       instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
         ctx.event()->set_timestamp_absolute_us(
             current_snapshot.trace_timestamp_us_);
+        ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                           std::to_string(instance_id));
         ctx.event()->add_debug_annotations(
             FSP_CONTAINER_SIZE,
             std::to_string(current_snapshot.container_size_.Width() *
@@ -282,9 +285,12 @@ void FSPTracer::HandleFSPResult(
   }
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY_VITALS, FSP_TIMING_MARK_FSP_END,
-      [status, &current_snapshot](lynx::perfetto::EventContext ctx) {
+      [status, &current_snapshot,
+       instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
         ctx.event()->add_debug_annotations(timing::kFSPStatus, status);
         if (current_snapshot.has_value()) {
+          ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                             std::to_string(instance_id));
           ctx.event()->add_debug_annotations(
               timing::kFSPEnd,
               std::to_string(current_snapshot->last_change_timestamp_us_));
