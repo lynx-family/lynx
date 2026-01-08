@@ -5,6 +5,8 @@
 package com.lynx.tasm.performance.fsp;
 
 import android.graphics.Rect;
+import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.eventreport.LynxEventReporter;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +44,8 @@ public class FSPSnapshot {
   private int mContainerFillPercentageContainerArea = 0;
 
   public long traceCurrentTimestampUs = 0;
+
+  public int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
 
   public FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs) {
     mContainerWidth = containerWidth;
@@ -199,6 +203,7 @@ public class FSPSnapshot {
   /// Just for Debug
   public Map<String, String> toMap() {
     HashMap<String, String> map = new HashMap<>();
+    map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mInstanceId));
     map.put("ContainerSize", String.valueOf(mContainerWidth * mContainerHeight));
     map.put("mTotalPresentedContentArea", String.valueOf(mTotalPresentedContentArea));
     map.put("mTotalContentArea", String.valueOf(mTotalContentArea));

@@ -105,6 +105,8 @@ class FSPTracer : public std::enable_shared_from_this<FSPTracer> {
                         const FSPConfig& config_);
   void UpdateStartTimestamp();
 
+  inline void SetInstanceId(int32_t instance_id) { instance_id_ = instance_id; }
+
  private:
   // Send FSP event with the given snapshot
   void OnFSP(const base::flex_optional<FSPSnapshot>& fsp_snapshot);
@@ -135,6 +137,7 @@ class FSPTracer : public std::enable_shared_from_this<FSPTracer> {
   // Whether the tracer is running
   bool is_running_ = false;
   CompletionCallback completion_callback_;
+  int32_t instance_id_ = -1;
 };
 
 }  // namespace performance

@@ -131,6 +131,10 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     mInstanceId = instanceId;
   }
 
+  public int getInstanceId() {
+    return mInstanceId;
+  }
+
   @Override
   public void allocateMemory(IMemoryRecordBuilder builder) {
     if (isEmbeddedMode()) {
