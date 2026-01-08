@@ -19,7 +19,7 @@
 #include "core/base/android/java_value.h"
 #include "core/runtime/bindings/jsi/modules/android/callback_impl.h"
 #include "core/runtime/bindings/jsi/modules/android/lynx_promise_impl.h"
-#include "core/runtime/piper/js/js_executor.h"
+#include "core/runtime/js/js_executor.h"
 
 #if ENABLE_TESTBENCH_RECORDER
 #include <stack>

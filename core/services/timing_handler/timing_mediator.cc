@@ -12,7 +12,7 @@
 #include "base/include/value/table.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"

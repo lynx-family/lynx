@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "core/renderer/data/template_data.h"
-#include "core/runtime/piper/js/js_bundle.h"
+#include "core/runtime/js/js_bundle.h"
 
 namespace lynx {
 namespace tasm {

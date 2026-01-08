@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_PIPER_JS_LYNX_RUNTIME_H_
-#define CORE_RUNTIME_PIPER_JS_LYNX_RUNTIME_H_
+#ifndef CORE_RUNTIME_JS_LYNX_RUNTIME_H_
+#define CORE_RUNTIME_JS_LYNX_RUNTIME_H_
 
 #include <memory>
 #include <string>
@@ -23,12 +23,12 @@
 #include "core/runtime/bindings/jsi/js_app.h"
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_timing.h"
-#include "core/runtime/piper/js/js_bundle_holder.h"
-#include "core/runtime/piper/js/js_executor.h"
-#include "core/runtime/piper/js/lynx_api_handler.h"
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
-#include "core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
-#include "core/runtime/piper/js/template_delegate.h"
+#include "core/runtime/js/js_bundle_holder.h"
+#include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/lynx_api_handler.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_observer_impl.h"
+#include "core/runtime/js/template_delegate.h"
 #include "core/runtime/vm/lepus/lepus_global.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
@@ -287,4 +287,4 @@ class LynxRuntime final {
 }  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_PIPER_JS_LYNX_RUNTIME_H_
+#endif  // CORE_RUNTIME_JS_LYNX_RUNTIME_H_

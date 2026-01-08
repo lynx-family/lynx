@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/piper/js/lynx_api_handler.h"
+#include "core/runtime/js/lynx_api_handler.h"
 
 #include <string>
 #include <utility>
 
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
 
 namespace lynx {
 namespace runtime {

@@ -15,7 +15,7 @@
 #include "base/include/lynx_actor.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"

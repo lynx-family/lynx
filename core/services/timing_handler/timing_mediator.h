@@ -10,7 +10,7 @@
 
 #include "base/include/lynx_actor.h"
 #include "core/public/pub_value.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/services/timing_handler/timing_handler_delegate.h"
 #include "core/services/timing_handler/timing_info.h"

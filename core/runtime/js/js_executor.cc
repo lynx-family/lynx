@@ -1,13 +1,13 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/piper/js/js_executor.h"
+#include "core/runtime/js/js_executor.h"
 
 #include "base/include/log/logging.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/jsi/console.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/piper/js/runtime_manager.h"
+#include "core/runtime/js/runtime_manager.h"
 
 // BINARY_KEEP_SOURCE_FILE
 namespace lynx {

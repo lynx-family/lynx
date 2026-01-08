@@ -15,7 +15,7 @@
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/include/value/base_value.h"
-#include "core/runtime/piper/js/js_bundle_holder.h"
+#include "core/runtime/js/js_bundle_holder.h"
 
 namespace lynx {
 namespace tasm {

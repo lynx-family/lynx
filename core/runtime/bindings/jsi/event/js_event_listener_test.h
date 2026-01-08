@@ -9,8 +9,8 @@
 #include <utility>
 
 #include "core/runtime/bindings/jsi/event/js_event_listener.h"
+#include "core/runtime/js/mock_template_delegate.h"
 #include "core/runtime/jsi/jsi_unittest.h"
-#include "core/runtime/piper/js/mock_template_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

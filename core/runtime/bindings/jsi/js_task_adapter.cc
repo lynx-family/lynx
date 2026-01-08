@@ -11,7 +11,7 @@
 #include "base/include/fml/make_copyable.h"
 #include "base/include/fml/message_loop.h"
 #include "base/trace/native/trace_event.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 

@@ -12,7 +12,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/shell/lynx_engine.h"

@@ -33,7 +33,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/feature_count/feature_counter.h"
 
 #if ENABLE_LEPUSNG_WORKLET

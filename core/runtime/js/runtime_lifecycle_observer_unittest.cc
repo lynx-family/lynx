@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/public/vsync_observer_interface.h"
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
-#include "core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_observer_impl.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
