@@ -23,6 +23,38 @@
   // anim played callback,it's not supported yet.We will support it later.
 }
 
+- (void)registerAnimatedImageCallback:(id)view UI:(LynxUIImage*)ui {
+  if (![self checkImageType:view]) {
+    return;
+  }
+  __weak typeof(ui) weakUI = ui;
+  SDAnimatedImageView* imageView = (SDAnimatedImageView*)view;
+  NSUInteger animationRepeatCount = (NSUInteger)imageView.animationRepeatCount;
+  if (imageView.player) {
+    LynxCustomEvent* event = [[LynxDetailEvent alloc] initWithName:@"startplay"
+                                                        targetSign:[ui sign]
+                                                            detail:@{}];
+    [ui.context.eventEmitter sendCustomEvent:event];
+
+    imageView.player.animationLoopHandler = ^(NSUInteger loopCount) {
+      __strong typeof(weakUI) strongUI = weakUI;
+      if (!strongUI) {
+        return;
+      }
+      LynxCustomEvent* event = [[LynxDetailEvent alloc] initWithName:@"currentloopcomplete"
+                                                          targetSign:[strongUI sign]
+                                                              detail:@{}];
+      [strongUI.context.eventEmitter sendCustomEvent:event];
+      if (animationRepeatCount == loopCount) {
+        LynxCustomEvent* event = [[LynxDetailEvent alloc] initWithName:@"finalloopcomplete"
+                                                            targetSign:[strongUI sign]
+                                                                detail:@{}];
+        [strongUI.context.eventEmitter sendCustomEvent:event];
+      }
+    };
+  }
+}
+
 - (void)appendExtraImageLoadDetailForEvent:(nonnull UIImage*)image
                             originalDetail:(nonnull NSMutableDictionary*)detail {
   // append custom info when enable extra-load-info

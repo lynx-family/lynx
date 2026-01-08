@@ -3306,6 +3306,7 @@ public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
   public BOOL LynxServiceImageProtocol-p::restartImageIfPossible:callback:(id view,[callback] LynxUIMethodCallbackBlock _Nullable callback);
   public void LynxServiceImageProtocol-p::setAutoPlay:value:(id view,[value] BOOL autoPlay);
   public void LynxServiceImageProtocol-p::addAnimatedImageCallBack:UI:(id view,[UI] LynxUIImage *ui);
+  public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:UI:(id view,[UI] LynxUIImage *ui);
   public BOOL LynxServiceImageProtocol-p::isAnimatedImage:(UIImage *image);
   public BOOL LynxServiceImageProtocol-p::checkImageType:(id view);
   public dispatch_block_t LynxServiceImageProtocol-p::loadNewImageFromURL:size:enableGenericFetcher:contextInfo:processors:completed:LynxUIImage:(LynxURL *url,[size] CGSize targetSize,[enableGenericFetcher] BOOL enableGenericFetcher,[contextInfo] NSDictionary *contextInfo,[processors] NSArray *processors,[completed] LynxImageLoadCompletionBlock completed,[LynxUIImage] LynxUIImage *lynxUIImage);
