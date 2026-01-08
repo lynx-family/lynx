@@ -1958,6 +1958,7 @@ public class com::lynx::tasm::performance::fsp::FSPConfig :  {
 
 public class com::lynx::tasm::performance::fsp::FSPSnapshot :  {
   public long com.lynx.tasm.performance.fsp.FSPSnapshot.traceCurrentTimestampUs traceCurrentTimestampUs;
+  public int com.lynx.tasm.performance.fsp.FSPSnapshot.mInstanceId mInstanceId;
   public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot(int containerWidth, int containerHeight, long lastChangeTimestampUs);
   public com.lynx.tasm.performance.fsp.FSPSnapshot.FSPSnapshot();
   public void com.lynx.tasm.performance.fsp.FSPSnapshot.fillContentToSnapshot(boolean isPresented, Rect rect, long firstPresentedTimestampUs);
@@ -8070,6 +8071,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public boolean com.lynx.tasm.performance.PerformanceController.isEmbeddedMode();
   public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
   public void com.lynx.tasm.performance.PerformanceController.setInstanceId(int instanceId);
+  public int com.lynx.tasm.performance.PerformanceController.getInstanceId();
   public void com.lynx.tasm.performance.PerformanceController.allocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(IMemoryRecordBuilder builder);

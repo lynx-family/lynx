@@ -67,6 +67,7 @@ public class FSPTracer {
   private final FSPConfig mConfig = new FSPConfig();
   private final AtomicBoolean mIsRunning = new AtomicBoolean(false);
   private volatile FSPSnapshot mPreviousSnapshot;
+  private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
   private WeakReference<PerformanceController> mPerfControllerRef = new WeakReference<>(null);
 
   /**
@@ -76,6 +77,7 @@ public class FSPTracer {
   public FSPTracer(PerformanceController perfController) {
     if (perfController != null) {
       mPerfControllerRef = new WeakReference<>(perfController);
+      mInstanceId = perfController.getInstanceId();
     }
   }
 
@@ -192,6 +194,7 @@ public class FSPTracer {
       }
       FSPSnapshot snapshot = new FSPSnapshot(
           rawSnapshot.getContainerWidth(), rawSnapshot.getContainerHeight(), currentTimestampUs);
+      snapshot.mInstanceId = mInstanceId;
       for (MeaningfulPaintingArea area : areaList) {
         boolean isPresented = area.getMeaningfulContentStatus()
             == ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED;
@@ -366,6 +369,7 @@ public class FSPTracer {
       info.put(KEY_FSP_STATUS, status.getValue());
       perfController.setFSPTimingInfo(currentTimestampUs, info);
       if (TraceEvent.isTracingStarted()) {
+        info.put(TraceEventDef.INSTANCE_ID, String.valueOf(perfController.getInstanceId()));
         UIThreadUtils.runOnUiThread(() -> {
           TraceEvent.instant(
               TraceEventDef.CATEGORY_DEFAULT, TraceEventDef.FSP_TIMING_MARK_FSP_END, info);
@@ -385,6 +389,7 @@ public class FSPTracer {
         String.valueOf(currentSnapshot.getContainerFillPercentageContainerArea()));
     perfController.setFSPTimingInfo(currentSnapshot.getLastChangeTimestampUs(), info);
     if (TraceEvent.isTracingStarted()) {
+      info.put(TraceEventDef.INSTANCE_ID, String.valueOf(perfController.getInstanceId()));
       UIThreadUtils.runOnUiThread(() -> {
         // Add 1 us to make sure this evnet is after the snapshot bitmap
         // event.

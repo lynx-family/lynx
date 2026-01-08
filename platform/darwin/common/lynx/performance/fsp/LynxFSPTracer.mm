@@ -89,6 +89,9 @@ using namespace lynx::tasm::performance;
 
 - (void)setNativeActor:(const std::shared_ptr<PerformanceControllerActor>&)nativeActor {
   _nativeWeakActorPtr = nativeActor;
+  if (_impl && nativeActor) {
+    _impl->SetInstanceId(nativeActor->GetInstanceId());
+  }
 }
 
 #pragma mark - Private
@@ -104,6 +107,10 @@ using namespace lynx::tasm::performance;
     config.enable_ = YES;
     [self setupFSPConfig:config];
     _impl = std::make_shared<FSPTracer>(std::move(config));
+    auto actor = _nativeWeakActorPtr.lock();
+    if (actor) {
+      _impl->SetInstanceId(actor->GetInstanceId());
+    }
   }
   __weak typeof(self) weakSelf = self;
   _impl->Start([weakSelf](FSPResult result) {
