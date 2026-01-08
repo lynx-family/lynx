@@ -718,6 +718,11 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                                                                value:frameCache];
         }
         [strongSelf onImageReady:image withRequest:requestUrl];
+        if ([[LynxImageLoader imageService]
+                respondsToSelector:@selector(registerAnimatedImageCallback:UI:)]) {
+          [[LynxImageLoader imageService] registerAnimatedImageCallback:strongSelf.view
+                                                                     UI:strongSelf];
+        }
         if ([NSThread isMainThread]) {
           [strongSelf superUpdateLayerMaskOnFrameChanged];
         } else {
