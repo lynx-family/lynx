@@ -149,7 +149,12 @@ void AnimationMutator::SetServiceManager(
 }
 
 void AnimationMutator::ResetServiceManager() {
-  animation_event_service_ = nullptr;
+  // A trick way to fix the issue that the animation event service is
+  // nullptr after the animation mutator is recreated by a new Frame .
+  // We should resue the animation mutator instead
+  if (!asScrollOffset()) {
+    animation_event_service_ = nullptr;
+  }
 }
 
 void AnimationMutator::OnAnimationEvent(
