@@ -252,6 +252,16 @@ class LynxDevToolService : ILynxDevToolService {
         return false;
     }
 
+    override fun enableAllSessions() {
+        try {
+            LynxDevtoolEnv.inst().enableAllSessions();
+        } catch (e: ClassNotFoundException) {
+            LLog.e(TAG, "enableAllSessions failed, ${e.message}")
+        } catch (e: NoClassDefFoundError) {
+            LLog.e(TAG, "enableAllSessions failed, ${e.message}")
+        }
+    }
+
     override fun getLynxDebugPresetValue(): Boolean {
         return lynxDebugPresetValue
     }

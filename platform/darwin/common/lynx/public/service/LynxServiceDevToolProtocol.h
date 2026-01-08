@@ -56,6 +56,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSSet *)devtoolEnvGetGroup:(NSString *)groupKey;
 
+- (void)enableAllSessions;
+
 @end
 
 NS_ASSUME_NONNULL_END

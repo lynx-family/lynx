@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import androidx.annotation.Keep;
 import com.example.lynxdevtool.BuildConfig;
 import com.lynx.config.LynxLiteConfigs;
+import com.lynx.debugrouter.DebugRouter;
 import com.lynx.devtool.memory.MemoryController;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.tasm.INativeLibraryLoader;
@@ -650,5 +651,9 @@ public class LynxDevtoolEnv {
 
   public boolean isAttached() {
     return true;
+  }
+
+  public void enableAllSessions() {
+    DebugRouter.getInstance().enableAllSessions();
   }
 }
