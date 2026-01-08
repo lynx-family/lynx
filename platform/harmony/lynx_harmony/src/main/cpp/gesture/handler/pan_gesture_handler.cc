@@ -66,8 +66,8 @@ void PanGestureHandler::OnHandle(
         OnBegin(last_x_, last_y_, lynx_touch_event);
       }
       if (ShouldActivate()) {
-        OnStart(last_x_, start_y_, lynx_touch_event);
         Activate();
+        OnStart(last_x_, start_y_, lynx_touch_event);
       }
       if (status_ == GestureConstants::LYNX_STATE_ACTIVE) {
         OnUpdate(last_x_, last_y_, lynx_touch_event, extra_bundle);

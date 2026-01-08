@@ -105,8 +105,8 @@ public class PanGestureHandler extends BaseGestureHandler {
         }
 
         if (shouldActive()) {
-          onStart(mLastX, mStartY, lynxTouchEvent);
           activate();
+          onStart(mLastX, mStartY, lynxTouchEvent);
         }
         if (mStatus == GestureConstants.LYNX_STATE_ACTIVE) {
           onUpdate(mLastX, mLastY, lynxTouchEvent, extraBundle);
