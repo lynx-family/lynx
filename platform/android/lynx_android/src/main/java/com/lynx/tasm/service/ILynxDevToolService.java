@@ -52,6 +52,17 @@ public interface ILynxDevToolService extends IServiceProvider {
 
   boolean isDevtoolAttached();
 
+  /**
+   * Enable all debug sessions
+   *
+   * Note:
+   * - This method should only be used when full-session debugging is allowed, otherwise it should
+   * generally not be used
+   * - When enabled, it will allow debugging of all sessions, which may pose security risks
+   * - Only use in development, testing, or internal debugging scenarios
+   */
+  void enableAllSessions();
+
   // Preset boolean values indicating whether certain features are enabled by default.
   //
   // Note:
