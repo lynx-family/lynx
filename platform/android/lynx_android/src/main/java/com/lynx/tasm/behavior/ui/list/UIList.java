@@ -1682,6 +1682,9 @@ public class UIList extends AbsLynxList<RecyclerView> {
     // when list is destroyed, in order to avoid memory leak, should remove FrameCallback
     removeFrameCallback();
     nativeListStateCache.clear();
+    if (mAppearEventCourier != null) {
+      mAppearEventCourier.dispose();
+    }
   }
 
   @Override

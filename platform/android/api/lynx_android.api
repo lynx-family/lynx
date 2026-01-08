@@ -483,6 +483,7 @@ public class com::lynx::tasm::behavior::ui::list::AppearEventCourier : com.lynx.
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourier.onListNodeDetached(@NonNull ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourier.holderAttached(ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourier.onListLayout();
+  public void com.lynx.tasm.behavior.ui.list.AppearEventCourier.dispose();
 }
 
 public class com::lynx::tasm::behavior::ui::list::AppearEventCourierImpl : com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface {
@@ -491,6 +492,7 @@ public class com::lynx::tasm::behavior::ui::list::AppearEventCourierImpl : com.l
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImpl.onListNodeDetached(@NonNull ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImpl.holderAttached(ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImpl.onListLayout();
+  public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImpl.dispose();
 }
 
 public class com::lynx::tasm::behavior::ui::list::AppearEventCourierImplV2 : com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface {
@@ -499,6 +501,7 @@ public class com::lynx::tasm::behavior::ui::list::AppearEventCourierImplV2 : com
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImplV2.onListNodeDetached(@NonNull ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImplV2.holderAttached(ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImplV2.onListLayout();
+  public void com.lynx.tasm.behavior.ui.list.AppearEventCourierImplV2.dispose();
 }
 
 public interface com::lynx::tasm::behavior::ui::list::AppearEventCourierInterface {
@@ -506,6 +509,7 @@ public interface com::lynx::tasm::behavior::ui::list::AppearEventCourierInterfac
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface.onListNodeDetached(@NonNull ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface.holderAttached(ListViewHolder holder);
   public void com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface.onListLayout();
+  public void com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface.dispose();
 }
 
 public class com::lynx::jsbridge::Arguments :  {

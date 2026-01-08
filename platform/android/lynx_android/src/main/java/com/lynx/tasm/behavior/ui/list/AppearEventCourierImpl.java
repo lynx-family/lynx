@@ -72,6 +72,9 @@ public class AppearEventCourierImpl implements AppearEventCourierInterface {
   @Override
   public void onListLayout() {}
 
+  @Override
+  public void dispose() {}
+
   private boolean isDuplicatedEvent(AppearEvent event1, AppearEvent event2) {
     if (mEnableDisappear) {
       if (!TextUtils.isEmpty(event1.type) && !event1.type.equals(event2.type)) {

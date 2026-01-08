@@ -17,6 +17,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.event.LynxListEvent;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -25,6 +26,9 @@ public class AppearEventCourierImplV2 implements AppearEventCourierInterface {
   final private Handler mHandler;
   final private CallBack mCallBack;
   final private RecyclerView mRecyclerView;
+  private RecyclerView.OnScrollListener mScrollListener;
+  private ViewTreeObserver.OnDrawListener mOnDrawListener;
+  private ViewTreeObserver.OnScrollChangedListener mOnScrollChangedListener;
   final private HashSet<CellInfo> mLastVisibleCells = new HashSet<CellInfo>();
   final private Rect mScreenRect = new Rect();
   // do not create every time, use one instance
@@ -41,9 +45,10 @@ public class AppearEventCourierImplV2 implements AppearEventCourierInterface {
     mScreenRect.set(0, 0, metric.widthPixels, metric.heightPixels);
     mEventEmitter = emitter;
     mHandler = new Handler(Looper.getMainLooper());
-    mCallBack = new CallBack();
+    mCallBack = new CallBack(this);
     mRecyclerView = recyclerView;
-    recyclerView.addOnScrollListener(new ListScrollListener());
+    mScrollListener = new ListScrollListener(this);
+    recyclerView.addOnScrollListener(mScrollListener);
 
     addTreeObserver();
   }
@@ -64,18 +69,10 @@ public class AppearEventCourierImplV2 implements AppearEventCourierInterface {
 
   private void addTreeObserver() {
     ViewTreeObserver viewTreeObserver = mRecyclerView.getViewTreeObserver();
-    viewTreeObserver.addOnDrawListener(new ViewTreeObserver.OnDrawListener() {
-      @Override
-      public void onDraw() {
-        onListContentChange(false);
-      }
-    });
-    viewTreeObserver.addOnScrollChangedListener(new ViewTreeObserver.OnScrollChangedListener() {
-      @Override
-      public void onScrollChanged() {
-        onListContentChange(false);
-      }
-    });
+    mOnDrawListener = new WeakOnDrawListener(this);
+    mOnScrollChangedListener = new WeakOnScrollChangedListener(this);
+    viewTreeObserver.addOnDrawListener(mOnDrawListener);
+    viewTreeObserver.addOnScrollChangedListener(mOnScrollChangedListener);
   }
 
   private void sendNodeEvent(String type, CellInfo cellinfo) {
@@ -145,25 +142,91 @@ public class AppearEventCourierImplV2 implements AppearEventCourierInterface {
     return mViewRect.intersect(mScreenRect);
   }
 
-  private class ListScrollListener extends RecyclerView.OnScrollListener {
+  private static class ListScrollListener extends RecyclerView.OnScrollListener {
+    private final WeakReference<AppearEventCourierImplV2> mRef;
+    ListScrollListener(AppearEventCourierImplV2 outer) {
+      mRef = new WeakReference<>(outer);
+    }
     @Override
     public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-      onListContentChange(false);
+      AppearEventCourierImplV2 o = mRef.get();
+      if (o != null) {
+        o.onListContentChange(false);
+      }
     }
-
     @Override
     public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-      if (RecyclerView.SCROLL_STATE_IDLE == newState) {
-        onListContentChange(true);
+      AppearEventCourierImplV2 o = mRef.get();
+      if (o != null && RecyclerView.SCROLL_STATE_IDLE == newState) {
+        o.onListContentChange(true);
       }
     }
   }
 
-  private class CallBack implements Runnable {
+  private static class CallBack implements Runnable {
+    private final WeakReference<AppearEventCourierImplV2> mRef;
+    CallBack(AppearEventCourierImplV2 outer) {
+      mRef = new WeakReference<>(outer);
+    }
     @Override
     public void run() {
-      onListContentChange(true);
+      AppearEventCourierImplV2 o = mRef.get();
+      if (o != null) {
+        o.onListContentChange(true);
+      }
     }
+  }
+
+  private static class WeakOnDrawListener implements ViewTreeObserver.OnDrawListener {
+    private final WeakReference<AppearEventCourierImplV2> mRef;
+    WeakOnDrawListener(AppearEventCourierImplV2 outer) {
+      mRef = new WeakReference<>(outer);
+    }
+    @Override
+    public void onDraw() {
+      AppearEventCourierImplV2 o = mRef.get();
+      if (o != null) {
+        o.onListContentChange(false);
+      }
+    }
+  }
+
+  private static class WeakOnScrollChangedListener
+      implements ViewTreeObserver.OnScrollChangedListener {
+    private final WeakReference<AppearEventCourierImplV2> mRef;
+    WeakOnScrollChangedListener(AppearEventCourierImplV2 outer) {
+      mRef = new WeakReference<>(outer);
+    }
+    @Override
+    public void onScrollChanged() {
+      AppearEventCourierImplV2 o = mRef.get();
+      if (o != null) {
+        o.onListContentChange(false);
+      }
+    }
+  }
+
+  @Override
+  public void dispose() {
+    mHandler.removeCallbacks(mCallBack);
+    if (mRecyclerView != null) {
+      if (mScrollListener != null) {
+        mRecyclerView.removeOnScrollListener(mScrollListener);
+        mScrollListener = null;
+      }
+      ViewTreeObserver vto = mRecyclerView.getViewTreeObserver();
+      if (vto != null) {
+        if (mOnDrawListener != null) {
+          vto.removeOnDrawListener(mOnDrawListener);
+          mOnDrawListener = null;
+        }
+        if (mOnScrollChangedListener != null) {
+          vto.removeOnScrollChangedListener(mOnScrollChangedListener);
+          mOnScrollChangedListener = null;
+        }
+      }
+    }
+    mLastVisibleCells.clear();
   }
 
   private class CellInfo {
