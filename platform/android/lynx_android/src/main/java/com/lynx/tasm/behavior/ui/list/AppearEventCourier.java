@@ -13,6 +13,7 @@ interface AppearEventCourierInterface {
   void holderAttached(ListViewHolder holder);
 
   void onListLayout();
+  void dispose();
 }
 
 public class AppearEventCourier implements AppearEventCourierInterface {
@@ -32,6 +33,9 @@ public class AppearEventCourier implements AppearEventCourierInterface {
   final void setNewAppear(boolean useNew) {
     if (useNew == mUseNew) {
       return;
+    }
+    if (mImpl != null) {
+      mImpl.dispose();
     }
     mUseNew = useNew;
     if (useNew) {
@@ -58,5 +62,11 @@ public class AppearEventCourier implements AppearEventCourierInterface {
   }
   public void onListLayout() {
     mImpl.onListLayout();
+  }
+
+  public void dispose() {
+    if (mImpl != null) {
+      mImpl.dispose();
+    }
   }
 }
