@@ -203,7 +203,7 @@ class QuickContext : private LEPUSRuntimeData,
 
 #if ENABLE_TRACE_PERFETTO
   void SetRuntimeProfiler(
-      std::shared_ptr<profile::RuntimeProfiler> runtime_profile);
+      std::shared_ptr<runtime::profile::RuntimeProfiler> runtime_profile);
   void RemoveRuntimeProfiler();
 #endif
 
@@ -261,7 +261,7 @@ class QuickContext : private LEPUSRuntimeData,
 
   common::JSErrorReporter js_error_reporter_;
 #if ENABLE_TRACE_PERFETTO
-  std::shared_ptr<profile::RuntimeProfiler> runtime_profiler_;
+  std::shared_ptr<runtime::profile::RuntimeProfiler> runtime_profiler_;
 #endif
 };
 

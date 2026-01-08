@@ -67,13 +67,15 @@ std::shared_ptr<piper::Runtime> JSDebugProxyImpl::MakeRuntime(
 }
 
 #if ENABLE_TRACE_PERFETTO
-std::shared_ptr<profile::RuntimeProfiler> JSDebugProxyImpl::MakeRuntimeProfiler(
+std::shared_ptr<runtime::profile::RuntimeProfiler>
+JSDebugProxyImpl::MakeRuntimeProfiler(
     std::shared_ptr<piper::JSIContext> js_context, const std::string& vm_type) {
   if (vm_type == kKeyEngineV8) {
 #if JS_ENGINE_TYPE == 0 || OS_ANDROID
     LOGI("js debug: make V8 profiler");
     auto v8_profiler = piper::makeV8RuntimeProfiler(js_context);
-    return std::make_shared<profile::V8RuntimeProfiler>(std::move(v8_profiler));
+    return std::make_shared<runtime::profile::V8RuntimeProfiler>(
+        std::move(v8_profiler));
 #endif
   } else if (vm_type == kKeyEngineQuickjs) {
     LOGI("js debug: make Quickjs profiler");

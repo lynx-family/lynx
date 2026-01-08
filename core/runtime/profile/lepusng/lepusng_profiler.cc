@@ -24,6 +24,7 @@ void QJSDebuggerFree(LEPUSContext *ctx);
 #endif
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 LepusNGProfiler::LepusNGProfiler(std::shared_ptr<lepus::Context> context) {
@@ -86,6 +87,7 @@ trace::RuntimeProfilerType LepusNGProfiler::GetType() {
 }
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif

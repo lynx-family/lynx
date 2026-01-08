@@ -13,8 +13,8 @@ namespace lynx {
 namespace piper {
 LYNX_EXPORT std::shared_ptr<piper::Runtime> makeJSVMRuntime();
 
-LYNX_EXPORT std::shared_ptr<profile::RuntimeProfiler> makeJSVMRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context);
+LYNX_EXPORT std::shared_ptr<lynx::runtime::profile::RuntimeProfiler>
+makeJSVMRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context);
 
 LYNX_EXPORT bool IsJSVMRuntimeAvailable();
 }  // namespace piper

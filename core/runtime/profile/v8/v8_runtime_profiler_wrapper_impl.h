@@ -12,6 +12,7 @@
 #include "v8-profiler.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 class V8RuntimeProfilerWrapperImpl : public V8RuntimeProfilerWrapper {
@@ -36,6 +37,7 @@ class V8RuntimeProfilerWrapperImpl : public V8RuntimeProfilerWrapper {
 };
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_PROFILE_V8_V8_RUNTIME_PROFILER_WRAPPER_IMPL_H_

@@ -20,7 +20,7 @@ LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<piper::Runtime> makeQuickJsRuntime();
 std::shared_ptr<VMInstance> CreateQuickJsVM(const StartupData*, bool sync);
 void BindQuickjsVMToCurrentThread(std::shared_ptr<piper::VMInstance>& vm);
 
-LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<profile::RuntimeProfiler>
+LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<lynx::runtime::profile::RuntimeProfiler>
 makeQuickJsRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context);
 
 }  // namespace piper

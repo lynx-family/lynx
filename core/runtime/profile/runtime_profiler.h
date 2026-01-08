@@ -15,6 +15,7 @@
 #include "core/base/lynx_export.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 struct LYNX_EXPORT RuntimeProfile {
@@ -47,6 +48,7 @@ class LYNX_EXPORT RuntimeProfiler
 };
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_PROFILE_RUNTIME_PROFILER_H_

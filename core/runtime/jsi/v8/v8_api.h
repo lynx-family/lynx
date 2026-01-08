@@ -19,8 +19,8 @@ namespace piper {
 
 std::unique_ptr<piper::Runtime> makeV8Runtime();
 
-std::shared_ptr<profile::V8RuntimeProfilerWrapper> makeV8RuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context);
+std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>
+makeV8RuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context);
 
 }  // namespace piper
 }  // namespace lynx

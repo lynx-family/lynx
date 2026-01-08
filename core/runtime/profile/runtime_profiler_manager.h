@@ -14,6 +14,7 @@
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 // export for devtool
 LYNX_EXPORT lynx::trace::TracePlugin* GetRuntimeProfilerManager();
@@ -55,6 +56,7 @@ class LYNX_EXPORT RuntimeProfilerManager : public lynx::trace::TracePlugin {
 };
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_PROFILE_RUNTIME_PROFILER_MANAGER_H_

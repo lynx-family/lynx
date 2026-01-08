@@ -29,7 +29,7 @@ class JSDebugProxyImpl : public JSDebugProxy {
   std::shared_ptr<piper::Runtime> MakeRuntime(
       const std::string& vm_type) override;
 #if ENABLE_TRACE_PERFETTO
-  std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
+  std::shared_ptr<runtime::profile::RuntimeProfiler> MakeRuntimeProfiler(
       std::shared_ptr<piper::JSIContext> js_context,
       const std::string& vm_type) override;
 #endif

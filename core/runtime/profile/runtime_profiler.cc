@@ -6,6 +6,7 @@
 #include <utility>
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 RuntimeProfiler::RuntimeProfiler() {
@@ -58,4 +59,5 @@ void RuntimeProfiler::SetupProfiling(base::closure task) {
 }
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx

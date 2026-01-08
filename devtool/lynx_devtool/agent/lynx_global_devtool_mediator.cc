@@ -341,7 +341,8 @@ void LynxGlobalDevToolMediator::TracingStart(
           GlobalDevToolPlatformFacade::GetInstance().GetInstanceTracePlugin());
 
       if (config->js_profile_interval > 0) {
-        controller->AddTracePlugin(lynx::profile::GetRuntimeProfilerManager());
+        controller->AddTracePlugin(
+            lynx::runtime::profile::GetRuntimeProfilerManager());
       }
       if (std::find(config->included_categories.begin(),
                     config->included_categories.end(),

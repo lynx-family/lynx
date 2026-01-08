@@ -23,6 +23,7 @@ void QJSDebuggerFree(LEPUSContext *ctx);
 #endif
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 QuickjsRuntimeProfiler::QuickjsRuntimeProfiler(
@@ -85,6 +86,7 @@ trace::RuntimeProfilerType QuickjsRuntimeProfiler::GetType() {
 }
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif

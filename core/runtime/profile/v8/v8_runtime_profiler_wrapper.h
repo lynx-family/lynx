@@ -9,6 +9,7 @@
 #include <vector>
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 struct V8CpuProfileCallFrame {
@@ -58,6 +59,7 @@ class V8RuntimeProfilerWrapper {
 };
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_PROFILE_V8_V8_RUNTIME_PROFILER_WRAPPER_H_

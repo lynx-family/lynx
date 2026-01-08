@@ -32,8 +32,8 @@ std::shared_ptr<piper::Runtime> makeJSVMRuntime() {
   return std::make_shared<JSVMRuntime>();
 }
 
-std::shared_ptr<profile::RuntimeProfiler> makeJSVMRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context) {
+std::shared_ptr<lynx::runtime::profile::RuntimeProfiler>
+makeJSVMRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
   // TODO(yangguangzhao.solace): implement me
   return nullptr;
 }

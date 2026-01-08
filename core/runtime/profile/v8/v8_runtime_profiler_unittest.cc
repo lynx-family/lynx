@@ -11,6 +11,7 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 namespace testing {
 
@@ -125,4 +126,5 @@ TEST(V8RuntimeProfilerTest, V8RuntimeProfilerTotalTest) {
 
 }  // namespace testing
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx

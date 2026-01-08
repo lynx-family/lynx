@@ -1412,14 +1412,14 @@ ContextCell* QuickContext::RegisterContextCell(lepus::QuickContext* qctx) {
 
 #if ENABLE_TRACE_PERFETTO
 void QuickContext::SetRuntimeProfiler(
-    std::shared_ptr<profile::RuntimeProfiler> runtime_profile) {
+    std::shared_ptr<runtime::profile::RuntimeProfiler> runtime_profile) {
   runtime_profiler_ = runtime_profile;
-  profile::RuntimeProfilerManager::GetInstance()->AddRuntimeProfiler(
+  runtime::profile::RuntimeProfilerManager::GetInstance()->AddRuntimeProfiler(
       runtime_profiler_);
 }
 void QuickContext::RemoveRuntimeProfiler() {
-  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-      runtime_profiler_);
+  runtime::profile::RuntimeProfilerManager::GetInstance()
+      ->RemoveRuntimeProfiler(runtime_profiler_);
   runtime_profiler_ = nullptr;
 }
 #endif

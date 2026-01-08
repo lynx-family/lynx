@@ -878,15 +878,17 @@ std::unique_ptr<piper::Runtime> makeV8Runtime() {
   return std::make_unique<V8Runtime>();
 }
 
-std::shared_ptr<profile::V8RuntimeProfilerWrapper> makeV8RuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context) {
+std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>
+makeV8RuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
   auto vm = js_context->getVM();
   if (vm->GetRuntimeType() == piper::JSRuntimeType::v8) {
     std::shared_ptr<V8IsolateInstance> v8_vm =
         std::static_pointer_cast<V8IsolateInstance>(vm);
-    auto v8_profiler = profile::V8RuntimeProfilerWrapperImpl::GetInstance();
+    auto v8_profiler =
+        lynx::runtime::profile::V8RuntimeProfilerWrapperImpl::GetInstance();
     v8_profiler->Initialize(v8_vm);
-    return std::shared_ptr<profile::V8RuntimeProfilerWrapper>(v8_profiler);
+    return std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>(
+        v8_profiler);
   }
   return nullptr;
 }

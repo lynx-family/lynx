@@ -11,6 +11,7 @@
 #include "core/runtime/profile/v8/v8_runtime_profiler_wrapper.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 class V8RuntimeProfiler : public RuntimeProfiler {
@@ -27,6 +28,7 @@ class V8RuntimeProfiler : public RuntimeProfiler {
   std::shared_ptr<V8RuntimeProfilerWrapper> impl_;
 };
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif

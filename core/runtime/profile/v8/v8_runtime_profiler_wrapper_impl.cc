@@ -10,6 +10,7 @@
 #include "core/runtime/jsi/v8/v8_helper.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 std::shared_ptr<V8RuntimeProfilerWrapperImpl>
@@ -136,4 +137,5 @@ void V8RuntimeProfilerWrapperImpl::FlattenProfileNodes(
 }
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx

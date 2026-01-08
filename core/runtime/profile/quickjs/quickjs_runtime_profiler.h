@@ -11,6 +11,7 @@
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 class QuickjsRuntimeProfiler : public RuntimeProfiler {
@@ -29,6 +30,7 @@ class QuickjsRuntimeProfiler : public RuntimeProfiler {
   std::weak_ptr<piper::QuickjsContextWrapper> weak_context_;
 };
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 #endif
 #endif  // CORE_RUNTIME_PROFILE_QUICKJS_QUICKJS_RUNTIME_PROFILER_H_

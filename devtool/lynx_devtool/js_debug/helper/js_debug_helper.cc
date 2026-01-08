@@ -44,7 +44,8 @@ std::shared_ptr<piper::Runtime> JSDebugHelper::MakeRuntime(
 }
 
 #if ENABLE_TRACE_PERFETTO
-std::shared_ptr<profile::RuntimeProfiler> JSDebugHelper::MakeRuntimeProfiler(
+std::shared_ptr<runtime::profile::RuntimeProfiler>
+JSDebugHelper::MakeRuntimeProfiler(
     std::shared_ptr<piper::JSIContext> js_context, const std::string& vm_type) {
   if (proxy_ == nullptr) {
     return nullptr;

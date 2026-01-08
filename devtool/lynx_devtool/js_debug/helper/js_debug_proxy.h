@@ -10,9 +10,11 @@
 
 namespace lynx {
 
+namespace runtime {
 namespace profile {
 class RuntimeProfiler;
 }  // namespace profile
+}  // namespace runtime
 
 namespace piper {
 class Runtime;
@@ -46,9 +48,9 @@ class JSDebugProxy {
     return nullptr;
   }
 #if ENABLE_TRACE_PERFETTO
-  virtual std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
-      std::shared_ptr<piper::JSIContext> js_context,
-      const std::string& vm_type) {
+  virtual std::shared_ptr<runtime::profile::RuntimeProfiler>
+  MakeRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context,
+                      const std::string& vm_type) {
     return nullptr;
   }
 #endif

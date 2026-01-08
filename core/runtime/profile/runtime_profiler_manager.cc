@@ -16,6 +16,7 @@
 #endif
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 LYNX_EXPORT lynx::trace::TracePlugin* GetRuntimeProfilerManager() {
@@ -121,4 +122,5 @@ std::string RuntimeProfilerManager::Name() {
   return name;
 }
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx

@@ -13,6 +13,7 @@
 #include "third_party/rapidjson/writer.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 V8RuntimeProfiler::V8RuntimeProfiler(
@@ -112,6 +113,7 @@ trace::RuntimeProfilerType V8RuntimeProfiler::GetType() {
 }
 
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 
 #endif

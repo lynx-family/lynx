@@ -967,14 +967,15 @@ void BindQuickjsVMToCurrentThread(std::shared_ptr<piper::VMInstance> &vm) {
   quickjs_vm->AddToIdContainer();
 }
 
-LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<profile::RuntimeProfiler>
+LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<lynx::runtime::profile::RuntimeProfiler>
 makeQuickJsRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
 #if ENABLE_TRACE_PERFETTO
   auto vm = js_context->getVM();
   if (vm->GetRuntimeType() == piper::JSRuntimeType::quickjs) {
     auto quickjs_context =
         std::static_pointer_cast<piper::QuickjsContextWrapper>(js_context);
-    return std::make_unique<profile::QuickjsRuntimeProfiler>(quickjs_context);
+    return std::make_unique<lynx::runtime::profile::QuickjsRuntimeProfiler>(
+        quickjs_context);
   }
 #endif
   return nullptr;

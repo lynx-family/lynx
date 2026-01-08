@@ -13,6 +13,7 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 namespace testing {
 
@@ -57,4 +58,5 @@ TEST(QuickjsRuntimeProfilerTest, QuickjsRuntimeProfilerTotalTest) {
 
 }  // namespace testing
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx

@@ -105,7 +105,8 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   if (is_lepusng_binary) {
     std::shared_ptr<lepus::QuickContext> context =
         std::static_pointer_cast<lepus::QuickContext>(vm_context_);
-    auto profiler = std::make_shared<profile::LepusNGProfiler>(context);
+    auto profiler =
+        std::make_shared<runtime::profile::LepusNGProfiler>(context);
     context->SetRuntimeProfiler(profiler);
   }
 #endif

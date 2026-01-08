@@ -12,6 +12,7 @@
 #include "core/runtime/vm/lepus/quick_context.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 
 class LepusNGProfiler : public RuntimeProfiler {
@@ -29,6 +30,7 @@ class LepusNGProfiler : public RuntimeProfiler {
   std::weak_ptr<lepus::QuickContext> weak_context_;
 };
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx
 #endif
 #endif  // CORE_RUNTIME_PROFILE_LEPUSNG_LEPUSNG_PROFILER_H_

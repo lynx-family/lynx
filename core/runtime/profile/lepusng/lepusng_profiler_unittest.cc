@@ -10,6 +10,7 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
+namespace runtime {
 namespace profile {
 namespace test {
 
@@ -54,4 +55,5 @@ TEST(LepusNGProfilerTest, LepusNGProfilerTotalTest) {
 
 }  // namespace test
 }  // namespace profile
+}  // namespace runtime
 }  // namespace lynx

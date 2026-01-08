@@ -104,7 +104,7 @@ RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
 }
 
 #if ENABLE_TRACE_PERFETTO
-std::shared_ptr<profile::RuntimeProfiler>
+std::shared_ptr<runtime::profile::RuntimeProfiler>
 RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
     std::shared_ptr<piper::JSIContext> js_context,
     bool force_use_lightweight_js_engine,
