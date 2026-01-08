@@ -17,6 +17,7 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/expected.h"
 #include "core/public/jsb/native_module_factory.h"
+#include "core/runtime/bindings/jsi/modules/ios/lynx_module_creator_darwin.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/common/utils.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -42,7 +43,6 @@ class LynxModuleDarwin : public LynxNativeModule {
   std::optional<piper::Value> TryGetPromiseRet() override;
 #endif
 
-  void SetSchema(const std::string schema) { schema_ = schema; }
   void SetMethodAuth(NSMutableArray<LynxMethodBlock> *methodAuthBlocks) {
     methodAuthBlocks_ = methodAuthBlocks;
   };
@@ -50,6 +50,9 @@ class LynxModuleDarwin : public LynxNativeModule {
     methodSessionBlocks_ = methodSessionBlocks;
   };
   void SetMethodScope(NSString *namescope) { namescope_ = namescope; }
+  void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin> &context_finder) {
+    context_finder_ = context_finder;
+  }
 
   id instance_;
 
@@ -61,7 +64,7 @@ class LynxModuleDarwin : public LynxNativeModule {
   NSMutableArray<LynxMethodSessionBlock> *methodSessionBlocks_;
   NSDictionary *attributeLookup;
   std::string module_name_;
-  std::string schema_;
+  std::shared_ptr<LynxContextFinderDarwin> context_finder_;
 
   ALLOW_UNUSED_TYPE int64_t record_id_ = 0;
 

@@ -43,6 +43,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
+#include "core/runtime/bindings/jsi/modules/ios/common_module_creator.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
@@ -291,8 +292,19 @@
   if (_config != globalConfig && globalConfig) {
     module_factory->parent = globalConfig.moduleFactoryPtr;
   }
-  module_factory->context = _context;
+  // bind common module creator
+  std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
+      std::make_shared<lynx::piper::CommonLynxContextFinderDarwin>();
+  NSString* url = [_context getLynxView].url;
+  context_finder->RegisterContext("", _context, lynx::base::SafeStringConvert([url UTF8String]));
+
+  std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
+      std::make_unique<lynx::piper::CommonModuleCreator>();
+  module_creator->SetContextFinder(context_finder);
+
+  module_factory->Bind(std::move(module_creator));
   module_factory->lynxModuleExtraData_ = _lynxModuleExtraData;
+
   if (_extra == nil) {
     _extra = [[NSMutableDictionary alloc] init];
   }
@@ -316,6 +328,9 @@
   }
   if (!module_factory) {
     module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+    std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
+        std::make_unique<lynx::piper::CommonModuleCreator>();
+    module_factory->Bind(std::move(module_creator));
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
       module_factory->addWrappers([_builder getModuleWrapper]);
@@ -336,7 +351,12 @@
   if (_config != globalConfig && globalConfig) {
     module_factory->parent = globalConfig.moduleFactoryPtr;
   }
-  module_factory->context = _context;
+
+  std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
+      std::make_shared<lynx::piper::CommonLynxContextFinderDarwin>();
+  NSString* url = [_context getLynxView].url;
+  context_finder->RegisterContext("", _context, lynx::base::SafeStringConvert([url UTF8String]));
+  module_factory->SetContextFinder(context_finder);
 
   module_factory->lynxModuleExtraData_ = _lynxModuleExtraData;
 

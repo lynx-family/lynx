@@ -95,18 +95,7 @@ LynxModuleDarwin::LynxModuleDarwin(id<LynxModule> instance)
   methodSessionBlocks_ = [NSMutableArray array];
 }
 
-void LynxModuleDarwin::Destroy() {
-#if !defined(OS_OSX)
-  if (instance_ == nil || [instance_ isEqual:[NSNull null]]) {
-    LOGI("NativeModule: LynxModuleDarwin Destroy: " << module_name_ << ", module is empty.");
-    return;
-  }
-  LOGI("LynxModuleDarwin Destroy: " << module_name_);
-  if ([instance_ respondsToSelector:@selector(destroy)]) {
-    [instance_ destroy];
-  }
-#endif  // !defined(OS_OSX)
-}
+void LynxModuleDarwin::Destroy() {}
 
 #if OS_IOS || OS_TVOS || OS_OSX
 void LynxModuleDarwin::EnterInvokeScope(Runtime *rt,
@@ -132,7 +121,7 @@ std::optional<piper::Value> LynxModuleDarwin::TryGetPromiseRet() {
   return std::nullopt;
 }
 
-#endif
+#endif  // OS_IOS || OS_TVOS || OS_OSX
 
 base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::InvokeMethod(
     const std::string &method_name, std::unique_ptr<pub::Value> args, size_t count,
@@ -193,8 +182,10 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::Invok
     }
   }
   if (tasm::LynxEnv::GetInstance().IsPiperMonitorEnabled()) {
-    tasm::LynxEnvDarwin::onPiperInvoked(module_name_, method_name, first_arg_str, schema_,
-                                        invoke_session.str());
+    tasm::LynxEnvDarwin::onPiperInvoked(
+        module_name_, method_name, first_arg_str,
+        context_finder_ ? context_finder_->FindSchema(std::to_string(context_id_)) : "",
+        invoke_session.str());
   }
   return res;
 }
@@ -771,7 +762,8 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
   __block std::string jsb_func_name = LynxModuleInterceptor::GetJSBFuncName(instance_, first_arg);
   __block uint64_t start_time_copy = start_time;
   __block std::string module_name_copy = module_name_;
-  __block std::string schema_copy = schema_;
+  __block std::string schema_copy =
+      context_finder_ ? context_finder_->FindSchema(std::to_string(context_id_)) : "";
   __block std::string method_name_copy = method_name;
   ALLOW_UNUSED_TYPE uint64_t callback_flow_id = callback->CallbackFlowId();
 
