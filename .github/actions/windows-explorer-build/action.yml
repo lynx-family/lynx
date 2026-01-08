@@ -1,0 +1,21 @@
+name: build windows explorer
+
+description: build windows explorer apk.
+
+inputs:
+  build-arch:
+    description: The architecture of explorer we are building. It could be x64,x86
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Python Setup
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Setup Node.js 18.20.0
+      uses: actions/setup-node@v6
+      with:
+        node-version: '18.20.0'
+    - name: Install Common Dependencies
+      uses: ./lynx/.github/actions/windows-common-deps
