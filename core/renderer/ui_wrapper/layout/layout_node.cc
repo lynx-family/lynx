@@ -87,7 +87,9 @@ void LayoutNode::InsertNode(LayoutNode* child, int index) {
   // Inline views should be bind to non-virtual parent layoutobject.
   if (is_virtual() && !child->is_virtual()) {
     LayoutNode* parent = FindNonVirtualNode();
-    parent->slnode()->AppendChild(child->slnode());
+    if (parent) {
+      parent->slnode()->AppendChild(child->slnode());
+    }
   }
 
   if (index == -1) {
@@ -117,7 +119,9 @@ LayoutNode* LayoutNode::RemoveNodeAtIndex(unsigned int index) {
   // Remove inline views from non-virtual parent node.
   if (is_virtual() && !child->is_virtual()) {
     LayoutNode* parent = FindNonVirtualNode();
-    parent->slnode()->RemoveChild(child->slnode());
+    if (parent) {
+      parent->slnode()->RemoveChild(child->slnode());
+    }
   }
 
   if (!child->is_virtual() && !is_virtual()) {

@@ -527,6 +527,8 @@ void LayoutContext::RemoveLayoutNode(int32_t parent_id, int32_t child_id) {
 void LayoutContext::DestroyLayoutNode(int32_t id) {
   auto node = FindNodeById(id);
   if (node != nullptr) {
+    UnlinkNodeFromChildren(node);
+    UnlinkNodeFromParent(node);
     bool has_platform_shadownode = !node->is_common() || node->is_inline_view();
     if (has_platform_shadownode) {
       destroyed_platform_nodes_.insert(id);
@@ -539,6 +541,28 @@ void LayoutContext::DestroyLayoutNode(int32_t id) {
     layout_nodes_.erase(id);
   }
 }
+
+void LayoutContext::UnlinkNodeFromParent(LayoutNode* node) {
+  if (node == nullptr) return;
+  auto parent = node->parent();
+  if (parent != nullptr) {
+    LOGE("DestroyLayoutNodeBeforeRemoveFromParent tag:" << node->tag().str());
+    int index = GetIndexForChild(parent, node);
+    if (index >= 0) {
+      RemoveLayoutNodeAtIndex(parent->id(), index);
+    }
+  }
+}
+
+void LayoutContext::UnlinkNodeFromChildren(LayoutNode* node) {
+  if (node == nullptr || node->children().empty()) return;
+  LOGE("DestroyLayoutNodeBeforeRemoveFromChildren tag:" << node->tag().str());
+  int count = static_cast<int>(node->children().size());
+  for (int i = count - 1; i >= 0; --i) {
+    RemoveLayoutNodeAtIndex(node->id(), i);
+  }
+}
+
 int LayoutContext::GetIndexForChild(LayoutNode* parent, LayoutNode* child) {
   int index = 0;
   bool found = false;
