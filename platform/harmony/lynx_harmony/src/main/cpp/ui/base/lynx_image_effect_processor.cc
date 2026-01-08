@@ -13,7 +13,6 @@
 #include <native_drawing/drawing_image_filter.h>
 #include <native_drawing/drawing_pixel_map.h>
 #include <native_drawing/drawing_rect.h>
-#include <native_drawing/drawing_round_rect.h>
 #include <native_drawing/drawing_sampling_options.h>
 
 namespace lynx {
@@ -22,18 +21,6 @@ namespace harmony {
 OH_PixelmapNative* LynxImageEffectProcessor::Process(
     OH_PixelmapNative* pixel_map) const {
   return CustomProcessor(effect_, params_, pixel_map);
-}
-
-std::string LynxImageEffectProcessor::Info() const {
-  if (effect_ == ImageEffect::kDropShadow) {
-    const auto& shadow_params = std::get<DropShadowParams>(params_);
-    return shadow_params.ToString();
-  } else if (effect_ == ImageEffect::kCapInsets) {
-    const auto& cap_insets_params = std::get<CapInsetParams>(params_);
-    return cap_insets_params.ToString();
-  } else {
-    return {};
-  }
 }
 
 OH_PixelmapNative* LynxImageEffectProcessor::CustomProcessor(
@@ -105,8 +92,8 @@ OH_PixelmapNative* LynxImageEffectProcessor::ApplyDropShadowToBitmap(
       static_cast<uint32_t>(color), BLEND_MODE_SRC_IN);
 
   OH_Drawing_Filter* draw_filter = OH_Drawing_FilterCreate();
-  OH_Drawing_ImageFilter* image_filter =
-      OH_Drawing_ImageFilterCreateBlur(radius, radius, DECAL, nullptr);
+  OH_Drawing_ImageFilter* image_filter = OH_Drawing_ImageFilterCreateBlur(
+      radius, radius, OH_Drawing_TileMode::CLAMP, nullptr);
 
   OH_Drawing_FilterSetImageFilter(draw_filter, image_filter);
   OH_Drawing_FilterSetColorFilter(draw_filter, color_filter);

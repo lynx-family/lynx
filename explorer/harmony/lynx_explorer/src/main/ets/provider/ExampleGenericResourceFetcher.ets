@@ -12,7 +12,7 @@ import {
 } from '@lynx/lynx';
 import { AsyncCallback, BusinessError } from '@ohos.base';
 import http from '@ohos.net.http';
-import { CacheStrategy, ImageKnife, ImageKnifeOption } from '@ohos/imageknifepro';
+import { CacheStrategy, ImageKnife, ImageKnifeOption } from '@ohos/imageknife';
 
 export class ExampleGenericResourceFetcher extends LynxGenericResourceFetcher {
   fetchResource(request: LynxResourceRequest, callback: AsyncCallback<ArrayBuffer, void>): void {
@@ -29,9 +29,9 @@ export class ExampleGenericResourceFetcher extends LynxGenericResourceFetcher {
     if (request.type === LynxResourceType.LYNX_RESOURCE_TYPE_IMAGE) {
       let option = new ImageKnifeOption();
       option.loadSrc = request.url;
-      option.writeCacheStrategy = CacheStrategy.FILE;
+      option.writeCacheStrategy = CacheStrategy.File;
       let error: BusinessError | undefined = undefined;
-      ImageKnife.getInstance().preloadCache(option).then((data: string) => {
+      ImageKnife.getInstance().preLoadCache(option).then((data: string) => {
         if (data.length > 0) {
           callback(error, data);
         } else {

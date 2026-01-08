@@ -7,8 +7,3 @@ import("../../config.gni")
 
 primjs_native_lib_dir =
     rebase_path("oh_modules/@lynx/primjs/libs/${harmony_app_abi}")
-
-imageknife_include_dir = rebase_path(
-        "lynx_services/lynx_image_service/oh_modules/@ohos/imageknifepro/include")
-imageknife_native_lib_dir = rebase_path(
-        "lynx_services/lynx_image_service/oh_modules/@ohos/imageknifepro/libs/${harmony_app_abi}")

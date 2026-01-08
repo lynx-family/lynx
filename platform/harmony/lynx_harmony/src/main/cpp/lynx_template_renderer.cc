@@ -33,7 +33,6 @@
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/system_font_manager.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
 #if ENABLE_TESTBENCH_REPLAY
 #include "core/services/replay/testbench_utils_embedder.h"
@@ -595,8 +594,6 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_set_named_property(env, exports, export_class.c_str(), cons);
 
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
-  NAPI_CREATE_FUNCTION(env, exports, "registerImageService",
-                       RegisterImageService);
   NAPI_CREATE_FUNCTION(env, exports, "getBaseTraceBackend",
                        GetBaseTraceBackend);
   NAPI_CREATE_FUNCTION(env, exports, "setTracingDirPath", SetTracingDirPath);
@@ -679,17 +676,6 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
           LOGI("GetSystemFont when InitGlobalEnv!")
         });
   }
-  return nullptr;
-}
-
-napi_value LynxTemplateRenderer::RegisterImageService(napi_env env,
-                                                      napi_callback_info info) {
-  size_t argc = 1;
-  napi_value args[1] = {nullptr};
-  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-  auto service_num = base::NapiUtil::ConvertToPtr(env, args[0]);
-  tasm::harmony::UINewImage::image_service =
-      reinterpret_cast<tasm::harmony::ImageService*>(service_num);
   return nullptr;
 }
 

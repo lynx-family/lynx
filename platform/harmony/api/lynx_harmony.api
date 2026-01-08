@@ -1113,7 +1113,6 @@ export enum LynxServiceType {
   Security
   Extension
   DevTool
-  Image
 }
 
 export const LynxServiceCenter: LynxServiceCenterImpl {
@@ -1171,9 +1170,5 @@ export interface ILynxDevToolService {
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null;
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
-}
-
-export interface ILynxImageService {
-  initNativeService(resourceManager: Object): number[];
 }
 

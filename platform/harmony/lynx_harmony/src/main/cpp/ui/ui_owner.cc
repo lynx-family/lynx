@@ -25,7 +25,6 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_flatten_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
-#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_text.h"
@@ -96,11 +95,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
                        PropBundleHarmony* painting_data, uint32_t node_index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_CREATE_UI + tag);
   UIBase* ui = nullptr;
-
-  if (tag == "image" && LynxEnv::GetInstance().EnableHarmonyNewImage()) {
-    ui = UINewImage::Make(context_.get(), sign, tag);
-  } else if ((tag == "image") && (painting_data->Contains("autoplay") ||
-                                  painting_data->Contains("loop-count"))) {
+  if ((tag == "image") && (painting_data->Contains("autoplay") ||
+                           painting_data->Contains("loop-count"))) {
     ui = UIFlattenImage::Make(context_.get(), sign, tag);
   } else if ((tag == "x-overlay-ng" || tag == "overlay") &&
              context_->GetEnableHarmonyNewOverlay()) {

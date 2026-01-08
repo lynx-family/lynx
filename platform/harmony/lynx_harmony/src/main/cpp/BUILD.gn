@@ -192,8 +192,6 @@ lynx_core_source_set("cpp") {
     "ui/ui_intersection_observer.h",
     "ui/ui_list.cc",
     "ui/ui_list.h",
-    "ui/ui_new_image.cc",
-    "ui/ui_new_image.h",
     "ui/ui_observer.cc",
     "ui/ui_observer.h",
     "ui/ui_owner.cc",

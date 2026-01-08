@@ -162,18 +162,7 @@ UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
       sign_(sign),
       tag_(tag),
       has_customized_layout_(has_customized_layout) {
-  if (type != ARKUI_NODE_UNDEFINED) {
-    ArkUI_NodeHandle node = NodeManager::Instance().CreateNode(type);
-    InitNode(node);
-  }
-}
-
-void UIBase::InitNode(ArkUI_NodeHandle node) {
-  if (node_) {
-    return;
-  }
-  node_ = node;
-
+  node_ = NodeManager::Instance().CreateNode(type);
   if (CanDrawBehind()) {
     NodeManager::Instance().AddNodeCustomEventReceiver(
         Node(), UIBase::CustomEventReceiver);
@@ -207,11 +196,31 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
 }
 
 UIBase::~UIBase() {
-  if (!node_) {
-    return;
+  if (CanDrawBehind()) {
+    NodeManager::Instance().UnregisterNodeCustomEvent(
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND);
+    NodeManager::Instance().RemoveNodeCustomEventReceiver(
+        Node(), UIBase::CustomEventReceiver);
+  } else if (node_type_ == ARKUI_NODE_CUSTOM) {
+    NodeManager::Instance().UnregisterNodeCustomEvent(
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW);
+    NodeManager::Instance().RemoveNodeCustomEventReceiver(
+        Node(), UIBase::CustomEventReceiver);
   }
-  Destroy();
-  NodeManager::Instance().DisposeNode(node_);
+  NodeManager::Instance().UnregisterNodeCustomEvent(
+      Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW);
+  NodeManager::Instance().RemoveNodeEventReceiver(Node(),
+                                                  UIBase::EventReceiver);
+  DetachFromNodeContent();
+  NodeManager::Instance().DisposeNode(Node());
+  DestroyDrawNode();
+  auto manager = GetGestureArenaManager();
+  // remove arena member if destroy
+  if (manager != nullptr) {
+    manager->RemoveMember(weak_from_this());
+  }
+  // clear gesture map if destroy
+  gesture_handlers_.clear();
 }
 
 bool UIBase::CanDrawBehind() {
@@ -352,31 +361,6 @@ void UIBase::FrameDidChanged() {
                                                         left_, top_);
   }
   UpdateDrawNodeFrame();
-}
-
-void UIBase::Destroy() {
-  DestroyDrawNode();
-  if (CanDrawBehind()) {
-    NodeManager::Instance().UnregisterNodeCustomEvent(
-        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND);
-    NodeManager::Instance().RemoveNodeCustomEventReceiver(
-        Node(), UIBase::CustomEventReceiver);
-  } else if (node_type_ == ARKUI_NODE_CUSTOM) {
-    NodeManager::Instance().UnregisterNodeCustomEvent(
-        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_DRAW);
-    NodeManager::Instance().RemoveNodeCustomEventReceiver(
-        Node(), UIBase::CustomEventReceiver);
-  }
-  NodeManager::Instance().UnregisterNodeCustomEvent(
-      Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW);
-  NodeManager::Instance().RemoveNodeEventReceiver(Node(),
-                                                  UIBase::EventReceiver);
-  DetachFromNodeContent();
-  auto manager = GetGestureArenaManager();
-  // remove arena member if destroy
-  if (manager != nullptr) {
-    manager->RemoveMember(weak_from_this());
-  }
 }
 
 void UIBase::SetGestureDetectors(const GestureMap& gesture_detectors) {

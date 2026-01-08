@@ -73,6 +73,13 @@ void ScrollbarWrapper::RemoveChild(BaseView* child) {
   view_->RemoveChild(child);
 }
 
+void ScrollbarWrapper::OnDestroy() {
+  if (scrollbar_ && !scrollbar_->Parent()) {
+    DestroyChildrenRecursively(scrollbar_);
+  }
+  scrollbar_ = nullptr;
+}
+
 void ScrollbarWrapper::SetAttribute(const char* attr_c,
                                     const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);

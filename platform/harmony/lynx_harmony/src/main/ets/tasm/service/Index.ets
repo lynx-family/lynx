@@ -23,5 +23,3 @@ export { LynxExtensionModule } from '../../extension/LynxExtensionModule'
 export { ExtensionModule } from 'liblynx.so'
 
 export { ILynxDevToolService } from './ILynxDevToolService'
-
-export { ILynxImageService } from './ILynxImageService'

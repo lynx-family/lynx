@@ -18,7 +18,6 @@ import { LynxTrailHub } from './LynxTrailHub';
 import { LynxDebugger } from '../devtool_wrapper/LynxDebugger';
 import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
 import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
-import { ILynxImageService } from './service/ILynxImageService';
 
 const TAG = 'LynxEnv';
 
@@ -39,12 +38,6 @@ class LynxEnvironment {
     if (!this.performanceEnable) {
       this.setTracingDirPath(context.filesDir);
     }
-    const imageService = LynxServiceCenter.getService<ILynxImageService>(LynxServiceType.Image);
-    if (!imageService) {
-      throw new Error('LynxImageService not found. Register via LynxServiceCenter.registerService before using.');
-    }
-    lynx.registerImageService(imageService.initNativeService(context.resourceManager));
-
     this.tryInitLynxDebug();
     lynx.initGlobalEnv(context.resourceManager);
     LynxInfoReporterHelper.initialize();

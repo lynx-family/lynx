@@ -30,7 +30,6 @@ DEFAULT_MODULES = [
     'lynx_devtool_service',
     'lynx_log_service',
     'lynx_http_service',
-    'lynx_image_service',
 ]
 
 
@@ -134,7 +133,6 @@ def run_cp_so(output_path, args, abi):
         'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
         'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', abi),
         'liblynxdevtool.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'libs', abi),
-        'liblynx_image_service.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_services', 'lynx_image_service', 'libs', abi),
     }
     for so, dst in shared_object_cp_map.items():
         src = os.path.join(output_path, so)

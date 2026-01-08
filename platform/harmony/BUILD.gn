@@ -11,6 +11,5 @@ group("harmony") {
     "../../base/platform/harmony:lynx_base",
     "lynx_devtool",
     "lynx_harmony",
-    "lynx_services/lynx_image_service",
   ]
 }
