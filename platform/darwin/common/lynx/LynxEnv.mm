@@ -37,6 +37,7 @@
 #include "core/base/lynx_trace_categories.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/tasm/config.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/jscache/js_cache_manager_facade.h"
 #include "core/services/fluency/fluency_tracer.h"
@@ -83,7 +84,6 @@
     external_env_mutex_ = std::unique_ptr<fml::SharedMutex>(fml::SharedMutex::Create());
     _externalEnvCache = [NSMutableDictionary dictionary];
     _lifecycleDispatcher = [[LynxLifecycleDispatcher alloc] init];
-    _devtoolComponentAttach = NO;
     _resoureProviders = [NSMutableDictionary dictionary];
     _locale = [[NSLocale preferredLanguages] objectAtIndex:0];
     _layoutOnlyEnabled = YES;
@@ -124,28 +124,31 @@
   BLOCK_FOR_INSPECTOR(^{
     Class inspectorClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
     if ([inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorOwner)]) {
-      self->_devtoolComponentAttach = YES;
-      lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv([KEY_DEVTOOL_COMPONENT_ATTACH UTF8String],
-                                                         true);
-      lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv([KEY_LYNX_DEBUG UTF8String],
-                                                         [self lynxDebugEnabled]);
-    } else {
-      self->_devtoolComponentAttach = NO;
+      lynx::tasm::DevToolLifecycle::GetInstance().OnAttached();
+      // Although there is no such thing as "preset" on iOS,
+      // `lynxDebugPresetValue` is actually working as a default value set from service.
+      // We still need to check it and apply.
+      // TODO(mitchilling): rename `lynxDebugPresetValue` to solve ambiguity.
+      if ([LynxService(LynxServiceDevToolProtocol) lynxDebugPresetValue]) {
+        lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
+      }
     }
   });
 }
 
+// Since `LynxEnv init` is called inside `LynxEnv sharedInstance`,
+// this function is garuanteed to be called after first initialization.
 - (void)setLynxDebugEnabled:(BOOL)lynxDebugEnabled {
-  [LynxService(LynxServiceDevToolProtocol) setLynxDebugPresetValue:lynxDebugEnabled];
-  lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv([KEY_LYNX_DEBUG UTF8String],
-                                                     [self lynxDebugEnabled]);
-  [self initDevToolEnv];
+  if (lynxDebugEnabled) {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnEnabled();
+    [self initDevToolEnv];
+  } else {
+    lynx::tasm::DevToolLifecycle::GetInstance().OnDisabled();
+  }
 }
 
 - (BOOL)lynxDebugEnabled {
-  // Return true only if the DevTool Component is attached and `lynxDebugPresetValue` is true. It
-  // avoids unnecessary reflection calls.
-  return _devtoolComponentAttach && [LynxService(LynxServiceDevToolProtocol) lynxDebugPresetValue];
+  return lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled();
 }
 
 - (void)initDevToolEnv {

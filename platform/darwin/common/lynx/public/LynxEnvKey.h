@@ -10,8 +10,6 @@
 static NSString *const SP_KEY_ENABLE_AUTOMATION = @"enable_automation";
 
 // Keys for devtool.
-static NSString *const KEY_LYNX_DEBUG = @"lynx_debug_enabled";
-static NSString *const KEY_DEVTOOL_COMPONENT_ATTACH = @"devtool_component_attach";
 static NSString *const SP_KEY_ENABLE_DEVTOOL = @"enable_devtool";
 static NSString *const SP_KEY_ENABLE_LOGBOX = @"enable_logbox";
 static NSString *const SP_KEY_ENABLE_HIGHLIGHT_TOUCH = @"enable_highlight_touch";
@@ -25,7 +23,6 @@ static NSString *const SP_KEY_ACTIVATED_CDP_DOMAINS = @"activated_cdp_domains";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_DOM = @"enable_cdp_domain_dom";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_CSS = @"enable_cdp_domain_css";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page";
-static NSString *const SP_KEY_DEVTOOL_CONNECTED = @"devtool_connected";
 static NSString *const SP_KEY_ENABLE_QUICKJS_DEBUG = @"enable_quickjs_debug";
 static NSString *const SP_KEY_ENABLE_FSP_SCREENSHOT = @"enable_fsp_screenshot";
 

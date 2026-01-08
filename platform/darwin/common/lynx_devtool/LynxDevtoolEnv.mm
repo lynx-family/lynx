@@ -11,6 +11,7 @@
 #import <LynxDevtool/LynxDevtoolEnv.h>
 
 #include <LynxDevtool/LynxDebugBridge.h>
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 
 NSString *const ERROR_CODE_KEY_PREFIX = @"error_code";
@@ -62,6 +63,7 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     }];
     [self initErrorsCanBeIgnored];
     [self initGroupDictionaries];
+    lynx::tasm::DevToolLifecycle::GetInstance().OnInitialized();
   }
   return self;
 }
@@ -88,7 +90,6 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 #endif
     SP_KEY_ENABLE_QUICKJS_DEBUG : @[ @YES, @YES, @YES ],
     SP_KEY_ENABLE_DOM_TREE : @[ @YES, @YES, @YES ],
-    SP_KEY_DEVTOOL_CONNECTED : @[ @NO, @YES, @NO ],
     ENABLE_PERF_METRICS : @[ @NO, @NO, @NO ]
   };
 }

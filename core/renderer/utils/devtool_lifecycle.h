@@ -10,7 +10,7 @@
 #include <string>
 
 #include "base/include/no_destructor.h"
-#include "base/lynx_export.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/utils/devtool_state.h"
 
 namespace lynx {

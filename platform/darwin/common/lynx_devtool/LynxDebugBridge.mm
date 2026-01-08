@@ -21,6 +21,7 @@
 #import <DebugRouter/DebugRouter.h>
 #import <DebugRouter/DebugRouterGlobalHandler.h>
 #endif
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "devtool/lynx_devtool/config/devtool_config.h"
 
@@ -196,7 +197,7 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
 }
 
 - (void)onOpen:(ConnectionType)type {
-  [[LynxDevtoolEnv sharedInstance] set:YES forKey:SP_KEY_DEVTOOL_CONNECTED];
+  lynx::tasm::DevToolLifecycle::GetInstance().OnConnected();
 }
 
 - (void)onPerfMetricsEvent:(NSString *)eventName
