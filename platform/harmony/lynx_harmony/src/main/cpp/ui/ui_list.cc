@@ -491,13 +491,6 @@ void UIList::ScrollToAsync(float delta_x, float delta_y) {
       });
 }
 
-std::vector<float> UIList::ScrollBy(float delta_x, float delta_y) {
-  SetScrollState(list::ScrollState::kScrollAnimation);
-  std::vector<float> result = BaseScrollContainer::ScrollBy(delta_x, delta_y);
-  SetScrollState(list::ScrollState::kIdle);
-  return result;
-}
-
 void UIList::OnNodeEvent(ArkUI_NodeEvent* event) {
   auto type = OH_ArkUI_NodeEvent_GetEventType(event);
   if (type == NODE_SCROLL_EVENT_ON_SCROLL_START) {
@@ -834,8 +827,7 @@ void UIList::SendScrollEndEvent() {
 
 void UIList::HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event) {
   // component_event->data[0].f32 and component_event->data[1].f32 is the delta
-  // of content offset that will be
-  // consumed.
+  // of content offset that will be consumed.
   float delta_offset_x = component_event->data[0].f32;
   float delta_offset_y = component_event->data[1].f32;
   // ARKUI_SCROLL_STATE_IDLE = 0, ARKUI_SCROLL_STATE_SCROLL = 1,
@@ -847,7 +839,8 @@ void UIList::HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event) {
     SetScrollState(list::ScrollState::kFling);
   }
 
-  if (scroll_state_ == list::ScrollState::kDragging ||
+  if (scroll_state_ == list::ScrollState::kIdle ||
+      scroll_state_ == list::ScrollState::kDragging ||
       scroll_state_ == list::ScrollState::kFling) {
     std::pair result = GetScrollOffset();
     if (!should_block_scroll_) {

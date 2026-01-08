@@ -72,8 +72,6 @@ class UIList : public BaseScrollContainer,
   void AutoScrollStopped() override;
   void OnComponentNodeReady(UIComponent* ui_component) override;
 
-  std::vector<float> ScrollBy(float delta_x, float delta_y) override;
-
  protected:
   UIList(LynxContext* context, int sign, const std::string& tag);
   void UpdateContentSize(float width, float height) override;
