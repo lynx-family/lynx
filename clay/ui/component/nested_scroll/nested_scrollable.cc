@@ -291,21 +291,18 @@ void NestedScrollable::HandleEvent(const PointerEvent& event) {
 
 FloatPoint NestedScrollable::DoScroll(FloatPoint delta, bool by_user_input,
                                       bool ignore_repaint) {
-  if (by_user_input && IsRtlDirection()) {
-    delta = FloatPoint(-delta.x(), delta.y());
-  }
   FloatPoint old_delta = delta;
   auto scroll = GetRenderScroll();
   auto max_scroll_width = scroll->MaxScrollWidth();
   auto max_scroll_height = scroll->MaxScrollHeight();
   if (delta.x() != 0) {
-    float new_left = scroll_offset_.width() + delta.x();
+    float new_left = scroll_offset_.x() + delta.x();
     if (new_left < 0) {
       delta.SetX(new_left);
       new_left = 0;
     } else if (new_left > max_scroll_width) {
       // Avoid delta changing by float calculation.
-      if (scroll_offset_.width() != max_scroll_width) {
+      if (scroll_offset_.x() != max_scroll_width) {
         delta.SetX(new_left - max_scroll_width);
       }
       new_left = max_scroll_width;
@@ -315,13 +312,13 @@ FloatPoint NestedScrollable::DoScroll(FloatPoint delta, bool by_user_input,
     scroll->SetScrollLeft(new_left, ignore_repaint);
   }
   if (delta.y() != 0) {
-    float new_top = scroll_offset_.height() + delta.y();
+    float new_top = scroll_offset_.y() + delta.y();
     if (new_top < 0) {
       delta.SetY(new_top);
       new_top = 0;
     } else if (new_top > max_scroll_height) {
       // Avoid delta changing by float calculation.
-      if (scroll_offset_.height() != max_scroll_height) {
+      if (scroll_offset_.y() != max_scroll_height) {
         delta.SetY(new_top - max_scroll_height);
       }
       new_top = max_scroll_height;
@@ -337,9 +334,6 @@ FloatPoint NestedScrollable::DoScroll(FloatPoint delta, bool by_user_input,
     if (!ignore_repaint) {
       Invalidate();
     }
-  }
-  if (by_user_input && IsRtlDirection()) {
-    delta = FloatPoint(-delta.x(), delta.y());
   }
   return delta;
 }

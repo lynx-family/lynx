@@ -47,9 +47,8 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   bool CanChildrenEscape() const override { return false; }
 
-  FloatSize GetScrollOffsetForPaint() const override {
-    auto offset = GetRenderScroll()->GetPaintOffsetForScroll();
-    return {offset.x(), offset.y()};
+  FloatPoint GetScrollOffsetForPaint() const override {
+    return GetRenderScroll()->GetPaintOffsetForScroll();
   }
 
   bool OnScrollToVisible() override;
@@ -97,7 +96,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
                        std::string inline_mode, std::string behavior);
   void DidScroll() override;
   // Return scroll offset including overscroll
-  FloatSize TotalScrollOffset();
+  FloatPoint TotalScrollOffset();
 
   void CorrectScrollOffset();
 
@@ -141,6 +140,8 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   bool CanInvokeScrollImmediately() const;
 
+  void UpdateScrollOffsetForRTL();
+
   bool enable_content_size_changed_event_ = false;
 
   // all content include invisible child
@@ -176,7 +177,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   // scrollable components.
   std::unique_ptr<Scroller> scroller_;
 
-  FloatSize last_scroll_offset_{};
+  FloatPoint last_scroll_offset_{};
 
   std::string next_scrollable_;
   std::string pre_scrollable_;

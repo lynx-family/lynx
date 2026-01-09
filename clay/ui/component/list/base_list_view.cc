@@ -664,7 +664,7 @@ bool BaseListView::OnScrollBy(const FloatSize& distance) {
   // Should not add HasEvent(event_attr::kEventScroll) judgment here, it's
   // always false, because the event is handled by the callback_manager.
   // And it's also handle the kEventScrollToUpper and kEventScrollToLower.
-  callback_manager_->NotifyScrolled(FloatSize(consumed_x, consumed_y),
+  callback_manager_->NotifyScrolled(FloatPoint(consumed_x, consumed_y),
                                     TotalScrollOffset(),
                                     CalculateBorderStatus());
 
@@ -711,9 +711,9 @@ bool BaseListView::OnScrollBy(const FloatSize& distance) {
   return false;
 }
 
-FloatSize BaseListView::TotalScrollOffset() {
+FloatPoint BaseListView::TotalScrollOffset() {
   return GetRenderScroll()->ScrollOffset() +
-         FloatSize(scrolled_horizontal_, scrolled_vertical_);
+         FloatPoint(scrolled_horizontal_, scrolled_vertical_);
 }
 
 void BaseListView::RegisterPrefetch() {
