@@ -23,8 +23,6 @@ class RenderExternalView : public RenderContainer {
 
   bool IsExternalView() const override { return true; }
 
-  void Paint(PaintingContext& context, const FloatPoint& offset) override;
-
  private:
   skity::Vec2 size_ = {0, 0};
 };

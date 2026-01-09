@@ -10,11 +10,6 @@
 
 namespace clay {
 
-void RenderExternalView::Paint(clay::PaintingContext& context,
-                               const clay::FloatPoint& offset) {
-  RenderContainer::Paint(context, offset);
-}
-
 void RenderExternalView::SetBackingSize(skity::Vec2 size) {
   if (size.x == size_.x && size.y == size_.y) {
     return;

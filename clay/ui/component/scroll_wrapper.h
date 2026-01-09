@@ -35,6 +35,8 @@ class ScrollWrapper : public WithTypeInfo<ScrollWrapper, ScrollbarWrapper>,
 
   void SetDirection(int type) override;
 
+  void SetOverflow(int overflow) override;
+
 #ifdef ENABLE_ACCESSIBILITY
   int32_t GetSemanticsActions() const override;
   int32_t GetSemanticsFlags() const override;

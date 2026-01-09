@@ -332,36 +332,32 @@ void RenderImage::Paint(PaintingContext& context, const FloatPoint& offset) {
     graphics_context->Translate(offset.x(), offset.y());
 
     // radius clip
-    bool has_border = HasBorder();
-    if (has_border) {
-      bool has_radius = Border().HasBorderRadius();
-      if (has_radius) {
-        const auto& borders_data = Border();
-        skity::Vec2 radii[4];
-        radii[skity::RRect::kUpperLeft] = {
-            borders_data.radius_x_top_left_ - PaddingLeft() - BorderLeft(),
-            borders_data.radius_y_top_left_ - PaddingTop() - BorderTop()};
-        radii[skity::RRect::kUpperRight] = {
-            borders_data.radius_x_top_right_ - PaddingRight() - BorderRight(),
-            borders_data.radius_y_top_right_ - PaddingTop() - BorderTop()};
-        radii[skity::RRect::kLowerRight] = {
-            borders_data.radius_x_bottom_right_ - PaddingRight() -
-                BorderRight(),
-            borders_data.radius_y_bottom_right_ - PaddingBottom() -
-                BorderBottom()};
-        radii[skity::RRect::kLowerLeft] = {
-            borders_data.radius_x_bottom_left_ - PaddingLeft() - BorderLeft(),
-            borders_data.radius_y_bottom_left_ - PaddingBottom() -
-                BorderBottom()};
+    bool has_border_radius = HasBorder() && Border().HasBorderRadius();
+    if (has_border_radius) {
+      const auto& borders_data = Border();
+      skity::Vec2 radii[4];
+      radii[skity::RRect::kUpperLeft] = {
+          borders_data.radius_x_top_left_ - PaddingLeft() - BorderLeft(),
+          borders_data.radius_y_top_left_ - PaddingTop() - BorderTop()};
+      radii[skity::RRect::kUpperRight] = {
+          borders_data.radius_x_top_right_ - PaddingRight() - BorderRight(),
+          borders_data.radius_y_top_right_ - PaddingTop() - BorderTop()};
+      radii[skity::RRect::kLowerRight] = {
+          borders_data.radius_x_bottom_right_ - PaddingRight() - BorderRight(),
+          borders_data.radius_y_bottom_right_ - PaddingBottom() -
+              BorderBottom()};
+      radii[skity::RRect::kLowerLeft] = {
+          borders_data.radius_x_bottom_left_ - PaddingLeft() - BorderLeft(),
+          borders_data.radius_y_bottom_left_ - PaddingBottom() -
+              BorderBottom()};
 
-        skity::Rect draw_rect = skity::Rect::MakeXYWH(
-            PaddingLeft() + BorderLeft(), PaddingTop() + BorderTop(),
-            ContentWidth(), ContentHeight());
+      skity::Rect draw_rect = skity::Rect::MakeXYWH(
+          PaddingLeft() + BorderLeft(), PaddingTop() + BorderTop(),
+          ContentWidth(), ContentHeight());
 
-        skity::RRect round_rect;
-        round_rect.SetRectRadii(draw_rect, radii);
-        graphics_context->ClipRRect(round_rect, GrClipOp::kIntersect, true);
-      }
+      skity::RRect round_rect;
+      round_rect.SetRectRadii(draw_rect, radii);
+      graphics_context->ClipRRect(round_rect, GrClipOp::kIntersect, true);
     }
 
     // Translate to content_rect where the ImagePainter is going to paint into.

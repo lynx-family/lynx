@@ -183,8 +183,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
                   float margin_bottom);
   void SetOpacity(float opacity);
   float Opacity();
-  virtual void SetOverflowWithMask(uint8_t mask, int overflow);
-  void SetOverflow(int overflow);
+  void SetOverflowWithMask(uint8_t mask, int overflow);
+  virtual void SetOverflow(int overflow);
   int GetOverflow() { return overflow_; }
   virtual void SetBorder(const BordersData& data);
   virtual void OnBorderChanged(const BordersData& data);

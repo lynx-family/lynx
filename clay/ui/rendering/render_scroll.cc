@@ -62,6 +62,13 @@ void RenderScroll::Paint(PaintingContext& context, const FloatPoint& offset) {
   FloatPoint clip_offset = offset + ClipOffset();
   FloatRect clip_rect(clip_offset.x(), clip_offset.y(), ClientWidth(),
                       ClientHeight());
+  if (Overflow() == CSSProperty::OVERFLOW_X) {
+    clip_rect.SetWidth(renderer_->GetFrameSize().width() * 2);
+    clip_rect.SetX(clip_rect.x() - renderer_->GetFrameSize().width());
+  } else if (Overflow() == CSSProperty::OVERFLOW_Y) {
+    clip_rect.SetHeight(renderer_->GetFrameSize().height() * 2);
+    clip_rect.SetY(clip_rect.y() - renderer_->GetFrameSize().height());
+  }
   context.PushClipRect(clip_rect, offset, painter);
 }
 

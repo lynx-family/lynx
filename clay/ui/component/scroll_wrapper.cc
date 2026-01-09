@@ -196,6 +196,11 @@ void ScrollWrapper::SetDirection(int type) {
   scrollbar_->SetDirection(type);
 }
 
+void ScrollWrapper::SetOverflow(int overflow) {
+  BaseView::SetOverflow(overflow);
+  view_->SetOverflow(overflow);
+}
+
 void ScrollWrapper::WillUpdateScrollbar() { view_->OnLayoutUpdated(); }
 
 float ScrollWrapper::GetScrollbarScrollOffset() {
