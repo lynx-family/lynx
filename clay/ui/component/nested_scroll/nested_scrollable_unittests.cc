@@ -364,7 +364,7 @@ TEST_F_UI(NestedScrollableTest, DestroyOnDrag) {
       {CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 50})});
   page_->DispatchPointerEvent({CreatePointer(
       0, PointerEvent::EventType::kMoveEvent, {50, 20}, {0, -30})});
-  EXPECT_EQ(inner->GetScrollOffset().height(), 30);
+  EXPECT_EQ(inner->GetScrollOffset().y(), 30);
   page_->DestroyAllChildren();
   page_->DispatchPointerEvent({CreatePointer(
       0, PointerEvent::EventType::kMoveEvent, {50, 0}, {0, -20})});
@@ -394,9 +394,9 @@ TEST_F_UI(NestedScrollableTest, DestroyOnFling) {
   EXPECT_EQ(200, outer->GetRenderScroll()->MaxScrollHeight());
 
   DispatchDragEvent({50, 50}, {50, 0}, true);
-  EXPECT_EQ(inner->GetScrollOffset().height(), 50);
+  EXPECT_EQ(inner->GetScrollOffset().y(), 50);
   DoAnimation(20);
-  EXPECT_GT(inner->GetScrollOffset().height(), 50);
+  EXPECT_GT(inner->GetScrollOffset().y(), 50);
   page_->DestroyAllChildren();
   DoAnimation(100);
 

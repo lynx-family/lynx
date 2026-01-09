@@ -62,7 +62,6 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
 
   std::optional<int64_t> tex_id_;
   FloatRect bounds_;
-  FloatSize scroll_offset_;
   float device_pixel_ratio_ = 1.0;
   bool is_scroll_enabled_;
   bool is_editing_ = false;

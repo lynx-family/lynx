@@ -123,8 +123,8 @@ void TextAreaView::SetBound(float left, float top, float width, float height) {
 void TextAreaView::ScheduleCaretOnScreen() {
   FloatRect wrapped = editable_view_->ComputeCaretRect();
   FloatRect current = {0, 0, ContentWidth(), ContentHeight()};
-  FloatSize scroll_offset = editable_scroll_->GetScrollOffset();
-  current.Move(scroll_offset.width(), scroll_offset.height());
+  FloatPoint scroll_offset = editable_scroll_->GetScrollOffset();
+  current.MoveBy(scroll_offset);
   FloatPoint offset;
   offset.MoveBy(scroll_offset);
   if (wrapped.y() < current.y()) {
