@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/jsi/quickjs/quickjs_helper.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else

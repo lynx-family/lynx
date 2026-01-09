@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/template_bundle/template_codec/version.h"
 
 namespace lynx {

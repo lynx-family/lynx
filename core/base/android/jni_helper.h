@@ -15,7 +15,7 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/base/lynx_export.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace base {

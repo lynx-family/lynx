@@ -45,7 +45,7 @@ lynx_core_source_set("napi_binding_quickjs") {
   if (is_mac) {
     deps += [
       "../../../../third_party/napi:quickjs",
-      "../../jsi/quickjs:quickjs",
+      "../../js/jsi/quickjs:quickjs",
     ]
   }
 }

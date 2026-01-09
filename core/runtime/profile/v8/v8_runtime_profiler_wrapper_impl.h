@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "core/runtime/jsi/v8/v8_isolate_wrapper.h"
+#include "core/runtime/js/jsi/v8/v8_isolate_wrapper.h"
 #include "core/runtime/profile/v8/v8_runtime_profiler_wrapper.h"
 #include "v8-profiler.h"
 

@@ -5,7 +5,7 @@
 #ifndef CORE_SERVICES_REPLAY_LYNX_CALLBACK_TESTBENCH_H_
 #define CORE_SERVICES_REPLAY_LYNX_CALLBACK_TESTBENCH_H_
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {

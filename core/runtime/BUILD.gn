@@ -5,7 +5,7 @@
 import("//${lynx_dir}/build_overrides/bindings_files.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
-import("jsi/jsc/jsc.gni")
+import("js/jsi/jsc/jsc.gni")
 
 declare_args() {
   # Enable javascript debug.
@@ -106,7 +106,7 @@ lynx_core_source_set("runtime") {
     "bindings/jsi/interceptor:interceptor_factory",
     "common:reporter",
     "common:utils",
-    "jsi",
+    "js/jsi",
     "profile",
     "profile/lepusng:lepusng_profile",
     "profile/quickjs:quickjs_profile",
@@ -117,7 +117,7 @@ lynx_core_source_set("runtime") {
     deps += [ "profile/v8:v8_profile" ]
   }
 
-  public_deps = [ "jsi/quickjs" ]
+  public_deps = [ "js/jsi/quickjs" ]
   if (enable_napi_binding) {
     public_deps += [ "bindings/napi:napi_binding_core" ]
   }
@@ -164,9 +164,9 @@ unittest_set("jsbridge_testset") {
     "bindings/jsi:bindings_unittests_testset",
     "bindings/napi:napi_unittests_testset",
     "common:utils_unittests_testset",
+    "js/jsi:jsi_unittests_testset",
+    "js/jsi/quickjs:quickjs_unittests_testset",
     "jscache:jscache_unittests_testset",
-    "jsi:jsi_unittests_testset",
-    "jsi/quickjs:quickjs_unittests_testset",
   ]
 }
 

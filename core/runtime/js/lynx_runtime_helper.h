@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/profile/v8/v8_runtime_profiler_wrapper.h"
 
 namespace lynx {

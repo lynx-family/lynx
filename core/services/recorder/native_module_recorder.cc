@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace tasm {

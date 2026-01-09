@@ -7,12 +7,12 @@
 #include "devtool/js_inspect/inspector_const.h"
 
 #if JS_ENGINE_TYPE == 0 || OS_ANDROID
-#include "core/runtime/jsi/v8/v8_api.h"
+#include "core/runtime/js/jsi/v8/v8_api.h"
 #include "core/runtime/profile/v8/v8_runtime_profiler.h"
 #include "devtool/lynx_devtool/js_debug/js/v8/manager/v8_inspector_manager_impl.h"
 #endif
 
-#include "core/runtime/jsi/quickjs/quickjs_api.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_api.h"
 #include "devtool/lynx_devtool/js_debug/js/quickjs/manager/quickjs_inspector_manager_impl.h"
 #include "devtool/lynx_devtool/js_debug/lepus/manager/lepus_inspector_manager_impl.h"
 

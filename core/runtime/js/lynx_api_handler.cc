@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/lynx_runtime.h"
-#include "core/runtime/jsi/jsi.h"
 
 namespace lynx {
 namespace runtime {

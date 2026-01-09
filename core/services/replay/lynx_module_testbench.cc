@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "core/runtime/bindings/jsi/modules/module_interceptor.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/services/replay/lynx_callback_testbench.h"
 #include "core/services/replay/lynx_replay_helper.h"
 #include "core/value_wrapper/value_impl_lepus.h"

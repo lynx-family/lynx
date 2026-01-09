@@ -9,8 +9,8 @@
 
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
-#include "core/runtime/jsi/jsi.h"
-#include "core/runtime/jsi/jsi_unittest.h"
+#include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi_unittest.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

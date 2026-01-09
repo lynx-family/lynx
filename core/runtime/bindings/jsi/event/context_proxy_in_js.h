@@ -13,7 +13,7 @@
 #include "base/include/value/base_value.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

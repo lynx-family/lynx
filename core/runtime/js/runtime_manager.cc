@@ -14,7 +14,7 @@
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/bindings/jsi/global.h"
 #include "core/runtime/js/js_executor.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 #ifndef JS_ENGINE_TYPE
 // Default set JS_ENGINE_TYPE if not provided.
@@ -26,18 +26,18 @@
 #endif  // JS_ENGINE_TYPE
 
 #if JS_ENGINE_TYPE == 0
-#include "core/runtime/jsi/v8/v8_api.h"
+#include "core/runtime/js/jsi/v8/v8_api.h"
 #elif JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
-#include "core/runtime/jsi/quickjs/quickjs_api.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_api.h"
 #endif  // JS_ENGINE_TYPE
 #if JS_ENGINE_TYPE == 1
-#include "core/runtime/jsi/jsc/jsc_api.h"
+#include "core/runtime/js/jsi/jsc/jsc_api.h"
 #endif  // JS_ENGINE_TYPE == 1
 #if OS_HARMONY
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm_factory.h"
-#include "core/runtime/jsi/jsvm/jsvm_api.h"
+#include "core/runtime/js/jsi/jsvm/jsvm_api.h"
 
 extern void RegisterJSVMRuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyJSVMFactory* factory);

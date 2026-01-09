@@ -59,7 +59,7 @@ unittest_set("bindings_unittests_testset") {
     "text_codec_helper_unittest.cc",
   ]
 
-  configs = [ "../../jsi:jsi_unittest_config" ]
+  configs = [ "../../js/jsi:jsi_unittest_config" ]
 
   deps = [
     ":jsi",

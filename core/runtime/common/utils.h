@@ -17,7 +17,7 @@
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
 #include "core/base/json/json_util.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"

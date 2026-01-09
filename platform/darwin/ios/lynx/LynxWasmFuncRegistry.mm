@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxWasmFuncRegistry.h>
-#include "core/runtime/jsi/jsc/jsc_context_wrapper.h"
+#include "core/runtime/js/jsi/jsc/jsc_context_wrapper.h"
 
 @implementation LynxWasmFuncRegistry
 

@@ -42,7 +42,7 @@ target(lynx_harmony_type, "lynx_harmony") {
 
   public_deps += [
     "../../../core/runtime/bindings/napi:napi_binding_jsvm",
-    "../../../core/runtime/jsi/jsvm",
+    "../../../core/runtime/js/jsi/jsvm",
   ]
 
   if (enable_trace == "perfetto" || enable_trace == "systrace") {

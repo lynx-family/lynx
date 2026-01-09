@@ -7,7 +7,7 @@
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
-#include "core/runtime/jsi/jsi_unittest.h"
+#include "core/runtime/js/jsi/jsi_unittest.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_impl_piper.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

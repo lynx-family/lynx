@@ -16,7 +16,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/jsi/modules/android/java_method_descriptor.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/value_wrapper/value_impl_piper.h"

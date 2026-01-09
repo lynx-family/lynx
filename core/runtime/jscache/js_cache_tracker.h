@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/services/event_report/event_tracker.h"
 
 namespace lynx {
