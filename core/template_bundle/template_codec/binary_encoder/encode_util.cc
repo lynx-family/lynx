@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "core/runtime/jscache/quickjs/bytecode/quickjs_bytecode_provider_src.h"
+#include "core/runtime/js/bytecode/quickjs/bytecode/quickjs_bytecode_provider_src.h"
 #include "core/runtime/vm/lepus/function.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "core/runtime/vm/lepus/quickjs_debug_info.h"

@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "core/runtime/js/bytecode/js_cache_tracker.h"
+#include "core/runtime/js/bytecode/js_cache_tracker_unittest.h"
 #include "core/runtime/js/jsi/jsi_unittest.h"
-#include "core/runtime/jscache/js_cache_tracker.h"
-#include "core/runtime/jscache/js_cache_tracker_unittest.h"
 #include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
@@ -28,8 +28,10 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
   {
     // "q++;"
     std::string bytecode =
-        "F07F2AEAAAAYAAAAUAAAAAIAAAAKAAAAAQICcR4vYXBwLXNlcnZpY2UuanMNAAYAngEAAQ"
-        "ACAAANAaABAAAAOMsAAACROcsAAADKKJgDARgAAICAgJCAgICAgAEAC4CAgDAAAYCAgBA"
+        "F07F2AEAAAAYAAAAUAAAAAIAAAAKAAAAAQICcR4vYXBwLXNlcnZpY2UuanMNAAYAngEA"
+        "AQ"
+        "ACAAANAaABAAAAOMsAAACROcsAAADKKJgDARgAAICAgJCAgICAgAEAC4CAgDAAAYCAgB"
+        "A"
         "=";
     modp_b64_decode(bytecode);
     auto prep = rt.prepareJavaScript(
@@ -44,8 +46,10 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
   {
     // "q++;" with target sdk version "1000.1000"
     std::string bytecode =
-        "F07F2AEAAAAYAAAAUAAAAOgDAADoAwAAAQICcR4vYXBwLXNlcnZpY2UuanMNAAYAngEAAQ"
-        "ACAAANAaABAAAAOMsAAACROcsAAADKKJgDARgAAICAgJCAgICAgAEAC4CAgDAAAYCAgBA"
+        "F07F2AEAAAAYAAAAUAAAAOgDAADoAwAAAQICcR4vYXBwLXNlcnZpY2UuanMNAAYAngEA"
+        "AQ"
+        "ACAAANAaABAAAAOMsAAACROcsAAADKKJgDARgAAICAgJCAgICAgAEAC4CAgDAAAYCAgB"
+        "A"
         "=";
     modp_b64_decode(bytecode);
     auto prep = rt.prepareJavaScript(

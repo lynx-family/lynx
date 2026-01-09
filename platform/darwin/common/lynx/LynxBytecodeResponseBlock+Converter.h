@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "core/runtime/jscache/js_cache_manager.h"
+#include "core/runtime/js/bytecode/js_cache_manager.h"
 
 std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback>
     CreateBytecodeGenerateCallback(

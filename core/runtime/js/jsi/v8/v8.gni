@@ -1,8 +1,8 @@
 js_v8_bridge_shared_sources =
     rebase_path(
         [
-          "../../../jscache/v8/v8_cache_generator.cc",
-          "../../../jscache/v8/v8_cache_generator.h",
+          "../../bytecode/v8/v8_cache_generator.cc",
+          "../../bytecode/v8/v8_cache_generator.h",
           "../../../profile/v8/v8_runtime_profiler_wrapper.h",
           "../../../profile/v8/v8_runtime_profiler_wrapper_impl.cc",
           "../../../profile/v8/v8_runtime_profiler_wrapper_impl.h",

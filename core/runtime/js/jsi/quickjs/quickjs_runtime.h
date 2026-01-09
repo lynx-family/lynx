@@ -13,6 +13,7 @@
 #include "core/base/lynx_export.h"
 #include "core/base/observer/observer.h"
 #include "core/base/observer/observer_list.h"
+#include "core/runtime/js/bytecode/js_cache_tracker.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/jslib.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_context_wrapper.h"
@@ -21,7 +22,6 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_inspector_manager.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
-#include "core/runtime/jscache/js_cache_tracker.h"
 
 namespace lynx {
 namespace piper {

@@ -164,9 +164,9 @@ unittest_set("jsbridge_testset") {
     "bindings/jsi:bindings_unittests_testset",
     "bindings/napi:napi_unittests_testset",
     "common:utils_unittests_testset",
+    "js/bytecode:jscache_unittests_testset",
     "js/jsi:jsi_unittests_testset",
     "js/jsi/quickjs:quickjs_unittests_testset",
-    "jscache:jscache_unittests_testset",
   ]
 }
 

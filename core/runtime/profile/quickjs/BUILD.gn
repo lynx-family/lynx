@@ -30,9 +30,9 @@ unittest_set("quickjs_profile_testset") {
     "../../../renderer/dom:dom",
     "../../../renderer/dom:renderer_dom",
     "../../bindings/lepus",
+    "../../js/bytecode:jscache",
     "../../js/jsi:jsi",
     "../../js/jsi/quickjs:quickjs",
-    "../../jscache:jscache",
     "../../vm/lepus:lepus",
   ]
 }

@@ -17,7 +17,7 @@
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/include/value/base_value.h"
 #include "core/base/harmony/napi_convert_helper.h"
-#include "core/runtime/jscache/js_cache_manager_facade.h"
+#include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 

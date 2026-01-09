@@ -4,7 +4,7 @@
 
 import("../../../../../testing/test.gni")
 import("../../../../Lynx.gni")
-import("../../../jscache/quickjs/quickjs_cache.gni")
+import("../../bytecode/quickjs/quickjs_cache.gni")
 import("build.gni")
 
 lynx_core_source_set("quickjs") {
@@ -13,7 +13,7 @@ lynx_core_source_set("quickjs") {
 
   deps = [
     "../../../../../base/src:base_log_headers",
-    "../../../jscache:jscache",
+    "../../bytecode:jscache",
   ]
 
   if (is_mac || is_ios || is_linux) {
@@ -23,15 +23,15 @@ lynx_core_source_set("quickjs") {
 
 unittest_set("quickjs_unittests_testset") {
   sources = [
-    "../../../jscache/js_cache_manager_unittest.cc",
-    "../../../jscache/js_cache_tracker_unittest.cc",
-    "../../../jscache/js_cache_tracker_unittest.h",
+    "../../bytecode/js_cache_manager_unittest.cc",
+    "../../bytecode/js_cache_tracker_unittest.cc",
+    "../../bytecode/js_cache_tracker_unittest.h",
     "quickjs_helper_unittest.cc",
     "quickjs_runtime_unittest.cc",
   ]
   sources += jscache_quickjs_unittest_sources
 
-  configs = [ "../../../jscache:jscache_config" ]
+  configs = [ "../../bytecode:jscache_config" ]
 
   deps = [ ":quickjs" ]
 }

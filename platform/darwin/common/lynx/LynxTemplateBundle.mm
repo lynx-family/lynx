@@ -7,7 +7,7 @@
 #import "LynxBytecodeResponseBlock+Converter.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
-#include "core/runtime/jscache/js_cache_manager_facade.h"
+#include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #import "core/shell/ios/data_utils.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 

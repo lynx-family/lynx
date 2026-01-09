@@ -12,7 +12,7 @@
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/shell/lynx_engine.h"
 #ifdef OS_ANDROID
-#include "core/runtime/jscache/js_cache_manager_facade.h"
+#include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #endif
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 

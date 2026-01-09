@@ -39,7 +39,7 @@
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/jscache/js_cache_manager_facade.h"
+#include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/ssr/ssr_type_info.h"
