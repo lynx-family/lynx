@@ -297,8 +297,8 @@ void ListContainerView::ApplyChildTranslateZ(Component* child,
 
 void ListContainerView::OnNodeReady() {
   ScrollView::OnNodeReady();
-  UpdateStickyStarts(scroll_offset_.width(), scroll_offset_.height());
-  UpdateStickyEnds(scroll_offset_.width(), scroll_offset_.height());
+  UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
+  UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
 }
 
 void ListContainerView::OnComponentNodeReady(Component* component) {
@@ -631,11 +631,10 @@ void ListContainerView::SetScrollState(ScrollState state) {
 void ListContainerView::DidScroll() {
   ScrollView::DidScroll();
   if (!should_block_did_scroll_ && delegate_) {
-    delegate_->OnScrollByListContainer(
-        scroll_offset_.width(), scroll_offset_.height(), scroll_offset_.width(),
-        scroll_offset_.height());
-    UpdateStickyStarts(scroll_offset_.width(), scroll_offset_.height());
-    UpdateStickyEnds(scroll_offset_.width(), scroll_offset_.height());
+    delegate_->OnScrollByListContainer(scroll_offset_.x(), scroll_offset_.y(),
+                                       scroll_offset_.x(), scroll_offset_.y());
+    UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
+    UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
   }
 }
 

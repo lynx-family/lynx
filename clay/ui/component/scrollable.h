@@ -58,7 +58,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
   void AddScrollListener(Listener* listener);
   void RemoveScrollListener(Listener* listener);
   void RemoveAllScrollListener();
-  FloatSize GetScrollOffset() const override { return scroll_offset_; }
+  FloatPoint GetScrollOffset() const override { return scroll_offset_; }
 
   bool IsUnderOverscroll() const;
   FloatPoint DoOverscroll(FloatPoint delta);
@@ -107,7 +107,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
 
   void NotifyScrolled();
 
-  FloatSize scroll_offset_;
+  FloatPoint scroll_offset_;
   ScrollDirection scroll_direction_ = ScrollDirection::kVertical;
   ScrollStatus status_ = Scrollable::ScrollStatus::kIdle;
 
