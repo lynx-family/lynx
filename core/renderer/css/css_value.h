@@ -239,6 +239,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       int max_depth = 10,
       const HandleCustomPropertyFunc& handle_func = nullptr);
+  static std::string SubstitutionResolved(
+      const CSSValue& css_value, const CustomPropertiesMap& variable_map,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
 
   // Change the legacy css variable value which in a format with {{ variable }}
   // into the new VarReference based variables.
@@ -270,6 +273,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   static std::string ResolveFallback(
       const VarReference& ref, const CustomPropertiesMap& variable_map,
       const CycleDetector& detector, int max_depth = 10,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
+  static std::string ResolveFallbackResolved(
+      const VarReference& ref, const CustomPropertiesMap& variable_map,
       const HandleCustomPropertyFunc& handle_func = nullptr);
 
   BASE_INLINE bool IsValueStorageNumber() const {

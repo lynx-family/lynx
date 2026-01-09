@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/css/css_variable_handler.h"
 
-#include <unordered_map>
 #include <utility>
 
 #include "base/include/no_destructor.h"
@@ -23,14 +22,29 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
     return false;
   }
 
-  if (!HasCSSVariableInStyleMap(map)) {
+  auto first_variable_iter = map.end();
+  for (auto it = map.begin(); it != map.end(); ++it) {
+    if (it->second.IsVariable()) {
+      first_variable_iter = it;
+      break;
+    }
+  }
+
+  if (first_variable_iter == map.end()) {
     return false;
   }
   // the CSSVariable order need to be kept.
   StyleMap style_map;
   style_map.reserve(CSSProperty::GetTotalParsedStyleCountFromMap(map));
-  for (const auto& [id, css_value] : map) {
-    if (css_value.IsVariable()) {
+
+  for (auto it = map.begin(); it != first_variable_iter; ++it) {
+    style_map[it->first] = std::move(it->second);
+  }
+
+  for (auto it = first_variable_iter; it != map.end(); ++it) {
+    if (it->second.IsVariable()) {
+      const auto& id = it->first;
+      const auto& css_value = it->second;
       if (css_value.NeedsVariableResolution()) {
         ResolveCSSVariables(id, css_value, style_map, holder, configs);
         continue;
@@ -49,7 +63,7 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
                              style_map, configs);
       }
     } else {
-      style_map[id] = css_value;
+      style_map[it->first] = std::move(it->second);
     }
   }
 
@@ -167,8 +181,6 @@ void CSSVariableHandler::ResolveCSSVariables(CSSPropertyID id,
                                              StyleMap& style_map,
                                              AttributeHolder* holder,
                                              const CSSParserConfigs& configs) {
-  static const int kMaxDepth = 10;
-
   if (!enable_fiber_arch_) {
     // Resolve CSS variables only in FiberArch.
     return;
@@ -187,8 +199,8 @@ void CSSVariableHandler::ResolveCSSVariables(CSSPropertyID id,
                                                     const base::String& value) {
     holder->AddCSSVariableRelated(name, value);
   };
-  auto property = CSSValue::Substitution(value, *custom_properties, kMaxDepth,
-                                         handle_custom_property_func);
+  auto property = CSSValue::SubstitutionResolved(value, *custom_properties,
+                                                 handle_custom_property_func);
   UnitHandler::Process(id, lepus::Value(std::move(property)), style_map,
                        configs);
 }

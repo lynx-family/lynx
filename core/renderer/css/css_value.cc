@@ -624,6 +624,67 @@ std::string CSSValue::Substitution(
   return result;
 }
 
+std::string CSSValue::SubstitutionResolved(
+    const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
+    const HandleCustomPropertyFunc& handle_func) {
+  if (!css_value.IsVariable() ||
+      !css_value.optionals_.HasValue<VarReferenceField>()) {
+    return css_value.AsStdString();
+  }
+
+  const std::string& raw_value = css_value.AsStdString();
+  const auto& var_refs = css_value.optionals_.Get<VarReferenceField>();
+
+  if (var_refs.empty()) {
+    return css_value.AsStdString();
+  }
+
+  std::string result;
+
+  // Smart size estimation with move semantics
+  size_t estimated_size = raw_value.size() << 2;
+  result.reserve(std::min(estimated_size, size_t{4096}));
+
+  size_t last_pos = 0;
+
+  for (const auto& var_ref : var_refs) {
+    // Append text before this variable reference
+    result.append(raw_value, last_pos, var_ref.start - last_pos);
+
+    const std::string dep_name(var_ref.Name(raw_value));
+
+    auto var_it = custom_properties.find(dep_name);
+    if (handle_func) {
+      if (var_it != custom_properties.end()) {
+        handle_func(dep_name, var_it->second.AsString());
+      } else {
+        handle_func(dep_name, base::String());
+      }
+    }
+
+    if (var_it != custom_properties.end()) {
+      // Variable exists - resolve it normally
+      // Since custom_properties are already resolved in
+      // CollectCustomProperties, we can directly use the string value.
+      result.append(var_it->second.AsStdString());
+    } else if (!var_ref.fallback.empty()) {
+      // Variable not found - use fallback
+      result.append(CSSValue::ResolveFallbackResolved(
+          var_ref, custom_properties, handle_func));
+    }
+
+    last_pos = var_ref.end;
+  }
+
+  // Append remaining text after last variable reference
+  if (last_pos < raw_value.size()) {
+    result.append(raw_value, last_pos);
+  }
+
+  // Return by move to avoid copy
+  return result;
+}
+
 std::string CSSValue::ResolveFallback(
     const VarReference& ref, const CustomPropertiesMap& variable_map,
     const CycleDetector& detector, int max_depth,
@@ -637,6 +698,19 @@ std::string CSSValue::ResolveFallback(
   CSSValue css_value = parser.ParseVariable();
   return CSSValue::Substitution(css_value, variable_map, detector,
                                 max_depth - 1, handle_func);
+}
+
+std::string CSSValue::ResolveFallbackResolved(
+    const VarReference& ref, const CustomPropertiesMap& variable_map,
+    const HandleCustomPropertyFunc& handle_func) {
+  if (ref.fallback.empty()) {
+    return "";
+  }
+  CSSStringParser parser(ref.fallback.c_str(),
+                         static_cast<uint32_t>(ref.fallback.length()),
+                         ref.parser_configs);
+  CSSValue css_value = parser.ParseVariable();
+  return CSSValue::SubstitutionResolved(css_value, variable_map, handle_func);
 }
 
 std::string_view VarReference::Name(const std::string& raw_value) const {

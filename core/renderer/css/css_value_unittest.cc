@@ -873,5 +873,64 @@ TEST_F(CSSValueToVarReferenceTest, VariableWithSimpleFallback) {
   EXPECT_EQ(result, "black");  // Should use the fallback value
 }
 
+TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedSimple) {
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--color", CSSValue::MakePlainString("red"));
+  variables.insert_or_assign("--size", CSSValue::MakePlainString("16px"));
+
+  lepus::Value variable =
+      lepus::Value("color: var(--color); font-size: var(--size)");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue css_value = parser.ParseVariable();
+
+  std::string result =
+      CSSValue::SubstitutionResolved(css_value, variables, nullptr);
+  EXPECT_EQ(result, "color: red; font-size: 16px");
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedFallback) {
+  CustomPropertiesMap variables;
+  // --primary is not defined, should use fallback
+
+  lepus::Value variable = lepus::Value("var(--primary, blue)");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue css_value = parser.ParseVariable();
+
+  std::string result =
+      CSSValue::SubstitutionResolved(css_value, variables, nullptr);
+  EXPECT_EQ(result, " blue");
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedNoRecursive) {
+  CustomPropertiesMap variables;
+  // Intentionally put a raw var string in map. SubstitutionResolved should just
+  // use it as is.
+  variables.insert_or_assign("--color",
+                             CSSValue::MakePlainString("var(--other)"));
+
+  lepus::Value variable = lepus::Value("var(--color)");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue css_value = parser.ParseVariable();
+
+  std::string result =
+      CSSValue::SubstitutionResolved(css_value, variables, nullptr);
+  // It should NOT resolve --other, just return the string "var(--other)"
+  EXPECT_EQ(result, "var(--other)");
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedWithFallbackResolved) {
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--inner", CSSValue::MakePlainString("green"));
+
+  // Outer var not found, fallback contains inner var which SHOULD be resolved
+  lepus::Value variable = lepus::Value("var(--missing, var(--inner))");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue css_value = parser.ParseVariable();
+
+  std::string result =
+      CSSValue::SubstitutionResolved(css_value, variables, nullptr);
+  EXPECT_EQ(result, " green");
+}
+
 }  // namespace tasm
 }  // namespace lynx
