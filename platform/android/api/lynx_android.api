@@ -10226,6 +10226,7 @@ public class com::lynx::tasm::behavior::ui::list::UIListAdapter : RecyclerView::
 }
 
 public class abstract com::lynx::tasm::behavior::ui::list::container::UIListAutoScroller :  {
+  public com.lynx.tasm.behavior.ui.list.container.UIListAutoScroller.UIListAutoScroller(Context context);
   public void com.lynx.tasm.behavior.ui.list.container.UIListAutoScroller.setAutoScrollParams(boolean start, boolean autoStopOnBounds);
   public void com.lynx.tasm.behavior.ui.list.container.UIListAutoScroller.execute(String ratePerSecond, Context context);
   public void com.lynx.tasm.behavior.ui.list.container.UIListAutoScroller.removeFrameCallback();
