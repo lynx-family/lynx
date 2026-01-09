@@ -52,8 +52,8 @@ function Android-Env-Setup {
 }
 
 function Python-Env-Setup {
-  python $lynx_dir_path\tools\vpython_tools\vpython_env_setup.py
-  $venv_path = Join-Path $lynx_root_dir_path '.venv'
+  python $lynx_dir_path\tools\vpython_tools\vpython_env_setup.py --root_dir $lynx_dir_path
+  $venv_path = Join-Path $lynx_dir_path '.venv'
   & $venv_path\Scripts\Activate.ps1
 }
 

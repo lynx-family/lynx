@@ -286,6 +286,28 @@ jobs:
           abi-list: x86,arm64-v8a
           build-params: -PIntegrationTest
 
+  windows-explorer-build:
+    runs-on: lynx-windows-2022-large-verify
+    strategy:
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - name: Configure Git
+        shell: PowerShell
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global http.sslBackend "schannel"
+        working-directory: ./
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build windows Explorer
+        uses: ./lynx/.github/actions/windows-explorer-build
+        with:
+          build-arch: ${{ matrix.arch }}
+
   android-sdk-release:
     timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-large
