@@ -139,6 +139,7 @@ void ScrollView::RemoveChild(BaseView* child) {
 void ScrollView::OnLayout(LayoutContext* context) {
   BaseView::OnLayout(context);
   if (content_size_ != old_content_size_) {
+    UpdateScrollOffsetForRTL();
     NotifyContentSizeChanged(content_size_);
     old_content_size_ = content_size_;
   }
@@ -243,15 +244,15 @@ bool ScrollView::OnScrollToMiddle(BaseView* target_view) {
 
 void ScrollView::DoScrollFromRaster(float scroll_offset, bool ignore_repaint) {
   auto delta = scroll_direction_ == ScrollDirection::kVertical
-                   ? FloatPoint{0, scroll_offset - scroll_offset_.height()}
-                   : FloatPoint{scroll_offset - scroll_offset_.width(), 0};
+                   ? FloatPoint{0, scroll_offset - scroll_offset_.y()}
+                   : FloatPoint{scroll_offset - scroll_offset_.x(), 0};
   DoScroll(delta, false, ignore_repaint);
 }
 
 void ScrollView::OnScrollUpdate(float scroll_offset) {
   auto delta = scroll_direction_ == ScrollDirection::kVertical
-                   ? FloatPoint{0, scroll_offset - scroll_offset_.height()}
-                   : FloatPoint{scroll_offset - scroll_offset_.width(), 0};
+                   ? FloatPoint{0, scroll_offset - scroll_offset_.y()}
+                   : FloatPoint{scroll_offset - scroll_offset_.x(), 0};
   DoScroll(delta, false);
 }
 
@@ -379,8 +380,23 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
 }
 
 void ScrollView::SetDirection(int type) {
-  OnScrollUpdate(0);
+  float new_offset = 0;
+  if (scroll_direction_ == ScrollDirection::kHorizontal &&
+      (type == static_cast<int>(DirectionType::kLynxRtl) ||
+       type == static_cast<int>(DirectionType::kRtl))) {
+    new_offset = GetRenderScroll()->MaxScrollWidth();
+  }
+  OnScrollUpdate(new_offset);
   GetRenderScroll()->SetLayoutDirection(static_cast<DirectionType>(type));
+}
+
+void ScrollView::UpdateScrollOffsetForRTL() {
+  if (scroll_direction_ == ScrollDirection::kHorizontal && IsRtlDirection()) {
+    float previous_offset_x =
+        old_content_size_.width() - scroll_offset_.x() - Width();
+    GetScroller()->ScrollToImmediately(GetRenderScroll()->MaxScrollWidth() -
+                                       previous_offset_x);
+  }
 }
 
 void ScrollView::AddEventCallback(const char* event_c) {
@@ -504,7 +520,7 @@ void ScrollView::ScrollChildViewToVisible(const FloatRect& rect) {
   scroll_view_rect.SetLocation(FloatPoint(0, 0));
 
   FloatRect focused_view_rect = rect;
-  focused_view_rect.Move(-scroll_offset_.width(), -scroll_offset_.height());
+  focused_view_rect.MoveBy(-scroll_offset_);
 
   if (scroll_view_rect.Contains(focused_view_rect)) {
     return;
@@ -533,7 +549,7 @@ void ScrollView::ScrollChildViewToMiddle(const FloatRect& rect) {
   scroll_view_rect.SetLocation(FloatPoint(0, 0));
 
   FloatRect view_rect = rect;
-  view_rect.Move(-scroll_offset_.width(), -scroll_offset_.height());
+  view_rect.MoveBy(-scroll_offset_);
 
   if (scroll_view_rect.Contains(view_rect)) {
     return;
@@ -568,8 +584,8 @@ void ScrollView::ScrollWithDelta(bool smooth, float delta) {
     return;
   }
   float start_offset = scroll_direction_ == ScrollDirection::kVertical
-                           ? scroll_offset_.height()
-                           : scroll_offset_.width();
+                           ? scroll_offset_.y()
+                           : scroll_offset_.x();
   if (smooth) {
     GetScroller()->StartScroll(start_offset, delta);
   } else {
@@ -580,8 +596,8 @@ void ScrollView::ScrollWithDelta(bool smooth, float delta) {
 void ScrollView::ScrollTo(bool smooth, float offset, int index) {
   FML_DCHECK(scroll_direction_ != ScrollDirection::kNone);
   float start_offset = scroll_direction_ == ScrollDirection::kVertical
-                           ? scroll_offset_.height()
-                           : scroll_offset_.width();
+                           ? scroll_offset_.y()
+                           : scroll_offset_.x();
   float end_offset = 0;
   auto& children = GetChildren();
   float child_offset = 0.f;
@@ -590,8 +606,9 @@ void ScrollView::ScrollTo(bool smooth, float offset, int index) {
       child_offset = children[index]->Top();
     } else {
       if (IsRtlDirection()) {
-        child_offset = OverflowRect().width() - children[index]->Left() -
-                       children[index]->Width() + BorderRight();
+        child_offset =
+            children[index]->Left() + children[index]->Width() - Width();
+        offset = -offset;
       } else {
         child_offset = children[index]->Left();
       }
@@ -642,7 +659,7 @@ void ScrollView::DidScroll() {
 
   auto delta = TotalScrollOffset() - last_scroll_offset_;
   last_scroll_offset_ = TotalScrollOffset();
-  FML_DCHECK(!delta.IsZero()) << "delta should not be empty";
+  FML_DCHECK(!delta.IsOrigin()) << "delta should not be empty";
   RenderScroll* scroll = GetRenderScroll();
   if (enable_sticky_) {
     HandleSticky();
@@ -652,13 +669,19 @@ void ScrollView::DidScroll() {
       static_cast<int>(ScrollDirection::kVertical)) {
     // vertical
     is_lower =
-        scroll_offset_.height() >= scroll->MaxScrollHeight() - lower_threshold_;
-    is_upper = scroll_offset_.height() <= upper_threshold_;
+        scroll_offset_.y() >= scroll->MaxScrollHeight() - lower_threshold_;
+    is_upper = scroll_offset_.y() <= upper_threshold_;
   } else {
     // horizontal
-    is_lower =
-        scroll_offset_.width() >= scroll->MaxScrollWidth() - lower_threshold_;
-    is_upper = scroll_offset_.width() <= upper_threshold_;
+    if (IsRtlDirection()) {
+      is_upper =
+          scroll_offset_.x() >= scroll->MaxScrollWidth() - lower_threshold_;
+      is_lower = scroll_offset_.x() <= upper_threshold_;
+    } else {
+      is_lower =
+          scroll_offset_.x() >= scroll->MaxScrollWidth() - lower_threshold_;
+      is_upper = scroll_offset_.x() <= upper_threshold_;
+    }
   }
   ScrollEventCallbackManager::BorderStatus border_status;
   border_status.SetUpper(is_upper);
@@ -677,7 +700,7 @@ void ScrollView::DidScroll() {
 #endif
 }
 
-FloatSize ScrollView::TotalScrollOffset() {
+FloatPoint ScrollView::TotalScrollOffset() {
   return GetRenderScroll()->ScrollOffset();
 }
 
@@ -707,16 +730,14 @@ void ScrollView::SetScrollToIndex(int index) {
   int offset;
   if (scroll_direction_ == ScrollDirection::kVertical) {
     offset = children[index]->Top();
-    OnScrollUpdate(offset);
   } else {
     if (IsRtlDirection()) {
-      offset = OverflowRect().width() - children[index]->Left() -
-               children[index]->Width() + BorderLeft();
+      offset = children[index]->Left() + children[index]->Width() - Width();
     } else {
       offset = children[index]->Left();
     }
-    OnScrollUpdate(offset);
   }
+  OnScrollUpdate(offset);
 }
 
 void ScrollView::AutoScroll(bool start, float rate) {
@@ -746,8 +767,8 @@ void ScrollView::OnScrollAnimationEnd() {
 void ScrollView::StartSmoothScroll() {
   if (auto_scroll_) {
     if (scroll_direction_ == ScrollDirection::kVertical) {
-      ScrollTo(false, auto_scroll_rate_ + scroll_offset_.height());
-      if (scroll_offset_.height() <
+      ScrollTo(false, auto_scroll_rate_ + scroll_offset_.y());
+      if (scroll_offset_.y() <
           static_cast<RenderScroll*>(render_object())->MaxScrollHeight()) {
         page_view()->GetTaskRunner()->PostDelayedTask(
             [self = weak_factory_.GetWeakPtr()]() {
@@ -761,10 +782,15 @@ void ScrollView::StartSmoothScroll() {
       }
     } else {
       float offset = 0.f;
-      offset = auto_scroll_rate_ + scroll_offset_.width();
+      offset = scroll_offset_.x() +
+               (IsRtlDirection() ? (-auto_scroll_rate_) : auto_scroll_rate_);
       ScrollTo(false, offset);
-      if (scroll_offset_.width() <
-          static_cast<RenderScroll*>(render_object())->MaxScrollWidth()) {
+      bool has_space_to_scroll =
+          IsRtlDirection()
+              ? (scroll_offset_.x() > 0)
+              : (scroll_offset_.x() <
+                 static_cast<RenderScroll*>(render_object())->MaxScrollWidth());
+      if (has_space_to_scroll) {
         page_view()->GetTaskRunner()->PostDelayedTask(
             [self = weak_factory_.GetWeakPtr()]() {
               if (self) {
@@ -789,22 +815,26 @@ void ScrollView::StartScrollInto(BaseView* node, std::string block,
     is_smooth = true;
   }
   if (CanScrollY()) {
-    scroll_offset += node->BoundsRelativeTo(this).location().y() +
-                     this->GetScrollOffset().height();
+    scroll_offset +=
+        node->BoundsRelativeTo(this).location().y() + GetScrollOffset().y();
     if (block == "center") {
-      scroll_offset -= (this->Height() - node->Height()) / 2;
+      scroll_offset -= (Height() - node->Height()) / 2;
     } else if (block == "end") {
-      scroll_offset -= (this->Height() - node->Height());
+      scroll_offset -= (Height() - node->Height());
     }
     scroll_offset = std::max(
         0.f, std::min<float>(scroll_offset, render_scroll->MaxScrollHeight()));
   } else {
-    scroll_offset += node->BoundsRelativeTo(this).location().x() +
-                     this->GetScrollOffset().width();
+    scroll_offset +=
+        (IsRtlDirection() ? node->BoundsRelativeTo(this).MaxX() - Width()
+                          : node->BoundsRelativeTo(this).x()) +
+        GetScrollOffset().x();
+    float width_delta = Width() - node->Width();
     if (inline_mode == "center") {
-      scroll_offset -= (this->Width() - node->Width()) / 2;
+      scroll_offset -=
+          (IsRtlDirection() ? (-width_delta / 2) : width_delta / 2);
     } else if (inline_mode == "end") {
-      scroll_offset -= (this->Width() - node->Width());
+      scroll_offset -= (IsRtlDirection() ? -width_delta : width_delta);
     }
     scroll_offset = std::max(
         0.f, std::min<float>(scroll_offset, render_scroll->MaxScrollWidth()));
@@ -815,11 +845,11 @@ void ScrollView::StartScrollInto(BaseView* node, std::string block,
 void ScrollView::CorrectScrollOffset() {
   RenderScroll* scroll = static_cast<RenderScroll*>(render_object_.get());
   if (scroll_direction_ == ScrollDirection::kVertical) {
-    if (scroll_offset_.height() > scroll->MaxScrollHeight()) {
+    if (scroll_offset_.y() > scroll->MaxScrollHeight()) {
       OnScrollUpdate(scroll->MaxScrollHeight());
     }
   } else {
-    if (scroll_offset_.width() > scroll->MaxScrollWidth()) {
+    if (scroll_offset_.x() > scroll->MaxScrollWidth()) {
       OnScrollUpdate(scroll->MaxScrollWidth());
     }
   }
@@ -832,8 +862,8 @@ void ScrollView::EnableSticky() {
 }
 
 void ScrollView::HandleSticky() {
-  int left = scroll_offset_.width();
-  int top = scroll_offset_.height();
+  int left = scroll_offset_.x();
+  int top = scroll_offset_.y();
   for (auto* child : children_) {
     child->CheckStickyOnParentScrollAndReset(left, top);
   }

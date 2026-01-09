@@ -30,9 +30,9 @@ TEST_F_UI(TextAreaNGViewTest, scroll) {
   text_area->SetBound(0, 0, 30, 200);
   Layout();
   DispatchDragEvent({20, 100}, {22, 0});
-  EXPECT_GT(text_area->editable_scroll_->TotalScrollOffset().height(), 0);
+  EXPECT_GT(text_area->editable_scroll_->TotalScrollOffset().y(), 0);
   // because of the existence of touch_slop
-  EXPECT_LT(text_area->editable_scroll_->TotalScrollOffset().height(), 100);
+  EXPECT_LT(text_area->editable_scroll_->TotalScrollOffset().y(), 100);
 }
 
 };  // namespace clay

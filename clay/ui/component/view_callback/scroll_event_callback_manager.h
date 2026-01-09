@@ -85,23 +85,23 @@ class ScrollEventCallbackManager {
     scroll_event_throttle_ = throttle;
   }
 
-  virtual void NotifyScrolled(const FloatSize& scrolled,
-                              const FloatSize& offset,
+  virtual void NotifyScrolled(const FloatPoint& scrolled,
+                              const FloatPoint& offset,
                               const BorderStatus& current_status,
                               const bool is_dragging = false);
-  void NotifyScrollEnd(const FloatSize& offset) const;
+  void NotifyScrollEnd(const FloatPoint& offset) const;
 
   void NotifyScrollStateChange(ScrollState old_state, ScrollState current_state,
                                float velocity, bool is_dragging) const;
 
  protected:
-  void HandleScrolled(const FloatSize& scrolled, const FloatSize& offset,
+  void HandleScrolled(const FloatPoint& scrolled, const FloatPoint& offset,
                       const BorderStatus& current_status,
                       bool const is_dragging = false);
 
   virtual void SendScrollEvent(const char* event_name,
-                               const FloatSize& scrolled,
-                               const FloatSize& offset,
+                               const FloatPoint& scrolled,
+                               const FloatPoint& offset,
                                const FloatSize& content,
                                const bool is_dragging = false) const;
 

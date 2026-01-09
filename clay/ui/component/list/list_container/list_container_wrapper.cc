@@ -192,13 +192,13 @@ void ListContainerWrapper::getVisibleItemsPositions(
 void ListContainerWrapper::getScrollInfo(const LynxModuleValues& args,
                                          const LynxUIMethodCallback& callback) {
   if (callback) {
-    FloatSize offset = view_->GetScrollOffset();
+    FloatPoint offset = view_->GetScrollOffset();
     FloatSize zoomed_content = page_view_->ConvertTo<kPixelTypeLogical>(
         FloatSize(view_->ContentWidth(), view_->ContentHeight()));
-    FloatSize zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
+    FloatPoint zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
     clay::Value::Map map;
-    map.emplace("scrollTop", zoomed_offset.height());
-    map.emplace("scrollLeft", zoomed_offset.width());
+    map.emplace("scrollTop", zoomed_offset.y());
+    map.emplace("scrollLeft", zoomed_offset.x());
     map.emplace("scrollHeight", zoomed_content.height());
     map.emplace("scrollWidth", zoomed_content.width());
     map.emplace("isDragging",
@@ -226,7 +226,7 @@ void ListContainerWrapper::UpdateScrollInfo(bool smooth, float estimated_offset,
 }
 
 float ListContainerWrapper::GetScrollbarScrollOffset() {
-  return OrientationHelper().GetLength(view_->GetScrollOffset());
+  return OrientationHelper().GetLocation(view_->GetScrollOffset());
 }
 
 float ListContainerWrapper::GetTotalLength() {

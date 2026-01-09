@@ -873,10 +873,10 @@ void TextView::BringIntoView(TextBox* text_box) {
     auto additional_offset = std::clamp(
         static_cast<float>(0.0),
         text_box->GetBottom() - scroll_view->Height() -
-            scroll_view->GetScrollOffset().height() + kDefaultContentDistance,
-        text_box->GetTop() - scroll_view->GetScrollOffset().height());
+            scroll_view->GetScrollOffset().y() + kDefaultContentDistance,
+        text_box->GetTop() - scroll_view->GetScrollOffset().y());
     target_offset = std::clamp(
-        (additional_offset + scroll_view->GetScrollOffset().height()), 0.f,
+        (additional_offset + scroll_view->GetScrollOffset().y()), 0.f,
         static_cast<RenderScroll*>(scroll_view->render_object())
             ->MaxScrollHeight());
 #ifndef ENABLE_CLAY_LITE
@@ -891,10 +891,10 @@ void TextView::BringIntoView(TextBox* text_box) {
     auto additional_offset = std::clamp(
         static_cast<float>(0.0),
         text_box->GetRight() - scroll_view->Width() -
-            scroll_view->GetScrollOffset().width() + kDefaultContentDistance,
-        text_box->GetLeft() - scroll_view->GetScrollOffset().width());
+            scroll_view->GetScrollOffset().x() + kDefaultContentDistance,
+        text_box->GetLeft() - scroll_view->GetScrollOffset().x());
     target_offset = std::clamp(
-        (additional_offset + scroll_view->GetScrollOffset().width()), 0.f,
+        (additional_offset + scroll_view->GetScrollOffset().x()), 0.f,
         static_cast<RenderScroll*>(scroll_view->render_object())
             ->MaxScrollWidth());
 #ifndef ENABLE_CLAY_LITE

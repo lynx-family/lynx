@@ -161,14 +161,14 @@ void ListEventCallbackManager::OnItemDisappear(ListItemViewHolder* item) {
 }
 
 void ListEventCallbackManager::NotifyScrolled(
-    const FloatSize& scrolled, const FloatSize& offset,
+    const FloatPoint& scrolled, const FloatPoint& offset,
     const BorderStatus& current_status, const bool is_dragging) {
   HandleScrolled(scrolled, offset, current_status);
 }
 
 void ListEventCallbackManager::SendScrollEvent(const char* event_name,
-                                               const FloatSize& scrolled,
-                                               const FloatSize& offset,
+                                               const FloatPoint& scrolled,
+                                               const FloatPoint& offset,
                                                const FloatSize& content,
                                                const bool is_dragging) const {
   std::vector<float> left_array, right_array, top_array, bottom_array;
@@ -182,9 +182,9 @@ void ListEventCallbackManager::SendScrollEvent(const char* event_name,
   }
   clay::Value::Map args;
   args["scrollLeft"] = clay::Value(0.f);
-  args["scrollTop"] = clay::Value(offset.height());
+  args["scrollTop"] = clay::Value(offset.y());
   args["deltaX"] = clay::Value(0.f);
-  args["deltaY"] = clay::Value(scrolled.height());
+  args["deltaY"] = clay::Value(scrolled.y());
   clay::Value::Array cells_array(visible_count);
   for (size_t i = 0; i < visible_count; i++) {
     clay::Value::Map cell;

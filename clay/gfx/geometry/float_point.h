@@ -107,6 +107,8 @@ inline bool operator!=(const FloatPoint& a, const FloatPoint& b) {
   return a.x() != b.x() || a.y() != b.y();
 }
 
+inline FloatPoint operator-(const FloatPoint& a) { return {-a.x(), -a.y()}; }
+
 inline bool FindIntersection(const FloatPoint& p1, const FloatPoint& p2,
                              const FloatPoint& d1, const FloatPoint& d2,
                              FloatPoint* intersection) {
