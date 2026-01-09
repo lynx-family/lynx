@@ -11,7 +11,7 @@
 #include "base/include/expected.h"
 #include "base/include/no_destructor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

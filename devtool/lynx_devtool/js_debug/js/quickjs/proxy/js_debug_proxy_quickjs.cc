@@ -4,7 +4,7 @@
 
 #include "devtool/lynx_devtool/js_debug/js/quickjs/proxy/js_debug_proxy_quickjs.h"
 
-#include "core/runtime/jsi/quickjs/quickjs_api.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_api.h"
 #include "devtool/lynx_devtool/js_debug/js/quickjs/manager/quickjs_inspector_manager_impl.h"
 
 namespace lynx {

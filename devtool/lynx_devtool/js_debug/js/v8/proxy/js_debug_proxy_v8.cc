@@ -4,7 +4,7 @@
 
 #include "devtool/lynx_devtool/js_debug/js/v8/proxy/js_debug_proxy_v8.h"
 
-#include "core/runtime/jsi/v8/v8_api.h"
+#include "core/runtime/js/jsi/v8/v8_api.h"
 #include "core/runtime/profile/v8/v8_runtime_profiler.h"
 #include "devtool/lynx_devtool/js_debug/js/v8/manager/v8_inspector_manager_impl.h"
 

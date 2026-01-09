@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_proxy.h"
 
 namespace lynx {

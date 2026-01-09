@@ -18,11 +18,11 @@
 #endif
 
 #include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/jsi/quickjs/quickjs_runtime.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 
 #if defined(OS_IOS) || defined(OS_OSX)
 #include "core/runtime/bindings/napi/napi_runtime_proxy_jsc.h"
-#include "core/runtime/jsi/jsc/jsc_runtime.h"
+#include "core/runtime/js/jsi/jsc/jsc_runtime.h"
 #endif
 
 LYNX_EXPORT void RegisterV8RuntimeProxyFactory(

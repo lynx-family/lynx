@@ -13,7 +13,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/bindings/jsi/modules/module_interceptor.h"
-#include "core/runtime/jsi/jsi-inl.h"
+#include "core/runtime/js/jsi/jsi-inl.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/value_wrapper/value_impl_lepus.h"

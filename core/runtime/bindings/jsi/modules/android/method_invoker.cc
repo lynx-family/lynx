@@ -24,7 +24,7 @@
 #include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/recorder/recorder_controller.h"

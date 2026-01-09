@@ -12,7 +12,7 @@
 
 #include "base/include/value/base_value.h"
 #include "core/public/pub_value.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx {

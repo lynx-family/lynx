@@ -8,7 +8,7 @@
 #include "core/runtime/js/js_executor.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 #if JS_ENGINE_TYPE == 1
-#include "core/runtime/jsi/jsc/jsc_api.h"
+#include "core/runtime/js/jsi/jsc/jsc_api.h"
 #endif
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 

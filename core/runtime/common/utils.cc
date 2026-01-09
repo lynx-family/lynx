@@ -21,7 +21,7 @@
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/bindings/jsi/console.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

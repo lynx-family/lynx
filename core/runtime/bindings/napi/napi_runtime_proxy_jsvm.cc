@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "core/runtime/jsi/jsvm/jsvm_runtime.h"
+#include "core/runtime/js/jsi/jsvm/jsvm_runtime.h"
 #include "third_party/napi/include/napi_env_harmony.h"
 
 namespace lynx {

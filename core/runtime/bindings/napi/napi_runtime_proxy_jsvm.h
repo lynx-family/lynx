@@ -10,7 +10,7 @@
 
 #include "core/runtime/bindings/napi/napi_runtime_proxy.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm_factory.h"
-#include "core/runtime/jsi/jsvm/jsvm_context_wrapper.h"
+#include "core/runtime/js/jsi/jsvm/jsvm_context_wrapper.h"
 
 namespace lynx {
 namespace piper {

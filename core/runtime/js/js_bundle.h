@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx::piper {
 // A `JsContent` represents content of a js file, either source code or

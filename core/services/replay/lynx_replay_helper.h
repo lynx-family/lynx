@@ -7,7 +7,7 @@
 #include <limits>
 #include <optional>
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {

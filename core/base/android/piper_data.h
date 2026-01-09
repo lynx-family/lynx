@@ -7,7 +7,7 @@
 #include <string>
 
 #include "base/include/platform/android/scoped_java_ref.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {

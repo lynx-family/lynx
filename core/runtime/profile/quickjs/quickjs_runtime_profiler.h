@@ -7,7 +7,7 @@
 #if ENABLE_TRACE_PERFETTO
 #include <memory>
 
-#include "core/runtime/jsi/quickjs/quickjs_context_wrapper.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_context_wrapper.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {

@@ -21,7 +21,7 @@
 #include "core/public/jsb/lynx_module_callback.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 namespace lynx {
 namespace base {
 namespace android {

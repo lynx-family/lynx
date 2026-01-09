@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include "core/runtime/jsi/jsi.h"
-#include "core/runtime/jsi/quickjs/quickjs_api.h"
+#include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_api.h"
 
 namespace testing {
 namespace utils {

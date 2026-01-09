@@ -9,7 +9,7 @@
 #include <set>
 #include <string>
 
-#include "core/runtime/jsi/quickjs/quickjs_inspector_manager.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_inspector_manager.h"
 #include "devtool/js_inspect/quickjs/quickjs_inspector_client_impl.h"
 
 namespace lynx {

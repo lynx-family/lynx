@@ -11,7 +11,7 @@ group("LynxAndroid") {
   deps = []
   deps += [ ":lynx_android" ]
   if (!enable_lite) {
-    deps += [ "../../../core/runtime/jsi/v8:lynx_v8_bridge" ]
+    deps += [ "../../../core/runtime/js/jsi/v8:lynx_v8_bridge" ]
   }
 }
 
@@ -33,7 +33,7 @@ cmake_target("lynx_android") {
     "../:16kb_page",
   ]
   if (!enable_lite) {
-    sub_cmake_target = [ "../../../core/runtime/jsi/v8:lynx_v8_bridge" ]
+    sub_cmake_target = [ "../../../core/runtime/js/jsi/v8:lynx_v8_bridge" ]
   }
 }
 

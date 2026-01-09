@@ -10,7 +10,7 @@
 
 #include "core/base/js_constants.h"
 #include "core/runtime/bindings/jsi/big_int/big_integer.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

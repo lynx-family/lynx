@@ -26,10 +26,10 @@
 
 #include "base/include/closure.h"
 #include "core/public/page_options.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/jscache/cache_generator.h"
 #include "core/runtime/jscache/js_cache_tracker.h"
 #include "core/runtime/jscache/meta_data.h"
-#include "core/runtime/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

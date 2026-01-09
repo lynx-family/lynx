@@ -10,9 +10,9 @@
 #include <utility>
 
 #include "base/include/expected.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/jscache/quickjs/bytecode/quickjs_bytecode.h"
 #include "core/runtime/jscache/quickjs/bytecode/quickjs_bytecode_provider_src.h"
-#include "core/runtime/jsi/jsi.h"
 #include "core/template_bundle/template_codec/version.h"
 
 namespace lynx {

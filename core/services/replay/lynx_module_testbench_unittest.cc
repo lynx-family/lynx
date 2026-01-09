@@ -5,7 +5,7 @@
 #define private public
 #include "core/services/replay/lynx_module_testbench.h"
 
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #undef private
 
 #include "base/include/closure.h"

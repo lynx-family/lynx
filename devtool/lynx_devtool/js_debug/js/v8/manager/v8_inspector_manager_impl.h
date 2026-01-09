@@ -5,7 +5,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_V8_MANAGER_V8_INSPECTOR_MANAGER_IMPL_H_
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_V8_MANAGER_V8_INSPECTOR_MANAGER_IMPL_H_
 
-#include "core/runtime/jsi/v8/v8_inspector_manager.h"
+#include "core/runtime/js/jsi/v8/v8_inspector_manager.h"
 #include "devtool/js_inspect/v8/v8_inspector_client_impl.h"
 
 namespace lynx {

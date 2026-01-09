@@ -13,7 +13,7 @@
 #include "base/include/closure.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

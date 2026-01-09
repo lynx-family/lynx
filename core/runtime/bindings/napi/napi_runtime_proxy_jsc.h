@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "core/runtime/bindings/napi/napi_runtime_proxy.h"
-#include "core/runtime/jsi/jsc/jsc_context_wrapper.h"
+#include "core/runtime/js/jsi/jsc/jsc_context_wrapper.h"
 
 namespace lynx {
 namespace piper {

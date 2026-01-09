@@ -6,9 +6,9 @@
 
 #include <memory>
 
-#include "core/runtime/jsi/jsi.h"
-#include "core/runtime/jsi/quickjs/quickjs_api.h"
-#include "core/runtime/jsi/quickjs/quickjs_context_wrapper.h"
+#include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_api.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_context_wrapper.h"
 #include "testing/utils/make_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

@@ -19,7 +19,7 @@
 #include "core/public/jsb/native_module_factory.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
 namespace lynx {

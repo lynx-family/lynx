@@ -15,7 +15,7 @@
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/runtime/bindings/jsi/modules/android/platform_jsi/jsi_object_utils.h"
 #include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_jsi_object_descriptor.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {

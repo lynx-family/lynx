@@ -16,7 +16,7 @@
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module_binding.h"
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 #if ENABLE_TESTBENCH_REPLAY
 #include "core/services/replay/lynx_module_manager_testbench.h"

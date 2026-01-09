@@ -33,7 +33,7 @@ lynx_core_source_set("reporter") {
 unittest_set("utils_unittests_testset") {
   configs = [
     "../../:lynx_public_config",
-    "../jsi:jsi_unittest_config",
+    "../js/jsi:jsi_unittest_config",
   ]
 
   sources = [

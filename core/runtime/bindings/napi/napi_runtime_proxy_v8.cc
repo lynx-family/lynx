@@ -7,9 +7,9 @@
 #include <utility>
 
 #include "core/runtime/bindings/napi/shim/shim_napi_env_v8.h"
-#include "core/runtime/jsi/v8/v8_context_wrapper.h"
-#include "core/runtime/jsi/v8/v8_helper.h"
-#include "core/runtime/jsi/v8/v8_runtime.h"
+#include "core/runtime/js/jsi/v8/v8_context_wrapper.h"
+#include "core/runtime/js/jsi/v8/v8_helper.h"
+#include "core/runtime/js/jsi/v8/v8_runtime.h"
 #include "v8.h"
 
 namespace lynx {

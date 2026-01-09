@@ -9,8 +9,8 @@
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
-#include "core/runtime/jsi/jsi.h"
-#include "core/runtime/jsi/jsi_unittest.h"
+#include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi_unittest.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

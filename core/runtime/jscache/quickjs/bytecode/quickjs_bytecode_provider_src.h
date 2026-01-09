@@ -9,8 +9,8 @@
 #include <string>
 #include <utility>
 
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/jscache/quickjs/bytecode/quickjs_bytecode.h"
-#include "core/runtime/jsi/jsi.h"
 #include "core/template_bundle/template_codec/version.h"
 extern "C" {
 #include "quickjs/include/quickjs.h"

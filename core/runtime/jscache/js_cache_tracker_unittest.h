@@ -7,8 +7,8 @@
 
 #include <string>
 
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/jscache/js_cache_tracker.h"
-#include "core/runtime/jsi/jsi.h"
 #include "core/services/event_report/event_tracker.h"
 
 namespace lynx {

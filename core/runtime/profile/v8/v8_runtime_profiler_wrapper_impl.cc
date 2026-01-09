@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/jsi/v8/v8_helper.h"
+#include "core/runtime/js/jsi/v8/v8_helper.h"
 
 namespace lynx {
 namespace runtime {

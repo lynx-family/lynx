@@ -9,9 +9,9 @@
 #include <string>
 #include <utility>
 
-#include "core/runtime/jsi/v8/v8_context_wrapper_impl.h"
-#include "core/runtime/jsi/v8/v8_helper.h"
-#include "core/runtime/jsi/v8/v8_isolate_wrapper_impl.h"
+#include "core/runtime/js/jsi/v8/v8_context_wrapper_impl.h"
+#include "core/runtime/js/jsi/v8/v8_helper.h"
+#include "core/runtime/js/jsi/v8/v8_isolate_wrapper_impl.h"
 #include "v8.h"
 
 namespace lynx {

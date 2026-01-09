@@ -1,0 +1,57 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("../../../../testing/test.gni")
+import("../../../Lynx.gni")
+import("v8/v8.gni")
+
+jsi_sources = [
+  "instrumentation.h",
+  "jsi-inl.h",
+  "jsi.cc",
+  "jsi.h",
+  "jslib.h",
+]
+
+if (!is_harmony) {
+  jsi_sources += [
+    "../../../resource/lynx_resource_setting.cc",
+    "../../../resource/lynx_resource_setting.h",
+  ]
+}
+
+lynx_core_source_set("jsi") {
+  sources = jsi_sources
+  deps = [ "../../../../base/src:base_log_headers" ]
+}
+
+config("jsi_unittest_config") {
+  if (is_mac) {
+    # For IS_OSX marco that enables JSCRuntime tests
+    configs = darwin_config
+  }
+}
+
+unittest_set("jsi_unittests_testset") {
+  sources = [ "jsi_unittest.cc" ]
+
+  deps = [
+    ":jsi",
+    "../../../../base/src:base_log_headers",
+    "../../../../third_party/quickjs",
+    "../../../base",
+    "../../../services/performance",
+    "quickjs:quickjs",
+  ]
+  if (is_mac || is_linux) {
+    deps += [ "../../../../third_party/quickjs:quickjs_libc" ]
+  }
+
+  if (is_mac) {
+    public_deps = [ "//${lynx_dir}/third_party/NativeScript" ]
+    sources += js_v8_bridge_shared_sources
+    include_dirs = [ v8_headers_search_path ]
+  }
+}

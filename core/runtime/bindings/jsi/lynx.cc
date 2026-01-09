@@ -16,7 +16,7 @@
 #include "core/runtime/bindings/jsi/java_script_element.h"
 #include "core/runtime/bindings/jsi/resource/response_handler_in_js.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/jsi/jsi.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
