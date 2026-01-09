@@ -395,6 +395,17 @@ export interface Config {
   enableImageDownsampling?: boolean
 
   /**
+   * Control whether to consider animation layers in position calculation during exposure detection.
+   *
+   * Supported platform: iOS
+   *
+   * Since: LynxSDK 3.7
+   *
+   * @defaultValue false
+   */
+  enableiOSAnimationLayerForExposure?: boolean
+
+  /**
    * Enable js binding api throw exception
    *
    * Supported platform: Android, HarmonyOS, iOS

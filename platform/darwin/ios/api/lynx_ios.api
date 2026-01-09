@@ -173,6 +173,7 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::enableTextLayoutCache();
   public bool LUIConfig-p::enableTextGradientOpt();
   public bool LUIConfig-p::enableExposureWhenReload();
+  public bool LUIConfig-p::enableiOSAnimationLayerForExposure();
 }
 
 public class LUIConfigAdapter : NSObject, <LUIConfig> {
@@ -4386,6 +4387,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::defaultAutoResumeAnimation defaultAutoResumeAnimation;
   public BOOL LynxUIContext::defaultEnableNewTransformOrigin defaultEnableNewTransformOrigin;
   public BOOL LynxUIContext::enableEventRefactor enableEventRefactor;
+  public BOOL LynxUIContext::enableiOSAnimationLayerForExposure enableiOSAnimationLayerForExposure;
   public BOOL LynxUIContext::enableA11yIDMutationObserver enableA11yIDMutationObserver;
   public BOOL LynxUIContext::enableTextOverflow enableTextOverflow;
   public BOOL LynxUIContext::enableNewClipMode enableNewClipMode;

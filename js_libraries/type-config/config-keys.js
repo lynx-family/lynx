@@ -67,6 +67,7 @@ const configKeys = [
   'enableHarmonyVisibleAreaChangeForExposure',
   'enableICU',
   'enableImageDownsampling',
+  'enableiOSAnimationLayerForExposure',
   'enableJsBindingApiThrowException',
   'enableJSDataProcessor',
   'enableListMoveOperation',
