@@ -18,7 +18,7 @@ ScrollEventCallbackManager::ScrollEventCallbackManager(BaseView* view,
 ScrollEventCallbackManager::~ScrollEventCallbackManager() = default;
 
 void ScrollEventCallbackManager::NotifyScrolled(
-    const FloatSize& scrolled, const FloatSize& offset,
+    const FloatPoint& scrolled, const FloatPoint& offset,
     const BorderStatus& current_status, bool is_dragging) {
   HandleScrolled(scrolled, offset, current_status, is_dragging);
 }
@@ -36,13 +36,13 @@ void ScrollEventCallbackManager::NotifyScrollStateChange(
 }
 
 void ScrollEventCallbackManager::HandleScrolled(
-    const FloatSize& scrolled, const FloatSize& offset,
+    const FloatPoint& scrolled, const FloatPoint& offset,
     const BorderStatus& current_status, const bool is_dragging) {
   FML_DCHECK(view_ != nullptr);
   FloatSize zoomed_content = page_view_->ConvertTo<kPixelTypeLogical>(
       FloatSize(view_->ContentWidth(), view_->ContentHeight()));
-  FloatSize zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
-  FloatSize zoomed_scroll = page_view_->ConvertTo<kPixelTypeLogical>(scrolled);
+  FloatPoint zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
+  FloatPoint zoomed_scroll = page_view_->ConvertTo<kPixelTypeLogical>(scrolled);
   auto now = fml::TimePoint::Now();
   if (ShouldSendEvent(kScrollEvent) &&
       now - last_scroll_event_ > scroll_event_throttle_) {
@@ -66,28 +66,28 @@ void ScrollEventCallbackManager::HandleScrolled(
 }
 
 void ScrollEventCallbackManager::NotifyScrollEnd(
-    const FloatSize& offset) const {
+    const FloatPoint& offset) const {
   if (ShouldSendEvent(kScrollEnd)) {
     FML_DCHECK(view_ != nullptr);
 
     FloatSize zoomed_content = page_view_->ConvertTo<kPixelTypeLogical>(
         FloatSize(view_->ContentWidth(), view_->ContentHeight()));
-    FloatSize zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
-    SendScrollEvent(event_attr::kEventScrollEnd, FloatSize(0, 0), zoomed_offset,
-                    zoomed_content);
+    FloatPoint zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
+    SendScrollEvent(event_attr::kEventScrollEnd, FloatPoint(0, 0),
+                    zoomed_offset, zoomed_content);
   }
 }
 
 void ScrollEventCallbackManager::SendScrollEvent(const char* event_name,
-                                                 const FloatSize& scrolled,
-                                                 const FloatSize& offset,
+                                                 const FloatPoint& scrolled,
+                                                 const FloatPoint& offset,
                                                  const FloatSize& content,
                                                  const bool is_dragging) const {
   page_view_->SendEvent(callback_id_, event_name,
                         {"scrollLeft", "scrollTop", "scrollHeight",
                          "scrollWidth", "deltaX", "deltaY", "isDragging"},
-                        offset.width(), offset.height(), content.height(),
-                        content.width(), scrolled.width(), scrolled.height(),
+                        offset.x(), offset.y(), content.height(),
+                        content.width(), scrolled.x(), scrolled.y(),
                         is_dragging);
 }
 

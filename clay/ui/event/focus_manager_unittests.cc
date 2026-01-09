@@ -222,11 +222,11 @@ TEST(FocusManagerTest, ScrollViewFocusTest) {
 
   scroll_view->GetFocusManager()->DispatchKeyEvent(&key_down);
   EXPECT_TRUE(view5->IsFocused());
-  EXPECT_EQ(scroll_view->GetScrollOffset().height(), 300);
+  EXPECT_EQ(scroll_view->GetScrollOffset().y(), 300);
 
   scroll_view->GetFocusManager()->DispatchKeyEvent(&key_right);
   EXPECT_TRUE(view7->IsFocused());
-  EXPECT_EQ(scroll_view->GetScrollOffset().height(), 400);
+  EXPECT_EQ(scroll_view->GetScrollOffset().y(), 400);
 
   root->DestroyAllChildren();
 }

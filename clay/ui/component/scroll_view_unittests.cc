@@ -66,7 +66,7 @@ TEST_F_UI(ScrollViewTest, ScrollToId) {
   outer_view_->AddChild(view_c.get(), 3);
   outer_view_->OnLayoutUpdated();
   outer_view_->SetScrollToId("view_c", false);
-  EXPECT_EQ(200, outer_view_->GetScrollOffset().height());
+  EXPECT_EQ(200, outer_view_->GetScrollOffset().y());
   view_a.reset();
   view_b.reset();
   view_c.reset();
@@ -80,31 +80,31 @@ TEST_F_UI(ScrollViewTest, NestedScrollGestureOnPC) {
   auto inner_offset = inner_view_->GetScrollOffset();
   auto outer_offset = outer_view_->GetScrollOffset();
   // the main movement on y axis, so outer will moved
-  EXPECT_EQ(0.0, inner_offset.width());
-  EXPECT_EQ(0.0, outer_offset.height());
+  EXPECT_EQ(0.0, inner_offset.x());
+  EXPECT_EQ(0.0, outer_offset.y());
   inner_view_->HandleEvent(PointerEvent(PointerEvent::EventType::kSignalEvent));
   outer_view_->HandleEvent(PointerEvent(PointerEvent::EventType::kSignalEvent));
   DispatchTouchPadEvent({0, 0}, {50, 100}, 5);
 
   inner_offset = inner_view_->GetScrollOffset();
   outer_offset = outer_view_->GetScrollOffset();
-  EXPECT_EQ(0.0, inner_offset.width());
-  EXPECT_EQ(100.0, outer_offset.height());
+  EXPECT_EQ(0.0, inner_offset.x());
+  EXPECT_EQ(100.0, outer_offset.y());
 
   // move within 500ms continue with prev move
   DispatchTouchPadEvent({0, 0}, {50, 10}, 5);
   inner_offset = inner_view_->GetScrollOffset();
   outer_offset = outer_view_->GetScrollOffset();
-  EXPECT_EQ(0.0, inner_offset.width());
-  EXPECT_EQ(110.0, outer_offset.height());
+  EXPECT_EQ(0.0, inner_offset.x());
+  EXPECT_EQ(110.0, outer_offset.y());
 
   // simulate 500ms passed and start a new scroll.
   page_->gesture_manager()->EndMouseWheelTransactionByForce();
   DispatchTouchPadEvent({0, 0}, {50, 10}, 5);
   inner_offset = inner_view_->GetScrollOffset();
   outer_offset = outer_view_->GetScrollOffset();
-  EXPECT_EQ(50.0, inner_offset.width());
-  EXPECT_EQ(110.0, outer_offset.height());
+  EXPECT_EQ(50.0, inner_offset.x());
+  EXPECT_EQ(110.0, outer_offset.y());
 }
 
 TEST_F_UI(ScrollViewTest, ScrollIntoView) {
@@ -186,7 +186,7 @@ TEST_F_UI(ScrollViewTest, ScrollTop) {
   scroll_view->OnLayoutUpdated();
   Layout();
 
-  EXPECT_EQ(100, scroll_view->GetScrollOffset().height());
+  EXPECT_EQ(100, scroll_view->GetScrollOffset().y());
 }
 
 TEST_F_UI(ScrollViewTest, ScrollToIndex) {
@@ -214,7 +214,7 @@ TEST_F_UI(ScrollViewTest, ScrollToIndex) {
   scroll_view->OnLayoutUpdated();
   Layout();
 
-  EXPECT_EQ(200, scroll_view->GetScrollOffset().height());
+  EXPECT_EQ(200, scroll_view->GetScrollOffset().y());
 }
 
 // TODO(liuguoliang): Fix scrollWidth/scrollHeight and add test case
@@ -274,12 +274,12 @@ TEST_F_UI(ScrollViewTest, ScrollEvent) {
       .Times(1);
   DoAnimation(10);
   DoAnimation(1000);
-  EXPECT_GT(scroll_view->GetScrollView()->GetScrollOffset().height(), 0);
+  EXPECT_GT(scroll_view->GetScrollView()->GetScrollOffset().y(), 0);
 
   // By bounce
   ::testing::Mock::VerifyAndClearExpectations(this);
   scroll_view->SetAttribute("scroll-top", Value(0));
-  EXPECT_EQ(scroll_view->GetScrollView()->GetScrollOffset().height(), 0);
+  EXPECT_EQ(scroll_view->GetScrollView()->GetScrollOffset().y(), 0);
   DispatchDragEvent({50, 50}, {50, 100});
   ::testing::Mock::VerifyAndClearExpectations(this);
   EXPECT_CALL(*this, OnCustomEvent(event_attr::kEventScroll, _))
@@ -296,12 +296,12 @@ TEST_F_UI(ScrollViewTest, ScrollEvent) {
   ResetAnimationTime();
   DoAnimation(10);
   DoAnimation(1000);
-  EXPECT_EQ(scroll_view->GetScrollView()->GetScrollOffset().height(), 0);
+  EXPECT_EQ(scroll_view->GetScrollView()->GetScrollOffset().y(), 0);
 
   // By fling and bounce
   ::testing::Mock::VerifyAndClearExpectations(this);
   DispatchDragEvent({50, 50}, {50, -200}, true, 10, 1);
-  EXPECT_GT(scroll_view->GetScrollView()->GetScrollOffset().height(), 200);
+  EXPECT_GT(scroll_view->GetScrollView()->GetScrollOffset().y(), 200);
   ::testing::Mock::VerifyAndClearExpectations(this);
   EXPECT_CALL(*this, OnCustomEvent(event_attr::kEventScroll, _))
       .Times(AtLeast(2));
@@ -318,7 +318,7 @@ TEST_F_UI(ScrollViewTest, ScrollEvent) {
   DoAnimation(10);
   DoAnimation(1000);
   DoAnimation(1000);
-  EXPECT_EQ(scroll_view->GetScrollView()->GetScrollOffset().height(), 400);
+  EXPECT_EQ(scroll_view->GetScrollView()->GetScrollOffset().y(), 400);
 
   // By signal
   ::testing::Mock::VerifyAndClearExpectations(this);
@@ -473,10 +473,10 @@ TEST_F_UI(ScrollViewTest, BounceView) {
     DoAnimation(16);
     max_scroll_offset =
         std::max(max_scroll_offset,
-                 scroll_view->GetScrollView()->TotalScrollOffset().width());
+                 scroll_view->GetScrollView()->TotalScrollOffset().x());
   }
   EXPECT_GT(max_scroll_offset, 120);
-  EXPECT_EQ(scroll_view->GetScrollView()->TotalScrollOffset().width(), 100);
+  EXPECT_EQ(scroll_view->GetScrollView()->TotalScrollOffset().x(), 100);
 }
 
 }  // namespace clay

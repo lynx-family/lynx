@@ -60,12 +60,12 @@ class ListEventCallbackManager : public ScrollEventCallbackManager {
   void SetLayoutManager(ListLayoutManager* manager) { manager_ = manager; }
   void SetNeedsVisibleCells(bool enable) { needs_visible_cells_ = enable; }
 
-  void NotifyScrolled(const FloatSize& scrolled, const FloatSize& offset,
+  void NotifyScrolled(const FloatPoint& scrolled, const FloatPoint& offset,
                       const BorderStatus& current_status,
                       const bool is_dragging = false) override;
 
-  void SendScrollEvent(const char* event_name, const FloatSize& scrolled,
-                       const FloatSize& offset, const FloatSize& content,
+  void SendScrollEvent(const char* event_name, const FloatPoint& scrolled,
+                       const FloatPoint& offset, const FloatSize& content,
                        const bool is_dragging = false) const override;
 
  private:

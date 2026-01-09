@@ -146,7 +146,7 @@ class BaseListView : public WithTypeInfo<BaseListView, NestedScrollable>,
   bool OnScrollBy(const FloatSize& distance);
 
   // Return scroll offset including overscroll
-  FloatSize TotalScrollOffset();
+  FloatPoint TotalScrollOffset();
 
   // Override FocusNode
   FocusManager::TraversalResult OnTraversalOnScope(
