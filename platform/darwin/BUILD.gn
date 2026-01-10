@@ -18,13 +18,12 @@ darwin_include_dirs =
                   "common/lynx/public/navigator",
                   "common/lynx/public/navigator/cache",
                   "common/lynx/public/performance",
-                  "common/lynx/performance/memory",
-                  "common/lynx/performance/timing",
                   "common/lynx/public/resource",
                   "common/lynx/public/service",
                   "common/lynx/public/Trace",
                   "common/lynx/public/utils",
                   "common/lynx/public/utils/thread_safe_dictionary",
+
                   "common/lazy_load",
                   "common/lynx/base",
                   "common/lynx/devtool_wrapper",
@@ -35,12 +34,13 @@ darwin_include_dirs =
                   "common/lynx/navigator",
                   "common/lynx/navigator/cache",
                   "common/lynx/performance",
+                  "common/lynx/performance/memory",
+                  "common/lynx/performance/timing",
                   "common/lynx/resource",
                   "common/lynx/service",
                   "common/lynx/Trace",
                   "common/lynx/utils",
                   "common/lynx/utils/thread_safe_dictionary",
-                  "common/lazy_load",
                 ])
 if (is_ios) {
   darwin_include_dirs +=
