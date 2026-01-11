@@ -1304,7 +1304,7 @@ void ElementManager::OnPatchFinishForFiber(
 
   // if flush_option do not need layout or options do not need layout, skip
   // layout.
-  if ((!need_layout_ || !options->trigger_layout_) &&
+  if ((!need_layout_ || !options->NeedLayout()) &&
       !options->render_for_recreate_engine) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY,
                 ELEMENT_MANAGER_ON_PATCH_FINISH_FIBER_NO_PATCH);
