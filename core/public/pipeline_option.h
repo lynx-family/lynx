@@ -146,6 +146,9 @@ struct PipelineOptions {
   bool IsRenderListItem() const {
     return operation_id != 0 && list_id_ != 0 && list_comp_id_ != 0;
   }
+
+  bool NeedLayout() const { return is_first_screen || trigger_layout_; }
+
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) const {
     auto* debug_pipeline_id = event->add_debug_annotations();
