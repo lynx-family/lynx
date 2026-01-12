@@ -21,6 +21,10 @@ config("config") {
     "$root_gen_dir",
   ]
 
+  if (is_win) {
+    defines += [ "TTTEXT_OS_WIN" ]
+  }
+
   if (enable_skity) {
     include_dirs += [
       "../base/trace",
@@ -45,9 +49,6 @@ config("config") {
     }
 
     defines += [ "ENABLE_SKITY" ]
-    if (is_win) {
-      defines += [ "TTTEXT_OS_WIN" ]
-    }
   } else {
     include_dirs += [
       # textlayout
