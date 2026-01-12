@@ -46,6 +46,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableHarmonyVisibleAreaChangeForExposure').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableICU').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableImageDownsampling').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableiOSAnimationLayerForExposure').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableJsBindingApiThrowException').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableJSDataProcessor').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableListMoveOperation').toEqualTypeOf<boolean | undefined>();
