@@ -254,6 +254,7 @@ typedef struct ClayLayoutStyles {
 typedef struct ClayMeasureOutput {
   float width;
   float height;
+  float baseline;
 } ClayMeasureOutput;
 
 typedef struct ClayPlatformLength {

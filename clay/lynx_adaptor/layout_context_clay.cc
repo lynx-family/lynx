@@ -318,7 +318,7 @@ ClayMeasureOutput LayoutContextClay::OnMeasureNativeNode(
     int32_t id, float width, int width_mode, float height, int height_mode) {
   auto size = layout_node_manager_->UpdateMeasureByPlatform(
       id, width, width_mode, height, height_mode, true);
-  return {size.width_, size.height_};
+  return {size.width_, size.height_, size.baseline_};
 }
 
 ClayLayoutStyles LayoutContextClay::OnGetLayoutStyles(int32_t id) {

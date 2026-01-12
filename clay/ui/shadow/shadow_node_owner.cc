@@ -76,6 +76,7 @@ MeasureResult ShadowNodeOwner::MeasureNativeNode(
   MeasureResult result;
   result.width = measure_output.width;
   result.height = measure_output.height;
+  result.baseline = measure_output.baseline;
   return result;
 }
 
