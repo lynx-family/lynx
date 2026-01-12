@@ -287,3 +287,8 @@
 #define napi_would_deadlock napi_would_deadlock_primjs
 #define napi_no_external_buffers_allowed napi_no_external_buffers_allowed_primjs
 #define napi_cannot_run_js napi_cannot_run_js_primjs
+
+#define napi_create_async_work napi_create_async_work_primjs
+#define napi_queue_async_work napi_queue_async_work_primjs
+#define napi_cancel_async_work napi_cancel_async_work_primjs
+#define napi_delete_async_work napi_delete_async_work_primjs

@@ -234,3 +234,7 @@
 #undef napi_would_deadlock
 #undef napi_no_external_buffers_allowed
 #undef napi_cannot_run_js
+#undef napi_create_async_work
+#undef napi_queue_async_work
+#undef napi_cancel_async_work
+#undef napi_delete_async_work
