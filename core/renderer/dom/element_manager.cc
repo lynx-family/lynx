@@ -88,6 +88,8 @@ ElementManager::ElementManager(
   fix_parallel_z_index_crash_ = LynxEnv::GetInstance().FixParallelZIndexCrash();
   fix_insert_before_fixed_bug_ =
       LynxEnv::GetInstance().FixInsertBeforeFixedBug();
+  fix_radon_inline_convert_bug_ =
+      LynxEnv::GetInstance().FixRadonInlineConvertBug();
   fix_font_size_override_direction_change_bug_ =
       LynxEnv::GetInstance().FixFontSizeOverrideDirectionChangeBug();
   fix_negative_z_index_bug_ = LynxEnv::GetInstance().GetBoolEnv(
