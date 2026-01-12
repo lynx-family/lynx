@@ -1588,7 +1588,8 @@ void VMContext::GenerateClosure(RestrictedValue* value, long index) {
     }
   }
   closure->SetContext(closure_context_);
-  value->SetRefCounted(closure);
+  fml::RefPtr<lepus::RefCounted> closure_ref_counted = closure;
+  value->SetRefCounted(closure_ref_counted);
 
   if (!closure_context_.IsNil()) {
     closures_.AddClosure(closure, executed_);
