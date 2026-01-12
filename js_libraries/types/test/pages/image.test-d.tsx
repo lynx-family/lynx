@@ -46,6 +46,7 @@ function noop() {}
       assertType<number>(e.detail.lynx_categorized_code);
     }}
   />;
+  <image bindstartplay={() => {}} bindcurrentloopcomplete={() => {}} bindfinalloopcomplete={() => {}} />;
 }
 
 // UIMethods types check

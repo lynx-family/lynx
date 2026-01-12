@@ -185,6 +185,33 @@ export interface ImageProps extends StandardProps {
    * @since 0.2
    */
   binderror?: (e: ErrorEvent) => void;
+
+  /**
+   * Triggered when the animated image starts playing.
+   * @iOS
+   * @Android
+   * @Harmony
+   * @since 3.7
+   */
+  bindstartplay?: (e: BaseEvent) => void;
+
+  /**
+   * Triggered when one loop of the animated image finishes playing.
+   * @iOS
+   * @Android
+   * @Harmony
+   * @since 3.7
+   */
+  bindcurrentloopcomplete?: (e: BaseEvent) => void;
+
+  /**
+   * Triggered when the animated image finishes playing all `loop-count` loops. If `loop-count` is not set, this callback will not be triggered.
+   * @iOS
+   * @Android
+   * @Harmony
+   * @since 3.7
+   */
+  bindfinalloopcomplete?: (e: BaseEvent) => void;
 }
 
 export type LoadEvent = BaseEvent<'load', ImageLoadEvent>;

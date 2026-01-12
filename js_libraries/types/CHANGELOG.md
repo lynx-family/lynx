@@ -2,6 +2,8 @@
 
 ## 3.7.1
 
+- Add `bindstartplay`, `bindcurrentloopcomplete` and `bindfinalloopcomplete` callback for animated image.
+
 - Add global `getNapiLoader()` function.
 
 ## 3.7.0
