@@ -7,6 +7,7 @@
 #include <string>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/list/decoupled_list_orientation_helper.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
@@ -17,10 +18,17 @@ namespace list {
 // child.
 void ListChildrenHelper::AddChild(const ItemHolderSet& children,
                                   ItemHolder* item_holder) {
-  if (!item_holder) {
-    return;
+  if (item_holder) {
+    const_cast<ItemHolderSet&>(children).insert(item_holder);
   }
-  const_cast<ItemHolderSet&>(children).insert(item_holder);
+}
+
+void ListChildrenHelper::AddChild(const WeakItemHolderSet& children,
+                                  ItemHolder* item_holder) {
+  if (item_holder) {
+    const_cast<WeakItemHolderSet&>(children).insert(
+        item_holder->WeakFromThis());
+  }
 }
 
 // Insert ItemHolder to attached_children_ set. It will be invoked by
@@ -75,6 +83,26 @@ void ListChildrenHelper::ForEachChild(
   } else {
     for (auto it = children.rbegin(); it != children.rend(); ++it) {
       if (*it && func(*it)) {
+        return;
+      }
+    }
+  }
+}
+
+// Traverse child nodes. When reverse == true, traverse in backward order
+void ListChildrenHelper::ForEachChild(
+    const WeakItemHolderSet& children,
+    const std::function<bool(ItemHolder*)>& func, bool reverse) const {
+  if (!reverse) {
+    for (const auto& item_holder : children) {
+      if (item_holder && func(item_holder.get())) {
+        return;
+      }
+    }
+  } else {
+    for (auto it = children.rbegin(); it != children.rend(); ++it) {
+      if (const auto& item_holder = *it;
+          item_holder && func(item_holder.get())) {
         return;
       }
     }
