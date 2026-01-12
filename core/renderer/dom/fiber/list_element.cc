@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "core/list/decoupled_list_types.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -27,9 +28,9 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
     : FiberElement(manager, tag),
       component_at_index_(component_at_index),
       enqueue_component_(enqueue_component),
-      component_at_indexes_(component_at_indexes),
-      list_container_delegate_internal_(
-          list::CreateListContainerDelegateInternal(this)) {
+      component_at_indexes_(component_at_indexes) {
+  LOGI("[List] ListElement::ListElement: this=" << this
+                                                << ", impl_id=" << impl_id());
   if (manager == nullptr) {
     return;
   }
@@ -48,10 +49,9 @@ ListNode* ListElement::GetListNode() {
 }
 
 bool ListElement::NeedAsyncResolveListItem() {
-  auto batch_render_strategy =
-      DisableListPlatformImplementation() && list_container_delegate_internal_
-          ? batch_render_strategy_
-          : list::BatchRenderStrategy::kDefault;
+  auto batch_render_strategy = (UseDecoupledList() || UseInternalList())
+                                   ? batch_render_strategy_
+                                   : list::BatchRenderStrategy::kDefault;
   return batch_render_strategy ==
              list::BatchRenderStrategy::kAsyncResolveProperty ||
          batch_render_strategy ==
@@ -237,8 +237,9 @@ void ListElement::EnqueueComponent(int32_t sign) {
 }
 
 void ListElement::TickElement(fml::TimePoint& time) {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->OnNextFrame();
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->OnNextFrame();
   }
 }
@@ -290,8 +291,9 @@ void ListElement::ResolveEnableNativeList() {
 
 void ListElement::ResolvePlatformNodeTag() {
   // When resolve platform node tag, we no need to consider whether enable
-  // native list except the case that using page config. Case 1: Resolve
-  // "custom-list-name" property.
+  // native list except the case that using page config.
+
+  // Case 1: Resolve "custom-list-name" property.
   const auto& attr_map = updated_attr_map();
   auto it = attr_map.find(BASE_STATIC_STRING(list::kCustomLisName));
   if (it != attr_map.end()) {
@@ -305,6 +307,21 @@ void ListElement::ResolvePlatformNodeTag() {
   }
 }
 
+void ListElement::ResolveEnableDecoupledList() {
+  if (!enable_decoupled_list_) {
+    const auto& attr_map = updated_attr_map();
+    auto it =
+        attr_map.find(BASE_STATIC_STRING(lynx::list::kPropEnableDecoupledList));
+    // Priority: attribute > settings.
+    if (it != attr_map.end() && it->second.IsBool()) {
+      enable_decoupled_list_ = it->second.Bool();
+    } else {
+      // Return true from env by default.
+      enable_decoupled_list_ = LynxEnv::GetInstance().EnableDecoupledList();
+    }
+  }
+}
+
 ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
   const auto& attr_map = updated_attr_map();
   // Use optional to make sure only run once.
@@ -313,6 +330,9 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     ResolveEnableNativeList();
     // Resolve platform node tag.
     ResolvePlatformNodeTag();
+    // Resolve whether to use decoupled list.
+    ResolveEnableDecoupledList();
+    // Report feature count.
     HandleDelayTask([platform_node_tag = platform_node_tag_,
                      disable_list_platform_implementation =
                          *disable_list_platform_implementation_]() {
@@ -332,11 +352,25 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
             tasm::report::LynxFeature::CPP_CUSTOM_LIST);
       }
     });
+    LOGI("[List] ListElement::PrepareForCreateOrUpdate: this="
+         << this << ", impl_id=" << impl_id()
+         << ", enable_native_list=" << *disable_list_platform_implementation_
+         << ", enable_decoupled_list=" << *enable_decoupled_list_);
     if (*disable_list_platform_implementation_) {
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kListContainer,
                                 lepus::Value(true));
+      // Note: Because we move create ListMediator or ListContainerImpl in
+      // resolving attr, so in ListMediator's constructor or ListContainerImpl's
+      // constructor can get PhysicalPixelsPerLayoutUnit from element manager.
+      if (*enable_decoupled_list_) {
+        list_mediator_ = std::make_unique<ListMediator>(this);
+      } else {
+        list_container_delegate_internal_ =
+            list::CreateListContainerDelegateInternal(this);
+      }
     }
   }
+
   // Only handle experimental-batch-render-strategy property once time
   if (DisableListPlatformImplementation() && !batch_render_strategy_flushed_) {
     batch_render_strategy_flushed_ = true;
@@ -358,9 +392,13 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       }
     }
     // Flush to platform ui and list container once time.
-    if (list_container_delegate_internal_) {
+    bool enable_batch_render =
+        batch_render_strategy_ > list::BatchRenderStrategy::kDefault;
+    if (UseDecoupledList()) {
+      list_mediator_->SetEnableBatchRender(enable_batch_render);
+    } else if (UseInternalList()) {
       list_container_delegate_internal_->SetEnableBatchRender(
-          batch_render_strategy_ > list::BatchRenderStrategy::kDefault);
+          enable_batch_render);
     }
     FiberElement::SetAttributeInternal(
         BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy),
@@ -393,14 +431,16 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
 void ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
   if (!DisableListPlatformImplementation() ||
-      (DisableListPlatformImplementation() &&
-       list_container_delegate_internal_ &&
+      (UseDecoupledList() && list_mediator_->ResolveAttribute(key, value)) ||
+      (UseInternalList() &&
        list_container_delegate_internal_->ResolveAttribute(key, value))) {
     FiberElement::SetAttributeInternal(key, value);
-  } else if (list_container_delegate_internal_ &&
-             (key.IsEqual(list::kFiberListDiffInfo) ||
-              key.IsEqual(list::kListPlatformInfo))) {
-    // fiber-list-info
+  } else if (UseInternalList() && (key.IsEqual(list::kFiberListDiffInfo) ||
+                                   key.IsEqual(list::kListPlatformInfo))) {
+    // Note: Only use internal list, we need to create and generate
+    // list_container_info here. If use decoupled list, the decoupled list will
+    // flush list_container_info by using
+    // lynx::list::ElementDelegate::FlushListContainerInfo() method.
     auto list_container_info = lepus::Dictionary::Create();
     list_container_delegate_internal_->UpdateListContainerDataSource(
         list_container_info);
@@ -449,8 +489,9 @@ void ListElement::SetAttributeInternal(const base::String& key,
 }
 
 void ListElement::PropsUpdateFinish() {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->PropsUpdateFinish();
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->PropsUpdateFinish();
   }
 }
@@ -463,8 +504,9 @@ void ListElement::PropsUpdateFinish() {
 void ListElement::OnListElementUpdated(
     const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ON_ELEMENT_UPDATED);
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->OnLayoutChildren(options);
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->OnLayoutChildren(options);
   }
 }
@@ -479,29 +521,36 @@ void ListElement::OnListElementUpdated(
  **/
 void ListElement::OnComponentFinished(
     Element* component, const std::shared_ptr<PipelineOptions>& option) {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_ && component &&
-      option->operation_id != 0) {
-    list_container_delegate_internal_->FinishBindItemHolder(component, option);
+  if (component && option->operation_id != 0) {
+    if (UseDecoupledList()) {
+      list_mediator_->FinishBindItemHolder(component, option);
+    } else if (UseInternalList()) {
+      list_container_delegate_internal_->FinishBindItemHolder(component,
+                                                              option);
+    }
   }
 }
 
 void ListElement::OnListItemLayoutUpdated(Element* component) {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
-    list_container_delegate_internal_->OnListItemLayoutUpdated(component);
+  if (component) {
+    if (UseDecoupledList()) {
+      list_mediator_->OnListItemLayoutUpdated(component);
+    } else if (UseInternalList()) {
+      list_container_delegate_internal_->OnListItemLayoutUpdated(component);
+    }
   }
 }
 
 void ListElement::OnListItemBatchFinished(
     const std::shared_ptr<PipelineOptions>& options) {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
-    std::vector<Element*> list_items;
-    for (const auto& list_item_id : options->list_item_ids_) {
-      list_items.emplace_back(
-          element_manager()->node_manager()->Get(list_item_id));
-    }
+  std::vector<Element*> list_items;
+  for (const auto& list_item_id : options->list_item_ids_) {
+    list_items.emplace_back(
+        element_manager()->node_manager()->Get(list_item_id));
+  }
+  if (UseDecoupledList()) {
+    list_mediator_->FinishBindItemHolders(list_items, options);
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->FinishBindItemHolders(list_items,
                                                              options);
   }
@@ -515,8 +564,10 @@ void ListElement::OnListItemBatchFinished(
 void ListElement::ScrollByListContainer(float content_offset_x,
                                         float content_offset_y,
                                         float original_x, float original_y) {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->ScrollByPlatformContainer(
+        content_offset_x, content_offset_y, original_x, original_y);
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->ScrollByPlatformContainer(
         content_offset_x, content_offset_y, original_x, original_y);
   }
@@ -531,8 +582,9 @@ void ListElement::ScrollByListContainer(float content_offset_x,
  **/
 void ListElement::ScrollToPosition(int index, float offset, int align,
                                    bool smooth) {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->ScrollToPosition(index, offset, align, smooth);
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->ScrollToPosition(index, offset, align,
                                                         smooth);
   }
@@ -542,8 +594,9 @@ void ListElement::ScrollToPosition(int index, float offset, int align,
  * @description: Finish ScrollToPosition
  **/
 void ListElement::ScrollStopped() {
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->ScrollStopped();
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->ScrollStopped();
   }
 }
@@ -551,57 +604,45 @@ void ListElement::ScrollStopped() {
 void ListElement::SetEventHandler(const base::String& name,
                                   EventHandler* handler) {
   Element::SetEventHandler(name, handler);
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseInternalList()) {
     list_container_delegate_internal_->AddEvent(name);
   }
 }
 
 void ListElement::ResetEventHandlers() {
   Element::ResetEventHandlers();
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseInternalList()) {
     list_container_delegate_internal_->ClearEvents();
   }
 }
 
-bool ListElement::ResolveStyleValue(CSSPropertyID id,
-                                    const tasm::CSSValue& value) {
+bool ListElement::ResolveStyleValue(CSSPropertyID id, const CSSValue& value) {
   bool ret = Element::ResolveStyleValue(id, value);
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
-    switch (id) {
-      case CSSPropertyID::kPropertyIDListMainAxisGap:
-        list_container_delegate_internal_->ResolveListAxisGap(
-            id, computed_css_style()
-                    ->GetLayoutComputedStyle()
-                    ->GetListMainAxisGap());
-        break;
-      case CSSPropertyID::kPropertyIDListCrossAxisGap:
-        list_container_delegate_internal_->ResolveListAxisGap(
-            id, computed_css_style()
-                    ->GetLayoutComputedStyle()
-                    ->GetListCrossAxisGap());
-        break;
-      default:
-        break;
-    }
+  switch (id) {
+    case CSSPropertyID::kPropertyIDListMainAxisGap: {
+      float main_axis_gap =
+          computed_css_style()->GetLayoutComputedStyle()->GetListMainAxisGap();
+      if (UseDecoupledList()) {
+        list_mediator_->ResolveListAxisGap(id, main_axis_gap);
+      } else if (UseInternalList()) {
+        list_container_delegate_internal_->ResolveListAxisGap(id,
+                                                              main_axis_gap);
+      }
+    } break;
+    case CSSPropertyID::kPropertyIDListCrossAxisGap: {
+      float cross_axis_gap =
+          computed_css_style()->GetLayoutComputedStyle()->GetListCrossAxisGap();
+      if (UseDecoupledList()) {
+        list_mediator_->ResolveListAxisGap(id, cross_axis_gap);
+      } else if (UseInternalList()) {
+        list_container_delegate_internal_->ResolveListAxisGap(id,
+                                                              cross_axis_gap);
+      }
+    } break;
+    default:
+      break;
   }
   return ret;
-}
-
-void ListElement::Hydrate() {
-  if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
-    ssr_helper_->HydrateListNode();
-  }
-}
-
-void ListElement::HydrateFinish() {
-  if (ssr_helper_) {
-    ssr_helper_->OnListElementHydrateFinish();
-    // remove ssr helper when hydrate finish.
-    ssr_helper_ = std::nullopt;
-  }
 }
 
 void ListElement::SetupFragmentBehavior(Fragment* fragment) {
@@ -617,9 +658,24 @@ void ListElement::AttachToElementManager(
       ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
           manager->GetEnableParallelElement());
-  if (DisableListPlatformImplementation() &&
-      list_container_delegate_internal_) {
+  if (UseDecoupledList()) {
+    list_mediator_->OnAttachToElementManager();
+  } else if (UseInternalList()) {
     list_container_delegate_internal_->OnAttachToElementManager(manager);
+  }
+}
+
+void ListElement::Hydrate() {
+  if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
+    ssr_helper_->HydrateListNode();
+  }
+}
+
+void ListElement::HydrateFinish() {
+  if (ssr_helper_) {
+    ssr_helper_->OnListElementHydrateFinish();
+    // remove ssr helper when hydrate finish.
+    ssr_helper_ = std::nullopt;
   }
 }
 
@@ -721,6 +777,21 @@ ListElement::ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
   }
 
   return list::BatchRenderStrategy::kBatchRender;
+}
+
+bool ListElement::UseDecoupledList() const {
+  return DisableListPlatformImplementation() && enable_decoupled_list_ &&
+         (*enable_decoupled_list_) && list_mediator_;
+}
+
+bool ListElement::UseInternalList() const {
+  return DisableListPlatformImplementation() && enable_decoupled_list_ &&
+         !(*enable_decoupled_list_) && list_container_delegate_internal_;
+}
+
+void ListElement::FlushListContainerInfo(const base::String& key,
+                                         const lepus::Value& value) {
+  FiberElement::SetAttributeInternal(key, value);
 }
 
 }  // namespace tasm

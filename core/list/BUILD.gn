@@ -6,6 +6,7 @@ import("../../testing/test.gni")
 import("../Lynx.gni")
 
 list_container_shared_sources = [
+  "decoupled_list_types.h",
   "list_container_delegate.h",
   "list_element_delegate.h",
   "list_item_element_delegate.h",

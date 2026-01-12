@@ -491,7 +491,7 @@ bool LynxEnv::EnableEventHandleRefactor() {
 }
 
 bool LynxEnv::EnableDecoupledList() {
-  return GetBoolEnv(Key::ENABLE_DECOUPLED_LIST, false);
+  return GetBoolEnv(Key::ENABLE_DECOUPLED_LIST, true);
 }
 
 bool LynxEnv::EnableReportMTSContextEvent() {

@@ -244,12 +244,11 @@ int BatchListAdapter::OnFinishBindInternal(
       } else if (it != item_status_map_->end()) {
         // case 2. The Operation_id is not the latest one in item_status_map_,
         // the component can be recycled.
-        const auto& item_status = it->second;
         DLIST_LOGI("[" << list_container_
                        << "] BatchListAdapter::OnFinishBindInternal: not "
                           "latest binding with operation_id = "
                        << operation_id
-                       << ", item_status = " << item_status.ToString());
+                       << ", item_status = " << it->second.ToString());
         list_delegate->EnqueueComponent(list_item_delegate->GetImplId());
       } else {
         // case 3. Not found item_status.

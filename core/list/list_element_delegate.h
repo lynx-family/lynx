@@ -6,7 +6,6 @@
 #define CORE_LIST_LIST_ELEMENT_DELEGATE_H_
 
 #include <array>
-#include <cstdint>
 #include <memory>
 #include <string>
 

@@ -774,6 +774,7 @@ subspec_target("tasm") {
         "../../../../core/renderer/signal:signal",
         "../../../../core/renderer/trace:renderer_trace",
         "../../../../core/renderer/ui_component/list:internal_list_container",
+        "../../../../core/renderer/ui_component/list/mediator:list_mediator",
         "../../../../core/renderer/ui_wrapper/common",
         "../../../../core/renderer/ui_wrapper/layout",
         "../../../../core/renderer/ui_wrapper/painting",
