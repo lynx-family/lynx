@@ -1,7 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/piper/js/runtime_manager.h"
+#include "core/runtime/js/runtime_manager.h"
 
 #include <memory>
 #include <mutex>
@@ -13,8 +13,8 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/bindings/jsi/global.h"
+#include "core/runtime/js/js_executor.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/js_executor.h"
 
 #ifndef JS_ENGINE_TYPE
 // Default set JS_ENGINE_TYPE if not provided.

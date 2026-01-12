@@ -4,7 +4,7 @@
 
 #include "platform/embedder/module/lynx_module_manager_napi.h"
 
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 
 namespace lynx {

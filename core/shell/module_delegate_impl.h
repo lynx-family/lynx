@@ -10,7 +10,7 @@
 
 #include "base/include/closure.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/shell/lynx_actor_specialization.h"
 
 namespace lynx {

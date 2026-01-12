@@ -81,7 +81,7 @@
 #include "core/runtime/bindings/lepus/resource/response_handler_in_lepus.h"
 #include "core/runtime/bindings/lepus/style/runtime_css_reader.h"
 #include "core/runtime/bindings/lepus/style/shared_css_fragment_wrapper.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"

@@ -7,8 +7,8 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {

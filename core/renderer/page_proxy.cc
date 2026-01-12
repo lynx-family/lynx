@@ -26,7 +26,7 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/ssr/client/ssr_client_utils.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 namespace lynx {

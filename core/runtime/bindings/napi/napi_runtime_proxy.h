@@ -10,8 +10,8 @@
 #include <utility>
 
 #include "core/base/lynx_export.h"
+#include "core/runtime/js/template_delegate.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/template_delegate.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 #ifdef USE_PRIMJS_NAPI

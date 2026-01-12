@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_PIPER_JS_MOCK_TEMPLATE_DELEGATE_H_
-#define CORE_RUNTIME_PIPER_JS_MOCK_TEMPLATE_DELEGATE_H_
+#ifndef CORE_RUNTIME_JS_MOCK_TEMPLATE_DELEGATE_H_
+#define CORE_RUNTIME_JS_MOCK_TEMPLATE_DELEGATE_H_
 
 #include <memory>
 #include <string>
@@ -13,7 +13,7 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/piper/js/template_delegate.h"
+#include "core/runtime/js/template_delegate.h"
 
 namespace lynx {
 namespace runtime {
@@ -195,4 +195,4 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
 }  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_PIPER_JS_MOCK_TEMPLATE_DELEGATE_H_
+#endif  // CORE_RUNTIME_JS_MOCK_TEMPLATE_DELEGATE_H_

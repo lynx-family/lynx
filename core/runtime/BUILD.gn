@@ -14,9 +14,9 @@ declare_args() {
 
 lynx_core_source_set("js_common") {
   sources = [
-    "piper/js/js_bundle.cc",
-    "piper/js/js_bundle.h",
-    "piper/js/js_bundle_holder.h",
+    "js/js_bundle.cc",
+    "js/js_bundle.h",
+    "js/js_bundle_holder.h",
   ]
   deps = [ "../../base/src:base_log_headers" ]
 }
@@ -39,23 +39,23 @@ jsbridge_shared_sources = [
   "bindings/jsi/modules/module_interceptor.cc",
   "bindings/jsi/modules/module_interceptor.h",
   "common/lynx_console_helper.h",
-  "piper/js/js_context_wrapper.cc",
-  "piper/js/js_context_wrapper.h",
-  "piper/js/js_executor.cc",
-  "piper/js/js_executor.h",
-  "piper/js/lynx_api_handler.cc",
-  "piper/js/lynx_api_handler.h",
-  "piper/js/lynx_runtime.cc",
-  "piper/js/lynx_runtime.h",
-  "piper/js/lynx_runtime_helper.h",
-  "piper/js/runtime_constant.h",
-  "piper/js/runtime_lifecycle_listener_delegate.h",
-  "piper/js/runtime_lifecycle_observer_impl.cc",
-  "piper/js/runtime_lifecycle_observer_impl.h",
-  "piper/js/runtime_manager.cc",
-  "piper/js/runtime_manager.h",
-  "piper/js/template_delegate.h",
-  "piper/js/update_data_type.h",
+  "js/js_context_wrapper.cc",
+  "js/js_context_wrapper.h",
+  "js/js_executor.cc",
+  "js/js_executor.h",
+  "js/lynx_api_handler.cc",
+  "js/lynx_api_handler.h",
+  "js/lynx_runtime.cc",
+  "js/lynx_runtime.h",
+  "js/lynx_runtime_helper.h",
+  "js/runtime_constant.h",
+  "js/runtime_lifecycle_listener_delegate.h",
+  "js/runtime_lifecycle_observer_impl.cc",
+  "js/runtime_lifecycle_observer_impl.h",
+  "js/runtime_manager.cc",
+  "js/runtime_manager.h",
+  "js/template_delegate.h",
+  "js/update_data_type.h",
 ]
 
 if (!enable_unittests) {
@@ -153,8 +153,8 @@ unittest_set("jsbridge_testset") {
     "bindings/common/modules/lynx_native_module_manager_unittest.cc",
     "bindings/jsi/modules/lynx_module_manager_unittest.cc",
     "bindings/jsi/modules/native_module_factory_unittest.cc",
-    "piper/js/js_bundle_unittest.cc",
-    "piper/js/runtime_lifecycle_observer_unittest.cc",
+    "js/js_bundle_unittest.cc",
+    "js/runtime_lifecycle_observer_unittest.cc",
   ]
 
   deps = [

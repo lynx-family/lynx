@@ -6,7 +6,7 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "core/animation/constants.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 

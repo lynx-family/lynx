@@ -15,7 +15,7 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/watch_dog/watch_dog.h"

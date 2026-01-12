@@ -11,8 +11,8 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/lynx_runtime.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
 

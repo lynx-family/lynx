@@ -5,7 +5,7 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
 #define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
 
-#include "core/runtime/piper/js/runtime_manager.h"
+#include "core/runtime/js/runtime_manager.h"
 
 namespace lynx {
 namespace devtool {

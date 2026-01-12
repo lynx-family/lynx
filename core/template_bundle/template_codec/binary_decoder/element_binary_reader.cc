@@ -29,7 +29,7 @@
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/base/element_template_info.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 

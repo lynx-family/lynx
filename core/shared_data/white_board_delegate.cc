@@ -10,7 +10,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
-#include "core/runtime/piper/js/runtime_constant.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/shared_data/shared_data_trace_event_def.h"
 #include "core/value_wrapper/value_impl_lepus.h"

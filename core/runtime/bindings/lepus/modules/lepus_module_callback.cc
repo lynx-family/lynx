@@ -5,7 +5,7 @@
 #include "core/runtime/bindings/lepus/modules/lepus_module_callback.h"
 
 #include "base/include/lynx_actor.h"
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
 #include "core/value_wrapper/value_impl_lepus.h"

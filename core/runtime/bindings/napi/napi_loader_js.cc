@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "core/runtime/piper/js/lynx_runtime.h"
+#include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 

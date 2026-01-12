@@ -4,9 +4,9 @@
 
 #include "devtool/lynx_devtool/js_debug/js/quickjs/manager/quickjs_inspector_manager_impl.h"
 
+#include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/runtime_manager.h"
 #include "core/runtime/jsi/quickjs/quickjs_runtime.h"
-#include "core/runtime/piper/js/js_executor.h"
-#include "core/runtime/piper/js/runtime_manager.h"
 #include "devtool/js_inspect/quickjs/quickjs_inspector_client_provider.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 

@@ -1,8 +1,8 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_PIPER_JS_TEMPLATE_DELEGATE_H_
-#define CORE_RUNTIME_PIPER_JS_TEMPLATE_DELEGATE_H_
+#ifndef CORE_RUNTIME_JS_TEMPLATE_DELEGATE_H_
+#define CORE_RUNTIME_JS_TEMPLATE_DELEGATE_H_
 #include <future>
 #include <memory>
 #include <string>
@@ -20,9 +20,9 @@
 #include "core/runtime/bindings/common/resource/response_handler_proxy.h"
 #include "core/runtime/bindings/jsi/api_call_back.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
+#include "core/runtime/js/js_bundle.h"
+#include "core/runtime/js/update_data_type.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/js_bundle.h"
-#include "core/runtime/piper/js/update_data_type.h"
 #include "core/runtime/vm/lepus/lepus_global.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_handler.h"
@@ -228,4 +228,4 @@ class TemplateDelegate : public ContextProxy::Delegate,
 };
 }  // namespace runtime
 }  // namespace lynx
-#endif  // CORE_RUNTIME_PIPER_JS_TEMPLATE_DELEGATE_H_
+#endif  // CORE_RUNTIME_JS_TEMPLATE_DELEGATE_H_

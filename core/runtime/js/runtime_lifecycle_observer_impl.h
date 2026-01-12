@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_PIPER_JS_RUNTIME_LIFECYCLE_OBSERVER_IMPL_H_
-#define CORE_RUNTIME_PIPER_JS_RUNTIME_LIFECYCLE_OBSERVER_IMPL_H_
+#ifndef CORE_RUNTIME_JS_RUNTIME_LIFECYCLE_OBSERVER_IMPL_H_
+#define CORE_RUNTIME_JS_RUNTIME_LIFECYCLE_OBSERVER_IMPL_H_
 
 #include <memory>
 #include <unordered_map>
@@ -14,7 +14,7 @@
 #include "core/base/lynx_export.h"
 #include "core/public/runtime_lifecycle_observer.h"
 #include "core/public/vsync_observer_interface.h"
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 
 namespace Napi {
 class Env;
@@ -64,4 +64,4 @@ class RuntimeLifecycleObserverImpl : public RuntimeLifecycleObserver {
 }  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_PIPER_JS_RUNTIME_LIFECYCLE_OBSERVER_IMPL_H_
+#endif  // CORE_RUNTIME_JS_RUNTIME_LIFECYCLE_OBSERVER_IMPL_H_

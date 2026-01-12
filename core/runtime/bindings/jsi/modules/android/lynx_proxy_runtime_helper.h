@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "core/runtime/piper/js/lynx_runtime_helper.h"
+#include "core/runtime/js/lynx_runtime_helper.h"
 
 namespace lynx {
 namespace runtime {

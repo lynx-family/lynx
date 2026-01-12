@@ -23,8 +23,8 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/jscache/js_cache_tracker.h"
-#include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #ifdef __cplusplus
 extern "C" {

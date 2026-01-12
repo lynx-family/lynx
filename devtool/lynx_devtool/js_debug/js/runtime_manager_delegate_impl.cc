@@ -5,7 +5,7 @@
 #include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
 
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/piper/js/js_executor.h"
+#include "core/runtime/js/js_executor.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 #if JS_ENGINE_TYPE == 1
 #include "core/runtime/jsi/jsc/jsc_api.h"

@@ -1,8 +1,8 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_PIPER_JS_JS_CONTEXT_WRAPPER_H_
-#define CORE_RUNTIME_PIPER_JS_JS_CONTEXT_WRAPPER_H_
+#ifndef CORE_RUNTIME_JS_JS_CONTEXT_WRAPPER_H_
+#define CORE_RUNTIME_JS_JS_CONTEXT_WRAPPER_H_
 
 #include <memory>
 #include <string>
@@ -13,9 +13,9 @@
 #include "core/base/lynx_export.h"
 #include "core/runtime/bindings/jsi/global.h"
 #include "core/runtime/bindings/napi/napi_environment.h"
+#include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/js/runtime_lifecycle_observer_impl.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
-#include "core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
@@ -129,4 +129,4 @@ class LYNX_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
 
 }  // namespace runtime
 }  // namespace lynx
-#endif  // CORE_RUNTIME_PIPER_JS_JS_CONTEXT_WRAPPER_H_
+#endif  // CORE_RUNTIME_JS_JS_CONTEXT_WRAPPER_H_
