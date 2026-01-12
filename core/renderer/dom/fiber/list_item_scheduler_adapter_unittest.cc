@@ -142,6 +142,15 @@ class ListItemSchedulerAdapterTest
     manager->config_->SetEnableBatchLayoutTaskWithSyncLayout(false);
   }
 
+  fml::RefPtr<ListElement> CreateListElement() {
+    auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                         lepus::Value(), lepus::Value());
+    list->disable_list_platform_implementation_ = true;
+    list->enable_decoupled_list_ = true;
+    list->list_mediator_ = std::make_unique<ListMediator>(list.get());
+    return list;
+  }
+
  protected:
   std::tuple<int, bool> current_parameter_;
   int32_t thread_strategy;
@@ -162,7 +171,6 @@ TEST_P(ListItemSchedulerAdapterTest, ListItemResolveSubtreePropertyTest) {
   CSSFontFaceRuleMap fontfaces;
   auto indexFragment = std::make_shared<SharedCSSFragment>(
       1, dependent_ids, indexTokensMap, keyframes, fontfaces);
-
   auto config = std::make_shared<PageConfig>();
   config->SetPipelineSchedulerConfig(kEnableParallelElementMask);
   config->SetEnableFiberArch(true);
@@ -174,9 +182,7 @@ TEST_P(ListItemSchedulerAdapterTest, ListItemResolveSubtreePropertyTest) {
   page->style_sheet_ =
       std::make_unique<CSSFragmentDecorator>(indexFragment.get());
 
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
   list->SetAttribute(list::kExperimentalBatchRenderStrategy, lepus::Value(3));
   page->InsertNode(list);
 
@@ -316,9 +322,8 @@ TEST_P(ListItemSchedulerAdapterTest, RecordingRenderRootComponentElementTest) {
   page->style_sheet_ =
       std::make_unique<CSSFragmentDecorator>(indexFragment.get());
 
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   list->SetAttribute(list::kExperimentalBatchRenderStrategy, lepus::Value(3));
   page->InsertNode(list);
 
@@ -468,9 +473,7 @@ TEST_P(ListItemSchedulerAdapterTest,
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
   EXPECT_TRUE(list->batch_render_strategy_ ==
               list::BatchRenderStrategy::kAsyncResolveProperty);
 }
@@ -487,9 +490,8 @@ TEST_P(ListItemSchedulerAdapterTest,
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   EXPECT_TRUE(list->batch_render_strategy_ ==
               list::BatchRenderStrategy::kBatchRender);
 }
@@ -505,9 +507,8 @@ TEST_P(ListItemSchedulerAdapterTest,
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   EXPECT_TRUE(list->batch_render_strategy_ ==
               list::BatchRenderStrategy::kDefault);
 }
@@ -523,9 +524,8 @@ TEST_P(ListItemSchedulerAdapterTest,
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   EXPECT_TRUE(list->batch_render_strategy_ ==
               list::BatchRenderStrategy::kDefault);
 }
@@ -542,9 +542,8 @@ TEST_P(ListItemSchedulerAdapterTest,
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   EXPECT_TRUE(list->batch_render_strategy_ ==
               list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree);
 }
@@ -559,9 +558,8 @@ TEST_P(ListItemSchedulerAdapterTest,
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   EXPECT_TRUE(list->batch_render_strategy_ ==
               list::BatchRenderStrategy::kBatchRender);
 }
@@ -575,9 +573,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue) {
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   list->SetAttributeInternal(list::kExperimentalBatchRenderStrategy,
                              lepus::Value(-2));
   EXPECT_TRUE(list->batch_render_strategy_ ==
@@ -593,9 +590,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue1) {
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   list->batch_render_strategy_flushed_ = false;
   auto& updated_attr_map = const_cast<AttrUMap&>(list->updated_attr_map());
   updated_attr_map[list::kExperimentalBatchRenderStrategy] = lepus::Value(0);
@@ -631,9 +627,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue2) {
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   list->SetAttributeInternal(list::kExperimentalBatchRenderStrategy,
                              lepus::Value(4));
   EXPECT_TRUE(list->batch_render_strategy_ ==
@@ -651,9 +646,8 @@ TEST_P(ListItemSchedulerAdapterTest, TestListBatchRenderStrategyIllegalValue3) {
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
-                                       lepus::Value(), lepus::Value());
-  list->disable_list_platform_implementation_ = true;
+  auto list = CreateListElement();
+
   list->SetAttributeInternal(list::kExperimentalBatchRenderStrategy,
                              lepus::Value(4));
   EXPECT_TRUE(list->batch_render_strategy_ ==

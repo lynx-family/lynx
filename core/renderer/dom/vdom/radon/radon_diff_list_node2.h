@@ -30,7 +30,6 @@ class RadonDiffListNode2 : public RadonListBase {
                            bool enable_reuse_notification) final;
   void EnqueueComponent(int32_t sign) final;
   bool DisablePlatformImplementation() override;
-  bool EnableDecoupledList() override;
 
  protected:
   void DispatchFirstTime() override;

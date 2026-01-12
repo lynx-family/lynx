@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/list/decoupled_batch_list_adapter.h"
 #include "core/list/decoupled_default_list_adapter.h"
 #include "core/list/decoupled_grid_layout_manager.h"
@@ -192,11 +193,24 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     if (value.str() == kPropValueListContainer) {
       list_delegate_->UpdateListLayoutNodeAttribute();
     }
-  } else if (key_str == kPropVerticalOrientation && value.IsBool()) {
+  } else if (key_str == kPropVerticalOrientation) {
     // vertical-orientation
     // TODO: @deprecated vertical-orientation
-    Orientation orientation =
-        value.Bool() ? Orientation::kVertical : Orientation::kHorizontal;
+    Orientation orientation = Orientation::kVertical;
+    if (value.IsBool()) {
+      orientation =
+          value.Bool() ? Orientation::kVertical : Orientation::kHorizontal;
+    } else if (value.IsString()) {
+      orientation = value.str() == kPropValueTrue ? Orientation::kVertical
+                                                  : Orientation::kHorizontal;
+      std::string error_msg = "Error type for attribute vertical-orientation";
+      std::string suggestion =
+          "Please use bool value or use scroll-orientation";
+      auto error = lynx::base::LynxError(
+          error::E_COMPONENT_LIST_INVALID_PROPS_ARG, std::move(error_msg),
+          std::move(suggestion), base::LynxErrorLevel::Warn);
+      list_delegate_->OnErrorOccurred(std::move(error));
+    }
     list_layout_manager_->SetOrientation(orientation);
     list_layout_manager_->CreateOrUpdateListAnchorManager();
   } else if (key_str == kPropScrollOrientation && value.IsString()) {

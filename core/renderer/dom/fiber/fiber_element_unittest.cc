@@ -14558,8 +14558,8 @@ TEST_P(FiberElementTest, MarkRenderRootElementTest) {
                                        enqueue_component, component_at_indexes);
   parent->InsertNode(list);
   list->disable_list_platform_implementation_ = true;
-  list->list_container_delegate_internal_ =
-      list::CreateListContainerDelegateInternal(list.get());
+  list->enable_decoupled_list_ = true;
+  list->list_mediator_ = std::make_unique<ListMediator>(list.get());
   list->batch_render_strategy_ =
       list::BatchRenderStrategy::kAsyncResolveProperty;
   EXPECT_TRUE(list->render_root_element_ == nullptr);

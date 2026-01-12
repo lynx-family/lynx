@@ -13,11 +13,11 @@
 
 #include "base/include/log/logging.h"
 
-#define NLIST_LOGD(msg) LOGD("[List] " << msg)
-#define NLIST_LOGV(msg) LOGV("[List] " << msg)
-#define NLIST_LOGI(msg) LOGI("[List] " << msg)
-#define NLIST_LOGW(msg) LOGW("[List] " << msg)
-#define NLIST_LOGE(msg) LOGE("[List] " << msg)
+#define NLIST_LOGD(msg) LOGD("[InternalList] " << msg)
+#define NLIST_LOGV(msg) LOGV("[InternalList] " << msg)
+#define NLIST_LOGI(msg) LOGI("[InternalList] " << msg)
+#define NLIST_LOGW(msg) LOGW("[InternalList] " << msg)
+#define NLIST_LOGE(msg) LOGE("[InternalList] " << msg)
 
 namespace lynx {
 namespace tasm {

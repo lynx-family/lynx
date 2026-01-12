@@ -55,6 +55,9 @@ class ListContainerImpl : public ContainerDelegate {
     enable_insert_platform_view_operation_ = true;
   }
   void OnNextFrame() override;
+  void SetEnableBatchRender(bool enable_batch_render) override {
+    enable_batch_render_ = enable_batch_render;
+  }
 
   int GetDataCount() const;
   ItemHolder* GetItemHolderForIndex(int index);
@@ -102,9 +105,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool should_request_state_restore() const {
     return should_request_state_restore_;
   }
-  bool enable_batch_render() const {
-    return batch_render_strategy_ != BatchRenderStrategy::kDefault;
-  }
+  bool enable_batch_render() const { return enable_batch_render_; }
   bool enable_insert_platform_view_operation() const {
     return enable_insert_platform_view_operation_;
   }
@@ -163,7 +164,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool has_valid_diff_{false};
   bool update_animation_{false};
   bool need_preload_section_on_next_frame_{false};
-  BatchRenderStrategy batch_render_strategy_{BatchRenderStrategy::kDefault};
+  bool enable_batch_render_{false};
   ListAdapterDiffResult animation_diff_result_{ListAdapterDiffResult::kNone};
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };

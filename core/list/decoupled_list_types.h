@@ -16,11 +16,11 @@
 namespace lynx {
 namespace list {
 
-#define DLIST_LOGD(msg) LOGD("[LynxDecoupledList] " << msg)
-#define DLIST_LOGV(msg) LOGV("[LynxDecoupledList] " << msg)
-#define DLIST_LOGI(msg) LOGI("[LynxDecoupledList] " << msg)
-#define DLIST_LOGW(msg) LOGW("[LynxDecoupledList] " << msg)
-#define DLIST_LOGE(msg) LOGE("[LynxDecoupledList] " << msg)
+#define DLIST_LOGD(msg) LOGD("[List] " << msg)
+#define DLIST_LOGV(msg) LOGV("[List] " << msg)
+#define DLIST_LOGI(msg) LOGI("[List] " << msg)
+#define DLIST_LOGW(msg) LOGW("[List] " << msg)
+#define DLIST_LOGE(msg) LOGE("[List] " << msg)
 
 class ItemHolder;
 
@@ -31,7 +31,7 @@ using ItemHolderPtrMap = std::unordered_map<std::string, list::ItemHolder*>;
 
 // props
 static constexpr const char* const kPropCustomListName = "custom-list-name";
-static constexpr const char* const kPropEnableDecoupledList =
+static constexpr const char kPropEnableDecoupledList[] =
     "enable-decoupled-list";
 static constexpr const char* const kPropScrollOrientation =
     "scroll-orientation";
@@ -101,6 +101,7 @@ static constexpr const char* const kPropExperimentalSearchRefAnchorStrategy =
     "experimental-search-ref-anchor-strategy";
 
 // prop value
+static constexpr const char* const kPropValueTrue = "true";
 static constexpr const char* const kPropValueListTypeSingle = "single";
 static constexpr const char* const kPropValueListTypeFlow = "flow";
 static constexpr const char* const kPropValueListTypeWaterFall = "waterfall";

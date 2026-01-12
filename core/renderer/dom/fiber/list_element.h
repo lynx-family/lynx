@@ -14,6 +14,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/ui_component/list/list_container_delegate_internal.h"
+#include "core/renderer/ui_component/list/mediator/list_mediator.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/lepus_context/jsvalue_helper.h"
 
@@ -145,8 +146,7 @@ class ListElement : public FiberElement, public tasm::ListNode {
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
-  bool ResolveStyleValue(CSSPropertyID id,
-                         const tasm::CSSValue& value) override;
+  bool ResolveStyleValue(CSSPropertyID id, const CSSValue& value) override;
 
   void PropsUpdateFinish() override;
 
@@ -173,6 +173,9 @@ class ListElement : public FiberElement, public tasm::ListNode {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
+  void FlushListContainerInfo(const base::String& key,
+                              const lepus::Value& value);
+
  protected:
   // Currently, the list element does not copy any member variables and is an
   // empty implementation.
@@ -194,7 +197,10 @@ class ListElement : public FiberElement, public tasm::ListNode {
  private:
   void ResolveEnableNativeList();
   void ResolvePlatformNodeTag();
+  void ResolveEnableDecoupledList();
   bool NeedAsyncResolveListItem();
+  bool UseDecoupledList() const;
+  bool UseInternalList() const;
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
       uint64_t pipeline_scheduler_config, bool enable_parallel_element);
@@ -206,11 +212,13 @@ class ListElement : public FiberElement, public tasm::ListNode {
   lepus::Value enqueue_component_{};
   lepus::Value component_at_indexes_{};
   std::optional<bool> disable_list_platform_implementation_;
+  std::optional<bool> enable_decoupled_list_;
   base::String platform_node_tag_{BASE_STATIC_STRING(kListNodeTag)};
   std::optional<ListElementSSRHelper> ssr_helper_;
   bool batch_render_strategy_flushed_{false};
+  std::unique_ptr<ListMediator> list_mediator_{nullptr};
   std::unique_ptr<ListContainerDelegateInternal>
-      list_container_delegate_internal_;
+      list_container_delegate_internal_{nullptr};
   list::BatchRenderStrategy batch_render_strategy_{
       list::BatchRenderStrategy::kDefault};
 };

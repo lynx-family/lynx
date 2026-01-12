@@ -30,7 +30,6 @@ class RadonListBase : public ListNode, public RadonNode {
   void UpdateComponent(uint32_t sign, uint32_t row,
                        int64_t operationId = 0) override;
   virtual bool DisablePlatformImplementation() { return false; }
-  virtual bool EnableDecoupledList() { return false; }
 
  protected:
   lepus::Context* context_;
