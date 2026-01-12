@@ -45,7 +45,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(121);
+    expect(configKeys.length).toBe(122);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'asyncRedirect',
@@ -81,6 +81,7 @@ describe('type-config index', () => {
       'enableHarmonyVisibleAreaChangeForExposure',
       'enableICU',
       'enableImageDownsampling',
+      'enableiOSAnimationLayerForExposure',
       'enableJsBindingApiThrowException',
       'enableJSDataProcessor',
       'enableListMoveOperation',

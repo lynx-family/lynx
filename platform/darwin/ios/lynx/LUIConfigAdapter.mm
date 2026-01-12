@@ -149,8 +149,12 @@
              : _config->GetEnableTextGradientOpt() == lynx::tasm::TernaryBool::TRUE_VALUE;
 }
 
-- (bool)enableExposureWhenReload {
+- (BOOL)enableExposureWhenReload {
   return _config->GetEnableExposureWhenReload();
+}
+
+- (BOOL)enableiOSAnimationLayerForExposure {
+  return _config->GetEnableiOSAnimationLayerForExposure();
 }
 
 @end

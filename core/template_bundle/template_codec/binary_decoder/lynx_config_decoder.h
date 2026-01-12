@@ -820,6 +820,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableTransformedTouchPosition(
           doc[config::kEnableTransformedTouchPosition].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableiOSAnimationLayerForExposure) &&
+        doc[config::kEnableiOSAnimationLayerForExposure].IsBool()) {
+      page_config->SetEnableiOSAnimationLayerForExposure(
+          doc[config::kEnableiOSAnimationLayerForExposure].GetBool());
+    }
   };
 };
 }  // namespace tasm
