@@ -12,7 +12,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/vm/lepus/exception.h"
+#include "core/runtime/lepus_context/exception.h"
 
 namespace lynx {
 namespace encoder {

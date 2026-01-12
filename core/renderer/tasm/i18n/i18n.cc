@@ -7,7 +7,7 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 #if OS_ANDROID
 #include "core/renderer/tasm/i18n/i18n_binder_android.h"

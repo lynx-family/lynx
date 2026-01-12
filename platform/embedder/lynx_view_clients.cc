@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 namespace lynx {
 namespace embedder {

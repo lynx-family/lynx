@@ -18,7 +18,7 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/lepus_context/context.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"

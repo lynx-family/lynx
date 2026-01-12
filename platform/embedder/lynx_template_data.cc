@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "platform/embedder/lynx_template_data_priv.h"
 
 LYNX_EXTERN_C lynx_template_data_t* lynx_template_data_create_from_json(

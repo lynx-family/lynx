@@ -4,9 +4,9 @@
 
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
 
-#include "core/runtime/vm/lepus/bytecode_generator.h"
-#include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/quick_context.h"
+#include "core/runtime/lepus_context/bytecode_generator.h"
+#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus_context/quick_context.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

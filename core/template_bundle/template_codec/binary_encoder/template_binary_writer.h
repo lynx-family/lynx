@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "core/runtime/js/bytecode/quickjs/bytecode/quickjs_bytecode_provider_src.h"
-#include "core/runtime/vm/lepus/context_binary_writer.h"
-#include "core/runtime/vm/lepus/quickjs_debug_info.h"
+#include "core/runtime/lepus_context/context_binary_writer.h"
+#include "core/runtime/lepus_context/quickjs_debug_info.h"
 #include "core/template_bundle/template_codec/binary_encoder/csr_element_binary_writer.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"

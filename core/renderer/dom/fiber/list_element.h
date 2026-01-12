@@ -15,7 +15,7 @@
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/ui_component/list/list_container_delegate_internal.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
 
 namespace lynx {
 namespace tasm {

@@ -7,7 +7,7 @@
 #include <cstddef>
 
 #include "core/renderer/data/template_data.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/rapidjson.h"

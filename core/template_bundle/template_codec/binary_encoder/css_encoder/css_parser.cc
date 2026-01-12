@@ -7,8 +7,8 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
-#include "core/runtime/vm/lepus/exception.h"
-#include "core/runtime/vm/lepus/vm_context.h"
+#include "core/runtime/lepus_context/exception.h"
+#include "core/runtime/lepus_context/vm_context.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_keyframes_token.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parse_token_group.h"
 

@@ -12,7 +12,7 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/simple_styling/style_object_decoder.h"
-#include "core/runtime/vm/lepus/base_binary_reader.h"
+#include "core/runtime/lepus_context/base_binary_reader.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {

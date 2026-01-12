@@ -62,7 +62,7 @@ lynx_core_source_set("renderer_dom") {
 
   public_deps = [
     "../../base",
-    "../../runtime/vm/lepus",
+    "../../runtime/lepus_context:lepus",
     "../css",
     "../events",
     "../simple_styling",
@@ -112,7 +112,7 @@ unittest_set("dom_testset") {
     "vdom/radon/radon_node_unittest.cc",
   ]
   deps = [
-    "../../runtime/vm/lepus/tasks:tasks_testset",
+    "../../runtime/lepus_context/tasks:tasks_testset",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../../template_bundle/template_codec/binary_encoder/css_encoder:css_encoder",
   ]

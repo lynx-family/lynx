@@ -11,7 +11,7 @@
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/page_proxy.h"
-#include "core/runtime/vm/lepus/vm_context.h"
+#include "core/runtime/lepus_context/vm_context.h"
 #include "core/template_bundle/template_codec/moulds.h"
 
 namespace lynx {

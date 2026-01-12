@@ -11,7 +11,7 @@
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/bindings/lepus/event/lepus_event_listener.h"
 #include "core/runtime/bindings/lepus/renderer.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {

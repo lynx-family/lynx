@@ -4,7 +4,7 @@
 
 #include "platform/embedder/core/lynx_template_renderer.h"
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/module_delegate_impl.h"
 #include "platform/embedder/core/native_facade_impl.h"

@@ -33,7 +33,7 @@ lynx_core_source_set("animation") {
   public_deps = [
     "../../third_party/rapidjson",
     "../base",
-    "../runtime/vm/lepus",
+    "../runtime/lepus_context:lepus",
     "utils:animation_utils",
   ]
 }

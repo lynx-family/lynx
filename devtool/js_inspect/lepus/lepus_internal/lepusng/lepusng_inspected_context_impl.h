@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "core/runtime/vm/lepus/quick_context.h"
+#include "core/runtime/lepus_context/quick_context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspector_impl.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepusng/lepusng_debugger.h"

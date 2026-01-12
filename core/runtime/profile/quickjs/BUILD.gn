@@ -14,7 +14,7 @@ lynx_core_source_set("quickjs_profile") {
   public_deps = [
     "../:profile_public_header",
     "../../js/jsi/quickjs:quickjs",
-    "../../vm/lepus:lepus_ng",
+    "../../lepus_context:lepus_ng",
   ]
 }
 
@@ -33,7 +33,7 @@ unittest_set("quickjs_profile_testset") {
     "../../js/bytecode:jscache",
     "../../js/jsi:jsi",
     "../../js/jsi/quickjs:quickjs",
-    "../../vm/lepus:lepus",
+    "../../lepus_context:lepus",
   ]
 }
 

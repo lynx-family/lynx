@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "base/include/no_destructor.h"
-#include "core/runtime/vm/lepus/context_pool.h"
+#include "core/runtime/lepus_context/context_pool.h"
 
 namespace lynx {
 namespace tasm {

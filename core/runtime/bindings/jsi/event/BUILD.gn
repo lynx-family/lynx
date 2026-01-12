@@ -37,8 +37,8 @@ unittest_set("js_runtime_testset") {
     "../../../../event:event_testset",
     "../../../../renderer/dom:dom",
     "../../../../renderer/utils:renderer_utils",
-    "../../../vm/lepus:lepus",
-    "../../../vm/lepus:lepus_ng",
+    "../../../lepus_context:lepus",
+    "../../../lepus_context:lepus_ng",
     "../../lepus",
   ]
   data_deps = []

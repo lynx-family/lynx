@@ -18,7 +18,7 @@
 #include "core/renderer/dom/vdom/radon/radon_base.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"

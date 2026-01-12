@@ -8,8 +8,8 @@
 
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/vm/lepus/exception.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/exception.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/rapidjson.h"
 

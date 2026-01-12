@@ -10,7 +10,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx {

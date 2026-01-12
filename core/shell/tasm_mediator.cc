@@ -16,7 +16,7 @@
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
+#include "core/runtime/lepus_context/tasks/lepus_callback_manager.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"

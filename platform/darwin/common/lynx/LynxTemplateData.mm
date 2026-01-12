@@ -13,7 +13,7 @@
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 static BOOL const DEFAULT_USE_BOOL_LITERALS = NO;
 

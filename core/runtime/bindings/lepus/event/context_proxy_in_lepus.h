@@ -8,7 +8,7 @@
 #include "base/include/value/base_value.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/lepus_context/context.h"
 
 namespace lynx {
 namespace tasm {

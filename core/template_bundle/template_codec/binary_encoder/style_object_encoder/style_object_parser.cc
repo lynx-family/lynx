@@ -11,7 +11,7 @@
 
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/css/unit_handler.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
 
 namespace lynx::tasm {

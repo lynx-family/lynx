@@ -21,7 +21,7 @@
 #include "core/renderer/css/css_sheet.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/unit_handler.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/rapidjson/document.h"
 

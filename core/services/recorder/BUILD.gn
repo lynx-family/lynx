@@ -42,7 +42,7 @@ lynx_core_source_set("recorder") {
     "../../renderer/dom:renderer_dom",
     "../../runtime",
     "../../runtime/bindings/lepus",
-    "../../runtime/vm/lepus",
+    "../../runtime/lepus_context:lepus",
     "//third_party/modp_b64:modp_b64",
   ]
   deps += [ "//third_party/zlib" ]

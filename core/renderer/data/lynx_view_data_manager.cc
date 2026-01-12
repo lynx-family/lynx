@@ -7,8 +7,8 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging.h"
 #include "core/build/gen/lynx_sub_error_code.h"
-#include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/lepus_global.h"
+#include "core/runtime/lepus_context/json_parser.h"
+#include "core/runtime/lepus_context/lepus_global.h"
 
 namespace lynx {
 namespace tasm {
