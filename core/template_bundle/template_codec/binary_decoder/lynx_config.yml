@@ -1819,3 +1819,11 @@ enableBatchLayoutTaskWithSyncLayout:
     - Android
     - HarmonyOS
     - iOS
+enableiOSAnimationLayerForExposure:
+  description: Control whether to consider animation layers in position calculation during exposure detection.
+  defaultValue: 'false'
+  valueType: bool
+  author: rAY-ooo
+  since: '3.7'
+  supportPlatform:
+    - iOS
