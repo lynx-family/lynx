@@ -18,7 +18,7 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/editable/editable_view.h"
-#include "clay/ui/component/list/list_container_wrapper.h"
+#include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/list/lynx_list_data.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"

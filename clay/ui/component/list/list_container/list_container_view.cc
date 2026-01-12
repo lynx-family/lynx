@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/ui/component/list/list_container_view.h"
+#include "clay/ui/component/list/list_container/list_container_view.h"
 
 #include <algorithm>
 #include <limits>
@@ -13,7 +13,6 @@
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component_constants.h"
-#include "clay/ui/component/list/list_scroller.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/lynx_module/type_utils.h"
 
@@ -593,26 +592,26 @@ void ListContainerView::OnScrollStatusChange(ScrollStatus old_status) {
   switch (status_) {
     case Scrollable::ScrollStatus::kFling:
     case Scrollable::ScrollStatus::kBounce:
-      SetScrollState(ScrollState::kSettling);
+      SetScrollState(ListScrollState::kSettling);
       break;
     case Scrollable::ScrollStatus::kDragging:
-      SetScrollState(ScrollState::kDragging);
+      SetScrollState(ListScrollState::kDragging);
       break;
     case Scrollable::ScrollStatus::kIdle:
-      SetScrollState(ScrollState::kIdle);
+      SetScrollState(ListScrollState::kIdle);
       break;
     default:
       break;
   }
 }
 
-void ListContainerView::SetScrollState(ScrollState state) {
+void ListContainerView::SetScrollState(ListScrollState state) {
   if (scroll_state_ == state) {
     return;
   }
 
   scroll_state_ = state;
-  if (status_ == Scrollable::ScrollStatus::kIdle && delegate_) {
+  if (state == ListScrollState::kIdle && delegate_) {
     delegate_->OnScrollStopped();
   }
 

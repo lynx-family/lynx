@@ -59,7 +59,8 @@ source_set("ui") {
     sources += rebase_path(ui_semantics_sources, "", "semantics")
   }
 
-  if (enable_clay_lite || enable_clay_standalone) {
+  if (enable_clay_lite || enable_clay_standalone || is_win || is_mac ||
+      is_ios) {
     sources += rebase_path(ui_platform_fallback_sources, "", "platform")
   }
   if (!enable_clay_lite) {
@@ -130,7 +131,9 @@ source_set("ui_fixture_sources") {
     "testing/ui_test.cc",
   ]
 
-  sources += rebase_path(ui_platform_fallback_sources, "", "platform")
+  if (!enable_clay_lite && !enable_clay_standalone && !is_win && !is_mac) {
+    sources += rebase_path(ui_platform_fallback_sources, "", "platform")
+  }
 
   deps = [
     ":ui",

@@ -12,8 +12,8 @@
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/component/base_view.h"
-#include "clay/ui/component/list/layout_types.h"
 #include "clay/ui/component/list/list_adapter.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 
 namespace clay {
 

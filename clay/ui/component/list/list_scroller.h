@@ -10,7 +10,7 @@
 #include <string>
 
 #include "clay/gfx/geometry/float_rect.h"
-#include "clay/ui/component/list/layout_types.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/list/list_item_view_holder.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
@@ -32,8 +32,6 @@ class ListScroller {
  public:
   explicit ListScroller(BaseListView* list_view);
   ~ListScroller();
-
-  static AlignTo StringToAlign(const std::string& str);
 
   void ScrollToPosition(
       bool smooth, int position, float offset, AlignTo align_to,

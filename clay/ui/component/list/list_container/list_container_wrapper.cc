@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/ui/component/list/list_container_wrapper.h"
+#include "clay/ui/component/list/list_container/list_container_wrapper.h"
 
 #include <math.h>
 
@@ -113,7 +113,7 @@ void ListContainerWrapper::scrollToPosition(
     return;
   }
 
-  AlignTo align_to = ListScroller::StringToAlign(align_to_str);
+  AlignTo align_to = StringToAlign(align_to_str);
   GetListContainerView()->ScrollToPosition(
       smooth, index == -1 ? position : index, FromLogical(offset), align_to, id,
       [callback](uint32_t result, const std::string&) {

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_VIEW_H_
-#define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_VIEW_H_
+#ifndef CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
+#define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
 
 #include <string>
 #include <unordered_map>
@@ -11,9 +11,11 @@
 #include <vector>
 
 #include "clay/ui/component/component.h"
-#include "clay/ui/component/list/layout_types.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/scroll_view.h"
+#ifndef ENABLE_CLAY_LITE
 #include "clay/ui/component/view_callback/list_event_callback_manager.h"
+#endif
 
 namespace clay {
 
@@ -30,8 +32,6 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
                                     bool smooth) = 0;
     virtual void OnScrollStopped() = 0;
   };
-
-  using ScrollState = ListEventCallbackManager::ScrollState;
 
   ListContainerView(int32_t id, PageView* page_view);
 
@@ -78,7 +78,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   void InsertListItemPaintingNodeInternal(BaseView* view);
 
   void OnScrollStatusChange(ScrollStatus old_status) override;
-  void SetScrollState(ScrollState state);
+  void SetScrollState(ListScrollState state);
 
   void SetMaxContent(float value);
   int GetIndexFromItemKey(std::string itemKey);
@@ -124,9 +124,9 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   float scrolling_estimated_offset_ = 0.f;
   bool scroll_to_lower_ = false;
   bool is_scroll_animating_ = false;
-  ScrollState scroll_state_ = ScrollState::kIdle;
+  ListScrollState scroll_state_ = ListScrollState::kIdle;
 
-  Delegate* delegate_;
+  Delegate* delegate_ = nullptr;
 
   std::vector<std::string> item_keys_;
 
@@ -158,4 +158,4 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 };
 
 }  // namespace clay
-#endif  // CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_VIEW_H_
+#endif  // CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_

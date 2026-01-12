@@ -16,6 +16,7 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/list/base_list_view.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/list/list_layout_manager.h"
 #include "clay/ui/component/list/list_view.h"
 #include "clay/ui/component/scrollbar/scrollbar_orientation_helper.h"
@@ -132,7 +133,7 @@ void ListWrapper::scrollToPosition(const LynxModuleValues& args,
     return;
   }
 
-  AlignTo align_to = ListScroller::StringToAlign(align_to_str);
+  AlignTo align_to = StringToAlign(align_to_str);
   GetListView()->ScrollToPosition(
       smooth, index == -1 ? position : index, FromLogical(offset), align_to, id,
       [callback](uint32_t result, const std::string&) {

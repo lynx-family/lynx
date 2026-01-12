@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_WRAPPER_H_
-#define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_WRAPPER_H_
+#ifndef CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_WRAPPER_H_
+#define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_WRAPPER_H_
 
 #include <string>
 #include <vector>
 
-#include "clay/ui/component/list/list_container_view.h"
+#include "clay/ui/component/list/list_container/list_container_view.h"
 #include "clay/ui/component/scrollbar/scrollbar_wrapper.h"
 namespace clay {
 
@@ -76,4 +76,4 @@ class ListContainerWrapper
 
 }  // namespace clay
 
-#endif  // CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_WRAPPER_H_
+#endif  // CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_WRAPPER_H_

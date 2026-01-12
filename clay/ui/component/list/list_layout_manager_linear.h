@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "clay/ui/component/list/layout_types.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/list/list_item_view_holder.h"
 #include "clay/ui/component/list/list_layout_manager.h"
 

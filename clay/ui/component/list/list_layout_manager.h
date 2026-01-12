@@ -15,7 +15,7 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/scroll_direction.h"
-#include "clay/ui/component/list/layout_types.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/list/list_item_length_cache.h"
 #include "clay/ui/component/view_callback/list_event_callback_manager.h"
 

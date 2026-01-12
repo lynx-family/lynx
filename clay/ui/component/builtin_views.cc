@@ -4,17 +4,19 @@
 #include "clay/ui/component/builtin_views.h"
 
 #include "clay/ui/component/component.h"
+
 #ifndef ENABLE_CLAY_LITE
 #include "clay/ui/component/editable/input_ng_view.h"
 #include "clay/ui/component/editable/input_view.h"
 #include "clay/ui/component/editable/textarea_ng_view.h"
 #include "clay/ui/component/editable/textarea_view.h"
-#include "clay/ui/shadow/editable_shadow_node.h"
-#endif  // ENABLE_CLAY_LITE
-#include "clay/ui/component/image_view.h"
-#include "clay/ui/component/list/list_container_wrapper.h"
 #include "clay/ui/component/list/list_item_view.h"
 #include "clay/ui/component/list/list_wrapper.h"
+#include "clay/ui/shadow/editable_shadow_node.h"
+#endif  // ENABLE_CLAY_LITE
+
+#include "clay/ui/component/image_view.h"
+#include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/text/inline_text_view.h"
 #include "clay/ui/component/text/raw_text_view.h"
@@ -46,8 +48,8 @@ REGISTER_CLAY_ELEMENT("scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("x-scroll-view", ScrollWrapper, void);
 REGISTER_CLAY_ELEMENT("component", Component, void);
 REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
-REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
 #ifndef ENABLE_CLAY_LITE
+REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
 REGISTER_CLAY_ELEMENT("x-input-ng", InputNGView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-textarea-ng", TextAreaNGView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-textarea", TextAreaView, EditableShadowNode);
@@ -55,6 +57,8 @@ REGISTER_CLAY_ELEMENT("textarea", TextAreaView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("input", InputView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-input", InputView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("list", ListWrapper, void);
+#else
+REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
 #endif  // ENABLE_CLAY_LITE
 
 }  // namespace clay

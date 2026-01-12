@@ -17,8 +17,8 @@
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/list/base_list_view.h"
-#include "clay/ui/component/list/layout_types.h"
 #include "clay/ui/component/list/list_children_helper.h"
+#include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/list/list_layout_manager.h"
 #include "clay/ui/component/list/list_orientation_helper.h"
 #include "clay/ui/component/scroller_animator.h"
@@ -48,21 +48,6 @@ ListScroller::ListScroller(BaseListView* list_view) : list_view_(list_view) {
 }
 
 ListScroller::~ListScroller() = default;
-
-// static
-AlignTo ListScroller::StringToAlign(const std::string& str) {
-  if (str == kAlignNone) {
-    return AlignTo::kNone;
-  } else if (str == kAlignTop) {
-    return AlignTo::kStart;
-  } else if (str == kAlignMiddle) {
-    return AlignTo::kMiddle;
-  } else if (str == kAlignBottom) {
-    return AlignTo::kEnd;
-  } else {
-    return AlignTo::kNone;
-  }
-}
 
 int32_t ListScroller::CalculatePxPerFrame() const {
   return list_view_->page_view()->DeviceDpi() / 4;

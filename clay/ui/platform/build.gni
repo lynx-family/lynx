@@ -38,7 +38,7 @@ if (is_android) {
     ]
   }
 }
-if ((is_win || is_mac) && !enable_unittests) {
+if ((is_win || is_mac || is_ios) && !enable_unittests) {
   ui_platform_fallback_sources -= [
     "common/native_view_service_common.cc",
     "common/native_view_service_common.h",
