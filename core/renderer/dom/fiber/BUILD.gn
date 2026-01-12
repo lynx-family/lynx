@@ -58,5 +58,6 @@ lynx_core_source_set("fiber") {
   deps = [
     "../../../../base/src:base_log_headers",
     "../../ui_component/list:internal_list_container",
+    "../../ui_component/list/mediator:list_mediator",
   ]
 }

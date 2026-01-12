@@ -61,6 +61,8 @@ class ListContainerDefault : public ContainerDelegate {
   void EnableInsertPlatformView() override {}
 
   void OnNextFrame() override {}
+
+  void SetEnableBatchRender(bool enable_batch_render) override {}
 };
 
 }  // namespace list

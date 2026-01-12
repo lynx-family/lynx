@@ -45,6 +45,7 @@ class ContainerDelegate {
   virtual void ScrollStopped() = 0;
   virtual void EnableInsertPlatformView() = 0;
   virtual void OnNextFrame() = 0;
+  virtual void SetEnableBatchRender(bool enable_batch_render) = 0;
 };
 
 std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(
