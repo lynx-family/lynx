@@ -155,15 +155,16 @@ task configGnCompileParas {
     def buildTypes = buildVariantList[1]
     JSONObject gnBuildArgs_map = new JSONObject()
     flavorNames.each{
-        JSONObject gnBuildArgs_list = new JSONObject()
+        JSONObject gnBuildArgsList = new JSONObject()
         String flavorName = it
         if (flavorName == "asan") {
-            gnBuildArgs_list.put("is_asan", "true")
+            gnBuildArgsList.put("is_asan", "true")
         } else {
-            gnBuildArgs_list.put("is_asan", "false")
+            gnBuildArgsList.put("is_asan", "false")
         }
 
         buildTypes.each{
+            JSONObject gnBuildArgs_list = new JSONObject(gnBuildArgsList)
             String buildType = it
             if (buildType == "release") {
                 gnBuildArgs_list.put("is_debug", "false")
