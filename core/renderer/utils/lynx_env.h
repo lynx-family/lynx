@@ -137,6 +137,13 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     ENABLE_FETCH_API_STANDARD_STREAMING,
+    ENABLE_JS_CALLBACK_MANAGER,
+    FIX_COLOR_OVERRIDE_INCONSISTENT,
+    FORCE_USE_SHADER_REPLACE_BLIT_WORKAROUND_CANVAS,  // FIXME(luchengxuan):
+                                                      // should be replaced with
+                                                      // setting service in
+                                                      // canvas
+    TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -284,6 +291,13 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
+            {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
+            {Key::FIX_COLOR_OVERRIDE_INCONSISTENT,
+             "fix_color_override_inconsistent"},
+            {Key::FORCE_USE_SHADER_REPLACE_BLIT_WORKAROUND_CANVAS,
+             "force_use_shader_replace_blit_workaround_canvas"},
+            {Key::TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS,
+             "try_to_fix_native_window_leak_harmony_canvas"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
