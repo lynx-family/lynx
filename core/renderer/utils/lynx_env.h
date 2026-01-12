@@ -133,6 +133,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
                                                       // setting service in
                                                       // canvas
     TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS,
+    FIX_RADON_INLINE_CONVERT_BUG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -281,6 +282,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "force_use_shader_replace_blit_workaround_canvas"},
             {Key::TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS,
              "try_to_fix_native_window_leak_harmony_canvas"},
+            {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -426,6 +428,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnablePlatformDataFix();
   bool EnableQuickJsThreadChecker();
   bool FixColorOverrideInconsistent();
+  bool FixRadonInlineConvertBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

@@ -198,8 +198,15 @@ void FiberElement::AttachToElementManager(
 
 void FiberElement::OnNodeAdded(FiberElement *child) {
   if (IsRadonArch()) {
-    if (is_inline_element() && child != nullptr && !is_component()) {
-      child->ConvertToInlineElement();
+    if (element_manager_->FixRadonInlineConvertBug()) {
+      if (child != nullptr && is_inline_element() &&
+          (!is_component() || is_wrapper())) {
+        child->ConvertToInlineElement();
+      }
+    } else {
+      if (is_inline_element() && child != nullptr && !is_component()) {
+        child->ConvertToInlineElement();
+      }
     }
   } else {
     if (is_inline_element() && child != nullptr) {
