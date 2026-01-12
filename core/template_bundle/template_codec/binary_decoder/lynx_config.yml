@@ -1772,3 +1772,12 @@ enablePropertyBasedSimpleStyle:
   readNative: false
   author: 'zhongyr'
   since: '3.5'
+enableTransformedTouchPosition:
+  description: Make the touch point coordinates of Lynx or Canvas's TouchEvent to take into account the transformation.
+  defaultValue: 'false'
+  valueType: bool
+  author: rAY-ooo
+  since: '3.7'
+  supportPlatform:
+    - Android
+    - HarmonyOS

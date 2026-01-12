@@ -79,6 +79,8 @@ public class PageConfig {
   private static final String KEY_ENABLE_FLATTEN_TRANSLATE_Z = "enableFlattenTranslateZ";
   private static final String KEY_MAP_CONTAINER_TYPE = "mapContainerType";
   private static final String KEY_ENABLE_TEXT_LAYOUT_CACHE = "enableTextLayoutCache";
+  private static final String KEY_ENABLE_TRANSFORMED_TOUCH_POSITION =
+      "enableTransformedTouchPosition";
 
   private boolean autoExpose = true;
   private boolean enableEventThrough;
@@ -136,6 +138,7 @@ public class PageConfig {
   private String mFilePath;
   private double mEnableLynxScrollFluency = -1d;
   private boolean mEnableTextLayoutCache = true;
+  private boolean mEnableTransformedTouchPosition = false;
 
   public PageConfig(ReadableMap map) {
     autoExpose = true;
@@ -360,6 +363,10 @@ public class PageConfig {
         mEnableTextLayoutCache = map.getBoolean(KEY_ENABLE_TEXT_LAYOUT_CACHE);
       } else {
         mEnableTextLayoutCache = LynxEnv.inst().enableTextLayoutCache();
+      }
+
+      if (map.hasKey(KEY_ENABLE_TRANSFORMED_TOUCH_POSITION)) {
+        mEnableTransformedTouchPosition = map.getBoolean(KEY_ENABLE_TRANSFORMED_TOUCH_POSITION);
       }
     }
   }
@@ -586,6 +593,10 @@ public class PageConfig {
 
   public double getEnableLynxScrollFluency() {
     return mEnableLynxScrollFluency;
+  }
+
+  public boolean getEnableTransformedTouchPosition() {
+    return mEnableTransformedTouchPosition;
   }
 
   @Override

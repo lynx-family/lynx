@@ -814,6 +814,12 @@ class LynxConfigDecoder final {
       page_config->SetEnablePropertyBasedSimpleStyle(
           doc[config::kEnablePropertyBasedSimpleStyle].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableTransformedTouchPosition) &&
+        doc[config::kEnableTransformedTouchPosition].IsBool()) {
+      page_config->SetEnableTransformedTouchPosition(
+          doc[config::kEnableTransformedTouchPosition].GetBool());
+    }
   };
 };
 }  // namespace tasm

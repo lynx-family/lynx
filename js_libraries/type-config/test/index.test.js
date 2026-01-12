@@ -45,7 +45,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(120);
+    expect(configKeys.length).toBe(121);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'asyncRedirect',
@@ -117,6 +117,7 @@ describe('type-config index', () => {
       'enableTextOverflow',
       'enableTextRefactor',
       'enableTouchRefactor',
+      'enableTransformedTouchPosition',
       'enableUIOperationOptimize',
       'enableUnifiedPipeline',
       'enableUseContextPool',

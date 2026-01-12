@@ -122,6 +122,74 @@ public class LynxUIHelper {
   }
 
   /**
+   * @param ui {@link LynxBaseUI} the ui in which the initial point are located.
+   * @param another {@link  LynxBaseUI} the ui in which the point are located after the conversion.
+   * @param point {@link PointF} the point in the ui coordinate.
+   * @return The function convertPointFromUIToAnotherUI converts a point from the coordinate
+   *     system of the ui to the coordinate system of the another ui. It returns the
+   *     coordinates of the point in the another ui's coordinate system after the conversion.
+   */
+  public static PointF convertPointFromUIToAnotherUI(
+      final LynxBaseUI ui, final LynxBaseUI another, PointF point) {
+    if (ui == null) {
+      LLog.e(TAG, "convertPointFromUIToAnotherUI failed since ui is null");
+      return point;
+    }
+
+    if (another == null) {
+      LLog.e(TAG, "convertPointFromUIToAnotherUI failed since another ui is null");
+      return point;
+    }
+
+    if (ui == another) {
+      return point;
+    }
+
+    PointF targetPoint = new PointF(point.x, point.y);
+
+    View view = null;
+    if (ui.isFlatten()) {
+      targetPoint.x += ui.getLeft();
+      targetPoint.y += ui.getTop();
+
+      if (ui.getDrawParent() == null) {
+        LLog.e(TAG,
+            "mDrawParent of flattenUI is null, which causes the value convertPointFromUIToAnotherUI returns is not the correct coordinates relative to the another ui!");
+        return point;
+      }
+      view = ((LynxUI) ui.getDrawParent()).getView();
+
+      targetPoint.x -= view.getScrollX();
+      targetPoint.y -= view.getScrollY();
+    } else {
+      view = ((LynxUI) ui).getView();
+    }
+
+    View anotherView = null;
+    float offsetX = 0, offsetY = 0;
+    if (another.isFlatten()) {
+      offsetX += another.getLeft();
+      offsetY += another.getTop();
+
+      if (another.getDrawParent() == null) {
+        LLog.e(TAG,
+            "mDrawParent of flattenUI is null, which causes the value convertPointFromUIToAnotherUI returns is not the correct coordinates relative to the another ui!");
+        return point;
+      }
+      anotherView = ((LynxUI) another.getDrawParent()).getView();
+
+      offsetX -= anotherView.getScrollX();
+      offsetY -= anotherView.getScrollY();
+    } else {
+      anotherView = ((LynxUI) another).getView();
+    }
+
+    PointF res = ViewHelper.convertPointFromViewToAnother(view, anotherView, targetPoint);
+    res.offset(-offsetX, -offsetY);
+    return res;
+  }
+
+  /**
    * @param ui {@link LynxBaseUI} the ui in which the initial rect are located.
    * @param another {@link  LynxBaseUI} the ui in which the rect are located after the conversion.
    * @param rect {@link RectF} the rect in the ui coordinate.

@@ -81,6 +81,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableTextOverflow').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTextRefactor').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTouchRefactor').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableTransformedTouchPosition').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableUIOperationOptimize').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableUnifiedPipeline').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableUseContextPool').toEqualTypeOf<boolean | undefined>();
