@@ -1116,6 +1116,11 @@ public class TouchEventDispatcher {
       EventTarget activeUI, LynxTouchEvent.Point pagePoint) {
     if (activeUI instanceof LynxBaseUI) {
       LynxBaseUI ui = (LynxBaseUI) activeUI;
+      if (mUIOwner.getContext().getEnableTransformedTouchPosition()) {
+        PointF viewPos = LynxUIHelper.convertPointFromUIToAnotherUI(
+            mUIOwner.getRootUI(), ui, new PointF(pagePoint.getX(), pagePoint.getY()));
+        return new Point(viewPos.x, viewPos.y);
+      }
       RectF viewRect = LynxUIHelper.convertRectFromUIToRootUI(
           ui, new RectF(0, 0, ui.getWidth(), ui.getHeight()));
       LynxTouchEvent.Point viewPoint =

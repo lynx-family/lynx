@@ -90,6 +90,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->SetEnableMultiTouch(config->GetEnableMultiTouch());
     lynx_context->SetEnableExposureWhenReload(
         config->GetEnableExposureWhenReload());
+    lynx_context->SetEnableTransformedTouchPosition(
+        config->GetEnableTransformedTouchPosition());
   }
 }
 

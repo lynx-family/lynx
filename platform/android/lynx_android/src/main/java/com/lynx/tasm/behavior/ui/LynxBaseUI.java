@@ -990,7 +990,7 @@ public abstract class LynxBaseUI
   // getBoundingClientRect.
   // TODO(songshourui.null): Corresponding unit tests, checklists, and E2E tests will be added
   // later.
-  private JavaOnlyMap getPositionInfo(boolean enableTransformProps) {
+  public JavaOnlyMap getPositionInfo(boolean enableTransformProps) {
     RectF rect = new RectF();
     if (enableTransformProps) {
       rect = LynxUIHelper.convertRectFromUIToRootUI(this, new RectF(0, 0, getWidth(), getHeight()));

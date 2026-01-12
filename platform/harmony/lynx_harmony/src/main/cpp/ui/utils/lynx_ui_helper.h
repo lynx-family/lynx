@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "base/include/base_export.h"
+
 namespace lynx {
 namespace tasm {
 namespace harmony {
@@ -16,7 +18,7 @@ class LynxUIHelper {
  public:
   static bool UIIsParentOfAnotherUI(UIBase* parent, UIBase* child);
 
-  static void ConvertPointFromAncestorToDescendant(
+  BASE_EXPORT static void ConvertPointFromAncestorToDescendant(
       float res[2], UIBase* ancestor, UIBase* descendant, float point[2],
       bool enable_transform = true);
 
@@ -28,9 +30,8 @@ class LynxUIHelper {
                                             UIBase* another, float point[2],
                                             bool enable_transform = true);
 
-  static void ConvertPointFromUIToRootUI(float res[2], UIBase* ui,
-                                         float point[2],
-                                         bool enable_transform = true);
+  BASE_EXPORT static void ConvertPointFromUIToRootUI(
+      float res[2], UIBase* ui, float point[2], bool enable_transform = true);
 
   static void ConvertPointFromUIToScreen(float res[2], UIBase* ui,
                                          float point[2],

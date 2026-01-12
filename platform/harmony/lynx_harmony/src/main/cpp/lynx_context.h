@@ -143,6 +143,11 @@ class LynxContext {
 
   bool EnableExposureWhenReload();
 
+  void SetEnableTransformedTouchPosition(
+      bool enable_transformed_touch_position);
+
+  BASE_EXPORT bool EnableTransformedTouchPosition();
+
   void CallJSApiCallbackWithValue(int32_t callback_id,
                                   const lepus::Value& params) const;
 
@@ -332,6 +337,7 @@ class LynxContext {
   bool enable_event_through_{false};
   bool enable_harmony_visible_area_change_for_exposure_{false};
   bool enable_exposure_when_reload_{false};
+  bool enable_transformed_touch_position_{false};
 };
 
 }  // namespace harmony
