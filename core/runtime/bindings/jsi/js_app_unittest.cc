@@ -770,10 +770,6 @@ function readScript(nativeApp, url, params) {
   // The following tests should not call `GetJSContent` to get real content
   EXPECT_CALL(delegate_, GetJSContentFromExternal).Times(0);
 
-  // TODO: remove this redundant error
-  EXPECT_CALL(*exception_handler_,
-              onJSIException(HasMessage("Value is null, expected a String")))
-      .Times(1);
   EXPECT_CALL(
       *exception_handler_,
       onJSIException(HasMessage("readScript args[0] must be a string.")))

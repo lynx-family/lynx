@@ -21,29 +21,6 @@
 namespace lynx {
 namespace piper {
 
-namespace {
-
-// This is used for generating short exception strings.
-std::string kindToString(const Value& v, Runtime* rt = nullptr) {
-  if (v.isUndefined()) {
-    return "undefined";
-  } else if (v.isNull()) {
-    return "null";
-  } else if (v.isBool()) {
-    return v.getBool() ? "true" : "false";
-  } else if (v.isNumber()) {
-    return "a number";
-  } else if (v.isString()) {
-    return "a string";
-  } else {
-    DCHECK(v.isObject() && "Expecting object.");
-    return rt != nullptr && v.getObject(*rt).isFunction(*rt) ? "a function"
-                                                             : "an object";
-  }
-}
-
-}  // namespace
-
 PreparedJavaScript::~PreparedJavaScript() = default;
 
 Value HostObject::get(Runtime*, const PropNameID&) { return Value(); }
@@ -115,14 +92,7 @@ std::optional<Object> Object::getPropertyAsObject(Runtime& runtime,
     return std::optional<Object>();
   }
 
-  if (!v->isObject()) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        std::string("getPropertyAsObject: property '") + name + "' is " +
-        kindToString(*v, &runtime) + ", expected an Object"));
-    return std::optional<Object>();
-  }
-
-  return v->getObject(runtime);
+  return v->isObject() ? v->getObject(runtime) : std::optional<Object>();
 }
 
 std::optional<Function> Object::getPropertyAsFunction(Runtime& runtime,
@@ -132,9 +102,6 @@ std::optional<Function> Object::getPropertyAsFunction(Runtime& runtime,
     return std::optional<Function>();
   }
   if (!obj->isFunction(runtime)) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        std::string("getPropertyAsFunction: property '") + name + "' is " +
-        kindToString(std::move(*obj), &runtime) + ", expected a Function"));
     return std::optional<Function>();
   };
 
@@ -144,43 +111,21 @@ std::optional<Function> Object::getPropertyAsFunction(Runtime& runtime,
 }
 
 std::optional<Array> Object::asArray(Runtime& runtime) const& {
-  if (!isArray(runtime)) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Object is " + kindToString(Value(runtime, *this), &runtime) +
-        ", expected an array"));
-    return std::optional<Array>();
-  }
-  return getArray(runtime);
+  return isArray(runtime) ? getArray(runtime) : std::optional<Array>();
 }
 
 std::optional<Array> Object::asArray(Runtime& runtime) && {
-  if (!isArray(runtime)) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Object is " + kindToString(Value(runtime, *this), &runtime) +
-        ", expected an array"));
-    return std::optional<Array>();
-  }
-  return std::move(*this).getArray(runtime);
+  return isArray(runtime) ? std::move(*this).getArray(runtime)
+                          : std::optional<Array>();
 }
 
 std::optional<Function> Object::asFunction(Runtime& runtime) const& {
-  if (!isFunction(runtime)) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Object is " + kindToString(Value(runtime, *this), &runtime) +
-        ", expected a function"));
-    return std::optional<Function>();
-  }
-  return getFunction(runtime);
+  return isFunction(runtime) ? getFunction(runtime) : std::optional<Function>();
 }
 
 std::optional<Function> Object::asFunction(Runtime& runtime) && {
-  if (!isFunction(runtime)) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Object is " + kindToString(Value(runtime, *this), &runtime) +
-        ", expected a function"));
-    return std::optional<Function>();
-  }
-  return std::move(*this).getFunction(runtime);
+  return isFunction(runtime) ? std::move(*this).getFunction(runtime)
+                             : std::optional<Function>();
 }
 
 Value::Value(Value&& other) : Value(other.kind_) {
@@ -269,32 +214,15 @@ bool Value::strictEquals(Runtime& runtime, const Value& a, const Value& b) {
 }
 
 std::optional<double> Value::asNumber(Runtime& rt) const {
-  // TODO(wangqingyu): use base::unexpected here
-  if (!isNumber()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this) + ", expected a number"));
-    return std::optional<double>();
-  }
-
-  return getNumber();
+  return isNumber() ? getNumber() : std::optional<double>();
 }
 
 std::optional<Object> Value::asObject(Runtime& rt) const& {
-  // TODO(wangqingyu): use base::unexpected here
-  if (!isObject()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this, &rt) + ", expected an Object"));
-    return std::optional<Object>();
-  }
-
-  return getObject(rt);
+  return isObject() ? getObject(rt) : std::optional<Object>();
 }
 
 std::optional<Object> Value::asObject(Runtime& rt) && {
-  // TODO(wangqingyu): use base::unexpected here
   if (!isObject()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this, &rt) + ", expected an Object"));
     return std::optional<Object>();
   }
   auto ptr = data_.pointer.ptr_;
@@ -303,47 +231,19 @@ std::optional<Object> Value::asObject(Runtime& rt) && {
 }
 
 std::optional<Symbol> Value::asSymbol(Runtime& rt) const& {
-  // TODO(wangqingyu): use base::unexpected here
-  if (!isSymbol()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this, &rt) + ", expected a Symbol"));
-    return std::optional<Symbol>();
-  }
-
-  return getSymbol(rt);
+  return isSymbol() ? getSymbol(rt) : std::optional<Symbol>();
 }
 
 std::optional<Symbol> Value::asSymbol(Runtime& rt) && {
-  // TODO(wangqingyu): use base::unexpected here
-  if (!isSymbol()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this, &rt) + ", expected a Symbol"));
-    return std::optional<Symbol>();
-  }
-
-  return std::move(*this).getSymbol(rt);
+  return isSymbol() ? std::move(*this).getSymbol(rt) : std::optional<Symbol>();
 }
 
 std::optional<String> Value::asString(Runtime& rt) const& {
-  // TODO(wangqingyu): use base::unexpected here
-  if (!isString()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this, &rt) + ", expected a String"));
-    return std::optional<String>();
-  }
-
-  return getString(rt);
+  return isString() ? getString(rt) : std::optional<String>();
 }
 
 std::optional<String> Value::asString(Runtime& rt) && {
-  // TODO(wangqingyu): use base::unexpected here
-  if (!isString()) {
-    rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        "Value is " + kindToString(*this, &rt) + ", expected a String"));
-    return std::optional<String>();
-  }
-
-  return std::move(*this).getString(rt);
+  return isString() ? std::move(*this).getString(rt) : std::optional<String>();
 }
 
 std::optional<String> Value::toString(Runtime& runtime) const {
