@@ -571,5 +571,12 @@ bool LynxEnv::EnableHarmonyNewImage() {
 bool LynxEnv::EnableUnifyFixedBehavior() {
   return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
 }
+
+bool LynxEnv::FixRadonInlineConvertBug() {
+  static bool fix_radon_inline_convert_bug =
+      GetBoolEnv(Key::FIX_RADON_INLINE_CONVERT_BUG, true);
+  return fix_radon_inline_convert_bug;
+}
+
 }  // namespace tasm
 }  // namespace lynx

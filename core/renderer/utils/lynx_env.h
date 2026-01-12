@@ -125,6 +125,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_HARMONY_NEW_IMAGE,
     ENABLE_UNIFY_FIXED_BEHAVIOR,
     ENABLE_SHARE_CONTEXT_ICU,
+    FIX_RADON_INLINE_CONVERT_BUG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -263,6 +264,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_HARMONY_NEW_IMAGE, "enable_harmony_new_image"},
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
             {Key::ENABLE_SHARE_CONTEXT_ICU, "enable_share_context_icu"},
+            {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -411,6 +413,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableHarmonyDrawBehind();
   bool EnableHarmonyNewImage();
   bool EnableUnifyFixedBehavior();
+  bool FixRadonInlineConvertBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

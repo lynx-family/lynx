@@ -87,6 +87,8 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_NEW_ANIMATOR_FLUSH_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
+  fix_radon_inline_convert_bug_ =
+      LynxEnv::GetInstance().FixRadonInlineConvertBug();
   if (platform_layout_context_) {
     layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());
