@@ -93,28 +93,30 @@ enum TypeOpCode {
 };
 
 struct Instruction {
-  unsigned long op_code_;
+  uint32_t op_code_;
 
   Instruction() : op_code_(0) {}
 
   Instruction(TypeOpCode op_code, long a, long b, long c) : op_code_(op_code) {
-    op_code_ =
-        (op_code_ << 24) | ((a & 0xFF) << 16) | ((b & 0xFF) << 8) | (c & 0xFF);
+    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
+               ((static_cast<uint32_t>(b) & 0xFF) << 8) |
+               (static_cast<uint32_t>(c) & 0xFF);
   }
 
   Instruction(TypeOpCode op_code, long a, short b) : op_code_(op_code) {
-    op_code_ =
-        (op_code_ << 24) | ((a & 0xFF) << 16) | (static_cast<int>(b) & 0xFFFF);
+    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
+               (static_cast<uint32_t>(b) & 0xFFFF);
   }
 
   Instruction(TypeOpCode op_code, long a, unsigned short b)
       : op_code_(op_code) {
-    op_code_ =
-        (op_code_ << 24) | ((a & 0xFF) << 16) | (static_cast<int>(b) & 0xFFFF);
+    op_code_ = (op_code_ << 24) | ((static_cast<uint32_t>(a) & 0xFF) << 16) |
+               (static_cast<uint32_t>(b) & 0xFFFF);
   }
 
   void RefillsA(long a) {
-    op_code_ = (op_code_ & 0xFF00FFFF) | ((a & 0xFF) << 16);
+    op_code_ =
+        (op_code_ & 0xFF00FFFF) | ((static_cast<uint32_t>(a) & 0xFF) << 16);
   }
 
   void RefillsBx(short b) {

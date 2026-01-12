@@ -21,15 +21,16 @@ namespace lepus {
 
 class InputStream {
  public:
-  InputStream() : offset_(0) {}
+  InputStream() = default;
+  virtual ~InputStream() = default;
 
-  virtual ~InputStream() {}
-  virtual uint8_t* begin() = 0;
-  virtual uint8_t* end() = 0;
-  virtual size_t size() = 0;
-  uint8_t* cursor() { return begin() + offset_; }
+  inline uint8_t* begin() const { return begin_; }
+  inline uint8_t* end() const { return end_; }
+  inline size_t size() const { return size_; }
+  inline uint8_t* cursor() const { return begin() + offset_; }
+  inline size_t offset() const { return offset_; }
 
-  inline bool CheckSize(size_t len) {
+  inline bool CheckSize(size_t len) const {
     if (size() == 0 || cursor() + len > end()) {
       return false;
     }
@@ -88,8 +89,6 @@ class InputStream {
     return true;
   }
 
-  size_t offset() { return offset_; }
-
   // Returns the length of the leb128.
   size_t ReadCompactU32(uint32_t* out_value);
   size_t ReadCompactS32(int32_t* out_value);
@@ -98,7 +97,10 @@ class InputStream {
   virtual std::unique_ptr<InputStream> DeriveInputStream() = 0;
 
  protected:
-  size_t offset_;
+  size_t offset_{0};
+  size_t size_{0};
+  uint8_t* begin_{nullptr};
+  uint8_t* end_{nullptr};
 };
 
 struct InputBuffer {
@@ -118,12 +120,17 @@ class ByteArrayInputStream : public InputStream {
   ByteArrayInputStream(const uint8_t* data, int len) {
     buf_.reset(new InputBuffer());
     buf_->data.assign(data, data + len);
+    Initialize();
   }
 
   ByteArrayInputStream(std::vector<uint8_t> data)
-      : buf_(std::make_shared<InputBuffer>(std::move(data))) {}
+      : buf_(std::make_shared<InputBuffer>(std::move(data))) {
+    Initialize();
+  }
 
-  ByteArrayInputStream(const std::shared_ptr<InputBuffer>& buf) : buf_(buf) {}
+  ByteArrayInputStream(const std::shared_ptr<InputBuffer>& buf) : buf_(buf) {
+    Initialize();
+  }
 
   ByteArrayInputStream(const ByteArrayInputStream& rhs) = delete;
   ByteArrayInputStream& operator=(const ByteArrayInputStream& rhs) = delete;
@@ -133,17 +140,17 @@ class ByteArrayInputStream : public InputStream {
   bool ReadFromFile(const char* filename);
   inline const std::vector<uint8_t>& byte_array() { return buf_->data; }
 
-  virtual uint8_t* begin() override { return &buf_->data[0]; }
-  virtual uint8_t* end() override {
-    return (&buf_->data[buf_->size() - 1]) + 1;
-  }
-  virtual size_t size() override { return buf_->size(); }
-
   std::unique_ptr<InputStream> DeriveInputStream() override {
     return std::make_unique<ByteArrayInputStream>(buf_);
   }
 
  private:
+  void Initialize() {
+    size_ = buf_->size();
+    begin_ = &buf_->data[0];
+    end_ = (&buf_->data[buf_->size() - 1]) + 1;
+  }
+
   std::shared_ptr<InputBuffer> buf_;
 };
 

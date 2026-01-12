@@ -36,17 +36,13 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
 
   // instruction
   ERROR_UNLESS(ReadCompactU32(&size));
-  function->op_codes_.reserve(size + 1);
-  function->debug_line_col_.reserve(size);
+  function->op_codes_.resize<false>(size + 1);
   for (size_t i = 0; i < size; ++i) {
-    Instruction instruction;
-    DECODE_COMPACT_U64(op_code);
-    instruction.op_code_ = static_cast<long>(op_code);
-    function->AddInstruction(instruction);
+    ERROR_UNLESS(ReadCompactU32(&function->op_codes_[i].op_code_));
   }
   // this sentinel inst is used to ensure direct dispatch does not go out of
   // range
-  function->op_codes_.push_back(Instruction::Code(OP_PLACEHOLDER));
+  function->op_codes_[size] = Instruction::Code(OP_PLACEHOLDER);
 
   // up value info
   DECODE_COMPACT_U32(update_value_size);
@@ -60,9 +56,16 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
   }
 
   // switch info
-  const char* version = compile_options_.target_sdk_version_.c_str();
-  if (version && lynx::tasm::Config::IsHigherOrEqual(
-                     version, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION)) {
+  if (unlikely(has_feature_lepus_closure_ < 0)) {
+    const char* version = compile_options_.target_sdk_version_.c_str();
+    has_feature_lepus_closure_ =
+        lynx::tasm::Config::IsHigherOrEqual(
+            version, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION)
+            ? 1
+            : 0;
+  }
+
+  if (likely(has_feature_lepus_closure_ == 1)) {
     DECODE_COMPACT_U32(switch_info_size);
     function->switches_.reserve(switch_info_size);
     for (size_t i = 0; i < switch_info_size; ++i) {

@@ -236,7 +236,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   Function() = default;
 
  private:
-  std::vector<Instruction> op_codes_;
+  base::Vector<Instruction> op_codes_;
 
   base::InlineVector<Value, 8> const_values_;
   size_t const_size_ = 0;

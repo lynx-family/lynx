@@ -13,38 +13,6 @@
 namespace lynx {
 namespace lepus {
 
-bool BinaryReader::ReadU32(uint32_t* out_value) {
-  ERROR_UNLESS(stream_->ReadUx<uint32_t>(out_value));
-  return true;
-}
-
-bool BinaryReader::ReadU8(uint8_t* out_value) {
-  ERROR_UNLESS(stream_->ReadUx<uint8_t>(out_value));
-  return true;
-}
-
-bool BinaryReader::ReadCompactU32(uint32_t* out_value) {
-  ERROR_UNLESS(stream_->ReadCompactU32(out_value));
-  return true;
-}
-
-bool BinaryReader::ReadCompactS32(int32_t* out_value) {
-  ERROR_UNLESS(stream_->ReadCompactS32(out_value));
-  return true;
-}
-
-bool BinaryReader::ReadCompactU64(uint64_t* out_value) {
-  ERROR_UNLESS(stream_->ReadCompactU64(out_value));
-  return true;
-}
-
-bool BinaryReader::ReadCompactD64(double* out_value) {
-  uint64_t data = 0;
-  ERROR_UNLESS(stream_->ReadCompactU64(&data));
-  *out_value = base::BitCast<double>(data);
-  return true;
-}
-
 bool BinaryReader::ReadStringDirectly(std::string* out_value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, READ_STRING_DIRECTLY);
   uint32_t length = 0;

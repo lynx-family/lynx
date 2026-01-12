@@ -167,6 +167,7 @@ class BaseBinaryReader : public BinaryReader {
   std::vector<fml::RefPtr<Function>> func_vec;
 #endif
   tasm::CompileOptions compile_options_;
+  int has_feature_lepus_closure_{-1};  // -1 unset, 0 and 1 for bool value
 
  private:
   tasm::StringListVec string_list_;

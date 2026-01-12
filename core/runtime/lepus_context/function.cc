@@ -116,6 +116,10 @@ std::string Function::GetFunctionName() {
 
 Value Function::GetLineInfo() {
   fml::RefPtr<CArray> info = CArray::Create();
+  // debug_line_col_ is not filled with -1 when decoding.
+  while (debug_line_col_.size() < op_codes_.size()) {
+    debug_line_col_.push_back(-1);
+  }
   size_t len = debug_line_col_.size();
   for (size_t i = 0; i < len; i++) {
     info->emplace_back(debug_line_col_[i]);
@@ -144,6 +148,10 @@ int64_t Function::GetFunctionId() {
 
 // given pc index and line col info, set to debug_line_col_
 void Function::SetLineInfo(int32_t index, int64_t line_col) {
+  // debug_line_col_ is not filled with -1 when decoding.
+  while (debug_line_col_.size() < op_codes_.size()) {
+    debug_line_col_.push_back(-1);
+  }
   if (debug_line_col_.size() <= static_cast<size_t>(index)) {
     debug_line_col_.resize(index + 1);
   }
