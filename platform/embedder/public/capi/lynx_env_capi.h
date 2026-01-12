@@ -30,6 +30,8 @@ LYNX_CAPI_EXPORT void lynx_env_register_extension_module(
     const char* name, extension_module_creator creator, bool is_lazy_create,
     void* opaque);
 
+LYNX_CAPI_EXPORT void lynx_env_set_node_platform(void* platform);
+
 LYNX_EXTERN_C_END
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_ENV_CAPI_H_
