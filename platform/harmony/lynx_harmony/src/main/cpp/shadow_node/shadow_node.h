@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_value.h"
 #include "core/public/layout_node_manager.h"
 #include "core/public/layout_node_value.h"
@@ -66,7 +67,9 @@ class ShadowNode : public fml::RefCountedThreadSafeStorage {
   virtual void OnPropsUpdate(const std::string& name,
                              const lepus::Value& value);
   void AdoptSlNode();
-  void SetParent(ShadowNode* parent) { parent_ = parent; }
+  void SetParent(ShadowNode* parent) {
+    parent_sign_ = parent ? parent->Signature() : -1;
+  }
   const std::vector<ShadowNode*>& GetChildren() const { return children_; }
   float ScaleDensity() const;
   virtual bool IsVirtual() const { return false; }
@@ -135,7 +138,7 @@ class ShadowNode : public fml::RefCountedThreadSafeStorage {
   int32_t sign_;
   std::string tag_;
   std::vector<ShadowNode*> children_;
-  ShadowNode* parent_{nullptr};
+  int32_t parent_sign_{-1};
   CustomMeasureFunc* custom_measure_func_ = nullptr;
   LayoutNodeManager* layout_node_manager_ = nullptr;
   bool is_destroyed_ = false;

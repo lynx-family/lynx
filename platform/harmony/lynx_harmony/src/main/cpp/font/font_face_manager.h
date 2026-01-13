@@ -125,9 +125,7 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   //@LayoutThread
   bool CheckNodeValid(int sign) const;
   void TryMarkDirtyOnLayoutThread(int sign);
-  void AddLoadingShadowNodes(int sign, ShadowNode* node) {
-    loading_shadow_nodes_.emplace(sign);
-  }
+  void AddLoadingShadowNodes(int sign) { loading_shadow_nodes_.emplace(sign); }
 
  private:
   void RegisterSystemFont(std::string font_family, std::string font_path);
