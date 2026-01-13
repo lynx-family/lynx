@@ -304,7 +304,7 @@ bool ElementBinaryReader::DecodeEventsSection(
           std::make_unique<event::ClosureEventListener>(
               [tasm, event_name, handler_name](lepus::Value args) {
                 const auto& args_array = args.Array();
-                if (args.IsArray() && args_array->size() == 2) {
+                if (args.IsArray() && args_array->size() == 3) {
                   const auto& event_info = args_array->get(0);
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();

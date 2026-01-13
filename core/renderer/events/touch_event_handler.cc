@@ -660,6 +660,7 @@ void TouchEventHandler::HandleTriggerComponentEvent(
         static_cast<event::Event::Bubbles>(bubbles),
         event::Event::Cancelable::kNo,
         static_cast<event::Event::ComposedMode>(composed));
+    event->set_from_frontend(true);
     event::EventDispatcher::DispatchEvent(*component_element, std::move(event));
     return;
   }

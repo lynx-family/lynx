@@ -972,7 +972,7 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
         std::make_unique<event::ClosureEventListener>(
             [tasm, handler_name](lepus::Value args) {
               const auto& args_array = args.Array();
-              if (args.IsArray() && args_array->size() == 2) {
+              if (args.IsArray() && args_array->size() == 3) {
                 BASE_STATIC_STRING_DECL(kMethod, "method");
                 BASE_STATIC_STRING_DECL(kArgs, "args");
                 const auto& event_detail = lepus::Dictionary::Create();
@@ -3915,7 +3915,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
           std::make_unique<event::ClosureEventListener>(
               [tasm, event_name, handler_name](lepus::Value args) {
                 const auto& args_array = args.Array();
-                if (args.IsArray() && args_array->size() == 2) {
+                if (args.IsArray() && args_array->size() == 3) {
                   const auto& event_info = args_array->get(0);
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();
@@ -3978,9 +3978,11 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
           std::make_unique<event::ClosureEventListener>(
               [tasm, callback](lepus::Value args) {
                 const auto& args_array = args.Array();
-                if (args.IsArray() && args_array->size() == 2) {
+                if (args.IsArray() && args_array->size() == 3) {
                   const auto& event_info = args_array->get(0);
                   const auto& event_detail = args_array->get(1);
+                  auto event = fml::static_ref_ptr_cast<event::Event>(
+                      args_array->get(2).RefCounted());
                   const auto& event_info_array = event_info.Array();
                   if (event_info.IsArray() && event_info_array->size() == 3) {
                     const auto& component_id =
@@ -3988,7 +3990,6 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                     const auto& entry_name =
                         event_info_array->get(1).StdString();
                     int32_t element_id = event_info_array->get(2).Int32();
-                    BASE_STATIC_STRING_DECL(kEventRef, "ref");
 
                     auto task_handler =
                         std::make_shared<worklet::LepusApiHandler>();
@@ -3996,10 +3997,6 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                         std::make_shared<PipelineOptions>();
                     tasm::PipelineScope pipeline_scope(tasm, current_option);
                     EventResult result = EventResult::kDefault;
-                    auto event = fml::static_ref_ptr_cast<event::Event>(
-                        event_detail.Table()
-                            ->GetValue(kEventRef)
-                            ->RefCounted());
 
                     result = lynx::worklet::LepusElement::FireElementWorklet(
                         component_id, entry_name, tasm, *callback,
@@ -4057,14 +4054,13 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                   return;
                 }
                 const auto& args_array = args.Array();
-                if (args.IsArray() && args_array->size() == 2) {
+                if (args.IsArray() && args_array->size() == 3) {
                   const auto& event_detail = args_array->get(1);
+                  auto event = fml::static_ref_ptr_cast<event::Event>(
+                      args_array->get(2).RefCounted());
                   BASE_STATIC_STRING_DECL(kEntryFunction, "runWorklet");
                   BASE_STATIC_STRING_DECL(kRunWorkletSource, "source");
-                  BASE_STATIC_STRING_DECL(kEventRef, "ref");
 
-                  auto event = fml::static_ref_ptr_cast<event::Event>(
-                      event_detail.Table()->GetValue(kEventRef)->RefCounted());
                   const auto worklet_function_value =
                       context->GetGlobalData(kEntryFunction);
                   auto param_array = lepus::CArray::Create();

@@ -749,7 +749,7 @@ void RadonNode::SetEventListeners(
           std::make_unique<event::ClosureEventListener>(
               [tasm = tasm_, name, callback](lepus::Value args) {
                 const auto& args_array = args.Array();
-                if (args.IsArray() && args_array->size() == 2) {
+                if (args.IsArray() && args_array->size() == 3) {
                   const auto& event_info = args_array->get(0);
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();
@@ -808,16 +808,17 @@ void RadonNode::SetEventListeners(
         std::make_unique<event::ClosureEventListener>(
             [tasm = tasm_, lepus_func, lepus_script](lepus::Value args) {
               const auto& args_array = args.Array();
-              if (args.IsArray() && args_array->size() == 2) {
+              if (args.IsArray() && args_array->size() == 3) {
                 const auto& event_info = args_array->get(0);
                 const auto& event_detail = args_array->get(1);
+                auto event = fml::static_ref_ptr_cast<event::Event>(
+                    args_array->get(2).RefCounted());
                 const auto& event_info_array = event_info.Array();
                 if (event_info.IsArray() && event_info_array->size() == 3) {
                   const auto& component_id =
                       event_info_array->get(0).StdString();
                   const auto& entry_name = event_info_array->get(1).StdString();
                   int32_t element_id = event_info_array->get(2).Int32();
-                  BASE_STATIC_STRING_DECL(kEventRef, "ref");
 
                   auto task_handler =
                       std::make_shared<worklet::LepusApiHandler>();
@@ -825,8 +826,6 @@ void RadonNode::SetEventListeners(
                       std::make_shared<PipelineOptions>();
                   PipelineScope pipeline_scope(tasm, current_option);
                   EventResult result = EventResult::kDefault;
-                  auto event = fml::static_ref_ptr_cast<event::Event>(
-                      event_detail.Table()->GetValue(kEventRef)->RefCounted());
 
                   result = lynx::worklet::LepusElement::FireElementWorklet(
                       component_id, entry_name, tasm, lepus_func, lepus_script,

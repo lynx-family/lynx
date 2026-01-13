@@ -1782,13 +1782,33 @@ bool Element::IsFixedUnifiedOnly() const {
   return IsFixedUnified() && !IsNewFixed();
 }
 
-bool Element::IsEventPathCatch() {
+bool Element::IsEventPathCatch(event::EventTarget* target,
+                               event::Event* event) {
+  if (event && event->from_frontend()) {
+    auto root_component =
+        static_cast<Element*>(target)->GetParentComponentElement();
+    if (this == root_component && !event->composed()) {
+      return true;
+    }
+  }
+
   // Compatible with the previous logic that position:fixed will modify
   // the structure of the element tree.
   if (IsRadonArch() && is_fixed()) {
     auto root = element_manager()->root();
     if (this != root) {
       LOGI("Element::IsEventPathCatch fixed target.");
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Element::IsEventPathSkip(event::EventTarget* target, event::Event* event) {
+  if (event && event->from_frontend()) {
+    auto root_component =
+        static_cast<Element*>(target)->GetParentComponentElement();
+    if (GetParentComponentElement() != root_component && !event->composed()) {
       return true;
     }
   }

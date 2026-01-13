@@ -937,7 +937,8 @@ class FiberElement : public Element,
   inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
   inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
 
-  bool IsEventPathCatch() override;
+  bool IsEventPathCatch(event::EventTarget* target,
+                        event::Event* event) override;
 
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 

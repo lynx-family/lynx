@@ -738,7 +738,11 @@ class Element : public lepus::RefCounted,
 
   EventTarget* GetParentTarget() override { return parent_; }
 
-  bool IsEventPathCatch() override;
+  bool IsEventPathCatch(event::EventTarget* target,
+                        event::Event* event) override;
+
+  bool IsEventPathSkip(event::EventTarget* target,
+                       event::Event* event) override;
 
   virtual void HandleGlobalEvent(fml::RefPtr<event::Event> event) override;
 

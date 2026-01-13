@@ -49,14 +49,15 @@ void ClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
           "null.");
       return;
     }
+    // event info
     event->HandleEventBaseDetail(closure_type_ == ClosureType::kCore);
     auto args = lepus::CArray::Create();
     args->emplace_back(event->current_target()->GetEventControlInfo(
         closure_type_ == ClosureType::kCore));
-    auto event_detail = event->detail();
-    BASE_STATIC_STRING_DECL(kEventRef, "ref");
-    event_detail.Table()->SetValue(kEventRef, event);
-    args->emplace_back(event_detail);
+    // event detail
+    args->emplace_back(event->detail());
+    // event ref
+    args->emplace_back(event);
     closure_(lepus::Value(std::move(args)));
   }
 }
