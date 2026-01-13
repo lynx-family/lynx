@@ -26,6 +26,8 @@ class NapiRuntimeProxyJSVM : public NapiRuntimeProxy {
 
  private:
   JSVM_Env jsvm_env_ = nullptr;
+  JSVM_VM vm_ = nullptr;
+  JSVM_VMScope vm_scope_ = nullptr;
 };
 
 class NapiRuntimeProxyJSVMFactoryImpl : public NapiRuntimeProxyJSVMFactory {
