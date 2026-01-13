@@ -105,7 +105,8 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     FML_LOG(ERROR) << "Missing or unresolvable paths to assets.";
     return false;
   }
-  std::string icu_path_string = project_->icu_path().u8string();
+  auto u8str = project_->icu_path().u8string();
+  std::string icu_path_string(u8str.begin(), u8str.end());
 
   // FlutterProjectArgs is expecting a full argv, so when processing it for
   // flags the first item is treated as the executable and ignored. Add a dummy
