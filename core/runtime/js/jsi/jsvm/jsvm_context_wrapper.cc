@@ -8,17 +8,39 @@
 #include "base/include/log/logging.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime_wrapper.h"
+#include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 
 namespace lynx {
 namespace piper {
 JSVMContextWrapper::JSVMContextWrapper(std::shared_ptr<VMInstance> vm)
     : JSIContext(vm) {
   if (!vm) {
-    LOGE("vm is nullptr");
+    LOGE("JSVMContextWrapper constructor vm is nullptr");
     return;
   }
-  auto jsvm_instance = std::static_pointer_cast<JSVMRuntimeInstance>(vm);
-  env_ = jsvm_instance->Env();
 }
+
+JSVMContextWrapper::~JSVMContextWrapper() {
+  JSVM_CALL(nullptr, OH_JSVM_CloseEnvScope, env_, env_scope_);
+  JSVM_CALL(nullptr, OH_JSVM_DestroyEnv, env_);
+}
+
+void JSVMContextWrapper::Init() {
+  if (!vm_) {
+    LOGE("JSVMContextWrapper Init VMInstance is nullptr");
+    return;
+  }
+
+  auto jsvm_instance = std::static_pointer_cast<JSVMRuntimeInstance>(vm_);
+  JSVM_VM vm = jsvm_instance->GetVM();
+  if (!vm) {
+    LOGE("JSVMContextWrapper Init JSVM_VM is nullptr");
+    return;
+  }
+
+  JSVM_CALL_NO_ENV(OH_JSVM_CreateEnv, vm, 0, nullptr, &env_);
+  JSVM_CALL(nullptr, OH_JSVM_OpenEnvScope, env_, &env_scope_);
+}
+
 }  // namespace piper
 }  // namespace lynx
