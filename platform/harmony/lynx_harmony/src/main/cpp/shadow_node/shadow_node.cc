@@ -57,7 +57,7 @@ void ShadowNode::AddChild(ShadowNode* child, int index) {
 }
 
 void ShadowNode::RemoveChild(ShadowNode* child) {
-  child->parent_ = nullptr;
+  child->SetParent(nullptr);
   children_.erase(std::remove(children_.begin(), children_.end(), child),
                   children_.end());
 }
@@ -136,10 +136,18 @@ void ShadowNode::RequestLayout() const {
 }
 
 const ShadowNode* ShadowNode::FindNonVirtualNode() const {
-  if (IsVirtual()) {
-    return parent_ ? parent_->FindNonVirtualNode() : nullptr;
+  const ShadowNode* node = this;
+  int hop = 0;
+  while (node && node->IsVirtual()) {
+    if (!node->context_ || node->parent_sign_ < 0) {
+      return nullptr;
+    }
+    node = node->context_->FindShadowNodeBySign(node->parent_sign_);
+    if (++hop > 128) {
+      return nullptr;
+    }
   }
-  return this;
+  return node;
 }
 
 void ShadowNode::UpdateProps(PropBundleHarmony* props) {
