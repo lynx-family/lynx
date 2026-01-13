@@ -76,6 +76,7 @@ std::shared_ptr<VMInstance> JSVMRuntime::getSharedVM() {
 std::shared_ptr<JSIContext> JSVMRuntime::createContext(
     std::shared_ptr<VMInstance> vm) const {
   auto context_wrapper = std::make_shared<JSVMContextWrapper>(vm);
+  context_wrapper->Init();
   return context_wrapper;
 }
 
