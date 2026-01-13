@@ -256,9 +256,11 @@ public class TransformRaw {
     for (TransformRaw tr : transforms) {
       switch (tr.transformType) {
         case TRANSFORM_TRANSLATE_X:
+        case TRANSFORM_TRANSLATE:
         case TRANSFORM_TRANSLATE_3d:
           // translateX(xValue)
           // translate(x,y)
+          // translate3d(x,y,z)
           ret = tr.platformLengthP0.asNumber();
           break;
       }
@@ -277,11 +279,13 @@ public class TransformRaw {
     for (TransformRaw tr : transforms) {
       switch (tr.transformType) {
         case TRANSFORM_TRANSLATE_Y:
-          // translateY(xValue)
+          // translateY(yValue)
           ret = tr.platformLengthP0.asNumber();
           break;
+        case TRANSFORM_TRANSLATE:
         case TRANSFORM_TRANSLATE_3d:
           // translate(x,y)
+          // translate3d(x,y,z)
           ret = tr.platformLengthP1.asNumber();
           break;
       }
