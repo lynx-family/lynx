@@ -190,15 +190,19 @@ void BaseTextShadowNode::LoadFontFamilyIfNeeded(
         }
 
         text_props_->loading_font_sign++;
+        auto node = fml::Ref(const_cast<BaseTextShadowNode*>(this));
         auto weak_font_manager = std::weak_ptr(font_face_manager);
         auto sign = Signature();
         font_face_manager->LoadFontWithUrl(
             sign, font_family, font_src.src, font_src.type,
-            [this, font_collection, weak_font_manager, sign](
+            [node, font_collection, weak_font_manager, sign](
                 const std::string& font_family, int32_t ret_code,
                 std::vector<uint8_t>& data, size_t length) {
               auto shared_font_manager = weak_font_manager.lock();
-              text_props_->loading_font_sign--;
+              node->text_props_->loading_font_sign--;
+              if (node->IsDestroyed()) {
+                return;
+              }
               if (length > 0 && shared_font_manager) {
                 if ((font_collection->GetFontLoadingState(font_family) !=
                      FontCollectionHarmony::FontLoadingState::kLoaded)) {
@@ -206,8 +210,7 @@ void BaseTextShadowNode::LoadFontFamilyIfNeeded(
                       font_family,
                       FontCollectionHarmony::FontLoadingState::kLoaded);
 
-                  shared_font_manager->AddLoadingShadowNodes(
-                      sign, const_cast<BaseTextShadowNode*>(this));
+                  shared_font_manager->AddLoadingShadowNodes(sign);
 
                   font_collection->RegisterFontBuffer(
                       font_family.c_str(), data, length,

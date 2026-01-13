@@ -236,10 +236,26 @@ ShadowNode* ShadowNodeOwner::CreateJSShadowNode(int sign,
 }
 
 void ShadowNodeOwner::DestroyNode(int sign) {
-  if (const auto& it = node_holder_.find(sign); it != node_holder_.end()) {
-    DestroyNode(it->second);
-    node_holder_.erase(it);
+  const auto it = node_holder_.find(sign);
+  if (it == node_holder_.end()) {
+    return;
   }
+
+  const auto& target = it->second;
+  for (auto& [id, node] : node_holder_) {
+    if (id == sign) {
+      continue;
+    }
+    node->RemoveChild(target.get());
+  }
+
+  while (!target->GetChildren().empty()) {
+    target->RemoveChild(target->GetChildren().back());
+  }
+  target->SetParent(nullptr);
+
+  DestroyNode(target);
+  node_holder_.erase(it);
 }
 
 void ShadowNodeOwner::Destroy() {
