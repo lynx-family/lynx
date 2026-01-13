@@ -1205,6 +1205,11 @@ void Element::CheckClassChangeTransmitAttribute(const base::String& key,
 
 void Element::CheckNewAnimatorAttr(const base::String& key,
                                    const lepus::Value& value) {
+#if OS_HARMONY
+  // No need to switch back to platform animation on HarmonyOS
+  return;
+#endif
+
   if (key.IsEquals("enable-new-animator")) {
     if (IsFiberArch()) {
       // For FiberArch.
