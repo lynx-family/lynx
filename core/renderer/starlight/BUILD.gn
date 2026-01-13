@@ -51,6 +51,7 @@ starlight_style_sources = [
   "style/borders_data.h",
   "style/box_data.cc",
   "style/box_data.h",
+  "style/copyable.h",
   "style/css_type.h",
   "style/data_ref.h",
   "style/default_layout_style.h",

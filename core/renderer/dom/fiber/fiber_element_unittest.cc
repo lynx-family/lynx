@@ -15187,6 +15187,81 @@ TEST_P(FiberElementTest, ConvertToInlineForComponent) {
   EXPECT_FALSE(child_element->is_inline_element());
 }
 
+TEST_P(FiberElementTest, CollectCustomPropertiesCascading) {
+  auto page = manager->CreateFiberPage("page", 0);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+
+  // 1. Test Inheritance
+  page->data_model()->UpdateCSSVariable("--root-var", "root-val");
+  parent->data_model()->UpdateCSSVariable("--parent-var", "parent-val");
+  child->data_model()->UpdateCSSVariable("--child-var", "child-val");
+
+  // Call CollectCustomProperties on child.
+  child->CollectCustomProperties(child->data_model());
+
+  // Check child's properties
+  ASSERT_TRUE(child->custom_properties_.Get() != nullptr);
+  auto& child_props = child->custom_properties_->Value();
+  EXPECT_TRUE(child_props.find("--root-var") != child_props.end());
+  EXPECT_TRUE(child_props.find("--parent-var") != child_props.end());
+  EXPECT_TRUE(child_props.find("--child-var") != child_props.end());
+  EXPECT_EQ(child_props.find("--root-var")->second.AsString().str(),
+            "root-val");
+  EXPECT_EQ(child_props.find("--parent-var")->second.AsString().str(),
+            "parent-val");
+  EXPECT_EQ(child_props.find("--child-var")->second.AsString().str(),
+            "child-val");
+
+  // 2. Test Override
+  auto child2 = manager->CreateFiberView();
+  parent->InsertNode(child2);
+  child2->data_model()->UpdateCSSVariable("--root-var", "child2-val");
+  child2->CollectCustomProperties(child2->data_model());
+
+  ASSERT_TRUE(child2->custom_properties_.Get() != nullptr);
+  auto& child2_props = child2->custom_properties_->Value();
+  EXPECT_EQ(child2_props.find("--root-var")->second.AsString().str(),
+            "child2-val");
+
+  // 3. Test Variable References
+  auto child3 = manager->CreateFiberView();
+  parent->InsertNode(child3);
+  child3->data_model()->UpdateCSSVariable("--local-var", "var(--root-var)");
+  child3->CollectCustomProperties(child3->data_model());
+
+  ASSERT_TRUE(child3->custom_properties_.Get() != nullptr);
+  auto& child3_props = child3->custom_properties_->Value();
+  // --root-var should be inherited from parent (which is from page) ->
+  // "root-val"
+  // --local-var should be resolved to "root-val"
+  EXPECT_EQ(child3_props.find("--local-var")->second.AsString().str(),
+            "root-val");
+
+  // 4. Verify no pollution to parent/root if they were not resolved yet
+  ASSERT_TRUE(page->custom_properties_.Get() != nullptr);
+  ASSERT_TRUE(parent->custom_properties_.Get() != nullptr);
+  EXPECT_TRUE(page->custom_properties_->Value().find("--child-var") ==
+              page->custom_properties_->Value().end());
+  EXPECT_TRUE(parent->custom_properties_->Value().find("--child-var") ==
+              parent->custom_properties_->Value().end());
+
+  // 5. Test Inline Variables
+  auto child4 = manager->CreateFiberView();
+  parent->InsertNode(child4);
+  child4->data_model()->UpdateCSSInlineVariables("--inline-var", "inline-val");
+  child4->CollectCustomProperties(child4->data_model());
+
+  ASSERT_TRUE(child4->custom_properties_.Get() != nullptr);
+  auto& child4_props = child4->custom_properties_->Value();
+  EXPECT_TRUE(child4_props.find("--inline-var") != child4_props.end());
+  EXPECT_EQ(child4_props.find("--inline-var")->second.AsString().str(),
+            "inline-val");
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

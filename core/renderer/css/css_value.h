@@ -19,7 +19,9 @@
 #include "base/include/value/base_value.h"
 #include "core/base/lynx_export.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
+#include "core/renderer/starlight/style/copyable.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/starlight/style/data_ref.h"
 
 namespace lynx {
 namespace tasm {
@@ -71,6 +73,8 @@ struct VarReference {
 };
 
 using CustomPropertiesMap = base::LinearFlatMap<base::String, CSSValue>;
+using CustomPropertiesMapRef =
+    starlight::DataRef<starlight::Copyable<CustomPropertiesMap>>;
 
 class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:

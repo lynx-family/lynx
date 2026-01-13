@@ -19,6 +19,7 @@
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
+#include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_context_delegate.h"
@@ -885,6 +886,7 @@ class FiberElement : public Element,
   lepus::Value GetComputedStyleByKey(const base::String& key);
 
   bool CollectCustomProperties(AttributeHolder* holder);
+  void MarkCustomPropertiesDirty();
 
   void PrepareSelfForThreadedElementResolution();
 
@@ -1027,7 +1029,140 @@ class FiberElement : public Element,
 
   virtual void DispatchLayoutBefore();
 
-  void MarkCustomPropertiesDirty();
+  // relevant to hierarchy
+  base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>
+      scoped_children_;
+
+  // for air virtual node
+  base::auto_create_optional<base::InlineVector<fml::RefPtr<FiberElement>, 2>>
+      scoped_virtual_children_;
+  FiberElement* virtual_parent_{nullptr};
+
+  // layout_parent/child to indicate current real tree hierarchy after
+  // flushActions, it's different from dom tree.
+  // dom tree is updated when the Element APIs called immediately
+  FiberElement* render_parent_{nullptr};
+  FiberElement* last_render_child_{nullptr};
+  FiberElement* first_render_child_{nullptr};
+  FiberElement* previous_render_sibling_{nullptr};
+  FiberElement* next_render_sibling_{nullptr};
+  css::InvalidationLists invalidation_lists_;
+
+  // TODO(linxs): tobe refined
+  int64_t parent_component_unique_id_{-1};
+  mutable FiberElement* parent_component_element_{nullptr};
+
+  mutable FiberElement* render_root_element_{nullptr};
+
+  FiberElement* enclosing_none_wrapper_{nullptr};
+
+  std::shared_ptr<CSSStyleSheetManager> css_style_sheet_manager_;
+  std::unique_ptr<CSSFragmentDecorator> style_sheet_;
+
+  uint32_t dirty_{0};
+  uint32_t wrapper_element_count_{0};
+
+  int32_t css_id_{kInvalidCssId};
+
+  // indicate current not style related flags, such as viewport_unit_, em_units_
+  // for performance, we will never reset it
+  DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags_{0};
+
+  AsyncResolveStatus resolve_status_{AsyncResolveStatus::kCreated};
+
+  bool need_handle_fixed_ = false;
+
+  // Flag used to determine whether the element has extreme_parsed_styles_
+  bool has_extreme_parsed_styles_{false};
+  // If this flag is set to true, it indicates that only the selector was
+  // extracted during compilation.
+  bool only_selector_extreme_parsed_styles_{false};
+
+  bool children_propagate_inherited_styles_flag_{false};
+
+  // indicates the node's layout node has been inserted to parent layout node
+  // yet
+  bool attached_to_layout_parent_{false};
+
+  // can be optimized as layout only node, currently only view & component
+  bool can_be_layout_only_{false};
+
+  // indicate if need to cache children tree actions
+  bool has_to_store_insert_remove_actions_{false};
+
+  bool has_font_size_{false};
+
+  bool is_template_{false};
+
+  // for unittest
+  bool has_transition_props_ = false;
+
+  // indicate this tree scope needs to do flushActon
+  bool flush_required_{true};
+
+  bool is_first_created_{true};
+
+  bool is_async_flush_root_{false};
+
+  // indicate the value of SetRawInlineStyles, we need to split it
+  base::String full_raw_inline_style_;
+
+  StyleMap parsed_styles_map_;
+
+  base::auto_create_optional<StyleMap> styles_from_attributes_;
+
+  base::auto_create_optional<RawLepusStyleMap> current_raw_inline_styles_;
+
+  // the parsed styles that set from front-end resolved in compiler stage
+  base::auto_create_optional<StyleMap> extreme_parsed_styles_;
+
+  base::auto_create_optional<StyleMap> inherited_styles_;
+  base::auto_create_optional<StyleMap>
+      updated_inherited_styles_;  // current styles = parsed_styles_map_ +
+                                  // updated_inherited_styles_
+  base::auto_create_optional<base::Vector<tasm::CSSPropertyID>>
+      reset_inherited_ids_;
+  CustomPropertiesMapRef custom_properties_;
+
+  //{origin_css_id, {css_value, is_logic_style}}
+  base::auto_create_optional<
+      base::LinearFlatMap<tasm::CSSPropertyID, std::pair<CSSValue, IsLogic>>>
+      pending_updated_direction_related_styles_;
+
+  base::Vector<ActionParam> action_param_list_;
+
+  AttrUMap updated_attr_map_;
+  base::auto_create_optional<BuiltinAttrMap> builtin_attr_map_;
+  base::auto_create_optional<base::Vector<base::String>> reset_attr_vec_;
+
+  // Configuration set for elements through the LepusRuntime will be stored in
+  // the config variable
+  fml::RefPtr<lepus::Dictionary> config_;
+
+  base::auto_create_optional<std::list<base::closure>> parallel_reduce_tasks_;
+
+  // Need extra list to record tasks that need to be invoked before flush
+  // actions
+  base::auto_create_optional<std::list<base::closure>>
+      parallel_before_flush_action_tasks_;
+
+  std::unique_ptr<LayoutBundle> layout_bundle_;
+
+  base::String part_id_;
+
+  base::auto_create_optional<
+      base::LinearFlatMap<PseudoState, std::unique_ptr<PseudoElement>>>
+      pseudo_elements_;
+
+  std::unique_ptr<ListItemSchedulerAdapter> scheduler_adapter_;
+
+  // nullptr ended array for storing style objects.
+  std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+      style_objects_{nullptr};
+
+  // For fast style object diff.
+  std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+      last_style_objects_{nullptr};
 
  protected:
 };
