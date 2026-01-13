@@ -9,7 +9,8 @@ solutions = [
             'dev': 'dependencies/DEPS.dev',
             'extension': 'dependencies/DEPS.extension',
             'tasm': 'dependencies/DEPS.tasm',
-            'tools_shared': 'dependencies/DEPS.tools_shared'
+            'tools_shared': 'dependencies/DEPS.tools_shared',
+            'lynxtron': 'dependencies/DEPS.lynxtron',
         },
     }
 ]
