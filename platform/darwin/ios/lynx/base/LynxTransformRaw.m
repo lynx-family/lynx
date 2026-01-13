@@ -168,6 +168,7 @@
     LynxTransformType type = (LynxTransformType)raw.type;
     switch (type) {
       case LynxTransformTypeTranslateX:
+      case LynxTransformTypeTranslate:
       case LynxTransformTypeTranslate3d:
         res = [raw.platformLengthP0 numberValue];
         break;
@@ -191,6 +192,8 @@
     switch (type) {
       case LynxTransformTypeTranslateY:
         res = [raw.platformLengthP0 numberValue];
+        break;
+      case LynxTransformTypeTranslate:
       case LynxTransformTypeTranslate3d:
         res = [raw.platformLengthP1 numberValue];
         break;
