@@ -76,6 +76,7 @@ std::shared_ptr<VMInstance> JSVMRuntime::getSharedVM() {
 std::shared_ptr<JSIContext> JSVMRuntime::createContext(
     std::shared_ptr<VMInstance> vm) const {
   auto context_wrapper = std::make_shared<JSVMContextWrapper>(vm);
+  context_wrapper->Init();
   return context_wrapper;
 }
 
@@ -111,6 +112,7 @@ base::expected<Value, JSINativeException> JSVMRuntime::evaluateJavaScript(
   LOGI("JSVMRuntime::evaluateJavaScript start url=" << source_url);
   JSVM_Env env = getEnv();
   HandleScopeWrapper scope(env);
+  EnvHandleWrapper env_scope(env);
 
   JSVM_Value js_source = nullptr;
   JSVM_CALL_RETURN(this, OH_JSVM_CreateStringUtf8, Value::undefined(), env,
@@ -148,6 +150,7 @@ JSVMRuntime::evaluateJavaScriptBytecode(
 
 Object JSVMRuntime::global() {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value global = nullptr;
   JSVM_CALL(this, OH_JSVM_GetGlobal, getEnv(), &global);
 
@@ -197,6 +200,7 @@ Runtime::PointerValue* JSVMRuntime::cloneSymbol(
   const detail::JSVMSymbolValue* symbol =
       static_cast<const detail::JSVMSymbolValue*>(pv);
   HandleScopeWrapper scope(symbol->rt_->getEnv());
+  EnvHandleWrapper env_scope(symbol->rt_->getEnv());
   JSVM_Value sym_val = nullptr;
   JSVM_CALL(this, OH_JSVM_GetReferenceValue, symbol->rt_->getEnv(),
             symbol->sym_ref_, &sym_val);
@@ -212,6 +216,7 @@ Runtime::PointerValue* JSVMRuntime::cloneString(
   const detail::JSVMStringValue* string =
       static_cast<const detail::JSVMStringValue*>(pv);
   HandleScopeWrapper scope(string->rt_->getEnv());
+  EnvHandleWrapper env_scope(string->rt_->getEnv());
   JSVM_Value str_val = nullptr;
   JSVM_CALL(this, OH_JSVM_GetReferenceValue, string->rt_->getEnv(),
             string->str_ref_, &str_val);
@@ -227,6 +232,7 @@ Runtime::PointerValue* JSVMRuntime::cloneObject(
   const detail::JSVMObjectValue* object =
       static_cast<const detail::JSVMObjectValue*>(pv);
   HandleScopeWrapper scope(object->rt_->getEnv());
+  EnvHandleWrapper env_scope(object->rt_->getEnv());
   JSVM_Value obj_val = nullptr;
   JSVM_CALL(this, OH_JSVM_GetReferenceValue, object->rt_->getEnv(),
             object->obj_ref_, &obj_val);
@@ -242,6 +248,7 @@ Runtime::PointerValue* JSVMRuntime::clonePropNameID(
   const detail::JSVMStringValue* string =
       static_cast<const detail::JSVMStringValue*>(pv);
   HandleScopeWrapper scope(string->rt_->getEnv());
+  EnvHandleWrapper env_scope(string->rt_->getEnv());
   JSVM_Value str_val = nullptr;
   JSVM_CALL(this, OH_JSVM_GetReferenceValue, string->rt_->getEnv(),
             string->str_ref_, &str_val);
@@ -251,6 +258,7 @@ Runtime::PointerValue* JSVMRuntime::clonePropNameID(
 piper::PropNameID JSVMRuntime::createPropNameIDFromAscii(const char* str,
                                                          size_t length) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value valueStr = nullptr;
   JSVM_CALL(this, OH_JSVM_CreateStringUtf8, getEnv(), str, length, &valueStr);
   auto res = JSVMHelper::createPropNameID(valueStr, this);
@@ -260,6 +268,7 @@ piper::PropNameID JSVMRuntime::createPropNameIDFromAscii(const char* str,
 piper::PropNameID JSVMRuntime::createPropNameIDFromUtf8(const uint8_t* utf8,
                                                         size_t length) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value valueStr = nullptr;
   JSVM_CALL(this, OH_JSVM_CreateStringUtf8, getEnv(),
             reinterpret_cast<const char*>(utf8), length, &valueStr);
@@ -270,6 +279,7 @@ piper::PropNameID JSVMRuntime::createPropNameIDFromUtf8(const uint8_t* utf8,
 piper::PropNameID JSVMRuntime::createPropNameIDFromString(
     const piper::String& str) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value str_value = nullptr;
   JSVMHelper::stringRef(str, &str_value);
   return JSVMHelper::createPropNameID(str_value, this);
@@ -277,6 +287,7 @@ piper::PropNameID JSVMRuntime::createPropNameIDFromString(
 
 std::string JSVMRuntime::utf8(const piper::PropNameID& sym) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value str_value = nullptr;
   JSVMHelper::stringRef(sym, &str_value);
   return JSVMHelper::JSStringToSTLString(str_value, this);
@@ -285,6 +296,7 @@ std::string JSVMRuntime::utf8(const piper::PropNameID& sym) {
 bool JSVMRuntime::compare(const piper::PropNameID& a,
                           const piper::PropNameID& b) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value a_value = nullptr;
   JSVMHelper::stringRef(a, &a_value);
   JSVM_Value b_value = nullptr;
@@ -315,6 +327,7 @@ piper::String JSVMRuntime::createStringFromAscii(const char* str,
 piper::String JSVMRuntime::createStringFromUtf8(const uint8_t* str,
                                                 size_t length) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value str_value = nullptr;
   JSVM_CALL(this, OH_JSVM_CreateStringUtf8, getEnv(),
             reinterpret_cast<const char*>(str), length, &str_value);
@@ -323,6 +336,7 @@ piper::String JSVMRuntime::createStringFromUtf8(const uint8_t* str,
 
 std::string JSVMRuntime::utf8(const piper::String& str) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value str_value = nullptr;
   JSVMHelper::stringRef(str, &str_value);
   return JSVMHelper::JSStringToSTLString(str_value, this);
@@ -330,6 +344,7 @@ std::string JSVMRuntime::utf8(const piper::String& str) {
 
 piper::Object JSVMRuntime::createObject() {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   return JSVMHelper::createObject(this);
 }
 
@@ -340,6 +355,7 @@ piper::Object JSVMRuntime::createObject(std::shared_ptr<piper::HostObject> ho) {
 std::weak_ptr<piper::HostObject> JSVMRuntime::getHostObject(
     const piper::Object& obj) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
   detail::JSVMHostObjectProxy* proxy_ptr = nullptr;
@@ -351,6 +367,7 @@ std::weak_ptr<piper::HostObject> JSVMRuntime::getHostObject(
 std::optional<Value> JSVMRuntime::getProperty(const piper::Object& obj,
                                               const piper::String& name) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value prop_value = nullptr;
   JSVMHelper::objectRef(obj, &prop_value);
 
@@ -363,6 +380,7 @@ std::optional<Value> JSVMRuntime::getProperty(const piper::Object& obj,
 std::optional<Value> JSVMRuntime::getProperty(const piper::Object& obj,
                                               const piper::PropNameID& name) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value prop_value = nullptr;
   JSVMHelper::objectRef(obj, &prop_value);
 
@@ -378,6 +396,7 @@ std::optional<Value> JSVMRuntime::getProperty(const piper::Object& obj,
 bool JSVMRuntime::hasProperty(const piper::Object& obj,
                               const piper::String& name) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
   bool result;
@@ -389,6 +408,7 @@ bool JSVMRuntime::hasProperty(const piper::Object& obj,
 bool JSVMRuntime::hasProperty(const piper::Object& obj,
                               const piper::PropNameID& name) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
 
@@ -405,6 +425,7 @@ bool JSVMRuntime::setPropertyValue(piper::Object& object,
                                    const piper::PropNameID& name,
                                    const piper::Value& value) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_jsvm = nullptr;
   JSVMHelper::objectRef(object, &obj_jsvm);
 
@@ -422,6 +443,7 @@ bool JSVMRuntime::setPropertyValue(piper::Object& object,
                                    const piper::String& name,
                                    const piper::Value& value) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(object, &obj_value);
 
@@ -437,6 +459,7 @@ bool JSVMRuntime::setPropertyValue(piper::Object& object,
 
 bool JSVMRuntime::isArray(const piper::Object& obj) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
 
@@ -448,6 +471,7 @@ bool JSVMRuntime::isArray(const piper::Object& obj) const {
 
 bool JSVMRuntime::isArrayBuffer(const piper::Object& obj) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
 
@@ -459,6 +483,7 @@ bool JSVMRuntime::isArrayBuffer(const piper::Object& obj) const {
 
 bool JSVMRuntime::isFunction(const piper::Object& obj) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value func_value = nullptr;
   JSVMHelper::objectRef(obj, &func_value);
 
@@ -470,6 +495,7 @@ bool JSVMRuntime::isFunction(const piper::Object& obj) const {
 
 bool JSVMRuntime::isHostObject(const piper::Object& obj) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
   bool result;
@@ -481,6 +507,7 @@ bool JSVMRuntime::isHostObject(const piper::Object& obj) const {
 
 bool JSVMRuntime::isHostFunction(const piper::Function& obj) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
   bool result;
@@ -494,6 +521,7 @@ bool JSVMRuntime::isHostFunction(const piper::Function& obj) const {
 std::optional<piper::Array> JSVMRuntime::getPropertyNames(
     const piper::Object& obj) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
 
   JSVM_Value instance_value = nullptr;
   JSVMHelper::objectRef(obj, &instance_value);
@@ -528,6 +556,7 @@ std::optional<piper::Array> JSVMRuntime::getPropertyNames(
 std::optional<BigInt> JSVMRuntime::createBigInt(const std::string& value,
                                                 Runtime& rt) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
 
   JSVM_Value obj_value = nullptr;
   JSVM_CALL_RETURN(this, OH_JSVM_CreateObject, std::optional<BigInt>(),
@@ -580,6 +609,7 @@ std::optional<BigInt> JSVMRuntime::createBigInt(const std::string& value,
 
 std::optional<Array> JSVMRuntime::createArray(size_t length) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
 
   JSVM_Value arr_value = nullptr;
   JSVM_CALL(this, OH_JSVM_CreateArrayWithLength, getEnv(), length, &arr_value);
@@ -590,6 +620,7 @@ std::optional<Array> JSVMRuntime::createArray(size_t length) {
 piper::ArrayBuffer JSVMRuntime::createArrayBufferCopy(const uint8_t* bytes,
                                                       size_t byte_length) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   void* dst_buffer = nullptr;
   JSVM_Value result = nullptr;
   JSVM_CALL_RETURN(this, OH_JSVM_CreateArraybuffer, piper::ArrayBuffer(*this),
@@ -604,6 +635,7 @@ piper::ArrayBuffer JSVMRuntime::createArrayBufferCopy(const uint8_t* bytes,
 piper::ArrayBuffer JSVMRuntime::createArrayBufferNoCopy(
     std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value result = nullptr;
   uint8_t* raw_buffer = const_cast<uint8_t*>(bytes.release());
   JSVM_CALL_RETURN(this, OH_JSVM_CreateArrayBufferFromBackingStoreData,
@@ -616,6 +648,7 @@ piper::ArrayBuffer JSVMRuntime::createArrayBufferNoCopy(
 
 std::optional<size_t> JSVMRuntime::size(const piper::Array& arr) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj = nullptr;
   JSVMHelper::objectRef(arr, &obj);
   uint32_t result;
@@ -627,6 +660,7 @@ std::optional<size_t> JSVMRuntime::size(const piper::Array& arr) {
 
 size_t JSVMRuntime::size(const piper::ArrayBuffer& obj) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
   size_t result;
@@ -637,6 +671,7 @@ size_t JSVMRuntime::size(const piper::ArrayBuffer& obj) {
 
 uint8_t* JSVMRuntime::data(const piper::ArrayBuffer& obj) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
 
@@ -650,6 +685,7 @@ uint8_t* JSVMRuntime::data(const piper::ArrayBuffer& obj) {
 size_t JSVMRuntime::copyData(const ArrayBuffer& obj, uint8_t* dest_buf,
                              size_t dest_len) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
 
@@ -665,6 +701,7 @@ size_t JSVMRuntime::copyData(const ArrayBuffer& obj, uint8_t* dest_buf,
 std::optional<Value> JSVMRuntime::getValueAtIndex(const piper::Array& arr,
                                                   size_t i) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj = nullptr;
   JSVMHelper::objectRef(arr, &obj);
   JSVM_Value result = nullptr;
@@ -676,6 +713,7 @@ std::optional<Value> JSVMRuntime::getValueAtIndex(const piper::Array& arr,
 bool JSVMRuntime::setValueAtIndexImpl(piper::Array& arr, size_t i,
                                       const piper::Value& value) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj = nullptr;
   JSVMHelper::objectRef(arr, &obj);
   JSVM_Value result = nullptr;
@@ -688,6 +726,7 @@ piper::Function JSVMRuntime::createFunctionFromHostFunction(
     const piper::PropNameID& name, unsigned int paramCount,
     piper::HostFunctionType func) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value func_value = nullptr;
   func_value = detail::JSVMHostFunctionProxy::createFunctionFromHostFunction(
       this, getEnv(), name, paramCount, std::move(func));
@@ -698,6 +737,7 @@ std::optional<Value> JSVMRuntime::call(const piper::Function& f,
                                        const piper::Value& jsThis,
                                        const piper::Value* args, size_t count) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   auto converter =
       ArgsConverter<JSVM_Value>(count, args, [this](const piper::Value& value) {
         JSVM_Value result = nullptr;
@@ -713,6 +753,7 @@ std::optional<Value> JSVMRuntime::callAsConstructor(const piper::Function& f,
                                                     const piper::Value* args,
                                                     size_t count) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   auto converter =
       ArgsConverter<JSVM_Value>(count, args, [this](const piper::Value& value) {
         JSVM_Value result = nullptr;
@@ -733,6 +774,7 @@ void JSVMRuntime::popScope(ScopeState* state) { Runtime::popScope(state); }
 bool JSVMRuntime::strictEquals(const piper::Symbol& a,
                                const piper::Symbol& b) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value lhs = nullptr;
   JSVMHelper::symbolRef(a, &lhs);
   JSVM_Value rhs = nullptr;
@@ -747,6 +789,7 @@ bool JSVMRuntime::strictEquals(const piper::Symbol& a,
 bool JSVMRuntime::strictEquals(const piper::String& a,
                                const piper::String& b) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value lhs = nullptr;
   JSVMHelper::stringRef(a, &lhs);
   JSVM_Value rhs = nullptr;
@@ -761,6 +804,7 @@ bool JSVMRuntime::strictEquals(const piper::String& a,
 bool JSVMRuntime::strictEquals(const piper::Object& a,
                                const piper::Object& b) const {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value lhs = nullptr;
   JSVMHelper::objectRef(a, &lhs);
   JSVM_Value rhs = nullptr;
@@ -774,6 +818,7 @@ bool JSVMRuntime::strictEquals(const piper::Object& a,
 
 bool JSVMRuntime::instanceOf(const piper::Object& o, const piper::Function& f) {
   HandleScopeWrapper scope(getEnv());
+  EnvHandleWrapper env_scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(o, &obj_value);
   JSVM_Value ctor_value = nullptr;
