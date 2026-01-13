@@ -20,14 +20,11 @@ class JSVMRuntimeInstance : public VMInstance {
   JSRuntimeType GetRuntimeType() override { return JSRuntimeType::jsvm; };
 
   void InitInstance();
-
-  JSVM_Env Env() const { return env_; };
+  JSVM_VM GetVM() const { return vm_; }
 
  private:
   JSVM_VM vm_ = nullptr;
   JSVM_VMScope vm_scope_ = nullptr;
-  JSVM_Env env_ = nullptr;
-  JSVM_EnvScope env_scope_ = nullptr;
 };
 }  // namespace js
 }  // namespace runtime

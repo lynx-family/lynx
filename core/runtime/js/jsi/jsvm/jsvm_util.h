@@ -75,6 +75,31 @@ class HandleScopeWrapper {
   JSVM_Env env;
   JSVM_HandleScope handleScope;
 };
+
+class EnvHandleWrapper {
+ public:
+  explicit EnvHandleWrapper(JSVM_Env env) : env_(env) {
+    if (env) {
+      JSVM_CALL(nullptr, OH_JSVM_OpenEnvScope, env, &env_scope_);
+    }
+  }
+
+  ~EnvHandleWrapper() {
+    if (env_scope_) {
+      JSVM_CALL(nullptr, OH_JSVM_CloseEnvScope, env_, env_scope_);
+    }
+  }
+
+  EnvHandleWrapper(const EnvHandleWrapper&) = delete;
+  EnvHandleWrapper& operator=(const EnvHandleWrapper&) = delete;
+  EnvHandleWrapper(EnvHandleWrapper&&) = delete;
+  void* operator new(size_t) = delete;
+  void* operator new[](size_t) = delete;
+
+ private:
+  JSVM_Env env_;
+  JSVM_EnvScope env_scope_ = nullptr;
+};
 }  // namespace js
 }  // namespace runtime
 }  // namespace lynx

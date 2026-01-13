@@ -200,6 +200,7 @@ std::optional<Value> JSVMHelper::call(JSVMRuntime* rt, const Function& f,
                                       const Object& jsThis, JSVM_Value* args,
                                       size_t nArgs) {
   HandleScopeWrapper scope(rt->getEnv());
+  EnvHandleWrapper env_scope(rt->getEnv());
   JSVM_Value this_value = nullptr;
   objectRef(jsThis, &this_value);
   if (this_value == nullptr) {

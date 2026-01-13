@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime.h"
+#include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 #include "third_party/napi/include/napi_env_harmony.h"
 
 namespace lynx {
@@ -21,12 +22,25 @@ std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSVM::Create(
 NapiRuntimeProxyJSVM::NapiRuntimeProxyJSVM(
     const std::shared_ptr<JSVMContextWrapper>& context,
     runtime::TemplateDelegate* delegate)
-    : NapiRuntimeProxy(delegate), jsvm_env_(context->getEnv()) {}
+    : NapiRuntimeProxy(delegate),
+      jsvm_env_(context->getEnv()),
+      vm_(context->getJSVM()) {}
 
-void NapiRuntimeProxyJSVM::Attach() { napi_attach_harmony(env_, jsvm_env_); }
+void NapiRuntimeProxyJSVM::Attach() {
+  if (!jsvm_env_) {
+    return;
+  }
+  JSVM_CALL_NO_ENV(OH_JSVM_OpenVMScope, vm_, &vm_scope_);
+  HandleScopeWrapper handle_scope(jsvm_env_);
+  napi_attach_harmony(env_, jsvm_env_);
+}
 
 void NapiRuntimeProxyJSVM::Detach() {
   NapiRuntimeProxy::Detach();
+  if (!jsvm_env_) {
+    return;
+  }
+  JSVM_CALL_NO_ENV(OH_JSVM_CloseVMScope, vm_, vm_scope_);
   napi_detach_harmony(env_);
 }
 

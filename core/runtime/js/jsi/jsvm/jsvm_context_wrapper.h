@@ -17,9 +17,11 @@ namespace js {
 class JSVMContextWrapper : public JSIContext {
  public:
   explicit JSVMContextWrapper(std::shared_ptr<VMInstance> vm);
-  ~JSVMContextWrapper() override = default;
+  ~JSVMContextWrapper() override;
 
+  void Init();
   JSVM_Env getEnv() const { return env_; };
+  JSVM_VM getJSVM() const;
 
  private:
   JSVM_Env env_ = nullptr;

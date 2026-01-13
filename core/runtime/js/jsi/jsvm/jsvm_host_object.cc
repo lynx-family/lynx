@@ -31,9 +31,12 @@ JSVM_Value JSVMHostObjectProxy::getProperty(JSVM_Env env, JSVM_Value name,
             reinterpret_cast<void**>(&proxy_ptr));
   JSVMRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
-  if (proxy_ptr == nullptr ||
-      !proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
-    LOGE("JSVMHostObjectProxy::getProperty Error!");
+  if (proxy_ptr == nullptr) {
+    LOGE("JSVMHostObjectProxy::getProperty Error! proxy_ptr is null");
+    return nullptr;
+  }
+  if (!proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
+    LOGE("JSVMHostObjectProxy::getProperty Error! GetRuntimeAndHost failed");
     return nullptr;
   }
 
@@ -53,9 +56,12 @@ JSVM_Value JSVMHostObjectProxy::setProperty(JSVM_Env env, JSVM_Value name,
             reinterpret_cast<void**>(&proxy_ptr));
   JSVMRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
-  if (proxy_ptr == nullptr ||
-      !proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
-    LOGE("JSVMHostObjectProxy::setProperty Error!");
+  if (proxy_ptr == nullptr) {
+    LOGE("JSVMHostObjectProxy::setProperty Error! proxy_ptr is null");
+    return nullptr;
+  }
+  if (!proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
+    LOGE("JSVMHostObjectProxy::setProperty Error! GetRuntimeAndHost failed");
     return nullptr;
   }
 
@@ -72,9 +78,14 @@ JSVM_Value JSVMHostObjectProxy::getPropertyNames(JSVM_Env env,
             reinterpret_cast<void**>(&proxy_ptr));
   JSVMRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
-  if (proxy_ptr == nullptr ||
-      !proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
-    LOGE("JSVMHostObjectProxy::getPropertyNames Error!");
+  if (proxy_ptr == nullptr) {
+    LOGE("JSVMHostObjectProxy::getPropertyNames Error! proxy_ptr is null");
+    return nullptr;
+  }
+  if (!proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
+    LOGE(
+        "JSVMHostObjectProxy::getPropertyNames Error! GetRuntimeAndHost "
+        "failed");
     return nullptr;
   }
 
@@ -100,6 +111,7 @@ JSVM_Value JSVMHostObjectProxy::getPropertyNames(JSVM_Env env,
 Object JSVMHostObjectProxy::createObject(JSVMRuntime* rt, JSVM_Env env,
                                          std::shared_ptr<HostObject> ho) {
   HandleScopeWrapper scope(env);
+  EnvHandleWrapper env_scope(env);
 
   JSVM_Value object_template = nullptr;
   JSVM_Ref object_template_ref = rt->GetHostObjectTemplate();

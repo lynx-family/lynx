@@ -13,8 +13,6 @@ namespace lynx {
 namespace runtime {
 namespace js {
 JSVMRuntimeInstance::~JSVMRuntimeInstance() {
-  JSVM_CALL(nullptr, OH_JSVM_CloseEnvScope, env_, env_scope_);
-  JSVM_CALL(nullptr, OH_JSVM_DestroyEnv, env_);
   JSVM_CALL_NO_ENV(OH_JSVM_CloseVMScope, vm_, vm_scope_);
   JSVM_CALL_NO_ENV(OH_JSVM_DestroyVM, vm_);
 }
@@ -32,10 +30,6 @@ void JSVMRuntimeInstance::InitInstance() {
     JSVM_CALL_NO_ENV(OH_JSVM_CreateVM, &options, &vm_);
 
     JSVM_CALL_NO_ENV(OH_JSVM_OpenVMScope, vm_, &vm_scope_);
-
-    JSVM_CALL_NO_ENV(OH_JSVM_CreateEnv, vm_, 0, nullptr, &env_);
-
-    JSVM_CALL(nullptr, OH_JSVM_OpenEnvScope, env_, &env_scope_);
   });
 }
 }  // namespace js
