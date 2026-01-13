@@ -139,6 +139,10 @@ if (is_headless) {
   feature_defines_list += [ "ENABLE_HEADLESS" ]
 }
 
+if (is_win || is_mac || is_headless || (is_android && !enable_clay_lite)) {
+  feature_defines_list += [ "ENABLE_MOUSE_TRACKING" ]
+}
+
 if (enable_svg) {
   feature_defines_list += [ "ENABLE_SVG" ]
 }

@@ -110,7 +110,7 @@ BaseView::BaseView(int id, std::string tag_name,
       weak_factory_(this),
       overflow_(RenderObject::DefaultOverflowValue()) {
   render_object_->SetID(id_);
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(ENABLE_MOUSE_TRACKING)
   if (page_view != this) {
     auto* mouse_region_manager = page_view->mouse_region_manager();
     if (mouse_region_manager) {

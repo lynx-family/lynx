@@ -202,7 +202,7 @@ PageView::PageView(uint32_t id, std::shared_ptr<ServiceManager> service_manager,
       gesture_manager_(std::make_unique<GestureManager>(
           task_runners_.GetUITaskRunner(), service_manager)),
       nested_scroll_manager_(std::make_unique<NestedScrollManager>(this)),
-#if defined(OS_MAC) || defined(OS_WIN) || defined(ENABLE_HEADLESS)
+#if defined(ENABLE_MOUSE_TRACKING)
       mouse_region_manager_(std::make_unique<MouseRegionManager>()),
 #endif
       isolated_gesture_detector_(task_runners_.GetUITaskRunner()),
@@ -291,22 +291,23 @@ void PageView::InitManagers() {
         }
       });
 
-#if (defined(OS_MAC) || defined(OS_WIN)) || defined(ENABLE_HEADLESS)
+#if defined(ENABLE_MOUSE_TRACKING)
   // init mouse region manager, mouse cursor manager
-  MouseCursorManager::ActiveCursorCallback cursor_callback =
-      [weak_view = weak_factory_.GetWeakPtr()](const Cursor& cursor) {
-        PageView* page_view = static_cast<PageView*>(weak_view.get());
+  MouseCursorManager::ActiveCursorCallback cursor_callback = nullptr;
+#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+  cursor_callback = [weak_view =
+                         weak_factory_.GetWeakPtr()](const Cursor& cursor) {
+    PageView* page_view = static_cast<PageView*>(weak_view.get());
 
-        if (!page_view) {
-          FML_DCHECK(false)
-              << "PageView : ActiveCursorCallback is called after "
-                 "pageView released";
-          return;
-        }
+    if (!page_view) {
+      FML_DCHECK(false) << "PageView : ActiveCursorCallback is called after "
+                           "pageView released";
+      return;
+    }
 
-        page_view->ActivateSystemCursor(static_cast<int>(cursor.type),
-                                        cursor.val);
-      };
+    page_view->ActivateSystemCursor(static_cast<int>(cursor.type), cursor.val);
+  };
+#endif
   mouse_region_manager_->InitSubManager(cursor_callback);
   SetCursor({"default"});
 #endif
@@ -869,7 +870,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   }
 
   bool consumed = gesture_manager_->HandlePointerEvents(this, events);
-#if (defined(OS_MAC) || defined(OS_WIN)) || defined(ENABLE_HEADLESS)
+#if defined(ENABLE_MOUSE_TRACKING)
   mouse_region_manager_->HandleEvents(this, events);
 #endif
 
@@ -881,7 +882,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
         events, gesture_manager_->GetHitTestResponsiveResult());
     ReportTopViewRawEvents(events);
   } else {
-#if defined(_WIN32) || defined(OS_OSX)
+#if defined(ENABLE_MOUSE_TRACKING)
     for (PointerEvent& event : events) {
       if (event.type == PointerEvent::EventType::kHoverEvent) {
         ReportTopViewEvent(event);
