@@ -7,8 +7,6 @@ import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.LynxServiceCenter;
-import java.util.HashSet;
-import java.util.Set;
 
 public class LynxDevToolUtils {
   private static final ILynxDevToolService DEVTOOL_SERVICE =
@@ -26,52 +24,5 @@ public class LynxDevToolUtils {
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
-  }
-
-  static public void setDevtoolEnv(String key, Object value) {
-    if (DEVTOOL_SERVICE != null) {
-      DEVTOOL_SERVICE.setDevtoolEnv(key, value);
-    } else {
-      LLog.e(TAG, "failed to get DevToolService");
-    }
-  }
-
-  static public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
-    if (DEVTOOL_SERVICE != null) {
-      DEVTOOL_SERVICE.setDevtoolGroupEnv(groupKey, newGroupValues);
-    } else {
-      LLog.e(TAG, "failed to get DevToolService");
-    }
-  }
-
-  static public Object getDevtoolEnv(String key, Object defaultValue) {
-    Object ret = defaultValue;
-
-    if (defaultValue instanceof Boolean) {
-      if (DEVTOOL_SERVICE != null) {
-        ret = DEVTOOL_SERVICE.getDevtoolBooleanEnv(key, (Boolean) defaultValue);
-      } else {
-        LLog.e(TAG, "failed to get DevToolService");
-      }
-    } else if (defaultValue instanceof Integer) {
-      if (DEVTOOL_SERVICE != null) {
-        ret = DEVTOOL_SERVICE.getDevtoolIntEnv(key, (Integer) defaultValue);
-      } else {
-        LLog.e(TAG, "failed to get DevToolService");
-      }
-    } else {
-      LLog.e(TAG, "value type error! key: " + key + ", value: " + defaultValue.toString());
-    }
-    return ret;
-  }
-
-  static public Set<String> getDevtoolEnv(String groupKey) {
-    Set<String> ret = null;
-    if (DEVTOOL_SERVICE != null) {
-      ret = DEVTOOL_SERVICE.getDevtoolGroupEnv(groupKey);
-    } else {
-      LLog.e(TAG, "failed to get DevToolService");
-    }
-    return ret != null ? ret : new HashSet<String>();
   }
 }

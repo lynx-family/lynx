@@ -20,7 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.google.gson.Gson;
 import com.lynx.BuildConfig;
-import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.recorder.LynxDebugInfoRecorder;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxEnv;
@@ -1095,7 +1095,8 @@ public class LynxRecorderActionManager {
         updateViewLayoutParams(measureSpec[2], measureSpec[3]);
       }
       if (mLynxView.getBaseInspectorOwner() != null) {
-        mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+        mLynxView.getBaseInspectorController().setDebugInfoInterceptor(
+            mLynxDebugInfoRecorderDelegate);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1179,7 +1180,8 @@ public class LynxRecorderActionManager {
         mThreadStrategyData = null;
         onLynxViewDidBuild(mLynxView, mIntent, mContext, mViewGroup);
         if (mLynxView.getBaseInspectorOwner() != null) {
-          mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+          mLynxView.getBaseInspectorController().setDebugInfoInterceptor(
+              mLynxDebugInfoRecorderDelegate);
         }
       } catch (JSONException e) {
         e.printStackTrace();
@@ -1412,7 +1414,7 @@ public class LynxRecorderActionManager {
       @Override
       public void run() {
         onReplayFinish(sEndForAll);
-        LynxBaseInspectorOwner owner = mLynxView.getBaseInspectorOwner();
+        LynxBaseInspectorController owner = mLynxView.getBaseInspectorController();
         if (owner != null) {
           owner.endTestbench(path);
         }

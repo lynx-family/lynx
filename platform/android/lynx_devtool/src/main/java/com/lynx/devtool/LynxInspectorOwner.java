@@ -16,7 +16,6 @@ import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
 import com.lynx.basedevtool.utils.DevToolDownloader;
 import com.lynx.basedevtool.utils.DownloadCallback;
 import com.lynx.debugrouter.DebugRouter;
@@ -27,7 +26,9 @@ import com.lynx.devtool.utils.ErrorUtils;
 import com.lynx.devtoolwrapper.CDPEventListener;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.CustomizedMessage;
+import com.lynx.devtoolwrapper.GlobalPropsObserver;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG;
 import com.lynx.devtoolwrapper.MessageHandler;
 import com.lynx.jsbridge.LynxModuleFactory;
@@ -55,7 +56,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 @Keep
-public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
+public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseInspectorController {
   private static final String TAG = "LynxInspectorOwner";
   private static final String DEBUG_ACTIVE_MES = "Debugger.setDebugActive";
   private static final String GLOBAL_KEY = "global_key";
@@ -381,14 +382,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     return "";
   }
 
-  @RestrictTo(RestrictTo.Scope.LIBRARY)
-  public String getTemplateJsInfo(int offset, int size) {
-    if (mReloadHelper != null) {
-      return mReloadHelper.getTemplateJsInfo(offset, size);
-    }
-    return "";
-  }
-
   @Override
   public void sendMessage(CustomizedMessage message) {
     if (mLynxDevToolNG != null && message != null) {
@@ -567,6 +560,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     }
   }
 
+  @Override
   public void registerGlobalPropsUpdatedObserver(GlobalPropsObserver observer) {
     this.globalPropsObserver = observer;
     if (cachedGlobalProps != null) {
@@ -625,10 +619,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     if (mLynxDevToolNG != null) {
       mLynxDevToolNG.setTag(debugTag);
     }
-  }
-
-  public interface GlobalPropsObserver {
-    void onGlobalPropsUpdated(Map globalProps);
   }
 
   private native void nativeInitRecorderConfig(

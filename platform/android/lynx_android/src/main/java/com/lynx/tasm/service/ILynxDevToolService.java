@@ -10,7 +10,7 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.ILynxLogBox;
-import com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.tasm.INativeLibraryLoader;
@@ -28,7 +28,7 @@ public interface ILynxDevToolService extends IServiceProvider {
   default Class<? extends IServiceProvider> getServiceClass() {
     return ILynxDevToolService.class;
   }
-  LynxBaseInspectorOwnerNG createInspectorOwner(@Nullable LynxView view, boolean debuggable);
+  LynxBaseInspectorController createInspectorOwner(@Nullable LynxView view, boolean debuggable);
   ILynxLogBox createLogBox(@NonNull LynxDevtool devtool);
   Class<? extends com.lynx.jsbridge.LynxModule> getDevToolSetModuleClass();
   Class<? extends com.lynx.jsbridge.LynxModule> getLynxWebSocketModuleClass();

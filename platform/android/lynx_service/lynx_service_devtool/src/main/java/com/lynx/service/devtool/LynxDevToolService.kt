@@ -13,7 +13,7 @@ import com.lynx.devtool.LynxDevtoolEnv
 import com.lynx.devtool.LynxGlobalDebugBridge
 import com.lynx.devtool.LynxInspectorOwner
 import com.lynx.devtool.logbox.LynxLogBoxWrapper
-import com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG
+import com.lynx.devtoolwrapper.LynxBaseInspectorController
 import com.lynx.devtoolwrapper.ILynxLogBox
 import com.lynx.devtoolwrapper.LynxDevtool
 import com.lynx.devtool.module.LynxDevToolSetModule
@@ -45,7 +45,7 @@ class LynxDevToolService : ILynxDevToolService {
     private var loadQJSBridge: Boolean = false
     private var loadV8Bridge: Boolean = false
 
-    override fun createInspectorOwner(view: LynxView?, debuggable: Boolean): LynxBaseInspectorOwnerNG? {
+    override fun createInspectorOwner(view: LynxView?, debuggable: Boolean): LynxBaseInspectorController? {
         try {
             return LynxInspectorOwner(view, debuggable)
         } catch (e: ClassNotFoundException) {

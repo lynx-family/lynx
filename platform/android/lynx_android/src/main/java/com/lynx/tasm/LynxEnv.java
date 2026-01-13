@@ -25,7 +25,7 @@ import com.lynx.base.LynxBaseEnv;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.devtoolwrapper.DevToolSettings;
-import com.lynx.devtoolwrapper.LynxDevToolUtils;
+import com.lynx.devtoolwrapper.LynxDevToolEnvUtils;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
@@ -674,13 +674,13 @@ public class LynxEnv {
    */
   public void setDevtoolEnv(String key, Object value) {
     if (isNativeLibraryLoaded() && isLynxDebugEnabled()) {
-      LynxDevToolUtils.setDevtoolEnv(key, value);
+      LynxDevToolEnvUtils.setDevtoolEnv(key, value);
     }
   }
 
   public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
     if (isNativeLibraryLoaded() && isLynxDebugEnabled()) {
-      LynxDevToolUtils.setDevtoolEnv(groupKey, newGroupValues);
+      LynxDevToolEnvUtils.setDevtoolEnv(groupKey, newGroupValues);
     }
   }
 
@@ -708,7 +708,7 @@ public class LynxEnv {
       LLog.e(TAG, "getDevtoolEnv must be called when isLynxDebugEnabled = true key: " + key);
       return defaultValue;
     }
-    return LynxDevToolUtils.getDevtoolEnv(key, defaultValue);
+    return LynxDevToolEnvUtils.getDevtoolEnv(key, defaultValue);
   }
 
   public Set<String> getDevtoolEnv(String groupKey) {
@@ -720,7 +720,7 @@ public class LynxEnv {
           TAG, "getDevtoolEnv must be called when isLynxDebugEnabled = true groupKey: " + groupKey);
       return new HashSet<>();
     }
-    return LynxDevToolUtils.getDevtoolEnv(groupKey);
+    return LynxDevToolEnvUtils.getDevtoolEnv(groupKey);
   }
 
   //------------warning---------------

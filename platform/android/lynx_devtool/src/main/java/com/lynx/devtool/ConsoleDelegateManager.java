@@ -4,6 +4,7 @@
 
 package com.lynx.devtool;
 
+import com.lynx.devtoolwrapper.LynxInspectorConsoleDelegate;
 import com.lynx.react.bridge.Callback;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;

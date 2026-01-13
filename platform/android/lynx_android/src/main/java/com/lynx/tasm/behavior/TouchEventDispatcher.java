@@ -23,6 +23,7 @@ import android.view.ViewConfiguration;
 import androidx.annotation.NonNull;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -745,12 +746,12 @@ public class TouchEventDispatcher {
     if (mUIOwner.getRootUI() == null || mUIOwner.getRootUI().getBodyView() == null) {
       return;
     }
-    LynxBaseInspectorOwner inspectorOwner =
-        ((LynxView) mUIOwner.getRootUI().getBodyView()).getBaseInspectorOwner();
-    if (inspectorOwner == null) {
+    LynxBaseInspectorController inspectorController =
+        ((LynxView) mUIOwner.getRootUI().getBodyView()).getBaseInspectorController();
+    if (inspectorController == null) {
       return;
     }
-    inspectorOwner.showMessageOnConsole(msg, level);
+    inspectorController.showMessageOnConsole(msg, level);
   }
 
   /**

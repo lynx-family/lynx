@@ -2159,6 +2159,10 @@ public class com::lynx::tasm::behavior::GestureRecognizer :  {
   public boolean com.lynx.tasm.behavior.GestureRecognizer.onTouchEvent(MotionEvent ev);
 }
 
+public interface com::lynx::devtoolwrapper::GlobalPropsObserver {
+  public void com.lynx.devtoolwrapper.GlobalPropsObserver.onGlobalPropsUpdated(Map globalProps);
+}
+
 public class com::lynx::tasm::base::GlobalRefQueue :  {
   public com.lynx.tasm.base.GlobalRefQueue.GlobalRefQueue();
   public long com.lynx.tasm.base.GlobalRefQueue.push(Object ref);
@@ -2337,7 +2341,7 @@ public interface com::lynx::tasm::IListNodeInfoFetcher {
 
 public interface com::lynx::tasm::service::ILynxDevToolService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxDevToolService.getServiceClass();
-  public LynxBaseInspectorOwnerNG com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view, boolean debuggable);
+  public LynxBaseInspectorController com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view, boolean debuggable);
   public ILynxLogBox com.lynx.tasm.service.ILynxDevToolService.createLogBox(@NonNull LynxDevtool devtool);
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolSetModuleClass();
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getLynxWebSocketModuleClass();
@@ -3874,35 +3878,39 @@ public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {
 public class com::lynx::tasm::group::LynxBaseConfigurator< T extends LynxBaseConfigurator :  {
 }
 
+public interface com::lynx::devtoolwrapper::LynxBaseInspectorController {
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setReloadHelper(PageReloadHelper reloadHelper);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setDebugInfoInterceptor(LynxDebugInfoRecorder debugInfoRecorder);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setDevToolDelegate(IDevToolDelegate devToolDelegate);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onTemplateAssemblerCreated(long ptr);
+  public long com.lynx.devtoolwrapper.LynxBaseInspectorController.onBackgroundRuntimeCreated(String groupName);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.attach(LynxView view);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.attachLynxUIOwnerToAgent(LynxUIOwner uiOwner);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.attachToDebugBridge(String url);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.destroy();
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize, String reloadUrl);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.continueCasting();
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.pauseCasting();
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onRootViewInputEvent(InputEvent ev);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.updateScreenMetrics(int width, int height, float density);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.endTestbench(String filePath);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onPageUpdate();
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onPerfMetricsEvent(String eventName, @NonNull JSONObject data);
+  public String com.lynx.devtoolwrapper.LynxBaseInspectorController.getDebugInfoUrl(String fileName);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onReceiveMessageEvent(ReadableMap event);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onGlobalPropsUpdated(TemplateData props);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onTemplateDataUpdated(TemplateData templateData);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.onTemplateDataReset(TemplateData templateData);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.showErrorMessageOnConsole(final LynxError error);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorController.showMessageOnConsole(final String message, int level);
+}
+
 public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.setReloadHelper(PageReloadHelper reloadHelper);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.setDebugInfoInterceptor(LynxDebugInfoRecorder debugInfoRecorder);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateAssemblerCreated(long ptr);
-  public long com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onBackgroundRuntimeCreated(String groupName);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize, String reloadUrl);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.continueCasting();
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.pauseCasting();
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onRootViewInputEvent(InputEvent ev);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.destroy();
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.attach(LynxView view);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.updateScreenMetrics(int width, int height, float density);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.attachToDebugBridge(String url);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.endTestbench(String filePath);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onPageUpdate();
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.attachLynxUIOwnerToAgent(LynxUIOwner uiOwner);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.setLynxInspectorConsoleDelegate(Object delegate);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.getConsoleObject(String objectId, boolean needStringify, Callback callback);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onPerfMetricsEvent(String eventName, @NonNull JSONObject data);
-  public String com.lynx.devtoolwrapper.LynxBaseInspectorOwner.getDebugInfoUrl(String fileName);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onReceiveMessageEvent(ReadableMap event);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onGlobalPropsUpdated(TemplateData props);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateDataUpdated(TemplateData templateData);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateDataReset(TemplateData templateData);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.setDevToolDelegate(IDevToolDelegate devToolDelegate);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.showErrorMessageOnConsole(final LynxError error);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.showMessageOnConsole(final String message, int level);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.registerGlobalPropsUpdatedObserver(GlobalPropsObserver observer);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.invokeCDPFromSDK(final String cdpMsg, final CDPResultCallback callback);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.addCDPEventListener(final String name, final CDPEventListener listener);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.removeCDPEventListener(final String name);
@@ -4826,6 +4834,7 @@ public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public void com.lynx.devtoolwrapper.LynxDevtool.attach(LynxView lynxView);
   public void com.lynx.devtoolwrapper.LynxDevtool.attach(@NonNull LynxView lynxView, @NonNull LynxTemplateRender render);
   public LynxBaseInspectorOwner com.lynx.devtoolwrapper.LynxDevtool.getBaseInspectorOwner();
+  public LynxBaseInspectorController com.lynx.devtoolwrapper.LynxDevtool.getBaseInspectorController();
   public void com.lynx.devtoolwrapper.LynxDevtool.updateScreenMetrics(int width, int height, float density);
   public void com.lynx.devtoolwrapper.LynxDevtool.attachToDebugBridge(String url);
   public void com.lynx.devtoolwrapper.LynxDevtool.onPageUpdate();
@@ -4855,6 +4864,13 @@ public class com::lynx::tasm::LynxDevToolDelegateImpl : com.lynx.devtoolwrapper.
   public Bitmap com.lynx.tasm.LynxDevToolDelegateImpl.getBitmapOfView();
 }
 
+public class com::lynx::devtoolwrapper::LynxDevToolEnvUtils :  {
+  public static void com.lynx.devtoolwrapper.LynxDevToolEnvUtils.setDevtoolEnv(String key, Object value);
+  public static void com.lynx.devtoolwrapper.LynxDevToolEnvUtils.setDevtoolEnv(String groupKey, Set< String > newGroupValues);
+  public static Object com.lynx.devtoolwrapper.LynxDevToolEnvUtils.getDevtoolEnv(String key, Object defaultValue);
+  public static Set< String > com.lynx.devtoolwrapper.LynxDevToolEnvUtils.getDevtoolEnv(String groupKey);
+}
+
 public class com::lynx::devtoolwrapper::LynxDevtoolGlobalHelper :  {
   public static LynxDevtoolGlobalHelper com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.getInstance();
   public void com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper.setAppInfo(Context context, Map< String, String > appInfo);
@@ -4869,10 +4885,6 @@ public class com::lynx::devtoolwrapper::LynxDevtoolGlobalHelper :  {
 
 public class com::lynx::devtoolwrapper::LynxDevToolUtils :  {
   public static void com.lynx.devtoolwrapper.LynxDevToolUtils.setDevToolLibraryLoader(INativeLibraryLoader loader);
-  public static void com.lynx.devtoolwrapper.LynxDevToolUtils.setDevtoolEnv(String key, Object value);
-  public static void com.lynx.devtoolwrapper.LynxDevToolUtils.setDevtoolEnv(String groupKey, Set< String > newGroupValues);
-  public static Object com.lynx.devtoolwrapper.LynxDevToolUtils.getDevtoolEnv(String key, Object defaultValue);
-  public static Set< String > com.lynx.devtoolwrapper.LynxDevToolUtils.getDevtoolEnv(String groupKey);
 }
 
 public class abstract com::lynx::tasm::behavior::ui::utils::LynxDrawableManager< T extends LayerDrawable :  {
@@ -5649,6 +5661,10 @@ public class com::lynx::tasm::LynxInfoReportHelper :  {
   public final String com.lynx.tasm.LynxInfoReportHelper.KEY_LAST_LYNX_URL KEY_LAST_LYNX_URL;
   public final String com.lynx.tasm.LynxInfoReportHelper.KEY_ASYNC_COMPONENT_URL KEY_ASYNC_COMPONENT_URL;
   public void com.lynx.tasm.LynxInfoReportHelper.reportLynxCrashContext(String tagName, String tagValue);
+}
+
+public interface com::lynx::devtoolwrapper::LynxInspectorConsoleDelegate {
+  public void com.lynx.devtoolwrapper.LynxInspectorConsoleDelegate.onConsoleMessage(String msg);
 }
 
 public class com::lynx::tasm::event::LynxInternalEvent :  {
@@ -7086,6 +7102,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public Object com.lynx.tasm.LynxView.getTag();
   public boolean com.lynx.tasm.LynxView.isAccessibilityDisabled();
   public LynxBaseInspectorOwner com.lynx.tasm.LynxView.getBaseInspectorOwner();
+  public LynxBaseInspectorController com.lynx.tasm.LynxView.getBaseInspectorController();
   public void com.lynx.tasm.LynxView.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
   public void com.lynx.tasm.LynxView.setLongTaskMonitorEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxView.setFluencyTracerEnabled(LynxBooleanOption enabled);

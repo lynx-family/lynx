@@ -28,6 +28,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.jsbridge.JSModule;
@@ -225,6 +226,17 @@ public class LynxView extends UIBodyView {
       LynxDevtool devTool = mLynxTemplateRender.getDevTool();
       if (devTool != null) {
         return devTool.getBaseInspectorOwner();
+      }
+    }
+    return null;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public LynxBaseInspectorController getBaseInspectorController() {
+    if (mLynxTemplateRender != null) {
+      LynxDevtool devTool = mLynxTemplateRender.getDevTool();
+      if (devTool != null) {
+        return devTool.getBaseInspectorController();
       }
     }
     return null;
@@ -1394,11 +1406,11 @@ public class LynxView extends UIBodyView {
    * @param level The log level.
    */
   private void showMessageOnConsole(String msg, int level) {
-    LynxBaseInspectorOwner inspectorOwner = getBaseInspectorOwner();
-    if (inspectorOwner == null) {
+    LynxBaseInspectorController controller = getBaseInspectorController();
+    if (controller == null) {
       return;
     }
-    inspectorOwner.showMessageOnConsole(msg, level);
+    controller.showMessageOnConsole(msg, level);
   }
 
   @Keep

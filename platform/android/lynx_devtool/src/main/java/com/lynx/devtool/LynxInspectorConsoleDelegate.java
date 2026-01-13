@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.devtool;
 
-public interface LynxInspectorConsoleDelegate {
-  void onConsoleMessage(String msg);
-}
+/**
+ * @deprecated Use {@link com.lynx.devtoolwrapper.LynxInspectorConsoleDelegate} instead.
+ */
+@Deprecated
+public interface LynxInspectorConsoleDelegate
+    extends com.lynx.devtoolwrapper.LynxInspectorConsoleDelegate {}

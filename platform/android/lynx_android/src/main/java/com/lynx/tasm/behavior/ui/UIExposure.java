@@ -9,7 +9,7 @@ import android.util.DisplayMetrics;
 import android.view.Choreographer;
 import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
-import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
@@ -719,10 +719,10 @@ public class UIExposure extends LynxObserverManager {
     if (view == null) {
       return;
     }
-    LynxBaseInspectorOwner inspectorOwner = view.getBaseInspectorOwner();
-    if (inspectorOwner == null) {
+    LynxBaseInspectorController inspectorController = view.getBaseInspectorController();
+    if (inspectorController == null) {
       return;
     }
-    inspectorOwner.showMessageOnConsole(msg, level);
+    inspectorController.showMessageOnConsole(msg, level);
   }
 }

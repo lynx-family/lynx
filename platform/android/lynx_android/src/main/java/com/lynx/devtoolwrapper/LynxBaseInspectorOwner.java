@@ -3,70 +3,18 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.devtoolwrapper;
 
-import android.view.InputEvent;
-import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
-import androidx.core.util.Consumer;
 import com.lynx.react.bridge.Callback;
-import com.lynx.react.bridge.ReadableMap;
-import com.lynx.recorder.LynxDebugInfoRecorder;
-import com.lynx.tasm.LynxError;
-import com.lynx.tasm.LynxView;
-import com.lynx.tasm.TemplateData;
-import com.lynx.tasm.base.PageReloadHelper;
-import com.lynx.tasm.behavior.LynxUIOwner;
-import org.json.JSONObject;
 
 public interface LynxBaseInspectorOwner {
-  void setReloadHelper(PageReloadHelper reloadHelper);
-  void setDebugInfoInterceptor(LynxDebugInfoRecorder debugInfoRecorder);
-  void onTemplateAssemblerCreated(long ptr);
-
-  long onBackgroundRuntimeCreated(String groupName);
   void reload(boolean ignoreCache);
   void reload(
       boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
-  void reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments,
-      int templateSize, String reloadUrl);
-  void continueCasting();
-  void pauseCasting();
-  void onRootViewInputEvent(InputEvent ev);
-  void destroy();
-  void attach(LynxView view);
-  void updateScreenMetrics(int width, int height, float density);
-
-  void attachToDebugBridge(String url);
-
-  void endTestbench(String filePath);
-
-  void onPageUpdate();
-
-  void attachLynxUIOwnerToAgent(LynxUIOwner uiOwner);
 
   void setLynxInspectorConsoleDelegate(Object delegate);
 
   void getConsoleObject(String objectId, boolean needStringify, Callback callback);
 
-  void onPerfMetricsEvent(String eventName, @NonNull JSONObject data);
-
-  String getDebugInfoUrl(String fileName);
-
-  void onReceiveMessageEvent(ReadableMap event);
-
-  void onGlobalPropsUpdated(TemplateData props);
-
-  /**
-   * Called when LynxTemplateRender triggers an update using UpdateData or UpdateMetaData
-   */
-  void onTemplateDataUpdated(TemplateData templateData);
-  /**
-   * Called when data is reset through LynxTemplateRender resetData method
-   */
-  void onTemplateDataReset(TemplateData templateData);
-
-  void setDevToolDelegate(IDevToolDelegate devToolDelegate);
-  @RestrictTo(RestrictTo.Scope.LIBRARY) void showErrorMessageOnConsole(final LynxError error);
-  @RestrictTo(RestrictTo.Scope.LIBRARY) void showMessageOnConsole(final String message, int level);
+  public void registerGlobalPropsUpdatedObserver(GlobalPropsObserver observer);
 
   /**
    * Invokes a CDP method from the SDK.

@@ -4,9 +4,11 @@
 package com.lynx.devtoolwrapper;
 
 import android.app.Dialog;
+import androidx.annotation.RestrictTo;
 import com.lynx.devtoolwrapper.OverlayService;
 import java.util.ArrayList;
 
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public class DevToolOverlayDelegate {
   private DevToolOverlayDelegate() {}
 

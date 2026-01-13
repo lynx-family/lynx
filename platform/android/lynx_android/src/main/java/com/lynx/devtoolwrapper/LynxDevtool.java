@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.core.util.Consumer;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxDevToolDelegateImpl;
@@ -42,7 +43,7 @@ public class LynxDevtool {
    */
   private static ILynxDevToolService sDevToolService = null;
   private static final String TAG = "LynxDevtool";
-  @Keep private LynxBaseInspectorOwnerNG mOwner = null;
+  @Keep private LynxBaseInspectorController mOwner = null;
   private ILynxLogBox mLogBox = null;
   private PageReloadHelper mReloader = null;
   private WeakReference<LynxView> mView = null;
@@ -276,6 +277,13 @@ public class LynxDevtool {
   }
 
   public LynxBaseInspectorOwner getBaseInspectorOwner() {
+    if (mOwner instanceof LynxBaseInspectorOwner) {
+      return (LynxBaseInspectorOwner) mOwner;
+    }
+    return null;
+  }
+
+  public LynxBaseInspectorController getBaseInspectorController() {
     return mOwner;
   }
 

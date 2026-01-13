@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.json.JSONObject;
 
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public class MemoryListener {
   // Need to be thread-safe
   private CopyOnWriteArrayList<MemoryReporter> mMemoryReporters;
@@ -43,7 +44,6 @@ public class MemoryListener {
    * Get whether any available reporter registered
    * @return true if there is at least one available reporter, otherwise false
    */
-  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   @AnyThread
   public boolean hasAvailableReporter() {
     return !mMemoryReporters.isEmpty();

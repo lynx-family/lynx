@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.service.ILynxDevToolService;
@@ -145,6 +146,7 @@ public class LynxDevtoolGlobalHelper {
     }
   }
 
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public void onPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId) {
     if (!remoteDebugAvailable) {
       return;
