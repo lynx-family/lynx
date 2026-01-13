@@ -31,7 +31,7 @@ def run_pnpm_command(command, cwd, env=None):
         env = get_pnpm_env().copy()
     corepack_env = {
         "COREPACK_HOME": os.path.join(get_buildtools_path(), "corepack"),
-        "COREPACK_ENABLE_NETWORK": "0",
+        "COREPACK_ENABLE_NETWORK": "1",
     }
 
     # check the pnpm cache

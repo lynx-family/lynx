@@ -7,7 +7,7 @@ import os
 import sys
 
 def directory_really_is_buildtools(directory):
-  return os.path.exists(os.path.join(directory, 'gn')) and os.path.exists(os.path.join(directory, 'ninja'))
+  return os.path.exists(os.path.join(directory, 'corepack')) and os.path.exists(os.path.join(directory, 'node'))
 
 def get_buildtools_path():
   """Search for buildtools """
