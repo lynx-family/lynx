@@ -211,9 +211,8 @@ abstract public class LogBoxDialogBase extends Dialog {
       }
     });
     mWebView.addJavascriptInterface(callbacks, "nativeBridge");
-    if (Build.VERSION.SDK_INT >= 19) {
-      WebView.setWebContentsDebuggingEnabled(true);
-    }
+    // If debugging the webview is required,
+    // add setWebContentsDebuggingEnabled(true) here
     mWebView.loadUrl(LOCAL_URL);
   }
 
