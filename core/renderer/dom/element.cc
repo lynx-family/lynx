@@ -1196,6 +1196,10 @@ void Element::CheckClassChangeTransmitAttribute(const base::String& key,
 
 void Element::CheckNewAnimatorAttr(const base::String& key,
                                    const lepus::Value& value) {
+#if OS_HARMONY
+  return;
+#endif
+
   if (key.IsEquals("enable-new-animator")) {
     if (IsFiberArch()) {
       // For FiberArch.
