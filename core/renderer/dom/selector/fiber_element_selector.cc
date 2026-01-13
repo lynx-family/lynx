@@ -130,7 +130,8 @@ void FiberElementSelector::SelectImplRecursive(
     } else {
       // search in all children
       for (const auto& c : element->children()) {
-        SelectImpl(c.get(), tokens, pos, next_options);
+        SelectImpl(static_cast<FiberElement*>(c.get()), tokens, pos,
+                   next_options);
       }
     }
   }
@@ -188,10 +189,11 @@ void FiberElementSelector::SelectInSlots(
     size_t token_pos, const SelectImplOptions& options,
     const std::string& parent_component_id) {
   for (const auto& child : element->children()) {
-    if (child->ParentComponentIdString() == parent_component_id) {
-      SelectImpl(child.get(), tokens, token_pos, options);
+    auto* fiber_child = static_cast<FiberElement*>(child.get());
+    if (fiber_child->ParentComponentIdString() == parent_component_id) {
+      SelectImpl(fiber_child, tokens, token_pos, options);
     } else {
-      SelectInSlots(child.get(), tokens, token_pos, options,
+      SelectInSlots(fiber_child, tokens, token_pos, options,
                     parent_component_id);
     }
   }

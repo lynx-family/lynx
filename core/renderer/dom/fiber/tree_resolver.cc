@@ -38,7 +38,8 @@ void TreeResolver::NotifyNodeInserted(FiberElement* insertion_point,
   node->InsertedInto(insertion_point);
 
   for (const auto& child : node->children()) {
-    NotifyNodeInserted(insertion_point, child.get());
+    NotifyNodeInserted(insertion_point,
+                       static_cast<FiberElement*>(child.get()));
   }
 }
 
@@ -53,10 +54,10 @@ void TreeResolver::NotifyNodeRemoved(FiberElement* insertion_point,
   node->RemovedFrom(insertion_point);
 
   for (const auto& child : node->children()) {
-    if (child->is_raw_text()) {
+    if (static_cast<FiberElement*>(child.get())->is_raw_text()) {
       continue;
     }
-    NotifyNodeRemoved(insertion_point, child.get());
+    NotifyNodeRemoved(insertion_point, static_cast<FiberElement*>(child.get()));
   }
 }
 
@@ -169,7 +170,7 @@ int TreeResolver::GetLayoutIndexForChildForWrapper(FiberElement* parent,
   int index = 0;
   bool found = false;
   for (const auto& it : parent->children()) {
-    auto* current = it.get();
+    auto* current = static_cast<FiberElement*>(it.get());
     if (child == current) {
       found = true;
       break;
@@ -187,9 +188,10 @@ int TreeResolver::GetLayoutIndexForChildForWrapper(FiberElement* parent,
 
 size_t TreeResolver::GetLayoutChildrenCountForWrapper(FiberElement* node) {
   size_t ret = 0;
-  for (auto current : node->children()) {
-    if (current->is_wrapper()) {
-      ret += GetLayoutChildrenCountForWrapper(current.get());
+  for (const auto& current : node->children()) {
+    auto* current_fiber = static_cast<FiberElement*>(current.get());
+    if (current_fiber->is_wrapper()) {
+      ret += GetLayoutChildrenCountForWrapper(current_fiber);
     } else {
       ret++;
     }
@@ -262,7 +264,7 @@ fml::RefPtr<lepus::Dictionary> TreeResolver::GetTemplateParts(
   DCHECK(template_element->IsTemplateElement());
   auto parts_map = lepus::Dictionary::Create();
   for (const auto& c : template_element->children()) {
-    GetPartsRecursively(c, parts_map);
+    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
   }
   return parts_map;
 }
@@ -282,12 +284,14 @@ fml::RefPtr<FiberElement> TreeResolver::CloneElements(
 
   // construct children
   for (const auto& c : root->children()) {
+    auto* child = static_cast<FiberElement*>(c.get());
     if (cloning_depth == CloningDepth::kTemplateScope &&
-        c->IsTemplateElement()) {
+        child->IsTemplateElement()) {
       continue;
     }
-    res->InsertNode(
-        CloneElements(c, style_manager, clone_resolved_props, cloning_depth));
+    res->InsertNode(CloneElements(fml::static_ref_ptr_cast<FiberElement>(c),
+                                  style_manager, clone_resolved_props,
+                                  cloning_depth));
   }
 
   return res;
@@ -327,7 +331,8 @@ fml::RefPtr<FiberElement> TreeResolver::CloneElementRecursively(
 
   // construct children
   for (const auto& c : element->children()) {
-    res->InsertNode(CloneElementRecursively(c.get(), clone_resolved_props));
+    res->InsertNode(CloneElementRecursively(static_cast<FiberElement*>(c.get()),
+                                            clone_resolved_props));
   }
 
   return res;
@@ -351,8 +356,8 @@ void TreeResolver::AttachToElementManagerRecursively(
   element.AttachToElementManager(manager, style_manager, keep_element_id);
 
   for (auto& child : element.children()) {
-    AttachToElementManagerRecursively(*child, manager, style_manager,
-                                      keep_element_id);
+    AttachToElementManagerRecursively(*static_cast<FiberElement*>(child.get()),
+                                      manager, style_manager, keep_element_id);
   }
 }
 
@@ -366,7 +371,7 @@ void TreeResolver::GetPartsRecursively(
     return;
   }
   for (const auto& c : root->children()) {
-    GetPartsRecursively(c, parts_map);
+    GetPartsRecursively(fml::static_ref_ptr_cast<FiberElement>(c), parts_map);
   }
 }
 
@@ -503,10 +508,11 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
 
     target->InvalidateChildrenIfNeeded();
     for (auto& child : target->children()) {
+      auto* fiber_child = static_cast<FiberElement*>(child.get());
       if (target->NeedPropagateInheritedDirtyFlag(true)) {
-        child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
+        fiber_child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
       }
-      discovered.emplace_back(child.get());
+      discovered.emplace_back(fiber_child);
     }
 
     node_remaining_at_current_depth--;

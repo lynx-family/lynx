@@ -5051,10 +5051,10 @@ RENDERER_FUNCTION_CC(FiberElementFromBinary) {
         tasm::ForEachLepusValue(node_ary, [manager](const auto& index,
                                                     const auto& value) {
           std::function<void(FiberElement*)> prepare_node_f =
-              [manager, &prepare_node_f](const auto& element) {
+              [manager, &prepare_node_f](FiberElement* element) {
                 manager->PrepareNodeForInspector(element);
                 for (const auto& child : element->children()) {
-                  prepare_node_f(child.get());
+                  prepare_node_f(static_cast<FiberElement*>(child.get()));
                 }
               };
           prepare_node_f(

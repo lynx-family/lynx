@@ -18,14 +18,20 @@
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_delegate.h"
 #include "core/renderer/css/css_color.h"
+#include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
+#include "core/renderer/dom/element_context_delegate.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
+#include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
+#include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/layout_bundle.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
@@ -46,6 +52,19 @@
 
 namespace lynx {
 namespace tasm {
+
+const uint32_t Element::kDirtyCreated = 0x01 << 0;
+const uint32_t Element::kDirtyTree = 0x01 << 1;
+const uint32_t Element::kDirtyStyle = 0x01 << 2;
+const uint32_t Element::kDirtyAttr = 0x01 << 3;
+const uint32_t Element::kDirtyForceUpdate = 0x01 << 4;
+const uint32_t Element::kDirtyEvent = 0x01 << 5;
+const uint32_t Element::kDirtyReAttachContainer = 0x01 << 6;
+const uint32_t Element::kDirtyPropagateInherited = 0x01 << 7;
+const uint32_t Element::kDirtyDataset = 0x01 << 8;
+const uint32_t Element::kDirtyGesture = 0x01 << 9;
+const uint32_t Element::kDirtyFontSize = 0x01 << 11;
+const uint32_t Element::kDirtyRefreshCSSVariables = 0x01 << 12;
 
 namespace {
 constexpr std::array<starlight::Direction,
@@ -132,6 +151,8 @@ Element::Element(const base::String& tag, ElementManager* manager,
     element_container_ = std::make_unique<ElementContainer>(this);
   }
 }
+
+Element::~Element() = default;
 
 // The copy constructor of the element is now only used for copying fiber
 // elements. If you want to use it to copy radon elements, you need to check the

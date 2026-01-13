@@ -86,9 +86,10 @@ size_t BlockElement::FindInsertIndex(const fml::RefPtr<FiberElement> &child) {
   // Find the order of root virtual parent in parent node due to the impl_id is
   // arranged from small to large.
   for (auto iter = children.rbegin(); iter != children.rend(); ++iter) {
-    int32_t impl_id = (*iter)->impl_id();
-    if ((*iter)->root_virtual_parent() != nullptr) {
-      impl_id = (*iter)->root_virtual_parent()->impl_id();
+    auto *fiber_iter = static_cast<FiberElement *>((*iter).get());
+    int32_t impl_id = fiber_iter->impl_id();
+    if (fiber_iter->root_virtual_parent() != nullptr) {
+      impl_id = fiber_iter->root_virtual_parent()->impl_id();
     }
     if (child->root_virtual_parent()->impl_id() < impl_id) {
       index--;

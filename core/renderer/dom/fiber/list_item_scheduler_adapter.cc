@@ -47,7 +47,7 @@ void ListItemSchedulerAdapter::ResolveSubtreeProperty() {
     for (const auto& child : current->children()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
                   LIST_SCHEDULER_ADAPTER_SUBTREE_ASYNC_ENQUEUE);
-      queue.emplace_back(child.get());
+      queue.emplace_back(static_cast<FiberElement*>(child.get()));
     }
     queue.pop_front();
   }

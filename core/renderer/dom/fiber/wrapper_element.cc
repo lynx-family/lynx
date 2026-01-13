@@ -46,7 +46,7 @@ void WrapperElement::MarkDirtyLite(const uint32_t flag) {
   dirty_ |= flag;
   MarkRequireFlush();
   for (const auto& child : children()) {
-    child->MarkDirtyLite(flag);
+    static_cast<FiberElement*>(child.get())->MarkDirtyLite(flag);
   }
 }
 

@@ -718,7 +718,8 @@ rapidjson::Value ElementDumpHelper::DumpFiberElementToJSON(
     children_json.SetArray();
     for (auto&& child : element->children()) {
       children_json.GetArray().PushBack(
-          DumpFiberElementToJSON(doc, child.get()), allocator);
+          DumpFiberElementToJSON(doc, static_cast<FiberElement*>(child.get())),
+          allocator);
     }
     value.AddMember("Children", children_json, allocator);
   }

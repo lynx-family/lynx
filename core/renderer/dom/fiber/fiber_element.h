@@ -62,6 +62,10 @@ class FiberElement : public Element,
                      public SelectorItem,
                      public style::SimpleStyleNode {
  public:
+  using Action = Element::Action;
+  using ActionParam = Element::ActionParam;
+  using AsyncResolveStatus = Element::AsyncResolveStatus;
+
   FiberElement(ElementManager* manager, const base::String& tag);
   FiberElement(ElementManager* manager, const base::String& tag,
                int32_t css_id);
@@ -85,37 +89,6 @@ class FiberElement : public Element,
   ~FiberElement() override;
 
   void ReleaseSelf() const override { delete this; }
-
-  enum class Action : uint8_t {
-    kCreateAct = 0,
-    kDestroyAct,
-    kInsertChildAct,
-    kRemoveChildAct,
-    kMoveAct,
-    kUpdatePropsAct,
-    kRemoveIntergenerationAct,
-  };
-
-  struct ActionParam {
-    ActionParam(Action type, FiberElement* parent,
-                const fml::RefPtr<FiberElement>& child, int from,
-                FiberElement* ref_node, bool is_fixed = false,
-                bool has_z_index = false)
-        : type_(type),
-          parent_(parent),
-          child_(child),
-          index_(from),
-          ref_node_(ref_node),
-          is_fixed_(is_fixed),
-          has_z_index_(has_z_index) {}
-    Action type_;
-    FiberElement* parent_;  // do not add parent's refcount
-    fml::RefPtr<FiberElement> child_;
-    int index_;
-    FiberElement* ref_node_;
-    bool is_fixed_;
-    bool has_z_index_;
-  };
 
   struct InheritedProperty {
     // indicate it's children has been marked to propagate inherited properties.
@@ -155,44 +128,6 @@ class FiberElement : public Element,
     CSSPropertyID ltr_property_{CSSPropertyID::kPropertyStart};
     CSSPropertyID rtl_property_{CSSPropertyID::kPropertyStart};
   };
-
-  static const uint32_t kDirtyCreated = 0x01 << 0;
-  static const uint32_t kDirtyTree = 0x01 << 1;
-  static const uint32_t kDirtyStyle = 0x01 << 2;
-  static const uint32_t kDirtyAttr = 0x01 << 3;
-  static const uint32_t kDirtyForceUpdate = 0x01 << 4;
-  static const uint32_t kDirtyEvent = 0x01 << 5;
-  static const uint32_t kDirtyReAttachContainer = 0x01 << 6;
-  static const uint32_t kDirtyPropagateInherited = 0x01 << 7;
-  static const uint32_t kDirtyDataset = 0x01 << 8;
-  static const uint32_t kDirtyGesture = 0x01 << 9;
-  static const uint32_t kDirtyFontSize = 0x01 << 11;
-  // flag used in parallel flush strategy, indicating that css variables need to
-  // be resolved in next pass
-  static const uint32_t kDirtyRefreshCSSVariables = 0x01 << 12;
-
-  // Flag used for SimpleStyling, if the style_object_list is modified, we need
-  // to resolve the styles again to reset those properties which are removed.
-  static constexpr uint32_t kDirtyStyleObjects = 0x01 << 13;
-
-  // Flag used for cloned element, need to re-apply animation styles.
-  static constexpr uint32_t kDirtyCloned = 0x01 << 14;
-
-  // TODO(zhouzhitao): kSyncResolving and kResolving status will be merged later
-  // with the removal of parallel_flush_ flag
-  enum class AsyncResolveStatus : uint8_t {
-    kCreated = 0,
-    kPrepareRequested,  // prepare requested, but may not trigger prepare task
-                        // for it is detached
-    kPrepareTriggered,  // prepare task has been triggered
-    kPreparing,         // element is being prepared
-    kSyncResolving,     // element is being resolved on current thread
-    kResolving,         // element is being resolved in thread-pool
-    kResolved,          // element has been resolved in thread-pool
-    kUpdated,           // element has been updated in current loop
-  };
-
-  constexpr static const char* kFiberParallelPrepareMode = "ParallelPrepare";
 
   // for Fiber specific
   virtual bool is_component() const { return false; }
@@ -330,8 +265,9 @@ class FiberElement : public Element,
     }
 
     for (const auto& child : scoped_children_) {
-      child->SetParentComponentUniqueIdRecursively(
-          is_page() || is_component() ? impl_id() : id);
+      static_cast<FiberElement*>(child.get())
+          ->SetParentComponentUniqueIdRecursively(
+              is_page() || is_component() ? impl_id() : id);
     }
   }
 
@@ -620,7 +556,7 @@ class FiberElement : public Element,
   void ApplyFunctionRecursive(F&& func) {
     func(this);
     for (const auto& child : scoped_children_) {
-      child->ApplyFunctionRecursive(func);
+      static_cast<FiberElement*>(child.get())->ApplyFunctionRecursive(func);
     }
   }
 
@@ -768,7 +704,9 @@ class FiberElement : public Element,
   void set_virtual_parent(FiberElement* virtual_parent) {
     virtual_parent_ = virtual_parent;
   }
-  FiberElement* virtual_parent() { return virtual_parent_; }
+  FiberElement* virtual_parent() {
+    return static_cast<FiberElement*>(virtual_parent_);
+  }
   FiberElement* root_virtual_parent();
 
   const ClassList& classes() { return data_model_->classes(); }
@@ -902,7 +840,9 @@ class FiberElement : public Element,
 
   // Exported for accessing private field from Element Manager to handle legacy
   // logic
-  inline FiberElement* GetRenderRootElement() { return render_root_element_; }
+  inline FiberElement* GetRenderRootElement() {
+    return static_cast<FiberElement*>(render_root_element_);
+  }
   ListItemSchedulerAdapter* GetSchedulerAdapter() {
     if (scheduler_adapter_) {
       return scheduler_adapter_.get();
@@ -1019,8 +959,6 @@ class FiberElement : public Element,
   friend class WrapperElement;
   friend class ComponentElement;
 
-  std::unique_ptr<PlatformLayoutFunctionWrapper> customized_layout_node_;
-
   inline void MarkPlatformNodeDestroyed();
 
   bool CheckHasIdMapInCSSFragment();
@@ -1091,145 +1029,7 @@ class FiberElement : public Element,
 
   void MarkCustomPropertiesDirty();
 
-  // relevant to hierarchy
-  base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>
-      scoped_children_;
-
-  // for air virtual node
-  base::auto_create_optional<base::InlineVector<fml::RefPtr<FiberElement>, 2>>
-      scoped_virtual_children_;
-  FiberElement* virtual_parent_{nullptr};
-
-  // layout_parent/child to indicate current real tree hierarchy after
-  // flushActions, it's different from dom tree.
-  // dom tree is updated when the Element APIs called immediately
-  FiberElement* render_parent_{nullptr};
-  FiberElement* last_render_child_{nullptr};
-  FiberElement* first_render_child_{nullptr};
-  FiberElement* previous_render_sibling_{nullptr};
-  FiberElement* next_render_sibling_{nullptr};
-  css::InvalidationLists invalidation_lists_;
-
-  // TODO(linxs): tobe refined
-  int64_t parent_component_unique_id_{-1};
-  mutable FiberElement* parent_component_element_{nullptr};
-
-  mutable FiberElement* render_root_element_{nullptr};
-
-  FiberElement* enclosing_none_wrapper_{nullptr};
-
-  std::shared_ptr<CSSStyleSheetManager> css_style_sheet_manager_;
-  std::unique_ptr<CSSFragmentDecorator> style_sheet_;
-
-  uint32_t dirty_{0};
-  uint32_t wrapper_element_count_{0};
-
-  int32_t css_id_{kInvalidCssId};
-
-  // indicate current not style related flags, such as viewport_unit_, em_units_
-  // for performance, we will never reset it
-  DynamicCSSStylesManager::StyleUpdateFlags dynamic_style_flags_{0};
-
-  AsyncResolveStatus resolve_status_{AsyncResolveStatus::kCreated};
-
-  bool need_handle_fixed_ = false;
-
-  // Flag used to determine whether the element has extreme_parsed_styles_
-  bool has_extreme_parsed_styles_{false};
-  // If this flag is set to true, it indicates that only the selector was
-  // extracted during compilation.
-  bool only_selector_extreme_parsed_styles_{false};
-
-  bool children_propagate_inherited_styles_flag_{false};
-
-  // indicates the node's layout node has been inserted to parent layout node
-  // yet
-  bool attached_to_layout_parent_{false};
-
-  // can be optimized as layout only node, currently only view & component
-  bool can_be_layout_only_{false};
-
-  // indicate if need to cache children tree actions
-  bool has_to_store_insert_remove_actions_{false};
-
-  bool has_font_size_{false};
-
-  bool is_template_{false};
-
-  // for unittest
-  bool has_transition_props_ = false;
-
-  // indicate this tree scope needs to do flushActon
-  bool flush_required_{true};
-
-  bool is_first_created_{true};
-
-  bool is_async_flush_root_{false};
-
-  // indicate the value of SetRawInlineStyles, we need to split it
-  base::String full_raw_inline_style_;
-
-  StyleMap parsed_styles_map_;
-
-  base::auto_create_optional<StyleMap> styles_from_attributes_;
-
-  base::auto_create_optional<RawLepusStyleMap> current_raw_inline_styles_;
-
-  // the parsed styles that set from front-end resolved in compiler stage
-  base::auto_create_optional<StyleMap> extreme_parsed_styles_;
-
-  base::auto_create_optional<StyleMap> inherited_styles_;
-  base::auto_create_optional<StyleMap>
-      updated_inherited_styles_;  // current styles = parsed_styles_map_ +
-                                  // updated_inherited_styles_
-  base::auto_create_optional<base::Vector<tasm::CSSPropertyID>>
-      reset_inherited_ids_;
-  base::auto_create_optional<CustomPropertiesMap> custom_properties_;
-
-  //{origin_css_id, {css_value, is_logic_style}}
-  base::auto_create_optional<
-      base::LinearFlatMap<tasm::CSSPropertyID, std::pair<CSSValue, IsLogic>>>
-      pending_updated_direction_related_styles_;
-
-  base::Vector<ActionParam> action_param_list_;
-
-  AttrUMap updated_attr_map_;
-  base::auto_create_optional<BuiltinAttrMap> builtin_attr_map_;
-  base::auto_create_optional<base::Vector<base::String>> reset_attr_vec_;
-
-  // Configuration set for elements through the LepusRuntime will be stored in
-  // the config variable
-  fml::RefPtr<lepus::Dictionary> config_;
-
-  base::auto_create_optional<std::list<base::closure>> parallel_reduce_tasks_;
-
-  // Need extra list to record tasks that need to be invoked before flush
-  // actions
-  base::auto_create_optional<std::list<base::closure>>
-      parallel_before_flush_action_tasks_;
-
-  std::unique_ptr<LayoutBundle> layout_bundle_;
-
-  base::String part_id_;
-
-  base::auto_create_optional<
-      base::LinearFlatMap<PseudoState, std::unique_ptr<PseudoElement>>>
-      pseudo_elements_;
-
-  std::unique_ptr<ListItemSchedulerAdapter> scheduler_adapter_;
-
-  // nullptr ended array for storing style objects.
-  std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
-      style_objects_{nullptr};
-
-  // For fast style object diff.
-  std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
-      last_style_objects_{nullptr};
-
  protected:
-  ElementContextDelegate* element_context_delegate_{nullptr};
-
-  std::unique_ptr<SLNode> sl_node_{nullptr};
 };
 
 }  // namespace tasm
