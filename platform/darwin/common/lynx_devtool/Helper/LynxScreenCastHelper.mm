@@ -394,7 +394,12 @@ int const ScreenshotPreviewDelayTime = 1500;
   BOOL _paused;
   BOOL _screencast_enabled;
 
-  LynxScreenCapture* _screenCastHelper;
+  int max_height_;
+  int max_width_;
+  int quality_;
+  ScreenshotMode screenshot_mode_;
+
+  LynxScreenCapture* _screenCapture;
 }
 
 - (nonnull instancetype)initWithLynxView:(LynxView*)view
@@ -404,8 +409,8 @@ int const ScreenshotPreviewDelayTime = 1500;
   _paused = NO;
   _screencast_enabled = NO;
 
-  _screenCastHelper = [[LynxScreenCapture alloc] initWithLynxView:view
-                                             withPlatformDelegate:platformDelegate];
+  _screenCapture = [[LynxScreenCapture alloc] initWithLynxView:view
+                                          withPlatformDelegate:platformDelegate];
   return self;
 }
 
@@ -413,55 +418,67 @@ int const ScreenshotPreviewDelayTime = 1500;
                width:(int)max_width
               height:(int)max_height
                 mode:(NSString*)screenshot_mode {
-  __strong typeof(_platformDelegate) platformDelegate = _platformDelegate;
   _screencast_enabled = YES;
+  quality_ = quality;
+  max_width_ = max_width;
+  max_height_ = max_height;
+  screenshot_mode_ = screenshot_mode;
+  if (!_paused) {
+    [self startScreencastInternal];
+  }
+}
+
+- (void)startScreencastInternal {
+  __strong typeof(_platformDelegate) platformDelegate = _platformDelegate;
   [platformDelegate dispatchScreencastVisibilityChanged:YES];
-  [_screenCastHelper startCapture:quality width:max_width height:max_height mode:screenshot_mode];
+  [_screenCapture startCapture:quality_ width:max_width_ height:max_height_ mode:screenshot_mode_];
 }
 
 - (void)stopCasting {
   _screencast_enabled = NO;
-  [_screenCastHelper stopCapture];
+  [self stopScreencastInternal];
+}
+
+- (void)stopScreencastInternal {
+  [_screenCapture stopCapture];
   __strong typeof(_platformDelegate) platformDelegate = _platformDelegate;
   [platformDelegate dispatchScreencastVisibilityChanged:NO];
 }
 
 - (void)continueCasting {
-  if (_screencast_enabled) {
-    if (_paused) {
-      _screenCastHelper.snapshotCache = nil;
-      _paused = NO;
-      __strong typeof(_platformDelegate) platformDelegate = _platformDelegate;
-      [platformDelegate dispatchScreencastVisibilityChanged:YES];
-      [_screenCastHelper triggerNextCapture];
-    }
+  // Decide whether to call startScreencastInternal based on current _screencast_enabled
+  // and the previous _paused state first, then update _paused. This prevents repeated
+  // continueCasting from triggering duplicate startScreencastInternal operations.
+  if (_screencast_enabled && _paused) {
+    [self startScreencastInternal];
   }
+  _paused = NO;
 }
 
 - (void)pauseCasting {
-  if (_screencast_enabled) {
-    if (!_paused) {
-      _paused = YES;
-      __strong typeof(_platformDelegate) platformDelegate = _platformDelegate;
-      [platformDelegate dispatchScreencastVisibilityChanged:NO];
-    }
+  // Decide whether to call stopScreencastInternal based on current _screencast_enabled
+  // and the previous _paused state first, then update _paused. This prevents repeated
+  // pauseCasting from triggering duplicate stopScreencastInternal operations.
+  if (_screencast_enabled && !_paused) {
+    [self stopScreencastInternal];
   }
+  _paused = YES;
 }
 
 - (void)attachLynxView:(nonnull LynxView*)lynxView {
   _lynxView = lynxView;
-  [_screenCastHelper attachLynxView:lynxView];
+  [_screenCapture attachLynxView:lynxView];
 }
 
 - (void)onAckReceived {
-  [_screenCastHelper onAckReceived];
+  [_screenCapture onAckReceived];
 }
 
 - (void)sendCardPreview {
-  IMAGE_CLASS* image = [_screenCastHelper takeSnapshot:_lynxView forCardPreview:true];
-  dispatch_async([[_screenCastHelper class] serialProcessQueue], ^{
-    NSString* cardPreviewData = [self->_screenCastHelper getScreenDataFromImage:image
-                                                                 forCardPreview:true];
+  IMAGE_CLASS* image = [_screenCapture takeSnapshot:_lynxView forCardPreview:true];
+  dispatch_async([[_screenCapture class] serialProcessQueue], ^{
+    NSString* cardPreviewData = [self->_screenCapture getScreenDataFromImage:image
+                                                              forCardPreview:true];
     __strong typeof(_platformDelegate) platformDelegate = self->_platformDelegate;
     [platformDelegate sendCardPreviewData:cardPreviewData];
   });
