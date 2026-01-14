@@ -120,6 +120,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     // FIXME(wangyifei.20010605): remove this config in the next version(remove
     // in 3.6)
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
+    // FIXME(linxs): remove this config in the next version(remove in 3.8)
+    FIX_LIST_CALLBACK_LEAK_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     DISABLE_JS_MODE_STRIP,
@@ -276,6 +278,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_QUICKJS_THREAD_CHECKER,
              "enable_quickjs_thread_checker"},
             {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
+            {Key::FIX_LIST_CALLBACK_LEAK_BUG, "fix_list_callback_leak"},
             {Key::FIX_COLOR_OVERRIDE_INCONSISTENT,
              "fix_color_override_inconsistent"},
             {Key::FORCE_USE_SHADER_REPLACE_BLIT_WORKAROUND_CANVAS,

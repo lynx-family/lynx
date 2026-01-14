@@ -144,6 +144,17 @@ void ListElement::ParallelFlushAsRoot() {
   }
 }
 
+void ListElement::set_will_destroy(bool destroy) {
+  Element::set_will_destroy(destroy);
+  // FIXME(linxs): remove this flag soon
+  if (destroy && element_manager_ &&
+      element_manager_->FixListCallbackLeakFlag()) {
+    component_at_index_ = lepus::Value();
+    enqueue_component_ = lepus::Value();
+    component_at_indexes_ = lepus::Value();
+  }
+}
+
 int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
                                       bool enable_reuse_notification) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ELEMENT_RENDER_COMPONENT,
