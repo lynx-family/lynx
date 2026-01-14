@@ -47,12 +47,18 @@ LYNX_EXTERN_C int lynx_env_connect_devtool(const char* url) {
 }
 
 LYNX_EXTERN_C void lynx_env_enable_logbox(int enable) {
-  // TODO: to be implemented
+#if ENABLE_INSPECTOR
+  lynx::embedder::DevToolEnvEmbedder::GetInstance().SetDevToolSwitch(
+      lynx::tasm::LynxEnv::kLynxEnableLogBox, enable);
+#endif
 }
 
 LYNX_EXTERN_C int lynx_env_is_logbox_enabled() {
-  // TODO: to be implemented
+#if ENABLE_INSPECTOR
+  return lynx::embedder::DevToolEnvEmbedder::GetInstance().IsLogBoxEnabled();
+#else
   return 0;
+#endif
 }
 
 LYNX_EXTERN_C void lynx_env_register_native_module(const char* name,
