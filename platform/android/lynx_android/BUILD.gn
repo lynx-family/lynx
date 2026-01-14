@@ -165,6 +165,10 @@ config("lynx_android_public_config") {
     "-Wno-unused-command-line-argument",
   ]
 
+  if (is_headless) {
+    cflags_cc -= [ "-fno-rtti" ]
+  }
+
   if (is_debug) {
     cflags_cc += [ "-g" ]
     cflags += [ "-O0" ]
