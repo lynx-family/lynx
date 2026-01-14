@@ -46,7 +46,7 @@ void ProcessProtocolMessages(LEPUSDebuggerInfo *info);
 void HandleDebuggerException(LEPUSContext *ctx);
 
 // push protocol message to mesasge queue
-void PushBackQueue(struct queue *q, const char *content);
+void PushBackQueue(LEPUSContext *, const char *content);
 
 // send Debugger.paused event
 // ref:

@@ -49,6 +49,7 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/jsi/ILynxJSIObjectDescriptor.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/jsi/LynxJSIObjectHub.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/LynxModuleFactory.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/webassembly/WebAssemblyBridge.java
     # - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/network/HttpRequest.java
     # - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/network/HttpResponse.java
     # - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/network/LynxHttpRunner.java

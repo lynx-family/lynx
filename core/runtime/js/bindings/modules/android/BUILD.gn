@@ -23,6 +23,7 @@ lynx_core_source_set("modules_android_src") {
     "method_invoker.h",
     "module_factory_android.cc",
     "module_factory_android.h",
+    "webassembly_bridge.cc",
   ]
   public_deps = [
     "../../../../../../third_party/rapidjson",

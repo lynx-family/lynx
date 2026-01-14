@@ -292,7 +292,7 @@ void LepusNGDebugger::ProcessPausedMessages(const std::string& message) {
   LEPUSDebuggerInfo* info = GetDebuggerInfo(context_->GetLepusContext());
   if (!info) return;
   if (message != "") {
-    PushBackQueue(GetDebuggerMessageQueue(info), message.c_str());
+    PushBackQueue(context_->GetLepusContext(), message.c_str());
   }
   ProcessProtocolMessages(info);
 }
