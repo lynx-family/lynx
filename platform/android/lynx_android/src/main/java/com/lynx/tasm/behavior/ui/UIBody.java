@@ -651,6 +651,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         JSONObject uiTree = getUITreeRecursively(rootUI);
         HashMap<String, String> map = new HashMap<String, String>();
         map.put("detail", uiTree.toString());
+        map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mInstanceId));
         TraceEvent.endSection(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.DUMP_UI_TREE_LAYOUT, map);
       }
     }
@@ -659,6 +660,7 @@ public class UIBody extends UIGroup<UIBodyView> {
       JSONObject jsonData = new JSONObject();
       try {
         jsonData.put("name", ui.getClass().getName());
+        jsonData.put("id", ui.getSign());
         jsonData.put("frame",
             new JSONArray(Arrays.asList(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight())));
         List<Object> list = new ArrayList<>();

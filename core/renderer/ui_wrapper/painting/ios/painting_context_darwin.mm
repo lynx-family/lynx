@@ -49,6 +49,7 @@
 #import "LynxUI+Private.h"
 #import "LynxUIOwner+Private.h"
 #if ENABLE_TRACE_PERFETTO
+#import "LynxContext+Internal.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/reader.h"
 #include "third_party/rapidjson/stringbuffer.h"
@@ -67,6 +68,7 @@ rapidjson::Value DumpUITreeLayoutRecursively(LynxUI* root, rapidjson::Document& 
 
   const char* className = class_getName([root class]);
   value.AddMember("name", rapidjson::Value(className, allocator), allocator);
+  value.AddMember("id", rapidjson::Value(static_cast<int64_t>(root.sign)), allocator);
 
   rapidjson::Value frame_array;
   frame_array.SetArray();
@@ -237,8 +239,10 @@ void PaintingContextDarwinRef::TraceUITreeLayout(LynxUIOwner* uiOwner) {
     dumped_document.Accept(writer);
     const char* dump_str = buffer.GetString();
 
-    TRACE_EVENT_END(LYNX_TRACE_CATEGORY, [&dump_str](lynx::perfetto::EventContext ctx) {
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY, [&dump_str, uiOwner](lynx::perfetto::EventContext ctx) {
       ctx.event()->add_debug_annotations("detail", std::string(dump_str));
+      ctx.event()->add_debug_annotations(
+          INSTANCE_ID, std::to_string([[[uiOwner uiContext] lynxContext] instanceId]));
     });
   }
 #endif
