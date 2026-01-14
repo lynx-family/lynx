@@ -53,6 +53,11 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void ReleaseSelf() const override { delete this; }
 
+  void Destroy() {
+    events_.reset();
+    gesture_detectors_.reset();
+  }
+
   void OnStyleChange() override;
 
   void AddClass(const base::String& clazz) {
