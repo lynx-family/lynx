@@ -309,6 +309,14 @@ std::vector<float> Element::GetRectToLynxView() {
   return catalyzer_->GetRectToLynxView(this);
 }
 
+void Element::set_will_destroy(bool destroy) {
+  will_destroy_ = destroy;
+  if (destroy && data_model_ && element_manager_ &&
+      element_manager_->FixListCallbackLeakFlag()) {
+    data_model_->Destroy();
+  }
+}
+
 void Element::Invoke(
     const std::string& method, const pub::Value& params,
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {

@@ -996,7 +996,7 @@ class Element : public lepus::RefCounted,
 
   virtual void FlushProps() = 0;
 
-  virtual void set_will_destroy(bool destroy) { will_destroy_ = destroy; }
+  virtual void set_will_destroy(bool destroy);
 
   bool will_destroy() { return will_destroy_; }
 
