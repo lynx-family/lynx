@@ -221,15 +221,18 @@ public abstract class LynxObserverManager {
   }
 
   public void isLynxViewChanged() {
-    RectF lynxViewRect = getBoundsOnScreenOfLynxBaseUI(mRootBodyRef.get());
-
-    if (!lynxViewRect.equals(mLynxViewOldRect) && mHandler != null && mIntervalRunnable != null) {
-      mHandler.post(mIntervalRunnable);
-    }
-
     if (mIntervalForLynxView != 0 && mHandlerForLynxView != null
         && mIntervalRunnableForLynxView != null) {
       mHandlerForLynxView.postDelayed(mIntervalRunnableForLynxView, mIntervalForLynxView);
+    }
+
+    if (mRootBodyRef.get() == null || !mRootViewPainted) {
+      return;
+    }
+
+    RectF lynxViewRect = getBoundsOnScreenOfLynxBaseUI(mRootBodyRef.get());
+    if (!lynxViewRect.equals(mLynxViewOldRect) && mHandler != null && mIntervalRunnable != null) {
+      mHandler.post(mIntervalRunnable);
     }
     mLynxViewOldRect = lynxViewRect;
   }
