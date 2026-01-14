@@ -624,18 +624,29 @@
 
 - (NSDictionary *)calculateLastLineGlyphWidth:(NSRange)lastLineGlyphRange {
   NSMutableDictionary *glyphWidthDic = [[NSMutableDictionary alloc] init];
+  NSMutableDictionary *glyphLocationDic = [[NSMutableDictionary alloc] init];
   NSMutableSet *locationSet = [[NSMutableSet alloc] init];
   NSMutableArray *glyphLocationArray = [[NSMutableArray alloc] init];
+  CGFloat previousLocationX = 0.f;
+  BOOL hasPreviousLocation = NO;
   NSUInteger glyphIndex = lastLineGlyphRange.location;
   while (glyphIndex < NSMaxRange(lastLineGlyphRange)) {
     NSRange actualGlyphRange;
     [_layoutManager characterRangeForGlyphRange:NSMakeRange(glyphIndex, 1)
                                actualGlyphRange:&actualGlyphRange];
     CGPoint location = [_layoutManager locationForGlyphAtIndex:actualGlyphRange.location];
-    if (![locationSet containsObject:@(location.x)]) {
-      [glyphWidthDic setObject:@(location.x) forKey:@(glyphIndex)];
-      [locationSet addObject:@(location.x)];
-      [glyphLocationArray addObject:@(location.x)];
+    NSNumber *locationNumber = @(location.x);
+    if (hasPreviousLocation && location.x == previousLocationX) {
+      // Zero-width glyph cluster at the same position as previous cluster.
+      glyphWidthDic[@(glyphIndex)] = @0;
+    } else {
+      glyphLocationDic[@(glyphIndex)] = locationNumber;
+      if (![locationSet containsObject:locationNumber]) {
+        [locationSet addObject:locationNumber];
+        [glyphLocationArray addObject:locationNumber];
+      }
+      previousLocationX = location.x;
+      hasPreviousLocation = YES;
     }
     glyphIndex = NSMaxRange(actualGlyphRange);
   }
@@ -646,8 +657,8 @@
   [glyphLocationArray addObject:@(lastLineRect.origin.x + lastLineRect.size.width)];
   [glyphLocationArray sortUsingSelector:@selector(compare:)];
   NSRange arrayRange = NSMakeRange(0, glyphLocationArray.count);
-  for (NSNumber *key in glyphWidthDic.allKeys) {
-    id location = glyphWidthDic[key];
+  for (NSNumber *key in glyphLocationDic.allKeys) {
+    id location = glyphLocationDic[key];
     NSUInteger lastEqualIndex =
         [glyphLocationArray indexOfObject:location
                             inSortedRange:arrayRange

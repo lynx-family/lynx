@@ -15,6 +15,7 @@ import com.lynx.tasm.behavior.shadow.LayoutNode;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.testing.base.TestingUtils;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -107,5 +108,92 @@ public class TextShadowNodeTest {
     textShadowNode.measure(layoutNode, 300.f, MeasureMode.EXACTLY, 60.2f, MeasureMode.EXACTLY);
     Layout layout = textShadowNode.getTextRenderer().getTextLayout();
     Assert.assertEquals(layout.getLineCount(), 2);
+  }
+
+  @Test
+  public void testCalculateLastLineGlyphWidthWithZeroWidthSpace() throws Exception {
+    RawTextShadowNode rawTextShadowNode = new RawTextShadowNode();
+    JavaOnlyMap map = new JavaOnlyMap();
+    String text = "A\u200BB";
+    map.put("text", text);
+    rawTextShadowNode.setText(new DynamicFromMap(map, "text"));
+    textShadowNode.addChildAt(rawTextShadowNode, 0);
+
+    textShadowNode.setTextMaxLine("1");
+    textShadowNode.onLayoutBefore();
+    LayoutNode layoutNode = mock(LayoutNode.class);
+    textShadowNode.measure(
+        layoutNode, 300.f, MeasureMode.EXACTLY, MeasureUtils.UNDEFINED, MeasureMode.UNDEFINED);
+    Layout layout = textShadowNode.getTextRenderer().getTextLayout();
+
+    int lastLineIndex = layout.getLineCount() - 1;
+    int lastLineStartCharIndex = layout.getLineStart(lastLineIndex);
+    int lastLineEndCharIndex = layout.getLineEnd(lastLineIndex);
+
+    java.lang.reflect.Method method = TextShadowNode.class.getDeclaredMethod(
+        "calculateLastLineGlyphWidth", int.class, int.class, int.class, Layout.class);
+    method.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<Integer, Float> lastLineGlyphWidthMap = (Map<Integer, Float>) method.invoke(
+        textShadowNode, lastLineIndex, lastLineStartCharIndex, lastLineEndCharIndex, layout);
+
+    int zeroWidthCharIndex = text.indexOf('\u200B');
+    Assert.assertTrue(zeroWidthCharIndex >= 0);
+
+    Assert.assertTrue(lastLineGlyphWidthMap.containsKey(zeroWidthCharIndex));
+    Assert.assertEquals(0.f, lastLineGlyphWidthMap.get(zeroWidthCharIndex), 0.0f);
+
+    // Neighbouring visible characters should still have positive width.
+    int indexOfA = text.indexOf('A');
+    int indexOfB = text.indexOf('B');
+    Assert.assertTrue(lastLineGlyphWidthMap.get(indexOfA) > 0.f);
+    Assert.assertTrue(lastLineGlyphWidthMap.get(indexOfB) > 0.f);
+  }
+
+  @Test
+  public void testCalculateLastLineGlyphWidthWithZeroWidthJoinerAtEnd() throws Exception {
+    RawTextShadowNode rawTextShadowNode = new RawTextShadowNode();
+    JavaOnlyMap map = new JavaOnlyMap();
+    String text = "ABC\u200D";
+    map.put("text", text);
+    rawTextShadowNode.setText(new DynamicFromMap(map, "text"));
+    textShadowNode.addChildAt(rawTextShadowNode, 0);
+
+    textShadowNode.setTextMaxLine("1");
+    textShadowNode.onLayoutBefore();
+    LayoutNode layoutNode = mock(LayoutNode.class);
+    textShadowNode.measure(
+        layoutNode, 300.f, MeasureMode.EXACTLY, MeasureUtils.UNDEFINED, MeasureMode.UNDEFINED);
+    Layout layout = textShadowNode.getTextRenderer().getTextLayout();
+
+    int lastLineIndex = layout.getLineCount() - 1;
+    int lastLineStartCharIndex = layout.getLineStart(lastLineIndex);
+    int lastLineEndCharIndex = layout.getLineEnd(lastLineIndex);
+
+    java.lang.reflect.Method method = TextShadowNode.class.getDeclaredMethod(
+        "calculateLastLineGlyphWidth", int.class, int.class, int.class, Layout.class);
+    method.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<Integer, Float> lastLineGlyphWidthMap = (Map<Integer, Float>) method.invoke(
+        textShadowNode, lastLineIndex, lastLineStartCharIndex, lastLineEndCharIndex, layout);
+
+    int zeroWidthCharIndex = text.indexOf('\u200D');
+    Assert.assertTrue(zeroWidthCharIndex >= 0);
+
+    Assert.assertTrue(lastLineGlyphWidthMap.containsKey(zeroWidthCharIndex));
+    Assert.assertEquals(0.f, lastLineGlyphWidthMap.get(zeroWidthCharIndex), 0.0f);
+
+    // Other characters in the line should still have positive width.
+    for (int i = 0; i < text.length() - 1; i++) {
+      Assert.assertTrue(lastLineGlyphWidthMap.get(i) > 0.f);
+    }
+
+    // Sum of glyph widths should be consistent with line width.
+    float sumOfGlyphWidth = 0.f;
+    for (Map.Entry<Integer, Float> entry : lastLineGlyphWidthMap.entrySet()) {
+      sumOfGlyphWidth += entry.getValue();
+    }
+    float lineWidth = layout.getLineRight(lastLineIndex) - layout.getLineLeft(lastLineIndex);
+    Assert.assertTrue(Math.abs(sumOfGlyphWidth - lineWidth) <= 1.0f);
   }
 }

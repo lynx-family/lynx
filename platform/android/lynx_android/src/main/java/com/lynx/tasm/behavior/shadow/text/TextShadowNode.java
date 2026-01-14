@@ -540,18 +540,28 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
   private Map<Integer, Float> calculateLastLineGlyphWidth(
       int lastLineIndex, int lastLineStartCharIndex, int lastLineEndCharIndex, Layout layout) {
     Map<Integer, Float> lastLineGlyphIndexWidthMap = new HashMap<>();
+    Map<Integer, Float> charIndexToPositionMap = new HashMap<>();
     ArrayList<Float> charPositionList = new ArrayList<>();
     charPositionList.add(layout.getLineLeft(lastLineIndex));
     charPositionList.add(layout.getLineRight(lastLineIndex));
+    float previousCharPosition = 0.f;
+    boolean hasPreviousPosition = false;
     for (int i = lastLineStartCharIndex; i < lastLineEndCharIndex; i++) {
       if (!Character.isHighSurrogate(layout.getText().charAt(i))) {
         float charPosition = layout.getSecondaryHorizontal(i);
-        charPositionList.add(charPosition);
-        lastLineGlyphIndexWidthMap.put(i, charPosition);
+        if (hasPreviousPosition && charPosition == previousCharPosition) {
+          // Zero-width character at the same horizontal position as previous character.
+          lastLineGlyphIndexWidthMap.put(i, 0.f);
+        } else {
+          charPositionList.add(charPosition);
+          charIndexToPositionMap.put(i, charPosition);
+          previousCharPosition = charPosition;
+          hasPreviousPosition = true;
+        }
       }
     }
     Collections.sort(charPositionList);
-    for (Map.Entry<Integer, Float> entry : lastLineGlyphIndexWidthMap.entrySet()) {
+    for (Map.Entry<Integer, Float> entry : charIndexToPositionMap.entrySet()) {
       int charIndex = entry.getKey();
       float charInsertPosition = entry.getValue();
       int indexInOrderArray = Collections.binarySearch(charPositionList, charInsertPosition);
