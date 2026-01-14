@@ -54,6 +54,18 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void ReleaseSelf() const override { delete this; }
 
+  void Destroy() {
+    if (events_.has_value()) {
+      events_->static_events_.clear();
+      events_->lepus_events_.clear();
+      events_->global_bind_events_.clear();
+    }
+
+    if (gesture_detectors_.has_value()) {
+      gesture_detectors_->clear();
+    }
+  }
+
   void OnStyleChange() override;
 
   void AddClass(const base::String& clazz) {
