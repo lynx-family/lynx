@@ -1101,6 +1101,8 @@ class ElementManager : public ElementContextDelegate,
     return fix_radon_inline_convert_bug_;
   }
 
+  bool FixListCallbackLeakFlag() const { return fix_list_callback_leak_flag_; }
+
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
   inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
@@ -1290,6 +1292,8 @@ class ElementManager : public ElementContextDelegate,
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_property_based_simple_style_{false};
+
+  bool fix_list_callback_leak_flag_{true};
 
   bool has_viewport_ready_{false};
   bool is_memory_collecting_{false};

@@ -85,6 +85,8 @@ ElementManager::ElementManager(
   // be removed after verifying the bugfix online.
   fix_new_animator_flush_bug_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::FIX_NEW_ANIMATOR_FLUSH_BUG, true);
+  fix_list_callback_leak_flag_ = LynxEnv::GetInstance().GetBoolEnv(
+      LynxEnv::Key::FIX_LIST_CALLBACK_LEAK_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   fix_radon_inline_convert_bug_ =
