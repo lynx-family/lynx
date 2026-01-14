@@ -50,6 +50,10 @@ GpuTarget CreateGpuTarget(const RasterCache::Context& context, int width,
   }
   return {surface->getCanvas(), surface};
 #else
+  // TODO(Jinsong): Support raster cache for skity software rendering.
+  if (!context.gr_context) {
+    return {nullptr, nullptr};
+  }
   skity::GPURenderTargetDescriptor desc;
   desc.width = width;
   desc.height = height;
