@@ -734,7 +734,8 @@ bool QuickContext::ExecuteBinaryInternal(Value* ret_val) {
   if (!gc_flag_) LEPUS_FreeValue(context(), global);
   if (ret_val) {
     *ret_val = MK_JS_LEPUS_VALUE(lepus_context_, ret);
-  } else if (!gc_flag_) {
+  }
+  if (!gc_flag_) {
     LEPUS_FreeValue(context(), ret);
   }
   return true;
