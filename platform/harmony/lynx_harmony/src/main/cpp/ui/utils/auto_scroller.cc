@@ -48,8 +48,8 @@ void AutoScroller::AutoScrollInternal(int64_t frame_start_time_ns,
   double dt =
       static_cast<double>(frame_start_time_ns - last_frame_start_time_ns_) /
       1e9;
-  if (dt <= 0.0) {
-    dt = 1.0 / 60.0;
+  if (dt < 0.0) {
+    dt = 0.0;
   }
   last_frame_start_time_ns_ = frame_start_time_ns;
   if (scroll_container_->IsHorizontal()) {
