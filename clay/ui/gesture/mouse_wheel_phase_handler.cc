@@ -80,7 +80,8 @@ void MouseWheelPhaseHandler::SendSyntheticWheelEventWithPhaseEnd() {
 
 bool MouseWheelPhaseHandler::IsWithinSlopRegion(
     const PointerEvent& mouse_hover_event) {
-  return mouse_hover_event.pan_delta.distance() <=
+  FloatPoint initial_pointer_position = initial_mouse_wheel_event_.position;
+  return (mouse_hover_event.position - initial_pointer_position).distance() <=
          kMouseWheelLatchingSlopDistance;
 }
 

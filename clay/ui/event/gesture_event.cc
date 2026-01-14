@@ -21,6 +21,7 @@ std::string PointerEvent::ToString() const {
   ss << "PointerEvent{" << c_point_event_type_string[static_cast<int>(type)]
      << " pointer_id=" << pointer_id << " Position=" << position.x() << ","
      << position.y() << " Delta=" << delta.width() << "," << delta.height()
+     << " PanDelta=" << pan_delta.width() << "," << pan_delta.height()
      << " ScrollDeltaX=" << scroll_delta_x << " ScrollDeltaY=" << scroll_delta_y
      << "}";
   return ss.str();
