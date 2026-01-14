@@ -24,6 +24,12 @@ public class TraceEvent {
   private static boolean sSystemTraceEnabled = false;
 
   private static String getRandomColor() {
+    if (TraceController.isNativeTracingOnly()) {
+      return DEFAULT_INSTANT_COLOR;
+    }
+    if (!enableTrace() || !isTracingStarted()) {
+      return DEFAULT_INSTANT_COLOR;
+    }
     try {
       StringBuilder result = new StringBuilder();
       result.append('#');
