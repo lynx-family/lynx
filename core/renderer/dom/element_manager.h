@@ -1120,6 +1120,8 @@ class ElementManager : public ElementContextDelegate {
     return fix_stacking_context_dirty_flag_;
   }
 
+  bool FixListCallbackLeakFlag() const { return fix_list_callback_leak_flag_; }
+
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
   inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
@@ -1276,6 +1278,8 @@ class ElementManager : public ElementContextDelegate {
   bool enable_layout_in_element_mode_{false};
 
   bool enable_property_based_simple_style_{false};
+
+  bool fix_list_callback_leak_flag_{true};
 
   bool has_viewport_ready_{false};
   bool is_memory_collecting_{false};

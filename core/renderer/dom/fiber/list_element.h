@@ -159,6 +159,8 @@ class ListElement : public FiberElement,
     ssr_helper_ = std::move(ssr_helper);
   }
 
+  void set_will_destroy(bool destroy) override;
+
   // ssr hydrate.
   void Hydrate();
   void HydrateFinish();
