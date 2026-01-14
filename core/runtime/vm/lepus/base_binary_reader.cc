@@ -61,8 +61,8 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
 
   // switch info
   const char* version = compile_options_.target_sdk_version_.c_str();
-  if (version &&
-      lynx::tasm::Config::IsHigherOrEqual(version, FEATURE_CONTROL_VERSION_2)) {
+  if (version && lynx::tasm::Config::IsHigherOrEqual(
+                     version, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION)) {
     DECODE_COMPACT_U32(switch_info_size);
     function->switches_.reserve(switch_info_size);
     for (size_t i = 0; i < switch_info_size; ++i) {

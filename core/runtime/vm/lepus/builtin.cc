@@ -71,7 +71,7 @@ void RegisterBuiltin(Context* ctx) {
   RegisterJSONAPI(ctx);
   if (lynx::tasm::Config::IsHigherOrEqual(
           reinterpret_cast<VMContext*>(ctx)->GetSdkVersion(),
-          FEATURE_CONTROL_VERSION_2)) {
+          FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION)) {
     RegisterLepusDateAPI(ctx);
     RegisterFunctionAPI(ctx);
     RegisterTableAPI(ctx);

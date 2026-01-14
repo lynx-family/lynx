@@ -87,8 +87,8 @@ class AstLineScope {
   } while (0);
 
 CodeGenerator::CodeGenerator(VMContext* context) : context_(context) {
-  support_closure_ = tasm::Config::IsHigherOrEqual(context_->sdk_version_,
-                                                   FEATURE_CONTROL_VERSION_2);
+  support_closure_ = tasm::Config::IsHigherOrEqual(
+      context_->sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION);
   support_block_closure_ =
       tasm::Config::IsHigherOrEqual(context_->sdk_version_, LYNX_VERSION_2_6);
 }
@@ -100,7 +100,7 @@ CodeGenerator::CodeGenerator(VMContext* context,
       function_number_(-1),
       block_number_(-1) {
   support_closure_ = lynx::tasm::Config::IsHigherOrEqual(
-      context_->sdk_version_, FEATURE_CONTROL_VERSION_2);
+      context_->sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION);
   support_block_closure_ = lynx::tasm::Config::IsHigherOrEqual(
       context_->sdk_version_, LYNX_VERSION_2_6);
 }

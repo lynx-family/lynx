@@ -161,7 +161,8 @@ void ContextBinaryWriter::SerializeFunction(fml::RefPtr<Function> function) {
       !compile_options_.target_sdk_version_.size()
           ? MIN_SUPPORTED_LYNX_VERSION
           : base::Version(compile_options_.target_sdk_version_);
-  if (lynx::tasm::Config::IsHigherOrEqual(version, FEATURE_CONTROL_VERSION_2)) {
+  if (lynx::tasm::Config::IsHigherOrEqual(
+          version, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION)) {
     WriteCompactU32(0);
   }
 

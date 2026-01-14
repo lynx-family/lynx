@@ -33,10 +33,10 @@
 #define FEATURE_CONTROL_VERSION tasm::V_1_1
 #define FEATURE_RADON_VERSION tasm::V_1_5
 
-// feature implemented in feature_2_control_version:
+// feature implemented in 1.4:
 // 1. closure
 // 2. switch
-#define FEATURE_CONTROL_VERSION_2 tasm::V_1_4
+#define FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION tasm::V_1_4
 #define FEATURE_CSS_EXTERNAL_CLASS_VERSION tasm::V_1_6
 // TODO(liyanbo): Only when all css parser in C++,can open this feature.
 #define FEATURE_CSS_VALUE_VERSION tasm::V_2_0

@@ -225,8 +225,8 @@ void SemanticAnalysis::Visit(BinaryExprAST* ast, void* data) {
   ast->right()->Accept(this, &r_expr_data);
 
   ExprData* expr_data = static_cast<ExprData*>(data);
-  if (lynx::tasm::Config::IsHigherOrEqual(sdk_version_,
-                                          FEATURE_CONTROL_VERSION_2) == false) {
+  if (lynx::tasm::Config::IsHigherOrEqual(
+          sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION) == false) {
     int ast_token_ = ast->op_token().token_;
     if (ast_token_ == '&' || ast_token_ == '|' || ast_token_ == '^') {
       throw CompileException("The current Sdk Version is less than 1.4,",
@@ -514,8 +514,8 @@ void SemanticAnalysis::Visit(CaseStatementAST* ast, void* data) {
 }
 
 void SemanticAnalysis::Visit(AssignStatement* ast, void* data) {
-  if (lynx::tasm::Config::IsHigherOrEqual(sdk_version_,
-                                          FEATURE_CONTROL_VERSION_2) == false) {
+  if (lynx::tasm::Config::IsHigherOrEqual(
+          sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION) == false) {
     int ast_token_ = ast->assignment().token_;
     if (ast_token_ == Token_ASSIGN_BIT_AND ||
         ast_token_ == Token_ASSIGN_BIT_OR ||

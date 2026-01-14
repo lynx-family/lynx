@@ -236,8 +236,8 @@ void Scanner::ParseId(Token& token) {
     token = Token(line_, column_, Token_Id, std::move(buffer));
     return;
   }
-  if (lynx::tasm::Config::IsHigherOrEqual(sdk_version_,
-                                          FEATURE_CONTROL_VERSION_2) == false) {
+  if (lynx::tasm::Config::IsHigherOrEqual(
+          sdk_version_, FEATURE_LEPUS_CLOSURE_AND_SWITCH_VERSION) == false) {
     if (token_type == Token_Try || token_type == Token_Throw ||
         token_type == Token_Finally || token_type == Token_Catch) {
       token = Token(line_, column_, token_type, std::move(buffer));
