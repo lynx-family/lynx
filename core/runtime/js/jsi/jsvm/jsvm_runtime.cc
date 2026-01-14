@@ -779,9 +779,13 @@ bool JSVMRuntime::instanceOf(const piper::Object& o, const piper::Function& f) {
 }
 
 void JSVMRuntime::RequestGC() {
-  LOGI("RequestGC");
+  LOGI("JSVM RequestGC");
+  // TODO(yangguangzhao.solace): Wait for Harmony SDK support before passing the
+  // real enum value
+  // JSVM_MemoryPressureLevel::JSVM_MEMORY_PRESSURE_LEVEL_LOW_MEMORY; for now,
+  // cast int 3 to JSVM_MemoryPressureLevel enum value for use
   JSVM_CALL(this, OH_JSVM_MemoryPressureNotification, getEnv(),
-            JSVM_MemoryPressureLevel::JSVM_MEMORY_PRESSURE_LEVEL_CRITICAL);
+            static_cast<JSVM_MemoryPressureLevel>(3));
 }
 
 void JSVMRuntime::InitInspector(
