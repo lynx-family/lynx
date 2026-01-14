@@ -14,7 +14,6 @@
 
 namespace lynx {
 namespace runtime {
-class LynxRuntime;
 
 // run on js thread
 class AnimationFrameTaskHandler {
@@ -51,11 +50,8 @@ class AnimationFrameTaskHandler {
 // run on js thread
 class LynxApiHandler {
  public:
-  LynxApiHandler(LynxRuntime* rt);
+  LynxApiHandler() = default;
   ~LynxApiHandler() = default;
-
- private:
-  [[maybe_unused]] LynxRuntime* const rt_;
 };
 
 }  // namespace runtime

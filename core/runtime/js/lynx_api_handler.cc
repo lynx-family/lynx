@@ -101,7 +101,5 @@ void AnimationFrameTaskHandler::FrameTask::Execute(piper::Runtime* rt,
 
 void AnimationFrameTaskHandler::FrameTask::Cancel() { cancelled_ = true; }
 
-LynxApiHandler::LynxApiHandler(LynxRuntime* rt) : rt_(rt) {}
-
 }  // namespace runtime
 }  // namespace lynx

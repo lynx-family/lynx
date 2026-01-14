@@ -30,9 +30,6 @@
 
 namespace lynx {
 class DarwinEmbedder;
-namespace runtime {
-class LynxRuntime;
-}  // namespace runtime
 
 namespace piper {
 class ModuleFactoryDarwin : public NativeModuleFactory {

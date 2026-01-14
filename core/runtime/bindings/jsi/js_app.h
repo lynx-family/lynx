@@ -36,7 +36,6 @@
 namespace lynx {
 
 namespace runtime {
-class LynxRuntime;
 class LynxApiHandler;
 class AnimationFrameTaskHandler;
 }  // namespace runtime

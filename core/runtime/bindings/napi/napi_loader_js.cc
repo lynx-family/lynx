@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
@@ -22,8 +21,10 @@ using Module = NapiEnvironment::Module;
 NapiLoaderJS::NapiLoaderJS(const std::string& id) : id_(id) {}
 
 #if ENABLE_NAPI_BINDING
-NapiLoaderJS::NapiLoaderJS(const std::string& id, runtime::LynxRuntime* runtime)
-    : id_(id), runtime_(runtime) {}
+NapiLoaderJS::NapiLoaderJS(
+    const std::string& id,
+    NapiLoaderJS::RuntimeReadyHandler runtime_ready_handler)
+    : id_(id), runtime_ready_handler_(std::move(runtime_ready_handler)) {}
 #endif
 
 Napi::Value TriggerGC(const Napi::CallbackInfo& info) {
@@ -176,8 +177,8 @@ void NapiLoaderJS::LoadInstantModules(Napi::Object& lynx) {
 
 void NapiLoaderJS::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
 #if ENABLE_NAPI_BINDING
-  if (runtime_) {
-    runtime_->NotifyRuntimeReady(env, lynx);
+  if (runtime_ready_handler_) {
+    runtime_ready_handler_(env, lynx);
   }
 #endif
 }

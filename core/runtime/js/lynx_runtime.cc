@@ -196,7 +196,7 @@ void LynxRuntime::Init(
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, CREATE_AND_LOAD_APP);
   app_ = js_executor_->createNativeAppInstance(
-      GetRuntimeId(), delegate_.get(), std::make_unique<LynxApiHandler>(this),
+      GetRuntimeId(), delegate_.get(), std::make_unique<LynxApiHandler>(),
       page_options_);
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
@@ -324,8 +324,11 @@ void LynxRuntime::UpdateState(State state) {
 #if ENABLE_NAPI_BINDING
 void LynxRuntime::PrepareNapiEnvironment() {
   napi_environment_ = std::make_unique<piper::NapiEnvironment>(
-      std::make_unique<piper::NapiLoaderJS>(std::to_string(GetRuntimeId()),
-                                            this));
+      std::make_unique<piper::NapiLoaderJS>(
+          std::to_string(GetRuntimeId()),
+          [this](Napi::Env env, Napi::Object& lynx) {
+            this->NotifyRuntimeReady(env, lynx);
+          }));
   auto proxy = piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
   LOGI("napi attaching with proxy: " << proxy.get()
                                      << ", id: " << GetRuntimeId());

@@ -14,9 +14,6 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace runtime {
-class LynxRuntime;
-}
 namespace piper {
 class Runtime;
 

@@ -12,6 +12,9 @@
 #include "core/shell/native_facade.h"
 
 namespace lynx {
+namespace runtime {
+class LynxRuntime;
+}
 namespace tasm {
 
 class WhiteBoardRuntimeDelegate : public WhiteBoardDelegate {
