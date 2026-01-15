@@ -32,8 +32,8 @@
 #include "core/value_wrapper/value_impl_piper.h"
 
 #if ENABLE_NAPI_BINDING
-#include "core/runtime/bindings/napi/napi_environment.h"
-#include "core/runtime/bindings/napi/napi_loader_js.h"
+#include "core/runtime/common/napi/napi_environment.h"
+#include "core/runtime/js/napi/napi_loader_js.h"
 #endif
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
 

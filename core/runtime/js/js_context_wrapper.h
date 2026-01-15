@@ -12,7 +12,7 @@
 
 #include "core/base/lynx_export.h"
 #include "core/runtime/bindings/jsi/global.h"
-#include "core/runtime/bindings/napi/napi_environment.h"
+#include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/runtime/js/runtime_lifecycle_observer_impl.h"

@@ -19,7 +19,7 @@ shared_library("windows") {
   ]
   if (enable_napi_binding) {
     deps += [
-      "../../core/runtime/bindings/napi:napi_binding_quickjs",
+      "../../core/runtime/common/napi:napi_binding_quickjs",
       "../../third_party/napi:env",
       "../../third_party/napi:quickjs",
       "../../third_party/quickjs",

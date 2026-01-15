@@ -4,9 +4,9 @@
 
 #include "core/value_wrapper/napi/value_impl_napi_primjs.h"
 
-#include "core/runtime/bindings/napi/napi_environment.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/common/napi/napi_environment.h"
+#include "core/runtime/common/napi/napi_runtime_proxy.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

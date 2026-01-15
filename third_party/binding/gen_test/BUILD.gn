@@ -16,9 +16,9 @@ lynx_core_source_set("test_module") {
   sources = [
     "jsbridge/bindings/gen_test/napi_async_object.cc",
     "jsbridge/bindings/gen_test/napi_async_object.h",
-    "jsbridge/bindings/gen_test/napi_gen_test_command_buffer_gen.cc",
     "jsbridge/bindings/gen_test/napi_gen_test_command_buffer.cc",
     "jsbridge/bindings/gen_test/napi_gen_test_command_buffer.h",
+    "jsbridge/bindings/gen_test/napi_gen_test_command_buffer_gen.cc",
     "jsbridge/bindings/gen_test/napi_test_context.cc",
     "jsbridge/bindings/gen_test/napi_test_context.h",
     "jsbridge/bindings/gen_test/napi_test_element.cc",
@@ -34,25 +34,27 @@ lynx_core_source_set("test_module") {
     ":test_module_config",
     "../../napi:napi_config",
   ]
-  deps = [ "../../../core/runtime/bindings/napi:napi_binding_core" ]
+  deps = [
+    "../../../core/runtime/common/napi:napi_binding_core",
+    "../../../core/runtime/js/napi:napi_loader_js",
+  ]
 }
 
 unittest_exec("binding_generator_unittests_exec") {
   sources = [ "binding_generator_unittest.cc" ]
 
   deps = [
+    ":binding_unittest_sources",
     ":test_module",
     "../../../core/base",
-    "../../../core/runtime/bindings/napi:napi_binding_quickjs",
     "../../../core/renderer/dom:dom",
+    "../../../core/runtime/common/napi:napi_binding_quickjs",
     "../../napi:env",
     "../../napi:quickjs",
-    ":binding_unittest_sources",
   ]
 }
 
 copy("binding_unittest_sources") {
   sources = [ "jsbridge/bindings/gen_test/testContext.ts" ]
-  outputs =
-      [ "$root_out_dir/third_party/binding/gen_test/jsbridge/bindings/gen_test/testContext.ts" ]
+  outputs = [ "$root_out_dir/third_party/binding/gen_test/jsbridge/bindings/gen_test/testContext.ts" ]
 }

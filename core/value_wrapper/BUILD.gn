@@ -75,7 +75,7 @@ unittest_set("value_wrapper_testset") {
     ":value_wrapper",
     "../../third_party/quickjs",
     "../base",
-    "../runtime/bindings/napi:napi_binding_quickjs",
+    "../runtime/common/napi:napi_binding_quickjs",
   ]
   deps += [
     "../../third_party/napi:env",
