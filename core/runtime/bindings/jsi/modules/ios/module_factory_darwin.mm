@@ -19,7 +19,7 @@
 
 namespace lynx {
 namespace piper {
-ModuleFactoryDarwin::ModuleFactoryDarwin() : parent(nullptr), context(nil) {
+ModuleFactoryDarwin::ModuleFactoryDarwin() : parent(nullptr) {
   modulesClasses_ = [[LynxThreadSafeDictionary alloc] init];
   extra_ = [NSMutableDictionary dictionary];
   methodAuthBlocks_ = [[NSMutableArray alloc] init];
@@ -27,43 +27,52 @@ ModuleFactoryDarwin::ModuleFactoryDarwin() : parent(nullptr), context(nil) {
 }
 
 ModuleFactoryDarwin::~ModuleFactoryDarwin() {
+  // destroy moduleCreator
+  if (module_creator_ != nullptr) {
+    module_creator_->Destroy();
+  }
   LOGI("NativeModule: lynx module_factory_darwin destroy: "
        << reinterpret_cast<std::uintptr_t>(this));
+}
+
+void ModuleFactoryDarwin::Bind(std::unique_ptr<ModuleCreatorDarwin> module_creator) {
+  module_creator_ = std::move(module_creator);
+}
+
+void ModuleFactoryDarwin::SetContextFinder(
+    const std::shared_ptr<LynxContextFinderDarwin> &context_finder) {
+  if (module_creator_) {
+    module_creator_->SetContextFinder(context_finder);
+  }
 }
 
 std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::string &name) {
   NSString *str = [NSString stringWithCString:name.c_str()
                                      encoding:[NSString defaultCStringEncoding]];
+  if (!module_creator_) {
+    LOGE("NativeModule: ModuleFactoryDarwin::CreateModule called without ModuleCreatorDarwin "
+         "bound, name: "
+         << name);
+    return std::shared_ptr<LynxNativeModule>(nullptr);
+  }
+
   LynxModuleWrapper *wrapper = modulesClasses_[str];
   if (wrapper == nil && parent) {
     wrapper = parent->moduleWrappers()[str];
   }
-  Class<LynxModule> aClass = wrapper.moduleClass;
-  id param = wrapper.param;
-  if (aClass != nil) {
-    id<LynxModule> instance = [(Class)aClass alloc];
-    if ([instance conformsToProtocol:@protocol(LynxContextModule)]) {
-      if (param != nil && [instance respondsToSelector:@selector(initWithLynxContext:WithParam:)]) {
-        instance = [(id<LynxContextModule>)instance initWithLynxContext:context WithParam:param];
-      } else {
-        instance = [(id<LynxContextModule>)instance initWithLynxContext:context];
-      }
-    } else if (param != nil && [instance respondsToSelector:@selector(initWithParam:)]) {
-      instance = [instance initWithParam:param];
-    } else {
-      instance = [instance init];
-    }
+
+  // create lynx module instance
+  id<LynxModule> instance = module_creator_->Create(str, wrapper);
+  if (instance != nil) {
     if (lynxModuleExtraData_ && [instance respondsToSelector:@selector(setExtraData:)]) {
       [instance setExtraData:lynxModuleExtraData_];
     }
+    // create lynx module darwin
     std::shared_ptr<lynx::piper::LynxModuleDarwin> moduleDarwin =
         std::make_shared<lynx::piper::LynxModuleDarwin>(instance);
     moduleDarwin->SetMethodAuth(methodAuthBlocks_);
     moduleDarwin->SetMethodSession(methodSessionBlocks_);
-    NSString *url = [context getLynxView].url;
-    if (context && url) {
-      moduleDarwin->SetSchema(base::SafeStringConvert([url UTF8String]));
-    }
+    moduleDarwin->SetContextFinder(module_creator_->CurrentContextFinder());
     if (wrapper.namescope) {
       moduleDarwin->SetMethodScope(wrapper.namescope);
     }
@@ -75,7 +84,7 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::s
       LOGV("NativeModule: LynxModule, module: "
            << name << "(conforming to LynxModule?: " << conformsToLynxModule
            << ", conforming to LynxContextModule?: " << conformsToLynxContextModule
-           << ", with param(address): " << reinterpret_cast<std::uintptr_t>(param) << ")"
+           << ", with param(address): " << reinterpret_cast<std::uintptr_t>(wrapper.param) << ")"
            << ", is created in getModule()");
     }
     return moduleDarwin;

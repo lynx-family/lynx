@@ -64,6 +64,9 @@ if (!enable_unittests) {
     if (!is_mac || !desktop_enable_embedder_layer) {
       jsbridge_shared_sources +=
           [
+            "bindings/jsi/modules/ios/common_module_creator.h",
+            "bindings/jsi/modules/ios/common_module_creator.mm",
+            "bindings/jsi/modules/ios/lynx_module_creator_darwin.h",
             "bindings/jsi/modules/ios/lynx_module_darwin.h",
             "bindings/jsi/modules/ios/lynx_module_darwin.mm",
             "bindings/jsi/modules/ios/lynx_module_interceptor.h",

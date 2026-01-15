@@ -23,6 +23,7 @@
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
+#include "core/runtime/bindings/jsi/modules/ios/common_module_creator.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_runtime_facade_darwin.h"
 #include "core/shell/module_delegate_impl.h"
@@ -222,6 +223,9 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
         std::make_shared<lynx::pub::LynxNativeModuleManager>();
     // create ModuleFactory
     auto module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+    std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
+        std::make_unique<lynx::piper::CommonModuleCreator>();
+    module_factory->Bind(std::move(module_creator));
     // cache ModuleFactory with weak_ptr
     _weak_module_factory = module_factory;
     native_module_manager->SetPlatformModuleFactory(module_factory);

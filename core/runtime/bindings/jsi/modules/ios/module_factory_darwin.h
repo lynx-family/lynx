@@ -14,60 +14,63 @@
 
 #import <Lynx/LynxThreadSafeDictionary.h>
 #include "core/public/jsb/native_module_factory.h"
+#include "core/runtime/bindings/jsi/modules/ios/lynx_module_creator_darwin.h"
 #include "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
-
-@class LynxContext;
-@protocol LynxModule;
-
-@interface LynxModuleWrapper : NSObject
-
-@property(nonatomic, readwrite, strong) Class<LynxModule> moduleClass;
-@property(nonatomic, readwrite, strong) id param;
-@property(nonatomic, readwrite, weak) NSString *namescope;
-
-@end
 
 namespace lynx {
 class DarwinEmbedder;
 
 namespace piper {
+
 class ModuleFactoryDarwin : public NativeModuleFactory {
  public:
   ModuleFactoryDarwin();
   virtual ~ModuleFactoryDarwin();
+
+  // bind module creator
+  void Bind(std::unique_ptr<ModuleCreatorDarwin> module_creator);
+  void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin> &context_finder);
+
+  // register module class and param.
   void registerModule(Class<LynxModule> cls);
   void registerModule(Class<LynxModule> cls, id param);
   void registerMethodAuth(LynxMethodBlock block);
   void registerExtraInfo(NSDictionary *extra);
   void registerMethodSession(LynxMethodSessionBlock block);
-  NSMutableDictionary<NSString *, id> *moduleWrappers();
-  NSMutableDictionary<NSString *, id> *extraWrappers();
-  NSMutableArray<LynxMethodBlock> *methodAuthWrappers();
-  NSMutableArray<LynxMethodSessionBlock> *methodSessionWrappers();
+
+  // register wrappers
   void addWrappers(NSMutableDictionary<NSString *, id> *wrappers);
   // Only used in LynxBackgroundRuntime Standalone to craete LynxView, we already register
   // some modules in RuntimeOptions and we don't want the modules on LynxViewBuilder overwrite it.
   void addModuleParamWrapperIfAbsent(NSMutableDictionary<NSString *, id> *wrappers);
 
+  NSMutableDictionary<NSString *, id> *moduleWrappers();
+  NSMutableDictionary<NSString *, id> *extraWrappers();
+  NSMutableArray<LynxMethodBlock> *methodAuthWrappers();
+  NSMutableArray<LynxMethodSessionBlock> *methodSessionWrappers();
+  LynxThreadSafeDictionary<NSString *, id> *getModuleClasses() { return modulesClasses_; }
+
+  // create module instance. used for lynx module manager
   std::shared_ptr<LynxNativeModule> CreateModule(const std::string &name) override;
+
   void SetModuleExtraInfo(std::shared_ptr<ModuleDelegate> delegate) {
     module_delegate_ = std::move(delegate);
   }
 
-  LynxThreadSafeDictionary<NSString *, id> *getModuleClasses() { return modulesClasses_; }
-
   std::shared_ptr<ModuleFactoryDarwin> parent;
-  LynxContext *context;
   LynxThreadSafeDictionary<NSString *, id> *modulesClasses_;
   NSMutableDictionary<NSString *, id> *extra_;
   id lynxModuleExtraData_;
+
+  // auth validator
   NSMutableArray<LynxMethodBlock> *methodAuthBlocks_;
   NSMutableArray<LynxMethodSessionBlock> *methodSessionBlocks_;
 
  private:
   friend DarwinEmbedder;
   std::shared_ptr<ModuleDelegate> module_delegate_;
+  std::unique_ptr<ModuleCreatorDarwin> module_creator_;
 };
 }  // namespace piper
 }  // namespace lynx
