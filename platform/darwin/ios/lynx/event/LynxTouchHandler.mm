@@ -66,6 +66,7 @@
   BOOL _enableEndGestureAtLastFingerUp;
   BOOL _enableTouchPseudo;
   BOOL _enableMultiTouch;
+  BOOL _panGestureRecognized;
   NSMutableSet<UITouch*>* _touches;
   // In single-finger mode, when multiple fingers are raised at the same time, touches need to be
   // tracked in touchesBegan to ensure that touches received by touchesEnded are not missed.
@@ -594,6 +595,7 @@
                                              touches:touches
                                                event:event
                                           touchEvent:touchEvent];
+      _panGestureRecognized = NO;
     }
   }
 
@@ -734,6 +736,27 @@
                                                touches:touches
                                                  event:event
                                             touchEvent:touchEvent];
+
+        // Calculate the distance from the down point to the current point.
+        CGFloat absDeltaX = fabs(point.x - touches_map_[touch].downPoint.x);
+        CGFloat absDeltaY = fabs(point.y - touches_map_[touch].downPoint.y);
+
+        // Check if the distance exceeds the swipe threshold (10px).
+        if (!_panGestureRecognized && (absDeltaX > 10 || absDeltaY > 10)) {
+          _panGestureRecognized = YES;
+          enum LynxPanInterceptDirection direction = kLynxPanInterceptDirectionNone;
+
+          // Determine the specific direction based on angle and coordinate changes
+          if (absDeltaX > absDeltaY) {
+            // Horizontal direction
+            direction = kLynxPanInterceptDirectionHorizontal;
+          } else {
+            // Vertical direction
+            direction = kLynxPanInterceptDirectionVertical;
+          }
+
+          [_eventHandler startInterceptPanGestures:direction];
+        }
       }
 
       _touchOutSide = _gestureRecognized || _touchOutSide;

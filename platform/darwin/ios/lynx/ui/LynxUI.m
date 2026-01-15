@@ -126,6 +126,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   double _touchSlop;
   BOOL _onResponseChain;
   enum LynxPointerEventsValue _pointerEvents;
+  enum LynxPanInterceptDirection _panInterceptDirection;
+  enum LynxPanInterceptScope _panInterceptScope;
   enum LynxPropStatus _enableExposureUIMargin;
   NSDictionary<NSString*, LynxEventSpec*>* _eventSet;
   NSDictionary<NSNumber*, LynxBaseGestureHandler*>* _gestureHandlers;
@@ -183,6 +185,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _eventThrough = kLynxEventPropUndefined;
   _enableExposureUIClip = kLynxEventPropUndefined;
   _pointerEvents = kLynxPointerEventsValueUnset;
+  _panInterceptDirection = kLynxPanInterceptDirectionNone;
+  _panInterceptScope = kLynxPanInterceptScopeNone;
   // touch slop's default value is 8 the same as Android.
   _touchSlop = 8;
   _onResponseChain = NO;
@@ -1511,7 +1515,9 @@ LYNX_PROPS_GROUP_DECLARE(
     LYNX_PROP_DECLARE("enable-nested-scroll", setEnableNested, BOOL),
     LYNX_PROP_DECLARE("enable-reuse-animation-state", setEnableReuseAnimationState, BOOL),
     LYNX_PROP_DECLARE("image-rendering", setImageRendering, NSInteger),
-    LYNX_PROP_DECLARE("pointer-events", setPointerEvents, NSInteger))
+    LYNX_PROP_DECLARE("pointer-events", setPointerEvents, NSInteger),
+    LYNX_PROP_DECLARE("pan-intercept-direction", setPanInterceptDirection, NSInteger),
+    LYNX_PROP_DECLARE("pan-intercept-scope", setPanInterceptScope, NSInteger))
 
 #pragma mark - Transform
 
@@ -3029,6 +3035,45 @@ LYNX_PROP_DEFINE("pointer-events", setPointerEvents, NSInteger) {
     return [parent pointerEvents];
   }
   return kLynxPointerEventsValueAuto;
+}
+
+LYNX_PROP_DEFINE("pan-intercept-direction", setPanInterceptDirection, NSInteger) {
+  // If requestReset, the _panInterceptDirection will be None.
+  if (requestReset) {
+    _panInterceptDirection = kLynxPanInterceptDirectionNone;
+    return;
+  }
+  if (value >= kLynxPanInterceptDirectionHorizontal && value < kLynxPanInterceptDirectionNone) {
+    _panInterceptDirection = (enum LynxPanInterceptDirection)value;
+    // When a node has a valid pan-intercept-direction set, create a PlatformGesture and use it to
+    // collect other Gestures.
+    if (_panInterceptDirection != kLynxPanInterceptDirectionNone) {
+      [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
+        [ui.context.eventHandler setEnablePlatformGesture:YES];
+      }];
+    }
+  }
+}
+
+- (enum LynxPanInterceptDirection)panInterceptDirection {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+  return _panInterceptDirection;
+}
+
+LYNX_PROP_DEFINE("pan-intercept-scope", setPanInterceptScope, NSInteger) {
+  // If requestReset, the _panInterceptScope will be None.
+  if (requestReset) {
+    _panInterceptScope = kLynxPanInterceptScopeNone;
+    return;
+  }
+  if (value >= kLynxPanInterceptScopeSelf && value < kLynxPanInterceptScopeNone) {
+    _panInterceptScope = (enum LynxPanInterceptScope)value;
+  }
+}
+
+- (enum LynxPanInterceptScope)panInterceptScope {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+  return _panInterceptScope;
 }
 
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer {
