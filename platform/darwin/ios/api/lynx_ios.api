@@ -1046,6 +1046,8 @@ public class LynxConfig : NSObject {
   public void LynxConfig::registerMethodAuth:(LynxMethodBlock authBlock);
   public void LynxConfig::registerContext:sessionInfo:(NSDictionary *ctxDict,[sessionInfo] LynxMethodSessionBlock sessionInfo);
   public std::shared_ptr< lynx::piper::ModuleFactoryDarwin > LynxConfig()::moduleFactoryPtr();
+  public std::shared_ptr< lynx::piper::ModuleFactoryDarwin > LynxConfig()::getSharedModuleFactoryPtr();
+  public void LynxConfig()::setSharedModuleFactoryPtr:(std::shared_ptr< lynx::piper::ModuleFactoryDarwin > ptr);
 }
 
 public class LynxConfigInfo : NSObject {
@@ -5254,6 +5256,8 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public void LynxViewGroup::setTemplateBundle:(LynxTemplateBundle *_Nullable templateBundle);
   public void LynxViewGroup::setLogicExecutor:(id< LynxLogicExecutor > logicExecutor);
   public void LynxViewGroup::fetchTemplate:(LynxTemplateBundleResultBlock callback);
+  public void LynxViewGroup::registerModule:(Class< LynxModule > module);
+  public void LynxViewGroup::registerModule:param:(Class< LynxModule > module,[param] nullable id param);
   public LynxTemplateBundle *_Nullable LynxViewGroup()::getTemplateBundleNonBlocking();
 }
 

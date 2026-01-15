@@ -46,6 +46,13 @@ void ModuleFactoryDarwin::SetContextFinder(
   }
 }
 
+std::shared_ptr<lynx::piper::LynxContextFinderDarwin> ModuleFactoryDarwin::CurrentContextFinder() {
+  if (module_creator_) {
+    return module_creator_->CurrentContextFinder();
+  }
+  return nullptr;
+}
+
 std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::string &name) {
   NSString *str = [NSString stringWithCString:name.c_str()
                                      encoding:[NSString defaultCStringEncoding]];

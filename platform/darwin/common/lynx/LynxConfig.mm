@@ -13,6 +13,8 @@
 @implementation LynxConfig {
   // Only used to manage wrappers
   std::shared_ptr<lynx::piper::ModuleFactoryDarwin> _moduleFactoryPtr;
+  // Shared module weak ptr , only lynxModuleManager hold it
+  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> _sharedModuleFactoryWeakPtr;
 }
 
 LYNX_NOT_IMPLEMENTED(-(instancetype)init)
@@ -28,10 +30,18 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
 }
 
 - (void)registerModule:(Class<LynxModule>)module {
+  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> lockPtr = _sharedModuleFactoryWeakPtr.lock();
+  if (lockPtr) {
+    lockPtr->registerModule(module);
+  }
   _moduleFactoryPtr->registerModule(module);
 }
 
 - (void)registerModule:(Class<LynxModule>)module param:(id)param {
+  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> lockPtr = _sharedModuleFactoryWeakPtr.lock();
+  if (lockPtr) {
+    lockPtr->registerModule(module);
+  }
   _moduleFactoryPtr->registerModule(module, param);
 }
 
@@ -60,6 +70,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
 
 - (void)registerShadowNode:(Class)node withName:(NSString *)name {
   [_componentRegistry registerShadowNode:node withName:name];
+}
+
+- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)getSharedModuleFactoryPtr {
+  return _sharedModuleFactoryWeakPtr.lock();
+}
+
+- (void)setSharedModuleFactoryPtr:(std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)ptr {
+  _sharedModuleFactoryWeakPtr = ptr;
 }
 
 + (LynxConfig *)globalConfig {

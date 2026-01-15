@@ -7,4 +7,6 @@
 
 @interface LynxConfig ()
 - (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr;
+- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)getSharedModuleFactoryPtr;
+- (void)setSharedModuleFactoryPtr:(std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)ptr;
 @end

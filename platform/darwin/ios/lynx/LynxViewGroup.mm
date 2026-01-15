@@ -11,6 +11,8 @@
 #import <pthread.h>
 #include <atomic>
 
+#include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
+
 @implementation LynxViewGroup {
   LynxTemplateBundle *_templateBundle;
   NSError *_fetchError;
@@ -208,6 +210,14 @@
 - (void)setConfig:(LynxConfig *)config {
   [super setConfig:config];
   [LynxService(LynxServiceModuleProtocol) initLynxViewGroup:self];
+}
+
+- (void)registerModule:(nonnull Class<LynxModule>)module {
+  [_config registerModule:module];
+}
+
+- (void)registerModule:(nonnull Class<LynxModule>)module param:(nullable id)param {
+  [_config registerModule:module param:param];
 }
 
 @end

@@ -44,6 +44,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/runtime/bindings/jsi/modules/ios/common_module_creator.h"
+#include "core/runtime/bindings/jsi/modules/ios/shared_module_creator.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
@@ -317,6 +318,59 @@
 
 - (std::shared_ptr<lynx::pub::LynxNativeModuleManager>)setUpModuleManager {
   std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory;
+  // TODO(zhangqun.29):Merge with the initialization of the Common Module
+  if (_lynxViewGroup != nullptr && _lynxViewGroup.config != nil) {
+    if (_lynxViewGroup.config.getSharedModuleFactoryPtr != nullptr) {
+      module_factory = [_lynxViewGroup.config getSharedModuleFactoryPtr];
+      module_factory_ = module_factory;
+      std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
+          module_factory->CurrentContextFinder();
+      if (context_finder) {
+        NSString* url = [_context getLynxView].url;
+        context_finder->RegisterContext(std::to_string(_context.instanceId), _context,
+                                        lynx::base::SafeStringConvert([url UTF8String]));
+      }
+    } else {
+      auto init_module_factory = _lynxViewGroup.config.moduleFactoryPtr;
+      // Init module factory
+      module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+      std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
+          std::make_unique<lynx::piper::SharedModuleCreator>();
+      module_factory->Bind(std::move(module_creator));
+      module_factory->addWrappers(init_module_factory->moduleWrappers());
+      module_factory_ = module_factory;
+      LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
+      if (_config != globalConfig && globalConfig) {
+        module_factory->parent = globalConfig.moduleFactoryPtr;
+      }
+      // Init context finder
+      std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
+          std::make_shared<lynx::piper::SharedLynxContextFinderDarwin>();
+      NSString* url = [_context getLynxView].url;
+      context_finder->RegisterContext(std::to_string(_context.instanceId), _context,
+                                      lynx::base::SafeStringConvert([url UTF8String]));
+      module_factory->SetContextFinder(context_finder);
+      module_factory->lynxModuleExtraData_ = _lynxModuleExtraData;
+      // Init extra data
+      if (_extra == nil) {
+        _extra = [[NSMutableDictionary alloc] init];
+      }
+      [_extra addEntriesFromDictionary:[module_factory->extraWrappers() copy]];
+      // Set modulefactory shared ptr to lynxviewgroup config
+      [_lynxViewGroup.config setSharedModuleFactoryPtr:module_factory];
+    }
+    // Create NativeModuleManager related to platform call, JSModuleManager
+    // related to JS FFI (JSI, NAPI, Lepus) in LynxRuntime
+    std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+        std::make_shared<lynx::pub::LynxNativeModuleManager>();
+    native_module_manager->SetPlatformModuleFactory(module_factory);
+    native_module_manager->SetContextID(_context.instanceId);
+    auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([_lynxUIRenderer uiDelegate]);
+    native_module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
+
+    return native_module_manager;
+  }
+
   if (_runtime) {
     module_factory = [_runtime moduleFactoryPtr].lock();
     if (module_factory) {

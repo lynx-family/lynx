@@ -72,6 +72,8 @@ if (!enable_unittests) {
             "bindings/jsi/modules/ios/lynx_module_interceptor.h",
             "bindings/jsi/modules/ios/module_factory_darwin.h",
             "bindings/jsi/modules/ios/module_factory_darwin.mm",
+            "bindings/jsi/modules/ios/shared_module_creator.h",
+            "bindings/jsi/modules/ios/shared_module_creator.mm",
             "bindings/lepus/ios/lynx_lepus_module_darwin.h",
             "bindings/lepus/ios/lynx_lepus_module_darwin.mm",
           ] + jsbridge_extend_shared_sources

@@ -28,6 +28,12 @@ namespace piper {
 namespace {
 constexpr const char *IS_NATIVE_PROMISE = "__IS_NATIVE_PROMISE__";
 
+// Normal parameter quantity offset
+const size_t ARGS_INDEX_START_OFFSET = 2;
+// Special parameter quantity offset
+const size_t ARGS_INDEX_HAS_CONTEXT_PARAM_START_OFFSET = 3;
+const size_t ARGS_INDEX_HAS_PROMISE_PARAM_START_OFFSET = 4;
+
 std::string genExceptionErrorMessage(NSException *exception) {
   auto message = std::string{" NativeModule: throws an uncaught exception: "}
                      .append([exception.name UTF8String])
@@ -65,6 +71,7 @@ std::string typeToString(pub::Value *value) {
     return "Unknown";
   }
 }
+
 }  // namespace
 
 #pragma mark - LynxModuleDarwin
@@ -218,10 +225,34 @@ NSInvocation *LynxModuleDarwin::getMethodInvocation(
     }
   };
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, PUB_VALUE_TO_OBJC_VALUE);
-  // index: i + 2 ==> objc arguments: [this, _cmd, args..., resoledBlock, rejectedBlock]
+  // index: i + 2 ==> objc arguments: [this, _cmd, (lynxcontext) , args..., (resoledBlock),
+  // (rejectedBlock)]
+  size_t param_offset = ARGS_INDEX_START_OFFSET;
+
+  // Determine and process whether the LynxContext parameter is present.
+  // TODO(zhangqun.29): To handle in a more reasonable way.
+  if (count > 0 &&
+      methodSignature.numberOfArguments - count == ARGS_INDEX_HAS_CONTEXT_PARAM_START_OFFSET &&
+      context_finder_) {
+    // LynxContext must be the first priority.
+    const char *objCArgType = [methodSignature getArgumentTypeAtIndex:ARGS_INDEX_START_OFFSET];
+    // The parameter signature of LynxContext is @
+    if (objCArgType[0] == _C_ID) {
+      LynxContext *context = context_finder_->FindContext(std::to_string(context_id_));
+      if (!context) {
+        LOGE("NativeModule: LynxModule, getInvocation, module: "
+             << module_name_ << " method: " << methodName << " context is nil");
+        return nil;
+      }
+      [objcParams addObject:context];
+      [inv setArgument:(void *)&context atIndex:2];
+      param_offset += 1;
+    }
+  }
+
   for (size_t i = 0; i < count; i++) {
     auto arg = args->GetValueAtIndex(static_cast<int>(i));
-    const char *objCArgType = [methodSignature getArgumentTypeAtIndex:i + 2];
+    const char *objCArgType = [methodSignature getArgumentTypeAtIndex:i + param_offset];
     // issue: #1510
     auto reportError = [i, expectedButGot, &arg](const std::string &expected) mutable {
       expectedButGot(i, expected, typeToString(arg.get()));
@@ -254,10 +285,10 @@ NSInvocation *LynxModuleDarwin::getMethodInvocation(
           LynxModuleInterceptor::CheckModuleIfNeed(module, temp, extra);
           [temp addEntriesFromDictionary:obj];
           [objcParams addObject:temp];
-          [inv setArgument:(void *)&temp atIndex:i + 2];
+          [inv setArgument:(void *)&temp atIndex:i + param_offset];
         } else {
           [objcParams addObject:obj];
-          [inv setArgument:(void *)&obj atIndex:i + 2];
+          [inv setArgument:(void *)&obj atIndex:i + param_offset];
         }
         continue;
       } else  // obj == nil
@@ -317,54 +348,54 @@ NSInvocation *LynxModuleDarwin::getMethodInvocation(
 
       if (objCArgType[0] == _C_CHR) {
         char c = [num charValue];
-        [inv setArgument:(void *)&c atIndex:i + 2];
+        [inv setArgument:(void *)&c atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_UCHR) {
         unsigned char uc = [num unsignedCharValue];
-        [inv setArgument:(void *)&uc atIndex:i + 2];
+        [inv setArgument:(void *)&uc atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_SHT) {
         short s = [num shortValue];
-        [inv setArgument:(void *)&s atIndex:i + 2];
+        [inv setArgument:(void *)&s atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_USHT) {
         unsigned short us = [num unsignedShortValue];
-        [inv setArgument:(void *)&us atIndex:i + 2];
+        [inv setArgument:(void *)&us atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_INT) {
         int ii = [num intValue];
-        [inv setArgument:(void *)&ii atIndex:i + 2];
+        [inv setArgument:(void *)&ii atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_UINT) {
         unsigned int ui = [num unsignedIntValue];
-        [inv setArgument:(void *)&ui atIndex:i + 2];
+        [inv setArgument:(void *)&ui atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_LNG) {
         long l = [num longValue];
-        [inv setArgument:(void *)&l atIndex:i + 2];
+        [inv setArgument:(void *)&l atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_ULNG) {
         unsigned long ul = [num unsignedLongValue];
-        [inv setArgument:(void *)&ul atIndex:i + 2];
+        [inv setArgument:(void *)&ul atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_LNG_LNG) {
         long long ll = [num longLongValue];
-        [inv setArgument:(void *)&ll atIndex:i + 2];
+        [inv setArgument:(void *)&ll atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_ULNG_LNG) {
         unsigned long long ull = [num unsignedLongLongValue];
-        [inv setArgument:(void *)&ull atIndex:i + 2];
+        [inv setArgument:(void *)&ull atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_BOOL) {
         BOOL b = [num boolValue];
-        [inv setArgument:(void *)&b atIndex:i + 2];
+        [inv setArgument:(void *)&b atIndex:i + param_offset];
         continue;
       } else if (objCArgType[0] == _C_FLT) {
         float f = [num floatValue];
-        [inv setArgument:(void *)&f atIndex:i + 2];
+        [inv setArgument:(void *)&f atIndex:i + param_offset];
       } else if (objCArgType[0] == _C_DBL) {
         double d = [num doubleValue];
-        [inv setArgument:(void *)&d atIndex:i + 2];
+        [inv setArgument:(void *)&d atIndex:i + param_offset];
       }
     }
   }
@@ -392,7 +423,10 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
   // issue: #1510
   // TODO: argumentsCount - 4 == count means this is a promise
   // THUS THIS ARGUMENT CHECK CANNOT DETECT IF __argumentsCount - 4 != count__ !!
-  if (argumentsCount - 2 != count && argumentsCount - 4 != count) {
+  // argumentsCount - 3 == count means first param might be context
+  if (argumentsCount - ARGS_INDEX_START_OFFSET != count &&
+      argumentsCount - ARGS_INDEX_HAS_PROMISE_PARAM_START_OFFSET != count &&
+      argumentsCount - ARGS_INDEX_HAS_CONTEXT_PARAM_START_OFFSET != count) {
     // issue: #1510
     // if #arg is __MORE__, an exception will be thrown on parsing type of args,
     // thus the function will not be invoked
@@ -402,7 +436,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
                                    .append(" but got ")
                                    .append(std::to_string(count))
                                    .append(".");
-    if (argumentsCount - 2 < count) {
+    if (argumentsCount - ARGS_INDEX_START_OFFSET < count) {
       if (lock_delegate) {
         lock_delegate->OnErrorOccurred(
             module_name_, methodName,
@@ -492,7 +526,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
                             "js value to objc value.");
   }
 
-  if (argumentsCount - 4 == count) {
+  if (argumentsCount - ARGS_INDEX_HAS_PROMISE_PARAM_START_OFFSET == count) {
     LOGE("NativeModule: LynxModule, invokeObjCMethod, module: " << module_name_ << " method: "
                                                                 << methodName << " is a promise");
     if (lock_delegate) {

@@ -70,6 +70,12 @@ typedef void (^LynxTemplateBundleResultBlock)(LynxTemplateBundle *_Nullable data
  * - If the TemplateBundle failed to fetch, pass the failure error to the callback
  */
 - (void)fetchTemplate:(LynxTemplateBundleResultBlock)callback;
+
+/**
+ * registerModule in lynxViewGroup
+ */
+- (void)registerModule:(Class<LynxModule>)module;
+- (void)registerModule:(Class<LynxModule>)module param:(nullable id)param;
 @end
 
 NS_ASSUME_NONNULL_END

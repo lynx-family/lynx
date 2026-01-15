@@ -31,6 +31,7 @@ class ModuleFactoryDarwin : public NativeModuleFactory {
   // bind module creator
   void Bind(std::unique_ptr<ModuleCreatorDarwin> module_creator);
   void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin> &context_finder);
+  std::shared_ptr<lynx::piper::LynxContextFinderDarwin> CurrentContextFinder();
 
   // register module class and param.
   void registerModule(Class<LynxModule> cls);
