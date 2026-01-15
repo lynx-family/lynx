@@ -43,7 +43,11 @@ export class Response extends BodyMixin {
     return this._lynxExtension;
   }
 
-  constructor(bodyInit?: BodyInit, options?: ResponseInitInner) {
+  constructor(
+    bodyInit?: BodyInit,
+    options?: ResponseInitInner,
+    enableFetchAPIStandardStreaming?: boolean
+  ) {
     super();
     options = options || {};
 
@@ -59,7 +63,7 @@ export class Response extends BodyMixin {
     this._headers = new Headers(options.headers);
     this._url = options.url || '';
     this._lynxExtension = options.lynxExtension || {};
-    this.setBody(bodyInit);
+    this.setBody(bodyInit, enableFetchAPIStandardStreaming);
   }
 
   public clone(): Response {

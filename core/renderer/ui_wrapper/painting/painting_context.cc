@@ -195,6 +195,7 @@ void PaintingContext::MarkUIOperationQueueFlushTiming(
   if (pipeline_id.empty() || !perf_controller_actor_) {
     return;
   }
+
   Enqueue([perf_actor = perf_controller_actor_, key = std::move(key),
            pipeline_id]() {
     auto timestamp = base::CurrentSystemTimeMicroseconds();

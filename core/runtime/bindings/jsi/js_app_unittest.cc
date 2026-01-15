@@ -475,6 +475,7 @@ TEST_P(AppTest, LoadAppTest) {
           false,
           false,
           false,
+          false,
           lepus::Value(),
       },
       lepus::Value(), tasm::PackageInstanceDSL::TT,

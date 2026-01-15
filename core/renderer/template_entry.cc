@@ -229,6 +229,12 @@ bool TemplateEntry::InitWithPageConfigger(
       TernaryBool::TRUE_VALUE);
   SetEnableReuseLoadScriptExports(
       page_config->GetEnableReuseLoadScriptExports());
+
+  auto page_config_val = page_config->GetEnableFetchAPIStandardStreaming();
+  SetEnableFetchApiStandard(
+      (page_config_val != TernaryBool::UNDEFINE_VALUE)
+          ? (page_config_val == TernaryBool::TRUE_VALUE)
+          : LynxEnv::GetInstance().EnableFetchAPIStreamingStandard());
   return true;
 }
 
@@ -553,6 +559,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_bind_icu_,
           enable_microtask_promise_polyfill_,
           enable_reuse_load_script_exports_,
+          enable_fetch_api_standard_,
           template_bundle().custom_sections_};
 }
 

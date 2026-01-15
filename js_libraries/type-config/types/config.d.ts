@@ -340,6 +340,17 @@ export interface Config {
   enableExposureWhenReload?: boolean;
 
   /**
+   * Make the Lynx Fetch-API support standard http streaming
+   *
+   * Supported platform: Android, iOS
+   *
+   * Since: LynxSDK 3.7
+   *
+   * @defaultValue undefined
+   */
+  enableFetchAPIStandardStreaming?: boolean;
+
+  /**
    * A better and stable position fixed handling.
    *
    * Supported platform: Android, HarmonyOS, iOS

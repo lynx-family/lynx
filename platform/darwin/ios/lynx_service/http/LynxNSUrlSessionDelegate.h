@@ -7,5 +7,6 @@
 
 @interface LynxNSUrlSessionDelegate : NSObject <NSURLSessionDelegate>
 - (instancetype)initWithDelegate:(LynxHttpStreamingDelegate *)httpDelegate
-                    withCallback:(LynxHttpCallback)callback;
+                    withCallback:(LynxHttpCallback)callback
+    useDeprecatedStreamingConfig:(BOOL)useDeprecatedStreamingConfig;
 @end

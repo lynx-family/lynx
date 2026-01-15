@@ -31,8 +31,11 @@ static const NSInteger SDK_ERROR_STATUS_CODE = 499;
     delegateQueue = [[NSOperationQueue alloc] init];
   });
 
-  LynxNSUrlSessionDelegate *receiver = [[LynxNSUrlSessionDelegate alloc] initWithDelegate:delegate
-                                                                             withCallback:callback];
+  BOOL useDeprecatedStreamingConfig = request.customConfig[@"useStreaming"] ?: NO;
+  LynxNSUrlSessionDelegate *receiver =
+      [[LynxNSUrlSessionDelegate alloc] initWithDelegate:delegate
+                                            withCallback:callback
+                            useDeprecatedStreamingConfig:useDeprecatedStreamingConfig];
   NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
   NSURLSession *session = [NSURLSession sessionWithConfiguration:config
                                                         delegate:receiver

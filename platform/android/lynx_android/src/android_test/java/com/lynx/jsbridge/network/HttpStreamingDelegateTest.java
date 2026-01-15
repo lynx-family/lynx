@@ -123,7 +123,7 @@ public class HttpStreamingDelegateTest {
     String input = "A\r\n1234567890\r\n0\r\n\r\n";
     InputStream is = new ByteArrayInputStream(input.getBytes());
 
-    processor.streamingBody(is);
+    processor.deprecatedChunkedStreamingBody(is);
     assertEquals(sender.eventList.size(), 1);
     assertArrayEquals(sender.eventList.get(0).getByteArray("data"), "1234567890".getBytes());
   }
@@ -133,7 +133,7 @@ public class HttpStreamingDelegateTest {
     String input = "5\r\n12345\r\n5\r\n67890\r\n0\r\n\r\n";
     InputStream is = new ByteArrayInputStream(input.getBytes());
 
-    processor.streamingBody(is);
+    processor.deprecatedChunkedStreamingBody(is);
 
     assertEquals(sender.eventList.size(), 2);
     assertArrayEquals(sender.eventList.get(0).getByteArray("data"), "12345".getBytes());
@@ -145,7 +145,7 @@ public class HttpStreamingDelegateTest {
     String input = "0\r\n\r\n";
     InputStream is = new ByteArrayInputStream(input.getBytes());
 
-    processor.streamingBody(is);
+    processor.deprecatedChunkedStreamingBody(is);
 
     assertEquals(sender.eventList.size(), 0);
   }
@@ -155,7 +155,7 @@ public class HttpStreamingDelegateTest {
     String input = "5\r\n1234\r\n"; // missing \r\n after data
     InputStream is = new ByteArrayInputStream(input.getBytes());
 
-    processor.streamingBody(is);
+    processor.deprecatedChunkedStreamingBody(is);
 
     assertEquals(sender.eventList.size(), 1);
     assertEquals(sender.eventList.get(0).getString("event"), "onError");

@@ -83,6 +83,8 @@ public class LynxFetchModule extends LynxModule {
     JavaOnlyMap customConfig = (JavaOnlyMap) request.getMap("lynxExtension", new JavaOnlyMap());
     httpRequest.setCustomConfig(customConfig);
     boolean useStreaming = customConfig.getBoolean("useStreaming", false);
+    boolean enableFetchApiStandardStreaming =
+        customConfig.getBoolean("enableFetchAPIStandardStreaming", false);
 
     ILynxHttpService httpService = LynxServiceCenter.inst().getService(ILynxHttpService.class);
     if (httpService == null) {
@@ -92,7 +94,7 @@ public class LynxFetchModule extends LynxModule {
       return;
     }
 
-    if (!useStreaming) {
+    if (!useStreaming && !enableFetchApiStandardStreaming) {
       request(httpService, httpRequest, url, resolve);
     } else {
       requestStreaming(httpService, httpRequest, url, resolve);
