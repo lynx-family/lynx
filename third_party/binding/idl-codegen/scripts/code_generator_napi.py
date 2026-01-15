@@ -240,7 +240,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
 
         remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
         template_context['remote_ids_filename'] = 'remote' + NameStyleConverter(template_context['component'] + 'Ids').to_upper_camel_case()
-        template_context['fixed_remote_method_ids'] = self.hardcoded_includes.get(template_context['component'], {}).get('fixed_remote_method_ids', False)
+        template_context['fixed_remote_method_ids'] = self.hardcoded_includes.get(template_context['component'], {}).get('fixed_remote_method_ids', '')
         for js_class in template_context.get('interfaces', []):
             if js_class['shared_impl']:
                 continue
@@ -297,11 +297,23 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 template_context['component'])
             out.append((remote_cpp_path, remote_cpp_text))
 
-            if not template_context['fixed_remote_method_ids']:
-                remote_js_template = self.jinja_env.get_template('remote_ids.js.tmpl')
-                remote_js_path = self.js_output_path(template_context['remote_ids_filename'], remote_js_outdir)
-                remote_js_text = render_template(remote_js_template, template_context)
-                out.append((remote_js_path, remote_js_text))
+            if template_context['fixed_remote_method_ids']:
+                with open(template_context['fixed_remote_method_ids'], "r", encoding="utf-8") as f:
+                    import json
+                    template_context['fixed_ids'] = json.load(f)
+                remote_ids_h_template_filename = 'remote_ids.h.tmpl'
+                remote_ids_h_template = self.jinja_env.get_template(remote_ids_h_template_filename)
+                remote_ids_h_path, _ = self.output_paths(name + 'Ids', prefix='remote_')
+                template_context['header_guard'] = to_header_guard(
+                    self.normalize_this_header_guard_path(remote_ids_h_path))
+                remote_ids_h_text, _ = self.render_templates(
+                    include_paths, remote_ids_h_template, remote_ids_h_template, template_context,
+                    template_context['component'])
+                out.append((remote_ids_h_path, remote_ids_h_text))
+            remote_js_template = self.jinja_env.get_template('remote_ids.js.tmpl')
+            remote_js_path = self.js_output_path(template_context['remote_ids_filename'], remote_js_outdir)
+            remote_js_text = render_template(remote_js_template, template_context)
+            out.append((remote_js_path, remote_js_text))
         return out
 
     def generate_interface_code(self, definitions, interface_name, interface):

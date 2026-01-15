@@ -633,13 +633,16 @@ def init_command_buffer_context(component, metadata):
     command_buffer_context['slow_if_buffered_methods'] = metadata.get('slow_if_buffered_methods', [])
     command_buffer_context['buffering_disabled_methods'] = metadata.get('buffering_disabled_methods', [])
     command_buffer_context['flushed_within_frame_methods'] = metadata.get('flushed_within_frame_methods', [])
+    command_buffer_context['fixed_remote_method_ids'] = metadata.get('fixed_remote_method_ids', '')
 
 
 def finish_command_buffer():
     global command_buffer_context
     if not command_buffer_context['methods'] and not command_buffer_context['remote_methods'] or not command_buffer_context['component']:
         return
-    k_command_buffer_init['remote_method_index'] = command_buffer_context['remote_method_index']
+    # Fixed remote ids are nominal and not count against the global incremental id.
+    if not command_buffer_context['fixed_remote_method_ids']:
+        k_command_buffer_init['remote_method_index'] = command_buffer_context['remote_method_index']
     k_command_buffer_init['remote_type_id'] = command_buffer_context['remote_type_id']
 
     del command_buffer_context['method_index']
