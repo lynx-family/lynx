@@ -506,7 +506,7 @@
   }
 
   // must should set, self.textStorage.string.length == NSMaxRange(lineCharacterRange)
-  _textContainer.lineBreakMode = NSLineBreakByWordWrapping;
+  _textContainer.lineBreakMode = NSLineBreakByCharWrapping;
   NSInteger approximateNumberOfLines = [self numberOfVisibleLines];
   if (_layoutSpec.maxLineNum > 0 && approximateNumberOfLines > _layoutSpec.maxLineNum) {
     approximateNumberOfLines = _layoutSpec.maxLineNum;
