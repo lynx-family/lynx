@@ -5,7 +5,7 @@
 import("../../../../../testing/test.gni")
 import("../../../../Lynx.gni")
 import("../../../../renderer/simple_styling/simple_styling.gni")
-import("../../../../runtime/vm/lepus/build.gni")
+import("../../../../runtime/lepus_context/build.gni")
 
 lynx_core_source_set("style_object_encoder") {
   sources = [

@@ -71,7 +71,7 @@
 #include "core/renderer/utils/darwin/event_converter_darwin.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/ios/data_utils.h"

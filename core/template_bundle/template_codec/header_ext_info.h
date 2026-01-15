@@ -5,7 +5,7 @@
 #define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_HEADER_EXT_INFO_H_
 
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/binary_reader.h"
+#include "core/runtime/lepus_context/binary_reader.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
 #define HEADER_EXT_INFO_MAGIC 0x494e464f

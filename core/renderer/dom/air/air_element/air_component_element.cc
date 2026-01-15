@@ -13,7 +13,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
 
 namespace lynx {
 namespace tasm {

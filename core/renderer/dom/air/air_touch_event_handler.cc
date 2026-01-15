@@ -14,7 +14,7 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/replay/replay_controller.h"
 #include "third_party/rapidjson/document.h"
 

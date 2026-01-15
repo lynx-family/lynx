@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/vm/lepus/binary_reader.h"
+#include "core/runtime/lepus_context/binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "core/template_bundle/template_codec/template_binary.h"

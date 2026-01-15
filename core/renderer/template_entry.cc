@@ -13,8 +13,8 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/runtime/bindings/lepus/renderer.h"
+#include "core/runtime/lepus_context/quick_context.h"
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
-#include "core/runtime/vm/lepus/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
 
 #if ENABLE_LEPUSNG_WORKLET

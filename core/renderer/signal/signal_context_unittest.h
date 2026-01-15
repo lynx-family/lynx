@@ -36,7 +36,7 @@ SOFTWARE.
 #include <utility>
 
 #include "core/renderer/signal/signal_context.h"
-#include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/lepus_context/context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

@@ -4,7 +4,7 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.h"
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {

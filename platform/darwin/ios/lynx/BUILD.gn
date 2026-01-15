@@ -542,8 +542,8 @@ subspec_target("JSRuntime") {
 
 subspec_target("LepusNG") {
   deps = [
+    "../../../../core/runtime/lepus_context:lepus_ng",
     "../../../../core/runtime/profile/lepusng:lepusng_profile",
-    "../../../../core/runtime/vm/lepus:lepus_ng",
   ]
   dependency = []
   if (!use_flatten_deps) {
@@ -727,7 +727,7 @@ subspec_target("lynx_basic_animator") {
 }
 
 subspec_target("lepus") {
-  deps = [ "../../../../core/runtime/vm/lepus" ]
+  deps = [ "../../../../core/runtime/lepus_context:lepus" ]
   dependency = Lepus_deps
 }
 
@@ -790,7 +790,7 @@ subspec_target("tasm") {
         "../../../../core/runtime/bindings/lepus/event:lepus_runtime",
         "../../../../core/runtime/bindings/lepus/modules:lepus_runtime",
         "../../../../core/runtime/bindings/lepus/resource:lepus_runtime",
-        "../../../../core/runtime/vm/lepus/tasks:tasks",
+        "../../../../core/runtime/lepus_context/tasks:tasks",
         "../../../../core/services/event_report:event_report",
         "../../../../core/services/feature_count:feature_count",
         "../../../../core/services/fluency:fluency",

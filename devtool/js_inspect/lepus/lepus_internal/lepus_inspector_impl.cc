@@ -4,7 +4,7 @@
 
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspector_impl.h"
 
-#include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/lepus_context/context.h"
 #include "devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context_provider.h"
 
 namespace lepus_inspector {

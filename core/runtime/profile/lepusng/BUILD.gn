@@ -13,7 +13,7 @@ lynx_core_source_set("lepusng_profile") {
 
   public_deps = [
     "../:profile_public_header",
-    "../../vm/lepus:lepus",
+    "../../lepus_context:lepus",
   ]
 }
 
@@ -28,8 +28,8 @@ unittest_set("lepusng_profile_testset") {
     "../../../renderer/dom:dom",
     "../../../renderer/dom:renderer_dom",
     "../../bindings/lepus",
-    "../../vm/lepus:lepus",
-    "../../vm/lepus:lepus_ng",
+    "../../lepus_context:lepus",
+    "../../lepus_context:lepus_ng",
   ]
 }
 

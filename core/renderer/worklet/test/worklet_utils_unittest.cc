@@ -12,8 +12,8 @@
 #include "core/runtime/bindings/napi/napi_environment.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/bindings/napi/worklet/napi_loader_ui.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/lepus_context_cell.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
+#include "core/runtime/lepus_context/lepus_context_cell.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

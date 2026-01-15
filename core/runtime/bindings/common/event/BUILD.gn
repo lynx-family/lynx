@@ -40,7 +40,7 @@ unittest_set("runtime_common_testset") {
     "../../../../renderer/dom:renderer_dom",
     "../../../../renderer/starlight",
     "../../../../shell/testing:mock_tasm_delegate_testset",
-    "../../../vm/lepus",
+    "../../../lepus_context:lepus",
   ]
   data_deps = []
 }

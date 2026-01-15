@@ -25,7 +25,7 @@ lynx_core_source_set("css") {
   public_deps = [
     "../../../third_party/rapidjson",
     "../../base",
-    "../../runtime/vm/lepus",
+    "../../runtime/lepus_context:lepus",
     "../../style",
     "../trace:renderer_trace",
   ]

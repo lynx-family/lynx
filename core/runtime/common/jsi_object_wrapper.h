@@ -12,7 +12,7 @@
 #include <unordered_set>
 
 #include "core/runtime/js/jsi/jsi.h"
-#include "core/runtime/vm/lepus/js_object.h"
+#include "core/runtime/lepus_context/js_object.h"
 
 namespace lynx {
 namespace piper {

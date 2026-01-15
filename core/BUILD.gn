@@ -215,7 +215,7 @@ group("lynx_native") {
     "runtime/bindings/common/resource:promise",
     "runtime/bindings/jsi/interceptor:interceptor_factory",
     "runtime/bindings/lepus",
-    "runtime/vm/lepus",
+    "runtime/lepus_context:lepus",
     "services/event_report:event_report",
     "services/feature_count:feature_count",
     "services/fluency:fluency",

@@ -4,7 +4,7 @@
 
 #include "devtool/lynx_devtool/js_debug/lepus/manager/lepus_inspector_manager_impl.h"
 
-#include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/lepus_context/context.h"
 #include "devtool/js_inspect/lepus/lepus_inspector_client_provider.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 

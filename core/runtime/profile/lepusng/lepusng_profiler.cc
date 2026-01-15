@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
 
 #if ENABLE_TRACE_PERFETTO
 #ifdef __cplusplus

@@ -29,7 +29,7 @@
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/runtime/js/runtime_lifecycle_observer_impl.h"
 #include "core/runtime/js/template_delegate.h"
-#include "core/runtime/vm/lepus/lepus_global.h"
+#include "core/runtime/lepus_context/lepus_global.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "third_party/rapidjson/document.h"

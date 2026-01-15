@@ -13,7 +13,7 @@
 
 #include <string>
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"

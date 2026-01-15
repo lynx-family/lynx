@@ -11,7 +11,6 @@
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
 
 @implementation LynxConfig {
-  // Only used to manage wrappers
   std::shared_ptr<lynx::piper::ModuleFactoryDarwin> _moduleFactoryPtr;
 }
 
