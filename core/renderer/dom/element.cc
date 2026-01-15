@@ -102,6 +102,13 @@ Element::Element(const base::String& tag, ElementManager* manager,
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
 }
 
+void Element::set_will_destroy(bool destroy) {
+  will_destroy_ = destroy;
+  if (will_destroy_ && data_model_) {
+    data_model_->RemoveAllGestureDetectors();
+  }
+}
+
 // The copy constructor of the element is now only used for copying fiber
 // elements. If you want to use it to copy radon elements, you need to check the
 // copy constructor to determine if there are other additional member variables

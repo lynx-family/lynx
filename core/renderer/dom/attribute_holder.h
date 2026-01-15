@@ -177,6 +177,12 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     }
   }
 
+  void RemoveAllGestureDetectors() {
+    if (gesture_detectors_.has_value()) {
+      gesture_detectors_->clear();
+    }
+  }
+
   const GestureMap& gesture_detectors() const {
     return gesture_detectors_.has_value() ? *gesture_detectors_
                                           : DefaultEmptyGestureMap();
