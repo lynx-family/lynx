@@ -1499,8 +1499,8 @@ public class LynxTemplateRender
     }
 
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE);
-    TimingOption timingOption = TimingOption.createTimingOption(
-        TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+    TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
+        TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
     if (mPerformanceController.isEmbeddedMode()) {
       mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
     }
@@ -1556,8 +1556,8 @@ public class LynxTemplateRender
       mSSRHelper.onHydrateStart();
     }
 
-    TimingOption timingOption = TimingOption.createTimingOption(
-        TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+    TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
+        TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
     if (mPerformanceController.isEmbeddedMode()) {
       mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
     }
@@ -2019,8 +2019,9 @@ public class LynxTemplateRender
     String eventName = "LynxTemplateRender.reloadTemplate";
     onTraceEventBegin(eventName);
 
-    TimingOption timingOption = TimingOption.createTimingOption(
-        TimingConstants.RELOAD_BUNDLE_FROM_NATIVE, TimingConstants.RELOAD_BUNDLE_START);
+    TimingOption timingOption =
+        TimingOption.createTimingOption(TimingConstants.RELOAD_BUNDLE_FROM_NATIVE,
+            TimingConstants.RELOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
 
     if (prepareUpdateData(data)) {
       if (newGlobalProps != null) {
@@ -2596,8 +2597,8 @@ public class LynxTemplateRender
             renderTemplate(template, templateData);
           } else {
             // if loading with LynxLoadMeta.
-            TimingOption timingOption = TimingOption.createTimingOption(
-                TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+            TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
+                TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
             if (mPerformanceController.isEmbeddedMode()) {
               mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
             }
@@ -2633,8 +2634,8 @@ public class LynxTemplateRender
         meta = new LynxLoadMeta.Builder().build();
         meta.initialData = templateData;
       }
-      TimingOption timingOption = TimingOption.createTimingOption(
-          TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+      TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
+          TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
       if (mPerformanceController.isEmbeddedMode()) {
         mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
       }
@@ -2671,8 +2672,8 @@ public class LynxTemplateRender
         renderTemplateBundle(templateBundle, templateData, mUrl);
       } else {
         // if loading with LynxLoadMeta.
-        TimingOption timingOption = TimingOption.createTimingOption(
-            TimingConstants.LOAD_BUNDLE, TimingConstants.LOAD_BUNDLE_START);
+        TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
+            TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
         if (mPerformanceController.isEmbeddedMode()) {
           mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
         }

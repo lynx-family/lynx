@@ -10,6 +10,7 @@ import java.util.HashMap;
 public class TimingOption {
   public final String pipelineOrigin;
   public final HashMap<String, Long> timingInfo;
+  private boolean mUseEmbeddedMode = false;
 
   /**
    * Creates a TimingOption instance with initial timing measurements.
@@ -20,30 +21,44 @@ public class TimingOption {
    * @param startTimingType The specific timing type to mark as started
    * @return A new TimingOption instance with initial timing data
    */
-  public static TimingOption createTimingOption(String pipelineOrigin, String startTimingType) {
+  public static TimingOption createTimingOption(
+      String pipelineOrigin, String startTimingType, boolean useEmbeddedMode) {
     TimingOption timingOption = new TimingOption(pipelineOrigin);
+    timingOption.mUseEmbeddedMode = useEmbeddedMode;
+    if (useEmbeddedMode) {
+      return timingOption;
+    }
     long currentTimeMillis = PerformanceController.currentSystemTimeMicroseconds();
     timingOption.setTiming(TimingConstants.PIPELINE_START, currentTimeMillis);
     timingOption.setTiming(startTimingType, currentTimeMillis);
     return timingOption;
   }
 
-  public TimingOption(String pipelineOrigin) {
+  private TimingOption(String pipelineOrigin) {
     this.pipelineOrigin = pipelineOrigin;
     this.timingInfo = new HashMap<>();
   }
 
   public void setTiming(String key, long usTimingStamp) {
+    if (mUseEmbeddedMode) {
+      return;
+    }
     this.timingInfo.put(key, usTimingStamp);
   }
 
   public void markTiming(String key) {
+    if (mUseEmbeddedMode) {
+      return;
+    }
     long currentTimeMillis = PerformanceController.currentSystemTimeMicroseconds();
     this.timingInfo.put(key, currentTimeMillis);
   }
 
   public JavaOnlyMap toJavaOnlyMap() {
     JavaOnlyMap result = new JavaOnlyMap();
+    if (mUseEmbeddedMode) {
+      return result;
+    }
     result.putString(TimingConstants.PIPELINE_ORIGIN, this.pipelineOrigin);
     result.putMap(TimingConstants.TIMESTAMP_MAP, JavaOnlyMap.from(this.timingInfo));
     return result;
