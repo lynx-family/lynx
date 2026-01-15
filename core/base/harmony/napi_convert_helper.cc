@@ -13,7 +13,7 @@
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 namespace lynx {
 namespace base {

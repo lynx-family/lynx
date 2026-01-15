@@ -63,7 +63,7 @@ unittest_set("internal_list_container_testset") {
   public_deps = [
     "../../:tasm",
     "../../../runtime/bindings/lepus",
-    "../../../runtime/vm/lepus/tasks:tasks_testset",
+    "../../../runtime/lepus_context/tasks:tasks_testset",
     "../../../shell/testing:mock_tasm_delegate_testset",
     "../../dom:dom",
     "../../dom:renderer_dom",

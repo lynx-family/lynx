@@ -7,10 +7,10 @@
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/bindings/lepus/modules/lepus_module_callback.h"
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module_manager.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
-#include "core/runtime/vm/lepus/vm_context.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
+#include "core/runtime/lepus_context/quick_context.h"
+#include "core/runtime/lepus_context/tasks/lepus_callback_manager.h"
+#include "core/runtime/lepus_context/vm_context.h"
 
 namespace lynx {
 namespace lepus {

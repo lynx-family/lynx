@@ -14,10 +14,10 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/bindings/lepus/renderer.h"
-#include "core/runtime/vm/lepus/exception.h"
-#include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/vm_context.h"
+#include "core/runtime/lepus_context/exception.h"
+#include "core/runtime/lepus_context/json_parser.h"
+#include "core/runtime/lepus_context/quick_context.h"
+#include "core/runtime/lepus_context/vm_context.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/encode_util.h"
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_reader.h"
@@ -40,7 +40,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-#include "core/runtime/vm/lepus/bytecode_generator.h"
+#include "core/runtime/lepus_context/bytecode_generator.h"
 #ifdef OS_IOS
 #include "trace-gc.h"
 #else

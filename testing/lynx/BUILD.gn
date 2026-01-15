@@ -30,7 +30,7 @@ group("lynx_test") {
     "../../core/runtime/bindings/jsi/resource:response_handler_js_unittests_exec",
     "../../core/runtime/bindings/lepus/event:lepus_runtime_unittests_exec",
     "../../core/runtime/bindings/lepus/resource:response_handler_lepus_unittests_exec",
-    "../../core/runtime/vm/lepus/tasks:task_unittests_exec",
+    "../../core/runtime/lepus_context/tasks:task_unittests_exec",
     "../../core/services/recorder:record_unit_test",
     "../../core/services/replay:replay_unit_test",
     "../../core/shared_data:shared_data_test_exec",

@@ -5,7 +5,7 @@
 #include "core/runtime/bindings/jsi/api_call_back.h"
 
 #include "core/runtime/js/jsi/jsi_unittest.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

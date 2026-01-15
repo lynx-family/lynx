@@ -7,9 +7,9 @@
 #include <utility>
 
 #include "core/runtime/js/bytecode/quickjs/bytecode/quickjs_bytecode_provider_src.h"
-#include "core/runtime/vm/lepus/function.h"
-#include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/quickjs_debug_info.h"
+#include "core/runtime/lepus_context/function.h"
+#include "core/runtime/lepus_context/quick_context.h"
+#include "core/runtime/lepus_context/quickjs_debug_info.h"
 #include "core/template_bundle/template_codec/binary_encoder/template_binary_writer.h"
 #include "core/template_bundle/template_codec/generator/source_generator.h"
 

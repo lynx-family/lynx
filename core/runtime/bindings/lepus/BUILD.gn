@@ -18,7 +18,7 @@ lynx_core_source_set("lepus") {
     "../../../renderer/events",
     "../../../renderer/signal:signal",
     "../../../renderer/utils:renderer_utils",
-    "../../vm/lepus",
+    "../../lepus_context:lepus",
   ]
 
   if (!is_oliver_ssr) {

@@ -13,7 +13,7 @@
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 namespace lynx {
 namespace tasm {

@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include "core/runtime/vm/lepus/quick_context.h"
+#include "core/runtime/lepus_context/quick_context.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 
 namespace lynx {

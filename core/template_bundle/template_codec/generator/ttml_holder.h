@@ -15,7 +15,7 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/template_themed.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "third_party/rapidjson/document.h"
 

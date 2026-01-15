@@ -18,8 +18,8 @@
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/dom/vdom/radon/radon_slot.h"
 #include "core/renderer/dom/vdom/radon/set_css_variable_op.h"
-#include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/vm_context.h"
+#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus_context/vm_context.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 
 namespace lynx {

@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/quick_context.h"
+#include "core/runtime/lepus_context/quick_context.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"

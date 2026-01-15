@@ -5,7 +5,7 @@
 #include "core/renderer/data/harmony/platform_data_harmony.h"
 
 #include "core/renderer/data/harmony/template_data_harmony.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 namespace lynx {
 namespace tasm {

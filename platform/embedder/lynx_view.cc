@@ -4,7 +4,7 @@
 
 #include <memory>
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "platform/embedder/fetcher/lynx_generic_resource_fetcher_priv.h"
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"

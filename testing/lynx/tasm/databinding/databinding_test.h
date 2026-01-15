@@ -22,7 +22,7 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/template_assembler.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/testing/mock_runner_manufactor.h"

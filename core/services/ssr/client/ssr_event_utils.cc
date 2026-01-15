@@ -8,7 +8,7 @@
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/ssr/ssr_type_info.h"
 
 namespace lynx {

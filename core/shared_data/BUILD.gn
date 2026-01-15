@@ -30,7 +30,7 @@ lynx_core_source_set("shared_data") {
   public_deps = [
     ":white_board",
     "../runtime",
-    "../runtime/vm/lepus",
+    "../runtime/lepus_context:lepus",
   ]
 }
 

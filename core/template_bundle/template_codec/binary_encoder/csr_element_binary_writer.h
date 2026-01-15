@@ -7,7 +7,7 @@
 
 #include <cstddef>
 
-#include "core/runtime/vm/lepus/context_binary_writer.h"
+#include "core/runtime/lepus_context/context_binary_writer.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {

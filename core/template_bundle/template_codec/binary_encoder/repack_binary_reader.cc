@@ -6,9 +6,9 @@
 
 #include <cstring>
 
-#include "core/runtime/vm/lepus/base_binary_reader.h"
-#include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/function.h"
+#include "core/runtime/lepus_context/base_binary_reader.h"
+#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus_context/function.h"
 #include "core/template_bundle/template_codec/header_ext_info.h"
 
 namespace lynx {

@@ -11,7 +11,7 @@
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/bindings/common/resource/response_promise.h"
 #include "core/runtime/bindings/jsi/js_app.h"
-#include "core/runtime/vm/lepus/jsvalue_helper.h"
+#include "core/runtime/lepus_context/jsvalue_helper.h"
 
 namespace lynx {
 namespace tasm {

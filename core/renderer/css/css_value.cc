@@ -9,7 +9,7 @@
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/parser/css_string_parser.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 
 namespace lynx {
 namespace tasm {

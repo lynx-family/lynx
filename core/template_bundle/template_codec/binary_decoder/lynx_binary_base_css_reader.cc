@@ -13,7 +13,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
-#include "core/runtime/vm/lepus/base_binary_reader.h"
+#include "core/runtime/lepus_context/base_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 
 namespace lynx {

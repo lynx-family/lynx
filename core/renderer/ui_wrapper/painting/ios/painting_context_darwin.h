@@ -17,7 +17,7 @@
 #include "core/shell/dynamic_ui_operation_queue.h"
 
 #if ENABLE_TESTBENCH_REPLAY
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #endif
 namespace lynx {
 namespace tasm {

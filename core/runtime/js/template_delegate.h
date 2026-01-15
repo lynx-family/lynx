@@ -23,7 +23,7 @@
 #include "core/runtime/js/js_bundle.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/update_data_type.h"
-#include "core/runtime/vm/lepus/lepus_global.h"
+#include "core/runtime/lepus_context/lepus_global.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/shell/lynx_card_cache_data_op.h"

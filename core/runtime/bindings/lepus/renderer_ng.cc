@@ -14,8 +14,8 @@
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/bindings/lepus/renderer_functions.h"
+#include "core/runtime/lepus_context/builtin.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
-#include "core/runtime/vm/lepus/builtin.h"
 
 namespace lynx {
 namespace tasm {

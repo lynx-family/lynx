@@ -7,7 +7,7 @@
 
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_delegate.h"
 
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "devtool/testing/mock/white_board_inspector_delegate_mock.h"

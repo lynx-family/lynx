@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "core/runtime/bindings/napi/napi_environment.h"
-#include "core/runtime/vm/lepus/quick_context.h"
+#include "core/runtime/lepus_context/quick_context.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 #ifdef USE_PRIMJS_NAPI

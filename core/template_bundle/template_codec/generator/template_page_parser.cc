@@ -7,7 +7,7 @@
 #include <set>
 #include <unordered_map>
 
-#include "core/runtime/vm/lepus/exception.h"
+#include "core/runtime/lepus_context/exception.h"
 #include "core/template_bundle/template_codec/generator/template_scope.h"
 
 namespace lynx {

@@ -33,7 +33,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context_data.h"
 #include "core/renderer/ui_wrapper/layout/no_needed_layout_list.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/vm/lepus/json_parser.h"
+#include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/services/recorder/recorder_controller.h"

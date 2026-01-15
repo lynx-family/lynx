@@ -15,7 +15,7 @@
 #include "core/runtime/bindings/common/modules/lynx_native_module_manager.h"
 #include "core/runtime/bindings/lepus/modules/lepus_module_callback.h"
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module.h"
-#include "core/runtime/vm/lepus/context.h"
+#include "core/runtime/lepus_context/context.h"
 
 namespace lynx {
 namespace lepus {
