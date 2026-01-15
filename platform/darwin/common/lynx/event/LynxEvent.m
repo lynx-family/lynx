@@ -108,6 +108,9 @@ int32_t const LynxTouchPseudoStateAll = ~0;
 }
 
 - (void)addDetailKey:(NSString*)key value:(NSObject*)value {
+  if (_params == nil) {
+    _params = [NSMutableDictionary new];
+  }
   [_params setObject:value forKey:key];
 }
 

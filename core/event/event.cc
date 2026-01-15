@@ -89,6 +89,7 @@ void Event::InitEventPath(EventTarget& target) {
   }
   while (event_target && !event_target->IsEventPathCatch(&target, this)) {
     if (event_target->IsEventPathSkip(&target, this)) {
+      event_target = event_target->GetParentTarget();
       continue;
     }
     event_path_.push_back(event_target->GetWeakTarget());
