@@ -9,7 +9,7 @@
 #import "LynxFetchModule.h"
 
 @interface LynxHttpStreamingDelegate ()
-- (void)processChunkedData:(NSMutableData *)buffer withData:(NSData *)data;
+- (void)processDeprecatedChunkedData:(NSMutableData *)buffer withData:(NSData *)data;
 
 - (void)streamingChunk:(NSMutableData *)buffer
              chunkSize:(NSInteger)chunkSize
@@ -128,7 +128,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   NSString *chunk = @"A\r\n1234567890\r\n";
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   NSString *expectedString = @"1234567890";
   NSData *expectedData = [expectedString dataUsingEncoding:NSUTF8StringEncoding];
@@ -141,14 +141,14 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   NSString *chunk2 = @"6\r\n World\r\n";
   NSString *chunk3 = @"0\r\n\r\n";  // End chunk
 
-  [self.mockDelegate processChunkedData:self.buffer
-                               withData:[chunk1 dataUsingEncoding:NSUTF8StringEncoding]];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer
+                                         withData:[chunk1 dataUsingEncoding:NSUTF8StringEncoding]];
 
-  [self.mockDelegate processChunkedData:self.buffer
-                               withData:[chunk2 dataUsingEncoding:NSUTF8StringEncoding]];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer
+                                         withData:[chunk2 dataUsingEncoding:NSUTF8StringEncoding]];
 
-  [self.mockDelegate processChunkedData:self.buffer
-                               withData:[chunk3 dataUsingEncoding:NSUTF8StringEncoding]];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer
+                                         withData:[chunk3 dataUsingEncoding:NSUTF8StringEncoding]];
 
   NSData *expectedData = [@"Hello" dataUsingEncoding:NSUTF8StringEncoding];
   XCTAssertEqualObjects(self.eventArray[0][@"data"], expectedData);
@@ -160,8 +160,8 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
 - (void)testProcessChunkedData_MultipleChunksSingle {
   NSString *chunk1 = @"5\r\nHello\r\n6\r\n World\r\n0\r\n\r\n";
 
-  [self.mockDelegate processChunkedData:self.buffer
-                               withData:[chunk1 dataUsingEncoding:NSUTF8StringEncoding]];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer
+                                         withData:[chunk1 dataUsingEncoding:NSUTF8StringEncoding]];
 
   NSData *expectedData = [@"Hello" dataUsingEncoding:NSUTF8StringEncoding];
   XCTAssertEqualObjects(self.eventArray[0][@"data"], expectedData);
@@ -174,13 +174,13 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   NSString *chunk = @"A\r";  // Only part of the chunk
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   XCTAssertEqual([self.eventArray count], 0);
 
   chunk = @"\n1234567890\r\n";
   data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   NSString *expectedString = @"1234567890";
   NSData *expectedData = [expectedString dataUsingEncoding:NSUTF8StringEncoding];
@@ -192,13 +192,13 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   NSString *chunk = @"A\r\n12345";  // Only part of the chunk
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   XCTAssertEqual([self.eventArray count], 0);
 
   chunk = @"67890\r\n";
   data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   NSString *expectedString = @"1234567890";
   NSData *expectedData = [expectedString dataUsingEncoding:NSUTF8StringEncoding];
@@ -210,7 +210,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   NSString *chunk = @"0\r\n\r\n";  // End chunk
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   XCTAssertEqual([self.eventArray count], 1);
   XCTAssertEqualObjects(self.eventArray[0][@"event"], @"onEnd");
@@ -220,7 +220,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   NSString *chunk = @"A\rX\n1234567890\r\n";  // Malformed chunk header
   NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
 
-  [self.mockDelegate processChunkedData:self.buffer withData:data];
+  [self.mockDelegate processDeprecatedChunkedData:self.buffer withData:data];
 
   XCTAssertEqual([self.eventArray count], 1);
   XCTAssertEqual(self.eventArray[0][@"event"], @"onError");

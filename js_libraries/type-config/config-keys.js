@@ -62,6 +62,7 @@ const configKeys = [
   'enableExposureUIMargin',
   'enableExposureWhenLayout',
   'enableExposureWhenReload',
+  'enableFetchAPIStandardStreaming',
   'enableFixedNew',
   'enableHarmonyNewOverlay',
   'enableHarmonyVisibleAreaChangeForExposure',

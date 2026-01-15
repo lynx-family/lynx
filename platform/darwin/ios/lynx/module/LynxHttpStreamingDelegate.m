@@ -120,7 +120,7 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
 
 // split chunck defined by `Transfer-Encoding: chunked`:
 // see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Transfer-Encoding
-- (void)processChunkedData:(NSMutableData *)buffer withData:(NSData *)data {
+- (void)processDeprecatedChunkedData:(NSMutableData *)buffer withData:(NSData *)data {
   [buffer appendData:data];
 
   while (true) {
@@ -140,6 +140,10 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
 
     [self streamingChunk:buffer chunkSize:chunkSize nextIdx:nextIdx];
   }
+}
+
+- (void)processStreamingData:(NSData *)data {
+  [self onData:data];
 }
 
 @end

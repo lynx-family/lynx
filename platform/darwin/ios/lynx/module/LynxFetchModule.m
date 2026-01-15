@@ -87,7 +87,24 @@ NSString *const streamingEventNamePrefix = @"LynxFetchModuleStreamingEvent";
   httpRequest.httpHeaders = request[@"headers"];
   httpRequest.httpBody = request[@"body"];
   httpRequest.customConfig = request[@"lynxExtension"];
-  BOOL useStreaming = httpRequest.customConfig[@"useStreaming"] ?: NO;
+
+  BOOL enableFetchApiStandardStreaming = NO;
+  {
+    NSObject *value = httpRequest.customConfig[@"enableFetchAPIStandardStreaming"];
+    // 检查对象是否是 NSNumber 类型
+    if ([value isKindOfClass:[NSNumber class]]) {
+      enableFetchApiStandardStreaming = [(NSNumber *)value boolValue];
+    }
+  }
+
+  BOOL useDeprecatedStreamingConfig = NO;
+  {
+    NSObject *value = httpRequest.customConfig[@"useStreaming"];
+    // 检查对象是否是 NSNumber 类型
+    if ([value isKindOfClass:[NSNumber class]]) {
+      useDeprecatedStreamingConfig = [(NSNumber *)value boolValue];
+    }
+  }
 
   id<LynxServiceHttpProtocol> httpService = LynxService(LynxServiceHttpProtocol);
   if (!httpService) {
@@ -97,7 +114,7 @@ NSString *const streamingEventNamePrefix = @"LynxFetchModuleStreamingEvent";
     return;
   }
 
-  if (!useStreaming) {
+  if (!useDeprecatedStreamingConfig && !enableFetchApiStandardStreaming) {
     [self request:httpRequest withResolve:resolve withHttpService:httpService];
   } else {
     [self requestStreaming:httpRequest withResolve:resolve withHttpService:httpService];

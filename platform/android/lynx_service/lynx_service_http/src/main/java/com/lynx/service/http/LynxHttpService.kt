@@ -63,7 +63,12 @@ object LynxHttpService : ILynxHttpService {
                     if (delegate != null) {
                         response.body?.let { body ->
                             body.byteStream().use { inputStream ->
-                                delegate.streamingBody(inputStream);
+                              val useDeprecatedStreamingConfig = request.customConfig.getBoolean("useStreaming", false);  
+                              if (useDeprecatedStreamingConfig) {
+                                  delegate.deprecatedChunkedStreamingBody(inputStream);
+                              } else {
+                                  delegate.streamingBody(inputStream);
+                              }
                                 delegate.onEnd()
                             }
                         } ?: run {
@@ -74,7 +79,6 @@ object LynxHttpService : ILynxHttpService {
             }
         })
     }
-
 
     override fun request(request: HttpRequest, callback: LynxHttpRequestCallback) {
         requestInner(request, callback, null);

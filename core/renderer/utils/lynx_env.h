@@ -126,6 +126,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_UNIFY_FIXED_BEHAVIOR,
     ENABLE_SHARE_CONTEXT_ICU,
     FIX_RADON_INLINE_CONVERT_BUG,
+    ENABLE_FETCH_API_STANDARD_STREAMING,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -265,6 +266,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
             {Key::ENABLE_SHARE_CONTEXT_ICU, "enable_share_context_icu"},
             {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
+            {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
+             "enable_fetch_api_standard_streaming"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -414,6 +417,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableHarmonyNewImage();
   bool EnableUnifyFixedBehavior();
   bool FixRadonInlineConvertBug();
+  bool EnableFetchAPIStreamingStandard();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

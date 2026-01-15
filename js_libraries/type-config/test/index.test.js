@@ -45,7 +45,7 @@ describe('type-config index', () => {
     ]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(125);
+    expect(configKeys.length).toBe(126);
     expect(configKeys).toEqual([
       'absoluteInContentBound',
       'asyncRedirect',
@@ -77,6 +77,7 @@ describe('type-config index', () => {
       'enableExposureUIMargin',
       'enableExposureWhenLayout',
       'enableExposureWhenReload',
+      'enableFetchAPIStandardStreaming',
       'enableFixedNew',
       'enableHarmonyNewOverlay',
       'enableHarmonyVisibleAreaChangeForExposure',

@@ -108,6 +108,15 @@ constexpr const char kEnableReuseLoadScriptExports[] =
  **/
 constexpr const char kEnableJSCallbackManager[] = "enableJSCallbackManager";
 
+/**
+ * @name: enableFetchAPIStandardStreaming
+ * @description: xxxxxx.
+ * @platform: Both
+ * @supportVersion: 3.7
+ **/
+constexpr const char kEnableFetchAPIStandardStreaming[] =
+    "enableFetchAPIStandardStreaming";
+
 constexpr const char kInvokeAppMethodName[] = "__invokeAppMethod";
 
 /**
