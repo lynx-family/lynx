@@ -6,7 +6,7 @@ jni_register_configs:
   namespaces:
     - lynx
   special_cases:
-    - header: core/runtime/bindings/jsi/modules/android/lynx_promise_impl.h
+    - header: core/runtime/js/bindings/modules/android/lynx_promise_impl.h
       method: lynx::piper::LynxPromiseImpl::RegisterJNI(env);
     - header: core/runtime/common/utils.h
       method:

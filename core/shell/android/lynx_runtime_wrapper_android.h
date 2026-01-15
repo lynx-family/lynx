@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
+#include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/shell/native_facade.h"
 #include "core/shell/native_facade_empty_implementation.h"
 #include "core/shell/runtime_standalone_helper.h"

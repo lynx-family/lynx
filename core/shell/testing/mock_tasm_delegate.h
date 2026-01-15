@@ -18,8 +18,8 @@
 #include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
-#include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/bindings/jsi/api_call_back.h"
+#include "core/runtime/common/bindings/event/message_event.h"
+#include "core/runtime/js/bindings/api_call_back.h"
 #include "core/shell/common/platform_call_back_manager.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 

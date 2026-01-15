@@ -17,7 +17,7 @@
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
-#include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
+#include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/services/performance/android/performance_controller_android.h"
 #include "core/shell/android/lynx_engine_proxy_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"

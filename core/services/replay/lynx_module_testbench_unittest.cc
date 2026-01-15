@@ -14,7 +14,7 @@
 #include "base/include/fml/synchronization/count_down_latch.h"
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/time/time_delta.h"
-#include "core/runtime/bindings/jsi/modules/module_delegate.h"
+#include "core/runtime/js/bindings/modules/module_delegate.h"
 #include "testing/utils/make_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

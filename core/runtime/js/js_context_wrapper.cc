@@ -6,8 +6,8 @@
 #include "base/lynx_trace_categories.h"
 #include "base/trace/native/trace_event.h"
 #include "core/inspector/console_message_postman.h"
-#include "core/runtime/bindings/jsi/global.h"
 #include "core/runtime/common/napi/napi_environment.h"
+#include "core/runtime/js/bindings/global.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 

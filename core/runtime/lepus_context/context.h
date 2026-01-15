@@ -22,7 +22,7 @@
 #include "core/inspector/lepus_inspector_manager.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/public/page_options.h"
-#include "core/runtime/bindings/lepus/renderer.h"
+#include "core/runtime/lepus_context/bindings/renderer.h"
 #include "core/runtime/lepus_context/lepus_context_cell.h"
 #include "core/runtime/lepus_context/lepus_global.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"

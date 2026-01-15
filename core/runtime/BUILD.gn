@@ -23,22 +23,22 @@ lynx_core_source_set("js_common") {
 
 # jsbridge_shared_sources
 jsbridge_shared_sources = [
-  "bindings/jsi/modules/lynx_jsi_module.cc",
-  "bindings/jsi/modules/lynx_jsi_module.h",
-  "bindings/jsi/modules/lynx_jsi_module_binding.cc",
-  "bindings/jsi/modules/lynx_jsi_module_binding.h",
-  "bindings/jsi/modules/lynx_jsi_module_callback.cc",
-  "bindings/jsi/modules/lynx_jsi_module_callback.h",
-  "bindings/jsi/modules/lynx_module.cc",
-  "bindings/jsi/modules/lynx_module.h",
-  "bindings/jsi/modules/lynx_module_manager.cc",
-  "bindings/jsi/modules/lynx_module_manager.h",
-  "bindings/jsi/modules/lynx_module_timing.cc",
-  "bindings/jsi/modules/lynx_module_timing.h",
-  "bindings/jsi/modules/module_delegate.h",
-  "bindings/jsi/modules/module_interceptor.cc",
-  "bindings/jsi/modules/module_interceptor.h",
   "common/lynx_console_helper.h",
+  "js/bindings/modules/lynx_jsi_module.cc",
+  "js/bindings/modules/lynx_jsi_module.h",
+  "js/bindings/modules/lynx_jsi_module_binding.cc",
+  "js/bindings/modules/lynx_jsi_module_binding.h",
+  "js/bindings/modules/lynx_jsi_module_callback.cc",
+  "js/bindings/modules/lynx_jsi_module_callback.h",
+  "js/bindings/modules/lynx_module.cc",
+  "js/bindings/modules/lynx_module.h",
+  "js/bindings/modules/lynx_module_manager.cc",
+  "js/bindings/modules/lynx_module_manager.h",
+  "js/bindings/modules/lynx_module_timing.cc",
+  "js/bindings/modules/lynx_module_timing.h",
+  "js/bindings/modules/module_delegate.h",
+  "js/bindings/modules/module_interceptor.cc",
+  "js/bindings/modules/module_interceptor.h",
   "js/js_context_wrapper.cc",
   "js/js_context_wrapper.h",
   "js/js_executor.cc",
@@ -64,28 +64,28 @@ if (!enable_unittests) {
     if (!is_mac || !desktop_enable_embedder_layer) {
       jsbridge_shared_sources +=
           [
-            "bindings/jsi/modules/ios/common_module_creator.h",
-            "bindings/jsi/modules/ios/common_module_creator.mm",
-            "bindings/jsi/modules/ios/lynx_module_creator_darwin.h",
-            "bindings/jsi/modules/ios/lynx_module_darwin.h",
-            "bindings/jsi/modules/ios/lynx_module_darwin.mm",
-            "bindings/jsi/modules/ios/lynx_module_interceptor.h",
-            "bindings/jsi/modules/ios/module_factory_darwin.h",
-            "bindings/jsi/modules/ios/module_factory_darwin.mm",
-            "bindings/jsi/modules/ios/shared_module_creator.h",
-            "bindings/jsi/modules/ios/shared_module_creator.mm",
-            "bindings/lepus/ios/lynx_lepus_module_darwin.h",
-            "bindings/lepus/ios/lynx_lepus_module_darwin.mm",
+            "js/bindings/modules/ios/common_module_creator.h",
+            "js/bindings/modules/ios/common_module_creator.mm",
+            "js/bindings/modules/ios/lynx_module_creator_darwin.h",
+            "js/bindings/modules/ios/lynx_module_darwin.h",
+            "js/bindings/modules/ios/lynx_module_darwin.mm",
+            "js/bindings/modules/ios/lynx_module_interceptor.h",
+            "js/bindings/modules/ios/module_factory_darwin.h",
+            "js/bindings/modules/ios/module_factory_darwin.mm",
+            "js/bindings/modules/ios/shared_module_creator.h",
+            "js/bindings/modules/ios/shared_module_creator.mm",
+            "lepus_context/bindings/ios/lynx_lepus_module_darwin.h",
+            "lepus_context/bindings/ios/lynx_lepus_module_darwin.mm",
           ] + jsbridge_extend_shared_sources
     }
   } else if (is_harmony) {
     jsbridge_shared_sources += [
-      "bindings/jsi/modules/harmony/module_factory_harmony.cc",
-      "bindings/jsi/modules/harmony/module_factory_harmony.h",
-      "bindings/jsi/modules/harmony/native_module_harmony.cc",
-      "bindings/jsi/modules/harmony/native_module_harmony.h",
-      "bindings/jsi/modules/harmony/platform_module_manager.cc",
-      "bindings/jsi/modules/harmony/platform_module_manager.h",
+      "js/bindings/modules/harmony/module_factory_harmony.cc",
+      "js/bindings/modules/harmony/module_factory_harmony.h",
+      "js/bindings/modules/harmony/native_module_harmony.cc",
+      "js/bindings/modules/harmony/native_module_harmony.h",
+      "js/bindings/modules/harmony/platform_module_manager.cc",
+      "js/bindings/modules/harmony/platform_module_manager.h",
     ]
   }
 }
@@ -106,11 +106,11 @@ lynx_core_source_set("runtime") {
   deps = [
     ":js_common",
     "../../third_party/rapidjson",
-    "bindings/common/modules:native_modules",
-    "bindings/jsi",
-    "bindings/jsi/interceptor:interceptor_factory",
     "common:reporter",
     "common:utils",
+    "common/bindings/modules:native_modules",
+    "js/bindings",
+    "js/bindings/interceptor:interceptor_factory",
     "js/jsi",
     "profile",
     "profile/lepusng:lepusng_profile",
@@ -146,7 +146,7 @@ lynx_core_source_set("runtime") {
     cflags = [ "-Wno-unused-variable" ]
 
     if (is_android) {
-      public_deps += [ "bindings/jsi/modules/android:modules_android_src" ]
+      public_deps += [ "js/bindings/modules/android:modules_android_src" ]
     }
     if (enable_napi_binding) {
       public_deps += [ "common/napi:napi_binding_core" ]
@@ -156,9 +156,9 @@ lynx_core_source_set("runtime") {
 
 unittest_set("jsbridge_testset") {
   sources = [
-    "bindings/common/modules/lynx_native_module_manager_unittest.cc",
-    "bindings/jsi/modules/lynx_module_manager_unittest.cc",
-    "bindings/jsi/modules/native_module_factory_unittest.cc",
+    "common/bindings/modules/lynx_native_module_manager_unittest.cc",
+    "js/bindings/modules/lynx_module_manager_unittest.cc",
+    "js/bindings/modules/native_module_factory_unittest.cc",
     "js/js_bundle_unittest.cc",
     "js/runtime_lifecycle_observer_unittest.cc",
   ]
@@ -167,9 +167,9 @@ unittest_set("jsbridge_testset") {
     ":runtime",
     "../renderer/dom:dom",
     "../renderer/utils:renderer_utils",
-    "bindings/jsi:bindings_unittests_testset",
     "common:utils_unittests_testset",
     "common/napi:napi_unittests_testset",
+    "js/bindings:bindings_unittests_testset",
     "js/bytecode:jscache_unittests_testset",
     "js/jsi:jsi_unittests_testset",
     "js/jsi/quickjs:quickjs_unittests_testset",

@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "core/resource/external_resource/external_resource_loader.h"
-#include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
+#include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 #include "core/shell/native_facade.h"
 #include "core/shell/native_facade_empty_implementation.h"
 

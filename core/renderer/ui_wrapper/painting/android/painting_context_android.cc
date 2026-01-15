@@ -26,7 +26,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/utils/android/text_utils_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
-#include "core/runtime/bindings/jsi/modules/android/method_invoker.h"
+#include "core/runtime/js/bindings/modules/android/method_invoker.h"
 #include "core/shell/lynx_ui_operation_async_queue.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PaintingContext_jni.h"

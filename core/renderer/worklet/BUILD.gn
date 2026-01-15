@@ -76,7 +76,7 @@ unittest_set("worklet_testset") {
     "../:tasm",
     "../../base",
     "../../runtime",
-    "../../runtime/bindings/lepus",
+    "../../runtime/lepus_context/bindings:lepus",
     "../dom:dom",
     "../dom:renderer_dom",
   ]
@@ -96,7 +96,7 @@ unittest_exec("worklet_unittests_exec") {
     ":worklet_testset",
     "../:tasm",
     "../../../third_party/quickjs",
-    "../../runtime/bindings/lepus",
+    "../../runtime/lepus_context/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:dom",
     "../dom:renderer_dom",

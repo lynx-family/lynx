@@ -12,7 +12,7 @@
 #include "base/include/no_destructor.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/bindings/jsi/global.h"
+#include "core/runtime/js/bindings/global.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -44,7 +44,7 @@ extern void RegisterJSVMRuntimeProxyFactory(
 #endif  // OS_HARMONY
 
 #ifdef OS_ANDROID
-#include "core/runtime/bindings/jsi/modules/android/lynx_proxy_runtime_helper.h"
+#include "core/runtime/js/bindings/modules/android/lynx_proxy_runtime_helper.h"
 #include "core/runtime/profile/v8/v8_runtime_profiler.h"
 #endif
 

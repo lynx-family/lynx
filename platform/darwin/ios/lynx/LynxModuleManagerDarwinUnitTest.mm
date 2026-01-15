@@ -13,7 +13,7 @@
 #import "LynxBackgroundRuntime+Internal.h"
 #import "LynxUnitTestUtils.h"
 
-#include "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"
+#include "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 
 @interface LynxModuleMockGlobal : NSObject <LynxModule>
 @end

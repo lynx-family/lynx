@@ -11,7 +11,7 @@
 #import <pthread.h>
 #include <atomic>
 
-#include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
+#include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 
 @implementation LynxViewGroup {
   LynxTemplateBundle *_templateBundle;

@@ -23,7 +23,7 @@
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
-#include "core/runtime/bindings/jsi/modules/ios/common_module_creator.h"
+#include "core/runtime/js/bindings/modules/ios/common_module_creator.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_runtime_facade_darwin.h"
 #include "core/shell/module_delegate_impl.h"

@@ -20,7 +20,7 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "devtool/embedder/core/lynx_devtool_set_module.h"

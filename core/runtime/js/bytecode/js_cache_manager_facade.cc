@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/bindings/jsi/js_app.h"
+#include "core/runtime/js/bindings/js_app.h"
 #include "core/runtime/js/bytecode/js_cache_manager.h"
 #include "core/runtime/js/bytecode/quickjs/quickjs_cache_generator.h"
 #include "core/runtime/js/jsi/jsi.h"

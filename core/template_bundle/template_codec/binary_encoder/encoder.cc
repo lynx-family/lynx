@@ -13,7 +13,7 @@
 
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/bindings/lepus/renderer.h"
+#include "core/runtime/lepus_context/bindings/renderer.h"
 #include "core/runtime/lepus_context/exception.h"
 #include "core/runtime/lepus_context/json_parser.h"
 #include "core/runtime/lepus_context/quick_context.h"

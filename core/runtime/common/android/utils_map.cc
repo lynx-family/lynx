@@ -9,8 +9,8 @@
 #include "core/base/android/jni_helper.h"
 #include "core/base/android/piper_data.h"
 #include "core/base/js_constants.h"
-#include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "core/runtime/common/utils.h"
+#include "core/runtime/js/bindings/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/JavaOnlyMap_jni.h"
 
 namespace lynx {

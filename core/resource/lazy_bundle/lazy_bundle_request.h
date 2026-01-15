@@ -9,7 +9,7 @@
 #include <string>
 
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
-#include "core/runtime/bindings/common/resource/response_promise.h"
+#include "core/runtime/common/bindings/resource/response_promise.h"
 
 namespace lynx {
 namespace tasm {

@@ -10,8 +10,8 @@
 
 #include "base/include/fml/thread.h"
 #include "base/include/string/string_utils.h"
-#include "core/runtime/bindings/jsi/modules/lynx_jsi_module.h"
-#include "core/runtime/bindings/jsi/modules/module_delegate.h"
+#include "core/runtime/js/bindings/modules/lynx_jsi_module.h"
+#include "core/runtime/js/bindings/modules/module_delegate.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 

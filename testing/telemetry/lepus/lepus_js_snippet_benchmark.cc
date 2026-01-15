@@ -8,7 +8,7 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/bindings/lepus/renderer_functions.h"
+#include "core/runtime/lepus_context/bindings/renderer_functions.h"
 #include "core/runtime/lepus_context/builtin.h"
 #include "core/runtime/lepus_context/bytecode_generator.h"
 #include "core/runtime/lepus_context/json_parser.h"

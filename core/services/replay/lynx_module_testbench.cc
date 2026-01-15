@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/bindings/jsi/modules/module_interceptor.h"
+#include "core/runtime/js/bindings/modules/module_interceptor.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/services/replay/lynx_callback_testbench.h"
 #include "core/services/replay/lynx_replay_helper.h"

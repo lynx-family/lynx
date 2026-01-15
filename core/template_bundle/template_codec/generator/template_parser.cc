@@ -19,7 +19,7 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/bindings/lepus/renderer.h"
+#include "core/runtime/lepus_context/bindings/renderer.h"
 #include "core/runtime/lepus_context/exception.h"
 #include "core/runtime/lepus_context/json_parser.h"
 #include "core/template_bundle/template_codec/generator/list_parser.h"

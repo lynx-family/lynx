@@ -7,7 +7,7 @@
 #include <jni.h>
 
 #include "core/base/android/java_only_map.h"
-#include "core/runtime/bindings/common/event/message_event.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 
 namespace lynx {
 namespace tasm {

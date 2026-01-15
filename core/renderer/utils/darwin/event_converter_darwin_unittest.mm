@@ -7,8 +7,8 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/utils/darwin/event_converter_darwin.h"
-#include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/bindings/common/event/runtime_constants.h"
+#include "core/runtime/common/bindings/event/message_event.h"
+#include "core/runtime/common/bindings/event/runtime_constants.h"
 
 using namespace lynx;
 

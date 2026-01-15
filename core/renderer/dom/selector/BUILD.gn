@@ -35,7 +35,7 @@ unittest_set("element_selector_testset") {
     "../:dom",
     "../:renderer_dom",
     "../../:tasm",
-    "../../../runtime/bindings/lepus",
+    "../../../runtime/lepus_context/bindings:lepus",
   ]
 }
 

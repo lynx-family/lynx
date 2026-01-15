@@ -29,7 +29,7 @@ lynx_core_source_set("replay") {
   include_dirs = [
     "../../renderer:tasm",
     "../../renderer/dom:renderer_dom",
-    "../../runtime/bindings/lepus",
+    "../../runtime/lepus_context/bindings:lepus",
   ]
   sources = replay_shared_sources
 

@@ -1,0 +1,23 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../testing/test.gni")
+import("../../../../Lynx.gni")
+
+lepus_module_shared_sources = [
+  "lepus_module_callback.cc",
+  "lepus_module_callback.h",
+  "lynx_lepus_module.cc",
+  "lynx_lepus_module.h",
+  "lynx_lepus_module_manager.cc",
+  "lynx_lepus_module_manager.h",
+]
+
+lynx_core_source_set("lepus_runtime") {
+  sources = lepus_module_shared_sources
+
+  deps = []
+
+  public_deps = [ "../../../common/bindings/modules:native_modules" ]
+}

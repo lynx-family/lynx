@@ -17,7 +17,7 @@
 #include <unordered_set>
 
 #include "core/public/page_options.h"
-#include "core/runtime/bindings/jsi/lynx_js_error.h"
+#include "core/runtime/js/bindings/lynx_js_error.h"
 #include "core/runtime/js/jsi/jsi.h"
 #ifdef OS_OSX
 #include "core/runtime/js/jsi/v8/v8_runtime.h"

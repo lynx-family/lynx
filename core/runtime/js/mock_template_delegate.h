@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "base/include/debug/lynx_error.h"
-#include "core/runtime/bindings/common/event/message_event.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/template_delegate.h"
 
 namespace lynx {

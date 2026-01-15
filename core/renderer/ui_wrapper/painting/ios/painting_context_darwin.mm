@@ -18,7 +18,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
-#include "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"
+#include "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 #include "core/services/feature_count/feature.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/shell/lynx_shell.h"

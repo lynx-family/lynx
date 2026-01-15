@@ -14,7 +14,7 @@
 #include "base/include/vector.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/page_proxy.h"
-#include "core/runtime/bindings/common/event/context_proxy.h"
+#include "core/runtime/common/bindings/event/context_proxy.h"
 
 namespace lynx {
 namespace worklet {

@@ -55,7 +55,7 @@ unittest_set("events_test_testset") {
     ":events",
     "../:tasm",
     "../../../third_party/quickjs",
-    "../../runtime/bindings/lepus",
+    "../../runtime/lepus_context/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:dom",
     "../dom:dom_testset",

@@ -34,6 +34,6 @@ unittest_exec("task_unittests_exec") {
     "../../../renderer/ui_wrapper:ui_wrapper",
     "../../../renderer/utils:renderer_utils",
     "../../../value_wrapper:value_wrapper",
-    "../../bindings/lepus:lepus",
+    "../bindings:lepus",
   ]
 }

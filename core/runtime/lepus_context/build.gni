@@ -121,7 +121,7 @@ lynx_lepus_compile_sources_path =
     get_path_info(lynx_lepus_compile_sources, "abspath")
 
 lynx_lepus_ng_sources = [
-  "../bindings/lepus/renderer_ng.cc",
+  "bindings/renderer_ng.cc",
   "jsvalue_helper.cc",
   "jsvalue_helper.h",
   "quick_context.cc",

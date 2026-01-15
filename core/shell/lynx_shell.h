@@ -24,7 +24,7 @@
 #include "core/public/page_options.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/services/performance/performance_controller.h"

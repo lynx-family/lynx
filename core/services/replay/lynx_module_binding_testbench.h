@@ -8,8 +8,8 @@
 #include <set>
 #include <string>
 
-#include "core/runtime/bindings/jsi/modules/lynx_module.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/js/bindings/modules/lynx_module.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {

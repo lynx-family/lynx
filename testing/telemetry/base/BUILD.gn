@@ -6,7 +6,7 @@ import("../../../testing/test.gni")
 benchmark_test("base_benchmark") {
   testonly = true
   sources = [ "./vector_benchmark_ci.cc" ]
-  deps = [ "../../../core/runtime/bindings/lepus" ]
+  deps = [ "../../../core/runtime/lepus_context/bindings:lepus" ]
 }
 
 # These performance test cases are used to compare the performance
@@ -18,7 +18,7 @@ benchmark_test("vector_benchmark") {
     "./array_based_flat_map_benchmark.cc",
     "./vector_benchmark.cc",
   ]
-  deps = [ "../../../core/runtime/bindings/lepus" ]
+  deps = [ "../../../core/runtime/lepus_context/bindings:lepus" ]
 }
 
 # These tests are created to tune LinkedHashMap for proper template

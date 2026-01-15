@@ -27,9 +27,9 @@ unittest_set("lepusng_profile_testset") {
     "../../../renderer:tasm",
     "../../../renderer/dom:dom",
     "../../../renderer/dom:renderer_dom",
-    "../../bindings/lepus",
     "../../lepus_context:lepus",
     "../../lepus_context:lepus_ng",
+    "../../lepus_context/bindings:lepus",
   ]
 }
 

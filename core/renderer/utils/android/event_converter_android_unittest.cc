@@ -8,7 +8,7 @@
 
 #include "core/base/android/android_jni.h"
 #include "core/renderer/utils/base/tasm_constants.h"
-#include "core/runtime/bindings/common/event/runtime_constants.h"
+#include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

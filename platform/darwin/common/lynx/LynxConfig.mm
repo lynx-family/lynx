@@ -8,7 +8,7 @@
 #import <Lynx/LynxLog.h>
 #import "LynxConfig+Internal.h"
 
-#include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
+#include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 
 @implementation LynxConfig {
   // Only used to manage wrappers

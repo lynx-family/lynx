@@ -20,8 +20,8 @@
 
 // TODO(liyanbo.monster): after remove native promise, delete this.
 #if OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID
-#include "core/runtime/bindings/jsi/modules/lynx_module_timing.h"
-#include "core/runtime/bindings/jsi/modules/module_delegate.h"
+#include "core/runtime/js/bindings/modules/lynx_module_timing.h"
+#include "core/runtime/js/bindings/modules/module_delegate.h"
 #include "core/runtime/js/jsi/jsi.h"
 #endif
 

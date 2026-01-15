@@ -19,7 +19,7 @@
 #include "core/public/ui_delegate.h"
 #include "core/public/vsync_monitor_platform_impl.h"
 #include "core/renderer/data/template_data.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"

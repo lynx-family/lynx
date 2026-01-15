@@ -10,7 +10,7 @@
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
 #include "core/base/android/piper_data.h"
-#include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
+#include "core/runtime/js/bindings/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/JavaOnlyArray_jni.h"
 #endif  // OS_ANDROID
 
@@ -19,8 +19,8 @@
 #include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/bindings/jsi/console.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
+#include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {

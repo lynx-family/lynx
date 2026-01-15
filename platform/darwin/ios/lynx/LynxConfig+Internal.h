@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxConfig.h>
-#include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
+#include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 
 @interface LynxConfig ()
 - (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr;

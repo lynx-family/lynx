@@ -9,7 +9,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
-#import "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"
+#import "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 #include "third_party/modp_b64/modp_b64.h"
 
 // TODO(chenyouhui): Remove GestureDetector from prop_bundle completely

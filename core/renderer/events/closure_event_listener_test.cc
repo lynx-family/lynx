@@ -8,8 +8,8 @@
 
 #include "base/include/value/base_string.h"
 #include "core/event/event_listener.h"
-#include "core/runtime/bindings/common/event/context_proxy.h"
-#include "core/runtime/bindings/common/event/message_event.h"
+#include "core/runtime/common/bindings/event/context_proxy.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

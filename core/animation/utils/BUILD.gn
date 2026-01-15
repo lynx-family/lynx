@@ -24,7 +24,7 @@ unittest_set("animation_utils_testset") {
   deps = [
     "../../renderer:tasm",
     "../../renderer/dom:renderer_dom",
-    "../../runtime/bindings/lepus",
+    "../../runtime/lepus_context/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
   ]
 

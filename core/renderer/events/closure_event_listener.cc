@@ -9,8 +9,8 @@
 #include "base/include/value/array.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/runtime/bindings/common/event/message_event.h"
-#include "core/runtime/bindings/common/event/runtime_constants.h"
+#include "core/runtime/common/bindings/event/message_event.h"
+#include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx {

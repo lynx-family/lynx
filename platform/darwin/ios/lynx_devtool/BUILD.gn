@@ -212,7 +212,7 @@ subspec_target("LynxCore") {
     "../../../../core/build/gen/**/*",
     "../../../../core/runtime/**/v8_*.h",
     "../../../../core/template_bundle/template_codec/magic_number.h",
-    "../../../../core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.h",
+    "../../../../core/runtime/js/bindings/interceptor/ios/request_interceptor_darwin.h",
     "../../../../core/services/replay/lynx_module_binding_testbench.h",
   ]
   header_mappings_dir = "."

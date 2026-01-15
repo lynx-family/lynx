@@ -9,7 +9,7 @@
 #include "core/base/android/jni_helper.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/renderer/utils/base/tasm_constants.h"
-#include "core/runtime/bindings/common/event/context_proxy.h"
+#include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 

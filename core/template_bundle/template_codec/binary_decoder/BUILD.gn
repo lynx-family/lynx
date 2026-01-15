@@ -59,7 +59,7 @@ unittest_set("binary_decoder_testset") {
     "../../../renderer/dom:dom",
     "../../../renderer/dom:renderer_dom",
     "../../../renderer/starlight",
-    "../../../runtime/bindings/lepus",
+    "../../../runtime/lepus_context/bindings:lepus",
     "../../../shell/testing:mock_tasm_delegate_testset",
   ]
   public_deps = [ ":binary_decoder" ]

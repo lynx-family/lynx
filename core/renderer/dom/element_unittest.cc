@@ -11,7 +11,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
-#include "core/runtime/bindings/jsi/java_script_element.h"
+#include "core/runtime/js/bindings/java_script_element.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

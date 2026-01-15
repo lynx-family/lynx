@@ -29,11 +29,11 @@ unittest_set("quickjs_profile_testset") {
     "../../../renderer:tasm",
     "../../../renderer/dom:dom",
     "../../../renderer/dom:renderer_dom",
-    "../../bindings/lepus",
     "../../js/bytecode:jscache",
     "../../js/jsi:jsi",
     "../../js/jsi/quickjs:quickjs",
     "../../lepus_context:lepus",
+    "../../lepus_context/bindings:lepus",
   ]
 }
 

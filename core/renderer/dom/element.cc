@@ -44,7 +44,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/bindings/jsi/java_script_element.h"
+#include "core/runtime/js/bindings/java_script_element.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"

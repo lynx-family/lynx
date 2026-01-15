@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "core/public/lynx_runtime_proxy.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "platform/embedder/module/lynx_module_factory_napi.h"
 
 namespace lynx {

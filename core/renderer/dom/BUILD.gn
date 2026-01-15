@@ -24,7 +24,7 @@ lynx_core_source_set("dom") {
     ":renderer_dom",
     "../:tasm",
     "../../../third_party/rapidjson",
-    "../../runtime/bindings/lepus",
+    "../../runtime/lepus_context/bindings:lepus",
     "../../services/long_task_timing",
     "../../value_wrapper",
     "../css:css_dom",

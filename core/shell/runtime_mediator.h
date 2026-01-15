@@ -17,7 +17,7 @@
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/resource/external_resource/external_resource_loader.h"
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
-#include "core/runtime/bindings/common/event/message_event.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/runtime/js/update_data_type.h"
 #include "core/services/performance/performance_controller.h"

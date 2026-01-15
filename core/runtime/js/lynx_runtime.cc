@@ -16,7 +16,7 @@
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/tasm/i18n/i18n.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/bindings/common/event/context_proxy.h"
+#include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/common/utils.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/lynx_api_handler.h"
@@ -35,7 +35,7 @@
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/js/napi/napi_loader_js.h"
 #endif
-#include "core/runtime/bindings/jsi/modules/module_delegate.h"
+#include "core/runtime/js/bindings/modules/module_delegate.h"
 
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/native_module_recorder.h"

@@ -62,7 +62,7 @@ lynx_core_source_set("internal_list_container") {
 unittest_set("internal_list_container_testset") {
   public_deps = [
     "../../:tasm",
-    "../../../runtime/bindings/lepus",
+    "../../../runtime/lepus_context/bindings:lepus",
     "../../../runtime/lepus_context/tasks:tasks_testset",
     "../../../shell/testing:mock_tasm_delegate_testset",
     "../../dom:dom",

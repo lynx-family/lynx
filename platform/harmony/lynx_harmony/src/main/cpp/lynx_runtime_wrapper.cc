@@ -15,7 +15,7 @@
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/module_delegate_impl.h"
 

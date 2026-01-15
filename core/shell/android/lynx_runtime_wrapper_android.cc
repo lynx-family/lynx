@@ -15,7 +15,7 @@
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/resource/lynx_resource_loader_android.h"
-#include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
+#include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_shell.h"

@@ -16,7 +16,7 @@
 #include "core/public/jsb/lynx_native_module.h"
 
 // TODO(liyanbo.monster): after platform module refactored, remove this
-#include "core/runtime/bindings/jsi/modules/lynx_module.h"
+#include "core/runtime/js/bindings/modules/lynx_module.h"
 namespace lynx {
 namespace piper {
 class LynxJSIModuleBinding;
