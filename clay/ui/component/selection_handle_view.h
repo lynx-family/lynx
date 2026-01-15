@@ -43,6 +43,8 @@ class SelectionHandleView : public WithTypeInfo<SelectionHandleView, BaseView> {
 
   void SetScrollOffset(FloatPoint offset) { scroll_offset_ = offset; }
 
+  float GetSelectionHandleRadius() const { return selection_handle_radius_; }
+
  private:
   // Helper function to create the handle bar path with a circle and a line
   GrPath CreateHandlePath(const FloatRect& circle_rect,
