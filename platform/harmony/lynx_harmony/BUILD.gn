@@ -27,7 +27,7 @@ target(lynx_harmony_type, "lynx_harmony") {
     "../../../base/platform/harmony:lynx_base",
     "../../../base/trace/native:trace",
     "../../../core:lynx_native",
-    "../../../core/runtime/bindings/napi:napi_binding_quickjs",
+    "../../../core/runtime/common/napi:napi_binding_quickjs",
     "../../../service_api:lynx_service_api_native",
     "../../../third_party/quickjs",
     "../lynx_xelement",
@@ -42,7 +42,7 @@ target(lynx_harmony_type, "lynx_harmony") {
   ]
 
   public_deps += [
-    "../../../core/runtime/bindings/napi:napi_binding_jsvm",
+    "../../../core/runtime/common/napi:napi_binding_jsvm",
     "../../../core/runtime/js/jsi/jsvm",
   ]
 

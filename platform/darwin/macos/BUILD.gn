@@ -13,7 +13,7 @@ shared_library("lynx_shared_library") {
     "../../../clay/lynx_adaptor:lynx_adaptor",
     "../../../clay/shell/platform/darwin/macos:flutter_framework_source",
     "../../../clay/shell/platform/embedder:embedder",
-    "../../../core/runtime/bindings/napi:napi_binding_jsc",
+    "../../../core/runtime/common/napi:napi_binding_jsc",
     "../../embedder:embedder",
     "common:common",
   ]
@@ -23,7 +23,7 @@ shared_library("lynx_shared_library") {
 
   if (enable_napi_binding) {
     deps += [
-      "../../../core/runtime/bindings/napi:napi_binding_quickjs",
+      "../../../core/runtime/common/napi:napi_binding_quickjs",
       "../../../third_party/napi:env",
     ]
   }
@@ -35,7 +35,7 @@ shared_library("lynx_shared_library") {
     ]
     if (enable_napi_binding) {
       deps += [
-        "../../../core/runtime/bindings/napi:napi_binding_v8",
+        "../../../core/runtime/common/napi:napi_binding_v8",
         "../../../third_party/napi:v8",
       ]
     }

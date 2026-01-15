@@ -7,7 +7,7 @@
 #include <memory>
 #include <mutex>
 
-#include "core/runtime/bindings/napi/napi_runtime_proxy_v8.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_v8.h"
 #include "core/runtime/js/jsi/v8/v8_api.h"
 #include "core/runtime/js/lynx_runtime_helper.h"
 

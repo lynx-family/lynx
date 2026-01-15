@@ -124,7 +124,8 @@ lynx_core_source_set("runtime") {
 
   public_deps = [ "js/jsi/quickjs" ]
   if (enable_napi_binding) {
-    public_deps += [ "bindings/napi:napi_binding_core" ]
+    public_deps += [ "common/napi:napi_binding_core" ]
+    deps += [ "js/napi:napi_loader_js" ]
   }
   if (is_android || is_ios) {
     defines = [
@@ -148,7 +149,7 @@ lynx_core_source_set("runtime") {
       public_deps += [ "bindings/jsi/modules/android:modules_android_src" ]
     }
     if (enable_napi_binding) {
-      public_deps += [ "bindings/napi:napi_binding_core" ]
+      public_deps += [ "common/napi:napi_binding_core" ]
     }
   }
 }
@@ -167,8 +168,8 @@ unittest_set("jsbridge_testset") {
     "../renderer/dom:dom",
     "../renderer/utils:renderer_utils",
     "bindings/jsi:bindings_unittests_testset",
-    "bindings/napi:napi_unittests_testset",
     "common:utils_unittests_testset",
+    "common/napi:napi_unittests_testset",
     "js/bytecode:jscache_unittests_testset",
     "js/jsi:jsi_unittests_testset",
     "js/jsi/quickjs:quickjs_unittests_testset",

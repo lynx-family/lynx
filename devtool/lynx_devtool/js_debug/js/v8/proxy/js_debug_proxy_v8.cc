@@ -9,7 +9,7 @@
 #include "devtool/lynx_devtool/js_debug/js/v8/manager/v8_inspector_manager_impl.h"
 
 #if ENABLE_NAPI_BINDING
-#include "core/runtime/bindings/napi/napi_runtime_proxy_v8.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_v8.h"
 
 extern void RegisterV8RuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyV8Factory*);

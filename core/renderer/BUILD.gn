@@ -73,14 +73,14 @@ lynx_core_source_set("tasm") {
     ]
     configs = [
       "//build/config/compiler:cxx_version_17",
-      "../runtime/bindings/napi:napi_config",
+      "../runtime/common/napi:napi_config",
     ]
     deps += [
       "../../third_party/quickjs",
       "../../third_party/rapidjson:rapidjson",
       "../base",
-      "../runtime/bindings/napi:napi_binding_quickjs",
-      "../runtime/bindings/napi/test:test_module",
+      "../runtime/common/napi:napi_binding_quickjs",
+      "../runtime/lepus_context/napi/test:test_module",
     ]
     deps += [
       "../../third_party/napi:env",
@@ -91,7 +91,7 @@ lynx_core_source_set("tasm") {
       # On MacOS, NapiBindingCore source files create JSC runtime by default.
       # And consequently all unittests should link with JSC framework and
       # depends on NapiBindingJSC.
-      deps += [ "../runtime/bindings/napi:napi_binding_jsc" ]
+      deps += [ "../runtime/common/napi:napi_binding_jsc" ]
     }
   }
   if (is_mac && !enable_unittests && !desktop_enable_embedder_layer) {

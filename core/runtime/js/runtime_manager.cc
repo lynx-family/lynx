@@ -35,8 +35,8 @@
 #endif  // JS_ENGINE_TYPE == 1
 #if OS_HARMONY
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm_factory.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_jsvm.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_jsvm_factory.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_api.h"
 
 extern void RegisterJSVMRuntimeProxyFactory(
@@ -50,7 +50,7 @@ extern void RegisterJSVMRuntimeProxyFactory(
 
 #if defined(OS_WIN) || defined(OS_OSX)
 #if ENABLE_NAPI_BINDING
-#include "core/runtime/bindings/napi/napi_runtime_proxy_v8.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_v8.h"
 
 extern void RegisterV8RuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyV8Factory*);

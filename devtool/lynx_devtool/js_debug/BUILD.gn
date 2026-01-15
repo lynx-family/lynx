@@ -279,7 +279,7 @@ if (is_android) {
 
     # jsbridge source file
     if (enable_napi_binding) {
-      public_deps += [ "../../../core/runtime/bindings/napi:napi_binding_v8" ]
+      public_deps += [ "../../../core/runtime/common/napi:napi_binding_v8" ]
     }
   }
 }

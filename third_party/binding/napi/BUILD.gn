@@ -13,20 +13,20 @@ config("napi_private_config") {
 }
 
 napi_private_headers = rebase_path([
-  "array_buffer_view.h",
-  "callback_helper.h",
-  "exception_message.h",
-  "exception_state.h",
-  "napi_base_wrap.h",
-  "napi_bridge.h",
-  "napi_object_ref.h",
-  "napi_object.h",
-  "napi_value.h",
-  "native_value_traits.h",
-  "shim/shim_napi.h",
-  "shim/shim_napi_env.h",
-  "shim/shim_napi_runtime.h",
-])
+                                     "array_buffer_view.h",
+                                     "callback_helper.h",
+                                     "exception_message.h",
+                                     "exception_state.h",
+                                     "napi_base_wrap.h",
+                                     "napi_bridge.h",
+                                     "napi_object_ref.h",
+                                     "napi_object.h",
+                                     "napi_value.h",
+                                     "native_value_traits.h",
+                                     "shim/shim_napi.h",
+                                     "shim/shim_napi_env.h",
+                                     "shim/shim_napi_runtime.h",
+                                   ])
 
 napi_public_headers = napi_private_headers + common_public_headers
 
@@ -45,8 +45,8 @@ source_set("napi_binding_base") {
     "exception_message.cc",
     "napi_base_wrap.cc",
     "napi_bridge.cc",
-    "napi_object_ref.cc",
     "napi_object.cc",
+    "napi_object_ref.cc",
     "napi_value.cc",
     "native_value_traits.cc",
   ]
@@ -65,8 +65,8 @@ unittest_exec("napi_binding_unittests_exec") {
 
   deps = [
     "../../../core/base",
-    "../../../core/runtime/bindings/napi:napi_binding_quickjs",
     "../../../core/renderer/dom:dom",
+    "../../../core/runtime/common/napi:napi_binding_quickjs",
     "../../napi:env",
     "../../napi:quickjs",
   ]
