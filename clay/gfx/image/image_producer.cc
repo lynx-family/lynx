@@ -122,17 +122,15 @@ std::shared_ptr<skity::Texture> GetPromiseImage(void* context) {
 
 void ReleasePromiseImage(void* context) {
   TRACE_EVENT("clay", "ReleasePromiseImage");
-  PromiseImageContext* image_context =
-      static_cast<PromiseImageContext*>(context);
+
+  fml::RefPtr<PromiseImageContext> image_context =
+      fml::AdoptRef(static_cast<PromiseImageContext*>(context));
   // In most cases, this function is called in Raster Thread.
   // However, currently `skottie::Animation` holds `sk_sp<SkImage>` in UI
   // thread, makes it possible to release SkImage in UI thread, we must post the
   // release task to raster thread in this case.
   fml::TaskRunner::RunNowOrPostTask(image_context->raster_runner,
-                                    [image_context] {
-                                      image_context->texture_image->Release();
-                                      image_context->Release();
-                                    });
+                                    [image_context] {});
 }
 }  // namespace
 
