@@ -72,7 +72,9 @@
   __attribute__((used)) static void *__lynx_link_anchor_ref_##name = \
       (void *)&__lynx_link_anchor_##name
 
-namespace lynx::service::utils {
+namespace lynx {
+namespace service {
+namespace utils {
 /**
  * Get type name at compilation time without RTTI.
  */
@@ -155,6 +157,8 @@ class NoDestructor {
   T *storage_ptr_ = reinterpret_cast<T *>(storage_);
 #endif  // defined(LEAK_SANITIZER)
 };
-}  // namespace lynx::service::utils
+}  // namespace utils
+}  // namespace service
+}  // namespace lynx
 
 #endif  // SERVICE_API_SERVICE_API_UTILS_H_

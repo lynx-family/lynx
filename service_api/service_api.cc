@@ -7,7 +7,8 @@
 
 #include <utility>
 
-namespace lynx::service {
+namespace lynx {
+namespace service {
 void _BaseRegistry::set_creator(std::function<_BaseService*()> c) {
   std::lock_guard lock(mutex_);
   if (creator_ != nullptr || impl_.load(std::memory_order_relaxed)) {
@@ -38,4 +39,5 @@ _BaseService* _BaseRegistry::get() {
   impl_.store(tmp, std::memory_order_release);
   return tmp;
 }
-}  // namespace lynx::service
+}  // namespace service
+}  // namespace lynx

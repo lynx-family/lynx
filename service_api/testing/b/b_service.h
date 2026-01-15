@@ -8,12 +8,16 @@
 
 #include <string>
 
-namespace lynx::service::b_service {
+namespace lynx {
+namespace service {
+namespace b_service {
 class LYNX_SERVICE_DECLARE(BService) : public BaseService<BService> {
  public:
   virtual const std::string get_descriptor() = 0;
   ~BService() override = default;
 };
-}  // namespace lynx::service::b_service
+}  // namespace b_service
+}  // namespace service
+}  // namespace lynx
 
 #endif  // SERVICE_API_TESTING_B_B_SERVICE_H_

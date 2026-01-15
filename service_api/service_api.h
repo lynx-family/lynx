@@ -19,13 +19,17 @@
  * @code{.cpp}
  * // service_api/services/a_service.h
  * #include "../service_api.h"
- * namespace lynx::service::a_service {
+ * namespace lynx {
+ * namespace service {
+ * namespace a_service {
  *   class LYNX_SERVICE_DECLARE(AService) : public BaseService<AService> {
  *    public:
  *     virtual void aaa() = 0;
  *     ~AService() override = default;
  *   };
- * }
+ * }  // namespace a_service
+ * }  // namespace service
+ * }  // namespace lynx
  * @endcode
  */
 #define LYNX_SERVICE_DECLARE(Base) \
@@ -99,7 +103,8 @@
   }                                                                          \
   }
 
-namespace lynx::service {
+namespace lynx {
+namespace service {
 /**
  * @typedef ServiceId
  * @brief Unique identifier for a service interface type.
@@ -123,13 +128,17 @@ class _BaseService {
  * @code{.cpp}
  * // service_api/services/a_service.h
  * #include "../service_api.h"
- * namespace lynx::service::a_service {
+ * namespace lynx {
+ * namespace service {
+ * namespace a_service {
  *   class LYNX_SERVICE_DECLARE(AService) : public BaseService<AService> {
  *    public:
  *     virtual void aaa() = 0;
  *     ~AService() override = default;
  *   };
- * }
+ * }  // namespace a_service
+ * }  // namespace service
+ * }  // namespace lynx
  * @endcode
  */
 template <typename Abs>
@@ -303,7 +312,8 @@ template <typename Impl>
 static void register_service(Impl* (*creator)()) {
   Impl::__register_self(creator);
 }
-}  // namespace lynx::service
+}  // namespace service
+}  // namespace lynx
 
 // Exports service declarations from service_api.h
 #include <service_api/service_api_services.h>
