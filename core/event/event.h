@@ -123,6 +123,8 @@ class Event : public lepus::RefCounted {
 
   EventType event_type() { return event_type_; }
   void set_event_type(EventType event_type) { event_type_ = event_type; }
+  bool from_frontend() { return from_frontend_; }
+  void set_from_frontend(bool from_frontend) { from_frontend_ = from_frontend; }
   int64_t time_stamp() const { return time_stamp_; };
   const std::string& type() const { return type_; }
   bool capture() const { return capture_; }
@@ -181,6 +183,7 @@ class Event : public lepus::RefCounted {
   EventType event_type_{EventType::kNone};
   int64_t time_stamp_;
   std::string type_;
+  bool from_frontend_;
 
   bool capture_ : 1;
   bool bubbles_ : 1;

@@ -64,7 +64,7 @@ lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
   if (event->event_type() == event::Event::EventType::kTouchEvent ||
       event->event_type() == event::Event::EventType::kCustomEvent) {
     event->HandleEventBaseDetail();
-    auto event_detail = event->detail();
+    auto event_detail = lepus::Value::Clone(event->detail());
     BASE_STATIC_STRING_DECL(kEventRef, "ref");
     event_detail.Table()->SetValue(kEventRef, event);
     return event_detail;

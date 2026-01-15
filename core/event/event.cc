@@ -87,13 +87,13 @@ void Event::InitEventPath(EventTarget& target) {
     LOGE("Event::InitEventPath error: the target is null.");
     return;
   }
-  while (!event_target->IsEventPathCatch()) {
+  while (event_target && !event_target->IsEventPathCatch(&target, this)) {
+    if (event_target->IsEventPathSkip(&target, this)) {
+      event_target = event_target->GetParentTarget();
+      continue;
+    }
     event_path_.push_back(event_target->GetWeakTarget());
     event_target = event_target->GetParentTarget();
-    if (!event_target) {
-      LOGE("Event::InitEventPath error: the target is null.");
-      return;
-    }
   };
 }
 
