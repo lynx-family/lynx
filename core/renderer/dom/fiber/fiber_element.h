@@ -728,6 +728,13 @@ class FiberElement : public Element,
   }
   bool attached_to_layout_parent() const { return attached_to_layout_parent_; }
 
+  // Helpers for finding non-virtual / non-wrapper nodes in the render tree
+  // starting from the current element.
+  FiberElement* FindFirstNonVirtualRenderAncestor();
+  FiberElement* FindFirstNonVirtualRenderSibling();
+  FiberElement* FindFirstNonWrapperRenderAncestor();
+  FiberElement* FindFirstNonWrapperChildOrSibling();
+
   void InsertLayoutNode(FiberElement* child, FiberElement* ref);
   void RemoveLayoutNode(FiberElement* child);
 

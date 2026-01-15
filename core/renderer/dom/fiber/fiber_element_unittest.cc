@@ -1669,6 +1669,68 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(count, lepus::Value(1));
 }
 
+TEST_P(FiberElementTest,
+       LayoutInElement_InsertNonVirtualChildUnderVirtualParent) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_parent = manager->CreateFiberNode("inline-text");
+  page->InsertNode(virtual_parent);
+
+  auto child = manager->CreateFiberNode("view");
+  virtual_parent->InsertNode(child);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(virtual_parent->is_virtual_);
+  EXPECT_EQ(child->render_parent(), virtual_parent.get());
+  EXPECT_TRUE(child->attached_to_layout_parent_);
+  ASSERT_NE(page->slnode(), nullptr);
+  ASSERT_NE(child->slnode(), nullptr);
+  EXPECT_EQ(child->slnode()->parent(), page->slnode());
+}
+
+TEST_P(FiberElementTest, LayoutInElement_RemoveVirtualChildResetsAttachedFlag) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_child = manager->CreateFiberNode("inline-text");
+  page->InsertNode(virtual_child);
+
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(virtual_child->is_virtual_);
+  EXPECT_TRUE(virtual_child->attached_to_layout_parent_);
+
+  page->RemoveNode(virtual_child);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(virtual_child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElement_RemoveLayoutNodeResetsStateWithoutLayoutParent) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberNode("view");
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  auto child = manager->CreateFiberNode("view");
+  child->EnsureSLNode();
+  child->attached_to_layout_parent_ = true;
+  ASSERT_NE(child->slnode(), nullptr);
+  EXPECT_EQ(child->slnode()->parent(), nullptr);
+
+  parent->RemoveLayoutNode(child.get());
+  EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
 TEST_P(FiberElementTest, InsertNode) {
   auto parent = manager->CreateFiberNode("view");
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);

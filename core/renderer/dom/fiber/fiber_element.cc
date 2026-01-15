@@ -3234,17 +3234,77 @@ Element *FiberElement::Sibling(int offset) const {
   return parent_->GetChildAt(index + offset);
 }
 
+FiberElement *FiberElement::FindFirstNonVirtualRenderAncestor() {
+  auto *current = this;
+  while (current && current->is_virtual()) {
+    current = static_cast<FiberElement *>(current->render_parent());
+  }
+  return current;
+}
+
+FiberElement *FiberElement::FindFirstNonVirtualRenderSibling() {
+  auto *current = this;
+  while (current && current->is_virtual()) {
+    current = static_cast<FiberElement *>(current->next_render_sibling());
+  }
+  return current;
+}
+
+FiberElement *FiberElement::FindFirstNonWrapperRenderAncestor() {
+  auto *current = this;
+  while (current && current->is_wrapper()) {
+    auto *parent = static_cast<FiberElement *>(current->render_parent());
+    if (!parent) {
+      break;
+    }
+    current = parent;
+  }
+  return current;
+}
+
+FiberElement *FiberElement::FindFirstNonWrapperChildOrSibling() {
+  auto *current = this;
+  while (current) {
+    if (!current->is_wrapper()) {
+      return current;
+    }
+
+    auto *first_child =
+        static_cast<FiberElement *>(current->first_render_child());
+    if (first_child) {
+      if (!first_child->is_wrapper()) {
+        return first_child;
+      }
+      auto *candidate = first_child->FindFirstNonWrapperChildOrSibling();
+      if (candidate && !candidate->is_wrapper()) {
+        return candidate;
+      }
+    }
+
+    current = static_cast<FiberElement *>(current->next_render_sibling());
+  }
+  return current;
+}
+
 void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
   DCHECK(!ref || !ref->is_wrapper());
   if (EnableLayoutInElementMode()) {
-    EnsureSLNode();
-    if (!is_virtual_ && !child->is_virtual_) {
+    FiberElement *container = FindFirstNonVirtualRenderAncestor();
+    bool inserted = false;
+    if (container && !child->is_virtual()) {
+      container->EnsureSLNode();
       child->EnsureSLNode();
-      sl_node_->InsertChildBefore(child->sl_node_.get(),
-                                  ref ? ref->sl_node_.get() : nullptr);
-      MarkLayoutDirtyLite();
+      FiberElement *ref_node =
+          ref ? ref->FindFirstNonVirtualRenderSibling() : nullptr;
+      if (ref_node) {
+        ref_node->EnsureSLNode();
+      }
+      container->sl_node_->InsertChildBefore(
+          child->sl_node_.get(), ref_node ? ref_node->sl_node_.get() : nullptr);
+      container->MarkLayoutDirtyLite();
+      inserted = true;
     }
-    child->attached_to_layout_parent_ = true;
+    child->attached_to_layout_parent_ = inserted || child->is_virtual();
     return;
   }
 
@@ -3274,8 +3334,8 @@ void FiberElement::RemoveLayoutNode(FiberElement *child) {
       }
       child->slnode()->parent()->RemoveChild(child->slnode());
       MarkLayoutDirtyLite();
-      child->attached_to_layout_parent_ = false;
     }
+    child->attached_to_layout_parent_ = false;
     return;
   }
 
