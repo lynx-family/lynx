@@ -173,6 +173,7 @@ typedef struct _LynxInnerFontInfo {
 @implementation LynxFontFaceManager {
   NSMutableDictionary<NSString *, id> *_registedFontMap;
   NSMutableDictionary<NSString *, LynxAliasFontInfo *> *_registedAliasFontMap;
+  NSMutableDictionary<NSString *, NSArray<NSString *> *> *_cachedFontNamesForFamilyName;
 }
 
 + (LynxFontFaceManager *)sharedManager {
@@ -189,6 +190,7 @@ typedef struct _LynxInnerFontInfo {
   if (self = [super init]) {
     _registedFontMap = [NSMutableDictionary new];
     _registedAliasFontMap = [NSMutableDictionary new];
+    _cachedFontNamesForFamilyName = [NSMutableDictionary new];
   }
   return self;
 }
@@ -275,13 +277,25 @@ typedef struct _LynxInnerFontInfo {
   return [self fontWeightOfFont:font] == targetFontWeight;
 }
 
+- (NSArray<NSString *> *)getFontNamesForFamilyName:(NSString *)familyName {
+  @synchronized(_cachedFontNamesForFamilyName) {
+    id cached = [_cachedFontNamesForFamilyName objectForKey:familyName];
+    if (cached == nil) {
+      cached = [UIFont fontNamesForFamilyName:familyName];
+      [_cachedFontNamesForFamilyName setObject:cached forKey:familyName];
+    }
+    return cached;
+  }
+}
+
 - (UIFont *)findFontWithSize:(CGFloat)fontSize
                       weight:(CGFloat)fontWeight
                        style:(LynxFontStyleType)fontStyle
               fontFamilyName:(NSString *)fontFamilyName
                     fontInfo:(LynxInnerFontInfo *)info {
   UIFont *font = nil;
-  if ([UIFont fontNamesForFamilyName:fontFamilyName].count == 0) {
+  NSArray<NSString *> *fontNamesOfFamilyName = [self getFontNamesForFamilyName:fontFamilyName];
+  if (fontNamesOfFamilyName.count == 0) {
     // Find with given font name when there no font family for it
     font = [UIFont fontWithName:fontFamilyName size:fontSize];
     if (font) {
@@ -291,18 +305,15 @@ typedef struct _LynxInnerFontInfo {
   } else {
     // Get all font names with the same prefix font family name
     NSMutableArray *fontNames = [NSMutableArray new];
-    [fontNames addObjectsFromArray:[UIFont fontNamesForFamilyName:fontFamilyName]];
+    [fontNames addObjectsFromArray:fontNamesOfFamilyName];
     if (![fontFamilyName containsString:@" light"]) {
-      [fontNames
-          addObjectsFromArray:[UIFont
-                                  fontNamesForFamilyName:[fontFamilyName
-                                                             stringByAppendingString:@" light"]]];
+      [fontNames addObjectsFromArray:[self getFontNamesForFamilyName:
+                                               [fontFamilyName stringByAppendingString:@" light"]]];
     }
     if (![fontFamilyName containsString:@" medium"]) {
       [fontNames
-          addObjectsFromArray:[UIFont
-                                  fontNamesForFamilyName:[fontFamilyName
-                                                             stringByAppendingString:@" medium"]]];
+          addObjectsFromArray:
+              [self getFontNamesForFamilyName:[fontFamilyName stringByAppendingString:@" medium"]]];
     }
 
     // Find appropriate font in font family with same font style and closet font weight
