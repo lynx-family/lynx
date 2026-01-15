@@ -104,8 +104,7 @@ group("lynx_android_lib") {
   }
 
   if (enable_napi_binding) {
-    public_deps +=
-        [ "../../../core/runtime/bindings/napi:napi_binding_quickjs" ]
+    public_deps += [ "../../../core/runtime/common/napi:napi_binding_quickjs" ]
   }
   if (enable_lynx_testing) {
     public_deps += [

@@ -33,7 +33,7 @@
 #include "core/renderer/worklet/lepus_component.h"
 #include "core/renderer/worklet/lepus_element.h"
 #include "core/renderer/worklet/lepus_raf_handler.h"
-#include "core/runtime/bindings/napi/worklet/napi_func_callback.h"
+#include "core/runtime/lepus_context/napi/worklet/napi_func_callback.h"
 #endif  // ENABLE_LEPUSNG_WORKLET
 
 namespace lynx {

@@ -36,7 +36,7 @@ mocktest_set("shell_testset") {
   ]
   deps = [
     "../../../third_party/quickjs",
-    "../../runtime/bindings/napi:napi_binding_quickjs",
+    "../../runtime/common/napi:napi_binding_quickjs",
   ]
   deps += [
     "../../../third_party/napi:env",
