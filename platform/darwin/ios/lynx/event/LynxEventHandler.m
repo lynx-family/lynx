@@ -122,35 +122,47 @@
 #pragma mark - LynxCustomPlatformGestureRecognizerDelegate
 @interface LynxCustomPlatformGestureRecognizerDelegate : CustomGestureRecognizerDelegate
 
+@property(nonatomic, readonly) NSMutableDictionary<NSString*, LynxWeakProxy*>* innerGestures;
+
 @end
 
 @implementation LynxCustomPlatformGestureRecognizerDelegate
 
+- (instancetype)initWithEventHandler:(LynxEventHandler*)eventHandler {
+  self = [super initWithEventHandler:eventHandler];
+  if (self) {
+    _innerGestures = [[NSMutableDictionary alloc] init];
+  }
+  return self;
+}
+
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
     shouldRecognizeSimultaneouslyWithGestureRecognizer:
         (UIGestureRecognizer*)otherGestureRecognizer {
-  // If custom platform gesture is active, prevent other gestures.
-  if ((gestureRecognizer == self.eventHandler.customPlatformGesture &&
-       self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged)) {
-    return NO;
+  if ([gestureRecognizer.view isEqual:otherGestureRecognizer.view]) {
+    return YES;
   }
-
-  // Allow simultaneous recognition by default in other cases.
-  return YES;
+  return !(self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged);
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
     shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer*)otherGestureRecognizer {
-  if (gestureRecognizer == self.eventHandler.customPlatformGesture) {
-    // Only require other gestures to wait when CustomPlatformGesture is actively processing
-    if (self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
-      return YES;  // Wait for CustomPlatformGesture to finish
-    }
-    // In other states (Possible, Began, Ended, Cancelled, Failed), don't block other gestures
+  if ([gestureRecognizer.view isEqual:otherGestureRecognizer.view]) {
     return NO;
+  } else {
+    [_innerGestures setValue:[LynxWeakProxy proxyWithTarget:otherGestureRecognizer]
+                      forKey:[@(otherGestureRecognizer.hash) stringValue]];
   }
-
+  // Only require other gestures to wait when CustomPlatformGesture is actively processing
+  if (self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
+    return YES;  // Wait for CustomPlatformGesture to finish
+  }
+  // In other states (Possible, Began, Ended, Cancelled, Failed), don't block other gestures
   return NO;
+}
+
+- (NSArray<LynxWeakProxy*>*)otherGestures {
+  return [_innerGestures allValues];
 }
 
 @end
@@ -271,6 +283,7 @@
   __weak LynxUIOwner* _uiOwner;
   __weak LynxUI* _rootUI;
   __weak id<LynxEventTarget> _touchTarget;
+  __weak id<LynxEventTarget> _firstPanInterceptDirectionTarget;
   CGPoint _longPressPoint;
   CustomGestureRecognizerDelegate* _tapDelegate;
   LongPressGestureRecognizerDelegate* _longPressDelegate;
@@ -742,6 +755,120 @@
   }
 
   return _touchTarget;
+}
+
+- (void)startInterceptPanGestures:(enum LynxPanInterceptDirection)direction {
+  _firstPanInterceptDirectionTarget = [self getFirstPanInterceptDirectionTarget:direction];
+  if ([self getPanInterceptScope:_firstPanInterceptDirectionTarget] != kLynxPanInterceptScopeNone) {
+    // There is no need to activate PlatformGesture here, because simply changing the state of the
+    // corresponding Gesture to failed is sufficient to intercept gestures. Moreover, activating
+    // PlatformGesture may cause other unrelated gestures to fail.
+    [self interceptPanGestures:_customPlatformDelegate.otherGestures
+           withPlatformGesture:_customPlatformGesture];
+  }
+}
+
+- (id<LynxEventTarget>)getFirstPanInterceptDirectionTarget:
+    (enum LynxPanInterceptDirection)direction {
+  if (kLynxPanInterceptDirectionNone == direction) {
+    return nil;
+  }
+  id<LynxEventTarget> target = _touchTarget;
+  while (target && target.parentTarget != target) {
+    if (target.panInterceptDirection == direction) {
+      return target;
+    }
+    target = target.parentTarget;
+  }
+  return nil;
+}
+
+- (enum LynxPanInterceptScope)getPanInterceptScope:(id<LynxEventTarget>)target {
+  if (target == nil) {
+    return kLynxPanInterceptScopeNone;
+  }
+  return target.panInterceptScope;
+}
+
+- (void)interceptPanGestures:(NSArray<LynxWeakProxy*>*)otherGestures
+         withPlatformGesture:(UIGestureRecognizer*)platformGesture {
+  [otherGestures enumerateObjectsUsingBlock:^(LynxWeakProxy* _Nonnull obj, NSUInteger idx,
+                                              BOOL* _Nonnull stop) {
+    UIGestureRecognizer* otherGesture = (UIGestureRecognizer*)obj;
+    enum LynxPanInterceptScope scope =
+        [self getPanInterceptScope:_firstPanInterceptDirectionTarget];
+    if ([self isPanGesture:otherGesture
+             withDirection:_firstPanInterceptDirectionTarget.panInterceptDirection] &&
+        [self shouldInterceptPanGesture:otherGesture.view
+                               withView:platformGesture.view
+                      andInterceptScope:scope]) {
+      ((UIGestureRecognizer*)obj).state = UIGestureRecognizerStateFailed;
+    }
+  }];
+}
+
+- (BOOL)shouldInterceptPanGesture:(UIView*)view
+                         withView:(UIView*)other
+                andInterceptScope:(enum LynxPanInterceptScope)scope {
+  if (view == nil || other == nil) {
+    return NO;
+  }
+  switch (scope) {
+    case kLynxPanInterceptScopeAll: {
+      return YES;
+    }
+    case kLynxPanInterceptScopeSelf: {
+      if ([view isEqual:other]) {
+        return YES;
+      }
+      return NO;
+    }
+    case kLynxPanInterceptScopeSelfAndAncestors:
+    case kLynxPanInterceptScopeSelfAndDescendants: {
+      if ([view isEqual:other]) {
+        return YES;
+      }
+      if (scope == kLynxPanInterceptScopeSelfAndAncestors) {
+        return [view isDescendantOfView:other];
+      }
+      if (scope == kLynxPanInterceptScopeSelfAndDescendants) {
+        return [other isDescendantOfView:view];
+      }
+      return NO;
+    }
+    case kLynxPanInterceptScopeAncestors: {
+      return [view isDescendantOfView:other];
+    }
+    case kLynxPanInterceptScopeDescendants: {
+      return [other isDescendantOfView:view];
+    }
+    default:
+      break;
+  }
+  return false;
+}
+
+- (BOOL)isPanGesture:(UIGestureRecognizer*)gesture
+       withDirection:(enum LynxPanInterceptDirection)direction {
+  if ([gesture isKindOfClass:[UIPanGestureRecognizer class]] &&
+      [gesture.view isKindOfClass:[UIScrollView class]]) {
+    UIScrollView* scrollView = (UIScrollView*)gesture.view;
+    switch (direction) {
+      case kLynxPanInterceptDirectionHorizontal: {
+        CGFloat viewportWidth = scrollView.bounds.size.width;
+        CGFloat contentWidth = scrollView.contentSize.width;
+        return contentWidth > viewportWidth;
+      }
+      case kLynxPanInterceptDirectionVertical: {
+        CGFloat viewportHeight = scrollView.bounds.size.height;
+        CGFloat contentHeight = scrollView.contentSize.height;
+        return contentHeight > viewportHeight;
+      }
+      default:
+        break;
+    }
+  }
+  return NO;
 }
 
 // TODO(hexionghui): Delete this, use onGestureRecognizedByEventTarget instead.

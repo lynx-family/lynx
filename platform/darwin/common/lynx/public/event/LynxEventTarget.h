@@ -24,6 +24,24 @@ enum LynxPointerEventsValue {
   kLynxPointerEventsValueUnset,
 };
 
+enum LynxPanInterceptDirection {
+  kLynxPanInterceptDirectionHorizontal,
+  kLynxPanInterceptDirectionVertical,
+  // add new type before kLynxPanInterceptDirectionNone
+  kLynxPanInterceptDirectionNone,
+};
+
+enum LynxPanInterceptScope {
+  kLynxPanInterceptScopeSelf,
+  kLynxPanInterceptScopeAncestors,
+  kLynxPanInterceptScopeDescendants,
+  kLynxPanInterceptScopeSelfAndAncestors,
+  kLynxPanInterceptScopeSelfAndDescendants,
+  kLynxPanInterceptScopeAll,
+  // add new type before kLynxPanInterceptScopeNone
+  kLynxPanInterceptScopeNone,
+};
+
 @protocol LynxEventTarget <LynxEventTargetBase>
 
 - (NSInteger)signature;
@@ -51,6 +69,10 @@ enum LynxPointerEventsValue {
 - (BOOL)eventThrough:(CGPoint)point;
 
 - (enum LynxPointerEventsValue)pointerEvents;
+
+- (enum LynxPanInterceptDirection)panInterceptDirection;
+
+- (enum LynxPanInterceptScope)panInterceptScope;
 
 - (BOOL)enableTouchPseudoPropagation;
 
