@@ -30,17 +30,22 @@ class JsContent {
   JsContent(std::string buffer, Type type)
       : buffer_(std::make_shared<StringBuffer>(std::move(buffer))),
         type_(type) {}
+  JsContent(const char *buffer, Type type)
+      : buffer_(std::make_shared<StringBuffer>(std::string(buffer))),
+        type_(type) {}
+  JsContent(const base::String &buffer, Type type)
+      : buffer_(std::make_shared<BaseStringBuffer>(buffer)), type_(type) {}
 
-  std::shared_ptr<StringBuffer> GetBuffer() && { return std::move(buffer_); }
+  std::shared_ptr<Buffer> GetBuffer() && { return std::move(buffer_); }
 
-  const std::shared_ptr<StringBuffer> &GetBuffer() const & { return buffer_; }
+  const std::shared_ptr<Buffer> &GetBuffer() const & { return buffer_; }
 
   bool IsSourceCode() const { return type_ == Type::SOURCE; }
   bool IsByteCode() const { return type_ == Type::BYTECODE; }
   bool IsError() const { return type_ == Type::ERROR; }
 
  private:
-  std::shared_ptr<StringBuffer> buffer_;
+  std::shared_ptr<Buffer> buffer_;
   Type type_;
 };
 

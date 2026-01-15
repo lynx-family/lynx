@@ -37,13 +37,27 @@ RefCountedStringImpl::RefCountedStringImpl(const char* str, std::size_t len) {
     return;
   }
   std::memcpy(&str_[0], str, len);
-  hash_ = std::hash<std::string>()(str_);
+
+  // The likelihood of a long string being used as a hash key is extremely low,
+  // so its hash value is not calculated.
+  if (len <= 128) {
+    hash_ = std::hash<std::string>()(str_);
+  } else {
+    hash_ = 0;  // a sentinel value
+  }
 }
 
 RefCountedStringImpl::RefCountedStringImpl(std::string str) {
   str_ = std::move(str);
   length_ = static_cast<uint32_t>(str_.size());
-  hash_ = std::hash<std::string>()(str_);
+
+  // The likelihood of a long string being used as a hash key is extremely low,
+  // so its hash value is not calculated.
+  if (length_ <= 128) {
+    hash_ = std::hash<std::string>()(str_);
+  } else {
+    hash_ = 0;  // a sentinel value
+  }
 }
 
 size_t RefCountedStringImpl::length_utf8() {

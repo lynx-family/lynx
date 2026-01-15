@@ -28,6 +28,7 @@
 #include "base/include/expected.h"
 #include "base/include/fml/macros.h"
 #include "base/include/log/logging.h"
+#include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -78,6 +79,18 @@ class StringRefBuffer : public Buffer {
 
  private:
   const std::string& s_;
+};
+
+class BaseStringBuffer : public Buffer {
+ public:
+  explicit BaseStringBuffer(const base::String& s) : s_(s) {}
+  size_t size() const override { return s_.length(); }
+  const uint8_t* data() const override {
+    return reinterpret_cast<const uint8_t*>(s_.c_str());
+  }
+
+ private:
+  base::String s_;
 };
 
 class ByteBuffer : public Buffer {

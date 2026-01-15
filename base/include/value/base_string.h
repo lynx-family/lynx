@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/base_defines.h"
 #include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/type_traits_addon.h"
@@ -46,7 +47,14 @@ class BASE_EXPORT RefCountedStringImpl
  public:
   ~RefCountedStringImpl() override = default;
 
-  std::size_t hash() const { return hash_; }
+  BASE_INLINE std::size_t hash() const {
+    if (hash_ == 0) {
+      // For strings whose hash value is exactly 0, the calculation is always
+      // repeated.
+      hash_ = std::hash<std::string>()(str_);
+    }
+    return hash_;
+  }
 
   const char* c_str() const { return str_.c_str(); }
   const std::string& str() const { return str_; }
@@ -87,7 +95,7 @@ class BASE_EXPORT RefCountedStringImpl
 
  private:
   std::string str_;
-  std::size_t hash_;
+  mutable std::size_t hash_;  // 0 as a sentinel value for not calculated
   uint32_t length_;
 
   union {
