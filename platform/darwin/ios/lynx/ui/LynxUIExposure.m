@@ -318,7 +318,7 @@
 }
 
 - (CGRect)borderOfExposureScreen:(LynxUI *)ui {
-  CGRect windowFrame = [LynxUIKitAPIAdapter getKeyWindow].frame;
+  CGRect windowFrame = [LynxUIKitAPIAdapter getForegroundKeyWindow].frame;
   if ([ui enableExposureUIMargin]) {
     // get screen's frame, calculate the needed rect with exposureMargin (not exposureUIMargin)
     // screenRect's area < 0
