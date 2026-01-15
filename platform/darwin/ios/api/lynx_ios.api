@@ -1584,6 +1584,12 @@ public class LynxEventHandler : NSObject {
   public id< LynxEventTarget > LynxEventHandler::hitTest:withEvent:(CGPoint point,[withEvent] nullable UIEvent *event);
   public void LynxEventHandler::onPlatformGestureStatusChanged:(LynxGestureHandlerState status);
   public void LynxEventHandler::handleFocus:onView:withContainer:andPoint:andEvent:(id< LynxEventTarget > target,[onView] UIView *view,[withContainer] UIView *container,[andPoint] CGPoint point,[andEvent] UIEvent *event);
+  public void LynxEventHandler::startInterceptPanGestures:(enum LynxPanInterceptDirection direction);
+  public id< LynxEventTarget > LynxEventHandler::getFirstPanInterceptDirectionTarget:(enum LynxPanInterceptDirection direction);
+  public enum LynxPanInterceptScope LynxEventHandler::getPanInterceptScope:(id< LynxEventTarget > target);
+  public void LynxEventHandler::interceptPanGestures:withPlatformGesture:(NSArray< LynxWeakProxy * > *otherGestures,[withPlatformGesture] UIGestureRecognizer *platformGesture);
+  public BOOL LynxEventHandler::shouldInterceptPanGesture:withView:andInterceptScope:(UIView *view,[withView] UIView *other,[andInterceptScope] enum LynxPanInterceptScope scope);
+  public BOOL LynxEventHandler::isPanGesture:withDirection:(UIGestureRecognizer *gesture,[withDirection] enum LynxPanInterceptDirection direction);
   public void LynxEventHandler::onGestureRecognized();
   public void LynxEventHandler::onGestureRecognizedByEventTarget:(id< LynxEventTarget > ui);
   public void LynxEventHandler::onPropsChangedByEventTarget:(id< LynxEventTarget > ui);
@@ -1666,6 +1672,8 @@ public protocol LynxEventTarget-p : <LynxEventTargetBase> {
   public BOOL LynxEventTarget-p::blockNativeEvent:(UIGestureRecognizer *gestureRecognizer);
   public BOOL LynxEventTarget-p::eventThrough:(CGPoint point);
   public enum LynxPointerEventsValue LynxEventTarget-p::pointerEvents();
+  public enum LynxPanInterceptDirection LynxEventTarget-p::panInterceptDirection();
+  public enum LynxPanInterceptScope LynxEventTarget-p::panInterceptScope();
   public BOOL LynxEventTarget-p::enableTouchPseudoPropagation();
   public void LynxEventTarget-p::onPseudoStatusFrom:changedTo:(int32_t preStatus,[changedTo] int32_t currentStatus);
   public BOOL LynxEventTarget-p::dispatchTouch:touches:withEvent:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
@@ -5966,6 +5974,22 @@ public enum LynxPointerEventsValue {
   kLynxPointerEventsValueAuto
   kLynxPointerEventsValueNone
   kLynxPointerEventsValueUnset
+}
+
+public enum LynxPanInterceptDirection {
+  kLynxPanInterceptDirectionHorizontal
+  kLynxPanInterceptDirectionVertical
+  kLynxPanInterceptDirectionNone
+}
+
+public enum LynxPanInterceptScope {
+  kLynxPanInterceptScopeSelf
+  kLynxPanInterceptScopeAncestors
+  kLynxPanInterceptScopeDescendants
+  kLynxPanInterceptScopeSelfAndAncestors
+  kLynxPanInterceptScopeSelfAndDescendants
+  kLynxPanInterceptScopeAll
+  kLynxPanInterceptScopeNone
 }
 
 

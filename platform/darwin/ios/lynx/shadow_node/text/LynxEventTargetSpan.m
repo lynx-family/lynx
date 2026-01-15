@@ -145,6 +145,14 @@
   return kLynxPointerEventsValueAuto;
 }
 
+- (enum LynxPanInterceptDirection)panInterceptDirection {
+  return kLynxPanInterceptDirectionNone;
+}
+
+- (enum LynxPanInterceptScope)panInterceptScope {
+  return kLynxPanInterceptScopeNone;
+}
+
 - (BOOL)enableTouchPseudoPropagation {
   return YES;
 }
