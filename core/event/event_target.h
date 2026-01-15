@@ -82,7 +82,14 @@ class EventTarget {
   EventTargetType target_type() { return target_type_; }
 
   // Check whether catch the event path.
-  virtual bool IsEventPathCatch() { return false; }
+  virtual bool IsEventPathCatch(EventTarget* target, Event* event) {
+    return false;
+  }
+
+  // Check whether skip the event path.
+  virtual bool IsEventPathSkip(EventTarget* target, Event* event) {
+    return false;
+  }
 
   // Get the information about target.
   virtual lepus::Value GetEventTargetInfo(bool is_core_event = false) {
