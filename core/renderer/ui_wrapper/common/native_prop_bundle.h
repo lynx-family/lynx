@@ -97,6 +97,8 @@ class NativePropBundle : public PropBundle {
     return gesture_detector_map_;
   }
 
+  bool IsNative() const override { return true; }
+
  protected:
   PropMap props_;
   base::flex_optional<std::vector<lepus::Value>> event_handler_;

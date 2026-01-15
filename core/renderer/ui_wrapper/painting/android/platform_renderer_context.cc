@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
@@ -149,6 +150,19 @@ void PlatformRendererContext::UpdatePlatformRendererAttributes(
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_updatePlatformRendererAttributes(
       env, local_ref.Get(), id, prop_bundle);
+}
+
+int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return 0;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jstring> tag_ref =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, tag_name);
+  return Java_PlatformRendererContext_getTagInfo(env, local_ref.Get(),
+                                                 tag_ref.Get());
 }
 
 }  // namespace tasm

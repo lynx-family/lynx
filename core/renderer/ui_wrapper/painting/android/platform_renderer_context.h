@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
 #include <memory>
+#include <string>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/platform/android/scoped_java_ref.h"
@@ -48,6 +49,8 @@ class PlatformRendererContext {
   void UnregisterPlatformRenderer(int32_t id);
   void CreateImage(int32_t id, base::String src, float width, float height);
   void DestroyImage(int32_t id);
+
+  int32_t GetTagInfo(const std::string& tag_name);
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;

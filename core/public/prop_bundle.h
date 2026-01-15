@@ -67,6 +67,8 @@ class PropBundle : public fml::RefCountedThreadSafeStorage {
     SetPropsByIDInner(id, value);
   }
 
+  virtual bool IsNative() const { return false; }
+
   // TODO(wujintian): Currently, the copy of the element depends on the shallow
   // copy optimization of the prop bundle to improve performance. In the future,
   // when we implement the ability to update multiple prop bundles in a LynxUI

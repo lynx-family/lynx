@@ -243,7 +243,7 @@ void Element::AttachToElementManager(
 }
 
 void Element::PushStyleToBundle() {
-  if (EnableFragmentLayerRender()) {
+  if (EnableFragmentLayerRender() && !IsShadowNodeCustom()) {
     // TODO(renzhongyue): After EnableFragmentLayerRender(), style changes do
     // not need to be written to the PropBundle. computed_css_style() remains
     // dirty, and the Fragment determines whether to repaint based on whether

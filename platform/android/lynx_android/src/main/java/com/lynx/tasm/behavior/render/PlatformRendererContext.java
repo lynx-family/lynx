@@ -13,6 +13,8 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.shadow.ShadowNode;
+import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
@@ -76,6 +78,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   public void setRootView(@NonNull UIBody.UIBodyView rootView) {
     this.mRootView = new WeakReference<>(rootView);
+  }
+
+  public LynxContext getLynxContext() {
+    return mContext;
   }
 
   public long getNativePtr() {
@@ -145,6 +151,33 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         // TODO: support customized PlatformRendererHostView.
         break;
     }
+  }
+
+  @CalledByNative
+  public int getTagInfo(String tagName) {
+    int info = 0;
+    Behavior behavior;
+    try {
+      behavior = mBehaviorRegistry.get(tagName);
+    } catch (RuntimeException ignored) {
+      // When BehaviorRegistry cannot find Behavior by tagName, it will throw RuntimeException.
+      // However, a tag without corresponding Behavior is NOT virtual by default.
+      // Here is no exception in logic, so just ignore the RuntimeException.
+      return info;
+    }
+    ShadowNode node = null;
+    if (behavior != null) {
+      node = behavior.createShadowNode();
+    }
+    if (node != null) {
+      info |= ShadowNodeType.CUSTOM;
+      if (node.isVirtual()) {
+        info |= ShadowNodeType.VIRTUAL;
+      }
+    } else {
+      info |= ShadowNodeType.COMMON;
+    }
+    return info;
   }
 
   @CalledByNative

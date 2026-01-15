@@ -228,7 +228,7 @@ void NativePaintingCtxAndroid::Invoke(
     const std::function<void(int32_t, const pub::Value &)> &callback) {}
 
 int32_t NativePaintingCtxAndroid::GetTagInfo(const std::string &tag_name) {
-  return 0;
+  return view_manager_->GetTagInfo(tag_name);
 }
 
 bool NativePaintingCtxAndroid::IsFlatten(

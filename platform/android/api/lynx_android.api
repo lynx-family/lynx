@@ -8188,10 +8188,12 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public TextMeasurer com.lynx.tasm.behavior.render.PlatformRendererContext.getTextMeasurer();
   public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
+  public LynxContext com.lynx.tasm.behavior.render.PlatformRendererContext.getLynxContext();
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetHeight(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformRenderer(int sign, int type);
+  public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTagInfo(String tagName);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
