@@ -4,11 +4,11 @@
 
 #include <string>
 
-#include "core/runtime/bindings/napi/napi_environment.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/bindings/napi/shim/shim_napi_env_quickjs.h"
 #include "base/include/string/string_utils.h"
+#include "core/runtime/common/napi/napi_environment.h"
+#include "core/runtime/common/napi/napi_runtime_proxy.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/common/napi/shim/shim_napi_env_quickjs.h"
 #include "third_party/binding/napi/napi_bridge.h"
 #include "third_party/binding/napi/napi_object.h"
 #include "third_party/binding/napi/napi_object_ref.h"
@@ -534,33 +534,43 @@ TEST_F(NapiBindingTest, ValueCopyMoveTest) {
   copied = value;
   EXPECT_EQ(copied.GetType(), value.GetType());
   EXPECT_EQ(*copied.Data<std::vector<int32_t>>(), iarray);
-  EXPECT_EQ(*copied.Data<std::vector<int32_t>>(), *value.Data<std::vector<int32_t>>());
+  EXPECT_EQ(*copied.Data<std::vector<int32_t>>(),
+            *value.Data<std::vector<int32_t>>());
   moved = std::move(value);
   EXPECT_EQ(moved.GetType(), value.GetType());
   EXPECT_EQ(*moved.Data<std::vector<int32_t>>(), iarray);
-  EXPECT_NE(*moved.Data<std::vector<int32_t>>(), *value.Data<std::vector<int32_t>>());
+  EXPECT_NE(*moved.Data<std::vector<int32_t>>(),
+            *value.Data<std::vector<int32_t>>());
 
   value = Value::ArrayBuffer(iarray.size() * sizeof(int32_t), iarray.data(),
                              nullptr);
   copied = value;
   EXPECT_EQ(copied.GetType(), value.GetType());
-  EXPECT_EQ(copied.Data<Value::ArrayBufferData>()->size_, value.Data<Value::ArrayBufferData>()->size_);
-  EXPECT_EQ(copied.Data<Value::ArrayBufferData>()->data_, value.Data<Value::ArrayBufferData>()->data_);
+  EXPECT_EQ(copied.Data<Value::ArrayBufferData>()->size_,
+            value.Data<Value::ArrayBufferData>()->size_);
+  EXPECT_EQ(copied.Data<Value::ArrayBufferData>()->data_,
+            value.Data<Value::ArrayBufferData>()->data_);
   moved = std::move(value);
   EXPECT_EQ(moved.GetType(), value.GetType());
-  EXPECT_EQ(moved.Data<Value::ArrayBufferData>()->size_, copied.Data<Value::ArrayBufferData>()->size_);
-  EXPECT_EQ(moved.Data<Value::ArrayBufferData>()->data_, copied.Data<Value::ArrayBufferData>()->data_);
-  EXPECT_NE(moved.Data<Value::ArrayBufferData>()->size_, value.Data<Value::ArrayBufferData>()->size_);
-  EXPECT_NE(moved.Data<Value::ArrayBufferData>()->data_, value.Data<Value::ArrayBufferData>()->data_);
+  EXPECT_EQ(moved.Data<Value::ArrayBufferData>()->size_,
+            copied.Data<Value::ArrayBufferData>()->size_);
+  EXPECT_EQ(moved.Data<Value::ArrayBufferData>()->data_,
+            copied.Data<Value::ArrayBufferData>()->data_);
+  EXPECT_NE(moved.Data<Value::ArrayBufferData>()->size_,
+            value.Data<Value::ArrayBufferData>()->size_);
+  EXPECT_NE(moved.Data<Value::ArrayBufferData>()->data_,
+            value.Data<Value::ArrayBufferData>()->data_);
 
   std::vector<char> buffer{'a', 'b', 'c', 'd', 'e'};
   value = Value::ArrayBufferView(buffer, ArrayType::kTypeInt32);
   copied = value;
   EXPECT_EQ(copied.GetType(), value.GetType());
-  EXPECT_EQ(*copied.Data<std::vector<char>>(), *value.Data<std::vector<char>>());
+  EXPECT_EQ(*copied.Data<std::vector<char>>(),
+            *value.Data<std::vector<char>>());
   moved = std::move(value);
   EXPECT_EQ(moved.GetType(), value.GetType());
-  EXPECT_EQ(*moved.Data<std::vector<char>>(), *copied.Data<std::vector<char>>());
+  EXPECT_EQ(*moved.Data<std::vector<char>>(),
+            *copied.Data<std::vector<char>>());
   EXPECT_NE(*moved.Data<std::vector<char>>(), *value.Data<std::vector<char>>());
 
   Napi::Object obj = Napi::Object::New(env_);

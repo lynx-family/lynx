@@ -6,12 +6,12 @@
 #include <string>
 
 #include "base/include/string/string_utils.h"
-#include "core/runtime/bindings/napi/napi_environment.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy.h"
-#include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/bindings/napi/shim/shim_napi_env_quickjs.h"
-#include "jsbridge/bindings/gen_test/napi_test_context.h"
-#include "jsbridge/bindings/gen_test/napi_test_element.h"
+#include "core/runtime/common/napi/napi_environment.h"
+#include "core/runtime/common/napi/napi_runtime_proxy.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/common/napi/shim/shim_napi_env_quickjs.h"
+#include "third_party/binding/gen_test/jsbridge/bindings/gen_test/napi_test_context.h"
+#include "third_party/binding/gen_test/jsbridge/bindings/gen_test/napi_test_element.h"
 #include "third_party/binding/gen_test/test_async_object.h"
 #include "third_party/binding/gen_test/test_context.h"
 #include "third_party/binding/gen_test/test_module.h"
@@ -302,10 +302,14 @@ TEST_F(BindingGeneratorTest, TypedArrayTest) {
     }
     long_array += "-1.2, 3.14";
   }
-  env_.RunScript(("ctx.voidFromTypedArray(new Float32Array([" + long_array + "]));").c_str());
+  env_.RunScript(
+      ("ctx.voidFromTypedArray(new Float32Array([" + long_array + "]));")
+          .c_str());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 0u);
-  env_.RunScript(("ctx.voidFromTypedArray(new Float32Array([" + long_array + ", 1.1]));").c_str());
+  env_.RunScript(
+      ("ctx.voidFromTypedArray(new Float32Array([" + long_array + ", 1.1]));")
+          .c_str());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 2u);
   EXPECT_EQ(log[0], "VoidFromTypedArray_CommandBuffer([" + long_array + "])");
@@ -336,8 +340,12 @@ TEST_F(BindingGeneratorTest, TypedArrayTest) {
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 6u);
-  EXPECT_EQ(log[0], "VoidFromTypedArray_CommandBuffer([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])");
-  EXPECT_EQ(log[1], "VoidFromTypedArray_CommandBuffer([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])");
+  EXPECT_EQ(
+      log[0],
+      "VoidFromTypedArray_CommandBuffer([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])");
+  EXPECT_EQ(
+      log[1],
+      "VoidFromTypedArray_CommandBuffer([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])");
   EXPECT_EQ(log[2], "VoidFromTypedArray_CommandBuffer([])");
   EXPECT_EQ(log[3], "VoidFromTypedArray_CommandBuffer([5, 6, 10])");
   EXPECT_EQ(log[4], "VoidFromTypedArray_CommandBuffer([nan, 42, 3.14])");
@@ -358,7 +366,8 @@ TEST_F(BindingGeneratorTest, ArrayBufferTest) {
   env_.RunScript("ctx.finish();");
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 2u);
-  EXPECT_EQ(log[0], "VoidFromArrayBuffer_CommandBuffer(8, [7, 6, 0, 0, 0, 0, 0, 1])");
+  EXPECT_EQ(log[0],
+            "VoidFromArrayBuffer_CommandBuffer(8, [7, 6, 0, 0, 0, 0, 0, 1])");
   env_.RunScript("ctx.voidFromArrayBuffer_(buffer);");
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 1u);
@@ -376,20 +385,28 @@ TEST_F(BindingGeneratorTest, ArrayBufferTest) {
     }
     long_array += "127, 255";
   }
-  env_.RunScript(("buffer = new ArrayBuffer(" + std::to_string(long_array_threshold) + ");").c_str());
+  env_.RunScript(("buffer = new ArrayBuffer(" +
+                  std::to_string(long_array_threshold) + ");")
+                     .c_str());
   env_.RunScript("int8array = new Int8Array(buffer);");
   env_.RunScript(("int8array.set([" + long_array + "]);").c_str());
   env_.RunScript("ctx.voidFromArrayBuffer(buffer);");
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 0u);
-  env_.RunScript(("buffer = new ArrayBuffer(" + std::to_string(long_array_threshold + 1) + ");").c_str());
+  env_.RunScript(("buffer = new ArrayBuffer(" +
+                  std::to_string(long_array_threshold + 1) + ");")
+                     .c_str());
   env_.RunScript("int8array = new Int8Array(buffer);");
   env_.RunScript(("int8array.set([" + long_array + ", 1]);").c_str());
   env_.RunScript("ctx.voidFromArrayBuffer(buffer);");
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 2u);
-  EXPECT_EQ(log[0], "VoidFromArrayBuffer_CommandBuffer(" + std::to_string(long_array_threshold) + ", [" + long_array + "])");
-  EXPECT_EQ(log[1], "VoidFromArrayBuffer_Binding(" + std::to_string(long_array_threshold + 1) + ", [" + long_array + ", 1])");
+  EXPECT_EQ(log[0], "VoidFromArrayBuffer_CommandBuffer(" +
+                        std::to_string(long_array_threshold) + ", [" +
+                        long_array + "])");
+  EXPECT_EQ(log[1], "VoidFromArrayBuffer_Binding(" +
+                        std::to_string(long_array_threshold + 1) + ", [" +
+                        long_array + ", 1])");
 
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
 
@@ -407,8 +424,12 @@ TEST_F(BindingGeneratorTest, ArrayBufferTest) {
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 6u);
-  EXPECT_EQ(log[0], "VoidFromArrayBuffer_CommandBuffer(12, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])");
-  EXPECT_EQ(log[1], "VoidFromArrayBuffer_CommandBuffer(12, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])");
+  EXPECT_EQ(log[0],
+            "VoidFromArrayBuffer_CommandBuffer(12, [0, 0, 0, 0, 0, 0, 0, 0, 0, "
+            "0, 0, 0])");
+  EXPECT_EQ(log[1],
+            "VoidFromArrayBuffer_CommandBuffer(12, [0, 0, 0, 0, 0, 0, 0, 0, 0, "
+            "0, 0, 0])");
   EXPECT_EQ(log[2], "VoidFromArrayBuffer_CommandBuffer(0, [])");
   EXPECT_EQ(log[3], "VoidFromArrayBuffer_CommandBuffer(3, [5, 6, 10])");
   EXPECT_EQ(log[4], "VoidFromArrayBuffer_CommandBuffer(3, [0, 42, 3])");
@@ -427,11 +448,15 @@ TEST_F(BindingGeneratorTest, ArrayBufferViewTest) {
   env_.RunScript("ctx.finish();");
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 2u);
-  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeFloat32) + "|2, [-1.2, 3.14])");
+  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeFloat32) +
+                        "|2, [-1.2, 3.14])");
   env_.RunScript("ctx.voidFromArrayBufferView_(float32array);");
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 1u);
-  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeFloat32) + "|2, [-1.2, 3.14])");
+  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeFloat32) +
+                        "|2, [-1.2, 3.14])");
 
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
 
@@ -445,14 +470,24 @@ TEST_F(BindingGeneratorTest, ArrayBufferViewTest) {
     }
     long_array += "-1.2, 3.14";
   }
-  env_.RunScript(("ctx.voidFromArrayBufferView(new Float32Array([" + long_array + "]));").c_str());
+  env_.RunScript(
+      ("ctx.voidFromArrayBufferView(new Float32Array([" + long_array + "]));")
+          .c_str());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 0u);
-  env_.RunScript(("ctx.voidFromArrayBufferView(new Float32Array([" + long_array + ", 1.1]));").c_str());
+  env_.RunScript(("ctx.voidFromArrayBufferView(new Float32Array([" +
+                  long_array + ", 1.1]));")
+                     .c_str());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 2u);
-  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeFloat32) + "|" + std::to_string(long_array_threshold) + ", [" + long_array + "])");
-  EXPECT_EQ(log[1], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeFloat32) + "|" + std::to_string(long_array_threshold + 1) + ", [" + long_array + ", 1.1])");
+  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeFloat32) + "|" +
+                        std::to_string(long_array_threshold) + ", [" +
+                        long_array + "])");
+  EXPECT_EQ(log[1], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeFloat32) + "|" +
+                        std::to_string(long_array_threshold + 1) + ", [" +
+                        long_array + ", 1.1])");
 
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
 
@@ -469,37 +504,73 @@ TEST_F(BindingGeneratorTest, ArrayBufferViewTest) {
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
   log = gen_test::TestContext::RetrieveLog();
   EXPECT_EQ(log.size(), 5u);
-  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeEmpty) + "|0, [])");
-  EXPECT_EQ(log[1], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeEmpty) + "|0, [])");
-  EXPECT_EQ(log[2], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeEmpty) + "|0, [])");
-  EXPECT_EQ(log[3], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeEmpty) + "|0, [])");
+  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeEmpty) +
+                        "|0, [])");
+  EXPECT_EQ(log[1], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeEmpty) +
+                        "|0, [])");
+  EXPECT_EQ(log[2], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeEmpty) +
+                        "|0, [])");
+  EXPECT_EQ(log[3], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeEmpty) +
+                        "|0, [])");
 
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
 
   // View types should all work.
   env_.RunScript("ctx.voidFromArrayBufferView(new Int8Array([-5, 6, -10]));");
   env_.RunScript("ctx.voidFromArrayBufferView(new Uint8Array([5, 6, 10]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Uint8ClampedArray([256, 257, 25]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Int16Array([-5, 6, -32768]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Uint16Array([5, 6, 65535]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Int32Array([-5, 6, -65536]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Uint32Array([5, 6, 65536]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Float32Array([-1.2, 3.14, 65536]));");
-  env_.RunScript("ctx.voidFromArrayBufferView(new Float64Array([-1.2, 3.14, 65536]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Uint8ClampedArray([256, 257, 25]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Int16Array([-5, 6, -32768]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Uint16Array([5, 6, 65535]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Int32Array([-5, 6, -65536]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Uint32Array([5, 6, 65536]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Float32Array([-1.2, 3.14, 65536]));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new Float64Array([-1.2, 3.14, 65536]));");
   env_.RunScript("let uint8array = new Uint8Array([5, 6, 10]);");
-  env_.RunScript("ctx.voidFromArrayBufferView(new DataView(uint8array.buffer));");
+  env_.RunScript(
+      "ctx.voidFromArrayBufferView(new DataView(uint8array.buffer));");
   env_.RunScript("ctx.finish();");
   log = gen_test::TestContext::RetrieveLog();
-  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeInt8) + "|3, [-5, 6, -10])");
-  EXPECT_EQ(log[1], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeUint8) + "|3, [5, 6, 10])");
-  EXPECT_EQ(log[2], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeUint8Clamped) + "|3, [255, 255, 25])");
-  EXPECT_EQ(log[3], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeInt16) + "|3, [-5, 6, -32768])");
-  EXPECT_EQ(log[4], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeUint16) + "|3, [5, 6, 65535])");
-  EXPECT_EQ(log[5], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeInt32) + "|3, [-5, 6, -65536])");
-  EXPECT_EQ(log[6], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeUint32) + "|3, [5, 6, 65536])");
-  EXPECT_EQ(log[7], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeFloat32) + "|3, [-1.2, 3.14, 65536])");
-  EXPECT_EQ(log[8], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeFloat64) + "|3, [-1.2, 3.14, 65536])");
-  EXPECT_EQ(log[9], "VoidFromArrayBufferView(" + std::to_string(ArrayBufferView::kTypeDataView) + "|3, [5, 6, 10])");
+  EXPECT_EQ(log[0], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeInt8) +
+                        "|3, [-5, 6, -10])");
+  EXPECT_EQ(log[1], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeUint8) +
+                        "|3, [5, 6, 10])");
+  EXPECT_EQ(log[2], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeUint8Clamped) +
+                        "|3, [255, 255, 25])");
+  EXPECT_EQ(log[3], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeInt16) +
+                        "|3, [-5, 6, -32768])");
+  EXPECT_EQ(log[4], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeUint16) +
+                        "|3, [5, 6, 65535])");
+  EXPECT_EQ(log[5], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeInt32) +
+                        "|3, [-5, 6, -65536])");
+  EXPECT_EQ(log[6], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeUint32) +
+                        "|3, [5, 6, 65536])");
+  EXPECT_EQ(log[7], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeFloat32) +
+                        "|3, [-1.2, 3.14, 65536])");
+  EXPECT_EQ(log[8], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeFloat64) +
+                        "|3, [-1.2, 3.14, 65536])");
+  EXPECT_EQ(log[9], "VoidFromArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeDataView) +
+                        "|3, [5, 6, 10])");
 
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
 
@@ -510,7 +581,9 @@ TEST_F(BindingGeneratorTest, ArrayBufferViewTest) {
   EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
   env_.RunScript("ctx.finish();");
   log = gen_test::TestContext::RetrieveLog();
-  EXPECT_EQ(log[0], "VoidFromNullableArrayBufferView(" + std::to_string(ArrayBufferView::kTypeEmpty) + "|0, [])");
+  EXPECT_EQ(log[0], "VoidFromNullableArrayBufferView(" +
+                        std::to_string(ArrayBufferView::kTypeEmpty) +
+                        "|0, [])");
 }
 
 TEST_F(BindingGeneratorTest, AsyncObjectTest) {

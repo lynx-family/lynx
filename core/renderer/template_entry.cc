@@ -18,8 +18,8 @@
 #include "core/services/event_report/event_tracker.h"
 
 #if ENABLE_LEPUSNG_WORKLET
-#include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/bindings/napi/worklet/napi_loader_ui.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/lepus_context/napi/worklet/napi_loader_ui.h"
 #endif
 
 #ifdef USE_PRIMJS_NAPI

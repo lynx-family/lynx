@@ -588,7 +588,7 @@ subspec_target("NapiBinding") {
 }
 
 subspec_target("JSC") {
-  deps = [ "../../../../core/runtime/bindings/napi:napi_binding_jsc" ]
+  deps = [ "../../../../core/runtime/common/napi:napi_binding_jsc" ]
   dependency = []
   if (!use_flatten_deps) {
     dependency += [ "Lynx/NapiBinding/Common" ]
@@ -606,7 +606,8 @@ subspec_target("NapiBinding_Common") {
     ]
   }
   deps = [
-    "../../../../core/runtime/bindings/napi:napi_binding_core",
+    "../../../../core/runtime/common/napi:napi_binding_core",
+    "../../../../core/runtime/js/napi:napi_loader_js",
     "../../../../third_party/binding/napi:napi_binding_base",
   ]
   dependency = []
@@ -620,7 +621,7 @@ subspec_target("QuickJS") {
   pod_target_xcconfig = {
     HEADER_SEARCH_PATHS = QuickJS_includes
   }
-  deps = [ "../../../../core/runtime/bindings/napi:napi_binding_quickjs" ]
+  deps = [ "../../../../core/runtime/common/napi:napi_binding_quickjs" ]
   dependency = []
   if (!use_flatten_deps) {
     dependency += [ "Lynx/NapiBinding/Common" ]

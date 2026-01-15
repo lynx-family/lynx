@@ -72,7 +72,7 @@ if (is_android) {
       "../../../bindings/jsi/modules/android/jni_v8_bridge.cc",
     ]
     if (enable_napi_binding) {
-      sources += [ "../../../bindings/napi/napi_runtime_proxy_v8.cc" ]
+      sources += [ "../../../common/napi/napi_runtime_proxy_v8.cc" ]
     }
     if (is_debug) {
       cflags = [ "-O0" ]

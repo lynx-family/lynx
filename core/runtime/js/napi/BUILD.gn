@@ -1,0 +1,22 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../Lynx.gni")
+
+lynx_core_source_set("napi_loader_js") {
+  sources = [
+    "napi_loader_js.cc",
+    "napi_loader_js.h",
+  ]
+
+  deps = [
+    "../../../../base/src:base_log_headers",
+    "../../common/napi:napi_binding_core_headers",
+  ]
+
+  public_deps = [
+    "../../../../third_party/binding/napi:napi_binding_base",
+    "../../common/napi:napi_binding_core",
+  ]
+}
