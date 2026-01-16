@@ -427,8 +427,7 @@ bool RenderEditable::UpdateCaretRectDownstream(int caret_offset,
   while (boxes.empty()) {
     // TODO(yulitao): First check whether next_offset exceeds length.
     size_t next_offset =
-        std::min(static_cast<size_t>(caret_offset + graphemeClusterLength),
-                 text.length());
+        static_cast<size_t>(caret_offset + graphemeClusterLength);
     boxes = painter_->GetRectsForRange(caret_offset, next_offset,
                                        RectHeightStyle::kStrut);
     if (boxes.empty()) {

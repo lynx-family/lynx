@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include "clay/ui/component/base_view.h"
 #include "clay/ui/component/editable/input_view.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/shadow/editable_shadow_node.h"
@@ -75,6 +76,8 @@ void TextAreaView::SetAttribute(const char* attr_c, const clay::Value& value) {
 }
 
 void TextAreaView::OnLayout(LayoutContext* context) {
+  editable_scroll_->SetX(PaddingLeft() + BorderLeft());
+  editable_scroll_->SetY(PaddingTop() + BorderTop());
   editable_scroll_->SetWidth(ContentWidth());
   editable_scroll_->SetHeight(ContentHeight());
   editable_view_->SetWidth(ContentWidth());
