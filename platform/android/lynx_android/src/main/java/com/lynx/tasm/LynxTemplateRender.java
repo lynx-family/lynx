@@ -540,7 +540,8 @@ public class LynxTemplateRender
   }
 
   private void setUpBackgroundThreadModuleFactory() {
-    if (mLynxViewGroup != null) {
+    // Only use shared module factory when enableSharedModule is true in LynxViewGroup.
+    if (mLynxViewGroup != null && mLynxViewGroup.getSharedModuleFactory() != null) {
       LLog.v(TAG,
           "NativeModule:LynxTemplateRender setUpBackgroundThreadModuleFactory mLynxViewGroup: "
               + mLynxViewGroup);

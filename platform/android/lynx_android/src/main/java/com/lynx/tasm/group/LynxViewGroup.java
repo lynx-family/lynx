@@ -92,6 +92,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private boolean enableMTSModule;
   private ILynxLogicExecutor logicExecutor;
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
+  private boolean enableSharedModule = false;
 
   private Context mContext;
   private CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -125,7 +126,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       boolean debuggable, int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
       boolean enablePreUpdateData, IUIRendererCreator uiRendererCreator, int embeddedMode,
       boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor, boolean enableMTSModule,
-      String tapSlop) {
+      String tapSlop, boolean enableSharedModule) {
     this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
@@ -159,6 +160,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.logicExecutor = logicExecutor;
     this.enableMTSModule = enableMTSModule;
     this.tapSlop = tapSlop;
+    this.enableSharedModule = enableSharedModule;
 
     init();
   }
@@ -172,7 +174,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       this.fetchTemplateInternal();
     }
 
-    if (mSharedModuleFactory == null) {
+    if (enableSharedModule && mSharedModuleFactory == null) {
       mSharedModuleFactory = new LynxModuleFactory();
       // bind SharedContextFinder & SharedModuleCreator
       IModuleCreator sharedModuleCreator = new SharedModuleCreator(new SharedContextFinder());
@@ -485,7 +487,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   @Override
   public void registerModule(String name, Class<? extends LynxModule> module, Object param) {
-    mSharedModuleFactory.registerModule(name, module, param);
+    if (enableSharedModule) {
+      mSharedModuleFactory.registerModule(name, module, param);
+    } else {
+      lynxRuntimeOptions.registerModule(name, module, param);
+    }
   }
 
   private void setFetchResult(LynxResourceResponse<TemplateBundle> result) {
@@ -570,6 +576,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   @Override
   public LynxModuleFactory getSharedModuleFactory() {
+    if (!enableSharedModule) {
+      return null;
+    }
     return mSharedModuleFactory;
   }
 

@@ -22,6 +22,7 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
   private ILynxLogicExecutor logicExecutor;
 
   private Context mContext;
+  private boolean enableSharedModule = false;
 
   public LynxViewGroupBuilder setContext(@NonNull Context context) {
     this.mContext = context;
@@ -48,6 +49,11 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
     return this;
   }
 
+  public LynxViewGroupBuilder setEnableSharedModule(boolean enableSharedModule) {
+    this.enableSharedModule = enableSharedModule;
+    return this;
+  }
+
   public ILynxViewGroup build() {
     LynxViewGroup group = new LynxViewGroup(mContext, url, templateBundle, globalProps,
         behaviorRegistry, lynxRuntimeOptions, mContextData, threadStrategy, enableAutoExpose,
@@ -56,7 +62,7 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
         enableAsyncHydration, enableVSyncAlignedMessageLoop, enableJSRuntime, enableAirStrictMode,
         debuggable, presetWidthMeasureSpec, presetHeightMeasureSpec, fontScale, enablePreUpdateData,
         uiRendererCreator, embeddedMode, hasPresetMeasureSpec, logicExecutor, enableMTSModule,
-        tapSlop);
+        tapSlop, enableSharedModule);
     return group;
   }
 }

@@ -7331,6 +7331,7 @@ public class com::lynx::tasm::group::LynxViewGroupBuilder : LynxBaseConfigurator
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setTemplateBundle(@NonNull TemplateBundle templateBundle);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setGlobalProps(@NonNull TemplateData globalProps);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setLogicExecutor(ILynxLogicExecutor logicExecutor);
+  public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setEnableSharedModule(boolean enableSharedModule);
   public ILynxViewGroup com.lynx.tasm.group.LynxViewGroupBuilder.build();
 }
 
