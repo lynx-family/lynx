@@ -63,7 +63,7 @@ LYNX_UI_METHOD_END(ListContainerWrapper);
 ListContainerWrapper::ListContainerWrapper(int32_t id, PageView* page_view)
     : WithTypeInfo(id, ScrollDirection::kVertical, kListContainerWrapperTag,
                    page_view) {
-  view_ = new ListContainerView(-1, page_view);
+  view_ = new ListContainerView(-1, page_view, id_);
   view_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
   view_->SetRepaintBoundary(true);
   GetListContainerView()->SetDelegate(this);
