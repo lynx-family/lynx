@@ -60,6 +60,7 @@ checker-config:
       - '^clay/third_party/txt/*'
 
   api-checker:
+    api-check-bin: 'tools/api/main.py'
     java-path:
       - 'platform/android/lynx_android/src/main'
     cpp-path:
