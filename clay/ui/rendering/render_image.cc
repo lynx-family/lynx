@@ -125,16 +125,17 @@ void RenderImage::SetPlaceholderImage(
   AdjustSizeIfNeeded();
 }
 #else
-void RenderImage::SetImage(std::shared_ptr<BaseImage> image) {
-  if (image) {
-    if (image->GetType() == ImageType::kAnimated) {
+void RenderImage::SetImage(std::unique_ptr<BaseImageInstance> image_instance) {
+  if (image_instance) {
+    auto image = image_instance->GetImage();
+    if (image && image->GetType() == ImageType::kAnimated) {
       auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
       animated_image->SetAutoPlay(auto_play_);
       animated_image->SetLoopCount(loop_count_);
     }
   }
 
-  image_resource_ = std::move(image);
+  image_resource_ = std::move(image_instance);
 
   MarkNeedsPaint();
 
@@ -146,7 +147,7 @@ void RenderImage::SetImage(std::shared_ptr<BaseImage> image) {
 }
 
 void RenderImage::SetPlaceholderImage(
-    std::shared_ptr<BaseImage> placeholder_resource) {
+    std::unique_ptr<BaseImageInstance> placeholder_resource) {
   if (image_resource_) {
     // Discard placeholder resource if the formal image is ready.
     return;
@@ -229,10 +230,12 @@ void RenderImage::SetAutoPlay(bool auto_play) {
     image_resource_->GetImage()->SetAutoPlay(auto_play_);
   }
 #else
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    animated_image->SetAutoPlay(auto_play_);
+  if (image_resource_ && image_resource_->GetImage()) {
+    auto image = image_resource_->GetImage();
+    if (image->GetType() == ImageType::kAnimated) {
+      auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
+      animated_image->SetAutoPlay(auto_play_);
+    }
   }
 #endif  // ENABLE_SKITY
 }
@@ -249,10 +252,12 @@ void RenderImage::SetLoopCount(int loop_count) {
     image_resource_->GetImage()->SetLoopCount(loop_count_);
   }
 #else
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    animated_image->SetLoopCount(loop_count_);
+  if (image_resource_ && image_resource_->GetImage()) {
+    auto image = image_resource_->GetImage();
+    if (image->GetType() == ImageType::kAnimated) {
+      auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
+      animated_image->SetLoopCount(loop_count_);
+    }
   }
 #endif
 }
@@ -545,10 +550,12 @@ void RenderImage::StartAnimate() {
     }
   }
 #else
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    animated_image->StartAnimate();
+  if (image_resource_) {
+    auto image = image_resource_->GetImage();
+    if (image && image->GetType() == ImageType::kAnimated) {
+      auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
+      animated_image->StartAnimate();
+    }
   }
 #endif  // ENABLE_SKITY
 }
@@ -563,10 +570,12 @@ void RenderImage::StopAnimation() {
     }
   }
 #else
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    animated_image->StopAnimation();
+  if (image_resource_) {
+    auto image = image_resource_->GetImage();
+    if (image && image->GetType() == ImageType::kAnimated) {
+      auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
+      animated_image->StopAnimation();
+    }
   }
 #endif
 }
@@ -581,10 +590,12 @@ void RenderImage::PauseAnimation() {
     }
   }
 #else
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    animated_image->PauseAnimation();
+  if (image_resource_) {
+    auto image = image_resource_->GetImage();
+    if (image && image->GetType() == ImageType::kAnimated) {
+      auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
+      animated_image->PauseAnimation();
+    }
   }
 #endif  // ENABLE_SKITY
 }
@@ -599,10 +610,12 @@ void RenderImage::ResumeAnimation() {
     }
   }
 #else
-  if (image_resource_ && image_resource_->GetType() == ImageType::kAnimated) {
-    auto animated_image =
-        std::static_pointer_cast<AnimatedImage>(image_resource_);
-    animated_image->ResumeAnimation();
+  if (image_resource_) {
+    auto image = image_resource_->GetImage();
+    if (image && image->GetType() == ImageType::kAnimated) {
+      auto animated_image = std::static_pointer_cast<AnimatedImage>(image);
+      animated_image->ResumeAnimation();
+    }
   }
 #endif
 }
@@ -642,13 +655,13 @@ void RenderImage::TryDecodeImmediately() {
   }
 #else
   if (image_resource_) {
-    image_resource_->GetGraphicsImage();
+    image_resource_->GetImage()->GetGraphicsImage();
   }
   if (pending_image_resource_) {
-    pending_image_resource_->GetGraphicsImage();
+    pending_image_resource_->GetImage()->GetGraphicsImage();
   }
   if (placeholder_resource_) {
-    placeholder_resource_->GetGraphicsImage();
+    placeholder_resource_->GetImage()->GetGraphicsImage();
   }
 #endif  // ENABLE_SKITY
 }

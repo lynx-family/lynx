@@ -11,12 +11,16 @@
 namespace clay {
 
 std::shared_ptr<AnimatedImage> AnimatedImage::Make(
+    fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
     fml::RefPtr<fml::TaskRunner> task_runner,
     std::shared_ptr<PlatformImage> platform_image) {
   auto image = std::shared_ptr<AnimatedImage>(new AnimatedImage);
   image->type_ = ImageType::kAnimated;
+  image->image_fetcher_ = image_fetcher;
+  image->url_ = std::move(url);
   image->image_ = platform_image;
   image->frame_timer_ = std::make_unique<fml::OneshotTimer>(task_runner);
+  image->StartAnimate();
   return image;
 }
 
@@ -25,35 +29,35 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
     FML_LOG(ERROR) << "AnimatedImage::Upload: unref_queue or context is null";
     return;
   }
-  auto pixmap = image_->ToBitmap();
-  if (!pixmap) {
-    return;
-  }
-  auto image = skity::Image::MakeDeferredTextureImage(
-      skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-      pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
-  gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
-  unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
-                                          image, pixmap,
-                                          weak = weak_from_this()]() {
-    if (auto self = weak.lock()) {
-      auto texture = context->CreateTexture(
-          skity::Texture::FormatFromColorType(pixmap->GetColorType()),
-          pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
-      if (texture) {
-        texture->DeferredUploadImage(std::move(pixmap));
-        image->SetTexture(texture);
-      }
+  if (!gpu_image_.object()) {
+    auto pixmap = image_->ToBitmap();
+    if (!pixmap) {
+      return;
     }
-  });
-  NextFrame();
-}
-
-void AnimatedImage::SetAnimationFrameCallback(std::function<void()> func) {
-  animation_frame_callback_ = std::move(func);
+    auto image = skity::Image::MakeDeferredTextureImage(
+        skity::Texture::FormatFromColorType(pixmap->GetColorType()),
+        pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+    gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
+    unref_queue->GetTaskRunner()->PostTask([context = unref_queue->GetContext(),
+                                            image, pixmap,
+                                            weak = weak_from_this()]() {
+      if (auto self = weak.lock()) {
+        auto texture = context->CreateTexture(
+            skity::Texture::FormatFromColorType(pixmap->GetColorType()),
+            pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+        if (texture) {
+          texture->DeferredUploadImage(std::move(pixmap));
+          image->SetTexture(texture);
+        }
+      }
+    });
+  }
 }
 
 void AnimatedImage::NextFrame() {
+  if (image_->GetDuration() <= 0) {
+    return;
+  }
   frame_timer_->Start(
       fml::TimeDelta::FromMilliseconds(image_->GetDuration()),
       [weak = weak_from_this()] {
@@ -61,7 +65,7 @@ void AnimatedImage::NextFrame() {
           auto animated_image = static_cast<AnimatedImage*>(self.get());
           animated_image->image_->DrawFrame(
               fml::TimePoint::Now().ToEpochDelta().ToMilliseconds(),
-              animated_image->animation_frame_callback_);
+              [animated_image] { animated_image->OnNotifyAnimationFrame(); });
         }
       });
 }
@@ -75,17 +79,21 @@ void AnimatedImage::SetLoopCount(int loop_count) {
 void AnimatedImage::StartAnimate() {
   StopAnimation();
   image_->StartAnimation();
-  if (animation_frame_callback_) {
-    animation_frame_callback_();
-  }
+  OnNotifyAnimationFrame();
 }
 void AnimatedImage::StopAnimation() { image_->StopAnimation(); }
 void AnimatedImage::PauseAnimation() { image_->PauseAnimation(); }
 void AnimatedImage::ResumeAnimation() {
   image_->ResumeAnimation();
-  if (animation_frame_callback_) {
-    animation_frame_callback_();
+  OnNotifyAnimationFrame();
+}
+
+void AnimatedImage::OnNotifyAnimationFrame() {
+  for (auto& instance : instances_) {
+    instance->OnNotifyAnimationFrame();
   }
+  NextFrame();
+  gpu_image_.reset();
 }
 
 }  // namespace clay

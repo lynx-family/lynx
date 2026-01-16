@@ -18,20 +18,30 @@
 
 namespace clay {
 
+class ResourceLoaderIntercept;
+class ServiceManager;
+
 class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
  public:
-  using ImageCallback = std::function<void(std::shared_ptr<BaseImage>, bool)>;
+  using ImageCallback =
+      std::function<void(std::unique_ptr<BaseImageInstance>, bool)>;
   static fml::RefPtr<ImageFetcher> Create(
-      clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue);
+      std::shared_ptr<ResourceLoaderIntercept> intercept,
+      clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue,
+      std::shared_ptr<ServiceManager> service_manager);
 
   virtual ~ImageFetcher();
-  ImageFetcher(clay::TaskRunners task_runners,
-               fml::RefPtr<GPUUnrefQueue> unref_queue);
+  ImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
+               clay::TaskRunners task_runners,
+               fml::RefPtr<GPUUnrefQueue> unref_queue,
+               std::shared_ptr<ServiceManager> service_manager);
   uint64_t FetchImage(const std::string& url, bool is_svg,
                       const ImageCallback& callback);
   uint64_t FetchSVGImageWithContent(const std::string& content,
                                     const ImageCallback& callback);
   void TryCancelAsyncFetch(const std::string& url, uint64_t fetch_id);
+
+  void OnImageHasNoAccessor(BaseImage* image);
 
  protected:
   fml::WeakPtr<ImageFetcher> GetWeakPtr() const {
@@ -43,11 +53,17 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
 
   void OnFetchFinish(const std::string& url, std::shared_ptr<BaseImage> image);
 
+  std::shared_ptr<BaseImage> FindImageFromCache(const std::string& url);
+
  protected:
   fml::WeakPtrFactory<ImageFetcher> weak_factory_;
+  std::shared_ptr<ResourceLoaderIntercept> resource_loader_intercept_;
+  std::shared_ptr<ServiceManager> service_manager_;
   clay::TaskRunners task_runners_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
-  std::shared_ptr<ImageCache<BaseImage>> image_cache_;
+  std::unordered_map<std::string, std::shared_ptr<BaseImage>>
+      active_url_image_map_;
+  std::shared_ptr<ImageCache<BaseImage>> inactive_image_cache_;
   std::unordered_map<std::string, std::shared_ptr<ResourceLoader>>
       url_loader_map_;
   std::multimap<std::string, ImageCallback> image_callback_map_;

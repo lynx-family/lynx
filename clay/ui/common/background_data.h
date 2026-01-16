@@ -34,8 +34,10 @@ class BackgroundImage {
     return image_resource_.get();
   }
 #else
-  void SetImageResource(std::shared_ptr<BaseImage> image_resource);
-  const BaseImage* GetImageResource() const { return image_resource_.get(); }
+  void SetImageResource(std::unique_ptr<BaseImageInstance> image_resource);
+  const BaseImageInstance* GetImageResource() const {
+    return image_resource_.get();
+  }
 #endif  // ENABLE_SKITY
 
   void SetGradient(const Gradient& gradient);
@@ -53,7 +55,7 @@ class BackgroundImage {
 #ifndef ENABLE_SKITY
   std::unique_ptr<ImageResource> image_resource_;
 #else
-  std::shared_ptr<BaseImage> image_resource_;
+  std::unique_ptr<BaseImageInstance> image_resource_;
 #endif
   std::optional<Gradient> gradient_ = std::nullopt;
 };

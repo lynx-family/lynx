@@ -219,7 +219,10 @@ void ImagePainter::PaintImage(GraphicsContext* context,
   }
 
 #ifdef ENABLE_SKITY
-  image_data.image_resource->Upload(
+  if (!image_data.image_resource->GetImage()) {
+    return;
+  }
+  image_data.image_resource->GetImage()->Upload(
       context->GetUnrefQueue(),
       Size{static_cast<int>(
                render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
@@ -454,15 +457,17 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
   auto image_resource = bg_image.GetImageResource();
   if (image_resource) {
 #ifdef ENABLE_SKITY
-    const_cast<BaseImage*>(image_resource)
-        ->Upload(
-            context->GetUnrefQueue(),
-            Size{static_cast<int>(
-                     render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                         src_rect.Width())),
-                 static_cast<int>(
-                     render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                         src_rect.Height()))});
+    if (!image_resource->GetImage()) {
+      return;
+    }
+    image_resource->GetImage()->Upload(
+        context->GetUnrefQueue(),
+        Size{static_cast<int>(
+                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                     src_rect.Width())),
+             static_cast<int>(
+                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                     src_rect.Height()))});
 #endif  // ENABLE_SKITY
 
 #ifndef ENABLE_SKITY
@@ -669,15 +674,17 @@ void ImagePainter::PaintSingleMaskImage(
 #ifdef ENABLE_SKITY
   if (image_resource) {
     FML_DCHECK(unref_queue);
-    const_cast<BaseImage*>(image_resource)
-        ->Upload(
-            unref_queue,
-            Size{static_cast<int>(
-                     render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                         src_rect.width())),
-                 static_cast<int>(
-                     render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                         src_rect.height()))});
+    if (!image_resource->GetImage()) {
+      return;
+    }
+    image_resource->GetImage()->Upload(
+        unref_queue,
+        Size{static_cast<int>(
+                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                     src_rect.width())),
+             static_cast<int>(
+                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                     src_rect.height()))});
   }
 #endif  // ENABLE_SKITY
 

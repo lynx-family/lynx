@@ -19,6 +19,7 @@ namespace clay {
 class StaticImage : public BaseImage {
  public:
   static std::shared_ptr<StaticImage> Make(
+      fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
       std::shared_ptr<PlatformImage> image);
 
   fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {
