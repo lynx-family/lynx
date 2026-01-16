@@ -313,9 +313,9 @@ void LynxResourceLoaderHarmony::LoadResourcePath(
     napi_status status = base::NapiUtil::InvokeJsMethod(
         env, generic_fetcher, "fetchResourcePath", 2, call_args);
     if (status != napi_ok) {
-      pub::LynxResourceResponse response{.err_code = LocalErrorCode,
-                                         .err_msg = LocalErrorMsg};
-      callback_handler->callback_(response);
+      pub::LynxPathResponse response{.err_code = LocalErrorCode,
+                                     .err_msg = LocalErrorMsg};
+      callback_handler->path_callback_(response);
       delete callback_handler;
       LOGE("Call fetchResourcePath failed. url: " << url);
     };
