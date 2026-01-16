@@ -74,6 +74,9 @@ devtool_source_set("lynx_v8_bridge") {
   include_dirs = [ v8_headers_search_path ]
   sources = js_v8_bridge_shared_sources
   deps = [ "../../../base/src:base_log_headers" ]
+
+  include_dirs += [ "//third_party/node/deps/uv/include" ]
+  deps += [ "//v8" ]
 }
 
 devtool_source_set("devtool_v8_debug") {

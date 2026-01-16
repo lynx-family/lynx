@@ -20,6 +20,7 @@ class V8ContextWrapperImpl : public V8ContextWrapper {
   virtual v8::Isolate* getIsolate() const override;
 
  private:
+  std::unique_ptr<v8::MicrotaskQueue> microtask_queue_;
   v8::Persistent<v8::Context> ctx_;
 };
 

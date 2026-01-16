@@ -7,6 +7,7 @@
 #include "devtool/embedder/common/debugger_embedder.h"
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 #endif
+#include "core/runtime/js/jsi/v8/v8_platform_data.h"
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
 
@@ -89,4 +90,8 @@ LYNX_EXTERN_C void lynx_env_register_extension_module(
   lynx::embedder::GlobalModuleRegistry::GetInstance().RegisterExtensionModule(
       name, creator, is_lazy_create, opaque);
 #endif
+}
+
+LYNX_CAPI_EXPORT void lynx_env_set_node_platform(void* platform) {
+  lynx::runtime::js::V8PlatformData::SetV8Platform(platform);
 }

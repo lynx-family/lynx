@@ -30,7 +30,10 @@ void V8ContextWrapperImpl::Init() {
   isolate_->SetCaptureStackTraceForUncaughtExceptions(
       true, 100, v8::StackTrace::kOverview);
 
-  auto context = v8::Context::New(isolate_, nullptr);
+  microtask_queue_ =
+      v8::MicrotaskQueue::New(isolate_, v8::MicrotasksPolicy::kAuto);
+  auto context = v8::Context::New(isolate_, nullptr, {}, {}, nullptr,
+                                  microtask_queue_.get());
   v8::Context::Scope context_scope(context);
   ctx_.Reset(isolate_, context);
 }

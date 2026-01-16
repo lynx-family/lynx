@@ -11,7 +11,7 @@
 
 #include "core/runtime/js/jsi/v8/v8_context_wrapper_impl.h"
 #include "core/runtime/js/jsi/v8/v8_helper.h"
-#include "core/runtime/js/jsi/v8/v8_isolate_wrapper_impl.h"
+#include "core/runtime/js/jsi/v8/v8_isolate_wrapper_node_impl.h"
 #include "v8.h"
 
 namespace lynx {
@@ -34,7 +34,7 @@ std::shared_ptr<Buffer> V8CacheGenerator::GenerateCache() {
 bool V8CacheGenerator::GenerateCacheImpl(
     const std::string &origin_url, const std::shared_ptr<const Buffer> &buffer,
     std::string &contents) {
-  auto isolate_wrapper = std::make_shared<V8IsolateInstanceImpl>();
+  auto isolate_wrapper = std::make_shared<V8IsolateInstanceNodeImpl>();
   isolate_wrapper->InitIsolate(nullptr, false);
   auto isolate = isolate_wrapper->Isolate();
   V8ContextWrapperImpl context_wrapper(isolate_wrapper);

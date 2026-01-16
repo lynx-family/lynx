@@ -127,6 +127,7 @@ source_set("v8") {
   public_deps = [
     ":common",
     ":env",
+    "//v8",
   ]
 }
 

@@ -6,8 +6,8 @@ js_v8_bridge_shared_sources =
           "../../../profile/v8/v8_runtime_profiler_wrapper.h",
           "../../../profile/v8/v8_runtime_profiler_wrapper_impl.cc",
           "../../../profile/v8/v8_runtime_profiler_wrapper_impl.h",
-          "//$lynx_dir/core/runtime/js/jsi/v8/v8_isolate_wrapper_impl.cc",
-          "//$lynx_dir/core/runtime/js/jsi/v8/v8_isolate_wrapper_impl.h",
+          "v8_isolate_wrapper_node_impl.cc",
+          "v8_isolate_wrapper_node_impl.h",
           "v8_api.h",
           "v8_context_wrapper.h",
           "v8_context_wrapper_impl.cc",
@@ -24,4 +24,6 @@ js_v8_bridge_shared_sources =
           "v8_isolate_wrapper.h",
           "v8_runtime.cc",
           "v8_runtime.h",
+          "v8_platform_data.cc",
+          "v8_platform_data.h",
         ])
