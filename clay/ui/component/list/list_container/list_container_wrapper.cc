@@ -48,7 +48,9 @@ const std::unordered_set<KeywordID> kProxyAttributes = {
     KeywordID::kBounce,
     KeywordID::kBounces,
     KeywordID::kScrollToId,
-    KeywordID::kScrollEventThrottle};
+    KeywordID::kScrollEventThrottle,
+    KeywordID::kEnableInsertPlatformViewOperation,
+    KeywordID::kNeedVisibleItemInfo};
 constexpr char kListContainerWrapperTag[] = "list-container-wrapper";
 
 LYNX_UI_METHOD_BEGIN(ListContainerWrapper) {
@@ -63,7 +65,7 @@ LYNX_UI_METHOD_END(ListContainerWrapper);
 ListContainerWrapper::ListContainerWrapper(int32_t id, PageView* page_view)
     : WithTypeInfo(id, ScrollDirection::kVertical, kListContainerWrapperTag,
                    page_view) {
-  view_ = new ListContainerView(-1, page_view);
+  view_ = new ListContainerView(-1, page_view, id_);
   view_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
   view_->SetRepaintBoundary(true);
   GetListContainerView()->SetDelegate(this);
