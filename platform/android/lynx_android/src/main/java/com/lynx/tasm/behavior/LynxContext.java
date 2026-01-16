@@ -43,6 +43,7 @@ import com.lynx.tasm.core.LynxLayoutProxy;
 import com.lynx.tasm.fluency.FluencyTraceHelper;
 import com.lynx.tasm.fontface.FontFace;
 import com.lynx.tasm.group.ILynxViewRuntimeCacheManager;
+import com.lynx.tasm.image.LynxImageConfig;
 import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
 import com.lynx.tasm.performance.PerformanceController;
@@ -135,6 +136,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private boolean mForceDarkAllowed;
   private static boolean sSupportUsageHint = true;
   private Map<String, String> mImageCustomParams;
+  private LynxImageConfig mLynxImageConfig;
   private Object mLynxExtraData;
   // Asynchronous image request switch controlled by client
   private boolean mForceImageAsyncRequest = false;
@@ -1452,6 +1454,16 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public Map<String, String> getImageCustomParam() {
     return mImageCustomParams;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setLynxImageConfig(LynxImageConfig imageConfig) {
+    mLynxImageConfig = imageConfig;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public LynxImageConfig getLynxImageConfig() {
+    return mLynxImageConfig;
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)

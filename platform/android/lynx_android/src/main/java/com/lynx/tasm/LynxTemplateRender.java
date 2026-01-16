@@ -427,6 +427,9 @@ public class LynxTemplateRender
     if (mLynxViewBuilder.mImageCustomParam != null) {
       mLynxContext.setImageCustomParam(mLynxViewBuilder.mImageCustomParam);
     }
+    if (mLynxViewBuilder.mLynxImageConfig != null) {
+      mLynxContext.setLynxImageConfig(mLynxViewBuilder.mLynxImageConfig);
+    }
     // TODO(chenyouhui): Move this function call to a more appropriate place.
     ILynxExtensionService extensionService =
         LynxServiceCenter.inst().getService(ILynxExtensionService.class);

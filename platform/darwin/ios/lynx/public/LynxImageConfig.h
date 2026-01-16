@@ -19,4 +19,10 @@
  */
 @property(nonatomic, strong, nullable) NSString* previewHashMetaData;
 
+/**
+ * Whether to enable progressive rendering.
+ * Supported formats webp (animated), gif(animated), heif(animated), heic (static)
+ */
+@property(nonatomic) BOOL enableProgressiveRendering;
+
 @end

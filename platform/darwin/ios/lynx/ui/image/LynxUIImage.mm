@@ -271,6 +271,12 @@ LYNX_REGISTER_UI("image")
   [super setContext:context];
   _enableGenericFetcher = self.context.mediaResourceFetcher != nil;
   _enableFetchUIImage = self.context.enableFetchUIImage;
+  if (self.context.imageConfig.additionalCustomInfo) {
+    _additional_custom_info = self.context.imageConfig.additionalCustomInfo;
+  }
+  if (self.context.imageConfig.enableProgressiveRendering) {
+    _requestOptions |= LynxImageProgressiveRendering;
+  }
 }
 
 - (void)targetOffScreen {
@@ -783,10 +789,6 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   requestUrl.lastRequestUrl = url;
   [self initResourceLoaderInformation];
   [requestUrl initResourceInformation];
-  NSDictionary* customParams = self.context.imageConfig.additionalCustomInfo;
-  if (self.additional_custom_info) {
-    customParams = self.additional_custom_info;
-  }
   _cancelBlocks[@(requestUrl.type)] = [[LynxImageLoader sharedInstance]
       loadImageFromLynxURL:requestUrl
                       size:size
@@ -797,7 +799,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                  LynxImageRequestContextModuleExtraData : self.context.lynxModuleExtraData ?: @"",
                  LynxImageSkipRedirection : @(_skipRedirection),
                  LynxImageFixNewImageDownsampling : @(self.context.fixNewImageDownSampling),
-                 LynxImageAdditionalCustomInfo : customParams ?: [NSNull null],
+                 LynxImageAdditionalCustomInfo : self.additional_custom_info ?: [NSNull null],
                  LynxImagePlaceholderHashConfig : self.placeholder_hash_config ?: [NSNull null],
                  LynxImageEnableSR : @(_enableImageSR),
                  LynxImageCacheChoice : self.cache_choice ?: @"",
@@ -1551,6 +1553,10 @@ LYNX_PROP_SETTER("cache-choice", setCacheChoice, NSString*) {
 LYNX_PROP_SETTER("placeholder-hash-config", setPlaceHolderHash, NSDictionary*) {
   if (requestReset) {
     value = nil;
+  }
+  if (value == nil) {
+    _placeholder_hash_config = nil;
+    return;
   }
   _placeholder_hash_config = [NSMutableDictionary dictionaryWithDictionary:value];
 

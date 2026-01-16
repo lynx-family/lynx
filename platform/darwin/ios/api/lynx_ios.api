@@ -2181,6 +2181,7 @@ public class LynxImageBlurUtils : NSObject {
 public class LynxImageConfig : NSObject {
   public NSDictionary* LynxImageConfig::additionalCustomInfo additionalCustomInfo;
   public NSString* LynxImageConfig::previewHashMetaData previewHashMetaData;
+  public BOOL LynxImageConfig::enableProgressiveRendering enableProgressiveRendering;
 }
 
 public protocol LynxImageFetcher-p : <NSObject> {

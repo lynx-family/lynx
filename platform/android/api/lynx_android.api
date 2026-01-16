@@ -4732,6 +4732,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableImageResourceHint();
   public void com.lynx.tasm.behavior.LynxContext.setImageCustomParam(Map< String, String > imageCustomParam);
   public Map< String, String > com.lynx.tasm.behavior.LynxContext.getImageCustomParam();
+  public void com.lynx.tasm.behavior.LynxContext.setLynxImageConfig(LynxImageConfig imageConfig);
+  public LynxImageConfig com.lynx.tasm.behavior.LynxContext.getLynxImageConfig();
   public void com.lynx.tasm.behavior.LynxContext.setImageFetcher(LynxImageFetcher fetcher);
   public LynxImageFetcher com.lynx.tasm.behavior.LynxContext.getImageFetcher();
   public void com.lynx.tasm.behavior.LynxContext.setLynxExtraData(Object extraData);
@@ -5517,6 +5519,17 @@ public class com::lynx::jsbridge::network::LynxHttpRunner :  {
   public final int com.lynx.jsbridge.network.LynxHttpRunner.SDK_ERROR_STATUS_CODE SDK_ERROR_STATUS_CODE;
   public static boolean com.lynx.jsbridge.network.LynxHttpRunner.isHttpServiceRegistered();
   public static void com.lynx.jsbridge.network.LynxHttpRunner.request(HttpRequest request, final Callback callback);
+}
+
+public class com::lynx::tasm::image::LynxImageConfig :  {
+  public boolean com.lynx.tasm.image.LynxImageConfig.getEnableImageResourceHint();
+  public void com.lynx.tasm.image.LynxImageConfig.setEnableImageResourceHint(boolean enableImageResourceHint);
+  public boolean com.lynx.tasm.image.LynxImageConfig.getEnableImageSmallDiskCache();
+  public void com.lynx.tasm.image.LynxImageConfig.setEnableImageSmallDiskCache(boolean enableImageSmallDiskCache);
+  public boolean com.lynx.tasm.image.LynxImageConfig.getEnableProgressiveRendering();
+  public void com.lynx.tasm.image.LynxImageConfig.setEnableProgressiveRendering(boolean enableProgressiveRendering);
+  public void com.lynx.tasm.image.LynxImageConfig.setImageCustomParam(Map< String, String > imageCustomParam);
+  public Map< String, String > com.lynx.tasm.image.LynxImageConfig.getImageCustomParam();
 }
 
 public interface com::lynx::tasm::image::model::LynxImageFetcher {
@@ -7215,6 +7228,8 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableMultiAsyncThread(boolean enableMultiAsyncThread);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableSyncFlush(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setImageCustomParam(Map< String, String > imageCustomParams);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxImageConfig(LynxImageConfig imageConfig);
+  public LynxImageConfig com.lynx.tasm.LynxViewBuilder.getLynxImageConfig();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxViewConfig(Map< String, String > map);
   public Map< String, String > com.lynx.tasm.LynxViewBuilder.getLynxViewConfig();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxBackgroundRuntime(LynxBackgroundRuntime runtime);
