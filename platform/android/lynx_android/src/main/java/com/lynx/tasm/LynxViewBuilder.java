@@ -18,6 +18,7 @@ import com.lynx.tasm.component.DynamicComponentFetcher;
 import com.lynx.tasm.group.ILynxViewConfigProvider;
 import com.lynx.tasm.group.ILynxViewGroup;
 import com.lynx.tasm.group.LynxBaseConfigurator;
+import com.lynx.tasm.image.LynxImageConfig;
 import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
 import com.lynx.tasm.provider.AbsTemplateProvider;
@@ -44,6 +45,7 @@ public class LynxViewBuilder
 
   boolean enableLayoutOnly = LynxEnv.inst().isLayoutOnlyEnabled();
   Map<String, String> mImageCustomParam;
+  LynxImageConfig mLynxImageConfig;
   Map<String, String> lynxViewConfig;
   LynxBackgroundRuntime lynxBackgroundRuntime;
   Uri uri = null;
@@ -321,6 +323,19 @@ public class LynxViewBuilder
   public LynxViewBuilder setImageCustomParam(Map<String, String> imageCustomParams) {
     mImageCustomParam = imageCustomParams;
     return this;
+  }
+
+  /**
+   * Set the configuration for Lynx image.
+   * @param imageConfig the configuration for Lynx image
+   */
+  public LynxViewBuilder setLynxImageConfig(LynxImageConfig imageConfig) {
+    mLynxImageConfig = imageConfig;
+    return this;
+  }
+
+  public LynxImageConfig getLynxImageConfig() {
+    return mLynxImageConfig;
   }
 
   /**
