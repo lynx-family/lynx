@@ -319,7 +319,8 @@
 - (std::shared_ptr<lynx::pub::LynxNativeModuleManager>)setUpModuleManager {
   std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory;
   // TODO(zhangqun.29):Merge with the initialization of the Common Module
-  if (_lynxViewGroup != nullptr && _lynxViewGroup.config != nil) {
+  if (_lynxViewGroup != nullptr && _lynxViewGroup.enableSharedModule &&
+      _lynxViewGroup.config != nil) {
     if (_lynxViewGroup.config.getSharedModuleFactoryPtr != nullptr) {
       module_factory = [_lynxViewGroup.config getSharedModuleFactoryPtr];
       module_factory_ = module_factory;

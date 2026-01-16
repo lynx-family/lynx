@@ -91,6 +91,11 @@
  */
 @property(nonatomic, assign) BOOL enableUnifiedPipeline;
 
+/**
+ * Enable SharedModule In LynxViewGroup
+ */
+@property(nonatomic, assign) BOOL enableSharedModule;
+
 /** Only when enableBytecode is YES, it will take effect.
  * Set bytecode key for current lynxview.
  */

@@ -600,6 +600,7 @@ public class LynxBaseConfigurator : NSObject {
   public LynxBackgroundJsRuntimeType LynxBaseConfigurator::backgroundJsRuntimeType backgroundJsRuntimeType;
   public BOOL LynxBaseConfigurator::enableBytecode enableBytecode;
   public BOOL LynxBaseConfigurator::enableUnifiedPipeline enableUnifiedPipeline;
+  public BOOL LynxBaseConfigurator::enableSharedModule enableSharedModule;
   public NSString* LynxBaseConfigurator::bytecodeUrl bytecodeUrl;
   public id<LynxUIRendererCreatorProtocol> LynxBaseConfigurator::uiRendererCreator uiRendererCreator;
   public LynxBackgroundRuntimeOptions* LynxBaseConfigurator()::lynxBackgroundRuntimeOptions lynxBackgroundRuntimeOptions;

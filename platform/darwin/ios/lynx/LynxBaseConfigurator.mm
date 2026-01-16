@@ -28,6 +28,7 @@
     self.enableLayoutOnly = YES;
     self.debuggable = false;
     self.enableGenericResourceFetcher = LynxBooleanOptionUnset;
+    self.enableSharedModule = NO;
     self.uiRendererCreator = [[LynxUIRendererCreator alloc] init];
     self.lynxBackgroundRuntimeOptions = [[LynxBackgroundRuntimeOptions alloc] init];
     _builderRegisteredAliasFontMap = [NSMutableDictionary dictionary];
