@@ -21,7 +21,7 @@ namespace harmony {
 
 struct TransformRaw {
   starlight::TransformType func_type = starlight::TransformType::kNone;
-  PlatformLength params_[3];
+  PlatformLength params[3];
 };
 
 struct TransformOrigin {
@@ -37,6 +37,7 @@ class Transform {
       float width, float height, float scaled_density = 1.0f,
       bool with_transform_origin = false) const;
   void SetTransformOrigin(const TransformOrigin& transform_origin);
+  const std::vector<TransformRaw>& GetTransformRaw() const { return raw_; }
 
  private:
   std::vector<TransformRaw> raw_;

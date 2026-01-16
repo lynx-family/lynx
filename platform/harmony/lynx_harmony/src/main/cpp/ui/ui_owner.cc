@@ -127,6 +127,9 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   if (events) {
     ui->SetEvents(events.value());
   }
+  if (painting_data->Contains("animation")) {
+    ui->SetAnimation(painting_data->GetProps().at("animation"));
+  }
 
   const auto& gestures = painting_data->GetGestureDetectors();
   if (gestures) {
@@ -176,6 +179,9 @@ void UIOwner::UpdateUI(int sign, PropBundleHarmony* props) {
     const auto& gestures = props->GetGestureDetectors();
     if (gestures) {
       ui->SetGestureDetectors(gestures.value());
+    }
+    if (props->Contains("animation")) {
+      ui->SetAnimation(props->GetProps().at("animation"));
     }
 
     ui_observer_->NotifyUIPropsChange();
@@ -660,6 +666,13 @@ void UIOwner::InvokeUIMethod(
     } else {
       it->second->InvokeMethod(method, map, std::move(cb));
     }
+  }
+}
+
+void UIOwner::SetKeyframes(PropBundleHarmony* prop_bundle) {
+  const auto& props = prop_bundle->GetProps();
+  if (auto it = props.find("keyframes"); it != props.end()) {
+    context_->SetKeyframes(it->second);
   }
 }
 

@@ -142,7 +142,12 @@ void PaintingContextHarmony::UpdateLayout(
 }
 
 void PaintingContextHarmony::SetKeyframes(
-    fml::RefPtr<PropBundle> keyframes_data) {}
+    fml::RefPtr<PropBundle> keyframes_data) {
+  Enqueue([ui_owner = ui_owner_.get(), data = std::move(keyframes_data)]() {
+    auto* prop_bundle = reinterpret_cast<PropBundleHarmony*>(data.get());
+    ui_owner->SetKeyframes(prop_bundle);
+  });
+}
 
 #pragma endregion
 

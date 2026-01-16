@@ -83,6 +83,8 @@ class UIOwner {
       int32_t id, const std::string& method, const pub::Value& args,
       base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback);
 
+  void SetKeyframes(PropBundleHarmony* prop_bundle);
+
   static constexpr int32_t kLynxRootSign = -1;
   static constexpr const char* kDefaultComponentId = "-1";
 
