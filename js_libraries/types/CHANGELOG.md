@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.7.2
+
+- Add `<svg>` element types.
+
 ## 3.7.1
 
 - Add `bindstartplay`, `bindcurrentloopcomplete` and `bindfinalloopcomplete` callback for animated image.
