@@ -35,7 +35,8 @@ podspec_target("LynxServiceAPI_podspec") {
       GCC_PREPROCESSOR_DEFINITIONS = [ "OS_IOS=1" ]
       CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
       OTHER_CPLUSPLUSFLAGS =
-          "-fno-aligned-allocation -fno-c++-static-destructors"
+          "-fno-aligned-allocation -fno-c++-static-destructors -std=gnu++17"
+      HEADER_SEARCH_PATHS = [ "../../../.." ]
     }
     if (!is_debug) {
       pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
@@ -76,8 +77,4 @@ lynx_core_source_set("lynx_service_api_sources") {
 
 subspec_target("service_api_native") {
   deps = [ "../../../../service_api:src" ]
-
-  pod_target_xcconfig = {
-    HEADER_SEARCH_PATHS = [ "../../../.." ]
-  }
 }
