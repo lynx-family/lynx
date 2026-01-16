@@ -842,6 +842,14 @@ class LynxConfigDecoder final {
       page_config->SetEnableiOSAnimationLayerForExposure(
           doc[config::kEnableiOSAnimationLayerForExposure].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableFetchAPIStandardStreaming) &&
+        doc[config::kEnableFetchAPIStandardStreaming].IsBool()) {
+      page_config->SetEnableFetchAPIStandardStreaming(
+          doc[config::kEnableFetchAPIStandardStreaming].GetBool()
+              ? TernaryBool::TRUE_VALUE
+              : TernaryBool::FALSE_VALUE);
+    }
   };
 };
 }  // namespace tasm

@@ -210,6 +210,10 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     enable_reuse_load_script_exports_ = enable;
   }
 
+  void SetEnableFetchApiStandard(bool enable) {
+    enable_fetch_api_standard_ = enable;
+  }
+
   LynxBinaryLazyReaderDelegate* GetReader() { return reader_.get(); }
 
   TasmRuntimeBundle CreateTasmRuntimeBundle();
@@ -315,6 +319,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_bind_icu_ = false;
   bool enable_microtask_promise_polyfill_{false};
   bool enable_reuse_load_script_exports_{false};
+  bool enable_fetch_api_standard_{false};
 #if ENABLE_LEPUSNG_WORKLET
   std::unique_ptr<lynx::piper::NapiEnvironment> napi_environment_;
 #endif

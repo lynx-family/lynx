@@ -25,6 +25,7 @@ object LynxHttpService : ILynxHttpService {
     private const val TAG = "LynxHttpService"
     private const val CODE_FAILED_INTERNALLY = 499
     private val client = OkHttpClient()
+    private const val deprecatedStreamingFlag = "useStreaming";
 
     private fun requestInner(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate?) {
         val okBody = if ("GET".equals(request.httpMethod, true)) null else request.httpBody.toRequestBody()
@@ -63,7 +64,12 @@ object LynxHttpService : ILynxHttpService {
                     if (delegate != null) {
                         response.body?.let { body ->
                             body.byteStream().use { inputStream ->
-                                delegate.streamingBody(inputStream);
+                              val useDeprecatedStreamingConfig = request.customConfig.getBoolean(deprecatedStreamingFlag, false);  
+                              if (useDeprecatedStreamingConfig) {
+                                  delegate.deprecatedChunkedStreamingBody(inputStream);
+                              } else {
+                                  delegate.streamingBody(inputStream);
+                              }
                                 delegate.onEnd()
                             }
                         } ?: run {
@@ -74,7 +80,6 @@ object LynxHttpService : ILynxHttpService {
             }
         })
     }
-
 
     override fun request(request: HttpRequest, callback: LynxHttpRequestCallback) {
         requestInner(request, callback, null);

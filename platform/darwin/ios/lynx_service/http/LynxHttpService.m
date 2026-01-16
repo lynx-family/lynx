@@ -9,6 +9,7 @@
 @LynxServiceRegister(LynxHttpService, LynxServiceHttpProtocol) @implementation LynxHttpService
 
 static const NSInteger SDK_ERROR_STATUS_CODE = 499;
+NSString *const deprecatedStreamingFlag = @"useStreaming";
 
 + (NSMutableURLRequest *)convertToNSRequest:(LynxHttpRequest *)request {
   NSURL *url = [NSURL URLWithString:request.url];
@@ -31,8 +32,17 @@ static const NSInteger SDK_ERROR_STATUS_CODE = 499;
     delegateQueue = [[NSOperationQueue alloc] init];
   });
 
-  LynxNSUrlSessionDelegate *receiver = [[LynxNSUrlSessionDelegate alloc] initWithDelegate:delegate
-                                                                             withCallback:callback];
+  BOOL useDeprecatedStreamingConfig = NO;
+  {
+    NSObject *value = request.customConfig[deprecatedStreamingFlag];
+    if ([value isKindOfClass:[NSNumber class]]) {
+      useDeprecatedStreamingConfig = [(NSNumber *)value boolValue];
+    }
+  }
+  LynxNSUrlSessionDelegate *receiver =
+      [[LynxNSUrlSessionDelegate alloc] initWithDelegate:delegate
+                                            withCallback:callback
+                            useDeprecatedStreamingConfig:useDeprecatedStreamingConfig];
   NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
   NSURLSession *session = [NSURLSession sessionWithConfiguration:config
                                                         delegate:receiver

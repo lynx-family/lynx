@@ -2164,7 +2164,10 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
       !page_config_subset.setProperty(
           *rt, runtime::kEnableJSCallbackManager,
           tasm::LynxEnv::GetInstance().GetBoolEnv(
-              tasm::LynxEnv::Key::ENABLE_JS_CALLBACK_MANAGER, true))) {
+              tasm::LynxEnv::Key::ENABLE_JS_CALLBACK_MANAGER, true)) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableFetchAPIStandardStreaming,
+          card_bundle_.enable_fetch_api_standard_streaming)) {
     handleLoadAppFailed(" App::loadApp error! page_config_subset init fail.");
     return;
   }

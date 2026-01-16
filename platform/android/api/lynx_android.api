@@ -2224,6 +2224,7 @@ public class com::lynx::jsbridge::network::HttpStreamingDelegate :  {
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.onEnd();
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.onError(String error);
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.streamingBodySSE(InputStream in);
+  public void com.lynx.jsbridge.network.HttpStreamingDelegate.deprecatedChunkedStreamingBody(InputStream in);
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.streamingBody(InputStream in);
 }
 

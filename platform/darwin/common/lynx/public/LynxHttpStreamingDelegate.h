@@ -14,8 +14,10 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LynxHttpStreamingDelegate : NSObject
 - (instancetype)initWithParam:(LynxFetchModuleEventSender *)sender
               withStreamingId:(NSString *)streamingId;
+// note: chunked data protocal might be deprecated in the future
 - (void)processChunkedData:(NSMutableData *)buffer withData:(NSData *)data;
 - (void)processSseData:(NSMutableData *)buffer withData:(NSData *)data;
+- (void)processStreamingData:(NSData *)data;
 - (void)onData:(NSData *)bytes;
 - (void)onEnd;
 - (void)onError:(NSString *)error;

@@ -9,11 +9,13 @@ export class BodyMixin {
   _arrayBuffer: ArrayBuffer;
   _bodyStream: LynxReadableStream;
   _bodyUsed: boolean;
+  _enableFetchAPIStandardStreaming: boolean;
 
   constructor() {
     this._arrayBuffer = new ArrayBuffer(0);
     this._bodyStream = null;
     this._bodyUsed = false;
+    this._enableFetchAPIStandardStreaming = false;
   }
 
   private safeUseBody<T>(use: (body: ArrayBuffer) => T): T {
@@ -32,7 +34,10 @@ export class BodyMixin {
     return src.slice(0);
   }
 
-  protected setBody(body?: BodyInit | BodyMixin | ReadableStream) {
+  protected setBody(
+    body?: BodyInit | BodyMixin | ReadableStream,
+    enableFetchAPIStandardStreaming?: boolean
+  ) {
     if (body instanceof BodyMixin) {
       if (body._bodyUsed || body._bodyStream) {
         throw new Error('body used, or try to copy body stream');
@@ -52,12 +57,21 @@ export class BodyMixin {
       }
       if (body instanceof LynxReadableStream) {
         this._bodyStream = body;
+        this._enableFetchAPIStandardStreaming = enableFetchAPIStandardStreaming;
       }
     }
   }
 
-  public arrayBuffer(): Promise<ArrayBuffer> {
-    return Promise.resolve(this.safeUseBody((body) => body));
+  public async arrayBuffer(): Promise<ArrayBuffer> {
+    if (this._enableFetchAPIStandardStreaming && this._bodyStream != null) {
+      const buffer = await this.consumeStream();
+      if (buffer === null) {
+        return new ArrayBuffer(0);
+      }
+      return buffer;
+    } else {
+      return Promise.resolve(this.safeUseBody((body) => body));
+    }
   }
 
   public get body() {
@@ -68,16 +82,33 @@ export class BodyMixin {
     return this._bodyStream;
   }
 
-  public text(): Promise<string> {
-    return Promise.resolve(
-      this.safeUseBody((body) => new TextDecoder().decode(body))
-    );
+  public async text(): Promise<string> {
+    if (this._enableFetchAPIStandardStreaming && this._bodyStream != null) {
+      const buffer = await this.consumeStream();
+      if (buffer === null) {
+        return '';
+      }
+      return new TextDecoder().decode(buffer);
+    } else {
+      const result = await this.safeUseBody((body) =>
+        new TextDecoder().decode(body)
+      );
+      return result;
+    }
   }
 
-  public json(): Promise<any> {
-    return Promise.resolve(
-      this.safeUseBody((body) => JSON.parse(new TextDecoder().decode(body)))
-    );
+  public async json(): Promise<any> {
+    if (this._enableFetchAPIStandardStreaming && this._bodyStream != null) {
+      const buffer = await this.consumeStream();
+      if (buffer === null) {
+        return null;
+      }
+      const text = new TextDecoder().decode(buffer);
+      return JSON.parse(text);
+    } else {
+      const result = this.safeUseBody((body) => new TextDecoder().decode(body));
+      return Promise.resolve(result).then((text) => JSON.parse(text));
+    }
   }
 
   // TODO(huzhanbo.luc): these APIs rely on foundamental types
@@ -90,5 +121,40 @@ export class BodyMixin {
 
   public get bodyUsed() {
     return this._bodyUsed;
+  }
+
+  private async getArrayBufferOfStreaming(): Promise<ArrayBuffer> {
+    const chunks: Uint8Array[] = [];
+    let totalLength = 0;
+    const reader = ((this
+      ._bodyStream as unknown) as ReadableStream).getReader();
+    {
+      // 1. read all data chunks
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        chunks.push(new Uint8Array(value));
+        totalLength += value.byteLength;
+      }
+      // 2. create finalBuffer and merge datas
+      const finalBuffer = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        finalBuffer.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return finalBuffer.buffer;
+    }
+  }
+
+  private async consumeStream(): Promise<ArrayBuffer | null> {
+    if (this._bodyUsed) {
+      return null;
+    }
+
+    this._bodyUsed = true;
+    return await this.getArrayBufferOfStreaming();
   }
 }

@@ -2154,6 +2154,7 @@ public class LynxHttpStreamingDelegate : NSObject {
   public instancetype LynxHttpStreamingDelegate::initWithParam:withStreamingId:(LynxFetchModuleEventSender *sender,[withStreamingId] NSString *streamingId);
   public void LynxHttpStreamingDelegate::processChunkedData:withData:(NSMutableData *buffer,[withData] NSData *data);
   public void LynxHttpStreamingDelegate::processSseData:withData:(NSMutableData *buffer,[withData] NSData *data);
+  public void LynxHttpStreamingDelegate::processStreamingData:(NSData *data);
   public void LynxHttpStreamingDelegate::onData:(NSData *bytes);
   public void LynxHttpStreamingDelegate::onEnd();
   public void LynxHttpStreamingDelegate::onError:(NSString *error);

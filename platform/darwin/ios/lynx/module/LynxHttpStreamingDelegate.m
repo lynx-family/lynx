@@ -142,4 +142,8 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   }
 }
 
+- (void)processStreamingData:(NSData *)data {
+  [self onData:data];
+}
+
 @end

@@ -17,6 +17,8 @@
 
 static atomic_long streamingCounter;
 NSString *const streamingEventNamePrefix = @"LynxFetchModuleStreamingEvent";
+NSString *const deprecatedUseStreamingFlag = @"useStreaming";
+NSString *const standardStreamingFlag = @"enableFetchAPIStandardStreaming";
 
 - (instancetype)initWithParam:(id)param {
   if (self = [super init]) {
@@ -87,7 +89,22 @@ NSString *const streamingEventNamePrefix = @"LynxFetchModuleStreamingEvent";
   httpRequest.httpHeaders = request[@"headers"];
   httpRequest.httpBody = request[@"body"];
   httpRequest.customConfig = request[@"lynxExtension"];
-  BOOL useStreaming = httpRequest.customConfig[@"useStreaming"] ?: NO;
+
+  BOOL enableFetchApiStandardStreaming = NO;
+  {
+    NSObject *value = httpRequest.customConfig[standardStreamingFlag];
+    if ([value isKindOfClass:[NSNumber class]]) {
+      enableFetchApiStandardStreaming = [(NSNumber *)value boolValue];
+    }
+  }
+
+  BOOL useDeprecatedStreamingConfig = NO;
+  {
+    NSObject *value = httpRequest.customConfig[deprecatedUseStreamingFlag];
+    if ([value isKindOfClass:[NSNumber class]]) {
+      useDeprecatedStreamingConfig = [(NSNumber *)value boolValue];
+    }
+  }
 
   id<LynxServiceHttpProtocol> httpService = LynxService(LynxServiceHttpProtocol);
   if (!httpService) {
@@ -97,7 +114,7 @@ NSString *const streamingEventNamePrefix = @"LynxFetchModuleStreamingEvent";
     return;
   }
 
-  if (!useStreaming) {
+  if (!useDeprecatedStreamingConfig && !enableFetchApiStandardStreaming) {
     [self request:httpRequest withResolve:resolve withHttpService:httpService];
   } else {
     [self requestStreaming:httpRequest withResolve:resolve withHttpService:httpService];

@@ -22,6 +22,8 @@ public class LynxFetchModule extends LynxModule {
   private final LynxFetchModuleEventSender mSender;
   private static final AtomicLong streamingCounter = new AtomicLong();
   private static final String streamingEventNamePrefix = "LynxFetchModuleStreamingEvent";
+  private static final String deprecatedStreamingFlag = "useStreaming";
+  private static final String standardStreamingFlag = "enableFetchAPIStandardStreaming";
 
   public LynxFetchModule(Context context, Object sender) {
     super(context);
@@ -82,7 +84,8 @@ public class LynxFetchModule extends LynxModule {
     httpRequest.setHttpBody(request.getByteArray("body", new byte[0]));
     JavaOnlyMap customConfig = (JavaOnlyMap) request.getMap("lynxExtension", new JavaOnlyMap());
     httpRequest.setCustomConfig(customConfig);
-    boolean useStreaming = customConfig.getBoolean("useStreaming", false);
+    boolean deprecatedUseStreaming = customConfig.getBoolean(deprecatedStreamingFlag, false);
+    boolean enableFetchApiStandardStreaming = customConfig.getBoolean(standardStreamingFlag, false);
 
     ILynxHttpService httpService = LynxServiceCenter.inst().getService(ILynxHttpService.class);
     if (httpService == null) {
@@ -92,7 +95,7 @@ public class LynxFetchModule extends LynxModule {
       return;
     }
 
-    if (!useStreaming) {
+    if (!deprecatedUseStreaming && !enableFetchApiStandardStreaming) {
       request(httpService, httpRequest, url, resolve);
     } else {
       requestStreaming(httpService, httpRequest, url, resolve);

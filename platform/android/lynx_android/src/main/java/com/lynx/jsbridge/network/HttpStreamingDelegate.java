@@ -110,7 +110,7 @@ public class HttpStreamingDelegate {
 
   // split chunk defined by `Transfer-Encoding: chunked`:
   // see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Transfer-Encoding
-  public void streamingBody(InputStream in) throws IOException {
+  public void deprecatedChunkedStreamingBody(InputStream in) throws IOException {
     BufferedInputStream bi = new BufferedInputStream(in);
     StringBuilder lengthStringBuilder = new StringBuilder();
     while (true) {
@@ -126,5 +126,18 @@ public class HttpStreamingDelegate {
       onData(chunk);
     }
     bi.close();
+  }
+
+  public void streamingBody(InputStream in) throws IOException {
+    try (BufferedInputStream bufferedIn = new BufferedInputStream(in)) {
+      byte[] transportBuffer = new byte[8192];
+      int bytesRead;
+
+      while ((bytesRead = bufferedIn.read(transportBuffer)) != -1) {
+        byte[] actualData = new byte[bytesRead];
+        System.arraycopy(transportBuffer, 0, actualData, 0, bytesRead);
+        onData(actualData);
+      }
+    }
   }
 }

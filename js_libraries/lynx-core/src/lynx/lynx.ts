@@ -414,6 +414,11 @@ export class Lynx {
         reject(signal.reason);
       });
 
+      const enableFetchAPIStandardStreaming = this.getApp().params
+        ?.pageConfigSubset?.enableFetchAPIStandardStreaming;
+      request.lynxExtension[
+        'enableFetchAPIStandardStreaming'
+      ] = enableFetchAPIStandardStreaming;
       const fetchArg = {
         method: request.method,
         url: request.url,
@@ -422,7 +427,9 @@ export class Lynx {
         body: request._arrayBuffer,
         lynxExtension: request.lynxExtension,
       };
-      const useStreaming = request.lynxExtension['useStreaming'];
+      const useStreaming =
+        request.lynxExtension['useStreaming'] ||
+        enableFetchAPIStandardStreaming;
       this.getApp().NativeModules.LynxFetchModule.fetch(
         fetchArg,
         (response: any) => {
@@ -434,7 +441,8 @@ export class Lynx {
 
             const resp = new nativeGlobal.Response(
               useStreaming ? streamingBodyReceiver : response.body,
-              response
+              response,
+              enableFetchAPIStandardStreaming
             );
 
             if (useStreaming) {

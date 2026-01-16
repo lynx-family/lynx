@@ -9,15 +9,18 @@
   LynxHttpStreamingDelegate *_httpDelegate;
   LynxHttpCallback _callback;
   NSMutableData *_buffer;
+  BOOL _useDeprecatedStreamingConfig;
 }
 
 - (instancetype)initWithDelegate:(LynxHttpStreamingDelegate *)httpDelegate
-                    withCallback:(LynxHttpCallback)callback {
+                    withCallback:(LynxHttpCallback)callback
+    useDeprecatedStreamingConfig:(BOOL)useDeprecatedStreamingConfig {
   self = [super init];
   if (self) {
     _httpDelegate = httpDelegate;
     _callback = callback;
     _buffer = [[NSMutableData alloc] init];
+    _useDeprecatedStreamingConfig = useDeprecatedStreamingConfig;
   }
   return self;
 }
@@ -40,7 +43,11 @@
 - (void)URLSession:(NSURLSession *)session
           dataTask:(NSURLSessionDataTask *)dataTask
     didReceiveData:(NSData *)data {
-  [_httpDelegate processChunkedData:_buffer withData:data];
+  if (_useDeprecatedStreamingConfig) {
+    [_httpDelegate processChunkedData:_buffer withData:data];
+  } else {
+    [_httpDelegate processStreamingData:data];
+  }
 }
 
 - (void)URLSession:(NSURLSession *)session
