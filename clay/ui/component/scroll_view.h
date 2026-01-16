@@ -35,6 +35,10 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
              PageView* page_view,
              std::unique_ptr<RenderScroll> render_scroll =
                  std::make_unique<RenderScroll>());
+  ScrollView(int32_t id, int32_t callback_id, ScrollDirection direction,
+             PageView* page_view,
+             std::unique_ptr<ScrollEventCallbackManager> callback_manager,
+             std::unique_ptr<RenderScroll> render_scroll);
 
   ~ScrollView() override;
 
@@ -122,11 +126,14 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   void ResetScroll() override { OnScrollUpdate(0); }
 
+  std::unique_ptr<ScrollEventCallbackManager> callback_manager_;
+
  private:
   static constexpr float kDefaultThreshold = 0.f;
   friend class ScrollWrapper;
   friend class ListContainerWrapper;
 
+  void InitScrollView();
   void SetDelegate(Delegate* delegate) { delegate_ = delegate; }
   void OnBounceStart(float start_offset);
   void NotifyContentSizeChanged(const FloatSize& new_size);
@@ -150,8 +157,6 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   float upper_threshold_ = kDefaultThreshold;
   float lower_threshold_ = kDefaultThreshold;
-
-  std::unique_ptr<ScrollEventCallbackManager> callback_manager_;
 
   // view id that used as callback arguments. This should be the id of the
   // wrapper view. With callback_id_, Lynx will think the callback is sent from

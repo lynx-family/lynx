@@ -91,8 +91,18 @@ class ScrollEventCallbackManager {
                               const bool is_dragging = false);
   void NotifyScrollEnd(const FloatPoint& offset) const;
 
-  void NotifyScrollStateChange(ScrollState old_state, ScrollState current_state,
-                               float velocity, bool is_dragging) const;
+  virtual void NotifyScrollStateChange(ScrollState old_state,
+                                       ScrollState current_state,
+                                       float velocity, bool is_dragging) const;
+
+  enum ScrollEvents {
+    kNone = 0,
+    kScrollEvent = 1 << 0,
+    kScrollToUpper = 1 << 1,
+    kScrollToLower = 1 << 2,
+    kScrollEnd = 1 << 3,
+    kScrollStateChange = 1 << 4,
+  };
 
  protected:
   void HandleScrolled(const FloatPoint& scrolled, const FloatPoint& offset,
@@ -105,22 +115,13 @@ class ScrollEventCallbackManager {
                                const FloatSize& content,
                                const bool is_dragging = false) const;
 
-  PageView* page_view_;
-  BaseView* view_;
-  int32_t callback_id_;
-
- private:
-  enum ScrollEvents {
-    kNone = 0,
-    kScrollEvent = 1 << 0,
-    kScrollToUpper = 1 << 1,
-    kScrollToLower = 1 << 2,
-    kScrollEnd = 1 << 3,
-    kScrollStateChange = 1 << 4,
-  };
-
   bool ShouldSendEvent(ScrollEvents event) const { return event_flag_ & event; }
 
+  PageView* page_view_ = nullptr;
+  BaseView* view_ = nullptr;
+  int32_t callback_id_ = -1;
+
+ private:
   void EnableSendEvent(ScrollEvents event) {
     event_flag_ = static_cast<ScrollEvents>(event_flag_ | event);
   }

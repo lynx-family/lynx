@@ -91,6 +91,23 @@ ScrollView::ScrollView(int32_t id, int32_t callback_id,
           std::make_unique<ScrollEventCallbackManager>(this, callback_id)),
       callback_id_(callback_id),
       weak_factory_(this) {
+  InitScrollView();
+}
+
+ScrollView::ScrollView(
+    int32_t id, int32_t callback_id, ScrollDirection direction,
+    PageView* page_view,
+    std::unique_ptr<ScrollEventCallbackManager> callback_manager,
+    std::unique_ptr<RenderScroll> render_scroll)
+    : WithTypeInfo(id, kScrollViewTag, std::move(render_scroll), page_view,
+                   direction, true),
+      callback_manager_(std::move(callback_manager)),
+      callback_id_(callback_id),
+      weak_factory_(this) {
+  InitScrollView();
+}
+
+void ScrollView::InitScrollView() {
   scroller_ =
       std::make_unique<Scroller>(this, GetAnimationHandler(),
                                  std::make_unique<ViscousFluidInterpolator>());

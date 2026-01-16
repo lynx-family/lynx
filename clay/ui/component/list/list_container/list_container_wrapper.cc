@@ -12,8 +12,10 @@
 #include <utility>
 #include <vector>
 
+#include "clay/fml/logging.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/keywords.h"
 #include "clay/ui/component/list/list_scroller.h"
 #include "clay/ui/component/scrollbar/scrollbar_orientation_helper.h"
 #include "clay/ui/lynx_module/type_utils.h"
@@ -49,11 +51,15 @@ const std::unordered_set<KeywordID> kProxyAttributes = {
     KeywordID::kBounces,
     KeywordID::kScrollToId,
     KeywordID::kScrollEventThrottle,
-    KeywordID::kItemSnap};
+    KeywordID::kItemSnap,
+    KeywordID::kEnableInsertPlatformViewOperation,
+    KeywordID::kNeedVisibleItemInfo,
+    KeywordID::kNeedsVisibleCells};
 constexpr char kListContainerWrapperTag[] = "list-container-wrapper";
 
 LYNX_UI_METHOD_BEGIN(ListContainerWrapper) {
   LYNX_UI_METHOD(ListContainerWrapper, scrollToPosition);
+  LYNX_UI_METHOD(ListContainerWrapper, autoScroll);
   LYNX_UI_METHOD(ListContainerWrapper, getVisibleItemsPositions);
   LYNX_UI_METHOD(ListContainerWrapper, getVisibleCells);
   LYNX_UI_METHOD(ListContainerWrapper, getScrollInfo);
@@ -64,7 +70,7 @@ LYNX_UI_METHOD_END(ListContainerWrapper);
 ListContainerWrapper::ListContainerWrapper(int32_t id, PageView* page_view)
     : WithTypeInfo(id, ScrollDirection::kVertical, kListContainerWrapperTag,
                    page_view) {
-  view_ = new ListContainerView(-1, page_view);
+  view_ = new ListContainerView(-1, page_view, id_);
   view_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
   view_->SetRepaintBoundary(true);
   GetListContainerView()->SetDelegate(this);
@@ -122,6 +128,19 @@ void ListContainerWrapper::scrollToPosition(
           callback(static_cast<LynxUIMethodResult>(result), clay::Value());
         }
       });
+}
+
+void ListContainerWrapper::autoScroll(const LynxModuleValues& args,
+                                      const LynxUIMethodCallback& callback) {
+  float rate = 0.f;
+  bool start = false;
+  bool auto_stop = true;  // TODO: supported in ScrollView
+  CastNamedLynxModuleArgs({"rate", "start", "autoStop"}, args, rate, start,
+                          auto_stop);
+  GetListContainerView()->AutoScroll(start, FromLogical(rate));
+  if (callback) {
+    callback(LynxUIMethodResult::kSuccess, clay::Value());
+  }
 }
 
 void ListContainerWrapper::UpdateContentOffsetForListContainer(

@@ -106,6 +106,8 @@ ui_component_sources = [
   "text/unicode_util.h",
   "view.cc",
   "view.h",
+  "view_callback/list_container_event_callback_manager.cc",
+  "view_callback/list_container_event_callback_manager.h",
   "view_callback/scroll_event_callback_manager.cc",
   "view_callback/scroll_event_callback_manager.h",
   "view_context.cc",

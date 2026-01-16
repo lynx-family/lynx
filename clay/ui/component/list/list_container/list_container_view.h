@@ -5,6 +5,8 @@
 #ifndef CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
 #define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
 
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -15,6 +17,8 @@
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/list/list_common/layout_types.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/view_callback/list_container_event_callback_manager.h"
+
 #ifndef ENABLE_CLAY_LITE
 #include "clay/ui/component/view_callback/list_event_callback_manager.h"
 #endif
@@ -35,7 +39,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
     virtual void OnScrollStopped() = 0;
   };
 
-  ListContainerView(int32_t id, PageView* page_view);
+  ListContainerView(int32_t id, PageView* page_view, int32_t callback_id);
 
   void UpdateContentOffsetForListContainer(float content_size,
                                            float target_content_offset_x,
@@ -93,6 +97,11 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   float GetListItemSnapScrollOffset(Component* list_item) const;
   std::pair<float, float> CalculateOffsets(Component* item) const;
   float GetScrollRange() const;
+
+  ListContainerEventCallbackManager* GetEventCallbackManager() const {
+    return static_cast<ListContainerEventCallbackManager*>(
+        callback_manager_.get());
+  }
 
   // sticky
   void UpdateStickyInfoForInsertedChild(
