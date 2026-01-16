@@ -780,7 +780,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
       return null;
     }
-    Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.RGB_565);
+    Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(bitmap);
     // Draw bg color
     canvas.drawColor(getParentBackgroundColor(view));

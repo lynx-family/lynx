@@ -255,7 +255,7 @@ public class ScreenCapturer extends FrameCapturer {
     try {
       Matrix matrix = new Matrix();
       matrix.postScale(scale, scale);
-      bitmap = Bitmap.createBitmap(bitmap, 0, 0, originalWidth, originalHeight, matrix, false);
+      bitmap = Bitmap.createBitmap(bitmap, 0, 0, originalWidth, originalHeight, matrix, true);
     } catch (Throwable e) {
       e.printStackTrace();
     }
