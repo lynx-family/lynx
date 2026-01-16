@@ -10,7 +10,7 @@
 namespace lynx {
 namespace service {
 void _BaseRegistry::set_creator(std::function<_BaseService*()> c) {
-  std::lock_guard lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   if (creator_ != nullptr || impl_.load(std::memory_order_relaxed)) {
     // TODO @dangyingkai introduce log_service
     // LOGE(base::FormatString("Duplicate implementations for service %s",
@@ -27,7 +27,7 @@ _BaseService* _BaseRegistry::get() {
     return tmp;
   }
 
-  std::lock_guard lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   tmp = impl_.load(std::memory_order_relaxed);
   if (tmp != nullptr) {
     return tmp;
