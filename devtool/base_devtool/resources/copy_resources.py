@@ -22,4 +22,3 @@ for script in scripts:
         subprocess.run(command, check=True)
     else:
         print(f"Script {script} does not exist.")
-
