@@ -171,8 +171,10 @@ class TestRunner:
                     # After capturing the exception, restart the app and rerun the current test case once.
                     _run_case()
                 except socket.error as e:
-                    if e.errno == errno.EPIPE:
-                        self._test.log_info('-------- Meets Socket Broken Pipe Exception, restart app --------')
+                    if e.errno in [errno.EPIPE, errno.EBADF]:
+                        self._test.log_info('-------- Meets Socket Broken Pipe Exception --------')
+                        self._test.log_info(traceback.format_exc())
+                        self._test.log_info('-------- Restart App And Rerun case --------')
                         self.restart_and_connect_app()
                         # After capturing the exception, restart the app and rerun the current test case once.
                         _run_case()
