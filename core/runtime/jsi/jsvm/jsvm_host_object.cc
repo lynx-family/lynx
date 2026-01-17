@@ -55,7 +55,7 @@ JSVM_Value JSVMHostObjectProxy::setProperty(JSVM_Env env, JSVM_Value name,
   std::shared_ptr<HostObject> lock_host_object;
   if (proxy_ptr == nullptr ||
       !proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
-    LOGE("JSVMHostObjectProxy::getProperty Error!");
+    LOGE("JSVMHostObjectProxy::setProperty Error!");
     return nullptr;
   }
 
@@ -74,7 +74,7 @@ JSVM_Value JSVMHostObjectProxy::getPropertyNames(JSVM_Env env,
   std::shared_ptr<HostObject> lock_host_object;
   if (proxy_ptr == nullptr ||
       !proxy_ptr->GetRuntimeAndHost(rt, lock_host_object)) {
-    LOGE("JSVMHostObjectProxy::getProperty Error!");
+    LOGE("JSVMHostObjectProxy::getPropertyNames Error!");
     return nullptr;
   }
 
