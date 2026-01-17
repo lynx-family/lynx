@@ -4796,6 +4796,7 @@ public enum com::lynx::tasm::animation::keyframe::LynxKeyframeAnimator::LynxKFAn
 
 public class abstract com::lynx::tasm::service::LynxLazyInitializer :  {
   public void com.lynx.tasm.service.LynxLazyInitializer.initialize();
+  public boolean com.lynx.tasm.service.LynxLazyInitializer.ensureInitialized(boolean runImmediately);
   public boolean com.lynx.tasm.service.LynxLazyInitializer.ensureInitialized();
 }
 
@@ -7684,6 +7685,18 @@ public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable::RoundRect
   public static float[] com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.newBorderRadius(float[] borderRadius, RectF borderWidth, float mul);
   public static float[] com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.newCenterBorderRadius(float[] borderRadius, RectF borderWidth, float mul);
   public static boolean com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.checkAllCornersWithSameRadius(float[] radius);
+}
+
+public class com::lynx::tasm::utils::RunOnceRunnable : Runnable {
+  public int com.lynx.tasm.utils.RunOnceRunnable.STATUS_IDLE STATUS_IDLE;
+  public int com.lynx.tasm.utils.RunOnceRunnable.STATUS_RUNNING STATUS_RUNNING;
+  public int com.lynx.tasm.utils.RunOnceRunnable.STATUS_EXCEPTION STATUS_EXCEPTION;
+  public int com.lynx.tasm.utils.RunOnceRunnable.STATUS_FINISHED STATUS_FINISHED;
+  public com.lynx.tasm.utils.RunOnceRunnable.RunOnceRunnable(@NonNull Runnable runnable);
+  public void com.lynx.tasm.utils.RunOnceRunnable.run();
+  public boolean com.lynx.tasm.utils.RunOnceRunnable.waitForComplete(long timeout, TimeUnit unit);
+  public int com.lynx.tasm.utils.RunOnceRunnable.getStatus();
+  public Throwable com.lynx.tasm.utils.RunOnceRunnable.getException();
 }
 
 public interface com::lynx::jsbridge::RuntimeLifecycleListener {
