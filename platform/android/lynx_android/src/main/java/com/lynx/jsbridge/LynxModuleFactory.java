@@ -117,6 +117,8 @@ public class LynxModuleFactory {
       if (oldWrapper != null) {
         LLog.e(TAG,
             "Duplicated LynxModule For Name: " + name + ", " + oldWrapper + " will be override");
+      } else {
+        LLog.d(TAG, "registered module with name: " + name);
       }
       this.mWrappers.put(name, w);
       LLog.v(TAG,
@@ -137,6 +139,8 @@ public class LynxModuleFactory {
       String name = w.getName();
       if (this.mWrappers.containsKey(name)) {
         LLog.w(TAG, "Duplicated LynxModule For Name: " + name + ", will be ignored");
+      } else {
+        LLog.d(TAG, "registered module with name: " + name);
       }
       this.mWrappers.putIfAbsent(name, w);
       LLog.v(TAG,
