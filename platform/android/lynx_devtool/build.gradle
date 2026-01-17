@@ -258,7 +258,7 @@ dependencies {
 
     implementation 'org.lynxsdk.lynx:debug-router:0.0.15'
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.3'
-    implementation 'org.lynxsdk.lynx:primjs:2.13.2-rc.2-dev'
+    implementation 'org.lynxsdk.lynx:primjs:2.13.4-dev'
     
     compileOnly("com.squareup.okhttp3:okhttp:3.10.0")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:3.10.0")
