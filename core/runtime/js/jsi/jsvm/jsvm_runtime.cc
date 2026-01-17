@@ -261,6 +261,7 @@ piper::PropNameID JSVMRuntime::createPropNameIDFromUtf8(const uint8_t* utf8,
 
 piper::PropNameID JSVMRuntime::createPropNameIDFromString(
     const piper::String& str) {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value str_value = nullptr;
   JSVMHelper::stringRef(str, &str_value);
   return JSVMHelper::createPropNameID(str_value, this);
@@ -287,6 +288,7 @@ std::string JSVMRuntime::utf8(const piper::PropNameID& sym) {
 
 bool JSVMRuntime::compare(const piper::PropNameID& a,
                           const piper::PropNameID& b) {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value a_value = nullptr;
   JSVMHelper::stringRef(a, &a_value);
   JSVM_Value b_value = nullptr;
@@ -341,6 +343,7 @@ piper::Object JSVMRuntime::createObject(std::shared_ptr<piper::HostObject> ho) {
 
 std::weak_ptr<piper::HostObject> JSVMRuntime::getHostObject(
     const piper::Object& obj) {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(obj, &obj_value);
   detail::JSVMHostObjectProxy* proxy_ptr = nullptr;
@@ -590,6 +593,7 @@ std::optional<Array> JSVMRuntime::createArray(size_t length) {
 
 piper::ArrayBuffer JSVMRuntime::createArrayBufferCopy(const uint8_t* bytes,
                                                       size_t byte_length) {
+  HandleScopeWrapper scope(getEnv());
   void* dst_buffer = nullptr;
   JSVM_Value result = nullptr;
   JSVM_CALL_RETURN(this, OH_JSVM_CreateArraybuffer, piper::ArrayBuffer(*this),
@@ -603,6 +607,7 @@ piper::ArrayBuffer JSVMRuntime::createArrayBufferCopy(const uint8_t* bytes,
 
 piper::ArrayBuffer JSVMRuntime::createArrayBufferNoCopy(
     std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value result = nullptr;
   uint8_t* raw_buffer = const_cast<uint8_t*>(bytes.release());
   JSVM_CALL_RETURN(this, OH_JSVM_CreateArrayBufferFromBackingStoreData,
@@ -711,6 +716,7 @@ std::optional<Value> JSVMRuntime::call(const piper::Function& f,
 std::optional<Value> JSVMRuntime::callAsConstructor(const piper::Function& f,
                                                     const piper::Value* args,
                                                     size_t count) {
+  HandleScopeWrapper scope(getEnv());
   auto converter =
       ArgsConverter<JSVM_Value>(count, args, [this](const piper::Value& value) {
         JSVM_Value result = nullptr;
@@ -730,6 +736,7 @@ void JSVMRuntime::popScope(ScopeState* state) { Runtime::popScope(state); }
 
 bool JSVMRuntime::strictEquals(const piper::Symbol& a,
                                const piper::Symbol& b) const {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value lhs = nullptr;
   JSVMHelper::symbolRef(a, &lhs);
   JSVM_Value rhs = nullptr;
@@ -743,6 +750,7 @@ bool JSVMRuntime::strictEquals(const piper::Symbol& a,
 
 bool JSVMRuntime::strictEquals(const piper::String& a,
                                const piper::String& b) const {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value lhs = nullptr;
   JSVMHelper::stringRef(a, &lhs);
   JSVM_Value rhs = nullptr;
@@ -756,6 +764,7 @@ bool JSVMRuntime::strictEquals(const piper::String& a,
 
 bool JSVMRuntime::strictEquals(const piper::Object& a,
                                const piper::Object& b) const {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value lhs = nullptr;
   JSVMHelper::objectRef(a, &lhs);
   JSVM_Value rhs = nullptr;
@@ -768,6 +777,7 @@ bool JSVMRuntime::strictEquals(const piper::Object& a,
 }
 
 bool JSVMRuntime::instanceOf(const piper::Object& o, const piper::Function& f) {
+  HandleScopeWrapper scope(getEnv());
   JSVM_Value obj_value = nullptr;
   JSVMHelper::objectRef(o, &obj_value);
   JSVM_Value ctor_value = nullptr;
