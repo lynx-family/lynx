@@ -10,118 +10,8 @@ on:
         type: string
 
 jobs:
-  android-explorer-build:
-    if: ${{ inputs.dry-run == false }}
-    runs-on: lynx-ubuntu-22.04-large
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/android-explorer-build
-        with:
-          build-type: release
-      - name: push to release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ inputs.version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
-          allowUpdates: true
-
-  ios-explorer-build:
-    runs-on: lynx-darwin-14-medium
-    strategy:
-      matrix:
-        arch: [arm64, x86_64]
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-      - name: Install iOS Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: |-
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            pushd explorer/darwin/ios/lynx_explorer
-            git config --global url."https://github.com/".insteadOf "git@github.com:"
-            bash bundle_install.sh
-            popd
-      - name: Build Explorer App
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd explorer/darwin/ios/lynx_explorer
-          xcodebuild -workspace LynxExplorer.xcworkspace -scheme LynxExplorer -configuration Debug -arch ${{ matrix.arch }} -archivePath build/LynxExplorer.xcarchive -derivedDataPath iOSCoreBuild/DerivedData -resultBundlePath results_bundle -showBuildTimingSummary -sdk iphonesimulator LD_GENERATE_MAP_FILE=YES LD_MAP_FILE_PATH=Build/linkmap.txt -jobs 24 build
-          popd
-          tar --strip-components 10 -czvf LynxExplorer-${{ matrix.arch }}.app.tar.gz explorer/darwin/ios/lynx_explorer/iOSCoreBuild/DerivedData/Build/Products/Debug-iphonesimulator/LynxExplorer.app
-      - name: push explorer to release
-        uses: ncipollo/release-action@v1
-        if: ${{ inputs.dry-run == false }}
-        with:
-          tag: ${{ inputs.version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
-          allowUpdates: true
-
-  android-sdk-release:
-    runs-on: 'lynx-ubuntu-22.04-large'
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-        with:
-          cache-backend: 'lynx-infra'
-      - name: Build artifact
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd platform/android
-          ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
-          popd
-      - name: Package maven artifacts
-        if: ${{ inputs.dry-run == false }}
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          pushd platform/android
-          ./gradlew publishAllModules \
-          -Pversion=${{ inputs.version }} \
-          -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
-          -Psigning.password=${{ secrets.SIGNING_PASSWORD }} \
-          -Psigning.secretKey=${{ secrets.SIGNING_SECRET_KEY }}
-          ./gradlew zipArtifacts -Pversion=${{ inputs.version }} getArtifactList
-          popd
-          pushd platform/android/build
-          artifact_list=$(<artifact-list)
-          echo "::set-output name=artifact_list::$artifact_list"
-          popd
-        id: build_artifact
-      - name: Publish artifact to maven
-        if: ${{ inputs.dry-run == false }}
-        uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
-        with:
-          portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
-          artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
-
   ios-sdk-publish:
-    runs-on: macos-13
+    runs-on: lynx-darwin-14-medium
     if: ${{ inputs.dry-run == false }}
     steps:
       - name: Download Source
@@ -133,7 +23,7 @@ jobs:
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
-          cache-backend: github
+          cache-backend: 'lynx-infra'
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
       - name: Prepare cocoapods publish source
