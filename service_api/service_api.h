@@ -52,26 +52,13 @@
  * LYNX_SERVICE_REGISTER(AServiceImpl);
  * @endcode
  */
-#if defined(OS_IOS)
-/* We use the LynxLazyLoad to automatically register services in iOS    \
- * platform */                                                          \
-#define LYNX_SERVICE_REGISTER_IMPL(Impl, Counter)                       \
-  namespace {                                                           \
-  static void BASE_CONCAT(_lynx_service_register_, Counter)() {         \
-    Impl::__register_self<Impl>();                                      \
-  }                                                                     \
-  SERVICE_LAZY_LOAD_CPP(BASE_CONCAT(_lynx_service_register_, Counter)); \
+#define LYNX_SERVICE_REGISTER(Impl)                             \
+  namespace {                                                   \
+  _LYNX_SERVICE_ENTRY_FUNC(BASE_CONCAT(_lynx_service_register_, \
+                                       __COUNTER__)) {          \
+    Impl::__register_self<Impl>();                              \
+  }                                                             \
   }
-#define LYNX_SERVICE_REGISTER(Impl) \
-  LYNX_SERVICE_REGISTER_IMPL(Impl, __COUNTER__)
-#else
-#define LYNX_SERVICE_REGISTER(Impl)                                \
-  namespace {                                                      \
-  DYLIB_ENTRY(BASE_CONCAT(_lynx_service_register_, __COUNTER__)) { \
-    Impl::__register_self<Impl>();                                 \
-  }                                                                \
-  }
-#endif
 
 /**
  * @brief Register an implementation factory for service interface `Base`.
@@ -94,7 +81,8 @@
 #define LYNX_SERVICE_REGISTER_CREATOR(ImplCreator)                           \
   namespace {                                                                \
   auto creator() ImplCreator;                                                \
-  DYLIB_ENTRY(BASE_CONCAT(_lynx_service_register_, __COUNTER__)) {           \
+  _LYNX_SERVICE_ENTRY_FUNC(BASE_CONCAT(_lynx_service_register_,              \
+                                       __COUNTER__)) {                       \
     using ReturnType = std::invoke_result_t<decltype(creator)>;              \
     using CleanType = std::remove_pointer_t<ReturnType>;                     \
     static_assert(std::is_base_of_v<lynx::service::_BaseService, CleanType>, \

@@ -6,6 +6,9 @@
 
 #include <string>
 #include <utility>
+#if defined(OS_IOS)
+#include <service_api/service_lazy_load.h>
+#endif
 
 #define EXPORT_FUNC                                                \
   __attribute__((visibility("default"))) __attribute__((noinline)) \
@@ -14,6 +17,12 @@
 #define EXPORT_CLASS __attribute__((visibility("default")))
 
 #define DYLIB_ENTRY(name) __attribute__((constructor)) EXPORT_FUNC void name()
+
+#if defined(OS_IOS)
+#define _LYNX_SERVICE_ENTRY_FUNC(name) SERVICE_LAZY_LOAD_CPP(name)
+#else
+#define _LYNX_SERVICE_ENTRY_FUNC(name) DYLIB_ENTRY(name)
+#endif
 
 #ifndef BASE_CONCAT
 #define BASE_CONCAT2(A, B) A##B

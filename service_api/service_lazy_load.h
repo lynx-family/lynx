@@ -39,8 +39,10 @@ struct ServiceLazyLoadData {
   BASE_CONCAT(__LYNX_ID__, __COUNTER__) = {TYPE, REPEATABLE, KEY,            \
                                            SERVICE_LAZY_LOAD_CPP_CAST(VALUE)}
 
-#define SERVICE_LAZY_LOAD_CPP(FUNC)                           \
-  SERVICE_LAZY_LOAD_CPP_DATA_DEFINE("LynxBaseInitKey", false, \
-                                    ServiceLazyLoadTypeFunction, FUNC)
+#define SERVICE_LAZY_LOAD_CPP(name)                                     \
+  static void name();                                                   \
+  SERVICE_LAZY_LOAD_CPP_DATA_DEFINE("LynxBaseInitKey", false,           \
+                                    ServiceLazyLoadTypeFunction, name); \
+  static void name()
 #endif
 #endif  // SERVICE_API_SERVICE_LAZY_LOAD_H_
