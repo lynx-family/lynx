@@ -24,6 +24,7 @@ import com.lynx.base.IBaseNativeLibraryLoader;
 import com.lynx.base.LynxBaseEnv;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.devtoolwrapper.LynxDevToolUtils;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.jsbridge.LynxModule;
@@ -273,6 +274,7 @@ public class LynxEnv {
     // before, such as the DevTool Component isn't attached or mlynxDebugEnabled is
     // set to false.
     initDevtoolEnv();
+    DevToolSettings.inst().init(mContext);
 
     if (!initNativeLibraries(nativeLibraryLoader)) {
       // This is a fatal error.
@@ -806,7 +808,7 @@ public class LynxEnv {
     if (!isLynxDebugEnabled()) {
       return false;
     }
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, false);
+    return DevToolSettings.inst().isDevToolEnabled();
   }
 
   // if true, user can debug any lynx view
@@ -818,7 +820,7 @@ public class LynxEnv {
       LLog.setMinimumLoggingLevel(LLog.INFO);
     }
 
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, enableDevTool);
+    DevToolSettings.inst().setDevToolEnabled(enableDevTool);
   }
 
   /**

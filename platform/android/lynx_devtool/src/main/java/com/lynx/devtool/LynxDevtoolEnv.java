@@ -12,6 +12,7 @@ import com.example.lynxdevtool.BuildConfig;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtool.memory.MemoryController;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
@@ -117,6 +118,7 @@ public class LynxDevtoolEnv {
     }
   }
 
+  // TODO:(mitchilling): remove this quadruple
   private void initSwitchAttribute() {
     /**
      mSwitchAttrMap: A dictionary indicating all switches' attributes.
@@ -129,7 +131,7 @@ public class LynxDevtoolEnv {
      */
     mSwitchAttrMap = new HashMap<String, ArrayList<Object>>() {
       {
-        put(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL,
+        put(DevToolSettings.SP_KEY_ENABLE_DEVTOOL,
             new ArrayList<Object>(Arrays.asList(true, true, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_LOGBOX,
             new ArrayList<Object>(Arrays.asList(true, true, true)));
@@ -160,9 +162,10 @@ public class LynxDevtoolEnv {
     };
   }
 
+  // TODO(mitchilling): move this to DevToolSettings
   private void initSyncToNative() {
-    syncToNative(
-        LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, false));
+    syncToNative(DevToolSettings.SP_KEY_ENABLE_DEVTOOL,
+        getDevtoolEnv(DevToolSettings.SP_KEY_ENABLE_DEVTOOL, false));
     syncToNative(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE,
         getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE, true));
     syncToNative(LynxEnvKey.SP_KEY_ENABLE_V8, getV8Enabled());

@@ -66,7 +66,8 @@ public enum LynxEnvKey {
       ENABLE_VSYNC_ALIGNED_FLUSH.getDescription();
 
   // Keys for devtool.
-  public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
+  // TODO(mitchilling): remove deprecated keys
+  @Deprecated public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
   public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
   public static final String SP_KEY_ENABLE_HIGHLIGHT_TOUCH = "enable_highlight_touch";
   public static final String SP_KEY_ENABLE_FSP_SCREENSHOT = "enable_fsp_screenshot";

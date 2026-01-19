@@ -1471,6 +1471,14 @@ public class com::lynx::devtoolwrapper::DevToolOverlayDelegate :  {
   public void com.lynx.devtoolwrapper.DevToolOverlayDelegate.init(OverlayService service);
 }
 
+public class com::lynx::devtoolwrapper::DevToolSettings :  {
+  public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_DEVTOOL SP_KEY_ENABLE_DEVTOOL;
+  public static DevToolSettings com.lynx.devtoolwrapper.DevToolSettings.inst();
+  public void com.lynx.devtoolwrapper.DevToolSettings.init(Context context);
+  public boolean com.lynx.devtoolwrapper.DevToolSettings.isDevToolEnabled();
+  public void com.lynx.devtoolwrapper.DevToolSettings.setDevToolEnabled(boolean enabled);
+}
+
 public enum com::lynx::devtoolwrapper::DevToolState {
   public com.lynx.devtoolwrapper.DevToolState.UNAVAILABLE UNAVAILABLE;
   public com.lynx.devtoolwrapper.DevToolState.ATTACHED ATTACHED;
