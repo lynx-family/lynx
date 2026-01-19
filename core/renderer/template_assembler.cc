@@ -1834,18 +1834,17 @@ void TemplateAssembler::LepusInvokeUIMethod(
         context, std::move(callback_closure));
     page_proxy()->element_manager()->catalyzer()->Invoke(
         ui_impl_ids[0], method, pub::ValueImplLepus(params),
-        fml::MakeCopyable(
-            [ui_impl_ids = std::move(ui_impl_ids), callback, context](
-                const int32_t code, const pub::Value& data) mutable {
-              const auto result_dict = lepus::Dictionary::Create();
-              BASE_STATIC_STRING_DECL(kCode, "code");
-              BASE_STATIC_STRING_DECL(kData, "data");
-              result_dict->SetValue(kCode, code);
-              result_dict->SetValue(
-                  kData, pub::ValueUtils::ConvertValueToLepusValue(data));
-              context->GetCallbackManager()->InvokeTask(
-                  callback, lepus::Value(std::move(result_dict)));
-            }));
+        fml::MakeCopyable([callback, context](const int32_t code,
+                                              const pub::Value& data) mutable {
+          const auto result_dict = lepus::Dictionary::Create();
+          BASE_STATIC_STRING_DECL(kCode, "code");
+          BASE_STATIC_STRING_DECL(kData, "data");
+          result_dict->SetValue(kCode, code);
+          result_dict->SetValue(
+              kData, pub::ValueUtils::ConvertValueToLepusValue(data));
+          context->GetCallbackManager()->InvokeTask(
+              callback, lepus::Value(std::move(result_dict)));
+        }));
     return;
   }
 }
