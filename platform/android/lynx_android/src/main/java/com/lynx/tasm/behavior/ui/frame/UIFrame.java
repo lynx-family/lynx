@@ -14,7 +14,9 @@ import com.lynx.tasm.LynxUpdateMeta;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxGeneratorName;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
@@ -23,6 +25,8 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
+@LynxGeneratorName(packageName = "com.lynx.tasm.behavior.ui.frame")
+@LynxBehavior(tagName = "frame", isCreateAsync = true)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
   private TemplateData mInitData = null;
@@ -39,6 +43,15 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   @Override
   protected LynxFrameView createView(Context context) {
     return new LynxFrameView(mContext);
+  }
+
+  @Override
+  public void setSign(int sign, String tagName) {
+    super.setSign(sign, tagName);
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setSign(sign);
+    }
   }
 
   @Override
@@ -110,9 +123,14 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
         borderTopWidth, borderRightWidth, borderBottomWidth, bound);
 
     LynxFrameView view = getView();
-    if (view != null) {
-      view.updateViewport(width, height);
+    if (view == null) {
+      return;
     }
+    int horizontalInsets = paddingLeft + paddingRight + borderLeftWidth + borderRightWidth;
+    int verticalInsets = paddingTop + paddingBottom + borderTopWidth + borderBottomWidth;
+    int contentWidth = Math.max(0, width - horizontalInsets);
+    int contentHeight = Math.max(0, height - verticalInsets);
+    view.updateLayout(contentWidth, contentHeight);
   }
 
   // TODO(zhoupeng): do not convet LepusValue to ReadableMap

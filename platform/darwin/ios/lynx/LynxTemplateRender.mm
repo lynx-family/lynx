@@ -2496,6 +2496,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (LynxViewBuilderBlock)getLynxViewBuilderBlock {
   // TODO(zhoupeng.z): provide with move params
   return ^(LynxViewBuilder* builder) {
+    builder.config = self->_config;
     builder.fontScale = self->_fontScale;
     builder.enablePreUpdateData = YES;
     builder.fetcher = self->_fetcher;
@@ -2507,6 +2508,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.screenSize = [[self->_lynxUIRenderer getScreenMetrics] screenSize];
     builder.lynxBackgroundRuntimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
+    [builder.lynxBackgroundRuntimeOptions merge:self->_builder.lynxBackgroundRuntimeOptions];
     [builder setThreadStrategyForRender:self->_threadStrategyForRendering];
   };
 }
