@@ -233,7 +233,7 @@ NSInvocation *LynxModuleDarwin::getMethodInvocation(
   // TODO(zhangqun.29): To handle in a more reasonable way.
   if (count > 0 &&
       methodSignature.numberOfArguments - count == ARGS_INDEX_HAS_CONTEXT_PARAM_START_OFFSET &&
-      context_finder_) {
+      context_finder_ && context_finder_->IsShared()) {
     // LynxContext must be the first priority.
     const char *objCArgType = [methodSignature getArgumentTypeAtIndex:ARGS_INDEX_START_OFFSET];
     // The parameter signature of LynxContext is @

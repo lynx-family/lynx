@@ -37,6 +37,7 @@ class LynxContextFinderDarwin {
   virtual std::string FindSchema(const std::string &unique_id) { return std::string(); };
   virtual void RegisterContext(const std::string &unique_id, LynxContext *context,
                                const std::string &schema){};
+  virtual bool IsShared() { return false; };
 };
 
 // Base class: used in ModuleFactory to create lynx module instance

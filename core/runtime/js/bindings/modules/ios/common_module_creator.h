@@ -51,6 +51,7 @@ class CommonLynxContextFinderDarwin : public LynxContextFinderDarwin {
   std::string FindSchema(const std::string& unique_id) override;
   void RegisterContext(const std::string& unique_id, LynxContext* context,
                        const std::string& schema) override;
+  bool IsShared() override { return false; };
 
  private:
   __weak LynxContext* lynxContext_;

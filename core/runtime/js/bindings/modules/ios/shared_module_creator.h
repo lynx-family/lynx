@@ -50,6 +50,7 @@ class SharedLynxContextFinderDarwin : public LynxContextFinderDarwin {
   std::string FindSchema(const std::string& unique_id) override;
   void RegisterContext(const std::string& unique_id, LynxContext* context,
                        const std::string& schema) override;
+  bool IsShared() override { return true; };
 
  private:
   // The LynxContext object will be used in BTS Thread , so a weak reference is used here.
