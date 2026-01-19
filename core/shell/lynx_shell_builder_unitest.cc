@@ -88,7 +88,7 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
                    .SetShellOption(*option_)
                    .build());
 
-  shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+  shell_->runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       nullptr, shell_->runners_.GetUITaskRunner());
 
   // SetNativeFacade() test
@@ -185,7 +185,7 @@ TEST_F(LynxShellBuilderTest,
                    .SetForceLayoutOnBackgroundThread(false)
                    .build());
 
-  shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+  shell_->runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       nullptr, shell_->runners_.GetUITaskRunner());
 
   EXPECT_EQ(shell_->layout_result_manager_, nullptr);
@@ -220,7 +220,7 @@ TEST_F(LynxShellBuilderTest,
                    .SetForceLayoutOnBackgroundThread(true)
                    .build());
 
-  shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+  shell_->runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       nullptr, shell_->runners_.GetUITaskRunner());
 
   EXPECT_NE(shell_->layout_result_manager_, nullptr);

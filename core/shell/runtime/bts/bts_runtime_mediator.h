@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_SHELL_RUNTIME_MEDIATOR_H_
-#define CORE_SHELL_RUNTIME_MEDIATOR_H_
+#ifndef CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_MEDIATOR_H_
+#define CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_MEDIATOR_H_
 
 #include <memory>
 #include <mutex>
@@ -30,10 +30,12 @@
 namespace lynx {
 namespace shell {
 
+class BTSRuntime;
+
 // ensure run on js thread, lifecycle manage by LynxRuntime
-class RuntimeMediator : public runtime::TemplateDelegate {
+class BTSRuntimeMediator : public runtime::TemplateDelegate {
  public:
-  RuntimeMediator(
+  BTSRuntimeMediator(
       const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
       const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
       const std::shared_ptr<
@@ -54,7 +56,7 @@ class RuntimeMediator : public runtime::TemplateDelegate {
     // TODO(chenyouhui): Use LynxResourceLoader directly.
     external_resource_loader_->SetEngineActor(engine_actor);
   }
-  ~RuntimeMediator() override = default;
+  ~BTSRuntimeMediator() override = default;
   void AttachToLynxShell(
       const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
       const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
@@ -136,7 +138,7 @@ class RuntimeMediator : public runtime::TemplateDelegate {
 
   void set_vsync_monitor(
       const std::shared_ptr<base::VSyncMonitor>& vsync_monitor,
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor) {
+      const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor) {
     vsync_observer_ = std::make_shared<VSyncObserverImpl>(
         vsync_monitor, js_runner_, runtime_actor);
   }
@@ -188,10 +190,10 @@ class RuntimeMediator : public runtime::TemplateDelegate {
   std::string LoadJSSource(const std::string& name) override;
   std::shared_ptr<piper::Buffer> LoadBytecode(const std::string& url) override;
 
-  RuntimeMediator(const RuntimeMediator&) = delete;
-  RuntimeMediator& operator=(const RuntimeMediator&) = delete;
-  RuntimeMediator(RuntimeMediator&&) = delete;
-  RuntimeMediator& operator=(RuntimeMediator&&) = delete;
+  BTSRuntimeMediator(const BTSRuntimeMediator&) = delete;
+  BTSRuntimeMediator& operator=(const BTSRuntimeMediator&) = delete;
+  BTSRuntimeMediator(BTSRuntimeMediator&&) = delete;
+  BTSRuntimeMediator& operator=(BTSRuntimeMediator&&) = delete;
 
   fml::RefPtr<tasm::PropBundle> CreatePropBundle() override {
     return prop_bundle_creator_->CreatePropBundle();
@@ -247,4 +249,4 @@ class RuntimeMediator : public runtime::TemplateDelegate {
 }  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_SHELL_RUNTIME_MEDIATOR_H_
+#endif  // CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_MEDIATOR_H_

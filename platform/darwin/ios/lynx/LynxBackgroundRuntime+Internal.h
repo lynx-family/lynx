@@ -8,7 +8,7 @@
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 #include "core/shell/ios/js_proxy_darwin.h"
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 
 @interface LynxBackgroundRuntimeOptions ()
 - (NSMutableDictionary<NSString *, id> *)moduleWrappers;
@@ -25,7 +25,7 @@
 @interface LynxBackgroundRuntime ()
 - (std::weak_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr;
 - (LynxBackgroundRuntimeOptions *)options;
-- (std::shared_ptr<lynx::shell::LynxActor<lynx::runtime::LynxRuntime>>)runtimeActor;
+- (std::shared_ptr<lynx::shell::LynxActor<lynx::shell::BTSRuntime>>)runtimeActor;
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>>)
     perfControllerActor;
 - (LynxDevtool *)devtool;

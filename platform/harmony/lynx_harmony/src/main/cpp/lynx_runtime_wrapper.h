@@ -23,9 +23,9 @@
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/runtime/js/bindings/modules/harmony/module_factory_harmony.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/native_facade_empty_implementation.h"
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "third_party/napi/include/napi.h"
 
 namespace lynx {
@@ -111,7 +111,9 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
                     int modifiers, int click_count) override {}
   // LynxDevToolProxy override end
 
-  shell::RuntimeStandalone& RuntimeStandalone() { return *runtime_standalone_; }
+  shell::BTSRuntimeStandalone& RuntimeStandalone() {
+    return *runtime_standalone_;
+  }
 
   std::shared_ptr<piper::LynxModuleManager> GetModuleManager() {
     return module_manager_;
@@ -141,8 +143,8 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
 
  private:
   void DestroyRuntime();
-  std::unique_ptr<shell::RuntimeStandalone> runtime_standalone_;
-  std::shared_ptr<shell::LynxRuntimeProxyImpl> runtime_proxy_;
+  std::unique_ptr<shell::BTSRuntimeStandalone> runtime_standalone_;
+  std::shared_ptr<shell::LynxBTSRuntimeProxyImpl> runtime_proxy_;
   // TODO(liyanbo.monster): use weak_ptr instead of shared_ptr
   std::shared_ptr<piper::LynxModuleManager> module_manager_;
   bool is_attached_{false};

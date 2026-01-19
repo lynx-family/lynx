@@ -26,8 +26,8 @@
 #include "core/runtime/js/bindings/modules/ios/common_module_creator.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_runtime_facade_darwin.h"
-#include "core/shell/module_delegate_impl.h"
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 
 @implementation LynxBackgroundRuntimeOptions {
   // Only as a module wrapper container for register.
@@ -169,7 +169,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   std::weak_ptr<lynx::piper::ModuleFactoryDarwin> _weak_module_factory;
   std::shared_ptr<lynx::shell::JSProxyDarwin> _js_proxy;
   std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> _runtime_observer;
-  std::unique_ptr<lynx::shell::RuntimeStandalone> _runtime_standalone_bundle;
+  std::unique_ptr<lynx::shell::BTSRuntimeStandalone> _runtime_standalone_bundle;
   LynxDevtool* _devTool;
 }
 
@@ -177,7 +177,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   return _weak_module_factory;
 }
 
-- (std::shared_ptr<lynx::shell::LynxActor<lynx::runtime::LynxRuntime>>)runtimeActor {
+- (std::shared_ptr<lynx::shell::LynxActor<lynx::shell::BTSRuntime>>)runtimeActor {
   return _runtime_standalone_bundle->GetRuntimeActor();
 }
 
@@ -265,10 +265,10 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
     bool enableJSGroupThread = [_options enableJSGroupThread] == YES;
     bool pendingCoreJsLoad = [_options pendingCoreJsLoad] == YES;
-    auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
+    auto runtime_flags = lynx::shell::CalcRuntimeFlags(
         false, _options.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs, false,
         _options.enableBytecode, &enableJSGroupThread, &pendingCoreJsLoad);
-    _runtime_standalone_bundle = lynx::shell::RuntimeStandalone::InitRuntimeStandalone(
+    _runtime_standalone_bundle = lynx::shell::BTSRuntimeStandalone::InitRuntimeStandalone(
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         native_module_manager, bundle_creator, _options.group.whiteBoard,
         std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],

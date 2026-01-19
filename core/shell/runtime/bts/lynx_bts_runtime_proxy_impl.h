@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_SHELL_LYNX_RUNTIME_PROXY_IMPL_H_
-#define CORE_SHELL_LYNX_RUNTIME_PROXY_IMPL_H_
+#ifndef CORE_SHELL_RUNTIME_BTS_LYNX_BTS_RUNTIME_PROXY_IMPL_H_
+#define CORE_SHELL_RUNTIME_BTS_LYNX_BTS_RUNTIME_PROXY_IMPL_H_
 
 #include <memory>
 #include <string>
@@ -17,16 +17,15 @@
 namespace lynx {
 namespace shell {
 
-class LynxRuntimeProxyImpl : public LynxRuntimeProxy {
+class LynxBTSRuntimeProxyImpl : public LynxRuntimeProxy {
  public:
-  explicit LynxRuntimeProxyImpl(
-      std::shared_ptr<LynxActor<runtime::LynxRuntime>> actor)
+  explicit LynxBTSRuntimeProxyImpl(std::shared_ptr<LynxActor<BTSRuntime>> actor)
       : actor_(std::move(actor)) {}
-  LynxRuntimeProxyImpl(std::shared_ptr<LynxActor<runtime::LynxRuntime>> actor,
-                       bool is_runtime_standalone_mode)
+  LynxBTSRuntimeProxyImpl(std::shared_ptr<LynxActor<BTSRuntime>> actor,
+                          bool is_runtime_standalone_mode)
       : actor_(std::move(actor)),
         is_runtime_standalone_mode_(is_runtime_standalone_mode) {}
-  ~LynxRuntimeProxyImpl() = default;
+  ~LynxBTSRuntimeProxyImpl() = default;
 
   void CallJSFunction(std::string module_id, std::string method_id,
                       std::unique_ptr<pub::Value> params) override;
@@ -57,7 +56,7 @@ class LynxRuntimeProxyImpl : public LynxRuntimeProxy {
   void CallJSIntersectionObserver(int32_t observer_id, int32_t callback_id,
                                   ParamsGetter getter);
 
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> actor_;
+  std::shared_ptr<LynxActor<BTSRuntime>> actor_;
 
  private:
   bool is_runtime_standalone_mode_ = false;
@@ -65,4 +64,4 @@ class LynxRuntimeProxyImpl : public LynxRuntimeProxy {
 }  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_SHELL_LYNX_RUNTIME_PROXY_IMPL_H_
+#endif  // CORE_SHELL_RUNTIME_BTS_LYNX_BTS_RUNTIME_PROXY_IMPL_H_

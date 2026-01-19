@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_SHELL_RUNTIME_STANDALONE_HELPER_H_
-#define CORE_SHELL_RUNTIME_STANDALONE_HELPER_H_
+#ifndef CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_STANDALONE_HELPER_H_
+#define CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_STANDALONE_HELPER_H_
 
 #include <memory>
 #include <string>
@@ -23,9 +23,9 @@
 namespace lynx {
 namespace shell {
 
-class RuntimeStandalone {
+class BTSRuntimeStandalone {
  public:
-  static std::unique_ptr<RuntimeStandalone> InitRuntimeStandalone(
+  static std::unique_ptr<BTSRuntimeStandalone> InitRuntimeStandalone(
       const std::string& group_name, const std::string& group_id,
       std::unique_ptr<NativeFacade> native_facade_runtime,
       const std::shared_ptr<piper::InspectorRuntimeObserverNG>&
@@ -35,7 +35,7 @@ class RuntimeStandalone {
       const std::shared_ptr<tasm::PropBundleCreator>& prop_bundle_creator,
       const std::shared_ptr<tasm::WhiteBoard>& white_board,
       const std::function<
-          void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&,
+          void(const std::shared_ptr<LynxActor<BTSRuntime>>&,
                const std::shared_ptr<LynxActor<NativeFacade>>&)>&
           on_runtime_actor_created,
       std::vector<std::string> preload_js_paths,
@@ -43,9 +43,9 @@ class RuntimeStandalone {
       const lepus::Value* global_props = nullptr, bool debuggable = false,
       bool long_task_monitor_disabled = false);
 
-  ~RuntimeStandalone() = default;
-  RuntimeStandalone& operator=(const RuntimeStandalone&) = delete;
-  RuntimeStandalone& operator=(RuntimeStandalone&&) = delete;
+  ~BTSRuntimeStandalone() = default;
+  BTSRuntimeStandalone& operator=(const BTSRuntimeStandalone&) = delete;
+  BTSRuntimeStandalone& operator=(BTSRuntimeStandalone&&) = delete;
 
   void SetPresetData(lepus::Value data);
 
@@ -68,7 +68,7 @@ class RuntimeStandalone {
 
   void UnSubscribeSessionStorage(const std::string& key, double callback_id);
 
-  const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& GetRuntimeActor() {
+  const std::shared_ptr<LynxActor<BTSRuntime>>& GetRuntimeActor() {
     return runtime_actor_;
   }
 
@@ -84,9 +84,9 @@ class RuntimeStandalone {
   const std::string& GroupName() const { return group_name_; }
 
  private:
-  RuntimeStandalone(
+  BTSRuntimeStandalone(
       std::string group_name, int32_t runtime_id,
-      std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor,
+      std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor,
       std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
           perf_controller_actor,
       std::shared_ptr<LynxActor<NativeFacade>> native_runtime_facade,
@@ -99,7 +99,7 @@ class RuntimeStandalone {
 
   std::string group_name_;
   int32_t runtime_id_;
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
   // will be bind to LynxShell when LynxBackgroundRuntime is attached to
   // LynxView
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
@@ -112,4 +112,4 @@ class RuntimeStandalone {
 }  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_SHELL_RUNTIME_STANDALONE_HELPER_H_
+#endif  // CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_STANDALONE_HELPER_H_

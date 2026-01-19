@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "core/runtime/js/jsi/jsi.h"
-#include "core/runtime/js/lynx_runtime.h"
 
 namespace lynx {
 namespace runtime {

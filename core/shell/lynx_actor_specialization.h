@@ -18,13 +18,12 @@
 #include "core/shell/native_facade.h"
 
 namespace lynx {
-namespace runtime {
-class LynxRuntime;
-}
 namespace shell {
 
+class BTSRuntime;
+
 template <typename T>
-inline constexpr bool kIsLynxActor = std::is_same_v<T, runtime::LynxRuntime> ||
+inline constexpr bool kIsLynxActor = std::is_same_v<T, shell::BTSRuntime> ||
                                      std::is_same_v<T, shell::LynxEngine> ||
                                      std::is_same_v<T, shell::NativeFacade> ||
                                      std::is_same_v<T, tasm::LayoutContext>;
@@ -39,7 +38,7 @@ template <>
 inline constexpr const char* kActorTag<shell::LynxEngine> = "LynxEngine";
 
 template <>
-inline constexpr const char* kActorTag<runtime::LynxRuntime> = "LynxRuntime";
+inline constexpr const char* kActorTag<shell::BTSRuntime> = "BTSRuntime";
 
 template <>
 inline constexpr const char* kActorTag<tasm::LayoutContext> = "LayoutContext";

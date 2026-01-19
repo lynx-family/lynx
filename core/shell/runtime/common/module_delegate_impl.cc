@@ -2,12 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/shell/module_delegate_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 
 #include <utility>
 
 #include "core/shell/common/shell_trace_event_def.h"
-#include "core/shell/runtime_mediator.h"
 
 namespace lynx {
 namespace shell {

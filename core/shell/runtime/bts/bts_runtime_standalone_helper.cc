@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 
 #include <utility>
 #include <vector>
@@ -12,12 +12,13 @@
 #include "core/services/performance/performance_mediator.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_shell.h"
-#include "core/shell/runtime_mediator.h"
+#include "core/shell/runtime/bts/bts_runtime_mediator.h"
 
 namespace lynx {
 namespace shell {
 
-std::unique_ptr<RuntimeStandalone> RuntimeStandalone::InitRuntimeStandalone(
+std::unique_ptr<BTSRuntimeStandalone>
+BTSRuntimeStandalone::InitRuntimeStandalone(
     const std::string& group_name, const std::string& group_id,
     std::unique_ptr<NativeFacade> native_facade_runtime,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
@@ -26,9 +27,8 @@ std::unique_ptr<RuntimeStandalone> RuntimeStandalone::InitRuntimeStandalone(
         native_module_manager,
     const std::shared_ptr<tasm::PropBundleCreator>& prop_bundle_creator,
     const std::shared_ptr<tasm::WhiteBoard>& white_board,
-    const std::function<
-        void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&,
-             const std::shared_ptr<LynxActor<NativeFacade>>&)>&
+    const std::function<void(const std::shared_ptr<LynxActor<BTSRuntime>>&,
+                             const std::shared_ptr<LynxActor<NativeFacade>>&)>&
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths,
     const std::string& bytecode_source_url, uint32_t runtime_flag,
@@ -72,7 +72,7 @@ std::unique_ptr<RuntimeStandalone> RuntimeStandalone::InitRuntimeStandalone(
     runtime_observer->InitWhiteBoardInspector(white_board_delegate);
   }
 
-  auto delegate = std::make_unique<RuntimeMediator>(
+  auto delegate = std::make_unique<BTSRuntimeMediator>(
       native_runtime_facade, nullptr, performance_actor, nullptr,
       js_task_runner, std::move(external_resource_loader));
   delegate->SetPropBundleCreator(prop_bundle_creator);
@@ -83,10 +83,10 @@ std::unique_ptr<RuntimeStandalone> RuntimeStandalone::InitRuntimeStandalone(
   page_options.SetLongTaskMonitorDisabled(long_task_monitor_disabled);
   page_options.SetDebuggable(debuggable);
 
-  auto runtime = std::make_unique<runtime::LynxRuntime>(
+  auto runtime = std::make_unique<BTSRuntime>(
       group_id, instance_id, std::move(delegate), bytecode_source_url,
       runtime_flag, page_options);
-  auto runtime_actor = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+  auto runtime_actor = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id, true);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor);
   perf_mediator_raw_ptr->SetRuntimeActor(runtime_actor);
@@ -102,19 +102,19 @@ std::unique_ptr<RuntimeStandalone> RuntimeStandalone::InitRuntimeStandalone(
   runtime_actor->ActAsync(
       [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer, global_props_value,
-       vsync_monitor](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+       vsync_monitor](std::unique_ptr<BTSRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->OnGlobalPropsUpdated(global_props_value);
         runtime->Init(native_module_manager, runtime_observer,
                       std::move(preload_js_paths));
       });
-  return std::unique_ptr<RuntimeStandalone>(new RuntimeStandalone(
+  return std::unique_ptr<BTSRuntimeStandalone>(new BTSRuntimeStandalone(
       group_name, instance_id, runtime_actor, performance_actor,
       native_runtime_facade, white_board_delegate));
 }
 
-void RuntimeStandalone::EvaluateScript(std::string url, std::string script) {
+void BTSRuntimeStandalone::EvaluateScript(std::string url, std::string script) {
   uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
               [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
@@ -128,9 +128,9 @@ void RuntimeStandalone::EvaluateScript(std::string url, std::string script) {
   });
 }
 
-void RuntimeStandalone::EvaluateScript(std::string url,
-                                       lynx::tasm::LynxTemplateBundle* bundle,
-                                       std::string js_file) {
+void BTSRuntimeStandalone::EvaluateScript(
+    std::string url, lynx::tasm::LynxTemplateBundle* bundle,
+    std::string js_file) {
   auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
   if (!js_content.has_value()) {
     return;
@@ -161,13 +161,13 @@ void RuntimeStandalone::EvaluateScript(std::string url,
   });
 }
 
-void RuntimeStandalone::SetPresetData(lepus::Value data) {
+void BTSRuntimeStandalone::SetPresetData(lepus::Value data) {
   runtime_actor_->Act([data = std::move(data)](auto& runtime) mutable {
     runtime->OnSetPresetData(std::move(data));
   });
 }
 
-void RuntimeStandalone::SetSessionStorageItem(
+void BTSRuntimeStandalone::SetSessionStorageItem(
     const std::string& key, const std::shared_ptr<tasm::TemplateData>& data) {
   runtime_actor_->Act(
       [key, data, delegate = white_board_delegate_](auto& runtime) mutable {
@@ -175,8 +175,8 @@ void RuntimeStandalone::SetSessionStorageItem(
       });
 }
 
-void RuntimeStandalone::SetSessionStorageItem(const std::string& key,
-                                              const lepus::Value value) {
+void BTSRuntimeStandalone::SetSessionStorageItem(const std::string& key,
+                                                 const lepus::Value value) {
   runtime_actor_->Act(
       [key, data = std::move(value),
        delegate = white_board_delegate_](auto& runtime) mutable {
@@ -184,7 +184,7 @@ void RuntimeStandalone::SetSessionStorageItem(const std::string& key,
       });
 }
 
-void RuntimeStandalone::GetSessionStorageItem(
+void BTSRuntimeStandalone::GetSessionStorageItem(
     const std::string& key, std::unique_ptr<PlatformCallBack> callback) {
   runtime_actor_->Act(
       [key, callback = std::move(callback), facade = native_runtime_facade_,
@@ -199,7 +199,7 @@ void RuntimeStandalone::GetSessionStorageItem(
       });
 }
 
-double RuntimeStandalone::SubscribeSessionStorage(
+double BTSRuntimeStandalone::SubscribeSessionStorage(
     const std::string& key, std::unique_ptr<PlatformCallBack> callback) {
   auto callback_holder = native_runtime_facade_->ActSync(
       [callback = std::move(callback)](auto& facade) mutable {
@@ -217,20 +217,20 @@ double RuntimeStandalone::SubscribeSessionStorage(
   return callback_id;
 }
 
-void RuntimeStandalone::UnSubscribeSessionStorage(const std::string& key,
-                                                  double callback_id) {
+void BTSRuntimeStandalone::UnSubscribeSessionStorage(const std::string& key,
+                                                     double callback_id) {
   runtime_actor_->Act([key, callback_id, delegate = white_board_delegate_](
                           auto& runtime) mutable {
     delegate->UnsubscribeClientSessionStorage(std::move(key), callback_id);
   });
 }
 
-void RuntimeStandalone::TransitionToFullRuntime() {
+void BTSRuntimeStandalone::TransitionToFullRuntime() {
   runtime_actor_->Act(
       [](auto& runtime) { runtime->TransitionToFullRuntime(); });
 }
 
-void RuntimeStandalone::DestroyRuntime() {
+void BTSRuntimeStandalone::DestroyRuntime() {
   perf_controller_actor_->Act(
       [instance_id = perf_controller_actor_->GetInstanceId()](auto& facade) {
         facade = nullptr;

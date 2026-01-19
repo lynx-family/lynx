@@ -34,8 +34,7 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
   explicit LayoutMediator(
       const std::shared_ptr<LayoutResultManager> &layout_result_manager);
 
-  void SetRuntimeActor(
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>> &actor) {
+  void SetRuntimeActor(const std::shared_ptr<LynxActor<BTSRuntime>> &actor) {
     runtime_actor_ = actor;
   }
 
@@ -92,7 +91,7 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
 
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_;
 

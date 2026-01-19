@@ -79,7 +79,7 @@
 #include "core/shell/ios/native_facade_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
 #include "core/shell/lynx_shell_builder.h"
-#include "core/shell/module_delegate_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
 @implementation LynxTemplateRender

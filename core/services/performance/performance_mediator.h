@@ -13,12 +13,10 @@
 #include "core/services/performance/performance_event_sender.h"
 
 namespace lynx {
-namespace runtime {
-class LynxRuntime;
-}
 namespace shell {
+class BTSRuntime;
 class LynxEngine;
-}
+}  // namespace shell
 namespace tasm {
 namespace performance {
 
@@ -29,7 +27,7 @@ class PerformanceMediator : public PerformanceEventSender {
 
   // Setter methods for various properties.
   inline void SetRuntimeActor(
-      const std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>>& actor) {
+      const std::shared_ptr<shell::LynxActor<shell::BTSRuntime>>& actor) {
     runtime_actor_ = actor;
   }
   inline void SetEngineActor(
@@ -41,7 +39,7 @@ class PerformanceMediator : public PerformanceEventSender {
                           EventType type = kEventTypeAll) override;
 
  private:
-  std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::shared_ptr<shell::LynxActor<shell::BTSRuntime>> runtime_actor_;
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
 };
 

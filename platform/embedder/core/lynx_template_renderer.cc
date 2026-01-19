@@ -6,7 +6,7 @@
 
 #include "core/runtime/lepus_context/json_parser.h"
 #include "core/services/performance/performance_controller.h"
-#include "core/shell/module_delegate_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/embedder/core/native_facade_impl.h"
 #include "platform/embedder/core/performance/performance_controller_impl.h"
 #include "platform/embedder/core/tasm_platform_invoker_impl.h"
@@ -173,7 +173,7 @@ void LynxTemplateRenderer::Reset() {
     auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
         shell_->GetRuntimeActor(), shell_->GetFacadeActor());
     module_manager_->initBindingPtr(module_manager_, module_delegate);
-    runtime_proxy_ = std::make_shared<shell::LynxRuntimeProxyImpl>(actor);
+    runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
     module_manager_->runtime_proxy = runtime_proxy_;
     if (runtime_proxy_callback_) {
       // There's cases that need to inject runtime life cycle before JSRuntime
@@ -188,7 +188,7 @@ void LynxTemplateRenderer::Reset() {
     shell_->UpdateGlobalProps(*settings_.global_props);
   }
 
-  auto runtime_flags = runtime::CalcRuntimeFlags(
+  auto runtime_flags = shell::CalcRuntimeFlags(
       false, settings_.use_quickjs, false, settings_.enable_bytecode);
   shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
                       module_manager_, std::move(on_runtime_actor_created),

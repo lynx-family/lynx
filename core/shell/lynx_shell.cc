@@ -25,8 +25,8 @@
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
-#include "core/shell/runtime_mediator.h"
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_mediator.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 #include "core/shell/tasm_operation_queue_async.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -215,7 +215,7 @@ void LynxShell::Destroy() {
 void LynxShell::InitRuntimeWithRuntimeDisabled(
     std::shared_ptr<base::VSyncMonitor> vsync_monitor) {
   DCHECK(!enable_runtime_);
-  runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+  runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       nullptr, nullptr, instance_id_, enable_runtime_);
   tasm_mediator_->SetRuntimeActor(runtime_actor_);
   layout_mediator_->SetRuntimeActor(runtime_actor_);
@@ -232,8 +232,7 @@ void LynxShell::InitRuntime(
     const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
         native_module_manager,
-    const std::function<
-        void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
+    const std::function<void(const std::shared_ptr<LynxActor<BTSRuntime>>&)>&
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
     const std::string& code_cache_source_url,
@@ -276,7 +275,7 @@ void LynxShell::InitRuntime(
   auto external_resource_loader =
       std::make_unique<ExternalResourceLoader>(resource_loader);
   auto external_resource_loader_ptr = external_resource_loader.get();
-  auto delegate = std::make_unique<RuntimeMediator>(
+  auto delegate = std::make_unique<BTSRuntimeMediator>(
       facade_actor_, engine_actor_, perf_controller_actor_,
       card_cached_data_mgr_, js_task_runner,
       std::move(external_resource_loader));
@@ -286,11 +285,11 @@ void LynxShell::InitRuntime(
   delegate->SetPropBundleCreator(prop_bundle_creator_);
   auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
-  auto runtime = std::make_unique<runtime::LynxRuntime>(
+  auto runtime = std::make_unique<BTSRuntime>(
       group_id, instance_id_, std::move(delegate), code_cache_source_url,
       runtime_flags, page_options_);
   runtime->SetPageOptions(page_options_);
-  runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+  runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor_);
 
@@ -308,10 +307,9 @@ void LynxShell::InitRuntime(
   }
 
 #if ENABLE_TESTBENCH_RECORDER
-  runtime_actor_->Act(
-      [record_id](std::unique_ptr<runtime::LynxRuntime>& runtime) {
-        runtime->SetRecordId(record_id);
-      });
+  runtime_actor_->Act([record_id](std::unique_ptr<BTSRuntime>& runtime) {
+    runtime->SetRecordId(record_id);
+  });
 #endif
 
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
@@ -319,7 +317,7 @@ void LynxShell::InitRuntime(
       [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer = runtime_observer_, vsync_monitor,
        weak_js_bundle_holder = GetWeakJsBundleHolder(), enqueue_info,
-       flow_id](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+       flow_id](std::unique_ptr<BTSRuntime>& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
         (void)flow_id;  // Explicitly reference `flow_id` to suppress the
                         // compiler warning.
@@ -334,7 +332,7 @@ void LynxShell::InitRuntime(
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
       };
 
-  if ((runtime_flags & runtime::LynxRuntimeFlags::PENDING_JS_TASK) == 0) {
+  if ((runtime_flags & LynxRuntimeFlags::PENDING_JS_TASK) == 0) {
     runtime_actor_->ActAsync(std::move(start_js_runtime_task_));
   }
 }
@@ -346,7 +344,8 @@ void LynxShell::AttachRuntime() {
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
   tasm_mediator_->SetRuntimeActor(runtime_actor_);
   layout_mediator_->SetRuntimeActor(runtime_actor_);
-  // timing_mediator_ will be handled inside RuntimeMediator::AttachToLynxShell
+  // timing_mediator_ will be handled inside
+  // BTSRuntimeMediator::AttachToLynxShell
 
   if (runtime_actor_) {
     [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
@@ -374,7 +373,7 @@ void LynxShell::AttachRuntime() {
 
       runtime->TransitionToFullRuntime();
       runtime->SetJsBundleHolder(weak_js_bundle_holder);
-      static_cast<RuntimeMediator*>(runtime->GetDelegate())
+      static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
           ->AttachToLynxShell(std::move(facade_actor), std::move(engine_actor),
                               std::move(card_cached_data_mgr));
     });
@@ -389,14 +388,16 @@ void LynxShell::StartJsRuntime() {
 }
 
 void LynxShell::TriggerDestroyRuntime(
-    const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor,
+    const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor,
     std::string js_group_thread_name) {
   if (!runtime_actor) {
     return;
   }
   auto instance_id = runtime_actor->GetInstanceId();
-  auto runtime = runtime_actor->Impl();
-  runtime->TryToDestroy();
+  auto* runtime = runtime_actor->Impl();
+  if (runtime != nullptr) {
+    runtime->TryToDestroy();
+  }
   runtime_actor->Act([instance_id](auto& runtime) {
     runtime = nullptr;
     tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);

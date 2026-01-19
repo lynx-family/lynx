@@ -9,7 +9,6 @@
 
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/shared_data/lynx_white_board.h"
 

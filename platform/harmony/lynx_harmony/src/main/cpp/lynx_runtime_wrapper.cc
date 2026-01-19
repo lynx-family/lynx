@@ -16,8 +16,7 @@
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
-#include "core/shell/module_delegate_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 
 namespace lynx {
 namespace harmony {
@@ -159,20 +158,21 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
     module_manager_->initBindingPtr(
         module_manager_,
         std::make_shared<shell::ModuleDelegateImpl>(actor, facade_actor));
-    runtime_proxy_ = std::make_shared<shell::LynxRuntimeProxyImpl>(actor);
+    runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
     module_manager_->runtime_proxy = runtime_proxy_;
   };
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;
 
   auto runtime_flags =
-      runtime::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
+      shell::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
 
-  runtime_standalone_ = lynx::shell::RuntimeStandalone::InitRuntimeStandalone(
-      group_name, group_id, std::move(native_facade_runtime),
-      std::move(inspector_observer), resource_loader, module_manager_,
-      bundle_creator, white_board, on_runtime_actor_created,
-      std::move(preload_js_paths), bytecode_source_url, runtime_flags,
-      &global_props);
+  runtime_standalone_ =
+      lynx::shell::BTSRuntimeStandalone::InitRuntimeStandalone(
+          group_name, group_id, std::move(native_facade_runtime),
+          std::move(inspector_observer), resource_loader, module_manager_,
+          bundle_creator, white_board, on_runtime_actor_created,
+          std::move(preload_js_paths), bytecode_source_url, runtime_flags,
+          &global_props);
 }
 
 LynxRuntimeWrapper::~LynxRuntimeWrapper() { DestroyRuntime(); }

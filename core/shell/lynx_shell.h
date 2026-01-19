@@ -25,7 +25,6 @@
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/services/performance/performance_mediator.h"
@@ -39,6 +38,7 @@
 #include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/native_facade.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
 #include "core/shell/tasm_mediator.h"
 #include "core/shell/tasm_operation_queue.h"
 
@@ -85,8 +85,7 @@ class LynxShell {
       const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
       const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
           native_module_manager,
-      const std::function<
-          void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
+      const std::function<void(const std::shared_ptr<LynxActor<BTSRuntime>>&)>&
           on_runtime_actor_created,
       std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
       const std::string& bytecode_source_url,
@@ -102,7 +101,7 @@ class LynxShell {
   void StartJsRuntime();
 
   static void TriggerDestroyRuntime(
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor,
+      const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor,
       std::string js_group_thread_name);
 
   // TODO(heshan): will be deleted after ios platform ready
@@ -273,7 +272,7 @@ class LynxShell {
     return facade_actor_;
   }
 
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> GetRuntimeActor() {
+  std::shared_ptr<LynxActor<BTSRuntime>> GetRuntimeActor() {
     return runtime_actor_;
   }
 
@@ -380,8 +379,7 @@ class LynxShell {
 
   std::shared_ptr<ListEngineProxy> list_engine_proxy_;
 
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>>
-      runtime_actor_;  // on JS runner
+  std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;  // on JS runner
   std::shared_ptr<LynxActor<tasm::LayoutContext>>
       layout_actor_;  // on Layout runner
 
@@ -406,8 +404,7 @@ class LynxShell {
   LayoutMediator* layout_mediator_{nullptr};                        // NOT OWNED
   tasm::performance::PerformanceMediator* perf_mediator_{nullptr};  // NOT OWNED
 
-  std::function<void(std::unique_ptr<runtime::LynxRuntime>&)>
-      start_js_runtime_task_;
+  std::function<void(std::unique_ptr<BTSRuntime>&)> start_js_runtime_task_;
 
   // A SSR page will be rendered when LoadSSRData is called.
   // A ssr page will be further hydrated when a load template is called.

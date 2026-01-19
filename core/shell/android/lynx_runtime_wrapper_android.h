@@ -12,7 +12,7 @@
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/shell/native_facade.h"
 #include "core/shell/native_facade_empty_implementation.h"
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 
 namespace lynx {
 namespace shell {
@@ -34,7 +34,7 @@ class NativeRuntimeFacadeAndroid : public NativeFacadeEmptyImpl {
 class LynxRuntimeWrapperAndroid {
  public:
   explicit LynxRuntimeWrapperAndroid(
-      std::unique_ptr<RuntimeStandalone> runtime_standalone)
+      std::unique_ptr<BTSRuntimeStandalone> runtime_standalone)
       : runtime_standalone_(std::move(runtime_standalone)) {}
 
   ~LynxRuntimeWrapperAndroid() = default;
@@ -44,10 +44,10 @@ class LynxRuntimeWrapperAndroid {
   LynxRuntimeWrapperAndroid(LynxRuntimeWrapperAndroid&& facade) = delete;
   LynxRuntimeWrapperAndroid& operator=(LynxRuntimeWrapperAndroid&&) = delete;
 
-  RuntimeStandalone& RuntimeStandalone() { return *runtime_standalone_; }
+  BTSRuntimeStandalone& BTSRuntimeStandalone() { return *runtime_standalone_; }
 
  private:
-  std::unique_ptr<shell::RuntimeStandalone> runtime_standalone_;
+  std::unique_ptr<shell::BTSRuntimeStandalone> runtime_standalone_;
 };
 
 }  // namespace shell

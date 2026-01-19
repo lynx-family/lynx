@@ -34,8 +34,6 @@ shell_shared_sources = [
   "lynx_engine_wrapper.h",
   "lynx_layout_proxy_impl.cc",
   "lynx_layout_proxy_impl.h",
-  "lynx_runtime_proxy_impl.cc",
-  "lynx_runtime_proxy_impl.h",
   "lynx_shell.cc",
   "lynx_shell.h",
   "lynx_shell_builder.cc",
@@ -48,10 +46,14 @@ shell_shared_sources = [
   "native_facade_empty_implementation.h",
   "perf_controller_proxy_impl.cc",
   "perf_controller_proxy_impl.h",
-  "runtime_mediator.cc",
-  "runtime_mediator.h",
-  "runtime_standalone_helper.cc",
-  "runtime_standalone_helper.h",
+  "runtime/bts/bts_runtime.cc",
+  "runtime/bts/bts_runtime.h",
+  "runtime/bts/bts_runtime_mediator.cc",
+  "runtime/bts/bts_runtime_mediator.h",
+  "runtime/bts/bts_runtime_standalone_helper.cc",
+  "runtime/bts/bts_runtime_standalone_helper.h",
+  "runtime/bts/lynx_bts_runtime_proxy_impl.cc",
+  "runtime/bts/lynx_bts_runtime_proxy_impl.h",
   "tasm_mediator.cc",
   "tasm_mediator.h",
   "tasm_operation_queue.cc",
@@ -65,13 +67,13 @@ shell_shared_sources = [
 
 if (!enable_unittests) {
   shell_shared_sources += [
-    "module_delegate_impl.cc",
-    "module_delegate_impl.h",
+    "runtime/common/module_delegate_impl.cc",
+    "runtime/common/module_delegate_impl.h",
   ]
 } else {
   shell_shared_sources += [
-    "module_delegate_impl.h",
-    "module_delegate_mock.cc",
+    "runtime/common/module_delegate_impl.h",
+    "runtime/common/module_delegate_mock.cc",
   ]
 }
 

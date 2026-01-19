@@ -51,8 +51,8 @@
 #include "core/shell/ios/native_facade_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
 #include "core/shell/lynx_shell_builder.h"
-#include "core/shell/module_delegate_impl.h"
 #include "core/shell/perf_controller_proxy_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 
 @implementation LynxTemplateRender (Helper)
 
@@ -246,7 +246,7 @@
 
   // Init Runtime
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_RUNTIME);
-  auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
+  auto runtime_flags = lynx::shell::CalcRuntimeFlags(
       false, _runtimeOptions.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs,
       _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode);
   shell_->InitRuntime([[LynxGroup groupNameForLynxGroupOrDefault:_group] UTF8String],

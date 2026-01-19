@@ -146,7 +146,7 @@ LynxShellBuilder& LynxShellBuilder::SetLynxEngineWrapper(
 }
 
 LynxShellBuilder& LynxShellBuilder::SetRuntimeActor(
-    const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor) {
+    const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor) {
   this->runtime_actor_ = runtime_actor;
   return *this;
 }

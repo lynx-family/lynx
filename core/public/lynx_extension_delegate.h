@@ -18,10 +18,8 @@ namespace lynx {
 namespace shell {
 template <typename T>
 class LynxActor;
-}
-namespace runtime {
-class LynxRuntime;
-}
+class BTSRuntime;
+}  // namespace shell
 
 namespace pub {
 
@@ -30,7 +28,7 @@ class LynxExtensionDelegate {
   virtual ~LynxExtensionDelegate() = default;
   virtual void OnDevicePixelRatioChanged(float device_pixel_ratio){};
   virtual void SetRuntimeActor(
-      std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>> actor) = 0;
+      std::shared_ptr<shell::LynxActor<shell::BTSRuntime>> actor) = 0;
 };
 
 }  // namespace pub

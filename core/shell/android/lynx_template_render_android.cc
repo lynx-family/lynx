@@ -27,11 +27,11 @@
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
-#include "core/shell/module_delegate_impl.h"
 #include "core/shell/perf_controller_proxy_impl.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxTemplateRender_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxTemplateRender_register_jni.h"
 
@@ -294,7 +294,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
   shell_option.instance_id_ =
       runtime_wrapper == nullptr
           ? -1  // {kUnknownInstanceId};
-          : runtime_wrapper->RuntimeStandalone().GetRuntimeId();
+          : runtime_wrapper->BTSRuntimeStandalone().GetRuntimeId();
   shell_option.page_options_.SetInstanceID(shell_option.instance_id_);
   shell_option.page_options_.SetLongTaskMonitorDisabled(
       long_task_monitor_disabled);
@@ -338,10 +338,10 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
           .SetLynxEngineWrapper(engine_wrapper)
           .SetRuntimeActor(
               (runtime_wrapper != nullptr)
-                  ? runtime_wrapper->RuntimeStandalone().GetRuntimeActor()
+                  ? runtime_wrapper->BTSRuntimeStandalone().GetRuntimeActor()
                   : nullptr)
           .SetPerfControllerActor((runtime_wrapper != nullptr)
-                                      ? runtime_wrapper->RuntimeStandalone()
+                                      ? runtime_wrapper->BTSRuntimeStandalone()
                                             .GetPerfControllerActor()
                                       : nullptr)
           .SetPerformanceControllerPlatform(
@@ -443,7 +443,7 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
                          jlong uiDelegatePtr) {
   auto shell = reinterpret_cast<LynxShell*>(ptr);
   auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>(uiDelegatePtr);
-  auto runtime_proxy = std::make_shared<lynx::shell::LynxRuntimeProxyImpl>(
+  auto runtime_proxy = std::make_shared<lynx::shell::LynxBTSRuntimeProxyImpl>(
       shell->GetRuntimeActor());
   auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(
       shell->GetEngineActor());

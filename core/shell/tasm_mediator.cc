@@ -21,7 +21,7 @@
 #include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_actor_specialization.h"
-#include "core/shell/runtime_mediator.h"
+#include "core/shell/runtime/bts/bts_runtime_mediator.h"
 
 namespace lynx {
 namespace shell {

@@ -12,8 +12,8 @@
 #include "core/shell/native_facade.h"
 
 namespace lynx {
-namespace runtime {
-class LynxRuntime;
+namespace shell {
+class BTSRuntime;
 }
 namespace tasm {
 
@@ -39,7 +39,7 @@ class WhiteBoardRuntimeDelegate : public WhiteBoardDelegate {
       override;
 
   void SetRuntimeActor(
-      const std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>>&
+      const std::shared_ptr<shell::LynxActor<shell::BTSRuntime>>&
           runtime_actor) {
     runtime_actor_ = runtime_actor;
   }
@@ -58,8 +58,7 @@ class WhiteBoardRuntimeDelegate : public WhiteBoardDelegate {
   WhiteBoardRuntimeDelegate& operator=(WhiteBoardRuntimeDelegate&&) = default;
 
  private:
-  std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>> runtime_actor_{
-      nullptr};
+  std::shared_ptr<shell::LynxActor<shell::BTSRuntime>> runtime_actor_{nullptr};
 
   // will always forwards to LynxBackgroundRuntime on platform-level,
   // will always run on JS thread

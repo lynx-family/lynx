@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include "core/shell/module_delegate_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 
 namespace lynx {
 namespace shell {

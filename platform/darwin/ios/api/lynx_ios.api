@@ -462,7 +462,7 @@ public class LynxBackgroundRuntime : NSObject {
   public void LynxBackgroundRuntime::transitionToFullRuntime();
   public std::weak_ptr< lynx::piper::ModuleFactoryDarwin > LynxBackgroundRuntime()::moduleFactoryPtr();
   public LynxBackgroundRuntimeOptions * LynxBackgroundRuntime()::options();
-  public std::shared_ptr< lynx::shell::LynxActor< lynx::runtime::LynxRuntime > > LynxBackgroundRuntime()::runtimeActor();
+  public std::shared_ptr< lynx::shell::LynxActor< lynx::shell::BTSRuntime > > LynxBackgroundRuntime()::runtimeActor();
   public std::shared_ptr< lynx::shell::LynxActor< lynx::tasm::performance::PerformanceController > > LynxBackgroundRuntime()::perfControllerActor();
   public LynxDevtool * LynxBackgroundRuntime()::devtool();
   public BOOL LynxBackgroundRuntime()::attachToLynxView();

@@ -15,11 +15,11 @@
 #include "base/include/lynx_actor.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/runtime/common/bindings/event/message_event.h"
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
 #include "core/shell/tasm_platform_invoker.h"
 
 namespace lynx {
@@ -47,8 +47,7 @@ class TasmMediator : public LynxEngine::Delegate {
 
   ~TasmMediator() override;
 
-  void SetRuntimeActor(
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor) {
+  void SetRuntimeActor(const std::shared_ptr<LynxActor<BTSRuntime>>& actor) {
     runtime_actor_ = actor;
   }
 
@@ -268,7 +267,7 @@ class TasmMediator : public LynxEngine::Delegate {
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;
 
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
   std::shared_ptr<LynxActor<tasm::LayoutContext>> layout_actor_;
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>

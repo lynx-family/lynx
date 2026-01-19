@@ -26,11 +26,11 @@
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
-#include "core/shell/module_delegate_impl.h"
 #include "core/shell/perf_controller_proxy_impl.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
+#include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/system_font_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
@@ -199,12 +199,12 @@ void LynxTemplateRenderer::SetUpLynxShell(
       auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
           shell_->GetRuntimeActor(), shell_->GetFacadeActor());
       module_manager_->initBindingPtr(module_manager_, module_delegate);
-      runtime_proxy_ = std::make_shared<shell::LynxRuntimeProxyImpl>(actor);
+      runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
       module_manager_->runtime_proxy = runtime_proxy_;
     };
 
     auto runtime_flags =
-        runtime::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
+        shell::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
     shell_->InitRuntime(group_id, resource_loader_, module_manager_,
                         std::move(on_runtime_actor_created),
                         std::move(preload_js_paths), runtime_flags,

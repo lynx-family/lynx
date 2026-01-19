@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/shell/lynx_runtime_proxy_impl.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 
 #include <string>
 #include <utility>
@@ -12,28 +12,28 @@
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
-#include "core/shell/runtime_mediator.h"
+#include "core/shell/runtime/bts/bts_runtime_mediator.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace shell {
 
-void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
-                                          std::string method_id,
-                                          std::unique_ptr<pub::Value> params) {
+void LynxBTSRuntimeProxyImpl::CallJSFunction(
+    std::string module_id, std::string method_id,
+    std::unique_ptr<pub::Value> params) {
   CallJSFunction(module_id, method_id, [params = std::move(params)]() mutable {
     return std::move(params);
   });
 }
 
-void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(
+void LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(
     int32_t callback_id, std::unique_ptr<pub::Value> params) {
   CallJSApiCallbackWithValue(
       callback_id,
       [params = std::move(params)]() mutable { return std::move(params); });
 }
 
-void LynxRuntimeProxyImpl::CallJSIntersectionObserver(
+void LynxBTSRuntimeProxyImpl::CallJSIntersectionObserver(
     int32_t observer_id, int32_t callback_id,
     std::unique_ptr<pub::Value> params) {
   CallJSIntersectionObserver(
@@ -41,9 +41,9 @@ void LynxRuntimeProxyImpl::CallJSIntersectionObserver(
       [params = std::move(params)]() mutable { return std::move(params); });
 }
 
-void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
-                                          std::string method_id,
-                                          ParamsGetter getter) {
+void LynxBTSRuntimeProxyImpl::CallJSFunction(std::string module_id,
+                                             std::string method_id,
+                                             ParamsGetter getter) {
   if (!actor_) {
     return;
   }
@@ -159,8 +159,8 @@ void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
   });
 }
 
-void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
-                                                      ParamsGetter getter) {
+void LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
+                                                         ParamsGetter getter) {
   if (!actor_) {
     return;
   }
@@ -192,9 +192,9 @@ void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
   });
 }
 
-void LynxRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
-                                                      int32_t callback_id,
-                                                      ParamsGetter getter) {
+void LynxBTSRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
+                                                         int32_t callback_id,
+                                                         ParamsGetter getter) {
   if (!actor_) {
     return;
   }
@@ -241,9 +241,9 @@ void LynxRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
   });
 }
 
-void LynxRuntimeProxyImpl::EvaluateScript(const std::string& url,
-                                          std::string script,
-                                          int32_t callback_id) {
+void LynxBTSRuntimeProxyImpl::EvaluateScript(const std::string& url,
+                                             std::string script,
+                                             int32_t callback_id) {
   if (!actor_) {
     return;
   }
@@ -270,7 +270,7 @@ void LynxRuntimeProxyImpl::EvaluateScript(const std::string& url,
   });
 }
 
-void LynxRuntimeProxyImpl::RejectDynamicComponentLoad(
+void LynxBTSRuntimeProxyImpl::RejectDynamicComponentLoad(
     const std::string& url, int32_t callback_id, int32_t err_code,
     const std::string& err_msg) {
   if (!actor_) {
@@ -283,7 +283,7 @@ void LynxRuntimeProxyImpl::RejectDynamicComponentLoad(
   });
 }
 
-void LynxRuntimeProxyImpl::AddLifecycleListener(
+void LynxBTSRuntimeProxyImpl::AddLifecycleListener(
     std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate) {
   [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ADD_LIFE_CYCLE_LISTENER_PROXY,

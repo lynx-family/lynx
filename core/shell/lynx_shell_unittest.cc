@@ -56,7 +56,7 @@ class LynxShellTest : public ::testing::Test {
     shell_->facade_actor_->runner_ = shell_->runners_.GetUITaskRunner();
     shell_->engine_actor_->runner_ = shell_->runners_.GetTASMTaskRunner();
     shell_->layout_actor_->runner_ = shell_->runners_.GetLayoutTaskRunner();
-    shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+    shell_->runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
         nullptr, shell_->runners_.GetJSTaskRunner());
     tasm_mediator_ = shell_->tasm_mediator_;
     arwe_ = facade_->arwe;

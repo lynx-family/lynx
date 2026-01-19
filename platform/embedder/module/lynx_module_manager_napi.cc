@@ -5,7 +5,7 @@
 #include "platform/embedder/module/lynx_module_manager_napi.h"
 
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 
 namespace lynx {
 namespace embedder {
@@ -46,7 +46,7 @@ LynxModuleManagerNAPI::LynxModuleManagerNAPI(
 void LynxModuleManagerNAPI::SetupRuntimeLifecycleListener(
     std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy) {
   auto runtime_proxy_impl =
-      static_cast<shell::LynxRuntimeProxyImpl*>(runtime_proxy.get());
+      static_cast<shell::LynxBTSRuntimeProxyImpl*>(runtime_proxy.get());
   if (!runtime_proxy_impl) {
     return;
   }

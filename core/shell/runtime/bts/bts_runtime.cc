@@ -1,7 +1,7 @@
 // Copyright 2017 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/js/lynx_runtime.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
 
 #include <memory>
 
@@ -47,7 +47,38 @@
 
 // BINARY_KEEP_SOURCE_FILE
 namespace lynx {
-namespace runtime {
+namespace shell {
+
+void SetRuntimeFlags(uint32_t& flags, bool enable, LynxRuntimeFlags flag) {
+  if (enable) {
+    flags |= flag;
+  } else {
+    flags &= ~flag;
+  }
+}
+
+uint32_t CalcRuntimeFlags(bool force_reload_core_js, bool use_quickjs_engine,
+                          bool pending_js_task, bool enable_user_bytecode,
+                          bool* enable_js_group_thread,
+                          bool* pending_core_js_load) {
+  uint32_t flags = LynxRuntimeFlags::INIT;
+  SetRuntimeFlags(flags, force_reload_core_js,
+                  LynxRuntimeFlags::FORCE_RELOAD_CORE_JS);
+  SetRuntimeFlags(flags, use_quickjs_engine,
+                  LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
+  SetRuntimeFlags(flags, pending_js_task, LynxRuntimeFlags::PENDING_JS_TASK);
+  SetRuntimeFlags(flags, enable_user_bytecode,
+                  LynxRuntimeFlags::ENABLE_USER_BYTECODE);
+  if (enable_js_group_thread != nullptr) {
+    SetRuntimeFlags(flags, *enable_js_group_thread,
+                    LynxRuntimeFlags::ENABLE_JS_GROUP_THREAD);
+  }
+  if (pending_core_js_load != nullptr) {
+    SetRuntimeFlags(flags, *pending_core_js_load,
+                    LynxRuntimeFlags::PENDING_CORE_JS_LOAD);
+  }
+  return flags;
+}
 
 namespace {
 
@@ -55,22 +86,14 @@ constexpr uint32_t LynxRuntimeFlagsMask = 0xFFFFFFFF;
 
 class JSIExceptionHandlerImpl : public piper::JSIExceptionHandler {
  public:
-  explicit JSIExceptionHandlerImpl(LynxRuntime* runtime) : runtime_(runtime) {}
+  explicit JSIExceptionHandlerImpl(BTSRuntime* runtime) : runtime_(runtime) {}
   ~JSIExceptionHandlerImpl() override = default;
 
   void onJSIException(const piper::JSIException& exception) override {
-    // JSI exception from native should be sent to JSSDK formatting.
-    // If there has any JSI exception in this process, those exception will be
-    // sent to here too, then sent to JSSDK, then more exception will be
-    // thrown... finally you will get endless loop. So we use this flag to avoid
-    // endless loop.
     if (is_handling_exception_) {
       return;
     }
-    // TODO: Use scoped flag to optimize here to ensure this flag can be reset
-    // even if exception thrown during this period.
     is_handling_exception_ = true;
-    // avoid call by global runtime and caush dangling pointer...
     if (!destroyed_) {
       runtime_->OnJSIException(exception);
     }
@@ -83,58 +106,25 @@ class JSIExceptionHandlerImpl : public piper::JSIExceptionHandler {
   bool destroyed_ = false;
   bool is_handling_exception_ = false;
 
-  LynxRuntime* const runtime_;
+  BTSRuntime* const runtime_;
 };
 
 }  // namespace
 
-thread_local std::string* LynxRuntime::js_core_source_ = nullptr;
+thread_local std::string* BTSRuntime::js_core_source_ = nullptr;
 
-void SetRuntimeFlags(uint32_t& flags, bool enable,
-                     lynx::runtime::LynxRuntimeFlags flag) {
-  if (enable) {
-    flags |= flag;
-  } else {
-    flags &= ~flag;
-  }
-}
-
-uint32_t CalcRuntimeFlags(bool force_reload_core_js, bool use_quickjs_engine,
-                          bool pending_js_task, bool enable_user_bytecode,
-                          bool* enable_js_group_thread,
-                          bool* pending_core_js_load) {
-  uint32_t flags = lynx::runtime::LynxRuntimeFlags::INIT;
-  SetRuntimeFlags(flags, force_reload_core_js,
-                  lynx::runtime::LynxRuntimeFlags::FORCE_RELOAD_CORE_JS);
-  SetRuntimeFlags(
-      flags, use_quickjs_engine,
-      lynx::runtime::LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
-  SetRuntimeFlags(flags, pending_js_task,
-                  lynx::runtime::LynxRuntimeFlags::PENDING_JS_TASK);
-  SetRuntimeFlags(flags, enable_user_bytecode,
-                  lynx::runtime::LynxRuntimeFlags::ENABLE_USER_BYTECODE);
-  if (enable_js_group_thread != nullptr) {
-    SetRuntimeFlags(flags, *enable_js_group_thread,
-                    lynx::runtime::LynxRuntimeFlags::ENABLE_JS_GROUP_THREAD);
-  }
-  if (pending_core_js_load != nullptr) {
-    SetRuntimeFlags(flags, *pending_core_js_load,
-                    lynx::runtime::LynxRuntimeFlags::PENDING_CORE_JS_LOAD);
-  }
-  return flags;
-}
-
-LynxRuntime::LynxRuntime(const std::string& group_id, int32_t instance_id,
-                         std::unique_ptr<TemplateDelegate> delegate,
-                         const std::string& bytecode_source_url,
-                         uint32_t runtime_flags,
-                         const tasm::PageOptions& page_options)
+BTSRuntime::BTSRuntime(const std::string& group_id, int32_t instance_id,
+                       std::unique_ptr<runtime::TemplateDelegate> delegate,
+                       const std::string& bytecode_source_url,
+                       uint32_t runtime_flags,
+                       const tasm::PageOptions& page_options)
     : group_id_(group_id),
       instance_id_(instance_id),
       delegate_(std::move(delegate)),
       bytecode_source_url_(bytecode_source_url),
       runtime_flags_(runtime_flags & LynxRuntimeFlagsMask),
-      lifecycle_observer_(std::make_unique<RuntimeLifecycleObserverImpl>()),
+      lifecycle_observer_(
+          std::make_unique<runtime::RuntimeLifecycleObserverImpl>()),
       page_options_(page_options) {
   cached_tasks_.reserve(8);
 #if OS_IOS
@@ -142,9 +132,9 @@ LynxRuntime::LynxRuntime(const std::string& group_id, int32_t instance_id,
 #endif
 }
 
-LynxRuntime::~LynxRuntime() { Destroy(); }
+BTSRuntime::~BTSRuntime() { Destroy(); }
 
-void LynxRuntime::Init(
+void BTSRuntime::Init(
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
         native_module_manager,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
@@ -152,7 +142,8 @@ void LynxRuntime::Init(
   LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
                                      << GetRuntimeId() << " this:" << this);
 
-  tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get());
+  tasm::TimingCollector::Scope<runtime::TemplateDelegate> scope(
+      delegate_.get());
   lifecycle_observer_->OnRuntimeInit(GetRuntimeId());
   // Create JSI ModuleManager
   std::shared_ptr<lynx::piper::LynxModuleManager> module_manager;
@@ -196,8 +187,8 @@ void LynxRuntime::Init(
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, CREATE_AND_LOAD_APP);
   app_ = js_executor_->createNativeAppInstance(
-      GetRuntimeId(), delegate_.get(), std::make_unique<LynxApiHandler>(),
-      page_options_);
+      GetRuntimeId(), delegate_.get(),
+      std::make_unique<runtime::LynxApiHandler>(), page_options_);
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
 #endif
@@ -209,8 +200,8 @@ void LynxRuntime::Init(
   }
 }
 
-void LynxRuntime::InitExecutor(bool is_full_runtime,
-                               std::vector<std::string> preload_js_paths) {
+void BTSRuntime::InitExecutor(bool is_full_runtime,
+                              std::vector<std::string> preload_js_paths) {
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreStart);
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, LYNX_JS_LOAD_CORE);
   auto preload_js_sources_getter =
@@ -240,7 +231,7 @@ void LynxRuntime::InitExecutor(bool is_full_runtime,
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);
 }
 
-void LynxRuntime::TransitionToFullRuntime() {
+void BTSRuntime::TransitionToFullRuntime() {
   if ((runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) == 0) {
     return;
   }
@@ -264,14 +255,14 @@ void LynxRuntime::TransitionToFullRuntime() {
   UpdateState(State::kJsCoreLoaded);
 }
 
-void LynxRuntime::SetJsBundleHolder(
+void BTSRuntime::SetJsBundleHolder(
     const std::weak_ptr<piper::JsBundleHolder>& weak_js_bundle_holder) {
   if (app_) {
     app_->SetJsBundleHolder(weak_js_bundle_holder);
   }
 }
 
-void LynxRuntime::ReadPreloadJSSource(
+void BTSRuntime::ReadPreloadJSSource(
     std::vector<std::string> preload_js_paths,
     std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret) {
   for (auto&& path : preload_js_paths) {
@@ -283,7 +274,7 @@ void LynxRuntime::ReadPreloadJSSource(
   }
 }
 
-void LynxRuntime::ReadCoreJS(
+void BTSRuntime::ReadCoreJS(
     std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret) {
   if (!js_core_source_ || js_core_source_->length() <= 0 ||
       (runtime_flags_ & LynxRuntimeFlags::FORCE_RELOAD_CORE_JS)) {
@@ -293,11 +284,11 @@ void LynxRuntime::ReadCoreJS(
     DCHECK(js_core_source_->length() > 0);
     delegate_->OnCoreJSUpdated(*js_core_source_);
   }
-  ret.emplace_back(kLynxCoreJSName,
+  ret.emplace_back(runtime::kLynxCoreJSName,
                    std::make_shared<piper::StringRefBuffer>(*js_core_source_));
 }
 
-void LynxRuntime::UpdateState(State state) {
+void BTSRuntime::UpdateState(State state) {
   state_ = state;
   switch (state_) {
     case State::kJsCoreLoaded: {
@@ -322,7 +313,7 @@ void LynxRuntime::UpdateState(State state) {
 }
 
 #if ENABLE_NAPI_BINDING
-void LynxRuntime::PrepareNapiEnvironment() {
+void BTSRuntime::PrepareNapiEnvironment() {
   napi_environment_ = std::make_unique<piper::NapiEnvironment>(
       std::make_unique<piper::NapiLoaderJS>(
           std::to_string(GetRuntimeId()),
@@ -348,7 +339,7 @@ void LynxRuntime::PrepareNapiEnvironment() {
 // multiple pages sharing a js context). These disabled APIs are not essential
 // for users to implement custom modules. Therefore, users can still provide
 // complete native capabilities to JS in their custom modules.
-void LynxRuntime::PrepareRestrictedNapiEnvironment() {
+void BTSRuntime::PrepareRestrictedNapiEnvironment() {
   // Create a restricted environment with an dummy delegate.
   napi_restricted_environment_ = std::make_unique<piper::NapiEnvironment>(
       std::make_unique<piper::NapiEnvironment::Delegate>());
@@ -362,7 +353,7 @@ void LynxRuntime::PrepareRestrictedNapiEnvironment() {
   }
 }
 
-void LynxRuntime::RegisterNapiModules() {
+void BTSRuntime::RegisterNapiModules() {
   LOGI("napi registering module");
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
               RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH);
@@ -375,7 +366,7 @@ void LynxRuntime::RegisterNapiModules() {
   }
 }
 
-void LynxRuntime::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
+void BTSRuntime::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
   auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
   if (factory) {
     factory->OnRuntimeReady(
@@ -386,9 +377,9 @@ void LynxRuntime::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
 
 #endif
 
-void LynxRuntime::call(base::closure func) { QueueOrExecTask(std::move(func)); }
+void BTSRuntime::call(base::closure func) { QueueOrExecTask(std::move(func)); }
 
-void LynxRuntime::TryLoadSsrScript(const std::string& ssr_script) {
+void BTSRuntime::TryLoadSsrScript(const std::string& ssr_script) {
   if (ssr_script.empty() &&
       (state_ != State::kJsCoreLoaded && state_ != State::kNotStarted &&
        state_ != State::kSsrRuntimeReady)) {
@@ -406,7 +397,7 @@ void LynxRuntime::TryLoadSsrScript(const std::string& ssr_script) {
   }
 }
 
-void LynxRuntime::OnSsrRuntimeReady() {
+void BTSRuntime::OnSsrRuntimeReady() {
   if (state_ != State::kSsrRuntimeReady) {
     return;
   }
@@ -417,9 +408,9 @@ void LynxRuntime::OnSsrRuntimeReady() {
   ssr_global_event_cached_tasks_.clear();
 }
 
-void LynxRuntime::CallJSFunction(const std::string& module_id,
-                                 const std::string& method_id,
-                                 const lepus::Value& arguments) {
+void BTSRuntime::CallJSFunction(const std::string& module_id,
+                                const std::string& method_id,
+                                const lepus::Value& arguments) {
   LynxFatal(arguments.IsArrayOrJSArray(), error::E_BTS_RUNTIME_ERROR,
             "the arguments should be array when CallJSFunction!");
   QueueOrExecTask([this, module_id, method_id, arguments]() {
@@ -440,7 +431,7 @@ void LynxRuntime::CallJSFunction(const std::string& module_id,
   });
 }
 
-void LynxRuntime::CallJSCallback(
+void BTSRuntime::CallJSCallback(
     const std::shared_ptr<piper::ModuleCallback>& callback,
     int64_t id_to_delete) {
   uint64_t callback_thread_switch_end = base::CurrentSystemTimeMilliseconds();
@@ -475,13 +466,13 @@ void LynxRuntime::CallJSCallback(
   }
 }
 
-int64_t LynxRuntime::RegisterJSCallbackFunction(piper::Function func) {
+int64_t BTSRuntime::RegisterJSCallbackFunction(piper::Function func) {
   int64_t index = ++callback_id_index_;
   callbacks_.emplace(index, std::move(func));
   return index;
 }
 
-void LynxRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
+void BTSRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -499,9 +490,9 @@ void LynxRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
   app_->InvokeApiCallBack(std::move(callback));
 }
 
-void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
-                                             const lepus::Value& value,
-                                             bool persist) {
+void BTSRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+                                            const lepus::Value& value,
+                                            bool persist) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -519,8 +510,8 @@ void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   app_->InvokeApiCallBackWithValue(std::move(callback), value, persist);
 }
 
-void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
-                                             piper::Value value) {
+void BTSRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+                                            piper::Value value) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -537,7 +528,7 @@ void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   app_->InvokeApiCallBackWithValue(std::move(callback), std::move(value));
 }
 
-void LynxRuntime::EraseJSApiCallback(piper::ApiCallBack callback) {
+void BTSRuntime::EraseJSApiCallback(piper::ApiCallBack callback) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -549,9 +540,9 @@ void LynxRuntime::EraseJSApiCallback(piper::ApiCallBack callback) {
   app_->EraseApiCallBack(std::move(callback));
 }
 
-void LynxRuntime::CallIntersectionObserver(int32_t observer_id,
-                                           int32_t callback_id,
-                                           piper::Value data) {
+void BTSRuntime::CallIntersectionObserver(int32_t observer_id,
+                                          int32_t callback_id,
+                                          piper::Value data) {
   QueueOrExecTask(
       [this, observer_id, callback_id, data = std::move(data)]() mutable {
         app_->OnIntersectionObserverEvent(observer_id, callback_id,
@@ -559,9 +550,9 @@ void LynxRuntime::CallIntersectionObserver(int32_t observer_id,
       });
 }
 
-void LynxRuntime::CallFunction(const std::string& module_id,
-                               const std::string& method_id,
-                               const piper::Array& arguments) {
+void BTSRuntime::CallFunction(const std::string& module_id,
+                              const std::string& method_id,
+                              const piper::Array& arguments) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -589,17 +580,20 @@ void LynxRuntime::CallFunction(const std::string& module_id,
   auto native_context_proxy =
       app_->GetContextProxy(runtime::ContextProxy::Type::kNative);
   if (native_context_proxy != nullptr &&
-      native_context_proxy->HasEventListener(kMessageEventTypeGlobalEvent) &&
+      native_context_proxy->HasEventListener(
+          runtime::kMessageEventTypeGlobalEvent) &&
       module_id == "GlobalEventEmitter" && method_id == "emit") {
-    auto jsContextEvent = fml::MakeRefCounted<MessageEvent>(
-        kMessageEventTypeGlobalEvent, ContextProxy::Type::kNative,
-        ContextProxy::Type::kJSContext,
+    auto jsContextEvent = fml::MakeRefCounted<runtime::MessageEvent>(
+        runtime::kMessageEventTypeGlobalEvent,
+        runtime::ContextProxy::Type::kNative,
+        runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplPiper>(
             *js_runtime, piper::Value(*js_runtime, arguments)));
     native_context_proxy->DispatchEvent(std::move(jsContextEvent));
-    auto coreContextEvent = fml::MakeRefCounted<MessageEvent>(
-        kMessageEventTypeGlobalEvent, ContextProxy::Type::kNative,
-        ContextProxy::Type::kCoreContext,
+    auto coreContextEvent = fml::MakeRefCounted<runtime::MessageEvent>(
+        runtime::kMessageEventTypeGlobalEvent,
+        runtime::ContextProxy::Type::kNative,
+        runtime::ContextProxy::Type::kCoreContext,
         std::make_unique<pub::ValueImplLepus>(*app_->ParseJSValueToLepusValue(
             piper::Value(*js_runtime, std::move(arguments)), PAGE_GROUP_ID)));
     delegate_->DispatchMessageEvent(std::move(coreContextEvent));
@@ -608,12 +602,12 @@ void LynxRuntime::CallFunction(const std::string& module_id,
   app_->CallFunction(module_id, method_id, std::move(arguments));
 }
 
-void LynxRuntime::FlushJSBTiming(piper::NativeModuleInfo timing) {
+void BTSRuntime::FlushJSBTiming(piper::NativeModuleInfo timing) {
   delegate_->FlushJSBTiming(std::move(timing));
 }
 
-void LynxRuntime::ProcessGlobalEventForSsr(const std::string& name,
-                                           const lepus::Value& info) {
+void BTSRuntime::ProcessGlobalEventForSsr(const std::string& name,
+                                          const lepus::Value& info) {
   auto infoArray = lepus::CArray::Create();
   infoArray->emplace_back(lepus::Value::ShallowCopy(info));
   SendSsrGlobalEvent(name, lepus::Value(std::move(infoArray)));
@@ -624,8 +618,8 @@ void LynxRuntime::ProcessGlobalEventForSsr(const std::string& name,
   }
 }
 
-void LynxRuntime::SendSsrGlobalEvent(const std::string& name,
-                                     const lepus::Value& info) {
+void BTSRuntime::SendSsrGlobalEvent(const std::string& name,
+                                    const lepus::Value& info) {
   if (name.length() <= 0 || state_ == State::kDestroying ||
       state_ == State::kRuntimeReady) {
     return;
@@ -639,7 +633,7 @@ void LynxRuntime::SendSsrGlobalEvent(const std::string& name,
   }
 }
 
-void LynxRuntime::OnJSSourcePrepared(
+void BTSRuntime::OnJSSourcePrepared(
     tasm::TasmRuntimeBundle bundle, const lepus::Value& global_props,
     const std::string& page_name, tasm::PackageInstanceDSL dsl,
     tasm::PackageInstanceBundleModuleMode bundle_module_mode,
@@ -655,8 +649,8 @@ void LynxRuntime::OnJSSourcePrepared(
                pipeline_options, trace_flow_id]() mutable {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
         page_options_, tasm::timing::kLoadJSTask, url);
-    tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get(),
-                                                         pipeline_options);
+    tasm::TimingCollector::Scope<runtime::TemplateDelegate> scope(
+        delegate_.get(), pipeline_options);
     LOGI("lynx runtime loadApp, napi id:" << GetRuntimeId());
     template_url_ = url;
     // TODO(huzhanbo): This is needed by Lynx Network now, will be removed
@@ -688,7 +682,7 @@ void LynxRuntime::OnJSSourcePrepared(
     // bind icu for js env
     if (bundle.enable_bind_icu) {
 #if ENABLE_NAPI_BINDING
-      if (RuntimeManager::IsSingleJSContext(group_id_)) {
+      if (runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
         Napi::Env env = napi_environment_->proxy()->Env();
         tasm::I18n::Bind(
             reinterpret_cast<intptr_t>(static_cast<napi_env>(env)));
@@ -696,7 +690,7 @@ void LynxRuntime::OnJSSourcePrepared(
         if (tasm::LynxEnv::GetInstance().GetBoolEnv(
                 tasm::LynxEnv::Key::ENABLE_SHARE_CONTEXT_ICU, false)) {
           auto* wrapper =
-              RuntimeManager::Instance()->GetContextWrapper(group_id_);
+              runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
           if (wrapper) {
             auto napi_environment = wrapper->GetNapiEnvironment();
             if (napi_environment) {
@@ -726,7 +720,7 @@ void LynxRuntime::OnJSSourcePrepared(
   }
 }
 
-void LynxRuntime::TryToDestroy() {
+void BTSRuntime::TryToDestroy() {
   if (state_ == State::kNotStarted) {
     return;
   }
@@ -749,10 +743,11 @@ void LynxRuntime::TryToDestroy() {
         app_->GetContextProxy(runtime::ContextProxy::Type::kNative);
     if (native_context_proxy != nullptr &&
         native_context_proxy->HasEventListener(
-            kMessageEventTypeDestroyLifetime)) {
-      auto jsContextEvent = fml::MakeRefCounted<MessageEvent>(
-          kMessageEventTypeDestroyLifetime, ContextProxy::Type::kNative,
-          ContextProxy::Type::kJSContext,
+            runtime::kMessageEventTypeDestroyLifetime)) {
+      auto jsContextEvent = fml::MakeRefCounted<runtime::MessageEvent>(
+          runtime::kMessageEventTypeDestroyLifetime,
+          runtime::ContextProxy::Type::kNative,
+          runtime::ContextProxy::Type::kJSContext,
           std::make_unique<pub::ValueImplPiper>(
               *js_runtime,
               piper::Value(*js_runtime, piper::String::createFromUtf8(
@@ -776,7 +771,7 @@ void LynxRuntime::TryToDestroy() {
   callbacks_.clear();
 }
 
-void LynxRuntime::Destroy() {
+void BTSRuntime::Destroy() {
   LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
                                             << " this: " << this);
   if (state_ == State::kNotStarted) {
@@ -791,7 +786,7 @@ void LynxRuntime::Destroy() {
   js_executor_ = nullptr;
 }
 
-void LynxRuntime::DestroyAppAndNapi() {
+void BTSRuntime::DestroyAppAndNapi() {
   LOGI("LynxRuntime::DestroyAppAndNapi, runtime_id: " << GetRuntimeId()
                                                       << " this: " << this);
   // App destroy might invoke front-page's destroy, which could call a NAPI
@@ -817,12 +812,12 @@ void LynxRuntime::DestroyAppAndNapi() {
 #endif
 }
 
-void LynxRuntime::OnAppReload(
+void BTSRuntime::OnAppReload(
     tasm::TemplateData data,
     const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
   QueueOrExecTask([this, data = std::move(data), pipeline_options]() mutable {
-    tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get(),
-                                                         pipeline_options);
+    tasm::TimingCollector::Scope<runtime::TemplateDelegate> scope(
+        delegate_.get(), pipeline_options);
     // when reloadTemplate, we will use OnAppReload to mock
     // SETUP_LOAD_CORE_START & SETUP_LOAD_CORE_END timing.
     // we already have ReloadBundleEntry now, so we mark ReloadBackground here.
@@ -837,24 +832,24 @@ void LynxRuntime::OnAppReload(
   });
 }
 
-void LynxRuntime::EvaluateScript(const std::string& url, std::string script,
-                                 piper::ApiCallBack callback) {
+void BTSRuntime::EvaluateScript(const std::string& url, std::string script,
+                                piper::ApiCallBack callback) {
   QueueOrExecTask([this, url, script = std::move(script), callback]() mutable {
     app_->EvaluateScript(url, std::move(script), callback);
   });
 }
 
-void LynxRuntime::OnScriptLoaded(const std::string& url, std::string script,
-                                 std::string error,
-                                 piper::ApiCallBack callback) {
+void BTSRuntime::OnScriptLoaded(const std::string& url, std::string script,
+                                std::string error,
+                                piper::ApiCallBack callback) {
   QueueOrExecTask([this, url, script = std::move(script),
                    error = std::move(error), callback]() mutable {
     app_->OnScriptLoaded(url, std::move(script), std::move(error), callback);
   });
 }
 
-void LynxRuntime::EvaluateScriptStandalone(std::string url, std::string script,
-                                           uint64_t trace_flow_id) {
+void BTSRuntime::EvaluateScriptStandalone(std::string url, std::string script,
+                                          uint64_t trace_flow_id) {
   LOGI("EvaluateScriptStandalone, url: " << url);
   if (state_ != State::kJsCoreLoaded) {
     delegate_->OnErrorOccurred(base::LynxError(
@@ -880,18 +875,18 @@ void LynxRuntime::EvaluateScriptStandalone(std::string url, std::string script,
   delegate_->OnEvaluateJavaScriptEnd(url);
 }
 
-void LynxRuntime::I18nResourceChanged(const std::string& msg) {
+void BTSRuntime::I18nResourceChanged(const std::string& msg) {
   QueueOrExecTask([this, msg] { app_->I18nResourceChanged(msg); });
 }
 
-void LynxRuntime::NotifyJSUpdatePageData(uint64_t trace_flow_id) {
+void BTSRuntime::NotifyJSUpdatePageData(uint64_t trace_flow_id) {
   QueueOrExecTask([this, trace_flow_id]() mutable {
     app_->NotifyUpdatePageData(trace_flow_id);
   });
   return;
 }
 
-void LynxRuntime::InsertCallbackForDataUpdateFinishedOnRuntime(
+void BTSRuntime::InsertCallbackForDataUpdateFinishedOnRuntime(
     base::closure callback) {
   if (state_ == State::kDestroying) {
     return;
@@ -899,7 +894,7 @@ void LynxRuntime::InsertCallbackForDataUpdateFinishedOnRuntime(
   native_update_finished_callbacks_.emplace_back(std::move(callback));
 }
 
-void LynxRuntime::NotifyJSUpdateCardConfigData() {
+void BTSRuntime::NotifyJSUpdateCardConfigData() {
   if (state_ != State::kRuntimeReady) {
     return;
   }
@@ -907,7 +902,7 @@ void LynxRuntime::NotifyJSUpdateCardConfigData() {
   app_->NotifyUpdateCardConfigData();
 }
 
-void LynxRuntime::OnJsCoreLoaded() {
+void BTSRuntime::OnJsCoreLoaded() {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -917,7 +912,7 @@ void LynxRuntime::OnJsCoreLoaded() {
   js_core_state_tasks_.clear();
 }
 
-void LynxRuntime::OnRuntimeReady() {
+void BTSRuntime::OnRuntimeReady() {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -954,12 +949,12 @@ void LynxRuntime::OnRuntimeReady() {
 #endif
 }
 
-void LynxRuntime::AddEventListeners() {
+void BTSRuntime::AddEventListeners() {
   auto core_context_proxy =
       app_->GetContextProxy(runtime::ContextProxy::Type::kCoreContext);
   if (core_context_proxy != nullptr) {
     core_context_proxy->AddEventListener(
-        kMessageEventTypeOnAppEnterForeground,
+        runtime::kMessageEventTypeOnAppEnterForeground,
         std::make_unique<event::ClosureEventListener>(
             [this](lepus::Value args) {
               lifecycle_observer_->OnAppEnterForeground();
@@ -968,7 +963,7 @@ void LynxRuntime::AddEventListeners() {
 #endif  // OS_IOS
             }));
     core_context_proxy->AddEventListener(
-        kMessageEventTypeOnAppEnterBackground,
+        runtime::kMessageEventTypeOnAppEnterBackground,
         std::make_unique<event::ClosureEventListener>(
             [this](lepus::Value args) {
               lifecycle_observer_->OnAppEnterBackground();
@@ -983,7 +978,7 @@ void LynxRuntime::AddEventListeners() {
   }
 }
 
-void LynxRuntime::OnJSIException(const piper::JSIException& exception) {
+void BTSRuntime::OnJSIException(const piper::JSIException& exception) {
   if (state_ == State::kDestroying || !app_) {
     if (delegate_) {
       auto error = base::LynxError(
@@ -1002,23 +997,23 @@ void LynxRuntime::OnJSIException(const piper::JSIException& exception) {
 }
 
 // issue: #1510
-void LynxRuntime::OnModuleMethodInvoked(const std::string& module,
-                                        const std::string& method,
-                                        int32_t code) {
+void BTSRuntime::OnModuleMethodInvoked(const std::string& module,
+                                       const std::string& method,
+                                       int32_t code) {
   delegate_->OnModuleMethodInvoked(module, method, code);
 }
 
-std::shared_ptr<piper::Runtime> LynxRuntime::GetJSRuntime() {
+std::shared_ptr<piper::Runtime> BTSRuntime::GetJSRuntime() {
   return js_executor_ ? js_executor_->GetJSRuntime() : nullptr;
 }
 
-int64_t LynxRuntime::GenerateRuntimeId() {
+int64_t BTSRuntime::GenerateRuntimeId() {
   static std::atomic<int64_t> current_id_;
   return ++current_id_;
 }
 
-void LynxRuntime::SetEnableBytecode(bool enable,
-                                    const std::string& bytecode_source_url) {
+void BTSRuntime::SetEnableBytecode(bool enable,
+                                   const std::string& bytecode_source_url) {
   QueueOrExecAppTask([this, enable, bytecode_source_url]() {
     LOGI("LynxRuntime::SetEnableBytecode, enable: "
          << enable << " bytecode_source_url: " << bytecode_source_url);
@@ -1029,7 +1024,7 @@ void LynxRuntime::SetEnableBytecode(bool enable,
   });
 }
 
-void LynxRuntime::SetPageOptions(const tasm::PageOptions& page_options) {
+void BTSRuntime::SetPageOptions(const tasm::PageOptions& page_options) {
   page_options_ = page_options;
   auto app = app_;
   if (app) {
@@ -1037,7 +1032,7 @@ void LynxRuntime::SetPageOptions(const tasm::PageOptions& page_options) {
   }
 }
 
-void LynxRuntime::OnReceiveMessageEvent(
+void BTSRuntime::OnReceiveMessageEvent(
     fml::RefPtr<runtime::MessageEvent> event) {
   if (state_ == State::kDestroying) {
     return;
@@ -1055,14 +1050,14 @@ void LynxRuntime::OnReceiveMessageEvent(
   });
 }
 
-void LynxRuntime::OnSetPresetData(lepus::Value data) {
+void BTSRuntime::OnSetPresetData(lepus::Value data) {
   // We can safely access app_ here. `EvaluateScriptStandalone`
   // can only be used in LynxBackgroundRuntime which will
   // never use pending JS so the app_ is always created.
   app_->OnSetPresetData(std::move(data));
 }
 
-void LynxRuntime::OnGlobalPropsUpdated(const lepus::Value& props) {
+void BTSRuntime::OnGlobalPropsUpdated(const lepus::Value& props) {
   // If app is not started, set updated globalProps as init props to reduce
   // updating times
   if (state_ == State::kNotStarted) {
@@ -1077,28 +1072,28 @@ void LynxRuntime::OnGlobalPropsUpdated(const lepus::Value& props) {
   }
 }
 
-void LynxRuntime::OnComponentDecoded(tasm::TasmRuntimeBundle bundle) {
+void BTSRuntime::OnComponentDecoded(tasm::TasmRuntimeBundle bundle) {
   QueueOrExecTask([this, bundle = std::move(bundle)]() mutable {
     app_->OnComponentDecoded(std::move(bundle));
   });
 }
 
-void LynxRuntime::OnCardConfigDataChanged(const lepus::Value& data) {
+void BTSRuntime::OnCardConfigDataChanged(const lepus::Value& data) {
   QueueOrExecAppTask(
       [this, data]() mutable { app_->OnCardConfigDataChanged(data); });
 }
 
-bool LynxRuntime::OnReceiveMessageEventForSSR(
+bool BTSRuntime::OnReceiveMessageEventForSSR(
     const runtime::MessageEvent& event) {
   // TODO(liyanbo.monster): refactor state and this.
   // SSR state is different.
   auto args = pub::ValueUtils::ConvertValueToLepusValue(*event.message());
-  if (event.type() == kMessageEventTypeOnSsrScriptReady) {
+  if (event.type() == runtime::kMessageEventTypeOnSsrScriptReady) {
     TryLoadSsrScript(args.StdString());
     return true;
   }
   if (state_ == State::kSsrRuntimeReady &&
-      event.type() == kMessageEventTypeSendGlobalEvent) {
+      event.type() == runtime::kMessageEventTypeSendGlobalEvent) {
     if (args.IsArray() && args.Array()->size() == 2) {
       auto args_array = args.Array();
       const auto& name = args_array->get(0).StdString();
@@ -1116,7 +1111,7 @@ bool LynxRuntime::OnReceiveMessageEventForSSR(
   return false;
 }
 
-void LynxRuntime::QueueOrExecTask(base::closure&& task) {
+void BTSRuntime::QueueOrExecTask(base::closure&& task) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -1127,7 +1122,7 @@ void LynxRuntime::QueueOrExecTask(base::closure&& task) {
   }
 }
 
-void LynxRuntime::QueueOrExecAppTask(base::closure&& task) {
+void BTSRuntime::QueueOrExecAppTask(base::closure&& task) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -1138,13 +1133,14 @@ void LynxRuntime::QueueOrExecAppTask(base::closure&& task) {
   }
 }
 
-void LynxRuntime::AddLifecycleListener(
-    std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) {
+void BTSRuntime::AddLifecycleListener(
+    std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> listener) {
   if (listener &&
       listener->Type() ==
-          RuntimeLifecycleListenerDelegate::DelegateType::PART &&
-      !RuntimeManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper = RuntimeManager::Instance()->GetContextWrapper(group_id_);
+          runtime::RuntimeLifecycleListenerDelegate::DelegateType::PART &&
+      !runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
+    auto* wrapper =
+        runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
     if (wrapper) {
       wrapper->AddLifecycleListener(std::move(listener));
     }
@@ -1153,7 +1149,7 @@ void LynxRuntime::AddLifecycleListener(
   }
 }
 
-void LynxRuntime::AddModuleFactory(
+void BTSRuntime::AddModuleFactory(
     std::unique_ptr<piper::NativeModuleFactory> native_factory) {
   if (js_executor_) {
     auto& module_manager = js_executor_->GetModuleManager();
@@ -1165,11 +1161,11 @@ void LynxRuntime::AddModuleFactory(
   cached_native_factories_.push_back(std::move(native_factory));
 }
 
-void LynxRuntime::OnRuntimeActorCreate() {
+void BTSRuntime::OnRuntimeActorCreate() {
   lifecycle_observer_->OnRuntimeCreate(GetVSyncObserver());
 }
 
-}  // namespace runtime
+}  // namespace shell
 }  // namespace lynx
 
 #ifdef USE_PRIMJS_NAPI

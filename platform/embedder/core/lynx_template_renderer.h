@@ -22,10 +22,10 @@
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/perf_controller_proxy_impl.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #if ENABLE_INSPECTOR
 #include "devtool/embedder/common/devtools_embedder.h"
 #endif  // ENABLE_INSPECTOR

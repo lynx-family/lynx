@@ -76,7 +76,7 @@ class LynxShellBuilder {
           on_engine_actor_created);
 
   LynxShellBuilder& SetRuntimeActor(
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor);
+      const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor);
 
   LynxShellBuilder& SetPerfControllerActor(
       const std::shared_ptr<
@@ -154,7 +154,7 @@ class LynxShellBuilder {
   std::function<void(const std::shared_ptr<LynxActor<LynxEngine>>&)>
       on_engine_actor_created_;
 
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_{};
+  std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_{};
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_{};
   std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>

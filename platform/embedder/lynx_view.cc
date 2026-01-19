@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "core/runtime/lepus_context/json_parser.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "platform/embedder/fetcher/lynx_generic_resource_fetcher_priv.h"
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
 #include "platform/embedder/lynx_group_priv.h"
@@ -146,7 +146,7 @@ LYNX_EXTERN_C void lynx_view_register_runtime_lifecycle_observer(
     lynx_view_t* view, lynx_runtime_lifecycle_observer_t* observer) {
 #if ENABLE_NAPI_BINDING
   auto runtime_proxy = view->lynx_template_renderer->GetRuntimeProxy();
-  static_cast<lynx::shell::LynxRuntimeProxyImpl*>(runtime_proxy.get())
+  static_cast<lynx::shell::LynxBTSRuntimeProxyImpl*>(runtime_proxy.get())
       ->AddLifecycleListener(
           std::make_unique<
               lynx::embedder::LynxRuntimeLifecycleListenerDelegate>(observer));

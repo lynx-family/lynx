@@ -19,8 +19,8 @@
 
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/shell/lynx_shell.h"
-#include "core/shell/runtime_mediator.h"
-#include "core/shell/runtime_standalone_helper.h"
+#include "core/shell/runtime/bts/bts_runtime_mediator.h"
+#include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 
 @interface Mock2GenericResourceFetcher : NSObject <LynxGenericResourceFetcher>
 
@@ -152,10 +152,10 @@
 }
 
 - (void)invokeReportError:
-    (const std::shared_ptr<lynx::shell::LynxActor<lynx::runtime::LynxRuntime>>&)runtime {
+    (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::BTSRuntime>>&)runtime {
   lynx::runtime::TemplateDelegate* delegate = runtime->impl_->delegate_.get();
-  lynx::shell::RuntimeMediator* runtime_mediator =
-      static_cast<lynx::shell::RuntimeMediator*>(delegate);
+  lynx::shell::BTSRuntimeMediator* runtime_mediator =
+      static_cast<lynx::shell::BTSRuntimeMediator*>(delegate);
   runtime_mediator->external_resource_loader_->LoadJSSource("test");
 }
 

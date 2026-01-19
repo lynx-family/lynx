@@ -12,18 +12,18 @@
 #include <memory>
 #include <string>
 
-#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
+#include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 
 namespace lynx {
 namespace shell {
 
-class JSProxyDarwin : public LynxRuntimeProxyImpl {
+class JSProxyDarwin : public LynxBTSRuntimeProxyImpl {
  public:
   ~JSProxyDarwin() = default;
 
   static std::shared_ptr<JSProxyDarwin> Create(
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor,
+      const std::shared_ptr<LynxActor<BTSRuntime>>& actor,
       id<LynxErrorReceiverProtocol> error_handler, int64_t id,
       const std::string& js_group_thread_name,
       bool runtime_standalone_mode = false);
@@ -32,11 +32,11 @@ class JSProxyDarwin : public LynxRuntimeProxyImpl {
 
   int64_t GetId() const { return id_; }
 
-  using LynxRuntimeProxyImpl::AddLifecycleListener;
+  using LynxBTSRuntimeProxyImpl::AddLifecycleListener;
   void AddLifecycleListener(id<LynxRuntimeLifecycleListener> listener);
 
  private:
-  JSProxyDarwin(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor,
+  JSProxyDarwin(const std::shared_ptr<LynxActor<BTSRuntime>>& actor,
                 id<LynxErrorReceiverProtocol> error_handler, int64_t id,
                 const std::string& js_group_thread_name,
                 bool runtime_standalone_mode);

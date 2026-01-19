@@ -13,6 +13,7 @@
 
 #include "base/include/concurrent_queue.h"
 #include "core/base/android/java_only_map.h"
+#include "core/base/thread/once_task.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/tasm/react/android/mapbuffer/compact_array_buffer_builder.h"
@@ -20,7 +21,6 @@
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/modules/android/callback_impl.h"
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
 namespace lynx {

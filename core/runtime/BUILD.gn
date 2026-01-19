@@ -45,8 +45,6 @@ jsbridge_shared_sources = [
   "js/js_executor.h",
   "js/lynx_api_handler.cc",
   "js/lynx_api_handler.h",
-  "js/lynx_runtime.cc",
-  "js/lynx_runtime.h",
   "js/lynx_runtime_helper.h",
   "js/runtime_constant.h",
   "js/runtime_lifecycle_listener_delegate.h",

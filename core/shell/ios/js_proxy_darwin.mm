@@ -21,7 +21,7 @@ namespace lynx {
 namespace shell {
 
 std::shared_ptr<JSProxyDarwin> JSProxyDarwin::Create(
-    const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor,
+    const std::shared_ptr<LynxActor<BTSRuntime>>& actor,
     id<LynxErrorReceiverProtocol> error_handler, int64_t id,
     const std::string& js_group_thread_name, bool runtime_standalone_mode) {
   // constructor is private, cannot use std::make_shared
@@ -30,10 +30,10 @@ std::shared_ptr<JSProxyDarwin> JSProxyDarwin::Create(
   return js_proxy;
 }
 
-JSProxyDarwin::JSProxyDarwin(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor,
+JSProxyDarwin::JSProxyDarwin(const std::shared_ptr<LynxActor<BTSRuntime>>& actor,
                              id<LynxErrorReceiverProtocol> error_handler, int64_t id,
                              const std::string& js_group_thread_name, bool runtime_standalone_mode)
-    : LynxRuntimeProxyImpl(actor, runtime_standalone_mode),
+    : LynxBTSRuntimeProxyImpl(actor, runtime_standalone_mode),
       _error_handler(error_handler),
       id_(id),
       js_group_thread_name_(js_group_thread_name) {}
@@ -48,7 +48,7 @@ void JSProxyDarwin::AddLifecycleListener(id<LynxRuntimeLifecycleListener> listen
   }
   auto delegate = std::make_unique<lynx::shell::RuntimeLifecycleListenerDelegateDarwin>(
       listener, _error_handler);
-  LynxRuntimeProxyImpl::AddLifecycleListener(std::move(delegate));
+  LynxBTSRuntimeProxyImpl::AddLifecycleListener(std::move(delegate));
 }
 
 }  // namespace shell

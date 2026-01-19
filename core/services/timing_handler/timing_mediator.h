@@ -10,7 +10,6 @@
 
 #include "base/include/lynx_actor.h"
 #include "core/public/pub_value.h"
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/services/timing_handler/timing_handler_delegate.h"
 #include "core/services/timing_handler/timing_info.h"
@@ -19,6 +18,9 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
+namespace shell {
+class BTSRuntime;
+}
 namespace tasm {
 namespace timing {
 
@@ -37,7 +39,7 @@ class TimingMediator : public TimingHandlerDelegate {
 
   // Setter methods for various properties.
   inline void SetRuntimeActor(
-      const std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>>& actor) {
+      const std::shared_ptr<shell::LynxActor<shell::BTSRuntime>>& actor) {
     runtime_actor_ = actor;
   }
   inline void SetEngineActor(
@@ -65,7 +67,7 @@ class TimingMediator : public TimingHandlerDelegate {
  private:
   const int32_t instance_id_ = 0;
   bool enable_js_runtime_{true};
-  std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::shared_ptr<shell::LynxActor<shell::BTSRuntime>> runtime_actor_;
   std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor_;
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
   std::shared_ptr<pub::PubValueFactory> value_factory_ =

@@ -12,10 +12,9 @@
 #include <vector>
 
 #include "core/public/lynx_resource_loader.h"
-#include "core/resource/external_resource/external_resource_loader.h"
-#include "core/runtime/js/lynx_runtime.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_engine.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
 
 namespace lynx {
 namespace shell {
@@ -78,14 +77,14 @@ class ExternalResourceLoader
   }
 
   inline void SetRuntimeActor(
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor) {
+      const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor) {
     runtime_actor_ = runtime_actor;
   }
 
  private:
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
   std::weak_ptr<LynxActor<LynxEngine>> engine_actor_;
-  std::weak_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::weak_ptr<LynxActor<BTSRuntime>> runtime_actor_;
 };
 
 }  // namespace shell

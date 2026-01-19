@@ -20,7 +20,6 @@
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/runtime_lifecycle_listener_delegate_android.h"
-#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/android/value_impl_android.h"
 #include "core/value_wrapper/value_impl_piper.h"
@@ -60,7 +59,7 @@ jlong CreateWithRuntimeActor(JNIEnv* env, jobject jcaller, jlong ptr,
 
                              jstring js_group_thread_name_jstring) {
   auto* shell = reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid*>(ptr);
-  auto runtime_actor = shell->RuntimeStandalone().GetRuntimeActor();
+  auto runtime_actor = shell->BTSRuntimeStandalone().GetRuntimeActor();
   auto js_group_thread_name =
       JNIConvertHelper::ConvertToString(env, js_group_thread_name_jstring);
   auto proxy =
@@ -167,7 +166,7 @@ std::unique_ptr<pub::Value> JSProxyAndroid::GetArgs(
 void JSProxyAndroid::CallJSFunctionByArgsId(std::string module_id,
                                             std::string method_id,
                                             long args_id) {
-  LynxRuntimeProxyImpl::CallJSFunction(
+  LynxBTSRuntimeProxyImpl::CallJSFunction(
       module_id, method_id,
       [args_id,
        jni_object = jni_object_]() mutable -> std::unique_ptr<pub::Value> {
@@ -178,7 +177,7 @@ void JSProxyAndroid::CallJSFunctionByArgsId(std::string module_id,
 void JSProxyAndroid::CallJSIntersectionObserverByArgsId(int32_t observer_id,
                                                         int32_t callback_id,
                                                         long args_id) {
-  LynxRuntimeProxyImpl::CallJSIntersectionObserver(
+  LynxBTSRuntimeProxyImpl::CallJSIntersectionObserver(
       observer_id, callback_id,
       [args_id,
        jni_object = jni_object_]() mutable -> std::unique_ptr<pub::Value> {
@@ -188,7 +187,7 @@ void JSProxyAndroid::CallJSIntersectionObserverByArgsId(int32_t observer_id,
 
 void JSProxyAndroid::CallJSApiCallbackWithValueByArgsId(int32_t callback_id,
                                                         long args_id) {
-  LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(
+  LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(
       callback_id,
       [args_id,
        jni_object = jni_object_]() mutable -> std::unique_ptr<pub::Value> {

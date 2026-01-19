@@ -14,7 +14,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
 #include "core/public/vsync_observer_interface.h"
-#include "core/runtime/js/lynx_runtime.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
 
 namespace lynx {
 
@@ -26,10 +26,9 @@ namespace shell {
 
 class VSyncObserverImpl : public runtime::IVSyncObserver {
  public:
-  VSyncObserverImpl(
-      const std::shared_ptr<base::VSyncMonitor>& monitor,
-      fml::RefPtr<fml::TaskRunner> js_runner,
-      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor)
+  VSyncObserverImpl(const std::shared_ptr<base::VSyncMonitor>& monitor,
+                    fml::RefPtr<fml::TaskRunner> js_runner,
+                    const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor)
       : vsync_monitor_(std::move(monitor)),
         js_runner_(js_runner),
         runtime_actor_(runtime_actor) {}
@@ -51,7 +50,7 @@ class VSyncObserverImpl : public runtime::IVSyncObserver {
 
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   fml::RefPtr<fml::TaskRunner> js_runner_{nullptr};
-  std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
+  std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
 
   bool has_pending_vsync_request_{false};
   VSyncCallbackMap vsync_callbacks_;

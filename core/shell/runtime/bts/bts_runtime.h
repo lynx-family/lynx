@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_JS_LYNX_RUNTIME_H_
-#define CORE_RUNTIME_JS_LYNX_RUNTIME_H_
+#ifndef CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_H_
+#define CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_H_
 
 #include <memory>
 #include <string>
@@ -39,7 +39,10 @@ namespace piper {
 class NapiEnvironment;
 }
 
-namespace runtime {
+/*
+ * now only run on js thread
+ */
+namespace shell {
 
 enum LynxRuntimeFlags : uint32_t {
   INIT = 0,
@@ -51,25 +54,21 @@ enum LynxRuntimeFlags : uint32_t {
   PENDING_JS_TASK = 1 << 5,
 };
 
-void SetRuntimeFlags(uint32_t& flags, bool enable,
-                     lynx::runtime::LynxRuntimeFlags flag);
+void SetRuntimeFlags(uint32_t& flags, bool enable, LynxRuntimeFlags flag);
 uint32_t CalcRuntimeFlags(bool force_reload_js_core, bool use_quickjs_engine,
                           bool pending_js_task, bool enable_user_bytecode,
                           bool* enable_js_group_thread = nullptr,
                           bool* pending_core_js_load = nullptr);
 
-/*
- * now only run on js thread
- */
-class LynxRuntime final {
+class BTSRuntime final {
  public:
-  LynxRuntime(const std::string& group_id, int32_t instance_id,
-              std::unique_ptr<TemplateDelegate> delegate,
-              const std::string& bytecode_source_url, uint32_t runtime_flags,
-              const tasm::PageOptions& page_options);
-  ~LynxRuntime();
-  LynxRuntime(const LynxRuntime&) = delete;
-  LynxRuntime& operator=(const LynxRuntime&) = delete;
+  BTSRuntime(const std::string& group_id, int32_t instance_id,
+             std::unique_ptr<runtime::TemplateDelegate> delegate,
+             const std::string& bytecode_source_url, uint32_t runtime_flags,
+             const tasm::PageOptions& page_options);
+  ~BTSRuntime();
+  BTSRuntime(const BTSRuntime&) = delete;
+  BTSRuntime& operator=(const BTSRuntime&) = delete;
 
   // now can ensure Init the first task for LynxRuntime
   void Init(const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
@@ -156,7 +155,7 @@ class LynxRuntime final {
   }
 
   void AddLifecycleListener(
-      std::unique_ptr<RuntimeLifecycleListenerDelegate> listener);
+      std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> listener);
 
   void SetEnableBytecode(bool enable, const std::string& bytecode_source_url);
 
@@ -273,7 +272,7 @@ class LynxRuntime final {
   int64_t callback_id_index_ = 0;
   std::string bytecode_source_url_;
   uint32_t runtime_flags_;
-  std::unique_ptr<RuntimeLifecycleObserverImpl> lifecycle_observer_;
+  std::unique_ptr<runtime::RuntimeLifecycleObserverImpl> lifecycle_observer_;
   tasm::PageOptions page_options_;
   lepus::Value init_global_props_;
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
@@ -284,7 +283,7 @@ class LynxRuntime final {
 #endif  // OS_IOS
 };
 
-}  // namespace runtime
+}  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_JS_LYNX_RUNTIME_H_
+#endif  // CORE_SHELL_RUNTIME_BTS_BTS_RUNTIME_H_
