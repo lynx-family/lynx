@@ -258,6 +258,7 @@ subspec_target("lynx") {
     "shadow_node/LynxShadowNodeOwner.m",
     "shadow_node/LynxUILayoutTick.h",
     "shadow_node/LynxUILayoutTick.m",
+    "shadow_node/frame/LynxFrameShadowNode.m",
     "shadow_node/text/LynxBaseTextShadowNode.m",
     "shadow_node/text/LynxBaselineShiftLayoutManager.m",
     "shadow_node/text/LynxConverter+NSShadow.m",

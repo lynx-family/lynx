@@ -91,6 +91,7 @@ public_shared_sources = [
   "shadow_node/LynxShadowNode.h",
   "shadow_node/LynxShadowNodeOwner.h",
   "shadow_node/LynxShadowNodeStyle.h",
+  "shadow_node/frame/LynxFrameShadowNode.h",
   "shadow_node/text/LynxBaseTextShadowNode.h",
   "shadow_node/text/LynxBaselineShiftLayoutManager.h",
   "shadow_node/text/LynxConverter+NSShadow.h",
