@@ -198,11 +198,13 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   bool BlockNativeEvent(float point[2]) override;
   bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
-  ConsumeSlideDirection ConsumeSlideEvent() override;
+  LynxConsumeSlideDirection ConsumeSlideEvent() override;
+  LynxPanInterceptDirection PanInterceptDirection() override;
+  LynxPanInterceptScope PanInterceptScope() override;
   bool TouchPseudoPropagation() override;
-  void OnPseudoStatusChanged(PseudoStatus pre_status,
-                             PseudoStatus current_status) override;
-  PseudoStatus GetPseudoStatus() override;
+  void OnPseudoStatusChanged(LynxPseudoStatus pre_status,
+                             LynxPseudoStatus current_status) override;
+  LynxPseudoStatus GetPseudoStatus() override;
   bool HasUI() override { return true; };
   std::vector<std::string> EventSet() override { return events_; };
   void OnResponseChain() override { is_on_response_chain_ = true; };
@@ -271,7 +273,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<NativeNodeContent> node_content_{nullptr};
   LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
   bool block_native_event_{false};
-  ConsumeSlideDirection consume_slide_event_{ConsumeSlideDirection::kNone};
+  LynxConsumeSlideDirection consume_slide_event_{
+      LynxConsumeSlideDirection::kNone};
+  LynxPanInterceptDirection pan_intercept_direction_{
+      LynxPanInterceptDirection::kNone};
+  LynxPanInterceptScope pan_intercept_scope_{LynxPanInterceptScope::kNone};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   std::vector<std::vector<PlatformLength>> event_through_active_regions_;
@@ -379,6 +385,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetBlockNativeEvent(const lepus::Value& value);
   void SetBlockNativeEventAreas(const lepus::Value& value);
   void SetConsumeSlideEvent(const lepus::Value& value);
+  void SetPanInterceptDirection(const lepus::Value& value);
+  void SetPanInterceptScope(const lepus::Value& value);
   void SetEnableTouchPseudoPropagation(const lepus::Value& value);
   void TransformFromViewToRootView(UIBase* ui, std::pair<float, float>& point);
   void MapPointWithTransform(std::pair<float, float>& point);
@@ -446,7 +454,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float hit_slop_top_{0};
   float hit_slop_bottom_{0};
   bool enable_touch_pseudo_propagation_{true};
-  PseudoStatus pseudo_status_{PseudoStatus::kNone};
+  LynxPseudoStatus pseudo_status_{LynxPseudoStatus::kNone};
   bool is_on_response_chain_{false};
   const bool has_customized_layout_;
   std::string exposure_id_;

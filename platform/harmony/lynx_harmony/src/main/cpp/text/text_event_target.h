@@ -52,7 +52,9 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   bool BlockNativeEvent(float point[2]) override;
   bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
-  ConsumeSlideDirection ConsumeSlideEvent() override;
+  LynxConsumeSlideDirection ConsumeSlideEvent() override;
+  LynxPanInterceptDirection PanInterceptDirection() override;
+  LynxPanInterceptScope PanInterceptScope() override;
   EventTarget* HitTest(float point[2]) override;
   bool ShouldHitTest() override;
   bool ContainsPoint(float point[2]) override;
@@ -66,9 +68,11 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   int Sign() const override { return sign_; };
   bool HasUI() override { return false; };
   std::weak_ptr<EventTarget> WeakTarget() override { return weak_from_this(); };
-  void OnPseudoStatusChanged(PseudoStatus pre_status,
-                             PseudoStatus current_status) override{};
-  PseudoStatus GetPseudoStatus() override { return PseudoStatus::kNone; };
+  void OnPseudoStatusChanged(LynxPseudoStatus pre_status,
+                             LynxPseudoStatus current_status) override{};
+  LynxPseudoStatus GetPseudoStatus() override {
+    return LynxPseudoStatus::kNone;
+  };
   bool TouchPseudoPropagation() override { return false; };
 
  private:

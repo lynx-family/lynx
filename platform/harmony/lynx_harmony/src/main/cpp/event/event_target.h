@@ -29,7 +29,7 @@ enum class LynxPointerEventsValue {
   kUnset,
 };
 
-enum class ConsumeSlideDirection {
+enum class LynxConsumeSlideDirection {
   kNone,
   kHorizontal,
   kVertical,
@@ -40,7 +40,7 @@ enum class ConsumeSlideDirection {
   kAll,
 };
 
-enum class PseudoStatus {
+enum class LynxPseudoStatus {
   kNone = 0,
   kHover = 1,
   kHoverTransition = 1 << 1,
@@ -49,6 +49,29 @@ enum class PseudoStatus {
   kFocus = 1 << 6,
   kFocusTransition = 1 << 7,
   kAll = ~0,
+};
+
+enum class LynxPanInterceptDirection {
+  kHorizontal,
+  kVertical,
+  kLeft,
+  kRight,
+  kUp,
+  kDown,
+  kAll,
+  // add new type before kNone
+  kNone,
+};
+
+enum class LynxPanInterceptScope {
+  kSelf,
+  kAncestors,
+  kDescendants,
+  kSelfAndAncestors,
+  kSelfAndDescendants,
+  kAll,
+  // add new type before kLNone
+  kNone,
 };
 
 class EventTarget {
@@ -74,10 +97,10 @@ class EventTarget {
 
   virtual bool Focusable() { return false; };
 
-  virtual void OnPseudoStatusChanged(PseudoStatus pre_status,
-                                     PseudoStatus current_status) = 0;
+  virtual void OnPseudoStatusChanged(LynxPseudoStatus pre_status,
+                                     LynxPseudoStatus current_status) = 0;
 
-  virtual PseudoStatus GetPseudoStatus() = 0;
+  virtual LynxPseudoStatus GetPseudoStatus() = 0;
 
   virtual LynxPointerEventsValue PointerEvents() = 0;
 
@@ -89,7 +112,11 @@ class EventTarget {
 
   virtual bool IgnoreFocus() = 0;
 
-  virtual ConsumeSlideDirection ConsumeSlideEvent() = 0;
+  virtual LynxConsumeSlideDirection ConsumeSlideEvent() = 0;
+
+  virtual LynxPanInterceptDirection PanInterceptDirection() = 0;
+
+  virtual LynxPanInterceptScope PanInterceptScope() = 0;
 
   virtual bool TouchPseudoPropagation() = 0;
 

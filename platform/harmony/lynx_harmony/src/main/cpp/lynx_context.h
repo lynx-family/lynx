@@ -123,8 +123,8 @@ class LynxContext {
 
   void HandleCustomEvent(const CustomEvent& custom_event) const;
 
-  void OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                             PseudoStatus current_status) const;
+  void OnPseudoStatusChanged(int id, LynxPseudoStatus pre_status,
+                             LynxPseudoStatus current_status) const;
 
   void HandleGestureEvent(const GestureEvent& custom_event) const;
 

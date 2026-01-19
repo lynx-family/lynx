@@ -49,8 +49,9 @@ void EventEmitter::SendEvent(const LynxEvent& event) const {
   }
 }
 
-void EventEmitter::SendPseudoStatusEvent(int id, PseudoStatus pre_status,
-                                         PseudoStatus current_status) const {
+void EventEmitter::SendPseudoStatusEvent(
+    int id, LynxPseudoStatus pre_status,
+    LynxPseudoStatus current_status) const {
   if (pre_status == current_status) {
     return;
   }
