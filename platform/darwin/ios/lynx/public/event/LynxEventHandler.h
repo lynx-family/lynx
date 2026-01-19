@@ -59,8 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
          withPlatformGesture:(UIGestureRecognizer *)platformGesture;
 // Based on the relationship between pan-intercept-scope and gesture view, determine whether to
 // intercept other gestures.
-- (BOOL)shouldInterceptPanGesture:(UIView *)view
-                         withView:(UIView *)other
+- (BOOL)shouldInterceptPanGesture:(UIView *)other
+                         withView:(UIView *)view
                 andInterceptScope:(enum LynxPanInterceptScope)scope;
 // Determine the type and direction of other gestures.
 - (BOOL)isPanGesture:(UIGestureRecognizer *)gesture

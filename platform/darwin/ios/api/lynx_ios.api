@@ -1588,7 +1588,7 @@ public class LynxEventHandler : NSObject {
   public id< LynxEventTarget > LynxEventHandler::getFirstPanInterceptDirectionTarget:(enum LynxPanInterceptDirection direction);
   public enum LynxPanInterceptScope LynxEventHandler::getPanInterceptScope:(id< LynxEventTarget > target);
   public void LynxEventHandler::interceptPanGestures:withPlatformGesture:(NSArray< LynxWeakProxy * > *otherGestures,[withPlatformGesture] UIGestureRecognizer *platformGesture);
-  public BOOL LynxEventHandler::shouldInterceptPanGesture:withView:andInterceptScope:(UIView *view,[withView] UIView *other,[andInterceptScope] enum LynxPanInterceptScope scope);
+  public BOOL LynxEventHandler::shouldInterceptPanGesture:withView:andInterceptScope:(UIView *other,[withView] UIView *view,[andInterceptScope] enum LynxPanInterceptScope scope);
   public BOOL LynxEventHandler::isPanGesture:withDirection:(UIGestureRecognizer *gesture,[withDirection] enum LynxPanInterceptDirection direction);
   public void LynxEventHandler::onGestureRecognized();
   public void LynxEventHandler::onGestureRecognizedByEventTarget:(id< LynxEventTarget > ui);

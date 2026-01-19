@@ -776,7 +776,7 @@
   }
   id<LynxEventTarget> target = _touchTarget;
   while (target && target.parentTarget != target) {
-    if (target.panInterceptDirection == direction) {
+    if (target.panInterceptDirection == direction && [target isKindOfClass:[LynxUI class]]) {
       return target;
     }
     target = target.parentTarget;
@@ -801,15 +801,15 @@
     if ([self isPanGesture:otherGesture
              withDirection:_firstPanInterceptDirectionTarget.panInterceptDirection] &&
         [self shouldInterceptPanGesture:otherGesture.view
-                               withView:platformGesture.view
+                               withView:((LynxUI*)_firstPanInterceptDirectionTarget).view
                       andInterceptScope:scope]) {
       ((UIGestureRecognizer*)obj).state = UIGestureRecognizerStateFailed;
     }
   }];
 }
 
-- (BOOL)shouldInterceptPanGesture:(UIView*)view
-                         withView:(UIView*)other
+- (BOOL)shouldInterceptPanGesture:(UIView*)other
+                         withView:(UIView*)view
                 andInterceptScope:(enum LynxPanInterceptScope)scope {
   if (view == nil || other == nil) {
     return NO;
