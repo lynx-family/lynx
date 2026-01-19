@@ -21,6 +21,10 @@ static constexpr const char* const LONG_TASK_TIMING_REPORT_LONG_TASK =
 static constexpr const char* const TIMING_SET_NEED_MARK_DRAW_END =
     "Timing::SetNeedMarkDrawEndTiming";
 static constexpr const char* const TIMING_MARK = "Timing::Mark.";
+/**
+ * @trace_description: The setup phase callback of timing-api for native
+ * developer
+ */
 static constexpr const char* const
     TIMING_MEDIATOR_TRIGGER_SETUP_CLIENT_CALLBACK =
         "TimingMediator::TriggerSetupClientCallback";
