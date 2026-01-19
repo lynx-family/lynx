@@ -880,7 +880,45 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
   RETURN_UNDEFINED();
 }
 
-RENDERER_FUNCTION_CC(AdoptStyleSheet) { RETURN_UNDEFINED(); }
+RENDERER_FUNCTION_CC(AdoptStyleSheet) {
+  // Takes a SharedCSSFragmentWrapper and adopts it with highest cascade
+  // priority
+  CHECK_ARGC_GE(AdoptStyleSheet, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, RefCounted, AdoptStyleSheet);
+
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+
+  // Get the SharedCSSFragmentWrapper from the RefCounted value
+  // The wrapper is created by LoadStyleSheet function
+  auto ref_counted = arg0->RefCounted();
+  if (!ref_counted ||
+      ref_counted->GetRefType() != lepus::RefType::kCSSFragment) {
+    LOGI("AdoptStyleSheet: Invalid SharedCSSFragmentWrapper");
+    RETURN_UNDEFINED();
+  }
+
+  auto wrapper = fml::RefPtr<SharedCSSFragmentWrapper>(
+      static_cast<SharedCSSFragmentWrapper*>(ref_counted.get()));
+  if (!wrapper || !wrapper->fragment_) {
+    LOGI("AdoptStyleSheet: Empty CSS fragment in wrapper");
+    RETURN_UNDEFINED();
+  }
+
+  // Adopt the stylesheet wrapper (shared ownership)
+  // The wrapper stays alive and keeps the fragment
+  auto& manager = tasm->page_proxy()->element_manager();
+  manager->AdoptStyleSheet(wrapper);
+
+  // Mark all elements as style dirty to trigger re-resolution
+  auto root = static_cast<FiberElement*>(manager->root());
+  if (root) {
+    root->ApplyFunctionRecursive(
+        [](auto element) { element->MarkStyleDirty(false); });
+  }
+
+  RETURN_UNDEFINED();
+}
 
 RENDERER_FUNCTION_CC(ReplaceStyleSheets) { RETURN_UNDEFINED(); }
 

@@ -31,6 +31,7 @@
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_variable_handler.h"
+#include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_container.h"
 #include "core/renderer/dom/element_context_delegate.h"
@@ -44,6 +45,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/base/tasm_worker_task_runner.h"
+#include "core/runtime/lepus_context/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
@@ -425,6 +427,18 @@ class ElementManager : public ElementContextDelegate,
     }
     static base::NoDestructor<tasm::CSSParserConfigs> kDefaultCSSConfigs;
     return *kDefaultCSSConfigs;
+  }
+
+  // Adopted stylesheets management for runtime CSS adoption
+  void AdoptStyleSheet(fml::RefPtr<tasm::SharedCSSFragmentWrapper> wrapper) {
+    adopted_stylesheets_.push_back(std::move(wrapper));
+  }
+
+  void ClearAdoptedStyleSheets() { adopted_stylesheets_.clear(); }
+
+  const std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> &
+  GetAdoptedStyleSheets() const {
+    return adopted_stylesheets_;
   }
 
   bool GetEnableLayoutOnly() {
@@ -1354,6 +1368,9 @@ class ElementManager : public ElementContextDelegate,
   std::shared_ptr<tasm::TasmWorkerTaskRunner> task_runner_;
 
   std::shared_ptr<CSSKeyframesTokenMap> key_frames_;
+
+  // Adopted stylesheets for runtime CSS adoption with highest cascade priority
+  std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> adopted_stylesheets_;
 
   base::MoveOnlyClosure<void, int> vm_update_outer_obj_size_callback_{};
 
