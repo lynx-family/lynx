@@ -8,6 +8,26 @@ import("../../../core/Lynx.gni")
 shared_library("lynx_shared_library") {
   output_name = "Lynx"
 
+  deps = [ ":lynx_common_deps" ]
+  if (jsengine_type == "v8") {
+    deps += [ "../../../third_party/NativeScript:NativeScript" ]
+  }
+
+  ldflags = [
+    "-Wl,-install_name,@rpath/libLynx.dylib",
+    "-Wl,-exported_symbols_list," +
+        rebase_path("exported_symbols.sym", root_build_dir),
+  ]
+
+  frameworks = [
+    "CoreData.framework",
+    "QuartzCore.framework",
+    "WebKit.framework",
+    "JavaScriptCore.framework",
+  ]
+}
+
+group("lynx_common_deps") {
   deps = [
     "../../../base/src:base_static",
     "../../../clay/lynx_adaptor:lynx_adaptor",
@@ -29,10 +49,7 @@ shared_library("lynx_shared_library") {
   }
 
   if (jsengine_type == "v8") {
-    deps += [
-      "../../../devtool/lynx_devtool/js_debug:lynx_v8_bridge",
-      "../../../third_party/NativeScript:NativeScript",
-    ]
+    deps += [ "../../../devtool/lynx_devtool/js_debug:lynx_v8_bridge" ]
     if (enable_napi_binding) {
       deps += [
         "../../../core/runtime/common/napi:napi_binding_v8",
@@ -40,19 +57,6 @@ shared_library("lynx_shared_library") {
       ]
     }
   }
-
-  ldflags = [
-    "-Wl,-install_name,@rpath/libLynx.dylib",
-    "-Wl,-exported_symbols_list," +
-        rebase_path("exported_symbols.sym", root_build_dir),
-  ]
-
-  frameworks = [
-    "CoreData.framework",
-    "QuartzCore.framework",
-    "WebKit.framework",
-    "JavaScriptCore.framework",
-  ]
 }
 
 build_kernel_js("lynx_core") {

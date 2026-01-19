@@ -9,6 +9,19 @@ import("../../oliver/oliver.gni")
 shared_library("windows") {
   output_name = "lynx"
 
+  deps = [ ":lynx_windows_group" ]
+  libs = [ "user32.lib" ]
+
+  if (use_flutter_cxx) {
+    if (windows_runtime_library_mode == "md") {
+      libs += [ "msvcprt.lib" ]
+    } else if (windows_runtime_library_mode == "mt") {
+      libs += [ "libcpmt.lib" ]
+    }
+  }
+}
+
+group("lynx_windows_group") {
   deps = [
     "../../base/src:base_static",
     "../../clay/lynx_adaptor:lynx_adaptor",
@@ -24,16 +37,6 @@ shared_library("windows") {
       "../../third_party/napi:quickjs",
       "../../third_party/quickjs",
     ]
-  }
-
-  libs = [ "user32.lib" ]
-
-  if (use_flutter_cxx) {
-    if (windows_runtime_library_mode == "md") {
-      libs += [ "msvcprt.lib" ]
-    } else if (windows_runtime_library_mode == "mt") {
-      libs += [ "libcpmt.lib" ]
-    }
   }
 }
 

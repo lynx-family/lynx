@@ -1,0 +1,441 @@
+import os
+import platform
+import shutil
+import zipfile
+
+machine = platform.machine().lower()
+machine = "x86_64" if machine == "amd64" else machine
+system = platform.system().lower()
+
+python_path = "python3"
+if system == "windows":
+    python_path = "python"
+
+def unzip_webview2():
+  zipfile.ZipFile('webview2.nupkg').extractall('webview2')
+  os.remove('webview2.nupkg')
+
+def symlink_googletest():
+    src = os.path.join(os.getcwd(), "../third_party/googletest/src/googletest")
+    dest = os.path.join(os.getcwd(), "../third_party/googletest/googletest")
+    symlink_dir(src, dest)
+
+def symlink_dir(src, dest):
+    if os.path.exists(dest) or os.path.islink(dest):
+        if os.path.islink(dest):
+            os.unlink(dest)
+        elif os.path.isdir(dest):
+            shutil.rmtree(dest)
+        else:
+            os.remove(dest)
+    dest_parent = os.path.dirname(dest)
+    if dest_parent and not os.path.exists(dest_parent):
+        os.makedirs(dest_parent, exist_ok=True)
+    try:
+        os.symlink(src, dest)
+    except OSError as e:
+        raise
+
+deps = {
+    'build': {
+        "type": "git",
+        "url": "https://github.com/lynx-family/buildroot.git",
+        "commit": "d1cdb698c6e7b58a4a41800e65fc2091a40e8fbf",
+        "ignore_in_git": True,
+        "condition": system in ['linux', 'darwin', 'windows']
+    },
+    "../third_party/boringssl/src":{
+        "type": "git",
+        "url": "https://github.com/google/boringssl.git",
+        "commit": "71147d3763466094df692df97afef42e4ce26a4f",
+        "ignore_in_git": True,
+    },
+    "../third_party/httplib": {
+        'type': 'git',
+        'url': 'https://github.com/yhirose/cpp-httplib.git',
+        'commit': 'ea850cbfa74e2dff228c49bf94542ce5331d73b5',
+        'patches': os.path.join(root_dir, 'patches', 'httplib', '*.patch'),
+        "ignore_in_git": True,
+    },
+    "third_party/debug_router/src": {
+        'type': 'git',
+        'url': 'https://github.com/lynx-family/debug-router.git',
+        'commit': '182355c8441b0969c35fc62e60fe59ec91b8048e',
+        "ignore_in_git": True,
+        "enable_lfs": False,
+    },
+    '../third_party/freetype2': {
+        'type': 'git',
+        'url': 'https://github.com/freetype/freetype.git',
+        'commit': '42608f77f20749dd6ddc9e0536788eaad70ea4b5',
+        "patches": [
+            os.path.join(root_dir, 'patches', 'freetype2', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    '../third_party/nanopng': {
+        "type": "git",
+        "url": "https://gitlab.com/TSnake41/nanopng.git",
+        "commit": "fa1bf5cf7ec3ad98e0be665acbb4b36c696ae059",
+        "patches": os.path.join(root_dir, 'patches', 'nanopng', '0001-Adapt-nanopng-to-the-Skity-project.patch'),
+        "ignore_in_git": True,
+    },
+    '../third_party/googletest/src': {
+        'type': 'git',
+        'url': 'https://github.com/google/googletest.git',
+        'commit': '04cf2989168a3f9218d463bea6f15f8ade2032fd',
+        'ignore_in_git': True,
+    },
+    'symlink_googletest': {
+        'type': 'action',
+        "cwd": root_dir,
+        "function": symlink_googletest,
+        "ignore_in_git": True,
+        "require": ['../third_party/googletest/src'],
+    },
+    'buildtools/node': {
+        "type": "http",
+        "url": {
+            "linux-x86_64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-linux-x64.tar.gz",
+            "linux-arm64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-linux-arm64.tar.gz",
+            "darwin-x86_64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-darwin-x64.tar.gz",
+            "darwin-arm64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-darwin-arm64.tar.gz",
+            "windows-x86_64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-win-x64.zip"
+        }.get(f'{system}-{machine}', None),
+        "sha256": {
+            "linux-x86_64": "724802c45237477dbe5777923743e6c77906830cae03a82b5653ebd75b301dda",
+            "linux-arm64": "2913e8544d95c8be9e6034c539ec0584014532166a088bf742629756c3ec42e2",
+            "darwin-x86_64": "ab67c52c0d215d6890197c951e1bd479b6140ab630212b96867395e21d813016",
+            "darwin-arm64": "0c7249318868877032ed21cc0ed450015ee44b31b9b281955521cd3fc39fbfa3",
+            "windows-x86_64": "ff08f8fe253fba9274992d7052e9d9a70141342d7b36ddbd6e84cbe823e312c6"
+        }.get(f'{system}-{machine}', None),
+        "ignore_in_git": True,
+        "condition": system in ['linux', 'darwin', 'windows']
+    },
+    'buildtools/corepack/pnpm/7.33.6': {
+        "type": "http",
+        "url": "https://registry.npmjs.org/pnpm/-/pnpm-7.33.6.tgz",
+        "sha256": "f0c52b41f8128da92160f6826b53a105aad31c6c7cdc00b907fde507c5ca09b5",
+        "ignore_in_git": True
+    },
+    # setup corepack and pnpm
+    # see: https://github.com/nodejs/corepack#offline-workflow
+    'setup_corepack_pnpm': {
+        "type": "action",
+        "cwd": root_dir,
+        "env": {
+            'NODE_CHANNEL_FD': '1' if not system == 'windows' else '',
+            'COREPACK_HOME': os.path.join(root_dir, 'buildtools', 'corepack'),
+            # Windows does not have `node/bin` dir
+            # And it also use `;` as separator of PATH
+            'PATH': f"{os.path.join(root_dir, 'buildtools', 'node')};{os.environ.get('PATH')}"
+               if system == "windows"
+               else f"{os.path.join(root_dir, 'buildtools', 'node', 'bin')}:{os.environ.get('PATH')}"
+        },
+        "commands": [
+            "corepack prepare pnpm@7.33.6 --activate",
+            "corepack enable",
+            "pnpm install --frozen-lockfile"
+        ],
+        "require": [
+            "buildtools/node",
+            "buildtools/corepack/pnpm/7.33.6",
+        ],
+        "condition": system in ['linux', 'darwin', 'windows']
+    },
+    '../third_party/gyp': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/gyp.git",
+        "commit": "9d09418933ea2f75cc416e5ce38d15f62acd5c9a",
+        "ignore_in_git": True,
+    },
+    '../third_party/harfbuzz': {
+        'type': 'git',
+        'url': 'https://flutter.googlesource.com/third_party/harfbuzz.git',
+        'commit': '05ef75c55340400d4b318bd24d742653bbf825d9',
+        "patches": [
+            os.path.join(root_dir, 'patches', 'harfbuzz', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "third_party/quickjs/src": {
+        "type": "git",
+        "url": "https://github.com/lynx-family/primjs.git",
+        "commit": "74edc19536cc137baad09336b5ac536691649786",
+        "ignore_in_git": True,
+    },
+    '../third_party/libpng': {
+        'type': 'git',
+        'url': 'https://flutter.googlesource.com/third_party/libpng.git',
+        'commit': 'f46faec244dbda5f1d2a5bc370cf83125d6ffab1',
+        "patches": [
+            os.path.join(root_dir, 'patches', 'libpng', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "../third_party/icu":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/chromium/deps/icu.git",
+        "commit": "1b2e3e8a421efae36141a7b932b41e315b089af8",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'icu', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "../third_party/zlib": {
+        'type': 'git',
+        'url': 'https://chromium.googlesource.com/chromium/src/third_party/zlib',
+        'commit': 'f5fd0ad2663e239a31184ad4c9919991dda16f46',
+        "patches": os.path.join(root_dir, 'patches', 'zlib', '*.patch'),
+        "ignore_in_git": True,
+    },
+    '../third_party/modp_b64': {
+        'type': 'git',
+        'url': 'https://chromium.googlesource.com/chromium/src/third_party/modp_b64',
+        'commit': '50685101d51ef9aabbd60c94f52d9e026d39c509',
+        "patches": os.path.join(root_dir, 'patches', 'modp_b64', '*.patch'),
+        "ignore_in_git": True,
+    },
+    "../third_party/xhook": {
+        'type': 'git',
+        'url': 'https://github.com/iqiyi/xHook.git',
+        'commit': 'e59285034feadfdd4ba9b65e1eea1d381da83ed3',
+        "patches": os.path.join(root_dir, 'patches', 'xhook', '*.patch'),
+        "ignore_in_git": True,
+    },
+    'third_party/perfetto': {
+        'type': 'git',
+        'url': 'https://github.com/lynx-family/lynx-trace.git',
+        'commit': '7e8fa9df159fdd6461e77c36758e1e8c8af60842',
+        "patches": [
+              os.path.join(root_dir, 'patches', 'perfetto', '*.patch')
+         ],
+         "ignore_in_git": True,
+         "paths": [ "sdk" ],
+    },
+    "../third_party/benchmark": {
+        'type': 'git',
+        'url': 'https://github.com/google/benchmark.git',
+        'commit': 'f91b6b42b1b9854772a90ae9501464a161707d1e',
+        "ignore_in_git": True,
+    },
+    'gen_feature_count': {
+       "type": "action",
+        "cwd": root_dir,
+        "commands": [
+            python_path + " tools/feature_count/generate_feature_count.py",
+        ]
+    },
+    'gen_error_code': {
+        "type": "action",
+        "cwd": root_dir,
+        "commands": [
+            python_path + " tools/error_code/gen_error_code.py",
+        ]
+    },
+    'gen_lynx_performance_entry': {
+        "type": "action",
+        "cwd": root_dir,
+        "commands": [
+            python_path + " tools/performance/performance_observer/generate_performance_entry.py",
+        ]
+    },
+    "../third_party/expat":
+    {
+        "type": "git",
+        "url": "https://flutter.googlesource.com/third_party/expat.git",
+        "commit": "1441fc5252746e53b285d15be7e65e4cd74d97eb",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'expat', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "../third_party/glfw":
+    {
+        "type": "git",
+        "url": "https://fuchsia.googlesource.com/third_party/glfw.git",
+        "commit": "412fdb06bb5d1ddc6ba20e0c9a209771c877a3cc"
+    },
+    "../third_party/libjpeg-turbo":
+    {
+        "type": "git",
+        "url": "https://fuchsia.googlesource.com/third_party/libjpeg-turbo.git",
+        "commit": "0fb821f3b2e570b2783a94ccd9a2fb1f4916ae9f",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'libjpeg-turbo', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "../third_party/libwebp":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/webm/libwebp.git",
+        "commit": "35e197bdb7ec2b40768af4e4a6f0b71bb7b95bbc",
+        "ignore_in_git": True,
+    },
+    "../third_party/skia":
+    {
+        "type": "git",
+        "url": "https://skia.googlesource.com/skia.git",
+        "commit": "9912500bcca35007157dec9752f16d2e8948ea42",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'skia', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "../third_party/wuffs":
+    {
+        "type": "git",
+        "url": "https://skia.googlesource.com/external/github.com/google/wuffs.git",
+        "commit": "c86add25f790360f0aca026c4f1c2c4e2d12408d",
+        "ignore_in_git": True,
+    },
+    "../third_party/vulkan_memory_allocator":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git",
+        "commit": "7de5cc00de50e71a3aab22dea52fbb7ff4efceb6",
+        "ignore_in_git": True,
+    },
+    "../third_party/vulkan-deps/vulkan-headers/src":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Headers",
+        "commit": "9f4c61a31435a7a90a314fc68aeb386c92a09c0f",
+        "require":
+        [
+            "third_party/vulkan-deps"
+        ]
+    },
+    "../third_party/vulkan-deps/vulkan-loader/src":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Loader.git",
+        "commit": "fdfdef6d1b75828c1c3658c867bbbc4adbec956c",
+        "require": [
+            "third_party/vulkan-deps"
+        ],
+        "patches": [
+            os.path.join(root_dir, 'patches', 'vulkan-loader', '*.patch')
+        ],
+    },
+    "../third_party/vulkan-deps/vulkan-tools/src":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Tools.git",
+        "commit": "1ef7bc1547db9b85bedb5792f958fdcdb5ecd97a",
+        "require":
+        [
+            "third_party/vulkan-deps"
+        ]
+    },
+    "../third_party/swiftshader/":
+    {
+        "type": "git",
+        "url": "https://swiftshader.googlesource.com/SwiftShader.git",
+        "commit": "5f9ed9b16931c7155171d31f75004f73f0a3abc8",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'swiftshader', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "../third_party/angle/third_party/wayland":
+    {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/anongit.freedesktop.org/git/wayland/wayland.git",
+        "commit": "5c3769edadc5390f27ff74500b5a8fcb6f65306b",
+        'condition': system == "linux"
+    },
+    '../third_party/gtest-parallel': {
+        "type": "git",
+        "url": "https://github.com/google/gtest-parallel.git",
+        "commit": "96f4f904922f9bf66689e749c40f314845baaac8",
+        "ignore_in_git": True,
+    },
+    '../third_party/webview2.nupkg': {
+        "type": "http",
+        "url": "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.902.49",
+        "sha256": "b483c906b03690267108f4304d456eac0e718131ef994e69aaa5a21532b512c6",
+        "condition": system in ['windows'],
+        "decompress": False,
+        "ignore_in_git": True,
+    },
+    # unzip webview2 since .nupkg cannot be decompress by default
+    'unzip_webview2': {
+        "type": "action",
+        "cwd": os.path.join(root_dir, '..', 'third_party'),
+        "function": unzip_webview2,
+        "require": ["../third_party/webview2.nupkg"],
+        "condition": system in ['windows']
+    },
+    '../third_party/abseil-cpp': {
+        'type': 'git',
+        'url': 'https://flutter.googlesource.com/third_party/abseil-cpp',
+        'ignore_in_git': True,
+        'commit': '1e18dc54a045a632de52d420e9636072662841b4',
+        'condition': system in [ 'darwin', 'windows', 'linux' ],
+    },
+    '../third_party/angle': {
+        'type': 'git',
+        'url': 'https://github.com/google/angle.git',
+        'ignore_in_git': True,
+        'commit': '094b49db60cb48ee932a875898b57accbfa656de',
+        'condition': system in [ 'darwin', 'linux', 'windows' ],
+        "patches": [
+            os.path.join(root_dir, 'patches', 'angle', '*.patch')
+        ],
+    },
+    '../third_party/angle/third_party/astc-encoder/src': {
+        "type": "git",
+        "url": "https://github.com/ARM-software/astc-encoder.git",
+        "commit": "573c475389bf51d16a5c3fc8348092e094e50e8f"
+    },
+    '../third_party/vulkan-deps': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/vulkan-deps.git",
+        "commit": "afc444a0f49a09f67b3dc63ddcd14e2031466ffa",
+    },
+    '../third_party/vulkan-deps/spirv-headers/src': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers.git",
+        "commit": "87d5b782bec60822aa878941e6b13c0a9a954c9b",
+        "require":
+        [
+            "third_party/vulkan-deps"
+        ]
+    },
+    '../third_party/vulkan-deps/spirv-tools/src': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Tools.git",
+        "commit": "5f45f793ae962a84c71a9b7ff434591c57cdad57",
+        "require":
+        [
+            "third_party/vulkan-deps"
+        ]
+    },
+    '../third_party/vulkan-deps/spirv-cross/src': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Cross.git",
+        "commit": "210a80013067672b52847ec7aa70ff78b2f4d77e",
+        "require":
+        [
+            "third_party/vulkan-deps"
+        ]
+    },
+    '../third_party/vulkan-deps/glslang/src': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/glslang.git",
+        "commit": "a53aa3e94f8b4bf22a6eb6e8a207fe91ab02b989",
+        "require":
+        [
+            "third_party/vulkan-deps"
+        ]
+    },
+    "clay/third_party/glm": {
+        "type": "git",
+        "url": "https://github.com/g-truc/glm.git",
+        "ignore_in_git": True,
+        "commit": "0af55ccecd98d4e5a8d1fad7de25ba429d60e863",
+    }
+}

@@ -33,7 +33,7 @@ def check_and_run():
         # The directory of this script
         this_dir = Path(__file__).resolve().parent
         # The project root directory
-        root_dir = this_dir.parents[2]
+        root_dir = this_dir.parent.parent
 
         if sys.platform == "win32":
             python_executable = root_dir / ".venv" / "Scripts" / "python.exe"
