@@ -210,6 +210,7 @@ public class LynxBackgroundRuntimeOptions {
     this.mBytecodeSourceUrl = other.mBytecodeSourceUrl;
     // LynxView doesn't pending core js load.
     this.mPendingCoreJsLoad = false;
+    this.mWrappers.addAll(other.mWrappers);
 
     // Merge these Fetchers only if they are unset:
     // This part of configurations are shared between runtime and platform-level of LynxView.

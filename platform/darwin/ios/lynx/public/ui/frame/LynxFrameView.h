@@ -11,7 +11,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxUIContext;
+
 @interface LynxFrameView : UIView <LUIBodyView>
+
+@property(nonatomic, assign) NSInteger sign;
+@property(nonatomic, weak) LynxUIContext *context;
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView;
 
@@ -23,6 +28,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setUrl:(NSString *)url;
 
 - (UIView<LUIBodyView> *_Nullable)getRootView;
+
+- (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame;
 
 @end
 

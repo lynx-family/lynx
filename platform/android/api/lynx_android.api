@@ -1974,6 +1974,13 @@ public interface com::lynx::tasm::behavior::ForegroundListener {
   public void com.lynx.tasm.behavior.ForegroundListener.onLynxViewEnterBackground();
 }
 
+public class com::lynx::tasm::behavior::ui::frame::FrameShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
+  public void com.lynx.tasm.behavior.ui.frame.FrameShadowNode.attachNativePtr(long ptr);
+  public void com.lynx.tasm.behavior.ui.frame.FrameShadowNode.updateIntrinsicContentSize(int width, int height);
+  public MeasureResult com.lynx.tasm.behavior.ui.frame.FrameShadowNode.measure(MeasureParam param, MeasureContext context);
+  public void com.lynx.tasm.behavior.ui.frame.FrameShadowNode.align(AlignParam param, AlignContext context);
+}
+
 public class com::lynx::tasm::performance::fsp::FSPConfig :  {
   public final boolean com.lynx.tasm.performance.fsp.FSPConfig.enable enable;
   public int com.lynx.tasm.performance.fsp.FSPConfig.minContentFillPercentageX minContentFillPercentageX;
@@ -5481,11 +5488,13 @@ public class com::lynx::tasm::utils::LynxFrameRateControl :  {
 public class com::lynx::tasm::behavior::ui::frame::LynxFrameView : com.lynx.tasm.behavior.ui.UIBody.UIBodyView {
   public com.lynx.tasm.behavior.ui.frame.LynxFrameView.LynxFrameView(Context context);
   public com.lynx.tasm.behavior.ui.frame.LynxFrameView.LynxFrameView(Context context, AttributeSet attrs);
+  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setSign(int sign);
   public LynxView com.lynx.tasm.behavior.ui.frame.LynxFrameView.getRootView();
-  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateViewport(int widthMeasureSpec, int heightMeasureSpec);
+  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateLayout(int width, int height);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateMetaData(TemplateData initData, TemplateData globalProps);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setUrl(String url);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.runOnTasmThread(Runnable runnable);
+  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setIntrinsicContentSize(int width, int height);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
   public LynxViewBuilder com.lynx.tasm.behavior.ui.frame.LynxFrameView.getLynxViewBuilder();
 }
@@ -10473,6 +10482,9 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.isMeaningfulPaintingAreaInvalidate();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.invalidateMeaningfulPaintingArea();
   public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getMeaningfulPaintingAreas();
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setIntrinsicContentSize(int width, int height);
+  public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getIntrinsicWidth();
+  public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getIntrinsicHeight();
 }
 
 public class com::lynx::tasm::behavior::ui::scroll::UIBounceView : com::lynx::tasm::behavior::ui::view::UISimpleView< AndroidView > {
@@ -10519,6 +10531,7 @@ public class com::lynx::tasm::behavior::ui::UIExposure : com.lynx.tasm.behavior.
 public class com::lynx::tasm::behavior::ui::frame::UIFrame : com::lynx::tasm::behavior::ui::LynxUI< LynxFrameView > {
   public com.lynx.tasm.behavior.ui.frame.UIFrame.UIFrame(LynxContext context);
   public com.lynx.tasm.behavior.ui.frame.UIFrame.UIFrame(LynxContext context, Object params);
+  public void com.lynx.tasm.behavior.ui.frame.UIFrame.setSign(int sign, String tagName);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.updateExtraData(Object data);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.onNodeRemoved();
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.updateLayout(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, Rect bound);

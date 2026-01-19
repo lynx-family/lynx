@@ -451,6 +451,9 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     private Renderer mRenderer;
 
+    private int mIntrinsicWidth;
+    private int mIntrinsicHeight;
+
     @Override
     public void setRenderer(Renderer renderer) {
       mRenderer = renderer;
@@ -880,6 +883,32 @@ public class UIBody extends UIGroup<UIBodyView> {
       ArrayList<MeaningfulPaintingArea> areas = new ArrayList<>();
       ((ViewInfo) mDrawChildHook).generateMeaningfulPaintingArea(0, 0, areas);
       return areas;
+    }
+
+    /**
+     * @brief Set the intrinsic content size of the UIBodyView.
+     * @param width The intrinsic width of the UIBodyView.
+     * @param height The intrinsic height of the UIBodyView.
+     */
+    public void setIntrinsicContentSize(int width, int height) {
+      mIntrinsicWidth = width;
+      mIntrinsicHeight = height;
+    }
+
+    /**
+     * @brief Get the intrinsic width of the UIBodyView.
+     * @return The intrinsic width of the UIBodyView.
+     */
+    public int getIntrinsicWidth() {
+      return mIntrinsicWidth;
+    }
+
+    /**
+     * @brief Get the intrinsic height of the UIBodyView.
+     * @return The intrinsic height of the UIBodyView.
+     */
+    public int getIntrinsicHeight() {
+      return mIntrinsicHeight;
     }
   }
 }

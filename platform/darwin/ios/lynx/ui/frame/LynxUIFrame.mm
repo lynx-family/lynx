@@ -30,9 +30,15 @@ LYNX_REGISTER_UI("frame")
   return [[LynxFrameView alloc] init];
 }
 
+- (void)setSign:(NSInteger)sign {
+  [super setSign:sign];
+  [[self view] setSign:sign];
+}
+
 - (void)setContext:(LynxUIContext*)context {
   [super setContext:context];
   [[self view] initWithRootView:context.rootView];
+  [[self view] setContext:self.context];
 }
 
 - (void)onReceiveAppBundle:(LynxTemplateBundle*)bundle {
@@ -52,7 +58,12 @@ LYNX_REGISTER_UI("frame")
                    border:border
                    margin:margin
       withLayoutAnimation:with];
-  [[self view] setFrame:frame];
+
+  UIEdgeInsets inset =
+      UIEdgeInsetsMake(padding.top + border.top, padding.left + border.left,
+                       padding.bottom + border.bottom, padding.right + border.right);
+  CGRect contentFrame = UIEdgeInsetsInsetRect(frame, inset);
+  [[self view] updateFrame:frame contentFrame:contentFrame];
 }
 
 - (void)attachPageUICallback {
