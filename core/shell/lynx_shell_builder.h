@@ -14,6 +14,7 @@
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/tasm_platform_invoker.h"
+#include "core/shell/tasm_platform_invoker_provider.h"
 
 namespace lynx {
 namespace shell {
@@ -91,6 +92,9 @@ class LynxShellBuilder {
   LynxShellBuilder& SetPropBundleCreator(
       const std::shared_ptr<tasm::PropBundleCreator>& creator);
 
+  LynxShellBuilder& SetTasmPlatformInvokerProvider(
+      const std::shared_ptr<TasmPlatformInvokerProvider>& provider);
+
   LynxShellBuilder& SetTasmPlatformInvoker(
       std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker);
 
@@ -163,6 +167,7 @@ class LynxShellBuilder {
 
   ShellOption shell_option_;
 
+  std::shared_ptr<TasmPlatformInvokerProvider> tasm_platform_invoker_provider_;
   std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker_;
 
   bool force_layout_on_background_thread_{false};

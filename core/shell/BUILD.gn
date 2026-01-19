@@ -59,6 +59,7 @@ shell_shared_sources = [
   "tasm_operation_queue_async.cc",
   "tasm_operation_queue_async.h",
   "tasm_platform_invoker.h",
+  "tasm_platform_invoker_provider.h",
   "vsync_observer_impl.cc",
   "vsync_observer_impl.h",
 ]
@@ -97,6 +98,8 @@ if (is_android) {
     "android/runtime_lifecycle_listener_delegate_android.h",
     "android/tasm_platform_invoker_android.cc",
     "android/tasm_platform_invoker_android.h",
+    "android/tasm_platform_invoker_provider_android.cc",
+    "android/tasm_platform_invoker_provider_android.h",
   ]
 } else if (is_harmony) {
   shell_shared_sources += [
@@ -106,6 +109,8 @@ if (is_android) {
     "harmony/native_facade_harmony.h",
     "harmony/tasm_platform_invoker_harmony.cc",
     "harmony/tasm_platform_invoker_harmony.h",
+    "harmony/tasm_platform_invoker_provider_harmony.cc",
+    "harmony/tasm_platform_invoker_provider_harmony.h",
   ]
 } else if (is_ios) {
   shell_shared_sources += [
@@ -125,6 +130,8 @@ if (is_android) {
     "ios/runtime_lifecycle_listener_delegate_darwin.mm",
     "ios/tasm_platform_invoker_darwin.h",
     "ios/tasm_platform_invoker_darwin.mm",
+    "ios/tasm_platform_invoker_provider_darwin.h",
+    "ios/tasm_platform_invoker_provider_darwin.mm",
   ]
 }
 

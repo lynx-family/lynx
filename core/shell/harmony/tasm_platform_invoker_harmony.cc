@@ -4,6 +4,7 @@
 
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 
+#include "core/shell/lynx_shell.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 
 namespace lynx {
@@ -50,6 +51,13 @@ void TasmPlatformInvokerHarmony::TriggerLepusMethodAsync(
         }
         flag->renderer->TriggerLepusMethodAsync(method_name, args);
       });
+}
+
+void TasmPlatformInvokerHarmony::OnShellPostBuild(shell::LynxShell* shell) {
+  if (!shell) {
+    return;
+  }
+  SetUITaskRunner(shell->GetRunners()->GetUITaskRunner());
 }
 
 void TasmPlatformInvokerHarmony::GetI18nResource(

@@ -13,6 +13,9 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 
 namespace lynx {
+namespace shell {
+class LynxShell;
+}
 namespace harmony {
 
 class TasmPlatformInvokerHarmony : public shell::TasmPlatformInvoker {
@@ -42,6 +45,8 @@ class TasmPlatformInvokerHarmony : public shell::TasmPlatformInvoker {
   }
 
   void OnRunPipelineFinished() override{};
+
+  void OnShellPostBuild(shell::LynxShell* shell) override;
 
  private:
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;

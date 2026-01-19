@@ -24,6 +24,7 @@
 #include "core/shell/android/native_facade_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
+#include "core/shell/android/tasm_platform_invoker_provider_android.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_layout_proxy_impl.h"
@@ -352,6 +353,9 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
                   : nullptr)
           .SetShellOption(shell_option)
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
+          .SetTasmPlatformInvokerProvider(
+              std::make_shared<lynx::shell::TasmPlatformInvokerProviderAndroid>(
+                  env, native_facade))
           .SetTasmPlatformInvoker(
               std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
                   env, tasm_platform_invoker))

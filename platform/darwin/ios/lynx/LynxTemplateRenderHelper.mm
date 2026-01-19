@@ -50,6 +50,7 @@
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/shell/ios/native_facade_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
+#include "core/shell/ios/tasm_platform_invoker_provider_darwin.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/module_delegate_impl.h"
 #include "core/shell/perf_controller_proxy_impl.h"
@@ -155,6 +156,8 @@
                         _performanceController)
                   : nullptr)
           .SetShellOption([self setUpShellOption])
+          .SetTasmPlatformInvokerProvider(
+              std::make_shared<lynx::shell::TasmPlatformInvokerProviderDarwin>(self))
           .SetTasmPlatformInvoker(std::make_unique<lynx::shell::TasmPlatformInvokerDarwin>(self))
           .SetUseInvokeUIMethodFunction(_lynxUIRenderer.useInvokeUIMethodFunction)
           .SetLynxEngineWrapper(_lynxEngine ? [_lynxEngine getEngineNative] : nullptr)

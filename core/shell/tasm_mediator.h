@@ -30,6 +30,8 @@ class VSyncMonitor;
 
 namespace shell {
 
+class LynxShell;
+
 using InvokeUIMethodFunction =
     base::MoveOnlyClosure<void, tasm::LynxGetUIResult, const std::string&,
                           fml::RefPtr<tasm::PropBundle>, piper::ApiCallBack>;
@@ -55,6 +57,9 @@ class TasmMediator : public LynxEngine::Delegate {
   void SetEngineActor(const std::shared_ptr<LynxActor<LynxEngine>>& actor) {
     engine_actor_ = actor;
   }
+
+  // Called once after LynxShell has finished core initialization.
+  void PostBuildHook(LynxShell* shell);
 
   void SetInvokeUIMethodFunction(InvokeUIMethodFunction func) {
     invoke_ui_method_func_ = std::move(func);
