@@ -480,7 +480,6 @@
   option.enable_multi_layout_thread_ =
       _enableMultiAsyncThread ||
       [[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableMultiLayoutThread defaultValue:NO];
-  option.enable_async_hydration_ = _enableAsyncHydration;
   option.enable_vsync_aligned_msg_loop_ = _enableVSyncAlignedMessageLoop;
   if (_runtime) {
     option.instance_id_ = _runtime.runtimeActor->GetInstanceId();

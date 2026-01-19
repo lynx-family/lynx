@@ -35,16 +35,6 @@ inline bool IsEngineAsync(base::ThreadStrategyForRendering strategy) {
          strategy == base::ThreadStrategyForRendering::MOST_ON_TASM;
 }
 
-inline ThreadStrategyForRendering ToAsyncEngineStrategy(
-    base::ThreadStrategyForRendering strategy) {
-  if (strategy == ALL_ON_UI) {
-    return MOST_ON_TASM;
-  } else if (strategy == PART_ON_LAYOUT) {
-    return MULTI_THREADS;
-  }
-  return strategy;
-}
-
 class UIThread {
  public:
   LYNX_EXPORT_FOR_DEVTOOL static fml::RefPtr<fml::TaskRunner>& GetRunner(

@@ -78,7 +78,6 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private boolean enableSyncFlush;
   private boolean enableVSyncAlignedMessageLoop;
   private boolean enablePendingJsTask;
-  private boolean enableAsyncHydration;
   private boolean enableJSRuntime;
   private boolean enableAirStrictMode;
   private boolean debuggable;
@@ -121,9 +120,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       ThreadStrategyForRendering threadStrategy, boolean enableAutoExpose,
       boolean enableLayoutSafepoint, boolean enableUnifiedPipeline, boolean forceDarkAllowed,
       Float density, int screenWidth, int screenHeight, boolean enableMultiAsyncThread,
-      boolean enableSyncFlush, boolean enablePendingJsTask, boolean enableAsyncHydration,
-      boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime, boolean enableAirStrictMode,
-      boolean debuggable, int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
+      boolean enableSyncFlush, boolean enablePendingJsTask, boolean enableVSyncAlignedMessageLoop,
+      boolean enableJSRuntime, boolean enableAirStrictMode, boolean debuggable,
+      int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
       boolean enablePreUpdateData, IUIRendererCreator uiRendererCreator, int embeddedMode,
       boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor, boolean enableMTSModule,
       String tapSlop, boolean enableSharedModule) {
@@ -145,7 +144,6 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.enableMultiAsyncThread = enableMultiAsyncThread;
     this.enableSyncFlush = enableSyncFlush;
     this.enablePendingJsTask = enablePendingJsTask;
-    this.enableAsyncHydration = enableAsyncHydration;
     this.enableVSyncAlignedMessageLoop = enableVSyncAlignedMessageLoop;
     this.enableJSRuntime = enableJSRuntime;
     this.enableAirStrictMode = enableAirStrictMode;
@@ -279,8 +277,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   }
 
   @Override
+  @Deprecated
   public boolean isEnableAsyncHydration() {
-    return this.enableAsyncHydration;
+    return false;
   }
 
   @Override

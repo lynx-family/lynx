@@ -46,11 +46,6 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   static Float defaultDensity = null;
 
   /**
-   * enable async hydration of ssr.
-   */
-  protected boolean enableAsyncHydration = false;
-
-  /**
    * enableJSRuntime、enableAirStrictMode both determine whether js thread will be enabled.
    * Change enableJSRuntime & enableAirStrictMode private and add enableJSRuntime() to expose for
    * usage.
@@ -403,10 +398,10 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   }
 
   /**
-   * Run the hydration process in a async thread.
+   * no longer used and has no effect.
    */
+  @Deprecated
   public T setEnableAsyncHydration(boolean enable) {
-    enableAsyncHydration = enable;
     return (T) this;
   }
 

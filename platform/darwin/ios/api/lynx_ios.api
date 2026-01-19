@@ -586,7 +586,6 @@ public class LynxBaseConfigurator : NSObject {
   public BOOL LynxBaseConfigurator::enableSyncFlush enableSyncFlush;
   public BOOL LynxBaseConfigurator::enableMultiAsyncThread enableMultiAsyncThread;
   public BOOL LynxBaseConfigurator::enableVSyncAlignedMessageLoop enableVSyncAlignedMessageLoop;
-  public BOOL LynxBaseConfigurator::enableAsyncHydration enableAsyncHydration;
   public BOOL LynxBaseConfigurator::enableMTSModule enableMTSModule;
   public CGFloat LynxBaseConfigurator::fontScale fontScale;
   public LynxBooleanOption LynxBaseConfigurator::enableGenericResourceFetcher enableGenericResourceFetcher;
@@ -603,6 +602,7 @@ public class LynxBaseConfigurator : NSObject {
   public NSString* LynxBaseConfigurator::bytecodeUrl bytecodeUrl;
   public id<LynxUIRendererCreatorProtocol> LynxBaseConfigurator::uiRendererCreator uiRendererCreator;
   public LynxBackgroundRuntimeOptions* LynxBaseConfigurator()::lynxBackgroundRuntimeOptions lynxBackgroundRuntimeOptions;
+  public BOOL enableAsyncHydration LynxBaseConfigurator::__attribute__((deprecated("no longer used and has no effect.")));
   public void LynxBaseConfigurator::setThreadStrategyForRender:(LynxThreadStrategyForRender threadStrategy);
   public LynxThreadStrategyForRender LynxBaseConfigurator::getThreadStrategyForRender();
   public void LynxBaseConfigurator::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);

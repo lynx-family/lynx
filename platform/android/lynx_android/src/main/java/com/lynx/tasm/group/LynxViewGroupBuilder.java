@@ -59,8 +59,8 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
         behaviorRegistry, lynxRuntimeOptions, mContextData, threadStrategy, enableAutoExpose,
         enableLayoutSafepoint, enableUnifiedPipeline, forceDarkAllowed, densityOverride,
         screenWidth, screenHeight, enableMultiAsyncThread, enableSyncFlush, enablePendingJsTask,
-        enableAsyncHydration, enableVSyncAlignedMessageLoop, enableJSRuntime, enableAirStrictMode,
-        debuggable, presetWidthMeasureSpec, presetHeightMeasureSpec, fontScale, enablePreUpdateData,
+        enableVSyncAlignedMessageLoop, enableJSRuntime, enableAirStrictMode, debuggable,
+        presetWidthMeasureSpec, presetHeightMeasureSpec, fontScale, enablePreUpdateData,
         uiRendererCreator, embeddedMode, hasPresetMeasureSpec, logicExecutor, enableMTSModule,
         tapSlop, enableSharedModule);
     return group;

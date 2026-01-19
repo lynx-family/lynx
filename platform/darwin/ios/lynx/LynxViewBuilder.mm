@@ -130,13 +130,6 @@
   return [super enableVSyncAlignedMessageLoop];
 }
 
-- (BOOL)enableAsyncHydration {
-  if (_lynxViewGroup) {
-    return _lynxViewGroup.enableAsyncHydration;
-  }
-  return [super enableAsyncHydration];
-}
-
 - (BOOL)enableMTSModule {
   if (_lynxViewGroup) {
     return _lynxViewGroup.enableMTSModule;

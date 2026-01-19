@@ -57,7 +57,6 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _needPendingUIOperation;
   BOOL _enablePendingJSTaskOnLayout;
   BOOL _enablePreUpdateData;
-  BOOL _enableAsyncHydration;
   BOOL _enableMultiAsyncThread;
   BOOL _enableJSGroupThread;
   BOOL _enableVSyncAlignedMessageLoop;

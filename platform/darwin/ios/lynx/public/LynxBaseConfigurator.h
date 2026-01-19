@@ -39,8 +39,8 @@
 @property(nonatomic, assign) BOOL enableSyncFlush;
 @property(nonatomic, assign) BOOL enableMultiAsyncThread;
 @property(nonatomic, assign) BOOL enableVSyncAlignedMessageLoop;
-// Run the hydration process in a async thread.
-@property(nonatomic, assign) BOOL enableAsyncHydration;
+@property(nonatomic, assign) BOOL enableAsyncHydration
+    __attribute__((deprecated("no longer used and has no effect.")));
 @property(nonatomic, assign) BOOL enableMTSModule;
 @property(nonatomic, assign) CGFloat fontScale;
 @property(nonatomic, assign) LynxBooleanOption enableGenericResourceFetcher;

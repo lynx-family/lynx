@@ -108,9 +108,9 @@ public interface ILynxViewConfigProvider {
   boolean isEnablePendingJsTask();
 
   /**
-   * @return whether AsyncHydration enabled;
+   * no longer used and has no effect.
    */
-  boolean isEnableAsyncHydration();
+  @Deprecated boolean isEnableAsyncHydration();
 
   /**
    * @return whether JSRuntime enabled;

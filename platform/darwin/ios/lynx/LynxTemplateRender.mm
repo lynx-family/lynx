@@ -222,7 +222,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enablePendingJSTaskOnLayout = builder.enablePendingJSTaskOnLayout;
   _enableMultiAsyncThread = builder.enableMultiAsyncThread;
   _enableVSyncAlignedMessageLoop = builder.enableVSyncAlignedMessageLoop;
-  _enableAsyncHydration = builder.enableAsyncHydration;
   _enableJSGroupThread = builder.group.enableJSGroupThread;
   _enableUnifiedPipeline = builder.enableUnifiedPipeline;
   // First prepare env

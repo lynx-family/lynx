@@ -65,7 +65,6 @@ struct ShellOption {
   bool enable_multi_layout_thread_{true};
   bool enable_js_group_thread_{false};
   bool enable_vsync_aligned_msg_loop_{false};
-  bool enable_async_hydration_{false};
   int32_t instance_id_{kUnknownInstanceId};
   std::string js_group_thread_name_;
   tasm::PageOptions page_options_;
@@ -409,19 +408,11 @@ class LynxShell {
   std::function<void(std::unique_ptr<runtime::LynxRuntime>&)>
       start_js_runtime_task_;
 
-  // A SSR page will be rendered when LoadSSRData is called.
-  // A ssr page will be further hydrated when a load template is called.
-  bool hydration_pending_{false};
-  bool enable_async_hydration_{false};
-
   base::ThreadStrategyForRendering current_strategy_;
 
   std::string js_group_thread_name_;
   bool enable_js_group_thread_;
   tasm::PageOptions page_options_;
-  std::condition_variable tasm_merge_cv_;
-  std::mutex tasm_merge_mutex_;
-  std::atomic_bool need_wait_for_merge_{false};
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_ =
       std::make_shared<tasm::PropBundleCreatorDefault>();
   AppState app_state_{AppState::kUnknown};
