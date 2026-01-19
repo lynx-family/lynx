@@ -4595,6 +4595,86 @@ TEST_P(FiberElementTest, FiberElementFixedRemovedCase) {
   EXPECT_TRUE(page_children[0] == element_before_painting_node);
 }
 
+// position: fixed replace element with new fixed enabled
+TEST_P(FiberElementTest, FiberElementFixedReplaceCase) {
+  manager->config_->SetEnableFixedNew(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto parent_container = manager->CreateFiberNode("view");
+  page->InsertNode(parent_container);
+
+  auto container = manager->CreateFiberNode("view");
+  parent_container->InsertNode(container);
+
+  auto parent = manager->CreateFiberNode("view");
+  container->InsertNode(parent);
+
+  auto fixed_child = manager->CreateFiberNode("view");
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+  parent->InsertNode(fixed_child);
+
+  page->FlushActionsAsRoot();
+
+  auto parent_sibling = manager->CreateFiberNode("view");
+
+  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  inserted_elements.emplace_back(parent_sibling);
+  inserted_elements.emplace_back(parent);
+  removed_elements.emplace_back(parent);
+
+  container->ReplaceElements(inserted_elements, removed_elements, nullptr);
+
+  page->FlushActionsAsRoot();
+}
+
+// position: fixed double replace element with new fixed enabled
+TEST_P(FiberElementTest, FiberElementFixedDoubleReplaceCase) {
+  manager->config_->SetEnableFixedNew(true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto parent_container = manager->CreateFiberNode("view");
+  page->InsertNode(parent_container);
+
+  auto container = manager->CreateFiberNode("view");
+  parent_container->InsertNode(container);
+
+  auto parent = manager->CreateFiberNode("view");
+  container->InsertNode(parent);
+
+  auto fixed_child = manager->CreateFiberNode("view");
+  fixed_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+  parent->InsertNode(fixed_child);
+
+  page->FlushActionsAsRoot();
+
+  auto container_sibling = manager->CreateFiberNode("view");
+  auto parent_sibling = manager->CreateFiberNode("view");
+
+  base::Vector<fml::RefPtr<FiberElement>> parent_inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> parent_removed_elements{};
+  parent_inserted_elements.emplace_back(container_sibling);
+  parent_inserted_elements.emplace_back(container);
+  parent_removed_elements.emplace_back(container);
+
+  parent_container->ReplaceElements(parent_inserted_elements,
+                                    parent_removed_elements, nullptr);
+
+  base::Vector<fml::RefPtr<FiberElement>> inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> removed_elements{};
+  inserted_elements.emplace_back(parent_sibling);
+  inserted_elements.emplace_back(parent);
+  removed_elements.emplace_back(parent);
+
+  container->ReplaceElements(inserted_elements, removed_elements, nullptr);
+
+  page->FlushActionsAsRoot();
+}
+
 // insert before fixed
 TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase) {
   auto page = manager->CreateFiberPage("page", 11);

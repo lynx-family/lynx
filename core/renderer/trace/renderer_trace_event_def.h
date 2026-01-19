@@ -520,6 +520,8 @@ inline constexpr const char* const FIBER_ELEMENT_HANDLE_INSERT_CHILD_ACTION =
     "FiberElement::HandleInsertChildAction";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_REMOVE_CHILD_ACTION =
     "FiberElement::HandleRemoveChildAction";
+inline constexpr const char* const FIBER_ELEMENT_HANDLE_REMOVE_SELF =
+    "FiberElement::HandleRemoveSelf";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_CONTAINER_INSERTION =
     "FiberElement::HandleContainerInsertion";
 inline constexpr const char* const FIBER_ELEMENT_CONSUME_STYLE =

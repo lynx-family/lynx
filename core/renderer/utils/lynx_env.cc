@@ -581,5 +581,9 @@ bool LynxEnv::FixRadonInlineConvertBug() {
 bool LynxEnv::EnableFetchAPIStreamingStandard() {
   return GetBoolEnv(Key::ENABLE_FETCH_API_STANDARD_STREAMING, false);
 }
+
+bool LynxEnv::FixNewFixedRemovalBug() {
+  return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
+}
 }  // namespace tasm
 }  // namespace lynx

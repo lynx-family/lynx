@@ -91,6 +91,7 @@ ElementManager::ElementManager(
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   fix_radon_inline_convert_bug_ =
       LynxEnv::GetInstance().FixRadonInlineConvertBug();
+  fix_new_fixed_removal_bug_ = LynxEnv::GetInstance().FixNewFixedRemovalBug();
   if (platform_layout_context_) {
     layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());

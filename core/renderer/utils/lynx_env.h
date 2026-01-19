@@ -113,6 +113,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
     // FIXME(linxs): remove this config in the next version(remove in 3.8)
     FIX_LIST_CALLBACK_LEAK_BUG,
+    // FIXME(zhouzhitao): remove this config in the next version(remove in 3.9)
+    FIX_NEW_FIXED_REMOVAL_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
@@ -271,6 +273,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_LIST_CALLBACK_LEAK_BUG, "fix_list_callback_leak"},
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
+            {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -421,6 +424,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableUnifyFixedBehavior();
   bool FixRadonInlineConvertBug();
   bool EnableFetchAPIStreamingStandard();
+  bool FixNewFixedRemovalBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

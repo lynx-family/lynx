@@ -246,6 +246,9 @@ class FiberElement : public Element,
                                        FiberElement* ref_node);
   virtual void HandleRemoveChildAction(FiberElement* child);
 
+  void HandleRemoveSelf(FiberElement* removal_point,
+                        FiberElement* render_parent);
+
   int64_t GetParentComponentUniqueIdForFiber() {
     return parent_component_unique_id_;
   }
