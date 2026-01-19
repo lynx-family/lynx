@@ -91,16 +91,17 @@
  * });
  * @endcode
  */
-#define LYNX_SERVICE_REGISTER_CREATOR(ImplCreator)                           \
-  namespace {                                                                \
-  auto creator() ImplCreator;                                                \
-  DYLIB_ENTRY(BASE_CONCAT(_lynx_service_register_, __COUNTER__)) {           \
-    using ReturnType = std::invoke_result_t<decltype(creator)>;              \
-    using CleanType = std::remove_pointer_t<ReturnType>;                     \
-    static_assert(std::is_base_of_v<lynx::service::_BaseService, CleanType>, \
-                  "Service creator must return a service instance");         \
-    lynx::service::register_service(creator);                                \
-  }                                                                          \
+#define LYNX_SERVICE_REGISTER_CREATOR(ImplCreator)                      \
+  namespace {                                                           \
+  auto creator() ImplCreator;                                           \
+  DYLIB_ENTRY(BASE_CONCAT(_lynx_service_register_, __COUNTER__)) {      \
+    using ReturnType = std::invoke_result_t<decltype(creator)>;         \
+    using CleanType = std::remove_pointer_t<ReturnType>;                \
+    static_assert(                                                      \
+        std::is_base_of<lynx::service::_BaseService, CleanType>::value, \
+        "Service creator must return a service instance");              \
+    lynx::service::register_service(creator);                           \
+  }                                                                     \
   }
 
 namespace lynx {
@@ -194,7 +195,8 @@ class EXPORT_CLASS _BaseRegistry {
  * @tparam Base The service interface class
  */
 template <typename Base,
-          typename = std::enable_if_t<std::is_base_of_v<_BaseService, Base>>>
+          typename =
+              std::enable_if_t<std::is_base_of<_BaseService, Base>::value>>
 class _Registry : public _BaseRegistry {
  public:
   using Creator = std::function<Base*()>;
