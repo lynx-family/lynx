@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxUI;
 @class LynxGestureArenaManager;
 @class LynxCustomGestureRecognizer;
+@class LynxWeakProxy;
 
 @interface LynxEventHandler : NSObject
 
@@ -44,6 +45,26 @@ NS_ASSUME_NONNULL_BEGIN
       withContainer:(UIView *)container
            andPoint:(CGPoint)point
            andEvent:(UIEvent *)event;
+
+// When a PanGesture in the corresponding direction is detected, initiate the gesture interception
+// process.
+- (void)startInterceptPanGestures:(enum LynxPanInterceptDirection)direction;
+// Get the first LynxEventTarget that sets the valid pan-intercept-direction.
+- (id<LynxEventTarget>)getFirstPanInterceptDirectionTarget:
+    (enum LynxPanInterceptDirection)direction;
+// Get the valid and correct pan-intercept-direction of the given LynxEventTarget.
+- (enum LynxPanInterceptScope)getPanInterceptScope:(id<LynxEventTarget>)target;
+// Iterate through other Gestures and determine whether interception is necessary.
+- (void)interceptPanGestures:(NSArray<LynxWeakProxy *> *)otherGestures
+         withPlatformGesture:(UIGestureRecognizer *)platformGesture;
+// Based on the relationship between pan-intercept-scope and gesture view, determine whether to
+// intercept other gestures.
+- (BOOL)shouldInterceptPanGesture:(UIView *)other
+                         withView:(UIView *)view
+                andInterceptScope:(enum LynxPanInterceptScope)scope;
+// Determine the type and direction of other gestures.
+- (BOOL)isPanGesture:(UIGestureRecognizer *)gesture
+       withDirection:(enum LynxPanInterceptDirection)direction;
 
 - (void)onGestureRecognized;
 - (void)onGestureRecognizedByEventTarget:(id<LynxEventTarget>)ui;
