@@ -105,12 +105,12 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
         return if (!containerPopupTag.isNullOrEmpty()) {
             val fragment = (activity as? FragmentActivity)?.let {
                 findFragmentByTagRecursive(it.supportFragmentManager, containerPopupTag)
-            } as? Fragment ?: return false
+            } ?: return false
             val offsetX = 0f
             val offsetY = getBelowContainerHeightOffset().toFloat()
             event.offsetLocation(-offsetX, -offsetY)
             val handled = if (fragment is DialogFragment) {
-                fragment.dialog.dispatchTouchEvent(event) ?: false
+                fragment.dialog?.dispatchTouchEvent(event) ?: false
             } else {
                 // For regular fragments, we need to convert screen coordinates to fragment view coordinates
                 fragment.view?.let { fragmentView ->
