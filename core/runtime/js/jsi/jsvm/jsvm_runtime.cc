@@ -796,6 +796,10 @@ void JSVMRuntime::RequestGC() {
   // cast int 3 to JSVM_MemoryPressureLevel enum value for use
   JSVM_CALL(this, OH_JSVM_MemoryPressureNotification, getEnv(),
             static_cast<JSVM_MemoryPressureLevel>(3));
+  // In case the above call failed because of Harmony SDK not support, we still
+  // need to notify critical memory pressure
+  JSVM_CALL(this, OH_JSVM_MemoryPressureNotification, getEnv(),
+            JSVM_MemoryPressureLevel::JSVM_MEMORY_PRESSURE_LEVEL_CRITICAL);
 }
 
 void JSVMRuntime::InitInspector(
