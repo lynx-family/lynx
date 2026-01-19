@@ -2,13 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef BINDING_COMMON_ENV_H_
-#define BINDING_COMMON_ENV_H_
+#ifndef THIRD_PARTY_BINDING_COMMON_ENV_H_
+#define THIRD_PARTY_BINDING_COMMON_ENV_H_
 
 #include <cstdint>
 #include <ostream>
 
 #include "third_party/binding/common/base.h"
+
+#if OS_WIN
+#ifdef SendMessage
+#undef SendMessage
+#endif
+#endif
 
 namespace lynx {
 namespace binding {
@@ -70,4 +76,4 @@ class Env {
 }  // namespace binding
 }  // namespace lynx
 
-#endif  // BINDING_COMMON_ENV_H_
+#endif  // THIRD_PARTY_BINDING_COMMON_ENV_H_
