@@ -7,6 +7,7 @@ import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.text.*;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.behavior.ui.frame.FrameShadowNode;
 import com.lynx.tasm.behavior.ui.frame.UIFrame;
 import com.lynx.tasm.behavior.ui.list.UIList;
 import com.lynx.tasm.behavior.ui.list.UIListItem;
@@ -115,6 +116,10 @@ public class BuiltInBehavior implements BehaviorBundle {
       @Override
       public LynxUI createUIWithParams(LynxContext context, Object params) {
         return new UIFrame(context, params);
+      }
+      @Override
+      public ShadowNode createShadowNode() {
+        return new FrameShadowNode();
       }
     });
     return bc;

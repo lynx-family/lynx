@@ -14,15 +14,23 @@ import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import java.lang.ref.WeakReference;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class LynxFrameView extends UIBodyView {
+  private static final String TAG = "LynxFrameView";
   private LynxTemplateRender mRender;
   private String mUrl;
   private WeakReference<LynxView> mRootView = null;
+  private int mSign;
+  private LynxContext mContext;
+  private boolean mIsBundleLoaded = false;
+  private boolean mIsIntrinsicSizeConsumed = false;
+  private int mContentWidth = 0;
+  private int mContentHeight = 0;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -35,7 +43,8 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   private void init(Context context) {
-    UIBodyView bodyView = ((LynxContext) context).getUIBodyView();
+    mContext = (LynxContext) context;
+    UIBodyView bodyView = mContext.getUIBodyView();
     if (bodyView != null) {
       if (bodyView instanceof LynxView) {
         mRootView = new WeakReference<>((LynxView) bodyView);
@@ -43,9 +52,14 @@ public final class LynxFrameView extends UIBodyView {
         mRootView = new WeakReference<>(((LynxFrameView) bodyView).getRootView());
       }
       LynxViewBuilder builder = bodyView.getLynxViewBuilder();
+      builder.setEnablePreUpdateData(true);
       mLynxUIRender = builder.createLynxUIRenderer();
       mRender = new LynxTemplateRender(context, this, builder);
     }
+  }
+
+  public void setSign(int sign) {
+    mSign = sign;
   }
 
   /**
@@ -61,16 +75,15 @@ public final class LynxFrameView extends UIBodyView {
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
     mRender.loadTemplate(builder.build());
+    mIsBundleLoaded = true;
   }
 
-  public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
-    mRender.updateViewport(widthMeasureSpec, heightMeasureSpec);
+  public void updateLayout(int width, int height) {
+    mContentWidth = width;
+    mContentHeight = height;
   }
 
   public void updateMetaData(TemplateData initData, TemplateData globalProps) {
-    if (initData == null && globalProps == null) {
-      return;
-    }
     LynxUpdateMeta meta =
         new LynxUpdateMeta.Builder()
             .setUpdatedData(initData == null ? TemplateData.empty() : initData)
@@ -90,12 +103,42 @@ public final class LynxFrameView extends UIBodyView {
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    mRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    if (!mIsBundleLoaded) {
+      super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      return;
+    }
+
+    int targetWidth = mContentWidth;
+    int targetHeight = mContentHeight;
+    if (!mIsIntrinsicSizeConsumed) {
+      targetWidth = getIntrinsicWidth();
+      targetHeight = getIntrinsicHeight();
+      mIsIntrinsicSizeConsumed = true;
+    }
+
+    mRender.onMeasure(MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
   }
 
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     mRender.onLayout(changed, left, top, right, bottom);
+  }
+
+  @Override
+  public void setIntrinsicContentSize(int width, int height) {
+    if (width == getIntrinsicWidth() && height == getIntrinsicHeight()) {
+      return;
+    }
+    LLog.i(TAG, "LynxFrameView::setIntrinsicContentSize width:" + width + " height:" + height);
+
+    mContext.findShadowNodeAndRunTask(mSign, (node) -> {
+      if (node instanceof FrameShadowNode) {
+        ((FrameShadowNode) node).updateIntrinsicContentSize(width, height);
+      }
+    });
+    mIsIntrinsicSizeConsumed = false;
+    super.setIntrinsicContentSize(width, height);
   }
 
   @Override
