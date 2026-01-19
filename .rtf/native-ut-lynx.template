@@ -10,6 +10,7 @@ builder({
             "enable_inspector = true",
             "enable_napi_binding=true",
             "enable_coverage=true",
+            "use_flutter_cxx=false",
             f"is_asan={options.get_str('enable_asan', 'false')}",
         ],
         "output": "out/Default",
