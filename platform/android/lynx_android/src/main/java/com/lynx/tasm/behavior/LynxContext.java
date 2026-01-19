@@ -167,6 +167,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   private boolean mLayoutThreadChanged = false;
 
+  private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
+
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
     mVirtualScreenMetrics = new DisplayMetrics();
@@ -265,6 +267,16 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
    */
   public void setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode) {
     this.embeddedMode = embeddedMode;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setTapSlop(String tapSlop) {
+    this.tapSlop = tapSlop;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public String getTapSlop() {
+    return this.tapSlop;
   }
 
   /**

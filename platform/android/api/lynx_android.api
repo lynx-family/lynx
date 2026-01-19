@@ -4530,6 +4530,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isFragmentLayerRenderOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnginePoolEnabled();
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
+  public void com.lynx.tasm.behavior.LynxContext.setTapSlop(String tapSlop);
+  public String com.lynx.tasm.behavior.LynxContext.getTapSlop();
   public void com.lynx.tasm.behavior.LynxContext.setRuntimeCacheManager(ILynxViewRuntimeCacheManager cacheManager);
   public ILynxViewRuntimeCacheManager com.lynx.tasm.behavior.LynxContext.getRuntimeCacheManager();
   public void com.lynx.tasm.behavior.LynxContext.setEnableAsyncLoadImage(boolean b);

@@ -233,13 +233,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     } else {
       LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
       if (lynxContext != null) {
-        LynxView lynxView = lynxContext.getLynxView();
-        if (lynxView != null) {
-          LynxViewBuilder builder = lynxView.getLynxViewBuilder();
-          if (builder != null) {
-            mTapSlop = builder.getTapSlop();
-          }
-        }
+        mTapSlop = lynxContext.getTapSlop();
       }
     }
     mEnableMultiTouch = config.getEnableMultiTouch();

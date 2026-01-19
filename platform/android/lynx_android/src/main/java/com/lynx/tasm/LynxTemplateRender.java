@@ -419,6 +419,7 @@ public class LynxTemplateRender
 
     mLynxContext.setEmbeddedMode(mEmbeddedMode);
     mLynxContext.setPerfController(mPerformanceController);
+    mLynxContext.setTapSlop(builder.getTapSlop());
 
     mLynxContext.setUIBodyView(mBodyView);
     mLynxContext.setForceDarkAllowed(mLynxViewConfigProvider.getForceDarkAllowed());
