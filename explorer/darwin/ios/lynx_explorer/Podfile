@@ -54,6 +54,8 @@ target 'LynxExplorer' do
   pod 'SDWebImageWebPCoder', '0.11.0'
 
   pod 'DebugRouter', '5.0.13'
+
+  pod 'MJRefresh', '3.6.1'
 end
 
 target 'LynxExplorerTests' do
