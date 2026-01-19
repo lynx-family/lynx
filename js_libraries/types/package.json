@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/types",
-  "version": "3.7.2",
+  "version": "3.8.0",
   "description": "",
   "keywords": [
     "lynx",
@@ -63,7 +63,10 @@
     }
   },
   "files": [
-    "types/",
+    "types/background-thread/",
+    "types/common/",
+    "types/main-thread/",
+    "types/index.d.ts",
     "CHANGELOG.md"
   ],
   "dependencies": {
