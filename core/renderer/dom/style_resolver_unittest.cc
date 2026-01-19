@@ -571,6 +571,266 @@ TEST_F(CSSPatchingTest, ResolveStyleObjectsBasedOnExistingMap_EmptyNewStyles) {
   // All old styles should be reset since new styles are empty
   EXPECT_TRUE(target.GetCurrentStyles().empty());
 }
+// Mock SharedCSSFragmentWrapper for testing adopted stylesheets
+class MockSharedCSSFragmentWrapper : public tasm::SharedCSSFragmentWrapper {
+ public:
+  MockSharedCSSFragmentWrapper() : SharedCSSFragmentWrapper(nullptr) {}
+};
+
+// Mock CSSFragment for testing adopted stylesheets
+class MockCSSFragment : public tasm::SharedCSSFragment {
+ public:
+  MockCSSFragment() : SharedCSSFragment(-1, nullptr) {}
+
+  bool enable_css_selector() override { return enable_css_selector_mock_; }
+
+  void SetEnableCSSSelector(bool enable) {
+    enable_css_selector_mock_ = enable;
+    if (enable) {
+      tasm::SharedCSSFragment::SetEnableCSSSelector();
+    }
+  }
+
+ private:
+  bool enable_css_selector_mock_ = true;
+};
+
+TEST_F(CSSPatchingTest, AdoptedStylesheets_MergeLogic) {
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetIdSelector("view-id");
+
+  // 1. Create adopted stylesheet with a low-specificity rule (tag selector)
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  CSSParserConfigs configs;
+  auto adopted_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  auto adopted_id = CSSPropertyID::kPropertyIDFontSize;
+  auto adopted_impl = lepus::Value(30.0);
+  adopted_tokens.get()->raw_attributes_[adopted_id] =
+      CSSValue(adopted_impl, CSSValuePattern::PX);
+
+  // Add rule to adopted fragment: "view { font-size: 30px; }" (specificity:
+  // 0,0,1)
+  auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector[0].SetMatch(css::LynxCSSSelector::kTag);
+  selector[0].SetValue("view");
+  selector[0].SetLastInTagHistory(true);
+  selector[0].SetLastInSelectorList(true);
+  mock_fragment->AddStyleRule(std::move(selector), adopted_tokens);
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(mock_fragment);
+  manager->AdoptStyleSheet(wrapper);
+
+  // 2. Create regular fragment with a high-specificity rule (ID selector)
+  auto regular_fragment = std::make_unique<MockCSSFragment>();
+  regular_fragment->SetEnableCSSSelector(true);
+
+  auto regular_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  auto regular_id = CSSPropertyID::kPropertyIDFontSize;
+  auto regular_impl = lepus::Value(10.0);
+  regular_tokens.get()->raw_attributes_[regular_id] =
+      CSSValue(regular_impl, CSSValuePattern::PX);
+
+  // Add rule to regular fragment: "#view-id { font-size: 10px; }" (specificity:
+  // 1,0,0)
+  auto regular_selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  regular_selector[0].SetMatch(css::LynxCSSSelector::kId);
+  regular_selector[0].SetValue("view-id");
+  regular_selector[0].SetLastInTagHistory(true);
+  regular_selector[0].SetLastInSelectorList(true);
+  regular_fragment->AddStyleRule(std::move(regular_selector), regular_tokens);
+
+  // 3. Resolve style
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+                                              &changed_css_vars);
+
+  // 4. Verify cascade priority: adopted stylesheet should override regular
+  // stylesheet, even if regular stylesheet has higher specificity
+  auto it = result.find(CSSPropertyID::kPropertyIDFontSize);
+  ASSERT_TRUE(it != result.end());
+  EXPECT_EQ(it->second.AsNumber(), 30.0);
+}
+
+TEST_F(CSSPatchingTest, AdoptedStylesheets_BasicIntegration) {
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(true);
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(mock_fragment);
+
+  manager->AdoptStyleSheet(wrapper);
+
+  EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
+
+  auto regular_fragment = std::make_unique<MockCSSFragment>();
+  regular_fragment->SetEnableCSSSelector(true);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+                                              &changed_css_vars);
+
+  SUCCEED();
+}
+
+TEST_F(CSSPatchingTest, AdoptedStylesheets_EmptyList) {
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+
+  auto regular_fragment = std::make_unique<MockCSSFragment>();
+  regular_fragment->SetEnableCSSSelector(true);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+                                              &changed_css_vars);
+
+  SUCCEED();
+}
+
+TEST_F(CSSPatchingTest, AdoptedStylesheets_DisabledSelector) {
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(false);
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(mock_fragment);
+
+  manager->AdoptStyleSheet(wrapper);
+
+  auto regular_fragment = std::make_unique<MockCSSFragment>();
+  regular_fragment->SetEnableCSSSelector(true);
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+                                              &changed_css_vars);
+
+  SUCCEED();
+}
+
+TEST_F(CSSPatchingTest, GetCSSStyleNew_NoAdoptedStylesheets) {
+  // Test that style resolution works when no adopted stylesheets are present
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  // Create a regular stylesheet fragment
+  CSSParserConfigs configs;
+  CSSParserTokenMap regular_css_map;
+  auto regular_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  auto regular_id = CSSPropertyID::kPropertyIDFontSize;
+  auto regular_impl = lepus::Value("16px");
+  regular_tokens.get()->raw_attributes_[regular_id] =
+      CSSValue(regular_impl, CSSValuePattern::STRING);
+
+  std::string regular_key = ".test-class";
+  auto& regular_sheets = regular_tokens->sheets();
+  auto regular_shared_css_sheet = std::make_shared<CSSSheet>(regular_key);
+  regular_sheets.emplace_back(regular_shared_css_sheet);
+  regular_css_map.insert(std::make_pair(regular_key, regular_tokens));
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto regular_fragment = std::make_unique<MockCSSFragment>();
+  regular_fragment->SetEnableCSSSelector(true);
+
+  auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  selector[0].SetValue("test-class");
+  selector[0].SetLastInTagHistory(true);
+  selector[0].SetLastInSelectorList(true);
+  regular_fragment->AddStyleRule(std::move(selector), regular_tokens);
+
+  // Resolve styles
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+                                              &changed_css_vars);
+
+  // Should get regular styles
+  EXPECT_TRUE(result.find(CSSPropertyID::kPropertyIDFontSize) != result.end());
+}
+
+TEST_F(CSSPatchingTest, GetCSSStyleNew_AdoptedStylesheetDisabledSelector) {
+  // Test that adopted stylesheets with disabled selectors are skipped
+  auto fiber_element =
+      fml::AdoptRef<FiberElement>(new FiberElement(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("test-class");
+
+  // Create a mock CSS fragment with disabled selector
+  auto mock_fragment = std::make_unique<MockCSSFragment>();
+  mock_fragment->SetEnableCSSSelector(false);  // Disabled!
+
+  // Create wrapper for adopted stylesheet
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(mock_fragment);
+
+  // Adopt the stylesheet
+  manager->AdoptStyleSheet(wrapper);
+
+  // Create a regular stylesheet fragment
+  CSSParserConfigs configs;
+  CSSParserTokenMap regular_css_map;
+  auto regular_tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  auto regular_id = CSSPropertyID::kPropertyIDFontSize;
+  auto regular_impl = lepus::Value("16px");
+  regular_tokens.get()->raw_attributes_[regular_id] =
+      CSSValue(regular_impl, CSSValuePattern::STRING);
+
+  std::string regular_key = ".test-class";
+  auto& regular_sheets = regular_tokens->sheets();
+  auto regular_shared_css_sheet = std::make_shared<CSSSheet>(regular_key);
+  regular_sheets.emplace_back(regular_shared_css_sheet);
+  regular_css_map.insert(std::make_pair(regular_key, regular_tokens));
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto regular_fragment = std::make_unique<MockCSSFragment>();
+  regular_fragment->SetEnableCSSSelector(true);
+
+  auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  selector[0].SetValue("test-class");
+  selector[0].SetLastInTagHistory(true);
+  selector[0].SetLastInSelectorList(true);
+  regular_fragment->AddStyleRule(std::move(selector), regular_tokens);
+
+  // Resolve styles
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, regular_fragment.get(),
+                                              &changed_css_vars);
+
+  // Should still get regular styles since adopted stylesheet has disabled
+  // selector
+  EXPECT_TRUE(result.find(CSSPropertyID::kPropertyIDFontSize) != result.end());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

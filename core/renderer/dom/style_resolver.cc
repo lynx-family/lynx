@@ -376,6 +376,7 @@ StyleResolver::MatchedVector<css::MatchedRule> StyleResolver::GetCSSMatchedRule(
 
 void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
                                    CSSFragment* style_sheet) {
+  // Then process regular styles
   auto matched_rules = GetCSSMatchedRule(node, style_sheet);
 
   for (const auto& matched : matched_rules) {
@@ -384,6 +385,28 @@ void StyleResolver::GetCSSStyleNew(AttributeHolder* node,
           matched.Data()->Rule()->Token().get()->GetAttributes());
       SetCSSVariableToNode(
           matched.Data()->Rule()->Token().get()->GetStyleVariables());
+    }
+  }
+
+  // check for adopted stylesheets with highest cascade priority
+  ElementManager* element_manager = manager();
+  if (!element_manager) {
+    return;
+  }
+  const auto& adopted_sheets = element_manager->GetAdoptedStyleSheets();
+
+  for (const auto& wrapper : adopted_sheets) {
+    if (wrapper && wrapper->fragment_ &&
+        wrapper->fragment_->enable_css_selector()) {
+      auto adopted_rules = GetCSSMatchedRule(node, wrapper->fragment_.get());
+      for (const auto& matched : adopted_rules) {
+        if (matched.Data()->Rule()->Token() != nullptr) {
+          MergeHigherPriorityCSSStyle(
+              matched.Data()->Rule()->Token().get()->GetAttributes());
+          SetCSSVariableToNode(
+              matched.Data()->Rule()->Token().get()->GetStyleVariables());
+        }
+      }
     }
   }
 }

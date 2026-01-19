@@ -390,7 +390,7 @@ TEST_F(ElementManagerTest, ReloadTemplateEvent) {
   config->SetEnableReloadLifecycle(true);
   manager->SetConfig(config);
   manager->OnPatchFinish(options, node.get());
-  auto *mock_platform_ref = reinterpret_cast<MockPaintingContextPlatformRef *>(
+  auto* mock_platform_ref = reinterpret_cast<MockPaintingContextPlatformRef*>(
       manager->painting_context()->impl()->GetPlatformRef().get());
   auto reload_ids = mock_platform_ref->reload_ids_;
   EXPECT_EQ(reload_ids.size(), 1);
@@ -401,6 +401,137 @@ TEST_F(ElementManagerTest, ReloadTemplateEvent) {
   manager->OnPatchFinish(options, node.get());
   reload_ids = mock_platform_ref->reload_ids_;
   EXPECT_EQ(reload_ids.size(), 0);
+}
+
+// Mock SharedCSSFragmentWrapper for testing adopted stylesheets
+class MockSharedCSSFragmentWrapper : public tasm::SharedCSSFragmentWrapper {
+ public:
+  MockSharedCSSFragmentWrapper() : SharedCSSFragmentWrapper(nullptr) {}
+
+  // Simple mock fragment pointer accessible for tests
+  std::unique_ptr<tasm::SharedCSSFragment> fragment_;
+};
+
+TEST_F(ElementManagerTest, AdoptStyleSheet_Basic) {
+  // Create a mock wrapper
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+
+  // Initially no adopted stylesheets
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+
+  // Adopt the stylesheet
+  manager->AdoptStyleSheet(wrapper);
+
+  // Verify it was added
+  const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
+  EXPECT_EQ(adopted_sheets.size(), 1);
+  EXPECT_EQ(adopted_sheets[0].get(), wrapper.get());
+}
+
+TEST_F(ElementManagerTest, AdoptStyleSheet_Multiple) {
+  // Create multiple mock wrappers
+  auto wrapper1 = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  auto wrapper2 = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  auto wrapper3 = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+
+  // Adopt multiple stylesheets
+  manager->AdoptStyleSheet(wrapper1);
+  manager->AdoptStyleSheet(wrapper2);
+  manager->AdoptStyleSheet(wrapper3);
+
+  // Verify all were added in order
+  const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
+  EXPECT_EQ(adopted_sheets.size(), 3);
+  EXPECT_EQ(adopted_sheets[0].get(), wrapper1.get());
+  EXPECT_EQ(adopted_sheets[1].get(), wrapper2.get());
+  EXPECT_EQ(adopted_sheets[2].get(), wrapper3.get());
+}
+
+TEST_F(ElementManagerTest, ClearAdoptedStyleSheets) {
+  // Create and adopt a stylesheet
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  manager->AdoptStyleSheet(wrapper);
+
+  // Verify it was added
+  EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
+
+  // Clear adopted stylesheets
+  manager->ClearAdoptedStyleSheets();
+
+  // Verify list is empty
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+
+  // Can adopt again after clearing
+  manager->AdoptStyleSheet(wrapper);
+  EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
+}
+
+TEST_F(ElementManagerTest, AdoptStyleSheet_NullWrapper) {
+  // Test adopting null wrapper (should not crash)
+  manager->AdoptStyleSheet(fml::RefPtr<MockSharedCSSFragmentWrapper>());
+
+  // List should still be valid (may contain null or be empty depending on
+  // implementation) The important thing is it doesn't crash
+  SUCCEED();
+}
+
+TEST_F(ElementManagerTest, GetAdoptedStyleSheets_ConstReference) {
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  manager->AdoptStyleSheet(wrapper);
+
+  const auto& sheets1 = manager->GetAdoptedStyleSheets();
+  const auto& sheets2 = manager->GetAdoptedStyleSheets();
+
+  EXPECT_EQ(&sheets1, &sheets2);
+}
+
+TEST_F(ElementManagerTest, AdoptedStylesheets_IntegrationWithFiberElement) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  base::String component_id("test-component");
+  int32_t css_id = 100;
+  auto root = manager->CreateFiberPage(component_id, css_id);
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  manager->AdoptStyleSheet(wrapper);
+
+  EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
+
+  const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
+  EXPECT_FALSE(adopted_sheets.empty());
+
+  manager->ClearAdoptedStyleSheets();
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+}
+
+TEST_F(ElementManagerTest, AdoptedStylesheets_MultipleAdoption) {
+  auto wrapper1 = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  auto wrapper2 = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  auto wrapper3 = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+
+  manager->AdoptStyleSheet(wrapper1);
+  manager->AdoptStyleSheet(wrapper2);
+  manager->AdoptStyleSheet(wrapper3);
+
+  EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 3);
+
+  manager->ClearAdoptedStyleSheets();
+  EXPECT_TRUE(manager->GetAdoptedStyleSheets().empty());
+
+  manager->AdoptStyleSheet(wrapper1);
+  EXPECT_EQ(manager->GetAdoptedStyleSheets().size(), 1);
 }
 
 }  // namespace testing
