@@ -44,13 +44,12 @@ SelectionPopupView::~SelectionPopupView() {
 void SelectionPopupView::BuildSelectionPopup(
     const std::vector<ActionType>& types) {
   FML_DCHECK(this->child_count() == 0);
-  this->SetBorderRadius(FromLogical(kDefaultRadius));
-  this->SetBorderColor(Color::kBlack(), Color::kBlack(), Color::kBlack(),
-                       Color::kBlack());
+  FloatSize radius(FromLogical(kDefaultRadius), FromLogical(kDefaultRadius));
+  this->SetBorderRadius(radius, radius, radius, radius);
+  this->SetBorderColor({Side::kAll}, {Color::kBlack()});
   auto border_width = FromLogical(kDefaultBorderWidth);
-  this->SetBorderWidth(border_width, border_width, border_width, border_width);
-  this->SetBorderStyle(BorderStyleType::kSolid, BorderStyleType::kSolid,
-                       BorderStyleType::kSolid, BorderStyleType::kSolid);
+  this->SetBorderWidth({Side::kAll}, {border_width});
+  this->SetBorderStyle({Side::kAll}, {BorderStyleType::kSolid});
   this->SetBackgroundColor(Color::kWhite());
   float menu_width = 0;
   float menu_height = 0;

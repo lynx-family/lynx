@@ -37,30 +37,19 @@ class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
   void SetPaddings(float padding_left, float padding_top, float padding_right,
                    float padding_bottom) override;
   void SetBorder(const BordersData& data) override;
-  void SetBorderStyle(BorderStyleType left, BorderStyleType top,
-                      BorderStyleType right, BorderStyleType bottom) override;
-  void SetBorderStyle(Side side, int style) override;
-  void SetBorderWidth(float left_width, float top_width, float right_width,
-                      float bottom_width) override;
-  void SetBorderWidth(Side side, float width) override;
-  void SetBorderColor(unsigned int left_color, unsigned int top_color,
-                      unsigned int right_color,
-                      unsigned int bottom_color) override;
-  void SetBorderColor(Side side, uint32_t color) override;
+  void SetBorderStyle(std::vector<Side> sides,
+                      std::vector<BorderStyleType> styles) override;
+  void SetBorderWidth(std::vector<Side> sides,
+                      std::vector<float> widths) override;
+  void SetBorderColor(std::vector<Side> sides,
+                      std::vector<uint32_t> colors) override;
   void SetBorderRadius(const FloatSize& left_top, const FloatSize& right_top,
                        const FloatSize& right_bottom,
                        const FloatSize& left_bottom) override;
-  void SetBorderRadius(float radius_all) override;
 
   void SetBackground(const BackgroundData& background) override;
-  void SetBackgroundColor(const Color& color) override;
-  void SetBackgroundImage(const clay::Value::Array& array) override;
-  void SetBackgroundClip(const clay::Value::Array& array) override;
-  void SetBackgroundOrigin(const clay::Value::Array& array) override;
-  void SetBackgroundPosition(
-      const std::vector<BackgroundPosition>& positions) override;
-  void SetBackgroundRepeat(const clay::Value::Array& array) override;
-  void SetBackgroundSize(const std::vector<BackgroundSize>& sizes) override;
+
+  bool OnBackgroundProperty(const BaseView::BackgroundUpdate& update) override;
 
   void OnContentSizeChanged(const FloatRect& old_rect,
                             const FloatRect& new_rect) override;

@@ -9,7 +9,6 @@
 #include "clay/flow/layers/clip_path_layer.h"
 #include "clay/flow/layers/clip_rect_layer.h"
 #include "clay/flow/layers/clip_rrect_layer.h"
-#include "clay/flow/layers/physical_shape_layer.h"
 #include "clay/flow/testing/layer_test.h"
 #include "clay/flow/testing/mock_layer.h"
 #include "clay/gfx/skity_to_skia_utils.h"
@@ -243,72 +242,6 @@ TEST_F(CheckerBoardLayerTest, ClipRRectSaveLayerCheckBoard) {
            MockCanvas::DrawCall{
                2, MockCanvas::DrawRectData{clay::ConvertSkityRectToSkRect(
                                                child_bounds),
-                                           checkerboard_paint()}},
-           // end DrawCheckerboard calls
-           MockCanvas::DrawCall{2, MockCanvas::RestoreData{1}},
-           MockCanvas::DrawCall{1, MockCanvas::RestoreData{0}}}));
-}
-
-TEST_F(CheckerBoardLayerTest, PhysicalSaveLayerCheckBoard) {
-  constexpr float initial_elevation = 20.0f;
-  SkPath layer_path;
-  layer_path.addRect(0, 0, 8, 8).close();
-  auto layer = std::make_shared<PhysicalShapeLayer>(
-      SK_ColorGREEN, SK_ColorBLACK, initial_elevation, layer_path,
-      Clip::antiAliasWithSaveLayer);
-
-  layer->Preroll(preroll_context());
-  // The Fuchsia system compositor handles all elevated PhysicalShapeLayers and
-  // their shadows , so we do not do any painting there.
-  EXPECT_TRUE(layer->needs_painting(paint_context()));
-  EXPECT_EQ(layer->elevation(), initial_elevation);
-
-  const skity::Rect paint_bounds = skity::Rect::MakeXYWH(0, 0, 8, 8);
-  const SkPaint clip_paint;
-  SkPaint layer_paint;
-  layer_paint.setColor(SK_ColorGREEN);
-  layer_paint.setAntiAlias(true);
-  layer->Paint(paint_context());
-  EXPECT_EQ(
-      mock_canvas().draw_calls(),
-      std::vector(
-          {MockCanvas::DrawCall{0, MockCanvas::DrawShadowData{layer_path}},
-           MockCanvas::DrawCall{0, MockCanvas::SaveData{1}},
-           MockCanvas::DrawCall{
-               1,
-               MockCanvas::ClipRectData{
-                   clay::ConvertSkityRectToSkRect(paint_bounds),
-                   SkClipOp::kIntersect, MockCanvas::kSoft_ClipEdgeStyle}},
-           MockCanvas::DrawCall{
-               1, MockCanvas::SaveLayerData{clay::ConvertSkityRectToSkRect(
-                                                layer->paint_bounds()),
-                                            clip_paint, nullptr, 2}},
-           MockCanvas::DrawCall{2, MockCanvas::DrawPaint{layer_paint}},
-           MockCanvas::DrawCall{2, MockCanvas::RestoreData{1}},
-           MockCanvas::DrawCall{1, MockCanvas::RestoreData{0}}}));
-
-  mock_canvas().reset_draw_calls();
-
-  layer->Paint(checkerboard_context());
-  EXPECT_EQ(
-      mock_canvas().draw_calls(),
-      std::vector(
-          {MockCanvas::DrawCall{0, MockCanvas::DrawShadowData{layer_path}},
-           MockCanvas::DrawCall{0, MockCanvas::SaveData{1}},
-           MockCanvas::DrawCall{
-               1,
-               MockCanvas::ClipRectData{
-                   clay::ConvertSkityRectToSkRect(paint_bounds),
-                   SkClipOp::kIntersect, MockCanvas::kSoft_ClipEdgeStyle}},
-           MockCanvas::DrawCall{
-               1, MockCanvas::SaveLayerData{clay::ConvertSkityRectToSkRect(
-                                                layer->paint_bounds()),
-                                            clip_paint, nullptr, 2}},
-           MockCanvas::DrawCall{2, MockCanvas::DrawPaint{layer_paint}},
-           // start DrawCheckerboard calls
-           MockCanvas::DrawCall{
-               2, MockCanvas::DrawRectData{clay::ConvertSkityRectToSkRect(
-                                               layer->paint_bounds()),
                                            checkerboard_paint()}},
            // end DrawCheckerboard calls
            MockCanvas::DrawCall{2, MockCanvas::RestoreData{1}},

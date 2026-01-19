@@ -39,7 +39,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void SetAttribute(const char* attr, const clay::Value& value) override;
   void PushInlineImageIndex(int id, int placeholder_id);
   void PushInlineViewIndex(int id, int placeholder_id);
-  void SetBorderWidth(Side side, float width) override;
+  void SetBorderWidth(std::vector<Side> sides,
+                      std::vector<float> widths) override;
   void SetPaddings(float padding_left, float padding_top, float padding_right,
                    float padding_bottom) override;
 
@@ -118,8 +119,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 
   FloatRect GetDisplayRect();
 
-  void HandleCopy() override;
-  void HandleSelectAll() override;
+  void HandleCopy();
+  void HandleSelectAll();
 
   void BringIntoView(TextBox* text_box);
 

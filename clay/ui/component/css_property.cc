@@ -137,54 +137,60 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
       view->SetMaskClip(utils::GetArray(value));
     } break;
     case KeywordID::kBorderColor: {
-      view->SetBorderColor(Side::kAll, utils::GetUint(value));
+      view->SetBorderColor({Side::kAll}, {utils::GetUint(value)});
     } break;
     case KeywordID::kBorderTopColor: {
-      view->SetBorderColor(Side::kTop, utils::GetUint(value));
+      view->SetBorderColor({Side::kTop}, {utils::GetUint(value)});
     } break;
     case KeywordID::kBorderRightColor: {
-      view->SetBorderColor(Side::kRight, utils::GetUint(value));
+      view->SetBorderColor({Side::kRight}, {utils::GetUint(value)});
     } break;
     case KeywordID::kBorderBottomColor: {
-      view->SetBorderColor(Side::kBottom, utils::GetUint(value));
+      view->SetBorderColor({Side::kBottom}, {utils::GetUint(value)});
     } break;
     case KeywordID::kBorderLeftColor: {
-      view->SetBorderColor(Side::kLeft, utils::GetUint(value));
+      view->SetBorderColor({Side::kLeft}, {utils::GetUint(value)});
     } break;
     case KeywordID::kBorderStyle: {
-      view->SetBorderStyle(Side::kAll, utils::GetInt(value));
+      view->SetBorderStyle(
+          {Side::kAll}, {static_cast<BorderStyleType>(utils::GetInt(value))});
     } break;
     case KeywordID::kBorderTopStyle: {
-      view->SetBorderStyle(Side::kTop, utils::GetInt(value));
+      view->SetBorderStyle(
+          {Side::kTop}, {static_cast<BorderStyleType>(utils::GetInt(value))});
     } break;
     case KeywordID::kBorderRightStyle: {
-      view->SetBorderStyle(Side::kRight, utils::GetInt(value));
+      view->SetBorderStyle(
+          {Side::kRight}, {static_cast<BorderStyleType>(utils::GetInt(value))});
     } break;
     case KeywordID::kBorderBottomStyle: {
-      view->SetBorderStyle(Side::kBottom, utils::GetInt(value));
+      view->SetBorderStyle(
+          {Side::kBottom},
+          {static_cast<BorderStyleType>(utils::GetInt(value))});
     } break;
     case KeywordID::kBorderLeftStyle: {
-      view->SetBorderStyle(Side::kLeft, utils::GetInt(value));
+      view->SetBorderStyle(
+          {Side::kLeft}, {static_cast<BorderStyleType>(utils::GetInt(value))});
     } break;
     case KeywordID::kBorderWidth: {
       float width = utils::GetDouble(value);
-      view->SetBorderWidth(Side::kAll, width);
+      view->SetBorderWidth({Side::kAll}, {width});
     } break;
     case KeywordID::kBorderTopWidth: {
       float width = utils::GetDouble(value);
-      view->SetBorderWidth(Side::kTop, width);
+      view->SetBorderWidth({Side::kTop}, {width});
     } break;
     case KeywordID::kBorderRightWidth: {
       float width = utils::GetDouble(value);
-      view->SetBorderWidth(Side::kRight, width);
+      view->SetBorderWidth({Side::kRight}, {width});
     } break;
     case KeywordID::kBorderBottomWidth: {
       float width = utils::GetDouble(value);
-      view->SetBorderWidth(Side::kBottom, width);
+      view->SetBorderWidth({Side::kBottom}, {width});
     } break;
     case KeywordID::kBorderLeftWidth: {
       float width = utils::GetDouble(value);
-      view->SetBorderWidth(Side::kLeft, width);
+      view->SetBorderWidth({Side::kLeft}, {width});
     } break;
     case KeywordID::kBorderRadius: {
       view->SetBorderRadius(4, GetBorderRadius(utils::GetArray(value)));

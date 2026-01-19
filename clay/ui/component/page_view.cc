@@ -36,6 +36,7 @@
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/public/clay.h"
+#include "clay/public/style_types.h"
 #include "clay/shell/common/pipeline_timing_delegate.h"
 #include "clay/shell/common/scroll_fluency_monitor_delegate.h"
 #include "clay/shell/common/services/instrumentation_service.h"
@@ -49,6 +50,7 @@
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/intersection_observer.h"
+#include "clay/ui/component/keywords.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 #include "clay/ui/component/view_context.h"
@@ -102,80 +104,18 @@ clay::Value CreateExposeArray(
   return clay::Value(std::move(wrapper_array));
 }
 
-ClayEventType ToClayEventType(PointerEvent::EventType event_type,
-                              PointerEvent::DeviceType device) {
-  if (device == PointerEvent::DeviceType::kTouch) {
-    switch (event_type) {
-      case PointerEvent::EventType::kSignalEvent:
-        return kClayEventTypeWheel;
-      case PointerEvent::EventType::kUnkownEvent:
-        return kClayEventTypeUnknown;
-      case PointerEvent::EventType::kDownEvent:
-        return kClayEventTypeTouchStart;
-      case PointerEvent::EventType::kUpEvent:
-        return kClayEventTypeTouchEnd;
-      case PointerEvent::EventType::kMoveEvent:
-        return kClayEventTypeTouchMove;
-      case PointerEvent::EventType::kCancel:
-        return kClayEventTypeTouchCancel;
-      case PointerEvent::EventType::kHoverEvent:
-        // TODO(yangliu): report hover event to lynx
-        return kClayEventTypeUnknown;
-      case PointerEvent::EventType::kPanZoomStartEvent:
-        return kClayEventTypeUnknown;
-      case PointerEvent::EventType::kPanZoomUpdateEvent:
-        return kClayEventTypeWheel;
-      case PointerEvent::EventType::kPanZoomEndEvent:
-        return kClayEventTypeUnknown;
-    }
-  } else if (device == PointerEvent::DeviceType::kTrackpad) {
-    switch (event_type) {
-      case PointerEvent::EventType::kPanZoomStartEvent:
-      case PointerEvent::EventType::kPanZoomUpdateEvent:
-      case PointerEvent::EventType::kPanZoomEndEvent:
-        return kClayEventTypePanZoom;
-      default:
-        return kClayEventTypeUnknown;
-    }
-  } else {  // mouse
-    switch (event_type) {
-      case PointerEvent::EventType::kSignalEvent:
-        return kClayEventTypeWheel;
-      case PointerEvent::EventType::kUnkownEvent:
-        return kClayEventTypeUnknown;
-      case PointerEvent::EventType::kDownEvent:
-        return kClayEventTypeMouseDown;
-      case PointerEvent::EventType::kUpEvent:
-        return kClayEventTypeMouseUp;
-      case PointerEvent::EventType::kMoveEvent:
-        return kClayEventTypeMouseMove;
-      case PointerEvent::EventType::kCancel:
-        return kClayEventTypeUnknown;
-      case PointerEvent::EventType::kHoverEvent:
-        // TODO(yangliu): report hover event to lynx
-        return kClayEventTypeUnknown;
-      default:
-        return kClayEventTypeUnknown;
-    }
-  }
-  return kClayEventTypeUnknown;
-}
-
-ClayEventType ToClayEventType(const PointerEvent& event) {
-  return ToClayEventType(event.type, event.device);
-}
-
-ClayEventType ToClayEventType(KeyEventType type) {
-  if (type == KeyEventType::kDown || type == KeyEventType::kRepeat) {
-    return kClayEventTypeKeyDown;
-  } else if (type == KeyEventType::kUp) {
-    return kClayEventTypeKeyUp;
-  }
-  return kClayEventTypeUnknown;
-}
-
 static constexpr int64_t kEventStateUpdateDelayTime = 1000;
 static constexpr int64_t kEventStateUpdateIntervalTime = 100;
+
+struct TransformRawDataIndex {
+  static constexpr int INDEX_FUNC = 0;
+  static constexpr int INDEX_TRANSLATE_0 = 1;
+  static constexpr int INDEX_TRANSLATE_0_UNIT = 2;
+  static constexpr int INDEX_TRANSLATE_1 = 3;
+  static constexpr int INDEX_TRANSLATE_1_UNIT = 4;
+  static constexpr int INDEX_TRANSLATE_2 = 5;
+  static constexpr int INDEX_TRANSLATE_2_UNIT = 6;
+};
 }  // namespace
 
 #define DEBUG_KEYFRAMES 0
@@ -1409,130 +1349,229 @@ void PageView::DispatchViewportMetricsUpdate() {
   }
 }
 
-void PageView::SetKeyframesData(KeyframesData* keyframes_data) {
-  for (int i = 0; i < keyframes_data->size; i++) {
-    ClayKeyframesRule* rule = keyframes_data->keyframe_rules + i;
-    if (!rule) {
-      continue;
+void PageView::SetKeyframesData(const Value& keyframes_value) {
+  if (!keyframes_value.IsMap()) {
+    return;
+  }
+
+  const auto& rules_map = keyframes_value.GetMap();
+  auto parse_filter_values = [](const clay::Value& value) {
+    std::vector<FilterValue> values;
+    if (!value.IsArray()) {
+      return values;
     }
-    KeyframesMap keyframes_map;
-    for (int j = 0; j < rule->size; j++) {
-      ClayKeyframe* keyframe = rule->keyframes + j;
-      if (!keyframe) {
+    const auto& ary = value.GetArray();
+    for (const auto& item : ary) {
+      if (!item.IsArray()) {
         continue;
       }
-      float fraction = keyframe->percentage;
-      for (int k = 0; k < keyframe->size; k++) {
-        ClayAnimationPropertyValue* prop = keyframe->properties + k;
-        if (!prop) {
-          continue;
-        }
-        FloatKeyframeSet* float_keyframe_set;
-        ColorKeyframeSet* color_keyframe_set;
-        RawTransformKeyframeSet* transform_keyframe_set;
-        ClayTransform* clay_transform;
-        auto search = keyframes_map.find(prop->type);
-        switch (prop->type) {
-          case ClayAnimationPropertyType::kFilter: {
-            if (search == keyframes_map.end()) {
-              search = keyframes_map
-                           .try_emplace(prop->type, FilterKeyframeSet::Create())
-                           .first;
+      const auto& ary1 = item.GetArray();
+      if (ary1.size() != 2) {
+        continue;
+      }
+      FilterValue v;
+      v.type = static_cast<int>(ary1[0].GetUint());
+      v.value = ary1[1].GetDouble();
+      values.push_back(v);
+    }
+    return values;
+  };
+
+  auto parse_box_shadow_values = [](const clay::Value& value) {
+    std::vector<BoxShadowValue> values;
+    if (!value.IsArray()) {
+      return values;
+    }
+    const auto& shadows = value.GetArray();
+    for (const auto& shadow : shadows) {
+      if (!shadow.IsArray()) {
+        continue;
+      }
+      const auto& shadow_ary = shadow.GetArray();
+      if (shadow_ary.size() < 6) {
+        continue;
+      }
+      BoxShadowValue v;
+      v.h_offset = shadow_ary[0].GetFloat();
+      v.v_offset = shadow_ary[1].GetFloat();
+      v.blur = shadow_ary[2].GetFloat();
+      v.spread = shadow_ary[3].GetFloat();
+      v.option = shadow_ary[4].GetDouble();
+      v.color = shadow_ary[5].GetDouble();
+      values.push_back(v);
+    }
+    return values;
+  };
+
+  auto parse_raw_transform_ops = [](const clay::Value& value) {
+    std::vector<ClayTransformOP> ops;
+    if (!value.IsArray()) {
+      return ops;
+    }
+    const auto& items = value.GetArray();
+    ops.reserve(items.size());
+    for (const auto& item : items) {
+      if (!item.IsArray()) {
+        continue;
+      }
+      const auto& arr = item.GetArray();
+      if (arr.size() != 7u) {
+        continue;
+      }
+      ClayTransformOP op{};
+      op.type = static_cast<ClayTransformType>(
+          arr[TransformRawDataIndex::INDEX_FUNC].GetInt());
+      op.value[0] = static_cast<float>(
+          arr[TransformRawDataIndex::INDEX_TRANSLATE_0].GetDouble());
+      op.value[1] = static_cast<float>(
+          arr[TransformRawDataIndex::INDEX_TRANSLATE_1].GetDouble());
+      op.value[2] = static_cast<float>(
+          arr[TransformRawDataIndex::INDEX_TRANSLATE_2].GetDouble());
+      op.unit[0] = static_cast<ClayPlatformLengthUnit>(
+          arr[TransformRawDataIndex::INDEX_TRANSLATE_0_UNIT].GetInt());
+      op.unit[1] = static_cast<ClayPlatformLengthUnit>(
+          arr[TransformRawDataIndex::INDEX_TRANSLATE_1_UNIT].GetInt());
+      op.unit[2] = static_cast<ClayPlatformLengthUnit>(
+          arr[TransformRawDataIndex::INDEX_TRANSLATE_2_UNIT].GetInt());
+      ops.emplace_back(op);
+    }
+    return ops;
+  };
+
+  for (const auto& rule : rules_map) {
+    const std::string& anim_name = rule.first;
+    const auto& keyframes_val = rule.second;
+    if (!keyframes_val.IsMap()) {
+      continue;
+    }
+
+    KeyframesMap keyframes_map;
+    const auto& keyframes_map_val = keyframes_val.GetMap();
+    for (const auto& kf : keyframes_map_val) {
+      const std::string& fraction_str = kf.first;
+      const auto& properties_val = kf.second;
+      if (!properties_val.IsMap()) {
+        continue;
+      }
+      float fraction = 0.0f;
+      // 与原 KeyframesData 一致地解析百分比键
+      fraction = std::stof(fraction_str);
+
+      const auto& properties_map = properties_val.GetMap();
+      for (const auto& prop : properties_map) {
+        const std::string& prop_name = prop.first;
+        const auto& prop_value = prop.second;
+        auto kw = GetKeywordID(prop_name);
+        switch (kw) {
+          case KeywordID::kOpacity: {
+            auto it = keyframes_map.find(ClayAnimationPropertyType::kOpacity);
+            if (it == keyframes_map.end()) {
+              it = keyframes_map
+                       .try_emplace(ClayAnimationPropertyType::kOpacity,
+                                    FloatKeyframeSet::Create(
+                                        ClayAnimationPropertyType::kOpacity))
+                       .first;
             }
-            FilterKeyframeSet* filter_keyframe_set =
-                static_cast<FilterKeyframeSet*>(search->second.get());
-            auto values = static_cast<std::vector<FilterValue>*>(
-                prop->value.GetPointer());
-            filter_keyframe_set->AddKeyframe(FilterKeyframe::Create(
-                fraction, FilterOperations(*values),
+            auto* float_set = static_cast<FloatKeyframeSet*>(it->second.get());
+            float_set->AddKeyframe(FloatKeyframe::Create(
+                fraction, static_cast<float>(prop_value.GetDouble()),
                 Interpolator::CreateDefaultInterpolator()));
             break;
           }
-          case ClayAnimationPropertyType::kBoxShadow: {
-            if (search == keyframes_map.end()) {
-              search =
-                  keyframes_map
-                      .try_emplace(prop->type, BoxShadowKeyframeSet::Create())
-                      .first;
+          case KeywordID::kBackgroundColor: {
+            auto it =
+                keyframes_map.find(ClayAnimationPropertyType::kBackgroundColor);
+            if (it == keyframes_map.end()) {
+              it = keyframes_map
+                       .try_emplace(
+                           ClayAnimationPropertyType::kBackgroundColor,
+                           ColorKeyframeSet::Create(
+                               ClayAnimationPropertyType::kBackgroundColor))
+                       .first;
             }
-            BoxShadowKeyframeSet* box_shadow_keyframe_set =
-                static_cast<BoxShadowKeyframeSet*>(search->second.get());
-            auto values = static_cast<std::vector<BoxShadowValue>*>(
-                prop->value.GetPointer());
-            box_shadow_keyframe_set->AddKeyframe(BoxShadowKeyframe::Create(
-                fraction, BoxShadowOperations(*values),
+            auto* color_set = static_cast<ColorKeyframeSet*>(it->second.get());
+            color_set->AddKeyframe(ColorKeyframe::Create(
+                fraction, Color(prop_value.GetUint()),
                 Interpolator::CreateDefaultInterpolator()));
             break;
           }
-          case ClayAnimationPropertyType::kOpacity: {
-            if (search == keyframes_map.end()) {
-              search = keyframes_map
-                           .try_emplace(prop->type,
-                                        FloatKeyframeSet::Create(prop->type))
-                           .first;
+          case KeywordID::kColor: {
+            auto it = keyframes_map.find(ClayAnimationPropertyType::kColor);
+            if (it == keyframes_map.end()) {
+              it = keyframes_map
+                       .try_emplace(ClayAnimationPropertyType::kColor,
+                                    ColorKeyframeSet::Create(
+                                        ClayAnimationPropertyType::kColor))
+                       .first;
             }
-            float_keyframe_set =
-                static_cast<FloatKeyframeSet*>(search->second.get());
-            float_keyframe_set->AddKeyframe(FloatKeyframe::Create(
-                fraction, prop->value.GetFloat(),
+            auto* color_set = static_cast<ColorKeyframeSet*>(it->second.get());
+            color_set->AddKeyframe(ColorKeyframe::Create(
+                fraction, Color(prop_value.GetUint()),
                 Interpolator::CreateDefaultInterpolator()));
             break;
           }
-          case ClayAnimationPropertyType::kBackgroundColor: {
-            if (search == keyframes_map.end()) {
-              search = keyframes_map
-                           .try_emplace(prop->type,
-                                        ColorKeyframeSet::Create(prop->type))
-                           .first;
+          case KeywordID::kTransform: {
+            auto it = keyframes_map.find(ClayAnimationPropertyType::kTransform);
+            if (it == keyframes_map.end()) {
+              it = keyframes_map
+                       .try_emplace(ClayAnimationPropertyType::kTransform,
+                                    RawTransformKeyframeSet::Create())
+                       .first;
             }
-            color_keyframe_set =
-                static_cast<ColorKeyframeSet*>(search->second.get());
-            color_keyframe_set->AddKeyframe(ColorKeyframe::Create(
-                fraction, Color(prop->value.GetUint()),
+            auto* transform_set =
+                static_cast<RawTransformKeyframeSet*>(it->second.get());
+            auto ops = parse_raw_transform_ops(prop_value);
+            transform_set->AddKeyframe(RawTransformKeyframe::Create(
+                fraction, ops, Interpolator::CreateDefaultInterpolator()));
+            break;
+          }
+          case KeywordID::kFilter: {
+            auto it = keyframes_map.find(ClayAnimationPropertyType::kFilter);
+            if (it == keyframes_map.end()) {
+              it = keyframes_map
+                       .try_emplace(ClayAnimationPropertyType::kFilter,
+                                    FilterKeyframeSet::Create())
+                       .first;
+            }
+            auto* filter_set =
+                static_cast<FilterKeyframeSet*>(it->second.get());
+            auto values = parse_filter_values(prop_value);
+            filter_set->AddKeyframe(FilterKeyframe::Create(
+                fraction, FilterOperations(values),
                 Interpolator::CreateDefaultInterpolator()));
             break;
           }
-          case ClayAnimationPropertyType::kColor: {
-            if (search == keyframes_map.end()) {
-              search = keyframes_map
-                           .try_emplace(prop->type,
-                                        ColorKeyframeSet::Create(prop->type))
-                           .first;
+          case KeywordID::kBoxShadow: {
+            auto it = keyframes_map.find(ClayAnimationPropertyType::kBoxShadow);
+            if (it == keyframes_map.end()) {
+              it = keyframes_map
+                       .try_emplace(ClayAnimationPropertyType::kBoxShadow,
+                                    BoxShadowKeyframeSet::Create())
+                       .first;
             }
-            color_keyframe_set =
-                static_cast<ColorKeyframeSet*>(search->second.get());
-            color_keyframe_set->AddKeyframe(ColorKeyframe::Create(
-                fraction, Color(prop->value.GetUint()),
+            auto* shadow_set =
+                static_cast<BoxShadowKeyframeSet*>(it->second.get());
+            auto values = parse_box_shadow_values(prop_value);
+            shadow_set->AddKeyframe(BoxShadowKeyframe::Create(
+                fraction, BoxShadowOperations(values),
                 Interpolator::CreateDefaultInterpolator()));
             break;
           }
-          case ClayAnimationPropertyType::kTransform: {
-            if (search == keyframes_map.end()) {
-              search = keyframes_map
-                           .try_emplace(prop->type,
-                                        RawTransformKeyframeSet::Create())
-                           .first;
-            }
-            transform_keyframe_set =
-                static_cast<RawTransformKeyframeSet*>(search->second.get());
-            clay_transform =
-                static_cast<ClayTransform*>(prop->value.GetPointer());
-            transform_keyframe_set->AddKeyframe(RawTransformKeyframe::Create(
-                fraction, *clay_transform,
-                Interpolator::CreateDefaultInterpolator()));
+          default: {
+            // 保持原有错误处理
+            FML_DLOG(ERROR)
+                << "SetKeyframes doesn't support property: " << prop_name;
             break;
           }
-          default:
-            FML_DLOG(ERROR) << "SetKeyframesData unsupported property type";
-            break;
         }
       }
     }
+
     if (!keyframes_map.empty()) {
-      auto ret = keyframes_data_.insert_or_assign(rule->name,
-                                                  std::move(keyframes_map));
+      auto ret =
+          keyframes_data_.insert_or_assign(anim_name, std::move(keyframes_map));
       if (!ret.second) {
-        FML_DLOG(WARNING) << "SetKeyframesData duplicated name:" << rule->name;
+        FML_DLOG(WARNING) << "SetKeyframesData duplicated name:" << anim_name;
       }
     }
   }
@@ -1954,6 +1993,78 @@ void PageView::SetExternalScreenshotCallback(
           service_manager_->GetService<clay::ScreenshotService>();
   screenshot_service->SetExternalScreenshotCallback(std::move(callback));
 #endif
+}
+
+ClayEventType ToClayEventType(PointerEvent::EventType event_type,
+                              PointerEvent::DeviceType device) {
+  if (device == PointerEvent::DeviceType::kTouch) {
+    switch (event_type) {
+      case PointerEvent::EventType::kSignalEvent:
+        return kClayEventTypeWheel;
+      case PointerEvent::EventType::kUnkownEvent:
+        return kClayEventTypeUnknown;
+      case PointerEvent::EventType::kDownEvent:
+        return kClayEventTypeTouchStart;
+      case PointerEvent::EventType::kUpEvent:
+        return kClayEventTypeTouchEnd;
+      case PointerEvent::EventType::kMoveEvent:
+        return kClayEventTypeTouchMove;
+      case PointerEvent::EventType::kCancel:
+        return kClayEventTypeTouchCancel;
+      case PointerEvent::EventType::kHoverEvent:
+        // TODO(yangliu): report hover event to lynx
+        return kClayEventTypeUnknown;
+      case PointerEvent::EventType::kPanZoomStartEvent:
+        return kClayEventTypeUnknown;
+      case PointerEvent::EventType::kPanZoomUpdateEvent:
+        return kClayEventTypeWheel;
+      case PointerEvent::EventType::kPanZoomEndEvent:
+        return kClayEventTypeUnknown;
+    }
+  } else if (device == PointerEvent::DeviceType::kTrackpad) {
+    switch (event_type) {
+      case PointerEvent::EventType::kPanZoomStartEvent:
+      case PointerEvent::EventType::kPanZoomUpdateEvent:
+      case PointerEvent::EventType::kPanZoomEndEvent:
+        return kClayEventTypePanZoom;
+      default:
+        return kClayEventTypeUnknown;
+    }
+  } else {  // mouse
+    switch (event_type) {
+      case PointerEvent::EventType::kSignalEvent:
+        return kClayEventTypeWheel;
+      case PointerEvent::EventType::kUnkownEvent:
+        return kClayEventTypeUnknown;
+      case PointerEvent::EventType::kDownEvent:
+        return kClayEventTypeMouseDown;
+      case PointerEvent::EventType::kUpEvent:
+        return kClayEventTypeMouseUp;
+      case PointerEvent::EventType::kMoveEvent:
+        return kClayEventTypeMouseMove;
+      case PointerEvent::EventType::kCancel:
+        return kClayEventTypeUnknown;
+      case PointerEvent::EventType::kHoverEvent:
+        // TODO(yangliu): report hover event to lynx
+        return kClayEventTypeUnknown;
+      default:
+        return kClayEventTypeUnknown;
+    }
+  }
+  return kClayEventTypeUnknown;
+}
+
+ClayEventType ToClayEventType(const PointerEvent& event) {
+  return ToClayEventType(event.type, event.device);
+}
+
+ClayEventType ToClayEventType(KeyEventType type) {
+  if (type == KeyEventType::kDown || type == KeyEventType::kRepeat) {
+    return kClayEventTypeKeyDown;
+  } else if (type == KeyEventType::kUp) {
+    return kClayEventTypeKeyUp;
+  }
+  return kClayEventTypeUnknown;
 }
 
 }  // namespace clay

@@ -514,115 +514,102 @@ void BaseView::SetShadows(std::vector<Shadow>&& shadows) {
   render_object()->SetShadows(std::move(shadows));
 }
 
-void BaseView::SetBorderStyle(BorderStyleType left, BorderStyleType top,
-                              BorderStyleType right, BorderStyleType bottom) {
+void BaseView::SetBorderStyle(std::vector<Side> sides,
+                              std::vector<BorderStyleType> styles) {
+  FML_DCHECK(sides.size() == styles.size());
   auto& border = render_object()->MutableBorder();
-  border.style_left_ = left;
-  border.style_top_ = top;
-  border.style_right_ = right;
-  border.style_bottom_ = bottom;
-  OnBorderChanged(border);
-}
-
-void BaseView::SetBorderStyle(Side side, int style) {
-  auto& border = render_object()->MutableBorder();
-  switch (side) {
-    case Side::kTop:
-      border.style_top_ = static_cast<BorderStyleType>(style);
-      break;
-    case Side::kRight:
-      border.style_right_ = static_cast<BorderStyleType>(style);
-      break;
-    case Side::kBottom:
-      border.style_bottom_ = static_cast<BorderStyleType>(style);
-      break;
-    case Side::kLeft:
-      border.style_left_ = static_cast<BorderStyleType>(style);
-      break;
-    case Side::kAll:
-      border.style_top_ = static_cast<BorderStyleType>(style);
-      border.style_right_ = static_cast<BorderStyleType>(style);
-      border.style_bottom_ = static_cast<BorderStyleType>(style);
-      border.style_left_ = static_cast<BorderStyleType>(style);
-      break;
-    default:
-      break;
+  for (size_t i = 0; i < sides.size(); i++) {
+    Side side = sides[i];
+    BorderStyleType style = styles[i];
+    switch (side) {
+      case Side::kTop:
+        border.style_top_ = style;
+        break;
+      case Side::kRight:
+        border.style_right_ = style;
+        break;
+      case Side::kBottom:
+        border.style_bottom_ = style;
+        break;
+      case Side::kLeft:
+        border.style_left_ = style;
+        break;
+      case Side::kAll:
+        border.style_top_ = style;
+        border.style_right_ = style;
+        border.style_bottom_ = style;
+        border.style_left_ = style;
+        break;
+      default:
+        break;
+    }
   }
   OnBorderChanged(border);
 }
 
-void BaseView::SetBorderWidth(float left_width, float top_width,
-                              float right_width, float bottom_width) {
+void BaseView::SetBorderWidth(std::vector<Side> sides,
+                              std::vector<float> widths) {
+  FML_DCHECK(sides.size() == widths.size());
   auto& border = render_object()->MutableBorder();
-  border.width_left_ = left_width;
-  border.width_top_ = top_width;
-  border.width_right_ = right_width;
-  border.width_bottom_ = bottom_width;
+  for (size_t i = 0; i < sides.size(); i++) {
+    Side side = sides[i];
+    float width = widths[i];
+    switch (side) {
+      case Side::kTop:
+        border.width_top_ = width;
+        break;
+      case Side::kRight:
+        border.width_right_ = width;
+        break;
+      case Side::kBottom:
+        border.width_bottom_ = width;
+        break;
+      case Side::kLeft:
+        border.width_left_ = width;
+        break;
+      case Side::kAll:
+        border.width_top_ = width;
+        border.width_right_ = width;
+        border.width_bottom_ = width;
+        border.width_left_ = width;
+        break;
+      default:
+        break;
+    }
+  }
   OnBorderChanged(border);
   OnLayoutChange();
 }
 
-void BaseView::SetBorderWidth(Side side, float width) {
+void BaseView::SetBorderColor(std::vector<Side> sides,
+                              std::vector<uint32_t> colors) {
+  FML_DCHECK(sides.size() == colors.size());
   auto& border = render_object()->MutableBorder();
-  switch (side) {
-    case Side::kTop:
-      border.width_top_ = width;
-      break;
-    case Side::kRight:
-      border.width_right_ = width;
-      break;
-    case Side::kBottom:
-      border.width_bottom_ = width;
-      break;
-    case Side::kLeft:
-      border.width_left_ = width;
-      break;
-    case Side::kAll:
-      border.width_top_ = width;
-      border.width_right_ = width;
-      border.width_bottom_ = width;
-      border.width_left_ = width;
-      break;
-    default:
-      break;
-  }
-  OnBorderChanged(border);
-}
-
-void BaseView::SetBorderColor(unsigned int left_color, unsigned int top_color,
-                              unsigned int right_color,
-                              unsigned int bottom_color) {
-  auto& border = render_object()->MutableBorder();
-  border.color_left_ = left_color;
-  border.color_top_ = top_color;
-  border.color_right_ = right_color;
-  border.color_bottom_ = bottom_color;
-  OnBorderChanged(border);
-}
-
-void BaseView::SetBorderColor(Side side, uint32_t color) {
-  auto& border = render_object()->MutableBorder();
-  switch (side) {
-    case Side::kTop:
-      border.color_top_ = color;
-      break;
-    case Side::kRight:
-      border.color_right_ = color;
-      break;
-    case Side::kBottom:
-      border.color_bottom_ = color;
-      break;
-    case Side::kLeft:
-      border.color_left_ = color;
-      break;
-    case Side::kAll:
-      border.color_top_ = color;
-      border.color_right_ = color;
-      border.color_bottom_ = color;
-      border.color_left_ = color;
-      break;
-    default:
-      break;
+  for (size_t i = 0; i < sides.size(); i++) {
+    Side side = sides[i];
+    uint32_t color = colors[i];
+    switch (side) {
+      case Side::kTop:
+        border.color_top_ = color;
+        break;
+      case Side::kRight:
+        border.color_right_ = color;
+        break;
+      case Side::kBottom:
+        border.color_bottom_ = color;
+        break;
+      case Side::kLeft:
+        border.color_left_ = color;
+        break;
+      case Side::kAll:
+        border.color_top_ = color;
+        border.color_right_ = color;
+        border.color_bottom_ = color;
+        border.color_left_ = color;
+        break;
+      default:
+        break;
+    }
   }
   OnBorderChanged(border);
 }
@@ -643,11 +630,6 @@ void BaseView::SetBorderRadius(const FloatSize& left_top,
   border.UpdateRadius(width_, height_);
   OnBorderChanged(border);
   OnLayoutChange();
-}
-
-void BaseView::SetBorderRadius(float radius_all) {
-  FloatSize r(radius_all, radius_all);
-  SetBorderRadius(r, r, r, r);
 }
 
 void BaseView::SetBorderRadius(size_t index, const std::vector<Length>& array) {
@@ -747,6 +729,10 @@ void BaseView::SetBackground(const BackgroundData& background) {
 }
 
 void BaseView::SetBackgroundColor(const Color& color) {
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kColor, color})) {
+    return;
+  }
   if (render_object()->HasBackground() &&
       render_object()->Background().background_color == color) {
     return;
@@ -1350,8 +1336,10 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
 }
 
 void BaseView::SetBackgroundImage(const clay::Value::Array& array) {
-  FML_DCHECK(page_view());
-
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kImage, &array})) {
+    return;
+  }
   // The image count
   render_object()->ResizeBackground(array.size() / 2);
   if (array.size() == 0) {
@@ -1393,6 +1381,10 @@ void BaseView::SetBackgroundImage(const clay::Value::Array& array) {
 }
 
 void BaseView::SetBackgroundClip(const clay::Value::Array& array) {
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kClip, &array})) {
+    return;
+  }
   std::vector<ClayBackgroundClipType> clips(array.size());
   for (size_t i = 0; i < array.size(); i++) {
     clips[i] = static_cast<ClayBackgroundClipType>(utils::GetInt(array[i]));
@@ -1401,6 +1393,10 @@ void BaseView::SetBackgroundClip(const clay::Value::Array& array) {
 }
 
 void BaseView::SetBackgroundOrigin(const clay::Value::Array& array) {
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kOrigin, &array})) {
+    return;
+  }
   std::vector<ClayBackgroundOriginType> origins(array.size());
   for (size_t i = 0; i < array.size(); i++) {
     origins[i] = static_cast<ClayBackgroundOriginType>(utils::GetInt(array[i]));
@@ -1410,10 +1406,18 @@ void BaseView::SetBackgroundOrigin(const clay::Value::Array& array) {
 
 void BaseView::SetBackgroundPosition(
     const std::vector<BackgroundPosition>& positions) {
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kPosition, &positions})) {
+    return;
+  }
   render_object()->SetBackgroundPosition(positions);
 }
 
 void BaseView::SetBackgroundRepeat(const clay::Value::Array& array) {
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kRepeat, &array})) {
+    return;
+  }
   std::vector<ClayBackgroundRepeatType> repeats(array.size());
   for (size_t i = 0; i < array.size(); i++) {
     repeats[i] = static_cast<ClayBackgroundRepeatType>(utils::GetInt(array[i]));
@@ -1422,6 +1426,10 @@ void BaseView::SetBackgroundRepeat(const clay::Value::Array& array) {
 }
 
 void BaseView::SetBackgroundSize(const std::vector<BackgroundSize>& sizes) {
+  if (OnBackgroundProperty(BaseView::BackgroundUpdate{
+          BaseView::BackgroundPropType::kSize, &sizes})) {
+    return;
+  }
   render_object()->SetBackgroundSize(sizes);
 }
 

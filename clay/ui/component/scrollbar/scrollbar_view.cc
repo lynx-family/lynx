@@ -289,7 +289,8 @@ void ScrollbarView::OnDestroy() {
 void ScrollbarView::InitStyle() {
   thumb_->SetBackgroundColor(thumb_color_);
   SetBackgroundColor(track_color_);
-  thumb_->SetBorderRadius(thumb_radius_);
+  FloatSize radius(thumb_radius_, thumb_radius_);
+  thumb_->SetBorderRadius(radius, radius, radius, radius);
 
   if (auto_hide_) {
     SetOpacity(0);

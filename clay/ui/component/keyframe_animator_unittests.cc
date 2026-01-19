@@ -11,7 +11,6 @@
 #include "clay/gfx/animation/value_animator.h"
 #include "clay/public/value.h"
 #include "clay/ui/component/base_view.h"
-#include "clay/ui/component/keyframes_data.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -62,100 +61,42 @@ class MockAnimatorListener : public AnimatorListener {
 
 namespace {
 
-struct KeyFramesData {
-  KeyframesData keyframes_data = KeyframesData();
-  std::vector<ClayKeyframesRule> keyframe_rules =
-      std::vector<ClayKeyframesRule>(1);
-  std::vector<ClayKeyframe> keyframes = std::vector<ClayKeyframe>(2);
-  std::vector<ClayAnimationPropertyValue> properties0 =
-      std::vector<ClayAnimationPropertyValue>(1);
-  std::vector<ClayAnimationPropertyValue> properties1 =
-      std::vector<ClayAnimationPropertyValue>(1);
-};
+static std::string FractionKeyFromPercent(int percent) {
+  return std::to_string(static_cast<double>(percent) * 0.01);
+}
+
+static Value MakeOpacityTestKeyframes(
+    std::initializer_list<std::pair<int, double>> percent_to_opacity) {
+  Value::Map keyframes;
+  for (const auto& item : percent_to_opacity) {
+    const int percent = item.first;
+    const double opacity = item.second;
+    keyframes.emplace(FractionKeyFromPercent(percent),
+                      Value{{"opacity", Value{opacity}}});
+  }
+
+  return Value{{"opacity_test", Value{std::move(keyframes)}}};
+}
+
+Value CreateKeyFrameData1() {
+  return MakeOpacityTestKeyframes({{50, 0.3}, {90, 1.0}});
+}
+
+Value CreateKeyFrameData2() {
+  return MakeOpacityTestKeyframes({{50, 0.3}, {100, 1.0}});
+}
+
+Value CreateKeyFrameData3() {
+  return MakeOpacityTestKeyframes({{0, 0.3}, {100, 1.0}});
+}
 
 }  // namespace
 
-// @keyframes opacity_test
-// {
-// 50% {opacity:0.3;}
-// 90% {opacity:1;}
-// }
-void CreateKeyFrameData1(KeyFramesData* data) {
-  data->keyframes_data.size = 1;
-  data->keyframes_data.keyframe_rules = data->keyframe_rules.data();
-  data->keyframe_rules[0].size = 2;
-  data->keyframe_rules[0].name = "opacity_test";
-  data->keyframes_data.keyframe_rules->keyframes = data->keyframes.data();
-
-  data->keyframes[0].percentage = 0.5;
-  data->keyframes[0].size = 1;
-  data->keyframes[0].properties = data->properties0.data();
-  data->keyframes[0].properties->type = ClayAnimationPropertyType::kOpacity;
-  data->keyframes[0].properties->value = clay::Value(0.3f);
-
-  data->keyframes[1].percentage = 0.9;
-  data->keyframes[1].size = 1;
-  data->keyframes[1].properties = data->properties1.data();
-  data->keyframes[1].properties->type = ClayAnimationPropertyType::kOpacity;
-  data->keyframes[1].properties->value = clay::Value(0.9f);
-}
-
-// @keyframes opacity_test
-// {
-// 50% {opacity:0.3;}
-// 100% {opacity:1;}
-// }
-void CreateKeyFrameData2(KeyFramesData* data) {
-  data->keyframes_data.size = 1;
-  data->keyframes_data.keyframe_rules = data->keyframe_rules.data();
-  data->keyframe_rules[0].size = 2;
-  data->keyframe_rules[0].name = "opacity_test";
-  data->keyframes_data.keyframe_rules->keyframes = data->keyframes.data();
-
-  data->keyframes[0].percentage = 0.5;
-  data->keyframes[0].size = 1;
-  data->keyframes[0].properties = data->properties0.data();
-  data->keyframes[0].properties->type = ClayAnimationPropertyType::kOpacity;
-  data->keyframes[0].properties->value = clay::Value(0.3f);
-
-  data->keyframes[1].percentage = 1;
-  data->keyframes[1].size = 1;
-  data->keyframes[1].properties = data->properties1.data();
-  data->keyframes[1].properties->type = ClayAnimationPropertyType::kOpacity;
-  data->keyframes[1].properties->value = clay::Value(1.f);
-}
-
-// @keyframes opacity_test
-// {
-// 0% {opacity:0.3;}
-// 100% {opacity:1;}
-// }
-void CreateKeyFrameData3(KeyFramesData* data) {
-  data->keyframes_data.size = 1;
-  data->keyframes_data.keyframe_rules = data->keyframe_rules.data();
-  data->keyframe_rules[0].size = 2;
-  data->keyframe_rules[0].name = "opacity_test";
-  data->keyframes_data.keyframe_rules->keyframes = data->keyframes.data();
-
-  data->keyframes[0].percentage = 0;
-  data->keyframes[0].size = 1;
-  data->keyframes[0].properties = data->properties0.data();
-  data->keyframes[0].properties->type = ClayAnimationPropertyType::kOpacity;
-  data->keyframes[0].properties->value = clay::Value(0.3f);
-
-  data->keyframes[1].percentage = 1;
-  data->keyframes[1].size = 1;
-  data->keyframes[1].properties = data->properties1.data();
-  data->keyframes[1].properties->type = ClayAnimationPropertyType::kOpacity;
-  data->keyframes[1].properties->value = clay::Value(1.f);
-}
-
 // Test start and default values
 TEST_F_UI(KeyFrameTest, DefaultStartAndEnd) {
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData1(data.get());
+  Value keyframes_data = CreateKeyFrameData1();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(keyframes_data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.clear();
   animation_data_.push_back(start_data_);
@@ -194,10 +135,9 @@ TEST_F_UI(KeyFrameTest, UpdateAnimation) {
                             ClayAnimationDirectionType::kNormal,
                             ClayAnimationPlayStateType::kRunning};
 
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData1(data.get());
+  auto data = CreateKeyFrameData1();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.clear();
   animation_data_.push_back(start_data_);
@@ -233,10 +173,9 @@ TEST_F_UI(KeyFrameTest, ChangeFillmode) {
                             ClayAnimationDirectionType::kNormal,
                             ClayAnimationPlayStateType::kRunning};
 
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData2(data.get());
+  auto data = CreateKeyFrameData2();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.clear();
   animation_data_.push_back(start_data_);
@@ -268,7 +207,9 @@ TEST_F_UI(KeyFrameTest, ChangeFillmode) {
 
 // Test animation delay attribute
 TEST_F_UI(KeyFrameTest, AnimationDelay) {
-  // Test animation delay less than 0
+  // Test animation delay less than 0.
+  // With play_state paused, the animation should be frozen at the seeked
+  // position implied by the negative delay.
   AnimationData start_data{"opacity_test",
                            240,
                            -120,
@@ -278,10 +219,9 @@ TEST_F_UI(KeyFrameTest, AnimationDelay) {
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kPaused};
 
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData1(data.get());
+  Value keyframes_data = CreateKeyFrameData1();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(keyframes_data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.clear();
   animation_data_.push_back(start_data);
@@ -309,10 +249,9 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineForwards) {
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kPaused};
 
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData3(data.get());
+  auto data = CreateKeyFrameData3();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.clear();
   animation_data_.push_back(start_data);
@@ -344,10 +283,9 @@ TEST_F_UI(KeyFrameTest, AnimationDelayCombineBackwards) {
                            ClayAnimationDirectionType::kNormal,
                            ClayAnimationPlayStateType::kPaused};
 
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData3(data.get());
+  auto data = CreateKeyFrameData3();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.clear();
   animation_data_.push_back(start_data);
@@ -388,10 +326,9 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
                              ClayAnimationDirectionType::kNormal,
                              ClayAnimationPlayStateType::kRunning};
   MockAnimatorListener mock_listener;
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData1(data.get());
+  auto data = CreateKeyFrameData1();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);
@@ -460,10 +397,9 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
                              ClayAnimationDirectionType::kNormal,
                              ClayAnimationPlayStateType::kRunning};
   MockAnimatorListener mock_listener;
-  auto data = std::make_unique<KeyFramesData>();
-  CreateKeyFrameData1(data.get());
+  auto data = CreateKeyFrameData1();
 
-  page_->SetKeyframesData(&data->keyframes_data);
+  page_->SetKeyframesData(data);
   animator_view_->SetBound(0, 0, 100, 100);
   animation_data_.push_back(start_data_);
   animator_view_->SetAnimation(animation_data_);

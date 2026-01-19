@@ -35,7 +35,6 @@
 #include "clay/ui/component/editable/ime_listener.h"
 #include "clay/ui/component/intersection_observer_manager.h"
 #include "clay/ui/component/isolated_gesture_detector.h"
-#include "clay/ui/component/keyframes_data.h"
 #include "clay/ui/component/layout_controller.h"
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 #include "clay/ui/component/view_context.h"
@@ -69,6 +68,13 @@ class NativeView;
 class OverlayManager;
 class ScrollFluencyMonitorDelegate;
 class PipelineTimingDelegate;
+
+ClayEventType ToClayEventType(PointerEvent::EventType event_type,
+                              PointerEvent::DeviceType device);
+
+ClayEventType ToClayEventType(const PointerEvent& event);
+
+ClayEventType ToClayEventType(KeyEventType type);
 
 class PageView : public BaseView,
                  public RendererClient,
@@ -212,7 +218,7 @@ class PageView : public BaseView,
     performance_overlay_enabled_ = enable;
   }
 
-  void SetKeyframesData(KeyframesData* keyframes_data);
+  void SetKeyframesData(const Value& keyframes_value);
   const KeyframesMap* GetKeyframesMap(const std::string& animation_name);
 
   LayoutController* GetLayoutController() const {

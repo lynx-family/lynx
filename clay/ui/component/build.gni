@@ -40,8 +40,6 @@ ui_component_sources = [
   "isolated_gesture_detector.h",
   "key_event_handler.cc",
   "key_event_handler.h",
-  "keyframes_data.cc",
-  "keyframes_data.h",
   "keywords.cc",
   "keywords.h",
   "layout_controller.cc",

@@ -84,7 +84,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   void AdjustSizeIfNeeded(bool auto_size, float bitmap_width,
                           float bitmap_height) override;
 
-  void TryDecodeImmediately() override;
+  void TryDecodeImmediately();
 
 #ifndef NDEBUG
   std::string ToString() const override;

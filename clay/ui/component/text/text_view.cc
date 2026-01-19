@@ -117,8 +117,9 @@ void TextView::SetAttribute(const char* attr, const clay::Value& value) {
   }
 }
 
-void TextView::SetBorderWidth(Side side, float width) {
-  BaseView::SetBorderWidth(side, width);
+void TextView::SetBorderWidth(std::vector<Side> sides,
+                              std::vector<float> widths) {
+  BaseView::SetBorderWidth(sides, widths);
   UpdateInlineImageInfo();
 }
 void TextView::SetPaddings(float padding_left, float padding_top,

@@ -121,34 +121,18 @@ void ScrollbarWrapper::SetBorder(const BordersData& data) {
   view_->SetBorder(data);
 }
 
-void ScrollbarWrapper::SetBorderStyle(BorderStyleType left, BorderStyleType top,
-                                      BorderStyleType right,
-                                      BorderStyleType bottom) {
-  view_->SetBorderStyle(left, top, right, bottom);
+void ScrollbarWrapper::SetBorderStyle(std::vector<Side> sides,
+                                      std::vector<BorderStyleType> styles) {
+  view_->SetBorderStyle(sides, styles);
+}
+void ScrollbarWrapper::SetBorderWidth(std::vector<Side> sides,
+                                      std::vector<float> widths) {
+  view_->SetBorderWidth(sides, widths);
 }
 
-void ScrollbarWrapper::SetBorderStyle(Side side, int style) {
-  view_->SetBorderStyle(side, style);
-}
-
-void ScrollbarWrapper::SetBorderWidth(float left_width, float top_width,
-                                      float right_width, float bottom_width) {
-  view_->SetBorderWidth(left_width, top_width, right_width, bottom_width);
-}
-
-void ScrollbarWrapper::SetBorderWidth(Side side, float width) {
-  view_->SetBorderWidth(side, width);
-}
-
-void ScrollbarWrapper::SetBorderColor(unsigned int left_color,
-                                      unsigned int top_color,
-                                      unsigned int right_color,
-                                      unsigned int bottom_color) {
-  view_->SetBorderColor(left_color, top_color, right_color, bottom_color);
-}
-
-void ScrollbarWrapper::SetBorderColor(Side side, uint32_t color) {
-  view_->SetBorderColor(side, color);
+void ScrollbarWrapper::SetBorderColor(std::vector<Side> sides,
+                                      std::vector<uint32_t> colors) {
+  view_->SetBorderColor(sides, colors);
 }
 
 void ScrollbarWrapper::SetBorderRadius(const FloatSize& left_top,
@@ -158,41 +142,54 @@ void ScrollbarWrapper::SetBorderRadius(const FloatSize& left_top,
   view_->SetBorderRadius(left_top, right_top, right_bottom, left_bottom);
 }
 
-void ScrollbarWrapper::SetBorderRadius(float radius_all) {
-  view_->SetBorderRadius(radius_all);
-}
-
 void ScrollbarWrapper::SetBackground(const BackgroundData& background) {
   view_->SetBackground(background);
 }
-void ScrollbarWrapper::SetBackgroundColor(const Color& color) {
-  view_->SetBackgroundColor(color);
-}
 
-void ScrollbarWrapper::SetBackgroundImage(const clay::Value::Array& array) {
-  view_->SetBackgroundImage(array);
-}
-
-void ScrollbarWrapper::SetBackgroundClip(const clay::Value::Array& array) {
-  view_->SetBackgroundClip(array);
-}
-
-void ScrollbarWrapper::SetBackgroundOrigin(const clay::Value::Array& array) {
-  view_->SetBackgroundOrigin(array);
-}
-
-void ScrollbarWrapper::SetBackgroundPosition(
-    const std::vector<BackgroundPosition>& positions) {
-  view_->SetBackgroundPosition(positions);
-}
-
-void ScrollbarWrapper::SetBackgroundRepeat(const clay::Value::Array& array) {
-  view_->SetBackgroundRepeat(array);
-}
-
-void ScrollbarWrapper::SetBackgroundSize(
-    const std::vector<BackgroundSize>& sizes) {
-  view_->SetBackgroundSize(sizes);
+bool ScrollbarWrapper::OnBackgroundProperty(
+    const BaseView::BackgroundUpdate& update) {
+  switch (update.type) {
+    case BaseView::BackgroundPropType::kColor: {
+      const auto& color = std::get<Color>(update.payload);
+      view_->SetBackgroundColor(color);
+      return true;
+    }
+    case BaseView::BackgroundPropType::kImage: {
+      const auto* arr = std::get<const clay::Value::Array*>(update.payload);
+      view_->SetBackgroundImage(*arr);
+      return true;
+    }
+    case BaseView::BackgroundPropType::kClip: {
+      const auto* arr = std::get<const clay::Value::Array*>(update.payload);
+      view_->SetBackgroundClip(*arr);
+      return true;
+    }
+    case BaseView::BackgroundPropType::kOrigin: {
+      const auto* arr = std::get<const clay::Value::Array*>(update.payload);
+      view_->SetBackgroundOrigin(*arr);
+      return true;
+    }
+    case BaseView::BackgroundPropType::kPosition: {
+      const auto* positions =
+          std::get<const std::vector<BackgroundPosition>*>(update.payload);
+      view_->SetBackgroundPosition(*positions);
+      return true;
+    }
+    case BaseView::BackgroundPropType::kRepeat: {
+      const auto* arr = std::get<const clay::Value::Array*>(update.payload);
+      view_->SetBackgroundRepeat(*arr);
+      return true;
+    }
+    case BaseView::BackgroundPropType::kSize: {
+      const auto* sizes =
+          std::get<const std::vector<BackgroundSize>*>(update.payload);
+      view_->SetBackgroundSize(*sizes);
+      return true;
+    }
+    default:
+      break;
+  }
+  return false;
 }
 
 void ScrollbarWrapper::AddEventCallback(const char* event) {

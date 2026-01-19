@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
@@ -103,20 +104,19 @@ class BaseView : public TypeIdentifiable<BaseView>,
   // focus loss or other problems.
   void RemoveChildTemporarily(BaseView* child);
   virtual void DestroyAllChildren();
-  virtual void BringChildToFront(BaseView* child);
+  void BringChildToFront(BaseView* child);
 
   virtual void OnEnterForeground() {}
   virtual void OnEnterBackground() {}
 
   virtual void OnMouseHoverChange();
-  virtual void OnMouseEvent(const ClayEventType type,
-                            const PointerEvent& event);
+  void OnMouseEvent(const ClayEventType type, const PointerEvent& event);
 
   // For some internally created view events, the callback id needs to be
   // returned.
   virtual int GetCallbackId() { return id_; }
   // add for layoutchange event
-  virtual void OnLayoutChange();
+  void OnLayoutChange();
   virtual void OnLayoutUpdated() {}
   virtual FloatSize GetScrollOffset() const { return FloatSize(); }
   // FIXME(ZhuChengCheng) this is a workaround method for rtl scrollview, we
@@ -127,7 +127,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual void OnNodeReady() {}
 
-  virtual void UpdateInlineImageInfo();
+  void UpdateInlineImageInfo();
 
   void OnMouseEnter(const PointerEvent& event);
   void OnMouseLeave(const PointerEvent& event);
@@ -187,26 +187,21 @@ class BaseView : public TypeIdentifiable<BaseView>,
   virtual void SetOverflow(int overflow);
   int GetOverflow() { return overflow_; }
   virtual void SetBorder(const BordersData& data);
-  virtual void OnBorderChanged(const BordersData& data);
+  void OnBorderChanged(const BordersData& data);
 
   void AppendShadow(const Shadow& shadow);
   void SetShadows(std::vector<Shadow>&& shadows);
-  virtual void SetBorderStyle(BorderStyleType left, BorderStyleType top,
-                              BorderStyleType right, BorderStyleType bottom);
-  virtual void SetBorderStyle(Side side, int style);
-  virtual void SetBorderWidth(float left_width, float top_width,
-                              float right_width, float bottom_width);
-  virtual void SetBorderWidth(Side side, float width);
-  virtual void SetBorderColor(unsigned int left_color, unsigned int top_color,
-                              unsigned int right_color,
-                              unsigned int bottom_color);
-  virtual void SetBorderColor(Side side, uint32_t color);
+  virtual void SetBorderStyle(std::vector<Side> sides,
+                              std::vector<BorderStyleType> styles);
+  virtual void SetBorderWidth(std::vector<Side> sides,
+                              std::vector<float> widths);
+  virtual void SetBorderColor(std::vector<Side> sides,
+                              std::vector<uint32_t> colors);
   virtual void SetBorderRadius(const FloatSize& left_top,
                                const FloatSize& right_top,
                                const FloatSize& right_bottom,
                                const FloatSize& left_bottom);
-  virtual void SetBorderRadius(float radius_all);
-  virtual void SetBorderRadius(size_t index, const std::vector<Length>& array);
+  void SetBorderRadius(size_t index, const std::vector<Length>& array);
   bool IsDelayDestroy() { return delay_destroy_; }
   std::optional<bool> IgnoreFocus() { return ignore_focus_; }
   void SetOutline(const OutlineData& outline);
@@ -229,14 +224,34 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual void SetBackground(const BackgroundData& background);
 
-  virtual void SetBackgroundColor(const Color& color);
-  virtual void SetBackgroundImage(const clay::Value::Array& array);
-  virtual void SetBackgroundClip(const clay::Value::Array& array);
-  virtual void SetBackgroundOrigin(const clay::Value::Array& array);
-  virtual void SetBackgroundPosition(
-      const std::vector<BackgroundPosition>& positions);
-  virtual void SetBackgroundRepeat(const clay::Value::Array& array);
-  virtual void SetBackgroundSize(const std::vector<BackgroundSize>& sizes);
+  enum class BackgroundPropType {
+    kColor,
+    kImage,
+    kClip,
+    kOrigin,
+    kPosition,
+    kRepeat,
+    kSize
+  };
+  struct BackgroundUpdate {
+    BackgroundPropType type;
+    std::variant<Color, const clay::Value::Array*,
+                 const std::vector<BackgroundPosition>*,
+                 const std::vector<BackgroundSize>*>
+        payload;
+  };
+
+  virtual bool OnBackgroundProperty(const BackgroundUpdate& update) {
+    return false;
+  }
+
+  void SetBackgroundColor(const Color& color);
+  void SetBackgroundImage(const clay::Value::Array& array);
+  void SetBackgroundClip(const clay::Value::Array& array);
+  void SetBackgroundOrigin(const clay::Value::Array& array);
+  void SetBackgroundPosition(const std::vector<BackgroundPosition>& positions);
+  void SetBackgroundRepeat(const clay::Value::Array& array);
+  void SetBackgroundSize(const std::vector<BackgroundSize>& sizes);
 
   void SetMaskImage(const clay::Value::Array& array);
   void SetMaskPosition(const std::vector<MaskPosition>& positions);
@@ -459,11 +474,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void Layout(LayoutContext* context = nullptr);
   virtual void OnLayout(LayoutContext* context);
 
-  virtual void HandleCopy() {}
-  virtual void HandlePaste() {}
-  virtual void HandleCut() {}
-  virtual void HandleSelectAll() {}
-
   virtual void OnContentSizeChanged(const FloatRect& old_rect,
                                     const FloatRect& new_rect);
   virtual void OnBoundsChanged(const FloatRect& old_bounds,
@@ -568,8 +578,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
                    const FilterOperations& value);
   const KeyframesMap* GetKeyframesMap(const std::string& animation_name);
   FloatSize PercentageResolutionSize() { return {Width(), Height()}; }
-
-  virtual void TryDecodeImmediately() {}
 
   void DecodeImagesRecursively();
 

@@ -17,6 +17,7 @@
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/utils/floating_comparison.h"
+#include "clay/ui/component/base_image_view.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/css_property.h"
@@ -115,8 +116,8 @@ void ScrollView::AddChild(BaseView* child, int index) {
   CorrectScrollOffset();
   if (!page_view()->ImageDecodeWithPriority()) {
     auto func = [](BaseView* v) {
-      if (v) {
-        v->TryDecodeImmediately();
+      if (v && v->Is<BaseImageView>()) {
+        static_cast<BaseImageView*>(v)->TryDecodeImmediately();
       }
     };
     child->VisitChildren(func);

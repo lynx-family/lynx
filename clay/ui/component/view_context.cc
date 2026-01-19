@@ -18,7 +18,6 @@
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/editable/editable_view.h"
-#include "clay/ui/component/keyframes_data.h"
 #include "clay/ui/component/list/list_container_wrapper.h"
 #include "clay/ui/component/list/lynx_list_data.h"
 #include "clay/ui/component/native_view.h"
@@ -50,57 +49,6 @@
 #endif
 
 namespace clay {
-namespace {
-#if (DEBUG_KEYFRAMES)
-void DebugPrintTransform(const ClayTransform& transform) {
-  FML_LOG(ERROR) << "SetKeyframes \t\t\t\t transform size: " << transform.size;
-  for (int i = 0; i < transform.size; i++) {
-    ClayTransformOP& op = transform.op[i];
-    FML_LOG(ERROR) << "SetKeyframes \t\t\t\t\t op: " << op.type << " ("
-                   << op.value[0] << ", " << op.value[1] << ", " << op.value[2]
-                   << ")";
-  }
-}
-
-void DebugPrintKeyframes(ClayKeyframesData* keyframes_data) {
-  FML_LOG(ERROR) << "SetKeyframes rules size: " << keyframes_data->size;
-  for (int i = 0; i < keyframes_data->size; i++) {
-    ClayKeyframesRule* rule = keyframes_data->keyframe_rules + i;
-    if (!rule) continue;
-    FML_LOG(ERROR) << "SetKeyframes \t rule name: " << rule->name;
-    for (int j = 0; j < rule->size; j++) {
-      ClayKeyframe* keyframe = rule->keyframes + j;
-      if (!keyframe) continue;
-      FML_LOG(ERROR) << "SetKeyframes \t\t keyframe: " << keyframe->percentage;
-      for (int k = 0; k < keyframe->size; k++) {
-        ClayAnimationPropertyValue* prop = keyframe->properties + k;
-        if (!prop) continue;
-        ClayTransform* transform = nullptr;
-        switch (prop->type) {
-          case ClayAnimationPropertyType::kOpacity:
-            FML_LOG(ERROR) << "SetKeyframes \t\t\t opacity: "
-                           << prop->value.GetFloat();
-            break;
-          case ClayAnimationPropertyType::kBackgroundColor:
-            FML_LOG(ERROR) << "SetKeyframes \t\t\t background-color: "
-                           << prop->value.GetUint();
-            break;
-          case ClayAnimationPropertyType::kTransform:
-            FML_LOG(ERROR) << "SetKeyframes \t\t\t transform: "
-                           << prop->value.GetPointer();
-            transform = static_cast<ClayTransform*>(prop->value.GetPointer());
-            if (transform) DebugPrintTransform(*transform);
-            break;
-          default:
-            FML_LOG(ERROR) << "SetKeyframes \t\t\t unsupported prop type";
-            break;
-        }
-      }
-    }
-  }
-}
-#endif
-}  // namespace
 
 ViewContext::ViewContext(PageView* root, ShadowNodeOwner* shadow_node_owner)
     : page_view_(root),
@@ -550,7 +498,8 @@ void ViewContext::SetBorderStyle(int id, BorderStyleType left,
   }
 
   auto view = target->second;
-  view->SetBorderStyle(left, top, right, bottom);
+  view->SetBorderStyle({Side::kLeft, Side::kTop, Side::kRight, Side::kBottom},
+                       {left, top, right, bottom});
 }
 
 void ViewContext::SetBorderWidth(int id, int left_width, int top_width,
@@ -562,10 +511,11 @@ void ViewContext::SetBorderWidth(int id, int left_width, int top_width,
   }
 
   auto view = target->second;
-  view->SetBorderWidth(GetPageView()->RoundPixels(left_width),
-                       GetPageView()->RoundPixels(top_width),
-                       GetPageView()->RoundPixels(right_width),
-                       GetPageView()->RoundPixels(bottom_width));
+  view->SetBorderWidth({Side::kLeft, Side::kTop, Side::kRight, Side::kBottom},
+                       {GetPageView()->RoundPixels(left_width),
+                        GetPageView()->RoundPixels(top_width),
+                        GetPageView()->RoundPixels(right_width),
+                        GetPageView()->RoundPixels(bottom_width)});
 }
 
 void ViewContext::SetBorderColor(int id, unsigned int left_color,
@@ -579,7 +529,8 @@ void ViewContext::SetBorderColor(int id, unsigned int left_color,
   }
 
   auto view = target->second;
-  view->SetBorderColor(left_color, top_color, right_color, bottom_color);
+  view->SetBorderColor({Side::kLeft, Side::kTop, Side::kRight, Side::kBottom},
+                       {left_color, top_color, right_color, bottom_color});
 }
 
 void ViewContext::SetBorderRadius(int id, const FloatSize& left_top,
@@ -721,13 +672,7 @@ void ViewContext::SetAnimation(
 }
 
 void ViewContext::SetKeyframes(const clay::Value& keyframes_value) {
-  // TODO(Jinsong): merge KeyframesData into KeyframesMap.
-  KeyframesData keyframes_data(keyframes_value);
-#if (DEBUG_KEYFRAMES)
-  DebugPrintKeyframes(&keyframes_data);
-#endif
-
-  page_view_->SetKeyframesData(&keyframes_data);
+  page_view_->SetKeyframesData(keyframes_value);
 }
 
 void ViewContext::SetAttribute(int id, const char* attr,
