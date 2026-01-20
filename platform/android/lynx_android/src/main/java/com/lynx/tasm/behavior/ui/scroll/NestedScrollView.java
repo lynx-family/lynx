@@ -31,6 +31,9 @@ public class NestedScrollView
   private final int[] mScrollConsumed = new int[2];
   private OverScroller mVScroller;
   protected BounceGestureHelper mBounceGestureHelper;
+  protected boolean mPanInterceptSelf = false;
+  protected boolean mPanInterceptAncestors = false;
+  protected boolean mPanInterceptDescendants = false;
 
   public NestedScrollView(Context context, UIScrollView uiScrollView) {
     super(context);
@@ -195,6 +198,18 @@ public class NestedScrollView
     } catch (IllegalAccessException e) {
       LLog.e(TAG, "Failed to get mTouchSlop field of NestedScrollView!");
     }
+  }
+
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    mPanInterceptSelf = panInterceptSelf;
+  }
+
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    mPanInterceptAncestors = panInterceptAncestors;
+  }
+
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    mPanInterceptDescendants = panInterceptDescendants;
   }
 
   /********* NestedScrollingChild2 begin *********/

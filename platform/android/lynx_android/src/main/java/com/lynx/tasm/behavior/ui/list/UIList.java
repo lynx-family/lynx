@@ -268,6 +268,9 @@ public class UIList extends AbsLynxList<RecyclerView> {
     // to handle the gesture with one gesture, you need to convert one of the move events into a
     // down event
     private boolean mIsDownEventHandled = true;
+    private boolean mPanInterceptSelf = false;
+    private boolean mPanInterceptAncestors = false;
+    private boolean mPanInterceptDescendants = false;
 
     public PrivateRecyclerView(Context context, UIList ui) {
       super(context);
@@ -460,9 +463,14 @@ public class UIList extends AbsLynxList<RecyclerView> {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent e) {
+      if (mPanInterceptDescendants) {
+        return true;
+      }
+
       if (mPreferenceConsumeGesture) {
         requestDisallowInterceptTouchEvent(true);
       }
+
       UIList list = mWeakUIList.get();
       if (list == null) {
         return super.onInterceptTouchEvent(e);
@@ -511,6 +519,10 @@ public class UIList extends AbsLynxList<RecyclerView> {
       UIList list = mWeakUIList.get();
       if (list == null) {
         return super.onTouchEvent(ev);
+      }
+
+      if (mPanInterceptSelf) {
+        return false;
       }
 
       if (isNotIncludeNativeGesture(list)) {
@@ -567,6 +579,18 @@ public class UIList extends AbsLynxList<RecyclerView> {
 
     public void interceptGesture(boolean intercept) {
       mInterceptGesture = intercept;
+    }
+
+    public void setPanInterceptSelf(boolean panInterceptSelf) {
+      mPanInterceptSelf = panInterceptSelf;
+    }
+
+    public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+      mPanInterceptAncestors = panInterceptAncestors;
+    }
+
+    public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+      mPanInterceptDescendants = panInterceptDescendants;
     }
   }
 
@@ -2093,5 +2117,26 @@ public class UIList extends AbsLynxList<RecyclerView> {
       }
     }
     return -1;
+  }
+
+  @Override
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    if (mView instanceof PrivateRecyclerView) {
+      ((PrivateRecyclerView) mView).setPanInterceptSelf(panInterceptSelf);
+    }
+  }
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    if (mView instanceof PrivateRecyclerView) {
+      ((PrivateRecyclerView) mView).setPanInterceptAncestors(panInterceptAncestors);
+    }
+  }
+
+  @Override
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    if (mView instanceof PrivateRecyclerView) {
+      ((PrivateRecyclerView) mView).setPanInterceptDescendants(panInterceptDescendants);
+    }
   }
 }
