@@ -104,7 +104,7 @@ unittest_set("napi_unittests_testset") {
   deps = [
     ":napi_binding_quickjs",
     "../../../base",
-    "../../lepus_context/napi/test:test_module",
+    "../../lepusng/napi/test:test_module",
   ]
   deps += [
     "../../../../third_party/napi:env",

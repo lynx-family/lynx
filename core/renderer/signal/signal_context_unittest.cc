@@ -34,9 +34,9 @@ SOFTWARE.
 
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
-#include "core/runtime/lepus_context/bytecode_generator.h"
-#include "core/runtime/lepus_context/quick_context.h"
-#include "core/runtime/lepus_context/vm_context.h"
+#include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepus/vm_context.h"
+#include "core/runtime/lepusng/quick_context.h"
 
 namespace lynx {
 namespace tasm {

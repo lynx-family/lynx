@@ -9,7 +9,7 @@
 
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus/context.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
 #include "core/template_bundle/template_codec/template_binary.h"

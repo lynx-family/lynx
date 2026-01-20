@@ -21,9 +21,9 @@
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/worklet/base/worklet_utils.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_frame_callback.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_func_callback.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_lepus_element.h"
+#include "core/runtime/lepusng/napi/worklet/napi_frame_callback.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
+#include "core/runtime/lepusng/napi/worklet/napi_lepus_element.h"
 
 namespace lynx {
 namespace worklet {

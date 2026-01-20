@@ -72,8 +72,8 @@ if (!enable_unittests) {
             "js/bindings/modules/ios/module_factory_darwin.mm",
             "js/bindings/modules/ios/shared_module_creator.h",
             "js/bindings/modules/ios/shared_module_creator.mm",
-            "lepus_context/bindings/ios/lynx_lepus_module_darwin.h",
-            "lepus_context/bindings/ios/lynx_lepus_module_darwin.mm",
+            "lepus/bindings/ios/lynx_lepus_module_darwin.h",
+            "lepus/bindings/ios/lynx_lepus_module_darwin.mm",
           ] + jsbridge_extend_shared_sources
     }
   } else if (is_harmony) {

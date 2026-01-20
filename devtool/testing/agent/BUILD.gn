@@ -21,7 +21,7 @@ unittest_set("devtool_agent_testset") {
     "../../../core/renderer/dom:dom",
     "../../../core/renderer/starlight:starlight",
     "../../../core/renderer/utils:renderer_utils",
-    "../../../core/runtime/lepus_context/bindings:lepus",
+    "../../../core/runtime/lepus/bindings:lepus",
     "../../../core/services/recorder:recorder",
     "../../../core/services/replay:replay",
     "../../../third_party/jsoncpp",

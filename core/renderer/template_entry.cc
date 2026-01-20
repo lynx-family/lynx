@@ -12,14 +12,14 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/tasm_utils.h"
-#include "core/runtime/lepus_context/bindings/renderer.h"
-#include "core/runtime/lepus_context/quick_context.h"
+#include "core/runtime/lepus/bindings/renderer.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
 #include "core/services/event_report/event_tracker.h"
 
 #if ENABLE_LEPUSNG_WORKLET
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_loader_ui.h"
+#include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 #endif
 
 #ifdef USE_PRIMJS_NAPI

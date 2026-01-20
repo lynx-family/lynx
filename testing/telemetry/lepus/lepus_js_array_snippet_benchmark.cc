@@ -8,12 +8,12 @@
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/lepus_context/bindings/renderer_functions.h"
-#include "core/runtime/lepus_context/builtin.h"
-#include "core/runtime/lepus_context/bytecode_generator.h"
-#include "core/runtime/lepus_context/json_parser.h"
-#include "core/runtime/lepus_context/jsvalue_helper.h"
-#include "core/runtime/lepus_context/quick_context.h"
+#include "core/runtime/lepus/bindings/renderer_functions.h"
+#include "core/runtime/lepus/builtin.h"
+#include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepus/json_parser.h"
+#include "core/runtime/lepusng/jsvalue_helper.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "third_party/benchmark/include/benchmark/benchmark.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

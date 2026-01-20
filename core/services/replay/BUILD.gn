@@ -29,7 +29,7 @@ lynx_core_source_set("replay") {
   include_dirs = [
     "../../renderer:tasm",
     "../../renderer/dom:renderer_dom",
-    "../../runtime/lepus_context/bindings:lepus",
+    "../../runtime/lepus/bindings:lepus",
   ]
   sources = replay_shared_sources
 
@@ -41,7 +41,7 @@ lynx_core_source_set("replay") {
     "../../../third_party/rapidjson:rapidjson",
     "../../renderer/dom:dom",
     "../../runtime",
-    "../../runtime/lepus_context:lepus",
+    "../../runtime/lepus:lepus",
     "//third_party/modp_b64:modp_b64",
     "//third_party/zlib",
   ]

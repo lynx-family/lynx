@@ -43,7 +43,7 @@ unittest_set("signal_test_testset") {
   deps = [
     "../:tasm",
     "../../../third_party/quickjs",
-    "../../runtime/lepus_context/bindings:lepus",
+    "../../runtime/lepus/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:dom",
     "../dom:dom_testset",

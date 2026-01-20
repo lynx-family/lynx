@@ -33,7 +33,7 @@ lynx_core_source_set("animation") {
   public_deps = [
     "../../third_party/rapidjson",
     "../base",
-    "../runtime/lepus_context:lepus",
+    "../runtime/lepus:lepus",
     "utils:animation_utils",
   ]
 }
@@ -46,7 +46,7 @@ unittest_set("animation_testset") {
   deps = [
     "../renderer:tasm",
     "../renderer/dom:renderer_dom",
-    "../runtime/lepus_context/bindings:lepus",
+    "../runtime/lepus/bindings:lepus",
     "../shell/testing:mock_tasm_delegate_testset",
   ]
 

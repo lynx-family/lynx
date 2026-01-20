@@ -25,7 +25,7 @@ lynx_core_source_set("css") {
   public_deps = [
     "../../../third_party/rapidjson",
     "../../base",
-    "../../runtime/lepus_context:lepus",
+    "../../runtime/lepus:lepus",
     "../../style",
     "../trace:renderer_trace",
   ]
@@ -66,7 +66,7 @@ unittest_set("css_test_testset") {
     "../:tasm",
     "../../../third_party/rapidjson:rapidjson",
     "../../renderer:tasm_group",
-    "../../runtime/lepus_context/bindings:lepus",
+    "../../runtime/lepus/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:renderer_dom",
   ]
@@ -101,7 +101,7 @@ unittest_set("css_ng_testset") {
 
   deps = [
     "../:tasm",
-    "../../runtime/lepus_context/bindings:lepus",
+    "../../runtime/lepus/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:renderer_dom",
   ]

@@ -37,8 +37,8 @@ lynx_core_source_set("tasm") {
     "../animation",
     "../animation/utils:animation_utils",
     "../base",
-    "../runtime/lepus_context:lepus",
-    "../runtime/lepus_context/bindings:lepus",
+    "../runtime/lepus:lepus",
+    "../runtime/lepus/bindings:lepus",
     "../services/event_report",
     "../services/long_task_timing",
     "../services/performance",
@@ -80,7 +80,7 @@ lynx_core_source_set("tasm") {
       "../../third_party/rapidjson:rapidjson",
       "../base",
       "../runtime/common/napi:napi_binding_quickjs",
-      "../runtime/lepus_context/napi/test:test_module",
+      "../runtime/lepusng/napi/test:test_module",
     ]
     deps += [
       "../../third_party/napi:env",

@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus/context.h"
 #include "third_party/rapidjson/document.h"
 
 #ifdef __cplusplus

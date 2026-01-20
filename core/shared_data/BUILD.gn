@@ -30,7 +30,7 @@ lynx_core_source_set("shared_data") {
   public_deps = [
     ":white_board",
     "../runtime",
-    "../runtime/lepus_context:lepus",
+    "../runtime/lepus:lepus",
   ]
 }
 
@@ -41,7 +41,7 @@ unittest_set("shared_data_test_testset") {
   deps = [
     "../renderer:tasm",
     "../renderer/dom:renderer_dom",
-    "../runtime/lepus_context/bindings:lepus",
+    "../runtime/lepus/bindings:lepus",
     "../shell/testing:mock_tasm_delegate_testset",
     "../shell/testing:shell_testset",
   ]

@@ -11,9 +11,9 @@ path_finder.add_build_scripts_dir_to_sys_path()
 from known_modules import MODULES
 
 known_modules = {
-  'test': 'core/runtime/lepus_context/napi/worklet/test',
+  'test': 'core/runtime/lepus/napi/worklet/test',
   'gen_test': 'third_party/binding/gen_test/jsbridge/bindings/gen_test',
-  'worklet': 'core/runtime/lepus_context/napi/worklet',
+  'worklet': 'core/runtime/lepus/napi/worklet',
 }
 
 hardcoded_includes = {
@@ -25,16 +25,16 @@ hardcoded_includes = {
             'core/renderer/worklet/lepus_element.h',
         ],
         'LepusLynx': [
-            'core/runtime/lepus_context/napi/worklet/napi_frame_callback.h',
-            'core/runtime/lepus_context/napi/worklet/napi_func_callback.h',
-            'core/runtime/lepus_context/napi/worklet/napi_lepus_element.h',
+            'core/runtime/lepus/napi/worklet/napi_frame_callback.h',
+            'core/runtime/lepus/napi/worklet/napi_func_callback.h',
+            'core/runtime/lepus/napi/worklet/napi_lepus_element.h',
             'core/renderer/worklet/lepus_element.h',
             'core/renderer/worklet/lepus_lynx.h'
         ],
         'LepusComponent': [
-            'core/runtime/lepus_context/napi/worklet/napi_frame_callback.h',
-            'core/runtime/lepus_context/napi/worklet/napi_func_callback.h',
-            'core/runtime/lepus_context/napi/worklet/napi_lepus_element.h',
+            'core/runtime/lepus/napi/worklet/napi_frame_callback.h',
+            'core/runtime/lepus/napi/worklet/napi_func_callback.h',
+            'core/runtime/lepus/napi/worklet/napi_lepus_element.h',
             'core/renderer/worklet/lepus_element.h',
             'core/renderer/worklet/lepus_component.h'
         ],
@@ -47,11 +47,11 @@ hardcoded_includes = {
             'base/include/log/logging.h',
         ],
         'TestContext': [
-            'core/runtime/lepus_context/napi/worklet/test/test_context.h',
+            'core/runtime/lepus/napi/worklet/test/test_context.h',
         ],
         'TestElement': [
-            'core/runtime/lepus_context/napi/worklet/test/test_element.h',
-            'core/runtime/lepus_context/napi/worklet/test/napi_test_context.h',
+            'core/runtime/lepus/napi/worklet/test/test_element.h',
+            'core/runtime/lepus/napi/worklet/test/napi_test_context.h',
         ],
     },
     'gen_test': {

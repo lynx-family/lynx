@@ -17,7 +17,7 @@
 #include "base/include/value/table.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/template_assembler.h"
-#include "core/runtime/lepus_context/bindings/ios/lynx_lepus_module_darwin.h"
+#include "core/runtime/lepus/bindings/ios/lynx_lepus_module_darwin.h"
 
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/darwin/event_converter_darwin.h"

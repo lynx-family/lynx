@@ -6,8 +6,8 @@
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/lepus_context/jsvalue_helper.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_loader_ui.h"
+#include "core/runtime/lepusng/jsvalue_helper.h"
+#include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"

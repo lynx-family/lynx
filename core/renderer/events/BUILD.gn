@@ -21,7 +21,7 @@ lynx_core_source_set("events") {
   public_deps = [
     "../../../third_party/rapidjson",
     "../../base",
-    "../../runtime/lepus_context:lepus",
+    "../../runtime/lepus:lepus",
     "../trace:renderer_trace",
   ]
 
@@ -55,7 +55,7 @@ unittest_set("events_test_testset") {
     ":events",
     "../:tasm",
     "../../../third_party/quickjs",
-    "../../runtime/lepus_context/bindings:lepus",
+    "../../runtime/lepus/bindings:lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:dom",
     "../dom:dom_testset",

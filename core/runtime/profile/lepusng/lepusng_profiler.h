@@ -7,8 +7,8 @@
 #if ENABLE_TRACE_PERFETTO
 #include <memory>
 
-#include "core/runtime/lepus_context/context.h"
-#include "core/runtime/lepus_context/quick_context.h"
+#include "core/runtime/lepus/context.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {

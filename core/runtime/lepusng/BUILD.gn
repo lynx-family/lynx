@@ -1,0 +1,30 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../testing/test.gni")
+import("../../Lynx.gni")
+
+lynx_core_source_set("lepus_ng") {
+  sources = [
+    "bindings/renderer_ng.cc",
+    "jsvalue_helper.cc",
+    "jsvalue_helper.h",
+    "qjs_callback.cc",
+    "qjs_callback.h",
+    "quick_context.cc",
+    "quick_context.h",
+  ]
+
+  public_deps = [
+    "../../../third_party/rapidjson",
+    "../lepus/tasks:tasks",
+  ]
+  deps = [ "../common:reporter" ]
+  if (!is_android && !is_oliver_ssr) {
+    deps += [ "../../../third_party/quickjs" ]
+  }
+
+  exclude_configs = [ "//build/config/compiler:chromium_code" ]
+  configs = [ "//build/config/compiler:no_chromium_code" ]
+}

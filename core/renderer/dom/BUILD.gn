@@ -24,7 +24,7 @@ lynx_core_source_set("dom") {
     ":renderer_dom",
     "../:tasm",
     "../../../third_party/rapidjson",
-    "../../runtime/lepus_context/bindings:lepus",
+    "../../runtime/lepus/bindings:lepus",
     "../../services/long_task_timing",
     "../../value_wrapper",
     "../css:css_dom",
@@ -62,7 +62,7 @@ lynx_core_source_set("renderer_dom") {
 
   public_deps = [
     "../../base",
-    "../../runtime/lepus_context:lepus",
+    "../../runtime/lepus:lepus",
     "../css",
     "../events",
     "../simple_styling",
@@ -112,7 +112,7 @@ unittest_set("dom_testset") {
     "vdom/radon/radon_node_unittest.cc",
   ]
   deps = [
-    "../../runtime/lepus_context/tasks:tasks_testset",
+    "../../runtime/lepus/tasks:tasks_testset",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../../template_bundle/template_codec/binary_encoder/css_encoder:css_encoder",
   ]

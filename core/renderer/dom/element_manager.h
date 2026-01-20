@@ -45,7 +45,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/base/tasm_worker_task_runner.h"
-#include "core/runtime/lepus_context/bindings/style/shared_css_fragment_wrapper.h"
+#include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"

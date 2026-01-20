@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/signal/signal_context.h"
-#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus/context.h"
 
 namespace lynx {
 namespace tasm {

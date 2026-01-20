@@ -5,7 +5,7 @@
 import("../../../../../testing/test.gni")
 import("../../../../Lynx.gni")
 import("../../../../renderer/simple_styling/simple_styling.gni")
-import("../../../../runtime/lepus_context/build.gni")
+import("../../../../runtime/lepus/build.gni")
 
 lynx_core_source_set("style_object_encoder") {
   sources = [
@@ -26,7 +26,7 @@ unittest_set("style_object_encoder_testset") {
     "../../../../renderer:tasm",
     "../../../../renderer/dom:dom",
     "../../../../renderer/dom:renderer_dom",
-    "../../../../runtime/lepus_context/bindings:lepus",
+    "../../../../runtime/lepus/bindings:lepus",
   ]
 
   sources = [ "style_object_parser_unittest.cc" ]

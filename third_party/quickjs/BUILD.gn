@@ -14,7 +14,7 @@ config("quickjs_private_config") {
     ".",
     "src/src",
     "src/src/interpreter",
-    "../../core/runtime/lepus_context",
+    "../../core/runtime/lepus",
   ]
 
   cflags = [

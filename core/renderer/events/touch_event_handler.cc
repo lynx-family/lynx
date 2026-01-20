@@ -23,8 +23,8 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/lepus_context/json_parser.h"
-#include "core/runtime/lepus_context/jsvalue_helper.h"
+#include "core/runtime/lepus/json_parser.h"
+#include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/replay/replay_controller.h"
 #include "third_party/rapidjson/document.h"
@@ -33,7 +33,7 @@
 #include "core/renderer/worklet/lepus_component.h"
 #include "core/renderer/worklet/lepus_element.h"
 #include "core/renderer/worklet/lepus_raf_handler.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_func_callback.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 #endif  // ENABLE_LEPUSNG_WORKLET
 
 namespace lynx {

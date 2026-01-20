@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "core/runtime/lepus_context/context.h"
+#include "core/runtime/lepus/context.h"
 
 namespace lepus_inspector {
 

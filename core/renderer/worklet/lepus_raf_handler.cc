@@ -12,8 +12,8 @@
 #include "core/renderer/worklet/base/worklet_utils.h"
 #include "core/renderer/worklet/lepus_element.h"
 #include "core/renderer/worklet/lepus_lynx.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_frame_callback.h"
-#include "core/runtime/lepus_context/napi/worklet/napi_func_callback.h"
+#include "core/runtime/lepusng/napi/worklet/napi_frame_callback.h"
+#include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 
 namespace lynx {
 namespace worklet {

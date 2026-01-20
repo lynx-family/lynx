@@ -31,7 +31,7 @@ unittest_set("css_encoder_testset") {
     "../../../../renderer:tasm",
     "../../../../renderer/dom:dom",
     "../../../../renderer/dom:renderer_dom",
-    "../../../../runtime/lepus_context/bindings:lepus",
+    "../../../../runtime/lepus/bindings:lepus",
   ]
 
   sources = [

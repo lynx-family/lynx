@@ -23,7 +23,7 @@
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/js/runtime_manager.h"
 #include "core/runtime/js/template_delegate.h"
-#include "core/runtime/lepus_context/json_parser.h"
+#include "core/runtime/lepus/json_parser.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/services/timing_handler/timing_constants.h"

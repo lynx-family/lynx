@@ -4,7 +4,7 @@
 
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
 
-#include "core/runtime/lepus_context/bindings/ios/lynx_lepus_module_darwin.h"
+#include "core/runtime/lepus/bindings/ios/lynx_lepus_module_darwin.h"
 
 #include "base/include/string/string_utils.h"
 
