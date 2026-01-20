@@ -1971,7 +1971,8 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
         } break;
 
         case Action::kRemoveIntergenerationAct: {
-          if (param.child_->parent_ == this) {
+          auto *param_child = param.child_.get();
+          if (param_child->parent_ == this) {
             break;
           }
           if (param.is_fixed_ && !GetEnableFixedNew()) {
@@ -1980,8 +1981,9 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
             if (param.is_fixed_) {
               // new fixed, remove fixed node and its layout node from its
               // parent.
-              param.child_.get()->render_parent_->HandleRemoveChildAction(
-                  param.child_.get());
+              param_child->HandleRemoveSelf(
+                  this,
+                  static_cast<FiberElement *>(param_child->render_parent_));
             } else {
               // node with z-index only needs remove its element container.
               element_container()->RemoveElementContainerAccordingToElement(
@@ -2111,6 +2113,28 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
   }
 
   element_container()->RemoveElementContainerAccordingToElement(child, false);
+}
+
+void FiberElement::HandleRemoveSelf(FiberElement *removal_point,
+                                    FiberElement *render_parent) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_REMOVE_SELF,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
+  if (!element_manager()->FixNewFixedRemovalBug()) {
+    render_parent->HandleRemoveChildAction(this);
+    return;
+  }
+
+  if (render_parent == nullptr) {
+    removal_point->element_container()
+        ->RemoveElementContainerAccordingToElement(this, false);
+    LOGE("FiberElement double remove child node!");
+    this->LogNodeInfo();
+    return;
+  }
+
+  render_parent->HandleRemoveChildAction(this);
 }
 
 void FiberElement::HandleContainerInsertion(FiberElement *parent,
