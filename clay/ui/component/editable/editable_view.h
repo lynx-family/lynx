@@ -98,6 +98,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   // If |style| is empty, follow previous style, else create new style run.
   void EditContent(std::string new_content, std::optional<TextStyle> style) {}
 
+  void SetDisabled(bool disabled);
   void SetDirection(int type) override;
   void SetMaxLines(uint32_t max_lines);
   void SetShowSoftInputOnFocus(bool show_soft_input_on_focus);
@@ -110,6 +111,10 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void SetReadOnly(bool read_only);
   void SetTextDirection(TextDirection text_direction);
   void SetFontFamily(const std::string& font_family);
+  void SetPlaceholder(const std::string& placeholder);
+  void SetPlaceholderFontSize(float font_size);
+  void SetPlaceholderFontWeight(FontWeight font_weight);
+  void SetPlaceholderColor(const Color& color);
   void RelayoutWhenSetFontFamily(const std::string& font_family);
 
   float LayoutWidth();
@@ -137,6 +142,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
       const TextEditingValue& text_editing_value) override;
 
   bool MatchAttrSettings(KeywordID attr);
+  bool MatchNGAttrSettings(KeywordID attr);
 
   txt::Paragraph* GetParagraph();
   FloatRect ComputeCaretRect();
@@ -154,6 +160,15 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
 
   bool IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
                         const PointerEvent& event) override;
+
+  void SetPlaceholderHeight(const double placeholder_height) {
+    placeholder_height_ = placeholder_height;
+  }
+  double GetPlaceholderHeight() { return placeholder_height_; }
+  std::string GetPlaceholder() { return placeholder_; }
+  std::optional<float> GetPlaceholderFontSize() {
+    return placeholder_font_size_;
+  }
 
  protected:
   size_t FilterInputTextByType(TextEditingValue* value);
@@ -222,9 +237,15 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   // Used to filter redundant handling for tap/double-tap.
   int last_tap_pointer_ = 0;
 
+  bool disabled_ = false;
   bool readonly_ = false;
   // If false, soft keyboard will always be hidden.
   bool show_soft_input_on_focus_ = true;
+  std::string placeholder_;
+  std::optional<float> placeholder_font_size_;
+  std::optional<FontWeight> placeholder_font_weight_;
+  std::optional<Color> placeholder_color_;
+  float placeholder_height_ = 0.f;
   KeyboardInputType keyboard_input_type_ = KeyboardInputType::kClassText;
   KeyboardAction keyboard_action_ = KeyboardAction::kDone;
   uint32_t max_lines_ = std::numeric_limits<uint32_t>::max();

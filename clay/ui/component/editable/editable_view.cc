@@ -41,6 +41,37 @@
 namespace clay {
 namespace {
 
+// All in ARGB
+constexpr uint32_t kDefaultPlaceholderColor = 0xffaaaaaa;
+
+FontWeight ToPlaceHolderWeight(const std::string& font_weight_val) {
+  FontWeight font_weight = FontWeight::kNormal;
+  if (font_weight_val == "normal") {
+    font_weight = FontWeight::kNormal;
+  } else if (font_weight_val == "bold") {
+    font_weight = FontWeight::kBold;
+  } else if (font_weight_val == "100") {
+    font_weight = FontWeight::k100;
+  } else if (font_weight_val == "200") {
+    font_weight = FontWeight::k200;
+  } else if (font_weight_val == "300") {
+    font_weight = FontWeight::k300;
+  } else if (font_weight_val == "400") {
+    font_weight = FontWeight::k400;
+  } else if (font_weight_val == "500") {
+    font_weight = FontWeight::k500;
+  } else if (font_weight_val == "600") {
+    font_weight = FontWeight::k600;
+  } else if (font_weight_val == "700") {
+    font_weight = FontWeight::k700;
+  } else if (font_weight_val == "800") {
+    font_weight = FontWeight::k800;
+  } else if (font_weight_val == "900") {
+    font_weight = FontWeight::k900;
+  }
+  return font_weight;
+}
+
 LYNX_UI_METHOD_BEGIN(EditableView) {
   LYNX_UI_METHOD(EditableView, focus);
   LYNX_UI_METHOD(EditableView, blur);
@@ -176,7 +207,7 @@ EditableView::EditableView(int id, int callback_id, std::string tag,
   GetRenderEditable()->SetTextInputControllerDelegate(this);
   GetRenderEditable()->SetMultiline(is_multiline_);
 
-  SetFocusable(false);
+  SetFocusable(true);
 
   InitDefaultStyle();
 
@@ -235,11 +266,33 @@ void EditableView::OnLayout(LayoutContext* context) {
   if (!context) {
     context = &layout_context;
   }
-  // Layout content
-  auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
-  BuildTextSpan(text_style_)->Build(*builder);
-  paragraph_ = Build(std::move(builder));
-  LayoutText(context);
+  const auto& text_editing_value = GetTextEditingValue();
+  if (text_editing_value.empty() && !GetPlaceholder().empty()) {
+    // Layout placeholder
+    TextStyle temp_style = text_style_;
+    temp_style.strut_enabled = std::nullopt;
+    auto builder = std::make_unique<TextParagraphBuilder>(true, temp_style);
+    temp_style.font_size =
+        placeholder_font_size_.value_or(GetDefaultFontSize());
+    temp_style.text_color =
+        placeholder_color_.value_or(Color(kDefaultPlaceholderColor));
+    temp_style.font_weight =
+        placeholder_font_weight_.value_or(FontWeight::kNormal);
+    builder->PushStyle(temp_style);
+    builder->AddText(lynx::base::U8StringToU16(GetPlaceholder()));
+    builder->Pop();
+    paragraph_ = Build(std::move(builder));
+    GetRenderEditable()->SetPlaceholderLineHeight(
+        *temp_style.font_size * text_style_.line_height.value_or(1.0));
+    LayoutText(context);
+    SetPlaceholderHeight(paragraph_->GetHeight());
+  } else {
+    // Layout content
+    auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
+    BuildTextSpan(text_style_)->Build(*builder);
+    paragraph_ = Build(std::move(builder));
+    LayoutText(context);
+  }
 
   GetRenderEditable()->SetParagraph(paragraph_.get());
   GetRenderEditable()->SetRoughTextLineHeight(
@@ -318,6 +371,9 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
           ConvertInputType(attribute_utils::GetCString(value));
       ApplyFilter(&EditableView::FilterInputTextByType, true);
       break;
+    case KeywordID::kDisabled:
+      SetDisabled(attribute_utils::GetBool(value));
+      break;
     case KeywordID::kConfirmType:
       keyboard_action_ = ConvertConfirmType(
           attribute_utils::GetCString(value),
@@ -375,6 +431,29 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
         SetMaxLines(max_lines);
       }
     } break;
+    case KeywordID::kPlaceholder:
+      SetPlaceholder(attribute_utils::GetCString(value));
+      break;
+    case KeywordID::kPlaceholderFontSize: {
+      attribute_utils::Length val_with_unit{0.0, attribute_utils::Unit::kNone};
+      if (attribute_utils::TryGetLength(value, val_with_unit)) {
+        auto font_size =
+            attribute_utils::ToPxWithDisplayMetrics(val_with_unit, page_view());
+        SetPlaceholderFontSize(font_size);
+      }
+    } break;
+    case KeywordID::kPlaceholderFontWeight: {
+      std::string font_weight_val;
+      if (attribute_utils::TryGetString(value, font_weight_val)) {
+        SetPlaceholderFontWeight(ToPlaceHolderWeight(font_weight_val));
+      }
+    } break;
+    case KeywordID::kPlaceholderColor: {
+      Color color;
+      if (Color::Parse(attribute_utils::GetCString(value), &color)) {
+        SetPlaceholderColor(color);
+      }
+    } break;
     default:
       BaseView::SetAttribute(attr_c, value);
       break;
@@ -397,6 +476,34 @@ void EditableView::SetFontFamily(const std::string& font_family) {
     text_style_.strut_font_families.emplace_back(new_font_family);
     MarkDirty();
     RelayoutWhenSetFontFamily(new_font_family);
+  }
+}
+
+void EditableView::SetPlaceholder(const std::string& placeholder) {
+  if (placeholder != placeholder_) {
+    placeholder_ = placeholder;
+    MarkNeedsLayout();
+  }
+}
+
+void EditableView::SetPlaceholderFontSize(float font_size) {
+  if (placeholder_font_size_ != font_size) {
+    placeholder_font_size_ = font_size;
+    MarkNeedsLayout();
+  }
+}
+
+void EditableView::SetPlaceholderFontWeight(FontWeight font_weight) {
+  if (placeholder_font_weight_ != font_weight) {
+    placeholder_font_weight_ = font_weight;
+    MarkNeedsLayout();
+  }
+}
+
+void EditableView::SetPlaceholderColor(const Color& color) {
+  if (placeholder_color_ != color) {
+    placeholder_color_ = color;
+    MarkNeedsLayout();
   }
 }
 
@@ -528,7 +635,7 @@ void EditableView::OnFinishInput() {
 }
 
 bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
-  if (!key_event) {
+  if (!key_event || disabled_) {
     return false;
   }
   // Note(yulitao): Capture keycode use allowlist in case that some special
@@ -817,8 +924,18 @@ FloatRect EditableView::ComputeCaretRect() {
   return GetRenderEditable()->ComputeCaretRect();
 }
 
+void EditableView::SetDisabled(bool disabled) {
+  if (disabled_ == disabled) {
+    return;
+  }
+
+  disabled_ = disabled;
+  GetRenderEditable()->SetDisabled(disabled);
+  page_view()->StopInput(this);
+}
+
 void EditableView::BeginEditingIfNeeded() {
-  if (readonly_) {
+  if (readonly_ || disabled_) {
     RequestFocus();
   } else {
     BeginEditing();
@@ -981,6 +1098,9 @@ void EditableView::SetFontColor(const Color& color) {
 void EditableView::SetFontSize(float font_size) {
   if (text_style_.font_size != font_size) {
     text_style_.font_size = font_size;
+    if (!placeholder_font_size_.has_value()) {
+      placeholder_font_size_ = font_size;
+    }
     text_style_.strut_font_size = font_size;
     MarkNeedsLayout();
   }
@@ -1025,8 +1145,8 @@ void EditableView::SetReadOnly(bool read_only) {
     QuitEditing();
   }
   readonly_ = read_only;
-  if (!readonly_ && is_focused_) {
-    BeginEditing();
+  if (is_focused_) {
+    BeginEditingIfNeeded();
   }
 }
 
@@ -1052,6 +1172,7 @@ void EditableView::setValue(const LynxModuleValues& args,
               ? std::min<size_t>(static_cast<size_t>(index), content.size())
               : std::min(content.size(),
                          text_editing_value.selection().extent())));
+  FilterInputIfNeeded(&text_editing_value);
   SetTextEditingValue(text_editing_value);
   MarkNeedsLayout();
   callback(LynxUIMethodResult::kSuccess, clay::Value());
@@ -1365,13 +1486,9 @@ void EditableView::UpdateRemoteStateIfNeeded(
 bool EditableView::MatchAttrSettings(KeywordID attr) {
   switch (attr) {
     case KeywordID::kShowSoftInputOnfocus:
-    case KeywordID::kType:
     case KeywordID::kConfirmType:
     case KeywordID::kColor:
     case KeywordID::kFontSize:
-    case KeywordID::kLineHeight:
-    case KeywordID::kFontWeight:
-    case KeywordID::kLetterSpacing:
     case KeywordID::kTextAlign:
     case KeywordID::kFontFamily:
     case KeywordID::kCaretColor:
@@ -1379,6 +1496,31 @@ bool EditableView::MatchAttrSettings(KeywordID attr) {
     case KeywordID::kReadonly:
     case KeywordID::kMaxlines:
     case KeywordID::kValue:
+    case KeywordID::kDisabled:
+    case KeywordID::kPlaceholder:
+    case KeywordID::kPlaceholderColor:
+    case KeywordID::kPlaceholderFontSize:
+    case KeywordID::kPlaceholderFontWeight:
+      return true;
+    default:
+      break;
+  }
+  return false;
+}
+
+bool EditableView::MatchNGAttrSettings(KeywordID attr) {
+  switch (attr) {
+    case KeywordID::kShowSoftInputOnfocus:
+    case KeywordID::kType:
+    case KeywordID::kConfirmType:
+    case KeywordID::kColor:
+    case KeywordID::kFontSize:
+    case KeywordID::kTextAlign:
+    case KeywordID::kFontFamily:
+    case KeywordID::kCaretColor:
+    case KeywordID::kMaxlength:
+    case KeywordID::kReadonly:
+    case KeywordID::kMaxlines:
     case KeywordID::kDisabled:
     case KeywordID::kPlaceholder:
     case KeywordID::kPlaceholderColor:

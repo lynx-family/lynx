@@ -55,7 +55,7 @@ void TextAreaNGView::OnDestroy() {
 void TextAreaNGView::SetAttribute(const char* attr_c,
                                   const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (editable_view_->MatchAttrSettings(kw)) {
+  if (editable_view_->MatchNGAttrSettings(kw)) {
     editable_view_->SetAttribute(attr_c, value);
   } else {
     BaseView::SetAttribute(attr_c, value);

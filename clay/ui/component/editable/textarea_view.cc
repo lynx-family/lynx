@@ -68,6 +68,17 @@ void TextAreaView::SetAttribute(const char* attr_c, const clay::Value& value) {
     attribute_utils::TryGetString(value, max_height);
     max_height_ =
         attribute_utils::ToPxWithDisplayMetrics(max_height, page_view());
+  } else if (kw == KeywordID::kFocus) {
+    bool focus = attribute_utils::GetBool(value);
+    if (focus) {
+      // NOLINTNEXTLINE
+      page_view()->GetTaskRunner()->PostTask(
+          [this] { editable_view_->RequestFocus(); });
+    } else {
+      editable_view_->ClearFocus();
+    }
+  } else if (kw == KeywordID::kSendComposingInput) {
+    editable_view_->SetSendComposingInput(attribute_utils::GetBool(value));
   } else if (editable_view_->MatchAttrSettings(kw)) {
     editable_view_->SetAttribute(attr_c, value);
   } else {
@@ -95,7 +106,7 @@ void TextAreaView::OnLayout(LayoutContext* context) {
     auto node =
         static_cast<EditableShadowNode*>(page_view()->GetShadowNodeById(id()));
     node->SetTextHeight(std::max(editable_view_->GetParagraph()->GetHeight(),
-                                 editable_view_->PlaceholderHeight()));
+                                 editable_view_->GetPlaceholderHeight()));
     page_view()->PostUIMethodTask([weak_ptr = GetWeakPtr()] {
       if (weak_ptr) {
         auto editable_text_view = static_cast<TextAreaView*>(weak_ptr.get());
@@ -209,5 +220,4 @@ void TextAreaView::getValue(const LynxModuleValues& args,
                             const LynxUIMethodCallback& callback) {
   editable_view_->getValue(args, callback);
 }
-
 };  // namespace clay
