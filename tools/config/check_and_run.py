@@ -14,18 +14,15 @@ def check_and_run():
     try:
         import yaml
         import jinja2
-        from gen_config import (
-            gen_lynx_config,
-            parse_config,
-            gen_types
-        )
+        from gen_config import gen_lynx_config, parse_config, gen_types
 
         configs, compiler_options = parse_config()
         if not configs:
             sys.exit(-1)
 
         gen_lynx_config(configs, compiler_options)
-        gen_types(configs, compiler_options)
+        if len(sys.argv) > 1 and sys.argv[1] == "--all":
+            gen_types(configs, compiler_options)
 
         sys.exit(0)
     except ImportError:
@@ -42,12 +39,15 @@ def check_and_run():
             python_executable = root_dir / ".venv" / "bin" / "python3"
             envsetup_script = root_dir / "tools" / "envsetup.sh"
         gen_config_script = this_dir / "gen_config.py"
+        params = ""
+        if len(sys.argv) > 1 and sys.argv[1] == "--all":
+            params = " --all"
 
         # Execute envsetup_script and gen_config_script in the same shell environment
         if sys.platform == "win32":
-            command = f'powershell -ExecutionPolicy Bypass -File "{envsetup_script}" & "{python_executable}" "{gen_config_script}"'
+            command = f'powershell -ExecutionPolicy Bypass -File "{envsetup_script}" & "{python_executable}" "{gen_config_script}""{params}"'
         else:
-            command = f'bash -c "source \\"{envsetup_script}\\" && \\"{python_executable}\\" \\"{gen_config_script}\\""'
+            command = f'bash -c "source {envsetup_script} && {python_executable} {gen_config_script}{params}"'
 
         print(f"Executing command: {command}")
         result = subprocess.run(command, shell=True, cwd=root_dir)
