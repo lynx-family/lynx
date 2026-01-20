@@ -23,9 +23,8 @@
   [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
 
   BOOL supported = YES;
-  XCTAssertTrue([LynxComponentRegistry uiClassWithName:@"image" accessible:&supported] != nil);
-  XCTAssertTrue([LynxComponentRegistry shadowNodeClassWithName:@"image"
-                                                    accessible:&supported] != nil);
+  XCTAssertTrue([registry uiClassWithName:@"image" accessible:&supported] != nil);
+  XCTAssertTrue([registry shadowNodeClassWithName:@"image" accessible:&supported] != nil);
 }
 #endif
 

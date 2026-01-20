@@ -1096,6 +1096,9 @@ public class LynxConicGradient : LynxGradient {
   public void LynxConicGradient::computeStartPoint:andEndPoint:withSize:(CGPoint *_Nonnull startPoint,[andEndPoint] CGPoint *_Nonnull endPoint,[withSize] const CGSize *_Nonnull size);
 }
 
+public class LynxContainerView : UIView, <LynxRendererHost> {
+}
+
 public class LynxContext : NSObject {
   public BOOL LynxContext::hasCustomGenericFetcher hasCustomGenericFetcher;
   public BOOL LynxContext::hasCustomMediaFetcher hasCustomMediaFetcher;
@@ -3088,6 +3091,20 @@ public class LynxReloadBundleEntry : LynxPipelineEntry {
   public LynxPerformanceMetric* LynxReloadBundleEntry::lynxFcp lynxFcp;
   public LynxPerformanceMetric* LynxReloadBundleEntry::totalFcp totalFcp;
   public instancetype LynxReloadBundleEntry::initWithDictionary:(NSDictionary *dictionary);
+}
+
+public class LynxRenderer : NSObject {
+  public instancetype LynxRenderer::initWithRenderHost:andSign:(UIView< LynxRendererHost > *host,[andSign] int32_t sign);
+  public int32_t LynxRenderer::getSign();
+  public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
+  public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
+}
+
+public protocol LynxRendererHost-p : <NSObject> {
+  public void LynxRendererHost-p::setRenderer:(LynxRenderer *renderer);
+  public LynxRenderer * LynxRendererHost-p::createRendererWithSign:(int32_t sign);
+  public LynxRenderer * LynxRendererHost-p::getRenderer();
+  public UIView * LynxRendererHost-p::getView();
 }
 
 public protocol LynxResourceFetcher-p : <NSObject> {
