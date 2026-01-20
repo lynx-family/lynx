@@ -1117,6 +1117,7 @@ class ElementManager : public ElementContextDelegate {
   }
 
   bool FixListCallbackLeakFlag() const { return fix_list_callback_leak_flag_; }
+  bool FixNewFixedRemovalBug() const { return fix_new_fixed_removal_bug_; }
 
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
@@ -1307,6 +1308,7 @@ class ElementManager : public ElementContextDelegate {
   bool fix_stacking_context_dirty_flag_{true};
   bool fix_new_animator_flush_bug_{true};
   bool fix_radon_inline_convert_bug_{true};
+  bool fix_new_fixed_removal_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
   bool enable_level_order_traversing_{false};
   std::atomic_int pending_level_order_tasks_{0};

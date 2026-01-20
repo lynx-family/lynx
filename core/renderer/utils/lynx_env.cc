@@ -571,5 +571,9 @@ bool LynxEnv::FixRadonInlineConvertBug() {
       GetBoolEnv(Key::FIX_RADON_INLINE_CONVERT_BUG, true);
   return fix_radon_inline_convert_bug;
 }
+
+bool LynxEnv::FixNewFixedRemovalBug() {
+  return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
+}
 }  // namespace tasm
 }  // namespace lynx

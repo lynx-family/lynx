@@ -123,6 +123,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
     // FIXME(linxs): remove this config in the next version(remove in 3.8)
     FIX_LIST_CALLBACK_LEAK_BUG,
+    // FIXME(zhouzhitao): remove this config in the next version(remove in 3.9)
+    FIX_NEW_FIXED_REMOVAL_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
     ENABLE_GC_ONCE_ON_IDLE,
     ENABLE_CSS_INLINE_VARIABLES,
@@ -282,6 +284,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_JS_CALLBACK_MANAGER, "enable_js_callback_manager"},
             {Key::FIX_LIST_CALLBACK_LEAK_BUG, "fix_list_callback_leak"},
             {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
+            {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -432,6 +435,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableQuickJsThreadChecker();
   bool EnableLevelOrderTraversing();
   bool FixRadonInlineConvertBug();
+  bool FixNewFixedRemovalBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
