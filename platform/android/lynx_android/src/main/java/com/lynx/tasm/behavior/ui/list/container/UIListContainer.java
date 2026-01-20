@@ -1498,4 +1498,19 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   public Map<Integer, BaseGestureHandler> getGestureHandlers() {
     return super.getGestureHandlers();
   }
+
+  @Override
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    mView.setPanInterceptSelf(panInterceptSelf);
+  }
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    mView.setPanInterceptAncestors(panInterceptAncestors);
+  }
+
+  @Override
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    mView.setPanInterceptDescendants(panInterceptDescendants);
+  }
 }

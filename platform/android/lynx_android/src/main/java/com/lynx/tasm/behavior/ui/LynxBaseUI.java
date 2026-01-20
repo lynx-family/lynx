@@ -393,6 +393,8 @@ public abstract class LynxBaseUI
   // specifiy the active regions of the event-through attribute.
   protected ArrayList<ArrayList<SizeValue>> mEventThroughActiveRegions = null;
   protected PointerEventsValue mPointerEvents = PointerEventsValue.Unset;
+  protected PanInterceptDirection mPanInterceptDirection = PanInterceptDirection.None;
+  protected PanInterceptScope mPanInterceptScope = PanInterceptScope.None;
 
   protected int mFlattenChildrenCount = 0;
   private boolean mNeedSortChildren = false;
@@ -1701,6 +1703,22 @@ public abstract class LynxBaseUI
     if (pointerEvents >= PointerEventsValue.Auto.ordinal()
         && pointerEvents < PointerEventsValue.Unset.ordinal()) {
       mPointerEvents = PointerEventsValue.values()[pointerEvents];
+    }
+  }
+
+  @LynxProp(name = PropsConstants.PAN_INTERCEPT_DIRECTION)
+  public void setPanInterceptDirection(int panInterceptDirection) {
+    if (panInterceptDirection >= PanInterceptDirection.Horizontal.ordinal()
+        && panInterceptDirection < PanInterceptDirection.None.ordinal()) {
+      mPanInterceptDirection = PanInterceptDirection.values()[panInterceptDirection];
+    }
+  }
+
+  @LynxProp(name = PropsConstants.PAN_INTERCEPT_SCOPE)
+  public void setPanInterceptScope(int panInterceptScope) {
+    if (panInterceptScope >= PanInterceptScope.Self.ordinal()
+        && panInterceptScope < PanInterceptScope.None.ordinal()) {
+      mPanInterceptScope = PanInterceptScope.values()[panInterceptScope];
     }
   }
 
@@ -3494,7 +3512,6 @@ public abstract class LynxBaseUI
 
   @Override
   public PointerEventsValue pointerEvents() {
-    Log.d("hxh-debug", "pointerevents");
     if (mPointerEvents != PointerEventsValue.Unset) {
       return mPointerEvents;
     }
@@ -3503,6 +3520,31 @@ public abstract class LynxBaseUI
       return parent.pointerEvents();
     }
     return PointerEventsValue.Auto;
+  }
+
+  @Override
+  public PanInterceptDirection panInterceptDirection() {
+    return mPanInterceptDirection;
+  }
+
+  @Override
+  public PanInterceptScope panInterceptScope() {
+    return mPanInterceptScope;
+  }
+
+  @Override
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    // Implement in subclasses.
+  }
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    // Implement in subclasses.
+  }
+
+  @Override
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    // Implement in subclasses.
   }
 
   @Override

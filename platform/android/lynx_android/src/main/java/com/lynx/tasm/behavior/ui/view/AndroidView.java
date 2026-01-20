@@ -92,6 +92,9 @@ public class AndroidView
   protected IDrawChildHook mDrawChildHook;
   private boolean mConsumeHoverEvent = false;
   private boolean nativeInteractionEnabled = false;
+  private boolean mPanInterceptSelf = false;
+  private boolean mPanInterceptAncestors = false;
+  private boolean mPanInterceptDescendants = false;
 
   public AndroidView(Context context) {
     super(context);
@@ -157,7 +160,20 @@ public class AndroidView
   }
 
   @Override
+  public boolean dispatchTouchEvent(MotionEvent event) {
+    if (mPanInterceptAncestors) {
+      getParent().requestDisallowInterceptTouchEvent(true);
+    } else {
+      getParent().requestDisallowInterceptTouchEvent(false);
+    }
+    return super.dispatchTouchEvent(event);
+  }
+
+  @Override
   public boolean onInterceptTouchEvent(MotionEvent ev) {
+    if (mPanInterceptDescendants) {
+      return true;
+    }
     if (isNeedInterceptGesture()) {
       return mInterceptGesture;
     }
@@ -166,6 +182,12 @@ public class AndroidView
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
+    if (mPanInterceptAncestors) {
+      return true;
+    }
+    if (mPanInterceptSelf) {
+      return false;
+    }
     if (this.nativeInteractionEnabled) {
       return true;
     }
@@ -192,6 +214,18 @@ public class AndroidView
 
   public void setNativeInteractionEnabled(boolean enabled) {
     this.nativeInteractionEnabled = enabled;
+  }
+
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    mPanInterceptSelf = panInterceptSelf;
+  }
+
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    mPanInterceptAncestors = panInterceptAncestors;
+  }
+
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    mPanInterceptDescendants = panInterceptDescendants;
   }
 
   public void setImpressionId(String id) {
