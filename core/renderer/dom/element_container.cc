@@ -57,7 +57,6 @@ void ElementContainer::CalcUIIndexForFixedNew(ElementContainer* child,
       }
     }
 
-    int index_of_fixed = 0;
     auto it = element_manager()->fixed_node_list_.end();
     size_t left = 0, right = element_manager()->fixed_node_list_.size();
     size_t mid = right;
@@ -72,9 +71,11 @@ void ElementContainer::CalcUIIndexForFixedNew(ElementContainer* child,
         right = mid;
       }
     }
-    index_of_fixed = static_cast<int>(left);
     element_manager()->fixed_node_list_.insert(it, child);
-    index = fixed_node_offset + index_of_fixed;
+
+    int index_of_fixed_z0 = static_cast<int>(left);
+    index = static_cast<int>(negative_z_children_.size()) + fixed_node_offset +
+            index_of_fixed_z0;
   }
 }
 
@@ -465,7 +466,7 @@ void ElementContainer::MoveZChildrenRecursively(Element* element,
   for (size_t i = 0; i < element->GetChildCount(); i++) {
     auto* child = element->GetChildAt(i);
     if (child->IsStackingContextNode()) {
-      if (child->ZIndex() != 0) {
+      if (child->ZIndex() != 0 && !child->IsFixedNewOrUnified()) {
         child->element_container_impl()->MoveContainers(
             child->element_container_impl()->element_container_parent(),
             parent);
