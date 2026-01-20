@@ -259,6 +259,25 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
   }
 
   @Override
+  public PanInterceptDirection panInterceptDirection() {
+    return PanInterceptDirection.None;
+  }
+
+  @Override
+  public PanInterceptScope panInterceptScope() {
+    return PanInterceptScope.None;
+  }
+
+  @Override
+  public void setPanInterceptSelf(boolean panInterceptSelf) {}
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {}
+
+  @Override
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {}
+
+  @Override
   public EventTarget getParentLynxPageUI() {
     return null;
   }

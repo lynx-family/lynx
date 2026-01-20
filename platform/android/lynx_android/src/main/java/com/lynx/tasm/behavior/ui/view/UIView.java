@@ -218,4 +218,19 @@ public class UIView extends UISimpleView<AndroidView> {
     }
     return mLynxMask.getDrawable();
   }
+
+  @Override
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    mView.setPanInterceptSelf(panInterceptSelf);
+  }
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    mView.setPanInterceptAncestors(panInterceptAncestors);
+  }
+
+  @Override
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    mView.setPanInterceptDescendants(panInterceptDescendants);
+  }
 }

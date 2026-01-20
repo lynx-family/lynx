@@ -329,9 +329,13 @@ public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.l
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setBlurSampling(int sampling);
   public com.lynx.tasm.behavior.ui.view.AndroidView.AndroidView(Context context);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.interceptGesture(boolean interceptGesture);
+  public boolean com.lynx.tasm.behavior.ui.view.AndroidView.dispatchTouchEvent(MotionEvent event);
   public boolean com.lynx.tasm.behavior.ui.view.AndroidView.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.view.AndroidView.onTouchEvent(MotionEvent event);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setNativeInteractionEnabled(boolean enabled);
+  public void com.lynx.tasm.behavior.ui.view.AndroidView.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.view.AndroidView.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.view.AndroidView.setPanInterceptDescendants(boolean panInterceptDescendants);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setImpressionId(String id);
   public String com.lynx.tasm.behavior.ui.view.AndroidView.getImpressionId();
   public IDrawChildHook com.lynx.tasm.behavior.ui.view.AndroidView.getDrawChildHook();
@@ -1629,6 +1633,11 @@ public interface com::lynx::tasm::behavior::event::EventTarget {
   public boolean com.lynx.tasm.behavior.event.EventTarget.dispatchEvent(LynxEventDetail event);
   public boolean com.lynx.tasm.behavior.event.EventTarget.eventThrough(float x, float y);
   public PointerEventsValue com.lynx.tasm.behavior.event.EventTarget.pointerEvents();
+  public PanInterceptDirection com.lynx.tasm.behavior.event.EventTarget.panInterceptDirection();
+  public PanInterceptScope com.lynx.tasm.behavior.event.EventTarget.panInterceptScope();
+  public void com.lynx.tasm.behavior.event.EventTarget.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.event.EventTarget.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.event.EventTarget.setPanInterceptDescendants(boolean panInterceptDescendants);
   public EventTarget com.lynx.tasm.behavior.event.EventTarget.getParentLynxPageUI();
   public void com.lynx.tasm.behavior.event.EventTarget.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.event.EventTarget.getChildrenLynxPageUI();
@@ -1685,6 +1694,11 @@ public class com::lynx::tasm::behavior::shadow::text::EventTargetSpan : Clickabl
   public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.dispatchEvent(LynxEventDetail event);
   public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.eventThrough(float x, float y);
   public PointerEventsValue com.lynx.tasm.behavior.shadow.text.EventTargetSpan.pointerEvents();
+  public PanInterceptDirection com.lynx.tasm.behavior.shadow.text.EventTargetSpan.panInterceptDirection();
+  public PanInterceptScope com.lynx.tasm.behavior.shadow.text.EventTargetSpan.panInterceptScope();
+  public void com.lynx.tasm.behavior.shadow.text.EventTargetSpan.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.shadow.text.EventTargetSpan.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.shadow.text.EventTargetSpan.setPanInterceptDescendants(boolean panInterceptDescendants);
   public EventTarget com.lynx.tasm.behavior.shadow.text.EventTargetSpan.getParentLynxPageUI();
   public void com.lynx.tasm.behavior.shadow.text.EventTargetSpan.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.shadow.text.EventTargetSpan.getChildrenLynxPageUI();
@@ -3334,6 +3348,9 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerView :
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.removeView(View view);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.removeViewAt(int index);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.removeAllViews();
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setPanInterceptDescendants(boolean panInterceptDescendants);
 }
 
 public class com::lynx::tasm::behavior::ui::list::ListEventManager : RecyclerView.OnScrollListener {
@@ -4152,6 +4169,11 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.blockNativeEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.eventThrough(float x, float y);
   public PointerEventsValue com.lynx.tasm.behavior.ui.LynxBaseUI.pointerEvents();
+  public PanInterceptDirection com.lynx.tasm.behavior.ui.LynxBaseUI.panInterceptDirection();
+  public PanInterceptScope com.lynx.tasm.behavior.ui.LynxBaseUI.panInterceptScope();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPanInterceptDescendants(boolean panInterceptDescendants);
   public EventTarget com.lynx.tasm.behavior.ui.LynxBaseUI.getParentLynxPageUI();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.ui.LynxBaseUI.getChildrenLynxPageUI();
@@ -4347,6 +4369,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setOverflowX(@Nullable Integer overflowX);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setOverflowY(@Nullable Integer overflowY);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPointerEvents(int pointerEvents);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPanInterceptDirection(int panInterceptDirection);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setPanInterceptScope(int panInterceptScope);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setUserInteractionEnabled(boolean userInteractionEnabled);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setNativeInteractionEnabled(boolean nativeInteractionEnabled);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBlockNativeEvent(boolean blockNativeEvent);
@@ -7696,6 +7720,9 @@ public class com::lynx::tasm::behavior::ui::scroll::NestedScrollView : ScrollVie
   public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setEnableNewNested(boolean value);
   public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setEnableNewBounce(boolean value);
   public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setBounceScrollRange(int scrollRange, int bounceScrollRange);
+  public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setPanInterceptDescendants(boolean panInterceptDescendants);
   public void com.lynx.tasm.behavior.ui.scroll.NestedScrollView.setNestedScrollingEnabled(boolean enabled);
   public boolean com.lynx.tasm.behavior.ui.scroll.NestedScrollView.isNestedScrollingEnabled();
   public boolean com.lynx.tasm.behavior.ui.scroll.NestedScrollView.hasNestedScrollingParent(int type);
@@ -7965,6 +7992,22 @@ public class com::lynx::tasm::gesture::handler::PanGestureHandler : com.lynx.tas
   public void com.lynx.tasm.gesture.handler.PanGestureHandler.fail();
   public void com.lynx.tasm.gesture.handler.PanGestureHandler.end();
   public void com.lynx.tasm.gesture.handler.PanGestureHandler.reset();
+}
+
+public enum com::lynx::tasm::behavior::event::EventTarget::PanInterceptDirection {
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptDirection.Horizontal Horizontal;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptDirection.Vertical Vertical;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptDirection.None None;
+}
+
+public enum com::lynx::tasm::behavior::event::EventTarget::PanInterceptScope {
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.Self Self;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.Ancestors Ancestors;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.Descendants Descendants;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.SelfAndAncestors SelfAndAncestors;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.SelfAndDescendants SelfAndDescendants;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.All All;
+  public com.lynx.tasm.behavior.event.EventTarget.PanInterceptScope.None None;
 }
 
 public class com::lynx::jsbridge::ParamWrapper :  {
@@ -8582,6 +8625,8 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_EMOJI_COMPAT ANDROID_EMOJI_COMPAT;
   public final String com.lynx.tasm.behavior.PropsConstants.TRANSFORM_ORDER TRANSFORM_ORDER;
   public final String com.lynx.tasm.behavior.PropsConstants.POINTER_EVENTS POINTER_EVENTS;
+  public final String com.lynx.tasm.behavior.PropsConstants.PAN_INTERCEPT_DIRECTION PAN_INTERCEPT_DIRECTION;
+  public final String com.lynx.tasm.behavior.PropsConstants.PAN_INTERCEPT_SCOPE PAN_INTERCEPT_SCOPE;
   public final String com.lynx.tasm.behavior.PropsConstants.EVENT_THROUGH EVENT_THROUGH;
   public final String com.lynx.tasm.behavior.PropsConstants.EVENT_THROUGH_ACTIVE_REGIONS EVENT_THROUGH_ACTIVE_REGIONS;
   public final String com.lynx.tasm.behavior.PropsConstants.DISABLE_DEFAULT_RESIZE DISABLE_DEFAULT_RESIZE;
@@ -9818,6 +9863,9 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
   public boolean com.lynx.tasm.behavior.TouchEventDispatcher.onTouchEvent(MotionEvent ev, UIGroup rootUi);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.setFocusedUI(LynxBaseUI focusedUI);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.reset();
+  public void com.lynx.tasm.behavior.TouchEventDispatcher.startInterceptPanGestures(EventTarget.PanInterceptDirection direction);
+  public EventTarget com.lynx.tasm.behavior.TouchEventDispatcher.getFirstPanInterceptDirectionTarget(EventTarget.PanInterceptDirection direction);
+  public EventTarget.PanInterceptScope com.lynx.tasm.behavior.TouchEventDispatcher.getPanInterceptScope(EventTarget target);
 }
 
 public class com::lynx::tasm::base::trace::TraceEventDef :  {
@@ -10345,6 +10393,9 @@ public class com::lynx::tasm::behavior::ui::list::UIList : com.lynx.tasm.behavio
   public void com.lynx.tasm.behavior.ui.list.UIList.setPreBufferListener();
   public int com.lynx.tasm.behavior.ui.list.UIList.findFirstListItem();
   public int com.lynx.tasm.behavior.ui.list.UIList.findLastListItem();
+  public void com.lynx.tasm.behavior.ui.list.UIList.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.list.UIList.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.list.UIList.setPanInterceptDescendants(boolean panInterceptDescendants);
   public Map<String, Object> com.lynx.tasm.behavior.ui.list.UIList.nativeListStateCache nativeListStateCache;
   public Map<String, HashSet<String> > com.lynx.tasm.behavior.ui.list.UIList.initialFlushPropCache initialFlushPropCache;
   public int com.lynx.tasm.behavior.ui.list.UIList.mItemHolderType mItemHolderType;
@@ -10506,6 +10557,9 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onInvalidate();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setGestureDetectors(Map< Integer, GestureDetector > gestureDetectors);
   public Map< Integer, BaseGestureHandler > com.lynx.tasm.behavior.ui.list.container.UIListContainer.getGestureHandlers();
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setPanInterceptDescendants(boolean panInterceptDescendants);
 }
 
 public class com::lynx::tasm::behavior::ui::list::UIListItem : com.lynx.tasm.behavior.ui.view.UIComponent {
@@ -10540,6 +10594,9 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onListCellAppear(String itemKey, LynxBaseUI list);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onListCellPrepareForReuse(String itemKey, LynxBaseUI list);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.resetOffset();
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setPanInterceptDescendants(boolean panInterceptDescendants);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onListCellDisAppear(String itemKey, LynxBaseUI list, boolean isExist);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setTouchSlop(String value);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setForceCanScroll(boolean value);
@@ -10753,6 +10810,9 @@ public class com::lynx::tasm::behavior::ui::view::UIView : com.lynx.tasm.behavio
   public Map< Integer, BaseGestureHandler > com.lynx.tasm.behavior.ui.view.UIView.getGestureHandlers();
   public void com.lynx.tasm.behavior.ui.view.UIView.destroy();
   public void com.lynx.tasm.behavior.ui.view.UIView.afterDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.ui.view.UIView.setPanInterceptSelf(boolean panInterceptSelf);
+  public void com.lynx.tasm.behavior.ui.view.UIView.setPanInterceptAncestors(boolean panInterceptAncestors);
+  public void com.lynx.tasm.behavior.ui.view.UIView.setPanInterceptDescendants(boolean panInterceptDescendants);
   public com.lynx.tasm.behavior.ui.view.UIView.UIView(Context context);
   public com.lynx.tasm.behavior.ui.view.UIView.UIView(LynxContext context);
   public com.lynx.tasm.behavior.ui.view.UIView.UIView(LynxContext context, Object params);

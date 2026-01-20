@@ -1539,6 +1539,21 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     }
   }
 
+  @Override
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    mView.setPanInterceptSelf(panInterceptSelf);
+  }
+
+  @Override
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    mView.setPanInterceptAncestors(panInterceptAncestors);
+  }
+
+  @Override
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    mView.setPanInterceptDescendants(panInterceptDescendants);
+  }
+
   /**
    * if the component of scrollView isDetached to window, the callBack will be called
    *
