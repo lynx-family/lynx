@@ -271,13 +271,16 @@ public class ListContainerView
         listNodeInfoFetcher.scrollByListContainer(
             mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
       }
-
-      mUiListContainer.updateStickyStarts();
-      mUiListContainer.updateStickyEnds();
-
-      for (OnScrollListener listener : mOnScrollListeners) {
-        listener.onScrollChange(
-            mPreviousOffsetX, t, mUiListContainer.isRtl() ? contentOffsetXRTL(oldl) : oldl, oldt);
+      // double check
+      if (mUiListContainer != null) {
+        // update sticky starts and ends
+        mUiListContainer.updateStickyStarts();
+        mUiListContainer.updateStickyEnds();
+        // dispatch scroll change event
+        for (OnScrollListener listener : mOnScrollListeners) {
+          listener.onScrollChange(
+              mPreviousOffsetX, t, mUiListContainer.isRtl() ? contentOffsetXRTL(oldl) : oldl, oldt);
+        }
       }
     }
   }
@@ -298,6 +301,8 @@ public class ListContainerView
 
   void destroy() {
     TraceEvent.beginSection(TraceEventDef.LIST_CONTAINER_VIEW_DESTORY);
+    // Stop any ongoing scroll animations from the parent class.
+    stopFling();
     mDrawChildHook = null;
     mUiListContainer = null;
     mCustomLinearLayout = null;
