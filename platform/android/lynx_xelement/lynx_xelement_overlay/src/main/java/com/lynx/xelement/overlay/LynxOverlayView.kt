@@ -12,6 +12,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.view.*
 import androidx.annotation.RequiresApi
+import androidx.core.view.WindowCompat
 import com.lynx.react.bridge.Dynamic
 import com.lynx.react.bridge.ReadableType
 import com.lynx.tasm.LynxError
@@ -105,6 +106,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                 false
             }
         }
+        // By default, it remains consistent with not enabling edge to edge.
+        setAdaptEdgeToEdge(false)
         mOverlayContainer.isClickable = true
         mOverlayContainer.isFocusable = true
         mOverlayContainer.isFocusableInTouchMode = true
@@ -434,6 +437,15 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mDialog.containerPopupTag = tag
     }
 
+    @LynxProp(name = LynxUIOverlay.PROP_ADAPT_EDGE_TO_EDGE)
+    fun setAdaptEdgeToEdge(adapt: Boolean) {
+      window?.let {
+        //Build.VERSION_CODES.VANILLA_ICE_CREAM
+        if (Build.VERSION.SDK_INT >= 35)
+          WindowCompat.setDecorFitsSystemWindows(it, !adapt)
+      }
+    }
+  
     /**
      * @name: android-set-soft-input-mode
      * @description: Set the soft keyboard mode to control the input state after the keyboard pops up [nothing | pan | resize | unspecified]
