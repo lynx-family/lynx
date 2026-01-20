@@ -7,6 +7,17 @@
 namespace lynx {
 namespace tasm {
 
+void DisplayList::Reserve(int32_t capacity) {
+  constexpr static const int32_t kPreAllocatedCapacityForOps = 10;
+  constexpr static const int32_t kPreAllocatedCapacityForIntData = 20;
+  constexpr static const int32_t kPreAllocatedCapacityForFloatData = 20;
+
+  OpData& op_data = *content_data_;
+  op_data.ops.reserve(capacity * kPreAllocatedCapacityForOps);
+  op_data.int_data.reserve(capacity * kPreAllocatedCapacityForIntData);
+  op_data.float_data.reserve(capacity * kPreAllocatedCapacityForFloatData);
+}
+
 void DisplayList::Clear() {
   if (content_data_.has_value()) {
     content_data_->ops.clear();

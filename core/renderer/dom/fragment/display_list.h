@@ -91,6 +91,8 @@ class DisplayList {
   DisplayList(DisplayList&&) = default;
   DisplayList& operator=(DisplayList&&) = default;
 
+  void Reserve(int32_t capacity);
+
   // Direct array access for JNI
   const int32_t* GetContentOpTypesData() const {
     return content_data_.has_value() ? content_data_->ops.data() : nullptr;

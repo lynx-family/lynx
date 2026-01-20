@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#define private public
+#define protected public
+
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
 #include <vector>
@@ -903,6 +906,15 @@ TEST_F(DisplayListBuilderTest, TestCallMarkRootNeedClipBounds) {
 
   DisplayList display_list = builder_->Build();
   EXPECT_TRUE(display_list.RootNeedClipBounds());
+}
+
+TEST_F(DisplayListBuilderTest, TestDisplayListReserve) {
+  builder_->Reserve(10);
+
+  DisplayList display_list = builder_->Build();
+  EXPECT_EQ(display_list.content_data_->ops.capacity(), 10 * 10);
+  EXPECT_EQ(display_list.content_data_->int_data.capacity(), 10 * 20);
+  EXPECT_EQ(display_list.content_data_->float_data.capacity(), 10 * 20);
 }
 
 TEST_F(DisplayListBuilderTest, TestNotCallMarkRootNeedClipBounds) {
