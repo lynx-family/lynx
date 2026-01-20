@@ -10,6 +10,12 @@
 
 #include "third_party/binding/common/base.h"
 
+#if OS_WIN
+#ifdef SendMessage
+#undef SendMessage
+#endif
+#endif
+
 namespace lynx {
 namespace binding {
 
