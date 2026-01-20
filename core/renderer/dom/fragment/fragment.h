@@ -101,10 +101,15 @@ class Fragment : public BaseElementContainer {
   int32_t DefinePaddingBox(DisplayListBuilder& display_list_builder);
   int32_t DefineContentBox(DisplayListBuilder& display_list_builder);
 
+ protected:
+  static const int32_t kDefaultDrawNodeCapacity;
+
+  bool is_fragment() const override { return true; }
+
  private:
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
   void UpdateBorderRadiusAccordingToLayoutInfo();
-  void UpdateRenderOffsetRecursively(float left, float top);
+  void UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
 
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
@@ -145,7 +150,10 @@ class Fragment : public BaseElementContainer {
   BoxModelRecorder box_recorder_;
 
   std::unique_ptr<FragmentBehavior> behavior_;
+
   float render_offset_[2] = {0, 0};
+
+  int32_t draw_node_capacity_{0};
 };
 
 }  // namespace tasm

@@ -19,6 +19,9 @@
 namespace lynx {
 namespace tasm {
 
+// Init value for the draw node capacity.
+const int32_t Fragment::kDefaultDrawNodeCapacity = 1;
+
 Fragment::Fragment(Element* element) : BaseElementContainer(element) {}
 
 Fragment* Fragment::fragment_parent() const {
@@ -499,6 +502,10 @@ void Fragment::Draw() {
   //  Collect own displayList.
   DisplayListBuilder builder{render_offset_[0], render_offset_[1]};
 
+  if (draw_node_capacity_ > 0) {
+    builder.Reserve(draw_node_capacity_);
+  }
+
   OnDraw(builder);
 
   CheckRootIfNeedClipBounds(builder);
@@ -732,7 +739,7 @@ void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
   layout_info_.layout_result.offset_.SetX(left);
   layout_info_.layout_result.offset_.SetY(top);
-  UpdateRenderOffsetRecursively(0, 0);
+  UpdateRenderOffsetRecursively(0, 0, this);
 }
 
 void Fragment::CheckRootIfNeedClipBounds(
@@ -783,7 +790,8 @@ void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
   }
 }
 
-void Fragment::UpdateRenderOffsetRecursively(float left, float top) {
+void Fragment::UpdateRenderOffsetRecursively(float left, float top,
+                                             Fragment* root) {
   float child_offset_x = left + layout_info_.layout_result.offset_.X();
   float child_offset_y = top + layout_info_.layout_result.offset_.Y();
   if (has_platform_renderer_) {
@@ -792,6 +800,10 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top) {
 
     child_offset_x = 0;
     child_offset_y = 0;
+
+    draw_node_capacity_ = kDefaultDrawNodeCapacity;
+  } else if (root != nullptr) {
+    root->draw_node_capacity_++;
   }
 
   if (behavior_) {
@@ -799,7 +811,8 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top) {
   }
 
   for (auto* child : children_) {
-    child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y);
+    child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y,
+                                         has_platform_renderer_ ? this : root);
   }
 }
 

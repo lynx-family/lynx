@@ -17,6 +17,10 @@ DisplayListBuilder::DisplayListBuilder(float dx, float dy)
 
 DisplayListBuilder::~DisplayListBuilder() = default;
 
+void DisplayListBuilder::Reserve(int32_t capacity) {
+  display_list_.Reserve(capacity);
+}
+
 DisplayListBuilder& DisplayListBuilder::Begin(int id, float x, float y,
                                               float width, float height) {
   // Use AddOperation directly to avoid temporary vector construction - only

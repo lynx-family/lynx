@@ -24,6 +24,8 @@ class DisplayListBuilder {
   DisplayListBuilder(DisplayListBuilder&&) = default;
   DisplayListBuilder& operator=(DisplayListBuilder&&) = default;
 
+  void Reserve(int32_t capacity);
+
   // Begin a new fragment
   DisplayListBuilder& Begin(int id, float x, float y, float width,
                             float height);

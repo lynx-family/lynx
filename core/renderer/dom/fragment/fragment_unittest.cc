@@ -294,5 +294,42 @@ TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds1) {
   EXPECT_FALSE(list.RootNeedClipBounds());
 }
 
+TEST_F(FragmentTest, TestDrawNodeCapacity) {
+  auto root = manager->CreateFiberPage("0", 0);
+
+  auto root_child_0 = manager->CreateFiberView();
+  root->InsertNode(root_child_0);
+
+  auto root_child_1 = manager->CreateFiberView();
+  root->InsertNode(root_child_1);
+
+  auto root_child_0_child_0 = manager->CreateFiberView();
+  root_child_0->InsertNode(root_child_0_child_0);
+
+  auto root_child_0_child_1 = manager->CreateFiberView();
+  root_child_0->InsertNode(root_child_0_child_1);
+
+  root->FlushActionsAsRoot();
+  EXPECT_TRUE(root->HasElementContainer());
+  EXPECT_TRUE(root_child_0->HasElementContainer());
+  EXPECT_TRUE(root_child_1->HasElementContainer());
+
+  EXPECT_TRUE(root->element_container()->is_fragment());
+  static_cast<Fragment*>(root->element_container())->UpdateLayout(0, 0);
+  EXPECT_EQ(
+      static_cast<Fragment*>(root->element_container())->draw_node_capacity_,
+      5);
+
+  static_cast<Fragment*>(root_child_0->element_container())
+      ->has_platform_renderer_ = true;
+  static_cast<Fragment*>(root->element_container())->UpdateLayout(0, 0);
+  EXPECT_EQ(
+      static_cast<Fragment*>(root->element_container())->draw_node_capacity_,
+      2);
+  EXPECT_EQ(static_cast<Fragment*>(root_child_0->element_container())
+                ->draw_node_capacity_,
+            3);
+}
+
 }  // namespace tasm
 }  // namespace lynx

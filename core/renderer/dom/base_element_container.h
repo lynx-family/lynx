@@ -135,6 +135,8 @@ class BaseElementContainer {
   void UpdateGlobalInsertionOrder();
 
  protected:
+  virtual bool is_fragment() const { return false; }
+
   bool IsRootContainer() const;
 
   bool has_z_child() const { return has_z_child_; }
