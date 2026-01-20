@@ -226,9 +226,9 @@ napi_value DevToolEnvHarmony::InitDevToolSetModule(napi_env env,
   uint64_t module_manager_num = base::NapiUtil::ConvertToPtr(env, args[0]);
 
   auto module_manager =
-      reinterpret_cast<piper::LynxModuleManager *>(module_manager_num);
-  std::unique_ptr<piper::NativeModuleFactory> devtool_module_factory_ =
-      std::make_unique<piper::NativeModuleFactory>();
+      reinterpret_cast<runtime::js::LynxModuleManager *>(module_manager_num);
+  std::unique_ptr<runtime::NativeModuleFactory> devtool_module_factory_ =
+      std::make_unique<runtime::NativeModuleFactory>();
   devtool_module_factory_->Register(LynxDevToolSetModule::GetName(),
                                     LynxDevToolSetModule::Create);
   module_manager->SetModuleFactory(std::move(devtool_module_factory_));

@@ -18,28 +18,29 @@ TEST(LynxReplayHelper, convertRapidJsonNumberToJSIValue) {
   auto runtime = testing::utils::makeJSRuntime();
   rapidjson::Document number_value(rapidjson::kNumberType);
   number_value.SetInt(1);
-  auto number_piper = piper::ReplayHelper::convertRapidJsonNumberToJSIValue(
-      *runtime, number_value);
-  ASSERT_TRUE(number_piper.kind() == piper::Value::ValueKind::NumberKind);
+  auto number_piper =
+      runtime::js::ReplayHelper::convertRapidJsonNumberToJSIValue(*runtime,
+                                                                  number_value);
+  ASSERT_TRUE(number_piper.kind() == runtime::js::Value::ValueKind::NumberKind);
   EXPECT_FLOAT_EQ(1, number_piper.getNumber());
 
   number_value.SetDouble(1.45);
-  number_piper = piper::ReplayHelper::convertRapidJsonNumberToJSIValue(
+  number_piper = runtime::js::ReplayHelper::convertRapidJsonNumberToJSIValue(
       *runtime, number_value);
-  ASSERT_TRUE(number_piper.kind() == piper::Value::ValueKind::NumberKind);
+  ASSERT_TRUE(number_piper.kind() == runtime::js::Value::ValueKind::NumberKind);
   EXPECT_FLOAT_EQ(1.45, number_piper.getNumber());
 
   number_value.SetUint(1);
-  number_piper = piper::ReplayHelper::convertRapidJsonNumberToJSIValue(
+  number_piper = runtime::js::ReplayHelper::convertRapidJsonNumberToJSIValue(
       *runtime, number_value);
-  ASSERT_TRUE(number_piper.kind() == piper::Value::ValueKind::NumberKind);
+  ASSERT_TRUE(number_piper.kind() == runtime::js::Value::ValueKind::NumberKind);
   EXPECT_FLOAT_EQ(1, number_piper.getNumber());
 
   rapidjson::Document string_value(rapidjson::kStringType);
   string_value.SetString("testing");
-  number_piper = piper::ReplayHelper::convertRapidJsonNumberToJSIValue(
+  number_piper = runtime::js::ReplayHelper::convertRapidJsonNumberToJSIValue(
       *runtime, string_value);
-  ASSERT_TRUE(number_piper.kind() == piper::Value::ValueKind::NumberKind);
+  ASSERT_TRUE(number_piper.kind() == runtime::js::Value::ValueKind::NumberKind);
   EXPECT_FLOAT_EQ(0, number_piper.getNumber());
 }
 
@@ -48,22 +49,23 @@ TEST(LynxReplayHelper, convertRapidJsonStringToJSIValue) {
 
   rapidjson::Document string_value(rapidjson::kStringType);
   string_value.SetString("hello world!");
-  auto string_piper = piper::ReplayHelper::convertRapidJsonStringToJSIValue(
-      *runtime, string_value);
-  ASSERT_TRUE(string_piper.kind() == piper::Value::ValueKind::StringKind);
+  auto string_piper =
+      runtime::js::ReplayHelper::convertRapidJsonStringToJSIValue(*runtime,
+                                                                  string_value);
+  ASSERT_TRUE(string_piper.kind() == runtime::js::Value::ValueKind::StringKind);
   EXPECT_STREQ("hello world!",
                string_piper.getString(*runtime).utf8(*runtime).c_str());
 
   string_value.SetString("");
-  string_piper = piper::ReplayHelper::convertRapidJsonStringToJSIValue(
+  string_piper = runtime::js::ReplayHelper::convertRapidJsonStringToJSIValue(
       *runtime, string_value);
-  ASSERT_TRUE(string_piper.kind() == piper::Value::ValueKind::StringKind);
+  ASSERT_TRUE(string_piper.kind() == runtime::js::Value::ValueKind::StringKind);
   EXPECT_STREQ("", string_piper.getString(*runtime).utf8(*runtime).c_str());
 
   string_value.SetString("NaN");
-  string_piper = piper::ReplayHelper::convertRapidJsonStringToJSIValue(
+  string_piper = runtime::js::ReplayHelper::convertRapidJsonStringToJSIValue(
       *runtime, string_value);
-  ASSERT_TRUE(string_piper.kind() == piper::Value::ValueKind::NumberKind);
+  ASSERT_TRUE(string_piper.kind() == runtime::js::Value::ValueKind::NumberKind);
   ASSERT_TRUE(isnan(string_piper.getNumber()));
 }
 
@@ -97,8 +99,8 @@ TEST(LynxReplayHelper, convertRapidJsonObjectToJSIValue) {
         "title":"This is a test for testbench"
     }
   */
-  auto result =
-      piper::ReplayHelper::convertRapidJsonObjectToJSIValue(*runtime, doc);
+  auto result = runtime::js::ReplayHelper::convertRapidJsonObjectToJSIValue(
+      *runtime, doc);
   ASSERT_TRUE(result.isObject());
 
   {  // check lynx_val field

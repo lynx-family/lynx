@@ -23,7 +23,9 @@
 #include "core/runtime/js/bindings/modules/module_interceptor.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+class ExtensionModuleFactory;
+namespace js {
 // issue: #1510
 // LynxModuleUtils::LynxModuleManagerAllowList
 // inline static alternative
@@ -37,10 +39,7 @@ struct LynxModuleManagerAllowList {
 };
 }  // namespace LynxModuleUtils
 
-class ExtensionModuleFactory;
-
-using LynxJSIModuleBindingPtr =
-    std::shared_ptr<lynx::piper::LynxJSIModuleBinding>;
+using LynxJSIModuleBindingPtr = std::shared_ptr<LynxJSIModuleBinding>;
 // LynxModuleManager is the implementation of LynxNativeModuleManager , Use JSI
 // FFI to bind JS Env
 class LynxModuleManager : public pub::LynxNativeModuleManager {
@@ -101,7 +100,9 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
   std::shared_ptr<ExtensionModuleFactory> extension_module_factory_ = nullptr;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_MODULE_MANAGER_H_

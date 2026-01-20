@@ -8,7 +8,7 @@ namespace lynx {
 namespace devtool {
 
 void ConsoleMessagePostManImpl::OnMessagePosted(
-    const piper::ConsoleMessage& message) {
+    const runtime::js::ConsoleMessage& message) {
   auto iter = observer_vec_.begin();
   while (iter != observer_vec_.end()) {
     auto sp = (*iter).lock();
@@ -22,7 +22,7 @@ void ConsoleMessagePostManImpl::OnMessagePosted(
 }
 
 void ConsoleMessagePostManImpl::InsertRuntimeObserver(
-    const std::shared_ptr<piper::InspectorRuntimeObserverNG>& observer) {
+    const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>& observer) {
   if (observer) {
     observer_vec_.emplace_back(
         std::static_pointer_cast<InspectorRuntimeObserverImpl>(observer));

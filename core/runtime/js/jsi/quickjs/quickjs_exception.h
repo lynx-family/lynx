@@ -11,7 +11,8 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class QuickjsException : public JSError {
  public:
   QuickjsException(QuickjsRuntime& rt, LEPUSValue value)
@@ -23,7 +24,9 @@ class QuickjsException : public JSError {
                                                   LEPUSValue value);
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_EXCEPTION_H_

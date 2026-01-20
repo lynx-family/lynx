@@ -98,15 +98,15 @@ std::string BTSRuntimeMediator::GetLynxJSAsset(const std::string& name) {
   return resource;
 }
 
-piper::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
+runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
     const std::string& bundle_name, const std::string& name, long timeout) {
   LOGE("GetJSContent with externalResourceLoader: " << name);
   auto info = external_resource_loader_->LoadScript(name, timeout);
   std::string external_resource_content("");
-  piper::JsContent::Type type(piper::JsContent::Type::ERROR);
+  runtime::js::JsContent::Type type(runtime::js::JsContent::Type::ERROR);
   if (info.Success()) {
     external_resource_content = std::string(info.data.begin(), info.data.end());
-    type = piper::JsContent::Type::SOURCE;
+    type = runtime::js::JsContent::Type::SOURCE;
   } else {
     external_resource_content = info.err_msg;
   }
@@ -121,7 +121,7 @@ piper::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
 
 void BTSRuntimeMediator::GetComponentContextDataAsync(
     const std::string& component_id, const std::string& key,
-    piper::ApiCallBack callback) {
+    runtime::js::ApiCallBack callback) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "GetComponentContextDataAsync not supported on runtime standalone "
@@ -134,7 +134,7 @@ void BTSRuntimeMediator::GetComponentContextDataAsync(
 }
 
 bool BTSRuntimeMediator::LoadDynamicComponentFromJS(
-    const std::string& url, const piper::ApiCallBack& callback,
+    const std::string& url, const runtime::js::ApiCallBack& callback,
     const std::vector<std::string>& ids) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
@@ -146,12 +146,12 @@ bool BTSRuntimeMediator::LoadDynamicComponentFromJS(
 }
 
 void BTSRuntimeMediator::LoadScriptAsync(const std::string& url,
-                                         piper::ApiCallBack callback) {
+                                         runtime::js::ApiCallBack callback) {
   external_resource_loader_->LoadScriptAsync(url, callback.id());
 }
 
 void BTSRuntimeMediator::AddFont(const lepus::Value& font,
-                                 const piper::ApiCallBack& callback) {
+                                 const runtime::js::ApiCallBack& callback) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "AddFont not supported on runtime standalone mode");
@@ -221,7 +221,7 @@ void BTSRuntimeMediator::UpdateComponentData(runtime::UpdateDataTask task) {
 void BTSRuntimeMediator::SelectComponent(const std::string& component_id,
                                          const std::string& id_selector,
                                          const bool single,
-                                         piper::ApiCallBack callBack) {
+                                         runtime::js::ApiCallBack callBack) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "SelectComponent not supported on runtime standalone mode");
@@ -237,7 +237,7 @@ void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
                                         tasm::NodeSelectOptions options,
                                         std::string method,
                                         fml::RefPtr<tasm::PropBundle> params,
-                                        piper::ApiCallBack callback) {
+                                        runtime::js::ApiCallBack callback) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "InvokeUIMethod not supported on runtime standalone mode");
@@ -253,7 +253,7 @@ void BTSRuntimeMediator::InvokeUIMethod(tasm::NodeSelectRoot root,
 
 void BTSRuntimeMediator::GetPathInfo(tasm::NodeSelectRoot root,
                                      tasm::NodeSelectOptions options,
-                                     piper::ApiCallBack call_back) {
+                                     runtime::js::ApiCallBack call_back) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "GetPathInfo not supported on runtime standalone mode");
@@ -268,7 +268,7 @@ void BTSRuntimeMediator::GetPathInfo(tasm::NodeSelectRoot root,
 void BTSRuntimeMediator::GetFields(tasm::NodeSelectRoot root,
                                    tasm::NodeSelectOptions options,
                                    std::vector<std::string> fields,
-                                   piper::ApiCallBack call_back) {
+                                   runtime::js::ApiCallBack call_back) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "GetFields not supported on runtime standalone mode");
@@ -350,11 +350,10 @@ void BTSRuntimeMediator::InvokeLepusComponentCallback(
   });
 }
 
-void BTSRuntimeMediator::TriggerWorkletFunction(std::string component_id,
-                                                std::string worklet_module_name,
-                                                std::string method_name,
-                                                lepus::Value args,
-                                                piper::ApiCallBack callback) {
+void BTSRuntimeMediator::TriggerWorkletFunction(
+    std::string component_id, std::string worklet_module_name,
+    std::string method_name, lepus::Value args,
+    runtime::js::ApiCallBack callback) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "TriggerWorkletFunction not supported on runtime standalone mode");
@@ -464,7 +463,7 @@ void BTSRuntimeMediator::SetTimingWithTimingFlag(
       });
 }
 
-void BTSRuntimeMediator::FlushJSBTiming(piper::NativeModuleInfo timing) {
+void BTSRuntimeMediator::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
   if (runtime_standalone_mode_) {
     // TODO(huzhanbo.luc): support JSB Timing
     return;
@@ -541,9 +540,9 @@ void BTSRuntimeMediator::AddJSBlockingTime(uint64_t enqueue_time) {
   }
 }
 
-void BTSRuntimeMediator::CallLepusMethod(const std::string& method_name,
-                                         lepus::Value args,
-                                         const piper::ApiCallBack& callback) {
+void BTSRuntimeMediator::CallLepusMethod(
+    const std::string& method_name, lepus::Value args,
+    const runtime::js::ApiCallBack& callback) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "CallLepusMethod not supported on runtime standalone mode");
@@ -582,12 +581,12 @@ std::string BTSRuntimeMediator::LoadJSSource(const std::string& name) {
   return str;
 }
 
-std::shared_ptr<piper::Buffer> BTSRuntimeMediator::LoadBytecode(
+std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::LoadBytecode(
     const std::string& url) {
   auto info = external_resource_loader_->LoadByteCode(url, 5 /* 5s timeout */);
-  std::shared_ptr<piper::Buffer> buffer;
+  std::shared_ptr<runtime::js::Buffer> buffer;
   if (info.Success()) {
-    buffer = std::make_shared<piper::ByteBuffer>(std::move(info.data));
+    buffer = std::make_shared<runtime::js::ByteBuffer>(std::move(info.data));
   }
   return buffer;
 }
@@ -600,7 +599,7 @@ void BTSRuntimeMediator::AddEventListenersToWhiteBoard(
 }
 
 void BTSRuntimeMediator::GetSessionStorageItem(
-    const std::string& key, const piper::ApiCallBack& callback) {
+    const std::string& key, const runtime::js::ApiCallBack& callback) {
   if (runtime_standalone_mode_) {
     if (white_board_delegate_) {
       auto value = white_board_delegate_->GetSessionStorageItem(key);
@@ -615,7 +614,7 @@ void BTSRuntimeMediator::GetSessionStorageItem(
 
 void BTSRuntimeMediator::SubscribeSessionStorage(
     const std::string& key, double listener_id,
-    const piper::ApiCallBack& callback) {
+    const runtime::js::ApiCallBack& callback) {
   if (runtime_standalone_mode_) {
     if (white_board_delegate_) {
       white_board_delegate_->SubscribeJSSessionStorage(key, listener_id,

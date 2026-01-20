@@ -27,7 +27,9 @@
 #include "core/runtime/js/jsi/jsc/jsc_runtime.h"
 #endif
 
-namespace lynx::piper {
+namespace lynx {
+namespace runtime {
+namespace js {
 class Runtime;
 namespace test {
 
@@ -72,7 +74,7 @@ MATCHER_P(HasMessage, message, "") {
 // An example usage with HasMessage matcher:
 //   EXPECT_CALL(*exception_handler_,
 //     onJSIException(HasMessage("foo"))).Times(1);
-class MockExceptionHandler : public piper::JSIExceptionHandler {
+class MockExceptionHandler : public JSIExceptionHandler {
  public:
   MOCK_METHOD(void, onJSIException, (const JSIException&), (override));
 };
@@ -106,6 +108,8 @@ class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {
 };
 
 }  // namespace test
-}  // namespace lynx::piper
+}  // namespace js
+}  // namespace runtime
+}  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSI_UNITTEST_H_

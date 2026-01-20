@@ -32,7 +32,7 @@ Value LynxLepusModule::InvokeMethod(Context* context,
   }
 
   auto args_array = value_factory_->CreateArray();
-  piper::CallbackMap callback_map;
+  runtime::CallbackMap callback_map;
   for (size_t i = 0; i < count; i++) {
     if (args[i].IsJSFunction() || args[i].IsClosure()) {
       std::unique_ptr<lepus::Value> callback_closure =

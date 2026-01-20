@@ -22,7 +22,8 @@ bool RegisterJNIForLynxBytecodeCallback(JNIEnv* env) {
 }  // namespace lynx
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 void OnBytecodeResponse(JNIEnv* env,
@@ -36,17 +37,13 @@ void OnBytecodeResponse(JNIEnv* env,
 
 std::unique_ptr<BytecodeGenerateCallback> CreateBytecodeCallback(
     JNIEnv* env, jobject callback) {
-  std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback>
-      bytecode_callback = nullptr;
+  std::unique_ptr<cache::BytecodeGenerateCallback> bytecode_callback = nullptr;
   if (nullptr != callback) {
     lynx::base::android::ScopedGlobalJavaRef<jobject> jni_object(env, callback);
-    bytecode_callback = std::make_unique<
-        lynx::piper::cache::BytecodeGenerateCallback>(
+    bytecode_callback = std::make_unique<cache::BytecodeGenerateCallback>(
         [jni_object = std::move(jni_object)](
             std::string error_msg,
-            std::unordered_map<std::string,
-                               std::shared_ptr<lynx::piper::Buffer>>
-                buffers) {
+            std::unordered_map<std::string, std::shared_ptr<Buffer>> buffers) {
           JNIEnv* env = lynx::base::android::AttachCurrentThread();
           lynx::base::android::ScopedLocalJavaRef<jstring> jni_error_msg;
           if (!error_msg.empty()) {
@@ -64,13 +61,14 @@ std::unique_ptr<BytecodeGenerateCallback> CreateBytecodeCallback(
               java_map.PushByteBuffer(iter.first, byte_buffer);
             }
           }
-          lynx::piper::cache::OnBytecodeResponse(
-              env, std::move(jni_object), std::move(jni_error_msg), java_map);
+          cache::OnBytecodeResponse(env, std::move(jni_object),
+                                    std::move(jni_error_msg), java_map);
         });
   }
   return bytecode_callback;
 }
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

@@ -13,8 +13,8 @@
 namespace testing {
 namespace utils {
 
-std::unique_ptr<lynx::piper::Runtime> makeJSRuntime(
-    std::shared_ptr<lynx::piper::JSIExceptionHandler> handler = nullptr);
+std::unique_ptr<lynx::runtime::js::Runtime> makeJSRuntime(
+    std::shared_ptr<lynx::runtime::js::JSIExceptionHandler> handler = nullptr);
 
 }
 }  // namespace testing

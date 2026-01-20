@@ -46,8 +46,8 @@ lepus_value LepusDecoder::DecodeMessage(char *buffer, uint32_t len) {
   return forwardValue();
 }
 
-std::optional<lynx::piper::Value> LepusDecoder::DecodeJSMessage(
-    piper::Runtime &rt, char *buffer, uint32_t len) {
+std::optional<lynx::runtime::js::Value> LepusDecoder::DecodeJSMessage(
+    runtime::js::Runtime &rt, char *buffer, uint32_t len) {
   index_ = 0;
   buffer_ = buffer;
   len_ = len;
@@ -215,79 +215,81 @@ fml::RefPtr<lepus::Dictionary> LepusDecoder::forwardDictionary() {
   return dict;
 }
 
-std::optional<piper::Value> LepusDecoder::forwardJSValue(piper::Runtime &rt) {
-  if (in_exception_) return piper::Value();
+std::optional<runtime::js::Value> LepusDecoder::forwardJSValue(
+    runtime::js::Runtime &rt) {
+  if (in_exception_) return runtime::js::Value();
   uint8_t type = forwardType();
   switch (type) {
     case TypeNull:
-      return piper::Value::null();
+      return runtime::js::Value::null();
     case TypeUndefined:
-      return piper::Value::undefined();
+      return runtime::js::Value::undefined();
     case TypeTrue:
-      return piper::Value(true);
+      return runtime::js::Value(true);
     case TypeFalse:
-      return piper::Value(false);
+      return runtime::js::Value(false);
     case TypeInt:
-      return piper::Value(forwardInteger());
+      return runtime::js::Value(forwardInteger());
     case TypeLong: {
       // In JavaScript,  the max safe integer is 9007199254740991 and the min
       // safe integer is -9007199254740991, so when integer beyond limit, use
       // BigInt Object to define it. More information from
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
       int64_t value = forwardLong();
-      if (value < piper::kMinJavaScriptNumber ||
-          value > piper::kMaxJavaScriptNumber) {
+      if (value < runtime::js::kMinJavaScriptNumber ||
+          value > runtime::js::kMaxJavaScriptNumber) {
         auto bigint_opt =
-            piper::BigInt::createWithString(rt, std::to_string(value));
+            runtime::js::BigInt::createWithString(rt, std::to_string(value));
         if (!bigint_opt) {
-          return std::optional<piper::Value>();
+          return std::optional<runtime::js::Value>();
         }
-        return piper::Value(*bigint_opt);
+        return runtime::js::Value(*bigint_opt);
       } else {
-        return piper::Value(static_cast<double>(value));
+        return runtime::js::Value(static_cast<double>(value));
       }
     }
     case TypeDouble:
-      return piper::Value(forwardDouble());
+      return runtime::js::Value(forwardDouble());
     case TypeString:
-      return piper::Value(forwardJSString(rt));
+      return runtime::js::Value(forwardJSString(rt));
     case TypeList: {
       auto array_opt = forwardJSArray(rt);
       if (!array_opt) {
-        return std::optional<piper::Value>();
+        return std::optional<runtime::js::Value>();
       }
-      return piper::Value(*array_opt);
+      return runtime::js::Value(*array_opt);
     }
     case TypeMap: {
       auto obj_opt = forwardJSDictionary(rt);
       if (!obj_opt) {
-        return std::optional<piper::Value>();
+        return std::optional<runtime::js::Value>();
       }
-      return piper::Value(*obj_opt);
+      return runtime::js::Value(*obj_opt);
     }
     case TypeByteArray:
-      return piper::Value(forwardJSByteArray(rt));
+      return runtime::js::Value(forwardJSByteArray(rt));
   }
-  return piper::Value();
+  return runtime::js::Value();
 }
 
-piper::String LepusDecoder::forwardJSString(piper::Runtime &rt) {
+runtime::js::String LepusDecoder::forwardJSString(runtime::js::Runtime &rt) {
   int32_t forward_size = forwardSize();
 
   if (in_exception_) {
-    return piper::String::createFromUtf8(rt, "");
+    return runtime::js::String::createFromUtf8(rt, "");
   }
   size_t size = forward_size >= 0 ? static_cast<size_t>(forward_size) : 0;
-  auto result = piper::String::createFromUtf8(
+  auto result = runtime::js::String::createFromUtf8(
       rt, reinterpret_cast<const uint8_t *>(buffer_ + index_), size);
   index_ += size;
   return result;
 }
 
-piper::ArrayBuffer LepusDecoder::forwardJSByteArray(piper::Runtime &rt) {
+runtime::js::ArrayBuffer LepusDecoder::forwardJSByteArray(
+    runtime::js::Runtime &rt) {
   int32_t forward_size = forwardSize();
   if (in_exception_) {
-    return piper::ArrayBuffer(rt);
+    return runtime::js::ArrayBuffer(rt);
   }
   size_t size = forward_size >= 0 ? static_cast<size_t>(forward_size) : 0;
   std::unique_ptr<uint8_t[]> buffer;
@@ -298,46 +300,47 @@ piper::ArrayBuffer LepusDecoder::forwardJSByteArray(piper::Runtime &rt) {
     memcpy(buffer.get(), buffer_ + index_, size);
   }
   index_ += size;
-  return piper::ArrayBuffer(rt, std::move(buffer), size);
+  return runtime::js::ArrayBuffer(rt, std::move(buffer), size);
 }
 
-std::optional<piper::Array> LepusDecoder::forwardJSArray(piper::Runtime &rt) {
-  piper::Scope scope(rt);
+std::optional<runtime::js::Array> LepusDecoder::forwardJSArray(
+    runtime::js::Runtime &rt) {
+  runtime::js::Scope scope(rt);
   int32_t size = forwardSize();
   if (in_exception_) {
-    return piper::Array::createWithLength(rt, 0);
+    return runtime::js::Array::createWithLength(rt, 0);
   }
   auto array_opt =
-      piper::Array::createWithLength(rt, static_cast<size_t>(size));
+      runtime::js::Array::createWithLength(rt, static_cast<size_t>(size));
   if (!array_opt) {
-    return std::optional<piper::Array>();
+    return std::optional<runtime::js::Array>();
   }
 
   for (int32_t index = 0; index < size; index++) {
     auto js_value_opt = forwardJSValue(rt);
     if (!js_value_opt) {
-      return std::optional<piper::Array>();
+      return std::optional<runtime::js::Array>();
     }
     array_opt->setValueAtIndex(rt, index, *js_value_opt);
   }
   return array_opt;
 }
 
-std::optional<piper::Object> LepusDecoder::forwardJSDictionary(
-    piper::Runtime &rt) {
-  piper::Scope scope(rt);
+std::optional<runtime::js::Object> LepusDecoder::forwardJSDictionary(
+    runtime::js::Runtime &rt) {
+  runtime::js::Scope scope(rt);
   int32_t size = forwardSize();
-  piper::Object obj = piper::Object(rt);
+  runtime::js::Object obj = runtime::js::Object(rt);
   if (in_exception_) {
     return obj;
   }
   for (int32_t index = 0; index < size; index++) {
     uint8_t type = forwardType();
     DCHECK(type == TypeString);
-    piper::String key = forwardJSString(rt);
+    runtime::js::String key = forwardJSString(rt);
     auto js_value_opt = forwardJSValue(rt);
     if (!js_value_opt) {
-      return std::optional<piper::Object>();
+      return std::optional<runtime::js::Object>();
     }
     obj.setProperty(rt, key, *js_value_opt);
   }

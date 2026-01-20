@@ -32,13 +32,13 @@ InspectorRuntimeObserverImpl::CreateRuntimeManagerDelegate() {
   return std::make_unique<RuntimeManagerDelegateImpl>();
 }
 
-std::unique_ptr<piper::RuntimeInspectorManager>
+std::unique_ptr<runtime::js::RuntimeInspectorManager>
 InspectorRuntimeObserverImpl::CreateRuntimeInspectorManager(
     const std::string& vm_type) {
   return JSDebugHelper::GetInstance()->CreateRuntimeInspectorManager(vm_type);
 }
 
-std::shared_ptr<piper::ConsoleMessagePostMan>
+std::shared_ptr<runtime::js::ConsoleMessagePostMan>
 InspectorRuntimeObserverImpl::CreateConsoleMessagePostMan() {
   return std::make_shared<ConsoleMessagePostManImpl>();
 }
@@ -61,28 +61,29 @@ void InspectorRuntimeObserverImpl::OnInspectorInited(
   }
 }
 
-void InspectorRuntimeObserverImpl::OnRuntimeCreated(piper::JSRuntimeType type) {
+void InspectorRuntimeObserverImpl::OnRuntimeCreated(
+    runtime::js::JSRuntimeType type) {
   static constexpr char kEngineTypeMsg[] =
       "[LynxDevTool] Current BTS engine type: ";
   std::string type_str;
   switch (type) {
-    case piper::JSRuntimeType::v8:
+    case runtime::js::JSRuntimeType::v8:
       type_str = kKeyEngineV8;
       break;
-    case piper::JSRuntimeType::jsc:
+    case runtime::js::JSRuntimeType::jsc:
       type_str = kKeyEngineJSC;
       break;
-    case piper::JSRuntimeType::quickjs:
+    case runtime::js::JSRuntimeType::quickjs:
       type_str = kKeyEngineQuickjs;
       break;
-    case piper::JSRuntimeType::jsvm:
+    case runtime::js::JSRuntimeType::jsvm:
       type_str = kKeyEngineJSVM;
       break;
   }
   // Always log the engine type regardless of whether JS debugging is enabled,
   // so do not invoke this logic within `OnInspectorInited`.
   OnConsoleMessagePosted(
-      {kEngineTypeMsg + type_str, piper::CONSOLE_LOG_INFO,
+      {kEngineTypeMsg + type_str, runtime::js::CONSOLE_LOG_INFO,
        static_cast<int64_t>(base::CurrentSystemTimeMilliseconds())});
 }
 
@@ -101,7 +102,7 @@ void InspectorRuntimeObserverImpl::PrepareForScriptEval() {
 }
 
 void InspectorRuntimeObserverImpl::OnConsoleMessagePosted(
-    const piper::ConsoleMessage& message) {
+    const runtime::js::ConsoleMessage& message) {
   auto sp = mediator_ptr_.lock();
   if (sp != nullptr) {
     sp->SendLogEntryAddedEvent(message);

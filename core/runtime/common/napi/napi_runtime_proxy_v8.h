@@ -11,8 +11,8 @@
 #include "core/runtime/common/napi/napi_runtime_proxy_v8_factory.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8ContextWrapper;
 
 class NapiRuntimeProxyV8 : public NapiRuntimeProxy {
@@ -38,7 +38,9 @@ class NapiRuntimeProxyV8FactoryImpl : public NapiRuntimeProxyV8Factory {
       runtime::TemplateDelegate *delegate = nullptr);
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_V8_H_

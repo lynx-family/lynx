@@ -11,8 +11,8 @@
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 void V8InspectorManagerImpl::InitInspector(
     Runtime *runtime,
     const std::shared_ptr<InspectorRuntimeObserverNG> &observer) {
@@ -38,21 +38,20 @@ void V8InspectorManagerImpl::InitInspector(
             JSExecutor::GetCurrentRuntimeManagerInstance()
                 ->GetRuntimeManagerDelegate();
         runtime_manager_delegate->SetReleaseVMCallback(
-            piper::JSRuntimeType::v8,
+            JSRuntimeType::v8,
             [inspector_client]() { inspector_client->DestroyInspector(); });
       });
   if (group_id_ != devtool::kSingleGroupStr) {
-    std::call_once(set_release_ctx_callback,
-                   [inspector_client = inspector_client_] {
-                     auto runtime_manager_delegate =
-                         JSExecutor::GetCurrentRuntimeManagerInstance()
-                             ->GetRuntimeManagerDelegate();
-                     runtime_manager_delegate->SetReleaseContextCallback(
-                         piper::JSRuntimeType::v8,
-                         [inspector_client](const std::string &group_id) {
-                           inspector_client->DestroyContext(group_id);
-                         });
-                   });
+    std::call_once(set_release_ctx_callback, [inspector_client =
+                                                  inspector_client_] {
+      auto runtime_manager_delegate =
+          JSExecutor::GetCurrentRuntimeManagerInstance()
+              ->GetRuntimeManagerDelegate();
+      runtime_manager_delegate->SetReleaseContextCallback(
+          JSRuntimeType::v8, [inspector_client](const std::string &group_id) {
+            inspector_client->DestroyContext(group_id);
+          });
+    });
   }
 
   observer->OnInspectorInited(
@@ -82,5 +81,7 @@ void V8InspectorManagerImpl::PrepareForScriptEval() {
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

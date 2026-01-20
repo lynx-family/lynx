@@ -22,10 +22,11 @@
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 struct InvokeInfo {
   std::string method_name;
-  piper::NativeModuleInfoCollectorPtr timing_collector;
+  NativeModuleInfoCollectorPtr timing_collector;
   bool has_error;
 };
 
@@ -49,11 +50,11 @@ void LynxJSIModule::Destroy() {
   }
 }
 
-base::expected<piper::Value, piper::JSINativeException>
-LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
-                            const piper::Value* args, size_t count) {
+base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
+    const MethodMetadata& method, Runtime* rt, const Value* args,
+    size_t count) {
   uint64_t call_func_start = lynx::base::CurrentSystemTimeMilliseconds();
-  piper::Scope scope(*rt);
+  Scope scope(*rt);
 #if ENABLE_TESTBENCH_RECORDER
   std::vector<int64_t> callback_ids;
 #endif  // ENABLE_TESTBENCH_RECORDER
@@ -63,9 +64,9 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
   if (count > 0 && args && args[0].isString()) {
     first_arg_str = args[0].getString(*rt).utf8(*rt);
   }
-  piper::NativeModuleInfoCollectorPtr timing_collector =
-      std::make_shared<piper::NativeModuleInfoCollector>(
-          delegate_, name_, method.name, first_arg_str);
+  NativeModuleInfoCollectorPtr timing_collector =
+      std::make_shared<NativeModuleInfoCollector>(delegate_, name_, method.name,
+                                                  first_arg_str);
 
   uint64_t callback_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, NATIVE_MODULE_INVOKE,
@@ -100,7 +101,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
   auto args_array = value_factory_->CreateArray();
   // args is a pointer array. can not use getArray to read value.
   for (size_t i = 0; i < count; i++) {
-    const lynx::piper::Value* arg = &args[i];
+    const Value* arg = &args[i];
     if (arg->isBool()) {
       args_array->PushBoolToArray(arg->getBool());
     } else if (arg->isNumber()) {
@@ -110,7 +111,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
     } else if (arg->isString()) {
       args_array->PushStringToArray(arg->getString(*rt).utf8(*rt));
     } else if (arg->isObject()) {
-      lynx::piper::Object o = arg->getObject(*rt);
+      Object o = arg->getObject(*rt);
       if (o.isArray(*rt)) {
         auto sub_arr = o.getArray(*rt);
         auto sub_arr_result = pub::ValueUtils::ConvertPiperArrayToPubValue(
@@ -124,8 +125,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
         auto function = o.getFunction(*rt);
         auto callback_id =
             delegate_->RegisterJSCallbackFunction(std::move(function));
-        auto callback =
-            std::make_shared<lynx::piper::ModuleCallback>(callback_id);
+        auto callback = std::make_shared<ModuleCallback>(callback_id);
         callback->SetModuleName(name_);
         callback->SetMethodName(method.name);
         callback->timing_collector_ = timing_collector;
@@ -170,7 +170,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
                                            timing_collector);
   }
 
-  base::expected<piper::Value, piper::JSINativeException> response;
+  base::expected<Value, JSINativeException> response;
   bool has_intercept = false;
   if (group_interceptor_) {
     auto interceptor_result = group_interceptor_->InterceptModuleMethod(
@@ -186,7 +186,7 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
     auto ret = native_module_->InvokeMethod(method.name, std::move(args_array),
                                             count, callback_map);
     // TODO(liyanbo.monster): after remove native promise, delete this.
-    std::optional<piper::Value> promise_res;
+    std::optional<Value> promise_res;
 #if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
     native_module_->ExitInvokeScope();
@@ -305,5 +305,7 @@ InvokeInfo* LynxJSIModule::CurrentInvokeInfo() {
   return nullptr;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

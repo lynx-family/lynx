@@ -11,7 +11,7 @@
 
 #include "core/runtime/js/bytecode/js_cache_manager.h"
 
-std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback>
+std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback>
     CreateBytecodeGenerateCallback(
         LynxBytecodeResponseBlock _Nullable callback);
 

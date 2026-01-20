@@ -13,7 +13,8 @@
 #include "core/runtime/js/jsi/jsc/jsc_runtime.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 std::once_flag hostObjectClassOnceFlag;
 JSClassRef hostObjectClass{};
 namespace detail {
@@ -98,5 +99,6 @@ Object JSCHostObjectProxy::createObject(JSCRuntime& rt, JSGlobalContextRef ctx,
 JSClassRef JSCHostObjectProxy::getHostObjectClass() { return hostObjectClass; }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

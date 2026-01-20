@@ -8,7 +8,7 @@
 @implementation LynxWasmFuncRegistry
 
 + (void)registerWasmFunc:(void*)func {
-  lynx::piper::JSCContextWrapper::register_wasm_func_ =
+  lynx::runtime::js::JSCContextWrapper::register_wasm_func_ =
       reinterpret_cast<void (*)(void*, void*)>(func);
 }
 

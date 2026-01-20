@@ -20,7 +20,7 @@ namespace worklet {
 
 class LepusLynx;
 
-class NapiLoaderUI : public piper::NapiEnvironment::Delegate {
+class NapiLoaderUI : public runtime::js::NapiEnvironment::Delegate {
  public:
   NapiLoaderUI(lepus::QuickContext* context);
 

@@ -10,24 +10,27 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class QuickjsRuntime;
+class QuickjsRuntimeInstance;
 namespace detail {
-std::weak_ptr<piper::HostFunctionType> getHostFunction(
-    QuickjsRuntime* rt, const piper::Function& obj);
+std::weak_ptr<HostFunctionType> getHostFunction(QuickjsRuntime* rt,
+                                                const Function& obj);
 
 class QuickjsHostFunctionProxy
     : public HostObjectWrapperBase<QuickjsRuntime, HostFunctionType> {
   friend class QuickjsRuntimeInstance;
 
  public:
-  QuickjsHostFunctionProxy(piper::HostFunctionType hostFunction,
-                           QuickjsRuntime* rt);
+  QuickjsHostFunctionProxy(HostFunctionType hostFunction, QuickjsRuntime* rt);
   ~QuickjsHostFunctionProxy() override;
 
-  static LEPUSValue createFunctionFromHostFunction(
-      QuickjsRuntime* rt, LEPUSContext* ctx, const piper::PropNameID& name,
-      unsigned int paramCount, piper::HostFunctionType func);
+  static LEPUSValue createFunctionFromHostFunction(QuickjsRuntime* rt,
+                                                   LEPUSContext* ctx,
+                                                   const PropNameID& name,
+                                                   unsigned int paramCount,
+                                                   HostFunctionType func);
 
   static LEPUSValue FunctionCallback(LEPUSContext* ctx,
                                      LEPUSValueConst func_obj,
@@ -42,8 +45,9 @@ class QuickjsHostFunctionProxy
 
 }  // namespace detail
 
-}  // namespace piper
+}  // namespace js
 
+}  // namespace runtime
 }  // namespace lynx
 
 // #ifdef __cplusplus

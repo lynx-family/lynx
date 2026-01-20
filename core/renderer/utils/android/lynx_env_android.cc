@@ -94,15 +94,16 @@ void ClearBytecode(JNIEnv* env, jclass jcaller, jstring bytecodeSourceUrl,
   std::string template_url =
       lynx::base::android::JNIConvertHelper::ConvertToString(env,
                                                              bytecodeSourceUrl);
-  lynx::piper::cache::JsCacheManagerFacade::ClearBytecode(
-      template_url, useV8 ? lynx::piper::JSRuntimeType::v8
-                          : lynx::piper::JSRuntimeType::quickjs);
+  lynx::runtime::js::cache::JsCacheManagerFacade::ClearBytecode(
+      template_url, useV8 ? lynx::runtime::js::JSRuntimeType::v8
+                          : lynx::runtime::js::JSRuntimeType::quickjs);
 }
 
 void SetGlobalBytecodeGenerateCallback(JNIEnv* env, jclass jcaller,
                                        jobject callback) {
-  lynx::piper::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
-      lynx::piper::cache::CreateBytecodeCallback(env, callback));
+  lynx::runtime::js::cache::JsCacheManagerFacade::
+      SetGlobalBytecodeGenerateCallback(
+          lynx::runtime::js::cache::CreateBytecodeCallback(env, callback));
 }
 
 }  // namespace lynxenv

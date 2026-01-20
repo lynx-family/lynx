@@ -11,8 +11,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class ConsoleMessagePostMan;
 
 class Global : public HostGlobal {
@@ -21,10 +21,10 @@ class Global : public HostGlobal {
   ~Global() override;
 
   void Init(std::shared_ptr<Runtime>& js_runtime_,
-            std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+            std::shared_ptr<ConsoleMessagePostMan>& post_man,
             const tasm::PageOptions& page_options) override;
   void Release() override;
-  void EnsureConsole(std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+  void EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
                      const tasm::PageOptions& page_options);
 
  private:
@@ -58,6 +58,8 @@ class SingleGlobal : public Global {
   std::weak_ptr<Runtime> js_runtime_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_GLOBAL_H_

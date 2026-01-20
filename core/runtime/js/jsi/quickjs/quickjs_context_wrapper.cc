@@ -12,8 +12,8 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 QuickjsContextWrapper::QuickjsContextWrapper(std::shared_ptr<VMInstance> vm)
     : JSIContext(vm) {
   std::shared_ptr<QuickjsRuntimeInstance> iso =
@@ -58,5 +58,7 @@ RegisterWasmFuncType& QuickjsContextWrapper::RegisterWasmFunc() {
   return RegisterWebAssembly;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

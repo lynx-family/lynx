@@ -61,7 +61,8 @@ jlong OnBackgroundRuntimeCreated(JNIEnv* env, jobject jcaller, jlong nativePtr,
   auto observer = lynx_devtool->OnBackgroundRuntimeCreated(
       lynx::base::android::JNIConvertHelper::ConvertToString(env, groupName));
   return reinterpret_cast<jlong>(
-      new std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>(observer));
+      new std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>(
+          observer));
 }
 
 void OnTasmCreated(JNIEnv* env, jobject jcaller, jlong nativePtr,

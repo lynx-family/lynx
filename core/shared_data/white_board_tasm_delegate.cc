@@ -32,7 +32,7 @@ void WhiteBoardTasmDelegate::CallLepusCallbackWithValue(
 }
 
 void WhiteBoardTasmDelegate::CallJSApiCallbackWithValue(
-    piper::ApiCallBack callback, const lepus::Value& param) {
+    runtime::js::ApiCallBack callback, const lepus::Value& param) {
   if (tasm_) {
     // Invoke JSApiCallback without remove, js storage callback maybe invoked
     // multiple times.
@@ -41,7 +41,8 @@ void WhiteBoardTasmDelegate::CallJSApiCallbackWithValue(
   }
 }
 
-void WhiteBoardTasmDelegate::RemoveJSApiCallback(piper::ApiCallBack callback) {
+void WhiteBoardTasmDelegate::RemoveJSApiCallback(
+    runtime::js::ApiCallBack callback) {
   if (tasm_) {
     tasm_->GetDelegate().RemoveJSApiCallback(std::move(callback));
   }

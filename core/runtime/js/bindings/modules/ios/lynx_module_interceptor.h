@@ -12,8 +12,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class LynxModuleInterceptor {
  public:
   static std::string GetJSBFuncName(id instance, const pub::Value *first_arg);
@@ -21,6 +21,8 @@ class LynxModuleInterceptor {
   static void CheckModuleIfNeed(id module, NSMutableDictionary *temp, NSDictionary *extra);
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_BINDINGS_JSI_MODULES_IOS_LYNX_MODULE_INTERCEPTOR_H_

@@ -15,7 +15,7 @@ namespace harmony {
 
 class LynxIntersectionObserverModule : public NativeModuleCAPI {
  public:
-  static std::shared_ptr<piper::LynxNativeModule> Create(
+  static std::shared_ptr<runtime::LynxNativeModule> Create(
       const std::shared_ptr<tasm::harmony::LynxContext>& context) {
     return std::make_shared<LynxIntersectionObserverModule>(context);
   }
@@ -29,22 +29,22 @@ class LynxIntersectionObserverModule : public NativeModuleCAPI {
   void Destroy() override;
 
   std::unique_ptr<pub::Value> CreateIntersectionObserver(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> RelativeTo(std::unique_ptr<pub::Value> args,
-                                         const piper::CallbackMap& callbacks);
+                                         const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> RelativeToViewport(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> RelativeToScreen(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> Observe(std::unique_ptr<pub::Value> args,
-                                      const piper::CallbackMap& callbacks);
+                                      const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> Disconnect(std::unique_ptr<pub::Value> args,
-                                         const piper::CallbackMap& callbacks);
+                                         const runtime::CallbackMap& callbacks);
 
  private:
   static const std::string name_;

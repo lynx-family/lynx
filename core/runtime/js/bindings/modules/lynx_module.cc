@@ -14,9 +14,10 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace LynxModuleUtils {
-std::string JSTypeToString(const piper::Value* arg) {
+std::string JSTypeToString(const Value* arg) {
   if (!arg) {
     return "nullptr";
   }
@@ -73,13 +74,13 @@ LynxModule::MethodMetadata::MethodMetadata(size_t count,
                                            const std::string& methodName)
     : argCount(count), name(methodName) {}
 
-piper::Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
+Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
   std::string propNameUtf8 = prop.utf8(*runtime);
   auto p = methodMap_.find(propNameUtf8);
 
   if (p != methodMap_.end()) {
     auto& meta = p->second;
-    return piper::Function::createFromHostFunction(
+    return Function::createFromHostFunction(
         *runtime, prop, static_cast<unsigned int>(meta->argCount),
         [meta, propNameUtf8,
          weak_self = std::weak_ptr<LynxModule>(shared_from_this())](
@@ -111,12 +112,13 @@ piper::Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
           name_, propNameUtf8,
           error::E_NATIVE_MODULES_COMMON_FUNCTION_NOT_FOUND);
     }
-    return piper::Value::undefined();
+    return Value::undefined();
   }
 
   // TODO: All these code related to LynxAttribute are dead code, can be
   // removed.
   return this->getAttributeValue(runtime, propNameUtf8);
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

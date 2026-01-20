@@ -24,29 +24,30 @@ namespace replay {
 
 static fml::AutoResetWaitableEvent latch;
 
-class MockDelegate : public piper::ModuleDelegate {
+class MockDelegate : public runtime::js::ModuleDelegate {
  public:
-  virtual int64_t RegisterJSCallbackFunction(piper::Function func) override {
+  virtual int64_t RegisterJSCallbackFunction(
+      runtime::js::Function func) override {
     return 1;
   }
   virtual void CallJSCallback(
-      const std::shared_ptr<piper::ModuleCallback>& callback,
+      const std::shared_ptr<runtime::js::ModuleCallback>& callback,
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
       int64_t id_to_delete =
-          piper::ModuleCallback::kInvalidCallbackId) override {
+          runtime::js::ModuleCallback::kInvalidCallbackId) override {
     latch.Signal();
   }
   virtual void OnErrorOccurred(base::LynxError error) override {}
   virtual void OnMethodInvoked(const std::string& module_name,
                                const std::string& method_name,
                                int32_t code) override {}
-  virtual void FlushJSBTiming(piper::NativeModuleInfo timing) override {}
+  virtual void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override {}
   virtual void RunOnJSThread(base::closure func) override {}
   virtual void RunOnPlatformThread(base::closure func) override {}
 };
 
 TEST(LynxModuleTestBench, StrictMode) {
-  piper::ModuleTestBench module("replayModule", nullptr);
+  runtime::js::ModuleTestBench module("replayModule", nullptr);
 
   rapidjson::Document value;
   value.Parse("{}");
@@ -69,8 +70,8 @@ TEST(LynxModuleTestBench, StrictMode) {
 
 TEST(LynxModuleTestBench, InvokeJsbCallback) {
   std::shared_ptr<MockDelegate> mock_delegate(new MockDelegate);
-  piper::ModuleTestBench module("replayModule", mock_delegate);
-  piper::Function function(nullptr);
+  runtime::js::ModuleTestBench module("replayModule", mock_delegate);
+  runtime::js::Function function(nullptr);
   module.InvokeJsbCallback(std::move(function),
                            rapidjson::Value(rapidjson::kNullType));
   ASSERT_FALSE(latch.WaitWithTimeout(fml::TimeDelta::FromSeconds(3)));
@@ -80,7 +81,7 @@ TEST(LynxModuleTestBench, InvokeJsbCallback) {
 }
 
 TEST(LynxModuleTestBench, IsJsbIgnoredParams) {
-  piper::ModuleTestBench module("replayModule", nullptr);
+  runtime::js::ModuleTestBench module("replayModule", nullptr);
   module.jsb_ignored_info_ = nullptr;
 
   ASSERT_TRUE(module.IsJsbIgnoredParams("timestamp"));
@@ -99,7 +100,7 @@ TEST(LynxModuleTestBench, IsJsbIgnoredParams) {
 }
 
 TEST(LynxModuleTestBench, IsSameURL) {
-  piper::ModuleTestBench module("replayModule", nullptr);
+  runtime::js::ModuleTestBench module("replayModule", nullptr);
   module.jsb_ignored_info_ = nullptr;
 
   ASSERT_TRUE(module.IsSameURL("http://www.lynx.com", "http://www.lynx.com"));

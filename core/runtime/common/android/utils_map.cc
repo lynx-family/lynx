@@ -14,11 +14,12 @@
 #include "platform/android/lynx_android/src/main/jni/gen/JavaOnlyMap_jni.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 bool JSBUtilsMapRegisterJNI(JNIEnv* env) { return RegisterNativesImpl(env); }
 
-void PushByteArrayToJavaMap(piper::Runtime* rt, const std::string& key,
-                            const piper::ArrayBuffer& array_buffer,
+void PushByteArrayToJavaMap(Runtime* rt, const std::string& key,
+                            const ArrayBuffer& array_buffer,
                             base::android::JavaOnlyMap* jmap) {
   // TODO(qiuxian):Add unit test when framework is ready.
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -30,5 +31,7 @@ void PushByteArrayToJavaMap(piper::Runtime* rt, const std::string& key,
                                 jni_byte_array.Get());
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

@@ -27,31 +27,32 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   std::vector<lynx::shell::CacheDataOp> FetchUpdatedCardData() override {
     return {};
   }
-  piper::JsContent GetJSContentFromExternal(const std::string& entry_name,
-                                            const std::string& name,
-                                            long timeout) override {
-    return {"", piper::JsContent::Type::SOURCE};
+  runtime::js::JsContent GetJSContentFromExternal(const std::string& entry_name,
+                                                  const std::string& name,
+                                                  long timeout) override {
+    return {"", runtime::js::JsContent::Type::SOURCE};
   }
 
   std::string GetLynxJSAsset(const std::string& name) override { return ""; };
 
-  void GetComponentContextDataAsync(const std::string& component_id,
-                                    const std::string& key,
-                                    piper::ApiCallBack callback) override {}
+  void GetComponentContextDataAsync(
+      const std::string& component_id, const std::string& key,
+      runtime::js::ApiCallBack callback) override {}
   bool LoadDynamicComponentFromJS(
-      const std::string& url, const piper::ApiCallBack& callback,
+      const std::string& url, const runtime::js::ApiCallBack& callback,
       const std::vector<std::string>& ids) override {
     return true;
   }
   void LoadScriptAsync(const std::string& url,
-                       piper::ApiCallBack callback) override {}
+                       runtime::js::ApiCallBack callback) override {}
 
-  std::shared_ptr<piper::Buffer> LoadBytecode(const std::string& url) override {
+  std::shared_ptr<runtime::js::Buffer> LoadBytecode(
+      const std::string& url) override {
     return nullptr;
   }
 
   void AddFont(const lepus::Value& font,
-               const piper::ApiCallBack& callback) override {}
+               const runtime::js::ApiCallBack& callback) override {}
 
   void FetchBundle(
       const std::string& url,
@@ -77,18 +78,18 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   void UpdateComponentData(lynx::runtime::UpdateDataTask task) override {}
   void SelectComponent(const std::string& component_id,
                        const std::string& id_selector, const bool single,
-                       piper::ApiCallBack callBack) override {}
+                       runtime::js::ApiCallBack callBack) override {}
 
   // for SelectorQuery
   void InvokeUIMethod(tasm::NodeSelectRoot root,
                       tasm::NodeSelectOptions options, std::string method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack call_back) override {}
+                      runtime::js::ApiCallBack call_back) override {}
   void GetPathInfo(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
-                   piper::ApiCallBack call_back) override {}
+                   runtime::js::ApiCallBack call_back) override {}
   void GetFields(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
                  std::vector<std::string> fields,
-                 piper::ApiCallBack call_back) override {}
+                 runtime::js::ApiCallBack call_back) override {}
 
   // for element.animate
   void ElementAnimate(const std::string& component_id,
@@ -104,14 +105,14 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   void TriggerWorkletFunction(std::string component_id,
                               std::string worklet_module_name,
                               std::string method_name, lepus::Value args,
-                              piper::ApiCallBack callback) override {}
+                              runtime::js::ApiCallBack callback) override {}
   void RunOnJSThread(base::closure closure) override {}
   void RunOnJSThreadWhenIdle(base::closure closure) override { closure(); }
   void SetTiming(tasm::Timing timing) override {}
   void SetTimingWithTimingFlag(const tasm::timing::TimingFlag& timing_flag,
                                const std::string& timestamp_key,
                                tasm::timing::TimestampUs timestamp) override{};
-  void FlushJSBTiming(piper::NativeModuleInfo timing) override {}
+  void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override {}
   void ResetTimingBeforeReload() override {}
 
   void OnPipelineStart(
@@ -152,7 +153,7 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
 
   // for Fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value value,
-                       const piper::ApiCallBack& callback) override {}
+                       const runtime::js::ApiCallBack& callback) override {}
 
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) override {
@@ -176,11 +177,13 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
 
   std::string LoadJSSource(const std::string& name) override { return ""; }
 
-  void GetSessionStorageItem(const std::string& key,
-                             const piper::ApiCallBack& callback) override{};
+  void GetSessionStorageItem(
+      const std::string& key,
+      const runtime::js::ApiCallBack& callback) override{};
 
-  void SubscribeSessionStorage(const std::string&, double listener_id,
-                               const piper::ApiCallBack& callback) override{};
+  void SubscribeSessionStorage(
+      const std::string&, double listener_id,
+      const runtime::js::ApiCallBack& callback) override{};
 
   void AddJSBlockingTime(uint64_t enqueue_time) override{};
 

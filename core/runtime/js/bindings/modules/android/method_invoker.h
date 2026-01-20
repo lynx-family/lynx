@@ -26,8 +26,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using ErrorPair = std::pair<std::string, std::optional<base::LynxError>>;
 
 class PtrContainerMap {
@@ -100,6 +100,8 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
       context_finder_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_METHOD_INVOKER_H_

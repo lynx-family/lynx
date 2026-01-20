@@ -33,7 +33,7 @@ V8RuntimeProfilerWrapperImpl::~V8RuntimeProfilerWrapperImpl() {
 }
 
 void V8RuntimeProfilerWrapperImpl::Initialize(
-    std::shared_ptr<piper::V8IsolateInstance> vm) {
+    std::shared_ptr<runtime::js::V8IsolateInstance> vm) {
   if (is_inited_) {
     return;
   }
@@ -47,7 +47,7 @@ void V8RuntimeProfilerWrapperImpl::Initialize(
   v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
   cpu_profiler_ = v8::CpuProfiler::New(isolate);
-  title_ = piper::detail::V8Helper::ConvertToV8String(isolate, "v8");
+  title_ = runtime::js::detail::V8Helper::ConvertToV8String(isolate, "v8");
   is_inited_ = true;
 }
 

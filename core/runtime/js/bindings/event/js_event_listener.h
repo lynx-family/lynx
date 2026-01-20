@@ -14,12 +14,12 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class JSClosureEventListener : public event::EventListener {
  public:
   JSClosureEventListener(
-      std::shared_ptr<App>, const piper::Value&,
+      std::shared_ptr<App>, const Value&,
       const EventListener::Options& options = EventListener::Options());
   ~JSClosureEventListener() override = default;
 
@@ -27,16 +27,18 @@ class JSClosureEventListener : public event::EventListener {
 
   bool Matches(EventListener* listener) override;
 
-  piper::Value GetClosure();
+  Value GetClosure();
 
  private:
-  piper::Value ConvertEventToPiperValue(fml::RefPtr<event::Event> event);
+  Value ConvertEventToPiperValue(fml::RefPtr<event::Event> event);
 
   std::weak_ptr<App> native_app_;
-  piper::Value closure_;
+  Value closure_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_EVENT_JS_EVENT_LISTENER_H_

@@ -5,18 +5,18 @@
 #include "core/services/replay/lynx_replay_helper.h"
 
 namespace lynx {
-namespace piper {
-
-piper::Value ReplayHelper::convertRapidJsonStringToJSIValue(
-    Runtime &runtime, rapidjson::Value &value) {
+namespace runtime {
+namespace js {
+Value ReplayHelper::convertRapidJsonStringToJSIValue(Runtime &runtime,
+                                                     rapidjson::Value &value) {
   if (strcmp(value.GetString(), "NaN") == 0) {
-    return piper::Value(std::numeric_limits<double>::quiet_NaN());
+    return Value(std::numeric_limits<double>::quiet_NaN());
   }
-  return piper::String::createFromUtf8(runtime, value.GetString());
+  return String::createFromUtf8(runtime, value.GetString());
 }
 
-piper::Value ReplayHelper::convertRapidJsonNumberToJSIValue(
-    Runtime &runtime, rapidjson::Value &value) {
+Value ReplayHelper::convertRapidJsonNumberToJSIValue(Runtime &runtime,
+                                                     rapidjson::Value &value) {
   double v = 0;
   if (value.IsInt()) {
     v = value.GetInt();
@@ -31,12 +31,11 @@ piper::Value ReplayHelper::convertRapidJsonNumberToJSIValue(
   } else if (value.IsUint64()) {
     v = value.GetUint64();
   }
-  return piper::Value(v);
+  return Value(v);
 }
 
-std::optional<piper::Value>
-ReplayHelper::convertRapidJsonLynxValObjectToJSIValue(Runtime &runtime,
-                                                      rapidjson::Value &value) {
+std::optional<Value> ReplayHelper::convertRapidJsonLynxValObjectToJSIValue(
+    Runtime &runtime, rapidjson::Value &value) {
   if (value.GetType() != rapidjson::kObjectType ||
       !value.GetObject().HasMember("__lynx_val__")) {
     return std::nullopt;
@@ -45,40 +44,40 @@ ReplayHelper::convertRapidJsonLynxValObjectToJSIValue(Runtime &runtime,
   return convertRapidJsonObjectToJSIValue(runtime, lynx_val->value);
 }
 
-piper::Value ReplayHelper::convertRapidJsonObjectToJSIValue(
-    Runtime &runtime, rapidjson::Value &value) {
+Value ReplayHelper::convertRapidJsonObjectToJSIValue(Runtime &runtime,
+                                                     rapidjson::Value &value) {
   switch (value.GetType()) {
     case rapidjson::kStringType:
       return convertRapidJsonStringToJSIValue(runtime, value);
     case rapidjson::kNumberType:
       return convertRapidJsonNumberToJSIValue(runtime, value);
     case rapidjson::kNullType:
-      return piper::Value::null();
+      return Value::null();
     case rapidjson::kFalseType:
-      return piper::Value(false);
+      return Value(false);
     case rapidjson::kTrueType:
-      return piper::Value(true);
+      return Value(true);
     case rapidjson::kArrayType: {
       int length = value.Size();
       auto array_opt =
-          piper::Array::createWithLength(runtime, static_cast<size_t>(length));
+          Array::createWithLength(runtime, static_cast<size_t>(length));
       if (!array_opt) {
-        return piper::Value();
+        return Value();
       }
       for (int index = 0; index < length; index++) {
         array_opt->setValueAtIndex(
             runtime, index,
             convertRapidJsonObjectToJSIValue(runtime, value[index]));
       }
-      return piper::Value(*array_opt);
+      return Value(*array_opt);
     }
     case rapidjson::kObjectType: {
       auto lynx_val_obj =
           convertRapidJsonLynxValObjectToJSIValue(runtime, value);
       if (lynx_val_obj) {
-        return piper::Value(runtime, *lynx_val_obj);
+        return Value(runtime, *lynx_val_obj);
       }
-      piper::Object v(runtime);
+      Object v(runtime);
       for (auto p = value.GetObject().begin(); p != value.GetObject().end();
            p++) {
         v.setProperty(runtime, (*p).name.GetString(),
@@ -87,9 +86,11 @@ piper::Value ReplayHelper::convertRapidJsonObjectToJSIValue(
       return v;
     }
     default:
-      return piper::Value::undefined();
+      return Value::undefined();
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

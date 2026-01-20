@@ -14,10 +14,10 @@
 #include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 JSClosureEventListener::JSClosureEventListener(
-    std::shared_ptr<App> app, const piper::Value& closure,
+    std::shared_ptr<App> app, const Value& closure,
     const EventListener::Options& options)
     : event::EventListener(event::EventListener::Type::kJSClosureEventListener,
                            options),
@@ -29,7 +29,7 @@ JSClosureEventListener::JSClosureEventListener(
   if (rt == nullptr) {
     return;
   }
-  closure_ = piper::Value(*rt, closure);
+  closure_ = Value(*rt, closure);
 }
 
 void JSClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
@@ -57,7 +57,7 @@ void JSClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
       page_options, tasm::timing::kJSFuncTask,
       tasm::timing::kTaskNameJSEventListenerInvoke,
       event ? event->type() : "null");
-  piper::Scope scope(*rt);
+  Scope scope(*rt);
 
   auto func = closure_.getObject(*rt).asFunction(*rt);
   if (!func) {
@@ -65,7 +65,7 @@ void JSClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
     return;
   }
 
-  const piper::Value args[1] = {ConvertEventToPiperValue(event)};
+  const Value args[1] = {ConvertEventToPiperValue(event)};
   size_t count = 1;
   func->call(*rt, args, count);
 }
@@ -91,23 +91,23 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
     return false;
   }
 
-  return piper::Value::strictEquals(*rt, closure_, other->closure_) &&
+  return Value::strictEquals(*rt, closure_, other->closure_) &&
          options_.flags == other->GetOptions().flags;
 }
 
-piper::Value JSClosureEventListener::GetClosure() {
+Value JSClosureEventListener::GetClosure() {
   auto native_app = native_app_.lock();
   std::shared_ptr<Runtime> rt = nullptr;
   if (native_app && !native_app->IsDestroying()) {
     rt = native_app->GetRuntime();
   }
   if (rt == nullptr) {
-    return piper::Value::undefined();
+    return Value::undefined();
   }
-  return piper::Value(*rt, closure_);
+  return Value(*rt, closure_);
 }
 
-piper::Value JSClosureEventListener::ConvertEventToPiperValue(
+Value JSClosureEventListener::ConvertEventToPiperValue(
     fml::RefPtr<event::Event> event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               CLOSURE_EVENT_LISTENER_CONVERT_TO_PIPER_VALUE);
@@ -117,24 +117,26 @@ piper::Value JSClosureEventListener::ConvertEventToPiperValue(
     rt = app->GetRuntime();
   }
   if (rt == nullptr || event == nullptr || app == nullptr) {
-    return piper::Value::undefined();
+    return Value::undefined();
   }
-  piper::Object obj(*rt);
+  Object obj(*rt);
   if (event->event_type() == event::Event::EventType::kMessageEvent) {
     auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
     obj.setProperty(*rt, runtime::kType,
-                    piper::String::createFromUtf8(*rt, message_event->type()));
+                    String::createFromUtf8(*rt, message_event->type()));
     obj.setProperty(
         *rt, runtime::kData,
         pub::ValueUtils::ConvertValueToPiperValue(
             *rt, *message_event->message(), app->jsi_object_wrapper_manager()));
     obj.setProperty(
         *rt, runtime::kOrigin,
-        piper::String::createFromUtf8(*rt, message_event->GetOriginString()));
+        String::createFromUtf8(*rt, message_event->GetOriginString()));
   }
 
-  return piper::Value(*rt, obj);
+  return Value(*rt, obj);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

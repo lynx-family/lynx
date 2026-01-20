@@ -20,13 +20,10 @@ namespace lynx {
 namespace lepus {
 class Value;
 }
-namespace piper {
-class NativeModuleFactory;
-}
 namespace harmony {
 class ModuleFactoryHarmony;
 
-class NativeModuleHarmony : public piper::LynxNativeModule {
+class NativeModuleHarmony : public runtime::LynxNativeModule {
  public:
   NativeModuleHarmony(const std::shared_ptr<PlatformModuleManager>& manager,
                       napi_env env, const std::string& name, bool sendable,
@@ -34,7 +31,7 @@ class NativeModuleHarmony : public piper::LynxNativeModule {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
   void Destroy() override;
 
@@ -46,7 +43,7 @@ class NativeModuleHarmony : public piper::LynxNativeModule {
       const std::string& module_name, bool sendable, napi_env env,
       const lepus::Value& lepus_argv, const std::string& method_name,
       const std::weak_ptr<Delegate>& delegate,
-      const piper::CallbackMap& callbacks, uint64_t flow_id,
+      const runtime::CallbackMap& callbacks, uint64_t flow_id,
       const std::string& first_arg);
 
   std::shared_ptr<PlatformModuleManager> platform_manager_;

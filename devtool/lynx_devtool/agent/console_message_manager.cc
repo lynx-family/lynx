@@ -19,11 +19,11 @@ static constexpr std::string_view kLogError = "error";
 // lynx_console.cc)
 std::string_view MessageLogLevel(int level) {
   switch (level) {
-    case lynx::piper::CONSOLE_LOG_VERBOSE:
+    case lynx::runtime::js::CONSOLE_LOG_VERBOSE:
       return kLogVerbose;
-    case lynx::piper::CONSOLE_LOG_WARNING:
+    case lynx::runtime::js::CONSOLE_LOG_WARNING:
       return kLogWarning;
-    case lynx::piper::CONSOLE_LOG_ERROR:
+    case lynx::runtime::js::CONSOLE_LOG_ERROR:
       return kLogError;
     default:
       return kLogInfo;
@@ -48,14 +48,15 @@ void ConsoleMessageManager::EnableConsoleLog(
 void ConsoleMessageManager::DisableConsoleLog() { enable_ = false; }
 
 void ConsoleMessageManager::LogEntryAdded(
-    const lynx::piper::ConsoleMessage& message) {
+    const lynx::runtime::js::ConsoleMessage& message) {
   if (enable_) {
     PostLog(message);
   }
   CacheLog(message);
 }
 
-void ConsoleMessageManager::CacheLog(const piper::ConsoleMessage& message) {
+void ConsoleMessageManager::CacheLog(
+    const runtime::js::ConsoleMessage& message) {
   static constexpr int32_t MAX_MSG_NUM = 500;
   if (log_messages_.size() >= MAX_MSG_NUM) {
     log_messages_.pop_front();
@@ -71,7 +72,8 @@ void ConsoleMessageManager::FireCacheLogs() {
 
 void ConsoleMessageManager::ClearConsoleMessages() { log_messages_.clear(); }
 
-void ConsoleMessageManager::PostLog(const piper::ConsoleMessage& message) {
+void ConsoleMessageManager::PostLog(
+    const runtime::js::ConsoleMessage& message) {
   auto devtool_mediator = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
 

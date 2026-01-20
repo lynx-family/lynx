@@ -17,7 +17,7 @@ LynxModuleBase::LynxModuleBase(uint32_t view_context_id,
 LynxModuleBase::~LynxModuleBase() = default;
 
 void LynxModuleBase::RegisterInvocation(
-    const lynx::piper::NativeModuleMethod& method, Invocation&& invocation) {
+    const lynx::runtime::NativeModuleMethod& method, Invocation&& invocation) {
   FML_DCHECK(methods_.find(method.name) == methods_.end());
   invocations_.emplace(method.name, std::move(invocation));
   methods_.emplace(method.name, std::move(method));
@@ -27,7 +27,7 @@ lynx::base::expected<std::unique_ptr<lynx::pub::Value>, std::string>
 LynxModuleBase::InvokeMethod(const std::string& method_name,
                              std::unique_ptr<lynx::pub::Value> args,
                              size_t count,
-                             const lynx::piper::CallbackMap& callbacks) {
+                             const lynx::runtime::CallbackMap& callbacks) {
   if (!task_runner_) {
     return std::unique_ptr<lynx::pub::Value>(nullptr);
   }

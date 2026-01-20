@@ -88,8 +88,8 @@ NS_ASSUME_NONNULL_BEGIN
   CGSize _intrinsicContentSize;
   std::unique_ptr<lynx::shell::LynxShell> shell_;
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;
-  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> module_factory_;
-  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> main_thread_module_factory_;
+  std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin> module_factory_;
+  std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin> main_thread_module_factory_;
   id<LynxUIRendererProtocol> _lynxUIRenderer;
   // property
   NSMutableDictionary* _extra;
@@ -125,7 +125,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _debuggable;
 }
 
-- (lynx::piper::ModuleFactoryDarwin*)getModuleFactory;
+- (lynx::runtime::js::ModuleFactoryDarwin*)getModuleFactory;
 
 - (LynxLifecycleDispatcher*)getLifecycleDispatcher;
 

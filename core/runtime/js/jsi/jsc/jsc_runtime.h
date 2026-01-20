@@ -25,8 +25,8 @@
 #include "core/runtime/js/jsi/jslib.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 namespace detail {
 struct JSCHostObjectProxy;
 class JSCHostFunctionProxy;
@@ -100,7 +100,7 @@ class JSCRuntime : public Runtime {
   PropNameID createPropNameIDFromUtf8(const uint8_t* utf8,
                                       size_t length) override;
 
-  PropNameID createPropNameIDFromString(const piper::String& str) override;
+  PropNameID createPropNameIDFromString(const String& str) override;
 
   std::string utf8(const PropNameID&) override;
 
@@ -108,12 +108,11 @@ class JSCRuntime : public Runtime {
 
   std::optional<std::string> symbolToString(const Symbol&) override;
 
-  piper::String createStringFromAscii(const char* str, size_t length) override;
+  String createStringFromAscii(const char* str, size_t length) override;
 
-  piper::String createStringFromUtf8(const uint8_t* utf8,
-                                     size_t length) override;
+  String createStringFromUtf8(const uint8_t* utf8, size_t length) override;
 
-  std::string utf8(const piper::String&) override;
+  std::string utf8(const String&) override;
 
   Object createObject() override;
 
@@ -123,17 +122,16 @@ class JSCRuntime : public Runtime {
 
   virtual HostFunctionType& getHostFunction(const Function&) override;
 
-  std::optional<Value> getProperty(const Object&,
-                                   const piper::String& name) override;
+  std::optional<Value> getProperty(const Object&, const String& name) override;
 
   std::optional<Value> getProperty(const Object&,
                                    const PropNameID& name) override;
 
-  bool hasProperty(const Object&, const piper::String& name) override;
+  bool hasProperty(const Object&, const String& name) override;
 
   bool hasProperty(const Object&, const PropNameID& name) override;
 
-  bool setPropertyValue(Object&, const piper::String& name,
+  bool setPropertyValue(Object&, const String& name,
                         const Value& value) override;
 
   bool setPropertyValue(Object&, const PropNameID& name,
@@ -153,11 +151,11 @@ class JSCRuntime : public Runtime {
 
   std::optional<Array> createArray(size_t length) override;
 
-  piper::ArrayBuffer createArrayBufferCopy(const uint8_t* bytes,
-                                           size_t byte_length) override;
+  ArrayBuffer createArrayBufferCopy(const uint8_t* bytes,
+                                    size_t byte_length) override;
 
-  piper::ArrayBuffer createArrayBufferNoCopy(
-      std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) override;
+  ArrayBuffer createArrayBufferNoCopy(std::unique_ptr<const uint8_t[]> bytes,
+                                      size_t byte_length) override;
 
   std::optional<BigInt> createBigInt(const std::string& value,
                                      Runtime& rt) override;
@@ -190,7 +188,7 @@ class JSCRuntime : public Runtime {
 
   bool strictEquals(const Symbol&, const Symbol&) const override;
 
-  bool strictEquals(const piper::String&, const piper::String&) const override;
+  bool strictEquals(const String&, const String&) const override;
 
   bool strictEquals(const Object&, const Object&) const override;
 
@@ -211,6 +209,8 @@ class JSCRuntime : public Runtime {
   uint64_t jsc_object_id_generator_{0};
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSC_JSC_RUNTIME_H_

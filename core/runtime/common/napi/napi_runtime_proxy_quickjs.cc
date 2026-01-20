@@ -7,8 +7,8 @@
 #include "core/runtime/common/napi/shim/shim_napi_env_quickjs.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyQuickjs::Create(
     LEPUSContext* context, runtime::TemplateDelegate* delegate) {
@@ -27,5 +27,7 @@ void NapiRuntimeProxyQuickjs::Detach() {
   napi_detach_quickjs(env_);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

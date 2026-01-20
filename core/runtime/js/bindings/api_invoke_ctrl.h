@@ -6,7 +6,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 const char* TAG = "ApiInvokeCtrl";
 
 const char* FLAG_CALLBACK_ID = "callbackID";
@@ -19,6 +20,8 @@ class ApiInvokeCtrl {
  public:
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_API_INVOKE_CTRL_H_

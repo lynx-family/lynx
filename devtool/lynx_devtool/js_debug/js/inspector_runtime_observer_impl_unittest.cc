@@ -52,7 +52,7 @@ TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {
   devtool_->devtool_mediator_->devtool_executor_->console_msg_manager_
       ->enable_ = true;
 
-  observer_->OnRuntimeCreated(piper::JSRuntimeType::v8);
+  observer_->OnRuntimeCreated(runtime::js::JSRuntimeType::v8);
   sleep(1);
   std::string result1 = MockReceiver::GetInstance().received_message_.second;
   Json::Value json_res1;
@@ -67,7 +67,7 @@ TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {
   EXPECT_EQ(text1, expected_text1);
 
   MockReceiver::GetInstance().received_message_ = {"", ""};
-  observer_->OnRuntimeCreated(piper::JSRuntimeType::jsc);
+  observer_->OnRuntimeCreated(runtime::js::JSRuntimeType::jsc);
   sleep(1);
   std::string result2 = MockReceiver::GetInstance().received_message_.second;
   Json::Value json_res2;
@@ -82,7 +82,7 @@ TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {
   EXPECT_EQ(text2, expected_text2);
 
   MockReceiver::GetInstance().received_message_ = {"", ""};
-  observer_->OnRuntimeCreated(piper::JSRuntimeType::quickjs);
+  observer_->OnRuntimeCreated(runtime::js::JSRuntimeType::quickjs);
   sleep(1);
   std::string result3 = MockReceiver::GetInstance().received_message_.second;
   Json::Value json_res3;
@@ -97,7 +97,7 @@ TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {
   EXPECT_EQ(text3, expected_text3);
 
   MockReceiver::GetInstance().received_message_ = {"", ""};
-  observer_->OnRuntimeCreated(piper::JSRuntimeType::jsvm);
+  observer_->OnRuntimeCreated(runtime::js::JSRuntimeType::jsvm);
   sleep(1);
   std::string result4 = MockReceiver::GetInstance().received_message_.second;
   Json::Value json_res4;

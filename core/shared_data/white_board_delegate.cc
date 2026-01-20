@@ -101,7 +101,7 @@ lepus::Value WhiteBoardDelegate::GetSessionStorageItem(const std::string& key) {
 
 void WhiteBoardDelegate::SubscribeJSSessionStorage(
     const std::string& key, double listener_id,
-    const piper::ApiCallBack& callback) {
+    const runtime::js::ApiCallBack& callback) {
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, WHITE_BOARD_DELEGATE_SUBSCRIBE_JS_SESSION_STORAGE,
       [&key, &listener_id,

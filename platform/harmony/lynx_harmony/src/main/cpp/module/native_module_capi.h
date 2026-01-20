@@ -16,19 +16,19 @@
 namespace lynx {
 namespace harmony {
 
-class NativeModuleCAPI : public piper::LynxNativeModule {
+class NativeModuleCAPI : public runtime::LynxNativeModule {
  public:
   ~NativeModuleCAPI() override = default;
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
  protected:
   // Register your own invocation. You can varify method by NativeModuleMethod
   void RegisterMethod(
-      const piper::NativeModuleMethod& method,
-      piper::LynxNativeModule::NativeModuleInvocation invocation) {
+      const runtime::NativeModuleMethod& method,
+      runtime::LynxNativeModule::NativeModuleInvocation invocation) {
     methods_.emplace(method.name, method);
     invocations_.emplace(method.name, std::move(invocation));
   }

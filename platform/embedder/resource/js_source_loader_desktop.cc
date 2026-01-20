@@ -19,7 +19,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 // JSSourceLoaderDesktop is used for windows,
 // and Chinese path problems need to be considered
 std::string JSSourceLoaderDesktop::LoadFileData(const std::string& path) {
@@ -133,5 +134,7 @@ std::string JSSourceLoaderDesktop::LoadJSSource(const std::string& path) {
   return res;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

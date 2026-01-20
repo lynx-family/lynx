@@ -73,7 +73,7 @@ public class LynxJSIObjectHub {
 
   /**
    * Type of JSIObject field
-   * assign with lynx::piper::LynxPlatformJSIObjectAndroid::JObjectType in native
+   * assign with lynx::runtime::js::LynxPlatformJSIObjectAndroid::JObjectType in native
    */
   private enum JObjectType {
     UNKNOWN_TYPE,

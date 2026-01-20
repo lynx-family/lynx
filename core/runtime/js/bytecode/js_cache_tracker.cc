@@ -11,7 +11,8 @@
 #include "core/services/event_report/event_tracker_platform_impl.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 using tasm::report::EventTrackerPlatformImpl;
 using tasm::report::MoveOnlyEvent;
@@ -149,5 +150,6 @@ void JsCacheTracker::OnCleanUp(JSRuntimeType runtime_type, int file_count,
 }
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

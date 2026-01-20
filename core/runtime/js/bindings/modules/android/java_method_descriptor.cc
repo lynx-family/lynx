@@ -16,8 +16,8 @@ bool RegisterJNIForMethodDescriptor(JNIEnv* env) {
 }  // namespace lynx
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::string JavaMethodDescriptor::getName() {
   JNIEnv* env = base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jstring> obj =
@@ -44,5 +44,7 @@ JavaMethodDescriptor::getMethod() {
   return Java_MethodDescriptor_getMethod(env, wrapper_.Get());
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

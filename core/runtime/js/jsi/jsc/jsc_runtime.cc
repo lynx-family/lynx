@@ -28,8 +28,8 @@
 #include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using detail::JSCHelper;
 using detail::JSCHostFunctionProxy;
 using detail::JSCHostObjectProxy;
@@ -201,7 +201,7 @@ PropNameID JSCRuntime::createPropNameIDFromUtf8(const uint8_t* utf8,
   return res;
 }
 
-PropNameID JSCRuntime::createPropNameIDFromString(const piper::String& str) {
+PropNameID JSCRuntime::createPropNameIDFromString(const String& str) {
   return JSCHelper::createPropNameID(objectCounter(),
                                      JSCHelper::stringRef(str));
 }
@@ -236,7 +236,7 @@ String JSCRuntime::createStringFromUtf8(const uint8_t* str, size_t length) {
   return result;
 }
 
-std::string JSCRuntime::utf8(const piper::String& str) {
+std::string JSCRuntime::utf8(const String& str) {
   return JSCHelper::JSStringToSTLString(JSCHelper::stringRef(str));
 }
 
@@ -265,7 +265,7 @@ HostFunctionType& JSCRuntime::getHostFunction(const Function& obj) {
 }
 
 std::optional<Value> JSCRuntime::getProperty(const Object& obj,
-                                             const piper::String& name) {
+                                             const String& name) {
   JSObjectRef objRef = JSCHelper::objectRef(obj);
   JSValueRef exc = nullptr;
   JSValueRef result = JSObjectGetProperty(ctx_->getContext(), objRef,
@@ -290,13 +290,13 @@ std::optional<Value> JSCRuntime::getProperty(const Object& obj,
   return JSCHelper::createValue(*this, result);
 }
 
-bool JSCRuntime::hasProperty(const Object& obj, const piper::String& name) {
+bool JSCRuntime::hasProperty(const Object& obj, const String& name) {
   JSObjectRef objRef = JSCHelper::objectRef(obj);
   return JSObjectHasProperty(ctx_->getContext(), objRef,
                              JSCHelper::stringRef(name));
 }
 
-bool JSCRuntime::hasProperty(const Object& obj, const piper::PropNameID& name) {
+bool JSCRuntime::hasProperty(const Object& obj, const PropNameID& name) {
   JSObjectRef objRef = JSCHelper::objectRef(obj);
   return JSObjectHasProperty(ctx_->getContext(), objRef,
                              JSCHelper::stringRef(name));
@@ -351,7 +351,7 @@ std::optional<BigInt> JSCRuntime::createBigInt(const std::string& value,
                                                Runtime& rt) {
   JSValueRef exc = nullptr;
   JSObjectRef obj = JSObjectMake(ctx_->getContext(), 0, nullptr);
-  piper::String big_int_str = String::createFromUtf8(rt, value);
+  String big_int_str = String::createFromUtf8(rt, value);
   JSStringRef str = JSCHelper::stringRef(big_int_str);
   JSStringRef big_int_key = JSCHelper::getJSStringFromPool("__lynx_val__");
 
@@ -362,12 +362,12 @@ std::optional<BigInt> JSCRuntime::createBigInt(const std::string& value,
   JSStringRef to_string_ref = JSCHelper::getJSStringFromPool("toString");
   const PropNameID prop = PropNameID::forUtf8(rt, "toString");
   // create "toString" function
-  Value fun_val = piper::Function::createFromHostFunction(
+  Value fun_val = Function::createFromHostFunction(
       rt, prop, 0,
       [value](Runtime& rt, const Value& thisVal, const Value* args,
               size_t count) -> base::expected<Value, JSINativeException> {
-        piper::String res = String::createFromUtf8(rt, value);
-        return piper::Value(rt, res);
+        String res = String::createFromUtf8(rt, value);
+        return Value(rt, res);
       });
 
   // add "toString" property to js object as a function
@@ -743,8 +743,7 @@ bool JSCRuntime::strictEquals(const Symbol& a, const Symbol& b) const {
   return ret;
 }
 
-bool JSCRuntime::strictEquals(const piper::String& a,
-                              const piper::String& b) const {
+bool JSCRuntime::strictEquals(const String& a, const String& b) const {
   return JSStringIsEqual(JSCHelper::stringRef(a), JSCHelper::stringRef(b));
 }
 
@@ -795,5 +794,7 @@ std::unique_ptr<Runtime> makeJSCRuntime() {
   return std::make_unique<JSCRuntime>();
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

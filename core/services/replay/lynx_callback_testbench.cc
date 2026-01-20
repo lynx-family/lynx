@@ -6,8 +6,8 @@
 #include "core/services/replay/lynx_replay_helper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 ModuleCallbackTestBench::ModuleCallbackTestBench(int64_t callback_id)
     : ModuleCallback(callback_id) {}
 
@@ -17,10 +17,10 @@ void ModuleCallbackTestBench::Invoke(Runtime *runtime,
     LOGE("lynx ModuleCallback has null runtime or null function");
     return;
   }
-  piper::Runtime *rt = runtime;
-  piper::Value args =
-      ReplayHelper::convertRapidJsonObjectToJSIValue(*rt, argument);
+  Runtime *rt = runtime;
+  Value args = ReplayHelper::convertRapidJsonObjectToJSIValue(*rt, argument);
   holder->function_.call(*rt, args);
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

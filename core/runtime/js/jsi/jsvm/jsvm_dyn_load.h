@@ -17,7 +17,8 @@
 #include "base/include/log/logging.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 static constexpr int kMinMajorVersion = 5;
 static constexpr int kMinSeniorVersion = 0;
 static constexpr int kMinFeatureVersion = 5;
@@ -166,7 +167,8 @@ class DynamicLoader {
   void* handle_{nullptr};
   JSVMFunctionTable* jsvm_func_table_{nullptr};
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_DYN_LOAD_H_

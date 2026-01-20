@@ -170,7 +170,7 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
       component_moulds_{};
 
   // JS fields.
-  piper::JsBundle js_bundle_;
+  runtime::js::JsBundle js_bundle_;
 
   // Dynamic Component fields.
   std::unordered_map<int32_t, std::shared_ptr<DynamicComponentMould>>

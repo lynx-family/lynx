@@ -12,7 +12,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSVMException : JSError {
  public:
   JSVMException(JSVMRuntime& rt, JSVM_Value value)
@@ -20,6 +21,7 @@ class JSVMException : JSError {
   static bool ReportExceptionIfNeeded(JSVMRuntime* rt);
   static JSVM_Value TryCatch(JSVM_Env env);
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_EXCEPTION_H_

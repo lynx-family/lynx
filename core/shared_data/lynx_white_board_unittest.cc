@@ -58,7 +58,7 @@ TEST_F(LynxWhiteBoardTest, RegisterJSSharedDataListenerRule0) {
   WhiteBoard white_board;
   base::String key = base::String("name");
   lepus::Value value = lepus::Value("value");
-  piper::ApiCallBack callback;
+  runtime::js::ApiCallBack callback;
   base::MoveOnlyClosure<void, const pub::Value&> trigger_callback =
       [](const pub::Value& value) {
 
@@ -91,7 +91,7 @@ TEST(WhiteBoardTasmDelegateTest, TestCallJSApiCallbackWithValue) {
 
   WhiteBoardTasmDelegate delegate(tasm, white_board);
 
-  piper::ApiCallBack callback;
+  runtime::js::ApiCallBack callback;
   lepus::Value param;
 
   delegate.CallJSApiCallbackWithValue(callback, param);
@@ -103,7 +103,7 @@ TEST(WhiteBoardTasmDelegateTest, TestRemoveJSApiCallback) {
 
   WhiteBoardTasmDelegate delegate(tasm, white_board);
 
-  piper::ApiCallBack callback;
+  runtime::js::ApiCallBack callback;
 
   delegate.RemoveJSApiCallback(callback);
 }
@@ -128,7 +128,7 @@ TEST(WhiteBoardRuntimeDelegateTest, CallJSApiCallbackWithValue) {
   std::shared_ptr<WhiteBoard> white_board;
   WhiteBoardRuntimeDelegate delegate(white_board);
 
-  piper::ApiCallBack callback;
+  runtime::js::ApiCallBack callback;
   lepus::Value param;
 
   delegate.CallJSApiCallbackWithValue(callback, param);
@@ -138,7 +138,7 @@ TEST(WhiteBoardRuntimeDelegateTest, RemoveJSApiCallback) {
   std::shared_ptr<WhiteBoard> white_board;
   WhiteBoardRuntimeDelegate delegate(white_board);
 
-  piper::ApiCallBack callback;
+  runtime::js::ApiCallBack callback;
 
   delegate.RemoveJSApiCallback(callback);
 }

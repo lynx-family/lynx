@@ -17,8 +17,8 @@ bool RegisterJNIForILynxJSIObjectDescriptor(JNIEnv* env) {
 }  // namespace lynx
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::vector<std::string> LynxJSIObjectDescriptor::GetJSPropertyDescriptorInfo(
     JNIEnv* env, const std::string& field_name) {
   if (jsi_object_descriptor_.IsNull()) {
@@ -32,5 +32,7 @@ std::vector<std::string> LynxJSIObjectDescriptor::GetJSPropertyDescriptorInfo(
       env, j_field_info.Get());
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

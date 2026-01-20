@@ -16,7 +16,8 @@
 #include "core/template_bundle/template_codec/version.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace quickjs {
 // `QuickjsBytecodeProvider` provides an interface for encoding and
 // decoding JS binary bytecode buffers. Compared with bytecode encoding and
@@ -111,7 +112,8 @@ class QuickjsBytecodeProvider final {
   explicit QuickjsBytecodeProvider(Bytecode &&bytecode);
 };
 }  // namespace quickjs
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_QUICKJS_BYTECODE_QUICKJS_BYTECODE_PROVIDER_H_

@@ -22,8 +22,9 @@
 
 namespace lynx {
 
-namespace piper {
+namespace runtime {
 
+namespace js {
 using CallbackHolders =
     std::unordered_map<uint64_t, std::shared_ptr<ModuleCallbackAndroid>>;
 
@@ -54,7 +55,7 @@ class LynxModuleAndroid
   void EnterInvokeScope(
       Runtime *rt, std::shared_ptr<ModuleDelegate> module_delegate) override;
   void ExitInvokeScope() override;
-  std::optional<piper::Value> TryGetPromiseRet() override;
+  std::optional<Value> TryGetPromiseRet() override;
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string &method_name, std::unique_ptr<pub::Value> args,
@@ -73,8 +74,8 @@ class LynxModuleAndroid
   // for timing api & native promise
   // TODO(zhangqun.29) We will remove this method after remove native promise
   std::vector<Runtime *> scope_rts_;
-  std::vector<piper::NativeModuleInfoCollectorPtr> scope_timing_collectors_;
-  std::vector<std::optional<piper::Value>> scope_native_promise_rets_;
+  std::vector<NativeModuleInfoCollectorPtr> scope_timing_collectors_;
+  std::vector<std::optional<Value>> scope_native_promise_rets_;
   // TODO(zhangqun.29) LynxNativeModule::Delegate does not have OnErrorOccurred
   // & OnMethodInvoked methods, and the delegate will be removed later.
   std::shared_ptr<ModuleDelegate> legacy_module_delegate_;
@@ -89,7 +90,7 @@ class LynxModuleAndroid
   // Whether the Module has registered the Auth Validator
   bool has_auth_validator_ = false;
 
-  base::expected<piper::Value, std::string> CreateLynxNativePromise(
+  base::expected<Value, std::string> CreateLynxNativePromise(
       const std::shared_ptr<MethodInvoker> &invoker, jobject module,
       const pub::Value *method_args, size_t args_count,
       const CallbackMap &callbacks);
@@ -112,7 +113,7 @@ class LynxModuleAndroid
     return nullptr;
   }
 
-  inline piper::NativeModuleInfoCollectorPtr GetScopeTimingCollector() {
+  inline NativeModuleInfoCollectorPtr GetScopeTimingCollector() {
     if (!scope_timing_collectors_.empty()) {
       auto scope_timing_collector = scope_timing_collectors_.back();
       return scope_timing_collector;
@@ -121,7 +122,9 @@ class LynxModuleAndroid
   }
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_LYNX_MODULE_ANDROID_H_

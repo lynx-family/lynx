@@ -16,7 +16,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 
 #if V8_MAJOR_VERSION >= 14
@@ -28,7 +29,7 @@ namespace detail {
 #endif
 
 V8HostObjectProxy::V8HostObjectProxy(V8Runtime* rt,
-                                     std::shared_ptr<piper::HostObject> sho)
+                                     std::shared_ptr<HostObject> sho)
     : HostObjectWrapperBase(rt, std::move(sho)){};
 
 v8_property_result V8HostObjectProxy::getProperty(
@@ -46,10 +47,10 @@ v8_property_result V8HostObjectProxy::getProperty(
   }
 
 #if OS_ANDROID
-  piper::Value va = lock_host_object->get(
+  Value va = lock_host_object->get(
       rt, V8Helper::createPropNameID(property, info.GetIsolate()));
 #else
-  piper::Value va = lock_host_object->get(
+  Value va = lock_host_object->get(
       rt, V8Helper::createPropNameID(property, rt->getContext()));
 #endif
   info.GetReturnValue().Set(rt->valueRef(va));
@@ -101,13 +102,13 @@ void V8HostObjectProxy::getPropertyNames(
 
   std::vector<PropNameID> names = lock_host_object->getPropertyNames(*rt);
 
-  auto ary = piper::Array::createWithLength(*rt, names.size());
+  auto ary = Array::createWithLength(*rt, names.size());
   if (!ary) {
     return;
   }
   for (size_t i = 0; i < names.size(); i++) {
     if (!(*ary).setValueAtIndex(
-            *rt, i, piper::String::createFromUtf8(*rt, names[i].utf8(*rt)))) {
+            *rt, i, String::createFromUtf8(*rt, names[i].utf8(*rt)))) {
       return;
     }
   }
@@ -124,9 +125,9 @@ void V8HostObjectProxy::onFinalize(
   delete proxy;
 }
 
-piper::Object V8HostObjectProxy::createObject(
-    V8Runtime* rt, v8::Local<v8::Context> context,
-    std::shared_ptr<piper::HostObject> ho) {
+Object V8HostObjectProxy::createObject(V8Runtime* rt,
+                                       v8::Local<v8::Context> context,
+                                       std::shared_ptr<HostObject> ho) {
   ENTER_SCOPE(context)
 
   v8::Local<v8::ObjectTemplate> object_template = rt->GetHostObjectTemplate();
@@ -156,5 +157,6 @@ piper::Object V8HostObjectProxy::createObject(
 }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

@@ -7,7 +7,8 @@
 #include <vector>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 Value TextCodecHelper::get(Runtime* rt, const PropNameID& name) {
   auto methodName = name.utf8(*rt);
 
@@ -17,7 +18,7 @@ Value TextCodecHelper::get(Runtime* rt, const PropNameID& name) {
         [](Runtime& rt, const Value& thisVal, const Value* args,
            size_t count) -> base::expected<Value, JSINativeException> {
           if (count == 0) {
-            return piper::String::createFromUtf8(rt, "");
+            return String::createFromUtf8(rt, "");
           }
 
           if (count != 1) {
@@ -32,8 +33,7 @@ Value TextCodecHelper::get(Runtime* rt, const PropNameID& name) {
           }
 
           const auto& buffer = obj.asObject(rt)->getArrayBuffer(rt);
-          return piper::String::createFromUtf8(rt, buffer.data(rt),
-                                               buffer.size(rt));
+          return String::createFromUtf8(rt, buffer.data(rt), buffer.size(rt));
         });
   }
 
@@ -53,21 +53,23 @@ Value TextCodecHelper::get(Runtime* rt, const PropNameID& name) {
                 "TextEncoder().decode only support string"));
           }
           const auto& string = obj.toString(rt)->utf8(rt);
-          return piper::ArrayBuffer(
-              rt, reinterpret_cast<const uint8_t*>(string.c_str()),
-              string.size());
+          return ArrayBuffer(rt,
+                             reinterpret_cast<const uint8_t*>(string.c_str()),
+                             string.size());
         });
   }
 
-  return piper::Value::undefined();
+  return Value::undefined();
 }
 
 std::vector<PropNameID> TextCodecHelper::getPropertyNames(Runtime& rt) {
   std::vector<PropNameID> vec;
-  vec.push_back(piper::PropNameID::forUtf8(rt, "decode"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "encode"));
+  vec.push_back(PropNameID::forUtf8(rt, "decode"));
+  vec.push_back(PropNameID::forUtf8(rt, "encode"));
   return vec;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

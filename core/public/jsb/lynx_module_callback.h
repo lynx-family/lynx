@@ -11,8 +11,7 @@
 #include "core/public/pub_value.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
 class LynxModuleCallback {
  public:
   enum class Type {
@@ -44,7 +43,7 @@ class LynxModuleCallback {
 using CallbackMap =
     std::unordered_map<int64_t, std::shared_ptr<LynxModuleCallback>>;
 
-}  // namespace piper
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_PUBLIC_JSB_LYNX_MODULE_CALLBACK_H_

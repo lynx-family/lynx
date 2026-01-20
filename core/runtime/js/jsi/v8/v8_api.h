@@ -15,13 +15,15 @@
 #include "core/runtime/profile/v8/v8_runtime_profiler_wrapper.h"
 
 namespace lynx {
-namespace piper {
-
-std::unique_ptr<piper::Runtime> makeV8Runtime();
+namespace runtime {
+namespace js {
+std::unique_ptr<Runtime> makeV8Runtime();
 
 std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>
-makeV8RuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context);
+makeV8RuntimeProfiler(std::shared_ptr<JSIContext> js_context);
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_API_H_

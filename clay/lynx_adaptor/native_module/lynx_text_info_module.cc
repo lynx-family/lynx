@@ -13,9 +13,9 @@ const std::string LynxTextInfoModule::name_ = "LynxTextInfoModule";
 
 LynxTextInfoModule::LynxTextInfoModule(uint32_t view_context_id) {
   view_context_id_ = view_context_id;
-  lynx::piper::NativeModuleMethod get_text_info("getTextInfo", 2);
+  lynx::runtime::NativeModuleMethod get_text_info("getTextInfo", 2);
   // RegisterMethod(get_text_info, &LynxTextInfoModule::GetTextInfo);
-  auto method = piper::NativeModuleMethod("getTextInfo", 2);
+  auto method = runtime::NativeModuleMethod("getTextInfo", 2);
   methods_.emplace("getTextInfo", method);
 }
 
@@ -29,7 +29,7 @@ std::unique_ptr<pub::Value> LynxTextInfoModule::GetTextInfo(
 base::expected<std::unique_ptr<pub::Value>, std::string>
 LynxTextInfoModule::InvokeMethod(const std::string& method_name,
                                  std::unique_ptr<pub::Value> args, size_t count,
-                                 const piper::CallbackMap& callbacks) {
+                                 const runtime::CallbackMap& callbacks) {
   if (method_name == "getTextInfo") {
     if (!args->IsArray() || count != 2) {
       return base::unexpected("Invalid argument count");

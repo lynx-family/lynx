@@ -18,9 +18,11 @@ namespace lynx {
 namespace lepus {
 class Value;
 }
-namespace piper {
+namespace runtime {
+namespace js {
 class JSIObjectWrapperManager;
 }
+}  // namespace runtime
 namespace base {
 namespace android {
 class JavaValue;
@@ -42,21 +44,22 @@ class ValueUtils {
       const Value& value,
       std::vector<std::unique_ptr<pub::Value>>* prev_value_vector = nullptr,
       int depth = 0);
-  static piper::Value ConvertValueToPiperValue(
-      piper::Runtime& rt, const Value& value,
-      piper::JSIObjectWrapperManager* jsi_object_wrapper_manager = nullptr);
-  static piper::Value ConvertValueToPiperArray(piper::Runtime& rt,
-                                               const Value& value);
-  static piper::Value ConvertValueToPiperObject(piper::Runtime& rt,
-                                                const Value& value);
+  static runtime::js::Value ConvertValueToPiperValue(
+      runtime::js::Runtime& rt, const Value& value,
+      runtime::js::JSIObjectWrapperManager* jsi_object_wrapper_manager =
+          nullptr);
+  static runtime::js::Value ConvertValueToPiperArray(runtime::js::Runtime& rt,
+                                                     const Value& value);
+  static runtime::js::Value ConvertValueToPiperObject(runtime::js::Runtime& rt,
+                                                      const Value& value);
 
   static std::unique_ptr<uint8_t[]> ConvertPiperToArrayBuffer(
-      piper::Runtime& rt, const piper::Object& o, size_t& length);
+      runtime::js::Runtime& rt, const runtime::js::Object& o, size_t& length);
   static std::unique_ptr<Value> ConvertPiperArrayToPubValue(
-      piper::Runtime& rt, const piper::Array& arr,
+      runtime::js::Runtime& rt, const runtime::js::Array& arr,
       const std::shared_ptr<PubValueFactory>& factory);
   static std::unique_ptr<Value> ConvertPiperObjectToPubValue(
-      piper::Runtime& rt, const piper::Object& obj,
+      runtime::js::Runtime& rt, const runtime::js::Object& obj,
       const std::shared_ptr<PubValueFactory>& factory);
 
   // Some tricky logic for BigInt, such as { "id" : 8913891381287328398 }
@@ -68,10 +71,11 @@ class ValueUtils {
   // for universality.
   // FIXME(wangying.666): if all platforms use a return value with same type in
   // the future, the code can be moved into ValueImplPiper.
-  static bool IsBigInt(piper::Runtime& rt, const piper::Object& obj);
+  static bool IsBigInt(runtime::js::Runtime& rt,
+                       const runtime::js::Object& obj);
 
-  static bool ConvertBigIntToStringIfNecessary(piper::Runtime& rt,
-                                               const piper::Object& obj,
+  static bool ConvertBigIntToStringIfNecessary(runtime::js::Runtime& rt,
+                                               const runtime::js::Object& obj,
                                                std::string& result);
 };
 

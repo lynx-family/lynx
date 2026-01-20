@@ -106,14 +106,14 @@ lepus::Value ValueUtils::ConvertValueToLepusTable(
   }
 }
 
-piper::Value ValueUtils::ConvertValueToPiperValue(
-    piper::Runtime& rt, const Value& value,
-    piper::JSIObjectWrapperManager* jsi_object_wrapper_manager) {
+runtime::js::Value ValueUtils::ConvertValueToPiperValue(
+    runtime::js::Runtime& rt, const Value& value,
+    runtime::js::JSIObjectWrapperManager* jsi_object_wrapper_manager) {
   if (value.backend_type() == ValueBackendType::ValueBackendTypePiper) {
-    return piper::Value(
+    return runtime::js::Value(
         rt, static_cast<const ValueImplPiper&>(value).backend_value());
   } else if (value.backend_type() == ValueBackendType::ValueBackendTypeLepus) {
-    auto result = piper::valueFromLepus(
+    auto result = runtime::js::valueFromLepus(
         rt, static_cast<const PubLepusValue&>(value).backend_value(),
         jsi_object_wrapper_manager);
     if (result.has_value()) {
@@ -121,57 +121,57 @@ piper::Value ValueUtils::ConvertValueToPiperValue(
     }
   } else {
     if (value.IsString()) {
-      auto result = piper::String::createFromUtf8(rt, value.str());
-      return piper::Value(result);
+      auto result = runtime::js::String::createFromUtf8(rt, value.str());
+      return runtime::js::Value(result);
     } else if (value.IsBool()) {
-      return piper::Value(value.Bool());
+      return runtime::js::Value(value.Bool());
     } else if (value.IsInt32()) {
-      return piper::Value(value.Int32());
+      return runtime::js::Value(value.Int32());
     } else if (value.IsUInt32()) {
-      return piper::Value(static_cast<double>(value.UInt32()));
+      return runtime::js::Value(static_cast<double>(value.UInt32()));
     } else if (value.IsInt64()) {
       int64_t int64_value = value.Int64();
       // In JavaScript,  the max safe integer is 9007199254740991 and the min
       // safe integer is -9007199254740991, so when integer beyond limit, use
       // BigInt Object to define it. More information from
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
-      if (int64_value < piper::kMinJavaScriptNumber ||
-          int64_value > piper::kMaxJavaScriptNumber) {
-        auto bigint =
-            piper::BigInt::createWithString(rt, std::to_string(int64_value));
-        return bigint ? piper::Value(*bigint) : piper::Value();
+      if (int64_value < runtime::js::kMinJavaScriptNumber ||
+          int64_value > runtime::js::kMaxJavaScriptNumber) {
+        auto bigint = runtime::js::BigInt::createWithString(
+            rt, std::to_string(int64_value));
+        return bigint ? runtime::js::Value(*bigint) : runtime::js::Value();
       } else {
-        return piper::Value(value.Number());
+        return runtime::js::Value(value.Number());
       }
     } else if (value.IsUInt64()) {
       uint64_t uint64_value = value.UInt64();
-      if (uint64_value > piper::kMaxJavaScriptNumber) {
-        auto bigint =
-            piper::BigInt::createWithString(rt, std::to_string(uint64_value));
-        return bigint ? piper::Value(*bigint) : piper::Value();
+      if (uint64_value > runtime::js::kMaxJavaScriptNumber) {
+        auto bigint = runtime::js::BigInt::createWithString(
+            rt, std::to_string(uint64_value));
+        return bigint ? runtime::js::Value(*bigint) : runtime::js::Value();
       } else {
-        return piper::Value(value.Number());
+        return runtime::js::Value(value.Number());
       }
     } else if (value.IsNumber()) {
-      return piper::Value(value.Number());
+      return runtime::js::Value(value.Number());
     } else if (value.IsArray()) {
       return ConvertValueToPiperArray(rt, value);
     } else if (value.IsMap()) {
       return ConvertValueToPiperObject(rt, value);
     } else if (value.IsArrayBuffer()) {
       uint8_t* bytes = value.ArrayBuffer();
-      piper::ArrayBuffer buffer =
-          piper::ArrayBuffer(rt, static_cast<const uint8_t*>(bytes),
-                             static_cast<size_t>(value.Length()));
-      return piper::Value(buffer);
+      runtime::js::ArrayBuffer buffer =
+          runtime::js::ArrayBuffer(rt, static_cast<const uint8_t*>(bytes),
+                                   static_cast<size_t>(value.Length()));
+      return runtime::js::Value(buffer);
     } else if (value.IsNil()) {
-      return piper::Value(nullptr);
+      return runtime::js::Value(nullptr);
     } else if (value.IsTransfer()) {
       auto transfer_value =
           value.ParseTransferValue(std::make_shared<PiperValueFactory>(rt));
       if (transfer_value && transfer_value->backend_type() ==
                                 ValueBackendType::ValueBackendTypePiper) {
-        return piper::Value(
+        return runtime::js::Value(
             rt, static_cast<const ValueImplPiper*>(transfer_value.get())
                     ->backend_value());
       }
@@ -180,7 +180,7 @@ piper::Value ValueUtils::ConvertValueToPiperValue(
           value.ParseLynxObject(std::make_shared<PiperValueFactory>(rt));
       if (lynx_object && lynx_object->backend_type() ==
                              ValueBackendType::ValueBackendTypePiper) {
-        return piper::Value(
+        return runtime::js::Value(
             rt, static_cast<const ValueImplPiper*>(lynx_object.get())
                     ->backend_value());
       }
@@ -189,50 +189,51 @@ piper::Value ValueUtils::ConvertValueToPiperValue(
           value.ParseTemplateData(std::make_shared<PiperValueFactory>(rt));
       if (template_data && template_data->backend_type() ==
                                ValueBackendType::ValueBackendTypePiper) {
-        return piper::Value(
+        return runtime::js::Value(
             rt, static_cast<const ValueImplPiper*>(template_data.get())
                     ->backend_value());
       }
     }
   }
-  return piper::Value();
+  return runtime::js::Value();
 }
 
-piper::Value ValueUtils::ConvertValueToPiperArray(piper::Runtime& rt,
-                                                  const Value& value) {
+runtime::js::Value ValueUtils::ConvertValueToPiperArray(
+    runtime::js::Runtime& rt, const Value& value) {
   if (value.backend_type() == ValueBackendType::ValueBackendTypePiper) {
-    return piper::Value(
+    return runtime::js::Value(
         rt, (reinterpret_cast<const ValueImplPiper*>(&value))->backend_value());
   } else {
-    auto array = piper::Array::createWithLength(rt, value.Length());
+    auto array = runtime::js::Array::createWithLength(rt, value.Length());
     if (!array) {
-      return piper::Value();
+      return runtime::js::Value();
     }
     value.ForeachArray([&array, &rt](int64_t index, const Value& val) {
       array->setValueAtIndex(rt, static_cast<size_t>(index),
                              ConvertValueToPiperValue(rt, val));
     });
-    return piper::Value(std::move(*array));
+    return runtime::js::Value(std::move(*array));
   }
 }
 
-piper::Value ValueUtils::ConvertValueToPiperObject(piper::Runtime& rt,
-                                                   const Value& value) {
+runtime::js::Value ValueUtils::ConvertValueToPiperObject(
+    runtime::js::Runtime& rt, const Value& value) {
   if (value.backend_type() == ValueBackendType::ValueBackendTypePiper) {
-    return piper::Value(
+    return runtime::js::Value(
         rt, (reinterpret_cast<const ValueImplPiper*>(&value))->backend_value());
   } else {
-    piper::Object object(rt);
+    runtime::js::Object object(rt);
     value.ForeachMap([&object, &rt](const Value& key, const Value& val) {
       object.setProperty(rt, key.str().c_str(),
                          ConvertValueToPiperValue(rt, val));
     });
-    return piper::Value(std::move(object));
+    return runtime::js::Value(std::move(object));
   }
 }
 
-bool ValueUtils::IsBigInt(piper::Runtime& rt, const piper::Object& obj) {
-  auto big_int_opt = obj.getProperty(rt, piper::BIG_INT_VAL);
+bool ValueUtils::IsBigInt(runtime::js::Runtime& rt,
+                          const runtime::js::Object& obj) {
+  auto big_int_opt = obj.getProperty(rt, runtime::js::BIG_INT_VAL);
   if (big_int_opt && big_int_opt->isString()) {
     return true;
   }
@@ -240,10 +241,10 @@ bool ValueUtils::IsBigInt(piper::Runtime& rt, const piper::Object& obj) {
 }
 
 // static
-bool ValueUtils::ConvertBigIntToStringIfNecessary(piper::Runtime& rt,
-                                                  const piper::Object& obj,
-                                                  std::string& result) {
-  auto big_int_opt = obj.getProperty(rt, piper::BIG_INT_VAL);
+bool ValueUtils::ConvertBigIntToStringIfNecessary(
+    runtime::js::Runtime& rt, const runtime::js::Object& obj,
+    std::string& result) {
+  auto big_int_opt = obj.getProperty(rt, runtime::js::BIG_INT_VAL);
   // getProperty will return undefined if there is no value for giving key.
   if (!big_int_opt || big_int_opt->isUndefined()) {
     return false;
@@ -260,7 +261,7 @@ bool ValueUtils::ConvertBigIntToStringIfNecessary(piper::Runtime& rt,
 
 // static
 std::unique_ptr<uint8_t[]> ValueUtils::ConvertPiperToArrayBuffer(
-    piper::Runtime& rt, const piper::Object& o, size_t& length) {
+    runtime::js::Runtime& rt, const runtime::js::Object& o, size_t& length) {
   auto buf = o.getArrayBuffer(rt);
   length = buf.size(rt);
   uint8_t* buffer = buf.data(rt);
@@ -271,16 +272,16 @@ std::unique_ptr<uint8_t[]> ValueUtils::ConvertPiperToArrayBuffer(
 
 // static
 std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
-    piper::Runtime& rt, const piper::Array& arr,
+    runtime::js::Runtime& rt, const runtime::js::Array& arr,
     const std::shared_ptr<PubValueFactory>& factory) {
-  lynx::piper::Scope scope(rt);
+  lynx::runtime::js::Scope scope(rt);
   auto result = factory->CreateArray();
   std::optional<size_t> size = arr.size(rt);
   if (!size) {
     return result;
   }
   for (size_t index = 0; index < *size; index++) {
-    std::optional<lynx::piper::Value> ov = arr.getValueAtIndex(rt, index);
+    std::optional<lynx::runtime::js::Value> ov = arr.getValueAtIndex(rt, index);
     if (!ov) {
       continue;
     }
@@ -293,7 +294,7 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
     } else if (ov->isString()) {
       result->PushStringToArray(ov->getString(rt).utf8(rt));
     } else if (ov->isObject()) {
-      lynx::piper::Object o = ov->getObject(rt);
+      lynx::runtime::js::Object o = ov->getObject(rt);
       if (o.isArray(rt)) {
         auto sub_arr = o.getArray(rt);
         auto sub_arr_result = ConvertPiperArrayToPubValue(rt, sub_arr, factory);
@@ -322,9 +323,9 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
 
 // static
 std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
-    piper::Runtime& rt, const piper::Object& obj,
+    runtime::js::Runtime& rt, const runtime::js::Object& obj,
     const std::shared_ptr<PubValueFactory>& factory) {
-  lynx::piper::Scope scope(rt);
+  lynx::runtime::js::Scope scope(rt);
   auto result = factory->CreateMap();
   auto array = obj.getPropertyNames(rt);
   if (!array) {
@@ -356,7 +357,7 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
     } else if (ov->isString()) {
       result->PushStringToMap(key, ov->getString(rt).utf8(rt));
     } else if (ov->isObject()) {
-      lynx::piper::Object o = ov->getObject(rt);
+      lynx::runtime::js::Object o = ov->getObject(rt);
       if (o.isArray(rt)) {
         auto sub_arr = o.getArray(rt);
         auto sub_arr_result = ConvertPiperArrayToPubValue(rt, sub_arr, factory);

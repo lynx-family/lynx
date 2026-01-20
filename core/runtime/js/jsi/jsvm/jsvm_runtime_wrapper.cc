@@ -10,7 +10,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 JSVMRuntimeInstance::~JSVMRuntimeInstance() {
   JSVM_CALL(nullptr, OH_JSVM_CloseEnvScope, env_, env_scope_);
   JSVM_CALL(nullptr, OH_JSVM_DestroyEnv, env_);
@@ -37,5 +38,6 @@ void JSVMRuntimeInstance::InitInstance() {
     JSVM_CALL(nullptr, OH_JSVM_OpenEnvScope, env_, &env_scope_);
   });
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

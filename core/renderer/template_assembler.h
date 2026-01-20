@@ -51,10 +51,12 @@
 
 namespace lynx {
 
-namespace piper {
-class ApiCallBack;
-}  // namespace piper
+namespace runtime {
 
+namespace js {
+class ApiCallBack;
+}
+}  // namespace runtime
 namespace shell {
 class PlatformCallBackHolder;
 }  // namespace shell.
@@ -173,11 +175,11 @@ class TemplateAssembler final : public TemplateEntryHolder,
         const tasm::PipelineOrigin& pipeline_origin,
         tasm::timing::TimestampUs pipeline_start_timestamp) = 0;
 
-    virtual void CallJSApiCallback(piper::ApiCallBack callback) = 0;
-    virtual void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+    virtual void CallJSApiCallback(runtime::js::ApiCallBack callback) = 0;
+    virtual void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                             const lepus::Value& value,
                                             bool persist = false) = 0;
-    virtual void RemoveJSApiCallback(piper::ApiCallBack callback) = 0;
+    virtual void RemoveJSApiCallback(runtime::js::ApiCallBack callback) = 0;
     virtual void CallPlatformCallbackWithValue(
         const std::shared_ptr<shell::PlatformCallBackHolder>&,
         const lepus::Value& value) = 0;
@@ -205,7 +207,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
     virtual void InvokeUIMethod(LynxGetUIResult ui_result,
                                 const std::string& method,
                                 fml::RefPtr<tasm::PropBundle> params,
-                                piper::ApiCallBack callback) = 0;
+                                runtime::js::ApiCallBack callback) = 0;
 
     // air-runtime methods
     virtual void LepusInvokeUIMethod(
@@ -450,7 +452,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
                            std::shared_ptr<PipelineOptions>& pipeline_options);
 
   void SelectComponent(const std::string& component_id, const std::string&,
-                       const bool single, piper::ApiCallBack callback);
+                       const bool single, runtime::js::ApiCallBack callback);
 
   void ElementAnimate(const std::string& component_id,
                       const std::string& id_selector, const lepus::Value& args);
@@ -461,7 +463,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,
-                                    piper::ApiCallBack callback);
+                                    runtime::js::ApiCallBack callback);
   void TriggerComponentEvent(const std::string& event_name,
                              const lepus::Value& msg);
 
@@ -479,7 +481,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void TriggerWorkletFunction(std::string component_id,
                               std::string worklet_module_name,
                               std::string method_name, lepus::Value args,
-                              piper::ApiCallBack callback);
+                              runtime::js::ApiCallBack callback);
   lepus::Value TriggerLepusBridge(const std::string& event_name,
                                   const lepus::Value& msg);
   void TriggerLepusBridgeAsync(const std::string& method_name,
@@ -739,7 +741,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   // For fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,
-                       const piper::ApiCallBack& callback);
+                       const runtime::js::ApiCallBack& callback);
 
   // currently, this method is provided for use by list
   lepus::Value CallLepusMethod(const lepus::Value& closure,

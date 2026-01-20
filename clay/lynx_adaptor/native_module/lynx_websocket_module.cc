@@ -419,16 +419,16 @@ const std::string LynxWebSocketModule::name_ = "LynxWebSocketModule";
 LynxWebSocketModule::LynxWebSocketModule(
     uint32_t view_context_id, fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
-  piper::NativeModuleMethod connect_method("connect", 4);
+  runtime::NativeModuleMethod connect_method("connect", 4);
   RegisterMethod(connect_method, &LynxWebSocketModule::connect);
 
-  piper::NativeModuleMethod send_method("send", 2);
+  runtime::NativeModuleMethod send_method("send", 2);
   RegisterMethod(send_method, &LynxWebSocketModule::send);
 
-  piper::NativeModuleMethod ping_method("ping", 1);
+  runtime::NativeModuleMethod ping_method("ping", 1);
   RegisterMethod(ping_method, &LynxWebSocketModule::ping);
 
-  piper::NativeModuleMethod close_method("close", 3);
+  runtime::NativeModuleMethod close_method("close", 3);
   RegisterMethod(close_method, &LynxWebSocketModule::close);
 }
 
@@ -439,7 +439,7 @@ LynxWebSocketModule::~LynxWebSocketModule() {
 }
 
 std::unique_ptr<pub::Value> LynxWebSocketModule::connect(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   std::string url = args->GetValueAtIndex(0)->str();
   auto protocols_array = args->GetValueAtIndex(1);
   auto options_object = args->GetValueAtIndex(2);
@@ -472,7 +472,7 @@ std::unique_ptr<pub::Value> LynxWebSocketModule::connect(
 };
 
 std::unique_ptr<pub::Value> LynxWebSocketModule::send(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   std::string msg = args->GetValueAtIndex(0)->str();
   int id = static_cast<int>(args->GetValueAtIndex(1)->Number());
   if (auto search = sockets_.find(id); search != sockets_.end()) {
@@ -482,7 +482,7 @@ std::unique_ptr<pub::Value> LynxWebSocketModule::send(
 }
 
 std::unique_ptr<pub::Value> LynxWebSocketModule::ping(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   int id = static_cast<int>(args->GetValueAtIndex(0)->Number());
   if (auto search = sockets_.find(id); search != sockets_.end()) {
     search->second->Ping();
@@ -491,7 +491,7 @@ std::unique_ptr<pub::Value> LynxWebSocketModule::ping(
 }
 
 std::unique_ptr<pub::Value> LynxWebSocketModule::close(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto code = args->GetValueAtIndex(0)->Number();
   auto reason = args->GetValueAtIndex(1)->str();
   int id = static_cast<int>(args->GetValueAtIndex(2)->Number());

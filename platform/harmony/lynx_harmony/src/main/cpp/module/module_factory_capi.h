@@ -17,10 +17,10 @@ namespace lynx {
 namespace harmony {
 
 using HarmonyModuleCreator =
-    std::function<std::shared_ptr<piper::LynxNativeModule>(
+    std::function<std::shared_ptr<runtime::LynxNativeModule>(
         const std::shared_ptr<tasm::harmony::LynxContext>& context)>;
 
-class ModuleFactoryCAPI : public piper::NativeModuleFactory {
+class ModuleFactoryCAPI : public runtime::NativeModuleFactory {
  public:
   explicit ModuleFactoryCAPI(
       const std::shared_ptr<tasm::harmony::LynxContext>& context)
@@ -28,7 +28,7 @@ class ModuleFactoryCAPI : public piper::NativeModuleFactory {
     InitNativeModules();
   }
 
-  std::shared_ptr<piper::LynxNativeModule> CreateModule(
+  std::shared_ptr<runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;
   void RegisterModule(const std::string& name, HarmonyModuleCreator creator);
 

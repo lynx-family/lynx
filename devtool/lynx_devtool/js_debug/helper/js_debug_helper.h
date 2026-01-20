@@ -39,15 +39,15 @@ class JSDebugHelper {
   }
   bool IsLepusDebugAvailable() const { return lepus_proxy_ != nullptr; }
 
-  std::unique_ptr<piper::RuntimeInspectorManager> CreateRuntimeInspectorManager(
-      const std::string& vm_type);
+  std::unique_ptr<runtime::js::RuntimeInspectorManager>
+  CreateRuntimeInspectorManager(const std::string& vm_type);
   std::unique_ptr<lepus::LepusInspectorManager> CreateLepusInspectorManager();
 
   void RegisterNapiRuntimeProxy();
-  std::shared_ptr<piper::Runtime> MakeRuntime(const std::string& vm_type);
+  std::shared_ptr<runtime::js::Runtime> MakeRuntime(const std::string& vm_type);
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<runtime::profile::RuntimeProfiler> MakeRuntimeProfiler(
-      std::shared_ptr<piper::JSIContext> js_context,
+      std::shared_ptr<runtime::js::JSIContext> js_context,
       const std::string& vm_type);
 #endif
 

@@ -399,12 +399,13 @@ bool ValueImplDarwin::IsTemplateData() const {
 std::unique_ptr<Value> ValueImplDarwin::ParseTemplateData(
     std::shared_ptr<PubValueFactory> value_factory) const {
   if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
-    piper::Runtime* rt = reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
-    piper::Scope scope(*rt);
+    runtime::js::Runtime* rt =
+        reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
+    runtime::js::Scope scope(*rt);
     if (IsTemplateData()) {
       auto value = *LynxGetLepusValueFromTemplateData(backend_value_);
 
-      auto result = piper::valueFromLepus(*rt, value);
+      auto result = runtime::js::valueFromLepus(*rt, value);
       if (result.has_value()) {
         return std::make_unique<ValueImplPiper>(*rt, std::move(*result));
       }

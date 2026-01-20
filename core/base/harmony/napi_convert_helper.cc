@@ -149,7 +149,8 @@ napi_value NapiConvertHelper::CreateNapiValue(napi_env env,
   } else if (value.IsInt64()) {
     int64_t i = value.Int64();
     // When integer beyond limit, use BigInt Object to define it
-    if (i < piper::kMinJavaScriptNumber || i > piper::kMaxJavaScriptNumber) {
+    if (i < runtime::js::kMinJavaScriptNumber ||
+        i > runtime::js::kMaxJavaScriptNumber) {
       napi_create_bigint_int64(env, i, &result);
     } else {
       napi_create_int64(env, i, &result);
@@ -158,7 +159,7 @@ napi_value NapiConvertHelper::CreateNapiValue(napi_env env,
     napi_create_uint32(env, value.UInt32(), &result);
   } else if (value.IsUInt64()) {
     uint64_t u = value.UInt64();
-    if (u > piper::kMaxJavaScriptNumber) {
+    if (u > runtime::js::kMaxJavaScriptNumber) {
       napi_create_bigint_int64(env, u, &result);
     } else {
       napi_create_int64(env, u, &result);

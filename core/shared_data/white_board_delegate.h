@@ -30,10 +30,10 @@ class WhiteBoardDelegate
   virtual void CallLepusCallbackWithValue(const lepus::Value& closure,
                                           const lepus::Value& param) = 0;
 
-  virtual void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+  virtual void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                           const lepus::Value& param) = 0;
 
-  virtual void RemoveJSApiCallback(piper::ApiCallBack callback) = 0;
+  virtual void RemoveJSApiCallback(runtime::js::ApiCallBack callback) = 0;
 
   virtual void CallPlatformCallbackWithValue(
       const std::shared_ptr<lynx::shell::PlatformCallBackHolder>& callback,
@@ -47,7 +47,7 @@ class WhiteBoardDelegate
   lepus::Value GetSessionStorageItem(const std::string& key);
 
   void SubscribeJSSessionStorage(const std::string& key, double listener_id,
-                                 const piper::ApiCallBack& callback);
+                                 const runtime::js::ApiCallBack& callback);
 
   void UnsubscribeJSSessionStorage(const std::string& key, double listener_id);
 

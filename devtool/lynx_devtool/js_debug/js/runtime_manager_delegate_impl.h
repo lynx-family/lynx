@@ -16,37 +16,38 @@ class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
   ~RuntimeManagerDelegateImpl() override;
 
   void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) override;
-  void OnRuntimeReady(piper::JSExecutor& executor,
-                      std::shared_ptr<piper::Runtime>& current_runtime,
+  void OnRuntimeReady(runtime::js::JSExecutor& executor,
+                      std::shared_ptr<runtime::js::Runtime>& current_runtime,
                       const std::string& group_id) override;
   void AfterSharedContextCreate(const std::string& group_id,
-                                piper::JSRuntimeType type) override;
+                                runtime::js::JSRuntimeType type) override;
   void OnRelease(const std::string& group_id) override;
-  std::shared_ptr<piper::Runtime> MakeRuntime(
+  std::shared_ptr<runtime::js::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine, bool use_shared_context = false,
       const tasm::PageOptions& page_options = tasm::PageOptions()) override;
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<runtime::profile::RuntimeProfiler> MakeRuntimeProfiler(
-      std::shared_ptr<piper::JSIContext> js_context,
+      std::shared_ptr<runtime::js::JSIContext> js_context,
       bool force_use_lightweight_js_engine,
       const tasm::PageOptions& page_options) override;
 #endif
 
   void SetReleaseContextCallback(
-      piper::JSRuntimeType type,
+      runtime::js::JSRuntimeType type,
       const ReleaseContextCallback& callback) override;
-  void SetReleaseVMCallback(piper::JSRuntimeType type,
+  void SetReleaseVMCallback(runtime::js::JSRuntimeType type,
                             const ReleaseVMCallback& callback) override;
 
  private:
-  std::shared_ptr<piper::Runtime> MakeRuntimeForSharedContext(
+  std::shared_ptr<runtime::js::Runtime> MakeRuntimeForSharedContext(
       bool force_use_lightweight_js_engine);
 
-  std::unordered_map<piper::JSRuntimeType, ReleaseVMCallback>
+  std::unordered_map<runtime::js::JSRuntimeType, ReleaseVMCallback>
       release_vm_callback_;
-  std::unordered_map<piper::JSRuntimeType, ReleaseContextCallback>
+  std::unordered_map<runtime::js::JSRuntimeType, ReleaseContextCallback>
       release_context_callback_;
-  std::unordered_map<std::string, piper::JSRuntimeType> group_to_engine_type_;
+  std::unordered_map<std::string, runtime::js::JSRuntimeType>
+      group_to_engine_type_;
 };
 
 }  // namespace devtool

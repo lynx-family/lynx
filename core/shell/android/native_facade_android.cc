@@ -236,7 +236,7 @@ void NativeFacadeAndroid::TriggerLepusMethodAsync(
 void NativeFacadeAndroid::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                                          const std::string& method,
                                          fml::RefPtr<tasm::PropBundle> params,
-                                         piper::ApiCallBack callback) {
+                                         runtime::js::ApiCallBack callback) {
   JNIEnv* env = base::android::AttachCurrentThread();
   auto method_string = JNIConvertHelper::ConvertToJNIStringUTF(env, method);
   lynx::tasm::LynxGetUIResultAndroid result_android(ui_result);
@@ -246,7 +246,7 @@ void NativeFacadeAndroid::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
       callback.id());
 }
 
-void NativeFacadeAndroid::FlushJSBTiming(piper::NativeModuleInfo timing) {
+void NativeFacadeAndroid::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
   JNIEnv* env = base::android::AttachCurrentThread();
   JavaOnlyMap map;
   JavaOnlyMap info_map;

@@ -19,7 +19,8 @@
 #include "core/runtime/js/jsi/jsc/jsc_runtime.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 std::once_flag hostFunctionClassOnceFlag;
 JSClassRef hostFunctionClass{};
 namespace detail {
@@ -151,5 +152,6 @@ void HostFunctionMetadata::finalize(JSObjectRef object) {
 }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

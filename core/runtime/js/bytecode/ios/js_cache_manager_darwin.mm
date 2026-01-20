@@ -5,7 +5,8 @@
 #include "core/runtime/js/bytecode/js_cache_manager.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 std::string JsCacheManager::GetPlatformCacheDir() {
@@ -14,5 +15,6 @@ std::string JsCacheManager::GetPlatformCacheDir() {
   return [cache_dir UTF8String];
 }
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

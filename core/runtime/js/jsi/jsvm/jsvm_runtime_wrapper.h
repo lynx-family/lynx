@@ -10,7 +10,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSVMRuntimeInstance : public VMInstance {
  public:
   JSVMRuntimeInstance() = default;
@@ -28,7 +29,8 @@ class JSVMRuntimeInstance : public VMInstance {
   JSVM_Env env_ = nullptr;
   JSVM_EnvScope env_scope_ = nullptr;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_RUNTIME_WRAPPER_H_

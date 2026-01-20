@@ -279,8 +279,8 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
     native_module_manager =
         std::make_unique<lynx::pub::LynxNativeModuleManager>();
     native_module_manager->SetPlatformModuleFactory(
-        std::make_shared<lynx::piper::ModuleFactoryAndroid>(env,
-                                                            module_factory));
+        std::make_shared<lynx::runtime::js::ModuleFactoryAndroid>(
+            env, module_factory));
   }
   lynx::shell::ShellOption shell_option;
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
@@ -411,8 +411,8 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
       std::make_shared<lynx::pub::LynxNativeModuleManager>();
   // Set platform module factory
   native_module_manager->SetPlatformModuleFactory(
-      lynx::piper::ModuleFactoryAndroid::CreateOrReuse(env,
-                                                       java_module_factory));
+      lynx::runtime::js::ModuleFactoryAndroid::CreateOrReuse(
+          env, java_module_factory));
   native_module_manager->SetContextID(shell->GetInstanceId());
   // Set native module factory
   if (ui_delegate_ptr != 0) {

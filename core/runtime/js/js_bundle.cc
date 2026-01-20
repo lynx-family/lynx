@@ -9,7 +9,9 @@
 #include <unordered_map>
 #include <utility>
 
-namespace lynx::piper {
+namespace lynx {
+namespace runtime {
+namespace js {
 void JsBundle::AddJsContent(const std::string &path, JsContent content) {
   js_files_.emplace(path, std::move(content));
 }
@@ -28,4 +30,6 @@ const std::unordered_map<std::string, JsContent> &JsBundle::GetAllJsFiles()
   return js_files_;
 }
 
-}  // namespace lynx::piper
+}  // namespace js
+}  // namespace runtime
+}  // namespace lynx

@@ -9,7 +9,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class InspectorRuntimeObserverNG;
 
 struct ConsoleMessage {
@@ -30,6 +31,8 @@ class ConsoleMessagePostMan {
       const std::shared_ptr<InspectorRuntimeObserverNG>& observer) = 0;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_INSPECTOR_CONSOLE_MESSAGE_POSTMAN_H_

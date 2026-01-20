@@ -11,7 +11,7 @@ namespace tasm {
 // called in DidDecodeTemplate, when JS has not been started
 void JsBundleHolderImpl::SetEnable(bool enable) { enable_.store(enable); }
 
-std::optional<piper::JsBundle> JsBundleHolderImpl::GetJSBundleFromBT(
+std::optional<runtime::js::JsBundle> JsBundleHolderImpl::GetJSBundleFromBT(
     const std::string& url) {
   if (!enable_.load()) {
     return std::nullopt;
@@ -46,15 +46,15 @@ bool JsBundleHolderImpl::IsRequesting(const std::string& url) {
   return requesting_url_ && *requesting_url_ == url;
 }
 
-std::optional<piper::JsBundle> JsBundleHolderImpl::GetJSBundleInternal(
+std::optional<runtime::js::JsBundle> JsBundleHolderImpl::GetJSBundleInternal(
     const std::string& url) {
   auto bundle = js_bundle_map_.find(url);
   return bundle != js_bundle_map_.end() ? std::make_optional(bundle->second)
                                         : std::nullopt;
 }
 
-void JsBundleHolderImpl::InsertJSBundle(const std::string& url,
-                                        const piper::JsBundle& js_bundle) {
+void JsBundleHolderImpl::InsertJSBundle(
+    const std::string& url, const runtime::js::JsBundle& js_bundle) {
   std::unique_lock<std::mutex> lock(mutex_);
   js_bundle_map_.emplace(url, js_bundle);
 }

@@ -337,7 +337,7 @@ TEST_F(DevToolMediatorTest, LogClear) {
 }
 
 TEST_F(DevToolMediatorTest, LogEntryAdded) {
-  lynx::piper::ConsoleMessage param("test", 2, 0);
+  lynx::runtime::js::ConsoleMessage param("test", 2, 0);
   devtool_mediator_->LogClear(message_sender_, Json::Value());
   devtool_mediator_->LogEnable(message_sender_, Json::Value());
   devtool_mediator_->SendLogEntryAddedEvent(std::move(param));

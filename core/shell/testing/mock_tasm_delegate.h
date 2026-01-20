@@ -81,11 +81,11 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   virtual void OnEventFire(long target_id, bool is_stop,
                            int64_t event_id) override;
   virtual void OnLynxEvent(const lepus::Value& event_detail) override;
-  virtual void CallJSApiCallback(piper::ApiCallBack callback) override;
-  virtual void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+  virtual void CallJSApiCallback(runtime::js::ApiCallBack callback) override;
+  virtual void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                           const lepus::Value& value,
                                           bool persist = false) override;
-  virtual void RemoveJSApiCallback(piper::ApiCallBack callback) override;
+  virtual void RemoveJSApiCallback(runtime::js::ApiCallBack callback) override;
 
   void CallPlatformCallbackWithValue(
       const std::shared_ptr<shell::PlatformCallBackHolder>& callback,
@@ -219,7 +219,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   void InvokeUIMethod(tasm::LynxGetUIResult ui_result,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack callback) override {}
+                      runtime::js::ApiCallBack callback) override {}
 
   void LepusInvokeUIMethod(
       std::vector<int32_t> ui_impl_ids, const std::string& method,

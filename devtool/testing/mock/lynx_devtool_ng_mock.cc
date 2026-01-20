@@ -19,10 +19,11 @@ void LynxDevToolNGMock::OnTasmCreated(intptr_t shell_ptr) {}
 void LynxDevToolNGMock::SetDevToolPlatformFacade(
     const std::shared_ptr<devtool::DevToolPlatformFacade>& platform_facade) {}
 
-std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
 LynxDevToolNGMock::OnBackgroundRuntimeCreated(
     const std::string& group_thread_name) {
-  return std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>(nullptr);
+  return std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>(
+      nullptr);
 }
 
 std::shared_ptr<devtool::MessageSender> LynxDevToolNGMock::GetMessageSender()

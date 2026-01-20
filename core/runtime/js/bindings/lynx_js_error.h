@@ -11,7 +11,9 @@
 
 #include "core/runtime/js/jsi/jsi.h"
 
-namespace lynx::piper {
+namespace lynx {
+namespace runtime {
+namespace js {
 
 class LynxError : public HostObject {
  public:
@@ -51,6 +53,8 @@ class LynxError : public HostObject {
   std::string stack_;
 };
 
-}  // namespace lynx::piper
+}  // namespace js
+}  // namespace runtime
+}  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_LYNX_JS_ERROR_H_

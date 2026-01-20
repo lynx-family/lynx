@@ -18,9 +18,9 @@
 #include "core/runtime/js/bindings/text_codec_helper.h"
 
 namespace lynx {
-namespace piper {
-
-static piper::Value GetSystemInfo(Runtime& rt) {
+namespace runtime {
+namespace js {
+static Value GetSystemInfo(Runtime& rt) {
   BASE_STATIC_STRING_DECL(kOSVersion, "osVersion");
   BASE_STATIC_STRING_DECL(kRuntimeType, "runtimeType");
   const char* runtime_type = "";
@@ -53,7 +53,7 @@ static piper::Value GetSystemInfo(Runtime& rt) {
 Global::~Global() { LOGI("lynx ~Global()"); }
 
 void Global::Init(std::shared_ptr<Runtime>& runtime,
-                  std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+                  std::shared_ptr<ConsoleMessagePostMan>& post_man,
                   const tasm::PageOptions& page_options) {
   SetJSRuntime(runtime);
   auto js_runtime_ = GetJSRuntime();
@@ -63,13 +63,13 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
 
   Scope scope(*js_runtime_);
 
-  piper::Object global = js_runtime_->global();
+  Object global = js_runtime_->global();
   Object console_obj = Object::createFromHostObject(
       *js_runtime_,
       std::make_shared<Console>(post_man, page_options.GetDebuggable()));
   global.setProperty(*js_runtime_, "nativeConsole", console_obj);
 
-  piper::Value system_info = GetSystemInfo(*js_runtime_);
+  Value system_info = GetSystemInfo(*js_runtime_);
   global.setProperty(*js_runtime_, "SystemInfo", std::move(system_info));
 
   Object jsbi_obj =
@@ -90,15 +90,14 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
   }
 }
 
-void Global::EnsureConsole(
-    std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
-    const tasm::PageOptions& page_options) {
+void Global::EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
+                           const tasm::PageOptions& page_options) {
   auto js_runtime = GetJSRuntime();
   if (!js_runtime) {
     return;
   }
   Scope scope(*js_runtime);
-  piper::Object global = js_runtime->global();
+  Object global = js_runtime->global();
   auto console = global.getProperty(*js_runtime, "console");
   if (console && !console->isObject()) {
     Object console_obj = Object::createFromHostObject(
@@ -132,5 +131,7 @@ std::shared_ptr<Runtime> SingleGlobal::GetJSRuntime() {
 
 void SingleGlobal::Release() {}
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

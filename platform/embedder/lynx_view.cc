@@ -70,31 +70,30 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
             view->custom_vsync_monitor);
   }
 
-  auto lynx_template_renderer =
-      std::make_unique<lynx::embedder::LynxTemplateRenderer>(
-          settings, ui_delegate, nullptr, nullptr,
-          [&](std::shared_ptr<lynx::shell::LynxEngineProxy>,
-              std::shared_ptr<lynx::shell::LynxRuntimeProxy> proxy,
-              std::shared_ptr<lynx::piper::LynxModuleManager> module_manager,
-              const fml::RefPtr<fml::TaskRunner>& js_runner) {
+  auto lynx_template_renderer = std::make_unique<
+      lynx::embedder::LynxTemplateRenderer>(
+      settings, ui_delegate, nullptr, nullptr,
+      [&](std::shared_ptr<lynx::shell::LynxEngineProxy>,
+          std::shared_ptr<lynx::shell::LynxRuntimeProxy> proxy,
+          std::shared_ptr<lynx::runtime::js::LynxModuleManager> module_manager,
+          const fml::RefPtr<fml::TaskRunner>& js_runner) {
 #if ENABLE_NAPI_BINDING
-            // napi NativeModuleFactory.
-            std::unordered_map<std::string,
-                               std::pair<napi_module_creator, void*>>
-                module_creators;
-            // Merge global modules into instance modules.
-            lynx::embedder::GlobalModuleRegistry::GetInstance()
-                .MergeWithInstanceModuleMap(builder->native_modules,
-                                            module_creators);
-            view->lynx_module_manager =
-                std::make_shared<lynx::embedder::LynxModuleManagerNAPI>(
-                    view, module_manager, std::move(module_creators));
-            // Setup the runtime lifecycle listener.
-            view->lynx_module_manager->SetupRuntimeLifecycleListener(proxy);
-            module_manager->SetExtensionModuleFactory(view->extension_factory_);
-            view->extension_factory_->OnRuntimeInit(js_runner);
+        // napi NativeModuleFactory.
+        std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
+            module_creators;
+        // Merge global modules into instance modules.
+        lynx::embedder::GlobalModuleRegistry::GetInstance()
+            .MergeWithInstanceModuleMap(builder->native_modules,
+                                        module_creators);
+        view->lynx_module_manager =
+            std::make_shared<lynx::embedder::LynxModuleManagerNAPI>(
+                view, module_manager, std::move(module_creators));
+        // Setup the runtime lifecycle listener.
+        view->lynx_module_manager->SetupRuntimeLifecycleListener(proxy);
+        module_manager->SetExtensionModuleFactory(view->extension_factory_);
+        view->extension_factory_->OnRuntimeInit(js_runner);
 #endif
-          });
+      });
   view->lynx_template_renderer = std::move(lynx_template_renderer);
   view->lynx_view_clients = std::make_unique<lynx::embedder::LynxViewClients>();
   view->lynx_template_renderer->AddClient(view->lynx_view_clients.get());

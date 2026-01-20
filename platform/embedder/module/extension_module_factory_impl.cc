@@ -9,7 +9,7 @@
 namespace lynx {
 namespace embedder {
 
-std::shared_ptr<piper::LynxNativeModule>
+std::shared_ptr<runtime::LynxNativeModule>
 ExtensionModuleFactoryImpl::CreateModule(const std::string& name) {
   std::lock_guard<std::mutex> lock(mutex_);
   // Use cached module of creating without lazy loading
@@ -34,7 +34,7 @@ ExtensionModuleFactoryImpl::CreateModule(const std::string& name) {
     return module;
   }
 
-  return std::shared_ptr<piper::LynxNativeModule>(nullptr);
+  return std::shared_ptr<runtime::LynxNativeModule>(nullptr);
 }
 
 void ExtensionModuleFactoryImpl::OnLynxViewCreate(

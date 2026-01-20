@@ -13,13 +13,14 @@ extern "C" {
 #include "quickjs/include/quickjs.h"
 };
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 
 QuickjsHostFunctionProxy::QuickjsHostFunctionProxy(
-    piper::HostFunctionType hostFunction, QuickjsRuntime* rt)
-    : HostObjectWrapperBase(rt, std::make_shared<piper::HostFunctionType>(
-                                    std::move(hostFunction))) {}
+    HostFunctionType hostFunction, QuickjsRuntime* rt)
+    : HostObjectWrapperBase(
+          rt, std::make_shared<HostFunctionType>(std::move(hostFunction))) {}
 
 QuickjsHostFunctionProxy::~QuickjsHostFunctionProxy() {
   auto quickjs_runtime = GetRuntime();
@@ -31,8 +32,7 @@ QuickjsHostFunctionProxy::~QuickjsHostFunctionProxy() {
 }
 
 void QuickjsHostFunctionProxy::hostFinalizer(LEPUSRuntime* rt, LEPUSValue val) {
-  LEPUSClassID function_id =
-      lynx::piper::QuickjsRuntimeInstance::getFunctionId(rt);
+  LEPUSClassID function_id = QuickjsRuntimeInstance::getFunctionId(rt);
   if (UNLIKELY(function_id == 0)) {
     LOGE("hostFinalizer Error! functionId is 0. LEPUSRuntime:" << rt);
     return;
@@ -48,8 +48,7 @@ void QuickjsHostFunctionProxy::hostFinalizer(LEPUSRuntime* rt, LEPUSValue val) {
 LEPUSValue QuickjsHostFunctionProxy::FunctionCallback(
     LEPUSContext* ctx, LEPUSValueConst func_obj, LEPUSValueConst this_obj,
     int argc, LEPUSValueConst* argv, int flags) {
-  LEPUSClassID functionId =
-      lynx::piper::QuickjsRuntimeInstance::getFunctionId(ctx);
+  LEPUSClassID functionId = QuickjsRuntimeInstance::getFunctionId(ctx);
   if (UNLIKELY(functionId == 0)) {
     LOGE(
         "QuickjsHostFunctionProxy::FunctionCallback Error! functionId is 0. "
@@ -96,8 +95,8 @@ LEPUSValue QuickjsHostFunctionProxy::FunctionCallback(
 
 // QuickjsHostFunctionProxy
 
-std::weak_ptr<piper::HostFunctionType> getHostFunction(
-    QuickjsRuntime* rt, const piper::Function& obj) {
+std::weak_ptr<HostFunctionType> getHostFunction(QuickjsRuntime* rt,
+                                                const Function& obj) {
   DCHECK(rt->getFunctionClassID() != 0);
   LEPUSValue quick_obj = QuickjsHelper::objectRef(obj);
 
@@ -107,8 +106,8 @@ std::weak_ptr<piper::HostFunctionType> getHostFunction(
 }
 
 LEPUSValue QuickjsHostFunctionProxy::createFunctionFromHostFunction(
-    QuickjsRuntime* rt, LEPUSContext* ctx, const piper::PropNameID& name,
-    unsigned int paramCount, piper::HostFunctionType func) {
+    QuickjsRuntime* rt, LEPUSContext* ctx, const PropNameID& name,
+    unsigned int paramCount, HostFunctionType func) {
   LEPUSClassID function_id = rt->getFunctionClassID();
   if (UNLIKELY(function_id == 0)) {
     LOGE("createFunctionFromHostFunction Error! function_id is 0. LEPUSContext:"
@@ -169,6 +168,7 @@ LEPUSValue QuickjsHostFunctionProxy::createFunctionFromHostFunction(
 
 }  // namespace detail
 
-}  // namespace piper
+}  // namespace js
 
+}  // namespace runtime
 }  // namespace lynx

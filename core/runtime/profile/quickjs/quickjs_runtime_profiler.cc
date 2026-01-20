@@ -27,7 +27,7 @@ namespace runtime {
 namespace profile {
 
 QuickjsRuntimeProfiler::QuickjsRuntimeProfiler(
-    std::shared_ptr<piper::QuickjsContextWrapper> js_context)
+    std::shared_ptr<runtime::js::QuickjsContextWrapper> js_context)
     : weak_context_(js_context) {}
 
 QuickjsRuntimeProfiler::~QuickjsRuntimeProfiler() {

@@ -17,8 +17,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class MockNativeModule : public LynxNativeModule {
  public:
   static std::shared_ptr<MockNativeModule> Create(std::string name) {
@@ -44,8 +44,7 @@ class MockNativeModule : public LynxNativeModule {
 class MockPlatformModuleFactory : public NativeModuleFactory {
  public:
   MockPlatformModuleFactory()
-      : mock_module_delegate_(
-            std::make_shared<piper::test::MockModuleDelegate>()){};
+      : mock_module_delegate_(std::make_shared<test::MockModuleDelegate>()){};
   virtual ~MockPlatformModuleFactory() = default;
 
   virtual void Register(const std::string& name, ModuleCreator creator) {
@@ -54,7 +53,7 @@ class MockPlatformModuleFactory : public NativeModuleFactory {
 
  private:
   std::unordered_map<std::string, ModuleCreator> creators_;
-  std::shared_ptr<piper::test::MockModuleDelegate> mock_module_delegate_;
+  std::shared_ptr<test::MockModuleDelegate> mock_module_delegate_;
 };
 
 class LynxModuleManagerTest : public ::testing::Test {
@@ -135,5 +134,7 @@ TEST_F(LynxModuleManagerTest, GetRecordId) {
   EXPECT_EQ(use_native_module_manager_->record_id_, 12345);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

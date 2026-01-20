@@ -8,7 +8,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 class MockHandler : public JSIExceptionHandler {
@@ -23,7 +24,7 @@ class MockHandler : public JSIExceptionHandler {
     expect_fail_ = false;
   }
 
-  void onJSIException(const piper::JSIException& exception) override {
+  void onJSIException(const JSIException& exception) override {
     EXPECT_TRUE(expect_fail_);
     did_failed_ = true;
   };
@@ -52,5 +53,6 @@ TEST(TextCodecHelper, TestTextCodecHelper) {
 }
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

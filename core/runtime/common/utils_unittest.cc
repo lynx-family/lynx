@@ -14,7 +14,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 class UtilTests : public JSITestBase {};
 
@@ -107,27 +108,27 @@ TEST_P(UtilTests, ConvertPiperValueToStringVector) {
   std::vector<std::string> output;
 
   // input = []
-  piper::Value input = *piper::Array::createWithLength(rt, 0);
+  Value input = *Array::createWithLength(rt, 0);
   EXPECT_TRUE(ConvertPiperValueToStringVector(rt, input, output));
   EXPECT_TRUE(output.empty());
 
   // input = ["#a", "#b"]
-  auto array = piper::Array::createWithLength(rt, 2);
-  array->setValueAtIndex(rt, 0, piper::String::createFromUtf8(rt, "#a"));
-  array->setValueAtIndex(rt, 1, piper::String::createFromUtf8(rt, "#b"));
+  auto array = Array::createWithLength(rt, 2);
+  array->setValueAtIndex(rt, 0, String::createFromUtf8(rt, "#a"));
+  array->setValueAtIndex(rt, 1, String::createFromUtf8(rt, "#b"));
   input = *array;
   EXPECT_TRUE(ConvertPiperValueToStringVector(rt, input, output));
   bool res = output == std::vector<std::string>{"#a", "#b"};
   EXPECT_TRUE(res);
 
   // input = "#a"
-  input = piper::String::createFromUtf8(rt, "#a");
+  input = String::createFromUtf8(rt, "#a");
   EXPECT_FALSE(ConvertPiperValueToStringVector(rt, input, output));
 
   // input = ["#a", 0]
-  array = piper::Array::createWithLength(rt, 2);
-  array->setValueAtIndex(rt, 0, piper::String::createFromUtf8(rt, "#a"));
-  array->setValueAtIndex(rt, 2, piper::Value(0));
+  array = Array::createWithLength(rt, 2);
+  array->setValueAtIndex(rt, 0, String::createFromUtf8(rt, "#a"));
+  array->setValueAtIndex(rt, 2, Value(0));
   input = *array;
   EXPECT_FALSE(ConvertPiperValueToStringVector(rt, input, output));
 }
@@ -138,7 +139,7 @@ TEST_P(UtilTests, ParseNullJSValueTest) {
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
 
-  piper::Value null_data = piper::Value::null();
+  Value null_data = Value::null();
   auto lepus_value_opt =
       ParseJSValue(rt, null_data, jsi_object_wrapper_manager.get(),
                    jsi_object_group_id, target_sdk_version, pre_object_vector);
@@ -152,7 +153,7 @@ TEST_P(UtilTests, ParseUndefinedJSValueTest) {
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
 
-  piper::Value undefined_data = piper::Value::undefined();
+  Value undefined_data = Value::undefined();
   auto lepus_value_opt =
       ParseJSValue(rt, undefined_data, jsi_object_wrapper_manager.get(),
                    jsi_object_group_id, target_sdk_version, pre_object_vector);
@@ -167,7 +168,7 @@ TEST_P(UtilTests, ParseBoolJSValueTest) {
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
 
   {
-    piper::Value true_data(true);
+    Value true_data(true);
     auto lepus_value_opt = ParseJSValue(
         rt, true_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -176,7 +177,7 @@ TEST_P(UtilTests, ParseBoolJSValueTest) {
   }
 
   {
-    piper::Value false_data(false);
+    Value false_data(false);
     auto lepus_value_opt = ParseJSValue(
         rt, false_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -193,7 +194,7 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
 
   {
     int foo = 10;
-    piper::Value int_data(foo);
+    Value int_data(foo);
     auto lepus_value_opt = ParseJSValue(
         rt, int_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -204,7 +205,7 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
 
   {
     double foo = 10.0;
-    piper::Value double_data(foo);
+    Value double_data(foo);
     auto lepus_value_opt = ParseJSValue(
         rt, double_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -221,8 +222,8 @@ TEST_P(UtilTests, ParseStringJSValueTest) {
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
     std::string foo_str = "foo";
-    auto foo = piper::String::createFromAscii(rt, foo_str);
-    piper::Value string_data(foo);
+    auto foo = String::createFromAscii(rt, foo_str);
+    Value string_data(foo);
     auto lepus_value_opt = ParseJSValue(
         rt, string_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -261,7 +262,7 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
     uint8_t empty_array_json[] = "[]";
-    auto empty_array_data_opt = piper::Value::createFromJsonUtf8(
+    auto empty_array_data_opt = Value::createFromJsonUtf8(
         rt, empty_array_json, sizeof(empty_array_json) - 1);
     auto lepus_value_opt = ParseJSValue(
         rt, *empty_array_data_opt, jsi_object_wrapper_manager.get(),
@@ -274,8 +275,8 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
   {
     const int element_count = 5;
     uint8_t array_json[] = "[\"foo\", true, 10, null, {}]";
-    auto array_data_opt = piper::Value::createFromJsonUtf8(
-        rt, array_json, sizeof(array_json) - 1);
+    auto array_data_opt =
+        Value::createFromJsonUtf8(rt, array_json, sizeof(array_json) - 1);
     auto lepus_value_opt = ParseJSValue(
         rt, *array_data_opt, jsi_object_wrapper_manager.get(),
         jsi_object_group_id, target_sdk_version, pre_object_vector);
@@ -416,5 +417,6 @@ function make() {
 }
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

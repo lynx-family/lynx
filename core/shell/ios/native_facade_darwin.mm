@@ -137,13 +137,13 @@ void NativeFacadeDarwin::OnUpdateDataWithoutChange() {}
 
 void NativeFacadeDarwin::TriggerLepusMethodAsync(const std::string& js_method_name,
                                                  const lepus::Value& args) {
-  lynx::piper::TriggerLepusMethodAsync(js_method_name, args, _render);
+  lynx::runtime::js::TriggerLepusMethodAsync(js_method_name, args, _render);
 }
 
 void NativeFacadeDarwin::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                                         const std::string& method,
                                         fml::RefPtr<tasm::PropBundle> params,
-                                        piper::ApiCallBack callback) {
+                                        runtime::js::ApiCallBack callback) {
 #if !defined(OS_OSX)
   __strong id<TemplateRenderCallbackProtocol> render = _render;
   NSString* method_string = [NSString stringWithUTF8String:method.c_str()];
@@ -156,7 +156,7 @@ void NativeFacadeDarwin::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
 #endif
 }
 
-void NativeFacadeDarwin::FlushJSBTiming(piper::NativeModuleInfo timing) {
+void NativeFacadeDarwin::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
   __strong id<TemplateRenderCallbackProtocol> render = _render;
   NSDictionary* info = @{
     @"jsb_module_name" : [NSString stringWithUTF8String:timing.module_name_.c_str()],
@@ -169,7 +169,7 @@ void NativeFacadeDarwin::FlushJSBTiming(piper::NativeModuleInfo timing) {
   NSMutableDictionary* invokedInfo = [NSMutableDictionary dictionaryWithDictionary:info];
   [invokedInfo setObject:@(static_cast<int64_t>(timing.status_code_)) forKey:@"jsb_status_code"];
   [render onJSBInvoked:invokedInfo.copy];
-  if (timing.status_code_ != piper::NativeModuleStatusCode::SUCCESS) {
+  if (timing.status_code_ != runtime::js::NativeModuleStatusCode::SUCCESS) {
     return;
   }
   NSDictionary* timing_info = @{

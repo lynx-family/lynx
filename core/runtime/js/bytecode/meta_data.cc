@@ -14,7 +14,8 @@
 #include "third_party/rapidjson/writer.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 namespace {
@@ -267,5 +268,6 @@ std::string MetaData::GetBytecodeGenerateEngineVersion() const {
       ->GetString();
 }
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

@@ -12,9 +12,9 @@
 
 @implementation LynxConfig {
   // Only used to manage wrappers
-  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> _moduleFactoryPtr;
+  std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> _moduleFactoryPtr;
   // Shared module weak ptr , only lynxModuleManager hold it
-  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> _sharedModuleFactoryWeakPtr;
+  std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin> _sharedModuleFactoryWeakPtr;
 }
 
 LYNX_NOT_IMPLEMENTED(-(instancetype)init)
@@ -23,14 +23,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   self = [super init];
   if (self) {
     _templateProvider = provider;
-    _moduleFactoryPtr = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+    _moduleFactoryPtr = std::make_shared<lynx::runtime::js::ModuleFactoryDarwin>();
     _componentRegistry = [LynxComponentScopeRegistry new];
   }
   return self;
 }
 
 - (void)registerModule:(Class<LynxModule>)module {
-  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> lockPtr = _sharedModuleFactoryWeakPtr.lock();
+  std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> lockPtr =
+      _sharedModuleFactoryWeakPtr.lock();
   if (lockPtr) {
     lockPtr->registerModule(module);
   }
@@ -38,7 +39,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
 }
 
 - (void)registerModule:(Class<LynxModule>)module param:(id)param {
-  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> lockPtr = _sharedModuleFactoryWeakPtr.lock();
+  std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> lockPtr =
+      _sharedModuleFactoryWeakPtr.lock();
   if (lockPtr) {
     lockPtr->registerModule(module);
   }
@@ -60,7 +62,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   }
 }
 
-- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr {
+- (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)moduleFactoryPtr {
   return _moduleFactoryPtr;
 }
 
@@ -72,11 +74,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   [_componentRegistry registerShadowNode:node withName:name];
 }
 
-- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)getSharedModuleFactoryPtr {
+- (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)getSharedModuleFactoryPtr {
   return _sharedModuleFactoryWeakPtr.lock();
 }
 
-- (void)setSharedModuleFactoryPtr:(std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)ptr {
+- (void)setSharedModuleFactoryPtr:(std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)ptr {
   _sharedModuleFactoryWeakPtr = ptr;
 }
 

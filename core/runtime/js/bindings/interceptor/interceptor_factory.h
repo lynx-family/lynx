@@ -13,8 +13,8 @@
 #include "core/runtime/js/bindings/modules/lynx_module.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class InterceptorFactory {
  public:
   InterceptorFactory() = delete;
@@ -23,7 +23,9 @@ class InterceptorFactory {
   static std::shared_ptr<GroupInterceptor> CreateGroupInterceptor();
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_INTERCEPTOR_INTERCEPTOR_FACTORY_H_

@@ -308,9 +308,9 @@ std::unique_ptr<Value> ValueImplAndroid::GetValueAtIndex(uint32_t idx) const {
 std::unique_ptr<Value> ValueImplAndroid::ParseTransferValue(
     std::shared_ptr<PubValueFactory> value_factory) const {
   if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
-    piper::Runtime* runtime =
+    runtime::js::Runtime* runtime =
         reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
-    piper::Scope scope(*runtime);
+    runtime::js::Scope scope(*runtime);
     JNIEnv* env = base::android::AttachCurrentThread();
     auto piper_value = base::android::PiperData::jsObjectFromPiperData(
         env, runtime, backend_value_.TransferData());
@@ -325,15 +325,16 @@ std::unique_ptr<Value> ValueImplAndroid::ParseTransferValue(
 std::unique_ptr<Value> ValueImplAndroid::ParseLynxObject(
     std::shared_ptr<PubValueFactory> value_factory) const {
   if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
-    piper::Runtime* rt =
+    runtime::js::Runtime* rt =
         reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
-    piper::Scope scope(*rt);
+    runtime::js::Scope scope(*rt);
     JNIEnv* env = base::android::AttachCurrentThread();
     // create a lynx object module
-    auto object_module = lynx::piper::LynxPlatformJSIObjectAndroid::Create(
-        env, backend_value_.LynxObject());
-    auto host_object =
-        piper::Object::createFromHostObject(*rt, std::move(object_module));
+    auto object_module =
+        lynx::runtime::js::LynxPlatformJSIObjectAndroid::Create(
+            env, backend_value_.LynxObject());
+    auto host_object = runtime::js::Object::createFromHostObject(
+        *rt, std::move(object_module));
     return std::make_unique<ValueImplPiper>(*rt, std::move(host_object));
   }
   return nullptr;
@@ -342,14 +343,14 @@ std::unique_ptr<Value> ValueImplAndroid::ParseLynxObject(
 std::unique_ptr<Value> ValueImplAndroid::ParseTemplateData(
     std::shared_ptr<PubValueFactory> value_factory) const {
   if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
-    piper::Runtime* rt =
+    runtime::js::Runtime* rt =
         reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
-    piper::Scope scope(*rt);
+    runtime::js::Scope scope(*rt);
     JNIEnv* env = base::android::AttachCurrentThread();
     auto j_object = backend_value_.TemplateData();
     auto value = tasm::LynxViewDataManagerAndroid::GetTemplateDataNativeData(
         env, j_object);
-    auto result = piper::valueFromLepus(*rt, value);
+    auto result = runtime::js::valueFromLepus(*rt, value);
     if (result.has_value()) {
       return std::make_unique<ValueImplPiper>(*rt, std::move(result.value()));
     }

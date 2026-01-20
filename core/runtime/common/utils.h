@@ -25,7 +25,8 @@
 #include "third_party/rapidjson/writer.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSIObjectWrapperManager;
 std::optional<Value> valueFromLepus(
     Runtime& runtime, const lepus::Value& data,
@@ -35,10 +36,10 @@ std::optional<Array> arrayFromLepus(Runtime& runtime,
                                     const lepus::CArray& array);
 
 // Track the depth of JSValue referencing chain.
-using JSValueCircularArray = base::InlineVector<piper::Object, 32>;
+using JSValueCircularArray = base::InlineVector<Object, 32>;
 
 std::optional<lepus_value> ParseJSValue(
-    piper::Runtime& runtime, const piper::Value& value,
+    Runtime& runtime, const Value& value,
     JSIObjectWrapperManager* jsi_object_wrapper_manager,
     const std::string& jsi_object_group_id, const std::string& targetSDKVersion,
     JSValueCircularArray& pre_object_vector, int depth = 0);
@@ -54,13 +55,12 @@ bool CheckIsCircularJSObjectIfNecessaryAndReportError(
 // Convert string[] to std::vector<std::string>.
 // The input value must be an array and each element in input must be string.
 // Otherwise, the conversion will be aborted and return false.
-bool ConvertPiperValueToStringVector(Runtime& rt, const piper::Value& input,
+bool ConvertPiperValueToStringVector(Runtime& rt, const Value& input,
                                      std::vector<std::string>& result);
 
 class ScopedJSObjectPushPopHelper {
  public:
-  ScopedJSObjectPushPopHelper(JSValueCircularArray& vector,
-                              piper::Object object)
+  ScopedJSObjectPushPopHelper(JSValueCircularArray& vector, Object object)
       : pre_object_vector_(vector) {
     pre_object_vector_.push_back(std::move(object));
   };
@@ -74,15 +74,16 @@ class ScopedJSObjectPushPopHelper {
 bool JSBUtilsRegisterJNI(JNIEnv* env);
 bool JSBUtilsMapRegisterJNI(JNIEnv* env);
 
-void PushByteArrayToJavaArray(piper::Runtime* rt,
-                              const piper::ArrayBuffer& array_buffer,
+void PushByteArrayToJavaArray(Runtime* rt, const ArrayBuffer& array_buffer,
                               base::android::JavaOnlyArray* jarray);
-void PushByteArrayToJavaMap(piper::Runtime* rt, const std::string& key,
-                            const piper::ArrayBuffer& array_buffer,
+void PushByteArrayToJavaMap(Runtime* rt, const std::string& key,
+                            const ArrayBuffer& array_buffer,
                             base::android::JavaOnlyMap* jmap);
 #endif  // OS_ANDROID
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_UTILS_H_

@@ -10,8 +10,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class TextCodecHelper : public HostObject {
  public:
   TextCodecHelper() = default;
@@ -20,6 +20,8 @@ class TextCodecHelper : public HostObject {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_TEXT_CODEC_HELPER_H_

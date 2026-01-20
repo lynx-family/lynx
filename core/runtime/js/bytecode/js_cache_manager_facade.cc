@@ -17,7 +17,8 @@
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 void JsCacheManagerFacade::PostCacheGenerationTask(
     const tasm::LynxTemplateBundle& bundle, const std::string& template_url,
@@ -31,8 +32,8 @@ void JsCacheManagerFacade::PostCacheGenerationTask(
       if (!is_card) {
         auto source_url = it->first;
         auto node = sources.extract(it++);
-        node.key() = piper::App::GenerateDynamicComponentSourceUrl(template_url,
-                                                                   source_url);
+        node.key() =
+            App::GenerateDynamicComponentSourceUrl(template_url, source_url);
         sources.insert(std::move(node));
       } else {
         it++;
@@ -101,5 +102,6 @@ inline void JsCacheManagerFacade::PostCacheGenerationTaskQuickJs(
 #endif
 }
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

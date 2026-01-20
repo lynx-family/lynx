@@ -5,11 +5,13 @@
 #include "core/runtime/js/bindings/interceptor/interceptor_factory.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::shared_ptr<GroupInterceptor> InterceptorFactory::CreateGroupInterceptor() {
   return nullptr;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

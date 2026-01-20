@@ -14,8 +14,8 @@
 #include "core/runtime/js/bindings/modules/android/lynx_module_android.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class ModuleFactoryAndroid
     : public NativeModuleFactory,
       std::enable_shared_from_this<ModuleFactoryAndroid> {
@@ -35,6 +35,8 @@ class ModuleFactoryAndroid
   base::android::ScopedGlobalJavaRef<jobject> strong_jni_object_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_MODULE_FACTORY_ANDROID_H_

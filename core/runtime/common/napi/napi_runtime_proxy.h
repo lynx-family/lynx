@@ -19,8 +19,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class NapiRuntimeProxyV8Factory;
 class NapiRuntimeProxyQuickjsFactory;
 class NapiRuntimeProxyJSVMFactory;
@@ -123,7 +123,9 @@ class RestrictedNapiRuntimeProxyDecorator : public NapiRuntimeProxyInterface {
   NapiGetGlobalFunc get_global_func_{nullptr};
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #ifdef USE_PRIMJS_NAPI

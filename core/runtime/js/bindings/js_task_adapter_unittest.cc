@@ -15,7 +15,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 using std::chrono_literals::operator""ms;  // for ms literal
@@ -35,8 +36,8 @@ class JsTaskTest : public JSITestBase {
 
 TEST_P(JsTaskTest, SetTimeoutTaskTest) {
   auto func = function("function () { globalThis.foo = 'bar' }");
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(func));
+  std::variant<std::unique_ptr<Function>, double> result =
+      std::make_unique<Function>(std::move(func));
   adapter->SetTimeout(std::move(result), 100, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
@@ -51,8 +52,8 @@ TEST_P(JsTaskTest, SetTimeoutTaskTest) {
 TEST_P(JsTaskTest, SetIntervalTaskTest) {
   auto func =
       function("function () { globalThis.foo = (globalThis.foo || 0) + 1 }");
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(func));
+  std::variant<std::unique_ptr<Function>, double> result =
+      std::make_unique<Function>(std::move(func));
   adapter->SetInterval(std::move(result), 100, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
@@ -72,8 +73,8 @@ TEST_P(JsTaskTest, SetIntervalTaskTest) {
 TEST_P(JsTaskTest, ThrownErrorTaskTest) {
   auto thrown_func = function("function() { throw new Error('foo') }");
 
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(thrown_func));
+  std::variant<std::unique_ptr<Function>, double> result =
+      std::make_unique<Function>(std::move(thrown_func));
   adapter->SetTimeout(std::move(result), 100, 0);
 
   std::this_thread::sleep_for(200ms);
@@ -85,8 +86,8 @@ TEST_P(JsTaskTest, ThrownErrorTaskTest) {
 
 TEST_P(JsTaskTest, QueueMicrotaskTaskTest) {
   auto func = function("function () { globalThis.microtask = 'microtask' }");
-  std::variant<std::unique_ptr<piper::Function>, double> result =
-      std::make_unique<piper::Function>(std::move(func));
+  std::variant<std::unique_ptr<Function>, double> result =
+      std::make_unique<Function>(std::move(func));
   adapter->QueueMicrotask(std::move(result), 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
@@ -103,11 +104,11 @@ TEST_P(JsTaskTest, MicrotaskTimeoutTaskOrderTest) {
       function("function () { globalThis.lastTask = 'timeout'; }");
   auto microtask_func =
       function("function () { globalThis.lastTask = 'microtask'; }");
-  std::variant<std::unique_ptr<piper::Function>, double> microtask_result =
-      std::make_unique<piper::Function>(std::move(microtask_func));
+  std::variant<std::unique_ptr<Function>, double> microtask_result =
+      std::make_unique<Function>(std::move(microtask_func));
   adapter->QueueMicrotask(std::move(microtask_result), 0);
-  std::variant<std::unique_ptr<piper::Function>, double> timeout_result =
-      std::make_unique<piper::Function>(std::move(timeout_func));
+  std::variant<std::unique_ptr<Function>, double> timeout_result =
+      std::make_unique<Function>(std::move(timeout_func));
   adapter->SetTimeout(std::move(timeout_result), 0, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
@@ -135,5 +136,6 @@ INSTANTIATE_TEST_SUITE_P(
       }
     });
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

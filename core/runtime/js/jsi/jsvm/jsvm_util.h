@@ -14,7 +14,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_helper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 #define LYNX_GET_FIRST_ARG(first, ...) first
 
 #define JSVM_CALL_NO_ENV(name, ...)                                     \
@@ -74,7 +75,8 @@ class HandleScopeWrapper {
   JSVM_Env env;
   JSVM_HandleScope handleScope;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_UTIL_H_

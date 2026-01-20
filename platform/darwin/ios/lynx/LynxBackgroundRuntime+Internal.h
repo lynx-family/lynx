@@ -23,7 +23,7 @@
 @end
 
 @interface LynxBackgroundRuntime ()
-- (std::weak_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr;
+- (std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin>)moduleFactoryPtr;
 - (LynxBackgroundRuntimeOptions *)options;
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::shell::BTSRuntime>>)runtimeActor;
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>>)
@@ -31,6 +31,6 @@
 - (LynxDevtool *)devtool;
 - (BOOL)attachToLynxView;
 - (void)setRuntimeObserver:
-    (const std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> &)observer;
+    (const std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG> &)observer;
 - (void)onEvaluateJavaScriptEnd:(NSString *)url;
 @end

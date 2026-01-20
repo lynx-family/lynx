@@ -12,7 +12,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime_wrapper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSVMContextWrapper : public JSIContext {
  public:
   explicit JSVMContextWrapper(std::shared_ptr<VMInstance> vm);
@@ -23,7 +24,8 @@ class JSVMContextWrapper : public JSIContext {
  private:
   JSVM_Env env_ = nullptr;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_CONTEXT_WRAPPER_H_

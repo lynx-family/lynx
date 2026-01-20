@@ -14,7 +14,9 @@
 
 #include "core/runtime/js/jsi/jsi.h"
 
-namespace lynx::piper {
+namespace lynx {
+namespace runtime {
+namespace js {
 // A `JsContent` represents content of a js file, either source code or
 // bytecode.
 class JsContent {
@@ -62,6 +64,8 @@ class JsBundle {
   // A js bundle can contain both sources and bytecodes.
   std::unordered_map<std::string, JsContent> js_files_;
 };
-}  // namespace lynx::piper
+}  // namespace js
+}  // namespace runtime
+}  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JS_BUNDLE_H_

@@ -10,8 +10,8 @@
 #include "core/inspector/runtime_inspector_manager.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class QuickjsInspectorManager : public RuntimeInspectorManager {
  public:
   ~QuickjsInspectorManager() override = default;
@@ -19,7 +19,9 @@ class QuickjsInspectorManager : public RuntimeInspectorManager {
   virtual void InsertScript(const std::string& url) = 0;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_INSPECTOR_MANAGER_H_

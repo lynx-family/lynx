@@ -13,8 +13,8 @@
 #include "base/trace/native/trace_event.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class ModuleDelegate;
 
 // Lynx & Web Status Code
@@ -116,9 +116,10 @@ class NativeModuleInfoCollector {
   uint64_t flow_id_ = TRACE_FLOW_ID();
 };
 
-using NativeModuleInfoCollectorPtr =
-    std::shared_ptr<piper::NativeModuleInfoCollector>;
+using NativeModuleInfoCollectorPtr = std::shared_ptr<NativeModuleInfoCollector>;
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_MODULE_TIMING_H_

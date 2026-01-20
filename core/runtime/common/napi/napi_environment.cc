@@ -7,8 +7,8 @@
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 namespace {
 const uint64_t kEnvClassID = reinterpret_cast<uint64_t>(&kEnvClassID);
 }
@@ -60,5 +60,7 @@ NapiEnvironment::Module* NapiEnvironment::GetModule(const std::string& name) {
   return delegate_->GetModule(name);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

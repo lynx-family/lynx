@@ -16,7 +16,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class Runtime;
 
 class Console : public HostObject {
@@ -34,16 +35,16 @@ class Console : public HostObject {
   static std::string LogObject(Runtime* rt,
                                // const int level,
                                const Value* value);
-  static std::string LogObject(Runtime* rt, const piper::Object* obj);
+  static std::string LogObject(Runtime* rt, const Object* obj);
 
  private:
   void Init();
-  piper::Value LogWithLevel(Runtime* rt, const int level, const Value* args,
-                            size_t count, const std::string& func_name);
-  piper::Value CallJSEngineConsole(Runtime* rt, const Value* args, size_t count,
-                                   const std::string& func_name);
-  piper::Value Assert(Runtime* rt, const int level, const Value* args,
-                      size_t count, const std::string& func_name);
+  Value LogWithLevel(Runtime* rt, const int level, const Value* args,
+                     size_t count, const std::string& func_name);
+  Value CallJSEngineConsole(Runtime* rt, const Value* args, size_t count,
+                            const std::string& func_name);
+  Value Assert(Runtime* rt, const int level, const Value* args, size_t count,
+               const std::string& func_name);
   static std::string LogObject_(Runtime* rt,
                                 // const int level,
                                 const Value* value);
@@ -58,6 +59,7 @@ class Console : public HostObject {
       methods_map_;
   bool debuggable_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_CONSOLE_H_

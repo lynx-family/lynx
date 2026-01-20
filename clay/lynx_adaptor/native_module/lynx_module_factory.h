@@ -18,19 +18,19 @@ class ViewContext;
 namespace lynx {
 
 using ClayModuleCreator =
-    std::function<std::shared_ptr<lynx::piper::LynxNativeModule>(
+    std::function<std::shared_ptr<lynx::runtime::LynxNativeModule>(
         uint32_t view_context_id, fml::RefPtr<fml::TaskRunner> task_runner)>;
 
-class LynxModuleFactory : public lynx::piper::NativeModuleFactory {
+class LynxModuleFactory : public lynx::runtime::NativeModuleFactory {
  public:
-  static lynx::piper::NativeModuleFactory* CreateModuleFactory(
+  static lynx::runtime::NativeModuleFactory* CreateModuleFactory(
       clay::ViewContext* view_context);
 
   explicit LynxModuleFactory(clay::ViewContext* view_context);
 
   ~LynxModuleFactory() override = default;
 
-  std::shared_ptr<lynx::piper::LynxNativeModule> CreateModule(
+  std::shared_ptr<lynx::runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;
 
   void RegisterCreator(const std::string& name, ClayModuleCreator creator) {

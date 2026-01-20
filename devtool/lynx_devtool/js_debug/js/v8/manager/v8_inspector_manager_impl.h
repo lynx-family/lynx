@@ -9,8 +9,8 @@
 #include "devtool/js_inspect/v8/v8_inspector_client_impl.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8InspectorManagerImpl : public V8InspectorManager {
  public:
   V8InspectorManagerImpl() = default;
@@ -32,7 +32,9 @@ class V8InspectorManagerImpl : public V8InspectorManager {
   std::string group_id_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_V8_MANAGER_V8_INSPECTOR_MANAGER_IMPL_H_

@@ -20,8 +20,8 @@ extern "C" {
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using detail::QuickjsHostFunctionProxy;
 using detail::QuickjsHostObjectProxy;
 
@@ -143,5 +143,7 @@ void QuickjsRuntimeInstance::AddToIdContainer() {
   GetObjectIdContainer().insert({rt_, s_object_id_});
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

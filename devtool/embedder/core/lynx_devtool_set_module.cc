@@ -21,52 +21,52 @@ const std::string LynxDevToolSetModule::name_ = "LynxDevToolSetModule";
 
 LynxDevToolSetModule::LynxDevToolSetModule() {
   RegisterMethod(
-      piper::NativeModuleMethod("isLynxDebugEnabled", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("isLynxDebugEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::IsLynxDebugEnabled));
   RegisterMethod(
-      piper::NativeModuleMethod("switchLynxDebug", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("switchLynxDebug", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::SwitchLynxDebug));
   RegisterMethod(
-      piper::NativeModuleMethod("isDevToolEnabled", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("isDevToolEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::IsDevToolEnabled));
   RegisterMethod(
-      piper::NativeModuleMethod("switchDevTool", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("switchDevTool", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::SwitchDevTool));
   RegisterMethod(
-      piper::NativeModuleMethod("isLogBoxEnabled", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("isLogBoxEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::IsLogBoxEnabled));
   RegisterMethod(
-      piper::NativeModuleMethod("switchLogBox", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("switchLogBox", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::SwitchLogBox));
   RegisterMethod(
-      piper::NativeModuleMethod("isDomTreeEnabled", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("isDomTreeEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::IsDomTreeEnabled));
   RegisterMethod(
-      piper::NativeModuleMethod("enableDomTree", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("enableDomTree", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::EnableDomTree));
   RegisterMethod(
-      piper::NativeModuleMethod("isQuickjsDebugEnabled", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("isQuickjsDebugEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::IsQuickjsDebugEnabled));
   RegisterMethod(
-      piper::NativeModuleMethod("switchQuickjsDebug", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("switchQuickjsDebug", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::SwitchQuickjsDebug));
   RegisterMethod(
-      piper::NativeModuleMethod("isLongPressMenuEnabled", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("isLongPressMenuEnabled", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::IsLongPressMenuEnabled));
   RegisterMethod(
-      piper::NativeModuleMethod("switchLongPressMenu", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("switchLongPressMenu", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxDevToolSetModule::SwitchLongPressMenu));
 }
 
@@ -74,7 +74,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string>
 LynxDevToolSetModule::InvokeMethod(const std::string &method_name,
                                    std::unique_ptr<pub::Value> args,
                                    size_t count,
-                                   const piper::CallbackMap &callbacks) {
+                                   const runtime::CallbackMap &callbacks) {
   auto it = invocations_.find(method_name);
   if (it != invocations_.end()) {
     return (this->*(it->second))(std::move(args), callbacks);
@@ -85,7 +85,7 @@ LynxDevToolSetModule::InvokeMethod(const std::string &method_name,
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLynxDebugEnabled(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   bool enabled = tasm::DevToolLifecycle::GetInstance().IsEnabled();
   // TODO(mitchilling): remove this value merge after lifecycle implemented on
   // all platforms
@@ -95,7 +95,7 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLynxDebugEnabled(
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLynxDebug(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   // TODO(mitchilling): remove this value set after lifecycle implemented on all
   // platforms
   SetSwitch(std::move(args), tasm::LynxEnv::kLynxDebugEnabled);
@@ -115,52 +115,52 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLynxDebug(
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsDevToolEnabled(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return GetSwitch(tasm::LynxEnv::kLynxDevToolEnable);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchDevTool(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return SetSwitch(std::move(args), tasm::LynxEnv::kLynxDevToolEnable);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLogBoxEnabled(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return GetSwitch(tasm::LynxEnv::kLynxEnableLogBox);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLogBox(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return SetSwitch(std::move(args), tasm::LynxEnv::kLynxEnableLogBox);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsDomTreeEnabled(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return GetSwitch(tasm::LynxEnv::kLynxEnableDomTree);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::EnableDomTree(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return SetSwitch(std::move(args), tasm::LynxEnv::kLynxEnableDomTree);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsQuickjsDebugEnabled(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return GetSwitch(tasm::LynxEnv::kLynxEnableQuickJS);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchQuickjsDebug(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return SetSwitch(std::move(args), tasm::LynxEnv::kLynxEnableQuickJS);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::IsLongPressMenuEnabled(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return GetSwitch(tasm::LynxEnv::kLynxEnableLongPressMenu);
 }
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLongPressMenu(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks) {
   return SetSwitch(std::move(args), tasm::LynxEnv::kLynxEnableLongPressMenu);
 }
 

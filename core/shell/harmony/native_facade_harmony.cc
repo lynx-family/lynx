@@ -93,9 +93,10 @@ void NativeFacadeHarmony::OnUpdateDataWithoutChange() {}
 void NativeFacadeHarmony::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                                          const std::string& method,
                                          fml::RefPtr<tasm::PropBundle> params,
-                                         piper::ApiCallBack callback) {}
+                                         runtime::js::ApiCallBack callback) {}
 
-void NativeFacadeHarmony::FlushJSBTiming(piper::NativeModuleInfo timing) {}
+void NativeFacadeHarmony::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
+}
 
 void NativeFacadeHarmony::OnTemplateBundleReady(
     tasm::LynxTemplateBundle bundle) {

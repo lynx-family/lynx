@@ -22,7 +22,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class QuickjsRuntime;
 namespace detail {
 
@@ -39,7 +40,7 @@ class QuickjsJSValueValue : public Runtime::PointerValue {
   LEPUSRuntime* rt_;
 
  protected:
-  friend class piper::QuickjsRuntime;
+  friend class QuickjsRuntime;
   friend class QuickjsHelper;
   // for debug
   //  int time;
@@ -47,34 +48,31 @@ class QuickjsJSValueValue : public Runtime::PointerValue {
 
 class QuickjsHelper {
  public:
-  static piper::Runtime::PointerValue* makeStringValue(LEPUSContext* ctx,
-                                                       LEPUSValue str);
-  static piper::Runtime::PointerValue* makeObjectValue(LEPUSContext* ctx,
-                                                       LEPUSValue obj);
-  static piper::Runtime::PointerValue* makeJSValueValue(LEPUSContext* ctx,
-                                                        LEPUSValue obj);
-  static piper::Value createValue(LEPUSValue value, QuickjsRuntime* rt);
-  static piper::String createString(LEPUSContext* ctx, LEPUSValue str);
-  static piper::Symbol createSymbol(LEPUSContext* ctx, LEPUSValue sym);
-  static piper::Object createObject(LEPUSContext* ctx, LEPUSValue obj);
-  static piper::Object createJSValue(LEPUSContext* ctx, LEPUSValue obj);
-  static piper::PropNameID createPropNameID(LEPUSContext* ctx,
-                                            LEPUSValue propName);
-  static LEPUSValue symbolRef(const piper::Symbol& sym);
-  static LEPUSValue valueRef(const piper::PropNameID& sym);
-  static LEPUSValue stringRef(const piper::String& sym);
-  static LEPUSValue objectRef(const piper::Object& sym);
+  static Runtime::PointerValue* makeStringValue(LEPUSContext* ctx,
+                                                LEPUSValue str);
+  static Runtime::PointerValue* makeObjectValue(LEPUSContext* ctx,
+                                                LEPUSValue obj);
+  static Runtime::PointerValue* makeJSValueValue(LEPUSContext* ctx,
+                                                 LEPUSValue obj);
+  static Value createValue(LEPUSValue value, QuickjsRuntime* rt);
+  static String createString(LEPUSContext* ctx, LEPUSValue str);
+  static Symbol createSymbol(LEPUSContext* ctx, LEPUSValue sym);
+  static Object createObject(LEPUSContext* ctx, LEPUSValue obj);
+  static Object createJSValue(LEPUSContext* ctx, LEPUSValue obj);
+  static PropNameID createPropNameID(LEPUSContext* ctx, LEPUSValue propName);
+  static LEPUSValue symbolRef(const Symbol& sym);
+  static LEPUSValue valueRef(const PropNameID& sym);
+  static LEPUSValue stringRef(const String& sym);
+  static LEPUSValue objectRef(const Object& sym);
 
   static std::string LEPUSStringToSTLString(LEPUSContext* ctx, LEPUSValue s);
 
-  static std::optional<piper::Value> call(QuickjsRuntime* rt,
-                                          const piper::Function& f,
-                                          const piper::Object& jsThis,
-                                          LEPUSValue* args, size_t nArgs);
-  static std::optional<piper::Value> callAsConstructor(QuickjsRuntime* rt,
-                                                       LEPUSValue obj,
-                                                       LEPUSValue* args,
-                                                       int nArgs);
+  static std::optional<Value> call(QuickjsRuntime* rt, const Function& f,
+                                   const Object& jsThis, LEPUSValue* args,
+                                   size_t nArgs);
+  static std::optional<Value> callAsConstructor(QuickjsRuntime* rt,
+                                                LEPUSValue obj,
+                                                LEPUSValue* args, int nArgs);
   static std::string getErrorMessage(LEPUSContext* ctx,
                                      LEPUSValue& exception_val);
 
@@ -89,7 +87,8 @@ class QuickjsHelper {
 };
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_HELPER_H_

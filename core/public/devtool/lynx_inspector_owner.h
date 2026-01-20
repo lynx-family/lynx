@@ -13,10 +13,12 @@
 #include "base/include/fml/task_runner.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class InspectorRuntimeObserverNG;
 }
 
+}  // namespace runtime
 namespace tasm {
 class TemplateData;
 }  // namespace tasm
@@ -42,7 +44,7 @@ class LynxInspectorOwner {
   virtual void InvokeCDPFromSDK(
       const std::string& cdp_msg,
       std::function<void(const std::string&)>&& callback) = 0;
-  virtual std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+  virtual std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name) = 0;
 };
 

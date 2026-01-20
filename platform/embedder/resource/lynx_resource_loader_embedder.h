@@ -27,7 +27,7 @@ class LynxResourceLoaderEmbedder : public pub::LynxResourceLoader {
                         callback) override;
 
  private:
-  piper::JSSourceLoaderDesktop js_source_loader_;
+  runtime::js::JSSourceLoaderDesktop js_source_loader_;
   std::shared_ptr<LynxResourceFetcherHolder> resource_fetcher_holder_;
 };
 

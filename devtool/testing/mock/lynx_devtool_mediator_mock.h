@@ -17,12 +17,12 @@ class LynxDevToolMediatorMock : public lynx::devtool::LynxDevToolMediator {
     LynxDevToolMediator::Init(shell, nullptr);
   }
   void SendLogEntryAddedEvent(
-      const lynx::piper::ConsoleMessage& message) override {
+      const lynx::runtime::js::ConsoleMessage& message) override {
     message_ = message;
   }
 
  private:
-  piper::ConsoleMessage message_{"", -2, -1};
+  runtime::js::ConsoleMessage message_{"", -2, -1};
 };
 
 }  // namespace testing

@@ -19,15 +19,15 @@ LynxTextInfoModule::LynxTextInfoModule(
     const std::shared_ptr<tasm::harmony::LynxContext>& context)
     : NativeModuleCAPI(), context_(context) {
   RegisterMethod(
-      piper::NativeModuleMethod("getTextInfo", 2),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("getTextInfo", 2),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxTextInfoModule::GetTextInfo));
 }
 
 base::expected<std::unique_ptr<pub::Value>, std::string>
 LynxTextInfoModule::InvokeMethod(const std::string& method_name,
                                  std::unique_ptr<pub::Value> args, size_t count,
-                                 const piper::CallbackMap& callbacks) {
+                                 const runtime::CallbackMap& callbacks) {
   if (method_name == "getTextInfo") {
     return GetTextInfo(std::move(args), callbacks);
   }
@@ -37,7 +37,7 @@ LynxTextInfoModule::InvokeMethod(const std::string& method_name,
 }
 
 std::unique_ptr<pub::Value> LynxTextInfoModule::GetTextInfo(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto ctx = context_.lock();
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   if (!args->IsArray() && args->Length() != 2 && ctx == nullptr) {

@@ -11,13 +11,13 @@
 
 // BINARY_KEEP_SOURCE_FILE
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 JSExecutor::JSExecutor(
     const std::shared_ptr<JSIExceptionHandler>& handler,
     const std::string& group_id,
     const std::shared_ptr<LynxModuleManager>& module_manager,
-    const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
+    const std::shared_ptr<InspectorRuntimeObserverNG>& runtime_observer,
     bool force_use_light_weight_js_engine)
     : exception_handler_(handler),
       group_id_(group_id),
@@ -61,7 +61,7 @@ runtime::RuntimeManager* JSExecutor::GetCurrentRuntimeManagerInstance() {
 
 void JSExecutor::loadPreJSBundle(
     base::MoveOnlyClosure<
-        std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>>
+        std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
         js_pre_sources_getter,
     bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
     const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
@@ -82,23 +82,23 @@ void JSExecutor::SetObserver(JSIObserver* observer) {
   }
 }
 
-void JSExecutor::invokeCallback(std::shared_ptr<piper::ModuleCallback> callback,
-                                piper::ModuleCallbackFunctionHolder* holder) {
+void JSExecutor::invokeCallback(std::shared_ptr<ModuleCallback> callback,
+                                ModuleCallbackFunctionHolder* holder) {
   Scope scope(*js_runtime_);
   callback->Invoke(js_runtime_.get(), holder);
 }
 
-std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
+std::shared_ptr<App> JSExecutor::createNativeAppInstance(
     int64_t rt_id, runtime::TemplateDelegate* delegate,
     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
     const tasm::PageOptions& page_options) {
   Scope scope(*js_runtime_);
-  piper::Object nativeModuleProxy = piper::Object::createFromHostObject(
+  Object nativeModuleProxy = Object::createFromHostObject(
       *js_runtime_, module_manager_.get()->bindingPtr);
 #if ENABLE_TESTBENCH_REPLAY
-  piper::Value module = module_manager_->bindingPtr->get(
-      js_runtime_.get(), piper::PropNameID::forAscii(
-                             *js_runtime_, "LynxRecorderReplayDataModule"));
+  Value module = module_manager_->bindingPtr->get(
+      js_runtime_.get(),
+      PropNameID::forAscii(*js_runtime_, "LynxRecorderReplayDataModule"));
   if (!module.isNull()) {
     module_manager_testBench_ = std::make_shared<ModuleManagerTestBench>();
     module_manager_testBench_->SetGroupInterceptor(
@@ -107,31 +107,29 @@ std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
         module_manager_testBench_, module_manager_.get()->delegate_,
         module_manager_.get()->bindingPtr);
     module_manager_testBench_.get()->initRecordModuleData(js_runtime_.get());
-    nativeModuleProxy = piper::Object::createFromHostObject(
+    nativeModuleProxy = Object::createFromHostObject(
         *js_runtime_, module_manager_testBench_.get()->bindingPtr);
   }
 #endif
-  return piper::App::Create(rt_id, js_runtime_, delegate, exception_handler_,
-                            std::move(nativeModuleProxy),
-                            std::move(api_handler), group_id_, page_options);
+  return App::Create(rt_id, js_runtime_, delegate, exception_handler_,
+                     std::move(nativeModuleProxy), std::move(api_handler),
+                     group_id_, page_options);
 }
 
-piper::JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
+JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
   if (js_runtime_) {
     return js_runtime_->getCreatedType();
   }
-  return piper::JSRuntimeCreatedType::unknown;
+  return JSRuntimeCreatedType::unknown;
 }
 
-std::shared_ptr<piper::Runtime> JSExecutor::GetJSRuntime() {
-  return js_runtime_;
-}
+std::shared_ptr<Runtime> JSExecutor::GetJSRuntime() { return js_runtime_; }
 
 void JSExecutor::SetUrl(const std::string& url) {
   module_manager_->SetTemplateUrl(url);
 }
 
-std::shared_ptr<piper::ConsoleMessagePostMan>
+std::shared_ptr<ConsoleMessagePostMan>
 JSExecutor::CreateConsoleMessagePostMan() {
   if (runtime_observer_ng_ == nullptr) {
     return nullptr;
@@ -139,5 +137,7 @@ JSExecutor::CreateConsoleMessagePostMan() {
   return runtime_observer_ng_->CreateConsoleMessagePostMan();
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

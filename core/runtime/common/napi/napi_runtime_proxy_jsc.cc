@@ -11,8 +11,8 @@
 #include "core/runtime/common/napi/shim/shim_napi_env_jsc.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSC::Create(
     std::shared_ptr<JSCContextWrapper> context,
@@ -38,5 +38,7 @@ void NapiRuntimeProxyJSC::Detach() {
   napi_detach_jsc(env_);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

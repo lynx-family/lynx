@@ -15,18 +15,8 @@
 #include "core/base/lynx_export.h"
 #include "core/public/jsb/lynx_native_module.h"
 
-// TODO(liyanbo.monster): after platform module refactored, remove this
-#include "core/runtime/js/bindings/modules/lynx_module.h"
 namespace lynx {
-namespace piper {
-class LynxJSIModuleBinding;
-class LynxModuleManager;
-}  // namespace piper
-}  // namespace lynx
-
-namespace lynx {
-namespace piper {
-
+namespace runtime {
 using ModuleCreator = std::function<std::shared_ptr<LynxNativeModule>()>;
 
 class LYNX_EXPORT_FOR_DEVTOOL NativeModuleFactory {
@@ -56,7 +46,7 @@ class LYNX_EXPORT_FOR_DEVTOOL NativeModuleFactory {
   std::unordered_map<std::string, ModuleCreator> creators_;
 };
 
-}  // namespace piper
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_PUBLIC_JSB_NATIVE_MODULE_FACTORY_H_

@@ -7,8 +7,8 @@
 #include <utility>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /**
  * Public API to install the LynxModule system.
  */
@@ -16,14 +16,14 @@ LynxJSIModuleBinding::LynxJSIModuleBinding(
     const LynxModuleProviderFunction& moduleProvider)
     : moduleProvider_(moduleProvider) {}
 
-piper::Value LynxJSIModuleBinding::get(Runtime* rt, const PropNameID& prop) {
-  piper::Scope scope(*rt);
+Value LynxJSIModuleBinding::get(Runtime* rt, const PropNameID& prop) {
+  Scope scope(*rt);
   std::string moduleName = prop.utf8(*rt);
   std::shared_ptr<LynxModule> module = moduleProvider_(moduleName);
   if (module == nullptr) {
-    return piper::Value::null();
+    return Value::null();
   }
-  return piper::Object::createFromHostObject(*rt, std::move(module));
+  return Object::createFromHostObject(*rt, std::move(module));
 }
 
 std::shared_ptr<LynxModule> LynxJSIModuleBinding::GetModule(
@@ -31,5 +31,7 @@ std::shared_ptr<LynxModule> LynxJSIModuleBinding::GetModule(
   return moduleProvider_(name);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

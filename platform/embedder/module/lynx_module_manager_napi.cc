@@ -36,7 +36,8 @@ class EmbedderRuntimeLifecycleListenerDelegate
 };
 
 LynxModuleManagerNAPI::LynxModuleManagerNAPI(
-    void* context, std::shared_ptr<piper::LynxModuleManager> module_manager,
+    void* context,
+    std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
     std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
         module_creators)
     : view_context_(context),

@@ -34,27 +34,27 @@ class LynxIntersectionObserverModule
 
   std::unique_ptr<lynx::pub::Value> CreateIntersectionObserver(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
   std::unique_ptr<lynx::pub::Value> RelativeTo(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
   std::unique_ptr<lynx::pub::Value> RelativeToScreen(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
   std::unique_ptr<lynx::pub::Value> RelativeToViewport(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
   std::unique_ptr<lynx::pub::Value> Observe(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
   std::unique_ptr<lynx::pub::Value> Disconnect(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
  private:
   static const std::string name_;

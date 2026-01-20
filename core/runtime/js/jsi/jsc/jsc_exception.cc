@@ -11,7 +11,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 using detail::JSCHelper;
 bool JSCException::ReportExceptionIfNeeded(JSGlobalContextRef ctx,
                                            JSCRuntime& rt, JSValueRef exc) {
@@ -40,5 +41,7 @@ std::optional<JSCException> JSCException::TryCatch(JSGlobalContextRef ctx,
   return std::nullopt;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

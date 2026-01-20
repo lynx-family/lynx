@@ -24,7 +24,8 @@
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 base::expected<std::unique_ptr<pub::Value>, std::string> PerformMethodInvocation(NSInvocation *inv,
                                                                                  const id module);
 
@@ -40,7 +41,7 @@ class LynxModuleDarwin : public LynxNativeModule {
 #if OS_IOS || OS_TVOS || OS_OSX
   void EnterInvokeScope(Runtime *rt, std::shared_ptr<ModuleDelegate> module_delegate) override;
   void ExitInvokeScope() override;
-  std::optional<piper::Value> TryGetPromiseRet() override;
+  std::optional<Value> TryGetPromiseRet() override;
 #endif
 
   void SetMethodAuth(NSMutableArray<LynxMethodBlock> *methodAuthBlocks) {
@@ -71,13 +72,12 @@ class LynxModuleDarwin : public LynxNativeModule {
   // TODO(liyanbo.monster): after nativepromise delete, delete those.
   std::vector<Runtime *> scope_rts_;
   std::vector<std::shared_ptr<ModuleDelegate>> scope_module_delegates_;
-  std::vector<std::optional<piper::Value>> scope_native_promise_rets_;
+  std::vector<std::optional<Value>> scope_native_promise_rets_;
 
   using PromiseInvocationBlock = void (^)(Runtime &rt, LynxPromiseResolveBlock resolveWrapper,
                                           LynxPromiseRejectBlock rejectWrapper);
 
-  base::expected<piper::Value, std::string> createPromise(Runtime &runtime,
-                                                          PromiseInvocationBlock invoke);
+  base::expected<Value, std::string> createPromise(Runtime &runtime, PromiseInvocationBlock invoke);
 
   NSInvocation *getMethodInvocation(const id module, const std::string &methodName, SEL selector,
                                     const pub::Value *args, size_t count,
@@ -94,6 +94,7 @@ class LynxModuleDarwin : public LynxNativeModule {
       const std::string &methodName, uint64_t invoke_session, SEL selector, const pub::Value *args,
       size_t count, int32_t &callErrorCode, const CallbackMap &callbacks);
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_BINDINGS_JSI_MODULES_IOS_LYNX_MODULE_DARWIN_H_

@@ -26,8 +26,7 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
 struct NativeModuleMethod {
   std::string name;
   size_t args_count;
@@ -95,11 +94,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
 // TODO(liyanbo.monster): after remove native promise, delete this.
 #if OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID
   virtual void EnterInvokeScope(
-      Runtime* rt, std::shared_ptr<ModuleDelegate> module_delegate) {}
+      js::Runtime* rt, std::shared_ptr<js::ModuleDelegate> module_delegate) {}
   virtual void ExitInvokeScope() {}
-  virtual std::optional<piper::Value> TryGetPromiseRet() {
-    return std::nullopt;
-  }
+  virtual std::optional<js::Value> TryGetPromiseRet() { return std::nullopt; }
 #endif
 
  protected:
@@ -113,7 +110,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };
 
-}  // namespace piper
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_PUBLIC_JSB_LYNX_NATIVE_MODULE_H_

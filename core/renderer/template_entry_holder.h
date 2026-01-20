@@ -52,7 +52,7 @@ class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
   virtual void SetLazyBundleLoader(
       const std::shared_ptr<LazyBundleLoader>& loader);
 
-  std::shared_ptr<piper::JsBundleHolder> GetJsBundleHolder() const;
+  std::shared_ptr<runtime::js::JsBundleHolder> GetJsBundleHolder() const;
 
   lepus::Value GetCustomSection(const std::string& url) override;
 

@@ -8,8 +8,8 @@
 #include <utility>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 LynxJSIModuleBindingTestBench::LynxJSIModuleBindingTestBench(
     const LynxModuleProviderFunction &moduleProvider)
     : moduleProvider_(moduleProvider) {}
@@ -24,9 +24,8 @@ LynxJSIModuleBindingTestBench::getLynxModuleManagerPtr() {
   return moduleBindingPtrLynx_;
 }
 
-piper::Value LynxJSIModuleBindingTestBench::get(Runtime *rt,
-                                                const PropNameID &prop) {
-  piper::Scope scope(*rt);
+Value LynxJSIModuleBindingTestBench::get(Runtime *rt, const PropNameID &prop) {
+  Scope scope(*rt);
   std::string moduleName = prop.utf8(*rt);
   std::shared_ptr<LynxModule> module = nullptr;
   if (lynxModuleSet.find(moduleName) != lynxModuleSet.end()) {
@@ -36,10 +35,12 @@ piper::Value LynxJSIModuleBindingTestBench::get(Runtime *rt,
   }
 
   if (module == nullptr) {
-    return piper::Value::null();
+    return Value::null();
   }
-  return piper::Object::createFromHostObject(*rt, std::move(module));
+  return Object::createFromHostObject(*rt, std::move(module));
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

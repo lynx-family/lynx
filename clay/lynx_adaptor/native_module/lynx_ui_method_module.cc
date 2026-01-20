@@ -25,8 +25,8 @@ namespace {
 constexpr char kStrIsCalledByRefId[] = "_isCallByRefId";
 
 struct CallbackData {
-  std::shared_ptr<lynx::piper::LynxModuleCallback> callback;
-  std::weak_ptr<lynx::piper::LynxNativeModule::Delegate> delegate;
+  std::shared_ptr<lynx::runtime::LynxModuleCallback> callback;
+  std::weak_ptr<lynx::runtime::LynxNativeModule::Delegate> delegate;
   clay::LynxUIMethodCallback ui_callback;
 };
 
@@ -38,7 +38,7 @@ LynxUIMethodModule::LynxUIMethodModule(uint32_t view_context_id,
                                        fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
   // argmentlist: "view_id", "nodes", "method_name", "args", "callback"
-  lynx::piper::NativeModuleMethod invoke_ui_method("invokeUIMethod", 5);
+  lynx::runtime::NativeModuleMethod invoke_ui_method("invokeUIMethod", 5);
   RegisterMethod(invoke_ui_method,
                  &LynxUIMethodModule::InvokeUIMethodCompatibility);
 }
@@ -48,12 +48,12 @@ LynxUIMethodModule::~LynxUIMethodModule() = default;
 std::unique_ptr<lynx::pub::Value>
 LynxUIMethodModule::InvokeUIMethodCompatibility(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callbacks) {
+    const lynx::runtime::CallbackMap& callbacks) {
   auto module_values = std::make_shared<clay::LynxModuleValues>();
   CallbackData* callback_data = nullptr;
 
   args_array->ForeachArray([&](int64_t key, const pub::Value& value) {
-    piper::CallbackMap::const_iterator it;
+    runtime::CallbackMap::const_iterator it;
     if (value.IsInt64() && (it = callbacks.find(key)) != callbacks.end()) {
       callback_data =
           new CallbackData{.callback = it->second, .delegate = delegate_};

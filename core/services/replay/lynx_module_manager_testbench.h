@@ -14,11 +14,11 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace piper {
-
-using ModuleTestBenchPtr = std::shared_ptr<lynx::piper::ModuleTestBench>;
+namespace runtime {
+namespace js {
+using ModuleTestBenchPtr = std::shared_ptr<ModuleTestBench>;
 using LynxJSIModuleBindingPtrTestBench =
-    std::shared_ptr<lynx::piper::LynxJSIModuleBindingTestBench>;
+    std::shared_ptr<LynxJSIModuleBindingTestBench>;
 
 typedef std::function<void()> InitRecordModuleDataCallback;
 
@@ -48,7 +48,7 @@ class ModuleManagerTestBench {
   rapidjson::Document recordData;
   std::unordered_map<std::string, ModuleTestBenchPtr> moduleMap;
   void syncToPlatform(const rapidjson::Value &sync_attrs, Runtime *rt,
-                      const piper::Value *args, size_t count);
+                      const Value *args, size_t count);
 
   void fetchRecordData(const std::string &module_name, Runtime &runtime,
                        InvokeMethodCallback callback);
@@ -61,7 +61,9 @@ class ModuleManagerTestBench {
   std::shared_ptr<GroupInterceptor> group_interceptor_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_SERVICES_REPLAY_LYNX_MODULE_MANAGER_TESTBENCH_H_

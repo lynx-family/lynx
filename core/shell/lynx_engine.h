@@ -196,7 +196,7 @@ class LynxEngine {
   void TriggerWorkletFunction(std::string component_id,
                               std::string worklet_module_name,
                               std::string method_name, lepus::Value args,
-                              piper::ApiCallBack callback);
+                              runtime::js::ApiCallBack callback);
 
   void CallJSFunctionInLepusEvent(const std::string& component_id,
                                   const std::string& name,
@@ -215,7 +215,7 @@ class LynxEngine {
 
   void SelectComponent(const std::string& component_id,
                        const std::string& id_selector, const bool single,
-                       piper::ApiCallBack callBack);
+                       runtime::js::ApiCallBack callBack);
 
   void ElementAnimate(const std::string& component_id,
                       const std::string& id_selector, const lepus::Value& args);
@@ -227,7 +227,7 @@ class LynxEngine {
 
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,
-                                    piper::ApiCallBack callBack);
+                                    runtime::js::ApiCallBack callBack);
 
   tasm::TemplateAssembler* GetTasm();
 
@@ -243,7 +243,7 @@ class LynxEngine {
 
   void ReloadFromJS(runtime::UpdateDataTask task);
 
-  void AddFont(const lepus::Value& font, piper::ApiCallBack callback);
+  void AddFont(const lepus::Value& font, runtime::js::ApiCallBack callback);
 
   void FetchBundle(
       const std::string& url,
@@ -262,16 +262,16 @@ class LynxEngine {
                       const tasm::NodeSelectOptions& options,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack callback);
+                      runtime::js::ApiCallBack callback);
 
   void GetPathInfo(const tasm::NodeSelectRoot& root,
                    const tasm::NodeSelectOptions& options,
-                   piper::ApiCallBack call_back);
+                   runtime::js::ApiCallBack call_back);
 
   void GetFields(const tasm::NodeSelectRoot& root,
                  const tasm::NodeSelectOptions& options,
                  const std::vector<std::string>& fields,
-                 piper::ApiCallBack call_back);
+                 runtime::js::ApiCallBack call_back);
 
   tasm::LynxGetUIResult GetLynxUI(const tasm::NodeSelectRoot& root,
                                   const tasm::NodeSelectOptions& options);
@@ -282,7 +282,7 @@ class LynxEngine {
 
   // For Fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,
-                       const piper::ApiCallBack& callback);
+                       const runtime::js::ApiCallBack& callback);
 
   inline void SetOperationQueue(
       const std::shared_ptr<TASMOperationQueue>& tasm_operation_queue) {
@@ -297,10 +297,10 @@ class LynxEngine {
   void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);
 
   void GetJSSessionStorage(const std::string&,
-                           const piper::ApiCallBack& callback);
+                           const runtime::js::ApiCallBack& callback);
 
   void SubscribeJSSessionStorage(const std::string&, double listener_id,
-                                 const piper::ApiCallBack& callback);
+                                 const runtime::js::ApiCallBack& callback);
 
   void SetClientSessionStorage(const std::string& key,
                                const lepus::Value& data);

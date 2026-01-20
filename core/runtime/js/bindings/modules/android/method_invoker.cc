@@ -31,7 +31,8 @@
 #include "core/value_wrapper/android/value_impl_android.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace {
 
 std::string PubValueTypeInJS(const base::android::JavaValue& value) {
@@ -858,5 +859,7 @@ bool MethodInvoker::VerifySignature(const pub::Value* args, size_t args_count) {
   return true;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

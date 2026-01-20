@@ -15,7 +15,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 V8CacheGenerator::V8CacheGenerator(const std::string &origin_url,
@@ -83,5 +84,6 @@ bool V8CacheGenerator::GenerateCacheImpl(
 }
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

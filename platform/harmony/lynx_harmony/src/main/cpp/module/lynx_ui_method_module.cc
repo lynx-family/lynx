@@ -20,15 +20,15 @@ LynxUIMethodModule::LynxUIMethodModule(
     const std::shared_ptr<tasm::harmony::LynxContext>& context)
     : NativeModuleCAPI(), context_(context) {
   RegisterMethod(
-      piper::NativeModuleMethod("invokeUIMethod", 5),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("invokeUIMethod", 5),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxUIMethodModule::InvokeUIMethod));
 }
 
 void LynxUIMethodModule::Destroy() { LOGI("LynxUIMethodModule Destroy"); }
 
 std::unique_ptr<pub::Value> LynxUIMethodModule::InvokeUIMethod(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   auto delegate = delegate_.lock();

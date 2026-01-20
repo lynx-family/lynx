@@ -20,7 +20,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSCRuntime;
 namespace detail {
 
@@ -135,8 +136,7 @@ class JSCHelper {
   static Value createValue(JSCRuntime&, JSValueRef);
   static Symbol createSymbol(JSGlobalContextRef, JSCRuntime* jsc_runtime,
                              std::atomic<intptr_t>& counter, JSValueRef);
-  static piper::String createString(std::atomic<intptr_t>& counter,
-                                    JSStringRef);
+  static String createString(std::atomic<intptr_t>& counter, JSStringRef);
   static PropNameID createPropNameID(std::atomic<intptr_t>& counter,
                                      JSStringRef);
   static Object createObject(JSGlobalContextRef, JSCRuntime* jsc_runtime,
@@ -147,7 +147,7 @@ class JSCHelper {
 
   static JSValueRef valueRef(JSGlobalContextRef, JSCRuntime&, const Value&);
   static JSValueRef symbolRef(const Symbol&);
-  static JSStringRef stringRef(const piper::String&);
+  static JSStringRef stringRef(const String&);
   static JSStringRef stringRef(const PropNameID&);
   static JSObjectRef objectRef(const Object&);
 
@@ -172,6 +172,7 @@ class JSCHelper {
                                JSValueRef* exception);
 };
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSC_JSC_HELPER_H_

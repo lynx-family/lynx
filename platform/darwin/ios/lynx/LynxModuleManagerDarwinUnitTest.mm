@@ -57,21 +57,21 @@
 }
 @end
 
-class MockDelegate : public lynx::piper::ModuleDelegate {
+class MockDelegate : public lynx::runtime::js::ModuleDelegate {
  public:
-  int64_t RegisterJSCallbackFunction(lynx::piper::Function func) override { return 1; }
-  void CallJSCallback(const std::shared_ptr<lynx::piper::ModuleCallback> &callback,
+  int64_t RegisterJSCallbackFunction(lynx::runtime::js::Function func) override { return 1; }
+  void CallJSCallback(const std::shared_ptr<lynx::runtime::js::ModuleCallback> &callback,
                       lynx::base::MoveOnlyClosure<bool> invoke_pre_func,
                       int64_t id_to_delete) override {}
   void OnErrorOccurred(lynx::base::LynxError error) override {}
   void OnMethodInvoked(const std::string &module_name, const std::string &method_name,
                        int32_t code) override {}
-  void FlushJSBTiming(lynx::piper::NativeModuleInfo timing) override {}
+  void FlushJSBTiming(lynx::runtime::js::NativeModuleInfo timing) override {}
   void RunOnJSThread(lynx::base::closure func) override {}
   void RunOnPlatformThread(lynx::base::closure func) override {}
 };
 
-class ModuleFactoryDarwinTester : public lynx::piper::ModuleFactoryDarwin {};
+class ModuleFactoryDarwinTester : public lynx::runtime::js::ModuleFactoryDarwin {};
 @interface LynxModuleManagerDarwinUnitTest : LynxUnitTest
 @end
 

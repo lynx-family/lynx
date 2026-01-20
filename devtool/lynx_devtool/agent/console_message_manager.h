@@ -36,16 +36,16 @@ class ConsoleMessageManager
 
   void EnableConsoleLog(const std::shared_ptr<MessageSender>& sender);
   void DisableConsoleLog();
-  void LogEntryAdded(const lynx::piper::ConsoleMessage& message);
+  void LogEntryAdded(const lynx::runtime::js::ConsoleMessage& message);
   void ClearConsoleMessages();
 
  private:
-  void CacheLog(const piper::ConsoleMessage& message);
-  void PostLog(const piper::ConsoleMessage& message);
+  void CacheLog(const runtime::js::ConsoleMessage& message);
+  void PostLog(const runtime::js::ConsoleMessage& message);
   void FireCacheLogs();
 
   bool enable_{false};
-  std::list<piper::ConsoleMessage> log_messages_;
+  std::list<runtime::js::ConsoleMessage> log_messages_;
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
 };
 

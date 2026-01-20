@@ -13,7 +13,7 @@
 namespace lynx {
 namespace pub {
 
-class MockNativeModule : public piper::LynxNativeModule {
+class MockNativeModule : public runtime::LynxNativeModule {
  public:
   static std::shared_ptr<MockNativeModule> Create(std::string name) {
     return std::make_shared<MockNativeModule>(name);
@@ -27,7 +27,7 @@ class MockNativeModule : public piper::LynxNativeModule {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override {
+      size_t count, const runtime::CallbackMap& callbacks) override {
     return std::unique_ptr<pub::Value>(nullptr);
   }
 
@@ -44,14 +44,15 @@ class LynxNativeModuleManagerTest : public ::testing::Test {
     native_module_manager_ = std::make_shared<LynxNativeModuleManager>();
 
     auto platform_module_factory =
-        std::make_unique<piper::NativeModuleFactory>();
+        std::make_unique<runtime::NativeModuleFactory>();
     platform_module_factory->Register("platform_module", []() {
       return std::make_shared<MockNativeModule>("platform_module");
     });
     native_module_manager_->SetPlatformModuleFactory(
         std::move(platform_module_factory));
 
-    auto native_module_factory = std::make_unique<piper::NativeModuleFactory>();
+    auto native_module_factory =
+        std::make_unique<runtime::NativeModuleFactory>();
     native_module_factory->Register("native_module", []() {
       return std::make_shared<MockNativeModule>("native_module");
     });

@@ -26,7 +26,7 @@ namespace tasm {
  * `GetJSBundleFromBT` will be invoked in js thread and other methods
  * will be invoked in tasm thread.
  */
-class JsBundleHolderImpl : public piper::JsBundleHolder {
+class JsBundleHolderImpl : public runtime::js::JsBundleHolder {
  public:
   class BundleProxy {
    public:
@@ -39,12 +39,13 @@ class JsBundleHolderImpl : public piper::JsBundleHolder {
   JsBundleHolderImpl(BundleProxy& proxy) : proxy_(proxy){};
   ~JsBundleHolderImpl() override = default;
 
-  std::optional<piper::JsBundle> GetJSBundleFromBT(
+  std::optional<runtime::js::JsBundle> GetJSBundleFromBT(
       const std::string& url) override;
 
   lepus::Value GetCustomSectionFromBT(const std::string& url) override;
 
-  void InsertJSBundle(const std::string& url, const piper::JsBundle& js_bundle);
+  void InsertJSBundle(const std::string& url,
+                      const runtime::js::JsBundle& js_bundle);
 
   void SetEnable(bool enable);
 
@@ -64,11 +65,12 @@ class JsBundleHolderImpl : public piper::JsBundleHolder {
   std::unique_ptr<RequestScope> CreateRequestScope(const std::string& url);
 
  private:
-  std::optional<piper::JsBundle> GetJSBundleInternal(const std::string& url);
+  std::optional<runtime::js::JsBundle> GetJSBundleInternal(
+      const std::string& url);
 
   bool IsRequesting(const std::string& url);
 
-  std::unordered_map<std::string, piper::JsBundle> js_bundle_map_{};
+  std::unordered_map<std::string, runtime::js::JsBundle> js_bundle_map_{};
   std::unordered_map<std::string, lepus::Value> custom_sections_map_{};
 
   std::atomic<bool> enable_{false};

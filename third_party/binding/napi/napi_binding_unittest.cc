@@ -36,8 +36,8 @@ class NapiBindingTest : public ::testing::Test {
   NapiBindingTest()
       : rt_(LEPUS_NewRuntime()),
         ctx_(LEPUS_NewContext(rt_)),
-        runtime_proxy_(static_cast<piper::NapiRuntimeProxy*>(
-            piper::NapiRuntimeProxyQuickjs::Create(ctx_).release())),
+        runtime_proxy_(static_cast<runtime::js::NapiRuntimeProxy*>(
+            runtime::js::NapiRuntimeProxyQuickjs::Create(ctx_).release())),
         e(std::make_unique<TestDelegate>()),
         env_(runtime_proxy_->Env()) {
     e.SetRuntimeProxy(std::move(runtime_proxy_));
@@ -62,13 +62,13 @@ class NapiBindingTest : public ::testing::Test {
   LEPUSRuntime* rt_;
 
  private:
-  class TestDelegate : public piper::NapiEnvironment::Delegate {
+  class TestDelegate : public runtime::js::NapiEnvironment::Delegate {
     void OnAttach(Napi::Env env) override {}
   };
 
   LEPUSContext* ctx_;
-  std::unique_ptr<piper::NapiRuntimeProxy> runtime_proxy_;
-  piper::NapiEnvironment e;
+  std::unique_ptr<runtime::js::NapiRuntimeProxy> runtime_proxy_;
+  runtime::js::NapiEnvironment e;
   bool disposed_ = false;
 
  protected:

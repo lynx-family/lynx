@@ -71,8 +71,8 @@ class LynxTemplateBundle final {
         string_list_(std::make_shared<std::vector<base::String>>()),
         lepus_chunk_manager_(std::make_shared<LepusChunkManager>()){};
 
-  const piper::JsBundle &GetJsBundle() const { return js_bundle_; }
-  piper::JsBundle &GetJsBundle() { return js_bundle_; }
+  const runtime::js::JsBundle &GetJsBundle() const { return js_bundle_; }
+  runtime::js::JsBundle &GetJsBundle() { return js_bundle_; }
 
   lepus::Value GetCustomSections() const { return custom_sections_; }
 
@@ -214,7 +214,7 @@ class LynxTemplateBundle final {
       component_moulds_{};
 
   // body - JS
-  piper::JsBundle js_bundle_{};
+  runtime::js::JsBundle js_bundle_{};
 
   // body - CONFIG
   std::shared_ptr<lynx::tasm::PageConfig> page_configs_{};

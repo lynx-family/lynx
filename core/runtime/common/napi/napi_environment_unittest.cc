@@ -24,8 +24,8 @@ extern "C" {
 #endif  // __cplusplus
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class NapiEnvironmentTest : public ::testing::Test {
  public:
   NapiEnvironmentTest()
@@ -102,5 +102,7 @@ TEST_F(NapiEnvironmentTest, LoadModuleTest) {
   AssertExp("foo == 42");
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

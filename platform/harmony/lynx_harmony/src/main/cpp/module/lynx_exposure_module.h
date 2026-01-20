@@ -15,7 +15,7 @@ namespace harmony {
 
 class LynxExposureModule : public NativeModuleCAPI {
  public:
-  static std::shared_ptr<piper::LynxNativeModule> Create(
+  static std::shared_ptr<runtime::LynxNativeModule> Create(
       const std::shared_ptr<tasm::harmony::LynxContext>& context) {
     return std::make_shared<LynxExposureModule>(context);
   }
@@ -28,14 +28,14 @@ class LynxExposureModule : public NativeModuleCAPI {
 
   void Destroy() override;
 
-  std::unique_ptr<pub::Value> StopExposure(std::unique_ptr<pub::Value> args,
-                                           const piper::CallbackMap& callbacks);
+  std::unique_ptr<pub::Value> StopExposure(
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> ResumeExposure(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> SetObserverFrameRate(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
  private:
   static const std::string name_;

@@ -27,7 +27,7 @@ class LynxDevToolNGMock : public lynx::devtool::LynxDevToolNG {
   void SetDevToolPlatformFacade(
       const std::shared_ptr<devtool::DevToolPlatformFacade>& platform_facade);
 
-  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+  std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name);
 
   std::shared_ptr<devtool::MessageSender> GetMessageSender() const override;

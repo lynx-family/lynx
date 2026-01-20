@@ -24,8 +24,8 @@
 @end
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // Base class: used in ModuleFactory to find one or a group of LynxContext bound to the current
 // ModuleFactory
 class LynxContextFinderDarwin {
@@ -54,7 +54,9 @@ class ModuleCreatorDarwin {
   virtual void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin> &context_finder){};
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_IOS_LYNX_MODULE_CREATOR_DARWIN_H_

@@ -9,14 +9,16 @@
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class NapiRuntimeProxyJSVMFactory {
  public:
   LYNX_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
       std::shared_ptr<Runtime> runtime,
       runtime::TemplateDelegate *delegate = nullptr) = 0;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_JSVM_FACTORY_H_

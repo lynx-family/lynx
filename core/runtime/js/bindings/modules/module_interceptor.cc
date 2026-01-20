@@ -6,15 +6,15 @@
 #include <utility>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 ModuleInterceptorResult GroupInterceptor::InterceptModuleMethod(
     const std::shared_ptr<LynxModule>& module,
     const LynxModule::MethodMetadata& method, Runtime* rt,
-    const std::shared_ptr<piper::ModuleDelegate>& delegate,
-    const piper::Value* args, size_t count,
-    const std::unique_ptr<pub::Value>& pub_args, const CallbackMap& callbacks,
-    piper::NativeModuleInfoCollectorPtr timing_collector) const {
+    const std::shared_ptr<ModuleDelegate>& delegate, const Value* args,
+    size_t count, const std::unique_ptr<pub::Value>& pub_args,
+    const CallbackMap& callbacks,
+    NativeModuleInfoCollectorPtr timing_collector) const {
   for (auto& i : interceptors_) {
     auto pair =
         i->InterceptModuleMethod(module, method, rt, delegate, args, count,
@@ -53,5 +53,7 @@ void GroupInterceptor::SetTemplateUrl(const std::string& url) {
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

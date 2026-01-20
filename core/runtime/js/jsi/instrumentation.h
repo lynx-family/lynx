@@ -16,8 +16,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /// Methods for starting and collecting instrumentation, an \c Instrumentation
 /// instance is associated with a particular \c Runtime instance, which it
 /// controls the instrumentation of.
@@ -72,6 +72,8 @@ class Instrumentation {
   virtual void dumpProfilerSymbolsToFile(const std::string& fileName) const = 0;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_INSTRUMENTATION_H_

@@ -24,7 +24,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 namespace testing {
 
@@ -410,10 +411,10 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   {
     // dynamic url
     const std::string dynamic_url = "http://from_external.js";
-    auto bytecode_getter = std::make_unique<piper::BytecodeGetter>(
+    auto bytecode_getter = std::make_unique<BytecodeGetter>(
         [&dynamic_url](const std::string &url) {
           EXPECT_EQ(url, dynamic_url);
-          return std::make_shared<piper::StringBuffer>("from_external");
+          return std::make_shared<StringBuffer>("from_external");
         });
     auto buffer = instance.TryGetCache(dynamic_url, k_template_url, 0,
                                        std::make_unique<TestingCacheGenerator>(
@@ -427,10 +428,10 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   {
     // packaged url for app-service.js
     auto bytecode_getter =
-        std::make_unique<piper::BytecodeGetter>([](const std::string &url) {
+        std::make_unique<BytecodeGetter>([](const std::string &url) {
           EXPECT_EQ(url, std::string(k_template_url) + std::string("##") +
                              std::string(k_source_url));
-          return std::make_shared<piper::StringBuffer>("from_package");
+          return std::make_shared<StringBuffer>("from_package");
         });
     auto buffer = instance.TryGetCache(k_source_url, k_template_url, 0,
                                        std::make_unique<TestingCacheGenerator>(
@@ -444,11 +445,11 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   {
     // packaged url for lynx://
     const std::string package_url = "lynx://package.js";
-    auto bytecode_getter = std::make_unique<piper::BytecodeGetter>(
+    auto bytecode_getter = std::make_unique<BytecodeGetter>(
         [&package_url](const std::string &url) {
           EXPECT_EQ(url, std::string(k_template_url) + std::string("##") +
                              package_url);
-          return std::make_shared<piper::StringBuffer>("from_lynx");
+          return std::make_shared<StringBuffer>("from_lynx");
         });
     auto buffer = instance.TryGetCache(package_url, k_template_url, 0,
                                        std::make_unique<TestingCacheGenerator>(
@@ -1022,17 +1023,18 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationWithGlobalCallback) {
       "var action = 'request_cache_generation_success';";
 
   fml::AutoResetWaitableEvent latch;
-  JsCacheManager::g_bytecode_generate_callback = std::make_unique<
-      BytecodeGenerateCallback>(
-      [&latch, &source_url](
-          std::string error_msg,
-          std::unordered_map<std::string, std::shared_ptr<lynx::piper::Buffer>>
-              buffers) {
-        EXPECT_EQ(error_msg, "");
-        EXPECT_EQ(buffers.size(), 1);
-        EXPECT_TRUE(buffers[k_template_url + std::string("##") + source_url]);
-        latch.Signal();
-      });
+  JsCacheManager::g_bytecode_generate_callback =
+      std::make_unique<BytecodeGenerateCallback>(
+          [&latch, &source_url](
+              std::string error_msg,
+              std::unordered_map<std::string, std::shared_ptr<Buffer>>
+                  buffers) {
+            EXPECT_EQ(error_msg, "");
+            EXPECT_EQ(buffers.size(), 1);
+            EXPECT_TRUE(
+                buffers[k_template_url + std::string("##") + source_url]);
+            latch.Signal();
+          });
   std::vector<std::unique_ptr<CacheGenerator>> generators;
   generators.push_back(
       std::make_unique<TestingCacheGenerator>(source_url, buffer, js_content));
@@ -1056,9 +1058,9 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationWithTwoCallback) {
   JsCacheManager::g_bytecode_generate_callback =
       std::make_unique<BytecodeGenerateCallback>(
           [](std::string error_msg,
-             std::unordered_map<std::string,
-                                std::shared_ptr<lynx::piper::Buffer>>
-                 buffers) { EXPECT_TRUE(false); });
+             std::unordered_map<std::string, std::shared_ptr<Buffer>> buffers) {
+            EXPECT_TRUE(false);
+          });
   std::vector<std::unique_ptr<CacheGenerator>> generators;
   generators.push_back(
       std::make_unique<TestingCacheGenerator>(source_url, buffer, js_content));
@@ -1067,8 +1069,7 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationWithTwoCallback) {
       std::make_unique<BytecodeGenerateCallback>(
           [&latch, &source_url](
               std::string error_msg,
-              std::unordered_map<std::string,
-                                 std::shared_ptr<lynx::piper::Buffer>>
+              std::unordered_map<std::string, std::shared_ptr<Buffer>>
                   buffers) {
             EXPECT_EQ(error_msg, "");
             EXPECT_EQ(buffers.size(), 1);
@@ -1091,17 +1092,18 @@ TEST_F(JsCacheManagerTest, TryGetCacheWithGlobalCallback) {
       "var action = 'request_cache_generation_success';";
 
   fml::AutoResetWaitableEvent latch;
-  JsCacheManager::g_bytecode_generate_callback = std::make_unique<
-      BytecodeGenerateCallback>(
-      [&latch, &source_url](
-          std::string error_msg,
-          std::unordered_map<std::string, std::shared_ptr<lynx::piper::Buffer>>
-              buffers) {
-        EXPECT_EQ(error_msg, "");
-        EXPECT_EQ(buffers.size(), 1);
-        EXPECT_TRUE(buffers[k_template_url + std::string("##") + source_url]);
-        latch.Signal();
-      });
+  JsCacheManager::g_bytecode_generate_callback =
+      std::make_unique<BytecodeGenerateCallback>(
+          [&latch, &source_url](
+              std::string error_msg,
+              std::unordered_map<std::string, std::shared_ptr<Buffer>>
+                  buffers) {
+            EXPECT_EQ(error_msg, "");
+            EXPECT_EQ(buffers.size(), 1);
+            EXPECT_TRUE(
+                buffers[k_template_url + std::string("##") + source_url]);
+            latch.Signal();
+          });
   quickjs_instance.TryGetCache(
       source_url, k_template_url, 0,
       std::make_unique<TestingCacheGenerator>(source_url, buffer, js_content));
@@ -1112,5 +1114,6 @@ TEST_F(JsCacheManagerTest, TryGetCacheWithGlobalCallback) {
 
 }  // namespace testing
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

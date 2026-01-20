@@ -21,8 +21,8 @@ bool RegisterJNIForLynxModuleFactory(JNIEnv* env) {
 }  // namespace lynx
 
 jboolean RetainJniObject(JNIEnv* env, jobject jcaller, jlong nativePtr) {
-  lynx::piper::ModuleFactoryAndroid* module_manager =
-      reinterpret_cast<lynx::piper::ModuleFactoryAndroid*>(nativePtr);
+  lynx::runtime::js::ModuleFactoryAndroid* module_manager =
+      reinterpret_cast<lynx::runtime::js::ModuleFactoryAndroid*>(nativePtr);
   if (!module_manager) {
     return JNI_FALSE;
   }
@@ -30,8 +30,8 @@ jboolean RetainJniObject(JNIEnv* env, jobject jcaller, jlong nativePtr) {
 }
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 ModuleFactoryAndroid::ModuleFactoryAndroid(JNIEnv* env, jobject moduleFactory)
     : jni_object_(env, moduleFactory) {
   Java_LynxModuleFactory_setNativePtr(env, moduleFactory,
@@ -79,7 +79,7 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryAndroid::CreateModule(
   if (wrapper.Get() != nullptr) {
     auto android_value_factory =
         std::make_shared<pub::ValueImplAndroidFactory>();
-    return std::make_shared<lynx::piper::LynxModuleAndroid>(
+    return std::make_shared<LynxModuleAndroid>(
         localEnv, wrapper.Get(), std::move(android_value_factory));
   }
   return std::shared_ptr<LynxNativeModule>(nullptr);
@@ -100,5 +100,7 @@ std::shared_ptr<ModuleFactoryAndroid> ModuleFactoryAndroid::CreateOrReuse(
   return std::make_shared<ModuleFactoryAndroid>(env, moduleFactory);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

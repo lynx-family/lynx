@@ -11,16 +11,15 @@
 #include "core/runtime/js/bindings/js_app.h"
 
 namespace lynx {
-namespace piper {
-Value JavaScriptElement::get(lynx::piper::Runtime *rt,
-                             const lynx::piper::PropNameID &name) {
+namespace runtime {
+namespace js {
+Value JavaScriptElement::get(Runtime *rt, const PropNameID &name) {
   auto methodName = name.utf8(*rt);
 
   if (methodName == "animate") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "animate"), 4,
-        [this](Runtime &rt, const piper::Value &this_val,
-               const piper::Value *args,
+        [this](Runtime &rt, const Value &this_val, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
           if (count < 4) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -64,19 +63,18 @@ Value JavaScriptElement::get(lynx::piper::Runtime *rt,
             ptr->ElementAnimate(root_id_, selector_id_,
                                 lepus::Value(std::move(props)));
           }
-          return piper::Value::undefined();
+          return Value::undefined();
         });
   }
 
   if (methodName == "setProperty") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "setProperty"), 2,
-        [this](Runtime &rt, const piper::Value &this_val,
-               const piper::Value *args,
+        [this](Runtime &rt, const Value &this_val, const Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
-            return piper::Value::undefined();
+            return Value::undefined();
           }
           if (count < 1) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -91,10 +89,10 @@ Value JavaScriptElement::get(lynx::piper::Runtime *rt,
           }
           ptr->SetCSSVariable(root_id_, selector_id_,
                               std::move(*lepus_value_opt));
-          return piper::Value::undefined();
+          return Value::undefined();
         });
   }
-  return piper::Value::undefined();
+  return Value::undefined();
 }
 
 void JavaScriptElement::set(Runtime *, const PropNameID &name,
@@ -102,9 +100,10 @@ void JavaScriptElement::set(Runtime *, const PropNameID &name,
 
 std::vector<PropNameID> JavaScriptElement::getPropertyNames(Runtime &rt) {
   std::vector<PropNameID> vec;
-  vec.push_back(piper::PropNameID::forUtf8(rt, "animate"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "setProperty"));
+  vec.push_back(PropNameID::forUtf8(rt, "animate"));
+  vec.push_back(PropNameID::forUtf8(rt, "setProperty"));
   return vec;
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

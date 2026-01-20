@@ -7,5 +7,7 @@
 #include "core/base/js_constants.h"
 
 namespace lynx {
-namespace piper {}  // namespace piper
+namespace runtime {
+namespace js {}
+}  // namespace runtime
 }  // namespace lynx

@@ -374,8 +374,8 @@ bool ValueImplNapi::PushInt64ToArray(int64_t value) {
   napi_value obj;
   napi_get_reference_value(env_, backend_value_, &obj);
   napi_value result;
-  if (value < piper::kMinJavaScriptNumber ||
-      value > piper::kMaxJavaScriptNumber) {
+  if (value < runtime::js::kMinJavaScriptNumber ||
+      value > runtime::js::kMaxJavaScriptNumber) {
     napi_create_bigint_int64(env_, value, &result);
   } else {
     napi_create_int64(env_, value, &result);
@@ -388,7 +388,7 @@ bool ValueImplNapi::PushUInt64ToArray(uint64_t value) {
   napi_value obj;
   napi_get_reference_value(env_, backend_value_, &obj);
   napi_value result;
-  if (value > piper::kMaxJavaScriptNumber) {
+  if (value > runtime::js::kMaxJavaScriptNumber) {
     napi_create_bigint_int64(env_, value, &result);
   } else {
     napi_create_int64(env_, value, &result);
@@ -536,8 +536,8 @@ bool ValueImplNapi::PushInt64ToMap(const std::string& key, int64_t value) {
   napi_value k;
   napi_create_string_utf8(env_, key.c_str(), NAPI_AUTO_LENGTH, &k);
   napi_value result;
-  if (value < piper::kMinJavaScriptNumber ||
-      value > piper::kMaxJavaScriptNumber) {
+  if (value < runtime::js::kMinJavaScriptNumber ||
+      value > runtime::js::kMaxJavaScriptNumber) {
     napi_create_bigint_int64(env_, value, &result);
   } else {
     napi_create_int64(env_, value, &result);
@@ -553,7 +553,7 @@ bool ValueImplNapi::PushUInt64ToMap(const std::string& key, uint64_t value) {
   napi_value k;
   napi_create_string_utf8(env_, key.c_str(), NAPI_AUTO_LENGTH, &k);
   napi_value result;
-  if (value > piper::kMaxJavaScriptNumber) {
+  if (value > runtime::js::kMaxJavaScriptNumber) {
     napi_create_bigint_int64(env_, value, &result);
   } else {
     napi_create_int64(env_, value, &result);
@@ -640,14 +640,15 @@ napi_value ValueUtilsNapi::ConvertPubValueToNapiValue(napi_env env,
   } else if (value.IsInt64()) {
     int64_t i = value.Int64();
     // When integer beyond limit, use BigInt Object to define it
-    if (i < piper::kMinJavaScriptNumber || i > piper::kMaxJavaScriptNumber) {
+    if (i < runtime::js::kMinJavaScriptNumber ||
+        i > runtime::js::kMaxJavaScriptNumber) {
       napi_create_bigint_int64(env, i, &result);
     } else {
       napi_create_int64(env, i, &result);
     }
   } else if (value.IsUInt64()) {
     uint64_t u = value.UInt64();
-    if (u > piper::kMaxJavaScriptNumber) {
+    if (u > runtime::js::kMaxJavaScriptNumber) {
       napi_create_bigint_int64(env, u, &result);
     } else {
       napi_create_int64(env, u, &result);

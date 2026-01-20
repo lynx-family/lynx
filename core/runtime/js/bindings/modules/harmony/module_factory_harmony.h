@@ -22,12 +22,12 @@
 namespace lynx {
 namespace harmony {
 
-class ModuleFactoryHarmony : public piper::NativeModuleFactory {
+class ModuleFactoryHarmony : public runtime::NativeModuleFactory {
  public:
   ModuleFactoryHarmony(napi_env env, napi_value module_args[4],
                        napi_value sendable_module_args[4]);
 
-  std::shared_ptr<piper::LynxNativeModule> CreateModule(
+  std::shared_ptr<runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;
 
  private:

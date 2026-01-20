@@ -13,7 +13,7 @@
 
 #if ENABLE_NAPI_BINDING
 extern void RegisterV8RuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyV8Factory *);
+    lynx::runtime::js::NapiRuntimeProxyV8Factory *);
 #endif
 
 namespace lynx {
@@ -21,19 +21,19 @@ namespace runtime {
 
 class LynxRuntimeHelperV8 : public runtime::LynxRuntimeHelper {
  public:
-  std::unique_ptr<piper::Runtime> MakeRuntime() override {
-    return piper::makeV8Runtime();
+  std::unique_ptr<runtime::js::Runtime> MakeRuntime() override {
+    return runtime::js::makeV8Runtime();
   }
   std::shared_ptr<profile::V8RuntimeProfilerWrapper> MakeRuntimeProfiler(
-      std::shared_ptr<piper::JSIContext> js_context) override {
-    return piper::makeV8RuntimeProfiler(js_context);
+      std::shared_ptr<runtime::js::JSIContext> js_context) override {
+    return runtime::js::makeV8RuntimeProfiler(js_context);
   }
 };
 extern void RegisterExternalRuntimeHelper(LynxRuntimeHelper *);
 extern "C" __attribute__((visibility("default"))) int JNI_OnLoad(JavaVM *vm,
                                                                  void *) {
 #if ENABLE_NAPI_BINDING
-  static piper::NapiRuntimeProxyV8FactoryImpl factory;
+  static runtime::js::NapiRuntimeProxyV8FactoryImpl factory;
   LOGI("Setting napi factory from external");
   RegisterV8RuntimeProxyFactory(&factory);
 #endif

@@ -22,20 +22,21 @@ const std::string LynxIntersectionObserverModule::name_ =
 LynxIntersectionObserverModule::LynxIntersectionObserverModule(
     uint32_t view_context_id, fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
-  lynx::piper::NativeModuleMethod create_intersection_observer(
+  lynx::runtime::NativeModuleMethod create_intersection_observer(
       "createIntersectionObserver", 3);
   RegisterMethod(create_intersection_observer,
                  &LynxIntersectionObserverModule::CreateIntersectionObserver);
-  lynx::piper::NativeModuleMethod relative_to("relativeTo", 3);
+  lynx::runtime::NativeModuleMethod relative_to("relativeTo", 3);
   RegisterMethod(relative_to, &LynxIntersectionObserverModule::RelativeTo);
-  lynx::piper::NativeModuleMethod observe("observe", 3);
+  lynx::runtime::NativeModuleMethod observe("observe", 3);
   RegisterMethod(observe, &LynxIntersectionObserverModule::Observe);
-  lynx::piper::NativeModuleMethod disconnect("disconnect", 1);
+  lynx::runtime::NativeModuleMethod disconnect("disconnect", 1);
   RegisterMethod(disconnect, &LynxIntersectionObserverModule::Disconnect);
-  lynx::piper::NativeModuleMethod relative_to_screen("relativeToScreen", 2);
+  lynx::runtime::NativeModuleMethod relative_to_screen("relativeToScreen", 2);
   RegisterMethod(relative_to_screen,
                  &LynxIntersectionObserverModule::RelativeToScreen);
-  lynx::piper::NativeModuleMethod relative_to_viewport("relativeToViewport", 2);
+  lynx::runtime::NativeModuleMethod relative_to_viewport("relativeToViewport",
+                                                         2);
   RegisterMethod(relative_to_viewport,
                  &LynxIntersectionObserverModule::RelativeToViewport);
 }
@@ -45,7 +46,7 @@ LynxIntersectionObserverModule::~LynxIntersectionObserverModule() = default;
 std::unique_ptr<lynx::pub::Value>
 LynxIntersectionObserverModule::CreateIntersectionObserver(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(
       task_runner_, [week_this = weak_from_this(),
                      args_array = std::move(args_array), callback_map]() {
@@ -74,7 +75,7 @@ LynxIntersectionObserverModule::CreateIntersectionObserver(
 
 std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::RelativeTo(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [week_this = weak_from_this(),
                                                    args_array =
                                                        std::move(args_array),
@@ -121,7 +122,7 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::RelativeTo(
 
 std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Observe(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(
       task_runner_, [week_this = weak_from_this(),
                      args_array_ = std::move(args_array), callback_map]() {
@@ -173,7 +174,7 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Observe(
 
 std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Disconnect(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(
       task_runner_, [week_this = weak_from_this(),
                      args_array = std::move(args_array), callback_map]() {
@@ -209,14 +210,14 @@ std::unique_ptr<lynx::pub::Value> LynxIntersectionObserverModule::Disconnect(
 std::unique_ptr<lynx::pub::Value>
 LynxIntersectionObserverModule::RelativeToScreen(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   return RelativeToViewport(std::move(args_array), callback_map);
 }
 
 std::unique_ptr<lynx::pub::Value>
 LynxIntersectionObserverModule::RelativeToViewport(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(
       task_runner_, [week_this = weak_from_this(),
                      args_array = std::move(args_array), callback_map]() {

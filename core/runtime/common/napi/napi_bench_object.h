@@ -10,7 +10,8 @@
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace testing {
 
 class BenchObject : public Napi::ScriptWrappable {
@@ -51,7 +52,8 @@ class BenchObject : public Napi::ScriptWrappable {
 };
 
 }  // namespace testing
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_BENCH_OBJECT_H_

@@ -94,40 +94,40 @@ TEST_F(InspectorLepusObserverImplTest, OnConsoleEvent) {
 
   observer_->SetConsolePostNeeded(false);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleAlog, alog_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleAlog, alog_mes);
   EXPECT_EQ(mediator_->message_.text_, "");
   EXPECT_EQ(mediator_->message_.level_, -2);
   EXPECT_EQ(mediator_->message_.timestamp_, -1);
 
   observer_->SetConsolePostNeeded(true);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleAlog, alog_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleAlog, alog_mes);
   EXPECT_EQ(mediator_->message_.text_, alog_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_ALOG);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_ALOG);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleDebug, debug_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleDebug, debug_mes);
   EXPECT_EQ(mediator_->message_.text_, debug_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_INFO);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_INFO);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleError, error_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleError, error_mes);
   EXPECT_EQ(mediator_->message_.text_, error_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_ERROR);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_ERROR);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleInfo, info_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleInfo, info_mes);
   EXPECT_EQ(mediator_->message_.text_, info_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_INFO);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_INFO);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleLog, log_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleLog, log_mes);
   EXPECT_EQ(mediator_->message_.text_, log_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_LOG);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_LOG);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleReport, report_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleReport, report_mes);
   EXPECT_EQ(mediator_->message_.text_, report_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_REPORT);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_REPORT);
 
-  observer_->OnConsoleEvent(piper::LepusConsoleWarn, warn_mes);
+  observer_->OnConsoleEvent(runtime::js::LepusConsoleWarn, warn_mes);
   EXPECT_EQ(mediator_->message_.text_, warn_mes);
-  EXPECT_EQ(mediator_->message_.level_, piper::CONSOLE_LOG_WARNING);
+  EXPECT_EQ(mediator_->message_.level_, runtime::js::CONSOLE_LOG_WARNING);
 }
 
 }  // namespace testing

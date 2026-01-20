@@ -14,8 +14,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime_wrapper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class JSVMRuntime : public Runtime {
  public:
   JSVMRuntime() = default;
@@ -54,7 +54,7 @@ class JSVMRuntime : public Runtime {
 
   JSVM_Env getEnv() const;
 
-  void valueRef(const piper::Value& value, JSVM_Value* result);
+  void valueRef(const Value& value, JSVM_Value* result);
 
   JSVM_Ref GetHostObjectTemplate() { return host_object_template_; };
   void SetHostObjectTemplate(JSVM_Ref object_template) {
@@ -71,87 +71,73 @@ class JSVMRuntime : public Runtime {
   PointerValue* cloneObject(const Runtime::PointerValue* pv) override;
   PointerValue* clonePropNameID(const Runtime::PointerValue* pv) override;
 
-  piper::PropNameID createPropNameIDFromAscii(const char* str,
-                                              size_t length) override;
-  piper::PropNameID createPropNameIDFromUtf8(const uint8_t* utf8,
-                                             size_t length) override;
-  piper::PropNameID createPropNameIDFromString(
-      const piper::String& str) override;
-  std::string utf8(const piper::PropNameID&) override;
-  bool compare(const piper::PropNameID&, const piper::PropNameID&) override;
+  PropNameID createPropNameIDFromAscii(const char* str, size_t length) override;
+  PropNameID createPropNameIDFromUtf8(const uint8_t* utf8,
+                                      size_t length) override;
+  PropNameID createPropNameIDFromString(const String& str) override;
+  std::string utf8(const PropNameID&) override;
+  bool compare(const PropNameID&, const PropNameID&) override;
 
-  std::optional<std::string> symbolToString(const piper::Symbol&) override;
+  std::optional<std::string> symbolToString(const Symbol&) override;
 
-  piper::String createStringFromAscii(const char* str, size_t length) override;
-  piper::String createStringFromUtf8(const uint8_t* utf8,
-                                     size_t length) override;
-  std::string utf8(const piper::String&) override;
+  String createStringFromAscii(const char* str, size_t length) override;
+  String createStringFromUtf8(const uint8_t* utf8, size_t length) override;
+  std::string utf8(const String&) override;
 
-  piper::Object createObject() override;
-  piper::Object createObject(std::shared_ptr<piper::HostObject> ho) override;
-  std::weak_ptr<piper::HostObject> getHostObject(const piper::Object&) override;
+  Object createObject() override;
+  Object createObject(std::shared_ptr<HostObject> ho) override;
+  std::weak_ptr<HostObject> getHostObject(const Object&) override;
 
-  piper::HostFunctionType f = [](Runtime& rt, const piper::Value& thisVal,
-                                 const piper::Value* args, size_t count) {
-    return piper::Value::undefined();
-  };
-  piper::HostFunctionType& getHostFunction(const piper::Function&) override {
-    return f;
-  }
+  HostFunctionType f = [](Runtime& rt, const Value& thisVal, const Value* args,
+                          size_t count) { return Value::undefined(); };
+  HostFunctionType& getHostFunction(const Function&) override { return f; }
 
-  std::optional<Value> getProperty(const piper::Object&,
-                                   const piper::String& name) override;
-  std::optional<Value> getProperty(const piper::Object&,
-                                   const piper::PropNameID& name) override;
-  bool hasProperty(const piper::Object&, const piper::String& name) override;
-  bool hasProperty(const piper::Object&,
-                   const piper::PropNameID& name) override;
-  bool setPropertyValue(piper::Object&, const piper::String& name,
-                        const piper::Value& value) override;
-  bool setPropertyValue(piper::Object&, const piper::PropNameID& name,
-                        const piper::Value& value) override;
-  bool isArray(const piper::Object&) const override;
-  bool isArrayBuffer(const piper::Object&) const override;
-  bool isFunction(const piper::Object&) const override;
-  bool isHostObject(const piper::Object&) const override;
-  bool isHostFunction(const piper::Function&) const override;
-  std::optional<Array> getPropertyNames(const piper::Object&) override;
+  std::optional<Value> getProperty(const Object&, const String& name) override;
+  std::optional<Value> getProperty(const Object&,
+                                   const PropNameID& name) override;
+  bool hasProperty(const Object&, const String& name) override;
+  bool hasProperty(const Object&, const PropNameID& name) override;
+  bool setPropertyValue(Object&, const String& name,
+                        const Value& value) override;
+  bool setPropertyValue(Object&, const PropNameID& name,
+                        const Value& value) override;
+  bool isArray(const Object&) const override;
+  bool isArrayBuffer(const Object&) const override;
+  bool isFunction(const Object&) const override;
+  bool isHostObject(const Object&) const override;
+  bool isHostFunction(const Function&) const override;
+  std::optional<Array> getPropertyNames(const Object&) override;
 
   std::optional<BigInt> createBigInt(const std::string& value,
                                      Runtime& rt) override;
 
   std::optional<Array> createArray(size_t length) override;
 
-  piper::ArrayBuffer createArrayBufferCopy(const uint8_t* bytes,
-                                           size_t byte_length) override;
+  ArrayBuffer createArrayBufferCopy(const uint8_t* bytes,
+                                    size_t byte_length) override;
 
-  piper::ArrayBuffer createArrayBufferNoCopy(
-      std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) override;
-  std::optional<size_t> size(const piper::Array&) override;
-  size_t size(const piper::ArrayBuffer&) override;
-  uint8_t* data(const piper::ArrayBuffer&) override;
+  ArrayBuffer createArrayBufferNoCopy(std::unique_ptr<const uint8_t[]> bytes,
+                                      size_t byte_length) override;
+  std::optional<size_t> size(const Array&) override;
+  size_t size(const ArrayBuffer&) override;
+  uint8_t* data(const ArrayBuffer&) override;
   size_t copyData(const ArrayBuffer&, uint8_t*, size_t) override;
-  std::optional<Value> getValueAtIndex(const piper::Array&, size_t i) override;
-  bool setValueAtIndexImpl(piper::Array&, size_t i,
-                           const piper::Value& value) override;
+  std::optional<Value> getValueAtIndex(const Array&, size_t i) override;
+  bool setValueAtIndexImpl(Array&, size_t i, const Value& value) override;
 
-  piper::Function createFunctionFromHostFunction(
-      const piper::PropNameID& name, unsigned int paramCount,
-      piper::HostFunctionType func) override;
-  std::optional<Value> call(const piper::Function&, const piper::Value& jsThis,
-                            const piper::Value* args, size_t count) override;
-  std::optional<Value> callAsConstructor(const piper::Function&,
-                                         const piper::Value* args,
+  Function createFunctionFromHostFunction(const PropNameID& name,
+                                          unsigned int paramCount,
+                                          HostFunctionType func) override;
+  std::optional<Value> call(const Function&, const Value& jsThis,
+                            const Value* args, size_t count) override;
+  std::optional<Value> callAsConstructor(const Function&, const Value* args,
                                          size_t count) override;
   ScopeState* pushScope() override;
   void popScope(ScopeState*) override;
-  bool strictEquals(const piper::Symbol& a,
-                    const piper::Symbol& b) const override;
-  bool strictEquals(const piper::String& a,
-                    const piper::String& b) const override;
-  bool strictEquals(const piper::Object& a,
-                    const piper::Object& b) const override;
-  bool instanceOf(const piper::Object& o, const piper::Function& f) override;
+  bool strictEquals(const Symbol& a, const Symbol& b) const override;
+  bool strictEquals(const String& a, const String& b) const override;
+  bool strictEquals(const Object& a, const Object& b) const override;
+  bool instanceOf(const Object& o, const Function& f) override;
 
   void RequestGC() override;
 
@@ -166,7 +152,8 @@ class JSVMRuntime : public Runtime {
   JSVM_Ref host_object_template_ = nullptr;
   JSVM_Ref host_function_template_ = nullptr;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_RUNTIME_H_

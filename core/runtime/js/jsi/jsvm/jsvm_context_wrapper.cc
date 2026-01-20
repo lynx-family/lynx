@@ -10,7 +10,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime_wrapper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 JSVMContextWrapper::JSVMContextWrapper(std::shared_ptr<VMInstance> vm)
     : JSIContext(vm) {
   if (!vm) {
@@ -20,5 +21,6 @@ JSVMContextWrapper::JSVMContextWrapper(std::shared_ptr<VMInstance> vm)
   auto jsvm_instance = std::static_pointer_cast<JSVMRuntimeInstance>(vm);
   env_ = jsvm_instance->Env();
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

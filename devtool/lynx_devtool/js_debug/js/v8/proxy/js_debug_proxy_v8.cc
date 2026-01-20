@@ -12,36 +12,36 @@
 #include "core/runtime/common/napi/napi_runtime_proxy_v8.h"
 
 extern void RegisterV8RuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyV8Factory*);
+    lynx::runtime::js::NapiRuntimeProxyV8Factory*);
 #endif
 
 namespace lynx {
 namespace devtool {
 
-std::unique_ptr<piper::RuntimeInspectorManager>
+std::unique_ptr<runtime::js::RuntimeInspectorManager>
 JSDebugProxyV8::CreateRuntimeInspectorManager() {
-  return std::make_unique<piper::V8InspectorManagerImpl>();
+  return std::make_unique<runtime::js::V8InspectorManagerImpl>();
 }
 
 void JSDebugProxyV8::RegisterNapiRuntimeProxy() {
 #if ENABLE_NAPI_BINDING
-  static piper::NapiRuntimeProxyV8FactoryImpl factory;
+  static runtime::js::NapiRuntimeProxyV8FactoryImpl factory;
   LOGI("js debug: RegisterV8RuntimeProxyFactory: " << &factory);
   RegisterV8RuntimeProxyFactory(&factory);
 #endif
 }
 
-std::shared_ptr<piper::Runtime> JSDebugProxyV8::MakeRuntime() {
+std::shared_ptr<runtime::js::Runtime> JSDebugProxyV8::MakeRuntime() {
   LOGI("js debug: make V8 runtime");
-  return piper::makeV8Runtime();
+  return runtime::js::makeV8Runtime();
 }
 
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<runtime::profile::RuntimeProfiler>
 JSDebugProxyV8::MakeRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context) {
+    std::shared_ptr<runtime::js::JSIContext> js_context) {
   LOGI("js debug: make V8 profiler");
-  auto v8_profiler = piper::makeV8RuntimeProfiler(js_context);
+  auto v8_profiler = runtime::js::makeV8RuntimeProfiler(js_context);
   return std::make_shared<runtime::profile::V8RuntimeProfiler>(
       std::move(v8_profiler));
 }

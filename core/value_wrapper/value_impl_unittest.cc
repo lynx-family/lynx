@@ -210,36 +210,36 @@ TEST_F(ValueAccessorImplTest, ValueAccessorImplTotalTest) {
   LOGI("finish");
 }
 
-class PiperValueTests : public piper::test::JSITestBase {};
+class PiperValueTests : public runtime::js::test::JSITestBase {};
 
 INSTANTIATE_TEST_SUITE_P(
     Runtimes, PiperValueTests,
-    ::testing::ValuesIn(piper::test::runtimeGenerators()),
+    ::testing::ValuesIn(runtime::js::test::runtimeGenerators()),
     [](const ::testing::TestParamInfo<PiperValueTests::ParamType>& info) {
       auto rt = info.param(nullptr);
       switch (rt->type()) {
-        case piper::JSRuntimeType::v8:
+        case runtime::js::JSRuntimeType::v8:
           return "v8";
-        case piper::JSRuntimeType::jsc:
+        case runtime::js::JSRuntimeType::jsc:
           return "jsc";
-        case piper::JSRuntimeType::quickjs:
+        case runtime::js::JSRuntimeType::quickjs:
           return "quickjs";
-        case piper::JSRuntimeType::jsvm:
+        case runtime::js::JSRuntimeType::jsvm:
           return "jsvm";
       }
     });
 
 TEST_P(PiperValueTests, ValueAccessorImplPiperTest) {
-  piper::Object dict(rt);
-  auto pub_value_int32 = pub::ValueImplPiper(rt, piper::Value(32));
-  dict.setProperty(
-      rt, "str_key",
-      piper::Value(piper::String::createFromUtf8(rt, "string_value")));
-  dict.setProperty(rt, "bool_key", piper::Value(true));
-  dict.setProperty(rt, "int32_key", piper::Value(32));
-  dict.setProperty(rt, "int64_key", piper::Value((double)2147483650));
-  dict.setProperty(rt, "double_key", piper::Value(214.123));
-  auto pub_dict = pub::ValueImplPiper(rt, piper::Value(dict));
+  runtime::js::Object dict(rt);
+  auto pub_value_int32 = pub::ValueImplPiper(rt, runtime::js::Value(32));
+  dict.setProperty(rt, "str_key",
+                   runtime::js::Value(runtime::js::String::createFromUtf8(
+                       rt, "string_value")));
+  dict.setProperty(rt, "bool_key", runtime::js::Value(true));
+  dict.setProperty(rt, "int32_key", runtime::js::Value(32));
+  dict.setProperty(rt, "int64_key", runtime::js::Value((double)2147483650));
+  dict.setProperty(rt, "double_key", runtime::js::Value(214.123));
+  auto pub_dict = pub::ValueImplPiper(rt, runtime::js::Value(dict));
   auto dict_str = pub_dict.GetValueForKey("str_key")->str();
   auto dict_bool = pub_dict.GetValueForKey("bool_key")->Bool();
   auto dict_int32 = pub_dict.GetValueForKey("int32_key")->Int32();
@@ -287,7 +287,7 @@ TEST_P(PiperValueTests, ValueAccessorImplPiperTest) {
   auto type2 =
       pub_dict.backend_value().getObject(rt).getProperty(rt, "str_key")->kind();
   ASSERT_TRUE(type1 == lepus::Value_String);
-  ASSERT_TRUE(type2 == piper::Value::ValueKind::StringKind);
+  ASSERT_TRUE(type2 == runtime::js::Value::ValueKind::StringKind);
   EXPECT_EQ(dic_str_value->str(), "string_value");
   ASSERT_TRUE(pub_dict.Contains(std::string("double_key")));
 
@@ -295,14 +295,15 @@ TEST_P(PiperValueTests, ValueAccessorImplPiperTest) {
   // pub_dict.Erase(std::string("double_key"));
   // ASSERT_TRUE(!pub_dict.Contains(std::string("double_key")));
 
-  auto array = piper::Array::createWithLength(rt, 0);
-  array->setValueAtIndex(
-      rt, 0, piper::Value(piper::String::createFromUtf8(rt, "string_value")));
-  array->setValueAtIndex(rt, 1, piper::Value(true));
-  array->setValueAtIndex(rt, 2, piper::Value(23));
-  array->setValueAtIndex(rt, 3, piper::Value((double)2147483651));
-  array->setValueAtIndex(rt, 4, piper::Value(123.321));
-  auto pub_array = pub::ValueImplPiper(rt, piper::Value(rt, *array));
+  auto array = runtime::js::Array::createWithLength(rt, 0);
+  array->setValueAtIndex(rt, 0,
+                         runtime::js::Value(runtime::js::String::createFromUtf8(
+                             rt, "string_value")));
+  array->setValueAtIndex(rt, 1, runtime::js::Value(true));
+  array->setValueAtIndex(rt, 2, runtime::js::Value(23));
+  array->setValueAtIndex(rt, 3, runtime::js::Value((double)2147483651));
+  array->setValueAtIndex(rt, 4, runtime::js::Value(123.321));
+  auto pub_array = pub::ValueImplPiper(rt, runtime::js::Value(rt, *array));
   pub_array.PushValueToArray(pub_dict);
   auto array_str = pub_array.GetValueAtIndex(0)->str();
   auto array_bool = pub_array.GetValueAtIndex(1)->Bool();
@@ -355,15 +356,16 @@ TEST_P(PiperValueTests, ValueAccessorImplPiperTest) {
   // pub_array.Erase(4);
   // ASSERT_TRUE(pub_array.Length() == 5);
 
-  auto nil_value = pub::ValueImplPiper(rt, piper::Value(nullptr));
-  auto und_value = pub::ValueImplPiper(rt, piper::Value());
+  auto nil_value = pub::ValueImplPiper(rt, runtime::js::Value(nullptr));
+  auto und_value = pub::ValueImplPiper(rt, runtime::js::Value());
   auto str_value = pub::ValueImplPiper(
-      rt, piper::Value(piper::String::createFromUtf8(rt, "string_value")));
-  auto bool_value = pub::ValueImplPiper(rt, piper::Value(false));
-  auto int32_value = pub::ValueImplPiper(rt, piper::Value(12));
+      rt, runtime::js::Value(
+              runtime::js::String::createFromUtf8(rt, "string_value")));
+  auto bool_value = pub::ValueImplPiper(rt, runtime::js::Value(false));
+  auto int32_value = pub::ValueImplPiper(rt, runtime::js::Value(12));
   uint64_t num = 2147483652;
-  auto uint64_value = pub::ValueImplPiper(rt, piper::Value((double)num));
-  auto double_value = pub::ValueImplPiper(rt, piper::Value(123.123));
+  auto uint64_value = pub::ValueImplPiper(rt, runtime::js::Value((double)num));
+  auto double_value = pub::ValueImplPiper(rt, runtime::js::Value(123.123));
   ASSERT_TRUE(nil_value.IsNil());
   ASSERT_TRUE(und_value.IsUndefined());
   ASSERT_TRUE(str_value.IsString());
@@ -377,9 +379,9 @@ TEST_P(PiperValueTests, ValueAccessorImplPiperTest) {
   ASSERT_TRUE(double_value.IsDouble());
   ASSERT_TRUE(double_value.Double() == 123.123);
 
-  ASSERT_TRUE(piper::Value::strictEquals(
+  ASSERT_TRUE(runtime::js::Value::strictEquals(
       rt, pub::ValueUtils::ConvertValueToPiperValue(rt, pub_value_int32),
-      piper::Value(32)));
+      runtime::js::Value(32)));
   LOGI("finish");
 }
 
@@ -439,10 +441,10 @@ TEST_P(PiperValueTests, ValueConvertTest) {
 
 TEST_P(PiperValueTests, BigIntTest) {
   {
-    auto bigint =
-        piper::BigInt::createWithString(rt, std::to_string(9007199254740999));
+    auto bigint = runtime::js::BigInt::createWithString(
+        rt, std::to_string(9007199254740999));
     auto pub_value_piper_bigint =
-        pub::ValueImplPiper(rt, piper::Value(*bigint));
+        pub::ValueImplPiper(rt, runtime::js::Value(*bigint));
     ASSERT_TRUE(pub_value_piper_bigint.IsInt64());
     ASSERT_TRUE(!pub_value_piper_bigint.IsMap());
     EXPECT_EQ(pub_value_piper_bigint.Int64(), 9007199254740999);
@@ -480,9 +482,9 @@ TEST_P(PiperValueTests, ValueUtilsTest) {
       "World!\",\"number\":-42.5,\"object\":{\"key\":\"value\"},\"array\":[1,"
       "\"two\",true,null],\"boolean\":true,\"null\":null}],\"boolean\":true,"
       "\"null\":null}");
-  piper::Object test_data =
+  runtime::js::Object test_data =
       rt.global().getPropertyAsObject(rt, "testData").value();
-  piper::Array names = test_data.getPropertyNames(rt).value();
+  runtime::js::Array names = test_data.getPropertyNames(rt).value();
   EXPECT_EQ(names.size(rt), 6);
 
   std::shared_ptr<PubValueFactory> factory =
@@ -510,7 +512,8 @@ TEST_P(PiperValueTests, ValueUtilsTest) {
   EXPECT_TRUE(pub_array->GetValueAtIndex(3)->IsNil());
   EXPECT_TRUE(pub_array->GetValueAtIndex(4)->IsMap());
 
-  auto pub_piper_value = pub::ValueImplPiper(rt, piper::Value(rt, test_data));
+  auto pub_piper_value =
+      pub::ValueImplPiper(rt, runtime::js::Value(rt, test_data));
   auto lepus_value = pub::ValueUtils::ConvertValueToLepusValue(pub_piper_value);
   EXPECT_EQ(lepus_value.GetLength(), 6);
   // There is no match because the object's null or undefined value is
@@ -522,7 +525,8 @@ TEST_P(PiperValueTests, ValueUtilsTest) {
   auto pub_lepus_value = PubLepusValue(lepus_value);
   auto piper_value =
       pub::ValueUtils::ConvertValueToPiperValue(rt, pub_lepus_value);
-  piper::Array names1 = piper_value.getObject(rt).getPropertyNames(rt).value();
+  runtime::js::Array names1 =
+      piper_value.getObject(rt).getPropertyNames(rt).value();
   EXPECT_EQ(names1.size(rt), 6);
 }
 

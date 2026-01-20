@@ -16,8 +16,8 @@
 #include "core/services/long_task_timing/long_task_monitor.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 namespace {
 
 class AdapterTask {
@@ -59,26 +59,26 @@ JsTaskAdapter::JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
 
 JsTaskAdapter::~JsTaskAdapter() { manager_->StopAllTasks(); }
 
-piper::Value JsTaskAdapter::SetTimeout(
-    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+Value JsTaskAdapter::SetTimeout(
+    std::variant<std::unique_ptr<Function>, double> id_or_callback,
     int32_t delay, uint64_t trace_flow_id) {
   auto task =
       MakeTask(std::move(id_or_callback), TaskType::kSetTimeout, trace_flow_id);
-  return piper::Value(static_cast<int>(
+  return Value(static_cast<int>(
       manager_->SetTimeout(std::move(task), static_cast<int64_t>(delay))));
 }
 
-piper::Value JsTaskAdapter::SetInterval(
-    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+Value JsTaskAdapter::SetInterval(
+    std::variant<std::unique_ptr<Function>, double> id_or_callback,
     int32_t delay, uint64_t trace_flow_id) {
   auto task = MakeTask(std::move(id_or_callback), TaskType::kSetInterval,
                        trace_flow_id);
-  return piper::Value(static_cast<int>(
+  return Value(static_cast<int>(
       manager_->SetInterval(std::move(task), static_cast<int64_t>(delay))));
 }
 
 void JsTaskAdapter::QueueMicrotask(
-    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+    std::variant<std::unique_ptr<Function>, double> id_or_callback,
     uint64_t trace_flow_id) {
   auto task = MakeTask(std::move(id_or_callback), TaskType::kQueueMicrotask,
                        trace_flow_id);
@@ -100,7 +100,7 @@ void JsTaskAdapter::QueueMicrotask(
 }
 
 base::closure JsTaskAdapter::MakeTask(
-    std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+    std::variant<std::unique_ptr<Function>, double> id_or_callback,
     TaskType task_type, uint64_t trace_flow_id) {
   return fml::MakeCopyable(
       [weak_rt = rt_, id_or_callback = std::move(id_or_callback), task_type,
@@ -132,7 +132,7 @@ base::closure JsTaskAdapter::MakeTask(
 
           tasm::timing::LongTaskMonitor::Scope long_task_scope(
               page_options, tasm::timing::kTimerTask, task_name);
-          piper::Scope scope(*rt);
+          Scope scope(*rt);
           if (id_or_callback.index() == 0) {
             auto* cb_ref = std::get_if<0>(&id_or_callback);
             // Explicitly ignore the return value since the exception will be
@@ -145,10 +145,10 @@ base::closure JsTaskAdapter::MakeTask(
             if (func) {
               const size_t args_count = 4;
               bool once = task_type == TaskType::kSetInterval ? false : true;
-              const piper::Value args[args_count] = {
-                  piper::String::createFromAscii(*rt, app_id),
-                  piper::String::createFromAscii(*rt, "invokeCallback"),
-                  piper::Value(once), piper::Value(*id_ref)};
+              const Value args[args_count] = {
+                  String::createFromAscii(*rt, app_id),
+                  String::createFromAscii(*rt, "invokeCallback"), Value(once),
+                  Value(*id_ref)};
               static_cast<void>(func->call(*rt, args, args_count));
             }
           }
@@ -158,5 +158,7 @@ base::closure JsTaskAdapter::MakeTask(
 
 void JsTaskAdapter::RemoveTask(uint32_t task) { manager_->StopTask(task); }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

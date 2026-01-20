@@ -31,15 +31,17 @@ class LynxApiHandler;
 class RuntimeManagerDelegate;
 }  // namespace runtime
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
  public:
-  JSExecutor(const std::shared_ptr<JSIExceptionHandler>& handler,
-             const std::string& group_id,
-             const std::shared_ptr<LynxModuleManager>& module_manager,
-             const std::shared_ptr<piper::InspectorRuntimeObserverNG>&
-                 runtime_observer,
-             bool forceUseLightweightJSEngine = false);
+  JSExecutor(
+      const std::shared_ptr<JSIExceptionHandler>& handler,
+      const std::string& group_id,
+      const std::shared_ptr<LynxModuleManager>& module_manager,
+      const std::shared_ptr<InspectorRuntimeObserverNG>& runtime_observer,
+      bool forceUseLightweightJSEngine = false);
   ~JSExecutor();
   JSExecutor(const JSExecutor&) = delete;
   JSExecutor& operator=(const JSExecutor&) = delete;
@@ -48,7 +50,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   void loadPreJSBundle(
       base::MoveOnlyClosure<
-          std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>>
+          std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
           js_pre_sources_getter,
       bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
       const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
@@ -56,32 +58,31 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   void SetObserver(JSIObserver* observer);
 
-  void invokeCallback(std::shared_ptr<piper::ModuleCallback> callback,
-                      piper::ModuleCallbackFunctionHolder* holder);
+  void invokeCallback(std::shared_ptr<ModuleCallback> callback,
+                      ModuleCallbackFunctionHolder* holder);
 
   runtime::RuntimeManager* runtimeManagerInstance();
 
-  std::shared_ptr<piper::App> createNativeAppInstance(
+  std::shared_ptr<App> createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const tasm::PageOptions& page_options);
 
-  piper::JSRuntimeCreatedType getJSRuntimeType();
+  JSRuntimeCreatedType getJSRuntimeType();
 
-  std::shared_ptr<piper::Runtime> GetJSRuntime();
+  std::shared_ptr<Runtime> GetJSRuntime();
 
   void SetUrl(const std::string& url);
 
-  std::shared_ptr<piper::ConsoleMessagePostMan> CreateConsoleMessagePostMan();
+  std::shared_ptr<ConsoleMessagePostMan> CreateConsoleMessagePostMan();
 
   static runtime::RuntimeManager* GetCurrentRuntimeManagerInstance();
 
-  const std::shared_ptr<piper::InspectorRuntimeObserverNG>
-  GetRuntimeObserver() {
+  const std::shared_ptr<InspectorRuntimeObserverNG> GetRuntimeObserver() {
     return runtime_observer_ng_;
   }
 
-  std::shared_ptr<piper::LynxModuleManager>& GetModuleManager() {
+  std::shared_ptr<LynxModuleManager>& GetModuleManager() {
     return module_manager_;
   }
   void TriggerVmGC() {
@@ -93,17 +94,19 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
  protected:
   std::shared_ptr<JSIExceptionHandler> exception_handler_;
   std::string group_id_;
-  std::shared_ptr<piper::InspectorRuntimeObserverNG> runtime_observer_ng_;
-  std::shared_ptr<piper::LynxModuleManager> module_manager_;
+  std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;
+  std::shared_ptr<LynxModuleManager> module_manager_;
   bool force_use_light_weight_js_engine_;
 #if ENABLE_TESTBENCH_REPLAY
-  std::shared_ptr<piper::ModuleManagerTestBench> module_manager_testBench_;
+  std::shared_ptr<ModuleManagerTestBench> module_manager_testBench_;
 #endif
 
   // set by  the child class
-  std::shared_ptr<piper::Runtime> js_runtime_;
+  std::shared_ptr<Runtime> js_runtime_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JS_EXECUTOR_H_

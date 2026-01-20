@@ -134,11 +134,11 @@ void PostJsCacheGenerationTask(JNIEnv* env, jclass jcaller, jlong bundle,
                                                              bytecodeSourceUrl);
   lynx::tasm::LynxTemplateBundle* template_bundle =
       reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(bundle);
-  lynx::piper::cache::JsCacheManagerFacade::PostCacheGenerationTask(
+  lynx::runtime::js::cache::JsCacheManagerFacade::PostCacheGenerationTask(
       *template_bundle, template_url,
-      useV8 ? lynx::piper::JSRuntimeType::v8
-            : lynx::piper::JSRuntimeType::quickjs,
-      lynx::piper::cache::CreateBytecodeCallback(env, callback));
+      useV8 ? lynx::runtime::js::JSRuntimeType::v8
+            : lynx::runtime::js::JSRuntimeType::quickjs,
+      lynx::runtime::js::cache::CreateBytecodeCallback(env, callback));
 }
 
 jboolean ConstructContext(JNIEnv* env, jclass jcaller, jlong ptr, jint count) {

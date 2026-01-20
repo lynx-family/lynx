@@ -14,9 +14,9 @@ namespace lynx {
 namespace runtime {
 class LynxRuntimeHelper {
  public:
-  virtual std::unique_ptr<piper::Runtime> MakeRuntime() = 0;
+  virtual std::unique_ptr<runtime::js::Runtime> MakeRuntime() = 0;
   virtual std::shared_ptr<profile::V8RuntimeProfilerWrapper>
-      MakeRuntimeProfiler(std::shared_ptr<piper::JSIContext>) = 0;
+      MakeRuntimeProfiler(std::shared_ptr<runtime::js::JSIContext>) = 0;
 };
 }  // namespace runtime
 }  // namespace lynx

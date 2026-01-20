@@ -16,7 +16,7 @@
 namespace lynx {
 namespace shell {
 
-class ModuleDelegateImpl : public piper::ModuleDelegate {
+class ModuleDelegateImpl : public runtime::js::ModuleDelegate {
  public:
   explicit ModuleDelegateImpl(
       const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor,
@@ -29,16 +29,17 @@ class ModuleDelegateImpl : public piper::ModuleDelegate {
   ModuleDelegateImpl(ModuleDelegateImpl&&) = delete;
   ModuleDelegateImpl& operator=(ModuleDelegateImpl&&) = delete;
 
-  int64_t RegisterJSCallbackFunction(piper::Function func) override;
-  void CallJSCallback(const std::shared_ptr<piper::ModuleCallback>& callback,
-                      base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
-                      int64_t id_to_delete =
-                          piper::ModuleCallback::kInvalidCallbackId) override;
+  int64_t RegisterJSCallbackFunction(runtime::js::Function func) override;
+  void CallJSCallback(
+      const std::shared_ptr<runtime::js::ModuleCallback>& callback,
+      base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
+      int64_t id_to_delete =
+          runtime::js::ModuleCallback::kInvalidCallbackId) override;
   void OnErrorOccurred(base::LynxError error) override;
   void OnMethodInvoked(const std::string& module_name,
                        const std::string& method_name, int32_t code) override;
 
-  void FlushJSBTiming(piper::NativeModuleInfo timing) override;
+  void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override;
 
   void RunOnJSThread(base::closure func) override;
 

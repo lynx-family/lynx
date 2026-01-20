@@ -84,12 +84,12 @@ namespace {
 
 constexpr uint32_t LynxRuntimeFlagsMask = 0xFFFFFFFF;
 
-class JSIExceptionHandlerImpl : public piper::JSIExceptionHandler {
+class JSIExceptionHandlerImpl : public runtime::js::JSIExceptionHandler {
  public:
   explicit JSIExceptionHandlerImpl(BTSRuntime* runtime) : runtime_(runtime) {}
   ~JSIExceptionHandlerImpl() override = default;
 
-  void onJSIException(const piper::JSIException& exception) override {
+  void onJSIException(const runtime::js::JSIException& exception) override {
     if (is_handling_exception_) {
       return;
     }
@@ -137,7 +137,8 @@ BTSRuntime::~BTSRuntime() { Destroy(); }
 void BTSRuntime::Init(
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
         native_module_manager,
-    const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
+    const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>&
+        runtime_observer,
     std::vector<std::string> preload_js_paths) {
   LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
                                      << GetRuntimeId() << " this:" << this);
@@ -146,15 +147,15 @@ void BTSRuntime::Init(
       delegate_.get());
   lifecycle_observer_->OnRuntimeInit(GetRuntimeId());
   // Create JSI ModuleManager
-  std::shared_ptr<lynx::piper::LynxModuleManager> module_manager;
+  std::shared_ptr<lynx::runtime::js::LynxModuleManager> module_manager;
   if (native_module_manager->Type() ==
       pub::LynxNativeModuleManager::ManagerType::NATIVE) {
-    module_manager = std::make_shared<lynx::piper::LynxModuleManager>(
+    module_manager = std::make_shared<lynx::runtime::js::LynxModuleManager>(
         std::move(*native_module_manager));
     module_manager->initBindingPtr(module_manager, module_manager->delegate_);
   } else if (native_module_manager->Type() ==
              pub::LynxNativeModuleManager::ManagerType::JSI) {
-    module_manager = std::static_pointer_cast<piper::LynxModuleManager>(
+    module_manager = std::static_pointer_cast<runtime::js::LynxModuleManager>(
         native_module_manager);
   } else {
     delegate_->OnErrorOccurred(
@@ -167,7 +168,7 @@ void BTSRuntime::Init(
     }
     cached_native_factories_.clear();
   }
-  js_executor_ = std::make_unique<lynx::piper::JSExecutor>(
+  js_executor_ = std::make_unique<lynx::runtime::js::JSExecutor>(
       std::make_shared<JSIExceptionHandlerImpl>(this), group_id_,
       module_manager, runtime_observer,
       runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
@@ -206,8 +207,9 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, LYNX_JS_LOAD_CORE);
   auto preload_js_sources_getter =
       [&, preload_js_paths = std::move(preload_js_paths), is_full_runtime]()
-      -> std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>> {
-    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>
+      -> std::vector<
+          std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>> {
+    std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>
         preload_js_sources;
     if (is_full_runtime) {
       ReadCoreJS(preload_js_sources);
@@ -240,11 +242,11 @@ void BTSRuntime::TransitionToFullRuntime() {
   if (!rt) {
     return;
   }
-  std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>
+  std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>
       preload_js_sources;
   ReadCoreJS(preload_js_sources);
   // load the lynx_core.js
-  piper::Scope scope(*rt);
+  runtime::js::Scope scope(*rt);
   for (auto& [url, buffer] : preload_js_sources) {
     auto prep = rt->prepareJavaScript(buffer, url);
     auto ret = rt->evaluatePreparedJavaScript(prep);
@@ -256,7 +258,7 @@ void BTSRuntime::TransitionToFullRuntime() {
 }
 
 void BTSRuntime::SetJsBundleHolder(
-    const std::weak_ptr<piper::JsBundleHolder>& weak_js_bundle_holder) {
+    const std::weak_ptr<runtime::js::JsBundleHolder>& weak_js_bundle_holder) {
   if (app_) {
     app_->SetJsBundleHolder(weak_js_bundle_holder);
   }
@@ -264,18 +266,21 @@ void BTSRuntime::SetJsBundleHolder(
 
 void BTSRuntime::ReadPreloadJSSource(
     std::vector<std::string> preload_js_paths,
-    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret) {
+    std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+        ret) {
   for (auto&& path : preload_js_paths) {
     std::string res = delegate_->LoadJSSource(path);
     if (res.length() > 0) {
-      ret.emplace_back(std::move(path),
-                       std::make_shared<piper::StringBuffer>(std::move(res)));
+      ret.emplace_back(
+          std::move(path),
+          std::make_shared<runtime::js::StringBuffer>(std::move(res)));
     }
   }
 }
 
 void BTSRuntime::ReadCoreJS(
-    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret) {
+    std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+        ret) {
   if (!js_core_source_ || js_core_source_->length() <= 0 ||
       (runtime_flags_ & LynxRuntimeFlags::FORCE_RELOAD_CORE_JS)) {
     delete js_core_source_;
@@ -284,8 +289,9 @@ void BTSRuntime::ReadCoreJS(
     DCHECK(js_core_source_->length() > 0);
     delegate_->OnCoreJSUpdated(*js_core_source_);
   }
-  ret.emplace_back(runtime::kLynxCoreJSName,
-                   std::make_shared<piper::StringRefBuffer>(*js_core_source_));
+  ret.emplace_back(
+      runtime::kLynxCoreJSName,
+      std::make_shared<runtime::js::StringRefBuffer>(*js_core_source_));
 }
 
 void BTSRuntime::UpdateState(State state) {
@@ -314,13 +320,14 @@ void BTSRuntime::UpdateState(State state) {
 
 #if ENABLE_NAPI_BINDING
 void BTSRuntime::PrepareNapiEnvironment() {
-  napi_environment_ = std::make_unique<piper::NapiEnvironment>(
-      std::make_unique<piper::NapiLoaderJS>(
+  napi_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
+      std::make_unique<runtime::js::NapiLoaderJS>(
           std::to_string(GetRuntimeId()),
           [this](Napi::Env env, Napi::Object& lynx) {
             this->NotifyRuntimeReady(env, lynx);
           }));
-  auto proxy = piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
+  auto proxy =
+      runtime::js::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
   LOGI("napi attaching with proxy: " << proxy.get()
                                      << ", id: " << GetRuntimeId());
   if (proxy) {
@@ -341,10 +348,12 @@ void BTSRuntime::PrepareNapiEnvironment() {
 // complete native capabilities to JS in their custom modules.
 void BTSRuntime::PrepareRestrictedNapiEnvironment() {
   // Create a restricted environment with an dummy delegate.
-  napi_restricted_environment_ = std::make_unique<piper::NapiEnvironment>(
-      std::make_unique<piper::NapiEnvironment::Delegate>());
-  auto proxy = std::make_unique<piper::RestrictedNapiRuntimeProxyDecorator>(
-      piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get()));
+  napi_restricted_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
+      std::make_unique<runtime::js::NapiEnvironment::Delegate>());
+  auto proxy =
+      std::make_unique<runtime::js::RestrictedNapiRuntimeProxyDecorator>(
+          runtime::js::NapiRuntimeProxy::Create(GetJSRuntime(),
+                                                delegate_.get()));
   LOGI("napi attaching with restricted proxy: " << proxy.get()
                                                 << ", id: " << GetRuntimeId());
   if (proxy) {
@@ -419,8 +428,9 @@ void BTSRuntime::CallJSFunction(const std::string& module_id,
       LOGE("js_runtime is nullptr!");
       return;
     }
-    piper::Scope scope(*js_runtime);
-    auto array = piper::arrayFromLepus(*js_runtime, *(arguments.Array().get()));
+    runtime::js::Scope scope(*js_runtime);
+    auto array =
+        runtime::js::arrayFromLepus(*js_runtime, *(arguments.Array().get()));
     if (!array) {
       js_runtime->reportJSIException(
           BUILD_JSI_NATIVE_EXCEPTION("CallJSFunction fail! Reason: Transfer "
@@ -432,10 +442,10 @@ void BTSRuntime::CallJSFunction(const std::string& module_id,
 }
 
 void BTSRuntime::CallJSCallback(
-    const std::shared_ptr<piper::ModuleCallback>& callback,
+    const std::shared_ptr<runtime::js::ModuleCallback>& callback,
     int64_t id_to_delete) {
   uint64_t callback_thread_switch_end = base::CurrentSystemTimeMilliseconds();
-  if (id_to_delete != piper::ModuleCallback::kInvalidCallbackId) {
+  if (id_to_delete != runtime::js::ModuleCallback::kInvalidCallbackId) {
     callbacks_.erase(id_to_delete);
   }
 
@@ -447,7 +457,7 @@ void BTSRuntime::CallJSCallback(
   if (iterator == callbacks_.end()) {
     if (callback->timing_collector_ != nullptr) {
       callback->timing_collector_->OnErrorOccurred(
-          piper::NativeModuleStatusCode::FAILURE);
+          runtime::js::NativeModuleStatusCode::FAILURE);
     }
     return;
   }
@@ -466,13 +476,13 @@ void BTSRuntime::CallJSCallback(
   }
 }
 
-int64_t BTSRuntime::RegisterJSCallbackFunction(piper::Function func) {
+int64_t BTSRuntime::RegisterJSCallbackFunction(runtime::js::Function func) {
   int64_t index = ++callback_id_index_;
   callbacks_.emplace(index, std::move(func));
   return index;
 }
 
-void BTSRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
+void BTSRuntime::CallJSApiCallback(runtime::js::ApiCallBack callback) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -490,7 +500,7 @@ void BTSRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
   app_->InvokeApiCallBack(std::move(callback));
 }
 
-void BTSRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+void BTSRuntime::CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                             const lepus::Value& value,
                                             bool persist) {
   if (state_ == State::kDestroying) {
@@ -510,8 +520,8 @@ void BTSRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   app_->InvokeApiCallBackWithValue(std::move(callback), value, persist);
 }
 
-void BTSRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
-                                            piper::Value value) {
+void BTSRuntime::CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
+                                            runtime::js::Value value) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -528,7 +538,7 @@ void BTSRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   app_->InvokeApiCallBackWithValue(std::move(callback), std::move(value));
 }
 
-void BTSRuntime::EraseJSApiCallback(piper::ApiCallBack callback) {
+void BTSRuntime::EraseJSApiCallback(runtime::js::ApiCallBack callback) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -542,7 +552,7 @@ void BTSRuntime::EraseJSApiCallback(piper::ApiCallBack callback) {
 
 void BTSRuntime::CallIntersectionObserver(int32_t observer_id,
                                           int32_t callback_id,
-                                          piper::Value data) {
+                                          runtime::js::Value data) {
   QueueOrExecTask(
       [this, observer_id, callback_id, data = std::move(data)]() mutable {
         app_->OnIntersectionObserverEvent(observer_id, callback_id,
@@ -552,7 +562,7 @@ void BTSRuntime::CallIntersectionObserver(int32_t observer_id,
 
 void BTSRuntime::CallFunction(const std::string& module_id,
                               const std::string& method_id,
-                              const piper::Array& arguments) {
+                              const runtime::js::Array& arguments) {
   if (state_ == State::kDestroying) {
     return;
   }
@@ -565,7 +575,7 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   if (module_id == "GlobalEventEmitter") {
     auto size = arguments.length(*js_runtime);
     if (size) {
-      piper::Value values[*size];
+      runtime::js::Value values[*size];
       for (size_t index = 0; index < *size; index++) {
         auto item_opt = arguments.getValueAtIndex(*js_runtime, index);
         if (item_opt) {
@@ -588,21 +598,22 @@ void BTSRuntime::CallFunction(const std::string& module_id,
         runtime::ContextProxy::Type::kNative,
         runtime::ContextProxy::Type::kJSContext,
         std::make_unique<pub::ValueImplPiper>(
-            *js_runtime, piper::Value(*js_runtime, arguments)));
+            *js_runtime, runtime::js::Value(*js_runtime, arguments)));
     native_context_proxy->DispatchEvent(std::move(jsContextEvent));
     auto coreContextEvent = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeGlobalEvent,
         runtime::ContextProxy::Type::kNative,
         runtime::ContextProxy::Type::kCoreContext,
         std::make_unique<pub::ValueImplLepus>(*app_->ParseJSValueToLepusValue(
-            piper::Value(*js_runtime, std::move(arguments)), PAGE_GROUP_ID)));
+            runtime::js::Value(*js_runtime, std::move(arguments)),
+            PAGE_GROUP_ID)));
     delegate_->DispatchMessageEvent(std::move(coreContextEvent));
     return;
   }
   app_->CallFunction(module_id, method_id, std::move(arguments));
 }
 
-void BTSRuntime::FlushJSBTiming(piper::NativeModuleInfo timing) {
+void BTSRuntime::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
   delegate_->FlushJSBTiming(std::move(timing));
 }
 
@@ -750,8 +761,9 @@ void BTSRuntime::TryToDestroy() {
           runtime::ContextProxy::Type::kJSContext,
           std::make_unique<pub::ValueImplPiper>(
               *js_runtime,
-              piper::Value(*js_runtime, piper::String::createFromUtf8(
-                                            *js_runtime, app_->getAppGUID()))));
+              runtime::js::Value(*js_runtime,
+                                 runtime::js::String::createFromUtf8(
+                                     *js_runtime, app_->getAppGUID()))));
       native_context_proxy->DispatchEvent(std::move(jsContextEvent));
     } else {
       app_->CallDestroyLifetimeFun();
@@ -833,7 +845,7 @@ void BTSRuntime::OnAppReload(
 }
 
 void BTSRuntime::EvaluateScript(const std::string& url, std::string script,
-                                piper::ApiCallBack callback) {
+                                runtime::js::ApiCallBack callback) {
   QueueOrExecTask([this, url, script = std::move(script), callback]() mutable {
     app_->EvaluateScript(url, std::move(script), callback);
   });
@@ -841,7 +853,7 @@ void BTSRuntime::EvaluateScript(const std::string& url, std::string script,
 
 void BTSRuntime::OnScriptLoaded(const std::string& url, std::string script,
                                 std::string error,
-                                piper::ApiCallBack callback) {
+                                runtime::js::ApiCallBack callback) {
   QueueOrExecTask([this, url, script = std::move(script),
                    error = std::move(error), callback]() mutable {
     app_->OnScriptLoaded(url, std::move(script), std::move(error), callback);
@@ -928,7 +940,7 @@ void BTSRuntime::OnRuntimeReady() {
 
   // TODO(liyanbo.monster): delete this when jsc crash fixed.
 #if OS_IOS
-  if (js_executor_->GetJSRuntime()->type() == piper::JSRuntimeType::jsc) {
+  if (js_executor_->GetJSRuntime()->type() == runtime::js::JSRuntimeType::jsc) {
     auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
     task_runner->PostDelayedTask(
         fml::MakeCopyable(
@@ -978,7 +990,7 @@ void BTSRuntime::AddEventListeners() {
   }
 }
 
-void BTSRuntime::OnJSIException(const piper::JSIException& exception) {
+void BTSRuntime::OnJSIException(const runtime::js::JSIException& exception) {
   if (state_ == State::kDestroying || !app_) {
     if (delegate_) {
       auto error = base::LynxError(
@@ -1003,7 +1015,7 @@ void BTSRuntime::OnModuleMethodInvoked(const std::string& module,
   delegate_->OnModuleMethodInvoked(module, method, code);
 }
 
-std::shared_ptr<piper::Runtime> BTSRuntime::GetJSRuntime() {
+std::shared_ptr<runtime::js::Runtime> BTSRuntime::GetJSRuntime() {
   return js_executor_ ? js_executor_->GetJSRuntime() : nullptr;
 }
 
@@ -1150,7 +1162,7 @@ void BTSRuntime::AddLifecycleListener(
 }
 
 void BTSRuntime::AddModuleFactory(
-    std::unique_ptr<piper::NativeModuleFactory> native_factory) {
+    std::unique_ptr<runtime::NativeModuleFactory> native_factory) {
   if (js_executor_) {
     auto& module_manager = js_executor_->GetModuleManager();
     if (module_manager) {

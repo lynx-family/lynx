@@ -10,8 +10,8 @@
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // Used by DevTool on iOS.
 class NapiRuntimeProxyQuickjsFactory {
  public:
@@ -20,7 +20,9 @@ class NapiRuntimeProxyQuickjsFactory {
       runtime::TemplateDelegate *delegate = nullptr) = 0;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_QUICKJS_FACTORY_H_

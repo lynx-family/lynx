@@ -11,13 +11,13 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class JSCContextGroupWrapper : public VMInstance {
  public:
   JSCContextGroupWrapper() = default;
   ~JSCContextGroupWrapper() override;
-  JSRuntimeType GetRuntimeType() override { return piper::JSRuntimeType::jsc; }
+  JSRuntimeType GetRuntimeType() override { return JSRuntimeType::jsc; }
 
   void InitContextGroup();
   inline JSContextGroupRef GetContextGroup() { return group_; }
@@ -26,6 +26,8 @@ class JSCContextGroupWrapper : public VMInstance {
   JSContextGroupRef group_{nullptr};
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSC_JSC_CONTEXT_GROUP_WRAPPER_H_

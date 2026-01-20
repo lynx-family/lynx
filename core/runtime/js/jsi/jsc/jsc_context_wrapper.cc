@@ -15,8 +15,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 JSCContextWrapper::JSCContextWrapper(std::shared_ptr<VMInstance> vm)
     : JSIContext(vm), ctx_(nullptr), ctx_invalid_(false), objectCounter_(0) {}
 
@@ -79,5 +79,7 @@ RegisterWasmFuncType& JSCContextWrapper::RegisterWasmFunc() {
   return RegisterWebAssembly;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

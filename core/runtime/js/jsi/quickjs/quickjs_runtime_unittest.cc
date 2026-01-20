@@ -8,10 +8,11 @@
 #include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 using namespace lynx::tasm::report::test;
-using namespace lynx::piper::cache::testing;
+using namespace cache::testing;
 class QuickjsRuntimeTest : public JSITestBase {};
 
 TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
@@ -63,5 +64,6 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
 INSTANTIATE_TEST_SUITE_P(Runtimes, QuickjsRuntimeTest,
                          ::testing::Values(MakeRuntimeFactory<QuickjsRuntime>));
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

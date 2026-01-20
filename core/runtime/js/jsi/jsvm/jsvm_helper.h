@@ -11,7 +11,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSVMRuntime;
 namespace detail {
 class JSVMSymbolValue final : public Runtime::PointerValue {
@@ -48,40 +49,37 @@ class JSVMObjectValue final : public Runtime::PointerValue {
 
 class JSVMHelper {
  public:
-  static piper::Value createValue(JSVM_Value value, JSVMRuntime* rt);
+  static Value createValue(JSVM_Value value, JSVMRuntime* rt);
 
-  static void symbolRef(const piper::Symbol& sym, JSVM_Value* value);
+  static void symbolRef(const Symbol& sym, JSVM_Value* value);
 
-  static void stringRef(const piper::String& str, JSVM_Value* value);
-  static void stringRef(const piper::PropNameID& sym, JSVM_Value* value);
+  static void stringRef(const String& str, JSVM_Value* value);
+  static void stringRef(const PropNameID& sym, JSVM_Value* value);
 
-  static void objectRef(const piper::Object& obj, JSVM_Value* value);
+  static void objectRef(const Object& obj, JSVM_Value* value);
 
   static std::string JSStringToSTLString(JSVM_Value s, JSVMRuntime* rt);
   // Factory methods for creating String/Object
-  static piper::Symbol createSymbol(JSVM_Value sym, JSVMRuntime* rt);
-  static piper::String createString(JSVM_Value str, JSVMRuntime* rt);
-  static piper::PropNameID createPropNameID(JSVM_Value value, JSVMRuntime* rt);
-  static piper::Object createObject(JSVMRuntime* rt);
-  static piper::Object createObject(JSVM_Value obj, JSVMRuntime* rt);
+  static Symbol createSymbol(JSVM_Value sym, JSVMRuntime* rt);
+  static String createString(JSVM_Value str, JSVMRuntime* rt);
+  static PropNameID createPropNameID(JSVM_Value value, JSVMRuntime* rt);
+  static Object createObject(JSVMRuntime* rt);
+  static Object createObject(JSVM_Value obj, JSVMRuntime* rt);
 
   // Used by factory methods and clone methods
-  static piper::Runtime::PointerValue* makeSymbolValue(JSVM_Value sym_val,
-                                                       JSVMRuntime* rt);
-  static piper::Runtime::PointerValue* makeStringValue(JSVM_Value str_val,
-                                                       JSVMRuntime* rt);
-  static piper::Runtime::PointerValue* makeObjectValue(JSVM_Value obj_val,
-                                                       JSVMRuntime* rt);
+  static Runtime::PointerValue* makeSymbolValue(JSVM_Value sym_val,
+                                                JSVMRuntime* rt);
+  static Runtime::PointerValue* makeStringValue(JSVM_Value str_val,
+                                                JSVMRuntime* rt);
+  static Runtime::PointerValue* makeObjectValue(JSVM_Value obj_val,
+                                                JSVMRuntime* rt);
 
-  static std::optional<piper::Value> call(piper::JSVMRuntime* rt,
-                                          const piper::Function& f,
-                                          const piper::Object& jsThis,
-                                          JSVM_Value* args, size_t nArgs);
+  static std::optional<Value> call(JSVMRuntime* rt, const Function& f,
+                                   const Object& jsThis, JSVM_Value* args,
+                                   size_t nArgs);
 
-  static std::optional<piper::Value> callAsConstructor(piper::JSVMRuntime* rt,
-                                                       JSVM_Value obj,
-                                                       JSVM_Value* args,
-                                                       int nArgs);
+  static std::optional<Value> callAsConstructor(JSVMRuntime* rt, JSVM_Value obj,
+                                                JSVM_Value* args, int nArgs);
 
   static void ConvertToJSVMString(JSVMRuntime* rt, const std::string& s,
                                   JSVM_Value* value);
@@ -96,7 +94,8 @@ class JSVMHelper {
 };
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_HELPER_H_

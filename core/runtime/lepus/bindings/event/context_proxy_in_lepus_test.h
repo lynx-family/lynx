@@ -9,7 +9,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 class ContextProxyInLepusTest : public ::testing::Test {
@@ -23,7 +24,8 @@ class ContextProxyInLepusTest : public ::testing::Test {
 };
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_LEPUS_BINDINGS_EVENT_CONTEXT_PROXY_IN_LEPUS_TEST_H_

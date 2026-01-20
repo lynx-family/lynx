@@ -70,9 +70,9 @@ class NativeFacadeHarmony : public shell::NativeFacade {
   void InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack callback) override;
+                      runtime::js::ApiCallBack callback) override;
 
-  void FlushJSBTiming(piper::NativeModuleInfo timing) override;
+  void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override;
 
   void OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) override;
 

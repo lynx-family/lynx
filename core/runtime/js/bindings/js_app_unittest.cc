@@ -33,7 +33,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 constexpr int ERROR_CODE_SIZE = 7;
@@ -68,7 +69,7 @@ class MockDelegate : public runtime::test::MockTemplateDelegate {
     return std::move(cache_data_op_);
   }
 
-  MOCK_METHOD(piper::JsContent, GetJSContentFromExternal,
+  MOCK_METHOD(JsContent, GetJSContentFromExternal,
               (const std::string&, const std::string&, long), (override));
 
   std::shared_ptr<runtime::IVSyncObserver> GetVSyncObserver() override {
@@ -307,17 +308,16 @@ class MockJsApp : public HostObject {
 
   size_t call_count{0};
   std::vector<size_t> count_ary{0};
-  std::vector<std::vector<piper::Value>> args_ary;
+  std::vector<std::vector<Value>> args_ary;
 
  private:
   std::weak_ptr<Runtime> rt_;
 };
 
-Value MockJsApp::get(lynx::piper::Runtime* rt,
-                     const lynx::piper::PropNameID& name) {
+Value MockJsApp::get(Runtime* rt, const PropNameID& name) {
   auto methodName = name.utf8(*rt);
   if (rt == nullptr) {
-    return piper::Value::undefined();
+    return Value::undefined();
   }
   return Function::createFromHostFunction(
       *rt, PropNameID::forAscii(*rt, "allFunctions"), 1,
@@ -325,12 +325,12 @@ Value MockJsApp::get(lynx::piper::Runtime* rt,
              size_t count) {
         this->call_count++;
         this->count_ary.emplace_back(count);
-        std::vector<piper::Value> temp_args;
+        std::vector<Value> temp_args;
         for (size_t i = 0; i < count; ++i) {
-          temp_args.emplace_back(piper::Value(rt, *(args + i)));
+          temp_args.emplace_back(Value(rt, *(args + i)));
         }
         this->args_ary.emplace_back(std::move(temp_args));
-        return piper::Value::undefined();
+        return Value::undefined();
       });
 }
 
@@ -338,7 +338,7 @@ void MockJsApp::set(Runtime*, const PropNameID& name, const Value& value) {}
 
 std::vector<PropNameID> MockJsApp::getPropertyNames(Runtime& rt) {
   std::vector<PropNameID> vec;
-  vec.push_back(piper::PropNameID::forUtf8(rt, "loadCard"));
+  vec.push_back(PropNameID::forUtf8(rt, "loadCard"));
   return vec;
 }
 
@@ -354,7 +354,7 @@ class AppTest : public JSITestBase {
     auto nativeModule =
         eval("(function() { return {}; })()")->asObject(rt).value();
     InitModuleManager();
-    piper::Object nativeModuleProxy = piper::Object::createFromHostObject(
+    Object nativeModuleProxy = Object::createFromHostObject(
         *runtime, module_manager_.get()->bindingPtr);
 
     app = App::Create(0, runtime, &delegate_, exception_handler_,
@@ -395,7 +395,7 @@ TEST_P(AppTest, CreateAppTest) { EXPECT_TRUE(app); }
 TEST_P(AppTest, NativeLynxContextProxyTest) {
   EXPECT_TRUE(app);
 
-  auto lynx_proxy = std::make_shared<piper::LynxProxy>(app);
+  auto lynx_proxy = std::make_shared<LynxProxy>(app);
   Object obj = Object::createFromHostObject(rt, lynx_proxy);
 
   auto res1 =
@@ -431,11 +431,11 @@ TEST_P(AppTest, LoadAppTest) {
   EXPECT_TRUE(app);
 
   // register load card function to global
-  auto function = piper::Value(
-      *runtime, mock_js_app_
-                    ->get(runtime.get(),
-                          piper::PropNameID::forAscii(*runtime, "loadCard"))
-                    .getObject(*runtime));
+  auto function =
+      Value(*runtime,
+            mock_js_app_
+                ->get(runtime.get(), PropNameID::forAscii(*runtime, "loadCard"))
+                .getObject(*runtime));
   runtime->global().setProperty(*runtime, "loadCard", std::move(function));
 
   // set init data & cache data
@@ -696,8 +696,8 @@ function readScript(nativeApp, url, params) {
               GetJSContentFromExternal(
                   ::testing::_, ::testing::StartsWith("http"), ::testing::_))
       .Times(::testing::AtLeast(1))
-      .WillRepeatedly(::testing::Return(piper::JsContent(
-          "function () { return 'http' }", piper::JsContent::Type::SOURCE)));
+      .WillRepeatedly(::testing::Return(
+          JsContent("function () { return 'http' }", JsContent::Type::SOURCE)));
   // Should keep http://
   auto result = read_script.call(
       rt, {Object::createFromHostObject(rt, app_proxy),
@@ -715,9 +715,8 @@ function readScript(nativeApp, url, params) {
               GetJSContentFromExternal(::testing::_, ::testing::StartsWith("/"),
                                        ::testing::_))
       .Times(::testing::AtLeast(1))
-      .WillRepeatedly(::testing::Return(
-          piper::JsContent("function () { return 'absolute' }",
-                           piper::JsContent::Type::SOURCE)));
+      .WillRepeatedly(::testing::Return(JsContent(
+          "function () { return 'absolute' }", JsContent::Type::SOURCE)));
   // Should keep /foo.js
   result = read_script.call(rt, {Object::createFromHostObject(rt, app_proxy),
                                  String::createFromAscii(rt, "/foo.js")});
@@ -736,9 +735,8 @@ function readScript(nativeApp, url, params) {
       GetJSContentFromExternal(
           ::testing::_, ::testing::StartsWith("lynx_assets://"), ::testing::_))
       .Times(1)
-      .WillOnce(::testing::Return(
-          piper::JsContent("function () { return 'lynx_assets' }",
-                           piper::JsContent::Type::SOURCE)));
+      .WillOnce(::testing::Return(JsContent(
+          "function () { return 'lynx_assets' }", JsContent::Type::SOURCE)));
   result = read_script.call(
       rt, {Object::createFromHostObject(rt, app_proxy),
            String::createFromAscii(rt, "lynx_assets://foo.js")});
@@ -750,8 +748,8 @@ function readScript(nativeApp, url, params) {
               GetJSContentFromExternal(
                   ::testing::_, ::testing::EndsWith(".json"), ::testing::_))
       .Times(1)
-      .WillOnce(::testing::Return(piper::JsContent(
-          R"-({"type": "json"})-", piper::JsContent::Type::SOURCE)));
+      .WillOnce(::testing::Return(
+          JsContent(R"-({"type": "json"})-", JsContent::Type::SOURCE)));
   result = read_script.call(rt, {Object::createFromHostObject(rt, app_proxy),
                                  String::createFromAscii(rt, "manifest.json")});
   EXPECT_TRUE(result->isString());
@@ -760,9 +758,8 @@ function readScript(nativeApp, url, params) {
   EXPECT_CALL(delegate_, GetJSContentFromExternal(::testing::Eq("CustomEntry"),
                                                   ::testing::_, ::testing::_))
       .Times(1)
-      .WillOnce(::testing::Return(
-          piper::JsContent("function () { return 'CustomEntry' }",
-                           piper::JsContent::Type::SOURCE)));
+      .WillOnce(::testing::Return(JsContent(
+          "function () { return 'CustomEntry' }", JsContent::Type::SOURCE)));
   result = read_script.call(
       rt, {Object::createFromHostObject(rt, app_proxy),
            String::createFromAscii(rt, "baz.js"),
@@ -776,7 +773,7 @@ function readScript(nativeApp, url, params) {
       onJSIException(HasMessage("readScript args[0] must be a string.")))
       .Times(1);
   read_script.call(
-      rt, {Object::createFromHostObject(rt, app_proxy), piper::Value::null()});
+      rt, {Object::createFromHostObject(rt, app_proxy), Value::null()});
 
   EXPECT_CALL(*exception_handler_,
               onJSIException(HasMessage("readScript arg count must > 0")))
@@ -794,8 +791,8 @@ function readScriptWithoutArgs(nativeApp) {
               GetJSContentFromExternal(
                   ::testing::_, ::testing::StartsWith("http"), ::testing::_))
       .Times(::testing::AtLeast(1))
-      .WillRepeatedly(::testing::Return(piper::JsContent(
-          "file is not exist.", piper::JsContent::Type::ERROR)));
+      .WillRepeatedly(::testing::Return(
+          JsContent("file is not exist.", JsContent::Type::ERROR)));
   EXPECT_CALL(
       *exception_handler_,
       onJSIException(HasMessage(
@@ -810,8 +807,8 @@ function readScriptWithoutArgs(nativeApp) {
   EXPECT_CALL(delegate_, GetJSContentFromExternal(
                              ::testing::_, ::testing::StartsWith("http"), 1))
       .Times(::testing::AtLeast(1))
-      .WillRepeatedly(::testing::Return(
-          piper::JsContent("timeout", piper::JsContent::Type::ERROR)));
+      .WillRepeatedly(
+          ::testing::Return(JsContent("timeout", JsContent::Type::ERROR)));
   EXPECT_CALL(*exception_handler_,
               onJSIException(HasMessage(
                   "readScript http://example.com/bar.js error:timeout")))
@@ -907,7 +904,7 @@ TEST_P(AppTest, GetCustomSectionSyncTest) {
   }
 
   // `lynx.getCustomSectionSync` func
-  auto lynx_proxy = std::make_shared<piper::LynxProxy>(app);
+  auto lynx_proxy = std::make_shared<LynxProxy>(app);
   auto get_custom_section_sync = [this, &rt = this->rt,
                                   &lynx_proxy](const std::string& param) {
     Object obj = Object::createFromHostObject(rt, lynx_proxy);
@@ -1340,7 +1337,7 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
     app->OnComponentDecoded(std::move(bundle));
   }
 
-  auto lynx_proxy = std::make_shared<piper::LynxProxy>(app);
+  auto lynx_proxy = std::make_shared<LynxProxy>(app);
   auto load_script = [this, &rt = this->rt,
                       &lynx_proxy](const std::string& param) {
     Object obj = Object::createFromHostObject(rt, lynx_proxy);
@@ -1469,7 +1466,7 @@ TEST_P(AppTest, FetchBundleTest) {
       std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
       tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
-  auto lynx_proxy = std::make_shared<piper::LynxProxy>(app);
+  auto lynx_proxy = std::make_shared<LynxProxy>(app);
   auto fetch_bundle = [this, &rt = this->rt, &lynx_proxy]() {
     Object obj = Object::createFromHostObject(rt, lynx_proxy);
     std::string get_load_script_call =
@@ -1534,5 +1531,6 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

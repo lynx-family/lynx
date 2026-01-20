@@ -17,9 +17,9 @@ class LynxProxyRuntimeHelper : public LynxRuntimeHelper {
   static LynxProxyRuntimeHelper& Instance();
   void InitWithRuntimeHelper(LynxRuntimeHelper* ptr);
   bool IsValid() { return helper_valid_; }
-  std::unique_ptr<piper::Runtime> MakeRuntime();
+  std::unique_ptr<runtime::js::Runtime> MakeRuntime();
   std::shared_ptr<profile::V8RuntimeProfilerWrapper> MakeRuntimeProfiler(
-      std::shared_ptr<piper::JSIContext>);
+      std::shared_ptr<runtime::js::JSIContext>);
 
  private:
   std::atomic<bool> helper_valid_ = false;

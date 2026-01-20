@@ -12,18 +12,21 @@
 
 namespace lynx {
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 class ReplayHelper {
  public:
-  static piper::Value convertRapidJsonObjectToJSIValue(Runtime& runtime,
-                                                       rapidjson::Value& value);
-  static piper::Value convertRapidJsonStringToJSIValue(Runtime& runtime,
-                                                       rapidjson::Value& value);
-  static piper::Value convertRapidJsonNumberToJSIValue(Runtime& runtime,
-                                                       rapidjson::Value& value);
-  static std::optional<piper::Value> convertRapidJsonLynxValObjectToJSIValue(
+  static Value convertRapidJsonObjectToJSIValue(Runtime& runtime,
+                                                rapidjson::Value& value);
+  static Value convertRapidJsonStringToJSIValue(Runtime& runtime,
+                                                rapidjson::Value& value);
+  static Value convertRapidJsonNumberToJSIValue(Runtime& runtime,
+                                                rapidjson::Value& value);
+  static std::optional<Value> convertRapidJsonLynxValObjectToJSIValue(
       Runtime& runtime, rapidjson::Value& value);
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_SERVICES_REPLAY_LYNX_REPLAY_HELPER_H_

@@ -13,8 +13,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyV8::Create(
     std::shared_ptr<V8ContextWrapper> context,
@@ -54,5 +54,7 @@ std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyV8FactoryImpl::Create(
   return NapiRuntimeProxyV8::Create(v8_context, delegate);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

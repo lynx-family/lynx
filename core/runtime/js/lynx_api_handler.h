@@ -20,21 +20,21 @@ class AnimationFrameTaskHandler {
  public:
   AnimationFrameTaskHandler();
   ~AnimationFrameTaskHandler() = default;
-  int64_t RequestAnimationFrame(piper::Function func);
+  int64_t RequestAnimationFrame(runtime::js::Function func);
   void CancelAnimationFrame(int64_t id);
-  void DoFrame(int64_t time_stamp, piper::Runtime* rt);
+  void DoFrame(int64_t time_stamp, runtime::js::Runtime* rt);
   void Destroy();
   bool HasPendingRequest();
 
  private:
   class FrameTask {
    public:
-    FrameTask(piper::Function func, int64_t id);
-    void Execute(piper::Runtime* rt, int64_t time_stamp);
+    FrameTask(runtime::js::Function func, int64_t id);
+    void Execute(runtime::js::Runtime* rt, int64_t time_stamp);
     void Cancel();
 
    private:
-    piper::Function func_;
+    runtime::js::Function func_;
     bool cancelled_;
   };
   using TaskMap = base::LinearFlatMap<int64_t, std::unique_ptr<FrameTask>>;

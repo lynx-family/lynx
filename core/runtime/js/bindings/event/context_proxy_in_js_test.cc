@@ -9,7 +9,8 @@
 #include "core/runtime/js/bindings/event/js_event_listener_test.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 event::DispatchEventResult JSRuntimeTestMockDelegate::DispatchMessageEvent(
@@ -28,7 +29,7 @@ void JSRuntimeTestMockDelegate::ClearResult() {
 std::string JSRuntimeTestMockDelegate::DumpResult() { return ss_.str(); }
 
 Value JSRuntimeTestMockJSApp::get(Runtime*, const PropNameID& name) {
-  return piper::Value::undefined();
+  return Value::undefined();
 }
 
 void JSRuntimeTestMockJSApp::set(Runtime*, const PropNameID& name,
@@ -54,7 +55,7 @@ void ContextProxyInJSTest::SetUp() {
 
   app_->setJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
 
-  lynx_proxy_ = std::make_shared<piper::LynxProxy>(app_);
+  lynx_proxy_ = std::make_shared<LynxProxy>(app_);
   Object lynx_obj = Object::createFromHostObject(rt, lynx_proxy_);
   function(R"--(
     function registerLynx(lynx) {
@@ -71,7 +72,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSPostMessageTest) {
       lynx.getCoreContext().postMessage('test message');
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
 
   EXPECT_EQ(delegate_.DumpResult(),
             "target: CoreContext, origin: JSContext, message: test message");
@@ -82,7 +83,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSPostMessageTest) {
       return lynx.getCoreContext().postMessage();
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(), "");
 
   delegate_.ClearResult();
@@ -91,7 +92,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSPostMessageTest) {
       return lynx.getCoreContext().postMessage('1', '2', '3');
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(),
             "target: CoreContext, origin: JSContext, message: 1");
 }
@@ -103,7 +104,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSDispatchEventTest) {
       lynx.getCoreContext().dispatchEvent();
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(), "");
 
   delegate_.ClearResult();
@@ -112,7 +113,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSDispatchEventTest) {
       lynx.getCoreContext().dispatchEvent({});
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(), "");
 
   delegate_.ClearResult();
@@ -121,7 +122,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSDispatchEventTest) {
       lynx.getCoreContext().dispatchEvent({type: 'xxx', data: 'yyy'});
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(),
             "target: CoreContext, origin: JSContext, message: yyy");
 
@@ -131,7 +132,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSDispatchEventTest) {
       lynx.getCoreContext().dispatchEvent({type: 'xxx'});
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(), "");
 
   delegate_.ClearResult();
@@ -140,7 +141,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSDispatchEventTest) {
       lynx.getCoreContext().dispatchEvent({data: 'xxx'});
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_EQ(delegate_.DumpResult(), "");
 }
 
@@ -155,7 +156,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSAddEventListenerTest) {
       lynx.getCoreContext().addEventListener();
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_TRUE(app_
                   ->context_proxy_vector_[static_cast<int32_t>(
                       runtime::ContextProxy::Type::kCoreContext)]
@@ -167,7 +168,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSAddEventListenerTest) {
       lynx.getCoreContext().addEventListener(1, ()=>{});
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_TRUE(app_
                   ->context_proxy_vector_[static_cast<int32_t>(
                       runtime::ContextProxy::Type::kCoreContext)]
@@ -179,7 +180,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSAddEventListenerTest) {
       lynx.getCoreContext().addEventListener("1", "2");
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_TRUE(app_
                   ->context_proxy_vector_[static_cast<int32_t>(
                       runtime::ContextProxy::Type::kCoreContext)]
@@ -191,7 +192,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSAddEventListenerTest) {
       lynx.getCoreContext().addEventListener("1", ()=>{});
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_FALSE(app_
                    ->context_proxy_vector_[static_cast<int32_t>(
                        runtime::ContextProxy::Type::kCoreContext)]
@@ -222,7 +223,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSRemoveEventListenerTest) {
       lynx.getCoreContext().addEventListener("1", globalThis.onEvent);
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_FALSE(app_
                    ->context_proxy_vector_[static_cast<int32_t>(
                        runtime::ContextProxy::Type::kCoreContext)]
@@ -241,7 +242,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSRemoveEventListenerTest) {
       lynx.getCoreContext().removeEventListener(1, globalThis.onEvent);
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_FALSE(app_
                    ->context_proxy_vector_[static_cast<int32_t>(
                        runtime::ContextProxy::Type::kCoreContext)]
@@ -260,7 +261,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSRemoveEventListenerTest) {
       lynx.getCoreContext().removeEventListener("1", globalThis.onEvent1);
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_FALSE(app_
                    ->context_proxy_vector_[static_cast<int32_t>(
                        runtime::ContextProxy::Type::kCoreContext)]
@@ -279,7 +280,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSRemoveEventListenerTest) {
       lynx.getCoreContext().removeEventListener("1", globalThis.onEvent);
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
   EXPECT_TRUE(app_
                   ->context_proxy_vector_[static_cast<int32_t>(
                       runtime::ContextProxy::Type::kCoreContext)]
@@ -305,7 +306,7 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSOnTriggerEventTest) {
       lynx.getCoreContext().onTriggerEvent = globalThis.onEvent;
     }
   )--")
-      .call(rt, piper::Value::undefined());
+      .call(rt, Value::undefined());
 
   auto compare_event_listener = std::make_unique<JSClosureEventListener>(
       app_, *(runtime->global().getProperty(rt, "onEvent")));
@@ -348,5 +349,6 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

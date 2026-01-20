@@ -798,12 +798,13 @@ void Element::Animate(const lepus::Value& args,
     LOGE("Element::Animate's para size must >= 2");
     return;
   }
-  const auto& op = static_cast<piper::JavaScriptElement::AnimationOperation>(
-      args.GetProperty(0).Int32());
+  const auto& op =
+      static_cast<runtime::js::JavaScriptElement::AnimationOperation>(
+          args.GetProperty(0).Int32());
   StyleMap styles;
   auto& parser_configs = element_manager()->GetCSSParserConfigs();
   switch (op) {
-    case piper::JavaScriptElement::AnimationOperation::START: {
+    case runtime::js::JavaScriptElement::AnimationOperation::START: {
       if (args.GetLength() != 4) {
         LOGE("When start Element::Animate, the para size must be 4");
         return;
@@ -867,19 +868,19 @@ void Element::Animate(const lepus::Value& args,
       }
       break;
     }
-    case piper::JavaScriptElement::AnimationOperation::PAUSE: {
+    case runtime::js::JavaScriptElement::AnimationOperation::PAUSE: {
       BASE_STATIC_STRING_DECL(kPaused, "paused");
       UnitHandler::Process(kPropertyIDAnimationPlayState, lepus::Value(kPaused),
                            styles, parser_configs);
       break;
     }
-    case piper::JavaScriptElement::AnimationOperation::PLAY: {
+    case runtime::js::JavaScriptElement::AnimationOperation::PLAY: {
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
       break;
     }
-    case piper::JavaScriptElement::AnimationOperation::CANCEL: {
+    case runtime::js::JavaScriptElement::AnimationOperation::CANCEL: {
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);
@@ -915,12 +916,13 @@ void Element::AnimateV2(const lepus::Value& args,
     LOGE("Element::Animate's para size must >= 2");
     return;
   }
-  const auto& op = static_cast<piper::JavaScriptElement::AnimationOperation>(
-      args.GetProperty(0).Int32());
+  const auto& op =
+      static_cast<runtime::js::JavaScriptElement::AnimationOperation>(
+          args.GetProperty(0).Int32());
   StyleMap styles;
   auto& parser_configs = element_manager()->GetCSSParserConfigs();
   switch (op) {
-    case piper::JavaScriptElement::AnimationOperation::START: {
+    case runtime::js::JavaScriptElement::AnimationOperation::START: {
       if (args.GetLength() != 4) {
         LOGE("When start Element::Animate, the para size must be 4");
         return;
@@ -962,7 +964,7 @@ void Element::AnimateV2(const lepus::Value& args,
       }
       break;
     }
-    case piper::JavaScriptElement::AnimationOperation::PAUSE: {
+    case runtime::js::JavaScriptElement::AnimationOperation::PAUSE: {
       if (args.GetLength() != 2) {
         LOGE("Element::Animate Pause, unexpected param size.");
         return;
@@ -975,7 +977,7 @@ void Element::AnimateV2(const lepus::Value& args,
                            styles, parser_configs);
       break;
     }
-    case piper::JavaScriptElement::AnimationOperation::PLAY: {
+    case runtime::js::JavaScriptElement::AnimationOperation::PLAY: {
       if (args.GetLength() != 2) {
         LOGE("Element::Animate Play, unexpected param size.");
         return;
@@ -989,7 +991,7 @@ void Element::AnimateV2(const lepus::Value& args,
       break;
       break;
     }
-    case piper::JavaScriptElement::AnimationOperation::CANCEL: {
+    case runtime::js::JavaScriptElement::AnimationOperation::CANCEL: {
       BASE_STATIC_STRING_DECL(kRunning, "running");
       UnitHandler::Process(kPropertyIDAnimationPlayState,
                            lepus::Value(kRunning), styles, parser_configs);

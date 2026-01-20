@@ -79,8 +79,8 @@ std::vector<uint8_t> LoadJSSource(const std::string& url) {
             OH_ResourceManager_ReadRawFile(raw_file_dev, data.get(), len) > 0;
         OH_ResourceManager_CloseRawFile(raw_file_dev);
         if (success) {
-          lynx::piper::LynxResourceSetting::getInstance()->is_debug_resource_ =
-              true;
+          lynx::runtime::js::LynxResourceSetting::getInstance()
+              ->is_debug_resource_ = true;
         }
       }
     }

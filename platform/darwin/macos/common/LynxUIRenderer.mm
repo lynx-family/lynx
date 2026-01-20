@@ -186,7 +186,7 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder) {
   auto lynx_ui_renderer = [[LynxUIRendererMac alloc] init];
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
-  auto module_factory = std::unique_ptr<lynx::piper::NativeModuleFactory>(
+  auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
   ui_delegate_ =
       std::make_unique<lynx::tasm::UIDelegateClay>(view_context, std::move(module_factory));

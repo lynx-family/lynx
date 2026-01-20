@@ -10,7 +10,8 @@
 #include "core/runtime/js/bytecode/quickjs/bytecode/quickjs_bytecode_provider_src.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace quickjs {
 bool QuickjsBytecodeProvider::IsBytecode(
     const std::shared_ptr<const Buffer> &buffer) {
@@ -107,5 +108,6 @@ base::Version QuickjsBytecodeProvider::GetTargetSdkVersion() {
 QuickjsBytecodeProvider::QuickjsBytecodeProvider(Bytecode &&bytecode)
     : bytecode_(std::move(bytecode)) {}
 }  // namespace quickjs
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

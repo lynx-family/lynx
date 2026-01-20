@@ -371,8 +371,8 @@ bool ValueImplNapiPrimJS::PushBigIntToArray(const std::string& value) {
   napi_value result;
   auto int_value =
       static_cast<int64_t>(std::strtoll(value.c_str(), nullptr, 0));
-  if (int_value < piper::kMinJavaScriptNumber ||
-      int_value > piper::kMaxJavaScriptNumber) {
+  if (int_value < runtime::js::kMinJavaScriptNumber ||
+      int_value > runtime::js::kMaxJavaScriptNumber) {
     // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
     LOGE(
         "PushBigIntToArray error! PrimJS NAPI doesn't support bigint now. The "
@@ -425,8 +425,8 @@ bool ValueImplNapiPrimJS::PushInt64ToArray(int64_t value) {
   napi_value obj;
   GetValueFromReference(env_, backend_value_, &obj);
   napi_value result;
-  if (value < piper::kMinJavaScriptNumber ||
-      value > piper::kMaxJavaScriptNumber) {
+  if (value < runtime::js::kMinJavaScriptNumber ||
+      value > runtime::js::kMaxJavaScriptNumber) {
     // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
     LOGE(
         "PushInt64ToArray error! PrimJS NAPI doesn't support bigint now. The "
@@ -444,7 +444,7 @@ bool ValueImplNapiPrimJS::PushUInt64ToArray(uint64_t value) {
   napi_value obj;
   GetValueFromReference(env_, backend_value_, &obj);
   napi_value result;
-  if (value > piper::kMaxJavaScriptNumber) {
+  if (value > runtime::js::kMaxJavaScriptNumber) {
     // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
     LOGE(
         "PushUInt64ToArray error! PrimJS NAPI doesn't support bigint now. The "
@@ -534,8 +534,8 @@ bool ValueImplNapiPrimJS::PushBigIntToMap(const std::string& key,
   napi_value result;
   auto int_value =
       static_cast<int64_t>(std::strtoll(value.c_str(), nullptr, 0));
-  if (int_value < piper::kMinJavaScriptNumber ||
-      int_value > piper::kMaxJavaScriptNumber) {
+  if (int_value < runtime::js::kMinJavaScriptNumber ||
+      int_value > runtime::js::kMaxJavaScriptNumber) {
     // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
     LOGE(
         "PushBigIntToMap error! PrimJS NAPI doesn't support bigint now. The "
@@ -607,8 +607,8 @@ bool ValueImplNapiPrimJS::PushInt64ToMap(const std::string& key,
   napi_value k;
   env_->napi_create_string_utf8(env_, key.c_str(), NAPI_AUTO_LENGTH, &k);
   napi_value result;
-  if (value < piper::kMinJavaScriptNumber ||
-      value > piper::kMaxJavaScriptNumber) {
+  if (value < runtime::js::kMinJavaScriptNumber ||
+      value > runtime::js::kMaxJavaScriptNumber) {
     // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
     LOGE(
         "PushInt64ToMap error! PrimJS NAPI doesn't support bigint now. The "
@@ -630,7 +630,7 @@ bool ValueImplNapiPrimJS::PushUInt64ToMap(const std::string& key,
   napi_value k;
   env_->napi_create_string_utf8(env_, key.c_str(), NAPI_AUTO_LENGTH, &k);
   napi_value result;
-  if (value > piper::kMaxJavaScriptNumber) {
+  if (value > runtime::js::kMaxJavaScriptNumber) {
     // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
     LOGE(
         "PushUInt64ToMap error! PrimJS NAPI doesn't support bigint now. The "
@@ -721,7 +721,8 @@ napi_value ValueUtilsNapiPrimJS::ConvertPubValueToNapiValue(
   } else if (value.IsInt64()) {
     int64_t i = value.Int64();
     // When integer beyond limit, use BigInt Object to define it
-    if (i < piper::kMinJavaScriptNumber || i > piper::kMaxJavaScriptNumber) {
+    if (i < runtime::js::kMinJavaScriptNumber ||
+        i > runtime::js::kMaxJavaScriptNumber) {
       // TODO: Use napi_create_bigint_int64, primjs napi doesn't support it now.
       LOGE(
           "Convert int64 bigint error! PrimJS NAPI doesn't support bigint now. "
@@ -733,7 +734,7 @@ napi_value ValueUtilsNapiPrimJS::ConvertPubValueToNapiValue(
     }
   } else if (value.IsUInt64()) {
     uint64_t u = value.UInt64();
-    if (u > piper::kMaxJavaScriptNumber) {
+    if (u > runtime::js::kMaxJavaScriptNumber) {
       // TODO: Use napi_create_bigint_uint64, primjs napi doesn't support it
       // now.
       LOGE(

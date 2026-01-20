@@ -24,7 +24,9 @@
 #endif
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
-namespace lynx::piper {
+namespace lynx {
+namespace runtime {
+namespace js {
 namespace test {
 
 namespace {
@@ -619,24 +621,25 @@ TEST_P(JSITest, HostObjectTest) {
   };
 
   Object host_object_with_recursive_js_value = Object::createFromHostObject(
-      rt, std::make_shared<HostObjectWithRecursiveJSValue>(
-              Function::createFromHostFunction(
-                  rt, PropNameID::forAscii(rt, "dot"), 2,
-                  [](Runtime& rt, const Value& thisVal, const Value* args,
-                     size_t count)
-                      -> base::expected<piper::Value, JSINativeException> {
-                    EXPECT_TRUE(Value::strictEquals(rt, thisVal, rt.global()) ||
-                                thisVal.isUndefined());
-                    if (count != 2) {
-                      return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                          "Exception in HostFunction: expected 2 args"));
-                    }
-                    std::string ret = args[0].getString(rt).utf8(rt) + "." +
-                                      args[1].getString(rt).utf8(rt);
-                    return String::createFromUtf8(
-                        rt, reinterpret_cast<const uint8_t*>(ret.data()),
-                        ret.size());
-                  })));
+      rt,
+      std::make_shared<HostObjectWithRecursiveJSValue>(
+          Function::createFromHostFunction(
+              rt, PropNameID::forAscii(rt, "dot"), 2,
+              [](Runtime& rt, const Value& thisVal, const Value* args,
+                 size_t count)
+                  -> base::expected<runtime::js::Value, JSINativeException> {
+                EXPECT_TRUE(Value::strictEquals(rt, thisVal, rt.global()) ||
+                            thisVal.isUndefined());
+                if (count != 2) {
+                  return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                      "Exception in HostFunction: expected 2 args"));
+                }
+                std::string ret = args[0].getString(rt).utf8(rt) + "." +
+                                  args[1].getString(rt).utf8(rt);
+                return String::createFromUtf8(
+                    rt, reinterpret_cast<const uint8_t*>(ret.data()),
+                    ret.size());
+              })));
 
   EXPECT_TRUE(
       host_object_with_recursive_js_value.getPropertyAsFunction(rt, "child")
@@ -942,8 +945,8 @@ TEST_P(JSITest, HostFunctionTest) {
 
   Function dot = Function::createFromHostFunction(
       rt, PropNameID::forAscii(rt, "dot"), 2,
-      [](Runtime& rt, const Value& thisVal, const Value* args,
-         size_t count) -> base::expected<piper::Value, JSINativeException> {
+      [](Runtime& rt, const Value& thisVal, const Value* args, size_t count)
+          -> base::expected<runtime::js::Value, JSINativeException> {
         EXPECT_TRUE(Value::strictEquals(rt, thisVal, rt.global()) ||
                     thisVal.isUndefined());
         if (count != 2) {
@@ -1547,13 +1550,13 @@ TEST_P(JSITest, SymbolTest) {
 // }
 
 TEST_P(JSITest, JSONParseTest) {
-  auto data_string = piper::String::createFromUtf8(
+  auto data_string = runtime::js::String::createFromUtf8(
       rt, R"---({"name":"test","age":21,"ok":true})---");
   auto ret = Value::createFromJsonString(rt, data_string);
   EXPECT_TRUE(ret && ret->isObject());
 
   data_string =
-      piper::String::createFromUtf8(rt, R"---({"name":"test","ag")---");
+      runtime::js::String::createFromUtf8(rt, R"---({"name":"test","ag")---");
   ret = Value::createFromJsonString(rt, data_string);
   EXPECT_TRUE(!ret);
 }
@@ -1562,13 +1565,14 @@ TEST_P(JSITest, JSINativeExceptionCollector) {
   auto hostFunction = Function::createFromHostFunction(
       rt, PropNameID::forAscii(rt, "testFuncton"), 0,
 
-      [](Runtime& rt, const piper::Value& thisVal, const piper::Value* args,
+      [](Runtime& rt, const runtime::js::Value& thisVal,
+         const runtime::js::Value* args,
          size_t count) -> base::expected<Value, JSINativeException> {
         JSINativeExceptionCollector::Instance()->SetMessage(
             "test exception msg!");
         JSINativeExceptionCollector::Instance()->AddStack(__FUNCTION__,
                                                           __FILE__, 1);
-        return piper::Value();
+        return runtime::js::Value();
       });
 
   rt.SetEnableJsBindingApiThrowException(true);
@@ -1595,9 +1599,9 @@ TEST_P(JSITest, JSINativeExceptionCollector) {
 }
 
 TEST_P(JSITest, JSIObjectLeakCheck) {
-  piper::Object foo(rt);
-  piper::Object foo_bar(rt);
-  piper::Object foo_bar_x(rt);
+  runtime::js::Object foo(rt);
+  runtime::js::Object foo_bar(rt);
+  runtime::js::Object foo_bar_x(rt);
   foo_bar.setProperty(rt, "x", foo_bar_x);
   foo_bar.setProperty(rt, "foo", foo);
   foo.setProperty(rt, "fooBar", foo_bar);
@@ -1685,4 +1689,6 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 }  // namespace test
-}  // namespace lynx::piper
+}  // namespace js
+}  // namespace runtime
+}  // namespace lynx

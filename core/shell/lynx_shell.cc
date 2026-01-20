@@ -294,7 +294,7 @@ void LynxShell::OnLynxEngineBuilt(
         [painting_context](lynx::tasm::LynxGetUIResult ui_result,
                            const std::string& method,
                            fml::RefPtr<lynx::tasm::PropBundle> params,
-                           lynx::piper::ApiCallBack callback) {
+                           lynx::runtime::js::ApiCallBack callback) {
           painting_context->InvokeUIMethod(ui_result.UiImplIds()[0], method,
                                            std::move(params), callback.id());
         };
@@ -913,7 +913,7 @@ void LynxShell::UpdateScreenMetrics(float width, float height,
         std::string js_str =
             base::FormatString("SystemInfo.pixelRatio=%f;", device_pixel_ratio);
         runtime->EvaluateScript(tasm::kGlobalLynx, std::move(js_str),
-                                piper::ApiCallBack());
+                                runtime::js::ApiCallBack());
       });
     }
   });
@@ -1513,7 +1513,7 @@ void LynxShell::OnRuntimeCreate() {
   }
 }
 
-std::weak_ptr<piper::JsBundleHolder> LynxShell::GetWeakJsBundleHolder() {
+std::weak_ptr<runtime::js::JsBundleHolder> LynxShell::GetWeakJsBundleHolder() {
   auto tasm = GetTasm();
   return tasm ? tasm->GetJsBundleHolder() : nullptr;
 }

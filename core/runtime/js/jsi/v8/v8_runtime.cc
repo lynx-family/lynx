@@ -35,8 +35,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 #if defined(OS_ANDROID)
 namespace cache {
 extern std::shared_ptr<Buffer> TryGetCacheV8(
@@ -97,7 +97,7 @@ std::shared_ptr<JSIContext> V8Runtime::getSharedContext() { return context_; }
 std::shared_ptr<const PreparedJavaScript> V8Runtime::prepareJavaScript(
     const std::shared_ptr<const Buffer>& buffer, std::string source_url,
     int start_line_offset) {
-  return std::make_shared<piper::SourceJavaScriptPreparation>(
+  return std::make_shared<SourceJavaScriptPreparation>(
       buffer, std::move(source_url), start_line_offset);
 }
 
@@ -190,8 +190,7 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
           true, error::E_BTS_RUNTIME_ERROR_SCRIPT_ERROR));
     }
 
-    piper::Value value =
-        V8Helper::createValue(result.ToLocalChecked(), context);
+    Value value = V8Helper::createValue(result.ToLocalChecked(), context);
     return value;
   }
   return Value::undefined();
@@ -266,8 +265,8 @@ Runtime::PointerValue* V8Runtime::clonePropNameID(
   return V8Helper::makeStringValue(string->Get(), isolate_);
 }
 
-piper::PropNameID V8Runtime::createPropNameIDFromAscii(const char* str,
-                                                       size_t length) {
+PropNameID V8Runtime::createPropNameIDFromAscii(const char* str,
+                                                size_t length) {
   // For system JSC this must is identical to a string
   v8::Local<v8::String> strRef =
       v8::String::NewFromUtf8(getIsolate(), str, v8::NewStringType::kNormal,
@@ -278,8 +277,8 @@ piper::PropNameID V8Runtime::createPropNameIDFromAscii(const char* str,
   return res;
 }
 
-piper::PropNameID V8Runtime::createPropNameIDFromUtf8(const uint8_t* utf8,
-                                                      size_t length) {
+PropNameID V8Runtime::createPropNameIDFromUtf8(const uint8_t* utf8,
+                                               size_t length) {
   v8::Local<v8::String> strRef =
       v8::String::NewFromUtf8(getIsolate(), reinterpret_cast<const char*>(utf8),
                               v8::NewStringType::kNormal,
@@ -289,39 +288,36 @@ piper::PropNameID V8Runtime::createPropNameIDFromUtf8(const uint8_t* utf8,
   return res;
 }
 
-piper::PropNameID V8Runtime::createPropNameIDFromString(
-    const piper::String& str) {
+PropNameID V8Runtime::createPropNameIDFromString(const String& str) {
   return V8Helper::createPropNameID(V8Helper::stringRef(str), getIsolate());
 }
 
-std::string V8Runtime::utf8(const piper::PropNameID& sym) {
+std::string V8Runtime::utf8(const PropNameID& sym) {
   return V8Helper::JSStringToSTLString(V8Helper::stringRef(sym), getContext());
 }
 
-bool V8Runtime::compare(const piper::PropNameID& a,
-                        const piper::PropNameID& b) {
+bool V8Runtime::compare(const PropNameID& a, const PropNameID& b) {
   return V8Helper::stringRef(a)
       ->Equals(getContext(), V8Helper::stringRef(b))
       .ToChecked();
 }
 
-std::optional<std::string> V8Runtime::symbolToString(const piper::Symbol& sym) {
-  auto str = piper::Value(*this, sym).toString(*this);
+std::optional<std::string> V8Runtime::symbolToString(const Symbol& sym) {
+  auto str = Value(*this, sym).toString(*this);
   if (!str) {
     return std::optional<std::string>();
   }
   return str->utf8(*this);
 }
 
-piper::String V8Runtime::createStringFromAscii(const char* str, size_t length) {
+String V8Runtime::createStringFromAscii(const char* str, size_t length) {
   // Yes we end up double casting for semantic reasons (UTF8 contains ASCII,
   // not the other way around)
   return this->createStringFromUtf8(reinterpret_cast<const uint8_t*>(str),
                                     length);
 }
 
-piper::String V8Runtime::createStringFromUtf8(const uint8_t* str,
-                                              size_t length) {
+String V8Runtime::createStringFromUtf8(const uint8_t* str, size_t length) {
   std::string tmp(reinterpret_cast<const char*>(str), length);
   v8::Local<v8::String> stringRef =
       v8::String::NewFromUtf8(getIsolate(), reinterpret_cast<const char*>(str),
@@ -331,11 +327,11 @@ piper::String V8Runtime::createStringFromUtf8(const uint8_t* str,
   return V8Helper::createString(stringRef, getIsolate());
 }
 
-std::string V8Runtime::utf8(const piper::String& str) {
+std::string V8Runtime::utf8(const String& str) {
   return V8Helper::JSStringToSTLString(V8Helper::stringRef(str), getContext());
 }
 
-piper::Object V8Runtime::createObject() {
+Object V8Runtime::createObject() {
   v8::Isolate* isolate_ = getIsolate();
   v8::Local<v8::Context> ctx = getContext();
   // Scope(*this);
@@ -344,13 +340,12 @@ piper::Object V8Runtime::createObject() {
   return V8Helper::createObject(isolate_);
 }
 
-piper::Object V8Runtime::createObject(std::shared_ptr<piper::HostObject> ho) {
+Object V8Runtime::createObject(std::shared_ptr<HostObject> ho) {
   Scope scope(*this);
   return V8HostObjectProxy::createObject(this, getContext(), std::move(ho));
 }
 
-std::weak_ptr<piper::HostObject> V8Runtime::getHostObject(
-    const piper::Object& obj) {
+std::weak_ptr<HostObject> V8Runtime::getHostObject(const Object& obj) {
   // We are guarenteed at this point to have isHostObject(obj) == true
   // so the private data should be HostObjectMetadata
   v8::Local<v8::Object> object = V8Helper::objectRef(obj);
@@ -360,8 +355,8 @@ std::weak_ptr<piper::HostObject> V8Runtime::getHostObject(
   return metadata->GetHost();
 }
 
-std::optional<Value> V8Runtime::getProperty(const piper::Object& obj,
-                                            const piper::String& name) {
+std::optional<Value> V8Runtime::getProperty(const Object& obj,
+                                            const String& name) {
   v8::Isolate* isolate_ = getIsolate();
   v8::TryCatch trycatch(isolate_);
 
@@ -376,8 +371,8 @@ std::optional<Value> V8Runtime::getProperty(const piper::Object& obj,
   return V8Helper::createValue(result.ToLocalChecked(), getContext());
 }
 
-std::optional<Value> V8Runtime::getProperty(const piper::Object& obj,
-                                            const piper::PropNameID& name) {
+std::optional<Value> V8Runtime::getProperty(const Object& obj,
+                                            const PropNameID& name) {
   v8::Isolate* isolate_ = getIsolate();
   v8::TryCatch trycatch(isolate_);
 
@@ -391,25 +386,22 @@ std::optional<Value> V8Runtime::getProperty(const piper::Object& obj,
   return V8Helper::createValue(result.ToLocalChecked(), getContext());
 }
 
-bool V8Runtime::hasProperty(const piper::Object& obj,
-                            const piper::String& name) {
+bool V8Runtime::hasProperty(const Object& obj, const String& name) {
   Scope scope(*this);
   v8::Local<v8::Object> objRef = V8Helper::objectRef(obj);
   auto res = objRef->Has(getContext(), V8Helper::stringRef(name));
   return res.IsJust() && res.FromJust();
 }
 
-bool V8Runtime::hasProperty(const piper::Object& obj,
-                            const piper::PropNameID& name) {
+bool V8Runtime::hasProperty(const Object& obj, const PropNameID& name) {
   Scope scope(*this);
   v8::Local<v8::Object> objRef = V8Helper::objectRef(obj);
   auto res = objRef->Has(getContext(), V8Helper::stringRef(name));
   return res.IsJust() && res.FromJust();
 }
 
-bool V8Runtime::setPropertyValue(piper::Object& object,
-                                 const piper::PropNameID& name,
-                                 const piper::Value& value) {
+bool V8Runtime::setPropertyValue(Object& object, const PropNameID& name,
+                                 const Value& value) {
   v8::Isolate* isolate_ = getIsolate();
 
   Scope scope(*this);
@@ -420,9 +412,8 @@ bool V8Runtime::setPropertyValue(piper::Object& object,
   return V8Exception::ReportExceptionIfNeeded(*this, trycatch);
 }
 
-bool V8Runtime::setPropertyValue(piper::Object& object,
-                                 const piper::String& name,
-                                 const piper::Value& value) {
+bool V8Runtime::setPropertyValue(Object& object, const String& name,
+                                 const Value& value) {
   v8::Isolate* isolate_ = getIsolate();
 
   Scope scope(*this);
@@ -433,7 +424,7 @@ bool V8Runtime::setPropertyValue(piper::Object& object,
   return V8Exception::ReportExceptionIfNeeded(*this, trycatch);
 }
 
-bool V8Runtime::isArray(const piper::Object& obj) const {
+bool V8Runtime::isArray(const Object& obj) const {
   auto v8_obj = V8Helper::objectRef(obj);
   if (v8_obj->IsArray()) {
     return true;
@@ -455,11 +446,11 @@ bool V8Runtime::isArray(const piper::Object& obj) const {
   return !length_value.IsEmpty() && length_value.ToLocalChecked()->IsUint32();
 }
 
-bool V8Runtime::isArrayBuffer(const piper::Object& obj) const {
+bool V8Runtime::isArrayBuffer(const Object& obj) const {
   return V8Helper::objectRef(obj)->IsArrayBuffer();
 }
 
-uint8_t* V8Runtime::data(const piper::ArrayBuffer& obj) {
+uint8_t* V8Runtime::data(const ArrayBuffer& obj) {
   Scope scope(*this);
   v8::Local<v8::ArrayBuffer> array_buffer;
   array_buffer = array_buffer.Cast(V8Helper::objectRef(obj));
@@ -489,18 +480,18 @@ size_t V8Runtime::copyData(const ArrayBuffer& obj, uint8_t* dest_buf,
   return src_len;
 }
 
-size_t V8Runtime::size(const piper::ArrayBuffer& obj) {
+size_t V8Runtime::size(const ArrayBuffer& obj) {
   Scope scope(*this);
   v8::Local<v8::ArrayBuffer> array_buffer;
   array_buffer = array_buffer.Cast(V8Helper::objectRef(obj));
   return array_buffer->ByteLength();
 }
 
-bool V8Runtime::isFunction(const piper::Object& obj) const {
+bool V8Runtime::isFunction(const Object& obj) const {
   return V8Helper::objectRef(obj)->IsFunction();
 }
 
-bool V8Runtime::isHostObject(const piper::Object& obj) const {
+bool V8Runtime::isHostObject(const Object& obj) const {
   v8::Local<v8::Object> object = V8Helper::objectRef(obj);
   if (object->InternalFieldCount() != V8HostObjectProxy::HOST_OBJ_COUNT) {
     return false;
@@ -510,8 +501,7 @@ bool V8Runtime::isHostObject(const piper::Object& obj) const {
 }
 
 // Very expensive // TODO
-std::optional<piper::Array> V8Runtime::getPropertyNames(
-    const piper::Object& obj) {
+std::optional<Array> V8Runtime::getPropertyNames(const Object& obj) {
   v8::Isolate* isolate_ = getIsolate();
 
   v8::TryCatch trycatch(isolate_);
@@ -521,7 +511,7 @@ std::optional<piper::Array> V8Runtime::getPropertyNames(
       v8obj->GetPropertyNames(getContext()).ToLocalChecked();
   auto result = createArray(ary->Length());
   if (!result) {
-    return std::optional<piper::Array>();
+    return std::optional<Array>();
   }
   for (size_t i = 0; i < ary->Length(); i++) {
 #if V8_MAJOR_VERSION >= 9
@@ -535,7 +525,7 @@ std::optional<piper::Array> V8Runtime::getPropertyNames(
 
     if (!(*result).setValueAtIndex(*this, i,
                                    V8Helper::createString(str, isolate_))) {
-      return std::optional<piper::Array>();
+      return std::optional<Array>();
     }
   }
   return result;
@@ -543,8 +533,8 @@ std::optional<piper::Array> V8Runtime::getPropertyNames(
 
 // create BigInt object and and store value with key named "__lynx_val__", then
 // add "toString" method to js object
-std::optional<piper::BigInt> V8Runtime::createBigInt(const std::string& value,
-                                                     Runtime& rt) {
+std::optional<BigInt> V8Runtime::createBigInt(const std::string& value,
+                                              Runtime& rt) {
   Scope scope(*this);
   v8::Isolate* isolate_ = getIsolate();
 
@@ -564,19 +554,15 @@ std::optional<piper::BigInt> V8Runtime::createBigInt(const std::string& value,
 
   // create "toString" function
   const std::string to_str = "toString";
-  const lynx::piper::PropNameID prop =
-      lynx::piper::PropNameID::forUtf8(rt, to_str);
-  const lynx::piper::Value fun_value =
-      lynx::piper::Function::createFromHostFunction(
-          rt, prop, 0,
-          [value](
-              Runtime& rt, const Value& thisVal, const Value* args,
+  const PropNameID prop = PropNameID::forUtf8(rt, to_str);
+  const Value fun_value = Function::createFromHostFunction(
+      rt, prop, 0,
+      [value](Runtime& rt, const Value& thisVal, const Value* args,
               unsigned int count) -> base::expected<Value, JSINativeException> {
-            lynx::piper::String res =
-                lynx::piper::String::createFromUtf8(rt, value);
+        String res = String::createFromUtf8(rt, value);
 
-            return piper::Value(rt, res);
-          });
+        return Value(rt, res);
+      });
   // add "toString", "valueOf", "toJSON" property to js object as a function
   v8::Local<v8::String> to_str_v8 =
       V8Helper::ConvertToV8String(isolate_, to_str);
@@ -607,8 +593,8 @@ std::optional<Array> V8Runtime::createArray(size_t length) {
   return V8Helper::createObject(obj, getIsolate()).getArray(*this);
 }
 
-piper::ArrayBuffer V8Runtime::createArrayBufferCopy(const uint8_t* bytes,
-                                                    size_t byte_length) {
+ArrayBuffer V8Runtime::createArrayBufferCopy(const uint8_t* bytes,
+                                             size_t byte_length) {
   Scope scope(*this);
   v8::TryCatch trycatch(getIsolate());
   v8::Local<v8::ArrayBuffer> obj;
@@ -630,12 +616,12 @@ piper::ArrayBuffer V8Runtime::createArrayBufferCopy(const uint8_t* bytes,
 #endif
   }
   if (!V8Exception::ReportExceptionIfNeeded(*this, trycatch) || obj.IsEmpty()) {
-    return piper::ArrayBuffer(*this);
+    return ArrayBuffer(*this);
   }
   return V8Helper::createObject(obj, getIsolate()).getArrayBuffer(*this);
 }
 
-piper::ArrayBuffer V8Runtime::createArrayBufferNoCopy(
+ArrayBuffer V8Runtime::createArrayBufferNoCopy(
     std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) {
   Scope scope(*this);
   v8::TryCatch trycatch(getIsolate());
@@ -658,12 +644,12 @@ piper::ArrayBuffer V8Runtime::createArrayBufferNoCopy(
 #endif
   }
   if (!V8Exception::ReportExceptionIfNeeded(*this, trycatch) || obj.IsEmpty()) {
-    return piper::ArrayBuffer(*this);
+    return ArrayBuffer(*this);
   }
   return V8Helper::createObject(obj, getIsolate()).getArrayBuffer(*this);
 }
 
-std::optional<size_t> V8Runtime::size(const piper::Array& arr) {
+std::optional<size_t> V8Runtime::size(const Array& arr) {
   Scope scope(*this);
   auto v8_obj = V8Helper::objectRef(arr);
   if (v8_obj->IsArray()) {
@@ -685,7 +671,7 @@ std::optional<size_t> V8Runtime::size(const piper::Array& arr) {
   return length_value.ToLocalChecked()->Uint32Value(getContext()).ToChecked();
 }
 
-std::optional<Value> V8Runtime::getValueAtIndex(const piper::Array& arr,
+std::optional<Value> V8Runtime::getValueAtIndex(const Array& arr,
                                                 size_t i) {  // TODO
   v8::Local<v8::Object> obj = V8Helper::objectRef(arr);
 #if V8_MAJOR_VERSION >= 9
@@ -696,8 +682,7 @@ std::optional<Value> V8Runtime::getValueAtIndex(const piper::Array& arr,
   return V8Helper::createValue(value, getContext());
 }
 
-bool V8Runtime::setValueAtIndexImpl(piper::Array& arr, size_t i,
-                                    const piper::Value& value) {
+bool V8Runtime::setValueAtIndexImpl(Array& arr, size_t i, const Value& value) {
   v8::Local<v8::Object> obj = V8Helper::objectRef(arr);
 #if V8_MAJOR_VERSION >= 9
   (void)obj->Set(getContext(), i, valueRef(value));
@@ -707,7 +692,7 @@ bool V8Runtime::setValueAtIndexImpl(piper::Array& arr, size_t i,
   return true;
 }
 
-bool V8Runtime::isHostFunction(const piper::Function& obj) const {
+bool V8Runtime::isHostFunction(const Function& obj) const {
   v8::Local<v8::Object> object = V8Helper::objectRef(obj);
   auto res = object->HasPrivate(
       getContext(),
@@ -717,17 +702,17 @@ bool V8Runtime::isHostFunction(const piper::Function& obj) const {
   return res.IsJust() && res.ToChecked();
 }
 
-// piper::HostFunctionType& V8Runtime::getHostFunction(
-//  const piper::Function& obj) {
+// HostFunctionType& V8Runtime::getHostFunction(
+//  const Function& obj) {
 // We know that isHostFunction(obj) is true here, so its safe to proceed
 //  auto proxy = static_cast<V8HostFunctionProxy*>(
 //      JSObjectGetPrivate(V8Helper::objectRef(obj)));
 // return proxy->getHostFunction();
 // return nullptr;
 //}
-piper::Function V8Runtime::createFunctionFromHostFunction(
-    const piper::PropNameID& name, unsigned int paramCount,
-    piper::HostFunctionType func) {
+Function V8Runtime::createFunctionFromHostFunction(const PropNameID& name,
+                                                   unsigned int paramCount,
+                                                   HostFunctionType func) {
   v8::Isolate* isolate_ = getIsolate();
 
   Scope scope(*this);
@@ -737,23 +722,20 @@ piper::Function V8Runtime::createFunctionFromHostFunction(
   return V8Helper::createObject(v8_func, isolate_).getFunction(*this);
 }
 
-std::optional<Value> V8Runtime::call(const piper::Function& f,
-                                     const piper::Value& jsThis,
-                                     const piper::Value* args, size_t count) {
+std::optional<Value> V8Runtime::call(const Function& f, const Value& jsThis,
+                                     const Value* args, size_t count) {
   auto converter = ArgsConverter<v8::Local<v8::Value>>(
-      count, args,
-      [this](const piper::Value& value) { return valueRef(value); });
+      count, args, [this](const Value& value) { return valueRef(value); });
   return V8Helper::call(
       this, f, jsThis.isUndefined() ? Object(*this) : jsThis.getObject(*this),
       converter, count);
 }
 
-std::optional<Value> V8Runtime::callAsConstructor(const piper::Function& f,
-                                                  const piper::Value* args,
+std::optional<Value> V8Runtime::callAsConstructor(const Function& f,
+                                                  const Value* args,
                                                   size_t count) {
   auto converter = ArgsConverter<v8::Local<v8::Value>>(
-      count, args,
-      [this](const piper::Value& value) { return valueRef(value); });
+      count, args, [this](const Value& value) { return valueRef(value); });
   return V8Helper::callAsConstructor(this, V8Helper::objectRef(f), converter,
                                      static_cast<int>(count));
 }
@@ -778,27 +760,22 @@ void V8Runtime::popScope(ScopeState* state) {
   isolate_->Exit();
 }
 
-bool V8Runtime::strictEquals(const piper::Symbol& a,
-                             const piper::Symbol& b) const {
+bool V8Runtime::strictEquals(const Symbol& a, const Symbol& b) const {
   return V8Helper::symbolRef(a)->StrictEquals(V8Helper::symbolRef(b));
 }
 
-bool V8Runtime::strictEquals(const piper::String& a,
-                             const piper::String& b) const {
+bool V8Runtime::strictEquals(const String& a, const String& b) const {
   return V8Helper::stringRef(a)->StrictEquals(V8Helper::stringRef(b));
 }
 
-bool V8Runtime::strictEquals(const piper::Object& a,
-                             const piper::Object& b) const {
+bool V8Runtime::strictEquals(const Object& a, const Object& b) const {
   return V8Helper::objectRef(a)->StrictEquals(V8Helper::objectRef(b));
 }
 
 // TODO
-bool V8Runtime::instanceOf(const piper::Object& o, const piper::Function& f) {
-  return true;
-}
+bool V8Runtime::instanceOf(const Object& o, const Function& f) { return true; }
 
-v8::Local<v8::Value> V8Runtime::valueRef(const piper::Value& value) {
+v8::Local<v8::Value> V8Runtime::valueRef(const Value& value) {
   switch (value.kind()) {
     case Value::ValueKind::UndefinedKind:
       return v8::Undefined(getIsolate());
@@ -874,14 +851,14 @@ std::string V8Runtime::AddPrefixToUrlIfNeeded(const std::string& url) {
   return Runtime::AddPrefixToUrlIfNeeded(url);
 }
 
-std::unique_ptr<piper::Runtime> makeV8Runtime() {
+std::unique_ptr<Runtime> makeV8Runtime() {
   return std::make_unique<V8Runtime>();
 }
 
 std::shared_ptr<lynx::runtime::profile::V8RuntimeProfilerWrapper>
-makeV8RuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
+makeV8RuntimeProfiler(std::shared_ptr<JSIContext> js_context) {
   auto vm = js_context->getVM();
-  if (vm->GetRuntimeType() == piper::JSRuntimeType::v8) {
+  if (vm->GetRuntimeType() == JSRuntimeType::v8) {
     std::shared_ptr<V8IsolateInstance> v8_vm =
         std::static_pointer_cast<V8IsolateInstance>(vm);
     auto v8_profiler =
@@ -893,5 +870,7 @@ makeV8RuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
   return nullptr;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

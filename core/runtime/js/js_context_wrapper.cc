@@ -14,24 +14,25 @@
 namespace lynx {
 namespace runtime {
 
-JSContextWrapper::JSContextWrapper(std::shared_ptr<piper::JSIContext> context)
+JSContextWrapper::JSContextWrapper(
+    std::shared_ptr<runtime::js::JSIContext> context)
     : js_context_(context), js_core_loaded_(false), global_inited_(false) {}
 
 void JSContextWrapper::prepareJSEnv(
-    std::weak_ptr<piper::Runtime> js_runtime,
-    std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>&
+    std::weak_ptr<runtime::js::Runtime> js_runtime,
+    std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
         js_preload) {
   if (js_core_loaded_) {
     return;
   }
 
-  std::shared_ptr<piper::Runtime> rt = js_runtime.lock();
+  std::shared_ptr<runtime::js::Runtime> rt = js_runtime.lock();
   if (!rt) {
     return;
   }
 
   // load the lynx_core.js
-  piper::Scope scope(*rt);
+  runtime::js::Scope scope(*rt);
   for (auto& [url, buffer] : js_preload) {
     auto prep = rt->prepareJavaScript(buffer, url);
     auto ret = rt->evaluatePreparedJavaScript(prep);
@@ -54,8 +55,8 @@ void JSContextWrapper::SetRuntimeProfiler(
 
 //////////////////////
 SharedJSContextWrapper::SharedJSContextWrapper(
-    std::shared_ptr<piper::JSIContext> context, const std::string& group_id,
-    ReleaseListener* listener)
+    std::shared_ptr<runtime::js::JSIContext> context,
+    const std::string& group_id, ReleaseListener* listener)
     : JSContextWrapper(context), group_id_(group_id), listener_(listener) {}
 
 void SharedJSContextWrapper::Def() {
@@ -87,7 +88,7 @@ void SharedJSContextWrapper::Def() {
 }
 
 void SharedJSContextWrapper::EnsureConsole(
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (isGlobalInited() && global_) {
     global_->EnsureConsole(post_man, page_options);
@@ -95,26 +96,26 @@ void SharedJSContextWrapper::EnsureConsole(
 }
 
 void SharedJSContextWrapper::initGlobal(
-    std::shared_ptr<piper::Runtime>& rt,
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    std::shared_ptr<runtime::js::Runtime>& rt,
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (global_inited_) {
     return;
   }
-  std::shared_ptr<piper::SharedContextGlobal> global =
-      std::make_shared<piper::SharedContextGlobal>();
+  std::shared_ptr<runtime::js::SharedContextGlobal> global =
+      std::make_shared<runtime::js::SharedContextGlobal>();
   global->Init(rt, post_man, page_options);
   global_inited_ = true;
   global_ = global;
 }
 
 void SharedJSContextWrapper::InitNapi(
-    std::shared_ptr<piper::Runtime>& js_runtime) {
+    std::shared_ptr<runtime::js::Runtime>& js_runtime) {
 #if ENABLE_NAPI_BINDING
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, PREPARE_NAPI_ENV);
-  napi_environment_ = std::make_unique<piper::NapiEnvironment>(
-      std::make_unique<piper::NapiEnvironment::Delegate>());
-  auto proxy = piper::NapiRuntimeProxy::Create(js_runtime, nullptr);
+  napi_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
+      std::make_unique<runtime::js::NapiEnvironment::Delegate>());
+  auto proxy = runtime::js::NapiRuntimeProxy::Create(js_runtime, nullptr);
   proxy->MarkSafeNapi();
   LOGI("napi attaching with proxy: " << proxy.get());
   if (proxy) {
@@ -135,11 +136,11 @@ void SharedJSContextWrapper::AddLifecycleListener(
 }
 
 NoneSharedJSContextWrapper::NoneSharedJSContextWrapper(
-    std::shared_ptr<piper::JSIContext> context)
+    std::shared_ptr<runtime::js::JSIContext> context)
     : JSContextWrapper(context) {}
 
 NoneSharedJSContextWrapper::NoneSharedJSContextWrapper(
-    std::shared_ptr<piper::JSIContext> context,
+    std::shared_ptr<runtime::js::JSIContext> context,
     SharedJSContextWrapper::ReleaseListener* listener)
     : JSContextWrapper(context), listener_(listener) {}
 
@@ -155,7 +156,7 @@ void NoneSharedJSContextWrapper::Def() {
 }
 
 void NoneSharedJSContextWrapper::EnsureConsole(
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (isGlobalInited() && global_) {
     global_->EnsureConsole(post_man, page_options);
@@ -163,14 +164,14 @@ void NoneSharedJSContextWrapper::EnsureConsole(
 }
 
 void NoneSharedJSContextWrapper::initGlobal(
-    std::shared_ptr<piper::Runtime>& js_runtime,
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    std::shared_ptr<runtime::js::Runtime>& js_runtime,
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (global_inited_) {
     return;
   }
-  std::shared_ptr<piper::SingleGlobal> global =
-      std::make_shared<piper::SingleGlobal>();
+  std::shared_ptr<runtime::js::SingleGlobal> global =
+      std::make_shared<runtime::js::SingleGlobal>();
   global->Init(js_runtime, post_man, page_options);
   global_inited_ = true;
   global_ = global;

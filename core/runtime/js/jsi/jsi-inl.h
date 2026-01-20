@@ -17,7 +17,8 @@
 #include <vector>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 
 inline Value toValue(Runtime&, std::nullptr_t) { return Value::null(); }
@@ -62,12 +63,12 @@ inline T Runtime::make(Runtime::PointerValue* pv) {
 }
 
 inline const Runtime::PointerValue* Runtime::getPointerValue(
-    const piper::Pointer& pointer) {
+    const Pointer& pointer) {
   return pointer.ptr_;
 }
 
 inline const Runtime::PointerValue* Runtime::getPointerValue(
-    const piper::Value& value) {
+    const Value& value) {
   return value.data_.pointer.ptr_;
 }
 
@@ -205,9 +206,9 @@ inline std::optional<Value> Array::getValueAtIndex(Runtime& runtime,
 }
 
 inline Function Function::createFromHostFunction(Runtime& runtime,
-                                                 const piper::PropNameID& name,
+                                                 const PropNameID& name,
                                                  unsigned int paramCount,
-                                                 piper::HostFunctionType func) {
+                                                 HostFunctionType func) {
   return runtime.createFunctionFromHostFunction(name, paramCount,
                                                 std::move(func));
 }
@@ -279,6 +280,8 @@ inline std::optional<Value> Function::callAsConstructor(Runtime& runtime,
       runtime, {detail::toValue(runtime, std::forward<Args>(args))...});
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSI_INL_H_

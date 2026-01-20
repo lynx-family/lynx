@@ -11,7 +11,7 @@
 namespace lynx {
 namespace gen_test {
 
-class TestModule : public piper::NapiEnvironment::Module {
+class TestModule : public runtime::js::NapiEnvironment::Module {
  public:
   TestModule() = default;
 

@@ -52,7 +52,7 @@ struct lynx_extension_module_t {
 namespace lynx {
 namespace embedder {
 
-class ExtensionModuleImpl : public piper::LynxExtensionModule {
+class ExtensionModuleImpl : public runtime::LynxExtensionModule {
  public:
   ExtensionModuleImpl(lynx_extension_module_t* module);
   ~ExtensionModuleImpl();
@@ -75,10 +75,10 @@ class ExtensionModuleImpl : public piper::LynxExtensionModule {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
   void SetDelegate(
-      std::weak_ptr<piper::LynxNativeModule::Delegate> delegate) override;
+      std::weak_ptr<runtime::LynxNativeModule::Delegate> delegate) override;
   void SetupNapiModule();
 
   runtime::IVSyncObserver* VSyncObserver() { return vsync_observer_.get(); }

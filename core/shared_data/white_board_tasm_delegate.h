@@ -23,9 +23,9 @@ class WhiteBoardTasmDelegate : public WhiteBoardDelegate {
   void CallLepusCallbackWithValue(const lepus::Value& closure,
                                   const lepus::Value& param) override;
 
-  void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+  void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                   const lepus::Value& param) override;
-  void RemoveJSApiCallback(piper::ApiCallBack callback) override;
+  void RemoveJSApiCallback(runtime::js::ApiCallBack callback) override;
 
   void CallPlatformCallbackWithValue(
       const std::shared_ptr<lynx::shell::PlatformCallBackHolder>& callback,

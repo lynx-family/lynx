@@ -32,7 +32,7 @@ class UIDelegateDarwin : public UIDelegate {
 
   bool UsesLogicalPixels() const override { return true; }
 
-  std::unique_ptr<piper::NativeModuleFactory> GetCustomModuleFactory()
+  std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory()
       override {
     // TODO(chenyouhui): Implement this after unify lepus module and js module.
     return nullptr;

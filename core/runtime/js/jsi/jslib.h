@@ -17,7 +17,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class FileBuffer : public Buffer {
  public:
   FileBuffer(const std::string& path);
@@ -34,38 +35,40 @@ class FileBuffer : public Buffer {
 
 // A trivial implementation of PreparedJavaScript that simply stores the source
 // buffer and URL.
-class SourceJavaScriptPreparation final : public piper::PreparedJavaScript,
-                                          public piper::Buffer {
-  std::shared_ptr<const piper::Buffer> buf_;
+class SourceJavaScriptPreparation final : public PreparedJavaScript,
+                                          public Buffer {
+  std::shared_ptr<const Buffer> buf_;
 
  public:
-  SourceJavaScriptPreparation(std::shared_ptr<const piper::Buffer> buf,
+  SourceJavaScriptPreparation(std::shared_ptr<const Buffer> buf,
                               std::string source_url, int start_line_offset)
-      : piper::PreparedJavaScript(std::move(source_url), start_line_offset),
+      : PreparedJavaScript(std::move(source_url), start_line_offset),
         buf_(std::move(buf)) {}
 
-  std::shared_ptr<const piper::Buffer> buffer() const { return buf_; }
+  std::shared_ptr<const Buffer> buffer() const { return buf_; }
 
   size_t size() const override { return buf_->size(); }
   const uint8_t* data() const override { return buf_->data(); }
 };
 
-class QuickjsJavaScriptPreparation final : public piper::PreparedJavaScript {
-  std::shared_ptr<const piper::Buffer> buf_;
-  std::shared_ptr<const piper::Buffer> bin_;
+class QuickjsJavaScriptPreparation final : public PreparedJavaScript {
+  std::shared_ptr<const Buffer> buf_;
+  std::shared_ptr<const Buffer> bin_;
 
  public:
-  QuickjsJavaScriptPreparation(std::shared_ptr<const piper::Buffer> buf,
-                               std::shared_ptr<const piper::Buffer> bin,
+  QuickjsJavaScriptPreparation(std::shared_ptr<const Buffer> buf,
+                               std::shared_ptr<const Buffer> bin,
                                std::string source_url, int start_line_offset)
-      : piper::PreparedJavaScript(std::move(source_url), start_line_offset),
+      : PreparedJavaScript(std::move(source_url), start_line_offset),
         buf_(std::move(buf)),
         bin_(std::move(bin)) {}
 
-  std::shared_ptr<const piper::Buffer> Source() const { return buf_; }
-  std::shared_ptr<const piper::Buffer> Bytecode() const { return bin_; }
+  std::shared_ptr<const Buffer> Source() const { return buf_; }
+  std::shared_ptr<const Buffer> Bytecode() const { return bin_; }
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSLIB_H_

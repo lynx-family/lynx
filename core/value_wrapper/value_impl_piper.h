@@ -25,7 +25,7 @@ class ValueImplPiper;
 // so the create method cannot be used. It will be supplemented later.
 class PiperValueFactory : public PubValueFactory {
  public:
-  PiperValueFactory(piper::Runtime& rt) : rt_(rt){};
+  PiperValueFactory(runtime::js::Runtime& rt) : rt_(rt){};
   std::unique_ptr<Value> CreateArray() override { return nullptr; };
   std::unique_ptr<Value> CreateMap() override { return nullptr; };
   std::unique_ptr<Value> CreateBool(bool value) override { return nullptr; };
@@ -42,38 +42,38 @@ class PiperValueFactory : public PubValueFactory {
   PubValueFactory::FactoryType GetFactoryType() const override {
     return PubValueFactory::FactoryType::kPiper;
   };
-  piper::Runtime* GetRuntime() { return &rt_; };
+  runtime::js::Runtime* GetRuntime() { return &rt_; };
   ~PiperValueFactory() override = default;
 
  private:
-  piper::Runtime& rt_;
+  runtime::js::Runtime& rt_;
 };
 
 // piper value implementation
 class ValueImplPiper : public Value {
  public:
-  ValueImplPiper(piper::Runtime& rt, piper::Value&& value)
+  ValueImplPiper(runtime::js::Runtime& rt, runtime::js::Value&& value)
       : Value(ValueBackendType::ValueBackendTypePiper),
         rt_(rt),
         backend_value_(rt, std::move(value)) {}
-  ValueImplPiper(piper::Runtime& rt, const piper::Value& value)
+  ValueImplPiper(runtime::js::Runtime& rt, const runtime::js::Value& value)
       : Value(ValueBackendType::ValueBackendTypePiper),
         rt_(rt),
         backend_value_(rt, value) {}
 
   int64_t Type() const override {
     switch (backend_value_.kind()) {
-      case piper::Value::ValueKind::UndefinedKind:
+      case runtime::js::Value::ValueKind::UndefinedKind:
         return lepus::Value_Undefined;
-      case piper::Value::ValueKind::NullKind:
+      case runtime::js::Value::ValueKind::NullKind:
         return lepus::Value_Nil;
-      case piper::Value::ValueKind::BooleanKind:
+      case runtime::js::Value::ValueKind::BooleanKind:
         return lepus::Value_Bool;
-      case piper::Value::ValueKind::NumberKind:
+      case runtime::js::Value::ValueKind::NumberKind:
         return lepus::Value_Double;
-      case piper::Value::ValueKind::StringKind:
+      case runtime::js::Value::ValueKind::StringKind:
         return lepus::Value_String;
-      case piper::Value::ValueKind::ObjectKind: {
+      case runtime::js::Value::ValueKind::ObjectKind: {
         auto obj = backend_value_.getObject(rt_);
         if (obj.isArray(rt_)) {
           return lepus::Value_Array;
@@ -172,8 +172,8 @@ class ValueImplPiper : public Value {
   double Double() const override { return backend_value_.getNumber(); }
   double Number() const override { return backend_value_.getNumber(); }
   uint8_t* ArrayBuffer() const override {
-    piper::Object obj = backend_value_.getObject(rt_);
-    piper::ArrayBuffer array_buffer = obj.getArrayBuffer(rt_);
+    runtime::js::Object obj = backend_value_.getObject(rt_);
+    runtime::js::ArrayBuffer array_buffer = obj.getArrayBuffer(rt_);
     return array_buffer.data(rt_);
   }
 
@@ -221,7 +221,7 @@ class ValueImplPiper : public Value {
     if (value.backend_type() != ValueBackendType::ValueBackendTypePiper) {
       return false;
     }
-    return piper::Value::strictEquals(
+    return runtime::js::Value::strictEquals(
         rt_, backend_value_,
         static_cast<const ValueImplPiper&>(value).backend_value_);
   }
@@ -234,7 +234,7 @@ class ValueImplPiper : public Value {
     if (!obj.isArray(rt_)) {
       return;
     }
-    piper::Array array = obj.getArray(rt_);
+    runtime::js::Array array = obj.getArray(rt_);
     auto size_opt = array.size(rt_);
     if (!size_opt) {
       LOGE("There is error in ForeachArray: can't find the size.");
@@ -276,7 +276,7 @@ class ValueImplPiper : public Value {
         LOGE("ForeachMap key[" + std::to_string(i) + "] is null.");
         return;
       }
-      piper::String name = item->getString(rt_);
+      runtime::js::String name = item->getString(rt_);
       auto prop = obj.getProperty(rt_, name);
       if (!prop) {
         LOGE("ForeachMap value[" + name.utf8(rt_) + "] is null.");
@@ -299,8 +299,8 @@ class ValueImplPiper : public Value {
       }
     }
     // Returns an empty Value if it's not a array to keep consistent with
-    // piper::Value
-    return std::make_unique<ValueImplPiper>(rt_, piper::Value());
+    // runtime::js::Value
+    return std::make_unique<ValueImplPiper>(rt_, runtime::js::Value());
   }
 
   bool Erase(uint32_t idx) const override {
@@ -317,8 +317,8 @@ class ValueImplPiper : public Value {
       }
     }
     // Returns an empty Value if it's not a map to keep consistent with
-    // piper::Value
-    return std::make_unique<ValueImplPiper>(rt_, piper::Value());
+    // runtime::js::Value
+    return std::make_unique<ValueImplPiper>(rt_, runtime::js::Value());
   }
 
   bool Erase(const std::string& key) const override {
@@ -379,17 +379,17 @@ class ValueImplPiper : public Value {
   };
 
   std::unique_ptr<Value> Clone() const override {
-    auto value = piper::Value(rt_, backend_value_);
+    auto value = runtime::js::Value(rt_, backend_value_);
     auto piper_value = std::make_unique<ValueImplPiper>(rt_, value);
     return piper_value;
   }
 
-  piper::Runtime& rt() { return rt_; }
-  const piper::Value& backend_value() const { return backend_value_; }
+  runtime::js::Runtime& rt() { return rt_; }
+  const runtime::js::Value& backend_value() const { return backend_value_; }
 
  private:
-  piper::Runtime& rt_;
-  piper::Value backend_value_;
+  runtime::js::Runtime& rt_;
+  runtime::js::Value backend_value_;
   std::string cached_str_;
 };
 

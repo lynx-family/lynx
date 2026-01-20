@@ -17,10 +17,11 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace LynxModuleUtils {
 // module error message creating
-std::string JSTypeToString(const piper::Value* arg);
+std::string JSTypeToString(const Value* arg);
 std::string ExpectedButGotAtIndexError(const std::string& expected,
                                        const std::string& but_got,
                                        int arg_index);
@@ -36,7 +37,7 @@ class GroupInterceptor;
 /**
  * Base HostObject class for every module to be exposed to JS
  */
-class LynxModule : public piper::HostObject,
+class LynxModule : public HostObject,
                    public std::enable_shared_from_this<LynxModule> {
  public:
   LynxModule(const std::string& name,
@@ -45,7 +46,7 @@ class LynxModule : public piper::HostObject,
   ~LynxModule() override = default;
   virtual void Destroy() = 0;
 
-  piper::Value get(Runtime* rt, const PropNameID& prop) override;
+  Value get(Runtime* rt, const PropNameID& prop) override;
 
   const std::string name_;
   // Public for NetworkInterceptor. When Refactor network finished, protected
@@ -59,14 +60,14 @@ class LynxModule : public piper::HostObject,
     MethodMetadata(size_t argCount, const std::string& methodName);
   };
 
-  virtual base::expected<piper::Value, piper::JSINativeException> invokeMethod(
-      const MethodMetadata& method, Runtime* rt, const piper::Value* args,
+  virtual base::expected<Value, JSINativeException> invokeMethod(
+      const MethodMetadata& method, Runtime* rt, const Value* args,
       size_t count) = 0;
 
   // TODO(chenyouhui): It is dead code. Add a default implementation and remove
   // it later.
-  virtual piper::Value getAttributeValue(Runtime* rt, std::string propName) {
-    return piper::Value::undefined();
+  virtual Value getAttributeValue(Runtime* rt, std::string propName) {
+    return Value::undefined();
   }
 
   void SetModuleInterceptor(std::shared_ptr<GroupInterceptor> interceptor) {
@@ -81,8 +82,8 @@ class LynxModule : public piper::HostObject,
   virtual void SetRecordID(int64_t record_id) { record_id_ = record_id; }
   int64_t GetRecordID() { return record_id_; }
   virtual void EndRecordFunction(const std::string& method_name, size_t count,
-                                 const piper::Value* js_args, Runtime* rt,
-                                 piper::Value& res) {}
+                                 const Value* js_args, Runtime* rt,
+                                 Value& res) {}
   virtual void StartRecordFunction(const std::string& method_name = "") {}
 #endif  // ENABLE_TESTBENCH_RECORDER
 
@@ -104,6 +105,8 @@ class LynxModule : public piper::HostObject,
 using LynxModuleProviderFunction =
     std::function<std::shared_ptr<LynxModule>(const std::string& name)>;
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_MODULE_H_

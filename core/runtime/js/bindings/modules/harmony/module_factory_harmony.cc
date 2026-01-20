@@ -17,7 +17,7 @@ ModuleFactoryHarmony::ModuleFactoryHarmony(napi_env env,
     : platform_module_manager_(std::make_shared<PlatformModuleManager>(
           env, module_args, sendable_module_args)) {}
 
-std::shared_ptr<piper::LynxNativeModule> ModuleFactoryHarmony::CreateModule(
+std::shared_ptr<runtime::LynxNativeModule> ModuleFactoryHarmony::CreateModule(
     const std::string& name) {
   std::lock_guard<std::mutex> lock(mutex_);
 
@@ -28,7 +28,7 @@ std::shared_ptr<piper::LynxNativeModule> ModuleFactoryHarmony::CreateModule(
         js_it->second.first, js_it->second.second);
     return local_module;
   }
-  return std::shared_ptr<piper::LynxNativeModule>(nullptr);
+  return std::shared_ptr<runtime::LynxNativeModule>(nullptr);
 }
 
 }  // namespace harmony

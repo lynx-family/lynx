@@ -21,7 +21,8 @@ std::unique_ptr<BTSRuntimeStandalone>
 BTSRuntimeStandalone::InitRuntimeStandalone(
     const std::string& group_name, const std::string& group_id,
     std::unique_ptr<NativeFacade> native_facade_runtime,
-    const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
+    const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>&
+        runtime_observer,
     const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
         native_module_manager,

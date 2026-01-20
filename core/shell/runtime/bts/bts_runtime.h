@@ -35,9 +35,11 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class NapiEnvironment;
 }
+}  // namespace runtime
 
 /*
  * now only run on js thread
@@ -73,31 +75,32 @@ class BTSRuntime final {
   // now can ensure Init the first task for LynxRuntime
   void Init(const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
                 native_module_manager,
-            const std::shared_ptr<piper::InspectorRuntimeObserverNG>&
+            const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>&
                 runtime_observer,
             std::vector<std::string> preload_js_paths);
 
-  void CallJSCallback(const std::shared_ptr<piper::ModuleCallback>& callback,
-                      int64_t id_to_delete);
-  void CallJSApiCallback(piper::ApiCallBack callback);
-  void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+  void CallJSCallback(
+      const std::shared_ptr<runtime::js::ModuleCallback>& callback,
+      int64_t id_to_delete);
+  void CallJSApiCallback(runtime::js::ApiCallBack callback);
+  void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                   const lepus::Value& value,
                                   bool persist = false);
-  void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
-                                  piper::Value value);
-  void EraseJSApiCallback(piper::ApiCallBack callback);
-  int64_t RegisterJSCallbackFunction(piper::Function func);
+  void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
+                                  runtime::js::Value value);
+  void EraseJSApiCallback(runtime::js::ApiCallBack callback);
+  int64_t RegisterJSCallbackFunction(runtime::js::Function func);
 
   void CallJSFunction(const std::string& module_id,
                       const std::string& method_id,
                       const lepus::Value& arguments);
 
   void CallIntersectionObserver(int32_t observer_id, int32_t callback_id,
-                                piper::Value data);
+                                runtime::js::Value data);
 
   void CallFunction(const std::string& module_id, const std::string& method_id,
-                    const piper::Array& arguments);
-  void FlushJSBTiming(piper::NativeModuleInfo timing);
+                    const runtime::js::Array& arguments);
+  void FlushJSBTiming(runtime::js::NativeModuleInfo timing);
   void SendSsrGlobalEvent(const std::string& name, const lepus::Value& info);
   void OnJSSourcePrepared(
       tasm::TasmRuntimeBundle bundle, const lepus::Value& global_props,
@@ -113,18 +116,18 @@ class BTSRuntime final {
       tasm::TemplateData data,
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
   void EvaluateScript(const std::string& url, std::string script,
-                      piper::ApiCallBack callback);
+                      runtime::js::ApiCallBack callback);
   void EvaluateScriptStandalone(std::string url, std::string script,
                                 uint64_t trace_flow_id);
 
   void OnScriptLoaded(const std::string& url, std::string script,
-                      std::string err_msg, piper::ApiCallBack callback);
+                      std::string err_msg, runtime::js::ApiCallBack callback);
 
   void NotifyJSUpdatePageData(uint64_t trace_flow_id);
   void NotifyJSUpdateCardConfigData();
   void InsertCallbackForDataUpdateFinishedOnRuntime(base::closure callback);
 
-  void OnJSIException(const piper::JSIException& exception);
+  void OnJSIException(const runtime::js::JSIException& exception);
 
   void OnErrorOccurred(base::LynxError error) {
     delegate_->OnErrorOccurred(std::move(error));
@@ -133,11 +136,11 @@ class BTSRuntime final {
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t error_code);
 
-  std::shared_ptr<piper::Runtime> GetJSRuntime();
+  std::shared_ptr<runtime::js::Runtime> GetJSRuntime();
   int64_t GetRuntimeId() const { return instance_id_; }
 
 #if ENABLE_NAPI_BINDING
-  piper::NapiEnvironment* GetNapiEnvironment() const {
+  runtime::js::NapiEnvironment* GetNapiEnvironment() const {
     return napi_environment_.get();
   }
 #endif
@@ -175,12 +178,12 @@ class BTSRuntime final {
   bool IsRuntimeReady() { return state_ == State::kRuntimeReady; }
 
   void SetJsBundleHolder(
-      const std::weak_ptr<piper::JsBundleHolder>& weak_js_bundle_holder);
+      const std::weak_ptr<runtime::js::JsBundleHolder>& weak_js_bundle_holder);
 
   void TransitionToFullRuntime();
 
   void AddModuleFactory(
-      std::unique_ptr<piper::NativeModuleFactory> native_factory);
+      std::unique_ptr<runtime::NativeModuleFactory> native_factory);
 
   void OnRuntimeActorCreate();
 
@@ -209,9 +212,11 @@ class BTSRuntime final {
   void DestroyAppAndNapi();
   void ReadPreloadJSSource(
       std::vector<std::string> preload_js_paths,
-      std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret);
+      std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+          ret);
   void ReadCoreJS(
-      std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>& ret);
+      std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+          ret);
   void InitExecutor(bool is_full_runtime,
                     std::vector<std::string> preload_js_paths);
   void UpdateState(State state);
@@ -240,11 +245,11 @@ class BTSRuntime final {
   const std::string group_id_;
   const int32_t instance_id_;
   const std::unique_ptr<runtime::TemplateDelegate> delegate_;
-  std::unique_ptr<lynx::piper::JSExecutor> js_executor_;
-  std::shared_ptr<piper::App> app_;
+  std::unique_ptr<lynx::runtime::js::JSExecutor> js_executor_;
+  std::shared_ptr<runtime::js::App> app_;
 #if ENABLE_NAPI_BINDING
-  std::unique_ptr<piper::NapiEnvironment> napi_environment_;
-  std::unique_ptr<piper::NapiEnvironment> napi_restricted_environment_;
+  std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
+  std::unique_ptr<runtime::js::NapiEnvironment> napi_restricted_environment_;
 #else
   std::unique_ptr<bool> napi_environment_placeholder_;
 #endif
@@ -268,14 +273,15 @@ class BTSRuntime final {
   // store callbacks that the data has been updated for runtime.
   std::vector<base::closure> native_update_finished_callbacks_;
 
-  std::unordered_map<int64_t, piper::ModuleCallbackFunctionHolder> callbacks_;
+  std::unordered_map<int64_t, runtime::js::ModuleCallbackFunctionHolder>
+      callbacks_;
   int64_t callback_id_index_ = 0;
   std::string bytecode_source_url_;
   uint32_t runtime_flags_;
   std::unique_ptr<runtime::RuntimeLifecycleObserverImpl> lifecycle_observer_;
   tasm::PageOptions page_options_;
   lepus::Value init_global_props_;
-  base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
+  base::InlineVector<std::unique_ptr<runtime::NativeModuleFactory>, 4>
       cached_native_factories_;
   std::string template_url_;
 #if OS_IOS

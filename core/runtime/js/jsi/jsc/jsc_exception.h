@@ -13,8 +13,8 @@
 #include "core/runtime/js/jsi/jsc/jsc_runtime.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class JSCException : public JSError {
  public:
   JSCException(JSCRuntime& rt, JSValueRef value)
@@ -28,6 +28,8 @@ class JSCException : public JSError {
                                               JSValueRef, JSValueRef);
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSC_JSC_EXCEPTION_H_

@@ -19,17 +19,17 @@ const std::string LynxExposureModule::name_ = "LynxExposureModule";
 LynxExposureModule::LynxExposureModule(uint32_t view_context_id,
                                        fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
-  lynx::piper::NativeModuleMethod stop_exposure("stopExposure", 1);
+  lynx::runtime::NativeModuleMethod stop_exposure("stopExposure", 1);
   RegisterMethod(stop_exposure, &LynxExposureModule::stopExposure);
 
-  lynx::piper::NativeModuleMethod resume_exposure("resumeExposure", 0);
+  lynx::runtime::NativeModuleMethod resume_exposure("resumeExposure", 0);
   RegisterMethod(resume_exposure, &LynxExposureModule::resumeExposure);
 }
 LynxExposureModule::~LynxExposureModule() = default;
 
 std::unique_ptr<lynx::pub::Value> LynxExposureModule::stopExposure(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [weak_this = weak_from_this(),
                                                    args_array =
                                                        std::move(args_array),
@@ -60,7 +60,7 @@ std::unique_ptr<lynx::pub::Value> LynxExposureModule::stopExposure(
 }
 std::unique_ptr<lynx::pub::Value> LynxExposureModule::resumeExposure(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [weak_this = weak_from_this(),
                                                    args_array =
                                                        std::move(args_array),

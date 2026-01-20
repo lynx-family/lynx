@@ -31,7 +31,7 @@
 
 @implementation LynxBackgroundRuntimeOptions {
   // Only as a module wrapper container for register.
-  std::unique_ptr<lynx::piper::ModuleFactoryDarwin> _moduleWrapperContainer;
+  std::unique_ptr<lynx::runtime::js::ModuleFactoryDarwin> _moduleWrapperContainer;
   NSMutableDictionary<NSString*, id<LynxResourceProvider>>* _providers;
 }
 
@@ -40,7 +40,7 @@
   if (self) {
     _backgroundJsRuntimeType = LynxBackgroundJsRuntimeTypeJSC;
     _enableBytecode = NO;
-    _moduleWrapperContainer = std::make_unique<lynx::piper::ModuleFactoryDarwin>();
+    _moduleWrapperContainer = std::make_unique<lynx::runtime::js::ModuleFactoryDarwin>();
     _providers = [NSMutableDictionary dictionary];
   }
   return self;
@@ -166,14 +166,14 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 @implementation LynxBackgroundRuntime {
   NSHashTable<id<LynxBackgroundRuntimeLifecycle>>* _innerLifecycleClients;
   LynxBackgroundRuntimeState _state;
-  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> _weak_module_factory;
+  std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin> _weak_module_factory;
   std::shared_ptr<lynx::shell::JSProxyDarwin> _js_proxy;
-  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> _runtime_observer;
+  std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG> _runtime_observer;
   std::unique_ptr<lynx::shell::BTSRuntimeStandalone> _runtime_standalone_bundle;
   LynxDevtool* _devTool;
 }
 
-- (std::weak_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr {
+- (std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin>)moduleFactoryPtr {
   return _weak_module_factory;
 }
 
@@ -191,7 +191,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 }
 
 - (void)setRuntimeObserver:
-    (const std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>&)observer {
+    (const std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>&)observer {
   _runtime_observer = observer;
 }
 
@@ -222,9 +222,9 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
         std::make_shared<lynx::pub::LynxNativeModuleManager>();
     // create ModuleFactory
-    auto module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
-    std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
-        std::make_unique<lynx::piper::CommonModuleCreator>();
+    auto module_factory = std::make_shared<lynx::runtime::js::ModuleFactoryDarwin>();
+    std::unique_ptr<lynx::runtime::js::ModuleCreatorDarwin> module_creator =
+        std::make_unique<lynx::runtime::js::CommonModuleCreator>();
     module_factory->Bind(std::move(module_creator));
     // cache ModuleFactory with weak_ptr
     _weak_module_factory = module_factory;
@@ -252,7 +252,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
         registry, nil, self, _options.templateResourceFetcher, _options.genericResourceFetcher);
 
     auto on_runtime_actor_created = [native_module_manager](auto& actor, auto facade_actor) {
-      std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
+      std::shared_ptr<lynx::runtime::js::ModuleDelegate> module_delegate =
           std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
       native_module_manager->SetModuleDelegate(module_delegate);
     };

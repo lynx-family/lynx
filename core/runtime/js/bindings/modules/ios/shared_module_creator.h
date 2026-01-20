@@ -18,8 +18,8 @@
 @protocol LynxModule;
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // Create LynxContextModuleInstance or LynxModuleInstance
 class SharedModuleCreator : public ModuleCreatorDarwin {
  public:
@@ -57,7 +57,8 @@ class SharedLynxContextFinderDarwin : public LynxContextFinderDarwin {
   NSMapTable<NSString*, LynxContext*>* lynxContextWeakMap_;
   std::unordered_map<std::string, std::string> schemas_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // !CORE_RUNTIME_BINDINGS_JSI_MODULES_IOS_SHARED_MODULE_CREATOR_H_

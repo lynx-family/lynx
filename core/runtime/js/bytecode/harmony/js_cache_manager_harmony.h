@@ -8,7 +8,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 class JsCacheManager;
 
@@ -25,7 +26,8 @@ class JsCacheManagerHarmony {
 };
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_HARMONY_JS_CACHE_MANAGER_HARMONY_H_

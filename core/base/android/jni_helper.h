@@ -23,12 +23,11 @@ namespace android {
 class JNIHelper {
  public:
   static lynx::base::android::ScopedLocalJavaRef<jbyteArray>
-  ConvertToJNIByteArray(JNIEnv* env, piper::Runtime* rt,
-                        const piper::ArrayBuffer& buf);
+  ConvertToJNIByteArray(JNIEnv* env, runtime::js::Runtime* rt,
+                        const runtime::js::ArrayBuffer& buf);
 
-  static piper::ArrayBuffer ConvertToJSIArrayBuffer(JNIEnv* env,
-                                                    piper::Runtime* rt,
-                                                    jbyteArray j_obj);
+  static runtime::js::ArrayBuffer ConvertToJSIArrayBuffer(
+      JNIEnv* env, runtime::js::Runtime* rt, jbyteArray j_obj);
 
   static ScopedLocalJavaRef<jobject> ConvertSTLStringMapToJavaMap(
       JNIEnv* env, const std::unordered_map<std::string, std::string>& map);

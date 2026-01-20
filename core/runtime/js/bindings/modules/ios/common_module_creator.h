@@ -18,8 +18,8 @@
 @protocol LynxModule;
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // Create LynxContextModuleInstance or LynxModuleInstance
 class CommonModuleCreator : public ModuleCreatorDarwin {
  public:
@@ -57,7 +57,8 @@ class CommonLynxContextFinderDarwin : public LynxContextFinderDarwin {
   __weak LynxContext* lynxContext_;
   std::string schema_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_IOS_COMMON_MODULE_CREATOR_H_

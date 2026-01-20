@@ -11,8 +11,8 @@
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 void QuickjsInspectorManagerImpl::InitInspector(
     Runtime *runtime,
     const std::shared_ptr<InspectorRuntimeObserverNG> &observer) {
@@ -44,7 +44,7 @@ void QuickjsInspectorManagerImpl::InitInspector(
                          JSExecutor::GetCurrentRuntimeManagerInstance()
                              ->GetRuntimeManagerDelegate();
                      runtime_manager_delegate->SetReleaseContextCallback(
-                         piper::JSRuntimeType::quickjs,
+                         JSRuntimeType::quickjs,
                          [inspector_client](const std::string &group_id) {
                            inspector_client->DestroyInspector(group_id);
                          });
@@ -91,5 +91,7 @@ void QuickjsInspectorManagerImpl::PrepareForScriptEval() {
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

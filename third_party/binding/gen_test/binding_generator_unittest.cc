@@ -29,8 +29,8 @@ extern "C" {
 #endif  // __cplusplus
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using binding::ArrayBufferView;
 
 #define AssertExp(exp) EXPECT_EQ(env_.RunScript(exp).ToBoolean().Value(), true);
@@ -651,5 +651,7 @@ TEST_F(BindingGeneratorTest, AsyncObjectTest) {
   EXPECT_EQ(log.size(), 0u);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

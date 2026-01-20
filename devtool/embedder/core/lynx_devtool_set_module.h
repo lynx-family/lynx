@@ -15,9 +15,9 @@
 namespace lynx {
 namespace devtool {
 
-class LynxDevToolSetModule : public piper::LynxNativeModule {
+class LynxDevToolSetModule : public runtime::LynxNativeModule {
  public:
-  static std::shared_ptr<piper::LynxNativeModule> Create() {
+  static std::shared_ptr<runtime::LynxNativeModule> Create() {
     return std::make_shared<LynxDevToolSetModule>();
   }
 
@@ -29,32 +29,32 @@ class LynxDevToolSetModule : public piper::LynxNativeModule {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string &method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap &callbacks) override;
+      size_t count, const runtime::CallbackMap &callbacks) override;
 
   std::unique_ptr<pub::Value> IsLynxDebugEnabled(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> SwitchLynxDebug(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> IsDevToolEnabled(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> SwitchDevTool(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> IsLogBoxEnabled(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
-  std::unique_ptr<pub::Value> SwitchLogBox(std::unique_ptr<pub::Value> args,
-                                           const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
+  std::unique_ptr<pub::Value> SwitchLogBox(
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> IsDomTreeEnabled(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> EnableDomTree(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> IsQuickjsDebugEnabled(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> SwitchQuickjsDebug(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> IsLongPressMenuEnabled(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
   std::unique_ptr<pub::Value> SwitchLongPressMenu(
-      std::unique_ptr<pub::Value> args, const piper::CallbackMap &callbacks);
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap &callbacks);
 
   void Destroy() override;
 
@@ -64,15 +64,15 @@ class LynxDevToolSetModule : public piper::LynxNativeModule {
                                         const std::string &key);
 
   void RegisterMethod(
-      const piper::NativeModuleMethod &method,
-      piper::LynxNativeModule::NativeModuleInvocation invocation) {
+      const runtime::NativeModuleMethod &method,
+      runtime::LynxNativeModule::NativeModuleInvocation invocation) {
     methods_.emplace(method.name, method);
     invocations_.emplace(method.name, std::move(invocation));
   }
 
   static const std::string name_;
   std::unordered_map<std::string,
-                     piper::LynxNativeModule::NativeModuleInvocation>
+                     runtime::LynxNativeModule::NativeModuleInvocation>
       invocations_;
 };
 

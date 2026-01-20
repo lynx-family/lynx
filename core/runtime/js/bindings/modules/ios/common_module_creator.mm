@@ -7,8 +7,8 @@
 #import <Lynx/LynxLog.h>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // CommonLynxContextFinderDarwin
 CommonLynxContextFinderDarwin::CommonLynxContextFinderDarwin() : lynxContext_(nil) {}
 
@@ -97,5 +97,6 @@ void CommonModuleCreator::Destroy() {
   [moduleInstances_ removeAllObjects];
 #endif  // !defined(OS_OSX)
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

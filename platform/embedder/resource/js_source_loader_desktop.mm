@@ -26,8 +26,8 @@
 @end
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 static NSString* FILE_SCHEME = @"file://";
 static NSString* CORE_DEBUG_JS = @"lynx_core_dev";
 static NSString* ASSETS_SCHEME = @"assets://";
@@ -91,5 +91,7 @@ std::string JSSourceLoaderDesktop::LoadJSSource(const std::string& name) {
   return "";
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

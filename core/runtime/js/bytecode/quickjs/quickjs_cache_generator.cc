@@ -18,7 +18,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 namespace {
@@ -134,5 +135,6 @@ LEPUSValue QuickjsCacheGenerator::CompileJS(
 }
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

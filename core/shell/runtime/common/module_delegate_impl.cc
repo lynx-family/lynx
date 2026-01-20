@@ -10,18 +10,19 @@
 
 namespace lynx {
 namespace shell {
-int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(piper::Function func) {
+int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(
+    runtime::js::Function func) {
   // TODO(heshan):now not support copyable lambda for std::function, cannot use
   // ActSync, tricky... can ensure call on js thread
   auto* runtime = runtime_actor_->Impl();
   if (runtime == nullptr) {
-    return piper::ModuleCallback::kInvalidCallbackId;
+    return runtime::js::ModuleCallback::kInvalidCallbackId;
   }
   return runtime->RegisterJSCallbackFunction(std::move(func));
 }
 
 void ModuleDelegateImpl::CallJSCallback(
-    const std::shared_ptr<piper::ModuleCallback>& callback,
+    const std::shared_ptr<runtime::js::ModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete) {
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->Act([callback, id_to_delete,
@@ -52,7 +53,7 @@ void ModuleDelegateImpl::OnMethodInvoked(const std::string& module_name,
       });
 }
 
-void ModuleDelegateImpl::FlushJSBTiming(piper::NativeModuleInfo timing) {
+void ModuleDelegateImpl::FlushJSBTiming(runtime::js::NativeModuleInfo timing) {
   runtime_actor_->Act([timing = std::move(timing)](auto& runtime) mutable {
     if (tasm::LynxEnv::GetInstance().EnableAsyncJSBTiming()) {
       tasm::report::EventTracker::OnEvent(

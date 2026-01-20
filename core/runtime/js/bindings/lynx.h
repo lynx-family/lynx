@@ -12,7 +12,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class LynxProxy : public HostObject {
  public:
   LynxProxy(std::weak_ptr<App> app) : native_app_(app){};
@@ -26,11 +27,12 @@ class LynxProxy : public HostObject {
  private:
   std::weak_ptr<App> native_app_;
 
-  piper::Value GetCustomSectionSync(Runtime& rt, const char* prop_name);
-  piper::Value LoadScript(Runtime& rt);
+  Value GetCustomSectionSync(Runtime& rt, const char* prop_name);
+  Value LoadScript(Runtime& rt);
 
-  piper::Value FetchBundle(Runtime& rt);
+  Value FetchBundle(Runtime& rt);
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_LYNX_H_

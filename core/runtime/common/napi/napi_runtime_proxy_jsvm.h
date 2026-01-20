@@ -13,7 +13,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_context_wrapper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class NapiRuntimeProxyJSVM : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
@@ -34,7 +35,8 @@ class NapiRuntimeProxyJSVMFactoryImpl : public NapiRuntimeProxyJSVMFactory {
       std::shared_ptr<Runtime> runtime,
       runtime::TemplateDelegate* delegate = nullptr) override;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_JSVM_H_

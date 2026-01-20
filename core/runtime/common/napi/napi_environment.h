@@ -20,8 +20,8 @@
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class NapiEnvironment {
  public:
   class Module {
@@ -91,7 +91,9 @@ class NapiEnvironment {
   bool attached_ = false;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_ENVIRONMENT_H_

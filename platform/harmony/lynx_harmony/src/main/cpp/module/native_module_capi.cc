@@ -15,7 +15,7 @@ namespace harmony {
 base::expected<std::unique_ptr<pub::Value>, std::string>
 NativeModuleCAPI::InvokeMethod(const std::string& method_name,
                                std::unique_ptr<pub::Value> args, size_t count,
-                               const piper::CallbackMap& callbacks) {
+                               const runtime::CallbackMap& callbacks) {
   auto delegate = delegate_.lock();
   if (!delegate) {
     return std::unique_ptr<pub::Value>(nullptr);

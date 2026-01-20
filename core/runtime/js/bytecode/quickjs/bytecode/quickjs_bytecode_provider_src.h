@@ -21,7 +21,8 @@ extern "C" {
 #include "quickjs/include/persistent-handle.h"
 #endif
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace quickjs {
 class QuickjsBytecodeProvider;
 
@@ -81,7 +82,8 @@ class QuickjsBytecodeProviderSrc {
 };
 
 }  // namespace quickjs
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_QUICKJS_BYTECODE_QUICKJS_BYTECODE_PROVIDER_SRC_H_

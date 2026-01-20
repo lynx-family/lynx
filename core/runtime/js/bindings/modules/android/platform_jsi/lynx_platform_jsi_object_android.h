@@ -18,8 +18,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /**
  * `LynxPlatformJSIObject` is a method designed to enhance the efficiency of
  * cross-platform data transfer. JavaScript can directly manipulate
@@ -37,8 +37,7 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
   LynxPlatformJSIObjectAndroid& operator=(const LynxPlatformJSIObjectAndroid&) =
       delete;
 
-  Value get(lynx::piper::Runtime*,
-            const lynx::piper::PropNameID& name) override;
+  Value get(Runtime*, const PropNameID& name) override;
 
   std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
@@ -122,7 +121,9 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
       cache_fields_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_PLATFORM_JSI_LYNX_PLATFORM_JSI_OBJECT_ANDROID_H_

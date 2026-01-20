@@ -15,7 +15,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class V8Runtime;
 
 #if V8_MAJOR_VERSION >= 14
@@ -29,7 +30,7 @@ namespace detail {
 // HostObject details
 struct V8HostObjectProxy : public HostObjectWrapperBase<V8Runtime, HostObject> {
  public:
-  V8HostObjectProxy(V8Runtime* rt, std::shared_ptr<piper::HostObject> sho);
+  V8HostObjectProxy(V8Runtime* rt, std::shared_ptr<HostObject> sho);
   ~V8HostObjectProxy() override = default;
 
   static v8_property_result getProperty(
@@ -46,9 +47,8 @@ struct V8HostObjectProxy : public HostObjectWrapperBase<V8Runtime, HostObject> {
 
   static void getPropertyNames(const v8::PropertyCallbackInfo<v8::Array>& info);
 
-  static piper::Object createObject(V8Runtime* rt,
-                                    v8::Local<v8::Context> context,
-                                    std::shared_ptr<piper::HostObject> ho);
+  static Object createObject(V8Runtime* rt, v8::Local<v8::Context> context,
+                             std::shared_ptr<HostObject> ho);
 
   static void onFinalize(const v8::WeakCallbackInfo<V8HostObjectProxy>& data);
 
@@ -61,6 +61,8 @@ struct V8HostObjectProxy : public HostObjectWrapperBase<V8Runtime, HostObject> {
 
 };  // namespace detail
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_HOST_OBJECT_H_

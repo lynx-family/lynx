@@ -29,7 +29,9 @@ void GetEventParams(MoveOnlyEvent &event, int event_depth) {
 }  // namespace report
 }  // namespace tasm
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 namespace cache {
 namespace testing {
 using namespace lynx::tasm::report;
@@ -126,7 +128,8 @@ void CheckPrepareJSEvent(const std::string &source_url, bool load_success,
 
 }  // namespace testing
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_BYTECODE_JS_CACHE_TRACKER_UNITTEST_H_

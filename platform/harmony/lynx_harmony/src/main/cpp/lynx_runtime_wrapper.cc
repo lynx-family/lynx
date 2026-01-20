@@ -144,14 +144,15 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
       base::NapiUtil::CreatePtrArray(env, reinterpret_cast<uintptr_t>(this));
   base::NapiUtil::InvokeJsMethod(env_, runtime_wrapper_ref_, "createDevTool", 1,
                                  param, nullptr);
-  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> inspector_observer;
+  std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
+      inspector_observer;
   if (inspector_owner_ != nullptr) {
     inspector_observer =
         inspector_owner_->OnBackgroundRuntimeCreated(group_name);
   }
 
   // Init module manager
-  module_manager_ = std::make_shared<piper::LynxModuleManager>();
+  module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
   module_manager_->SetModuleFactory(std::move(module_factory));
 
   auto on_runtime_actor_created = [this](auto& actor, auto& facade_actor) {

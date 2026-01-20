@@ -8,14 +8,16 @@
 #include "core/inspector/runtime_inspector_manager.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8InspectorManager : public RuntimeInspectorManager {
  public:
   ~V8InspectorManager() override = default;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_INSPECTOR_MANAGER_H_

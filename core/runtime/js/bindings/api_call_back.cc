@@ -11,9 +11,9 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {
-namespace piper {
-
-ApiCallBack ApiCallBackManager::createCallbackImpl(piper::Function func) {
+namespace runtime {
+namespace js {
+ApiCallBack ApiCallBackManager::createCallbackImpl(Function func) {
   int id = next_timer_index_++;
   const auto &callback = ApiCallBack(id);
   std::shared_ptr<CallBackHolder> holder =
@@ -28,7 +28,7 @@ void ApiCallBackManager::EraseWithCallback(ApiCallBack callback) {
 
 void ApiCallBackManager::Destroy() { callback_map_.clear(); }
 
-CallBackHolder::CallBackHolder(piper::Function func)
-    : function_(std::move(func)) {}
-}  // namespace piper
+CallBackHolder::CallBackHolder(Function func) : function_(std::move(func)) {}
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

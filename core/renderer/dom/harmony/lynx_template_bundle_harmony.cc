@@ -377,10 +377,10 @@ napi_value LynxTemplateBundleHarmony::PostJsCacheGenerationTask(
 
 napi_value LynxTemplateBundleHarmony::PostJsCacheGenerationTask(
     napi_env env, std::string bytecode_source_url, bool use_v8) {
-  lynx::piper::cache::JsCacheManagerFacade::PostCacheGenerationTask(
+  lynx::runtime::js::cache::JsCacheManagerFacade::PostCacheGenerationTask(
       *bundle_, bytecode_source_url,
-      use_v8 ? lynx::piper::JSRuntimeType::v8
-             : lynx::piper::JSRuntimeType::quickjs);
+      use_v8 ? lynx::runtime::js::JSRuntimeType::v8
+             : lynx::runtime::js::JSRuntimeType::quickjs);
   return nullptr;
 }
 

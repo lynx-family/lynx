@@ -40,7 +40,7 @@ class UIDelegate {
   virtual std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() = 0;
   virtual std::unique_ptr<LayoutCtxPlatformImpl> CreateLayoutContext() = 0;
   virtual std::unique_ptr<PropBundleCreator> CreatePropBundleCreator() = 0;
-  virtual std::unique_ptr<piper::NativeModuleFactory>
+  virtual std::unique_ptr<runtime::NativeModuleFactory>
   GetCustomModuleFactory() = 0;
 
   // Indicates whether to use logical pixels as the layout unit on current

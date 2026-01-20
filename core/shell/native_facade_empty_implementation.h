@@ -68,9 +68,9 @@ class NativeFacadeEmptyImpl : public NativeFacade {
   virtual void InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                               const std::string& method,
                               fml::RefPtr<tasm::PropBundle> params,
-                              piper::ApiCallBack callback) override {}
+                              runtime::js::ApiCallBack callback) override {}
 
-  virtual void FlushJSBTiming(piper::NativeModuleInfo timing) override {}
+  virtual void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override {}
 
   virtual void OnEventCapture(long target_id, bool is_catch,
                               int64_t event_id) override {}

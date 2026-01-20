@@ -12,7 +12,8 @@
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 struct NativeModuleInfo;
 
 class ModuleDelegate {
@@ -35,14 +36,16 @@ class ModuleDelegate {
   virtual void OnMethodInvoked(const std::string& module_name,
                                const std::string& method_name,
                                int32_t code) = 0;
-  virtual void FlushJSBTiming(piper::NativeModuleInfo timing) = 0;
+  virtual void FlushJSBTiming(NativeModuleInfo timing) = 0;
   // for android, MethodInvoker will handle a set of promise
   // on js thread, have no choice but provide this method
   virtual void RunOnJSThread(base::closure func) = 0;
   virtual void RunOnPlatformThread(base::closure func) = 0;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_MODULE_DELEGATE_H_

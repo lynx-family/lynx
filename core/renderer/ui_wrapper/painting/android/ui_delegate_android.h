@@ -32,7 +32,7 @@ class UIDelegateAndroid : public UIDelegate {
 
   bool UsesLogicalPixels() const override { return false; }
 
-  std::unique_ptr<piper::NativeModuleFactory> GetCustomModuleFactory()
+  std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory()
       override {
     return nullptr;
   }

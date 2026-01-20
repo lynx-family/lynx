@@ -13,16 +13,16 @@ namespace devtool {
 
 static int32_t GetFuncNameByStr(const std::string &func_name) {
   static base::NoDestructor<std::unordered_map<std::string, int>> names_map(
-      {{piper::LepusConsoleAlog, piper::CONSOLE_LOG_ALOG},
-       {piper::LepusConsoleDebug, piper::CONSOLE_LOG_INFO},
-       {piper::LepusConsoleError, piper::CONSOLE_LOG_ERROR},
-       {piper::LepusConsoleInfo, piper::CONSOLE_LOG_INFO},
-       {piper::LepusConsoleLog, piper::CONSOLE_LOG_LOG},
-       {piper::LepusConsoleReport, piper::CONSOLE_LOG_REPORT},
-       {piper::LepusConsoleWarn, piper::CONSOLE_LOG_WARNING}});
+      {{runtime::js::LepusConsoleAlog, runtime::js::CONSOLE_LOG_ALOG},
+       {runtime::js::LepusConsoleDebug, runtime::js::CONSOLE_LOG_INFO},
+       {runtime::js::LepusConsoleError, runtime::js::CONSOLE_LOG_ERROR},
+       {runtime::js::LepusConsoleInfo, runtime::js::CONSOLE_LOG_INFO},
+       {runtime::js::LepusConsoleLog, runtime::js::CONSOLE_LOG_LOG},
+       {runtime::js::LepusConsoleReport, runtime::js::CONSOLE_LOG_REPORT},
+       {runtime::js::LepusConsoleWarn, runtime::js::CONSOLE_LOG_WARNING}});
   auto maybe_name = names_map->find(func_name);
   if (maybe_name == names_map->end()) {
-    return piper::CONSOLE_UNKNOWN;
+    return runtime::js::CONSOLE_UNKNOWN;
   }
   return maybe_name->second;
 }
@@ -75,7 +75,7 @@ void InspectorLepusObserverImpl::OnConsoleEvent(const std::string &level,
     if (sp != nullptr) {
       int32_t level_num = GetFuncNameByStr(level);
       // TODO: support other console event.
-      if (level_num == piper::CONSOLE_UNKNOWN) {
+      if (level_num == runtime::js::CONSOLE_UNKNOWN) {
         return;
       }
       auto ts = std::chrono::duration_cast<std::chrono::milliseconds>(

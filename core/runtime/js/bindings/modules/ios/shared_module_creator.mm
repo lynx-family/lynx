@@ -7,8 +7,8 @@
 #import <Lynx/LynxLog.h>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // CommonLynxContextFinderDarwin
 SharedLynxContextFinderDarwin::SharedLynxContextFinderDarwin() {
   // init cache
@@ -108,5 +108,6 @@ void SharedModuleCreator::Destroy() {
   [moduleInstances_ removeAllObjects];
 #endif  // !defined(OS_OSX)
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

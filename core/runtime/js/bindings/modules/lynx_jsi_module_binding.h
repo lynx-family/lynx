@@ -14,25 +14,27 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /**
  * Represents the JavaScript binding for the LynxModule system.
  */
-class LynxJSIModuleBinding : public piper::HostObject {
+class LynxJSIModuleBinding : public HostObject {
  public:
   explicit LynxJSIModuleBinding(
       const LynxModuleProviderFunction& moduleProvider);
   ~LynxJSIModuleBinding() override = default;
 
-  piper::Value get(Runtime* rt, const PropNameID& name) override;
+  Value get(Runtime* rt, const PropNameID& name) override;
   std::shared_ptr<LynxModule> GetModule(const std::string& name);
 
  private:
   LynxModuleProviderFunction moduleProvider_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_BINDING_H_

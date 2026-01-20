@@ -6,8 +6,8 @@
 #import <Foundation/Foundation.h>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::string LynxModuleInterceptor::GetJSBFuncName(id instance, const pub::Value *first_arg) {
   // Used to get the first argument as the method name if need.
   return {};
@@ -18,5 +18,7 @@ void LynxModuleInterceptor::CheckModuleIfNeed(id module, NSMutableDictionary *te
   // check module
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

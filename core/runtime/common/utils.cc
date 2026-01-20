@@ -24,12 +24,12 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::optional<Value> valueFromLepus(
     Runtime& runtime, const lepus::Value& data,
     JSIObjectWrapperManager* jsi_object_wrapper_manager) {
-  piper::Scope scope(runtime);
+  Scope scope(runtime);
   if (data.IsJSValue()) {
     runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
         std::string("Find JSValue in valueFromLepus!!")));
@@ -72,7 +72,7 @@ std::optional<Value> valueFromLepus(
     }
     case lepus::ValueType::Value_String: {
       const std::string& origin = data.StdString();
-      piper::String result = String::createFromUtf8(runtime, origin);
+      String result = String::createFromUtf8(runtime, origin);
       return Value(result);
     }
     case lepus::ValueType::Value_Array: {
@@ -91,7 +91,7 @@ std::optional<Value> valueFromLepus(
           return std::optional<Value>();
         }
       }
-      piper::Value jsArray(std::move(*ret));
+      Value jsArray(std::move(*ret));
       return jsArray;
     }
     case lepus::Value_Bool:
@@ -128,11 +128,10 @@ std::optional<Value> valueFromLepus(
     }
     case lepus::Value_JSObject: {
       if (jsi_object_wrapper_manager) {
-        piper::Value func =
-            jsi_object_wrapper_manager->GetJSIObjectByIDOnJSThread(
-                runtime,
-                fml::static_ref_ptr_cast<lepus::LEPUSObject>(data.RefCounted())
-                    ->JSIObjectID());
+        Value func = jsi_object_wrapper_manager->GetJSIObjectByIDOnJSThread(
+            runtime,
+            fml::static_ref_ptr_cast<lepus::LEPUSObject>(data.RefCounted())
+                ->JSIObjectID());
         return func;
       }
 
@@ -142,7 +141,7 @@ std::optional<Value> valueFromLepus(
       auto byte_array = data.ByteArray();
       size_t length = byte_array->GetLength();
       std::unique_ptr<const uint8_t[]> buffer = byte_array->MovePtr();
-      return Value(piper::ArrayBuffer(runtime, std::move(buffer), length));
+      return Value(ArrayBuffer(runtime, std::move(buffer), length));
     }
     case lepus::ValueType::Value_Closure:
     case lepus::ValueType::Value_CFunction:
@@ -161,7 +160,7 @@ std::optional<Value> valueFromLepus(
 
 std::optional<Array> arrayFromLepus(Runtime& runtime,
                                     const lepus::CArray& array) {
-  piper::Scope scope(runtime);
+  Scope scope(runtime);
   auto ret = Array::createWithLength(runtime, array.size());
   if (!ret) {
     return std::optional<Array>();
@@ -180,11 +179,11 @@ std::optional<Array> arrayFromLepus(Runtime& runtime,
 
 // if 'jsi_object_wrapper_manager' is null, don't parse js function
 std::optional<lepus_value> ParseJSValue(
-    piper::Runtime& runtime, const piper::Value& value,
+    Runtime& runtime, const Value& value,
     JSIObjectWrapperManager* jsi_object_wrapper_manager,
     const std::string& jsi_object_group_id, const std::string& targetSDKVersion,
     JSValueCircularArray& pre_object_vector, int depth) {
-  piper::Scope scope(runtime);
+  Scope scope(runtime);
   if (value.isNull()) {
     return lepus::Value();
   } else if (value.isUndefined()) {
@@ -201,7 +200,7 @@ std::optional<lepus_value> ParseJSValue(
     // TODO(liyanbo): support symbol type.
     return std::nullopt;
   } else {
-    piper::Object obj = value.getObject(runtime);
+    Object obj = value.getObject(runtime);
     if (CheckIsCircularJSObjectIfNecessaryAndReportError(
             runtime, obj, pre_object_vector, depth, "ParseJSValue!")) {
       return std::optional<lepus_value>();
@@ -211,7 +210,7 @@ std::optional<lepus_value> ParseJSValue(
     ScopedJSObjectPushPopHelper scoped_push_pop_helper(
         pre_object_vector, value.getObject(runtime));
     if (obj.isArray(runtime)) {
-      piper::Array array = obj.getArray(runtime);
+      Array array = obj.getArray(runtime);
       auto size_opt = array.size(runtime);
       if (!size_opt) {
         return std::optional<lepus_value>();
@@ -278,7 +277,7 @@ std::optional<lepus_value> ParseJSValue(
         if (!item->isString()) {
           continue;
         }
-        piper::String name = item->getString(runtime);
+        String name = item->getString(runtime);
         auto prop = obj.getProperty(runtime, name);
         if (!prop) {
           return std::optional<lepus_value>();
@@ -307,7 +306,7 @@ std::optional<lepus_value> ParseJSValue(
 bool IsCircularJSObject(Runtime& runtime, const Object& object,
                         const JSValueCircularArray& pre_object_vector) {
   for (auto& pre_object : pre_object_vector) {
-    if (piper::Object::strictEquals(runtime, pre_object, object)) {
+    if (Object::strictEquals(runtime, pre_object, object)) {
       return true;
     }
   }
@@ -329,7 +328,7 @@ bool CheckIsCircularJSObjectIfNecessaryAndReportError(
   return false;
 }
 
-bool ConvertPiperValueToStringVector(Runtime& rt, const piper::Value& input,
+bool ConvertPiperValueToStringVector(Runtime& rt, const Value& input,
                                      std::vector<std::string>& result) {
   if (!input.isObject()) {
     return false;
@@ -360,8 +359,7 @@ bool ConvertPiperValueToStringVector(Runtime& rt, const piper::Value& input,
 #ifdef OS_ANDROID
 bool JSBUtilsRegisterJNI(JNIEnv* env) { return RegisterNativesImpl(env); }
 
-void PushByteArrayToJavaArray(piper::Runtime* rt,
-                              const piper::ArrayBuffer& array_buffer,
+void PushByteArrayToJavaArray(Runtime* rt, const ArrayBuffer& array_buffer,
                               base::android::JavaOnlyArray* jarray) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jbyteArray> jni_byte_array =
@@ -372,5 +370,7 @@ void PushByteArrayToJavaArray(piper::Runtime* rt,
 
 #endif  // OS_ANDROID
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

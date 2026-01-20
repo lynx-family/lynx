@@ -31,7 +31,7 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
   void SetDevToolPlatformFacade(
       const std::shared_ptr<DevToolPlatformFacade>& platform_facade);
 
-  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+  std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name);
 
   void AddCDPEventListener(const std::string& name,

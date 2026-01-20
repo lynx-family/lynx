@@ -34,10 +34,10 @@ bool RegisterJNIForLynxModuleWrapper(JNIEnv* env) {
 
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 template <typename Func>
-base::expected<piper::Value, JSINativeException> InvokeWithErrorReport(
+base::expected<Value, JSINativeException> InvokeWithErrorReport(
     Func func, ModuleDelegate& delegate, const std::string& module_name,
     const std::string& method_name) {
   return func();
@@ -123,7 +123,7 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
         args.get(), count, callbacks);
     if (native_promise.has_value()) {
       scope_native_promise_rets_.emplace_back(
-          std::optional<piper::Value>(std::move(native_promise.value())));
+          std::optional<Value>(std::move(native_promise.value())));
       return base::unexpected("__IS_NATIVE_PROMISE__");
     }
     return base::unexpected(native_promise.error());
@@ -232,7 +232,7 @@ void LynxModuleAndroid::ExitInvokeScope() {
     scope_rts_.pop_back();
   }
 }
-std::optional<piper::Value> LynxModuleAndroid::TryGetPromiseRet() {
+std::optional<Value> LynxModuleAndroid::TryGetPromiseRet() {
   if (!scope_native_promise_rets_.empty()) {
     auto ret = std::move(scope_native_promise_rets_.back());
     scope_native_promise_rets_.pop_back();
@@ -241,8 +241,7 @@ std::optional<piper::Value> LynxModuleAndroid::TryGetPromiseRet() {
   return std::nullopt;
 }
 
-base::expected<piper::Value, std::string>
-LynxModuleAndroid::CreateLynxNativePromise(
+base::expected<Value, std::string> LynxModuleAndroid::CreateLynxNativePromise(
     const std::shared_ptr<MethodInvoker>& invoker, jobject module,
     const pub::Value* method_args, size_t args_count,
     const CallbackMap& callbacks) {
@@ -259,17 +258,17 @@ LynxModuleAndroid::CreateLynxNativePromise(
   tasm::report::FeatureCounter::Instance()->Count(
       tasm::report::LynxFeature::CPP_USE_NATIVE_PROMISE);
 
-  // Notice: use piper::value & JSIException Directly!
+  // Notice: use value & JSIException Directly!
   // TODO(zhangqun.29) delete this after delete LynxNativePromise
   auto executor_function_impl =
       [invoker, callbacks, this, module_delegate = legacy_module_delegate_,
-       method_args, args_count, module](
-          Runtime& rt, const Value& thisVal, const Value* args,
-          size_t count) -> base::expected<piper::Value, JSINativeException> {
+       method_args, args_count,
+       module](Runtime& rt, const Value& thisVal, const Value* args,
+               size_t count) -> base::expected<Value, JSINativeException> {
     const std::string& method_name = invoker->GetMethodName();
     const std::string& module_name = invoker->GetModuleName();
 
-    piper::Scope piper_scope(rt);
+    Scope piper_scope(rt);
     // The following three exceptions should never be thrown unless JS wrong
     if (count != 2) {
       LOGE("NativeModule: CreatePromise Arg Count Must Be 2.");
@@ -366,9 +365,8 @@ LynxModuleAndroid::CreateLynxNativePromise(
         *legacy_module_delegate_, module_name_, method_name);
   };
 
-  piper::Function fn = piper::Function::createFromHostFunction(
-      *rt, piper::PropNameID::forAscii(*rt, "fn"), 2,
-      std::move(executor_function));
+  Function fn = Function::createFromHostFunction(
+      *rt, PropNameID::forAscii(*rt, "fn"), 2, std::move(executor_function));
 
   auto ret = promise->callAsConstructor(*rt, fn);
   if (!ret) {
@@ -502,5 +500,7 @@ base::android::ScopedLocalJavaRef<jobject> LynxModuleAndroid::GetLynxContext() {
           .Get());
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

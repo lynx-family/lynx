@@ -18,7 +18,8 @@
 @end
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 ModuleFactoryDarwin::ModuleFactoryDarwin() : parent(nullptr) {
   modulesClasses_ = [[LynxThreadSafeDictionary alloc] init];
   extra_ = [NSMutableDictionary dictionary];
@@ -46,7 +47,7 @@ void ModuleFactoryDarwin::SetContextFinder(
   }
 }
 
-std::shared_ptr<lynx::piper::LynxContextFinderDarwin> ModuleFactoryDarwin::CurrentContextFinder() {
+std::shared_ptr<LynxContextFinderDarwin> ModuleFactoryDarwin::CurrentContextFinder() {
   if (module_creator_) {
     return module_creator_->CurrentContextFinder();
   }
@@ -75,8 +76,7 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::s
       [instance setExtraData:lynxModuleExtraData_];
     }
     // create lynx module darwin
-    std::shared_ptr<lynx::piper::LynxModuleDarwin> moduleDarwin =
-        std::make_shared<lynx::piper::LynxModuleDarwin>(instance);
+    std::shared_ptr<LynxModuleDarwin> moduleDarwin = std::make_shared<LynxModuleDarwin>(instance);
     moduleDarwin->SetMethodAuth(methodAuthBlocks_);
     moduleDarwin->SetMethodSession(methodSessionBlocks_);
     moduleDarwin->SetContextFinder(module_creator_->CurrentContextFinder());
@@ -154,5 +154,7 @@ void ModuleFactoryDarwin::addModuleParamWrapperIfAbsent(
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

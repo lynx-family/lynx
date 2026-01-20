@@ -27,10 +27,13 @@
 
 namespace lynx {
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 class NapiEnvironment;
 }
 
+}  // namespace runtime
 namespace tasm {
 class TemplateAssembler;
 class ElementManager;
@@ -110,7 +113,9 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     return template_bundle_.keyframes_;
   }
 
-  piper::JsBundle& GetJsBundle() { return template_bundle_.GetJsBundle(); }
+  runtime::js::JsBundle& GetJsBundle() {
+    return template_bundle_.GetJsBundle();
+  }
   std::unordered_map<int32_t, std::shared_ptr<PageMould>>& page_moulds() {
     return template_bundle_.page_moulds_;
   }
@@ -159,7 +164,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     cache_data_ = std::move(cache_data);
   }
 
-  void SetJSBundle(piper::JsBundle bundle) {
+  void SetJSBundle(runtime::js::JsBundle bundle) {
     template_bundle_.js_bundle_ = std::move(bundle);
   }
   void SetVm(std::shared_ptr<lepus::Context> vm) { vm_context_ = vm; }
@@ -171,7 +176,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   void ReInit(TemplateAssembler* assembler);
 
-  piper::NapiEnvironment* napi_environment();
+  runtime::js::NapiEnvironment* napi_environment();
   void AttachNapiEnvironment();
   void DetachNapiEnvironment();
 
@@ -321,7 +326,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_reuse_load_script_exports_{false};
   bool enable_fetch_api_standard_{false};
 #if ENABLE_LEPUSNG_WORKLET
-  std::unique_ptr<lynx::piper::NapiEnvironment> napi_environment_;
+  std::unique_ptr<lynx::runtime::js::NapiEnvironment> napi_environment_;
 #endif
 
   // global maps usually used to create component or lazy bundle

@@ -13,8 +13,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using RegisterWasmFuncType = void (*)(void*, void*);
 
 class JSCContextWrapper : public JSIContext {
@@ -38,6 +38,8 @@ class JSCContextWrapper : public JSIContext {
   mutable std::atomic<intptr_t> objectCounter_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSC_JSC_CONTEXT_WRAPPER_H_

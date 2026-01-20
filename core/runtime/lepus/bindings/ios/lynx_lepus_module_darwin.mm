@@ -27,8 +27,8 @@
 #define kLepusObjcCallMethod @"call"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 id<LynxModule> GetLynxModuleInstance(id<TemplateRenderCallbackProtocol> render, Class aClass,
                                      id param) {
   __strong id<TemplateRenderCallbackProtocol> _render = render;
@@ -487,5 +487,6 @@ lepus::Value TriggerLepusMethod(const std::string& js_method_name, const lepus::
         returnType[0]);
   return lepus::Value();
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

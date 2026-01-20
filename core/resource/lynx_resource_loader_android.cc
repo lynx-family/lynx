@@ -54,7 +54,8 @@ void InvokeCallback(JNIEnv* env, jclass jcaller, jlong response_handler,
 }
 
 void ConfigLynxResourceSetting(JNIEnv* env, jobject jcaller) {
-  lynx::piper::LynxResourceSetting::getInstance()->is_debug_resource_ = true;
+  lynx::runtime::js::LynxResourceSetting::getInstance()->is_debug_resource_ =
+      true;
 }
 
 namespace lynx {

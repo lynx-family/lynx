@@ -15,7 +15,8 @@ namespace runtime {
 AnimationFrameTaskHandler::AnimationFrameTaskHandler()
     : current_index_(0), first_map_is_the_current_(true), doing_frame_(false) {}
 
-int64_t AnimationFrameTaskHandler::RequestAnimationFrame(piper::Function func) {
+int64_t AnimationFrameTaskHandler::RequestAnimationFrame(
+    runtime::js::Function func) {
   const int64_t task_id = current_index_++;
   std::unique_ptr<FrameTask> task =
       std::make_unique<FrameTask>(std::move(func), task_id);
@@ -43,7 +44,7 @@ void AnimationFrameTaskHandler::CancelAnimationFrame(int64_t id) {
 }
 
 void AnimationFrameTaskHandler::DoFrame(int64_t time_stamp,
-                                        piper::Runtime* rt) {
+                                        runtime::js::Runtime* rt) {
   doing_frame_ = true;
   TaskMap& task_map = CurrentFrameTaskMap();
   for (auto& itr : task_map) {
@@ -77,11 +78,11 @@ AnimationFrameTaskHandler::NextFrameTaskMap() {
   return task_map_second_;
 }
 
-AnimationFrameTaskHandler::FrameTask::FrameTask(piper::Function func,
+AnimationFrameTaskHandler::FrameTask::FrameTask(runtime::js::Function func,
                                                 int64_t id)
     : func_(std::move(func)), cancelled_(false) {}
 
-void AnimationFrameTaskHandler::FrameTask::Execute(piper::Runtime* rt,
+void AnimationFrameTaskHandler::FrameTask::Execute(runtime::js::Runtime* rt,
                                                    int64_t time_stamp) {
   if (cancelled_) {
     return;
@@ -89,10 +90,10 @@ void AnimationFrameTaskHandler::FrameTask::Execute(piper::Runtime* rt,
 
   assert(rt != nullptr);
   if (rt) {
-    piper::Scope scope(*rt);
+    runtime::js::Scope scope(*rt);
 
-    piper::Value time(static_cast<double>(time_stamp));
-    const piper::Value args[1] = {std::move(time)};
+    runtime::js::Value time(static_cast<double>(time_stamp));
+    const runtime::js::Value args[1] = {std::move(time)};
     size_t count = 1;
     func_.call(*rt, args, count);
   }

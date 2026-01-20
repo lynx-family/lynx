@@ -10,12 +10,13 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 class JSVMHostObjectProxy
     : public HostObjectWrapperBase<JSVMRuntime, HostObject> {
  public:
-  JSVMHostObjectProxy(JSVMRuntime* rt, std::shared_ptr<piper::HostObject> ho);
+  JSVMHostObjectProxy(JSVMRuntime* rt, std::shared_ptr<HostObject> ho);
   ~JSVMHostObjectProxy() override = default;
   static JSVM_Value getProperty(JSVM_Env env, JSVM_Value name,
                                 JSVM_Value this_arg, JSVM_Value data);
@@ -25,13 +26,14 @@ class JSVMHostObjectProxy
 
   static JSVM_Value getPropertyNames(JSVM_Env env, JSVM_Value this_arg,
                                      JSVM_Value data);
-  static piper::Object createObject(JSVMRuntime* rt, JSVM_Env env,
-                                    std::shared_ptr<piper::HostObject> ho);
+  static Object createObject(JSVMRuntime* rt, JSVM_Env env,
+                             std::shared_ptr<HostObject> ho);
   static const JSVM_TypeTag* GetHostObjectTag();
   static void onFinalize(JSVM_Env env, void* finalizeData, void* finalizeHint);
 };
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_HOST_OBJECT_H_

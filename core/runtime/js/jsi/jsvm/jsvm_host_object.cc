@@ -16,10 +16,11 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 JSVMHostObjectProxy::JSVMHostObjectProxy(JSVMRuntime* rt,
-                                         std::shared_ptr<piper::HostObject> ho)
+                                         std::shared_ptr<HostObject> ho)
     : HostObjectWrapperBase(rt, ho){};
 
 JSVM_Value JSVMHostObjectProxy::getProperty(JSVM_Env env, JSVM_Value name,
@@ -36,8 +37,7 @@ JSVM_Value JSVMHostObjectProxy::getProperty(JSVM_Env env, JSVM_Value name,
     return nullptr;
   }
 
-  piper::Value va =
-      lock_host_object->get(rt, JSVMHelper::createPropNameID(name, rt));
+  Value va = lock_host_object->get(rt, JSVMHelper::createPropNameID(name, rt));
 
   JSVM_Value ret;
   static_cast<JSVMRuntime*>(rt)->valueRef(va, &ret);
@@ -80,13 +80,13 @@ JSVM_Value JSVMHostObjectProxy::getPropertyNames(JSVM_Env env,
 
   std::vector<PropNameID> names = lock_host_object->getPropertyNames(*rt);
 
-  auto arr = piper::Array::createWithLength(*rt, names.size());
+  auto arr = Array::createWithLength(*rt, names.size());
   if (!arr) {
     return nullptr;
   }
   for (size_t i = 0; i < names.size(); i++) {
     if (!(*arr).setValueAtIndex(
-            *rt, i, piper::String::createFromUtf8(*rt, names[i].utf8(*rt)))) {
+            *rt, i, String::createFromUtf8(*rt, names[i].utf8(*rt)))) {
       return nullptr;
     }
   }
@@ -97,8 +97,8 @@ JSVM_Value JSVMHostObjectProxy::getPropertyNames(JSVM_Env env,
   return result;
 }
 
-piper::Object JSVMHostObjectProxy::createObject(
-    JSVMRuntime* rt, JSVM_Env env, std::shared_ptr<piper::HostObject> ho) {
+Object JSVMHostObjectProxy::createObject(JSVMRuntime* rt, JSVM_Env env,
+                                         std::shared_ptr<HostObject> ho) {
   HandleScopeWrapper scope(env);
 
   JSVM_Value object_template = nullptr;
@@ -170,5 +170,6 @@ void JSVMHostObjectProxy::onFinalize(JSVM_Env env, void* finalizeData,
   }
 }
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

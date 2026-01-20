@@ -17,14 +17,15 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 struct InvokeInfo;
 
 class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
  public:
-  LynxJSIModule(
-      const std::string& name, const std::shared_ptr<ModuleDelegate>& delegate,
-      const std::shared_ptr<lynx::piper::LynxNativeModule>& native_module)
+  LynxJSIModule(const std::string& name,
+                const std::shared_ptr<ModuleDelegate>& delegate,
+                const std::shared_ptr<LynxNativeModule>& native_module)
       : LynxModule(name, delegate), native_module_(native_module) {
     auto factory = native_module ? native_module->GetValueFactory() : nullptr;
     value_factory_ = factory ? std::move(factory)
@@ -34,8 +35,8 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
 
   void Destroy() override;
 
-  base::expected<piper::Value, piper::JSINativeException> invokeMethod(
-      const MethodMetadata& method, Runtime* rt, const piper::Value* args,
+  base::expected<Value, JSINativeException> invokeMethod(
+      const MethodMetadata& method, Runtime* rt, const Value* args,
       size_t count) override;
 
   // LynxNativeModule::Delegate
@@ -63,7 +64,9 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
   std::vector<InvokeInfo*> invoke_scopes_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_H_

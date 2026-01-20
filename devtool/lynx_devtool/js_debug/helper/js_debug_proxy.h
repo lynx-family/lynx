@@ -15,12 +15,14 @@ class RuntimeProfiler;
 }  // namespace profile
 }  // namespace runtime
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 class Runtime;
 class JSIContext;
 class RuntimeInspectorManager;
-}  // namespace piper
-
+}  // namespace js
+}  // namespace runtime
 namespace lepus {
 class LepusInspectorManager;
 }  // namespace lepus
@@ -32,7 +34,7 @@ class JSDebugProxy {
   JSDebugProxy() = default;
   virtual ~JSDebugProxy() = default;
 
-  virtual std::unique_ptr<piper::RuntimeInspectorManager>
+  virtual std::unique_ptr<runtime::js::RuntimeInspectorManager>
   CreateRuntimeInspectorManager() {
     return nullptr;
   }
@@ -42,10 +44,12 @@ class JSDebugProxy {
   }
 
   virtual void RegisterNapiRuntimeProxy() {}
-  virtual std::shared_ptr<piper::Runtime> MakeRuntime() { return nullptr; }
+  virtual std::shared_ptr<runtime::js::Runtime> MakeRuntime() {
+    return nullptr;
+  }
 #if ENABLE_TRACE_PERFETTO
   virtual std::shared_ptr<runtime::profile::RuntimeProfiler>
-  MakeRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
+  MakeRuntimeProfiler(std::shared_ptr<runtime::js::JSIContext> js_context) {
     return nullptr;
   }
 #endif

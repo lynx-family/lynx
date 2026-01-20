@@ -60,12 +60,12 @@ class NativeFacadeAndroid : public NativeFacade {
   void TriggerLepusMethodAsync(const std::string& method_name,
                                const lepus::Value& argus) override;
 
-  void FlushJSBTiming(piper::NativeModuleInfo timing) override;
+  void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override;
 
   void InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack callback) override;
+                      runtime::js::ApiCallBack callback) override;
 
   void OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) override;
 

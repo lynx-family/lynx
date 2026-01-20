@@ -17,19 +17,19 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 const std::string V8HostFunctionProxy::HOST_FUN_KEY = "hostFunctionFlag";
 
-V8HostFunctionProxy::V8HostFunctionProxy(piper::HostFunctionType host_func,
+V8HostFunctionProxy::V8HostFunctionProxy(HostFunctionType host_func,
                                          V8Runtime* rt)
     : HostObjectWrapperBase(
-          rt, std::make_unique<piper::HostFunctionType>(std::move(host_func))) {
-}
+          rt, std::make_unique<HostFunctionType>(std::move(host_func))) {}
 
 v8::Local<v8::Object> V8HostFunctionProxy::createFunctionFromHostFunction(
-    V8Runtime* rt, v8::Local<v8::Context> ctx, const piper::PropNameID& name,
-    unsigned int paramCount, piper::HostFunctionType func) {
+    V8Runtime* rt, v8::Local<v8::Context> ctx, const PropNameID& name,
+    unsigned int paramCount, HostFunctionType func) {
   v8::Local<v8::ObjectTemplate> function_template =
       rt->GetHostFunctionTemplate();
   if (function_template.IsEmpty()) {
@@ -71,8 +71,8 @@ v8::Local<v8::Object> V8HostFunctionProxy::createFunctionFromHostFunction(
   return obj;
 }
 
-std::weak_ptr<piper::HostFunctionType> getHostFunction(
-    V8Runtime* rt, const piper::Function& obj) {
+std::weak_ptr<HostFunctionType> getHostFunction(V8Runtime* rt,
+                                                const Function& obj) {
   v8::Local<v8::Object> v8_obj = V8Helper::objectRef(obj);
   void* data = v8_obj->GetAlignedPointerFromInternalField(0);
   auto proxy = static_cast<V8HostFunctionProxy*>(data);
@@ -132,5 +132,7 @@ void V8HostFunctionProxy::onFinalize(
 
 }  // namespace detail
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

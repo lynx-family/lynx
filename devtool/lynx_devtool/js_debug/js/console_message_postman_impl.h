@@ -14,14 +14,14 @@
 namespace lynx {
 namespace devtool {
 
-class ConsoleMessagePostManImpl : public piper::ConsoleMessagePostMan {
+class ConsoleMessagePostManImpl : public runtime::js::ConsoleMessagePostMan {
  public:
   ConsoleMessagePostManImpl() = default;
   ~ConsoleMessagePostManImpl() override = default;
 
-  void OnMessagePosted(const piper::ConsoleMessage& message) override;
+  void OnMessagePosted(const runtime::js::ConsoleMessage& message) override;
   void InsertRuntimeObserver(
-      const std::shared_ptr<piper::InspectorRuntimeObserverNG>& observer)
+      const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>& observer)
       override;
 
  private:

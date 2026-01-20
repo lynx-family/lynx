@@ -43,7 +43,7 @@ namespace runtime {
 // just constructor and move
 struct UpdateDataTask {
   UpdateDataTask(bool card, const std::string& component_id,
-                 const lepus::Value& data, piper::ApiCallBack callback,
+                 const lepus::Value& data, runtime::js::ApiCallBack callback,
                  UpdateDataType type,
                  std::shared_ptr<tasm::PipelineOptions> pipeline_options,
                  std::string stacks = "")
@@ -63,7 +63,7 @@ struct UpdateDataTask {
   bool is_card_;
   std::string component_id_;
   lepus::Value data_;
-  piper::ApiCallBack callback_;
+  runtime::js::ApiCallBack callback_;
   UpdateDataType type_;
   std::shared_ptr<tasm::PipelineOptions> pipeline_options_;
   // stacks of setState/setData tasks, only use for debug mode
@@ -72,7 +72,7 @@ struct UpdateDataTask {
 
 class TemplateDelegate : public ContextProxy::Delegate,
                          public ResponseHandlerProxy::Delegate,
-                         public piper::JSIObserver {
+                         public runtime::js::JSIObserver {
  public:
   TemplateDelegate() {}
   virtual ~TemplateDelegate() override = default;
@@ -84,21 +84,21 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void UpdateBatchedDataByJS(std::vector<UpdateDataTask> tasks,
                                      uint64_t update_task_id) = 0;
   virtual std::vector<lynx::shell::CacheDataOp> FetchUpdatedCardData() = 0;
-  virtual piper::JsContent GetJSContentFromExternal(
+  virtual runtime::js::JsContent GetJSContentFromExternal(
       const std::string& entry_name, const std::string& name, long timeout) = 0;
   virtual std::string GetLynxJSAsset(const std::string& name) = 0;
 
-  virtual void GetComponentContextDataAsync(const std::string& component_id,
-                                            const std::string& key,
-                                            piper::ApiCallBack callback) = 0;
+  virtual void GetComponentContextDataAsync(
+      const std::string& component_id, const std::string& key,
+      runtime::js::ApiCallBack callback) = 0;
   virtual bool LoadDynamicComponentFromJS(
-      const std::string& url, const piper::ApiCallBack& callback,
+      const std::string& url, const runtime::js::ApiCallBack& callback,
       const std::vector<std::string>& ids) = 0;
   virtual void LoadScriptAsync(const std::string& url,
-                               piper::ApiCallBack callback) = 0;
+                               runtime::js::ApiCallBack callback) = 0;
 
   virtual void AddFont(const lepus::Value& font,
-                       const piper::ApiCallBack& callback) = 0;
+                       const runtime::js::ApiCallBack& callback) = 0;
 
   virtual void FetchBundle(
       const std::string& url,
@@ -121,21 +121,21 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void SelectComponent(const std::string& component_id,
                                const std::string& id_selector,
                                const bool single,
-                               piper::ApiCallBack callBack) = 0;
+                               runtime::js::ApiCallBack callBack) = 0;
 
   // for SelectorQuery
   virtual void InvokeUIMethod(tasm::NodeSelectRoot root,
                               tasm::NodeSelectOptions options,
                               std::string method,
                               fml::RefPtr<tasm::PropBundle> params,
-                              piper::ApiCallBack call_back) = 0;
+                              runtime::js::ApiCallBack call_back) = 0;
   virtual void GetPathInfo(tasm::NodeSelectRoot root,
                            tasm::NodeSelectOptions options,
-                           piper::ApiCallBack call_back) = 0;
+                           runtime::js::ApiCallBack call_back) = 0;
   virtual void GetFields(tasm::NodeSelectRoot root,
                          tasm::NodeSelectOptions options,
                          std::vector<std::string> fields,
-                         piper::ApiCallBack call_back) = 0;
+                         runtime::js::ApiCallBack call_back) = 0;
 
   // for element.animate
   virtual void ElementAnimate(const std::string& component_id,
@@ -152,7 +152,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
                                       std::string worklet_module_name,
                                       std::string method_name,
                                       lepus::Value args,
-                                      piper::ApiCallBack callback) = 0;
+                                      runtime::js::ApiCallBack callback) = 0;
   virtual void RunOnJSThread(base::closure closure) = 0;
   virtual void RunOnJSThreadWhenIdle(base::closure closure) = 0;
 
@@ -165,7 +165,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void SetFrameworkExtraTimingInfo(const tasm::PipelineID& pipeline_id,
                                            const std::string& key,
                                            const std::string& value) = 0;
-  virtual void FlushJSBTiming(piper::NativeModuleInfo timing) = 0;
+  virtual void FlushJSBTiming(runtime::js::NativeModuleInfo timing) = 0;
   virtual void ResetTimingBeforeReload() = 0;
 
   virtual void OnPipelineStart(
@@ -200,7 +200,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
   // for Fiber
   virtual void CallLepusMethod(const std::string& method_name,
                                lepus::Value value,
-                               const piper::ApiCallBack& callback) = 0;
+                               const runtime::js::ApiCallBack& callback) = 0;
 
   virtual fml::RefPtr<tasm::PropBundle> CreatePropBundle() = 0;
 
@@ -215,14 +215,15 @@ class TemplateDelegate : public ContextProxy::Delegate,
       runtime::ContextProxy* js_context_proxy) = 0;
 
   virtual std::string LoadJSSource(const std::string& name) = 0;
-  virtual std::shared_ptr<piper::Buffer> LoadBytecode(
+  virtual std::shared_ptr<runtime::js::Buffer> LoadBytecode(
       const std::string& url) = 0;
 
-  virtual void GetSessionStorageItem(const std::string& key,
-                                     const piper::ApiCallBack& callback) = 0;
+  virtual void GetSessionStorageItem(
+      const std::string& key, const runtime::js::ApiCallBack& callback) = 0;
 
-  virtual void SubscribeSessionStorage(const std::string&, double listener_id,
-                                       const piper::ApiCallBack& callback) = 0;
+  virtual void SubscribeSessionStorage(
+      const std::string&, double listener_id,
+      const runtime::js::ApiCallBack& callback) = 0;
 
   virtual fml::RefPtr<fml::TaskRunner> GetJSRunner() = 0;
 };

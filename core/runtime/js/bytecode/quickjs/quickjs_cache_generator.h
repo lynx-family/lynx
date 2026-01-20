@@ -16,7 +16,8 @@ extern "C" {
 }
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 class QuickjsCacheGenerator : public CacheGenerator {
@@ -45,7 +46,8 @@ class QuickjsCacheGenerator : public CacheGenerator {
 };
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_QUICKJS_QUICKJS_CACHE_GENERATOR_H_

@@ -21,7 +21,8 @@
 #include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 
 JSCSymbolValue::JSCSymbolValue(JSGlobalContextRef ctx, JSCRuntime* jsc_runtime,
@@ -107,7 +108,7 @@ Value JSCHelper::createValue(JSCRuntime& rt, JSValueRef value) {
     std::string msg =
         "createValue failed type is unknown:" + std::to_string(tag);
     rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(msg));
-    return piper::Value();
+    return Value();
   }
 }
 
@@ -116,9 +117,9 @@ Symbol JSCHelper::createSymbol(JSGlobalContextRef ctx, JSCRuntime* jsc_runtime,
   return Runtime::make<Symbol>(makeSymbolValue(ctx, jsc_runtime, counter, sym));
 }
 
-piper::String JSCHelper::createString(std::atomic<intptr_t>& counter,
-                                      JSStringRef str) {
-  return Runtime::make<piper::String>(makeStringValue(counter, str));
+String JSCHelper::createString(std::atomic<intptr_t>& counter,
+                               JSStringRef str) {
+  return Runtime::make<String>(makeStringValue(counter, str));
 }
 
 PropNameID JSCHelper::createPropNameID(std::atomic<intptr_t>& counter,
@@ -195,7 +196,7 @@ JSValueRef JSCHelper::symbolRef(const Symbol& sym) {
       ->sym_;
 }
 
-JSStringRef JSCHelper::stringRef(const piper::String& str) {
+JSStringRef JSCHelper::stringRef(const String& str) {
   return static_cast<const JSCStringValue*>(Runtime::getPointerValue(str))
       ->str_;
 }
@@ -372,5 +373,6 @@ void JSCHelper::ThrowJsException(JSContextRef ctx,
 }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

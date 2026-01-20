@@ -23,8 +23,8 @@ class WhiteBoardDelegate;
 namespace devtool {
 class InspectorClientNG;
 }
-namespace piper {
-
+namespace runtime {
+namespace js {
 enum class JSRuntimeType;
 
 // Only works for js runtime.
@@ -66,7 +66,9 @@ class InspectorRuntimeObserverNG {
   virtual std::string GetTag() { return ""; }
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_INSPECTOR_OBSERVER_INSPECTOR_RUNTIME_OBSERVER_NG_H_

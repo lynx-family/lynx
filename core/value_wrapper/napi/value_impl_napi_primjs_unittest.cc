@@ -27,10 +27,10 @@ class ValueImplNapiPrimJSTest : public ::testing::Test {
  protected:
   ValueImplNapiPrimJSTest()
       : rt_(LEPUS_NewRuntime()), ctx_(LEPUS_NewContext(rt_)), env_{nullptr} {
-    std::unique_ptr<piper::NapiRuntimeProxy> proxy =
-        piper::NapiRuntimeProxyQuickjs::Create(ctx_);
-    napi_env = std::make_unique<piper::NapiEnvironment>(
-        std::make_unique<piper::NapiEnvironment::Delegate>());
+    std::unique_ptr<runtime::js::NapiRuntimeProxy> proxy =
+        runtime::js::NapiRuntimeProxyQuickjs::Create(ctx_);
+    napi_env = std::make_unique<runtime::js::NapiEnvironment>(
+        std::make_unique<runtime::js::NapiEnvironment::Delegate>());
     napi_env->SetRuntimeProxy(std::move(proxy));
     napi_env->Attach();
     env_ = napi_env->proxy()->Env();
@@ -47,7 +47,7 @@ class ValueImplNapiPrimJSTest : public ::testing::Test {
 
   LEPUSRuntime* rt_;
   LEPUSContext* ctx_;
-  std::unique_ptr<piper::NapiEnvironment> napi_env;
+  std::unique_ptr<runtime::js::NapiEnvironment> napi_env;
   Napi::Env env_;
 };  // ValueImplNapiPrimJSTest
 

@@ -16,8 +16,8 @@
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class LynxModuleAndroid;
 class LynxPromiseImpl;
 
@@ -26,7 +26,7 @@ class ModuleCallbackAndroid {
   using CallbackPair = std::pair<std::shared_ptr<ModuleCallbackAndroid>,
                                  base::android::ScopedGlobalJavaRef<jobject>>;
   using CallbackArgsConverter = std::function<std::unique_ptr<pub::Value>(
-      piper::Runtime* rt, ModuleCallback* callback,
+      Runtime* rt, ModuleCallback* callback,
       lynx::base::android::ScopedGlobalJavaRef<jobject> args)>;
 
   ModuleCallbackAndroid(std::weak_ptr<LynxModuleAndroid> callback_invoker,
@@ -53,7 +53,8 @@ class ModuleCallbackAndroid {
   std::shared_ptr<LynxModuleCallback> callback_;
   CallbackArgsConverter custom_args_converter_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_CALLBACK_IMPL_H_

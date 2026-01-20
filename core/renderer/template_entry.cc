@@ -456,7 +456,7 @@ void TemplateEntry::ReInit(TemplateAssembler* assembler) {
   RegisterBuiltin();
 }
 
-piper::NapiEnvironment* TemplateEntry::napi_environment() {
+runtime::js::NapiEnvironment* TemplateEntry::napi_environment() {
 #if ENABLE_LEPUSNG_WORKLET
   return napi_environment_.get();
 #else
@@ -476,11 +476,12 @@ void TemplateEntry::AttachNapiEnvironment() {
 #if ENABLE_LEPUSNG_WORKLET
   if (vm_context_->IsLepusNGContext() && !napi_environment_) {
     lepus::QuickContext* qctx = lepus::QuickContext::Cast(vm_context_.get());
-    napi_environment_ = std::make_unique<lynx::piper::NapiEnvironment>(
+    napi_environment_ = std::make_unique<lynx::runtime::js::NapiEnvironment>(
         std::make_unique<lynx::worklet::NapiLoaderUI>(qctx));
-    auto proxy = lynx::piper::NapiRuntimeProxyQuickjs::Create(qctx->context());
-    auto napi_proxy = std::unique_ptr<piper::NapiRuntimeProxy>(
-        static_cast<piper::NapiRuntimeProxy*>(proxy.release()));
+    auto proxy =
+        lynx::runtime::js::NapiRuntimeProxyQuickjs::Create(qctx->context());
+    auto napi_proxy = std::unique_ptr<runtime::js::NapiRuntimeProxy>(
+        static_cast<runtime::js::NapiRuntimeProxy*>(proxy.release()));
     napi_environment_->SetRuntimeProxy(std::move(napi_proxy));
     napi_environment_->Attach();
   }

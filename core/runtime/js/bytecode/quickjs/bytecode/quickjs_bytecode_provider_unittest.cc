@@ -9,7 +9,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace quickjs {
 namespace testing {
 TEST(QuickjsBytecodeProvider, IsBytecodePass) {
@@ -178,5 +179,6 @@ TEST(QuickjsBytecodeProvider, GetPackagedBytecodeBufferPass) {
 
 }  // namespace testing
 }  // namespace quickjs
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

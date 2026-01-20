@@ -32,10 +32,10 @@ namespace lepus {
 // args_: Closure execution parameters, using the neutral data type pubValue.
 // GetArgs is responsible for converting pubValue to the specific execution data
 // type.
-class LepusModuleCallback : public piper::LynxModuleCallback {
+class LepusModuleCallback : public runtime::LynxModuleCallback {
  public:
   explicit LepusModuleCallback(int64_t callback_id)
-      : piper::LynxModuleCallback(callback_id) {}
+      : runtime::LynxModuleCallback(callback_id) {}
   virtual ~LepusModuleCallback() = default;
 
   // Cache closure execution parameters
@@ -53,13 +53,13 @@ class LepusModuleCallback : public piper::LynxModuleCallback {
 
 // ModuleDelegate represents the execution environment of the current Module,
 // which allows PlatformModule to use certain methods.
-class LepusModuleDelegate : public piper::LynxNativeModule::Delegate {
+class LepusModuleDelegate : public runtime::LynxNativeModule::Delegate {
  public:
   LepusModuleDelegate();
   virtual ~LepusModuleDelegate() = default;
 
   void InvokeCallback(
-      const std::shared_ptr<piper::LynxModuleCallback>& callback,
+      const std::shared_ptr<runtime::LynxModuleCallback>& callback,
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr) override;
   // not supported yet.
   void RunOnJSThread(base::closure func) override{};

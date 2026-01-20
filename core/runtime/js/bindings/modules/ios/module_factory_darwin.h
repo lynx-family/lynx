@@ -21,8 +21,9 @@
 namespace lynx {
 class DarwinEmbedder;
 
-namespace piper {
+namespace runtime {
 
+namespace js {
 class ModuleFactoryDarwin : public NativeModuleFactory {
  public:
   ModuleFactoryDarwin();
@@ -31,7 +32,7 @@ class ModuleFactoryDarwin : public NativeModuleFactory {
   // bind module creator
   void Bind(std::unique_ptr<ModuleCreatorDarwin> module_creator);
   void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin> &context_finder);
-  std::shared_ptr<lynx::piper::LynxContextFinderDarwin> CurrentContextFinder();
+  std::shared_ptr<LynxContextFinderDarwin> CurrentContextFinder();
 
   // register module class and param.
   void registerModule(Class<LynxModule> cls);
@@ -73,6 +74,7 @@ class ModuleFactoryDarwin : public NativeModuleFactory {
   std::shared_ptr<ModuleDelegate> module_delegate_;
   std::unique_ptr<ModuleCreatorDarwin> module_creator_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_BINDINGS_JSI_MODULES_IOS_MODULE_FACTORY_DARWIN_H_

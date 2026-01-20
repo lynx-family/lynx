@@ -21,7 +21,7 @@ namespace tasm {
 
 UIDelegateClay::UIDelegateClay(
     clay::ViewContext* view_context,
-    std::unique_ptr<lynx::piper::NativeModuleFactory> module_factory)
+    std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory)
     : view_context_(view_context), module_factory_(std::move(module_factory)) {
   event_dispatcher_ = std::make_unique<clay::LynxEventDispatcher>();
   view_context->SetEventDelegate(event_dispatcher_.get());
@@ -52,7 +52,7 @@ std::unique_ptr<PropBundleCreator> UIDelegateClay::CreatePropBundleCreator() {
   return std::make_unique<PropBundleCreatorClay>();
 }
 
-std::unique_ptr<piper::NativeModuleFactory>
+std::unique_ptr<runtime::NativeModuleFactory>
 UIDelegateClay::GetCustomModuleFactory() {
   return std::move(module_factory_);
 }

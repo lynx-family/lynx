@@ -18,8 +18,8 @@ class LepusDecoder {
  public:
   LepusDecoder();
   lepus_value DecodeMessage(char* buffer, uint32_t len);
-  std::optional<lynx::piper::Value> DecodeJSMessage(piper::Runtime& rt,
-                                                    char* buffer, uint32_t len);
+  std::optional<lynx::runtime::js::Value> DecodeJSMessage(
+      runtime::js::Runtime& rt, char* buffer, uint32_t len);
 
  private:
   uint32_t index_;
@@ -40,11 +40,12 @@ class LepusDecoder {
   lepus_value forwardValue();
   lepus_value forwardTemplateData();
 
-  piper::String forwardJSString(piper::Runtime& rt);
-  piper::ArrayBuffer forwardJSByteArray(piper::Runtime& rt);
-  std::optional<piper::Array> forwardJSArray(piper::Runtime& rt);
-  std::optional<piper::Object> forwardJSDictionary(piper::Runtime& rt);
-  std::optional<piper::Value> forwardJSValue(piper::Runtime& rt);
+  runtime::js::String forwardJSString(runtime::js::Runtime& rt);
+  runtime::js::ArrayBuffer forwardJSByteArray(runtime::js::Runtime& rt);
+  std::optional<runtime::js::Array> forwardJSArray(runtime::js::Runtime& rt);
+  std::optional<runtime::js::Object> forwardJSDictionary(
+      runtime::js::Runtime& rt);
+  std::optional<runtime::js::Value> forwardJSValue(runtime::js::Runtime& rt);
 };
 
 class LepusEncoder {

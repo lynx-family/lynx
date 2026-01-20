@@ -15,8 +15,8 @@
 #include <vector>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using ELEM_TYPE = int32_t;
 using PRODUCT_TYPE = int64_t;
 static constexpr ELEM_TYPE BASE = 1000000000;
@@ -787,6 +787,8 @@ inline std::ostream& operator<<(std::ostream& s, const BigInteger& n) {
   return s;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_BIG_INT_BIG_INTEGER_H_

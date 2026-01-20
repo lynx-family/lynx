@@ -28,8 +28,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using detail::QuickjsHelper;
 namespace test {
 
@@ -81,5 +81,6 @@ TEST_F(QuickJSHelperTest, GetErrorMessageFailedTest) {
 }
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

@@ -20,7 +20,7 @@
 namespace lynx {
 namespace embedder {
 
-class ExtensionModuleFactoryImpl : public piper::ExtensionModuleFactory {
+class ExtensionModuleFactoryImpl : public runtime::ExtensionModuleFactory {
  public:
   ExtensionModuleFactoryImpl(
       std::unordered_map<std::string,
@@ -28,7 +28,7 @@ class ExtensionModuleFactoryImpl : public piper::ExtensionModuleFactory {
           extension_module_creators)
       : extension_module_creators_(std::move(extension_module_creators)) {}
 
-  std::shared_ptr<piper::LynxNativeModule> CreateModule(
+  std::shared_ptr<runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;
 
   void OnLynxViewCreate(lynx_view_t* lynx_view, tasm::UIDelegate* ui_delegate);

@@ -82,9 +82,9 @@ class NativeFacade {
   virtual void InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
                               const std::string& method,
                               fml::RefPtr<tasm::PropBundle> params,
-                              piper::ApiCallBack callback) = 0;
+                              runtime::js::ApiCallBack callback) = 0;
 
-  virtual void FlushJSBTiming(piper::NativeModuleInfo timing) = 0;
+  virtual void FlushJSBTiming(runtime::js::NativeModuleInfo timing) = 0;
 
   virtual void OnSSRHydrateFinished(const std::string& url){};
 

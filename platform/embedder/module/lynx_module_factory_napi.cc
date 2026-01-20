@@ -26,7 +26,7 @@ void LynxModuleFactoryNAPI::Detach() {
   is_detached_ = true;
 }
 
-std::shared_ptr<piper::LynxNativeModule> LynxModuleFactoryNAPI::CreateModule(
+std::shared_ptr<runtime::LynxNativeModule> LynxModuleFactoryNAPI::CreateModule(
     const std::string& name) {
   // It will erase the module map before LynxView destroyed,
   // so it's safe to create new module here.

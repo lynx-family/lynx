@@ -12,8 +12,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 V8ContextWrapperImpl::V8ContextWrapperImpl(std::shared_ptr<VMInstance> vm)
     : V8ContextWrapper(vm) {}
 
@@ -50,5 +50,7 @@ v8::Local<v8::Context> V8ContextWrapperImpl::getContext() const {
   return ctx_.Get(getIsolate());
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

@@ -32,7 +32,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 using BytecodeGenerateCallback = base::MoveOnlyClosure<
     void, std::string,
@@ -272,7 +273,8 @@ UNITTEST_PUBLIC:
 #undef UNITTEST_PUBLIC
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_JS_CACHE_MANAGER_H_

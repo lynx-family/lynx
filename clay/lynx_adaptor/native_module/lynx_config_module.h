@@ -28,11 +28,11 @@ class LynxConfigModule : public LynxModuleBase,
 
   std::unique_ptr<lynx::pub::Value> setDumpInfoToDevtoolEnabled(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
   std::unique_ptr<lynx::pub::Value> setRenderOptions(
       std::unique_ptr<lynx::pub::Value> args_array,
-      const lynx::piper::CallbackMap& callback_map);
+      const lynx::runtime::CallbackMap& callback_map);
 
  private:
   static const std::string name_;

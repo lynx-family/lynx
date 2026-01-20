@@ -13,7 +13,7 @@
 namespace lynx {
 namespace harmony {
 
-std::shared_ptr<piper::LynxNativeModule> ModuleFactoryCAPI::CreateModule(
+std::shared_ptr<runtime::LynxNativeModule> ModuleFactoryCAPI::CreateModule(
     const std::string& name) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto itr = module_creators_.find(name);
@@ -21,7 +21,7 @@ std::shared_ptr<piper::LynxNativeModule> ModuleFactoryCAPI::CreateModule(
   if (context && itr != module_creators_.end()) {
     return itr->second(context);
   }
-  return std::shared_ptr<piper::LynxNativeModule>(nullptr);
+  return std::shared_ptr<runtime::LynxNativeModule>(nullptr);
 }
 
 void ModuleFactoryCAPI::RegisterModule(const std::string& name,

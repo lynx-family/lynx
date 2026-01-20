@@ -50,7 +50,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 namespace {
@@ -762,5 +763,6 @@ __attribute__((visibility("default"))) void RequestCacheGenerationV8(
 }
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

@@ -11,8 +11,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class TestNativeModule : public LynxNativeModule {
  public:
   static std::shared_ptr<LynxNativeModule> Create() {
@@ -78,7 +78,7 @@ TEST_F(NativeModuleFactoryTest, NativeModuleFactoryTotalTest) {
   auto arr = value_factory.CreateArray();
   arr->PushBoolToArray(true);
   CallbackMap callbacks;
-  auto callback = std::make_shared<lynx::piper::ModuleCallback>(10);
+  auto callback = std::make_shared<ModuleCallback>(10);
   callback->SetModuleName("TestNativeModule");
   callback->SetMethodName("test");
   ASSERT_TRUE(callback->module_name_ == "TestNativeModule");
@@ -91,5 +91,7 @@ TEST_F(NativeModuleFactoryTest, NativeModuleFactoryTotalTest) {
   ASSERT_TRUE(ret.value()->Length() == 1);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

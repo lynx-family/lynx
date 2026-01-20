@@ -9,8 +9,8 @@
 #include "core/runtime/js/jsi/v8/v8_context_wrapper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8ContextWrapperImpl : public V8ContextWrapper {
  public:
   V8ContextWrapperImpl(std::shared_ptr<VMInstance> vm);
@@ -23,6 +23,8 @@ class V8ContextWrapperImpl : public V8ContextWrapper {
   v8::Persistent<v8::Context> ctx_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_CONTEXT_WRAPPER_IMPL_H_

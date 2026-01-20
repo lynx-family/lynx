@@ -185,7 +185,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     runtime_proxy_ = runtime_wrapper->GetRuntimeProxy();
   } else {
     // InitJSBridge
-    module_manager_ = std::make_shared<piper::LynxModuleManager>();
+    module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
     module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
     module_manager_->SetModuleFactory(std::move(module_factory));
     napi_value module_param[1];
@@ -828,7 +828,7 @@ napi_value LynxTemplateRenderer::SetCacheDirPath(napi_env env,
   napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
   std::string cache_dir = base::NapiUtil::ConvertToString(env, args[0]);
-  lynx::piper::cache::JsCacheManagerHarmony::SetCacheDir(cache_dir);
+  lynx::runtime::js::cache::JsCacheManagerHarmony::SetCacheDir(cache_dir);
   return nullptr;
 }
 

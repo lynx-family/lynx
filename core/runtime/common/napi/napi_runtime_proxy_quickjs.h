@@ -12,8 +12,8 @@
 struct LEPUSContext;
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class NapiRuntimeProxyQuickjs : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
@@ -28,7 +28,9 @@ class NapiRuntimeProxyQuickjs : public NapiRuntimeProxy {
   LEPUSContext* context_ = nullptr;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_QUICKJS_H_

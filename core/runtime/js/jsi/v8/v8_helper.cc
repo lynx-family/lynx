@@ -12,7 +12,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 
 V8SymbolValue::V8SymbolValue(v8::Isolate* iso, v8::Local<v8::Symbol> sym) {
@@ -82,57 +83,56 @@ std::string V8Helper::JSStringToSTLString(v8::Local<v8::String> s,
   }
 }
 
-piper::Value V8Helper::createValue(v8::Local<v8::Value> value,
-                                   v8::Local<v8::Context> ctx) {
+Value V8Helper::createValue(v8::Local<v8::Value> value,
+                            v8::Local<v8::Context> ctx) {
   if (value->IsNumber()) {
-    return piper::Value(value->NumberValue(ctx).ToChecked());
+    return Value(value->NumberValue(ctx).ToChecked());
   } else if (value->IsBoolean()) {
-    return piper::Value(value->BooleanValue(ctx->GetIsolate()));
+    return Value(value->BooleanValue(ctx->GetIsolate()));
   } else if (value->IsNull()) {
-    return piper::Value(nullptr);
+    return Value(nullptr);
   } else if (value->IsUndefined()) {
-    return piper::Value();
+    return Value();
   } else if (value->IsString()) {
     v8::Local<v8::String> str = value->ToString(ctx).ToLocalChecked();
-    auto result = piper::Value(createString(str, ctx->GetIsolate()));
+    auto result = Value(createString(str, ctx->GetIsolate()));
     return result;
   } else if (value->IsObject()) {
     v8::Local<v8::Object> objRef = value->ToObject(ctx).ToLocalChecked();
-    return piper::Value(createObject(objRef, ctx->GetIsolate()));
+    return Value(createObject(objRef, ctx->GetIsolate()));
   } else if (value->IsSymbol()) {
-    return piper::Value(
-        createSymbol(value.As<v8::Symbol>(), ctx->GetIsolate()));
+    return Value(createSymbol(value.As<v8::Symbol>(), ctx->GetIsolate()));
   } else {
     // WHAT ARE YOU
     abort();
   }
 }
 
-v8::Local<v8::Value> V8Helper::symbolRef(const piper::Symbol& sym) {
+v8::Local<v8::Value> V8Helper::symbolRef(const Symbol& sym) {
   const V8SymbolValue* v8_sym =
       static_cast<const V8SymbolValue*>(Runtime::getPointerValue(sym));
   return v8_sym->Get();
 }
 
-v8::Local<v8::String> V8Helper::stringRef(const piper::String& str) {
+v8::Local<v8::String> V8Helper::stringRef(const String& str) {
   auto v8_str =
       static_cast<const V8StringValue*>(Runtime::getPointerValue(str));
   return v8_str->Get();
 }
 
-v8::Local<v8::String> V8Helper::stringRef(const piper::PropNameID& sym) {
+v8::Local<v8::String> V8Helper::stringRef(const PropNameID& sym) {
   auto v8_str =
       static_cast<const V8StringValue*>(Runtime::getPointerValue(sym));
   return v8_str->Get();
 }
 
-v8::Local<v8::Object> V8Helper::objectRef(const piper::Object& obj) {
+v8::Local<v8::Object> V8Helper::objectRef(const Object& obj) {
   const V8ObjectValue* v8_obj =
       static_cast<const V8ObjectValue*>(Runtime::getPointerValue(obj));
   return v8_obj->Get();
 }
 
-piper::Runtime::PointerValue* V8Helper::makeSymbolValue(
+Runtime::PointerValue* V8Helper::makeSymbolValue(
     v8::Local<v8::Symbol> symbolRef, v8::Isolate* iso) {
   return new V8SymbolValue(iso, symbolRef);
 }
@@ -150,7 +150,7 @@ v8::Local<v8::String> getEmptyString(v8::Isolate* iso) {
 }
 }  // namespace
 
-piper::Runtime::PointerValue* V8Helper::makeStringValue(
+Runtime::PointerValue* V8Helper::makeStringValue(
     v8::Local<v8::String> stringRef, v8::Isolate* iso) {
   if (stringRef.IsEmpty()) {
     stringRef = getEmptyString(iso);
@@ -158,29 +158,27 @@ piper::Runtime::PointerValue* V8Helper::makeStringValue(
   return new V8StringValue(iso, stringRef);
 }
 
-piper::Symbol V8Helper::createSymbol(v8::Local<v8::Symbol> sym,
-                                     v8::Isolate* iso) {
-  return Runtime::make<piper::Symbol>(makeSymbolValue(sym, iso));
+Symbol V8Helper::createSymbol(v8::Local<v8::Symbol> sym, v8::Isolate* iso) {
+  return Runtime::make<Symbol>(makeSymbolValue(sym, iso));
 }
 
-piper::String V8Helper::createString(v8::Local<v8::String> str,
-                                     v8::Isolate* iso) {
-  return Runtime::make<piper::String>(makeStringValue(str, iso));
+String V8Helper::createString(v8::Local<v8::String> str, v8::Isolate* iso) {
+  return Runtime::make<String>(makeStringValue(str, iso));
 }
 
-piper::PropNameID V8Helper::createPropNameID(v8::Local<v8::Symbol> symbol,
-                                             v8::Isolate* iso) {
-  return Runtime::make<piper::PropNameID>(makeSymbolValue(symbol, iso));
+PropNameID V8Helper::createPropNameID(v8::Local<v8::Symbol> symbol,
+                                      v8::Isolate* iso) {
+  return Runtime::make<PropNameID>(makeSymbolValue(symbol, iso));
 }
 
-piper::PropNameID V8Helper::createPropNameID(v8::Local<v8::String> str,
-                                             v8::Isolate* iso) {
-  return Runtime::make<piper::PropNameID>(makeStringValue(str, iso));
+PropNameID V8Helper::createPropNameID(v8::Local<v8::String> str,
+                                      v8::Isolate* iso) {
+  return Runtime::make<PropNameID>(makeStringValue(str, iso));
 }
 
 #if OS_ANDROID
-piper::PropNameID V8Helper::createPropNameID(v8::Local<v8::Name> name,
-                                             v8::Isolate* iso) {
+PropNameID V8Helper::createPropNameID(v8::Local<v8::Name> name,
+                                      v8::Isolate* iso) {
   if (name->IsString()) {
     v8::Local<v8::String> v8_str =
         name->ToString(iso->GetCurrentContext()).ToLocalChecked();
@@ -194,8 +192,8 @@ piper::PropNameID V8Helper::createPropNameID(v8::Local<v8::Name> name,
   abort();
 }
 #else
-piper::PropNameID V8Helper::createPropNameID(v8::Local<v8::Name> name,
-                                             v8::Local<v8::Context> ctx) {
+PropNameID V8Helper::createPropNameID(v8::Local<v8::Name> name,
+                                      v8::Local<v8::Context> ctx) {
   if (name->IsString()) {
     v8::Local<v8::String> v8_str = name->ToString(ctx).ToLocalChecked();
     return createPropNameID(v8_str, ctx->GetIsolate());
@@ -209,7 +207,7 @@ piper::PropNameID V8Helper::createPropNameID(v8::Local<v8::Name> name,
 }
 #endif
 
-piper::Runtime::PointerValue* V8Helper::makeObjectValue(
+Runtime::PointerValue* V8Helper::makeObjectValue(
     v8::Local<v8::Object> objectRef, v8::Isolate* iso) {
   if (iso == nullptr) {
     LOGE("iso is null!");
@@ -220,20 +218,17 @@ piper::Runtime::PointerValue* V8Helper::makeObjectValue(
   return new V8ObjectValue(iso, objectRef);
 }
 
-piper::Object V8Helper::createObject(v8::Isolate* iso) {
+Object V8Helper::createObject(v8::Isolate* iso) {
   return createObject(v8::Local<v8::Object>(), iso);
 }
 
-piper::Object V8Helper::createObject(v8::Local<v8::Object> obj,
-                                     v8::Isolate* iso) {
-  return Runtime::make<piper::Object>(makeObjectValue(obj, iso));
+Object V8Helper::createObject(v8::Local<v8::Object> obj, v8::Isolate* iso) {
+  return Runtime::make<Object>(makeObjectValue(obj, iso));
 }
 
-std::optional<piper::Value> V8Helper::call(piper::V8Runtime* rt,
-                                           const piper::Function& f,
-                                           const piper::Object& jsThis,
-                                           v8::Local<v8::Value>* args,
-                                           size_t nArgs) {
+std::optional<Value> V8Helper::call(V8Runtime* rt, const Function& f,
+                                    const Object& jsThis,
+                                    v8::Local<v8::Value>* args, size_t nArgs) {
   auto ctx = rt->getContext();
   v8::Local<v8::Object> thisObj = V8Helper::objectRef(jsThis);
   v8::Local<v8::Object> func = objectRef(f);
@@ -268,7 +263,7 @@ std::optional<piper::Value> V8Helper::call(piper::V8Runtime* rt,
     if (!try_catch.Exception().IsEmpty()) {
       rt->reportJSIException(V8Exception(*rt, try_catch.Exception()));
     }
-    return std::optional<piper::Value>();
+    return std::optional<Value>();
   }
 
   if (result.IsEmpty()) {
@@ -279,14 +274,15 @@ std::optional<piper::Value> V8Helper::call(piper::V8Runtime* rt,
     // https://chromium.googlesource.com/v8/v8.git/+/dc7926bebd49d8749074c414dcf08a846bae0007/src/api/api.cc#5337
     rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
         "Exception calling object as function. MaybeLocal empty."));
-    return std::optional<piper::Value>();
+    return std::optional<Value>();
   }
   return createValue(handleScope.Escape(result.ToLocalChecked()), context);
 }
 
-std::optional<piper::Value> V8Helper::callAsConstructor(
-    piper::V8Runtime* rt, v8::Local<v8::Object> v8obj,
-    v8::Local<v8::Value>* args, int nArgs) {
+std::optional<Value> V8Helper::callAsConstructor(V8Runtime* rt,
+                                                 v8::Local<v8::Object> v8obj,
+                                                 v8::Local<v8::Value>* args,
+                                                 int nArgs) {
   auto ctx = rt->getContext();
   v8::Isolate* isolate = ctx->GetIsolate();
   v8::Isolate::Scope isolate_scope(isolate);
@@ -308,7 +304,7 @@ std::optional<piper::Value> V8Helper::callAsConstructor(
 #endif
   if (!V8Exception::ReportExceptionIfNeeded(*rt, trycatch) ||
       result.IsEmpty()) {
-    return std::optional<piper::Value>();
+    return std::optional<Value>();
   }
   return createValue(
       handleScope.Escape(
@@ -361,5 +357,6 @@ void V8Helper::ThrowJsException(v8::Isolate* isolate,
 }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

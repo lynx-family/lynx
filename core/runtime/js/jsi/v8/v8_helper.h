@@ -23,7 +23,8 @@
   v8::Context::Scope context_scope(context);
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class V8Runtime;
 namespace detail {
 
@@ -84,54 +85,48 @@ class V8ObjectValue final : public Runtime::PointerValue {
 
 class V8Helper {
  public:
-  static piper::Value createValue(v8::Local<v8::Value> value,
-                                  v8::Local<v8::Context>);
-  static v8::Local<v8::Value> symbolRef(const piper::Symbol& sym);
-  static v8::Local<v8::String> stringRef(const piper::String& str);
-  static v8::Local<v8::String> stringRef(const piper::PropNameID& sym);
-  static v8::Local<v8::Object> objectRef(const piper::Object& obj);
+  static Value createValue(v8::Local<v8::Value> value, v8::Local<v8::Context>);
+  static v8::Local<v8::Value> symbolRef(const Symbol& sym);
+  static v8::Local<v8::String> stringRef(const String& str);
+  static v8::Local<v8::String> stringRef(const PropNameID& sym);
+  static v8::Local<v8::Object> objectRef(const Object& obj);
 
   static std::string JSStringToSTLString(v8::Local<v8::String> s,
                                          v8::Local<v8::Context> ctx);
   static std::string JSStringToSTLString(v8::Local<v8::String> s,
                                          v8::Isolate* iso);
   // Factory methods for creating String/Object
-  static piper::Symbol createSymbol(v8::Local<v8::Symbol> symbolRef,
-                                    v8::Isolate* iso);
-  static piper::String createString(v8::Local<v8::String> stringRef,
-                                    v8::Isolate*);
-  static piper::PropNameID createPropNameID(v8::Local<v8::String> stringRef,
-                                            v8::Isolate*);
-  static piper::PropNameID createPropNameID(v8::Local<v8::Symbol> symbol,
-                                            v8::Isolate*);
+  static Symbol createSymbol(v8::Local<v8::Symbol> symbolRef, v8::Isolate* iso);
+  static String createString(v8::Local<v8::String> stringRef, v8::Isolate*);
+  static PropNameID createPropNameID(v8::Local<v8::String> stringRef,
+                                     v8::Isolate*);
+  static PropNameID createPropNameID(v8::Local<v8::Symbol> symbol,
+                                     v8::Isolate*);
 #if OS_ANDROID
-  static piper::PropNameID createPropNameID(v8::Local<v8::Name> symbol,
-                                            v8::Isolate*);
+  static PropNameID createPropNameID(v8::Local<v8::Name> symbol, v8::Isolate*);
 #else
-  static piper::PropNameID createPropNameID(v8::Local<v8::Name> symbol,
-                                            v8::Local<v8::Context> ctx);
+  static PropNameID createPropNameID(v8::Local<v8::Name> symbol,
+                                     v8::Local<v8::Context> ctx);
 #endif
-  static piper::Object createObject(v8::Isolate* iso);
-  static piper::Object createObject(v8::Local<v8::Object> objectRef,
-                                    v8::Isolate* iso);
+  static Object createObject(v8::Isolate* iso);
+  static Object createObject(v8::Local<v8::Object> objectRef, v8::Isolate* iso);
 
   // Used by factory methods and clone methods
-  static piper::Runtime::PointerValue* makeSymbolValue(
-      v8::Local<v8::Symbol> sym, v8::Isolate* iso);
-  static piper::Runtime::PointerValue* makeStringValue(
-      v8::Local<v8::String> str, v8::Isolate*);
-  static piper::Runtime::PointerValue* makeObjectValue(
-      v8::Local<v8::Object> obj, v8::Isolate* iso);
+  static Runtime::PointerValue* makeSymbolValue(v8::Local<v8::Symbol> sym,
+                                                v8::Isolate* iso);
+  static Runtime::PointerValue* makeStringValue(v8::Local<v8::String> str,
+                                                v8::Isolate*);
+  static Runtime::PointerValue* makeObjectValue(v8::Local<v8::Object> obj,
+                                                v8::Isolate* iso);
 
-  static std::optional<piper::Value> call(piper::V8Runtime* rt,
-                                          const piper::Function& f,
-                                          const piper::Object& jsThis,
-                                          v8::Local<v8::Value>* args,
-                                          size_t nArgs);
+  static std::optional<Value> call(V8Runtime* rt, const Function& f,
+                                   const Object& jsThis,
+                                   v8::Local<v8::Value>* args, size_t nArgs);
 
-  static std::optional<piper::Value> callAsConstructor(
-      piper::V8Runtime* rt, v8::Local<v8::Object> obj,
-      v8::Local<v8::Value>* args, int nArgs);
+  static std::optional<Value> callAsConstructor(V8Runtime* rt,
+                                                v8::Local<v8::Object> obj,
+                                                v8::Local<v8::Value>* args,
+                                                int nArgs);
 
   static v8::Local<v8::String> ConvertToV8String(v8::Isolate* isolate,
                                                  const std::string& s);
@@ -143,7 +138,7 @@ class V8Helper {
 class ArgsConverter {
  public:
   ArgsConverter(v8::Local<v8::Context> ctx,
-                const piper::Value* args,
+                const Value* args,
                 size_t count) {
     v8::Local<v8::Value>* destination = inline_;
     if (count > maxStackArgs) {
@@ -167,7 +162,8 @@ class ArgsConverter {
 };*/
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_HELPER_H_

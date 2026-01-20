@@ -14,15 +14,17 @@
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
-namespace piper {
-
-LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<piper::Runtime> makeQuickJsRuntime();
+namespace runtime {
+namespace js {
+LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<Runtime> makeQuickJsRuntime();
 std::shared_ptr<VMInstance> CreateQuickJsVM(const StartupData*, bool sync);
-void BindQuickjsVMToCurrentThread(std::shared_ptr<piper::VMInstance>& vm);
+void BindQuickjsVMToCurrentThread(std::shared_ptr<VMInstance>& vm);
 
 LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<lynx::runtime::profile::RuntimeProfiler>
-makeQuickJsRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context);
+makeQuickJsRuntimeProfiler(std::shared_ptr<JSIContext> js_context);
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_API_H_

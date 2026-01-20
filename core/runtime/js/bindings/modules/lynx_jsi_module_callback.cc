@@ -16,8 +16,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // BINARY_KEEP_SOURCE_FILE
 ModuleCallbackFunctionHolder::ModuleCallbackFunctionHolder(Function&& func)
     : function_(std::move(func)) {}
@@ -46,7 +46,7 @@ void ModuleCallback::Invoke(Runtime* runtime,
     LOGW("NativeModule: Callback's args is invalid.");
   }
   size_t size = static_cast<size_t>(args_->Length());
-  piper::Value values[size];
+  Value values[size];
   args_->ForeachArray([&values, runtime](int64_t index, const pub::Value& val) {
     values[index] = pub::ValueUtils::ConvertValueToPiperValue(*runtime, val);
   });
@@ -93,11 +93,13 @@ void ModuleCallback::SetArgs(std::unique_ptr<pub::Value> args) {
 }
 
 void ModuleCallback::SetArgsConverter(
-    std::function<std::unique_ptr<pub::Value>(piper::Runtime* rt,
+    std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                               ModuleCallback* callback)>
         converter) {
   custom_args_converter_ = std::move(converter);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

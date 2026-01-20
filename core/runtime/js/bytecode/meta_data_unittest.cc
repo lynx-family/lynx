@@ -13,7 +13,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 namespace testing {
 
@@ -285,5 +286,6 @@ TEST(BytecodeMetaData, GetAllCacheFileInfo) {
 }
 }  // namespace testing
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

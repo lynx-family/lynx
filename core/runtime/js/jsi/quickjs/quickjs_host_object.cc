@@ -25,10 +25,11 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
-QuickjsHostObjectProxy::QuickjsHostObjectProxy(
-    QuickjsRuntime* rt, std::shared_ptr<piper::HostObject> sho)
+QuickjsHostObjectProxy::QuickjsHostObjectProxy(QuickjsRuntime* rt,
+                                               std::shared_ptr<HostObject> sho)
     : HostObjectWrapperBase(rt, std::move(sho)){};
 
 QuickjsHostObjectProxy::~QuickjsHostObjectProxy() {
@@ -41,7 +42,7 @@ QuickjsHostObjectProxy::~QuickjsHostObjectProxy() {
 }
 
 void QuickjsHostObjectProxy::hostFinalizer(LEPUSRuntime* rt, LEPUSValue val) {
-  LEPUSClassID object_id = lynx::piper::QuickjsRuntimeInstance::getObjectId(rt);
+  LEPUSClassID object_id = QuickjsRuntimeInstance::getObjectId(rt);
   if (UNLIKELY(object_id == 0)) {
     LOGE("HostObject Finalizer Error! object_id is 0. LEPUSRuntime:" << rt);
     return;
@@ -58,7 +59,7 @@ LEPUSValue QuickjsHostObjectProxy::getProperty(LEPUSContext* ctx,
                                                LEPUSValueConst obj,
                                                LEPUSAtom atom,
                                                LEPUSValueConst receiver) {
-  LEPUSClassID objectId = lynx::piper::QuickjsRuntimeInstance::getObjectId(ctx);
+  LEPUSClassID objectId = QuickjsRuntimeInstance::getObjectId(ctx);
   if (objectId == 0) {
     LOGE(
         "QuickjsHostObjectProxy::getProperty Error! object id is 0. "
@@ -84,7 +85,7 @@ LEPUSValue QuickjsHostObjectProxy::getProperty(LEPUSContext* ctx,
   auto holder =
       QuickjsHelper::createJSValue(ctx, LEPUS_DupValue(ctx, atom_val));
 
-  piper::Value va =
+  Value va =
       lock_host_object->get(rt, QuickjsHelper::createPropNameID(ctx, atom_val));
   LEPUSValue ret = LEPUS_DupValue(ctx, rt->valueRef(va));
 
@@ -100,7 +101,7 @@ int QuickjsHostObjectProxy::getOwnProperty(LEPUSContext* ctx,
                                            LEPUSPropertyDescriptor* desc,
                                            LEPUSValueConst obj,
                                            LEPUSAtom prop) {
-  LEPUSClassID objectId = lynx::piper::QuickjsRuntimeInstance::getObjectId(ctx);
+  LEPUSClassID objectId = QuickjsRuntimeInstance::getObjectId(ctx);
   if (objectId == 0) {
     LOGE(
         "Error getProperty sObjectClassId is null. objectId is 0. LEPUSContext:"
@@ -131,7 +132,7 @@ int QuickjsHostObjectProxy::getOwnProperty(LEPUSContext* ctx,
     return 0;
   }
   HandleScope func_scope(ctx, &atom_val, HANDLE_TYPE_LEPUS_VALUE);
-  piper::Value va =
+  Value va =
       lock_host_object->get(rt, QuickjsHelper::createPropNameID(ctx, atom_val));
   LEPUSValue ret = LEPUS_DupValue(ctx, rt->valueRef(va));
   //  LOGE( "LYNX host_object_getPropertyNames jsvalueptr=" <<
@@ -150,7 +151,7 @@ int QuickjsHostObjectProxy::getOwnProperty(LEPUSContext* ctx,
 int QuickjsHostObjectProxy::setProperty(LEPUSContext* ctx, LEPUSValueConst obj,
                                         LEPUSAtom atom, LEPUSValueConst value,
                                         LEPUSValueConst receiver, int flags) {
-  LEPUSClassID objectId = lynx::piper::QuickjsRuntimeInstance::getObjectId(ctx);
+  LEPUSClassID objectId = QuickjsRuntimeInstance::getObjectId(ctx);
   if (objectId == 0) {
     LOGE("Error setProperty! objectId is 0. LEPUSContext:" << ctx);
     return -1;
@@ -176,7 +177,7 @@ int QuickjsHostObjectProxy::getPropertyNames(LEPUSContext* ctx,
                                              LEPUSPropertyEnum** ptab,
                                              uint32_t* plen,
                                              LEPUSValueConst obj) {
-  LEPUSClassID objectId = lynx::piper::QuickjsRuntimeInstance::getObjectId(ctx);
+  LEPUSClassID objectId = QuickjsRuntimeInstance::getObjectId(ctx);
   if (objectId == 0) {
     LOGE("Error getProperty! objectId is 0. LEPUSContext:" << ctx);
     return -1;
@@ -213,8 +214,8 @@ int QuickjsHostObjectProxy::getPropertyNames(LEPUSContext* ctx,
   return 0;
 }
 
-piper::Object QuickjsHostObjectProxy::createObject(
-    QuickjsRuntime* rt, std::shared_ptr<piper::HostObject> ho) {
+Object QuickjsHostObjectProxy::createObject(QuickjsRuntime* rt,
+                                            std::shared_ptr<HostObject> ho) {
   LEPUSContext* ctx = rt->getJSContext();
   LEPUSClassID object_id = rt->getObjectClassID();
   if (UNLIKELY(object_id == 0)) {
@@ -229,7 +230,7 @@ piper::Object QuickjsHostObjectProxy::createObject(
   LEPUS_SetOpaque(obj, proxy);
   //  LOGE( "LYNX" << "NewObjectClass ptr=" << LEPUS_VALUE_GET_PTR(obj));
 
-  piper::Object ret = QuickjsHelper::createObject(ctx, obj);
+  Object ret = QuickjsHelper::createObject(ctx, obj);
   if (LEPUS_IsGCMode(rt->getJSContext()))
     proxy->p_val_.SetWeak(rt->getJSRuntime());
   return ret;
@@ -237,6 +238,7 @@ piper::Object QuickjsHostObjectProxy::createObject(
 
 }  // namespace detail
 
-}  // namespace piper
+}  // namespace js
 
+}  // namespace runtime
 }  // namespace lynx

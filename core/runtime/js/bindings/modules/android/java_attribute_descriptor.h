@@ -12,8 +12,8 @@
 #include "base/include/platform/android/scoped_java_ref.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class JavaAttributeDescriptor {
  public:
   JavaAttributeDescriptor() {}
@@ -26,7 +26,9 @@ class JavaAttributeDescriptor {
   base::android::ScopedGlobalJavaRef<jobject> wrapper_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_JAVA_ATTRIBUTE_DESCRIPTOR_H_

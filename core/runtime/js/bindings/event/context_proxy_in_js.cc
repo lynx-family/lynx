@@ -18,8 +18,8 @@
 #include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 namespace {
 
 enum class PropType : int32_t {
@@ -58,7 +58,7 @@ ContextProxyInJS::ContextProxyInJS(runtime::ContextProxy::Delegate &delegate,
       native_app_(native_app) {}
 
 fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
-    Runtime &rt, std::shared_ptr<App> native_app, const piper::Value &event) {
+    Runtime &rt, std::shared_ptr<App> native_app, const Value &event) {
   return fml::MakeRefCounted<runtime::MessageEvent>(
       event.getObject(rt)
           .getProperty(rt, runtime::kType)
@@ -71,21 +71,21 @@ fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
 
 Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
   if (rt == nullptr) {
-    return piper::Value::undefined();
+    return Value::undefined();
   }
 
   auto method_name = name.utf8(*rt);
   auto type = ConvertPropStringToPropType(name.utf8(*rt));
   if (type < PropType::kPostMessage || type >= PropType::kUnknown) {
-    return piper::Value::undefined();
+    return Value::undefined();
   }
 
   if (type < PropType::kFunctionPropEnd) {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, method_name), 0,
         [this, method_name = std::move(method_name), type](
-            Runtime &rt, const piper::Value &this_val, const piper::Value *args,
-            size_t count) -> base::expected<piper::Value, JSINativeException> {
+            Runtime &rt, const Value &this_val, const Value *args,
+            size_t count) -> base::expected<Value, JSINativeException> {
           if (type == PropType::kPostMessage) {
             if (count < 1) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -108,7 +108,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
             }
 
             PostMessage(*option_value);
-            return piper::Value::undefined();
+            return Value::undefined();
           } else if (type == PropType::kDispatchEvent) {
             if (count < 1) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -146,7 +146,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
 
             auto message_event = CreateMessageEvent(rt, app, event);
             auto result = DispatchEvent(std::move(message_event));
-            return piper::Value(static_cast<int>(result.cancel_type));
+            return Value(static_cast<int>(result.cancel_type));
           } else if (type == PropType::kAddEventListener) {
             if (count < 2) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -177,7 +177,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                 args[0].asString(rt)->utf8(rt),
                 std::make_unique<JSClosureEventListener>(app, args[1]));
 
-            return piper::Value::undefined();
+            return Value::undefined();
           } else if (type == PropType::kRemoveEventListener) {
             if (count < 2) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -208,23 +208,23 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
                 args[0].asString(rt)->utf8(rt),
                 std::make_unique<JSClosureEventListener>(app, args[1]));
 
-            return piper::Value::undefined();
+            return Value::undefined();
           }
-          return piper::Value::undefined();
+          return Value::undefined();
         });
   }
   if (type == PropType::kOnTriggerEvent) {
     if (event_listener_ == nullptr ||
         event_listener_->type() !=
             event::EventListener::Type::kJSClosureEventListener) {
-      return piper::Value::undefined();
+      return Value::undefined();
     }
 
     auto event_listener_ptr =
         static_cast<JSClosureEventListener *>(event_listener_.get());
     return event_listener_ptr->GetClosure();
   }
-  return piper::Value::undefined();
+  return Value::undefined();
 }
 
 void ContextProxyInJS::set(Runtime *rt, const PropNameID &name,
@@ -236,23 +236,25 @@ void ContextProxyInJS::set(Runtime *rt, const PropNameID &name,
 
   auto name_str = name.utf8(*rt);
   if (name_str == runtime::kOnTriggerEvent) {
-    SetListenerBeforePublishEvent(std::make_unique<JSClosureEventListener>(
-        app, piper::Value(*rt, value)));
+    SetListenerBeforePublishEvent(
+        std::make_unique<JSClosureEventListener>(app, Value(*rt, value)));
   }
   return;
 }
 
 std::vector<PropNameID> ContextProxyInJS::getPropertyNames(Runtime &rt) {
   std::vector<PropNameID> vec;
-  vec.push_back(piper::PropNameID::forUtf8(rt, runtime::kPostMessage));
-  vec.push_back(piper::PropNameID::forUtf8(rt, runtime::kDispatchEvent));
-  vec.push_back(piper::PropNameID::forUtf8(rt, runtime::kAddEventListener));
-  vec.push_back(piper::PropNameID::forUtf8(rt, runtime::kRemoveEventListener));
-  vec.push_back(piper::PropNameID::forUtf8(rt, runtime::kOnTriggerEvent));
+  vec.push_back(PropNameID::forUtf8(rt, runtime::kPostMessage));
+  vec.push_back(PropNameID::forUtf8(rt, runtime::kDispatchEvent));
+  vec.push_back(PropNameID::forUtf8(rt, runtime::kAddEventListener));
+  vec.push_back(PropNameID::forUtf8(rt, runtime::kRemoveEventListener));
+  vec.push_back(PropNameID::forUtf8(rt, runtime::kOnTriggerEvent));
   return vec;
 }
 
 void ContextProxyInJS::Destroy() { event_listener_map_.reset(); }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

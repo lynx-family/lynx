@@ -17,7 +17,7 @@ namespace profile {
 class QuickjsRuntimeProfiler : public RuntimeProfiler {
  public:
   explicit QuickjsRuntimeProfiler(
-      std::shared_ptr<piper::QuickjsContextWrapper> js_context);
+      std::shared_ptr<runtime::js::QuickjsContextWrapper> js_context);
   ~QuickjsRuntimeProfiler() override;
 
   virtual void StartProfiling(bool is_create) override;
@@ -27,7 +27,7 @@ class QuickjsRuntimeProfiler : public RuntimeProfiler {
   virtual trace::RuntimeProfilerType GetType() override;
 
  private:
-  std::weak_ptr<piper::QuickjsContextWrapper> weak_context_;
+  std::weak_ptr<runtime::js::QuickjsContextWrapper> weak_context_;
 };
 }  // namespace profile
 }  // namespace runtime

@@ -9,7 +9,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_dyn_load.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 bool JSVMException::ReportExceptionIfNeeded(JSVMRuntime* rt) {
   if (!rt) {
     return false;
@@ -33,5 +34,6 @@ JSVM_Value JSVMException::TryCatch(JSVM_Env env) {
   }
   return nullptr;
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

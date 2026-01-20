@@ -7,7 +7,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace testing {
 namespace {
 struct Src {
@@ -54,5 +55,6 @@ TEST(ARGS_CONVERTER_TEST, HeapTest) {
 }
 
 }  // namespace testing
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

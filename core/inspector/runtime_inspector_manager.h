@@ -9,7 +9,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class Runtime;
 class InspectorRuntimeObserverNG;
 
@@ -46,7 +47,9 @@ class RuntimeInspectorManager {
   int instance_id_{-1};
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_INSPECTOR_RUNTIME_INSPECTOR_MANAGER_H_

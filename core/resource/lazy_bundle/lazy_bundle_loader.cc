@@ -260,9 +260,9 @@ void LazyBundleLoader::DidFetchBundle(
   // TODO(zhoupeng): Currently, there is no easy way to get JsEngineType, so
   // QUICK_JS is used by default. Fix it later.
   if (callback_info.bundle) {
-    lynx::piper::cache::JsCacheManagerFacade::PostCacheGenerationTask(
+    lynx::runtime::js::cache::JsCacheManagerFacade::PostCacheGenerationTask(
         *callback_info.bundle, callback_info.component_url,
-        lynx::piper::JSRuntimeType::quickjs);
+        lynx::runtime::js::JSRuntimeType::quickjs);
   }
 #endif
   DecodeBundle(callback_info, callback_info.request.resource_type ==

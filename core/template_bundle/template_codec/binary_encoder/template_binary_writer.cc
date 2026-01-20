@@ -1230,7 +1230,7 @@ void TemplateBinaryWriter::EncodeJsBytecode() {
       BinarySection::JS_BYTECODE, BinaryOffsetType::TYPE_JS_BYTECODE, this,
       stream_.get(), binary_info_, offset_map_, section_size_info_);
   // write js engine type
-  WriteU32(static_cast<unsigned>(piper::JSRuntimeType::quickjs));
+  WriteU32(static_cast<unsigned>(runtime::js::JSRuntimeType::quickjs));
   // write js file count
   WriteU32(js_code_.size());
   if (!silence_) {
@@ -1248,9 +1248,11 @@ void TemplateBinaryWriter::EncodeJsBytecode() {
           printf("         %s\n", m.name.GetString());
         }
 
-        auto src_buffer = std::make_shared<piper::StringBuffer>(file_content);
-        auto provider_src = piper::quickjs::QuickjsBytecodeProvider::FromSource(
-            file_name, src_buffer);
+        auto src_buffer =
+            std::make_shared<runtime::js::StringBuffer>(file_content);
+        auto provider_src =
+            runtime::js::quickjs::QuickjsBytecodeProvider::FromSource(
+                file_name, src_buffer);
         // provider_src.Compile() will print error detail if compile fails.
         bool is_debug_info_out = tasm::Config::IsHigherOrEqual(
             compile_options_.target_sdk_version_.c_str(), LYNX_VERSION_2_14);

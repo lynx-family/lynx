@@ -27,7 +27,7 @@ void WhiteBoardRuntimeDelegate::CallLepusCallbackWithValue(
 }
 
 void WhiteBoardRuntimeDelegate::CallJSApiCallbackWithValue(
-    piper::ApiCallBack callback, const lepus::Value& param) {
+    runtime::js::ApiCallBack callback, const lepus::Value& param) {
   if (runtime_actor_) {
     runtime_actor_->Act(
         [callback = std::move(callback), param](auto& runtime) mutable {
@@ -39,7 +39,7 @@ void WhiteBoardRuntimeDelegate::CallJSApiCallbackWithValue(
 }
 
 void WhiteBoardRuntimeDelegate::RemoveJSApiCallback(
-    piper::ApiCallBack callback) {
+    runtime::js::ApiCallBack callback) {
   if (runtime_actor_) {
     runtime_actor_->Act(
         [callback = std::move(callback)](auto& runtime) mutable {

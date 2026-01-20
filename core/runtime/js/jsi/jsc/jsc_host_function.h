@@ -22,7 +22,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSCRuntime;
 namespace detail {
 
@@ -61,6 +62,7 @@ class HostFunctionMetadata
 };
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_JSC_JSC_HOST_FUNCTION_H_

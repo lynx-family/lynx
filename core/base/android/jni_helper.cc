@@ -13,21 +13,20 @@ namespace lynx {
 namespace base {
 namespace android {
 
-piper::ArrayBuffer JNIHelper::ConvertToJSIArrayBuffer(JNIEnv* env,
-                                                      piper::Runtime* rt,
-                                                      jbyteArray j_obj) {
+runtime::js::ArrayBuffer JNIHelper::ConvertToJSIArrayBuffer(
+    JNIEnv* env, runtime::js::Runtime* rt, jbyteArray j_obj) {
   jsize length = env->GetArrayLength(j_obj);
   jboolean is_copy = 0;
   jbyte* bytes = env->GetByteArrayElements(j_obj, &is_copy);
-  piper::ArrayBuffer array_buffer =
-      piper::ArrayBuffer(*rt, reinterpret_cast<const uint8_t*>(bytes), length);
+  runtime::js::ArrayBuffer array_buffer = runtime::js::ArrayBuffer(
+      *rt, reinterpret_cast<const uint8_t*>(bytes), length);
   env->ReleaseByteArrayElements(j_obj, bytes, 0);
   return array_buffer;
 }
 
 lynx::base::android::ScopedLocalJavaRef<jbyteArray>
-JNIHelper::ConvertToJNIByteArray(JNIEnv* env, piper::Runtime* rt,
-                                 const piper::ArrayBuffer& array_buffer) {
+JNIHelper::ConvertToJNIByteArray(JNIEnv* env, runtime::js::Runtime* rt,
+                                 const runtime::js::ArrayBuffer& array_buffer) {
   size_t length = array_buffer.length(*rt);
   uint8_t* buffer = array_buffer.data(*rt);
   if (!buffer || length <= 0) {

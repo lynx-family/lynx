@@ -13,8 +13,8 @@
 #include "devtool/js_inspect/quickjs/quickjs_inspector_client_impl.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class QuickjsInspectorManagerImpl : public QuickjsInspectorManager {
  public:
   QuickjsInspectorManagerImpl() = default;
@@ -40,7 +40,9 @@ class QuickjsInspectorManagerImpl : public QuickjsInspectorManager {
   std::set<std::string> scripts_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_QUICKJS_MANAGER_QUICKJS_INSPECTOR_MANAGER_IMPL_H_

@@ -7,8 +7,8 @@
 #include <utility>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 ModuleManagerTestBench::ModuleManagerTestBench() {
   moduleMap = std::unordered_map<std::string, ModuleTestBenchPtr>();
 }
@@ -19,8 +19,7 @@ void ModuleManagerTestBench::initRecordModuleData(
     Runtime *rt, InitRecordModuleDataCallback callback) {
   PropNameID module_name =
       PropNameID::forAscii(*rt, "LynxRecorderReplayDataModule");
-  piper::Value module =
-      bindingPtr->getLynxModuleManagerPtr()->get(rt, module_name);
+  Value module = bindingPtr->getLynxModuleManagerPtr()->get(rt, module_name);
   if (module.isNull()) {
     return;
   }
@@ -29,7 +28,7 @@ void ModuleManagerTestBench::initRecordModuleData(
     return;
   }
 
-  piper::Value inlineCallback = piper::Function::createFromHostFunction(
+  Value inlineCallback = Function::createFromHostFunction(
       *rt, PropNameID::forAscii(*rt, "getData"), 1,
       [this, callback](
           Runtime &rt, const Value &thisVal, const Value *args,
@@ -47,7 +46,7 @@ void ModuleManagerTestBench::initRecordModuleData(
         if (callback) {
           callback();
         }
-        return piper::Value::undefined();
+        return Value::undefined();
       });
   getRecordData->getObject(*rt).getFunction(*rt).call(*rt, inlineCallback);
 }
@@ -58,7 +57,7 @@ void ModuleManagerTestBench::initBindingPtr(
     std::weak_ptr<ModuleManagerTestBench> weak_manager,
     const std::shared_ptr<ModuleDelegate> &delegate,
     LynxJSIModuleBindingPtr lynxPtr) {
-  bindingPtr = std::make_shared<lynx::piper::LynxJSIModuleBindingTestBench>(
+  bindingPtr = std::make_shared<LynxJSIModuleBindingTestBench>(
       BindingFunc(weak_manager, delegate));
   // be used to call modules from Lynx SDK.
   bindingPtr->setLynxModuleManagerPtr(lynxPtr);
@@ -92,7 +91,7 @@ void ModuleManagerTestBench::resetModuleRecordData(
           dst = rapidjson::Value(src, doc.GetAllocator());
         },
         [this](const rapidjson::Value &sync_attrs, Runtime *rt,
-               const piper::Value *args, size_t count) {
+               const Value *args, size_t count) {
           this->syncToPlatform(sync_attrs, rt, args, count);
         });
   }
@@ -114,13 +113,11 @@ void ModuleManagerTestBench::fetchRecordData(const std::string &module_name,
 }
 
 void ModuleManagerTestBench::syncToPlatform(const rapidjson::Value &sync_attrs,
-                                            Runtime *rt,
-                                            const piper::Value *args,
+                                            Runtime *rt, const Value *args,
                                             size_t count) {
   PropNameID module_name =
       PropNameID::forAscii(*rt, sync_attrs["platformModule"].GetString());
-  piper::Value module =
-      bindingPtr->getLynxModuleManagerPtr()->get(rt, module_name);
+  Value module = bindingPtr->getLynxModuleManagerPtr()->get(rt, module_name);
   if (module.isNull()) {
     return;
   }
@@ -130,32 +127,31 @@ void ModuleManagerTestBench::syncToPlatform(const rapidjson::Value &sync_attrs,
     return;
   }
 
-  auto args_moved_function = piper::Array::createWithLength(*rt, count);
+  auto args_moved_function = Array::createWithLength(*rt, count);
 
   for (size_t index = 0; index < count; index++) {
-    if ((args + index)->kind() == piper::Value::ValueKind::ObjectKind &&
+    if ((args + index)->kind() == Value::ValueKind::ObjectKind &&
         (args + index)->getObject(*rt).isFunction(*rt)) {
       args_moved_function->setValueAtIndex(
-          *rt, index, piper::String::createFromUtf8(*rt, "Function"));
+          *rt, index, String::createFromUtf8(*rt, "Function"));
     } else {
       args_moved_function->setValueAtIndex(*rt, index,
-                                           piper::Value(*rt, *(args + index)));
+                                           Value(*rt, *(args + index)));
     }
   }
 
-  piper::Object params(*rt);
+  Object params(*rt);
 
-  params.setProperty(*rt, "args", piper::Value(*args_moved_function));
+  params.setProperty(*rt, "args", Value(*args_moved_function));
   if (sync_attrs.HasMember("label")) {
     params.setProperty(
         *rt, "label",
-        piper::String::createFromUtf8(*rt, sync_attrs["label"].GetString()));
+        String::createFromUtf8(*rt, sync_attrs["label"].GetString()));
   } else {
-    params.setProperty(*rt, "label",
-                       piper::String::createFromUtf8(*rt, "default"));
+    params.setProperty(*rt, "label", String::createFromUtf8(*rt, "default"));
   }
 
-  method->getObject(*rt).getFunction(*rt).call(*rt, piper::Value(params));
+  method->getObject(*rt).getFunction(*rt).call(*rt, Value(params));
 }
 
 ModuleTestBenchPtr ModuleManagerTestBench::getModule(
@@ -174,7 +170,7 @@ ModuleTestBenchPtr ModuleManagerTestBench::getModule(
           dst = rapidjson::Value(src, doc.GetAllocator());
         },
         [this](const rapidjson::Value &sync_attrs, Runtime *rt,
-               const piper::Value *args, size_t count) {
+               const Value *args, size_t count) {
           this->syncToPlatform(sync_attrs, rt, args, count);
         });
   }
@@ -188,5 +184,7 @@ ModuleTestBenchPtr ModuleManagerTestBench::getModule(
   return module;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

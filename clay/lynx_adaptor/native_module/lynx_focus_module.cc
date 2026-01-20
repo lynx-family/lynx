@@ -19,13 +19,15 @@ const std::string LynxFocusModule::name_ = "LynxFocusModule";
 LynxFocusModule::LynxFocusModule(uint32_t view_context_id,
                                  fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
-  lynx::piper::NativeModuleMethod set_trigger_internal("setTriggerInterval", 1);
+  lynx::runtime::NativeModuleMethod set_trigger_internal("setTriggerInterval",
+                                                         1);
   RegisterMethod(set_trigger_internal, &LynxFocusModule::setTriggerInterval);
 
-  lynx::piper::NativeModuleMethod get_curent_focus("getCurrentFocus", 1);
+  lynx::runtime::NativeModuleMethod get_curent_focus("getCurrentFocus", 1);
   RegisterMethod(get_curent_focus, &LynxFocusModule::getCurrentFocus);
 
-  lynx::piper::NativeModuleMethod native_by_direction("navigateByDirection", 1);
+  lynx::runtime::NativeModuleMethod native_by_direction("navigateByDirection",
+                                                        1);
   RegisterMethod(native_by_direction, &LynxFocusModule::navigateByDirection);
 }
 
@@ -33,7 +35,7 @@ LynxFocusModule::~LynxFocusModule() = default;
 
 std::unique_ptr<lynx::pub::Value> LynxFocusModule::setTriggerInterval(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(
       task_runner_, [weak_this = weak_from_this(),
                      args_array = std::move(args_array), callback_map]() {
@@ -58,7 +60,7 @@ std::unique_ptr<lynx::pub::Value> LynxFocusModule::setTriggerInterval(
 
 std::unique_ptr<lynx::pub::Value> LynxFocusModule::getCurrentFocus(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [weak_this = weak_from_this(),
                                                    callback_map]() {
     auto strong_this = weak_this.lock();
@@ -102,7 +104,7 @@ std::unique_ptr<lynx::pub::Value> LynxFocusModule::getCurrentFocus(
 
 std::unique_ptr<lynx::pub::Value> LynxFocusModule::navigateByDirection(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callbacks) {
+    const lynx::runtime::CallbackMap& callbacks) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [weak_this = weak_from_this(),
                                                    args_array =
                                                        std::move(args_array),

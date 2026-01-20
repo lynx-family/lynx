@@ -18,7 +18,7 @@
 
 namespace lynx {
 
-lynx::piper::NativeModuleFactory* LynxModuleFactory::CreateModuleFactory(
+lynx::runtime::NativeModuleFactory* LynxModuleFactory::CreateModuleFactory(
     clay::ViewContext* view_context) {
   auto module_factory = new LynxModuleFactory(view_context);
   module_factory->RegisterCreator(LynxConfigModule::GetName(),
@@ -44,8 +44,8 @@ LynxModuleFactory::LynxModuleFactory(clay::ViewContext* view_context)
     : view_context_id_(view_context->unique_id()),
       task_runner_(view_context->GetUITaskRunner()) {}
 
-std::shared_ptr<lynx::piper::LynxNativeModule> LynxModuleFactory::CreateModule(
-    const std::string& name) {
+std::shared_ptr<lynx::runtime::LynxNativeModule>
+LynxModuleFactory::CreateModule(const std::string& name) {
   std::lock_guard<std::mutex> lock(clay_mutex_);
   auto itr = clay_creators_.find(name);
   if (itr == clay_creators_.end()) {

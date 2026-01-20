@@ -23,7 +23,7 @@ class LynxLepusModule : public lepus::RefCounted {
  public:
   LynxLepusModule(
       const std::string& name,
-      const std::shared_ptr<lynx::piper::LynxNativeModule>& native_module) {
+      const std::shared_ptr<lynx::runtime::LynxNativeModule>& native_module) {
     value_factory_ = std::make_shared<pub::PubValueFactoryDefault>();
     native_module_ = native_module;
     name_ = name;
@@ -40,7 +40,7 @@ class LynxLepusModule : public lepus::RefCounted {
 
   // Set execute delegate
   void SetExecuteDelegate(
-      const std::shared_ptr<piper::LynxNativeModule::Delegate>& delegate) {
+      const std::shared_ptr<runtime::LynxNativeModule::Delegate>& delegate) {
     execute_delegate_ = delegate;
   }
 
@@ -51,12 +51,12 @@ class LynxLepusModule : public lepus::RefCounted {
 
  private:
   // The object that actually calls LynxModule
-  std::shared_ptr<piper::LynxNativeModule> native_module_ = nullptr;
+  std::shared_ptr<runtime::LynxNativeModule> native_module_ = nullptr;
   std::shared_ptr<pub::PubValueFactory> value_factory_;
   // Module name
   std::string name_;
   // Delegate
-  std::shared_ptr<piper::LynxNativeModule::Delegate> execute_delegate_;
+  std::shared_ptr<runtime::LynxNativeModule::Delegate> execute_delegate_;
 };
 
 }  // namespace lepus

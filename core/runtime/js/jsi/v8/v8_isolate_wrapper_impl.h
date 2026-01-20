@@ -7,8 +7,8 @@
 #include "core/runtime/js/jsi/v8/v8_isolate_wrapper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8IsolateInstanceImpl : public V8IsolateInstance {
  public:
   V8IsolateInstanceImpl();
@@ -28,6 +28,8 @@ class V8IsolateInstanceImpl : public V8IsolateInstance {
   friend class V8ContextWrapper;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_ISOLATE_WRAPPER_IMPL_H_

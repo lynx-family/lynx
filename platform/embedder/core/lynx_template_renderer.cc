@@ -49,7 +49,7 @@ const std::string TemplateRendererEventSimulationProxy::kMouseRightButton =
 LynxTemplateRenderer::LynxTemplateRenderer(
     const LynxTemplateRenderer::Settings& settings,
     tasm::UIDelegate* ui_delegate,
-    std::shared_ptr<piper::LynxModuleManager> module_manager,
+    std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
     std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
         perf_controller_ptr)
     : LynxTemplateRenderer(settings, ui_delegate, module_manager,
@@ -57,7 +57,7 @@ LynxTemplateRenderer::LynxTemplateRenderer(
 
 LynxTemplateRenderer::LynxTemplateRenderer(
     const Settings& settings, tasm::UIDelegate* ui_delegate,
-    std::shared_ptr<piper::LynxModuleManager> module_manager,
+    std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
     std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
         perf_controller_ptr,
     RuntimeProxyCallback runtime_proxy_callback)
@@ -152,7 +152,7 @@ void LynxTemplateRenderer::Reset() {
 
   // InitJSBridge
   if (!module_manager_) {
-    module_manager_ = std::make_shared<piper::LynxModuleManager>();
+    module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
   }
   module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
 #if ENABLE_INSPECTOR
@@ -163,8 +163,8 @@ void LynxTemplateRenderer::Reset() {
     devtools_->GetInspectorOwner()->OnTemplateAssemblerCreated(
         reinterpret_cast<intptr_t>(shell_.get()));
   }
-  std::unique_ptr<piper::NativeModuleFactory> devtool_module_factory_ =
-      std::make_unique<piper::NativeModuleFactory>();
+  std::unique_ptr<runtime::NativeModuleFactory> devtool_module_factory_ =
+      std::make_unique<runtime::NativeModuleFactory>();
   devtool_module_factory_->Register(devtool::LynxDevToolSetModule::GetName(),
                                     devtool::LynxDevToolSetModule::Create);
   module_manager_->SetModuleFactory(std::move(devtool_module_factory_));
@@ -594,7 +594,7 @@ std::shared_ptr<shell::LynxRuntimeProxy> LynxTemplateRenderer::GetRuntimeProxy()
   return runtime_proxy_;
 }
 
-std::shared_ptr<piper::LynxModuleManager>
+std::shared_ptr<runtime::js::LynxModuleManager>
 LynxTemplateRenderer::GetModuleManager() const {
   return module_manager_;
 }

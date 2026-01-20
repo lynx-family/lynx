@@ -16,8 +16,8 @@ bool RegisterJNIForAttributeDescriptor(JNIEnv* env) {
 }  // namespace lynx
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::string JavaAttributeDescriptor::getName() {
   JNIEnv* env = base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jstring> obj =
@@ -32,5 +32,7 @@ JavaAttributeDescriptor::getValue() {
   return Java_AttributeDescriptor_getValue(env, wrapper_.Get());
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

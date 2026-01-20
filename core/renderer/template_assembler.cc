@@ -1453,7 +1453,7 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
 
   if (callback_id >= 0) {
     // invoke load component callback
-    delegate_.CallJSApiCallbackWithValue(piper::ApiCallBack(callback_id),
+    delegate_.CallJSApiCallbackWithValue(runtime::js::ApiCallBack(callback_id),
                                          callback_msg);
     if (is_success) {
       // update target lazy bundle via ids
@@ -1734,7 +1734,7 @@ void TemplateAssembler::UpdateComponentData(
 void TemplateAssembler::SelectComponent(const std::string& component_id,
                                         const std::string& id_selector,
                                         const bool single,
-                                        piper::ApiCallBack callback) {
+                                        runtime::js::ApiCallBack callback) {
   std::vector<std::string> target_comp_ids =
       page_proxy_.SelectComponent(component_id, id_selector, single);
   auto array = lepus::CArray::Create();
@@ -1781,7 +1781,7 @@ void TemplateAssembler::ElementAnimateV2(const std::string& component_id,
 
 void TemplateAssembler::GetComponentContextDataAsync(
     const std::string& component_id, const std::string& key,
-    piper::ApiCallBack callback) {
+    runtime::js::ApiCallBack callback) {
   lepus::Value ctx_value =
       page_proxy_.GetComponentContextDataByKey(component_id, key);
   delegate_.CallJSApiCallbackWithValue(callback, ctx_value);
@@ -1884,11 +1884,10 @@ void TemplateAssembler::TriggerLepusGlobalEvent(const std::string& event_name,
                                                          << " this:" << this);
 }
 
-void TemplateAssembler::TriggerWorkletFunction(std::string component_id,
-                                               std::string worklet_module_name,
-                                               std::string method_name,
-                                               lepus::Value args,
-                                               piper::ApiCallBack callback) {
+void TemplateAssembler::TriggerWorkletFunction(
+    std::string component_id, std::string worklet_module_name,
+    std::string method_name, lepus::Value args,
+    runtime::js::ApiCallBack callback) {
 #if ENABLE_LEPUSNG_WORKLET
   if (!template_loaded_) {
     return;
@@ -3301,9 +3300,9 @@ lepus::Value TemplateAssembler::CallLepusMethod(
   return value;
 }
 
-void TemplateAssembler::CallLepusMethod(const std::string& method_name,
-                                        lepus::Value args,
-                                        const piper::ApiCallBack& callback) {
+void TemplateAssembler::CallLepusMethod(
+    const std::string& method_name, lepus::Value args,
+    const runtime::js::ApiCallBack& callback) {
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CALL_LEPUS_METHOD,
       [&](perfetto::EventContext ctx) {

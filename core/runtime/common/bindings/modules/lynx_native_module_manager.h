@@ -46,11 +46,11 @@ class LynxNativeModuleManager {
   LynxNativeModuleManager(LynxNativeModuleManager &&) = default;
   LynxNativeModuleManager &operator=(LynxNativeModuleManager &&) = default;
 
-  std::shared_ptr<piper::LynxNativeModule> GetModule(const std::string &name);
+  std::shared_ptr<runtime::LynxNativeModule> GetModule(const std::string &name);
 
   // Set ModuleFactory and Used for create Module
   virtual void SetModuleFactory(
-      std::unique_ptr<piper::NativeModuleFactory> module_factory) {
+      std::unique_ptr<runtime::NativeModuleFactory> module_factory) {
     if (module_factory) {
       module_factories_.push_back(std::move(module_factory));
     }
@@ -59,20 +59,20 @@ class LynxNativeModuleManager {
   // form of weakPtr, can directly use SetModuleFactory Used for create
   // PlatformModule
   virtual void SetPlatformModuleFactory(
-      std::shared_ptr<piper::NativeModuleFactory> module_factory);
+      std::shared_ptr<runtime::NativeModuleFactory> module_factory);
 
   // Set delegate for module manager.
   // TODO(zhangqun.29): delete this!! & use native module delegate
   virtual void SetModuleDelegate(
-      std::shared_ptr<piper::ModuleDelegate> delegate) {
+      std::shared_ptr<runtime::js::ModuleDelegate> delegate) {
     delegate_ = delegate;
   }
 
-  virtual std::shared_ptr<piper::ModuleDelegate> GetModuleDelegate() {
+  virtual std::shared_ptr<runtime::js::ModuleDelegate> GetModuleDelegate() {
     return delegate_;
   }
 
-  virtual piper::NativeModuleFactory *GetPlatformModuleFactory();
+  virtual runtime::NativeModuleFactory *GetPlatformModuleFactory();
 
   // used for LynxRecorder
   virtual void SetRecordID(int64_t record_id) { record_id_ = record_id; };
@@ -103,14 +103,14 @@ class LynxNativeModuleManager {
   // `LynxModuleWrapper`.
   int64_t context_id_ = -1;
   // Managed by LynxNativeModuleManager
-  base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
+  base::InlineVector<std::unique_ptr<runtime::NativeModuleFactory>, 4>
       module_factories_;
   // Maybe use by platform.
   // When re-attaching in standalone mode, it needs to support modification, so
   // it needs to be accessed by the platform, so it is placed independently.
-  std::shared_ptr<piper::NativeModuleFactory> platform_module_factory_;
+  std::shared_ptr<runtime::NativeModuleFactory> platform_module_factory_;
   // TODO(zhangqun.29): delete this!! & use native module delegate
-  std::shared_ptr<piper::ModuleDelegate> delegate_;
+  std::shared_ptr<runtime::js::ModuleDelegate> delegate_;
 
   // use to create delegate
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;

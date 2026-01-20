@@ -14,7 +14,7 @@ JSDebugHelper* JSDebugHelper::GetInstance() {
   return &instance_;
 }
 
-std::unique_ptr<piper::RuntimeInspectorManager>
+std::unique_ptr<runtime::js::RuntimeInspectorManager>
 JSDebugHelper::CreateRuntimeInspectorManager(const std::string& vm_type) {
   if (vm_type == kKeyEngineV8) {
     if (v8_proxy_ != nullptr) {
@@ -52,7 +52,7 @@ void JSDebugHelper::RegisterNapiRuntimeProxy() {
   v8_proxy_->RegisterNapiRuntimeProxy();
 }
 
-std::shared_ptr<piper::Runtime> JSDebugHelper::MakeRuntime(
+std::shared_ptr<runtime::js::Runtime> JSDebugHelper::MakeRuntime(
     const std::string& vm_type) {
   if (vm_type == kKeyEngineV8) {
     if (v8_proxy_ != nullptr) {
@@ -76,7 +76,8 @@ std::shared_ptr<piper::Runtime> JSDebugHelper::MakeRuntime(
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<runtime::profile::RuntimeProfiler>
 JSDebugHelper::MakeRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context, const std::string& vm_type) {
+    std::shared_ptr<runtime::js::JSIContext> js_context,
+    const std::string& vm_type) {
   if (vm_type == kKeyEngineV8) {
     if (v8_proxy_ != nullptr) {
       return v8_proxy_->MakeRuntimeProfiler(js_context);

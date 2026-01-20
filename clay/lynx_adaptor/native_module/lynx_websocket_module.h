@@ -32,16 +32,16 @@ class LynxWebSocketModule
   ~LynxWebSocketModule() override;
 
   std::unique_ptr<pub::Value> connect(std::unique_ptr<pub::Value> args,
-                                      const piper::CallbackMap& callbacks);
+                                      const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> send(std::unique_ptr<pub::Value> args,
-                                   const piper::CallbackMap& callbacks);
+                                   const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> ping(std::unique_ptr<pub::Value> args,
-                                   const piper::CallbackMap& callbacks);
+                                   const runtime::CallbackMap& callbacks);
 
   std::unique_ptr<pub::Value> close(std::unique_ptr<pub::Value> args,
-                                    const piper::CallbackMap& callbacks);
+                                    const runtime::CallbackMap& callbacks);
 
  private:
   static const std::string name_;

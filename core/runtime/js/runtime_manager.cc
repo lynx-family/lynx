@@ -40,7 +40,7 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_api.h"
 
 extern void RegisterJSVMRuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyJSVMFactory* factory);
+    lynx::runtime::js::NapiRuntimeProxyJSVMFactory* factory);
 #endif  // OS_HARMONY
 
 #ifdef OS_ANDROID
@@ -53,7 +53,7 @@ extern void RegisterJSVMRuntimeProxyFactory(
 #include "core/runtime/common/napi/napi_runtime_proxy_v8.h"
 
 extern void RegisterV8RuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyV8Factory*);
+    lynx::runtime::js::NapiRuntimeProxyV8Factory*);
 #endif  // ENABLE_NAPI_BINDING
 #endif  // OS_WIN || OS_OSX
 
@@ -70,16 +70,16 @@ static constexpr int kMaxVMSize = 1;
 class VMInstancePool {
  public:
   static VMInstancePool& Instance();
-  std::shared_ptr<piper::VMInstance> TakeVMInstance(
-      piper::JSRuntimeType runtime_type);
+  std::shared_ptr<runtime::js::VMInstance> TakeVMInstance(
+      runtime::js::JSRuntimeType runtime_type);
 
  private:
-  void CreateVMInstanceAsync(piper::JSRuntimeType runtime_type);
-  std::shared_ptr<piper::VMInstance> DoCreateVMInstance(
-      piper::JSRuntimeType runtime_type);
+  void CreateVMInstanceAsync(runtime::js::JSRuntimeType runtime_type);
+  std::shared_ptr<runtime::js::VMInstance> DoCreateVMInstance(
+      runtime::js::JSRuntimeType runtime_type);
   std::mutex mtx_;
-  std::unordered_map<piper::JSRuntimeType,
-                     std::vector<std::shared_ptr<piper::VMInstance>>>
+  std::unordered_map<runtime::js::JSRuntimeType,
+                     std::vector<std::shared_ptr<runtime::js::VMInstance>>>
       vm_instances_;
 };
 
@@ -90,10 +90,10 @@ VMInstancePool& VMInstancePool::Instance() {
 
 // Currently only support quickjs.
 // Maybe null
-std::shared_ptr<piper::VMInstance> VMInstancePool::TakeVMInstance(
-    piper::JSRuntimeType runtime_type) {
-  std::shared_ptr<piper::VMInstance> vm_instance = nullptr;
-  if (runtime_type != piper::JSRuntimeType::quickjs) {
+std::shared_ptr<runtime::js::VMInstance> VMInstancePool::TakeVMInstance(
+    runtime::js::JSRuntimeType runtime_type) {
+  std::shared_ptr<runtime::js::VMInstance> vm_instance = nullptr;
+  if (runtime_type != runtime::js::JSRuntimeType::quickjs) {
     return vm_instance;
   }
   {
@@ -107,14 +107,15 @@ std::shared_ptr<piper::VMInstance> VMInstancePool::TakeVMInstance(
     }
   }
 
-  piper::BindQuickjsVMToCurrentThread(vm_instance);
+  runtime::js::BindQuickjsVMToCurrentThread(vm_instance);
 
   // pre create next vm instance.
   CreateVMInstanceAsync(runtime_type);
   return vm_instance;
 }
 
-void VMInstancePool::CreateVMInstanceAsync(piper::JSRuntimeType runtime_type) {
+void VMInstancePool::CreateVMInstanceAsync(
+    runtime::js::JSRuntimeType runtime_type) {
   base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
       [runtime_type, this]() mutable {
         std::lock_guard<std::mutex> lock{mtx_};
@@ -129,10 +130,10 @@ void VMInstancePool::CreateVMInstanceAsync(piper::JSRuntimeType runtime_type) {
       base::ConcurrentTaskType::NORMAL_PRIORITY);
 }
 
-std::shared_ptr<piper::VMInstance> VMInstancePool::DoCreateVMInstance(
-    piper::JSRuntimeType runtime_type) {
-  if (runtime_type == piper::JSRuntimeType::quickjs) {
-    return piper::CreateQuickJsVM(nullptr, false);
+std::shared_ptr<runtime::js::VMInstance> VMInstancePool::DoCreateVMInstance(
+    runtime::js::JSRuntimeType runtime_type) {
+  if (runtime_type == runtime::js::JSRuntimeType::quickjs) {
+    return runtime::js::CreateQuickJsVM(nullptr, false);
   }
   // Current don't support other engine.
   return nullptr;
@@ -156,16 +157,16 @@ bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
   return group_id == "-1";
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
+std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     const std::string& group_id,
-    std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
-    base::MoveOnlyClosure<
-        std::vector<std::pair<std::string, std::shared_ptr<piper::Buffer>>>>
+    std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
+    base::MoveOnlyClosure<std::vector<
+        std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
         js_pre_sources_getter,
-    bool force_use_lightweight_js_engine, piper::JSExecutor& executor,
+    bool force_use_lightweight_js_engine, runtime::js::JSExecutor& executor,
     int64_t rt_id, bool ensure_console, bool enable_bytecode,
     const std::string& bytecode_source_url,
-    piper::BytecodeGetter bytecode_getter,
+    runtime::js::BytecodeGetter bytecode_getter,
     const tasm::PageOptions& page_options) {
   // call inspect's prepare
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
@@ -173,8 +174,8 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
         force_use_lightweight_js_engine);
   }
   bool is_single_context = IsSingleJSContext(group_id);
-  std::shared_ptr<piper::Runtime> js_runtime;
-  std::shared_ptr<piper::JSIContext> js_context;
+  std::shared_ptr<runtime::js::Runtime> js_runtime;
+  std::shared_ptr<runtime::js::JSIContext> js_context;
   // This variable indicates 'false' only when it has been created previously
   // and the context is being shared.
   bool need_create_context_wrapper = true;
@@ -197,9 +198,9 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
         // shared context will cause crash. here we change the
         // force_use_lightweight_js_engine param for MakeRuntime to control the
         // runtime type.
-        if (vm->GetRuntimeType() == piper::JSRuntimeType::v8 ||
-            vm->GetRuntimeType() == piper::JSRuntimeType::jsc ||
-            vm->GetRuntimeType() == piper::JSRuntimeType::jsvm) {
+        if (vm->GetRuntimeType() == runtime::js::JSRuntimeType::v8 ||
+            vm->GetRuntimeType() == runtime::js::JSRuntimeType::jsc ||
+            vm->GetRuntimeType() == runtime::js::JSRuntimeType::jsvm) {
           if (force_use_lightweight_js_engine) {
             LOGI(
                 "use shared jscontext with v8, jsc or jsvm, change "
@@ -226,7 +227,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
           enable_bytecode, bytecode_source_url, std::move(bytecode_getter),
           page_options, true);
       js_runtime->setCreatedType(
-          piper::JSRuntimeCreatedType::none_vm_none_context);
+          runtime::js::JSRuntimeCreatedType::none_vm_none_context);
       LOGI("get shared_context success, context:" << js_context.get()
                                                   << ", group:" << group_id);
     } else {
@@ -248,7 +249,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
   // none share context and first create share context.
   if (need_create_context_wrapper) {
     std::shared_ptr<JSContextWrapper> context_wrapper;
-    std::shared_ptr<piper::Runtime> global_runtime;
+    std::shared_ptr<runtime::js::Runtime> global_runtime;
     if (is_single_context) {
       context_wrapper = std::make_shared<NoneSharedJSContextWrapper>(
           js_context, runtime_manager_delegate_ == nullptr ? this : nullptr);
@@ -262,7 +263,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
                                                             js_runtime->type());
       }
       global_runtime =
-          MakeRuntime(js_runtime->type() == piper::JSRuntimeType::quickjs,
+          MakeRuntime(js_runtime->type() == runtime::js::JSRuntimeType::quickjs,
                       false, page_options);
       // FIXME(heshan):now set exception_handler to global runtime, not
       // correct...
@@ -275,7 +276,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     context_wrapper->SetRuntimeProfiler(runtime_profiler);
 #endif
     js_context->SetReleaseObserver(context_wrapper);
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man = nullptr;
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man = nullptr;
     if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       post_man = js_context->GetPostMan();
     }
@@ -289,7 +290,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
       runtime_manager_delegate_->OnRuntimeReady(executor, js_runtime, group_id);
     }
 
-    piper::GCPauseSuppressionMode mode(global_runtime.get());
+    runtime::js::GCPauseSuppressionMode mode(global_runtime.get());
     auto js_pre_sources = js_pre_sources_getter();
     context_wrapper->prepareJSEnv(js_runtime, js_pre_sources);
   } else {
@@ -302,12 +303,12 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
   return js_runtime;
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManager::CreateRuntime(
+std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
     const std::string& group_id,
-    std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
+    std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
     bool force_use_lightweight_js_engine, int64_t rt_id, bool enable_bytecode,
     const std::string& bytecode_source_url,
-    piper::BytecodeGetter bytecode_getter,
+    runtime::js::BytecodeGetter bytecode_getter,
     const tasm::PageOptions& page_options, bool use_shared_context) {
   auto js_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                 use_shared_context, page_options);
@@ -339,18 +340,18 @@ JSContextWrapper* RuntimeManager::GetContextWrapper(
   return it == shared_context_map_.end() ? nullptr : it->second.get();
 }
 
-std::shared_ptr<piper::JSIContext> RuntimeManager::GetSharedJSContext(
+std::shared_ptr<runtime::js::JSIContext> RuntimeManager::GetSharedJSContext(
     const std::string& group_id) {
   auto it = shared_context_map_.find(group_id);
   return it == shared_context_map_.end() ? nullptr : it->second->getJSContext();
 }
 
-std::shared_ptr<piper::JSIContext> RuntimeManager::CreateJSIContext(
-    std::shared_ptr<piper::Runtime>& rt, const std::string& group_id) {
-  std::shared_ptr<piper::JSIContext> js_context;
+std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
+    std::shared_ptr<runtime::js::Runtime>& rt, const std::string& group_id) {
+  std::shared_ptr<runtime::js::JSIContext> js_context;
   bool need_create_vm = false;
-  if (rt->type() == piper::JSRuntimeType::jsc ||
-      rt->type() == piper::JSRuntimeType::quickjs) {
+  if (rt->type() == runtime::js::JSRuntimeType::jsc ||
+      rt->type() == runtime::js::JSRuntimeType::quickjs) {
     need_create_vm = true;
 #if JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
     auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt->type());
@@ -368,16 +369,16 @@ std::shared_ptr<piper::JSIContext> RuntimeManager::CreateJSIContext(
 }
 
 void RuntimeManager::InitJSRuntimeCreatedType(
-    bool need_create_vm, std::shared_ptr<piper::Runtime>& rt) {
-  piper::JSRuntimeCreatedType type =
-      need_create_vm ? piper::JSRuntimeCreatedType::vm_context
-                     : piper::JSRuntimeCreatedType::context;
+    bool need_create_vm, std::shared_ptr<runtime::js::Runtime>& rt) {
+  runtime::js::JSRuntimeCreatedType type =
+      need_create_vm ? runtime::js::JSRuntimeCreatedType::vm_context
+                     : runtime::js::JSRuntimeCreatedType::context;
   rt->setCreatedType(type);
 }
 
-bool RuntimeManager::EnsureVM(std::shared_ptr<piper::Runtime>& rt) {
+bool RuntimeManager::EnsureVM(std::shared_ptr<runtime::js::Runtime>& rt) {
   if (mVMContainer_.find(rt->type()) == mVMContainer_.end()) {
-    piper::StartupData* data = nullptr;
+    runtime::js::StartupData* data = nullptr;
 
     mVMContainer_.insert(std::make_pair(rt->type(), rt->createVM(data)));
     return true;
@@ -386,8 +387,8 @@ bool RuntimeManager::EnsureVM(std::shared_ptr<piper::Runtime>& rt) {
 }
 
 void RuntimeManager::EnsureConsolePostMan(
-    std::shared_ptr<piper::JSIContext>& context, piper::JSExecutor& executor,
-    bool force_use_lightweight_js_engine,
+    std::shared_ptr<runtime::js::JSIContext>& context,
+    runtime::js::JSExecutor& executor, bool force_use_lightweight_js_engine,
     const tasm::PageOptions& page_options) {
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
     return;
@@ -403,7 +404,7 @@ void RuntimeManager::EnsureConsolePostMan(
   }
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
+std::shared_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
@@ -415,19 +416,19 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 #if defined(OS_IOS)
   if (force_use_lightweight_js_engine) {
     LOGI("make runtime with force_use_lightweight_js_engine = true");
-    return piper::makeQuickJsRuntime();
+    return runtime::js::makeQuickJsRuntime();
   }
 #endif  // defined(OS_IOS)
 #if JS_ENGINE_TYPE == 0
 #if ENABLE_NAPI_BINDING
-  static piper::NapiRuntimeProxyV8FactoryImpl factory;
+  static runtime::js::NapiRuntimeProxyV8FactoryImpl factory;
   LOGI("Setting napi proxy factory: " << &factory);
   RegisterV8RuntimeProxyFactory(&factory);
 #endif
-  return piper::makeV8Runtime();
+  return runtime::js::makeV8Runtime();
 #elif JS_ENGINE_TYPE == 1
   LOGI("make JSC runtime");
-  return piper::makeJSCRuntime();
+  return runtime::js::makeJSCRuntime();
 #endif
 #endif  // __APPLE__
 
@@ -446,10 +447,10 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 
 #if JS_ENGINE_TYPE == 1
   LOGI("make JSC runtime");
-  return piper::makeJSCRuntime();
+  return runtime::js::makeJSCRuntime();
 #elif JS_ENGINE_TYPE == 2
   LOGI("make QuickJS runtime");
-  return piper::makeQuickJsRuntime();
+  return runtime::js::makeQuickJsRuntime();
 #endif  // JS_ENGINE_TYPE
 
 #endif  // OS_ANDROID
@@ -458,15 +459,15 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 #if JS_ENGINE_TYPE == 0
 
 #if ENABLE_NAPI_BINDING
-  static piper::NapiRuntimeProxyV8FactoryImpl factory;
+  static runtime::js::NapiRuntimeProxyV8FactoryImpl factory;
   LOGI("Setting napi proxy factory from none inspector: " << &factory);
   RegisterV8RuntimeProxyFactory(&factory);
 #endif
 
-  return piper::makeV8Runtime();
+  return runtime::js::makeV8Runtime();
 #elif JS_ENGINE_TYPE == 2
   LOGI("make quickjs runtime");
-  return piper::makeQuickJsRuntime();
+  return runtime::js::makeQuickJsRuntime();
 #endif
 
 #endif  // OS_WIN
@@ -475,14 +476,14 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 #if JS_ENGINE_TYPE != 3
   if ((!force_use_lightweight_js_engine ||
        tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) &&
-      piper::IsJSVMRuntimeAvailable()) {
+      runtime::js::IsJSVMRuntimeAvailable()) {
 #endif  // JS_ENGINE_TYPE != 3
 #if ENABLE_NAPI_BINDING
-    static piper::NapiRuntimeProxyJSVMFactoryImpl factory;
+    static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
     RegisterJSVMRuntimeProxyFactory(&factory);
 #endif  // ENABLE_NAPI_BINDING
     LOGI("make jsvm runtime");
-    return piper::makeJSVMRuntime();
+    return runtime::js::makeJSVMRuntime();
 #if JS_ENGINE_TYPE != 3
   }
 #endif  // JS_ENGINE_TYPE != 3
@@ -492,7 +493,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 #if JS_ENGINE_TYPE == 2
   // desktop tests may run on Linux.
   LOGI("make quickjs runtime");
-  return piper::makeQuickJsRuntime();
+  return runtime::js::makeQuickJsRuntime();
 #endif
 
   LOGW("No runtime made");
@@ -501,7 +502,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<profile::RuntimeProfiler> RuntimeManager::MakeRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context,
+    std::shared_ptr<runtime::js::JSIContext> js_context,
     bool force_use_lightweight_js_engine,
     const tasm::PageOptions& page_options) {
   if (runtime_manager_delegate_) {
@@ -514,12 +515,12 @@ std::shared_ptr<profile::RuntimeProfiler> RuntimeManager::MakeRuntimeProfiler(
         LynxProxyRuntimeHelper::Instance().MakeRuntimeProfiler(js_context);
     return std::make_shared<profile::V8RuntimeProfiler>(std::move(v8_profiler));
   } else {
-    return piper::makeQuickJsRuntimeProfiler(js_context);
+    return runtime::js::makeQuickJsRuntimeProfiler(js_context);
   }
 #endif  // OS_ANDROID
 #if OS_IOS
   if (force_use_lightweight_js_engine) {
-    return piper::makeQuickJsRuntimeProfiler(js_context);
+    return runtime::js::makeQuickJsRuntimeProfiler(js_context);
   }
 #endif  // defined(OS_IOS)
   return nullptr;

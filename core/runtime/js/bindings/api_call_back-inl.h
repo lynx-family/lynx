@@ -11,10 +11,10 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 template <typename... Args>
-inline void ApiCallBackManager::InvokeWithValue(piper::Runtime *rt,
+inline void ApiCallBackManager::InvokeWithValue(Runtime *rt,
                                                 ApiCallBack callback,
                                                 Args &&...values) {
   InvokeWithValuePersist(rt, callback, std::forward<Args>(values)...);
@@ -22,7 +22,7 @@ inline void ApiCallBackManager::InvokeWithValue(piper::Runtime *rt,
 }
 
 template <typename... Args>
-inline void ApiCallBackManager::InvokeWithValuePersist(piper::Runtime *rt,
+inline void ApiCallBackManager::InvokeWithValuePersist(Runtime *rt,
                                                        ApiCallBack callback,
                                                        Args &&...values) {
   DCHECK(rt);
@@ -39,30 +39,30 @@ inline void ApiCallBackManager::InvokeWithValuePersist(piper::Runtime *rt,
 }
 
 template <typename... Args>
-inline void CallBackHolder::InvokeWithValue(piper::Runtime *rt,
-                                            Args &&...values) {
+inline void CallBackHolder::InvokeWithValue(Runtime *rt, Args &&...values) {
   DCHECK(rt);
-  piper::Scope scope(*rt);
+  Scope scope(*rt);
   function_.call(*rt, std::forward<Args>(values)...);
 }
 
 template <>
 inline void CallBackHolder::InvokeWithValue<const lepus::Value &>(
-    piper::Runtime *rt, const lepus::Value &value) {
+    Runtime *rt, const lepus::Value &value) {
   DCHECK(rt != nullptr);
   if (rt) {
-    piper::Scope scope(*rt);
+    Scope scope(*rt);
     if (value.IsNil()) {
       function_.call(*rt, nullptr, 0);
     } else {
-      auto jsArgs = piper::valueFromLepus(*rt, value);
+      auto jsArgs = valueFromLepus(*rt, value);
       if (jsArgs) {
         function_.call(*rt, *jsArgs);
       }
     }
   }
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_API_CALL_BACK_INL_H_

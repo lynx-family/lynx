@@ -24,11 +24,11 @@ LepusModuleDelegate::LepusModuleDelegate() {
 }
 
 void LepusModuleDelegate::InvokeCallback(
-    const std::shared_ptr<piper::LynxModuleCallback>& callback,
+    const std::shared_ptr<runtime::LynxModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func) {
   if (engine_actor_ != nullptr) {
     engine_actor_->Act([callback](auto& engine) -> void {
-      if (callback->GetType() == piper::LynxModuleCallback::Type::LEPUS) {
+      if (callback->GetType() == runtime::LynxModuleCallback::Type::LEPUS) {
         // safe cast to lepus callback
         std::shared_ptr<LepusModuleCallback> lepus_callback =
             std::static_pointer_cast<LepusModuleCallback>(callback);

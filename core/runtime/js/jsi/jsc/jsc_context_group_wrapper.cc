@@ -7,8 +7,8 @@
 #include "core/renderer/tasm/config.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 JSCContextGroupWrapper::~JSCContextGroupWrapper() {
   LOGI("~JSCContextGroupWrapper " << this);
   if (group_ != nullptr) {
@@ -23,5 +23,7 @@ void JSCContextGroupWrapper::InitContextGroup() {
   group_ = JSContextGroupCreate();
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

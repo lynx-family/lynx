@@ -92,7 +92,8 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   uint32_t HeaderSize() const { return header_size_; }
 
   const std::unordered_map<
-      std::string, std::unique_ptr<piper::quickjs::QuickjsDebugInfoProvider>>&
+      std::string,
+      std::unique_ptr<runtime::js::quickjs::QuickjsDebugInfoProvider>>&
   GetJsDebugInfo() const {
     return js_debug_info_;
   }
@@ -204,8 +205,9 @@ class TemplateBinaryWriter : public CSRElementBinaryWriter {
   uint32_t header_size_{0};
   lepus::Value template_info_{};
   std::unordered_map<std::string, std::string> js_code_{};
-  std::unordered_map<std::string,
-                     std::unique_ptr<piper::quickjs::QuickjsDebugInfoProvider>>
+  std::unordered_map<
+      std::string,
+      std::unique_ptr<runtime::js::quickjs::QuickjsDebugInfoProvider>>
       js_debug_info_{};
 
   // custom sections

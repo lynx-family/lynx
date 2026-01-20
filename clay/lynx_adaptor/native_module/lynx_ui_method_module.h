@@ -32,7 +32,7 @@ class LynxUIMethodModule
   // for compatibility with old getNodeRef
   std::unique_ptr<lynx::pub::Value> InvokeUIMethodCompatibility(
       std::unique_ptr<lynx::pub::Value> args,
-      const lynx::piper::CallbackMap& callbacks);
+      const lynx::runtime::CallbackMap& callbacks);
 
  private:
   void InvokeUIMethod(const std::string& component_id,

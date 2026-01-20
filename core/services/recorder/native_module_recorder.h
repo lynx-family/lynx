@@ -14,11 +14,13 @@
 #include "third_party/rapidjson/document.h"
 namespace lynx {
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 class Runtime;
 class Value;
-}  // namespace piper
-
+}  // namespace js
+}  // namespace runtime
 namespace tasm {
 namespace recorder {
 
@@ -29,27 +31,27 @@ class NativeModuleRecorder {
     return *instance_.get();
   }
 
-  void RecordSharedData(const piper::Value* args, piper::Runtime* rt,
-                        int64_t record_id);
+  void RecordSharedData(const runtime::js::Value* args,
+                        runtime::js::Runtime* rt, int64_t record_id);
 
   void RecordFunctionCall(const char* module_name, const char* js_method_name,
-                          uint32_t argc, const piper::Value* args,
+                          uint32_t argc, const runtime::js::Value* args,
                           const int64_t* callbacks, uint32_t count,
-                          piper::Value& res, piper::Runtime* rt,
+                          runtime::js::Value& res, runtime::js::Runtime* rt,
                           int64_t record_id);
 
   void RecordCallback(const char* module_name, const char* method_name,
-                      const piper::Value& args, piper::Runtime* rt,
+                      const runtime::js::Value& args, runtime::js::Runtime* rt,
                       int64_t callback_id, int64_t record_id);
 
   void RecordCallback(const char* module_name, const char* method_name,
-                      const piper::Value* args, uint32_t count,
-                      piper::Runtime* rt, int64_t callback_id,
+                      const runtime::js::Value* args, uint32_t count,
+                      runtime::js::Runtime* rt, int64_t callback_id,
                       int64_t record_id);
 
   void RecordGlobalEvent(std::string module_id, std::string method_id,
-                         const piper::Value* args, uint64_t count,
-                         piper::Runtime* rt, int64_t record_id);
+                         const runtime::js::Value* args, uint64_t count,
+                         runtime::js::Runtime* rt, int64_t record_id);
 
   // event_type: 0 stands for touch event (or MotionEvent), and 1 for key event.
   void RecordEventAndroid(const std::vector<std::string>& args,
@@ -62,8 +64,8 @@ class NativeModuleRecorder {
   ~NativeModuleRecorder() = default;
   NativeModuleRecorder(const NativeModuleRecorder&) = delete;
   NativeModuleRecorder& operator=(const NativeModuleRecorder&) = delete;
-  static rapidjson::Value ParsePiperValueToJsonValue(const piper::Value& res,
-                                                     piper::Runtime* rt);
+  static rapidjson::Value ParsePiperValueToJsonValue(
+      const runtime::js::Value& res, runtime::js::Runtime* rt);
 };
 
 }  // namespace recorder

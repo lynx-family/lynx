@@ -14,7 +14,8 @@
 #include "core/template_bundle/template_codec/version.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace quickjs {
 // structure of packed quickjs bytecode.
 struct Bytecode {
@@ -69,7 +70,8 @@ struct Bytecode {
   std::shared_ptr<Buffer> raw_bytecode;
 };
 }  // namespace quickjs
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_QUICKJS_BYTECODE_QUICKJS_BYTECODE_H_

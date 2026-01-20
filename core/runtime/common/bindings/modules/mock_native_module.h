@@ -18,7 +18,7 @@ namespace lynx {
 namespace pub {
 namespace test {
 
-class MockNativeModule : public piper::LynxNativeModule {
+class MockNativeModule : public runtime::LynxNativeModule {
  public:
   static std::shared_ptr<MockNativeModule> Create(std::string name) {
     return std::make_shared<MockNativeModule>(name);
@@ -32,7 +32,7 @@ class MockNativeModule : public piper::LynxNativeModule {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override {
+      size_t count, const runtime::CallbackMap& callbacks) override {
     return std::make_unique<pub::ValueImplLepus>(lepus::Value("return_string"));
   }
 

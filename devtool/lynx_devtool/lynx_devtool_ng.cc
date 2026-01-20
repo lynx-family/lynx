@@ -283,7 +283,7 @@ std::shared_ptr<MessageSender> LynxDevToolNG::GetMessageSender() const {
   return GetCurrentSender();
 }
 
-std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
 LynxDevToolNG::OnBackgroundRuntimeCreated(
     const std::string& group_thread_name) {
   return devtool_mediator_->InitWhenBackgroundRuntimeCreated(

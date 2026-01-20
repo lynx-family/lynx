@@ -460,13 +460,13 @@ public class LynxBackgroundRuntime : NSObject {
   public double LynxBackgroundRuntime::subscribeSessionStorage:withCallback:(nonnull NSString *key,[withCallback] void(^_Nullable callback)(id< NSObject > _Nullable));
   public void LynxBackgroundRuntime::unSubscribeSessionStorage:withId:(nonnull NSString *key,[withId] double callbackId);
   public void LynxBackgroundRuntime::transitionToFullRuntime();
-  public std::weak_ptr< lynx::piper::ModuleFactoryDarwin > LynxBackgroundRuntime()::moduleFactoryPtr();
+  public std::weak_ptr< lynx::runtime::js::ModuleFactoryDarwin > LynxBackgroundRuntime()::moduleFactoryPtr();
   public LynxBackgroundRuntimeOptions * LynxBackgroundRuntime()::options();
   public std::shared_ptr< lynx::shell::LynxActor< lynx::shell::BTSRuntime > > LynxBackgroundRuntime()::runtimeActor();
   public std::shared_ptr< lynx::shell::LynxActor< lynx::tasm::performance::PerformanceController > > LynxBackgroundRuntime()::perfControllerActor();
   public LynxDevtool * LynxBackgroundRuntime()::devtool();
   public BOOL LynxBackgroundRuntime()::attachToLynxView();
-  public void LynxBackgroundRuntime()::setRuntimeObserver:(const std::shared_ptr< lynx::piper::InspectorRuntimeObserverNG > &observer);
+  public void LynxBackgroundRuntime()::setRuntimeObserver:(const std::shared_ptr< lynx::runtime::js::InspectorRuntimeObserverNG > &observer);
   public void LynxBackgroundRuntime()::onEvaluateJavaScriptEnd:(NSString *url);
 }
 
@@ -1046,9 +1046,9 @@ public class LynxConfig : NSObject {
   public void LynxConfig::registerShadowNode:withName:(Class node,[withName] NSString *name);
   public void LynxConfig::registerMethodAuth:(LynxMethodBlock authBlock);
   public void LynxConfig::registerContext:sessionInfo:(NSDictionary *ctxDict,[sessionInfo] LynxMethodSessionBlock sessionInfo);
-  public std::shared_ptr< lynx::piper::ModuleFactoryDarwin > LynxConfig()::moduleFactoryPtr();
-  public std::shared_ptr< lynx::piper::ModuleFactoryDarwin > LynxConfig()::getSharedModuleFactoryPtr();
-  public void LynxConfig()::setSharedModuleFactoryPtr:(std::shared_ptr< lynx::piper::ModuleFactoryDarwin > ptr);
+  public std::shared_ptr< lynx::runtime::js::ModuleFactoryDarwin > LynxConfig()::moduleFactoryPtr();
+  public std::shared_ptr< lynx::runtime::js::ModuleFactoryDarwin > LynxConfig()::getSharedModuleFactoryPtr();
+  public void LynxConfig()::setSharedModuleFactoryPtr:(std::shared_ptr< lynx::runtime::js::ModuleFactoryDarwin > ptr);
 }
 
 public class LynxConfigInfo : NSObject {
@@ -3661,7 +3661,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender()::updateFrame:(CGRect frame);
   public LynxViewBuilderBlock LynxTemplateRender()::getLynxViewBuilderBlock();
   public void LynxTemplateRender()::detachLynxEngine();
-  public lynx::piper::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
+  public lynx::runtime::js::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();
   public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
   public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
@@ -5554,7 +5554,7 @@ public enum LynxFeature {
 }
 
 
-  public std::unique_ptr< lynx::piper::cache::BytecodeGenerateCallback > CreateBytecodeGenerateCallback(LynxBytecodeResponseBlock _Nullable callback);
+  public std::unique_ptr< lynx::runtime::js::cache::BytecodeGenerateCallback > CreateBytecodeGenerateCallback(LynxBytecodeResponseBlock _Nullable callback);
 
   public std::shared_ptr< lynx::tasm::LynxTemplateBundle > LynxGetRawTemplateBundle(LynxTemplateBundle *bundle);
   public LynxTemplateBundle * ConstructTemplateBundleFromNative(lynx::tasm::LynxTemplateBundle bundle);

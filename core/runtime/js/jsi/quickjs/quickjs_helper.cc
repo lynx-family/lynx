@@ -31,7 +31,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 QuickjsJSValueValue::QuickjsJSValueValue(LEPUSContext *ctx, LEPUSValue val)
     : val_(val), rt_(LEPUS_GetRuntime(ctx)) {
@@ -51,90 +52,90 @@ void QuickjsJSValueValue::invalidate() {
 
 LEPUSValue QuickjsJSValueValue::Get() const { return val_; }
 
-piper::Runtime::PointerValue *QuickjsHelper::makeStringValue(LEPUSContext *ctx,
-                                                             LEPUSValue str) {
+Runtime::PointerValue *QuickjsHelper::makeStringValue(LEPUSContext *ctx,
+                                                      LEPUSValue str) {
   void *ret = QJSValueValueAllocator::New(LEPUS_GetRuntime(ctx));
   return new (ret) QuickjsJSValueValue(ctx, str);
 }
 
-piper::Runtime::PointerValue *QuickjsHelper::makeObjectValue(LEPUSContext *ctx,
-                                                             LEPUSValue obj) {
+Runtime::PointerValue *QuickjsHelper::makeObjectValue(LEPUSContext *ctx,
+                                                      LEPUSValue obj) {
   void *ret = QJSValueValueAllocator::New(LEPUS_GetRuntime(ctx));
   return new (ret) QuickjsJSValueValue(ctx, obj);
 }
 
-piper::Runtime::PointerValue *QuickjsHelper::makeJSValueValue(LEPUSContext *ctx,
-                                                              LEPUSValue obj) {
+Runtime::PointerValue *QuickjsHelper::makeJSValueValue(LEPUSContext *ctx,
+                                                       LEPUSValue obj) {
   void *ret = QJSValueValueAllocator::New(LEPUS_GetRuntime(ctx));
   return new (ret) QuickjsJSValueValue(ctx, obj);
 }
 
-piper::Object QuickjsHelper::createJSValue(LEPUSContext *ctx, LEPUSValue obj) {
-  return Runtime::make<piper::Object>(makeJSValueValue(ctx, obj));
+Object QuickjsHelper::createJSValue(LEPUSContext *ctx, LEPUSValue obj) {
+  return Runtime::make<Object>(makeJSValueValue(ctx, obj));
 }
 
-piper::PropNameID QuickjsHelper::createPropNameID(LEPUSContext *ctx,
-                                                  LEPUSValue propName) {
-  return Runtime::make<piper::PropNameID>(makeStringValue(ctx, propName));
+PropNameID QuickjsHelper::createPropNameID(LEPUSContext *ctx,
+                                           LEPUSValue propName) {
+  return Runtime::make<PropNameID>(makeStringValue(ctx, propName));
 }
 
-piper::String QuickjsHelper::createString(LEPUSContext *ctx, LEPUSValue str) {
-  return Runtime::make<piper::String>(makeStringValue(ctx, str));
+String QuickjsHelper::createString(LEPUSContext *ctx, LEPUSValue str) {
+  return Runtime::make<String>(makeStringValue(ctx, str));
 }
 
-piper::Symbol QuickjsHelper::createSymbol(LEPUSContext *ctx, LEPUSValue sym) {
-  return Runtime::make<piper::Symbol>(makeJSValueValue(ctx, sym));
+Symbol QuickjsHelper::createSymbol(LEPUSContext *ctx, LEPUSValue sym) {
+  return Runtime::make<Symbol>(makeJSValueValue(ctx, sym));
 }
 
-piper::Object QuickjsHelper::createObject(LEPUSContext *ctx, LEPUSValue obj) {
-  return Runtime::make<piper::Object>(makeObjectValue(ctx, obj));
+Object QuickjsHelper::createObject(LEPUSContext *ctx, LEPUSValue obj) {
+  return Runtime::make<Object>(makeObjectValue(ctx, obj));
 }
 
-piper::Value QuickjsHelper::createValue(LEPUSValue value, QuickjsRuntime *rt) {
+Value QuickjsHelper::createValue(LEPUSValue value, QuickjsRuntime *rt) {
   if (LEPUS_IsInteger(value)) {
-    return piper::Value(LEPUS_VALUE_GET_INT(value));
+    return Value(LEPUS_VALUE_GET_INT(value));
   } else if (LEPUS_IsNumber(value)) {
-    return piper::Value(LEPUS_VALUE_GET_FLOAT64(value));
+    return Value(LEPUS_VALUE_GET_FLOAT64(value));
   } else if (LEPUS_IsBool(value)) {
     bool temp = static_cast<bool>(LEPUS_ToBool(rt->getJSContext(), value));
-    return piper::Value(temp);
+    return Value(temp);
   } else if (LEPUS_IsNull(value)) {
-    return piper::Value(nullptr);
+    return Value(nullptr);
   } else if (LEPUS_IsUndefined(value)) {
-    return piper::Value();
+    return Value();
   } else if (LEPUS_IsSymbol(value)) {
-    return piper::Value(createSymbol(rt->getJSContext(), value));
+    return Value(createSymbol(rt->getJSContext(), value));
   } else if (LEPUS_IsString(value)) {
-    return piper::Value(createString(rt->getJSContext(), value));
+    return Value(createString(rt->getJSContext(), value));
   } else if (LEPUS_IsObject(value) || LEPUS_IsException(value)) {
-    return piper::Value(createObject(rt->getJSContext(), value));
+    return Value(createObject(rt->getJSContext(), value));
   } else {
     int64_t tag = LEPUS_VALUE_GET_TAG(value);
     LOGE("createValue failed type is unknown:" << tag);
     std::string msg =
         "createValue failed type is unknown:" + std::to_string(tag);
     rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(msg));
-    return piper::Value();
+    return Value();
   }
 }
 
-LEPUSValue QuickjsHelper::symbolRef(const piper::Symbol &sym) {
+LEPUSValue QuickjsHelper::symbolRef(const Symbol &sym) {
   const QuickjsJSValueValue *quickjs_sym =
       static_cast<const QuickjsJSValueValue *>(Runtime::getPointerValue(sym));
   return quickjs_sym->Get();
 }
 
-LEPUSValue QuickjsHelper::valueRef(const piper::PropNameID &sym) {
+LEPUSValue QuickjsHelper::valueRef(const PropNameID &sym) {
   return static_cast<const QuickjsJSValueValue *>(Runtime::getPointerValue(sym))
       ->Get();
 }
 
-LEPUSValue QuickjsHelper::stringRef(const piper::String &sym) {
+LEPUSValue QuickjsHelper::stringRef(const String &sym) {
   return static_cast<const QuickjsJSValueValue *>(Runtime::getPointerValue(sym))
       ->Get();
 }
 
-LEPUSValue QuickjsHelper::objectRef(const piper::Object &sym) {
+LEPUSValue QuickjsHelper::objectRef(const Object &sym) {
   return static_cast<const QuickjsJSValueValue *>(Runtime::getPointerValue(sym))
       ->Get();
 }
@@ -156,11 +157,9 @@ std::string QuickjsHelper::LEPUSStringToSTLString(LEPUSContext *ctx,
   return ret;
 }
 
-std::optional<piper::Value> QuickjsHelper::call(QuickjsRuntime *rt,
-                                                const piper::Function &f,
-                                                const piper::Object &jsThis,
-                                                LEPUSValue *arguments,
-                                                size_t nArgs) {
+std::optional<Value> QuickjsHelper::call(QuickjsRuntime *rt, const Function &f,
+                                         const Object &jsThis,
+                                         LEPUSValue *arguments, size_t nArgs) {
   LEPUSValue thisObj = QuickjsHelper::objectRef(jsThis);
   LEPUSValue target_object = LEPUS_IsUninitialized(thisObj)
                                  ? LEPUS_GetGlobalObject(rt->getJSContext())
@@ -183,15 +182,15 @@ std::optional<piper::Value> QuickjsHelper::call(QuickjsRuntime *rt,
   // object as `Exception` type. This type is invisible to jsi, thus cannot be
   // identified. Now, return `undefined` here, the same result as V8.
   if (has_exception) {
-    return std::optional<piper::Value>();
+    return std::optional<Value>();
   }
   return createValue(result, rt);
 }
 
-std::optional<piper::Value> QuickjsHelper::callAsConstructor(QuickjsRuntime *rt,
-                                                             LEPUSValue obj,
-                                                             LEPUSValue *args,
-                                                             int nArgs) {
+std::optional<Value> QuickjsHelper::callAsConstructor(QuickjsRuntime *rt,
+                                                      LEPUSValue obj,
+                                                      LEPUSValue *args,
+                                                      int nArgs) {
   LEPUSValue result =
       LEPUS_CallConstructor(rt->getJSContext(), obj, nArgs, args);
   auto result_holder = createValue(result, rt);
@@ -204,7 +203,7 @@ std::optional<piper::Value> QuickjsHelper::callAsConstructor(QuickjsRuntime *rt,
   }
   // Same raison as `QuickjsHelper::call`
   if (has_exception) {
-    return std::optional<piper::Value>();
+    return std::optional<Value>();
   }
   return result_holder;
 }
@@ -244,7 +243,7 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
         maybe_error->name(), maybe_error->message(), maybe_error->stack(), true,
         error::E_BTS_RUNTIME_ERROR_SCRIPT_ERROR));
   }
-  piper::Value evalRes = createValue(val, rt);
+  Value evalRes = createValue(val, rt);
   // createValue did not add ref count to val;
   // so don't use LEPUS_FreeValue
   //   LEPUS_FreeValue(ctx, val);
@@ -270,7 +269,7 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBin(
         maybe_error->name(), maybe_error->message(), maybe_error->stack(), true,
         error::E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR));
   }
-  piper::Value evalRes = createValue(val, rt);
+  Value evalRes = createValue(val, rt);
   // createValue did not add ref count to val;
   // so don't use LEPUS_FreeValue
   // LEPUS_FreeValue(ctx, val);
@@ -314,5 +313,6 @@ LEPUSValue QuickjsHelper::ThrowJsException(
 }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

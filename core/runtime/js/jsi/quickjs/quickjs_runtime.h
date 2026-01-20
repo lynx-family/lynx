@@ -24,7 +24,8 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class QuickjsRuntime : public Runtime, public JSIObserver {
  public:
   QuickjsRuntime();
@@ -75,7 +76,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   LEPUSRuntime *getJSRuntime() const {
     return quickjs_runtime_wrapper_->Runtime();
   };
-  LEPUSValue valueRef(const piper::Value &value);
+  LEPUSValue valueRef(const Value &value);
   LEPUSClassID getFunctionClassID() const;
   LEPUSClassID getObjectClassID() const;
 
@@ -99,7 +100,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
                                       size_t length) override;
 
-  PropNameID createPropNameIDFromString(const piper::String &str) override;
+  PropNameID createPropNameIDFromString(const String &str) override;
 
   std::string utf8(const PropNameID &id) override;
 
@@ -107,46 +108,41 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   std::optional<std::string> symbolToString(const Symbol &symbol) override;
 
-  piper::String createStringFromAscii(const char *str, size_t length) override;
+  String createStringFromAscii(const char *str, size_t length) override;
 
-  piper::String createStringFromUtf8(const uint8_t *utf8,
-                                     size_t length) override;
+  String createStringFromUtf8(const uint8_t *utf8, size_t length) override;
 
-  std::string utf8(const piper::String &string) override;
+  std::string utf8(const String &string) override;
 
   Object createObject() override;
 
   Object createObject(std::shared_ptr<HostObject> ho) override;
 
-  std::weak_ptr<HostObject> getHostObject(const piper::Object &object) override;
+  std::weak_ptr<HostObject> getHostObject(const Object &object) override;
 
-  //  piper::HostFunctionType &getHostFunction(const piper::Function
+  //  HostFunctionType &getHostFunction(const Function
   //  &function) override;
 
-  piper::HostFunctionType f = [](Runtime &rt, const piper::Value &thisVal,
-                                 const piper::Value *args, size_t count) {
-    return piper::Value::undefined();
-  };
-  piper::HostFunctionType &getHostFunction(const piper::Function &) override {
-    return f;
-  }
+  HostFunctionType f = [](Runtime &rt, const Value &thisVal, const Value *args,
+                          size_t count) { return Value::undefined(); };
+  HostFunctionType &getHostFunction(const Function &) override { return f; }
 
   std::optional<Value> getProperty(const Object &object,
                                    const PropNameID &name) override;
 
   std::optional<Value> getProperty(const Object &object,
-                                   const piper::String &name) override;
+                                   const String &name) override;
 
   bool hasProperty(const Object &object, const PropNameID &name) override;
 
-  bool hasProperty(const Object &object, const piper::String &name) override;
+  bool hasProperty(const Object &object, const String &name) override;
 
   bool setPropertyValue(Object &object, const PropNameID &name,
-                        const piper::Value &value) override;
+                        const Value &value) override;
   bool setPropertyValueGC(Object &object, const char *name,
-                          const piper::Value &value) override;
-  bool setPropertyValue(Object &object, const piper::String &name,
-                        const piper::Value &value) override;
+                          const Value &value) override;
+  bool setPropertyValue(Object &object, const String &name,
+                        const Value &value) override;
 
   bool isArray(const Object &object) const override;
 
@@ -154,22 +150,22 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   bool isFunction(const Object &object) const override;
 
-  bool isHostObject(const piper::Object &object) const override;
+  bool isHostObject(const Object &object) const override;
 
-  bool isHostFunction(const piper::Function &function) const override;
+  bool isHostFunction(const Function &function) const override;
 
-  std::optional<piper::Array> getPropertyNames(const Object &object) override;
+  std::optional<Array> getPropertyNames(const Object &object) override;
 
   std::optional<Array> createArray(size_t length) override;
 
   std::optional<BigInt> createBigInt(const std::string &value,
                                      Runtime &rt) override;
 
-  piper::ArrayBuffer createArrayBufferCopy(const uint8_t *bytes,
-                                           size_t byte_length) override;
+  ArrayBuffer createArrayBufferCopy(const uint8_t *bytes,
+                                    size_t byte_length) override;
 
-  piper::ArrayBuffer createArrayBufferNoCopy(
-      std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) override;
+  ArrayBuffer createArrayBufferNoCopy(std::unique_ptr<const uint8_t[]> bytes,
+                                      size_t byte_length) override;
 
   std::optional<size_t> size(const Array &array) override;
 
@@ -181,19 +177,17 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   std::optional<Value> getValueAtIndex(const Array &array, size_t i) override;
 
-  bool setValueAtIndexImpl(Array &array, size_t i,
-                           const piper::Value &value) override;
+  bool setValueAtIndexImpl(Array &array, size_t i, const Value &value) override;
 
-  piper::Function createFunctionFromHostFunction(
-      const PropNameID &name, unsigned int paramCount,
-      piper::HostFunctionType func) override;
+  Function createFunctionFromHostFunction(const PropNameID &name,
+                                          unsigned int paramCount,
+                                          HostFunctionType func) override;
 
-  std::optional<Value> call(const piper::Function &function,
-                            const piper::Value &jsThis,
-                            const piper::Value *args, size_t count) override;
+  std::optional<Value> call(const Function &function, const Value &jsThis,
+                            const Value *args, size_t count) override;
 
-  std::optional<Value> callAsConstructor(const piper::Function &function,
-                                         const piper::Value *args,
+  std::optional<Value> callAsConstructor(const Function &function,
+                                         const Value *args,
                                          size_t count) override;
 
   ScopeState *pushScope() override;
@@ -202,12 +196,11 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   bool strictEquals(const Symbol &a, const Symbol &b) const override;
 
-  bool strictEquals(const piper::String &a,
-                    const piper::String &b) const override;
+  bool strictEquals(const String &a, const String &b) const override;
 
   bool strictEquals(const Object &a, const Object &b) const override;
 
-  bool instanceOf(const Object &o, const piper::Function &f) override;
+  bool instanceOf(const Object &o, const Function &f) override;
 
   std::shared_ptr<Buffer> GetBytecode(
       const std::shared_ptr<const Buffer> &buffer,
@@ -233,7 +226,9 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   JSIObserver *observer_ = nullptr;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 // #ifdef __cplusplus

@@ -26,19 +26,19 @@
 #endif
 
 LYNX_EXPORT void RegisterV8RuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyV8Factory *factory) {
-  lynx::piper::NapiRuntimeProxy::SetFactory(factory);
+    lynx::runtime::js::NapiRuntimeProxyV8Factory *factory) {
+  lynx::runtime::js::NapiRuntimeProxy::SetFactory(factory);
 }
 
 // TODO(yangguangzhao.solace): remove this when jsvm refact finished.
 LYNX_EXPORT void RegisterJSVMRuntimeProxyFactory(
-    lynx::piper::NapiRuntimeProxyJSVMFactory *factory) {
-  lynx::piper::NapiRuntimeProxy::SetJSVMRuntimeProxyFactory(factory);
+    lynx::runtime::js::NapiRuntimeProxyJSVMFactory *factory) {
+  lynx::runtime::js::NapiRuntimeProxy::SetJSVMRuntimeProxyFactory(factory);
 }
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxy::Create(
     std::shared_ptr<Runtime> runtime, runtime::TemplateDelegate *delegate) {
@@ -343,5 +343,7 @@ Napi::Object RestrictedNapiRuntimeProxyDecorator::GetGlobal() {
   return Napi::Object(proxy_->Env(), raw_global);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

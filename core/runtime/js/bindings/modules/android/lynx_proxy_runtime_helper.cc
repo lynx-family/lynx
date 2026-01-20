@@ -33,7 +33,7 @@ void LynxProxyRuntimeHelper::InitWithRuntimeHelper(LynxRuntimeHelper* ptr) {
   LOGI("InitWithRuntimeHelper success.");
 }
 
-std::unique_ptr<piper::Runtime> LynxProxyRuntimeHelper::MakeRuntime() {
+std::unique_ptr<runtime::js::Runtime> LynxProxyRuntimeHelper::MakeRuntime() {
   if (!helper_valid_) {
     return nullptr;
   }
@@ -50,7 +50,7 @@ LYNX_EXPORT bool IsExternalRuntimeHelperValid() {
 
 std::shared_ptr<profile::V8RuntimeProfilerWrapper>
 LynxProxyRuntimeHelper::MakeRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context) {
+    std::shared_ptr<runtime::js::JSIContext> js_context) {
   if (!helper_valid_) {
     return nullptr;
   }

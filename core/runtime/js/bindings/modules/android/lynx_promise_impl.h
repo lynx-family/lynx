@@ -10,7 +10,8 @@
 #include "core/runtime/js/bindings/modules/android/callback_impl.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class LynxPromiseImpl {
  public:
   static bool RegisterJNI(JNIEnv *env);
@@ -25,7 +26,8 @@ class LynxPromiseImpl {
   std::shared_ptr<ModuleCallbackAndroid> rejectCallback_;
   base::android::ScopedGlobalJavaRef<jobject> jni_object_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_LYNX_PROMISE_IMPL_H_

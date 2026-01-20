@@ -128,7 +128,7 @@ void LynxDevToolMediator::SetDevToolPlatformFacade(
   }
 }
 
-std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
 LynxDevToolMediator::InitWhenBackgroundRuntimeCreated(
     const std::string& group_thread_name,
     const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng) {
@@ -1087,7 +1087,7 @@ void LynxDevToolMediator::LogClear(
 }
 
 void LynxDevToolMediator::SendLogEntryAddedEvent(
-    const lynx::piper::ConsoleMessage& message) {
+    const lynx::runtime::js::ConsoleMessage& message) {
   RunOnDevToolThread([message, executor = devtool_executor_] {
     executor->SendLogEntryAddedEvent(message);
   });

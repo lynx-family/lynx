@@ -19,23 +19,23 @@ LynxExposureModule::LynxExposureModule(
     const std::shared_ptr<tasm::harmony::LynxContext>& context)
     : NativeModuleCAPI(), context_(context) {
   RegisterMethod(
-      piper::NativeModuleMethod("stopExposure", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("stopExposure", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxExposureModule::StopExposure));
   RegisterMethod(
-      piper::NativeModuleMethod("resumeExposure", 0),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("resumeExposure", 0),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxExposureModule::ResumeExposure));
   RegisterMethod(
-      piper::NativeModuleMethod("setObserverFrameRate", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("setObserverFrameRate", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxExposureModule::SetObserverFrameRate));
 }
 
 void LynxExposureModule::Destroy() { LOGI("LynxExposureModule Destroy"); }
 
 std::unique_ptr<pub::Value> LynxExposureModule::StopExposure(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {
@@ -46,7 +46,7 @@ std::unique_ptr<pub::Value> LynxExposureModule::StopExposure(
 }
 
 std::unique_ptr<pub::Value> LynxExposureModule::ResumeExposure(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto ctx = context_.lock();
   if (!ctx) {
     return std::unique_ptr<pub::Value>(nullptr);
@@ -56,7 +56,7 @@ std::unique_ptr<pub::Value> LynxExposureModule::ResumeExposure(
 }
 
 std::unique_ptr<pub::Value> LynxExposureModule::SetObserverFrameRate(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {

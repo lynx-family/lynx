@@ -12,8 +12,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8Exception : public JSError {
  public:
   explicit V8Exception(V8Runtime &rt, v8::Local<v8::Value> value)
@@ -23,6 +23,7 @@ class V8Exception : public JSError {
   static std::optional<JSError> TryCatch(V8Runtime &rt,
                                          v8::TryCatch &try_catch);
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_EXCEPTION_H_

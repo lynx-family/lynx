@@ -11,7 +11,8 @@
 #include "core/runtime/js/bytecode/quickjs/quickjs_cache_generator.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace quickjs {
 
 QuickjsDebugInfoProvider::QuickjsDebugInfoProvider() {
@@ -89,5 +90,6 @@ QuickjsDebugInfoProvider &QuickjsBytecodeProviderSrc::GenerateDebugInfo() {
 }
 
 }  // namespace quickjs
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

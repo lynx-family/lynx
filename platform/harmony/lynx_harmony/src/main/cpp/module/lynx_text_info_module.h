@@ -18,7 +18,7 @@ namespace harmony {
 
 class LynxTextInfoModule : public NativeModuleCAPI {
  public:
-  static std::shared_ptr<piper::LynxNativeModule> Create(
+  static std::shared_ptr<runtime::LynxNativeModule> Create(
       const std::shared_ptr<tasm::harmony::LynxContext>& context) {
     return std::make_shared<LynxTextInfoModule>(context);
   }
@@ -32,10 +32,10 @@ class LynxTextInfoModule : public NativeModuleCAPI {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
-  std::unique_ptr<pub::Value> GetTextInfo(std::unique_ptr<pub::Value> args,
-                                          const piper::CallbackMap& callbacks);
+  std::unique_ptr<pub::Value> GetTextInfo(
+      std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks);
 
   void Destroy() override;
 

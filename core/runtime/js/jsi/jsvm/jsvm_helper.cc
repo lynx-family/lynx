@@ -14,7 +14,8 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
 static constexpr int16_t kInspectorPort = 9225;
 static constexpr char kInspectorHost[] = "localhost";
@@ -58,75 +59,74 @@ void JSVMObjectValue::invalidate() {
   delete this;
 }
 
-piper::Value JSVMHelper::createValue(JSVM_Value value, JSVMRuntime* rt) {
+Value JSVMHelper::createValue(JSVM_Value value, JSVMRuntime* rt) {
   JSVM_ValueType type;
 
-  JSVM_CALL_RETURN(rt, OH_JSVM_Typeof, piper::Value(), rt->getEnv(), value,
-                   &type);
+  JSVM_CALL_RETURN(rt, OH_JSVM_Typeof, Value(), rt->getEnv(), value, &type);
   if (type == JSVM_ValueType::JSVM_NUMBER) {
     double result;
-    JSVM_CALL_RETURN(rt, OH_JSVM_GetValueDouble, piper::Value(), rt->getEnv(),
-                     value, &result);
-    return piper::Value(result);
+    JSVM_CALL_RETURN(rt, OH_JSVM_GetValueDouble, Value(), rt->getEnv(), value,
+                     &result);
+    return Value(result);
   }
   if (type == JSVM_ValueType::JSVM_BIGINT) {
     int64_t result;
     bool lossless;
-    JSVM_CALL_RETURN(rt, OH_JSVM_GetValueBigintInt64, piper::Value(),
-                     rt->getEnv(), value, &result, &lossless);
-    return piper::Value(static_cast<int>(result));
+    JSVM_CALL_RETURN(rt, OH_JSVM_GetValueBigintInt64, Value(), rt->getEnv(),
+                     value, &result, &lossless);
+    return Value(static_cast<int>(result));
   }
   if (type == JSVM_ValueType::JSVM_BOOLEAN) {
     bool result;
-    JSVM_CALL_RETURN(rt, OH_JSVM_GetValueBool, piper::Value(), rt->getEnv(),
-                     value, &result);
-    return piper::Value(result);
+    JSVM_CALL_RETURN(rt, OH_JSVM_GetValueBool, Value(), rt->getEnv(), value,
+                     &result);
+    return Value(result);
   }
   if (type == JSVM_ValueType::JSVM_NULL) {
-    return piper::Value(nullptr);
+    return Value(nullptr);
   }
   if (type == JSVM_ValueType::JSVM_UNDEFINED) {
-    return piper::Value();
+    return Value();
   }
   if (type == JSVM_ValueType::JSVM_STRING) {
-    auto result = piper::Value(createString(value, rt));
+    auto result = Value(createString(value, rt));
     return result;
   }
   if (type == JSVM_ValueType::JSVM_OBJECT ||
       type == JSVM_ValueType::JSVM_FUNCTION) {
-    auto result = piper::Value(createObject(value, rt));
+    auto result = Value(createObject(value, rt));
     return result;
   }
   if (type == JSVM_ValueType::JSVM_SYMBOL) {
-    auto result = piper::Value(createSymbol(value, rt));
+    auto result = Value(createSymbol(value, rt));
     return result;
   }
   // WHAT ARE YOU
   abort();
 }
 
-void JSVMHelper::symbolRef(const piper::Symbol& sym, JSVM_Value* value) {
+void JSVMHelper::symbolRef(const Symbol& sym, JSVM_Value* value) {
   const JSVMSymbolValue* jsvm_sym =
       static_cast<const JSVMSymbolValue*>(Runtime::getPointerValue(sym));
   JSVM_CALL(jsvm_sym->rt_, OH_JSVM_GetReferenceValue, jsvm_sym->rt_->getEnv(),
             jsvm_sym->sym_ref_, value);
 }
 
-void JSVMHelper::stringRef(const piper::String& str, JSVM_Value* value) {
+void JSVMHelper::stringRef(const String& str, JSVM_Value* value) {
   auto jsvm_str =
       static_cast<const JSVMStringValue*>(Runtime::getPointerValue(str));
   JSVM_CALL(jsvm_str->rt_, OH_JSVM_GetReferenceValue, jsvm_str->rt_->getEnv(),
             jsvm_str->str_ref_, value);
 }
 
-void JSVMHelper::stringRef(const piper::PropNameID& sym, JSVM_Value* value) {
+void JSVMHelper::stringRef(const PropNameID& sym, JSVM_Value* value) {
   auto jsvm_str =
       static_cast<const JSVMStringValue*>(Runtime::getPointerValue(sym));
   JSVM_CALL(jsvm_str->rt_, OH_JSVM_GetReferenceValue, jsvm_str->rt_->getEnv(),
             jsvm_str->str_ref_, value);
 }
 
-void JSVMHelper::objectRef(const piper::Object& obj, JSVM_Value* value) {
+void JSVMHelper::objectRef(const Object& obj, JSVM_Value* value) {
   const JSVMObjectValue* jsvm_obj =
       static_cast<const JSVMObjectValue*>(Runtime::getPointerValue(obj));
   JSVM_CALL(jsvm_obj->rt_, OH_JSVM_GetReferenceValue, jsvm_obj->rt_->getEnv(),
@@ -145,74 +145,72 @@ std::string JSVMHelper::JSStringToSTLString(JSVM_Value s, JSVMRuntime* rt) {
   return output_str;
 }
 
-piper::Symbol JSVMHelper::createSymbol(JSVM_Value sym, JSVMRuntime* rt) {
-  return Runtime::make<piper::Symbol>(makeSymbolValue(sym, rt));
+Symbol JSVMHelper::createSymbol(JSVM_Value sym, JSVMRuntime* rt) {
+  return Runtime::make<Symbol>(makeSymbolValue(sym, rt));
 }
 
-piper::String JSVMHelper::createString(JSVM_Value str, JSVMRuntime* rt) {
-  return Runtime::make<piper::String>(makeStringValue(str, rt));
+String JSVMHelper::createString(JSVM_Value str, JSVMRuntime* rt) {
+  return Runtime::make<String>(makeStringValue(str, rt));
 }
 
-piper::PropNameID JSVMHelper::createPropNameID(JSVM_Value value,
-                                               JSVMRuntime* rt) {
+PropNameID JSVMHelper::createPropNameID(JSVM_Value value, JSVMRuntime* rt) {
   JSVM_ValueType value_type = JSVM_ValueType::JSVM_UNDEFINED;
   JSVM_CALL(rt, OH_JSVM_Typeof, rt->getEnv(), value, &value_type);
 
   if (value_type == JSVM_ValueType::JSVM_STRING) {
-    return Runtime::make<piper::PropNameID>(makeStringValue(value, rt));
+    return Runtime::make<PropNameID>(makeStringValue(value, rt));
   }
 
   if (value_type == JSVM_ValueType::JSVM_SYMBOL) {
-    return Runtime::make<piper::PropNameID>(makeSymbolValue(value, rt));
+    return Runtime::make<PropNameID>(makeSymbolValue(value, rt));
   }
   abort();
 }
 
-piper::Object JSVMHelper::createObject(JSVMRuntime* rt) {
+Object JSVMHelper::createObject(JSVMRuntime* rt) {
   return createObject(nullptr, rt);
 }
 
-piper::Object JSVMHelper::createObject(JSVM_Value obj, JSVMRuntime* rt) {
-  return Runtime::make<piper::Object>(makeObjectValue(obj, rt));
+Object JSVMHelper::createObject(JSVM_Value obj, JSVMRuntime* rt) {
+  return Runtime::make<Object>(makeObjectValue(obj, rt));
 }
 
-piper::Runtime::PointerValue* JSVMHelper::makeSymbolValue(JSVM_Value sym_val,
-                                                          JSVMRuntime* rt) {
+Runtime::PointerValue* JSVMHelper::makeSymbolValue(JSVM_Value sym_val,
+                                                   JSVMRuntime* rt) {
   return new JSVMSymbolValue(rt, sym_val);
 }
 
-piper::Runtime::PointerValue* JSVMHelper::makeStringValue(JSVM_Value str_val,
-                                                          JSVMRuntime* rt) {
+Runtime::PointerValue* JSVMHelper::makeStringValue(JSVM_Value str_val,
+                                                   JSVMRuntime* rt) {
   if (str_val == nullptr) {
     JSVM_CALL(rt, OH_JSVM_CreateStringUtf8, rt->getEnv(), "", 0, &str_val);
   }
   return new JSVMStringValue(rt, str_val);
 }
 
-piper::Runtime::PointerValue* JSVMHelper::makeObjectValue(JSVM_Value obj_val,
-                                                          JSVMRuntime* rt) {
+Runtime::PointerValue* JSVMHelper::makeObjectValue(JSVM_Value obj_val,
+                                                   JSVMRuntime* rt) {
   if (obj_val == nullptr) {
     JSVM_CALL(rt, OH_JSVM_CreateObject, rt->getEnv(), &obj_val);
   }
   return new JSVMObjectValue(rt, obj_val);
 }
 
-std::optional<piper::Value> JSVMHelper::call(piper::JSVMRuntime* rt,
-                                             const piper::Function& f,
-                                             const piper::Object& jsThis,
-                                             JSVM_Value* args, size_t nArgs) {
+std::optional<Value> JSVMHelper::call(JSVMRuntime* rt, const Function& f,
+                                      const Object& jsThis, JSVM_Value* args,
+                                      size_t nArgs) {
   HandleScopeWrapper scope(rt->getEnv());
   JSVM_Value this_value = nullptr;
   objectRef(jsThis, &this_value);
   if (this_value == nullptr) {
-    JSVM_CALL_RETURN(rt, OH_JSVM_GetGlobal, std::optional<piper::Value>(),
+    JSVM_CALL_RETURN(rt, OH_JSVM_GetGlobal, std::optional<Value>(),
                      rt->getEnv(), &this_value);
   }
   JSVM_Value func_vale = nullptr;
   objectRef(f, &func_vale);
 
   JSVM_Value result = nullptr;
-  JSVM_CALL_RETURN(rt, OH_JSVM_CallFunction, std::optional<piper::Value>(),
+  JSVM_CALL_RETURN(rt, OH_JSVM_CallFunction, std::optional<Value>(),
                    rt->getEnv(), this_value, func_vale, nArgs, args, &result);
 
   if (result == nullptr) {
@@ -223,15 +221,17 @@ std::optional<piper::Value> JSVMHelper::call(piper::JSVMRuntime* rt,
     // https://chromium.googlesource.com/v8/v8.git/+/dc7926bebd49d8749074c414dcf08a846bae0007/src/api/api.cc#5337
     rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
         "Exception calling object as function. MaybeLocal empty."));
-    return std::optional<piper::Value>();
+    return std::optional<Value>();
   }
   return createValue(result, rt);
 }
 
-std::optional<piper::Value> JSVMHelper::callAsConstructor(
-    piper::JSVMRuntime* rt, JSVM_Value obj, JSVM_Value* args, int nArgs) {
+std::optional<Value> JSVMHelper::callAsConstructor(JSVMRuntime* rt,
+                                                   JSVM_Value obj,
+                                                   JSVM_Value* args,
+                                                   int nArgs) {
   // TODO(yangguangzhao.solace): Missing corresponding API
-  return std::optional<piper::Value>();
+  return std::optional<Value>();
 }
 
 void JSVMHelper::ConvertToJSVMString(JSVMRuntime* rt, const std::string& s,
@@ -257,5 +257,6 @@ void JSVMHelper::CloseInspector(JSVMRuntime* rt) {
   JSVM_CALL(rt, OH_JSVM_CloseInspector, rt->getEnv());
 }
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

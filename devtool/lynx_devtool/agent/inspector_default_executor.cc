@@ -111,7 +111,7 @@ void InspectorDefaultExecutor::LogClear(
 }
 
 void InspectorDefaultExecutor::SendLogEntryAddedEvent(
-    const lynx::piper::ConsoleMessage& message) {
+    const lynx::runtime::js::ConsoleMessage& message) {
   console_msg_manager_->LogEntryAdded(message);
 }
 

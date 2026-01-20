@@ -17,17 +17,17 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace detail {
-JSVMHostFunctionProxy::JSVMHostFunctionProxy(piper::HostFunctionType host_func,
+JSVMHostFunctionProxy::JSVMHostFunctionProxy(HostFunctionType host_func,
                                              JSVMRuntime* rt)
     : HostObjectWrapperBase(
-          rt, std::make_unique<piper::HostFunctionType>(std::move(host_func))) {
-}
+          rt, std::make_unique<HostFunctionType>(std::move(host_func))) {}
 
 JSVM_Value JSVMHostFunctionProxy::createFunctionFromHostFunction(
-    JSVMRuntime* rt, JSVM_Env env, const piper::PropNameID& name,
-    unsigned int paramCount, piper::HostFunctionType func) {
+    JSVMRuntime* rt, JSVM_Env env, const PropNameID& name,
+    unsigned int paramCount, HostFunctionType func) {
   HandleScopeWrapper scope(env);
   JSVM_Ref function_template_ref = rt->GetHostFunctionTemplate();
   JSVM_Value function_template = nullptr;
@@ -102,7 +102,7 @@ JSVM_Value JSVMHostFunctionProxy::FunctionCallback(JSVM_Env env,
   JSVM_CALL(nullptr, OH_JSVM_Unwrap, env, this_value,
             reinterpret_cast<void**>(&proxy_ptr));
   JSVMRuntime* rt = nullptr;
-  std::shared_ptr<piper::HostFunctionType> lock_host_func;
+  std::shared_ptr<HostFunctionType> lock_host_func;
   if (proxy_ptr == nullptr ||
       !proxy_ptr->GetRuntimeAndHost(rt, lock_host_func)) {
     LOGE("JSVMHostFunctionProxy::FunctionCallback Error!");
@@ -153,5 +153,6 @@ void JSVMHostFunctionProxy::onFinalize(JSVM_Env env, void* finalizeData,
 }
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

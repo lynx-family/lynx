@@ -14,7 +14,8 @@
 #include "core/runtime/js/bytecode/js_cache_manager.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 void OnBytecodeResponse(JNIEnv* env,
@@ -26,7 +27,8 @@ std::unique_ptr<BytecodeGenerateCallback> CreateBytecodeCallback(
     JNIEnv* env, jobject callback);
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_ANDROID_BYTECODE_CALLBACK_H_

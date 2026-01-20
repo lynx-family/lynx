@@ -316,7 +316,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 }
 
-- (lynx::piper::ModuleFactoryDarwin*)getModuleFactory {
+- (lynx::runtime::js::ModuleFactoryDarwin*)getModuleFactory {
   auto factory = module_factory_.lock();
   if (factory) {
     return factory.get();

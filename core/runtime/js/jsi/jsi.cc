@@ -19,8 +19,8 @@
 #include "core/runtime/js/jsi/instrumentation.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 PreparedJavaScript::~PreparedJavaScript() = default;
 
 Value HostObject::get(Runtime*, const PropNameID&) { return Value(); }
@@ -326,7 +326,7 @@ JSError::JSError(Runtime& rt, Value&& value, std::string message)
 }
 
 void JSError::setValue(Runtime& rt, Value&& value) {
-  value_ = std::make_shared<piper::Value>(std::move(value));
+  value_ = std::make_shared<Value>(std::move(value));
   // If another JSError happen when construct a JSError, it may enter a dead
   // loop. Return directly to avoid dead loop.
   if (rt.IsInJSErrorConstructionProcessing()) {
@@ -372,5 +372,7 @@ void JSError::setValue(Runtime& rt, Value&& value) {
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

@@ -16,9 +16,8 @@ namespace android {
 
 class PiperData {
  public:
-  static std::optional<piper::Value> jsObjectFromPiperData(JNIEnv* env,
-                                                           piper::Runtime* rt,
-                                                           jobject json);
+  static std::optional<runtime::js::Value> jsObjectFromPiperData(
+      JNIEnv* env, runtime::js::Runtime* rt, jobject json);
 };
 
 }  // namespace android

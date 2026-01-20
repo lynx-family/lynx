@@ -27,13 +27,13 @@ class LynxFocusModule : public LynxModuleBase,
   ~LynxFocusModule() override;
 
   std::unique_ptr<lynx::pub::Value> setTriggerInterval(
-      std::unique_ptr<lynx::pub::Value>, const lynx::piper::CallbackMap&);
+      std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
   std::unique_ptr<lynx::pub::Value> getCurrentFocus(
-      std::unique_ptr<lynx::pub::Value>, const lynx::piper::CallbackMap&);
+      std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
   std::unique_ptr<lynx::pub::Value> navigateByDirection(
-      std::unique_ptr<lynx::pub::Value>, const lynx::piper::CallbackMap&);
+      std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
  private:
   static const std::string name_;

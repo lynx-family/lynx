@@ -52,14 +52,14 @@ void SerializeCompilerOptions(const CompileOptions &compile_options,
 
 /// method to serialize a template_bundle into json string,
 /// be careful if you need to call this method.
-void SerializeBTSBundle(const piper::JsBundle &js_bundle,
+void SerializeBTSBundle(const runtime::js::JsBundle &js_bundle,
                         rapidjson::Document &document) {
   auto js_files = js_bundle.GetAllJsFiles();
   auto &allocator = document.GetAllocator();
   std::for_each(
       js_files.begin(), js_files.end(),
       [&document,
-       &allocator](const std::pair<std::string, piper::JsContent> &pair) {
+       &allocator](const std::pair<std::string, runtime::js::JsContent> &pair) {
         auto js_content = pair.second;
         rapidjson::Document js_content_document(&allocator);
         js_content_document.SetObject();

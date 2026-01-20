@@ -7,7 +7,8 @@
 #include "core/base/js_constants.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace platform_jsi {
 
 std::unique_ptr<JSIObject> JSIObject::Null() {
@@ -36,36 +37,31 @@ std::unique_ptr<JSIObject> JSIObject::Create(
   return std::unique_ptr<JSIObject>(new JSIObjectArray(std::move(value)));
 }
 
-std::optional<Value> JSIObjectBool::ConvertToValue(lynx::piper::Runtime *rt) {
+std::optional<Value> JSIObjectBool::ConvertToValue(Runtime *rt) {
   return std::optional<Value>(value_);
 }
 
-std::optional<Value> JSIObjectNumber::ConvertToValue(lynx::piper::Runtime *rt) {
+std::optional<Value> JSIObjectNumber::ConvertToValue(Runtime *rt) {
   return std::optional<Value>(value_);
 }
 
-std::optional<Value> JSIObjectJLong::ConvertToValue(lynx::piper::Runtime *rt) {
-  if (value_ < piper::kMinJavaScriptNumber ||
-      value_ > piper::kMaxJavaScriptNumber) {
-    auto bigint_opt =
-        piper::BigInt::createWithString(*rt, std::to_string(value_));
-    return bigint_opt ? piper::Value(std::move(*bigint_opt))
-                      : piper::Value::undefined();
+std::optional<Value> JSIObjectJLong::ConvertToValue(Runtime *rt) {
+  if (value_ < kMinJavaScriptNumber || value_ > kMaxJavaScriptNumber) {
+    auto bigint_opt = BigInt::createWithString(*rt, std::to_string(value_));
+    return bigint_opt ? Value(std::move(*bigint_opt)) : Value::undefined();
   }
-  return piper::Value(static_cast<double>(value_));
+  return Value(static_cast<double>(value_));
 }
 
-std::optional<Value> JSIObjectString::ConvertToValue(lynx::piper::Runtime *rt) {
-  return piper::String::createFromUtf8(*rt, value_);
+std::optional<Value> JSIObjectString::ConvertToValue(Runtime *rt) {
+  return String::createFromUtf8(*rt, value_);
 }
 
-std::optional<Value> JSIObjectHostObject::ConvertToValue(
-    lynx::piper::Runtime *rt) {
-  return value_ ? piper::Object::createFromHostObject(*rt, value_)
-                : piper::Value::null();
+std::optional<Value> JSIObjectHostObject::ConvertToValue(Runtime *rt) {
+  return value_ ? Object::createFromHostObject(*rt, value_) : Value::null();
 }
 
-std::optional<Value> JSIObjectArray::ConvertToValue(lynx::piper::Runtime *rt) {
+std::optional<Value> JSIObjectArray::ConvertToValue(Runtime *rt) {
   auto array = Array::createWithLength(*rt, value_.size());
   int32_t index = 0;
   for (const auto &item : value_) {
@@ -77,5 +73,6 @@ std::optional<Value> JSIObjectArray::ConvertToValue(lynx::piper::Runtime *rt) {
 }
 
 }  // namespace platform_jsi
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

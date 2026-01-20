@@ -30,10 +30,10 @@ class LynxExposureModule
   ~LynxExposureModule() override;
 
   std::unique_ptr<lynx::pub::Value> stopExposure(
-      std::unique_ptr<lynx::pub::Value>, const lynx::piper::CallbackMap&);
+      std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
   std::unique_ptr<lynx::pub::Value> resumeExposure(
-      std::unique_ptr<lynx::pub::Value>, const lynx::piper::CallbackMap&);
+      std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
  private:
   static const std::string name_;

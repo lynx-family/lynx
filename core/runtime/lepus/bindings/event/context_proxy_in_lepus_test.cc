@@ -5,7 +5,8 @@
 #include "core/runtime/lepus/bindings/event/context_proxy_in_lepus_test.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 TEST_F(ContextProxyInLepusTest, ContextProxyInLepusTest0) {
@@ -13,5 +14,6 @@ TEST_F(ContextProxyInLepusTest, ContextProxyInLepusTest0) {
 }
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

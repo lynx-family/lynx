@@ -32,7 +32,7 @@ std::string TasmPlatformInvokerDarwin::TranslateResourceForTheme(const std::stri
 
 lepus::Value TasmPlatformInvokerDarwin::TriggerLepusMethod(const std::string& js_method_name,
                                                            const lepus::Value& args) {
-  lepus::Value value = lynx::piper::TriggerLepusMethod(js_method_name, args, _render);
+  lepus::Value value = lynx::runtime::js::TriggerLepusMethod(js_method_name, args, _render);
   if (!value.IsNil()) {
     return value;
   }
@@ -41,7 +41,7 @@ lepus::Value TasmPlatformInvokerDarwin::TriggerLepusMethod(const std::string& js
 
 void TasmPlatformInvokerDarwin::TriggerLepusMethodAsync(const std::string& method_name,
                                                         const lepus::Value& args) {
-  lynx::piper::TriggerLepusMethodAsync(method_name, args, _render);
+  lynx::runtime::js::TriggerLepusMethodAsync(method_name, args, _render);
 }
 
 void TasmPlatformInvokerDarwin::GetI18nResource(const std::string& channel,

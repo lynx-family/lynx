@@ -18,7 +18,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 class MockModuleDelegate : public ModuleDelegate {
  public:
@@ -43,7 +44,7 @@ class MockModuleDelegate : public ModuleDelegate {
   MOCK_METHOD(void, OnMethodInvoked,
               (const std::string&, const std::string&, int32_t code),
               (override));
-  void FlushJSBTiming(piper::NativeModuleInfo timing) override{};
+  void FlushJSBTiming(NativeModuleInfo timing) override{};
   void RunOnJSThread(base::closure func) override{};
   void RunOnPlatformThread(base::closure func) override{};
 
@@ -53,6 +54,7 @@ class MockModuleDelegate : public ModuleDelegate {
 };
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_MOCK_MODULE_DELEGATE_H_

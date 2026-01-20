@@ -18,8 +18,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 bool QuickjsException::ReportExceptionIfNeeded(QuickjsRuntime& rt,
                                                LEPUSValue value) {
   auto maybe_error = TryCatch(rt, value);
@@ -41,5 +41,7 @@ std::optional<QuickjsException> QuickjsException::TryCatch(QuickjsRuntime& rt,
   return std::nullopt;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

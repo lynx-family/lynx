@@ -21,7 +21,7 @@ class V8RuntimeProfilerWrapperImpl : public V8RuntimeProfilerWrapper {
 
   V8RuntimeProfilerWrapperImpl();
   ~V8RuntimeProfilerWrapperImpl();
-  void Initialize(std::shared_ptr<piper::V8IsolateInstance> vm);
+  void Initialize(std::shared_ptr<runtime::js::V8IsolateInstance> vm);
   virtual void StartProfiling() override;
   virtual std::unique_ptr<V8CpuProfile> StopProfiling() override;
   virtual void SetupProfiling(int32_t sampling_interval) override;
@@ -29,7 +29,7 @@ class V8RuntimeProfilerWrapperImpl : public V8RuntimeProfilerWrapper {
  private:
   void FlattenProfileNodes(std::vector<V8CpuProfileNode>&,
                            const v8::CpuProfileNode* profile_node);
-  std::weak_ptr<piper::V8IsolateInstance> v8_isolate_;
+  std::weak_ptr<runtime::js::V8IsolateInstance> v8_isolate_;
   v8::Local<v8::String> title_;
   v8::CpuProfiler* cpu_profiler_;
   uint32_t profiling_count_;

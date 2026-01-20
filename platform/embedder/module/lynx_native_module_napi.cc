@@ -28,8 +28,8 @@ namespace lynx {
 namespace embedder {
 
 using LynxModuleFunctionData =
-    std::pair<std::shared_ptr<piper::LynxModuleCallback>,
-              std::weak_ptr<piper::LynxNativeModule::Delegate>>;
+    std::pair<std::shared_ptr<runtime::LynxModuleCallback>,
+              std::weak_ptr<runtime::LynxNativeModule::Delegate>>;
 
 LynxNativeModuleNAPI::LynxNativeModuleNAPI(Napi::Env env, napi_value exports)
     : env_(env) {
@@ -73,7 +73,7 @@ void LynxNativeModuleNAPI::ExtractMethods() {
     env_->napi_create_reference(env_, member, 1, &member_ref);
     if (value_type == napi_valuetype::napi_function) {
       method_refs_[str] = member_ref;
-      methods_.emplace(str, piper::NativeModuleMethod(str, 0));
+      methods_.emplace(str, runtime::NativeModuleMethod(str, 0));
     } else {
       field_refs_[str] = member_ref;
     }
@@ -93,7 +93,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string>
 LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
                                    std::unique_ptr<pub::Value> args,
                                    size_t count,
-                                   const piper::CallbackMap& callbacks) {
+                                   const runtime::CallbackMap& callbacks) {
   auto delegate = delegate_.lock();
   if (!delegate) {
     return std::unique_ptr<pub::Value>(nullptr);
@@ -109,7 +109,7 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
     auto arg = args->GetValueAtIndex(static_cast<uint32_t>(i));
     napi_value capi_arg;
     // Check if the parameter at the current index is a callback
-    piper::CallbackMap::const_iterator iter = callbacks.find(i);
+    runtime::CallbackMap::const_iterator iter = callbacks.find(i);
     if (iter != callbacks.end()) {
       auto func_data = new LynxModuleFunctionData(iter->second, delegate_);
       env_->napi_create_function(env_, "jsb callback", 0,
@@ -119,7 +119,7 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
           env_, capi_arg, func_data,
           [](napi_env env, void* data, void* hint) {
             delete reinterpret_cast<
-                std::pair<std::shared_ptr<piper::LynxModuleCallback>,
+                std::pair<std::shared_ptr<runtime::LynxModuleCallback>,
                           std::weak_ptr<Delegate>>*>(data);
           },
           nullptr, nullptr);

@@ -13,8 +13,8 @@
 #include "core/runtime/common/napi/napi_environment.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class NapiLoaderJS : public NapiEnvironment::Delegate {
  public:
   NapiLoaderJS(const std::string& id);
@@ -47,7 +47,9 @@ class NapiLoaderJS : public NapiEnvironment::Delegate {
 #endif
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_NAPI_NAPI_LOADER_JS_H_

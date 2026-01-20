@@ -15,7 +15,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace platform_jsi {
 
 /**
@@ -30,7 +31,7 @@ class JSIObject {
   JSIObject(JSIObject &&) = delete;
   JSIObject &operator=(JSIObject &&) = delete;
 
-  virtual std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) = 0;
+  virtual std::optional<Value> ConvertToValue(Runtime *rt) = 0;
 
   static std::unique_ptr<JSIObject> Null();
   static std::unique_ptr<JSIObject> Create(bool value);
@@ -47,7 +48,7 @@ class JSIObject {
 
 class JSIObjectBool : public JSIObject {
  public:
-  std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) override;
+  std::optional<Value> ConvertToValue(Runtime *rt) override;
 
  private:
   friend JSIObject;
@@ -57,7 +58,7 @@ class JSIObjectBool : public JSIObject {
 
 class JSIObjectNumber : public JSIObject {
  public:
-  std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) override;
+  std::optional<Value> ConvertToValue(Runtime *rt) override;
 
  private:
   friend JSIObject;
@@ -67,7 +68,7 @@ class JSIObjectNumber : public JSIObject {
 
 class JSIObjectJLong : public JSIObject {
  public:
-  std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) override;
+  std::optional<Value> ConvertToValue(Runtime *rt) override;
 
  private:
   friend JSIObject;
@@ -77,7 +78,7 @@ class JSIObjectJLong : public JSIObject {
 
 class JSIObjectString : public JSIObject {
  public:
-  std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) override;
+  std::optional<Value> ConvertToValue(Runtime *rt) override;
 
  private:
   friend JSIObject;
@@ -87,7 +88,7 @@ class JSIObjectString : public JSIObject {
 
 class JSIObjectHostObject : public JSIObject {
  public:
-  std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) override;
+  std::optional<Value> ConvertToValue(Runtime *rt) override;
 
  private:
   friend JSIObject;
@@ -98,7 +99,7 @@ class JSIObjectHostObject : public JSIObject {
 
 class JSIObjectArray : public JSIObject {
  public:
-  std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) override;
+  std::optional<Value> ConvertToValue(Runtime *rt) override;
 
  private:
   friend JSIObject;
@@ -108,7 +109,8 @@ class JSIObjectArray : public JSIObject {
 };
 
 }  // namespace platform_jsi
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_PLATFORM_JSI_JSI_OBJECT_UTILS_H_

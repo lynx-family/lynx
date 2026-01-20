@@ -30,7 +30,7 @@ UIDelegateHarmony::CreatePropBundleCreator() {
   return std::make_unique<PropBundleCreatorHarmony>();
 }
 
-std::unique_ptr<piper::NativeModuleFactory>
+std::unique_ptr<runtime::NativeModuleFactory>
 UIDelegateHarmony::GetCustomModuleFactory() {
   return std::move(module_factory_);
 }

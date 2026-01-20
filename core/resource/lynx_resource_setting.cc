@@ -5,13 +5,15 @@
 #include "core/resource/lynx_resource_setting.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::shared_ptr<LynxResourceSetting> LynxResourceSetting::getInstance() {
   static std::shared_ptr<LynxResourceSetting> instance =
       std::make_shared<LynxResourceSetting>();
   return instance;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

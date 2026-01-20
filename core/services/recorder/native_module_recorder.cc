@@ -12,14 +12,14 @@ namespace lynx {
 namespace tasm {
 namespace recorder {
 
-void NativeModuleRecorder::RecordSharedData(const piper::Value* args,
-                                            piper::Runtime* rt,
+void NativeModuleRecorder::RecordSharedData(const runtime::js::Value* args,
+                                            runtime::js::Runtime* rt,
                                             int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
     return;
   }
 
-  piper::Scope scope(*rt);
+  runtime::js::Scope scope(*rt);
 
   rapidjson::Value value = ParsePiperValueToJsonValue(args[1], rt);
 
@@ -29,12 +29,12 @@ void NativeModuleRecorder::RecordSharedData(const piper::Value* args,
 
 void NativeModuleRecorder::RecordFunctionCall(
     const char* module_name, const char* js_method_name, uint32_t argc,
-    const piper::Value* args, const int64_t* callbacks, uint32_t count,
-    piper::Value& res, piper::Runtime* rt, int64_t record_id) {
+    const runtime::js::Value* args, const int64_t* callbacks, uint32_t count,
+    runtime::js::Value& res, runtime::js::Runtime* rt, int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
     return;
   }
-  piper::Scope scope(*rt);
+  runtime::js::Scope scope(*rt);
 
   rapidjson::Document::AllocatorType& allocator =
       TestBenchBaseRecorder::GetInstance().GetAllocator();
@@ -70,8 +70,8 @@ void NativeModuleRecorder::RecordFunctionCall(
 
 void NativeModuleRecorder::RecordCallback(const char* module_name,
                                           const char* js_method_name,
-                                          const piper::Value& args,
-                                          piper::Runtime* rt,
+                                          const runtime::js::Value& args,
+                                          runtime::js::Runtime* rt,
                                           int64_t callback_id,
                                           int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
@@ -89,12 +89,10 @@ void NativeModuleRecorder::RecordCallback(const char* module_name,
       module_name, js_method_name, params_val, callback_id, record_id);
 }
 
-void NativeModuleRecorder::RecordCallback(const char* module_name,
-                                          const char* js_method_name,
-                                          const piper::Value* args,
-                                          uint32_t count, piper::Runtime* rt,
-                                          int64_t callback_id,
-                                          int64_t record_id) {
+void NativeModuleRecorder::RecordCallback(
+    const char* module_name, const char* js_method_name,
+    const runtime::js::Value* args, uint32_t count, runtime::js::Runtime* rt,
+    int64_t callback_id, int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
     return;
   }
@@ -117,8 +115,9 @@ void NativeModuleRecorder::RecordCallback(const char* module_name,
 
 void NativeModuleRecorder::RecordGlobalEvent(std::string module_id,
                                              std::string method_id,
-                                             const piper::Value* args,
-                                             uint64_t count, piper::Runtime* rt,
+                                             const runtime::js::Value* args,
+                                             uint64_t count,
+                                             runtime::js::Runtime* rt,
                                              int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
     return;
@@ -179,8 +178,8 @@ void NativeModuleRecorder::RecordEventAndroid(
 }
 
 rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
-    const piper::Value& res, piper::Runtime* rt) {
-  piper::Scope scope(*rt);
+    const runtime::js::Value& res, runtime::js::Runtime* rt) {
+  runtime::js::Scope scope(*rt);
   rapidjson::Document::AllocatorType& allocator =
       TestBenchBaseRecorder::GetInstance().GetAllocator();
 
@@ -200,12 +199,12 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
   } else if (res.isSymbol()) {
     return_val.SetString(res.getSymbol(*rt).toString(*rt)->c_str(), allocator);
   } else if (res.isObject()) {
-    piper::Object piper_obj = res.getObject(*rt);
+    runtime::js::Object piper_obj = res.getObject(*rt);
 
     if (piper_obj.isArray(*rt)) {
       // Parse Array
       return_val.SetArray();
-      piper::Array piper_array = piper_obj.getArray(*rt);
+      runtime::js::Array piper_array = piper_obj.getArray(*rt);
       auto array_size = piper_array.size(*rt);
       if (array_size) {
         for (size_t index = 0; index != *array_size; index++) {
@@ -238,7 +237,7 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
       for (auto& property_name : property_names) {
         rapidjson::Value key(rapidjson::kStringType);
         key.SetString(property_name.utf8(*rt).c_str(), allocator);
-        piper::Value piper_val = host_obj->get(rt, property_name);
+        runtime::js::Value piper_val = host_obj->get(rt, property_name);
         rapidjson::Value val = ParsePiperValueToJsonValue(piper_val, rt);
         return_val.AddMember(key, val, allocator);
       }

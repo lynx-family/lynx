@@ -11,7 +11,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace testing {
 
 class MockRuntimeInspectorManager : public RuntimeInspectorManager {
@@ -26,7 +27,8 @@ class MockRuntimeInspectorManager : public RuntimeInspectorManager {
 };
 
 }  // namespace testing
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_INSPECTOR_RUNTIME_INSPECTOR_MANAGER_UNITTEST_H_

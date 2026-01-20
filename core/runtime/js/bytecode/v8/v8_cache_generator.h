@@ -11,7 +11,8 @@
 #include "core/runtime/js/bytecode/cache_generator.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 class V8CacheGenerator : public CacheGenerator {
@@ -28,7 +29,8 @@ class V8CacheGenerator : public CacheGenerator {
 };
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_V8_V8_CACHE_GENERATOR_H_

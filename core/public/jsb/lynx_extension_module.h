@@ -21,8 +21,7 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
 class LynxExtensionModule : public LynxNativeModule {
  public:
   virtual void SetLynxViewCreatedState(tasm::UIDelegate* ui_delegate) = 0;
@@ -30,8 +29,7 @@ class LynxExtensionModule : public LynxNativeModule {
   virtual void SetRuntimeInitState(
       const fml::RefPtr<fml::TaskRunner>& task_runner) = 0;
   virtual void SetRuntimeAttachedState(
-      napi_env env,
-      const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) = 0;
+      napi_env env, const std::shared_ptr<IVSyncObserver>& vsync_observer) = 0;
   virtual void SetRuntimeReadyState(napi_env env, napi_value lynx,
                                     const std::string& url) = 0;
   virtual void SetRuntimeDetachedState() = 0;
@@ -39,20 +37,18 @@ class LynxExtensionModule : public LynxNativeModule {
   virtual void SetEnteringForegroundState() = 0;
   virtual void SetEnteringBackgroundState() = 0;
 
-  void RegisterMethod(
-      const piper::NativeModuleMethod& method,
-      piper::LynxNativeModule::NativeModuleInvocation invocation) {
+  void RegisterMethod(const NativeModuleMethod& method,
+                      LynxNativeModule::NativeModuleInvocation invocation) {
     methods_.emplace(method.name, method);
     invocations_.emplace(method.name, std::move(invocation));
   }
 
  protected:
-  std::unordered_map<std::string,
-                     piper::LynxNativeModule::NativeModuleInvocation>
+  std::unordered_map<std::string, LynxNativeModule::NativeModuleInvocation>
       invocations_;
 };
 
-}  // namespace piper
+}  // namespace runtime
 }  // namespace lynx
 
 #ifdef USE_PRIMJS_NAPI

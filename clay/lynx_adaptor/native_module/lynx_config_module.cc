@@ -20,11 +20,11 @@ const std::string LynxConfigModule::name_ = "LynxConfigModule";
 LynxConfigModule::LynxConfigModule(uint32_t view_context_id,
                                    fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
-  lynx::piper::NativeModuleMethod set_dump_info("setDumpInfoToDevtoolEnabled",
-                                                1);
+  lynx::runtime::NativeModuleMethod set_dump_info("setDumpInfoToDevtoolEnabled",
+                                                  1);
   RegisterMethod(set_dump_info, &LynxConfigModule::setDumpInfoToDevtoolEnabled);
 
-  lynx::piper::NativeModuleMethod set_render_options("setRenderOptions", 1);
+  lynx::runtime::NativeModuleMethod set_render_options("setRenderOptions", 1);
   RegisterMethod(set_render_options, &LynxConfigModule::setRenderOptions);
 }
 
@@ -32,7 +32,7 @@ LynxConfigModule::~LynxConfigModule() = default;
 
 std::unique_ptr<lynx::pub::Value> LynxConfigModule::setDumpInfoToDevtoolEnabled(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [weak_this = weak_from_this(),
                                                    args_array =
                                                        std::move(args_array),
@@ -56,7 +56,7 @@ std::unique_ptr<lynx::pub::Value> LynxConfigModule::setDumpInfoToDevtoolEnabled(
 
 std::unique_ptr<lynx::pub::Value> LynxConfigModule::setRenderOptions(
     std::unique_ptr<lynx::pub::Value> args_array,
-    const lynx::piper::CallbackMap& callback_map) {
+    const lynx::runtime::CallbackMap& callback_map) {
   fml::TaskRunner::RunNowOrPostTask(task_runner_, [weak_this = weak_from_this(),
                                                    args_array =
                                                        std::move(args_array),

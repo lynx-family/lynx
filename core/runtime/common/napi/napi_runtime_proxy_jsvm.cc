@@ -10,7 +10,8 @@
 #include "third_party/napi/include/napi_env_harmony.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSVM::Create(
     const std::shared_ptr<JSVMContextWrapper>& context,
     runtime::TemplateDelegate* delegate) {
@@ -39,5 +40,6 @@ std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSVMFactoryImpl::Create(
   proxy_jsvm->SetJSRuntime(runtime);
   return proxy_jsvm;
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

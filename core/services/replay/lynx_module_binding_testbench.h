@@ -13,15 +13,15 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
-class LynxJSIModuleBindingTestBench : public piper::HostObject {
+namespace runtime {
+namespace js {
+class LynxJSIModuleBindingTestBench : public HostObject {
  public:
   explicit LynxJSIModuleBindingTestBench(
       const LynxModuleProviderFunction &moduleProvider);
   ~LynxJSIModuleBindingTestBench() override = default;
 
-  piper::Value get(Runtime *rt, const PropNameID &prop) override;
+  Value get(Runtime *rt, const PropNameID &prop) override;
 
   void setLynxModuleManagerPtr(const LynxJSIModuleBindingPtr moduleProvider);
   LynxJSIModuleBindingPtr getLynxModuleManagerPtr();
@@ -53,7 +53,9 @@ class LynxJSIModuleBindingTestBench : public piper::HostObject {
   };
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_SERVICES_REPLAY_LYNX_MODULE_BINDING_TESTBENCH_H_

@@ -28,7 +28,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 using LepusIdContainer = std::unordered_map<LEPUSRuntime*, LEPUSClassID>;
 class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
  public:
@@ -85,9 +86,7 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   void AddObserver(JSIObserver* obs);
   void RemoveObserver(JSIObserver* obs);
 
-  JSRuntimeType GetRuntimeType() override {
-    return piper::JSRuntimeType::quickjs;
-  }
+  JSRuntimeType GetRuntimeType() override { return JSRuntimeType::quickjs; }
 
   // Must exec in use thread.
   void AddToIdContainer();
@@ -99,7 +98,9 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   static LEPUSClassID s_object_id_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_RUNTIME_WRAPPER_H_

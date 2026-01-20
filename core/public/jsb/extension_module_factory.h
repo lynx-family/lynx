@@ -18,10 +18,9 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
 using ExtensionModuleCreator =
-    std::function<std::shared_ptr<piper::LynxExtensionModule>()>;
+    std::function<std::shared_ptr<LynxExtensionModule>()>;
 
 struct ModuleCreatorInfo {
   ExtensionModuleCreator creator;
@@ -59,9 +58,8 @@ class ExtensionModuleFactory : public NativeModuleFactory {
   }
 
   // Called on the BTS thread
-  void OnRuntimeAttach(
-      napi_env env,
-      const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) {
+  void OnRuntimeAttach(napi_env env,
+                       const std::shared_ptr<IVSyncObserver>& vsync_observer) {
     for (const auto& pair : module_map_) {
       pair.second->SetRuntimeAttachedState(env, vsync_observer);
     }
@@ -114,12 +112,12 @@ class ExtensionModuleFactory : public NativeModuleFactory {
   std::unordered_map<std::string, ModuleCreatorInfo> module_creators_;
   // The env_ Only accessible in BTS thread
   napi_env env_;
-  std::shared_ptr<runtime::IVSyncObserver> vsync_observer_;
+  std::shared_ptr<IVSyncObserver> vsync_observer_;
   fml::RefPtr<fml::TaskRunner> task_runner_;
   tasm::UIDelegate* ui_delegate_;
 };
 
-}  // namespace piper
+}  // namespace runtime
 }  // namespace lynx
 
 #ifdef USE_PRIMJS_NAPI

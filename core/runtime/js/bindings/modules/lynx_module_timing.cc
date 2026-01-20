@@ -14,8 +14,8 @@
 #include "core/services/event_report/event_tracker.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 NativeModuleInfoCollector::NativeModuleInfoCollector(
     const std::shared_ptr<ModuleDelegate>& delegate,
     const std::string& module_name, const std::string& method_name,
@@ -142,5 +142,6 @@ NativeModuleInfoCollector::~NativeModuleInfoCollector() {
   // flush data
   delegate->FlushJSBTiming(std::move(timing_));
 }
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

@@ -17,7 +17,9 @@ namespace tasm {
 class LynxTemplateBundle;
 }
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 class StringBuffer;
 class Buffer;
 class JsContent;
@@ -67,7 +69,8 @@ class JsCacheManagerFacade {
 #endif
 };
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_JS_CACHE_MANAGER_FACADE_H_

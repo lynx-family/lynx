@@ -12,8 +12,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8ContextWrapper : public JSIContext {
  public:
   V8ContextWrapper(std::shared_ptr<VMInstance> vm) : JSIContext(vm) {}
@@ -23,6 +23,8 @@ class V8ContextWrapper : public JSIContext {
   virtual v8::Isolate* getIsolate() const = 0;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_CONTEXT_WRAPPER_H_

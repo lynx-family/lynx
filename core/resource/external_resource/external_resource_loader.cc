@@ -73,7 +73,7 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
                             error = response.err_msg,
                             callback_id](auto& runtime) mutable {
           runtime->OnScriptLoaded(url, std::move(script), std::move(error),
-                                  piper::ApiCallBack(callback_id));
+                                  runtime::js::ApiCallBack(callback_id));
         });
       });
 }
@@ -181,7 +181,7 @@ void ExternalResourceLoader::LoadLazyBundle(
             runtime->OnErrorOccurred(std::move(lynx_error));
 
             runtime->CallJSApiCallbackWithValue(
-                piper::ApiCallBack(callback_id),
+                runtime::js::ApiCallBack(callback_id),
                 tasm::lazy_bundle::ConstructErrorMessageForBTS(
                     callback_info.component_url, callback_info.error_code,
                     callback_info.error_msg));

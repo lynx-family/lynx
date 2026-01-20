@@ -16,8 +16,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class App;
 class Runtime;
 
@@ -28,7 +28,7 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
   virtual ~ContextProxyInJS() override = default;
 
   fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(
-      Runtime& rt, std::shared_ptr<App> native_app, const piper::Value& event);
+      Runtime& rt, std::shared_ptr<App> native_app, const Value& event);
 
   virtual Value get(Runtime*, const PropNameID& name) override;
   virtual void set(Runtime*, const PropNameID& name,
@@ -42,7 +42,9 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
   std::weak_ptr<App> native_app_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_EVENT_CONTEXT_PROXY_IN_JS_H_

@@ -14,10 +14,11 @@ struct LEPUSContext;
 struct LEPUSRuntime;
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 using RegisterWasmFuncType = void (*)(void*, void*);
 
-class LYNX_EXPORT_FOR_DEVTOOL QuickjsContextWrapper : public piper::JSIContext {
+class LYNX_EXPORT_FOR_DEVTOOL QuickjsContextWrapper : public JSIContext {
  public:
   QuickjsContextWrapper(std::shared_ptr<VMInstance> vm);
   ~QuickjsContextWrapper() override;
@@ -33,7 +34,9 @@ class LYNX_EXPORT_FOR_DEVTOOL QuickjsContextWrapper : public piper::JSIContext {
   LEPUSContext* ctx_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_CONTEXT_WRAPPER_H_

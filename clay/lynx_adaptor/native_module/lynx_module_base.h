@@ -16,7 +16,7 @@
 
 namespace lynx {
 
-class LynxModuleBase : public piper::LynxNativeModule {
+class LynxModuleBase : public runtime::LynxNativeModule {
  public:
   LynxModuleBase(uint32_t view_context_id,
                  fml::RefPtr<fml::TaskRunner> task_runner);
@@ -24,26 +24,26 @@ class LynxModuleBase : public piper::LynxNativeModule {
 
  protected:
   using Invocation = std::function<std::unique_ptr<pub::Value>(
-      std::unique_ptr<pub::Value>, const piper::CallbackMap&)>;
+      std::unique_ptr<pub::Value>, const runtime::CallbackMap&)>;
 
   template <typename T>
-  void RegisterMethod(
-      const piper::NativeModuleMethod& method,
-      std::unique_ptr<pub::Value> (T::*member_fn)(std::unique_ptr<pub::Value>,
-                                                  const piper::CallbackMap&)) {
+  void RegisterMethod(const runtime::NativeModuleMethod& method,
+                      std::unique_ptr<pub::Value> (T::*member_fn)(
+                          std::unique_ptr<pub::Value>,
+                          const runtime::CallbackMap&)) {
     RegisterInvocation(method, [obj = static_cast<T*>(this), member_fn](
                                    std::unique_ptr<pub::Value> arg,
-                                   const piper::CallbackMap& cb) {
+                                   const runtime::CallbackMap& cb) {
       return std::invoke(member_fn, obj, std::move(arg), cb);
     });
   }
-  void RegisterInvocation(const piper::NativeModuleMethod& method,
+  void RegisterInvocation(const runtime::NativeModuleMethod& method,
                           Invocation&& invocation);
   bool ValidateInvocation(const std::string& method_name, size_t count);
 
   base::expected<std::unique_ptr<lynx::pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<lynx::pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
   uint32_t view_context_id_;
   fml::RefPtr<fml::TaskRunner> task_runner_;

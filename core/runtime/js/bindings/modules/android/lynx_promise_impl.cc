@@ -7,8 +7,8 @@
 #include "core/base/android/android_jni.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 static jclass jniClass;
 bool LynxPromiseImpl::RegisterJNI(JNIEnv* env) {
   jniClass = static_cast<jclass>(
@@ -43,5 +43,7 @@ std::shared_ptr<ModuleCallback> LynxPromiseImpl::GetResolve() {
 
 jobject LynxPromiseImpl::GetJniObject() { return jni_object_.Get(); }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

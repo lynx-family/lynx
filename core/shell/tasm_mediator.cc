@@ -225,7 +225,7 @@ void TasmMediator::LepusInvokeUIMethod(
   prop_bundle->SetProps(*value_impl);
   InvokeUIMethod(tasm::LynxGetUIResult(std::move(ui_impl_ids), 0, ""), method,
                  std::move(prop_bundle),
-                 piper::ApiCallBack(static_cast<int>(task_id)));
+                 runtime::js::ApiCallBack(static_cast<int>(task_id)));
 }
 
 void TasmMediator::NotifyJSUpdatePageData() {
@@ -373,7 +373,7 @@ void TasmMediator::OnJSSourcePrepared(
   }
 }
 
-void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {
+void TasmMediator::CallJSApiCallback(runtime::js::ApiCallBack callback) {
   if (!runtime_actor_) {
     return;
   }
@@ -394,7 +394,7 @@ void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {
       });
 }
 
-void TasmMediator::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+void TasmMediator::CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                               const lepus::Value& value,
                                               bool persist) {
   if (!runtime_actor_) {
@@ -417,7 +417,7 @@ void TasmMediator::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   });
 }
 
-void TasmMediator::RemoveJSApiCallback(piper::ApiCallBack callback) {
+void TasmMediator::RemoveJSApiCallback(runtime::js::ApiCallBack callback) {
   if (!runtime_actor_) {
     return;
   }
@@ -703,7 +703,7 @@ void TasmMediator::AttachLayoutNodeType(
 void TasmMediator::InvokeUIMethod(tasm::LynxGetUIResult ui_result,
                                   const std::string& method,
                                   fml::RefPtr<tasm::PropBundle> params,
-                                  piper::ApiCallBack callback) {
+                                  runtime::js::ApiCallBack callback) {
   if (invoke_ui_method_func_ != nullptr) {
     invoke_ui_method_func_(std::move(ui_result), method, std::move(params),
                            std::move(callback));

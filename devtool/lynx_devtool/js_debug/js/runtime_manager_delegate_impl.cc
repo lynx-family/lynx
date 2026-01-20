@@ -27,8 +27,8 @@ void RuntimeManagerDelegateImpl::BeforeRuntimeCreate(
 }
 
 void RuntimeManagerDelegateImpl::OnRuntimeReady(
-    piper::JSExecutor& executor,
-    std::shared_ptr<piper::Runtime>& current_runtime,
+    runtime::js::JSExecutor& executor,
+    std::shared_ptr<runtime::js::Runtime>& current_runtime,
     const std::string& group_id) {
   // `enable_bytecode` and `bytecode_source_url` parameters are ignored
   // since bytecode is not allowed to work with devtool.
@@ -38,7 +38,7 @@ void RuntimeManagerDelegateImpl::OnRuntimeReady(
 }
 
 void RuntimeManagerDelegateImpl::AfterSharedContextCreate(
-    const std::string& group_id, piper::JSRuntimeType type) {
+    const std::string& group_id, runtime::js::JSRuntimeType type) {
   group_to_engine_type_.emplace(group_id, type);
 }
 
@@ -52,7 +52,7 @@ void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
   }
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
+std::shared_ptr<runtime::js::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
   // When using a shared js context, create a runtime of the same type as the
@@ -82,7 +82,7 @@ std::shared_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
   return nullptr;
 }
 
-std::shared_ptr<piper::Runtime>
+std::shared_ptr<runtime::js::Runtime>
 RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
     bool force_use_lightweight_js_engine) {
   LOGI("js debug: create runtime for shared js context!")
@@ -91,7 +91,7 @@ RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
   } else {
 #if JS_ENGINE_TYPE == 1
     LOGI("js debug: make JSC runtime");
-    return piper::makeJSCRuntime();
+    return runtime::js::makeJSCRuntime();
 #else
     return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineV8);
 #endif
@@ -106,7 +106,7 @@ RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<runtime::profile::RuntimeProfiler>
 RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context,
+    std::shared_ptr<runtime::js::JSIContext> js_context,
     bool force_use_lightweight_js_engine,
     const tasm::PageOptions& page_options) {
   long v8_enable =
@@ -138,12 +138,12 @@ RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
 #endif  // ENABLE_TRACE_PERFETTO
 
 void RuntimeManagerDelegateImpl::SetReleaseContextCallback(
-    piper::JSRuntimeType type, const ReleaseContextCallback& callback) {
+    runtime::js::JSRuntimeType type, const ReleaseContextCallback& callback) {
   release_context_callback_[type] = callback;
 }
 
 void RuntimeManagerDelegateImpl::SetReleaseVMCallback(
-    piper::JSRuntimeType type, const ReleaseVMCallback& callback) {
+    runtime::js::JSRuntimeType type, const ReleaseVMCallback& callback) {
   release_vm_callback_[type] = callback;
 }
 

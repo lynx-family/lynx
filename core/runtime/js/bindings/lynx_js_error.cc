@@ -4,7 +4,9 @@
 
 #include "core/runtime/js/bindings/lynx_js_error.h"
 
-namespace lynx::piper {
+namespace lynx {
+namespace runtime {
+namespace js {
 
 Value LynxError::get(Runtime* rt, const PropNameID& name) {
   auto name_str = name.utf8(*rt);
@@ -46,4 +48,6 @@ std::vector<PropNameID> LynxError::getPropertyNames(Runtime& rt) {
   // @see: https://tc39.es/ecma262/#sec-error-message
   return {};
 }
-}  // namespace lynx::piper
+}  // namespace js
+}  // namespace runtime
+}  // namespace lynx

@@ -8,7 +8,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace testing {
 class RuntimeInspectorManagerTest : public ::testing::Test {
  public:
@@ -32,5 +33,6 @@ TEST_F(RuntimeInspectorManagerTest, BuildInspectorUrl) {
               "file://shared/lynx_core.js");
 }
 }  // namespace testing
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

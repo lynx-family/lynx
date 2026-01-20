@@ -30,7 +30,7 @@ Value LynxLepusModuleManager::GetModule(Context* context,
   }
 
   // create new native module
-  std::shared_ptr<piper::LynxNativeModule> native_module =
+  std::shared_ptr<runtime::LynxNativeModule> native_module =
       pub::LynxNativeModuleManager::GetModule(name);
 
   if (native_module) {

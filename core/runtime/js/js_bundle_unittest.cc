@@ -7,7 +7,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace testing {
 TEST(JsBundle, JsContent) {
   auto src = std::make_shared<StringBuffer>("src");
@@ -42,5 +43,6 @@ TEST(JsBundle, JsBundle) {
   EXPECT_FALSE(bundle.GetJsContent("path0").has_value());
 }
 }  // namespace testing
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

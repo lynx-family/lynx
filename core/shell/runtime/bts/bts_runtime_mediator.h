@@ -69,21 +69,21 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void UpdateBatchedDataByJS(std::vector<runtime::UpdateDataTask> tasks,
                              uint64_t update_task_id) override;
   std::vector<lynx::shell::CacheDataOp> FetchUpdatedCardData() override;
-  piper::JsContent GetJSContentFromExternal(const std::string& entry_name,
-                                            const std::string& name,
-                                            long timeout) override;
+  runtime::js::JsContent GetJSContentFromExternal(const std::string& entry_name,
+                                                  const std::string& name,
+                                                  long timeout) override;
   std::string GetLynxJSAsset(const std::string& name) override;
 
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,
-                                    piper::ApiCallBack callback) override;
+                                    runtime::js::ApiCallBack callback) override;
   bool LoadDynamicComponentFromJS(const std::string& url,
-                                  const piper::ApiCallBack& callback,
+                                  const runtime::js::ApiCallBack& callback,
                                   const std::vector<std::string>& ids) override;
   void LoadScriptAsync(const std::string& url,
-                       piper::ApiCallBack callback) override;
+                       runtime::js::ApiCallBack callback) override;
   void AddFont(const lepus::Value& font,
-               const piper::ApiCallBack& callback) override;
+               const runtime::js::ApiCallBack& callback) override;
 
   void InvokeResponsePromiseCallback(base::closure closure) override;
 
@@ -102,16 +102,16 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void UpdateComponentData(runtime::UpdateDataTask task) override;
   void SelectComponent(const std::string& component_id,
                        const std::string& id_selector, const bool single,
-                       piper::ApiCallBack callBack) override;
+                       runtime::js::ApiCallBack callBack) override;
   void InvokeUIMethod(tasm::NodeSelectRoot root,
                       tasm::NodeSelectOptions options, std::string method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack callback) override;
+                      runtime::js::ApiCallBack callback) override;
   void GetPathInfo(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
-                   piper::ApiCallBack call_back) override;
+                   runtime::js::ApiCallBack call_back) override;
   void GetFields(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
                  std::vector<std::string> fields,
-                 piper::ApiCallBack call_back) override;
+                 runtime::js::ApiCallBack call_back) override;
   void ElementAnimate(const std::string& component_id,
                       const std::string& id_selector,
                       const lepus::Value& args) override;
@@ -129,7 +129,7 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void TriggerWorkletFunction(std::string component_id,
                               std::string worklet_module_name,
                               std::string method_name, lepus::Value args,
-                              piper::ApiCallBack callback) override;
+                              runtime::js::ApiCallBack callback) override;
 
   void OnCoreJSUpdated(std::string core_js) override;
 
@@ -166,7 +166,7 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void SetFrameworkExtraTimingInfo(const std::string& pipeline_id,
                                    const std::string& key,
                                    const std::string& value) override;
-  void FlushJSBTiming(piper::NativeModuleInfo timing) override;
+  void FlushJSBTiming(runtime::js::NativeModuleInfo timing) override;
   void ResetTimingBeforeReload() override;
 
   void OnPipelineStart(
@@ -182,13 +182,14 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
 
   // For fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,
-                       const piper::ApiCallBack& callback) override;
+                       const runtime::js::ApiCallBack& callback) override;
 
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) override;
 
   std::string LoadJSSource(const std::string& name) override;
-  std::shared_ptr<piper::Buffer> LoadBytecode(const std::string& url) override;
+  std::shared_ptr<runtime::js::Buffer> LoadBytecode(
+      const std::string& url) override;
 
   BTSRuntimeMediator(const BTSRuntimeMediator&) = delete;
   BTSRuntimeMediator& operator=(const BTSRuntimeMediator&) = delete;
@@ -213,10 +214,11 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
       runtime::ContextProxy* js_context_proxy) override;
 
   void GetSessionStorageItem(const std::string& key,
-                             const piper::ApiCallBack& callback) override;
+                             const runtime::js::ApiCallBack& callback) override;
 
-  void SubscribeSessionStorage(const std::string& key, double listener_id,
-                               const piper::ApiCallBack& callback) override;
+  void SubscribeSessionStorage(
+      const std::string& key, double listener_id,
+      const runtime::js::ApiCallBack& callback) override;
 #if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id) { record_id_ = record_id; }
   int64_t record_id_ = 0;

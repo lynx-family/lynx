@@ -10,10 +10,13 @@
 
 namespace lynx {
 
-namespace piper {
+namespace runtime {
+
+namespace js {
 struct ConsoleMessage;
 }
 
+}  // namespace runtime
 namespace devtool {
 
 class InspectorLogAgent : public CDPDomainAgentBase {
@@ -24,7 +27,7 @@ class InspectorLogAgent : public CDPDomainAgentBase {
   virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
                           const Json::Value& message) override;
   void SendLog(const std::shared_ptr<MessageSender>& sender,
-               const lynx::piper::ConsoleMessage& message);
+               const lynx::runtime::js::ConsoleMessage& message);
 
  private:
   typedef void (InspectorLogAgent::*LogAgentMethod)(

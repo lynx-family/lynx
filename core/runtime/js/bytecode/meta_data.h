@@ -16,7 +16,8 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 /**
  * Used to identify a js file.
@@ -104,7 +105,8 @@ class MetaData {
 };
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_META_DATA_H_

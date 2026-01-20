@@ -48,19 +48,19 @@ namespace android {
 namespace {
 enum PiperDataType { Empty, String, Map };
 
-std::optional<piper::Value> jsonValueToJSValue(
-    const rapidjson::Value& rap_value, piper::Runtime* rt) {
+std::optional<runtime::js::Value> jsonValueToJSValue(
+    const rapidjson::Value& rap_value, runtime::js::Runtime* rt) {
   rapidjson::Type type = rap_value.GetType();
   switch (type) {
     case rapidjson::Type::kNullType:
-      return piper::Value(nullptr);
+      return runtime::js::Value(nullptr);
     case rapidjson::Type::kFalseType:
-      return piper::Value(false);
+      return runtime::js::Value(false);
     case rapidjson::Type::kTrueType:
-      return piper::Value(true);
+      return runtime::js::Value(true);
     case rapidjson::Type::kNumberType: {
       if (rap_value.IsInt()) {
-        return piper::Value(rap_value.GetInt());
+        return runtime::js::Value(rap_value.GetInt());
       }
       if (rap_value.IsInt64()) {
         // In JavaScript,  the max safe integer is 9007199254740991 and the min
@@ -68,71 +68,71 @@ std::optional<piper::Value> jsonValueToJSValue(
         // BigInt Object to define it. More information from
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
         int64_t num = rap_value.GetInt64();
-        if (num < piper::kMinJavaScriptNumber ||
-            num > piper::kMaxJavaScriptNumber) {
+        if (num < runtime::js::kMinJavaScriptNumber ||
+            num > runtime::js::kMaxJavaScriptNumber) {
           auto bigint_opt =
-              piper::BigInt::createWithString(*rt, std::to_string(num));
+              runtime::js::BigInt::createWithString(*rt, std::to_string(num));
           if (!bigint_opt) {
-            return std::optional<piper::Value>();
+            return std::optional<runtime::js::Value>();
           }
-          return piper::Value(std::move(*bigint_opt));
+          return runtime::js::Value(std::move(*bigint_opt));
         }
         // cast to double
-        return piper::Value(rap_value.GetDouble());
+        return runtime::js::Value(rap_value.GetDouble());
       }
-      return piper::Value(rap_value.GetDouble());
+      return runtime::js::Value(rap_value.GetDouble());
     }
     case rapidjson::Type::kStringType: {
-      return piper::Value(
-          piper::String::createFromUtf8(*rt, rap_value.GetString()));
+      return runtime::js::Value(
+          runtime::js::String::createFromUtf8(*rt, rap_value.GetString()));
     }
     case rapidjson::Type::kArrayType: {
-      auto array_opt = piper::Array::createWithLength(
+      auto array_opt = runtime::js::Array::createWithLength(
           *rt, static_cast<size_t>(rap_value.Size()));
       if (!array_opt) {
-        return std::optional<piper::Value>();
+        return std::optional<runtime::js::Value>();
       }
       for (rapidjson::SizeType i = 0; i < rap_value.Size(); i++) {
         auto js_value_opt = jsonValueToJSValue(rap_value[i], rt);
         if (!js_value_opt) {
-          return std::optional<piper::Value>();
+          return std::optional<runtime::js::Value>();
         }
         array_opt->setValueAtIndex(*rt, i, std::move(*js_value_opt));
       }
-      return piper::Value(std::move(*array_opt));
+      return runtime::js::Value(std::move(*array_opt));
     }
     case rapidjson::Type::kObjectType: {
-      piper::Object obj = piper::Object(*rt);
+      runtime::js::Object obj = runtime::js::Object(*rt);
       for (rapidjson::Value::ConstMemberIterator itr = rap_value.MemberBegin();
            itr != rap_value.MemberEnd(); ++itr) {
         auto js_value_opt = jsonValueToJSValue(itr->value, rt);
         if (!js_value_opt) {
-          return std::optional<piper::Value>();
+          return std::optional<runtime::js::Value>();
         }
         obj.setProperty(*rt, itr->name.GetString(), std::move(*js_value_opt));
       }
-      return piper::Value(obj);
+      return runtime::js::Value(obj);
     }
     default:
       break;
   }
-  return piper::Value();
+  return runtime::js::Value();
 }
 }  // namespace
 
-std::optional<piper::Value> PiperData::jsObjectFromPiperData(
-    JNIEnv* env, piper::Runtime* rt, jobject piper_data) {
+std::optional<runtime::js::Value> PiperData::jsObjectFromPiperData(
+    JNIEnv* env, runtime::js::Runtime* rt, jobject piper_data) {
   // Notice: You should make sure Java object `PiperData` alive when you
   // call JNI method `getNativePtr`. Otherwise Java object may be dealloc in
   // other thread and the raw native ptr will be free in other thread. Use
   // ScopedLocalJavaRef to ensure `PiperData` alive here.
-  std::optional<lynx::piper::Value> ret = piper::Value();
+  std::optional<lynx::runtime::js::Value> ret = runtime::js::Value();
   PiperDataType data_type =
       static_cast<PiperDataType>(Java_PiperData_getDataType(env, piper_data));
   if (data_type == String) {
     jlong json_data = Java_PiperData_getNativePtr(env, piper_data);
     if (!json_data) {
-      return piper::Value();
+      return runtime::js::Value();
     }
     ret = jsonValueToJSValue(*reinterpret_cast<rapidjson::Document*>(json_data),
                              rt);
@@ -142,7 +142,7 @@ std::optional<piper::Value> PiperData::jsObjectFromPiperData(
     size_t len =
         static_cast<size_t>(Java_PiperData_getBufferPosition(env, piper_data));
     if (len == 0) {
-      return piper::Value();
+      return runtime::js::Value();
     }
     auto buffer = Java_PiperData_getBuffer(env, piper_data);
 

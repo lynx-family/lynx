@@ -10,22 +10,22 @@
 namespace lynx {
 namespace devtool {
 
-std::unique_ptr<piper::RuntimeInspectorManager>
+std::unique_ptr<runtime::js::RuntimeInspectorManager>
 JSDebugProxyQuickJS::CreateRuntimeInspectorManager() {
-  return std::make_unique<piper::QuickjsInspectorManagerImpl>();
+  return std::make_unique<runtime::js::QuickjsInspectorManagerImpl>();
 }
 
-std::shared_ptr<piper::Runtime> JSDebugProxyQuickJS::MakeRuntime() {
+std::shared_ptr<runtime::js::Runtime> JSDebugProxyQuickJS::MakeRuntime() {
   LOGI("js debug: make QuickJS runtime");
-  return piper::makeQuickJsRuntime();
+  return runtime::js::makeQuickJsRuntime();
 }
 
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<runtime::profile::RuntimeProfiler>
 JSDebugProxyQuickJS::MakeRuntimeProfiler(
-    std::shared_ptr<piper::JSIContext> js_context) {
+    std::shared_ptr<runtime::js::JSIContext> js_context) {
   LOGI("js debug: make QuickJS profiler");
-  return piper::makeQuickJsRuntimeProfiler(js_context);
+  return runtime::js::makeQuickJsRuntimeProfiler(js_context);
 }
 #endif
 

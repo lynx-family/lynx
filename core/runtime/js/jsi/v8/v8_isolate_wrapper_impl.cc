@@ -18,8 +18,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 V8IsolateInstanceImpl::V8IsolateInstanceImpl() = default;
 
 V8IsolateInstanceImpl::~V8IsolateInstanceImpl() {
@@ -54,5 +54,7 @@ void V8IsolateInstanceImpl::InitIsolate(const char* arg, bool useSnapshot) {
 
 v8::Isolate* V8IsolateInstanceImpl::Isolate() const { return isolate_; }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

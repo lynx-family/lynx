@@ -11,8 +11,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class V8IsolateInstance : public VMInstance {
  public:
   V8IsolateInstance() = default;
@@ -25,9 +25,11 @@ class V8IsolateInstance : public VMInstance {
   // observers_.RemoveObserver(obs);
   // }
   virtual v8::Isolate* Isolate() const = 0;
-  JSRuntimeType GetRuntimeType() { return piper::JSRuntimeType::v8; }
+  JSRuntimeType GetRuntimeType() { return JSRuntimeType::v8; }
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_ISOLATE_WRAPPER_H_

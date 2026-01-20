@@ -82,7 +82,7 @@ void LynxBTSRuntimeProxyImpl::CallJSFunction(std::string module_id,
             << module_id << " method:" << method_id << &runtime);
         return;
       }
-      piper::Scope scope(*js_runtime);
+      runtime::js::Scope scope(*js_runtime);
 
       // Timing
       tasm::timing::LongTaskMonitor::Scope long_task_scope(
@@ -184,10 +184,10 @@ void LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
           << callback_id << &runtime);
       return;
     }
-    piper::Scope scope(*js_runtime);
+    runtime::js::Scope scope(*js_runtime);
     auto piper_data =
         pub::ValueUtils::ConvertValueToPiperValue(*js_runtime, *params.get());
-    runtime->CallJSApiCallbackWithValue(piper::ApiCallBack(callback_id),
+    runtime->CallJSApiCallbackWithValue(runtime::js::ApiCallBack(callback_id),
                                         std::move(piper_data));
   });
 }
@@ -232,7 +232,7 @@ void LynxBTSRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
           << observer_id << " callback_id:" << callback_id << &runtime);
       return;
     }
-    piper::Scope scope(*js_runtime);
+    runtime::js::Scope scope(*js_runtime);
     auto piper_data =
         pub::ValueUtils::ConvertValueToPiperValue(*js_runtime, *params.get());
 
@@ -266,7 +266,7 @@ void LynxBTSRuntimeProxyImpl::EvaluateScript(const std::string& url,
                 });
 
     runtime->EvaluateScript(url, std::move(script),
-                            piper::ApiCallBack(callback_id));
+                            runtime::js::ApiCallBack(callback_id));
   });
 }
 
@@ -278,7 +278,7 @@ void LynxBTSRuntimeProxyImpl::RejectDynamicComponentLoad(
   }
   actor_->Act([url, callback_id, err_code, err_msg](auto& runtime) {
     runtime->CallJSApiCallbackWithValue(
-        piper::ApiCallBack(callback_id),
+        runtime::js::ApiCallBack(callback_id),
         tasm::lazy_bundle::ConstructErrorMessageForBTS(url, err_code, err_msg));
   });
 }

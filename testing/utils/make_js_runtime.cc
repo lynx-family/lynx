@@ -7,10 +7,11 @@
 namespace testing {
 namespace utils {
 
-std::unique_ptr<lynx::piper::Runtime> makeJSRuntime(
-    std::shared_ptr<lynx::piper::JSIExceptionHandler> handler) {
-  std::unique_ptr<lynx::piper::Runtime> rt = lynx::piper::makeQuickJsRuntime();
-  lynx::piper::StartupData data{};
+std::unique_ptr<lynx::runtime::js::Runtime> makeJSRuntime(
+    std::shared_ptr<lynx::runtime::js::JSIExceptionHandler> handler) {
+  std::unique_ptr<lynx::runtime::js::Runtime> rt =
+      lynx::runtime::js::makeQuickJsRuntime();
+  lynx::runtime::js::StartupData data{};
   auto vm = rt->createVM(&data);
   auto ctx = rt->createContext(vm);
   rt->InitRuntime(ctx, handler);

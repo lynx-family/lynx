@@ -26,7 +26,7 @@ struct TasmRuntimeBundle {
       const std::string& name, const std::string& target_sdk_version,
       bool support_component_js, const lepus::Value& encoded_data,
       TemplateData init_data, std::vector<TemplateData> cache_data,
-      const piper::JsBundle& js_bundle, bool enable_circular_data_check,
+      const runtime::js::JsBundle& js_bundle, bool enable_circular_data_check,
       bool enable_js_binding_api_throw_exception, bool enable_bind_icu,
       bool enable_microtask_promise_polyfill,
       bool enable_reuse_load_script_exports,
@@ -63,7 +63,7 @@ struct TasmRuntimeBundle {
   TemplateData init_data;
   std::vector<TemplateData> cache_data;
 
-  piper::JsBundle js_bundle;
+  runtime::js::JsBundle js_bundle;
   bool enable_circular_data_check;
   bool enable_js_binding_api_throw_exception;
   bool enable_bind_icu;

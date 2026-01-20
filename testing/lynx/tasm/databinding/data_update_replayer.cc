@@ -125,7 +125,7 @@ void DataUpdateReplayer::DataUpdateReplay(const std::string& replay_data,
       const std::string PAGE_GROUP_ID = "-1";
       auto pipeline_options = std::make_shared<PipelineOptions>();
       runtime::UpdateDataTask task(
-          true, PAGE_GROUP_ID, std::move(data_val), piper::ApiCallBack(),
+          true, PAGE_GROUP_ID, std::move(data_val), runtime::js::ApiCallBack(),
           runtime::UpdateDataType(), std::move(pipeline_options));
       tasm->UpdateDataByJS(task, task.pipeline_options_);
     } else if (CaseInsensitiveStringComparison(function_name,

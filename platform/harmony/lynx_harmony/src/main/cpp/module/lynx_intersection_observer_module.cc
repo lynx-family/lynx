@@ -20,28 +20,28 @@ LynxIntersectionObserverModule::LynxIntersectionObserverModule(
     const std::shared_ptr<tasm::harmony::LynxContext>& context)
     : NativeModuleCAPI(), context_(context) {
   RegisterMethod(
-      piper::NativeModuleMethod("createIntersectionObserver", 3),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("createIntersectionObserver", 3),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxIntersectionObserverModule::CreateIntersectionObserver));
   RegisterMethod(
-      piper::NativeModuleMethod("relativeTo", 3),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("relativeTo", 3),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxIntersectionObserverModule::RelativeTo));
   RegisterMethod(
-      piper::NativeModuleMethod("relativeToViewport", 2),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("relativeToViewport", 2),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxIntersectionObserverModule::RelativeToViewport));
   RegisterMethod(
-      piper::NativeModuleMethod("relativeToScreen", 2),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("relativeToScreen", 2),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxIntersectionObserverModule::RelativeToScreen));
   RegisterMethod(
-      piper::NativeModuleMethod("observe", 3),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("observe", 3),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxIntersectionObserverModule::Observe));
   RegisterMethod(
-      piper::NativeModuleMethod("disconnect", 1),
-      reinterpret_cast<piper::LynxNativeModule::NativeModuleInvocation>(
+      runtime::NativeModuleMethod("disconnect", 1),
+      reinterpret_cast<runtime::LynxNativeModule::NativeModuleInvocation>(
           &LynxIntersectionObserverModule::Disconnect));
 }
 
@@ -51,7 +51,7 @@ void LynxIntersectionObserverModule::Destroy() {
 
 std::unique_ptr<pub::Value>
 LynxIntersectionObserverModule::CreateIntersectionObserver(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {
@@ -65,7 +65,7 @@ LynxIntersectionObserverModule::CreateIntersectionObserver(
 }
 
 std::unique_ptr<pub::Value> LynxIntersectionObserverModule::RelativeTo(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {
@@ -82,7 +82,7 @@ std::unique_ptr<pub::Value> LynxIntersectionObserverModule::RelativeTo(
 }
 
 std::unique_ptr<pub::Value> LynxIntersectionObserverModule::RelativeToViewport(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {
@@ -98,7 +98,7 @@ std::unique_ptr<pub::Value> LynxIntersectionObserverModule::RelativeToViewport(
 }
 
 std::unique_ptr<pub::Value> LynxIntersectionObserverModule::RelativeToScreen(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {
@@ -114,7 +114,7 @@ std::unique_ptr<pub::Value> LynxIntersectionObserverModule::RelativeToScreen(
 }
 
 std::unique_ptr<pub::Value> LynxIntersectionObserverModule::Observe(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {
@@ -131,7 +131,7 @@ std::unique_ptr<pub::Value> LynxIntersectionObserverModule::Observe(
 }
 
 std::unique_ptr<pub::Value> LynxIntersectionObserverModule::Disconnect(
-    std::unique_ptr<pub::Value> args, const piper::CallbackMap& callbacks) {
+    std::unique_ptr<pub::Value> args, const runtime::CallbackMap& callbacks) {
   auto lepus_args = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   auto ctx = context_.lock();
   if (!ctx) {

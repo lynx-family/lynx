@@ -8,7 +8,8 @@
 #include <memory>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 template <typename Out, typename In, typename Conv>
 class ArgsConverterImpl {
  public:
@@ -60,7 +61,9 @@ inline auto ArgsConverter(size_t argc, const In& argv, const Conv& closure) {
   return ArgsConverterImpl<Out, const In&, Conv>(argc, argv, closure);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_ARGS_CONVERTER_H_

@@ -14,7 +14,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 /**
  * Result for ModuleMethodInterceptor.
  * `handled` meaning whether the Module Method is handled and stop
@@ -36,10 +37,10 @@ class ModuleInterceptor {
   virtual ModuleInterceptorResult InterceptModuleMethod(
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
-      const std::shared_ptr<piper::ModuleDelegate>& delegate,
-      const piper::Value* args, size_t count,
-      const std::unique_ptr<pub::Value>& pub_args, const CallbackMap& callbacks,
-      piper::NativeModuleInfoCollectorPtr timing_collector) const = 0;
+      const std::shared_ptr<ModuleDelegate>& delegate, const Value* args,
+      size_t count, const std::unique_ptr<pub::Value>& pub_args,
+      const CallbackMap& callbacks,
+      NativeModuleInfoCollectorPtr timing_collector) const = 0;
 
   virtual void BeforeInvokeMethod(
       const LynxModule::MethodMetadata& method,
@@ -56,10 +57,10 @@ class GroupInterceptor : public ModuleInterceptor {
   ModuleInterceptorResult InterceptModuleMethod(
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
-      const std::shared_ptr<piper::ModuleDelegate>& delegate,
-      const piper::Value* args, size_t count,
-      const std::unique_ptr<pub::Value>& pub_args, const CallbackMap& callbacks,
-      piper::NativeModuleInfoCollectorPtr timing_collector) const override;
+      const std::shared_ptr<ModuleDelegate>& delegate, const Value* args,
+      size_t count, const std::unique_ptr<pub::Value>& pub_args,
+      const CallbackMap& callbacks,
+      NativeModuleInfoCollectorPtr timing_collector) const override;
 
   void BeforeInvokeMethod(
       const LynxModule::MethodMetadata& method,
@@ -75,6 +76,8 @@ class GroupInterceptor : public ModuleInterceptor {
   base::InlineVector<std::shared_ptr<ModuleInterceptor>, 4> interceptors_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_MODULE_INTERCEPTOR_H_

@@ -6,7 +6,7 @@
 #include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 
 @interface LynxConfig ()
-- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr;
-- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)getSharedModuleFactoryPtr;
-- (void)setSharedModuleFactoryPtr:(std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)ptr;
+- (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)moduleFactoryPtr;
+- (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)getSharedModuleFactoryPtr;
+- (void)setSharedModuleFactoryPtr:(std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)ptr;
 @end

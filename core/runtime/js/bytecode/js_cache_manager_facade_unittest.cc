@@ -13,7 +13,8 @@
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 namespace testing {
 
@@ -84,5 +85,6 @@ TEST(JsCacheManagerFacadeTest, PostCacheGenerationTaskV8) {
 
 }  // namespace testing
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

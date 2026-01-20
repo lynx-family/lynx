@@ -51,8 +51,9 @@ void InspectorLogAgent::Clear(const std::shared_ptr<MessageSender>& sender,
   devtool_mediator_->LogClear(sender, message);
 }
 
-void InspectorLogAgent::SendLog(const std::shared_ptr<MessageSender>& sender,
-                                const lynx::piper::ConsoleMessage& message) {
+void InspectorLogAgent::SendLog(
+    const std::shared_ptr<MessageSender>& sender,
+    const lynx::runtime::js::ConsoleMessage& message) {
   devtool_mediator_->SendLogEntryAddedEvent(message);
 }
 

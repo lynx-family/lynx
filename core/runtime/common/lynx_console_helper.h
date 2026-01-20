@@ -6,8 +6,8 @@
 #define CORE_RUNTIME_COMMON_LYNX_CONSOLE_HELPER_H_
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 constexpr int CONSOLE_UNKNOWN = -99;
 constexpr int CONSOLE_LOG_VERBOSE = -1;
 constexpr int CONSOLE_LOG_INFO = 0;
@@ -26,7 +26,9 @@ constexpr char LepusConsoleLog[] = "log";
 constexpr char LepusConsoleReport[] = "report";
 constexpr char LepusConsoleWarn[] = "warn";
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_LYNX_CONSOLE_HELPER_H_

@@ -11,7 +11,8 @@
 #include "core/services/event_report/event_tracker.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 
 enum class JsCacheErrorCode {
@@ -88,7 +89,8 @@ class JsCacheTracker final {
 };
 
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_JS_CACHE_TRACKER_H_

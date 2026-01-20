@@ -15,8 +15,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class App;
 
 class ResponseHandlerInJS
@@ -43,14 +43,16 @@ class ResponseHandlerInJS
   Value WaitingForResponse(Runtime& rt);
   Value AddListenerForResponse(Runtime& rt);
 
-  static piper::Value ConvertBundleInfoToPiperValue(
+  static Value ConvertBundleInfoToPiperValue(
       std::shared_ptr<App> native_app,
       const tasm::BundleResourceInfo& bundle_info);
 
   std::weak_ptr<App> native_app_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_RESOURCE_RESPONSE_HANDLER_IN_JS_H_

@@ -11,8 +11,8 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 bool V8Exception::ReportExceptionIfNeeded(V8Runtime &rt,
                                           v8::TryCatch &try_catch) {
   auto maybe_error = TryCatch(rt, try_catch);
@@ -32,5 +32,7 @@ std::optional<JSError> V8Exception::TryCatch(V8Runtime &rt,
   return std::nullopt;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

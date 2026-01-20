@@ -39,7 +39,8 @@ namespace runtime {
 class LynxApiHandler;
 class AnimationFrameTaskHandler;
 }  // namespace runtime
-namespace piper {
+namespace runtime {
+namespace js {
 class Runtime;
 class App;
 class LynxProxy;
@@ -68,7 +69,7 @@ class App : public std::enable_shared_from_this<App> {
       int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSIExceptionHandler> exception_handler,
-      piper::Object nativeModuleProxy,
+      Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options) {
     auto app = std::shared_ptr<App>(new App(
@@ -82,7 +83,7 @@ class App : public std::enable_shared_from_this<App> {
   void destroy();
   void CallDestroyLifetimeFun();
 
-  void setJsAppObj(piper::Object&& obj);
+  void setJsAppObj(Object&& obj);
   std::string getAppGUID() { return app_guid_; }
 
   const std::string& GetPageUrl() const { return url_; }
@@ -107,7 +108,7 @@ class App : public std::enable_shared_from_this<App> {
   void NotifyUpdatePageData(uint64_t trace_flow_id);
   void NotifyUpdateCardConfigData();
   void CallFunction(const std::string& module_id, const std::string& method_id,
-                    const piper::Array& arguments);
+                    const Array& arguments);
   void SendSsrGlobalEvent(const std::string& name,
                           const lepus::Value& arguments);
   void LoadSsrScript(const std::string& script);
@@ -115,12 +116,12 @@ class App : public std::enable_shared_from_this<App> {
   void InvokeApiCallBack(ApiCallBack id);
   void InvokeApiCallBackWithValue(ApiCallBack id, const lepus::Value& value,
                                   bool persist = false);
-  void InvokeApiCallBackWithValue(ApiCallBack id, piper::Value value);
-  ApiCallBack CreateCallBack(piper::Function func);
+  void InvokeApiCallBackWithValue(ApiCallBack id, Value value);
+  ApiCallBack CreateCallBack(Function func);
   void EraseApiCallBack(ApiCallBack callback);
 
   void OnIntersectionObserverEvent(int32_t observer_id, int32_t callback_id,
-                                   piper::Value data);
+                                   Value data);
 
   // component
   void updateComponentData(const std::string& component_id, lepus_value&& data,
@@ -131,7 +132,7 @@ class App : public std::enable_shared_from_this<App> {
                        ApiCallBack callBack);
   void InvokeUIMethod(tasm::NodeSelectRoot root,
                       tasm::NodeSelectOptions options, std::string method,
-                      const piper::Value* params, ApiCallBack callback);
+                      const Value* params, ApiCallBack callback);
   void GetPathInfo(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
                    ApiCallBack callBack);
   void GetFields(tasm::NodeSelectRoot root, tasm::NodeSelectOptions options,
@@ -161,28 +162,26 @@ class App : public std::enable_shared_from_this<App> {
   // js call to native
   void appDataChange(lepus_value&& data, ApiCallBack callback,
                      runtime::UpdateDataType update_data_type);
-  std::optional<JSINativeException> batchedUpdateData(const piper::Value& data);
+  std::optional<JSINativeException> batchedUpdateData(const Value& data);
 
-  void OnAppJSError(const piper::JSIException& exception);
+  void OnAppJSError(const JSIException& exception);
 
   base::expected<Value, JSINativeException> loadScript(
       const std::string entry_name, const std::string& url, long timeout);
   base::expected<Value, JSINativeException> readScript(
       const std::string entry_name, const std::string& url, long timeout);
-  piper::Value setTimeout(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
-      int time);
-  piper::Value setInterval(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
-      int time);
+  Value setTimeout(
+      std::variant<std::unique_ptr<Function>, double> id_or_callback, int time);
+  Value setInterval(
+      std::variant<std::unique_ptr<Function>, double> id_or_callback, int time);
   void clearTimeout(double task);
-  piper::Value nativeModuleProxy();
+  Value nativeModuleProxy();
 
   void RunOnJSThreadWhenIdle(base::closure closure);
 
-  std::optional<piper::Value> getInitGlobalProps();
-  std::optional<piper::Value> getPresetData();
-  piper::Value getI18nResource();
+  std::optional<Value> getInitGlobalProps();
+  std::optional<Value> getPresetData();
+  Value getI18nResource();
   void getContextDataAsync(const std::string& component_id,
                            const std::string& key, ApiCallBack callback);
 
@@ -206,7 +205,7 @@ class App : public std::enable_shared_from_this<App> {
 
   std::shared_ptr<Runtime> GetRuntime();
   std::optional<lepus_value> ParseJSValueToLepusValue(
-      const piper::Value& data, const std::string& component_id);
+      const Value& data, const std::string& component_id);
 
   void I18nResourceChanged(const std::string& msg);
 
@@ -269,16 +268,16 @@ class App : public std::enable_shared_from_this<App> {
   std::string GetSourceMapRelease(const std::string url);
 
   // raf
-  piper::Value RequestAnimationFrame(piper::Function func);
+  Value RequestAnimationFrame(Function func);
   void CancelAnimationFrame(int64_t id);
   void DoFrame(int64_t time_stamp);
   void PauseAnimationFrame();
   void ResumeAnimationFrame();
 
-  void SetJsBundleHolder(const std::weak_ptr<piper::JsBundleHolder>& holder);
+  void SetJsBundleHolder(const std::weak_ptr<JsBundleHolder>& holder);
 
   void QueueMicrotask(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback);
+      std::variant<std::unique_ptr<Function>, double> id_or_callback);
 
   void SetPageOptions(const tasm::PageOptions& options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
@@ -293,7 +292,7 @@ class App : public std::enable_shared_from_this<App> {
   App(int64_t rt_id, std::weak_ptr<Runtime> rt,
       runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSIExceptionHandler> exception_handler,
-      piper::Object nativeModuleProxy,
+      Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
       const std::string& group_id, const tasm::PageOptions& page_options)
       : app_guid_(std::to_string(rt_id)),
@@ -338,11 +337,11 @@ class App : public std::enable_shared_from_this<App> {
   std::string app_guid_;
   std::weak_ptr<Runtime> rt_;
   std::string i18_resource_;
-  piper::Value js_app_;
+  Value js_app_;
   runtime::TemplateDelegate* const delegate_;
   std::shared_ptr<JSIExceptionHandler> exception_handler_;
-  std::unique_ptr<piper::JsTaskAdapter> js_task_adapter_;
-  piper::Object nativeModuleProxy_;
+  std::unique_ptr<JsTaskAdapter> js_task_adapter_;
+  Object nativeModuleProxy_;
   ApiCallBackManager api_callback_manager_;
   std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler_;
   std::shared_ptr<JSIObjectWrapperManager> jsi_object_wrapper_manager_;
@@ -351,7 +350,7 @@ class App : public std::enable_shared_from_this<App> {
   std::shared_ptr<LynxProxy> lynx_proxy_;
   std::string url_;
   tasm::PageOptions page_options_;
-  piper::Value ssr_global_event_emitter_;
+  Value ssr_global_event_emitter_;
   std::unique_ptr<GCPauseSuppressionMode> gc_pause_suppression_mode_{nullptr};
 
   std::shared_ptr<ContextProxyInJS> context_proxy_vector_[static_cast<int32_t>(
@@ -363,7 +362,7 @@ class App : public std::enable_shared_from_this<App> {
   lepus::Value card_config_;  // cache the init card config data
   lepus::Value init_global_props_;
   JsBundle standalone_js_bundle_;
-  std::weak_ptr<piper::JsBundleHolder> weak_js_bundle_holder_;
+  std::weak_ptr<JsBundleHolder> weak_js_bundle_holder_;
 
   // This is set by LynxRuntimeStandalone, once set, it cannot be modified.
   lepus::Value preset_data_;
@@ -383,6 +382,8 @@ class App : public std::enable_shared_from_this<App> {
   lynx::tasm::FluencyTracer fluency_tracer_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_JS_APP_H_

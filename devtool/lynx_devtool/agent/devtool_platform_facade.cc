@@ -46,7 +46,7 @@ void DevToolPlatformFacade::SendLynxScreenshotCapturedEvent(
 }
 
 void DevToolPlatformFacade::SendConsoleEvent(
-    const lynx::piper::ConsoleMessage& message) {
+    const lynx::runtime::js::ConsoleMessage& message) {
   auto devtool_mediator_ = devtool_mediator_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool_mediator_, "devtool_mediator_ is null");
   devtool_mediator_->SendLogEntryAddedEvent(message);

@@ -8,8 +8,8 @@
 #include <memory>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class LynxResourceSetting {
  public:
   static std::shared_ptr<LynxResourceSetting> getInstance();
@@ -18,7 +18,9 @@ class LynxResourceSetting {
   bool is_debug_resource_ = false;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RESOURCE_LYNX_RESOURCE_SETTING_H_

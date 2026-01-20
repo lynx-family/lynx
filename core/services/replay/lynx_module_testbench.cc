@@ -16,8 +16,8 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 std::string ModuleTestBench::kUndefined = "undefined";
 std::string ModuleTestBench::kHeader = "header";
 std::string ModuleTestBench::kTimeStamp = "timestamp";
@@ -29,14 +29,14 @@ std::string ModuleTestBench::kNaN = "NaN";
 
 void ModuleTestBench::Destroy() {}
 
-piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
+Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
   std::string propNameUtf8 = prop.utf8(*runtime);
 
   auto p = methodMap_.find(propNameUtf8);
 
   if (p != methodMap_.end()) {
     auto &meta = p->second;
-    return piper::Function::createFromHostFunction(
+    return Function::createFromHostFunction(
         *runtime, prop, static_cast<unsigned int>(meta->argCount),
         [this, meta, propNameUtf8](
             Runtime &rt, const Value &thisVal, const Value *args,
@@ -54,8 +54,8 @@ piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
             if (count > 0 && args && args[0].isString()) {
               first_arg_str = args[0].getString(rt).utf8(rt);
             }
-            piper::NativeModuleInfoCollectorPtr timing_collector =
-                std::make_shared<piper::NativeModuleInfoCollector>(
+            NativeModuleInfoCollectorPtr timing_collector =
+                std::make_shared<NativeModuleInfoCollector>(
                     delegate_, name_, meta->name, first_arg_str);
             std::unique_ptr<pub::Value> pub_args = nullptr;
             std::vector<int64_t> callback_ids;
@@ -72,7 +72,7 @@ piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
           return this->invokeMethod(*(meta.get()), &rt, args, count);
         });
   } else {
-    return piper::Function::createFromHostFunction(
+    return Function::createFromHostFunction(
         *runtime, prop, static_cast<unsigned int>(1),
         [this, propNameUtf8](
             Runtime &rt, const Value &thisVal, const Value *args,
@@ -92,8 +92,8 @@ piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
             if (count > 0 && args && args[0].isString()) {
               first_arg_str = args[0].getString(rt).utf8(rt);
             }
-            piper::NativeModuleInfoCollectorPtr timing_collector =
-                std::make_shared<piper::NativeModuleInfoCollector>(
+            NativeModuleInfoCollectorPtr timing_collector =
+                std::make_shared<NativeModuleInfoCollector>(
                     delegate_, name_, moduleMetaData->name, first_arg_str);
             std::unique_ptr<pub::Value> pub_args = nullptr;
             std::vector<int64_t> callback_ids;
@@ -112,7 +112,7 @@ piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
   }
 }
 
-void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const piper::Value *args,
+void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const Value *args,
                                        size_t count, MethodMetadata &method,
                                        std::unique_ptr<pub::Value> &pub_args,
                                        CallbackMap &callback_map,
@@ -121,7 +121,7 @@ void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const piper::Value *args,
   auto args_array = value_factory->CreateArray();
   // args is a pointer array. can not use getArray to read value.
   for (size_t i = 0; i < count; i++) {
-    const lynx::piper::Value *arg = &args[i];
+    const Value *arg = &args[i];
     if (arg->isBool()) {
       args_array->PushBoolToArray(arg->getBool());
     } else if (arg->isNumber()) {
@@ -131,7 +131,7 @@ void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const piper::Value *args,
     } else if (arg->isString()) {
       args_array->PushStringToArray(arg->getString(*rt).utf8(*rt));
     } else if (arg->isObject()) {
-      lynx::piper::Object o = arg->getObject(*rt);
+      Object o = arg->getObject(*rt);
       if (o.isArray(*rt)) {
         auto sub_arr = o.getArray(*rt);
         auto sub_arr_result = pub::ValueUtils::ConvertPiperArrayToPubValue(
@@ -146,8 +146,7 @@ void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const piper::Value *args,
         auto function = o.getFunction(*rt);
         auto callback_id =
             delegate_->RegisterJSCallbackFunction(std::move(function));
-        auto callback =
-            std::make_shared<lynx::piper::ModuleCallback>(callback_id);
+        auto callback = std::make_shared<ModuleCallback>(callback_id);
         callback->SetModuleName(name_);
         callback->SetMethodName(method.name);
         callback->SetCallbackFlowId(callback_flow_id);
@@ -182,7 +181,7 @@ bool ModuleTestBench::IsStrictMode() {
   }
 }
 
-void ModuleTestBench::InvokeJsbCallback(piper::Function callback_function,
+void ModuleTestBench::InvokeJsbCallback(Function callback_function,
                                         rapidjson::Value &&value,
                                         int64_t delay) {
   int64_t callback_id =
@@ -200,14 +199,13 @@ void ModuleTestBench::InvokeJsbCallback(piper::Function callback_function,
   }
 }
 
-void ModuleTestBench::ActionsForJsbMatchFailed(Runtime *rt,
-                                               const piper::Value *args,
+void ModuleTestBench::ActionsForJsbMatchFailed(Runtime *rt, const Value *args,
                                                size_t count) {
   if (!IsStrictMode()) {
     for (size_t index = 0; index < count; index++) {
       if ((args + index)->kind() == ValueKind::ObjectKind &&
           (args + index)->getObject(*rt).isFunction(*rt)) {
-        piper::Function callback_function =
+        Function callback_function =
             (args + index)->getObject(*rt).getFunction(*rt);
         InvokeJsbCallback(std::move(callback_function),
                           rapidjson::Value(rapidjson::kNullType));
@@ -295,7 +293,7 @@ bool ModuleTestBench::IsSameURL(const std::string &first,
   return false;
 }
 
-bool ModuleTestBench::sameKernel(Runtime *rt, const piper::Value *arg,
+bool ModuleTestBench::sameKernel(Runtime *rt, const Value *arg,
                                  rapidjson::Value &value) {
   switch (arg->kind()) {
     case ValueKind::StringKind: {
@@ -341,7 +339,7 @@ bool ModuleTestBench::sameKernel(Runtime *rt, const piper::Value *arg,
         return true;
       }
       if (value.IsArray() && arg->getObject(*rt).isArray(*rt)) {
-        piper::Array arr = arg->getObject(*rt).getArray(*rt);
+        Array arr = arg->getObject(*rt).getArray(*rt);
         if (value.Size() != arr.size(*rt)) {
           return false;
         }
@@ -412,8 +410,8 @@ bool ModuleTestBench::sameKernel(Runtime *rt, const piper::Value *arg,
   }
 }
 
-bool ModuleTestBench::isSameArgs(Runtime *rt, const piper::Value *args,
-                                 size_t count, rapidjson::Value &value) {
+bool ModuleTestBench::isSameArgs(Runtime *rt, const Value *args, size_t count,
+                                 rapidjson::Value &value) {
   for (unsigned int index = 0; index < count; index++) {
     if (!sameKernel(rt, (args + index), value[index])) {
       return false;
@@ -423,7 +421,7 @@ bool ModuleTestBench::isSameArgs(Runtime *rt, const piper::Value *args,
 }
 
 bool ModuleTestBench::isSameMethod(const MethodMetadata &method, Runtime *rt,
-                                   const piper::Value *args, size_t count,
+                                   const Value *args, size_t count,
                                    rapidjson::Value &value) {
   std::string cMethodName = value["Method Name"].GetString();
   std::string jMethodName = method.name;
@@ -444,8 +442,7 @@ bool ModuleTestBench::isSameMethod(const MethodMetadata &method, Runtime *rt,
   return true;
 }
 
-piper::Value ModuleTestBench::getAttributeValue(Runtime *rt,
-                                                std::string propName) {
+Value ModuleTestBench::getAttributeValue(Runtime *rt, std::string propName) {
   return Value();
 }
 
@@ -463,7 +460,7 @@ void ModuleTestBench::buildLookupMap() {
 
 void ModuleTestBench::syncToPlatform(const rapidjson::Value &moduleData,
                                      const MethodMetadata &method, Runtime *rt,
-                                     const piper::Value *args, size_t count) {
+                                     const Value *args, size_t count) {
   if (!moduleData.HasMember("SyncAttributes")) {
     return;
   }
@@ -471,10 +468,9 @@ void ModuleTestBench::syncToPlatform(const rapidjson::Value &moduleData,
                                   count);
 }
 
-piper::Value ModuleTestBench::invokeMethodKernel(const MethodMetadata &method,
-                                                 Runtime *rt,
-                                                 const piper::Value *args,
-                                                 size_t count) {
+Value ModuleTestBench::invokeMethodKernel(const MethodMetadata &method,
+                                          Runtime *rt, const Value *args,
+                                          size_t count) {
   if (this->moduleData.IsArray()) {
     for (unsigned int index = 0; index < moduleData.Size(); index++) {
       if (isSameMethod(method, rt, args, count, moduleData[index])) {
@@ -517,14 +513,14 @@ piper::Value ModuleTestBench::invokeMethodKernel(const MethodMetadata &method,
         rapidjson::Value &reValue = moduleData[index]["Params"]["returnValue"];
         if (reValue.IsString() &&
             strcmp(reValue.GetString(), "undefined") == 0) {
-          return piper::Value::undefined();
+          return Value::undefined();
         }
         return ReplayHelper::convertRapidJsonObjectToJSIValue(*rt, reValue);
       }
     }
     ActionsForJsbMatchFailed(rt, args, count);
   }
-  return piper::Value::undefined();
+  return Value::undefined();
 }
 
 std::shared_ptr<LynxModule::MethodMetadata> ModuleTestBench::GetMethodMetaData(
@@ -536,24 +532,23 @@ std::shared_ptr<LynxModule::MethodMetadata> ModuleTestBench::GetMethodMetaData(
   return result->second;
 }
 
-base::expected<piper::Value, piper::JSINativeException>
-ModuleTestBench::invokeMethod(const MethodMetadata &method, Runtime *rt,
-                              const piper::Value *args, size_t count) {
+base::expected<Value, JSINativeException> ModuleTestBench::invokeMethod(
+    const MethodMetadata &method, Runtime *rt, const Value *args,
+    size_t count) {
   if (!this->moduleData.IsNull()) {
     auto metaData = this->GetMethodMetaData(method.name);
     if (metaData == nullptr) {
-      return piper::Value::undefined();
+      return Value::undefined();
     }
     return this->invokeMethodKernel(*(metaData.get()), rt, args, count);
   }
 
-  piper::Value *arr = new piper::Value[count];
+  Value *arr = new Value[count];
   for (size_t index = 0; index < count; index++) {
-    arr[index] = piper::Value(*rt, *(args + index));
+    arr[index] = Value(*rt, *(args + index));
   }
 
-  std::shared_ptr<piper::Value> arr_ptr(
-      arr, [](piper::Value *value) { delete[] value; });
+  std::shared_ptr<Value> arr_ptr(arr, [](Value *value) { delete[] value; });
 
   this->fetch_data_handler_(
       this->name_, *rt, [this, method, rt, arr_ptr, count]() {
@@ -563,7 +558,7 @@ ModuleTestBench::invokeMethod(const MethodMetadata &method, Runtime *rt,
         }
         this->invokeMethodKernel(*(metaData.get()), rt, arr_ptr.get(), count);
       });
-  return piper::Value::undefined();
+  return Value::undefined();
 }
 
 void ModuleTestBench::initModuleData(
@@ -584,5 +579,7 @@ void ModuleTestBench::SetFetchDataHandler(FetchDataHandler handler) {
   this->fetch_data_handler_ = handler;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

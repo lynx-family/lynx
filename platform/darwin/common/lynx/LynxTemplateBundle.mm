@@ -104,11 +104,11 @@
 - (void)postJsCacheGenerationTask:(nonnull NSString*)bytecodeSourceUrl
                          callback:(nullable LynxBytecodeResponseBlock)callback {
   if (template_bundle_ && bytecodeSourceUrl && bytecodeSourceUrl.length > 0) {
-    std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback> bytecode_callback =
+    std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback> bytecode_callback =
         CreateBytecodeGenerateCallback(callback);
-    lynx::piper::cache::JsCacheManagerFacade::PostCacheGenerationTask(
-        *template_bundle_, [bytecodeSourceUrl UTF8String], lynx::piper::JSRuntimeType::quickjs,
-        std::move(bytecode_callback));
+    lynx::runtime::js::cache::JsCacheManagerFacade::PostCacheGenerationTask(
+        *template_bundle_, [bytecodeSourceUrl UTF8String],
+        lynx::runtime::js::JSRuntimeType::quickjs, std::move(bytecode_callback));
   }
 }
 

@@ -268,7 +268,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string>
 ExtensionModuleImpl::InvokeMethod(const std::string& method_name,
                                   std::unique_ptr<pub::Value> args,
                                   size_t count,
-                                  const piper::CallbackMap& callbacks) {
+                                  const runtime::CallbackMap& callbacks) {
   if (napi_module_) {
     return napi_module_->InvokeMethod(method_name, std::move(args), count,
                                       callbacks);
@@ -290,7 +290,7 @@ void ExtensionModuleImpl::SetupNapiModule() {
 }
 
 void ExtensionModuleImpl::SetDelegate(
-    std::weak_ptr<piper::LynxNativeModule::Delegate> delegate) {
+    std::weak_ptr<runtime::LynxNativeModule::Delegate> delegate) {
   if (napi_module_) {
     napi_module_->SetDelegate(delegate);
   }

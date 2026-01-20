@@ -99,7 +99,7 @@ using TemplateVerification =
 using RuntimeProxyCallback =
     std::function<void(std::shared_ptr<shell::LynxEngineProxy>,
                        std::shared_ptr<shell::LynxRuntimeProxy>,
-                       std::shared_ptr<piper::LynxModuleManager>,
+                       std::shared_ptr<runtime::js::LynxModuleManager>,
                        const fml::RefPtr<fml::TaskRunner>&)>;
 
 class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
@@ -127,12 +127,12 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   LynxTemplateRenderer(
       const Settings& settings, tasm::UIDelegate* ui_delegate,
-      std::shared_ptr<piper::LynxModuleManager> module_manager,
+      std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
       std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
           perf_controller_ptr);
   LynxTemplateRenderer(
       const Settings& settings, tasm::UIDelegate* ui_delegate,
-      std::shared_ptr<piper::LynxModuleManager> module_manager,
+      std::shared_ptr<runtime::js::LynxModuleManager> module_manager,
       std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
           perf_controller_ptr,
       RuntimeProxyCallback runtime_proxy_callback);
@@ -254,7 +254,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                     int modifiers, int click_count) override;
 
   std::shared_ptr<shell::LynxRuntimeProxy> GetRuntimeProxy() const;
-  std::shared_ptr<piper::LynxModuleManager> GetModuleManager() const;
+  std::shared_ptr<runtime::js::LynxModuleManager> GetModuleManager() const;
 
   struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
     explicit WeakFlag(LynxTemplateRenderer* template_renderer)
@@ -280,7 +280,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::unique_ptr<shell::LynxShell> shell_;
   tasm::UIDelegate* ui_delegate_;
   std::shared_ptr<WeakFlag> weak_flag_;
-  std::shared_ptr<piper::LynxModuleManager> module_manager_;
+  std::shared_ptr<runtime::js::LynxModuleManager> module_manager_;
   std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>
       perf_controller_ptr_;
   RuntimeProxyCallback runtime_proxy_callback_;

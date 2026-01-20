@@ -279,17 +279,17 @@ void MockTasmDelegate::OnJSSourcePrepared(
       << static_cast<int>(bundle_module_mode) << "\n";
 }
 
-void MockTasmDelegate::CallJSApiCallback(piper::ApiCallBack callback) {
+void MockTasmDelegate::CallJSApiCallback(runtime::js::ApiCallBack callback) {
   ss_ << "CallJSApiCallback " << callback.id();
 }
-void MockTasmDelegate::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
-                                                  const lepus::Value& value,
-                                                  bool persist) {
+void MockTasmDelegate::CallJSApiCallbackWithValue(
+    runtime::js::ApiCallBack callback, const lepus::Value& value,
+    bool persist) {
   ss_ << "CallJSApiCallbackWithValue " << callback.id();
   value.PrintValueSorted(ss_);
   ss_ << std::endl;
 }
-void MockTasmDelegate::RemoveJSApiCallback(piper::ApiCallBack callback) {
+void MockTasmDelegate::RemoveJSApiCallback(runtime::js::ApiCallBack callback) {
   ss_ << "RemoveJSApiCallback " << callback.id() << std::endl;
 }
 

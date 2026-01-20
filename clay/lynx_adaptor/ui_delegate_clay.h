@@ -26,13 +26,14 @@ class UIDelegateClay : public UIDelegate {
  public:
   UIDelegateClay(
       clay::ViewContext* view_context,
-      std::unique_ptr<lynx::piper::NativeModuleFactory> module_factory);
+      std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory);
   ~UIDelegateClay() override;
 
   std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() override;
   std::unique_ptr<LayoutCtxPlatformImpl> CreateLayoutContext() override;
   std::unique_ptr<PropBundleCreator> CreatePropBundleCreator() override;
-  std::unique_ptr<piper::NativeModuleFactory> GetCustomModuleFactory() override;
+  std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory()
+      override;
   bool UsesLogicalPixels() const override;
 
   double GetScreenScaleFactor() const override;
@@ -63,7 +64,7 @@ class UIDelegateClay : public UIDelegate {
 
  private:
   clay::ViewContext* view_context_;
-  std::unique_ptr<piper::NativeModuleFactory> module_factory_;
+  std::unique_ptr<runtime::NativeModuleFactory> module_factory_;
   std::unique_ptr<clay::LynxEventDispatcher> event_dispatcher_;
   // Save a PaintingContextClay raw pointer to set the LynxEngineProxy and
   // LynxRuntimeProxy objects after the Lynx instance is created.

@@ -9,8 +9,8 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class ModuleCallbackTestBench : public ModuleCallback {
  public:
   ModuleCallbackTestBench(int64_t callback_id);
@@ -18,7 +18,8 @@ class ModuleCallbackTestBench : public ModuleCallback {
   rapidjson::Value argument;
   void Invoke(Runtime *runtime, ModuleCallbackFunctionHolder *holder) override;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_SERVICES_REPLAY_LYNX_CALLBACK_TESTBENCH_H_

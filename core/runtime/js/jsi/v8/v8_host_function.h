@@ -15,24 +15,25 @@
 #include "v8.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class V8Runtime;
 
 namespace detail {
 
-std::weak_ptr<piper::HostFunctionType> getHostFunction(
-    V8Runtime* rt, const piper::Function& obj);
+std::weak_ptr<HostFunctionType> getHostFunction(V8Runtime* rt,
+                                                const Function& obj);
 
 class V8HostFunctionProxy
-    : public HostObjectWrapperBase<V8Runtime, piper::HostFunctionType> {
+    : public HostObjectWrapperBase<V8Runtime, HostFunctionType> {
  public:
-  V8HostFunctionProxy(piper::HostFunctionType hostFunction, V8Runtime* rt);
+  V8HostFunctionProxy(HostFunctionType hostFunction, V8Runtime* rt);
 
   ~V8HostFunctionProxy() override = default;
 
   static v8::Local<v8::Object> createFunctionFromHostFunction(
-      V8Runtime* rt, v8::Local<v8::Context> ctx, const piper::PropNameID& name,
-      unsigned int paramCount, piper::HostFunctionType func);
+      V8Runtime* rt, v8::Local<v8::Context> ctx, const PropNameID& name,
+      unsigned int paramCount, HostFunctionType func);
   const static std::string HOST_FUN_KEY;
 
  protected:
@@ -44,6 +45,7 @@ class V8HostFunctionProxy
 };
 
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_JSI_V8_V8_HOST_FUNCTION_H_

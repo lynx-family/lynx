@@ -605,7 +605,7 @@ bool LynxBinaryBaseTemplateReader::DeserializeJSSourceSection() {
     DECODE_STDSTR(path);
     DECODE_STDSTR(content);
     js_bundle_.AddJsContent(
-        path, {std::move(content), piper::JsContent::Type::SOURCE});
+        path, {std::move(content), runtime::js::JsContent::Type::SOURCE});
   }
   return true;
 }
@@ -614,7 +614,8 @@ bool LynxBinaryBaseTemplateReader::DeserializeJSBytecodeSection() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               BINARY_BASE_TEMPLATE_READER_DECODE_JS_BYTECODE_SECTION);
   DECODE_U32(engine);
-  ERROR_UNLESS(engine == static_cast<uint32_t>(piper::JSRuntimeType::quickjs));
+  ERROR_UNLESS(engine ==
+               static_cast<uint32_t>(runtime::js::JSRuntimeType::quickjs));
   DECODE_U32(count);
   for (size_t i = 0; i < count; i++) {
     DECODE_STR(path);
@@ -624,7 +625,8 @@ bool LynxBinaryBaseTemplateReader::DeserializeJSBytecodeSection() {
     ERROR_UNLESS(ReadData(reinterpret_cast<unsigned char *>(content.data()),
                           static_cast<int>(data_len)));
     js_bundle_.AddJsContent(
-        path.str(), {std::move(content), piper::JsContent::Type::BYTECODE});
+        path.str(),
+        {std::move(content), runtime::js::JsContent::Type::BYTECODE});
   }
   return true;
 }

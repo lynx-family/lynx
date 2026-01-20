@@ -26,8 +26,8 @@ bool RegisterJNIForLynxJSIObjectHub(JNIEnv *env) {
 }  // namespace lynx
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 namespace {
 [[maybe_unused]] constexpr char kTag[] = "LynxPlatformJSIObjectAndroid: ";
 
@@ -140,8 +140,7 @@ std::vector<PropNameID> LynxPlatformJSIObjectAndroid::getPropertyNames(
   return {};
 }
 
-lynx::piper::Value LynxPlatformJSIObjectAndroid::get(
-    lynx::piper::Runtime *rt, const lynx::piper::PropNameID &name) {
+Value LynxPlatformJSIObjectAndroid::get(Runtime *rt, const PropNameID &name) {
   if (jsi_object_.IsNull()) {
     return Value::undefined();
   }
@@ -150,8 +149,7 @@ lynx::piper::Value LynxPlatformJSIObjectAndroid::get(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, JSI_OBJECT_GET, "field_name", field_name);
 
   constexpr auto convert_to_value = [](const auto &jsi_object, auto *rt) {
-    return jsi_object ? *jsi_object->ConvertToValue(rt)
-                      : piper::Value::undefined();
+    return jsi_object ? *jsi_object->ConvertToValue(rt) : Value::undefined();
   };
 
   auto field_iter = cache_fields_.find(field_name);
@@ -350,7 +348,7 @@ LynxPlatformJSIObjectAndroid::ConvertJSIObjectFieldObject(
   switch (type) {
     case JObjectType::kLynxJSIObjectType: {
       auto child_jsi_object_module =
-          lynx::piper::LynxPlatformJSIObjectAndroid::Create(env, field_obj);
+          LynxPlatformJSIObjectAndroid::Create(env, field_obj);
       return platform_jsi::JSIObject::Create(
           std::move(child_jsi_object_module));
     }
@@ -437,5 +435,7 @@ LynxPlatformJSIObjectAndroid::ConvertJSIObjectArray(JNIEnv *env,
   return platform_jsi::JSIObject::Create(std::move(raw_field_array));
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

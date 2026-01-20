@@ -9,18 +9,21 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class JSVMRuntime;
 
 namespace detail {
 class JSVMHostFunctionProxy
-    : public HostObjectWrapperBase<JSVMRuntime, piper::HostFunctionType> {
+    : public HostObjectWrapperBase<JSVMRuntime, HostFunctionType> {
  public:
-  JSVMHostFunctionProxy(piper::HostFunctionType hostFunction, JSVMRuntime* rt);
+  JSVMHostFunctionProxy(HostFunctionType hostFunction, JSVMRuntime* rt);
   ~JSVMHostFunctionProxy() override = default;
-  static JSVM_Value createFunctionFromHostFunction(
-      JSVMRuntime* rt, JSVM_Env env, const piper::PropNameID& name,
-      unsigned int paramCount, piper::HostFunctionType func);
+  static JSVM_Value createFunctionFromHostFunction(JSVMRuntime* rt,
+                                                   JSVM_Env env,
+                                                   const PropNameID& name,
+                                                   unsigned int paramCount,
+                                                   HostFunctionType func);
   static const JSVM_TypeTag* GetHostFunctionTag();
 
  protected:
@@ -29,7 +32,8 @@ class JSVMHostFunctionProxy
   static void onFinalize(JSVM_Env env, void* finalizeData, void* finalizeHint);
 };
 }  // namespace detail
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_JSVM_JSVM_HOST_FUNCTION_H_

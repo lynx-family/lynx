@@ -398,7 +398,7 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
       NSBundle* bundle = [NSBundle bundleWithURL:debugBundleUrl];
       path = [bundle pathForResource:kCoreDebugJS ofType:@"js"];
       if (path != nil) {
-        piper::LynxResourceSetting::getInstance()->is_debug_resource_ = true;
+        runtime::js::LynxResourceSetting::getInstance()->is_debug_resource_ = true;
       }
     }
 

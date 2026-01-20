@@ -239,7 +239,7 @@
       [&native_module_manager,
        js_group_thread_name =
            [[LynxGroup jsThreadNameForLynxGroupOrDefault:_group] UTF8String]](auto& actor) {
-        std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
+        std::shared_ptr<lynx::runtime::js::ModuleDelegate> module_delegate =
             std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
         native_module_manager->SetModuleDelegate(module_delegate);
       };
@@ -285,22 +285,22 @@
                                                       config:_config];
 }
 
-- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)setUpMainThreadModuleFactory {
-  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory =
-      std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+- (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)setUpMainThreadModuleFactory {
+  std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> module_factory =
+      std::make_shared<lynx::runtime::js::ModuleFactoryDarwin>();
   // setup user global modules
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
   if (_config != globalConfig && globalConfig) {
     module_factory->parent = globalConfig.moduleFactoryPtr;
   }
   // bind common module creator
-  std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
-      std::make_shared<lynx::piper::CommonLynxContextFinderDarwin>();
+  std::shared_ptr<lynx::runtime::js::LynxContextFinderDarwin> context_finder =
+      std::make_shared<lynx::runtime::js::CommonLynxContextFinderDarwin>();
   NSString* url = [_context getLynxView].url;
   context_finder->RegisterContext("", _context, lynx::base::SafeStringConvert([url UTF8String]));
 
-  std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
-      std::make_unique<lynx::piper::CommonModuleCreator>();
+  std::unique_ptr<lynx::runtime::js::ModuleCreatorDarwin> module_creator =
+      std::make_unique<lynx::runtime::js::CommonModuleCreator>();
   module_creator->SetContextFinder(context_finder);
 
   module_factory->Bind(std::move(module_creator));
@@ -317,14 +317,14 @@
 }
 
 - (std::shared_ptr<lynx::pub::LynxNativeModuleManager>)setUpModuleManager {
-  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory;
+  std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> module_factory;
   // TODO(zhangqun.29):Merge with the initialization of the Common Module
   if (_lynxViewGroup != nullptr && _lynxViewGroup.enableSharedModule &&
       _lynxViewGroup.config != nil) {
     if (_lynxViewGroup.config.getSharedModuleFactoryPtr != nullptr) {
       module_factory = [_lynxViewGroup.config getSharedModuleFactoryPtr];
       module_factory_ = module_factory;
-      std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
+      std::shared_ptr<lynx::runtime::js::LynxContextFinderDarwin> context_finder =
           module_factory->CurrentContextFinder();
       if (context_finder) {
         NSString* url = [_context getLynxView].url;
@@ -334,9 +334,9 @@
     } else {
       auto init_module_factory = _lynxViewGroup.config.moduleFactoryPtr;
       // Init module factory
-      module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
-      std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
-          std::make_unique<lynx::piper::SharedModuleCreator>();
+      module_factory = std::make_shared<lynx::runtime::js::ModuleFactoryDarwin>();
+      std::unique_ptr<lynx::runtime::js::ModuleCreatorDarwin> module_creator =
+          std::make_unique<lynx::runtime::js::SharedModuleCreator>();
       module_factory->Bind(std::move(module_creator));
       module_factory->addWrappers(init_module_factory->moduleWrappers());
       module_factory_ = module_factory;
@@ -345,8 +345,8 @@
         module_factory->parent = globalConfig.moduleFactoryPtr;
       }
       // Init context finder
-      std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
-          std::make_shared<lynx::piper::SharedLynxContextFinderDarwin>();
+      std::shared_ptr<lynx::runtime::js::LynxContextFinderDarwin> context_finder =
+          std::make_shared<lynx::runtime::js::SharedLynxContextFinderDarwin>();
       NSString* url = [_context getLynxView].url;
       context_finder->RegisterContext(std::to_string(_context.instanceId), _context,
                                       lynx::base::SafeStringConvert([url UTF8String]));
@@ -382,9 +382,9 @@
     }
   }
   if (!module_factory) {
-    module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
-    std::unique_ptr<lynx::piper::ModuleCreatorDarwin> module_creator =
-        std::make_unique<lynx::piper::CommonModuleCreator>();
+    module_factory = std::make_shared<lynx::runtime::js::ModuleFactoryDarwin>();
+    std::unique_ptr<lynx::runtime::js::ModuleCreatorDarwin> module_creator =
+        std::make_unique<lynx::runtime::js::CommonModuleCreator>();
     module_factory->Bind(std::move(module_creator));
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
@@ -407,8 +407,8 @@
     module_factory->parent = globalConfig.moduleFactoryPtr;
   }
 
-  std::shared_ptr<lynx::piper::LynxContextFinderDarwin> context_finder =
-      std::make_shared<lynx::piper::CommonLynxContextFinderDarwin>();
+  std::shared_ptr<lynx::runtime::js::LynxContextFinderDarwin> context_finder =
+      std::make_shared<lynx::runtime::js::CommonLynxContextFinderDarwin>();
   NSString* url = [_context getLynxView].url;
   context_finder->RegisterContext("", _context, lynx::base::SafeStringConvert([url UTF8String]));
   module_factory->SetContextFinder(context_finder);
@@ -445,7 +445,7 @@
   return native_module_manager;
 }
 
-- (void)setUpLepusModulesWithFactory:(lynx::piper::ModuleFactoryDarwin*)module_factory {
+- (void)setUpLepusModulesWithFactory:(lynx::runtime::js::ModuleFactoryDarwin*)module_factory {
   self.lepusModulesClasses = [NSMutableDictionary new];
   if (module_factory->parent) {
     [self.lepusModulesClasses addEntriesFromDictionary:module_factory->parent->modulesClasses_];
@@ -453,7 +453,7 @@
   [self.lepusModulesClasses addEntriesFromDictionary:module_factory->modulesClasses_];
 }
 
-- (void)setUpBuiltModuleWithFactory:(lynx::piper::ModuleFactoryDarwin*)module_factory {
+- (void)setUpBuiltModuleWithFactory:(lynx::runtime::js::ModuleFactoryDarwin*)module_factory {
   // register built in module
   module_factory->registerModule(LynxIntersectionObserverModule.class);
   module_factory->registerModule(LynxUIMethodModule.class);

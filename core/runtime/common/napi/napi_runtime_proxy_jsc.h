@@ -11,8 +11,8 @@
 #include "core/runtime/js/jsi/jsc/jsc_context_wrapper.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class NapiRuntimeProxyJSC : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
@@ -29,7 +29,9 @@ class NapiRuntimeProxyJSC : public NapiRuntimeProxy {
   std::weak_ptr<JSCContextWrapper> context_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_NAPI_NAPI_RUNTIME_PROXY_JSC_H_

@@ -37,16 +37,17 @@
 #include "core/public/page_options.h"
 
 #define BUILD_JSI_NATIVE_EXCEPTION(message) \
-  piper::JSINativeException(message, __FUNCTION__, __FILE__, __LINE__)
+  runtime::js::JSINativeException(message, __FUNCTION__, __FILE__, __LINE__)
 #define ADD_STACK(e) e.AddStack(__FUNCTION__, __FILE__, __LINE__)
-#define REPORT_JSI_NATIVE_EXCEPTION(message)                  \
-  piper::JSINativeExceptionCollector::Instance()->AddStack(   \
-      __FUNCTION__, __FILE__, __LINE__);                      \
-  piper::JSINativeExceptionCollector::Instance()->SetMessage( \
+#define REPORT_JSI_NATIVE_EXCEPTION(message)                        \
+  runtime::js::JSINativeExceptionCollector::Instance()->AddStack(   \
+      __FUNCTION__, __FILE__, __LINE__);                            \
+  runtime::js::JSINativeExceptionCollector::Instance()->SetMessage( \
       std::move(message));
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 constexpr char kErrorInfoSeparator[] = " ";
 
 class LYNX_EXPORT Buffer {
@@ -106,11 +107,11 @@ class ByteBuffer : public Buffer {
 };
 
 using BytecodeGetter =
-    base::MoveOnlyClosure<std::shared_ptr<piper::Buffer>, const std::string&>;
+    base::MoveOnlyClosure<std::shared_ptr<Buffer>, const std::string&>;
 
 /// PreparedJavaScript is a base class repesenting JavaScript which is in a form
 /// optimized for execution, in a runtime-specific way. Construct one via
-/// piper::Runtime::prepareJavaScript().
+/// Runtime::prepareJavaScript().
 /// ** This is an experimental API that is subject to change. **
 class PreparedJavaScript {
  protected:
@@ -287,7 +288,7 @@ class LYNX_EXPORT Runtime {
   }
   // will override in quickjsruntime, this version just works as a sentinel
   virtual bool setPropertyValueGC(Object& object, const char* name,
-                                  const piper::Value& value) {
+                                  const Value& value) {
     abort();
     return true;
   }
@@ -545,8 +546,8 @@ class LYNX_EXPORT Runtime {
 
   virtual Object createObject() = 0;
   virtual Object createObject(std::shared_ptr<HostObject> ho) = 0;
-  virtual std::weak_ptr<HostObject> getHostObject(const piper::Object&) = 0;
-  virtual HostFunctionType& getHostFunction(const piper::Function&) = 0;
+  virtual std::weak_ptr<HostObject> getHostObject(const Object&) = 0;
+  virtual HostFunctionType& getHostFunction(const Function&) = 0;
 
   virtual std::optional<Value> getProperty(const Object&,
                                            const PropNameID& name) = 0;
@@ -562,8 +563,8 @@ class LYNX_EXPORT Runtime {
   virtual bool isArray(const Object&) const = 0;
   virtual bool isArrayBuffer(const Object&) const = 0;
   virtual bool isFunction(const Object&) const = 0;
-  virtual bool isHostObject(const piper::Object&) const = 0;
-  virtual bool isHostFunction(const piper::Function&) const = 0;
+  virtual bool isHostObject(const Object&) const = 0;
+  virtual bool isHostFunction(const Function&) const = 0;
   virtual std::optional<Array> getPropertyNames(const Object&) = 0;
 
   virtual std::optional<Array> createArray(size_t length) = 0;
@@ -725,7 +726,7 @@ class PropNameID : public Pointer {
   }
 
   /// Create a PropNameID from a JS string.
-  static PropNameID forString(Runtime& runtime, const piper::String& str) {
+  static PropNameID forString(Runtime& runtime, const String& str) {
     return runtime.createPropNameIDFromString(str);
   }
 
@@ -740,8 +741,8 @@ class PropNameID : public Pointer {
   /// Copies the data in a PropNameID as utf8 into a C++ string.
   std::string utf8(Runtime& runtime) const { return runtime.utf8(*this); }
 
-  static bool compare(Runtime& runtime, const piper::PropNameID& a,
-                      const piper::PropNameID& b) {
+  static bool compare(Runtime& runtime, const PropNameID& a,
+                      const PropNameID& b) {
     return runtime.compare(a, b);
   }
 
@@ -1113,9 +1114,9 @@ class Function : public Object {
   /// \param paramCount the length property for the function, which
   /// may not be the number of arguments the function is passed.
   static Function createFromHostFunction(Runtime& runtime,
-                                         const piper::PropNameID& name,
+                                         const PropNameID& name,
                                          unsigned int paramCount,
-                                         piper::HostFunctionType func);
+                                         HostFunctionType func);
 
   /// Calls the function with \c count \c args.  The \c this value of
   /// the JS function will be undefined.
@@ -1665,7 +1666,7 @@ class LYNX_EXPORT JSError : public JSIException {
   /// but necessary to avoid ambiguity with the above.
   JSError(Runtime& rt, Value&& value, std::string what);
 
-  const piper::Value& value() const {
+  const Value& value() const {
     DCHECK(value_);
     return *value_;
   }
@@ -1680,7 +1681,7 @@ class LYNX_EXPORT JSError : public JSIException {
 
   // This needs to be on the heap, because throw requires the object
   // be copyable, and Value is not.
-  std::shared_ptr<piper::Value> value_;
+  std::shared_ptr<Value> value_;
 
   std::string name_{kDefaultName};
 
@@ -1759,8 +1760,9 @@ class StartupData {
  public:
 };
 
-}  // namespace piper
+}  // namespace js
 
+}  // namespace runtime
 }  // namespace lynx
 
 #include "core/runtime/js/jsi/jsi-inl.h"

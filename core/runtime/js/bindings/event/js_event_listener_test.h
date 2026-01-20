@@ -14,7 +14,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 class JSClosureEventListenerTest : public JSITestBase {
@@ -32,7 +33,8 @@ class JSClosureEventListenerTest : public JSITestBase {
 };
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_EVENT_JS_EVENT_LISTENER_TEST_H_

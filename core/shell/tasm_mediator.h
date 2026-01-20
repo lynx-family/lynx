@@ -32,7 +32,8 @@ namespace shell {
 
 using InvokeUIMethodFunction =
     base::MoveOnlyClosure<void, tasm::LynxGetUIResult, const std::string&,
-                          fml::RefPtr<tasm::PropBundle>, piper::ApiCallBack>;
+                          fml::RefPtr<tasm::PropBundle>,
+                          runtime::js::ApiCallBack>;
 
 // ensure run on tasm thread, lifecycle manage by LynxEngine
 class TasmMediator : public LynxEngine::Delegate {
@@ -111,13 +112,13 @@ class TasmMediator : public LynxEngine::Delegate {
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
       uint64_t trace_flow_id) override;
 
-  void CallJSApiCallback(piper::ApiCallBack callback) override;
+  void CallJSApiCallback(runtime::js::ApiCallBack callback) override;
 
-  void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
+  void CallJSApiCallbackWithValue(runtime::js::ApiCallBack callback,
                                   const lepus::Value& value,
                                   bool persist = false) override;
 
-  void RemoveJSApiCallback(piper::ApiCallBack callback) override;
+  void RemoveJSApiCallback(runtime::js::ApiCallBack callback) override;
 
   void CallPlatformCallbackWithValue(
       const std::shared_ptr<PlatformCallBackHolder>& callback,
@@ -220,7 +221,7 @@ class TasmMediator : public LynxEngine::Delegate {
   void InvokeUIMethod(tasm::LynxGetUIResult ui_result,
                       const std::string& method,
                       fml::RefPtr<tasm::PropBundle> params,
-                      piper::ApiCallBack callback) override;
+                      runtime::js::ApiCallBack callback) override;
 
   void SetPageConfigForLayoutThread(
       const std::shared_ptr<tasm::PageConfig>& config) override;

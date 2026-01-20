@@ -44,8 +44,8 @@ extern "C" {
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using detail::QuickjsHelper;
 using detail::QuickjsHostFunctionProxy;
 using detail::QuickjsHostObjectProxy;
@@ -72,7 +72,7 @@ QuickjsRuntime::QuickjsRuntime() : quickjs_runtime_wrapper_(nullptr) {
 #endif
 };
 
-lynx::piper::QuickjsRuntime::~QuickjsRuntime() {
+QuickjsRuntime::~QuickjsRuntime() {
   *is_runtime_destroyed_ = true;
   ClearHostContainers();
   if (quickjs_runtime_wrapper_) {
@@ -87,8 +87,7 @@ void QuickjsRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext,
                                  std::shared_ptr<JSIExceptionHandler> handler) {
   exception_handler_ = handler;
   quickjs_runtime_wrapper_ =
-      std::static_pointer_cast<lynx::piper::QuickjsRuntimeInstance>(
-          sharedContext->getVM());
+      std::static_pointer_cast<QuickjsRuntimeInstance>(sharedContext->getVM());
   context_ = std::static_pointer_cast<QuickjsContextWrapper>(sharedContext);
   gc_flag_ = LEPUS_IsGCMode(getJSContext());
   quickjs_runtime_wrapper_->AddObserver(this);
@@ -113,8 +112,7 @@ std::shared_ptr<VMInstance> QuickjsRuntime::createVM(
 
 std::shared_ptr<VMInstance> QuickjsRuntime::CreateVM(const StartupData *,
                                                      bool sync) {
-  auto quickjs_runtime_wrapper =
-      std::make_shared<lynx::piper::QuickjsRuntimeInstance>();
+  auto quickjs_runtime_wrapper = std::make_shared<QuickjsRuntimeInstance>();
   uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
   quickjs_runtime_wrapper->InitQuickjsRuntime(sync, mode);
   return quickjs_runtime_wrapper;
@@ -269,13 +267,13 @@ QuickjsRuntime::evaluatePreparedJavaScript(
   return eval_res;
 }
 
-Object lynx::piper::QuickjsRuntime::global() {
+Object QuickjsRuntime::global() {
   LEPUSValue global_obj = LEPUS_GetGlobalObject(context_->getContext());
   auto ret = QuickjsHelper::createJSValue(context_->getContext(), global_obj);
   return ret;
 }
 
-LEPUSValue QuickjsRuntime::valueRef(const piper::Value &value) {
+LEPUSValue QuickjsRuntime::valueRef(const Value &value) {
   switch (value.kind()) {
     case Value::ValueKind::UndefinedKind:
       return LEPUS_UNDEFINED;
@@ -294,7 +292,7 @@ LEPUSValue QuickjsRuntime::valueRef(const piper::Value &value) {
   }
 }
 
-lynx::piper::Runtime::PointerValue *lynx::piper::QuickjsRuntime::cloneSymbol(
+Runtime::PointerValue *QuickjsRuntime::cloneSymbol(
     const Runtime::PointerValue *pv) {
   if (!pv) {
     return nullptr;
@@ -306,7 +304,7 @@ lynx::piper::Runtime::PointerValue *lynx::piper::QuickjsRuntime::cloneSymbol(
       LEPUS_DupValue(context_->getContext(), symbol->Get()));
 }
 
-lynx::piper::Runtime::PointerValue *lynx::piper::QuickjsRuntime::cloneString(
+Runtime::PointerValue *QuickjsRuntime::cloneString(
     const Runtime::PointerValue *pv) {
   if (!pv) {
     return nullptr;
@@ -318,7 +316,7 @@ lynx::piper::Runtime::PointerValue *lynx::piper::QuickjsRuntime::cloneString(
       LEPUS_DupValue(context_->getContext(), string->Get()));
 }
 
-lynx::piper::Runtime::PointerValue *lynx::piper::QuickjsRuntime::cloneObject(
+Runtime::PointerValue *QuickjsRuntime::cloneObject(
     const Runtime::PointerValue *pv) {
   if (!pv) {
     return nullptr;
@@ -330,8 +328,8 @@ lynx::piper::Runtime::PointerValue *lynx::piper::QuickjsRuntime::cloneObject(
       LEPUS_DupValue(context_->getContext(), object->Get()));
 }
 
-lynx::piper::Runtime::PointerValue *
-lynx::piper::QuickjsRuntime::clonePropNameID(const Runtime::PointerValue *pv) {
+Runtime::PointerValue *QuickjsRuntime::clonePropNameID(
+    const Runtime::PointerValue *pv) {
   if (!pv) {
     return nullptr;
   }
@@ -342,36 +340,33 @@ lynx::piper::QuickjsRuntime::clonePropNameID(const Runtime::PointerValue *pv) {
       LEPUS_DupValue(context_->getContext(), string->Get()));
 }
 
-lynx::piper::PropNameID lynx::piper::QuickjsRuntime::createPropNameIDFromAscii(
-    const char *str, size_t length) {
+PropNameID QuickjsRuntime::createPropNameIDFromAscii(const char *str,
+                                                     size_t length) {
   LEPUSValue value = LEPUS_NewStringLen(context_->getContext(), str, length);
   auto res = QuickjsHelper::createPropNameID(context_->getContext(), value);
   return res;
 }
 
-lynx::piper::PropNameID lynx::piper::QuickjsRuntime::createPropNameIDFromUtf8(
-    const uint8_t *utf8, size_t length) {
+PropNameID QuickjsRuntime::createPropNameIDFromUtf8(const uint8_t *utf8,
+                                                    size_t length) {
   LEPUSValue value = LEPUS_NewStringLen(
       context_->getContext(), reinterpret_cast<const char *>(utf8), length);
   auto res = QuickjsHelper::createPropNameID(context_->getContext(), value);
   return res;
 }
 
-lynx::piper::PropNameID lynx::piper::QuickjsRuntime::createPropNameIDFromString(
-    const lynx::piper::String &str) {
+PropNameID QuickjsRuntime::createPropNameIDFromString(const String &str) {
   return QuickjsHelper::createPropNameID(
       context_->getContext(),
       LEPUS_DupValue(context_->getContext(), QuickjsHelper::stringRef(str)));
 }
 
-std::string lynx::piper::QuickjsRuntime::utf8(
-    const lynx::piper::PropNameID &sym) {
+std::string QuickjsRuntime::utf8(const PropNameID &sym) {
   return QuickjsHelper::LEPUSStringToSTLString(context_->getContext(),
                                                QuickjsHelper::valueRef(sym));
 }
 
-bool lynx::piper::QuickjsRuntime::compare(const lynx::piper::PropNameID &a,
-                                          const lynx::piper::PropNameID &b) {
+bool QuickjsRuntime::compare(const PropNameID &a, const PropNameID &b) {
   std::string aa = QuickjsHelper::LEPUSStringToSTLString(
       context_->getContext(), QuickjsHelper::valueRef(a));
   std::string bb = QuickjsHelper::LEPUSStringToSTLString(
@@ -379,49 +374,44 @@ bool lynx::piper::QuickjsRuntime::compare(const lynx::piper::PropNameID &a,
   return aa == bb;
 }
 
-std::optional<std::string> lynx::piper::QuickjsRuntime::symbolToString(
-    const lynx::piper::Symbol &symbol) {
-  auto str = piper::Value(*this, symbol).toString(*this);
+std::optional<std::string> QuickjsRuntime::symbolToString(
+    const Symbol &symbol) {
+  auto str = Value(*this, symbol).toString(*this);
   if (!str) {
     return std::optional<std::string>();
   }
   return str->utf8(*this);
 }
 
-lynx::piper::String lynx::piper::QuickjsRuntime::createStringFromAscii(
-    const char *str, size_t length) {
+String QuickjsRuntime::createStringFromAscii(const char *str, size_t length) {
   return this->createStringFromUtf8(reinterpret_cast<const uint8_t *>(str),
                                     length);
 }
 
-lynx::piper::String lynx::piper::QuickjsRuntime::createStringFromUtf8(
-    const uint8_t *str, size_t length) {
+String QuickjsRuntime::createStringFromUtf8(const uint8_t *str, size_t length) {
   LEPUSValue value = LEPUS_NewStringLen(
       context_->getContext(), reinterpret_cast<const char *>(str), length);
   auto ret = QuickjsHelper::createString(context_->getContext(), value);
   return ret;
 }
 
-std::string lynx::piper::QuickjsRuntime::utf8(
-    const lynx::piper::String &string) {
+std::string QuickjsRuntime::utf8(const String &string) {
   return QuickjsHelper::LEPUSStringToSTLString(
       context_->getContext(), QuickjsHelper::stringRef(string));
 }
 
-lynx::piper::Object lynx::piper::QuickjsRuntime::createObject() {
+Object QuickjsRuntime::createObject() {
   LEPUSValue value = LEPUS_NewObject(context_->getContext());
   //  LOGE( "LYNX" << "QuickjsRuntime::createObject() ptr=" <<
   //  LEPUS_VALUE_GET_PTR(value));
   return QuickjsHelper::createObject(context_->getContext(), value);
 }
 
-lynx::piper::Object lynx::piper::QuickjsRuntime::createObject(
-    std::shared_ptr<HostObject> ho) {
+Object QuickjsRuntime::createObject(std::shared_ptr<HostObject> ho) {
   return QuickjsHostObjectProxy::createObject(this, std::move(ho));
 }
 
-std::weak_ptr<HostObject> lynx::piper::QuickjsRuntime::getHostObject(
-    const piper::Object &object) {
+std::weak_ptr<HostObject> QuickjsRuntime::getHostObject(const Object &object) {
   LEPUSValue obj = QuickjsHelper::objectRef(object);
   auto metadata = static_cast<detail::QuickjsHostObjectProxy *>(
       LEPUS_GetOpaque(obj, getObjectClassID()));
@@ -429,8 +419,8 @@ std::weak_ptr<HostObject> lynx::piper::QuickjsRuntime::getHostObject(
   return metadata->GetHost();
 }
 
-std::optional<Value> lynx::piper::QuickjsRuntime::getProperty(
-    const lynx::piper::Object &object, const lynx::piper::PropNameID &name) {
+std::optional<Value> QuickjsRuntime::getProperty(const Object &object,
+                                                 const PropNameID &name) {
   LEPUSValue v = QuickjsHelper::objectRef(object);
   LEPUSContext *ctx = context_->getContext();
 
@@ -455,8 +445,8 @@ std::optional<Value> lynx::piper::QuickjsRuntime::getProperty(
   return ret;
 }
 
-std::optional<Value> lynx::piper::QuickjsRuntime::getProperty(
-    const lynx::piper::Object &object, const lynx::piper::String &name) {
+std::optional<Value> QuickjsRuntime::getProperty(const Object &object,
+                                                 const String &name) {
   LEPUSValue v = QuickjsHelper::objectRef(object);
   LEPUSContext *ctx = context_->getContext();
 
@@ -481,8 +471,7 @@ std::optional<Value> lynx::piper::QuickjsRuntime::getProperty(
   return ret;
 }
 
-bool lynx::piper::QuickjsRuntime::hasProperty(
-    const lynx::piper::Object &object, const lynx::piper::PropNameID &name) {
+bool QuickjsRuntime::hasProperty(const Object &object, const PropNameID &name) {
   LEPUSValue value = QuickjsHelper::objectRef(object);
   LEPUSContext *ctx = context_->getContext();
   const char *n = LEPUS_ToCString(ctx, QuickjsHelper::valueRef(name));
@@ -504,15 +493,12 @@ bool lynx::piper::QuickjsRuntime::hasProperty(
   return ret;
 }
 
-bool lynx::piper::QuickjsRuntime::hasProperty(const lynx::piper::Object &object,
-                                              const lynx::piper::String &name) {
-  return hasProperty(object,
-                     reinterpret_cast<const lynx::piper::PropNameID &>(name));
+bool QuickjsRuntime::hasProperty(const Object &object, const String &name) {
+  return hasProperty(object, reinterpret_cast<const PropNameID &>(name));
 }
 
-bool lynx::piper::QuickjsRuntime::setPropertyValue(
-    lynx::piper::Object &object, const lynx::piper::PropNameID &name,
-    const lynx::piper::Value &value) {
+bool QuickjsRuntime::setPropertyValue(Object &object, const PropNameID &name,
+                                      const Value &value) {
   LEPUSValue obj = QuickjsHelper::objectRef(object);
   LEPUSContext *ctx = context_->getContext();
   LEPUSValue property = LEPUS_DupValue(ctx, valueRef(value));
@@ -536,44 +522,37 @@ bool lynx::piper::QuickjsRuntime::setPropertyValue(
   return true;
 }
 
-bool lynx::piper::QuickjsRuntime::setPropertyValue(
-    lynx::piper::Object &object, const lynx::piper::String &name,
-    const lynx::piper::Value &value) {
-  return setPropertyValue(
-      object, reinterpret_cast<const lynx::piper::PropNameID &>(name), value);
+bool QuickjsRuntime::setPropertyValue(Object &object, const String &name,
+                                      const Value &value) {
+  return setPropertyValue(object, reinterpret_cast<const PropNameID &>(name),
+                          value);
 }
 
-bool lynx::piper::QuickjsRuntime::isArray(
-    const lynx::piper::Object &object) const {
+bool QuickjsRuntime::isArray(const Object &object) const {
   return LEPUS_IsArray(context_->getContext(),
                        QuickjsHelper::objectRef(object));
 }
 
-bool lynx::piper::QuickjsRuntime::isArrayBuffer(
-    const lynx::piper::Object &object) const {
+bool QuickjsRuntime::isArrayBuffer(const Object &object) const {
   return LEPUS_IsArrayBuffer(QuickjsHelper::objectRef(object));
 }
 
-bool lynx::piper::QuickjsRuntime::isFunction(
-    const lynx::piper::Object &object) const {
+bool QuickjsRuntime::isFunction(const Object &object) const {
   return LEPUS_IsFunction(context_->getContext(),
                           QuickjsHelper::objectRef(object));
 }
 
-bool lynx::piper::QuickjsRuntime::isHostObject(
-    const piper::Object &object) const {
+bool QuickjsRuntime::isHostObject(const Object &object) const {
   LEPUSValue value = QuickjsHelper::objectRef(object);
   return LEPUS_GetOpaque(value, getObjectClassID()) != nullptr;
 }
 
-bool lynx::piper::QuickjsRuntime::isHostFunction(
-    const piper::Function &function) const {
+bool QuickjsRuntime::isHostFunction(const Function &function) const {
   LEPUSValue value = QuickjsHelper::objectRef(function);
   return LEPUS_GetOpaque(value, getFunctionClassID()) != nullptr;
 }
 
-std::optional<piper::Array> lynx::piper::QuickjsRuntime::getPropertyNames(
-    const lynx::piper::Object &object) {
+std::optional<Array> QuickjsRuntime::getPropertyNames(const Object &object) {
   LEPUSValue obj = QuickjsHelper::objectRef(object);
   LEPUSPropertyEnum *tab_exotic;
   uint32_t exotic_count = 0;
@@ -586,7 +565,7 @@ std::optional<piper::Array> lynx::piper::QuickjsRuntime::getPropertyNames(
                          HANDLE_TYPE_DIR_HEAP_OBJ);
   auto result = createArray(exotic_count);
   if (!result) {
-    return std::optional<piper::Array>();
+    return std::optional<Array>();
   }
   for (i = 0; i < exotic_count; i++) {
     atom = tab_exotic[i].atom;
@@ -594,7 +573,7 @@ std::optional<piper::Array> lynx::piper::QuickjsRuntime::getPropertyNames(
     if (!(*result).setValueAtIndex(
             *this, i,
             QuickjsHelper::createString(context_->getContext(), name))) {
-      return std::optional<piper::Array>();
+      return std::optional<Array>();
     }
   }
   uint32_t j;
@@ -606,7 +585,7 @@ std::optional<piper::Array> lynx::piper::QuickjsRuntime::getPropertyNames(
   return result;
 }
 
-std::optional<Array> lynx::piper::QuickjsRuntime::createArray(size_t length) {
+std::optional<Array> QuickjsRuntime::createArray(size_t length) {
   // https://tc39.es/ecma262/#sec-arraycreate
   if (length > std::numeric_limits<uint32_t>::max()) {
     // TODO(wangqingyu): Should throw a RangeError exception.
@@ -624,16 +603,15 @@ std::optional<Array> lynx::piper::QuickjsRuntime::createArray(size_t length) {
 
 // create BigInt object and and store value with key named "__lynx_val__", then
 // add "toString" method to js object
-std::optional<piper::BigInt> lynx::piper::QuickjsRuntime::createBigInt(
-    const std::string &value, Runtime &rt) {
+std::optional<BigInt> QuickjsRuntime::createBigInt(const std::string &value,
+                                                   Runtime &rt) {
   LEPUSValue obj = LEPUS_NewObject(context_->getContext());
   LEPUSContext *context = context_->getContext();
   auto piper_obj = QuickjsHelper::createObject(context, obj);
 
   // store value with key
   const std::string key = "__lynx_val__";
-  lynx::piper::String value_str =
-      lynx::piper::String::createFromUtf8(rt, value);
+  String value_str = String::createFromUtf8(rt, value);
   // Must call the LEPUS_DupValue() to copy value before setting properties
   // otherwise it will crash
   LEPUS_DefinePropertyValueStr(context, obj, key.c_str(),
@@ -642,18 +620,15 @@ std::optional<piper::BigInt> lynx::piper::QuickjsRuntime::createBigInt(
 
   // create "toString" function
   const std::string to_str = "toString";
-  const lynx::piper::PropNameID prop =
-      lynx::piper::PropNameID::forUtf8(rt, to_str);
-  const lynx::piper::Value fun_value =
-      lynx::piper::Function::createFromHostFunction(
-          rt, prop, 0,
-          [value](Runtime &rt, const Value &thisVal, const Value *args,
-                  size_t count) {
-            lynx::piper::String res =
-                lynx::piper::String::createFromUtf8(rt, value);
+  const PropNameID prop = PropNameID::forUtf8(rt, to_str);
+  const Value fun_value = Function::createFromHostFunction(
+      rt, prop, 0,
+      [value](Runtime &rt, const Value &thisVal, const Value *args,
+              size_t count) {
+        String res = String::createFromUtf8(rt, value);
 
-            return piper::Value(rt, res);
-          });
+        return Value(rt, res);
+      });
 
   // add "toString" property to js object as a function
   LEPUS_DefinePropertyValueStr(context, obj, to_str.c_str(),
@@ -674,8 +649,8 @@ std::optional<piper::BigInt> lynx::piper::QuickjsRuntime::createBigInt(
   return std::move(piper_obj).getBigInt(rt);
 }
 
-lynx::piper::ArrayBuffer lynx::piper::QuickjsRuntime::createArrayBufferCopy(
-    const uint8_t *bytes, size_t byte_length) {
+ArrayBuffer QuickjsRuntime::createArrayBufferCopy(const uint8_t *bytes,
+                                                  size_t byte_length) {
   LEPUSValue array_buffer = LEPUS_UNDEFINED;
   if (byte_length == 0) {
     uint8_t bytes_array_buffer[1] = {0};
@@ -688,13 +663,13 @@ lynx::piper::ArrayBuffer lynx::piper::QuickjsRuntime::createArrayBufferCopy(
   if (!QuickjsException::ReportExceptionIfNeeded(*this, array_buffer) ||
       LEPUS_VALUE_GET_TAG(array_buffer) == LEPUS_TAG_UNDEFINED ||
       LEPUS_VALUE_GET_TAG(array_buffer) == LEPUS_TAG_NULL) {
-    return lynx::piper::ArrayBuffer(*this);
+    return ArrayBuffer(*this);
   }
   return QuickjsHelper::createObject(context_->getContext(), array_buffer)
       .getArrayBuffer(*this);
 }
 
-lynx::piper::ArrayBuffer lynx::piper::QuickjsRuntime::createArrayBufferNoCopy(
+ArrayBuffer QuickjsRuntime::createArrayBufferNoCopy(
     std::unique_ptr<const uint8_t[]> bytes, size_t byte_length) {
   LEPUSFreeArrayBufferDataFunc *free_func = [](LEPUSRuntime *rt, void *opaque,
                                                void *ptr) {
@@ -716,14 +691,13 @@ lynx::piper::ArrayBuffer lynx::piper::QuickjsRuntime::createArrayBufferNoCopy(
   if (!QuickjsException::ReportExceptionIfNeeded(*this, array_buffer) ||
       LEPUS_VALUE_GET_TAG(array_buffer) == LEPUS_TAG_UNDEFINED ||
       LEPUS_VALUE_GET_TAG(array_buffer) == LEPUS_TAG_NULL) {
-    return lynx::piper::ArrayBuffer(*this);
+    return ArrayBuffer(*this);
   }
   return QuickjsHelper::createObject(context_->getContext(), array_buffer)
       .getArrayBuffer(*this);
 }
 
-std::optional<size_t> lynx::piper::QuickjsRuntime::size(
-    const lynx::piper::Array &array) {
+std::optional<size_t> QuickjsRuntime::size(const Array &array) {
   LEPUSValue arr = QuickjsHelper::objectRef(array);
   LEPUSValue jsLength =
       LEPUS_GetPropertyStr(context_->getContext(), arr, "length");
@@ -731,25 +705,22 @@ std::optional<size_t> lynx::piper::QuickjsRuntime::size(
   return l;
 }
 
-size_t lynx::piper::QuickjsRuntime::size(
-    const lynx::piper::ArrayBuffer &buffer) {
+size_t QuickjsRuntime::size(const ArrayBuffer &buffer) {
   size_t length = 0;
   LEPUS_GetArrayBuffer(context_->getContext(), &length,
                        QuickjsHelper::objectRef(buffer));
   return length;
 }
 
-uint8_t *lynx::piper::QuickjsRuntime::data(
-    const lynx::piper::ArrayBuffer &array_buffer) {
+uint8_t *QuickjsRuntime::data(const ArrayBuffer &array_buffer) {
   size_t length = 0;
   uint8_t *bytes = LEPUS_GetArrayBuffer(context_->getContext(), &length,
                                         QuickjsHelper::objectRef(array_buffer));
   return bytes;
 }
 
-size_t lynx::piper::QuickjsRuntime::copyData(const ArrayBuffer &array_buffer,
-                                             uint8_t *dest_buf,
-                                             size_t dest_len) {
+size_t QuickjsRuntime::copyData(const ArrayBuffer &array_buffer,
+                                uint8_t *dest_buf, size_t dest_len) {
   size_t src_len = array_buffer.length(*this);
   if (dest_len < src_len) {
     return 0;
@@ -761,12 +732,12 @@ size_t lynx::piper::QuickjsRuntime::copyData(const ArrayBuffer &array_buffer,
   return src_len;
 }
 
-std::optional<Value> lynx::piper::QuickjsRuntime::getValueAtIndex(
-    const lynx::piper::Array &array, size_t i) {
+std::optional<Value> QuickjsRuntime::getValueAtIndex(const Array &array,
+                                                     size_t i) {
   LEPUSValue arr = QuickjsHelper::objectRef(array);
   if (!LEPUS_IsArray(context_->getContext(), arr)) {
     LOGE("getValueAtIndex error. array is not an array");
-    return piper::Value(nullptr);
+    return Value(nullptr);
   }
   LEPUSValue value = LEPUS_GetPropertyUint32(context_->getContext(), arr,
                                              static_cast<uint32_t>(i));
@@ -776,8 +747,8 @@ std::optional<Value> lynx::piper::QuickjsRuntime::getValueAtIndex(
   return ret;
 }
 
-bool lynx::piper::QuickjsRuntime::setValueAtIndexImpl(
-    lynx::piper::Array &array, size_t i, const lynx::piper::Value &value) {
+bool QuickjsRuntime::setValueAtIndexImpl(Array &array, size_t i,
+                                         const Value &value) {
   LEPUSValue obj = QuickjsHelper::objectRef(array);
   //  LOGE( "LYNX setValueAtIndexImpl jsvalueptr=" <<
   //  LEPUS_VALUE_GET_PTR(obj));
@@ -788,10 +759,9 @@ bool lynx::piper::QuickjsRuntime::setValueAtIndexImpl(
   return true;
 }
 
-lynx::piper::Function
-lynx::piper::QuickjsRuntime::createFunctionFromHostFunction(
-    const lynx::piper::PropNameID &name, unsigned int paramCount,
-    HostFunctionType func) {
+Function QuickjsRuntime::createFunctionFromHostFunction(const PropNameID &name,
+                                                        unsigned int paramCount,
+                                                        HostFunctionType func) {
   LEPUSValue quick_func =
       QuickjsHostFunctionProxy::createFunctionFromHostFunction(
           this, context_->getContext(), name, paramCount, std::move(func));
@@ -801,9 +771,9 @@ lynx::piper::QuickjsRuntime::createFunctionFromHostFunction(
       .getFunction(*this);
 }
 
-std::optional<Value> lynx::piper::QuickjsRuntime::call(
-    const lynx::piper::Function &function, const lynx::piper::Value &jsThis,
-    const lynx::piper::Value *args, size_t count) {
+std::optional<Value> QuickjsRuntime::call(const Function &function,
+                                          const Value &jsThis,
+                                          const Value *args, size_t count) {
   auto converter = ArgsConverter<LEPUSValue>(
       count, args, [this](const auto &value) { return valueRef(value); });
   return QuickjsHelper::call(
@@ -814,9 +784,9 @@ std::optional<Value> lynx::piper::QuickjsRuntime::call(
       converter, count);
 }
 
-std::optional<Value> lynx::piper::QuickjsRuntime::callAsConstructor(
-    const lynx::piper::Function &function, const lynx::piper::Value *args,
-    size_t count) {
+std::optional<Value> QuickjsRuntime::callAsConstructor(const Function &function,
+                                                       const Value *args,
+                                                       size_t count) {
   auto converter = ArgsConverter<LEPUSValue>(
       count, args, [this](const auto &value) { return valueRef(value); });
   return QuickjsHelper::callAsConstructor(this,
@@ -824,23 +794,20 @@ std::optional<Value> lynx::piper::QuickjsRuntime::callAsConstructor(
                                           converter, static_cast<int>(count));
 }
 
-lynx::piper::Runtime::ScopeState *lynx::piper::QuickjsRuntime::pushScope() {
+Runtime::ScopeState *QuickjsRuntime::pushScope() {
   return Runtime::pushScope();
 }
 
-void lynx::piper::QuickjsRuntime::popScope(
-    lynx::piper::Runtime::ScopeState *state) {
+void QuickjsRuntime::popScope(Runtime::ScopeState *state) {
   Runtime::popScope(state);
 }
 
-bool lynx::piper::QuickjsRuntime::strictEquals(
-    const lynx::piper::Symbol &a, const lynx::piper::Symbol &b) const {
+bool QuickjsRuntime::strictEquals(const Symbol &a, const Symbol &b) const {
   return LEPUS_VALUE_GET_PTR(QuickjsHelper::symbolRef(a)) ==
          LEPUS_VALUE_GET_PTR(QuickjsHelper::symbolRef(b));
 }
 
-bool lynx::piper::QuickjsRuntime::strictEquals(
-    const lynx::piper::String &a, const lynx::piper::String &b) const {
+bool QuickjsRuntime::strictEquals(const String &a, const String &b) const {
   // LEPUS_StrictEq does the following for comparing two strings:
   //   1. Check if ptr are equals
   //     1.1 Return true if equals
@@ -855,14 +822,12 @@ bool lynx::piper::QuickjsRuntime::strictEquals(
                         LEPUS_DupValue(context, QuickjsHelper::stringRef(b)));
 }
 
-bool lynx::piper::QuickjsRuntime::strictEquals(
-    const lynx::piper::Object &a, const lynx::piper::Object &b) const {
+bool QuickjsRuntime::strictEquals(const Object &a, const Object &b) const {
   return LEPUS_VALUE_GET_PTR(QuickjsHelper::objectRef(a)) ==
          LEPUS_VALUE_GET_PTR(QuickjsHelper::objectRef(b));
 }
 
-bool lynx::piper::QuickjsRuntime::instanceOf(const lynx::piper::Object &o,
-                                             const lynx::piper::Function &f) {
+bool QuickjsRuntime::instanceOf(const Object &o, const Function &f) {
   int ret =
       LEPUS_IsInstanceOf(context_->getContext(), QuickjsHelper::objectRef(o),
                          QuickjsHelper::objectRef(f));
@@ -933,8 +898,8 @@ std::string QuickjsRuntime::AddPrefixToUrlIfNeeded(const std::string &url) {
   return Runtime::AddPrefixToUrlIfNeeded(url);
 }
 
-bool lynx::piper::QuickjsRuntime::setPropertyValueGC(
-    Object &object, const char *name, const piper::Value &value) {
+bool QuickjsRuntime::setPropertyValueGC(Object &object, const char *name,
+                                        const Value &value) {
   LEPUSContext *ctx = context_->getContext();
   LEPUSValue obj = QuickjsHelper::objectRef(object);
   LEPUSValue property = valueRef(value);
@@ -952,31 +917,31 @@ bool lynx::piper::QuickjsRuntime::setPropertyValueGC(
   return true;
 }
 
-std::unique_ptr<piper::Runtime> makeQuickJsRuntime() {
+std::unique_ptr<Runtime> makeQuickJsRuntime() {
   return std::make_unique<QuickjsRuntime>();
 }
 
 std::shared_ptr<VMInstance> CreateQuickJsVM(const StartupData *startup_data,
                                             bool sync) {
-  return piper::QuickjsRuntime::CreateVM(startup_data, sync);
+  return QuickjsRuntime::CreateVM(startup_data, sync);
 }
 
-void BindQuickjsVMToCurrentThread(std::shared_ptr<piper::VMInstance> &vm) {
+void BindQuickjsVMToCurrentThread(std::shared_ptr<VMInstance> &vm) {
   if (!vm) {
     return;
   }
-  piper::QuickjsRuntimeInstance *quickjs_vm =
-      static_cast<piper::QuickjsRuntimeInstance *>(vm.get());
+  QuickjsRuntimeInstance *quickjs_vm =
+      static_cast<QuickjsRuntimeInstance *>(vm.get());
   quickjs_vm->AddToIdContainer();
 }
 
 LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<lynx::runtime::profile::RuntimeProfiler>
-makeQuickJsRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
+makeQuickJsRuntimeProfiler(std::shared_ptr<JSIContext> js_context) {
 #if ENABLE_TRACE_PERFETTO
   auto vm = js_context->getVM();
-  if (vm->GetRuntimeType() == piper::JSRuntimeType::quickjs) {
+  if (vm->GetRuntimeType() == JSRuntimeType::quickjs) {
     auto quickjs_context =
-        std::static_pointer_cast<piper::QuickjsContextWrapper>(js_context);
+        std::static_pointer_cast<QuickjsContextWrapper>(js_context);
     return std::make_unique<lynx::runtime::profile::QuickjsRuntimeProfiler>(
         quickjs_context);
   }
@@ -1014,5 +979,7 @@ QuickjsRuntime::PrepareJavaScriptBytecode(
       nullptr, std::move(cache), std::move(source_url), 0);
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

@@ -12,8 +12,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 class App;
 class Runtime;
 
@@ -38,6 +38,7 @@ class JavaScriptElement : public HostObject {
   std::string root_id_;
   std::string selector_id_;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_JAVA_SCRIPT_ELEMENT_H_

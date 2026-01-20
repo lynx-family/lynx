@@ -14,8 +14,8 @@
 #endif
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 using Module = NapiEnvironment::Module;
 
 NapiLoaderJS::NapiLoaderJS(const std::string& id) : id_(id) {}
@@ -28,8 +28,7 @@ NapiLoaderJS::NapiLoaderJS(
 #endif
 
 Napi::Value TriggerGC(const Napi::CallbackInfo& info) {
-  auto runtime =
-      piper::NapiEnvironment::From(info.Env())->GetJSRuntime().lock();
+  auto runtime = NapiEnvironment::From(info.Env())->GetJSRuntime().lock();
 
   if (runtime) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TRIGGER_GC);
@@ -40,8 +39,7 @@ Napi::Value TriggerGC(const Napi::CallbackInfo& info) {
 }
 
 Napi::Value TriggerGCForTesting(const Napi::CallbackInfo& info) {
-  auto runtime =
-      piper::NapiEnvironment::From(info.Env())->GetJSRuntime().lock();
+  auto runtime = NapiEnvironment::From(info.Env())->GetJSRuntime().lock();
 
   if (runtime) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TRIGGER_GC_FOR_TESTING);
@@ -80,8 +78,7 @@ static Napi::Value LoadLazyModule(const Napi::CallbackInfo& info) {
 
   Napi::String name = info[0].As<Napi::String>();
   Napi::Object target = info[1].As<Napi::Object>();
-  auto* module =
-      piper::NapiEnvironment::From(info.Env())->GetModule(name.Utf8Value());
+  auto* module = NapiEnvironment::From(info.Env())->GetModule(name.Utf8Value());
   if (!module) {
     std::string msg("Module not registered: ");
     msg += name;
@@ -107,7 +104,7 @@ static Napi::Value InstallNapiModules(Napi::Env env, NapiEnvironment* host_env,
 
 static Napi::Value NotifyRuntimeReadyNapi(const Napi::CallbackInfo& info) {
   DCHECK(info.Length() > 0);
-  NapiEnvironment* host_env = piper::NapiEnvironment::From(info.Env());
+  NapiEnvironment* host_env = NapiEnvironment::From(info.Env());
 
   if (info.Length() < 1 || !info[0].IsObject()) {
     Napi::Error::New(
@@ -183,5 +180,7 @@ void NapiLoaderJS::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
 #endif
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

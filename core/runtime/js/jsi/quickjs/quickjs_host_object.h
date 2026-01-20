@@ -11,15 +11,15 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class QuickjsRuntime;
 namespace detail {
 
 struct QuickjsHostObjectProxy
     : public HostObjectWrapperBase<QuickjsRuntime, HostObject> {
  public:
-  QuickjsHostObjectProxy(QuickjsRuntime* rt,
-                         std::shared_ptr<piper::HostObject> sho);
+  QuickjsHostObjectProxy(QuickjsRuntime* rt, std::shared_ptr<HostObject> sho);
   ~QuickjsHostObjectProxy() override;
 
   static void hostFinalizer(LEPUSRuntime* rt, LEPUSValue val);
@@ -36,8 +36,8 @@ struct QuickjsHostObjectProxy
   static int getPropertyNames(LEPUSContext* ctx, LEPUSPropertyEnum** ptab,
                               uint32_t* plen, LEPUSValueConst obj);
 
-  static piper::Object createObject(lynx::piper::QuickjsRuntime* ctx,
-                                    std::shared_ptr<piper::HostObject> ho);
+  static Object createObject(QuickjsRuntime* ctx,
+                             std::shared_ptr<HostObject> ho);
 
   friend class QuickJsRuntime;
 
@@ -46,8 +46,9 @@ struct QuickjsHostObjectProxy
 
 }  // namespace detail
 
-}  // namespace piper
+}  // namespace js
 
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_HOST_OBJECT_H_

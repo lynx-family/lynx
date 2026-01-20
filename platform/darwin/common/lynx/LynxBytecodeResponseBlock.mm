@@ -5,13 +5,14 @@
 #import <Lynx/LynxBytecodeResponseBlock.h>
 #import "LynxBytecodeResponseBlock+Converter.h"
 
-std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback> CreateBytecodeGenerateCallback(
+std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback> CreateBytecodeGenerateCallback(
     LynxBytecodeResponseBlock _Nullable callback) {
-  std::unique_ptr<lynx::piper::cache::BytecodeGenerateCallback> bytecode_callback = nullptr;
+  std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback> bytecode_callback = nullptr;
   if (callback) {
-    bytecode_callback = std::make_unique<lynx::piper::cache::BytecodeGenerateCallback>(
-        [callback](std::string error_msg,
-                   std::unordered_map<std::string, std::shared_ptr<lynx::piper::Buffer>> buffers) {
+    bytecode_callback = std::make_unique<lynx::runtime::js::cache::BytecodeGenerateCallback>(
+        [callback](
+            std::string error_msg,
+            std::unordered_map<std::string, std::shared_ptr<lynx::runtime::js::Buffer>> buffers) {
           NSString* errorInfo =
               error_msg.empty() ? nil : [NSString stringWithUTF8String:error_msg.c_str()];
           NSMutableDictionary* dict = nil;

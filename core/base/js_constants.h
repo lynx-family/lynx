@@ -7,8 +7,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /*
  * https://www.npmjs.com/package/jsbi
  */
@@ -35,7 +35,9 @@ static constexpr const int64_t kMinJavaScriptNumber = -9007199254740991;
 
 // TODO: add more
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_BASE_JS_CONSTANTS_H_

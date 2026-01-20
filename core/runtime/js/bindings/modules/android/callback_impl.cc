@@ -21,9 +21,8 @@
 #include "platform/android/lynx_android/src/main/jni/gen/CallbackImpl_jni.h"
 
 void Invoke(JNIEnv* env, jobject jcaller, jlong nativePtr, jobject array) {
-  auto weak_callback_android =
-      reinterpret_cast<std::weak_ptr<lynx::piper::ModuleCallbackAndroid>*>(
-          nativePtr);
+  auto weak_callback_android = reinterpret_cast<
+      std::weak_ptr<lynx::runtime::js::ModuleCallbackAndroid>*>(nativePtr);
   auto callback_android = weak_callback_android->lock();
   if (!callback_android) {
     LOGE(
@@ -36,15 +35,14 @@ void Invoke(JNIEnv* env, jobject jcaller, jlong nativePtr, jobject array) {
 }
 
 void ReleaseNativePtr(JNIEnv* env, jobject jcaller, jlong nativePtr) {
-  auto weak_callback_android =
-      reinterpret_cast<std::weak_ptr<lynx::piper::ModuleCallbackAndroid>*>(
-          nativePtr);
+  auto weak_callback_android = reinterpret_cast<
+      std::weak_ptr<lynx::runtime::js::ModuleCallbackAndroid>*>(nativePtr);
   delete weak_callback_android;
 }
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 static jclass jniClass;
 static jmethodID ctor;
 
@@ -66,7 +64,7 @@ void ModuleCallbackAndroid::Invoke(
     callback_->SetArgs(
         std::make_unique<pub::ValueImplAndroid>(std::move(pub_array)));
   }
-  std::shared_ptr<lynx::piper::LynxModuleAndroid> callback_invoker =
+  std::shared_ptr<LynxModuleAndroid> callback_invoker =
       callback_invoker_.lock();
   if (callback_invoker != nullptr) {
     callback_invoker->InvokeCallback(callback_, promise);
@@ -94,16 +92,19 @@ ModuleCallbackAndroid::CallbackPair ModuleCallbackAndroid::CreateCallbackImpl(
   return pair;
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 namespace lynx {
 namespace jni {
 bool RegisterJNIForCallbackImpl(JNIEnv* env) {
-  lynx::piper::jniClass = static_cast<jclass>(
+  lynx::runtime::js::jniClass = static_cast<jclass>(
       // NOLINTNEXTLINE
       env->NewGlobalRef(env->FindClass("com/lynx/jsbridge/CallbackImpl")));
-  lynx::piper::ctor = env->GetMethodID(lynx::piper::jniClass, "<init>", "(J)V");
+  lynx::runtime::js::ctor =
+      env->GetMethodID(lynx::runtime::js::jniClass, "<init>", "(J)V");
   return RegisterNativesImpl(env);
 }
 }  // namespace jni

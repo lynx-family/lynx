@@ -78,11 +78,11 @@ class WorkletAPITest : public ::testing::Test {
   void TearDown() override {}
 
   std::shared_ptr<lepus::QuickContext> ctx_{new lepus::QuickContext()};
-  piper::NapiRuntimeProxy* napi_proxy_;
+  runtime::js::NapiRuntimeProxy* napi_proxy_;
 
   lynx::tasm::ElementManager* manager_;  // Not Owned
   std::unique_ptr<::testing::NiceMock<tasm::test::MockTasmDelegate>> delegate_;
-  std::unique_ptr<piper::NapiEnvironment> napi_environment_;
+  std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
   std::unique_ptr<tasm::TemplateAssembler> tasm_;
 };
 

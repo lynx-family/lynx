@@ -22,14 +22,15 @@ class TemplateDelegate;
 }  // namespace lynx
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class GroupInterceptor;
 
 class ModuleCallbackFunctionHolder {
  public:
-  ModuleCallbackFunctionHolder(piper::Function&& func);
+  ModuleCallbackFunctionHolder(Function&& func);
   ~ModuleCallbackFunctionHolder() = default;
-  piper::Function function_;
+  Function function_;
 };
 
 // TODO(huzhanbo.luc): move this into request_interceptor
@@ -55,7 +56,7 @@ class ModuleCallback : public LynxModuleCallback {
   }
   void SetFirstArg(const std::string& first_arg) { first_arg_ = first_arg; }
   void SetCustomArgsConverter(std::function<std::unique_ptr<pub::Value>(
-                                  piper::Runtime* rt, ModuleCallback* callback)>
+                                  Runtime* rt, ModuleCallback* callback)>
                                   converter) {
     custom_args_converter_ = std::move(converter);
   }
@@ -78,7 +79,7 @@ class ModuleCallback : public LynxModuleCallback {
   }
 
   void SetArgsConverter(std::function<std::unique_ptr<pub::Value>(
-                            piper::Runtime* rt, ModuleCallback* callback)>
+                            Runtime* rt, ModuleCallback* callback)>
                             converter);
 
   std::vector<base::LynxError>& GetErrorsRef() { return errors_; };
@@ -96,12 +97,14 @@ class ModuleCallback : public LynxModuleCallback {
 
  private:
   std::unique_ptr<pub::Value> args_ = nullptr;
-  std::function<std::unique_ptr<pub::Value>(piper::Runtime* rt,
+  std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                             ModuleCallback* callback)>
       custom_args_converter_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_CALLBACK_H_

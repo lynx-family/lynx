@@ -16,10 +16,10 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace piper {
-
-typedef std::function<void(const rapidjson::Value&, Runtime*,
-                           const piper::Value*, size_t)>
+namespace runtime {
+namespace js {
+typedef std::function<void(const rapidjson::Value&, Runtime*, const Value*,
+                           size_t)>
     SyncToPlatformHandler;
 
 typedef std::function<void()> InvokeMethodCallback;
@@ -48,7 +48,7 @@ class ModuleTestBench : public LynxJSIModule {
   std::shared_ptr<LynxModule::MethodMetadata> GetMethodMetaData(
       const std::string method_name);
 
-  piper::Value get(Runtime* rt, const PropNameID& prop) override;
+  Value get(Runtime* rt, const PropNameID& prop) override;
 
   /**
    [
@@ -63,19 +63,19 @@ class ModuleTestBench : public LynxJSIModule {
   rapidjson::Value moduleData = rapidjson::Value(rapidjson::kNullType);
 
  protected:
-  base::expected<piper::Value, piper::JSINativeException> invokeMethod(
-      const MethodMetadata& method, Runtime* rt, const piper::Value* args,
+  base::expected<Value, JSINativeException> invokeMethod(
+      const MethodMetadata& method, Runtime* rt, const Value* args,
       size_t count) override;
 
-  piper::Value invokeMethodKernel(const MethodMetadata& method, Runtime* rt,
-                                  const piper::Value* args, size_t count);
+  Value invokeMethodKernel(const MethodMetadata& method, Runtime* rt,
+                           const Value* args, size_t count);
 
-  piper::Value getAttributeValue(Runtime* rt, std::string propName) override;
+  Value getAttributeValue(Runtime* rt, std::string propName) override;
 
  private:
   using ValueKind = Value::ValueKind;
 
-  void ConvertToPubArgs(Runtime* rt, const piper::Value* args, size_t count,
+  void ConvertToPubArgs(Runtime* rt, const Value* args, size_t count,
                         MethodMetadata& method,
                         std::unique_ptr<pub::Value>& pub_args,
                         CallbackMap& callback_map,
@@ -92,15 +92,13 @@ class ModuleTestBench : public LynxJSIModule {
   bool IsSameURL(const std::string& first, const std::string& second);
 
   bool isSameMethod(const MethodMetadata& method, Runtime* rt,
-                    const piper::Value* args, size_t count,
-                    rapidjson::Value& value);
-  bool isSameArgs(Runtime* rt, const piper::Value* args, size_t count,
+                    const Value* args, size_t count, rapidjson::Value& value);
+  bool isSameArgs(Runtime* rt, const Value* args, size_t count,
                   rapidjson::Value& value);
-  bool sameKernel(Runtime* rt, const piper::Value* args,
-                  rapidjson::Value& value);
+  bool sameKernel(Runtime* rt, const Value* args, rapidjson::Value& value);
   void syncToPlatform(const rapidjson::Value& moduleData,
                       const MethodMetadata& method, Runtime* rt,
-                      const piper::Value* args, size_t count);
+                      const Value* args, size_t count);
   // build methodMap for class LynxModule
   void buildLookupMap();
 
@@ -115,13 +113,12 @@ class ModuleTestBench : public LynxJSIModule {
 
   // record callbackFunction for every jsb call, it will be clear at end of this
   // call
-  std::vector<piper::Function> callbackFunctions;
+  std::vector<Function> callbackFunctions;
 
-  void ActionsForJsbMatchFailed(Runtime* rt, const piper::Value* args,
-                                size_t count);
+  void ActionsForJsbMatchFailed(Runtime* rt, const Value* args, size_t count);
 
-  void InvokeJsbCallback(piper::Function callback_function,
-                         rapidjson::Value&& value, int64_t delay = -1);
+  void InvokeJsbCallback(Function callback_function, rapidjson::Value&& value,
+                         int64_t delay = -1);
 
   fml::Thread testbench_thread_;
 
@@ -132,7 +129,9 @@ class ModuleTestBench : public LynxJSIModule {
   std::shared_ptr<GroupInterceptor> group_interceptor_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_SERVICES_REPLAY_LYNX_MODULE_TESTBENCH_H_

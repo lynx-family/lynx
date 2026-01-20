@@ -745,12 +745,12 @@
 }
 
 + (void)clearBytecode:(nonnull NSString *)bytecodeSourceUrl {
-  lynx::piper::cache::JsCacheManagerFacade::ClearBytecode([bytecodeSourceUrl UTF8String],
-                                                          lynx::piper::JSRuntimeType::quickjs);
+  lynx::runtime::js::cache::JsCacheManagerFacade::ClearBytecode(
+      [bytecodeSourceUrl UTF8String], lynx::runtime::js::JSRuntimeType::quickjs);
 }
 
 + (void)setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock)callback {
-  lynx::piper::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
+  lynx::runtime::js::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
       CreateBytecodeGenerateCallback(callback));
 }
 @end

@@ -7,9 +7,9 @@
 namespace lynx {
 namespace pub {
 
-std::shared_ptr<piper::LynxNativeModule> LynxNativeModuleManager::GetModule(
+std::shared_ptr<runtime::LynxNativeModule> LynxNativeModuleManager::GetModule(
     const std::string &name) {
-  std::shared_ptr<piper::LynxNativeModule> native_module;
+  std::shared_ptr<runtime::LynxNativeModule> native_module;
   // Find NativeModuleFactories First
   for (const auto &module_factory : module_factories_) {
     native_module = module_factory->CreateModule(name);
@@ -28,11 +28,11 @@ std::shared_ptr<piper::LynxNativeModule> LynxNativeModuleManager::GetModule(
 }
 
 void LynxNativeModuleManager::SetPlatformModuleFactory(
-    std::shared_ptr<piper::NativeModuleFactory> module_factory) {
+    std::shared_ptr<runtime::NativeModuleFactory> module_factory) {
   platform_module_factory_ = std::move(module_factory);
 }
 
-piper::NativeModuleFactory *
+runtime::NativeModuleFactory *
 LynxNativeModuleManager::GetPlatformModuleFactory() {
   return platform_module_factory_.get();
 }

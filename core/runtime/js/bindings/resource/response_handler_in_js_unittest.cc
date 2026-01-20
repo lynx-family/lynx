@@ -15,7 +15,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 class ResponseHandlerInJSTest : public test::JSITestBase {
@@ -51,8 +52,7 @@ TEST_P(ResponseHandlerInJSTest, ThenCallbackFiresWithoutHoldingHandler) {
   auto promise =
       std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
 
-  piper::Object nativeModuleProxy =
-      piper::Object::createFromHostObject(*runtime, nullptr);
+  Object nativeModuleProxy = Object::createFromHostObject(*runtime, nullptr);
 
   auto app =
       App::Create(0, runtime, &delegate, nullptr, std::move(nativeModuleProxy),
@@ -94,5 +94,6 @@ INSTANTIATE_TEST_SUITE_P(
       }
     });
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

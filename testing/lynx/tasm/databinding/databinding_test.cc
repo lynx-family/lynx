@@ -449,7 +449,7 @@ void DataBindingTemplateBundleRecycleShell::TasmLoadTemplate(
 
 void DataBindingShell::UpdateDataByJS(const lepus::Value& table) {
   auto pipeline_options = std::make_shared<PipelineOptions>();
-  runtime::UpdateDataTask task(true, "-1", table, piper::ApiCallBack(),
+  runtime::UpdateDataTask task(true, "-1", table, runtime::js::ApiCallBack(),
                                runtime::UpdateDataType(),
                                std::move(pipeline_options));
   tasm_->UpdateDataByJS(task, task.pipeline_options_);
@@ -458,7 +458,8 @@ void DataBindingShell::UpdateDataByJS(const lepus::Value& table) {
 void DataBindingShell::UpdateComponentData(const std::string& component_id,
                                            const lepus::Value& table) {
   auto pipeline_options = std::make_shared<PipelineOptions>();
-  runtime::UpdateDataTask task(false, component_id, table, piper::ApiCallBack(),
+  runtime::UpdateDataTask task(false, component_id, table,
+                               runtime::js::ApiCallBack(),
                                runtime::UpdateDataType(), pipeline_options);
   tasm_->UpdateComponentData(task, task.pipeline_options_);
 }

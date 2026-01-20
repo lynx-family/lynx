@@ -19,11 +19,11 @@ namespace lynx {
 namespace harmony {
 
 struct CallbackData {
-  CallbackData(const std::shared_ptr<piper::LynxModuleCallback>& c,
-               const std::weak_ptr<piper::LynxNativeModule::Delegate>& d)
+  CallbackData(const std::shared_ptr<runtime::LynxModuleCallback>& c,
+               const std::weak_ptr<runtime::LynxNativeModule::Delegate>& d)
       : callback(c), delegate(d) {}
-  std::shared_ptr<piper::LynxModuleCallback> callback;
-  std::weak_ptr<piper::LynxNativeModule::Delegate> delegate;
+  std::shared_ptr<runtime::LynxModuleCallback> callback;
+  std::weak_ptr<runtime::LynxNativeModule::Delegate> delegate;
 #if ENABLE_TRACE_PERFETTO
   std::string module_name;
   std::string method_name;
@@ -41,7 +41,7 @@ NativeModuleHarmony::NativeModuleHarmony(
       sendable_(sendable),
       module_name_(name) {
   for (const auto& m : methods) {
-    methods_.emplace(m, piper::NativeModuleMethod(m, 0));
+    methods_.emplace(m, runtime::NativeModuleMethod(m, 0));
   }
 }
 
@@ -50,7 +50,7 @@ napi_value NativeModuleHarmony::InvokePlatformMethod(
     const std::string& module_name, bool sendable, napi_env env,
     const lepus::Value& lepus_argv, const std::string& method_name,
     const std::weak_ptr<Delegate>& delegate,
-    const piper::CallbackMap& callbacks, uint64_t flow_id,
+    const runtime::CallbackMap& callbacks, uint64_t flow_id,
     const std::string& first_arg) {
   base::NapiHandleScope scope(env);
   napi_value platform_get_module_func =
@@ -114,7 +114,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string>
 NativeModuleHarmony::InvokeMethod(const std::string& method_name,
                                   std::unique_ptr<pub::Value> args,
                                   size_t count,
-                                  const piper::CallbackMap& callbacks) {
+                                  const runtime::CallbackMap& callbacks) {
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, PUB_VALUE_TO_LEPUS_VALUE);
   auto lepus_value = pub::ValueUtils::ConvertValueToLepusValue(*(args.get()));
   if (!lepus_value.IsArray()) {

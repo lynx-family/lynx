@@ -9,7 +9,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 class ApiCallBackTest : public JSITestBase {
@@ -18,7 +19,7 @@ class ApiCallBackTest : public JSITestBase {
 };
 
 TEST_P(ApiCallBackTest, CreateAndCallTest) {
-  piper::Function func = function("function (i) { globalThis.result = i; }");
+  Function func = function("function (i) { globalThis.result = i; }");
   ApiCallBack callback = manager_.createCallbackImpl(std::move(func));
 
   EXPECT_TRUE(callback.IsValid());
@@ -28,7 +29,7 @@ TEST_P(ApiCallBackTest, CreateAndCallTest) {
 }
 
 TEST_P(ApiCallBackTest, CreateAndCallWithNonArgsTest) {
-  piper::Function func = function("function (i) { globalThis.result = i; }");
+  Function func = function("function (i) { globalThis.result = i; }");
   ApiCallBack callback = manager_.createCallbackImpl(std::move(func));
 
   EXPECT_TRUE(callback.IsValid());
@@ -38,7 +39,7 @@ TEST_P(ApiCallBackTest, CreateAndCallWithNonArgsTest) {
 }
 
 TEST_P(ApiCallBackTest, CreateAndCallMultipleArgsTest) {
-  piper::Function func =
+  Function func =
       function("function (i, j, k) { globalThis.result = i + j + k; }");
   ApiCallBack callback = manager_.createCallbackImpl(std::move(func));
 
@@ -49,7 +50,7 @@ TEST_P(ApiCallBackTest, CreateAndCallMultipleArgsTest) {
 TEST_P(ApiCallBackTest, CallNonExistTest) {
   manager_.InvokeWithValue(&rt, ApiCallBack());  // should not crash
 
-  piper::Function func = function("function (i) { globalThis.result = i; }");
+  Function func = function("function (i) { globalThis.result = i; }");
   ApiCallBack callback = manager_.createCallbackImpl(std::move(func));
 
   EXPECT_TRUE(callback.IsValid());
@@ -68,7 +69,7 @@ TEST_P(ApiCallBackTest, CallNonExistTest) {
 }
 
 TEST_P(ApiCallBackTest, CallWithLepusValueTest) {
-  piper::Function func =
+  Function func =
       function("function (i) { globalThis.result = JSON.stringify(i); }");
   ApiCallBack callback = manager_.createCallbackImpl(std::move(func));
 
@@ -79,7 +80,7 @@ TEST_P(ApiCallBackTest, CallWithLepusValueTest) {
   EXPECT_EQ(eval("globalThis.result")->getString(rt).utf8(rt),
             R"({"foo":"bar"})");
 
-  piper::Function func2 = function("function (i) { globalThis.result = i; }");
+  Function func2 = function("function (i) { globalThis.result = i; }");
 
   callback = manager_.createCallbackImpl(std::move(func2));
 
@@ -106,5 +107,6 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

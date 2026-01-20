@@ -6,7 +6,8 @@
 #include <utility>
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 JSIObjectProxyImpl::JSIObjectProxyImpl(
     int64_t obj_id, std::shared_ptr<JSIObjectWrapperManager> manager)
     : lepus::LEPUSObject::JSIObjectProxy(obj_id), manager_(manager) {}
@@ -22,8 +23,8 @@ JSIObjectWrapperManager::JSIObjectWrapperManager() : jsi_object_counter_(0) {}
 
 std::shared_ptr<lepus::LEPUSObject::JSIObjectProxy>
 JSIObjectWrapperManager::CreateJSIObjectWrapperOnJSThread(
-    piper::Runtime& rt, piper::Object obj, const std::string group) {
-  piper::Scope scope(rt);
+    Runtime& rt, Object obj, const std::string group) {
+  Scope scope(rt);
 
   int64_t jsi_object_id = -1;
   {
@@ -36,7 +37,7 @@ JSIObjectWrapperManager::CreateJSIObjectWrapperOnJSThread(
         range = grouped_jsi_object_map_.equal_range(group);
     for (auto it = range.first; it != range.second; ++it) {
       JSIObjectWrapper* curr_obj = it->second;
-      if (piper::Object::strictEquals(rt, curr_obj->jsi_object_, obj)) {
+      if (Object::strictEquals(rt, curr_obj->jsi_object_, obj)) {
         jsi_object_id = curr_obj->id_;
         proxy = curr_obj;
         break;
@@ -60,7 +61,7 @@ JSIObjectWrapperManager::CreateJSIObjectWrapperOnJSThread(
 }
 
 JSIObjectWrapperManager::JSIObjectWrapper::JSIObjectWrapper(
-    piper::Object obj, int64_t jsi_object_id, const std::string& group_id)
+    Object obj, int64_t jsi_object_id, const std::string& group_id)
     : ref_count_(0),
       jsi_object_(std::move(obj)),
       id_(jsi_object_id),
@@ -102,17 +103,17 @@ void JSIObjectWrapperManager::ReleaseJSIObjectByID(int64_t jsi_object_id) {
   }
 }
 
-piper::Value JSIObjectWrapperManager::GetJSIObjectByIDOnJSThread(
-    piper::Runtime& rt, int64_t jsi_object_id) {
-  piper::Scope scope(rt);
+Value JSIObjectWrapperManager::GetJSIObjectByIDOnJSThread(
+    Runtime& rt, int64_t jsi_object_id) {
+  Scope scope(rt);
 
   std::lock_guard<std::mutex> lock(map_mutex_);
   JSI_OBJECT_MAP::iterator it = jsi_object_map_.find(jsi_object_id);
   if (it != jsi_object_map_.end()) {
-    piper::Value obj = piper::Value(rt, it->second->jsi_object_);
+    Value obj = Value(rt, it->second->jsi_object_);
     return obj;
   }
-  return piper::Value::null();
+  return Value::null();
 }
 
 void JSIObjectWrapperManager::ForceGcOnJSThread() {
@@ -143,5 +144,7 @@ void JSIObjectWrapperManager::DestroyOnJSThread() {
   ForceGcOnJSThread();
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

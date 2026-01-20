@@ -21,16 +21,16 @@
 namespace lynx {
 namespace embedder {
 
-class LynxNativeModuleNAPI : public piper::LynxNativeModule {
+class LynxNativeModuleNAPI : public runtime::LynxNativeModule {
  public:
   LynxNativeModuleNAPI(Napi::Env env, napi_value exports);
   ~LynxNativeModuleNAPI() override;
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
-  piper::NativeModuleMethods AdoptMethods() { return methods_; }
+  runtime::NativeModuleMethods AdoptMethods() { return methods_; }
 
  private:
   void ExtractMethods();

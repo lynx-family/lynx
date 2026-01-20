@@ -59,7 +59,7 @@ void InspectorOwnerEmbedder::OnTemplateAssemblerCreated(intptr_t ptr) {
   record_id_ = ptr;
 }
 
-std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
 InspectorOwnerEmbedder::OnBackgroundRuntimeCreated(
     const std::string& group_thread_name) {
   if (devtoolng_delegate_) {

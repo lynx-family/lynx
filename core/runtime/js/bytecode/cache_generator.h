@@ -12,7 +12,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace cache {
 class CacheGenerator {
  public:
@@ -36,7 +37,8 @@ class CacheGenerator {
   std::optional<std::string> md5_optional_;
 };
 }  // namespace cache
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BYTECODE_CACHE_GENERATOR_H_

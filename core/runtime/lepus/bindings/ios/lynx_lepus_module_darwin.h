@@ -12,14 +12,15 @@
 @protocol TemplateRenderCallbackProtocol;
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 extern lepus::Value TriggerLepusMethod(const std::string& js_method_name, const lepus::Value& args,
                                        id<TemplateRenderCallbackProtocol> render);
 
 void TriggerLepusMethodAsync(const std::string& js_method_name, const lepus::Value& args,
                              id<TemplateRenderCallbackProtocol> render);
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_BINDINGS_LEPUS_IOS_LYNX_LEPUS_MODULE_DARWIN_H_

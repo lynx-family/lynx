@@ -15,8 +15,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // Ownered by js_app
 class JsTaskAdapter {
  public:
@@ -30,18 +30,18 @@ class JsTaskAdapter {
   JsTaskAdapter(JsTaskAdapter&&) = default;
   JsTaskAdapter& operator=(JsTaskAdapter&&) = default;
 
-  piper::Value SetTimeout(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+  Value SetTimeout(
+      std::variant<std::unique_ptr<Function>, double> id_or_callback,
       int32_t delay, uint64_t trace_flow_id);
 
-  piper::Value SetInterval(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+  Value SetInterval(
+      std::variant<std::unique_ptr<Function>, double> id_or_callback,
       int32_t delay, uint64_t trace_flow_id);
 
   void RemoveTask(uint32_t task);
 
   void QueueMicrotask(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+      std::variant<std::unique_ptr<Function>, double> id_or_callback,
       uint64_t trace_flow_id);
 
   void SetPageOptions(const tasm::PageOptions& options) {
@@ -55,7 +55,7 @@ class JsTaskAdapter {
     kQueueMicrotask,
   };
   base::closure MakeTask(
-      std::variant<std::unique_ptr<piper::Function>, double> id_or_callback,
+      std::variant<std::unique_ptr<Function>, double> id_or_callback,
       TaskType task_type, uint64_t trace_flow_id);
 
   std::unique_ptr<base::TimedTaskManager> manager_;
@@ -72,7 +72,9 @@ class JsTaskAdapter {
   tasm::PageOptions page_options_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_JS_TASK_ADAPTER_H_

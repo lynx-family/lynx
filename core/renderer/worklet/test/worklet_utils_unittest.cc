@@ -36,11 +36,11 @@ class WorkletValueConverterMethods : public ::testing::Test {
   void SetUp() override {
     ctx_.Initialize();
 
-    napi_environment_ = std::make_unique<piper::NapiEnvironment>(
+    napi_environment_ = std::make_unique<runtime::js::NapiEnvironment>(
         std::make_unique<TestNapiLoaderUI>(&ctx_));
-    auto proxy = piper::NapiRuntimeProxyQuickjs::Create(ctx_.context());
-    auto napi_proxy = std::unique_ptr<piper::NapiRuntimeProxy>(
-        static_cast<piper::NapiRuntimeProxy*>(proxy.release()));
+    auto proxy = runtime::js::NapiRuntimeProxyQuickjs::Create(ctx_.context());
+    auto napi_proxy = std::unique_ptr<runtime::js::NapiRuntimeProxy>(
+        static_cast<runtime::js::NapiRuntimeProxy*>(proxy.release()));
     napi_proxy_ = napi_proxy.get();
     napi_environment_->SetRuntimeProxy(std::move(napi_proxy));
     napi_environment_->Attach();
@@ -49,8 +49,8 @@ class WorkletValueConverterMethods : public ::testing::Test {
   void TearDown() override{};
 
   lepus::QuickContext ctx_;
-  std::unique_ptr<piper::NapiEnvironment> napi_environment_;
-  piper::NapiRuntimeProxy* napi_proxy_;
+  std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
+  runtime::js::NapiRuntimeProxy* napi_proxy_;
 };
 
 TEST_F(WorkletValueConverterMethods, IsLepusEqual) {

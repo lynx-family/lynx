@@ -45,8 +45,8 @@ static jlong CreateBackgroundRuntimeWrapper(
       std::make_shared<lynx::pub::LynxNativeModuleManager>();
   // set platform factory
   native_module_manager->SetPlatformModuleFactory(
-      std::make_shared<lynx::piper::ModuleFactoryAndroid>(env,
-                                                          java_module_factory));
+      std::make_shared<lynx::runtime::js::ModuleFactoryAndroid>(
+          env, java_module_factory));
   std::string group_id = JNIConvertHelper::ConvertToString(env, java_group_id);
   std::string group_name =
       JNIConvertHelper::ConvertToString(env, java_group_name);
@@ -69,11 +69,12 @@ static jlong CreateBackgroundRuntimeWrapper(
   auto bundle_creator =
       std::make_shared<lynx::tasm::PropBundleCreatorAndroid>();
 
-  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> *observer = nullptr;
+  std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG> *observer =
+      nullptr;
 
   if (inspectorObserverPtr != 0) {
     observer = reinterpret_cast<
-        std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> *>(
+        std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG> *>(
         inspectorObserverPtr);
   }
 

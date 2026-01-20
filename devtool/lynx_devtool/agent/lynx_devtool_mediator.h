@@ -69,7 +69,7 @@ class LynxDevToolMediator
 
   void SetDevToolPlatformFacade(
       const std::shared_ptr<DevToolPlatformFacade>& platform_facade);
-  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+  std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   InitWhenBackgroundRuntimeCreated(
       const std::string& group_thread_name,
       const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng);
@@ -143,7 +143,7 @@ class LynxDevToolMediator
 
   // events of Log domain -> devtool executor
   virtual void SendLogEntryAddedEvent(
-      const lynx::piper::ConsoleMessage& message);
+      const lynx::runtime::js::ConsoleMessage& message);
   // Lynx domain
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)

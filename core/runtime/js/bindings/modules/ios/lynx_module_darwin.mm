@@ -23,8 +23,8 @@
 #include "core/services/recorder/recorder_controller.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 namespace {
 constexpr const char *IS_NATIVE_PROMISE = "__IS_NATIVE_PROMISE__";
 
@@ -119,7 +119,7 @@ void LynxModuleDarwin::ExitInvokeScope() {
   }
 }
 
-std::optional<piper::Value> LynxModuleDarwin::TryGetPromiseRet() {
+std::optional<Value> LynxModuleDarwin::TryGetPromiseRet() {
   if (!scope_native_promise_rets_.empty()) {
     auto ret = std::move(scope_native_promise_rets_.back());
     scope_native_promise_rets_.pop_back();
@@ -569,8 +569,7 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
           }
         });
     if (promise_ret.has_value()) {
-      scope_native_promise_rets_.push_back(
-          std::optional<piper::Value>(std::move(promise_ret.value())));
+      scope_native_promise_rets_.push_back(std::optional<Value>(std::move(promise_ret.value())));
       // hack here, this will be delete later.
       return base::unexpected<std::string>(IS_NATIVE_PROMISE);
     } else {
@@ -595,10 +594,10 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
   return res;
 }
 
-base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
-    Runtime &runtime, PromiseInvocationBlock invoke) {
+base::expected<Value, std::string> LynxModuleDarwin::createPromise(Runtime &runtime,
+                                                                   PromiseInvocationBlock invoke) {
   if (!invoke) {
-    return piper::Value::undefined();
+    return Value::undefined();
   }
 
   auto Promise = runtime.global().getPropertyAsFunction(runtime, "Promise");
@@ -607,25 +606,25 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
   }
 
   PromiseInvocationBlock invokeCopy = [invoke copy];
-  piper::Function fn = piper::Function::createFromHostFunction(
-      runtime, piper::PropNameID::forAscii(runtime, "fn"), 2,
+  Function fn = Function::createFromHostFunction(
+      runtime, PropNameID::forAscii(runtime, "fn"), 2,
       [invokeCopy, delegate = delegate_,
        weak_module_delegate = std::weak_ptr<ModuleDelegate>(scope_module_delegates_.back())](
-          piper::Runtime &rt, const piper::Value &thisVal, const piper::Value *args,
-          size_t count) -> base::expected<piper::Value, piper::JSINativeException> {
+          Runtime &rt, const Value &thisVal, const Value *args,
+          size_t count) -> base::expected<Value, JSINativeException> {
         auto module_delegate_lock = weak_module_delegate.lock();
         if (!module_delegate_lock) {
           return base::unexpected(
               BUILD_JSI_NATIVE_EXCEPTION("NativeModule: ModuleDelegate has been destroyed."));
         }
-        piper::Scope scope(rt);
+        Scope scope(rt);
         if (count != 2) {
           return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
               "NativeModule: Promise must pass constructor function two args. Passed " +
               std::to_string(count) + " args."));
         }
         if (!invokeCopy) {
-          return piper::Value::undefined();
+          return Value::undefined();
         }
         int64_t resolveCallbackId =
             module_delegate_lock->RegisterJSCallbackFunction(args[0].getObject(rt).getFunction(rt));
@@ -634,7 +633,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
         if (resolveCallbackId == ModuleCallback::kInvalidCallbackId ||
             rejectCallbackId == ModuleCallback::kInvalidCallbackId) {
           LOGW("NativeModule: LynxModuleDarwin::create promise failed, LynxRuntime has destroyed");
-          return piper::Value::undefined();
+          return Value::undefined();
         }
 
         LOGV("NativeModule: LynxModuleDarwin::createPromise, resolve block id: "
@@ -657,7 +656,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
             return;
           }
 
-          auto resolveCallback = std::make_shared<piper::ModuleCallback>(resolveCallbackId);
+          auto resolveCallback = std::make_shared<ModuleCallback>(resolveCallbackId);
           auto array = lock_delegate->GetValueFactory()->CreateArray();
           array->PushValueToArray(std::make_unique<pub::ValueImplDarwin>(result));
           resolveCallback->SetArgs(std::move(array));
@@ -679,7 +678,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
             LOGW("NativeModule: Promise has been destroyed.");
             return;
           }
-          auto strongRejectWrapper = std::make_shared<piper::ModuleCallback>(rejectCallbackId);
+          auto strongRejectWrapper = std::make_shared<ModuleCallback>(rejectCallbackId);
           NSDictionary *jsError = @{@"errorCode" : code, @"message" : message};
           auto array = lock_delegate->GetValueFactory()->CreateArray();
           array->PushValueToArray(std::make_unique<pub::ValueImplDarwin>(jsError));
@@ -691,7 +690,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
         };
 
         invokeCopy(rt, resolveBlock, rejectBlock);
-        return piper::Value::undefined();
+        return Value::undefined();
       });
 
   auto res = Promise->callAsConstructor(runtime, fn);
@@ -825,10 +824,12 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
           schema_copy, response, std::to_string(start_time_copy));
     }
     LOGV("NativeModule: LynxModule, LynxCallbackBlock, put function to JSThread, "
-         << "callback id: " << callback_id << "piper::ModuleCallback: " << callback);
+         << "callback id: " << callback_id << "ModuleCallback: " << callback);
     lock_delegate->InvokeCallback(callback);
   };
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

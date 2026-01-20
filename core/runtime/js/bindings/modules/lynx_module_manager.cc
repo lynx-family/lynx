@@ -9,8 +9,8 @@
 #include "core/runtime/js/bindings/modules/lynx_jsi_module.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 LynxModuleManager::~LynxModuleManager() {
   LOGI("NativeModule: ~LynxJSIModuleManager");
   for (auto &module : module_map_) {
@@ -21,7 +21,7 @@ LynxModuleManager::~LynxModuleManager() {
 void LynxModuleManager::initBindingPtr(
     std::weak_ptr<LynxModuleManager> weak_manager,
     const std::shared_ptr<ModuleDelegate> &delegate) {
-  bindingPtr = std::make_shared<lynx::piper::LynxJSIModuleBinding>(
+  bindingPtr = std::make_shared<LynxJSIModuleBinding>(
       BindingFunc(weak_manager, delegate));
   pub::LynxNativeModuleManager::SetModuleDelegate(delegate);
 #if ENABLE_TESTBENCH_REPLAY
@@ -38,7 +38,7 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
   }
 
   // create new native module
-  std::shared_ptr<piper::LynxNativeModule> native_module =
+  std::shared_ptr<LynxNativeModule> native_module =
       pub::LynxNativeModuleManager::GetModule(name);
   if (!native_module && extension_module_factory_) {
     native_module = extension_module_factory_->CreateModule(name);
@@ -95,5 +95,7 @@ void LynxModuleManager::SetTemplateUrl(const std::string &url) {
   }
 }
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx

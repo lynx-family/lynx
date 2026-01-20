@@ -15,9 +15,11 @@
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 struct ConsoleMessage;
 }
+}  // namespace runtime
 namespace devtool {
 
 class LynxDevToolMediator;
@@ -34,7 +36,7 @@ class InspectorDefaultExecutor
   void SetDevToolPlatformFacade(
       const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade);
   // events for Log domain
-  void SendLogEntryAddedEvent(const lynx::piper::ConsoleMessage& message);
+  void SendLogEntryAddedEvent(const lynx::runtime::js::ConsoleMessage& message);
 
   // Log domain
   DECLARE_DEVTOOL_METHOD(LogEnable)

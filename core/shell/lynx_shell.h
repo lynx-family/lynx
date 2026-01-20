@@ -53,9 +53,9 @@ class LynxTemplateBundle;
 class LazyBundleLoader;
 class WhiteBoard;
 }  // namespace tasm
-namespace piper {
+namespace runtime {
 class NativeModuleFactory;
-}
+}  // namespace runtime
 namespace runtime {
 class RuntimeLifecycleObserver;
 }
@@ -271,7 +271,8 @@ class LynxShell {
           inspector_element_observer);
 
   LYNX_EXPORT_FOR_DEVTOOL void SetInspectorRuntimeObserver(
-      const std::shared_ptr<piper::InspectorRuntimeObserverNG>& observer) {
+      const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>&
+          observer) {
     runtime_observer_ = observer;
   }
 
@@ -386,7 +387,7 @@ class LynxShell {
 
   void OnRuntimeCreate();
 
-  void ConsumeModuleFactory(piper::LynxModuleManager* module_manager);
+  void ConsumeModuleFactory(runtime::js::LynxModuleManager* module_manager);
 
   std::atomic_bool is_destroyed_{false};
 
@@ -407,7 +408,7 @@ class LynxShell {
   base::TaskRunnerManufactor runners_;
 
   // TODO(heshan):will move to delegate of LynxRuntime
-  std::shared_ptr<piper::InspectorRuntimeObserverNG> runtime_observer_;
+  std::shared_ptr<runtime::js::InspectorRuntimeObserverNG> runtime_observer_;
 
   const int32_t instance_id_;
 
@@ -444,7 +445,7 @@ class LynxShell {
   std::shared_ptr<EngineThreadSwitch> engine_thread_switch_;
 
   // Only ref module_manager;
-  std::weak_ptr<lynx::piper::LynxModuleManager> weak_module_manager_;
+  std::weak_ptr<lynx::runtime::js::LynxModuleManager> weak_module_manager_;
 
   std::shared_ptr<LayoutResultManager> layout_result_manager_;
 
@@ -470,7 +471,7 @@ class LynxShell {
       std::unique_ptr<lynx::pub::LynxNativeModuleManager>
           native_module_manager);
 
-  std::weak_ptr<piper::JsBundleHolder> GetWeakJsBundleHolder();
+  std::weak_ptr<runtime::js::JsBundleHolder> GetWeakJsBundleHolder();
   LynxEngineBuildOptions engine_build_options_;
 };
 

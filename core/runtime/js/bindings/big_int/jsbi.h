@@ -13,7 +13,8 @@
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class Runtime;
 class JSBI : public HostObject {
  public:
@@ -30,6 +31,8 @@ class JSBI : public HostObject {
       const std::string& func_name);
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JS_BINDINGS_BIG_INT_JSBI_H_

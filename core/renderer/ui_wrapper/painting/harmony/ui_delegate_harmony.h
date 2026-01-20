@@ -40,7 +40,8 @@ class UIDelegateHarmony : public UIDelegate {
   std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() override;
   std::unique_ptr<LayoutCtxPlatformImpl> CreateLayoutContext() override;
   std::unique_ptr<PropBundleCreator> CreatePropBundleCreator() override;
-  std::unique_ptr<piper::NativeModuleFactory> GetCustomModuleFactory() override;
+  std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory()
+      override;
 
   bool UsesLogicalPixels() const override { return true; }
 

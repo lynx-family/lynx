@@ -17,7 +17,8 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 namespace test {
 
 void JSClosureEventListenerTest::SetUp() {
@@ -45,21 +46,21 @@ function onEvent(e) {
 }
 )--");
 
-  auto listener_1_1 = std::make_unique<JSClosureEventListener>(
-      app_, piper::Value(rt, js_function_1));
-  auto listener_1_2 = std::make_unique<JSClosureEventListener>(
-      app_, piper::Value(rt, js_function_1));
+  auto listener_1_1 =
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_1));
+  auto listener_1_2 =
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_1));
 
   EXPECT_TRUE(listener_1_1->Matches(listener_1_2.get()));
   EXPECT_TRUE(listener_1_1->Matches(listener_1_1.get()));
   EXPECT_TRUE(listener_1_2->Matches(listener_1_2.get()));
 
   auto listener_2_1 = std::make_unique<JSClosureEventListener>(
-      nullptr, piper::Value(rt, js_function_2));
+      nullptr, Value(rt, js_function_2));
   EXPECT_FALSE(listener_1_1->Matches(listener_2_1.get()));
 
-  auto listener_2_2 = std::make_unique<JSClosureEventListener>(
-      app_, piper::Value(rt, js_function_2));
+  auto listener_2_2 =
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_2));
   EXPECT_FALSE(listener_1_1->Matches(listener_2_2.get()));
 
   event::test::MockEventListener mock_listener(
@@ -80,16 +81,14 @@ function onEvent(e) {
           ->call(another_rt, ("(" + another_js_function_str + ")").c_str())
           ->getObject(another_rt)
           .getFunction(another_rt);
-  auto another_js_function_value =
-      piper::Value(another_rt, another_js_function);
+  auto another_js_function_value = Value(another_rt, another_js_function);
   auto another_js_listener =
       std::make_unique<JSClosureEventListener>(app_, another_js_function_value);
   EXPECT_FALSE(listener_1_1->Matches(another_js_listener.get()));
 
   auto copy_runtime = runtime;
   auto listener_1_1_from_copy_runtime =
-      std::make_unique<JSClosureEventListener>(app_,
-                                               piper::Value(rt, js_function_1));
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function_1));
   EXPECT_TRUE(listener_1_1->Matches(listener_1_1_from_copy_runtime.get()));
 }
 
@@ -111,14 +110,14 @@ function onEvent(e) {
 }
 )--");
 
-  auto listener = std::make_unique<JSClosureEventListener>(
-      app_, piper::Value(rt, js_function));
+  auto listener =
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function));
   listener->Invoke(nullptr);
   count = runtime->global().getProperty(rt, "count");
   EXPECT_EQ(count->asNumber(rt), 1);
 
-  listener = std::make_unique<JSClosureEventListener>(
-      nullptr, piper::Value(rt, js_function));
+  listener =
+      std::make_unique<JSClosureEventListener>(nullptr, Value(rt, js_function));
   listener->Invoke(nullptr);
   count = runtime->global().getProperty(rt, "count");
   EXPECT_EQ(count->asNumber(rt), 1);
@@ -137,13 +136,13 @@ function onEvent(e) {
 }
 )--");
 
-  auto listener_1 = std::make_unique<JSClosureEventListener>(
-      app_, piper::Value(rt, js_function));
-  auto listener_2 = std::make_unique<JSClosureEventListener>(
-      nullptr, piper::Value(rt, js_function));
+  auto listener_1 =
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function));
+  auto listener_2 =
+      std::make_unique<JSClosureEventListener>(nullptr, Value(rt, js_function));
 
-  EXPECT_TRUE(piper::Value::strictEquals(rt, piper::Value(rt, js_function),
-                                         listener_1->GetClosure()));
+  EXPECT_TRUE(Value::strictEquals(rt, Value(rt, js_function),
+                                  listener_1->GetClosure()));
   EXPECT_TRUE(listener_2->GetClosure().isUndefined());
 }
 
@@ -160,8 +159,8 @@ function onEvent(e) {
   return;
 }
 )--");
-  auto listener_1 = std::make_unique<JSClosureEventListener>(
-      app_, piper::Value(rt, js_function));
+  auto listener_1 =
+      std::make_unique<JSClosureEventListener>(app_, Value(rt, js_function));
 
   auto res_1 = listener_1->ConvertEventToPiperValue(message_event);
   EXPECT_TRUE(res_1.isObject());
@@ -173,8 +172,8 @@ function onEvent(e) {
       res_1.getObject(rt).getProperty(rt, "origin")->getString(rt).utf8(rt),
       "CoreContext");
 
-  auto listener_2 = std::make_unique<JSClosureEventListener>(
-      nullptr, piper::Value(rt, js_function));
+  auto listener_2 =
+      std::make_unique<JSClosureEventListener>(nullptr, Value(rt, js_function));
   auto res_2 = listener_2->ConvertEventToPiperValue(message_event);
   EXPECT_TRUE(res_2.isUndefined());
 
@@ -201,5 +200,6 @@ INSTANTIATE_TEST_SUITE_P(Runtimes, JSClosureEventListenerTest,
                          });
 
 }  // namespace test
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx

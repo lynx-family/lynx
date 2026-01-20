@@ -125,8 +125,8 @@ void TemplateEntryHolder::SetEnableQueryComponentSync(bool enable) {
   }
 }
 
-std::shared_ptr<piper::JsBundleHolder> TemplateEntryHolder::GetJsBundleHolder()
-    const {
+std::shared_ptr<runtime::js::JsBundleHolder>
+TemplateEntryHolder::GetJsBundleHolder() const {
   return js_bundle_holder_;
 }
 

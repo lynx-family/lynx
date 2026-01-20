@@ -29,12 +29,12 @@
 }
 
 + (NSInteger)intValueFromErrorLevelString:(NSString *)levelStr {
-  int level = lynx::piper::CONSOLE_LOG_ERROR;
+  int level = lynx::runtime::js::CONSOLE_LOG_ERROR;
   if (!levelStr) {
     return level;
   }
   if ([levelStr isEqualToString:LynxErrorLevelWarn]) {
-    level = lynx::piper::CONSOLE_LOG_WARNING;
+    level = lynx::runtime::js::CONSOLE_LOG_WARNING;
   }
   return level;
 }

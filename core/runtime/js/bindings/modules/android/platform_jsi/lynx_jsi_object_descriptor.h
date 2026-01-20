@@ -12,8 +12,8 @@
 #include "base/include/platform/android/scoped_java_ref.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /**
  * Class to hold java JSIObjectDescriptor, call jni function to get
  * JSPropertyDescriptorInfo
@@ -34,7 +34,9 @@ class LynxJSIObjectDescriptor {
   base::android::ScopedGlobalJavaRef<jobject> jsi_object_descriptor_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_ANDROID_PLATFORM_JSI_LYNX_JSI_OBJECT_DESCRIPTOR_H_

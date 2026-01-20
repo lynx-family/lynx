@@ -14,7 +14,8 @@
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 class Runtime;
 
 class ApiCallBack {
@@ -37,17 +38,16 @@ class CallBackHolder;
 class ApiCallBackManager {
  public:
   ApiCallBackManager() : next_timer_index_(0) {}
-  ApiCallBack createCallbackImpl(piper::Function func);
+  ApiCallBack createCallbackImpl(Function func);
 
   template <typename... Args>
-  void InvokeWithValue(piper::Runtime* rt, ApiCallBack callback,
-                       Args&&... values);
+  void InvokeWithValue(Runtime* rt, ApiCallBack callback, Args&&... values);
 
   /**
    * Invoke Js ApiCallBack but does not erase ApiCallBack from callback_map_
    */
   template <typename... Args>
-  void InvokeWithValuePersist(piper::Runtime* rt, ApiCallBack callback,
+  void InvokeWithValuePersist(Runtime* rt, ApiCallBack callback,
                               Args&&... values);
 
   void EraseWithCallback(ApiCallBack callback);
@@ -60,18 +60,20 @@ class ApiCallBackManager {
 
 class CallBackHolder : public std::enable_shared_from_this<CallBackHolder> {
  public:
-  CallBackHolder(piper::Function func);
+  CallBackHolder(Function func);
 
   ~CallBackHolder() = default;
 
   template <typename... Args>
-  void InvokeWithValue(piper::Runtime* rt, Args&&... values);
+  void InvokeWithValue(Runtime* rt, Args&&... values);
 
  private:
-  piper::Function function_;
+  Function function_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #include "core/runtime/js/bindings/api_call_back-inl.h"

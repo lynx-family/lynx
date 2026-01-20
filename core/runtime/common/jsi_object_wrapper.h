@@ -15,8 +15,8 @@
 #include "core/runtime/lepus/js_object.h"
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 // use component id( > 0) as the componen group id, -1 as the page group id
 #define PAGE_GROUP_ID "-1"
 
@@ -47,11 +47,10 @@ class JSIObjectWrapperManager
   JSIObjectWrapperManager();
 
   std::shared_ptr<lepus::LEPUSObject::JSIObjectProxy>
-  CreateJSIObjectWrapperOnJSThread(piper::Runtime& rt, piper::Object obj,
+  CreateJSIObjectWrapperOnJSThread(Runtime& rt, Object obj,
                                    const std::string group);
 
-  piper::Value GetJSIObjectByIDOnJSThread(piper::Runtime& rt,
-                                          int64_t jsi_object_id);
+  Value GetJSIObjectByIDOnJSThread(Runtime& rt, int64_t jsi_object_id);
 
   void ReleaseJSIObjectByID(int64_t jsi_object_id);
 
@@ -63,7 +62,7 @@ class JSIObjectWrapperManager
  private:
   class JSIObjectWrapper {
    public:
-    JSIObjectWrapper(piper::Object obj, int64_t jsi_object_id,
+    JSIObjectWrapper(Object obj, int64_t jsi_object_id,
                      const std::string& group_id);
     ~JSIObjectWrapper() = default;
     void AddRef();
@@ -74,7 +73,7 @@ class JSIObjectWrapperManager
     friend class JSIObjectWrapperManager;
 
     int ref_count_;
-    piper::Object jsi_object_;
+    Object jsi_object_;
     int64_t id_;
     std::string group_id_;
   };
@@ -90,7 +89,9 @@ class JSIObjectWrapperManager
   std::mutex map_mutex_;
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_JSI_OBJECT_WRAPPER_H_

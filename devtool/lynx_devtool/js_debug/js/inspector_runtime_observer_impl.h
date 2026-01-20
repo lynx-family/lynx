@@ -13,7 +13,8 @@ namespace devtool {
 class InspectorJavaScriptDebuggerImpl;
 class LynxDevToolNG;
 
-class InspectorRuntimeObserverImpl : public piper::InspectorRuntimeObserverNG {
+class InspectorRuntimeObserverImpl
+    : public runtime::js::InspectorRuntimeObserverNG {
  public:
   explicit InspectorRuntimeObserverImpl(
       const std::shared_ptr<InspectorJavaScriptDebuggerImpl>& debugger);
@@ -27,10 +28,10 @@ class InspectorRuntimeObserverImpl : public piper::InspectorRuntimeObserverNG {
   int GetViewId() override { return view_id_; }
   std::unique_ptr<runtime::RuntimeManagerDelegate>
   CreateRuntimeManagerDelegate() override;
-  std::unique_ptr<piper::RuntimeInspectorManager> CreateRuntimeInspectorManager(
-      const std::string& vm_type) override;
-  std::shared_ptr<piper::ConsoleMessagePostMan> CreateConsoleMessagePostMan()
-      override;
+  std::unique_ptr<runtime::js::RuntimeInspectorManager>
+  CreateRuntimeInspectorManager(const std::string& vm_type) override;
+  std::shared_ptr<runtime::js::ConsoleMessagePostMan>
+  CreateConsoleMessagePostMan() override;
   void InitWhiteBoardInspector(
       const std::shared_ptr<tasm::WhiteBoardDelegate>& delegate) override;
 
@@ -41,7 +42,7 @@ class InspectorRuntimeObserverImpl : public piper::InspectorRuntimeObserverNG {
       const std::string& vm_type, int64_t runtime_id,
       const std::string& group_id, bool single_group,
       const std::shared_ptr<devtool::InspectorClientNG>& client) override;
-  void OnRuntimeCreated(piper::JSRuntimeType type) override;
+  void OnRuntimeCreated(runtime::js::JSRuntimeType type) override;
   void OnRuntimeDestroyed(int64_t runtime_id) override;
 
   void PrepareForScriptEval() override;
@@ -49,7 +50,7 @@ class InspectorRuntimeObserverImpl : public piper::InspectorRuntimeObserverNG {
   std::string GetTag() override { return tag_; }
   void SetTag(const std::string& tag) { tag_ = tag; }
 
-  void OnConsoleMessagePosted(const piper::ConsoleMessage& message);
+  void OnConsoleMessagePosted(const runtime::js::ConsoleMessage& message);
 
  private:
   std::weak_ptr<InspectorJavaScriptDebuggerImpl> debugger_wp_;

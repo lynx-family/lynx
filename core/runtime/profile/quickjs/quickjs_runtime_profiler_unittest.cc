@@ -17,7 +17,7 @@ namespace runtime {
 namespace profile {
 namespace testing {
 
-class MockHandler : public piper::JSIExceptionHandler {
+class MockHandler : public runtime::js::JSIExceptionHandler {
  public:
   void beginFailingTest() {
     did_failed_ = false;
@@ -29,7 +29,7 @@ class MockHandler : public piper::JSIExceptionHandler {
     expect_fail_ = false;
   }
 
-  void onJSIException(const piper::JSIException &exception) override {
+  void onJSIException(const runtime::js::JSIException &exception) override {
     EXPECT_TRUE(expect_fail_);
     did_failed_ = true;
   };
@@ -44,12 +44,12 @@ TEST(QuickjsRuntimeProfilerTest, QuickjsRuntimeProfilerTotalTest) {
   auto rt = ::testing::utils::makeJSRuntime(handler);
   auto ctx = rt->getSharedContext();
   auto quickjs_context =
-      std::static_pointer_cast<piper::QuickjsContextWrapper>(ctx);
+      std::static_pointer_cast<runtime::js::QuickjsContextWrapper>(ctx);
   auto quickjs_profiler =
       std::make_unique<QuickjsRuntimeProfiler>(quickjs_context);
   quickjs_profiler->SetupProfiling(100);
   quickjs_profiler->StartProfiling(true);
-  auto buffer = std::make_unique<piper::StringBuffer>("var b = 1");
+  auto buffer = std::make_unique<runtime::js::StringBuffer>("var b = 1");
   auto ret = rt->evaluateJavaScript(std::move(buffer), "");
   auto runtime_profile = quickjs_profiler->StopProfiling(true);
   EXPECT_TRUE(ret.has_value());

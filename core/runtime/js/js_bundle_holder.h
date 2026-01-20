@@ -12,7 +12,8 @@
 #include "core/runtime/js/js_bundle.h"
 
 namespace lynx {
-namespace piper {
+namespace runtime {
+namespace js {
 /**
  * an interface to help js app to get dynamic component sources from main thread
  */
@@ -24,7 +25,8 @@ class JsBundleHolder {
 
   virtual lepus::Value GetCustomSectionFromBT(const std::string& url) = 0;
 };
-}  // namespace piper
+}  // namespace js
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_JS_JS_BUNDLE_HOLDER_H_

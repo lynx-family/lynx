@@ -22,7 +22,7 @@
 
 namespace lynx {
 namespace embedder {
-class LynxModuleFactoryNAPI : public piper::NativeModuleFactory {
+class LynxModuleFactoryNAPI : public runtime::NativeModuleFactory {
  public:
   LynxModuleFactoryNAPI(
       Napi::Env env,
@@ -34,7 +34,7 @@ class LynxModuleFactoryNAPI : public piper::NativeModuleFactory {
   // Called from Main thread before LynxView destroyed.
   void Detach();
 
-  std::shared_ptr<piper::LynxNativeModule> CreateModule(
+  std::shared_ptr<runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;
 
  private:

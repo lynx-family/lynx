@@ -8,8 +8,8 @@
 #include <string>
 
 namespace lynx {
-namespace piper {
-
+namespace runtime {
+namespace js {
 /*
  * JSSourceLoaderDesktop is used on desktop headless mode
  */
@@ -21,7 +21,9 @@ class JSSourceLoaderDesktop {
   std::string LoadJSSource(const std::string& name);
 };
 
-}  // namespace piper
+}  // namespace js
+
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // PLATFORM_EMBEDDER_RESOURCE_JS_SOURCE_LOADER_DESKTOP_H_

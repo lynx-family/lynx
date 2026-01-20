@@ -14,7 +14,7 @@
 
 namespace lynx {
 
-class LynxTextInfoModule : public piper::LynxNativeModule {
+class LynxTextInfoModule : public runtime::LynxNativeModule {
  public:
   explicit LynxTextInfoModule(uint32_t view_context_id);
   ~LynxTextInfoModule() override = default;
@@ -28,7 +28,7 @@ class LynxTextInfoModule : public piper::LynxNativeModule {
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
-      size_t count, const piper::CallbackMap& callbacks) override;
+      size_t count, const runtime::CallbackMap& callbacks) override;
 
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info);
