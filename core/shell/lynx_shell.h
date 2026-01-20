@@ -23,6 +23,7 @@
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/page_options.h"
 #include "core/renderer/data/template_data.h"
+#include "core/renderer/lynx_env_config.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/template_delegate.h"
@@ -49,6 +50,8 @@ class AirModuleHandler;
 }  // namespace air
 namespace tasm {
 class LynxTemplateBundle;
+class LazyBundleLoader;
+class WhiteBoard;
 }  // namespace tasm
 namespace piper {
 class NativeModuleFactory;
@@ -69,6 +72,21 @@ struct ShellOption {
   int32_t instance_id_{kUnknownInstanceId};
   std::string js_group_thread_name_;
   tasm::PageOptions page_options_;
+};
+
+struct LynxEngineBuildOptions {
+  tasm::LynxEnvConfig lynx_env_config_{0, 0, 1, 1};
+  std::shared_ptr<lynx::tasm::LazyBundleLoader> loader_;
+  std::shared_ptr<lynx::tasm::WhiteBoard> white_board_;
+  std::shared_ptr<base::VSyncMonitor> element_manager_vsync_monitor_;
+  bool enable_new_animator_{false};
+  bool enable_native_list_{false};
+  bool enable_pre_update_data_{false};
+  bool enable_unified_pipeline_{false};
+  bool use_invoke_ui_method_func_{false};
+  bool force_layout_on_background_thread_{false};
+  bool enable_layout_only_{true};
+  std::string locale_;
 };
 
 // support create and destroy in any thread
@@ -432,7 +450,14 @@ class LynxShell {
 
  private:
   friend class LynxEngineWrapper;
+  std::unique_ptr<lynx::shell::LynxEngine> BuildLynxEngine(
+      std::unique_ptr<TasmMediator> tasm_mediator,
+      std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
+          platform_layout_context,
+      std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context);
+
   std::weak_ptr<piper::JsBundleHolder> GetWeakJsBundleHolder();
+  LynxEngineBuildOptions engine_build_options_;
 };
 
 }  // namespace shell

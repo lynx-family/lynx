@@ -260,6 +260,24 @@ LynxShell* LynxShellBuilder::build() {
     loader_->SetPerfControllerActor(shell->perf_controller_actor_);
   }
 
+  shell->engine_build_options_.lynx_env_config_ = lynx_env_config_;
+  shell->engine_build_options_.loader_ = loader_;
+  shell->engine_build_options_.white_board_ = white_board_;
+  shell->engine_build_options_.element_manager_vsync_monitor_ =
+      element_manager_vsync_monitor_;
+  shell->engine_build_options_.enable_new_animator_ = enable_new_animator_;
+  shell->engine_build_options_.enable_native_list_ = enable_native_list_;
+  shell->engine_build_options_.enable_layout_only_ = enable_layout_only_;
+  shell->engine_build_options_.enable_pre_update_data_ =
+      enable_pre_update_data_;
+  shell->engine_build_options_.enable_unified_pipeline_ =
+      enable_unified_pipeline_;
+  shell->engine_build_options_.use_invoke_ui_method_func_ =
+      use_invoke_ui_method_func_;
+  shell->engine_build_options_.force_layout_on_background_thread_ =
+      force_layout_on_background_thread_;
+  shell->engine_build_options_.locale_ = locale_;
+
   if (lynx_engine_wrapper_ && lynx_engine_wrapper_->HasInit()) {
     TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, LYNX_SHELL_BUILDER_ATTACH_ENGINE);
     // Indicates that a reusable LynxEngine object has been obtained.
@@ -302,14 +320,25 @@ LynxShell* LynxShellBuilder::build() {
         shell->perf_controller_actor_);
     tasm_mediator->SetPageOptions(shell_option_.page_options_);
     shell->tasm_mediator_ = tasm_mediator.get();
+    std::unique_ptr<lynx::shell::LynxEngine> lynx_engine;
+    if (this->lynx_engine_creator_ != nullptr) {
+      // lynx_engine_creator_ is nullptr by default, it is used only for
+      // lynx_shell_unitests.
+      lynx_engine = this->lynx_engine_creator_(std::move(tasm_mediator));
+    } else {
+      if (painting_context_ == nullptr) {
+        painting_context_ = painting_context_creator_(shell);
+      }
+      lynx_engine = shell->BuildLynxEngine(
+          std::move(tasm_mediator),
+          (shell_option_.page_options_.IsLayoutInElementModeOn()
+               ? std::move(this->layout_context_)
+               : nullptr),
+          std::move(painting_context_));
+    }
     shell->engine_actor_ = std::make_shared<LynxActor<LynxEngine>>(
-        CreateLynxEngine(std::move(tasm_mediator), shell->runners_,
-                         shell->card_cached_data_mgr_, shell->instance_id_,
-                         shell,
-                         (shell_option_.page_options_.IsLayoutInElementModeOn()
-                              ? std::move(this->layout_context_)
-                              : nullptr)),
-        shell->runners_.GetTASMTaskRunner(), shell->instance_id_);
+        std::move(lynx_engine), shell->runners_.GetTASMTaskRunner(),
+        shell->instance_id_);
   }
 
   this->on_engine_actor_created_(shell->engine_actor_);
@@ -393,56 +422,6 @@ void LynxShellBuilder::AttachLynxEngine(LynxShell* shell) {
   if (lynx_engine_wrapper_ && lynx_engine_wrapper_->HasInit()) {
     lynx_engine_wrapper_->BindShell(shell);
   }
-}
-
-std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
-    std::unique_ptr<TasmMediator> tasm_mediator,
-    base::TaskRunnerManufactor& runners,
-    const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
-    int32_t instance_id, LynxShell* shell,
-    std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
-        platform_layout_context) {
-  // lynx_engine_creator_ is nullptr by default, it is used only for
-  // lynx_shell_unitests.
-  if (this->lynx_engine_creator_ != nullptr) {
-    return this->lynx_engine_creator_(std::move(tasm_mediator));
-  }
-
-  if (painting_context_ == nullptr) {
-    painting_context_ = painting_context_creator_(shell);
-  }
-  auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
-      std::move(painting_context_), tasm_mediator.get(), this->lynx_env_config_,
-      shell_option_.page_options_, instance_id,
-      this->element_manager_vsync_monitor_, std::move(platform_layout_context));
-  // Currently, tasm_mediator serves as the implementation of both
-  // TemplateAssembler::Delegate and TemplateAssembler::LayoutScheduler,
-  // so here passes *tasm_mediator twice.
-  // TODO(chennengshi) : We may refactor LayoutScheduler's implementation as a
-  // new instance rather than tasm_mediator when LayoutScheduler is more
-  // complex.
-  auto tasm = std::make_unique<lynx::tasm::TemplateAssembler>(
-      *tasm_mediator, std::move(element_manager), tasm_mediator.get(),
-      instance_id, this->enable_unified_pipeline_, shell_option_.page_options_);
-  tasm->SetEnableLayoutOnly(this->enable_layout_only_);
-  if (this->loader_ != nullptr) {
-    tasm->SetLazyBundleLoader(this->loader_);
-  }
-
-  if (this->white_board_ == nullptr) {
-    this->white_board_ = std::make_shared<tasm::WhiteBoard>();
-  }
-  tasm->SetWhiteBoard(this->white_board_);
-
-  if (!this->locale_.empty()) {
-    tasm->SetLocale(this->locale_);
-  }
-  tasm->EnablePreUpdateData(this->enable_pre_update_data_);
-
-  auto lynx_engine = std::make_unique<lynx::shell::LynxEngine>(
-      std::move(tasm), std::move(tasm_mediator), card_cached_data_mgr,
-      instance_id);
-  return lynx_engine;
 }
 
 LynxShellBuilder& LynxShellBuilder::SetTasmPlatformInvoker(

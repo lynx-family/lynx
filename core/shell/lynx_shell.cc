@@ -22,6 +22,7 @@
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/watch_dog/watch_dog.h"
+#include "core/shared_data/lynx_white_board.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
@@ -144,6 +145,43 @@ LynxShell::~LynxShell() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DESTRUCTOR);
   LOGI("LynxShell release, this:" << this);
   Destroy();
+}
+
+std::unique_ptr<lynx::shell::LynxEngine> LynxShell::BuildLynxEngine(
+    std::unique_ptr<TasmMediator> tasm_mediator,
+    std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context,
+    std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context) {
+  auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
+      std::move(painting_context), tasm_mediator.get(),
+      engine_build_options_.lynx_env_config_, page_options_, instance_id_,
+      engine_build_options_.element_manager_vsync_monitor_,
+      std::move(platform_layout_context));
+  // Currently, tasm_mediator serves as the implementation of both
+  // TemplateAssembler::Delegate and TemplateAssembler::LayoutScheduler,
+  // so here passes *tasm_mediator twice.
+  // TODO(chennengshi) : We may refactor LayoutScheduler's implementation as a
+  // new instance rather than tasm_mediator when LayoutScheduler is more
+  // complex.
+  auto tasm = std::make_unique<lynx::tasm::TemplateAssembler>(
+      *tasm_mediator, std::move(element_manager), tasm_mediator.get(),
+      instance_id_, engine_build_options_.enable_unified_pipeline_,
+      page_options_);
+  tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
+  if (engine_build_options_.loader_ != nullptr) {
+    tasm->SetLazyBundleLoader(engine_build_options_.loader_);
+  }
+  if (engine_build_options_.white_board_ == nullptr) {
+    engine_build_options_.white_board_ = std::make_shared<tasm::WhiteBoard>();
+  }
+  tasm->SetWhiteBoard(engine_build_options_.white_board_);
+  if (!engine_build_options_.locale_.empty()) {
+    tasm->SetLocale(engine_build_options_.locale_);
+  }
+  tasm->EnablePreUpdateData(engine_build_options_.enable_pre_update_data_);
+
+  return std::make_unique<lynx::shell::LynxEngine>(
+      std::move(tasm), std::move(tasm_mediator), card_cached_data_mgr_,
+      instance_id_);
 }
 
 void LynxShell::Destroy() {
