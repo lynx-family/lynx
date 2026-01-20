@@ -393,10 +393,8 @@ void UIScroll::RemoveChild(lynx::tasm::harmony::UIBase* child) {
   layout_changed_ = true;
   if (child == end_bounce_view_) {
     end_bounce_view_ = nullptr;
-    return;
   } else if (child == start_bounce_view_) {
     start_bounce_view_ = nullptr;
-    return;
   }
   children_.erase(std::remove(children_.begin(), children_.end(), child),
                   children_.end());
