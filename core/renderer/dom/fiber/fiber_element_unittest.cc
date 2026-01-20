@@ -15460,6 +15460,65 @@ TEST_P(FiberElementTest, CollectCustomPropertiesCascading) {
             "inline-val");
 }
 
+TEST_P(FiberElementTest, FiberElementRemovedFromPassesZIndexStatus) {
+  manager->GetLynxEnvConfig().font_scale_ = 1.3f;
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
+
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  page->InsertNode(parent);
+
+  auto child_with_z = manager->CreateFiberView();
+  child_with_z->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  parent->InsertNode(child_with_z);
+
+  auto child_no_z = manager->CreateFiberView();
+  parent->InsertNode(child_no_z);
+
+  page->FlushActionsAsRoot();
+
+  auto mock_insertion_point = manager->CreateFiberView();
+  child_with_z->RemovedFrom(mock_insertion_point.get());
+  child_no_z->RemovedFrom(mock_insertion_point.get());
+
+  SUCCEED();
+}
+
+TEST_P(FiberElementTest, PrepareAndGenerateChildrenActionsUsesHasZIndex) {
+  manager->GetLynxEnvConfig().font_scale_ = 1.3f;
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
+
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  page->InsertNode(parent);
+
+  auto child_with_z = manager->CreateFiberView();
+  child_with_z->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  parent->InsertNode(child_with_z);
+
+  page->FlushActionsAsRoot();
+
+  // Trigger kRemoveIntergenerationAct
+  auto mock_insertion_point = manager->CreateFiberView();
+  child_with_z->RemovedFrom(mock_insertion_point.get());
+
+  // mock_insertion_point must be dirty to process actions
+  mock_insertion_point->MarkDirty(FiberElement::kDirtyTree);
+  mock_insertion_point->PrepareAndGenerateChildrenActions();
+
+  SUCCEED();
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

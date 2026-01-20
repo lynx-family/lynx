@@ -1066,6 +1066,162 @@ TEST_F(ElementContainerTest, TestMarkDirty0) {
   EXPECT_TRUE(container->NeedRedraw());
 }
 
+TEST_F(ElementContainerTest, CalcUIIndexForFixedIncludesNegativeZChildren) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFixedNew(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberElement("page");
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+  auto page_container = page->element_container_impl();
+  ASSERT_TRUE(page->IsStackingContextNode());
+
+  auto negative_z_child = manager->CreateFiberElement("view");
+  page->AddChildAt(negative_z_child, 0);
+  negative_z_child->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(-1, CSSValuePattern::NUMBER));
+  negative_z_child->FlushProps();
+  auto negative_z_container = negative_z_child->element_container_impl();
+  negative_z_container->InsertSelf();
+  EXPECT_EQ(negative_z_container->parent(), page_container);
+
+  auto fixed_child = manager->CreateFiberElement("view");
+  page->AddChildAt(fixed_child, 1);
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                tasm::CSSValue(2, CSSValuePattern::NUMBER));
+  fixed_child->FlushProps();
+  ASSERT_TRUE(fixed_child->IsNewFixed());
+
+  int index = 0;
+  page_container->CalcUIIndexForFixedNew(fixed_child->element_container_impl(),
+                                         index);
+  EXPECT_EQ(index,
+            static_cast<int>(page_container->negative_z_children_.size()) + 0);
+}
+
+TEST_F(ElementContainerTest, RemoveChildFixedWithZIndex) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFixedNew(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberElement("page");
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+  auto page_container = page->element_container_impl();
+
+  // Test that fixed elements with non-zero z-index are NOT added to
+  // fixed_node_list
+  auto fixed_child = manager->CreateFiberElement("view");
+  page->AddChildAt(fixed_child, 0);
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                tasm::CSSValue(2, CSSValuePattern::NUMBER));
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                                tasm::CSSValue(5, CSSValuePattern::NUMBER));
+  fixed_child->FlushProps();
+  auto fixed_container = fixed_child->element_container_impl();
+  fixed_container->InsertSelf();
+  auto pipeline_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(pipeline_options);
+  EXPECT_EQ(manager->fixed_node_list_.size(), static_cast<size_t>(0));
+
+  // Test that fixed elements with zero z-index ARE added to fixed_node_list
+  auto fixed_child_z0 = manager->CreateFiberElement("view");
+  page->AddChildAt(fixed_child_z0, 1);
+  fixed_child_z0->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                   tasm::CSSValue(2, CSSValuePattern::NUMBER));
+  fixed_child_z0->FlushProps();
+  auto fixed_container_z0 = fixed_child_z0->element_container_impl();
+  fixed_container_z0->InsertSelf();
+  manager->OnPatchFinish(pipeline_options);
+  EXPECT_EQ(manager->fixed_node_list_.size(), static_cast<size_t>(1));
+
+  page_container->RemoveChild(fixed_container_z0);
+  EXPECT_EQ(manager->fixed_node_list_.size(), static_cast<size_t>(0));
+}
+
+TEST_F(ElementContainerTest, MoveZChildrenRecursivelySkipsFixedElements) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFixedNew(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberElement("page");
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+  auto page_container = page->element_container_impl();
+
+  auto z_child = manager->CreateFiberElement("view");
+  page->AddChildAt(z_child, 0);
+  z_child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                            tasm::CSSValue(1, CSSValuePattern::NUMBER));
+  z_child->FlushProps();
+  auto z_container = z_child->element_container_impl();
+  z_container->InsertSelf();
+  EXPECT_EQ(z_container->parent(), page_container);
+
+  auto fixed_child = manager->CreateFiberElement("view");
+  page->AddChildAt(fixed_child, 1);
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                tasm::CSSValue(2, CSSValuePattern::NUMBER));
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDZIndex,
+                                tasm::CSSValue(2, CSSValuePattern::NUMBER));
+  fixed_child->FlushProps();
+  auto fixed_container = fixed_child->element_container_impl();
+  fixed_container->InsertSelf();
+  EXPECT_EQ(fixed_container->parent(), page_container);
+
+  auto new_parent = manager->CreateFiberElement("view");
+  auto new_parent_container = new_parent->element_container_impl();
+
+  page_container->MoveZChildrenRecursively(page.get(), new_parent_container);
+
+  EXPECT_EQ(z_container->parent(), new_parent_container);
+  EXPECT_EQ(fixed_container->parent(), page_container);
+}
+
+TEST_F(ElementContainerTest,
+       CalcUIIndexForFixedUnifiedIncludesNegativeZChildren) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableUnifyFixedBehavior(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberElement("page");
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+  auto page_container = page->element_container_impl();
+
+  auto negative_z_child = manager->CreateFiberElement("view");
+  page->AddChildAt(negative_z_child, 0);
+  negative_z_child->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(-1, CSSValuePattern::NUMBER));
+  negative_z_child->FlushProps();
+  auto negative_z_container = negative_z_child->element_container_impl();
+  negative_z_container->InsertSelf();
+
+  auto fixed_child = manager->CreateFiberElement("view");
+  fixed_child->SetStyleInternal(CSSPropertyID::kPropertyIDPosition,
+                                tasm::CSSValue(2, CSSValuePattern::NUMBER));
+  page->AddChildAt(fixed_child, 1);
+  fixed_child->FlushProps();
+  ASSERT_TRUE(fixed_child->IsFixedUnified());
+
+  int index = 0;
+  page_container->CalcUIIndexForFixedUnified(
+      fixed_child->element_container_impl(), index);
+  EXPECT_EQ(index,
+            static_cast<int>(page_container->negative_z_children_.size()) + 0);
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx
