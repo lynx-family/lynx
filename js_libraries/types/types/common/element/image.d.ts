@@ -18,7 +18,7 @@ export interface ImageProps extends StandardProps {
    * @PC
    * @since 0.2
    */
-  src?: string;
+  'src'?: string;
 
   /**
    * Specifies image cropping/scaling mode
@@ -33,12 +33,30 @@ export interface ImageProps extends StandardProps {
    * @Harmony
    * @PC
    */
-  mode?: 'scaleToFill' | 'aspectFit' | 'aspectFill' | 'center';
+  'mode'?: 'scaleToFill' | 'aspectFit' | 'aspectFill' | 'center';
 
   /**
-   * ARGB_8888: 32-bit memory per pixel, supports semi-transparent images
-   * RGB_565: 16-bit memory per pixel, reduces memory usage but loses transparency
+   * `ARGB_8888`: 32-bit memory per pixel, supports semi-transparent images.
+   * `RGB_565`: 16-bit memory per pixel, reduces memory usage but loses transparency.
+   *
    * Support PC platform since 3.5
+   *
+   * :::note
+   *
+   * Affects the actual memory usage of the image bitmap.
+   *
+   * Taking an image with a resolution of 1024*768 as an example, the actual memory usage is (1024 * 768 * bits per pixel / 8) Bytes.
+   *
+   * The default is ARGB_8888. Frontend developers can optimize image memory usage by setting it to RGB_565.
+   *
+   * ARGB_8888: Each pixel occupies 32 bits of memory and includes an alpha channel.
+   * RGB_565: Each pixel occupies 16 bits of memory, which reduces memory usage but results in the loss of transparency.
+   * Setting RGB_565 may affect the display of `<image>`'s border-radius. You can set border-radius on the parent view of the `<image>` and add the clip-radius attribute to the parent view.
+   *
+   * It is not recommended to use RGB_565 when mode="aspectFit", as it may cause black borders in the cropped area.
+   *
+   * :::
+   *
    * @defaultValue "ARGB_8888"
    * @Android
    * @PC
@@ -54,7 +72,7 @@ export interface ImageProps extends StandardProps {
    * @PC
    * @since 1.4
    */
-  placeholder?: string;
+  'placeholder'?: string;
 
   /**
    * Image blur radius
@@ -68,6 +86,11 @@ export interface ImageProps extends StandardProps {
 
   /**
    * Stretchable area for 9patch images, in percentage or decimal, four values for top, right, bottom, left
+   *
+   * :::note
+   * Using cap-insets does not require the original image to be a 9-patch image.
+   * :::
+   *
    * @iOS
    * @Android
    * @Harmony
