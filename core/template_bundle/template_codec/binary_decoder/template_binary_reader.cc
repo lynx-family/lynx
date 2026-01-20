@@ -192,7 +192,8 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
         ERROR_UNLESS(DecodeCSSFontFaceToken(token.get()));
         token_list.emplace_back(std::move(token));
       }
-      font_faces.emplace(std::move(name), token_list);
+      std::string token_key = token_list.size() > 0 ? token_list[0]->first : "";
+      font_faces.emplace(std::move(token_key), token_list);
       stream_->Seek(style_objects_section_range_.start + range.end);
     }
 
