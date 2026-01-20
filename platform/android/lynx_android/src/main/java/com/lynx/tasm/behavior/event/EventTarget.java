@@ -18,8 +18,26 @@ public interface EventTarget extends EventTargetBase {
   public enum PointerEventsValue {
     Auto,
     None,
-    // add new type before kLynxPointerEventsValueUnset
+    // add new type before Unset
     Unset,
+  }
+
+  enum PanInterceptDirection {
+    Horizontal,
+    Vertical,
+    // add new type before None
+    None,
+  }
+
+  enum PanInterceptScope {
+    Self,
+    Ancestors,
+    Descendants,
+    SelfAndAncestors,
+    SelfAndDescendants,
+    All,
+    // add new type before None
+    None,
   }
 
   int getSign();
@@ -83,6 +101,16 @@ public interface EventTarget extends EventTargetBase {
   boolean eventThrough(float x, float y);
 
   PointerEventsValue pointerEvents();
+
+  PanInterceptDirection panInterceptDirection();
+
+  PanInterceptScope panInterceptScope();
+
+  void setPanInterceptSelf(boolean panInterceptSelf);
+
+  void setPanInterceptAncestors(boolean panInterceptAncestors);
+
+  void setPanInterceptDescendants(boolean panInterceptDescendants);
 
   EventTarget getParentLynxPageUI();
 

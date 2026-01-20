@@ -41,6 +41,9 @@ public class ListContainerView
   private int mPreviousOffsetX;
   private int mPreviousOffsetY;
   private boolean mForceCanScroll = false;
+  private boolean mPanInterceptSelf = false;
+  private boolean mPanInterceptAncestors = false;
+  private boolean mPanInterceptDescendants = false;
 
   public ListContainerView(@NonNull Context context, UIListContainer uiListContainer) {
     super(context);
@@ -64,6 +67,10 @@ public class ListContainerView
   public boolean onInterceptTouchEvent(MotionEvent e) {
     if (mUiListContainer == null) {
       return super.onInterceptTouchEvent(e);
+    }
+
+    if (mPanInterceptDescendants) {
+      return true;
     }
 
     if (isNotIncludeNativeGesture()) {
@@ -124,6 +131,10 @@ public class ListContainerView
   public boolean onTouchEvent(MotionEvent ev) {
     if (mUiListContainer == null) {
       return super.onTouchEvent(ev);
+    }
+
+    if (mPanInterceptSelf) {
+      return false;
     }
 
     if (isNotIncludeNativeGesture()) {
@@ -391,6 +402,18 @@ public class ListContainerView
   protected void onDetachedFromWindow() {
     LLog.e(TAG, "onDetachedFromWindow: " + this + ", ui = " + mUiListContainer);
     super.onDetachedFromWindow();
+  }
+
+  public void setPanInterceptSelf(boolean panInterceptSelf) {
+    mPanInterceptSelf = panInterceptSelf;
+  }
+
+  public void setPanInterceptAncestors(boolean panInterceptAncestors) {
+    mPanInterceptAncestors = panInterceptAncestors;
+  }
+
+  public void setPanInterceptDescendants(boolean panInterceptDescendants) {
+    mPanInterceptDescendants = panInterceptDescendants;
   }
 
   private class CustomLinearLayout extends LinearLayout {

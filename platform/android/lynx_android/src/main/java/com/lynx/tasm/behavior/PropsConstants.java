@@ -189,6 +189,8 @@ public class PropsConstants {
   public static final String ANDROID_EMOJI_COMPAT = "android-emoji-compat";
   public static final String TRANSFORM_ORDER = "transform-order";
   public static final String POINTER_EVENTS = "pointer-events";
+  public static final String PAN_INTERCEPT_DIRECTION = "pan-intercept-direction";
+  public static final String PAN_INTERCEPT_SCOPE = "pan-intercept-scope";
   public static final String EVENT_THROUGH = "event-through";
   public static final String EVENT_THROUGH_ACTIVE_REGIONS = "event-through-active-regions";
   public static final String DISABLE_DEFAULT_RESIZE = "disable-default-resize";

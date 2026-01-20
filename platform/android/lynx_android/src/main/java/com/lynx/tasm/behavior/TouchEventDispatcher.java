@@ -87,6 +87,8 @@ public class TouchEventDispatcher {
   private LynxUIOwner mUIOwner;
   private GestureRecognizer mDetector;
   private EventTarget mActiveUI;
+  private EventTarget mFirstPanInterceptTargetWithoutDirection;
+  private EventTarget mFirstPanInterceptTarget;
   // pointId -> Target, a pointId corresponds to a finger.
   private HashMap<Integer, EventTargetDetail> mActiveUIMap;
   private HashMap<Integer, EventTargetBase> mActiveTargetMap;
@@ -125,6 +127,7 @@ public class TouchEventDispatcher {
   private String mPreTargetInlineCSSText;
   private Point mFirstFingerDownPoint;
   private boolean mIsPlatformGestureActive = false;
+  private boolean mPanGestureRecognized = false;
 
   private static final String TAG = "LynxTouchEventDispatcher";
 
@@ -408,6 +411,31 @@ public class TouchEventDispatcher {
     }
   }
 
+  private void initPanInterceptEnv() {
+    mPanGestureRecognized = false;
+    if (mFirstPanInterceptTarget != null) {
+      mFirstPanInterceptTarget.setPanInterceptSelf(false);
+      mFirstPanInterceptTarget.setPanInterceptAncestors(false);
+      mFirstPanInterceptTarget.setPanInterceptDescendants(false);
+    }
+    mFirstPanInterceptTarget = null;
+
+    mFirstPanInterceptTargetWithoutDirection = null;
+    if (mActiveUI != null) {
+      EventTarget target = mActiveUI;
+      while (target != null && target.parent() != target) {
+        if (target.panInterceptDirection() != EventTarget.PanInterceptDirection.None) {
+          mFirstPanInterceptTargetWithoutDirection = target;
+          break;
+        }
+        target = target.parent();
+      }
+      if (mFirstPanInterceptTargetWithoutDirection != null) {
+        mFirstPanInterceptTargetWithoutDirection.setPanInterceptAncestors(true);
+      }
+    }
+  }
+
   private boolean onTouchMove(MotionEvent ev, int index) {
     boolean res = false;
     boolean firstTouchMoved = false;
@@ -429,6 +457,20 @@ public class TouchEventDispatcher {
           mTouchMoved = true;
           if (ev.getPointerId(index) == 0) {
             firstTouchMoved = true;
+          }
+        }
+        if (ev.getPointerId(index) == 0) {
+          float absDeltaX = Math.abs(downPoint.x - ev.getX(index));
+          float absDeltaY = Math.abs(downPoint.y - ev.getY(index));
+          if (!mPanGestureRecognized && (absDeltaX > 10 || absDeltaY > 10)) {
+            mPanGestureRecognized = true;
+            EventTarget.PanInterceptDirection direction = EventTarget.PanInterceptDirection.None;
+            if (absDeltaX > absDeltaY) {
+              direction = EventTarget.PanInterceptDirection.Horizontal;
+            } else {
+              direction = EventTarget.PanInterceptDirection.Vertical;
+            }
+            startInterceptPanGestures(direction);
           }
         }
         prePoint.x = ev.getX(index);
@@ -814,6 +856,7 @@ public class TouchEventDispatcher {
     }
     initTouchEnv(ev);
     initClickEnv();
+    initPanInterceptEnv();
     mActiveUIMap.put(ev.getPointerId(0), new EventTargetDetail(mActiveUI, ev.getX(0), ev.getY(0)));
     mActiveTargetMap.put(mActiveUI.getSign(), mActiveUI);
 
@@ -1184,5 +1227,63 @@ public class TouchEventDispatcher {
     mActiveUI = null;
     mFocusedUI = null;
     mActiveClickList.clear();
+  }
+
+  public void startInterceptPanGestures(EventTarget.PanInterceptDirection direction) {
+    if (mFirstPanInterceptTargetWithoutDirection != null) {
+      mFirstPanInterceptTargetWithoutDirection.setPanInterceptAncestors(false);
+    }
+    mFirstPanInterceptTarget = getFirstPanInterceptDirectionTarget(direction);
+    EventTarget.PanInterceptScope scope = getPanInterceptScope(mFirstPanInterceptTarget);
+    if (mFirstPanInterceptTarget != null && scope != EventTarget.PanInterceptScope.None) {
+      switch (scope) {
+        case Self:
+          mFirstPanInterceptTarget.setPanInterceptSelf(true);
+          break;
+        case Ancestors:
+          mFirstPanInterceptTarget.setPanInterceptAncestors(true);
+          break;
+        case Descendants:
+          mFirstPanInterceptTarget.setPanInterceptDescendants(true);
+          break;
+        case SelfAndAncestors:
+          mFirstPanInterceptTarget.setPanInterceptSelf(true);
+          mFirstPanInterceptTarget.setPanInterceptAncestors(true);
+          break;
+        case SelfAndDescendants:
+          mFirstPanInterceptTarget.setPanInterceptSelf(true);
+          mFirstPanInterceptTarget.setPanInterceptDescendants(true);
+          break;
+        case All:
+          mFirstPanInterceptTarget.setPanInterceptSelf(true);
+          mFirstPanInterceptTarget.setPanInterceptAncestors(true);
+          mFirstPanInterceptTarget.setPanInterceptDescendants(true);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  public EventTarget getFirstPanInterceptDirectionTarget(
+      EventTarget.PanInterceptDirection direction) {
+    if (direction == EventTarget.PanInterceptDirection.None) {
+      return null;
+    }
+    EventTarget target = mActiveUI;
+    while (target != null && target.parent() != target) {
+      if (target.panInterceptDirection() == direction) {
+        return target;
+      }
+      target = target.parent();
+    }
+    return null;
+  }
+
+  public EventTarget.PanInterceptScope getPanInterceptScope(EventTarget target) {
+    if (target == null) {
+      return EventTarget.PanInterceptScope.None;
+    }
+    return target.panInterceptScope();
   }
 }
