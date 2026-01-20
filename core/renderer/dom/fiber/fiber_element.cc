@@ -3844,6 +3844,10 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
         if (!is_virtual()) {
           UpdateFiberElement();
         }
+        if (element_manager_->FixNewAnimatorFlushBug()) {
+          // FIXME(linxs): remove this settings in next version
+          ResetPropBundle();
+        }
       }
 
       UpdateLayoutNodeByBundle();
