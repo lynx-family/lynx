@@ -524,9 +524,17 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
    */
   private void fetchTemplateInternal() {
     Runnable runnable = () -> {
+      LynxTemplateResourceFetcher fetcher = lynxRuntimeOptions.getTemplateResourceFetcher();
+      if (fetcher == null) {
+        LLog.e(
+            TAG, "failed to fetch template bundle because no TemplateResourceFetcher was provided");
+        setFetchResult(LynxResourceResponse.onFailed(
+            new RuntimeException("no TemplateResourceFetcher was provided")));
+        return;
+      }
       LynxResourceRequest request = new LynxResourceRequest(
           url, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate);
-      lynxRuntimeOptions.getTemplateResourceFetcher().fetchTemplate(request, response -> {
+      fetcher.fetchTemplate(request, response -> {
         if (response.getState() == LynxResourceResponse.ResponseState.FAILED) {
           // request failed
           setFetchResult(LynxResourceResponse.onFailed(response.getError()));
