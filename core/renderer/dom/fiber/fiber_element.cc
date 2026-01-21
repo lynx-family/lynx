@@ -215,7 +215,7 @@ void FiberElement::AttachToElementManager(
 
 void FiberElement::OnNodeAdded(FiberElement *child) {
   if (IsRadonArch()) {
-    if (element_manager_->FixRadonInlineConvertBug()) {
+    if (element_manager_ && element_manager_->FixRadonInlineConvertBug()) {
       if (child != nullptr && is_inline_element() &&
           (!is_component() || is_wrapper())) {
         child->ConvertToInlineElement();
