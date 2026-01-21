@@ -41,7 +41,7 @@ void ResourceLoaderCommon::Load(
         if (!self) {
           FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
           if (callback) {
-            callback(nullptr, 0);
+            task_runner->PostTask([callback]() { callback(nullptr, 0); });
           }
           return;
         }
@@ -81,7 +81,7 @@ void ResourceLoaderCommon::LoadOnNet(
         if (!self) {
           FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
           if (callback) {
-            callback(nullptr, 0);
+            ui_task_runner->PostTask([callback]() { callback(nullptr, 0); });
           }
           return;
         }
@@ -100,7 +100,7 @@ void ResourceLoaderCommon::LoadOnNet(
         if (!self) {
           FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
           if (callback) {
-            callback(nullptr, 0);
+            ui_task_runner->PostTask([callback]() { callback(nullptr, 0); });
           }
           return;
         }
