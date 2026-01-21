@@ -89,9 +89,8 @@ class UIList : public BaseScrollContainer,
   void SetScrollState(list::ScrollState state);
   void ResolveItemSnapProp(const lepus::Value& value);
   void ResetItemSnapProp();
-  bool HasParentDrawNode(UIBase* child);
+  bool HasParentDrawNode(UIBase* child) const;
   void HandleScrollStartEvent();
-  void HandleScrollEvent();
   void HandleScrollStopEvent();
   void HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event);
   bool ShouldCallScroll(float delta_x, float delta_y);

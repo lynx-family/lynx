@@ -497,20 +497,18 @@ void UIList::OnNodeEvent(ArkUI_NodeEvent* event) {
     HandleScrollStartEvent();
   } else if (type == NODE_SCROLL_EVENT_ON_SCROLL) {
     GestureRecognized();
-    // Handle scroll offset when scroll_state is ARKUI_SCROLL_STATE_IDLE.
-    HandleScrollEvent();
   } else if (type == NODE_SCROLL_EVENT_ON_SCROLL_STOP) {
     HandleScrollStopEvent();
   } else if (type == NODE_SCROLL_EVENT_ON_WILL_SCROLL) {
-    // Handle scroll offset when scroll_state is ARKUI_SCROLL_STATE_SCROLL or
-    // ARKUI_SCROLL_STATE_FLING.
+    // Note: Handle scroll offset in any scroll state case, because we need to
+    // use delta_offset_ from c++ to modify the scroll offset in this
+    // ON_WLL_SCROLL EVENT.
     auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
     if (IsEnableNewGesture() && !consume_gesture_) {
       component_event->data[0].f32 = 0.f;
       component_event->data[1].f32 = 0.f;
     }
     HandleWillScrollEvent(component_event);
-
   } else if (type == NODE_TOUCH_EVENT) {
     DetectSnapScroll(OH_ArkUI_UIInputEvent_GetAction(
         OH_ArkUI_NodeEvent_GetInputEvent(event)));
@@ -635,7 +633,7 @@ float UIList::GetScrollRange() {
   }
 }
 
-bool UIList::HasParentDrawNode(UIBase* child) {
+bool UIList::HasParentDrawNode(UIBase* child) const {
   return child->DrawNode() &&
          NodeManager::Instance().GetParent(child->DrawNode()) != nullptr;
 }
@@ -798,22 +796,6 @@ void UIList::HandleScrollStartEvent() {
   context_->StartFluencyTrace(Sign(), harmony::kFluencyScrollEvent, "tag");
 }
 
-void UIList::HandleScrollEvent() {
-  // kDragging and kFling have to be handled in handleWillScrollEvent
-  if (scroll_state_ != list::ScrollState::kScrollAnimation) {
-    return;
-  }
-
-  std::pair result = GetScrollOffset();
-  if (!should_block_scroll_) {
-    ScrollByListContainer(result.first, result.second, result.first,
-                          result.second);
-  }
-  UpdateStickyStartView(result.first, result.second);
-  UpdateStickyEndView(result.first, result.second);
-  context_->NotifyUIScroll();
-}
-
 void UIList::HandleScrollStopEvent() {
   SetScrollState(list::ScrollState::kIdle);
   context_->StopFluencyTrace(Sign());
@@ -838,10 +820,7 @@ void UIList::HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event) {
   } else if (scroll_state == ARKUI_SCROLL_STATE_FLING) {
     SetScrollState(list::ScrollState::kFling);
   }
-
-  if (scroll_state_ == list::ScrollState::kIdle ||
-      scroll_state_ == list::ScrollState::kDragging ||
-      scroll_state_ == list::ScrollState::kFling) {
+  if (scroll_state_ != list::ScrollState::kNone) {
     std::pair result = GetScrollOffset();
     if (!should_block_scroll_) {
       ScrollByListContainer(
@@ -1405,7 +1384,7 @@ fml::RefPtr<lepus::CArray> UIList::GetVisibleCells() const {
   float scroll_y = GetScrollOffset().second;
   std::vector<UIBase*> visible_children;
   for (UIBase* child : children_) {
-    if (IsListItem(child)) {
+    if (IsListItem(child) && HasParentDrawNode(child)) {
       if (vertical
               ? IsVisibleCellVertical(static_cast<UIComponent*>(child))
               : IsVisibleCellHorizontal(static_cast<UIComponent*>(child))) {
