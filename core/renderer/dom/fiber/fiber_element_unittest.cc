@@ -65,6 +65,62 @@ static std::unordered_map<std::string, uint32_t> kTestColorMap = {
     {"black", 4278190080},
 };
 
+TEST_P(FiberElementTest, TestSetFontSizeDirectlyToComputedStyle) {
+  auto view = manager->CreateFiberView();
+
+  // Condition: !EnableLayoutInElementMode() || IsShadowNodeCustom()
+  // Ensure EnableLayoutInElementMode() is false
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
+
+  view->SetFontSize(tasm::CSSValue(25.0f, CSSValuePattern::NUMBER));
+
+  // Verify it's set in computed_css_style
+  EXPECT_EQ(view->GetFontSize(), 25.0f);
+  EXPECT_TRUE(
+      view->computed_css_style()->GetChangedBitset().Has(kPropertyIDFontSize));
+
+  // The prop_bundle_ should NOT contain font-size yet because it hasn't been
+  // flushed. Before the change, it was set directly to prop_bundle_.
+  if (view->prop_bundle_) {
+    EXPECT_FALSE(view->prop_bundle_->Contains(
+        CSSProperty::GetPropertyName(CSSPropertyID::kPropertyIDFontSize)
+            .c_str()));
+  }
+
+  // Now flush props and verify it reaches the painting node
+  auto page = manager->CreateFiberPage("0", 0);
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* painting_node = painting_context->node_map_.at(view->impl_id()).get();
+  EXPECT_TRUE(painting_node->props_.find("font-size") !=
+              painting_node->props_.end());
+  EXPECT_EQ(painting_node->props_["font-size"].Number(), 25.0f);
+}
+
+TEST_P(FiberElementTest, TestResetFontSizeDirectlyToComputedStyle) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
+
+  float default_font_size = manager->GetLynxEnvConfig().PageDefaultFontSize() *
+                            manager->GetLynxEnvConfig().font_scale_;
+
+  view->SetFontSize(tasm::CSSValue(30.0f, CSSValuePattern::NUMBER));
+  EXPECT_EQ(view->GetFontSize(), 30.0f);
+
+  view->ResetFontSize();
+  EXPECT_NEAR(view->GetFontSize(), default_font_size, 0.1);
+  EXPECT_TRUE(
+      view->computed_css_style()->GetChangedBitset().Has(kPropertyIDFontSize));
+}
+
 TEST_P(FiberElementTest, ElementInitTest0) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;

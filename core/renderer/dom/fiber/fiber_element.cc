@@ -3193,12 +3193,8 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value) {
     }
 
     if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
-      PreparePropBundleIfNeed();
-
-      prop_bundle_->SetProps(
-          CSSProperty::GetPropertyName(CSSPropertyID::kPropertyIDFontSize)
-              .c_str(),
-          *result);
+      computed_css_style()->SetValue(
+          kPropertyIDFontSize, CSSValue(*result, CSSValuePattern::NUMBER));
     }
     // TODO(ZHOUZHITAO): Figure out why need to determine whether it is a page
     if (is_page() && !is_greedy_parallel_flush()) {
@@ -3224,11 +3220,8 @@ void FiberElement::ResetFontSize() {
   if (font_size != GetFontSize()) {
     SetFontSizeForAllElement(font_size, root_font_size);
     if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
-      PreparePropBundleIfNeed();
-      prop_bundle_->SetProps(
-          CSSProperty::GetPropertyName(CSSPropertyID::kPropertyIDFontSize)
-              .c_str(),
-          font_size);
+      computed_css_style()->SetValue(
+          kPropertyIDFontSize, CSSValue(font_size, CSSValuePattern::NUMBER));
     }
     UpdateLayoutNodeFontSize(font_size, root_font_size);
   }
