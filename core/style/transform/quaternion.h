@@ -6,8 +6,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_CSS_TRANSFORMS_QUATERNION_H_
-#define CORE_RENDERER_CSS_TRANSFORMS_QUATERNION_H_
+#ifndef CORE_STYLE_TRANSFORM_QUATERNION_H_
+#define CORE_STYLE_TRANSFORM_QUATERNION_H_
 
 namespace lynx {
 namespace transforms {
@@ -66,4 +66,4 @@ inline Quaternion operator*(double s, const Quaternion& q) {
 }  // namespace transforms
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_CSS_TRANSFORMS_QUATERNION_H_
+#endif  // CORE_STYLE_TRANSFORM_QUATERNION_H_

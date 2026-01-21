@@ -14,8 +14,6 @@
 #include "base/include/value/table.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/transform_handler.h"
-#include "core/renderer/css/transforms/decomposed_transform.h"
-#include "core/renderer/css/transforms/matrix44.h"
 #include "core/renderer/css/transforms/transform_operation.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
@@ -26,6 +24,8 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "core/style/transform/decomposed_transform.h"
+#include "core/style/transform/matrix44.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

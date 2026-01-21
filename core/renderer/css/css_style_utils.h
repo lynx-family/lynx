@@ -20,10 +20,10 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
+#include "core/renderer/css/text_attributes.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/layout_unit.h"
 #include "core/style/shadow_data.h"
-#include "core/style/text_attributes.h"
 #include "core/style/transform_raw_data.h"
 #include "core/style/transition_data.h"
 

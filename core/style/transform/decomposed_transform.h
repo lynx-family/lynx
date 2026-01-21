@@ -6,11 +6,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_CSS_TRANSFORMS_DECOMPOSED_TRANSFORM_H_
-#define CORE_RENDERER_CSS_TRANSFORMS_DECOMPOSED_TRANSFORM_H_
+#ifndef CORE_STYLE_TRANSFORM_DECOMPOSED_TRANSFORM_H_
+#define CORE_STYLE_TRANSFORM_DECOMPOSED_TRANSFORM_H_
 
-#include "core/renderer/css/transforms/matrix44.h"
-#include "core/renderer/css/transforms/quaternion.h"
+#include "core/style/transform/matrix44.h"
+#include "core/style/transform/quaternion.h"
 
 namespace lynx {
 namespace transforms {
@@ -39,4 +39,4 @@ DecomposedTransform BlendDecomposedTransforms(const DecomposedTransform& to,
 }  // namespace transforms
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_CSS_TRANSFORMS_DECOMPOSED_TRANSFORM_H_
+#endif  // CORE_STYLE_TRANSFORM_DECOMPOSED_TRANSFORM_H_

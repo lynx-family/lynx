@@ -1,8 +1,8 @@
 // Copyright 2020 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_STYLE_TEXT_ATTRIBUTES_H_
-#define CORE_STYLE_TEXT_ATTRIBUTES_H_
+#ifndef CORE_RENDERER_CSS_TEXT_ATTRIBUTES_H_
+#define CORE_RENDERER_CSS_TEXT_ATTRIBUTES_H_
 
 #include <optional>
 #include <tuple>
@@ -166,4 +166,4 @@ class TextAttributes {
 
 }  // namespace starlight
 }  // namespace lynx
-#endif  // CORE_STYLE_TEXT_ATTRIBUTES_H_
+#endif  // CORE_RENDERER_CSS_TEXT_ATTRIBUTES_H_

@@ -6,14 +6,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_
-#define CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_
+#ifndef CORE_STYLE_TRANSFORM_MATRIX44_H_
+#define CORE_STYLE_TRANSFORM_MATRIX44_H_
 
 #include <array>
 #include <string>
 
 #include "base/include/log/logging.h"
-#include "core/renderer/css/transforms/quaternion.h"
+#include "core/style/transform/quaternion.h"
 
 namespace lynx {
 namespace transforms {
@@ -94,10 +94,6 @@ class Matrix44 {
    *  Return true if the matrix is 2d transform.
    */
   inline bool Is2dTransform() const { return IsFlat() && !HasPerspective(); }
-
-  std::string Get2DRepresentation() const;
-
-  std::string Get3DRepresentation() const;
 
   /**
    *  Return true if the matrix only contains scale or translate or is identity.
@@ -198,4 +194,4 @@ class Matrix44 {
 }  // namespace transforms
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_
+#endif  // CORE_STYLE_TRANSFORM_MATRIX44_H_

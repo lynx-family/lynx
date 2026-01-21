@@ -10,11 +10,13 @@
 
 #include "base/include/closure.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
+#include "core/style/transform/matrix44.h"
 
 namespace lynx {
 namespace tasm {
@@ -346,6 +348,42 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
   display_list_builder.Fill(background_data->color, clip_index);
 }
 
+void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
+  if (!element()->computed_css_style()->HasTransform()) {
+    return;
+  }
+
+  transforms::TransformOperations transform_ops(
+      layout_info_.layout_result,
+      *element()->computed_css_style()->GetTransformData());
+  transforms::Matrix44 matrix =
+      transform_ops.ApplyRemaining(0, layout_info_.layout_result);
+
+  float origin_x = 0.5f * layout_info_.layout_result.size_.width_;
+  float origin_y = 0.5f * layout_info_.layout_result.size_.height_;
+  if (element()->computed_css_style()->HasTransformOrigin()) {
+    const auto& origin_data =
+        *element()->computed_css_style()->GetTransformOriginData();
+    origin_x =
+        starlight::NLengthToLayoutUnit(
+            origin_data.x,
+            starlight::LayoutUnit(layout_info_.layout_result.size_.width_))
+            .ToFloat();
+    origin_y =
+        starlight::NLengthToLayoutUnit(
+            origin_data.y,
+            starlight::LayoutUnit(layout_info_.layout_result.size_.height_))
+            .ToFloat();
+  }
+
+  transforms::Matrix44 final_matrix;
+  final_matrix.preTranslate(origin_x, origin_y, 0.0f);
+  final_matrix.preConcat(matrix);
+  final_matrix.preTranslate(-origin_x, -origin_y, 0.0f);
+
+  display_list_builder.Transform(final_matrix);
+}
+
 void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
   // If the element is overflowed, do not need draw clip.
   if (element()->computed_css_style()->IsOverflowXY()) {
@@ -478,6 +516,7 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
+  DrawTransform(display_list_builder);
   DrawClip(display_list_builder);
 
   if (behavior_) {

@@ -72,6 +72,7 @@ unittest_set("css_test_testset") {
   ]
 
   sources = [
+    "../../style/transform/quaternion_unittest.cc",
     "../dom/style_resolver_unittest.cc",
     "computed_css_style_css_text_helper_unittest.cc",
     "css_color_unittest.cc",
@@ -89,7 +90,6 @@ unittest_set("css_test_testset") {
     "css_value_unittest.cc",
     "css_variable_handler_unittest.cc",
     "shared_css_fragment_unittest.cc",
-    "transforms/quaternion_unittest.cc",
     "transforms/transform_operation_unittest.cc",
     "transforms/transform_operations_unittest.cc",
     "unit_handler_unittest.cc",

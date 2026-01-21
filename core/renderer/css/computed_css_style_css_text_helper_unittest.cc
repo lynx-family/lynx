@@ -10,8 +10,8 @@
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/text_attributes.h"
 #include "core/renderer/starlight/types/layout_result.h"
-#include "core/style/text_attributes.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

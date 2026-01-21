@@ -11,9 +11,9 @@
 #include <memory>
 
 #include "base/include/log/logging.h"
-#include "core/renderer/css/transforms/decomposed_transform.h"
-#include "core/renderer/css/transforms/matrix44.h"
 #include "core/renderer/dom/element.h"
+#include "core/style/transform/decomposed_transform.h"
+#include "core/style/transform/matrix44.h"
 
 namespace lynx {
 namespace transforms {

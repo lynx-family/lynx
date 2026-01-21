@@ -57,6 +57,10 @@ lynx_core_source_set("display_list") {
     "layout_info.h",
     "rounded_rectangle.h",
   ]
+  public_deps = [
+    "../../../style:style",
+    "../../starlight:starlight",
+  ]
 }
 
 unittest_set("display_list_testset") {

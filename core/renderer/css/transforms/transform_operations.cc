@@ -12,19 +12,20 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 #include <utility>
 
 // TODO(wujintian): Remove this include because the actual implementation has no
 // relation with CSSKeyframeManager
 #include "base/include/vector.h"
 #include "core/animation/css_keyframe_manager.h"  // nogncheck
-#include "core/renderer/css/css_style_utils.h"
-#include "core/renderer/css/transforms/decomposed_transform.h"
-#include "core/renderer/css/transforms/matrix44.h"
+#include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/transforms/transform_operation.h"
 #include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "core/style/transform/decomposed_transform.h"
+#include "core/style/transform/matrix44.h"
 
 namespace lynx {
 namespace transforms {
@@ -501,12 +502,37 @@ tasm::CSSValue TransformOperations::ToTransformRawValue() {
   return tasm::CSSValue(std::move(items));
 }
 
+namespace {
+std::string Get2DRepresentation(const Matrix44& matrix) {
+  return "matrix(" + tasm::CSSDecoder::NumberToString(matrix.rc(0, 0)) + ", " +
+         tasm::CSSDecoder::NumberToString(matrix.rc(1, 0)) + ", " +
+         tasm::CSSDecoder::NumberToString(matrix.rc(0, 1)) + ", " +
+         tasm::CSSDecoder::NumberToString(matrix.rc(1, 1)) + ", " +
+         tasm::CSSDecoder::NumberToString(matrix.rc(0, 3)) + ", " +
+         tasm::CSSDecoder::NumberToString(matrix.rc(1, 3)) + ")";
+}
+
+std::string Get3DRepresentation(const Matrix44& matrix) {
+  std::string res = "matrix3d(";
+  for (int col = 0; col < 4; ++col) {
+    for (int row = 0; row < 4; ++row) {
+      res = res + tasm::CSSDecoder::NumberToString(matrix.rc(row, col));
+      if (col != 3 || row != 3) {
+        res = res + ", ";
+      }
+    }
+  }
+  res = res + ")";
+  return res;
+}
+}  // namespace
+
 base::String TransformOperations::CssText() {
   Matrix44 transform = ApplyRemaining(0, element_layout_result_);
   if (transform.Is2dTransform()) {
-    return transform.Get2DRepresentation();
+    return Get2DRepresentation(transform);
   } else {
-    return transform.Get3DRepresentation();
+    return Get3DRepresentation(transform);
   }
 }
 

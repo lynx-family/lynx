@@ -115,6 +115,7 @@ class Fragment : public BaseElementContainer {
   void DrawClip(DisplayListBuilder& display_list_builder);
 
   void DrawBackground(DisplayListBuilder& display_list_builder);
+  void DrawTransform(DisplayListBuilder& display_list_builder);
 
   void ReinsertDescendantsToCorrectParent();
 

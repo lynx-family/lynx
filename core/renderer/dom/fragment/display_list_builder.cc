@@ -8,6 +8,7 @@
 
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/starlight/style/borders_data.h"
+#include "core/style/transform/matrix44.h"
 
 namespace lynx {
 namespace tasm {
@@ -48,11 +49,15 @@ DisplayListBuilder& DisplayListBuilder::DrawView(int view_id) {
   return *this;
 }
 
-DisplayListBuilder& DisplayListBuilder::Transform(float a, float b, float c,
-                                                  float d, float e, float f) {
+DisplayListBuilder& DisplayListBuilder::Transform(
+    const transforms::Matrix44& matrix) {
   // Use AddOperation directly to avoid temporary vector construction
-  display_list_.AddOperation(DisplayListSubtreePropertyOpType::kTransform, a, b,
-                             c, d, e, f);
+  display_list_.AddOperation(
+      DisplayListSubtreePropertyOpType::kTransform, matrix.rc(0, 0),
+      matrix.rc(1, 0), matrix.rc(2, 0), matrix.rc(3, 0), matrix.rc(0, 1),
+      matrix.rc(1, 1), matrix.rc(2, 1), matrix.rc(3, 1), matrix.rc(0, 2),
+      matrix.rc(1, 2), matrix.rc(2, 2), matrix.rc(3, 2), matrix.rc(0, 3),
+      matrix.rc(1, 3), matrix.rc(2, 3), matrix.rc(3, 3));
   return *this;
 }
 

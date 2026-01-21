@@ -12,6 +12,9 @@ namespace lynx {
 namespace starlight {
 class BordersData;
 }
+namespace transforms {
+class Matrix44;
+}
 namespace tasm {
 
 class DisplayListBuilder {
@@ -40,8 +43,7 @@ class DisplayListBuilder {
   DisplayListBuilder& DrawView(int view_id);
 
   // Apply transform
-  DisplayListBuilder& Transform(float a, float b, float c, float d, float e,
-                                float f);
+  DisplayListBuilder& Transform(const transforms::Matrix44& matrix);
 
   // Apply clip
   DisplayListBuilder& Clip(float x, float y, float width, float height);
