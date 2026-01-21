@@ -388,8 +388,8 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
 
   NSString* path = nil;
   NSBundle* frameworkBundle = [NSBundle bundleForClass:[LynxEnv class]];
-  Class debuggerBridgeClass = [LynxService(LynxServiceDevToolProtocol) debuggerBridgeClass];
-  NSBundle* devtoolFrameworkBundle = [NSBundle bundleForClass:debuggerBridgeClass];
+  Class inspectorOwnerClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
+  NSBundle* devtoolFrameworkBundle = [NSBundle bundleForClass:inspectorOwnerClass];
   if ([kAssetsCoreScheme isEqualToString:str]) {
     str = [str componentsSeparatedByString:@"."][0];
     NSURL* debugBundleUrl = [devtoolFrameworkBundle URLForResource:@"LynxDebugResources"

@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/DevToolLogLevel.h>
-#import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -865,11 +865,12 @@
  * @param level The log level.
  */
 - (void)showMessageOnConsole:(NSString *)msg withLevel:(int32_t)level {
-  id<LynxBaseInspectorOwner> inspectorOwner = ((LynxView *)_rootUI.view).baseInspectorOwner;
-  if (!inspectorOwner) {
+  id<LynxBaseInspectorController> inspectorController =
+      ((LynxView *)_rootUI.view).baseInspectorController;
+  if (!inspectorController) {
     return;
   }
-  [inspectorOwner showMessageOnConsole:msg withLevel:level];
+  [inspectorController showMessageOnConsole:msg withLevel:level];
 }
 
 @end

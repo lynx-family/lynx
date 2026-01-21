@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/DevToolLogLevel.h>
+#import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxBaseScrollView+Nested.h>
 #import <Lynx/LynxContext.h>
@@ -714,7 +715,14 @@
 
 - (id<LynxBaseInspectorOwner>)baseInspectorOwner {
   if (_templateRender && _templateRender.devTool) {
-    return _templateRender.devTool.owner;
+    return _templateRender.devTool.baseInspectorOwner;
+  }
+  return nil;
+}
+
+- (id<LynxBaseInspectorController>)baseInspectorController {
+  if (_templateRender && _templateRender.devTool) {
+    return _templateRender.devTool.baseInspectorController;
   }
   return nil;
 }
@@ -1354,11 +1362,11 @@
  * @param level The log level.
  */
 - (void)showMessageOnConsole:(NSString*)msg withLevel:(int32_t)level {
-  id<LynxBaseInspectorOwner> inspectorOwner = [self baseInspectorOwner];
-  if (!inspectorOwner) {
+  id<LynxBaseInspectorController> inspectorController = [self baseInspectorController];
+  if (!inspectorController) {
     return;
   }
-  [inspectorOwner showMessageOnConsole:msg withLevel:level];
+  [inspectorController showMessageOnConsole:msg withLevel:level];
 }
 
 @end

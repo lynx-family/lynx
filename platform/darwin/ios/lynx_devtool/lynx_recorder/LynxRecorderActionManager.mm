@@ -673,9 +673,7 @@ static const int kVirtual = 1 << 2;
     [_lynxView updateViewportWithPreferredLayoutWidth:preferredLayoutWidth
                                 preferredLayoutHeight:preferredLayoutHeight];
   }
-  if (_lynxView.baseInspectorOwner != nil) {
-    [_lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
-  }
+  [_lynxView.baseInspectorController setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
 }
 
 - (void)updateFontScale:(NSDictionary*)params {
@@ -821,9 +819,7 @@ static const int kVirtual = 1 << 2;
                 options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld
                 context:nil];
 
-  if (lynxView.baseInspectorOwner != nil) {
-    [lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
-  }
+  [lynxView.baseInspectorController setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
   // provide a change to register module or resource provider
   for (id<LynxRecorderActionCallback> callback in self.actionCallbacks) {
     [callback onLynxViewDidBuild:lynxView];
@@ -1093,10 +1089,8 @@ static const int kVirtual = 1 << 2;
                                (int64_t)([self.replayConfig delayEndInterval] * NSEC_PER_MSEC)),
                  dispatch_get_main_queue(), ^{
                    LynxRecorderActionManager* strongSelf = weakSelf;
-                   if (strongSelf.lynxView.baseInspectorOwner != nil) {
-                     [strongSelf.lynxView.baseInspectorOwner
-                         endTestbench:[strongSelf getDumpFilePath]];
-                   }
+                   [strongSelf.lynxView.baseInspectorController
+                       endTestbench:[strongSelf getDumpFilePath]];
                    if (self.endTestBenchBlock) {
                      self.endTestBenchBlock();
                    }

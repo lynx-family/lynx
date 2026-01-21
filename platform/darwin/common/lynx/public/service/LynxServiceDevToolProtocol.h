@@ -13,10 +13,12 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxView;
 
 @protocol LynxLogBoxProtocol;
-@protocol LynxBaseInspectorOwner;
+@protocol LynxBaseInspectorController;
 @protocol LynxBasePerfMonitor;
 @protocol LynxContextModule;
-@protocol LynxDebuggerProtocol;
+
+typedef void (^LynxOpenCardCallback)(NSString *);
+
 @protocol LynxServiceDevToolProtocol <LynxServiceProtocol>
 
 @required
@@ -31,8 +33,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readwrite) BOOL lynxDebugPresetValue;
 @property(nonatomic, readwrite) BOOL logBoxPresetValue;
 
-- (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
-                                                    debuggable:(BOOL)debuggable;
+- (id<LynxBaseInspectorController>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
+                                                         debuggable:(BOOL)debuggable;
 
 - (id<LynxLogBoxProtocol>)createLogBoxWithLynxView:(LynxView *)lynxView;
 
@@ -42,9 +44,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (Class<LynxContextModule>)devtoolTrailModuleClass;
 
-- (nullable Class<LynxBaseInspectorOwner>)inspectorOwnerClass;
+- (nullable Class<LynxBaseInspectorController>)inspectorOwnerClass;
 
-- (Class<LynxDebuggerProtocol>)debuggerBridgeClass;
+- (BOOL)enable:(NSURL *)url withOptions:(NSDictionary *)options;
+
+- (void)addOpenCardCallback:(LynxOpenCardCallback)callback;
+
+- (BOOL)hasSetOpenCardCallback;
+
+- (void)onPerfMetricsEvent:(NSString *)eventName
+                  withData:(NSDictionary<NSString *, NSObject *> *)data
+                instanceId:(int32_t)instanceId;
+
+- (void)setAppInfo:(NSDictionary *)options;
 
 - (id)devtoolEnvSharedInstance;
 

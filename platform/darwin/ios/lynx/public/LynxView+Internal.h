@@ -6,11 +6,21 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxView.h>
 
+@protocol LynxBaseInspectorController;
+
 @interface LynxView ()
 
 - (LynxTemplateRender* _Nullable)templateRender;
+- (void)setLynxViewId:(NSInteger)id;
+
+/**
+ * @warning The following APIs are intended for internal use within Lynx components only.
+ *
+ * External dependencies must not invoke these methods, as they are reserved exclusively
+ * for the implementation of Lynx's internal inspector functionality.
+ */
 - (NSDictionary* _Nullable)getAllJsSource;
 - (void)onLongPress;
-- (void)setLynxViewId:(NSInteger)id;
+- (id<LynxBaseInspectorController> _Nullable)baseInspectorController;
 
 @end

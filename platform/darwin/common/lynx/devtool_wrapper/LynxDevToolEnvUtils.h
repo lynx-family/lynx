@@ -4,7 +4,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxDevToolUtils : NSObject
+@interface LynxDevToolEnvUtils : NSObject
 
 + (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key;
 

@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxDevToolUtils.h>
+#import <Lynx/LynxDevToolEnvUtils.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <objc/message.h>
 
-@implementation LynxDevToolUtils
+@implementation LynxDevToolEnvUtils
 
 + (void)setDevtoolEnv:(BOOL)value forKey:(NSString *)key {
   [LynxService(LynxServiceDevToolProtocol) devtoolEnvSetValue:value forKey:key];

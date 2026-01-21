@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxPageReloadHelper.h>
 #import <Lynx/LynxTemplateData.h>
@@ -19,7 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxDevtool : NSObject
 
-@property(nonatomic, readwrite) id<LynxBaseInspectorOwner> owner;
+@property(nonatomic, readonly) id<LynxBaseInspectorOwner> baseInspectorOwner;
+@property(nonatomic, readonly) id<LynxBaseInspectorController> baseInspectorController;
 
 - (nonnull instancetype)initWithLynxView:(LynxView *)view debuggable:(BOOL)debuggable;
 

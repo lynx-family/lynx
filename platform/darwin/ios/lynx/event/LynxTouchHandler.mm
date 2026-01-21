@@ -7,6 +7,7 @@
 #import "LynxTouchHandler+Internal.h"
 
 #import <Lynx/DevToolLogLevel.h>
+#import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventEmitter.h>
@@ -15,6 +16,7 @@
 #import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxEventHandler+Internal.h"
 #import "LynxGestureArenaManager.h"
@@ -352,12 +354,12 @@
  * @param level The log level.
  */
 - (void)showMessageOnConsole:(NSString*)msg withLevel:(int32_t)level {
-  id<LynxBaseInspectorOwner> inspectorOwner =
-      ((LynxView*)((LynxUI*)_eventHandler.uiOwner.rootUI).view).baseInspectorOwner;
-  if (!inspectorOwner) {
+  id<LynxBaseInspectorController> inspectorController =
+      ((LynxView*)((LynxUI*)_eventHandler.uiOwner.rootUI).view).baseInspectorController;
+  if (!inspectorController) {
     return;
   }
-  [inspectorOwner showMessageOnConsole:msg withLevel:level];
+  [inspectorController showMessageOnConsole:msg withLevel:level];
 }
 
 /**

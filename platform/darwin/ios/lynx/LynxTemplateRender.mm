@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/JSModule.h>
-#import <Lynx/LynxDebugger.h>
+#import <Lynx/LynxDebugger+Internal.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxFontFaceManager.h>

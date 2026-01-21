@@ -73,6 +73,10 @@ public class DevToolOverlayDelegate : NSObject {
   public void DevToolOverlayDelegate::initWithService:(id< OverlayService > service);
 }
 
+public protocol GlobalPropsUpdatedObserver-p : <NSObject> {
+  public void GlobalPropsUpdatedObserver-p::onGlobalPropsUpdated:(NSDictionary *props);
+}
+
 public class IntersectionObserverEntry : NSObject {
   public CGRect IntersectionObserverEntry::relativeRect relativeRect;
   public CGRect IntersectionObserverEntry::boundingClientRect boundingClientRect;
@@ -656,38 +660,42 @@ public class LynxBaseGestureHandler : NSObject {
   public NSDictionary * LynxBaseGestureHandler::eventParamsFromTouchEvent:(LynxTouchEvent *touchEvent);
 }
 
+public protocol LynxBaseInspectorController-p : <NSObject> {
+  public nonnull instancetype LynxBaseInspectorController-p::initWithLynxView:(nullable LynxView *view);
+  public void LynxBaseInspectorController-p::setReloadHelper:(nullable LynxPageReloadHelper *reloadHelper);
+  public void LynxBaseInspectorController-p::setDebugInfoInterceptor:(nonnull id< LynxDebugInfoRecorderProtocol > debugInfoRecorder);
+  public void LynxBaseInspectorController-p::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
+  public void LynxBaseInspectorController-p::onTemplateAssemblerCreated:(intptr_t ptr);
+  public void LynxBaseInspectorController-p::handleLongPress();
+  public void LynxBaseInspectorController-p::continueCasting();
+  public void LynxBaseInspectorController-p::pauseCasting();
+  public void LynxBaseInspectorController-p::onLoadFinished();
+  public void LynxBaseInspectorController-p::reloadLynxView:withTemplate:fromFragments:withSize:reloadUrl:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size,[reloadUrl] nullable NSString *reloadUrl);
+  public void LynxBaseInspectorController-p::attach:(nonnull LynxView *lynxView);
+  public void LynxBaseInspectorController-p::attachDebugBridge:(NSString *url);
+  public void LynxBaseInspectorController-p::endTestbench:(NSString *_Nonnull filePath);
+  public void LynxBaseInspectorController-p::onPageUpdate();
+  public void LynxBaseInspectorController-p::attachLynxUIOwnerToAgent:(nullable LynxUIOwner *uiOwner);
+  public void LynxBaseInspectorController-p::onPerfMetricsEvent:withData:(NSString *_Nonnull eventName,[withData] NSDictionary< NSString *, NSObject * > *_Nonnull data);
+  public void LynxBaseInspectorController-p::onReceiveMessageEvent:(NSDictionary *event);
+  public void LynxBaseInspectorController-p::setDispatchMessageEventBlock:(void(^ block)(NSDictionary *));
+  public NSString * LynxBaseInspectorController-p::debugInfoUrl:(NSString *_Nonnull filename);
+  public void LynxBaseInspectorController-p::onTemplateDataUpdated:(LynxTemplateData *data);
+  public void LynxBaseInspectorController-p::onResetDataWithTemplateData:(LynxTemplateData *data);
+  public void LynxBaseInspectorController-p::onGlobalPropsUpdated:(LynxTemplateData *props);
+  public void LynxBaseInspectorController-p::showErrorMessageOnConsole:(LynxError *error);
+  public void LynxBaseInspectorController-p::showMessageOnConsole:withLevel:(NSString *message,[withLevel] int32_t level);
+}
+
 public protocol LynxBaseInspectorOwner-p : <NSObject> {
-  public nonnull instancetype LynxBaseInspectorOwner-p::initWithLynxView:(nullable LynxView *view);
-  public void LynxBaseInspectorOwner-p::setReloadHelper:(nullable LynxPageReloadHelper *reloadHelper);
-  public void LynxBaseInspectorOwner-p::setDebugInfoInterceptor:(nonnull id< LynxDebugInfoRecorderProtocol > debugInfoRecorder);
-  public void LynxBaseInspectorOwner-p::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
-  public void LynxBaseInspectorOwner-p::onTemplateAssemblerCreated:(intptr_t ptr);
-  public void LynxBaseInspectorOwner-p::handleLongPress();
-  public void LynxBaseInspectorOwner-p::continueCasting();
-  public void LynxBaseInspectorOwner-p::pauseCasting();
-  public void LynxBaseInspectorOwner-p::onLoadFinished();
   public void LynxBaseInspectorOwner-p::reloadLynxView:(BOOL ignoreCache);
-  public void LynxBaseInspectorOwner-p::attach:(nonnull LynxView *lynxView);
   public void LynxBaseInspectorOwner-p::reloadLynxView:withTemplate:fromFragments:withSize:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size);
-  public void LynxBaseInspectorOwner-p::reloadLynxView:withTemplate:fromFragments:withSize:reloadUrl:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size,[reloadUrl] nullable NSString *reloadUrl);
   public void LynxBaseInspectorOwner-p::invokeCDPFromSDK:withCallback:(NSString *msg,[withCallback] CDPResultCallback callback);
   public void LynxBaseInspectorOwner-p::addCDPEventListener:withListener:(nonnull NSString *name,[withListener] nonnull id< CDPEventListener > listener);
   public void LynxBaseInspectorOwner-p::removeCDPEventListener:(nonnull NSString *name);
-  public void LynxBaseInspectorOwner-p::attachDebugBridge:(NSString *url);
-  public void LynxBaseInspectorOwner-p::endTestbench:(NSString *_Nonnull filePath);
-  public void LynxBaseInspectorOwner-p::onPageUpdate();
-  public void LynxBaseInspectorOwner-p::attachLynxUIOwnerToAgent:(nullable LynxUIOwner *uiOwner);
   public void LynxBaseInspectorOwner-p::setLynxInspectorConsoleDelegate:(id _Nonnull delegate);
   public void LynxBaseInspectorOwner-p::getConsoleObject:needStringify:resultHandler:(NSString *_Nonnull objectId,[needStringify] BOOL stringify,[resultHandler] void(^_Nonnull handler)(NSString *_Nonnull detail));
-  public void LynxBaseInspectorOwner-p::onPerfMetricsEvent:withData:(NSString *_Nonnull eventName,[withData] NSDictionary< NSString *, NSObject * > *_Nonnull data);
-  public void LynxBaseInspectorOwner-p::onReceiveMessageEvent:(NSDictionary *event);
-  public void LynxBaseInspectorOwner-p::setDispatchMessageEventBlock:(void(^ block)(NSDictionary *));
-  public NSString * LynxBaseInspectorOwner-p::debugInfoUrl:(NSString *_Nonnull filename);
-  public void LynxBaseInspectorOwner-p::onTemplateDataUpdated:(LynxTemplateData *data);
-  public void LynxBaseInspectorOwner-p::onResetDataWithTemplateData:(LynxTemplateData *data);
-  public void LynxBaseInspectorOwner-p::onGlobalPropsUpdated:(LynxTemplateData *props);
-  public void LynxBaseInspectorOwner-p::showErrorMessageOnConsole:(LynxError *error);
-  public void LynxBaseInspectorOwner-p::showMessageOnConsole:withLevel:(NSString *message,[withLevel] int32_t level);
+  public void LynxBaseInspectorOwner-p::setGlobalPropsUpdatedObserver:(id< GlobalPropsUpdatedObserver > observer);
   public void LynxBaseInspectorOwner-p::setDebugTag:(NSString *debugTag);
 }
 
@@ -1268,13 +1276,8 @@ public class LynxDebugger : NSObject {
   public void LynxDebugger::setOpenCardCallback:((deprecated("Use addOpenCardCallback instead after lynx 2.6")) __attribute__);
   public void LynxDebugger::addOpenCardCallback:(LynxOpenCardCallback callback);
   public BOOL LynxDebugger::hasSetOpenCardCallback();
-  public void LynxDebugger::onPerfMetricsEvent:withData:instanceId:(NSString *_Nonnull eventName,[withData] NSDictionary< NSString *, NSObject * > *_Nonnull data,[instanceId] int32_t instanceId);
-}
-
-public protocol LynxDebuggerProtocol-p : <NSObject> {
-  public instancetype LynxDebuggerProtocol-p::singleton();
-  public BOOL LynxDebuggerProtocol-p::enable:withOptions:(NSURL *url,[withOptions] NSDictionary *options);
-  public void LynxDebuggerProtocol-p::setOpenCardCallback:(LynxOpenCardCallback callback);
+  public void LynxDebugger::setAppInfo:(NSDictionary *options);
+  public void LynxDebugger()::onPerfMetricsEvent:withData:instanceId:(NSString *eventName, [withData] NSDictionary< NSString *, NSObject * > *data, [instanceId] int32_t instanceId);
 }
 
 public protocol LynxDebugInfoRecorderProtocol-p : <NSObject> {
@@ -1297,7 +1300,8 @@ public class LynxDetailEvent : LynxCustomEvent {
 }
 
 public class LynxDevtool : NSObject {
-  public id<LynxBaseInspectorOwner> LynxDevtool::owner owner;
+  public id<LynxBaseInspectorOwner> LynxDevtool::baseInspectorOwner baseInspectorOwner;
+  public id<LynxBaseInspectorController> LynxDevtool::baseInspectorController baseInspectorController;
   public nonnull instancetype LynxDevtool::initWithLynxView:debuggable:(LynxView *view,[debuggable] BOOL debuggable);
   public void LynxDevtool::registerModule:(LynxTemplateRender *render);
   public void LynxDevtool::onLoadFromLocalFile:withURL:initData:(NSData *tem,[withURL] NSString *url,[initData] LynxTemplateData *data);
@@ -1326,11 +1330,11 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::onGlobalPropsUpdated:(LynxTemplateData *props);
 }
 
-public class LynxDevToolUtils : NSObject {
-  public void LynxDevToolUtils::setDevtoolEnv:forKey:(BOOL value,[forKey] NSString *key);
-  public BOOL LynxDevToolUtils::getDevtoolEnv:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
-  public void LynxDevToolUtils::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
-  public NSSet * LynxDevToolUtils::getDevtoolEnvWithGroupName:(NSString *groupKey);
+public class LynxDevToolEnvUtils : NSObject {
+  public void LynxDevToolEnvUtils::setDevtoolEnv:forKey:(BOOL value,[forKey] NSString *key);
+  public BOOL LynxDevToolEnvUtils::getDevtoolEnv:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
+  public void LynxDevToolEnvUtils::setDevtoolEnv:forGroup:(NSSet *newGroupValues,[forGroup] NSString *groupKey);
+  public NSSet * LynxDevToolEnvUtils::getDevtoolEnvWithGroupName:(NSString *groupKey);
 }
 
 public class LynxDisplayListApplier : NSObject {
@@ -2229,6 +2233,10 @@ public class LynxInnerImpressionView : UIView {
   public float LynxInnerImpressionView::impressionPercent impressionPercent;
   public void LynxInnerImpressionView::impression();
   public void LynxInnerImpressionView::exit();
+}
+
+public protocol LynxInspectorConsoleDelegate-p : <NSObject> {
+  public void LynxInspectorConsoleDelegate-p::onConsoleMessage:(NSString *msg);
 }
 
 public class LynxIntersectionObserverModule : NSObject, <LynxContextModule> {
@@ -3288,13 +3296,17 @@ public protocol LynxServiceContainerProtocol-p : <NSObject> {
 public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
   public BOOL LynxServiceDevToolProtocol-p::lynxDebugPresetValue lynxDebugPresetValue;
   public BOOL LynxServiceDevToolProtocol-p::logBoxPresetValue logBoxPresetValue;
-  public id< LynxBaseInspectorOwner > LynxServiceDevToolProtocol-p::createInspectorOwnerWithLynxView:debuggable:(LynxView *lynxView,[debuggable] BOOL debuggable);
+  public id< LynxBaseInspectorController > LynxServiceDevToolProtocol-p::createInspectorOwnerWithLynxView:debuggable:(LynxView *lynxView,[debuggable] BOOL debuggable);
   public id< LynxLogBoxProtocol > LynxServiceDevToolProtocol-p::createLogBoxWithLynxView:(LynxView *lynxView);
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::devtoolSetModuleClass();
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::lynxWebSocketModuleClass();
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::devtoolTrailModuleClass();
-  public nullable Class< LynxBaseInspectorOwner > LynxServiceDevToolProtocol-p::inspectorOwnerClass();
-  public Class< LynxDebuggerProtocol > LynxServiceDevToolProtocol-p::debuggerBridgeClass();
+  public nullable Class< LynxBaseInspectorController > LynxServiceDevToolProtocol-p::inspectorOwnerClass();
+  public BOOL LynxServiceDevToolProtocol-p::enable:withOptions:(NSURL *url,[withOptions] NSDictionary *options);
+  public void LynxServiceDevToolProtocol-p::addOpenCardCallback:(LynxOpenCardCallback callback);
+  public BOOL LynxServiceDevToolProtocol-p::hasSetOpenCardCallback();
+  public void LynxServiceDevToolProtocol-p::onPerfMetricsEvent:withData:instanceId:(NSString *eventName,[withData] NSDictionary< NSString *, NSObject * > *data,[instanceId] int32_t instanceId);
+  public void LynxServiceDevToolProtocol-p::setAppInfo:(NSDictionary *options);
   public id LynxServiceDevToolProtocol-p::devtoolEnvSharedInstance();
   public void LynxServiceDevToolProtocol-p::devtoolEnvSetValue:forKey:(BOOL value,[forKey] NSString *key);
   public BOOL LynxServiceDevToolProtocol-p::devtoolEnvGetValue:withDefaultValue:(NSString *key,[withDefaultValue] BOOL value);
@@ -5248,9 +5260,10 @@ public class LynxView : UIView, <LUIBodyView> {
   public nonnull LynxConfigInfo * LynxView::lynxConfigInfo();
   public LynxTemplateData *_Nullable LynxView::getTemplateData();
   public LynxTemplateRender *_Nullable LynxView()::templateRender();
+  public void LynxView()::setLynxViewId:(NSInteger id);
   public NSDictionary *_Nullable LynxView()::getAllJsSource();
   public void LynxView()::onLongPress();
-  public void LynxView()::setLynxViewId:(NSInteger id);
+  public id< LynxBaseInspectorController > _Nullable LynxView()::baseInspectorController();
   public void LynxView()::setIntrinsicContentSize:(CGSize size);
   public void LynxView()::dispatchError:(LynxError *error);
 }
@@ -5522,6 +5535,13 @@ public interface UIView(LynxHeroTransition) {
 public interface UIViewController(LynxHeroTransition) {
   public LynxHeroViewControllerConfig* UIViewController(LynxHeroTransition)::lynxHeroConfig lynxHeroConfig;
 }
+
+public enum DevToolLogLevel {
+  DevToolLogLevelInfo
+  DevToolLogLevelWarning
+  DevToolLogLevelError
+}
+
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXTERN NSString* const kPropURL kPropURL;
   public FOUNDATION_EXTERN NSString* const kPropRelativePath kPropRelativePath;
@@ -5966,14 +5986,9 @@ public enum LynxFetchResType {
 
   public const NSString* LYNX_TARGET_SDK_VERSION_1_5 LYNX_TARGET_SDK_VERSION_1_5;
 
-public enum DevToolLogLevel {
-  DevToolLogLevelInfo
-  DevToolLogLevelWarning
-  DevToolLogLevelError
-}
-
-
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ CDPResultCallback) (NSString *result) CDPResultCallback;
+
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxOpenCardCallback) (NSString *) LynxOpenCardCallback;
 
 public enum LynxEventType {
   kNoneEvent
@@ -6036,8 +6051,6 @@ public enum LynxPanInterceptScope {
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxBytecodeResponseBlock) (NSString *_Nullable errorMsg, NSDictionary< NSString *, NSData * > *_Nullable buffers) LynxBytecodeResponseBlock;
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const kDefaultComponentID kDefaultComponentID;
-
-  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxOpenCardCallback) (NSString *) LynxOpenCardCallback;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ onComponentLoaded) (NSData *_Nullable data, NSError *_Nullable error) onComponentLoaded;
 
@@ -6395,6 +6408,8 @@ public enum LynxResourceRequestType {
 
   typedef void(^ LynxSSRResourceCompletionBlock) (NSData *_Nullable data, NSError *_Nullable error)
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxTemplateResourceCompletionBlock) (LynxTemplateResource *_Nullable data, NSError *_Nullable error) LynxTemplateResourceCompletionBlock;
+
+  typedef void(^ LynxOpenCardCallback) (NSString *)
 
   typedef void(^ LynxHttpCallback) (LynxHttpResponse *result)
 

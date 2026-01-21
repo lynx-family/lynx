@@ -26,8 +26,8 @@
       res.url = [[NSBundle mainBundle] pathForResource:[localUrl stringByDeletingPathExtension]
                                                 ofType:@"bundle"];
       if (res.url == nil) {
-        Class debuggerBridgeClass = [LynxService(LynxServiceDevToolProtocol) debuggerBridgeClass];
-        NSBundle *devtoolFrameworkBundle = [NSBundle bundleForClass:debuggerBridgeClass];
+        Class inspectorOwnerClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
+        NSBundle *devtoolFrameworkBundle = [NSBundle bundleForClass:inspectorOwnerClass];
         NSURL *debugBundleUrl = [devtoolFrameworkBundle URLForResource:@"LynxDebugResources"
                                                          withExtension:@"bundle"];
         NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];

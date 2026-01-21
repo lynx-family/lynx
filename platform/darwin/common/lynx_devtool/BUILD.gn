@@ -30,7 +30,6 @@ devtool_public_headers = [
   "Helper/LynxBaseDeviceInfo.h",
   "LynxDebugBridge.h",
   "LynxDevtoolEnv.h",
-  "LynxInspectorConsoleDelegate.h",
   "Module/LynxDevToolSetModule.h",
   "Module/LynxTrailModule.h",
   "Module/LynxWebSocketModule.h",

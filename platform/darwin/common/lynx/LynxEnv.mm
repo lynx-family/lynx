@@ -23,8 +23,9 @@
 #if ENABLE_TRACE_PERFETTO
 #import <Lynx/LynxTraceController.h>
 #endif
-#import <Lynx/LynxBaseInspectorOwner.h>
-#import <Lynx/LynxDevToolUtils.h>
+#import <Lynx/LynxBaseInspectorController.h>
+#import <Lynx/LynxBaseInspectorOwnerNG.h>
+#import <Lynx/LynxDevToolEnvUtils.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
@@ -123,7 +124,8 @@
 - (void)initDevToolComponentAttachSwitch {
   BLOCK_FOR_INSPECTOR(^{
     Class inspectorClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
-    if ([inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorOwner)]) {
+    if ([inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorOwnerNG)] &&
+        [inspectorClass conformsToProtocol:@protocol(LynxBaseInspectorController)]) {
       lynx::tasm::DevToolLifecycle::GetInstance().OnAttached();
       // Although there is no such thing as "preset" on iOS,
       // `lynxDebugPresetValue` is actually working as a default value set from service.
@@ -197,7 +199,7 @@
     _LogI(@"setDevtoolEnv, lynxDebugEnabled is NO");
     return;
   }
-  [LynxDevToolUtils setDevtoolEnv:value forKey:key];
+  [LynxDevToolEnvUtils setDevtoolEnv:value forKey:key];
 }
 
 - (BOOL)getDevtoolEnv:(NSString *)key withDefaultValue:(BOOL)value {
@@ -205,7 +207,7 @@
     _LogI(@"getDevtoolEnv, lynxDebugEnabled is NO, defaultValue is %@", value ? @"YES" : @"NO");
     return value;
   }
-  return [LynxDevToolUtils getDevtoolEnv:key withDefaultValue:value];
+  return [LynxDevToolEnvUtils getDevtoolEnv:key withDefaultValue:value];
 }
 
 - (void)setDevtoolEnv:(NSSet *)newGroupValues forGroup:(NSString *)groupKey {
@@ -213,7 +215,7 @@
     _LogI(@"setDevtoolEnv group %@, lynxDebugEnabled is NO", groupKey);
     return;
   }
-  [LynxDevToolUtils setDevtoolEnv:newGroupValues forGroup:groupKey];
+  [LynxDevToolEnvUtils setDevtoolEnv:newGroupValues forGroup:groupKey];
 }
 
 - (NSSet *)getDevtoolEnvWithGroupName:(NSString *)groupKey {
@@ -221,7 +223,7 @@
     _LogI(@"getDevtoolEnvWithGroupName %@, lynxDebugEnabled is NO", groupKey);
     return nil;
   }
-  return [LynxDevToolUtils getDevtoolEnvWithGroupName:groupKey];
+  return [LynxDevToolEnvUtils getDevtoolEnvWithGroupName:groupKey];
 }
 
 - (void)setDevtoolEnabled:(BOOL)enableDevtool {

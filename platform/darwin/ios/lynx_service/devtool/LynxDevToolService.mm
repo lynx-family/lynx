@@ -20,8 +20,8 @@
   return self;
 }
 
-- (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
-                                                    debuggable:(BOOL)debuggable {
+- (id<LynxBaseInspectorController>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
+                                                         debuggable:(BOOL)debuggable {
   Class inspectorOwnerClass = NSClassFromString(@"LynxInspectorOwner");
   if (!inspectorOwnerClass) {
     return nil;
@@ -66,12 +66,131 @@
   return NSClassFromString(@"LynxTrailModule");
 }
 
-- (nullable Class<LynxBaseInspectorOwner>)inspectorOwnerClass {
+- (nullable Class<LynxBaseInspectorController>)inspectorOwnerClass {
   return NSClassFromString(@"LynxInspectorOwner");
 }
 
-- (Class<LynxDebuggerProtocol>)debuggerBridgeClass {
-  return NSClassFromString(@"LynxDebugBridge");
+- (id)debugBridgeSingleton {
+  Class debugBridgeClass = NSClassFromString(@"LynxDebugBridge");
+  if (!debugBridgeClass) {
+    return nil;
+  }
+
+  SEL singletonSelector = NSSelectorFromString(@"singleton");
+  if (![debugBridgeClass respondsToSelector:singletonSelector]) {
+    return nil;
+  }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+  return [debugBridgeClass performSelector:singletonSelector];
+#pragma clang diagnostic pop
+}
+
+- (BOOL)enable:(NSURL *)url withOptions:(NSDictionary *)options {
+  id debugBridgeSingleton = [self debugBridgeSingleton];
+  if (!debugBridgeSingleton) {
+    return NO;
+  }
+
+  SEL enableSelector = NSSelectorFromString(@"enable:withOptions:");
+  if ([debugBridgeSingleton respondsToSelector:enableSelector]) {
+    NSInvocation *invocation = [NSInvocation
+        invocationWithMethodSignature:[[debugBridgeSingleton class]
+                                          instanceMethodSignatureForSelector:enableSelector]];
+    [invocation setSelector:enableSelector];
+    [invocation setTarget:debugBridgeSingleton];
+    [invocation setArgument:&url atIndex:2];
+    [invocation setArgument:&options atIndex:3];
+    [invocation invoke];
+
+    BOOL result;
+    [invocation getReturnValue:&result];
+    return result;
+  }
+  return NO;
+}
+
+- (void)addOpenCardCallback:(LynxOpenCardCallback)callback {
+  id debugBridgeSingleton = [self debugBridgeSingleton];
+  if (!debugBridgeSingleton) {
+    return;
+  }
+
+  SEL addOpenCardCallbackSelector = NSSelectorFromString(@"addOpenCardCallback:");
+  if ([debugBridgeSingleton respondsToSelector:addOpenCardCallbackSelector]) {
+    NSInvocation *invocation =
+        [NSInvocation invocationWithMethodSignature:
+                          [[debugBridgeSingleton class]
+                              instanceMethodSignatureForSelector:addOpenCardCallbackSelector]];
+    [invocation setSelector:addOpenCardCallbackSelector];
+    [invocation setTarget:debugBridgeSingleton];
+    [invocation setArgument:&callback atIndex:2];
+    [invocation invoke];
+  }
+}
+
+- (BOOL)hasSetOpenCardCallback {
+  id debugBridgeSingleton = [self debugBridgeSingleton];
+  if (!debugBridgeSingleton) {
+    return NO;
+  }
+
+  SEL hasSetOpenCardCallbackSelector = NSSelectorFromString(@"hasSetOpenCardCallback");
+  if ([debugBridgeSingleton respondsToSelector:hasSetOpenCardCallbackSelector]) {
+    NSInvocation *invocation =
+        [NSInvocation invocationWithMethodSignature:
+                          [[debugBridgeSingleton class]
+                              instanceMethodSignatureForSelector:hasSetOpenCardCallbackSelector]];
+    [invocation setSelector:hasSetOpenCardCallbackSelector];
+    [invocation setTarget:debugBridgeSingleton];
+    [invocation invoke];
+
+    BOOL result;
+    [invocation getReturnValue:&result];
+    return result;
+  }
+  return NO;
+}
+
+- (void)onPerfMetricsEvent:(NSString *)eventName
+                  withData:(NSDictionary<NSString *, NSObject *> *)data
+                instanceId:(int32_t)instanceId {
+  id debugBridgeSingleton = [self debugBridgeSingleton];
+  if (!debugBridgeSingleton) {
+    return;
+  }
+
+  SEL onPerfMetricsEventSelector = NSSelectorFromString(@"onPerfMetricsEvent:withData:instanceId:");
+  if ([debugBridgeSingleton respondsToSelector:onPerfMetricsEventSelector]) {
+    NSInvocation *invocation =
+        [NSInvocation invocationWithMethodSignature:
+                          [[debugBridgeSingleton class]
+                              instanceMethodSignatureForSelector:onPerfMetricsEventSelector]];
+    [invocation setSelector:onPerfMetricsEventSelector];
+    [invocation setTarget:debugBridgeSingleton];
+    [invocation setArgument:&eventName atIndex:2];
+    [invocation setArgument:&data atIndex:3];
+    [invocation setArgument:&instanceId atIndex:4];
+    [invocation invoke];
+  }
+}
+
+- (void)setAppInfo:(NSDictionary *)options {
+  id debugBridgeSingleton = [self debugBridgeSingleton];
+  if (!debugBridgeSingleton) {
+    return;
+  }
+
+  SEL setAppInfoSelector = NSSelectorFromString(@"setAppInfo:");
+  if ([debugBridgeSingleton respondsToSelector:setAppInfoSelector]) {
+    NSInvocation *invocation = [NSInvocation
+        invocationWithMethodSignature:[[debugBridgeSingleton class]
+                                          instanceMethodSignatureForSelector:setAppInfoSelector]];
+    [invocation setSelector:setAppInfoSelector];
+    [invocation setTarget:debugBridgeSingleton];
+    [invocation setArgument:&options atIndex:2];
+    [invocation invoke];
+  }
 }
 
 - (id)devtoolEnvSharedInstance {

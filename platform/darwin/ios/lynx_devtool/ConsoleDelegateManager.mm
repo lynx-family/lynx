@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxInspectorConsoleDelegate.h>
 #import <LynxDevtool/ConsoleDelegateManager.h>
-#import <LynxDevtool/LynxInspectorConsoleDelegate.h>
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 
 typedef void (^ConsoleObjectHandler)(NSString* detail);

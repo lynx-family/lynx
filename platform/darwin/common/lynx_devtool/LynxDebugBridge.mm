@@ -43,7 +43,7 @@ typedef LynxInspectorOwner DevToolAgentDispatcher;
   DevToolMonitorView *monitor_view_;
   DevToolAgentDispatcher *agent_dispatcher_;
   BOOL has_set_open_card_callback_;
-  NSMutableArray<LynxDebugBridgeOpenCardCallback> *open_card_callbacks;
+  NSMutableArray<LynxOpenCardCallback> *open_card_callbacks;
 }
 
 + (instancetype)singleton {
@@ -124,11 +124,11 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
   return has_set_open_card_callback_;
 }
 
-- (void)setOpenCardCallback:(LynxDebugBridgeOpenCardCallback)callback {
+- (void)setOpenCardCallback:(LynxOpenCardCallback)callback {
   [self addOpenCardCallback:callback];
 }
 
-- (void)addOpenCardCallback:(LynxDebugBridgeOpenCardCallback)callback {
+- (void)addOpenCardCallback:(LynxOpenCardCallback)callback {
   has_set_open_card_callback_ = YES;
   if (![open_card_callbacks containsObject:callback]) {
     [open_card_callbacks addObject:callback];
@@ -137,7 +137,7 @@ using ClientInfo = std::unordered_map<std::string, std::string>;
 
 - (void)openCard:(NSString *)url {
   LLogInfo(@"openCard: %@", url);
-  for (LynxDebugBridgeOpenCardCallback callback in open_card_callbacks) {
+  for (LynxOpenCardCallback callback in open_card_callbacks) {
     callback(url);
   }
 }

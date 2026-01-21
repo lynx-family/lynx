@@ -27,6 +27,7 @@
 @implementation LynxDevtool {
   __weak LynxView *_lynxView;
   id<LynxLogBoxProtocol> _logbox;
+  id<LynxBaseInspectorController> _owner;
 
   LynxPageReloadHelper *_reloader;
 }
@@ -63,6 +64,17 @@
   }
 
   return self;
+}
+
+- (id<LynxBaseInspectorOwner>)baseInspectorOwner {
+  if ([_owner conformsToProtocol:@protocol(LynxBaseInspectorOwner)]) {
+    return (id<LynxBaseInspectorOwner>)_owner;
+  }
+  return nil;
+}
+
+- (id<LynxBaseInspectorController>)baseInspectorController {
+  return _owner;
 }
 
 - (void)registerModule:(LynxTemplateRender *)render {

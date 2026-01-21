@@ -3,13 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxDebugInfoRecorderProtocol.h>
-#import <Lynx/LynxPageReloadHelper.h>
-#import <Lynx/LynxResourceProvider.h>
-#if TARGET_OS_IOS
-#import <Lynx/LynxUIOwner.h>
-#endif
-#import <Lynx/LynxError.h>
 #import <Lynx/LynxView.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -23,44 +16,23 @@ typedef void (^CDPResultCallback)(NSString *result);
 
 @end
 
+@protocol GlobalPropsUpdatedObserver <NSObject>
+
+- (void)onGlobalPropsUpdated:(NSDictionary *)props;
+
+@end
+
 @protocol LynxBaseInspectorOwner <NSObject>
 
 @required
 
-- (nonnull instancetype)initWithLynxView:(nullable LynxView *)view;
-
-- (void)setReloadHelper:(nullable LynxPageReloadHelper *)reloadHelper;
-- (void)setDebugInfoInterceptor:(nonnull id<LynxDebugInfoRecorderProtocol>)debugInfoRecorder;
-
-#if TARGET_OS_IOS
-- (void)onBackgroundRuntimeCreated:(LynxBackgroundRuntime *)runtime
-                   groupThreadName:(NSString *)groupThreadName;
-#endif
-
-- (void)onTemplateAssemblerCreated:(intptr_t)ptr;
-
-- (void)handleLongPress;
-
-- (void)continueCasting;
-
-- (void)pauseCasting;
-
-- (void)onLoadFinished;
-
 - (void)reloadLynxView:(BOOL)ignoreCache;
-
-- (void)attach:(nonnull LynxView *)lynxView;
 
 - (void)reloadLynxView:(BOOL)ignoreCache
           withTemplate:(nullable NSString *)templateBin
          fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size;
 
-- (void)reloadLynxView:(BOOL)ignoreCache
-          withTemplate:(nullable NSString *)templateBin
-         fromFragments:(BOOL)fromFragments
-              withSize:(int32_t)size
-             reloadUrl:(nullable NSString *)reloadUrl;
 /**
  * Invokes a CDP method from the SDK.
  *
@@ -139,44 +111,13 @@ typedef void (^CDPResultCallback)(NSString *result);
  */
 - (void)removeCDPEventListener:(nonnull NSString *)name;
 
-- (void)attachDebugBridge:(NSString *)url;
-
-- (void)endTestbench:(NSString *_Nonnull)filePath;
-
-- (void)onPageUpdate;
-
-#if TARGET_OS_IOS
-- (void)attachLynxUIOwnerToAgent:(nullable LynxUIOwner *)uiOwner;
-#endif
-
 - (void)setLynxInspectorConsoleDelegate:(id _Nonnull)delegate;
 
 - (void)getConsoleObject:(NSString *_Nonnull)objectId
            needStringify:(BOOL)stringify
            resultHandler:(void (^_Nonnull)(NSString *_Nonnull detail))handler;
 
-- (void)onPerfMetricsEvent:(NSString *_Nonnull)eventName
-                  withData:(NSDictionary<NSString *, NSObject *> *_Nonnull)data;
-
-- (void)onReceiveMessageEvent:(NSDictionary *)event;
-
-- (void)setDispatchMessageEventBlock:(void (^)(NSDictionary *))block;
-
-- (NSString *)debugInfoUrl:(NSString *_Nonnull)filename;
-
-/**
- * Called when LynxTemplateRender triggers an update using UpdateData or UpdateMetaData
- */
-- (void)onTemplateDataUpdated:(LynxTemplateData *)data;
-/**
- * Called when data is reset through LynxTemplateRender resetData method
- */
-- (void)onResetDataWithTemplateData:(LynxTemplateData *)data;
-
-- (void)onGlobalPropsUpdated:(LynxTemplateData *)props;
-
-- (void)showErrorMessageOnConsole:(LynxError *)error;
-- (void)showMessageOnConsole:(NSString *)message withLevel:(int32_t)level;
+- (void)setGlobalPropsUpdatedObserver:(id<GlobalPropsUpdatedObserver>)observer;
 
 - (void)setDebugTag:(NSString *)debugTag;
 

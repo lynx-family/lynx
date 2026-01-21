@@ -11,33 +11,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^LynxOpenCardCallback)(NSString *);
 
-@protocol LynxDebuggerProtocol <NSObject>
-
-@required
-
-+ (instancetype)singleton;
-
-- (BOOL)enable:(NSURL *)url withOptions:(NSDictionary *)options;
-
-- (void)setOpenCardCallback:(LynxOpenCardCallback)callback;
-
-@end
-
 @interface LynxDebugger : NSObject
 
 + (BOOL)enable:(NSURL *)schema withOptions:(NSDictionary *)options;
 
 + (void)setOpenCardCallback:(LynxOpenCardCallback)callback
     __attribute__((deprecated("Use addOpenCardCallback instead after lynx 2.6")));
-;
 
 + (void)addOpenCardCallback:(LynxOpenCardCallback)callback;
 
 + (BOOL)hasSetOpenCardCallback;
 
-+ (void)onPerfMetricsEvent:(NSString *_Nonnull)eventName
-                  withData:(NSDictionary<NSString *, NSObject *> *_Nonnull)data
-                instanceId:(int32_t)instanceId;
++ (void)setAppInfo:(NSDictionary *)options;
+
 @end
 
 NS_ASSUME_NONNULL_END

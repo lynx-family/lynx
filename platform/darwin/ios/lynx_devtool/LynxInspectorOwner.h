@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxBaseInspectorController.h>
 #import <Lynx/LynxBaseInspectorOwnerNG.h>
 #import <Lynx/LynxDebugInfoRecorderProtocol.h>
 #import <Lynx/LynxPageReloadHelper.h>
@@ -10,13 +11,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol GlobalPropsUpdatedObserver <NSObject>
-
-- (void)onGlobalPropsUpdated:(NSDictionary *)props;
-
-@end
-
-@interface LynxInspectorOwner : NSObject <LynxBaseInspectorOwnerNG>
+@interface LynxInspectorOwner : NSObject <LynxBaseInspectorOwnerNG, LynxBaseInspectorController>
 
 - (instancetype)initWithDebuggable:(BOOL)debuggable;
 - (nonnull instancetype)initWithLynxView:(nullable LynxView *)view debuggable:(BOOL)debuggable;
@@ -92,8 +87,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGPoint)getViewLocationOnScreen;
 
 - (void)dispatchMessageEvent:(NSDictionary *)event;
-
-- (void)setGlobalPropsUpdatedObserver:(id<GlobalPropsUpdatedObserver>)observer;
 
 @end
 
