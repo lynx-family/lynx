@@ -1332,8 +1332,8 @@ public class LynxDevToolUtils : NSObject {
 }
 
 public class LynxDisplayListApplier : NSObject {
-  public instancetype LynxDisplayListApplier::init();
-  public void LynxDisplayListApplier::applyDisplayList:toView:(lynx::tasm::DisplayList *list,[toView] UIView *view);
+  public instancetype LynxDisplayListApplier::initWithView:(UIView< LynxRendererHost > *view);
+  public void LynxDisplayListApplier::applyDisplayList:(lynx::tasm::DisplayList *list);
   public void LynxDisplayListApplier::reset();
 }
 

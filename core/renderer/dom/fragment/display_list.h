@@ -134,6 +134,16 @@ class DisplayList {
     return content_data_.has_value() ? content_data_->float_data.size() : 0;
   }
 
+  int32_t GetOpAtIndex(size_t index) const { return content_data_->ops[index]; }
+
+  int32_t GetIntAtIndex(size_t index) const {
+    return content_data_->int_data[index];
+  }
+
+  float GetFloatAtIndex(size_t index) const {
+    return content_data_->float_data[index];
+  }
+
   size_t GetSubtreePropertyOpTypesSize() const {
     return subtree_property_data_.has_value()
                ? subtree_property_data_->ops.size()

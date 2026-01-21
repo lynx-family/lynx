@@ -7,11 +7,13 @@
 
 #include "core/renderer/dom/fragment/display_list.h"
 
+@protocol LynxRendererHost;
+
 @interface LynxDisplayListApplier : NSObject
 
-- (instancetype)init;
+- (instancetype)initWithView:(UIView<LynxRendererHost> *)view;
 
-- (void)applyDisplayList:(lynx::tasm::DisplayList *)list toView:(UIView *)view;
+- (void)applyDisplayList:(lynx::tasm::DisplayList *)list;
 
 - (void)reset;
 
