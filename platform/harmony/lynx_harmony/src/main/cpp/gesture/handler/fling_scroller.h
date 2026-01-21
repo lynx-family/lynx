@@ -50,7 +50,7 @@ class FlingScroller : public std::enable_shared_from_this<FlingScroller> {
  private:
   std::shared_ptr<animation::basic::LynxBasicAnimator> fling_scroller_animator_;
   int64_t last_time_;
-  uint8_t current_fling_state_;
+  uint8_t current_fling_state_{0};
 };
 
 }  // namespace harmony
