@@ -52,7 +52,7 @@ class JSVMRuntime : public Runtime {
 
   void setDescription(const std::string& desc) { description_ = desc; };
 
-  JSVM_Env getEnv() const { return context_->getEnv(); };
+  JSVM_Env getEnv() const;
 
   void valueRef(const piper::Value& value, JSVM_Value* result);
 

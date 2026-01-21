@@ -141,7 +141,8 @@ std::string JSVMHelper::JSStringToSTLString(JSVM_Value s, JSVMRuntime* rt) {
   output_str.resize(len + 1);
   JSVM_CALL_RETURN(rt, OH_JSVM_GetValueStringUtf8, std::string(), rt->getEnv(),
                    s, output_str.data(), output_str.size(), nullptr);
-  return output_str.substr(0, len);
+  output_str.resize(len);
+  return output_str;
 }
 
 piper::Symbol JSVMHelper::createSymbol(JSVM_Value sym, JSVMRuntime* rt) {

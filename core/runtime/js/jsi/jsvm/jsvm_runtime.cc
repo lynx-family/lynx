@@ -81,6 +81,14 @@ std::shared_ptr<JSIContext> JSVMRuntime::createContext(
 
 std::shared_ptr<JSIContext> JSVMRuntime::getSharedContext() { return context_; }
 
+JSVM_Env JSVMRuntime::getEnv() const {
+  if (!context_) {
+    LOGE("JSVMRuntime::getEnv() called but context_ is null");
+    return nullptr;
+  }
+  return context_->getEnv();
+}
+
 std::shared_ptr<const PreparedJavaScript> JSVMRuntime::prepareJavaScript(
     const std::shared_ptr<const Buffer>& buffer, std::string source_url,
     int start_line_offset) {
@@ -269,21 +277,9 @@ piper::PropNameID JSVMRuntime::createPropNameIDFromString(
 
 std::string JSVMRuntime::utf8(const piper::PropNameID& sym) {
   HandleScopeWrapper scope(getEnv());
-  auto jsvm_str = static_cast<const detail::JSVMStringValue*>(
-      Runtime::getPointerValue(sym));
-
-  size_t size;
   JSVM_Value str_value = nullptr;
-  JSVM_CALL(this, OH_JSVM_GetReferenceValue, getEnv(), jsvm_str->str_ref_,
-            &str_value);
-  JSVM_CALL(this, OH_JSVM_GetValueStringUtf8, getEnv(), str_value, nullptr,
-            JSVM_AUTO_LENGTH, &size);
-
-  std::string output_str;
-  output_str.resize(size + 1);
-  JSVM_CALL(this, OH_JSVM_GetValueStringUtf8, getEnv(), str_value,
-            output_str.data(), output_str.size(), nullptr);
-  return output_str.substr(0, size);
+  JSVMHelper::stringRef(sym, &str_value);
+  return JSVMHelper::JSStringToSTLString(str_value, this);
 }
 
 bool JSVMRuntime::compare(const piper::PropNameID& a,
