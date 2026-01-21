@@ -2326,7 +2326,26 @@ void BaseView::OnBoundsChanged(const FloatRect& old_bounds,
   UpdateChildrenBounds();
 }
 
+bool BaseView::CanAcceptEvent() const {
+  if (!Visible() || !IsInteractable()) {
+    return false;
+  }
+  auto origin = GetTransformOrigin();
+  Transform transform(GetTransformOps()
+                          .Apply()
+                          .matrix()
+                          .PreTranslate(-origin.x(), -origin.y())
+                          .PostTranslate(origin.x(), origin.y()));
+  // If transform is not invertible, it means the view is not visible with
+  // 2D transform.
+  return transform.IsInvertible();
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
+  if (!CanAcceptEvent()) {
+    return false;
+  }
+
   FloatPoint point_by_self = GetPointBySelf(event.position);
   // Transform translate_transform = LocalToGlobalTransform();
   // SkVector4 sv(point_by_self.x(), point_by_self.y(), 0, 1);
@@ -2339,10 +2358,6 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
                      point_by_self.y() <= -hit_slop_top_ ||
                      point_by_self.y() > height_ + hit_slop_bottom_;
   if (beyond_self && !CanChildrenEscape()) {
-    return false;
-  }
-
-  if (!CanAcceptEvent()) {
     return false;
   }
 

@@ -385,7 +385,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float ContentInsetLeft() const;
   float ContentInsetTop() const;
 
-  virtual bool CanAcceptEvent() const { return Visible() && IsInteractable(); }
+  virtual bool CanAcceptEvent() const;
   virtual BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position);
   // Content bounds (without border and padding) in the viewport.
