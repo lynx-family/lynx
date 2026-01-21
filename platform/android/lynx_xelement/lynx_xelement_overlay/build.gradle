@@ -47,4 +47,5 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "androidx.appcompat:appcompat:1.0.0"
     compileOnly "com.android.support:recyclerview-v7:$support_version"
+    implementation 'androidx.core:core:1.5.0'
 }
