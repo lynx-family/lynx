@@ -79,8 +79,8 @@ class RenderBox : public RenderObject {
     return FloatRect(ClientLeft(), ClientTop(), ClientWidth(), ClientHeight());
   }
 
-  FloatPoint ScrollOffset() const {
-    return FloatPoint(scroll_left_, scroll_top_);
+  FloatSize ScrollOffset() const {
+    return FloatSize(scroll_left_, scroll_top_);
   }
   float ScrollLeft() const override { return scroll_left_; }
   float ScrollTop() const override { return scroll_top_; }

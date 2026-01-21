@@ -2193,8 +2193,8 @@ FloatRect BaseView::CalcFocusRect() const {
   FloatPoint point(left_, top_);
   BaseView* parent = Parent();
   while (parent && !parent->IsFocusScope()) {
-    FloatPoint offset = parent->GetScrollOffset();
-    point.MoveBy(-offset);
+    FloatSize offset = parent->GetScrollOffset();
+    point.Move(-offset.width(), -offset.height());
 
     point.Move(parent->Left(), parent->Top());
     parent = parent->Parent();
@@ -2208,8 +2208,9 @@ bool BaseView::DispatchKeyEventOnFocusNode(const KeyEvent* event) {
 }
 
 FloatRect BaseView::GetContentVisibleRect() {
-  FloatPoint offset = GetScrollOffset();
-  return FloatRect(offset.x(), offset.y(), ContentWidth(), ContentHeight());
+  FloatSize offset = GetScrollOffset();
+  return FloatRect(offset.width(), offset.height(), ContentWidth(),
+                   ContentHeight());
 }
 
 FloatSize BaseView::GetThicknessOffset() {
@@ -2570,8 +2571,8 @@ FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
   }
   if (parent) {
     point = parent->GetPointBySelf(point);
-    FloatPoint offset = parent->GetScrollOffsetForPaint();
-    point.MoveBy(offset);
+    FloatSize offset = parent->GetScrollOffsetForPaint();
+    point.Move(offset.width(), offset.height());
   }
   point.Move(-Left(), -Top());
   if (sticky_) {
@@ -2604,8 +2605,8 @@ Transform BaseView::LocalToGlobalTransform() const {
   }
   Transform transform = Transform(skity::Matrix());
   while (parent) {
-    FloatPoint offset = parent->GetScrollOffset();
-    point.MoveBy(-offset);
+    FloatSize offset = parent->GetScrollOffset();
+    point.Move(-offset.width(), -offset.height());
 
     point.Move(parent->Left(), parent->Top());
     parent = parent->Parent();
@@ -2825,7 +2826,7 @@ std::string BaseView::ToString() const {
   ss << " id=" << id();
   ss << " frame=(" << Left() << "," << Top() << "," << Width() << ","
      << Height() << ")";
-  if (!GetScrollOffset().IsOrigin()) {
+  if (!GetScrollOffset().IsZero()) {
     ss << " scroll_offset=" << GetScrollOffset().ToString();
   }
   if (PaddingLeft() != 0 || PaddingTop() != 0 || PaddingRight() != 0 ||

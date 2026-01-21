@@ -118,10 +118,10 @@ class BaseView : public TypeIdentifiable<BaseView>,
   // add for layoutchange event
   virtual void OnLayoutChange();
   virtual void OnLayoutUpdated() {}
-  virtual FloatPoint GetScrollOffset() const { return FloatPoint(); }
+  virtual FloatSize GetScrollOffset() const { return FloatSize(); }
   // FIXME(ZhuChengCheng) this is a workaround method for rtl scrollview, we
   // will fix this soon by refactoring scrollview's rlt logic.
-  virtual FloatPoint GetScrollOffsetForPaint() const {
+  virtual FloatSize GetScrollOffsetForPaint() const {
     return GetScrollOffset();
   }
 

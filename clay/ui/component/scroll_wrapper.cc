@@ -154,13 +154,13 @@ void ScrollWrapper::autoScroll(const LynxModuleValues& args) {
 void ScrollWrapper::getScrollInfo(const LynxModuleValues& args,
                                   const LynxUIMethodCallback& callback) {
   if (callback) {
-    FloatPoint offset = view_->GetScrollOffset();
+    FloatSize offset = view_->GetScrollOffset();
     FloatSize zoomed_content = page_view_->ConvertTo<kPixelTypeLogical>(
         FloatSize(view_->ContentWidth(), view_->ContentHeight()));
-    FloatPoint zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
+    FloatSize zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
     clay::Value::Map map;
-    map.emplace("scrollTop", zoomed_offset.y());
-    map.emplace("scrollLeft", zoomed_offset.x());
+    map.emplace("scrollTop", zoomed_offset.height());
+    map.emplace("scrollLeft", zoomed_offset.width());
     map.emplace("scrollHeight", zoomed_content.height());
     map.emplace("scrollWidth", zoomed_content.width());
     map.emplace("isDragging",
@@ -201,15 +201,10 @@ void ScrollWrapper::SetOverflow(int overflow) {
   view_->SetOverflow(overflow);
 }
 
-void ScrollWrapper::OnNodeReady() {
-  view_->OnNodeReady();
-  scrollbar_->OnNodeReady();
-}
-
 void ScrollWrapper::WillUpdateScrollbar() { view_->OnLayoutUpdated(); }
 
 float ScrollWrapper::GetScrollbarScrollOffset() {
-  return OrientationHelper().GetLocation(view_->GetScrollOffset());
+  return OrientationHelper().GetLength(view_->GetScrollOffset());
 }
 
 float ScrollWrapper::GetTotalLength() {

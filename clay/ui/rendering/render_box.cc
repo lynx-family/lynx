@@ -62,12 +62,12 @@ bool RenderBox::ScrollsOverflowY() const {
 }
 
 float RenderBox::MaxScrollHeight() const {
-  float max_height = overflow_rect_.height() - ClientHeight();
+  float max_height = overflow_rect_.height() - PaddingBoxRect().height();
   return std::max(max_height, 0.f);
 }
 
 float RenderBox::MaxScrollWidth() const {
-  float max_width = overflow_rect_.width() - ClientWidth();
+  float max_width = overflow_rect_.width() - PaddingBoxRect().width();
   return std::max(max_width, 0.f);
 }
 
@@ -89,10 +89,16 @@ void RenderBox::PaintChildren(PaintingContext& context,
 }
 
 FloatPoint RenderBox::GetPaintOffsetForScroll() const {
+  FloatPoint offset;
+  if (layout_direction_ == DirectionType::kLtr ||
+      layout_direction_ == DirectionType::kNormal) {
+    offset = FloatPoint(ScrollLeft(), ScrollTop());
+  } else {
+    offset = FloatPoint(MaxScrollWidth() - ScrollLeft(), ScrollTop());
+  }
   if (renderer_ == nullptr) {
     return {0.0f, 0.0f};
   }
-  FloatPoint offset = FloatPoint(ScrollLeft(), ScrollTop());
   // To improve the TextBlob cache hit rate, round the scroll offset here.
   // Because the TextBlob cache only works when the translation between the
   // positionMatrix is integer.

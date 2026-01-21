@@ -34,7 +34,6 @@ class ScrollWrapper : public WithTypeInfo<ScrollWrapper, ScrollbarWrapper>,
   bool IsLayoutRootCandidate() const override { return true; }
 
   void SetDirection(int type) override;
-  void OnNodeReady() override;
 
   void SetOverflow(int overflow) override;
 
