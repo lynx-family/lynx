@@ -126,7 +126,8 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
     context_->UpdateNativeInteractionEnabledForTree(context_->Root());
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
     ArkUI_UIInputEvent* touch_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
-    if (context_->ShouldBlockNativeEvent()) {
+    if (OH_ArkUI_NodeEvent_GetNodeHandle(event) == normal_sibling_ &&
+        context_->ShouldBlockNativeEvent()) {
       OH_ArkUI_PointerEvent_SetStopPropagation(touch_event, true);
     }
     if (OH_ArkUI_NodeEvent_GetNodeHandle(event) != transparent_sibling_) {
