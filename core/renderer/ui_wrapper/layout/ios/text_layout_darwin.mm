@@ -12,6 +12,7 @@
 
 #import <Lynx/LynxBaseTextShadowNode.h>
 #import <Lynx/LynxConverter+UI.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextUtils.h>
 
 namespace lynx {

@@ -3386,6 +3386,14 @@ public protocol LynxServiceSystemInvokeProtocol-p : <LynxServiceProtocol> {
   public NSInteger LynxServiceSystemInvokeProtocol-p::stopAudioOutputUnit:(void *audioUnitPtr);
 }
 
+public protocol LynxServiceTextProtocol-p : <LynxServiceProtocol> {
+  public void * LynxServiceTextProtocol-p::createTextLayoutAPIFromContext:(LynxUIOwner *context);
+  public void LynxServiceTextProtocol-p::destroyTextLayoutAPI:(void *api);
+  public void LynxServiceTextProtocol-p::drawPage:OnContext:(void *page,[OnContext] CGContextRef context);
+  public int LynxServiceTextProtocol-p::getSelectionCharIndexOfPage:ByTouchPosition:(void *page,[ByTouchPosition] CGPoint point);
+  public NSArray * LynxServiceTextProtocol-p::getSelectionRectsOfPage:ByCharRange:(void *page,[ByCharRange] NSRange range);
+}
+
 public protocol LynxServiceTrailExtensionProtocol-p :  {
   public void LynxServiceTrailExtensionProtocol-p::parseLynxViewBuilder:(LynxViewBuilder *builder);
 }

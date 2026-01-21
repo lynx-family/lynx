@@ -84,6 +84,7 @@ common_lynx_public_headers =
                     "service/LynxServiceSecurityProtocol.h",
                     "service/LynxService.h",
                     "service/LynxServiceSystemInvokeProtocol.h",
+                    "service/LynxServiceTextProtocol.h",
                     "resource/LynxProviderRegistry.h",
                     "resource/LynxMediaResourceFetcher.h",
                     "resource/LynxTemplateResourceFetcher.h",
