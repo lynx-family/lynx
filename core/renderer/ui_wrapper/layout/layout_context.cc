@@ -1029,8 +1029,6 @@ void LayoutContext::SetPageConfigForLayoutThread(
     layout_configs_ = page_config_->GetLayoutConfigs();
   }
   lynx_env_config_.SetFontScaleSpOnly(layout_configs_.font_scale_sp_only_);
-  delegate_->SetEnableAirStrictMode(page_config_->GetLynxAirMode() ==
-                                    CompileOptionAirMode::AIR_MODE_STRICT);
 }
 
 bool LayoutContext::SetViewportSizeToRootNode() {

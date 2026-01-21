@@ -40,19 +40,11 @@ void LayoutMediator::OnLayoutUpdate(
     has_sticky = true;
   }
 
-  // If node map is empty, no need to EnqueueOperation.
-  // IsActive means if there is any node in node_manager(if node_manager is
-  // empty means the process of loadTemplate doesn't create any node, maybe some
-  // error occurs or it's in air mode, so the next step is checking if
-  // air_node_manager works normally)
-  // TODO(renpengcheng): when air_element was deleted, check the rationality of
-  // this logic
-  if (node_manager_ != nullptr && !enable_air_strict_mode_) {
+  if (node_manager_ != nullptr) {
     operation_queue_->EnqueueOperation(
         [node_manager = node_manager_, tag, x, y, width, height, paddings,
          margins, borders, sticky_positions_clone, has_sticky, max_height]() {
           auto *node = node_manager->Get(tag);
-          DCHECK(node != nullptr);
           if (node != nullptr) {
             if (has_sticky) {
               node->UpdateLayout(x, y, width, height, paddings, margins,

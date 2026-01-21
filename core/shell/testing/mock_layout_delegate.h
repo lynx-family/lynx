@@ -31,7 +31,6 @@ class MockLayoutDelegate : public LayoutContext::Delegate {
   void OnCalculatedViewportChanged(const CalculatedViewport& viewport,
                                    int tag) override {}
   void SetTiming(tasm::Timing timing) override {}
-  void SetEnableAirStrictMode(bool enable_air_strict_mode) override {}
   MOCK_METHOD(void, OnFirstMeaningfulLayout, (), (override));
   MOCK_METHOD(void, OnLayoutAfter,
               (const std::shared_ptr<PipelineOptions>&,

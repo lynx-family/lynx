@@ -65,9 +65,6 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
     node_manager_ = node_manager;
     catalyzer_ = catalyzer;
   }
-  void SetEnableAirStrictMode(bool enable_air_strict_mode) override {
-    enable_air_strict_mode_ = enable_air_strict_mode;
-  }
 
   void SetPageOptions(const tasm::PageOptions &page_options) {
     page_options_ = page_options;
@@ -108,7 +105,6 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
   // TODO(heshan):now trigger onFirstScreen when first layout,
   // but it may be triggered when update data...
   bool has_first_layout_{false};
-  bool enable_air_strict_mode_{false};
   tasm::PageOptions page_options_;
 };
 

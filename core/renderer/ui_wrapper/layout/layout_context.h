@@ -73,7 +73,6 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
                                              int tag) = 0;
     virtual void SetTiming(tasm::Timing timing) = 0;
     virtual void OnFirstMeaningfulLayout() = 0;
-    virtual void SetEnableAirStrictMode(bool enable_air_strict_mode) = 0;
   };
 
   LayoutContext(std::unique_ptr<Delegate> delegate,
