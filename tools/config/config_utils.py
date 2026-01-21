@@ -9,11 +9,12 @@ from pathlib import Path
 import sys
 import shutil
 import subprocess
+import os
 
 _this_dir = Path(__file__).resolve().parent
 _root_dir = _this_dir.parents[2]
 _clang_format_binary = "clang-format.exe" if sys.platform == "win32" else "clang-format"
-_npx_binary = "npx.exe" if sys.platform == "win32" else "npx"
+_npx_binary = "npx.cmd" if sys.platform == "win32" else "npx"
 
 
 def _get_clang_format_path():
@@ -21,6 +22,8 @@ def _get_clang_format_path():
     candidate_paths = [
         _root_dir / "buildtools" / "llvm" / "bin" / _clang_format_binary,
         _root_dir / "lynx" / "buildtools" / "llvm" / "bin" / _clang_format_binary,
+        _root_dir / "buildtools" / "llvm" / _clang_format_binary,
+        _root_dir / "lynx" / "buildtools" / "llvm" / _clang_format_binary,
     ]
     for path in candidate_paths:
         if path.exists():
@@ -29,11 +32,14 @@ def _get_clang_format_path():
     # 2. Fallback to system PATH
     return shutil.which(_clang_format_binary) or _clang_format_binary
 
+
 def _get_npx_path():
     # 1. Check pre-defined paths in the repository
     candidate_paths = [
         _root_dir / "buildtools" / "node" / "bin" / _npx_binary,
         _root_dir / "lynx" / "buildtools" / "node" / "bin" / _npx_binary,
+        _root_dir / "buildtools" / "node" / _npx_binary,
+        _root_dir / "lynx" / "buildtools" / "node" / _npx_binary,
     ]
     for path in candidate_paths:
         if path.exists():
@@ -41,6 +47,7 @@ def _get_npx_path():
 
     # 2. Fallback to system PATH
     return shutil.which(_npx_binary) or _npx_binary
+
 
 CLANG_FORMAT_PATH = _get_clang_format_path()
 NPX_PATH = _get_npx_path()
@@ -94,14 +101,20 @@ def prettier_format(directory: Path):
     if not directory.exists():
         return
     try:
+        env = os.environ.copy()
+        if NPX_PATH and os.path.isabs(NPX_PATH):
+            npx_dir = str(Path(NPX_PATH).parent)
+            env["PATH"] = npx_dir + os.pathsep + env["PATH"]
+
         subprocess.run(
             [NPX_PATH, "prettier", "--write", str(directory)],
             cwd=directory,
             capture_output=True,
             check=True,
+            shell=sys.platform == "win32",
+            env=env,
         )
     except subprocess.CalledProcessError as e:
         print(f"prettier format failed: {e.stderr}", file=sys.stderr)
     except FileNotFoundError:
         print("npx not found, skipping prettier format", file=sys.stderr)
-
