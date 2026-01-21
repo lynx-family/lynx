@@ -1152,7 +1152,7 @@
 
 - (void)templateRenderOnResetViewAndLayer:(LynxTemplateRender*)templateRender {
   [[self subviews] makeObjectsPerformSelector:@selector(removeFromSuperview)];
-  [[self.layer sublayers] makeObjectsPerformSelector:@selector(removeFromSuperlayer)];
+  [[[self.layer sublayers] copy] makeObjectsPerformSelector:@selector(removeFromSuperlayer)];
 }
 
 - (void)templateRenderOnTemplateStartLoading:(LynxTemplateRender*)templateRender {
