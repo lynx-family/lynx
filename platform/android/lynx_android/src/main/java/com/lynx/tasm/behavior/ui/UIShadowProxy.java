@@ -387,6 +387,20 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   }
 
   @Override
+  public void onLayoutFinish(long operationId, @Nullable LynxBaseUI component) {
+    if (mChild != null) {
+      mChild.onLayoutFinish(operationId, component);
+    }
+  }
+
+  @Override
+  public void onNodeReady() {
+    if (mChild != null) {
+      mChild.onNodeReady();
+    }
+  }
+
+  @Override
   public void setBoxShadow(@Nullable ReadableArray shadow) {
     // Fixme(liyun):workaround for spring. below 6.0 will crash sometimes.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {

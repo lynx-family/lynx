@@ -10902,6 +10902,8 @@ public class com::lynx::tasm::behavior::ui::UIShadowProxy : com.lynx.tasm.behavi
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.removeView(LynxBaseUI child);
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.updateExtraData(Object data);
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.updateLayoutInfo(LynxBaseUI layout);
+  public void com.lynx.tasm.behavior.ui.UIShadowProxy.onLayoutFinish(long operationId, @Nullable LynxBaseUI component);
+  public void com.lynx.tasm.behavior.ui.UIShadowProxy.onNodeReady();
   public void com.lynx.tasm.behavior.ui.UIShadowProxy.setBoxShadow(@Nullable ReadableArray shadow);
   public float com.lynx.tasm.behavior.ui.UIShadowProxy.getAlpha();
   public Matrix com.lynx.tasm.behavior.ui.UIShadowProxy.getMatrix();
