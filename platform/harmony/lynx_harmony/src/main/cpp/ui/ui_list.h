@@ -142,6 +142,7 @@ class UIList : public BaseScrollContainer,
   float content_offset_percent_during_scroll_{1};
   float snap_factor_{-1};
   float snap_offset_{0};
+  std::pair<float, float> async_delta_offset_{0.f, 0.f};
   std::pair<float, float> last_scroll_offset_{0.0, 0.0};
 
   std::shared_ptr<AutoScroller> auto_scroller_;
