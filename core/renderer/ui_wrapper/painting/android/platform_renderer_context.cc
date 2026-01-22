@@ -12,6 +12,7 @@
 
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/event/event.h"
+#include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/shell/lynx_engine.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
@@ -163,6 +164,18 @@ int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, tag_name);
   return Java_PlatformRendererContext_getTagInfo(env, local_ref.Get(),
                                                  tag_ref.Get());
+}
+
+void PlatformRendererContext::UpdatePlatformRendererExtraData(
+    int32_t id, jobject extra_bundle) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull() || !extra_bundle) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+
+  Java_PlatformRendererContext_updatePlatformExtraData(env, local_ref.Get(), id,
+                                                       extra_bundle);
 }
 
 }  // namespace tasm

@@ -12,6 +12,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
@@ -186,7 +187,18 @@ void NativePaintingCtxAndroid::UpdateLayout(
 
 void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
     int32_t id, PlatformExtraBundle *bundle) {
-  // TODO: impl this function later.
+  if (!bundle) {
+    return;
+  }
+  JNIEnv *env = base::android::AttachCurrentThread();
+  base::android::ScopedGlobalJavaRef<jobject> java_bundle_ref(
+      env, static_cast<PlatformExtraBundleAndroid *>(bundle)
+               ->GetPlatformBundle()
+               .Get());
+  Enqueue([view_manager = view_manager_.get(), id,
+           java_bundle_ref = std::move(java_bundle_ref)]() {
+    view_manager->UpdatePlatformRendererExtraData(id, java_bundle_ref.Get());
+  });
 }
 
 void NativePaintingCtxAndroid::SetKeyframes(

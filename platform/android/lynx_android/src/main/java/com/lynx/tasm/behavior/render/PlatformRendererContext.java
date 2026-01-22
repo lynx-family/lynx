@@ -265,6 +265,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
+  @CalledByNative
+  public void updatePlatformExtraData(int sign, Object extraData) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null) {
+      LLog.d(TAG, "host renderer not found for sign: " + sign);
+      return;
+    }
+
+    // Get the renderer
+    Renderer renderer = host.getRenderer();
+    if (renderer != null) {
+      renderer.updateExtraData(extraData);
+    }
+  }
+
   public LynxImageManager getImage(int sign) {
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {

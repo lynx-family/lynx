@@ -15,6 +15,9 @@
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
 
 namespace lynx {
+namespace event {
+class Event;
+}
 namespace tasm {
 
 class PlatformRendererAndroid;
@@ -40,6 +43,8 @@ class PlatformRendererContext {
 
   // Update platform renderer attributes
   void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
+
+  void UpdatePlatformRendererExtraData(int32_t id, jobject extra_bundle);
 
   // Get PlatformRendererAndroid by ID
   PlatformRendererAndroid* GetPlatformRenderer(int32_t id);
