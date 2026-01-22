@@ -447,14 +447,15 @@ void BaseImageView::FetchPlaceholder() {
 #else
   source_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
       placeholder_, IsSVG(),
-      [self = weak_factory_.GetWeakPtr()](std::shared_ptr<BaseImage> image,
-                                          bool hit_cache) {
+      [self = weak_factory_.GetWeakPtr()](
+          std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
         if (!self) {
           return;
         }
-        if (!image) {
+        if (!image_instance) {
           return;
         }
+
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
         } else {
@@ -462,17 +463,14 @@ void BaseImageView::FetchPlaceholder() {
               ReportInfo::ImageOrigin::kImageMemoryDecoded;
         }
 
-        if (image->GetType() == ImageType::kAnimated) {
-          static_cast<AnimatedImage*>(image.get())
-              ->SetAnimationFrameCallback([self]() {
-                if (!self) {
-                  return;
-                }
-                self->GetRenderImage()->MarkNeedsPaint();
-              });
-        }
+        image_instance->SetAnimationFrameCallback([self]() {
+          if (!self) {
+            return;
+          }
+          self->GetRenderImage()->MarkNeedsPaint();
+        });
         auto render_image = self->GetRenderImage();
-        render_image->SetPlaceholderImage(std::move(image));
+        render_image->SetPlaceholderImage(std::move(image_instance));
       });
 #endif  // ENABLE_SKITY
 }
@@ -546,32 +544,30 @@ void BaseImageView::FetchSource() {
 #else
   source_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
       source_, IsSVG(),
-      [self = weak_factory_.GetWeakPtr()](std::shared_ptr<BaseImage> image,
-                                          bool hit_cache) {
+      [self = weak_factory_.GetWeakPtr()](
+          std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
         if (!self) {
           return;
         }
-        if (!image) {
+        if (!image_instance) {
           FML_LOG(ERROR) << "image is null";
           self->NotifyLoadError("resource fetch fail");
           return;
         }
-        self->NotifyLoadSuccess(image->GetWidth(), image->GetHeight());
+        self->NotifyLoadSuccess(image_instance->GetWidth(),
+                                image_instance->GetHeight());
 
-        if (image->GetType() == ImageType::kAnimated) {
-          static_cast<AnimatedImage*>(image.get())
-              ->SetAnimationFrameCallback([self]() {
-                if (!self) {
-                  return;
-                }
-                self->GetRenderImage()->MarkNeedsPaint();
-              });
-        }
+        image_instance->SetAnimationFrameCallback([self]() {
+          if (!self) {
+            return;
+          }
+          self->GetRenderImage()->MarkNeedsPaint();
+        });
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
         }
         auto render_image = self->GetRenderImage();
-        render_image->SetImage(std::move(image));
+        render_image->SetImage(std::move(image_instance));
         self->ReportImageLoadInfo();
       });
 #endif  // ENABLE_SKITY

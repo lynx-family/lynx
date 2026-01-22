@@ -1316,20 +1316,25 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
   page_view_->GetImageResourceFetcher()->FetchImage(
       uri, false,
       [self = weak_factory_.GetWeakPtr(), index, background](
-          std::shared_ptr<BaseImage> image, bool hit_cache) {
-        if (image->GetType() == ImageType::kAnimated) {
-          static_cast<AnimatedImage*>(image.get())
-              ->SetAnimationFrameCallback([self]() {
-                if (!self) {
-                  return;
-                }
-                self->render_object()->MarkNeedsPaint();
-              });
+          std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
+        if (!image_instance || !self) {
+          return;
         }
+        auto image = image_instance->GetImage();
+        if (!image) {
+          return;
+        }
+        image_instance->SetAnimationFrameCallback([self]() {
+          if (!self) {
+            return;
+          }
+          self->render_object()->MarkNeedsPaint();
+        });
         if (background) {
-          self->render_object()->SetBackgroundImage(index, image);
+          self->render_object()->SetBackgroundImage(index,
+                                                    std::move(image_instance));
         } else {
-          self->render_object()->SetMaskImage(index, image);
+          self->render_object()->SetMaskImage(index, std::move(image_instance));
         }
       });
 #endif  // ENABLE_SKITY

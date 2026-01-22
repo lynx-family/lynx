@@ -20,7 +20,8 @@ BackgroundImage::BackgroundImage(const BackgroundImage& background_image) {
         *background_image.image_resource_.get());
 
 #else
-    image_resource_ = background_image.image_resource_;
+    image_resource_ = std::make_unique<BaseImageInstance>(
+        *background_image.image_resource_.get());
 #endif  // ENABLE_SKITY
   }
   if (background_image.gradient_.has_value()) {
@@ -35,8 +36,9 @@ void BackgroundImage::SetImageResource(
   gradient_ = std::nullopt;
 }
 #else
-void BackgroundImage::SetImageResource(std::shared_ptr<BaseImage> image) {
-  image_resource_ = image;
+void BackgroundImage::SetImageResource(
+    std::unique_ptr<BaseImageInstance> image) {
+  image_resource_ = std::move(image);
   gradient_ = std::nullopt;
 }
 #endif  // ENABLE_SKITY

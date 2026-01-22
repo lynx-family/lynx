@@ -48,7 +48,7 @@ struct ImageData {
 #ifndef ENABLE_SKITY
   ImageResource* image_resource = nullptr;
 #else
-  BaseImage* image_resource = nullptr;
+  BaseImageInstance* image_resource = nullptr;
 #endif  // ENABLE_SKITY
   FillMode mode = FillMode::kScaleToFill;
   ImageRepeat repeat = ImageRepeat::kRepeat;

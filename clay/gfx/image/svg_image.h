@@ -20,7 +20,9 @@ namespace clay {
 
 class SVGImage : public BaseImage {
  public:
-  static std::shared_ptr<SVGImage> Make(const std::string& content);
+  static std::shared_ptr<SVGImage> Make(
+      fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
+      const std::string& content);
 
   explicit SVGImage(const std::string& content);
   fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {

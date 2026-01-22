@@ -11,9 +11,12 @@
 
 namespace clay {
 std::shared_ptr<StaticImage> StaticImage::Make(
+    fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
     std::shared_ptr<PlatformImage> platform_image) {
   auto image = std::shared_ptr<StaticImage>(new StaticImage);
   image->type_ = ImageType::kStatic;
+  image->image_fetcher_ = image_fetcher;
+  image->url_ = std::move(url);
   image->image_ = platform_image;
   return image;
 }

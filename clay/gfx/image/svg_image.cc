@@ -9,9 +9,13 @@
 #include "clay/gfx/skity_to_skia_utils.h"
 
 namespace clay {
-std::shared_ptr<SVGImage> SVGImage::Make(const std::string& content) {
+std::shared_ptr<SVGImage> SVGImage::Make(
+    fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
+    const std::string& content) {
   auto image = std::shared_ptr<SVGImage>(new SVGImage(content));
   image->type_ = ImageType::kSVG;
+  image->image_fetcher_ = image_fetcher;
+  image->url_ = std::move(url);
   return image;
 }
 

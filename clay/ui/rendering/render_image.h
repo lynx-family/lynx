@@ -54,10 +54,13 @@ class RenderImage : public RenderBox, public ImageResourceClient {
     return placeholder_resource_.get();
   }
 #else
-  void SetImage(std::shared_ptr<BaseImage> image);
-  BaseImage* GetImage() { return image_resource_.get(); }
-  void SetPlaceholderImage(std::shared_ptr<BaseImage> placeholder_resource);
-  BaseImage* GetPlaceholderImage() { return placeholder_resource_.get(); }
+  void SetImage(std::unique_ptr<BaseImageInstance> image);
+  BaseImageInstance* GetImage() { return image_resource_.get(); }
+  void SetPlaceholderImage(
+      std::unique_ptr<BaseImageInstance> placeholder_resource);
+  BaseImageInstance* GetPlaceholderImage() {
+    return placeholder_resource_.get();
+  }
 #endif  // ENABLE_SKITY
   void SetMode(FillMode mode);
   void SetEffect(ImageEffect effect);
@@ -124,7 +127,7 @@ class RenderImage : public RenderBox, public ImageResourceClient {
                            : placeholder_resource_.get();
   }
 #else
-  BaseImage* GetResourceForDisplay() {
+  BaseImageInstance* GetResourceForDisplay() {
     return image_resource_ ? image_resource_.get()
                            : placeholder_resource_.get();
   }
@@ -167,9 +170,9 @@ class RenderImage : public RenderBox, public ImageResourceClient {
   std::unique_ptr<ImageResource> pending_image_resource_;
   std::unique_ptr<ImageResource> placeholder_resource_;
 #else
-  std::shared_ptr<BaseImage> image_resource_;
-  std::shared_ptr<BaseImage> pending_image_resource_;
-  std::shared_ptr<BaseImage> placeholder_resource_;
+  std::unique_ptr<BaseImageInstance> image_resource_;
+  std::unique_ptr<BaseImageInstance> pending_image_resource_;
+  std::unique_ptr<BaseImageInstance> placeholder_resource_;
 #endif  // ENABLE_SKITY
 };
 

@@ -406,24 +406,24 @@ void RenderObject::SetMaskImage(size_t index,
   MarkNeedsPaint();
 }
 #else
-void RenderObject::SetBackgroundImage(size_t index,
-                                      std::shared_ptr<BaseImage> image) {
+void RenderObject::SetBackgroundImage(
+    size_t index, std::unique_ptr<BaseImageInstance> image) {
   if (!HasBackground() || index >= background_data_->images.size()) {
     return;
   }
   if (image) {
-    background_data_->images[index].SetImageResource(image);
+    background_data_->images[index].SetImageResource(std::move(image));
   }
   MarkNeedsPaint();
 }
 
 void RenderObject::SetMaskImage(size_t index,
-                                std::shared_ptr<BaseImage> image) {
+                                std::unique_ptr<BaseImageInstance> image) {
   if (!HasMask() || index >= mask_data_->images.size()) {
     return;
   }
   if (image) {
-    mask_data_->images[index].SetImageResource(image);
+    mask_data_->images[index].SetImageResource(std::move(image));
   }
   MarkNeedsPaint();
 }

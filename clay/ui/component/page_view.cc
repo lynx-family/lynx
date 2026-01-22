@@ -1619,7 +1619,8 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
   if (!image_resource_fetcher_) {
     FML_DCHECK(GetTaskRunner()->RunsTasksOnCurrentThread());
     image_resource_fetcher_ =
-        ImageFetcher::Create(GetTaskRunners(), unref_queue_);
+        ImageFetcher::Create(GetResourceLoaderIntercept(), GetTaskRunners(),
+                             unref_queue_, GetServiceManager());
   }
   return image_resource_fetcher_;
 }

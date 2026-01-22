@@ -287,8 +287,9 @@ class RenderObject : public AbstractNode {
                           std::unique_ptr<ImageResource> accessor);
   void SetMaskImage(size_t index, std::unique_ptr<ImageResource> accessor);
 #else
-  void SetBackgroundImage(size_t index, std::shared_ptr<BaseImage> image);
-  void SetMaskImage(size_t index, std::shared_ptr<BaseImage> image);
+  void SetBackgroundImage(size_t index,
+                          std::unique_ptr<BaseImageInstance> image);
+  void SetMaskImage(size_t index, std::unique_ptr<BaseImageInstance> image);
 #endif  // ENABLE_SKITY
   void SetBackgroundImage(size_t index, const Gradient& gradient);
   void SetBackgroundClip(const std::vector<ClayBackgroundClipType>& clips);

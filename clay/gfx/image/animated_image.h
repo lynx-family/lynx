@@ -6,6 +6,7 @@
 #define CLAY_GFX_IMAGE_ANIMATED_IMAGE_H_
 
 #include <memory>
+#include <string>
 
 #include "base/include/fml/time/timer.h"
 #include "clay/gfx/gpu_object.h"
@@ -16,6 +17,7 @@ namespace clay {
 class AnimatedImage : public BaseImage {
  public:
   static std::shared_ptr<AnimatedImage> Make(
+      fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
       fml::RefPtr<fml::TaskRunner> task_runner,
       std::shared_ptr<PlatformImage> image);
 
@@ -23,8 +25,6 @@ class AnimatedImage : public BaseImage {
     return gpu_image_.object();
   }
   void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) override;
-
-  void SetAnimationFrameCallback(std::function<void()> func);
 
   void SetAutoPlay(bool auto_play);
   void SetLoopCount(int loop_count);
@@ -37,11 +37,11 @@ class AnimatedImage : public BaseImage {
   AnimatedImage() = default;
 
   void NextFrame();
+  void OnNotifyAnimationFrame();
 
  private:
   std::unique_ptr<fml::OneshotTimer> frame_timer_;
   GPUObject<GraphicsImage> gpu_image_;
-  std::function<void()> animation_frame_callback_;
 };
 
 }  // namespace clay

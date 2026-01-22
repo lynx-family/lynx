@@ -37,7 +37,10 @@ if (enable_skity) {
   gfx_image_sources += [
     "animated_image.cc",
     "animated_image.h",
+    "base_image.cc",
     "base_image.h",
+    "base_image_instance.cc",
+    "base_image_instance.h",
     "graphics_image_skity.cc",
     "graphics_image_skity.h",
     "graphics_image_skity_lazy.cc",
