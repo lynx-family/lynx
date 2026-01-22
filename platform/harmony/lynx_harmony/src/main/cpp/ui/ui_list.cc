@@ -478,15 +478,24 @@ void UIList::ScrollToAsync(float delta_x, float delta_y) {
   if (!vm) {
     return;
   }
-  vm->AsyncRequestVSync(
-      [weak_this = weak_from_this(), delta_x, delta_y](int64_t, int64_t) {
+  // Note: Use async_delta_scroll_offset_ to record all delta scroll offsets in
+  // one vsync period, and invoke ScheduleVSyncSecondaryCallback to make sure
+  // every UIList object can receive one vsync call.
+  async_delta_offset_.first += delta_x;
+  async_delta_offset_.second += delta_y;
+  vm->ScheduleVSyncSecondaryCallback(
+      reinterpret_cast<uintptr_t>(this),
+      [weak_this = weak_from_this()](int64_t, int64_t) {
         auto shared_this = weak_this.lock();
         if (!shared_this) {
           return;
         }
         auto* list = static_cast<UIList*>(shared_this.get());
         auto offset = list->GetScrollOffset();
-        list->ScrollTo(offset.first + delta_x, offset.second + delta_y, false);
+        list->ScrollTo(offset.first + list->async_delta_offset_.first,
+                       offset.second + list->async_delta_offset_.second, false);
+        list->async_delta_offset_.first = 0.f;
+        list->async_delta_offset_.second = 0.f;
         list->UpdateStickyView();
       });
 }
