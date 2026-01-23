@@ -1003,6 +1003,10 @@ fml::RefPtr<FiberElement> ElementManager::StaticCreateFiberElement(
       element = fml::AdoptRef<ImageElement>(
           new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
       break;
+    case ELEMENT_INLINE_IMAGE:
+      element = fml::AdoptRef<ImageElement>(
+          new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
+      break;
     case ELEMENT_TEXT:
       element = fml::AdoptRef<TextElement>(
           new TextElement(nullptr, BASE_STATIC_STRING(kElementTextTag)));
