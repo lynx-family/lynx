@@ -287,7 +287,7 @@ jobs:
           build-params: -PIntegrationTest
 
   windows-explorer-build:
-    runs-on: lynx-windows-2022-large-verify
+    runs-on: lynx-windows-2022-large
     strategy:
       matrix:
         arch: [x86, x64]
