@@ -24,10 +24,6 @@ class TextAreaNGView : public WithTypeInfo<TextAreaNGView, BaseView>,
                MeasureResult& result) override;
   void SetBound(float left, float top, float width, float height) override;
 
-#ifdef ENABLE_ACCESSIBILITY
-  bool EnableAccessibilityElement() const override { return true; }
-#endif
-
   void ScheduleCaretOnScreen();
 
   void ResetGestureRecognizers();

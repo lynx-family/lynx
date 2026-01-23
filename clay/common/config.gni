@@ -20,8 +20,6 @@ declare_args() {
   # Include net lib compile
   use_net_loader = true
 
-  use_accessbility = false
-
   # Currently is used for benchmark tests on host platform.
   force_enable_trim_skia_for_test = false
 
@@ -66,6 +64,8 @@ declare_args() {
 
   # Whether use own binary icudtl.
   use_binary_icudtl = false
+
+  use_accessbility = (is_android || is_ios) && !enable_clay_lite
 }
 
 if (enable_skity) {

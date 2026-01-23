@@ -586,7 +586,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   // Whether enables a11y for this view.
   void SetAccessibilityElement(bool value);
   virtual bool IsAccessibilityElement() const;
-  virtual bool EnableAccessibilityElement() const { return false; }
   void SetAccessibilityLabel(const std::string& value);
   void SetAccessibilityElements(const std::string& value);
   void MarkRebuildSemanticsTree();

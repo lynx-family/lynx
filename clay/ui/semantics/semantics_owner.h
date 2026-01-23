@@ -75,7 +75,7 @@ class SemanticsOwner {
   // themselves and all descendants.
   std::unordered_set<BaseView*> semantics_nodes_to_update_descendants_;
   bool semantics_enabled_ = false;
-  bool page_enable_accessibility_element_ = true;
+  bool page_enable_accessibility_element_ = false;
   bool need_rebuild_semantics_tree_ = true;
 };
 

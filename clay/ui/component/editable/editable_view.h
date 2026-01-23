@@ -68,10 +68,6 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void Measure(const MeasureConstraint& constraint,
                MeasureResult& result) override;
 
-#ifdef ENABLE_ACCESSIBILITY
-  bool EnableAccessibilityElement() const override { return true; }
-#endif
-
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
 
   // TODO(yulitao): Style should be passed in or using theme manager.

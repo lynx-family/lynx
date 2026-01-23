@@ -29,10 +29,15 @@
 #include "clay/ui/common/background_data.h"
 #include "clay/ui/component/base_view_animation_mutator.h"
 #include "clay/ui/component/component_constants.h"
+#include "clay/ui/component/editable/editable_view.h"
+#include "clay/ui/component/editable/textarea_ng_view.h"
+#include "clay/ui/component/editable/textarea_view.h"
 #include "clay/ui/component/expose_manager/expose_observer.h"
 #include "clay/ui/component/inline_image_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/text/base_text_view.h"
+#include "clay/ui/component/text/raw_text_view.h"
 #include "clay/ui/component/text/unicode_util.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/event_utils.h"
@@ -3497,12 +3502,13 @@ bool BaseView::IsAccessibilityElement() const {
   }
   // Text and Image are not affected by lynx page config
   // `enableAccessibilityElement`.
-  if (EnableAccessibilityElement()) {
+  if (Is<BaseImageView>() || Is<BaseTextView>() || Is<EditableView>() ||
+      Is<TextAreaView>() || Is<TextAreaNGView>()) {
     return accessibility_element_.value_or(true);
   }
   // Only views created from lynx should be visible to a11y system.
   // RawTextView is also internal view but id is not -1.
-  if (IsInternalView() || !EnableAccessibilityElement()) {
+  if (IsInternalView() || Is<RawTextView>()) {
     return false;
   }
   return accessibility_element_.value_or(

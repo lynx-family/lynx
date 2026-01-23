@@ -67,10 +67,6 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
 
   void DidUpdateAttributes() override;
 
-#ifdef ENABLE_ACCESSIBILITY
-  bool EnableAccessibilityElement() const override { return true; }
-#endif
-
   void startAnimate();
   void stopAnimation();
   void pauseAnimation();

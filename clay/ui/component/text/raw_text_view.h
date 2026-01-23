@@ -16,10 +16,6 @@ class RawTextView : public WithTypeInfo<RawTextView, BaseView> {
 
   // avoid some text attribute send to base view
   void SetAttribute(const char* attr, const clay::Value& value) override {}
-
-#ifdef ENABLE_ACCESSIBILITY
-  bool EnableAccessibilityElement() const override { return false; }
-#endif
 };
 
 }  // namespace clay
