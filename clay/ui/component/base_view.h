@@ -734,6 +734,10 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
 
  private:
+  template <typename... Args>
+  void NotifyBgImageLoadStatus(bool success,
+                               const std::vector<std::string>& keys,
+                               Args&&... args);
   bool UpdateExposeAttrs(const char* attr, const clay::Value& value);
   void DirtyChildrenPaintingOrder() { sorted_children_.clear(); }
   void RebuildSortedChildrenIfNeeded();

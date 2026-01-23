@@ -84,6 +84,8 @@ extern const char* kEventImageLoadError;
 extern const char* kEventImageStartPlay;
 extern const char* kEventImageCurrentLoopComplete;
 extern const char* kEventImageFinalLoopComplete;
+extern const char* kEventBgImageLoadSuccess;
+extern const char* kEventBgImageLoadError;
 
 extern const char* kEventLottieStart;
 extern const char* kEventLottieComplete;

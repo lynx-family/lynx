@@ -1296,11 +1296,16 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
 #ifndef ENABLE_SKITY
   page_view_->GetImageResourceFetcher()->FetchImageAsync(
       uri,
-      [self = weak_factory_.GetWeakPtr(), index, background,
+      [self = weak_factory_.GetWeakPtr(), uri, index, background,
        bg_image_loader_token = bg_image_loader_token_,
        mask_image_loader_token = mask_image_loader_token_](
           std::unique_ptr<ImageResource> resource, bool hit_cache) {
         if (!resource || !self) {
+          if (!resource && background && self) {
+            self->NotifyBgImageLoadStatus(
+                false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
+                "resource load fail", uri, 0, 0);
+          }
           return;
         }
         if (self->GetCurrentImageLoaderToken() != bg_image_loader_token &&
@@ -1309,6 +1314,9 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
         }
 
         if (background) {
+          self->NotifyBgImageLoadStatus(true, {"height", "width", "url"},
+                                        resource->GetHeight(),
+                                        resource->GetWidth(), uri);
           self->render_object()->SetBackgroundImage(index, std::move(resource));
         } else {
           self->render_object()->SetMaskImage(index, std::move(resource));
@@ -1320,13 +1328,23 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
 #else
   page_view_->GetImageResourceFetcher()->FetchImage(
       uri, false,
-      [self = weak_factory_.GetWeakPtr(), index, background](
+      [self = weak_factory_.GetWeakPtr(), uri, index, background](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
         if (!image_instance || !self) {
+          if (!image_instance && background && self) {
+            self->NotifyBgImageLoadStatus(
+                false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
+                "resource load fail", uri, 0, 0);
+          }
           return;
         }
         auto image = image_instance->GetImage();
         if (!image) {
+          if (background && self) {
+            self->NotifyBgImageLoadStatus(
+                false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
+                "resource load fail", uri, 0, 0);
+          }
           return;
         }
         image_instance->SetAnimationFrameCallback([self]() {
@@ -1336,6 +1354,9 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
           self->render_object()->MarkNeedsPaint();
         });
         if (background) {
+          self->NotifyBgImageLoadStatus(true, {"height", "width", "url"},
+                                        image_instance->GetHeight(),
+                                        image_instance->GetWidth(), uri);
           self->render_object()->SetBackgroundImage(index,
                                                     std::move(image_instance));
         } else {
@@ -2796,6 +2817,19 @@ bool BaseView::HandleCommonAttribute(const char* attr,
       return false;
   }
   return true;
+}
+
+template <typename... Args>
+void BaseView::NotifyBgImageLoadStatus(bool success,
+                                       const std::vector<std::string>& keys,
+                                       Args&&... args) {
+  if (success && HasEvent(event_attr::kEventBgImageLoadSuccess)) {
+    page_view()->SendEvent(id(), event_attr::kEventBgImageLoadSuccess, keys,
+                           args...);
+  } else if (!success && HasEvent(event_attr::kEventBgImageLoadError)) {
+    page_view()->SendEvent(id(), event_attr::kEventBgImageLoadError, keys,
+                           args...);
+  }
 }
 
 bool BaseView::UpdateExposeAttrs(const char* attr, const clay::Value& value) {

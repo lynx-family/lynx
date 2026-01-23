@@ -76,6 +76,8 @@ const char* kEventImageLoadError = "error";
 const char* kEventImageStartPlay = "startplay";
 const char* kEventImageCurrentLoopComplete = "currentloopcomplete";
 const char* kEventImageFinalLoopComplete = "finalloopcomplete";
+const char* kEventBgImageLoadSuccess = "bgload";
+const char* kEventBgImageLoadError = "bgerror";
 
 const char* kEventLottieStart = "start";
 const char* kEventLottieComplete = "completion";
