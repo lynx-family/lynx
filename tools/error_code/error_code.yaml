@@ -653,6 +653,10 @@ sections:
             low-code: 8
             description: 'Error for duplicate list item-key.'
             fix-suggestion: 'Please check the legality of the item-key.'
+          - name: SetUpdateAnimationMultipleTimes
+            low-code: 9
+            description: 'Update-animation cant be set multiple times.'
+            fix-suggestion: 'Please check the usage of update animation'
       - name: Image
         description: 'Error from Image component'
         mid-code: 3
