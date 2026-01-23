@@ -37,6 +37,7 @@ enum ElementBuiltInTagEnum {
   ELEMENT_INLINE_TEXT,
   ELEMENT_X_INLINE_TEXT,
   ELEMENT_X_NESTED_SCROLL_VIEW,
+  ELEMENT_INLINE_IMAGE,
 };
 
 enum class ElementBuiltInAttributeEnum {
