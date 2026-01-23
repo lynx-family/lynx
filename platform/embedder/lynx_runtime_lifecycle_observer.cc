@@ -1,7 +1,6 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "lynx_runtime_lifecycle_observer_priv.h"
 #include "platform/embedder/lynx_runtime_lifecycle_observer_priv.h"
 #include "third_party/napi/include/napi.h"
 
@@ -68,11 +67,13 @@ LynxRuntimeLifecycleListenerDelegate::LynxRuntimeLifecycleListenerDelegate()
       env_holder_(std::make_shared<NapiEnvHolder>()) {}
 
 LynxRuntimeLifecycleListenerDelegate::LynxRuntimeLifecycleListenerDelegate(
-    lynx_runtime_lifecycle_observer_t* observer)
+    lynx_runtime_lifecycle_observer_t* observer,
+    std::function<void(napi_env env)> on_attach_callback)
     : RuntimeLifecycleListenerDelegate(
           RuntimeLifecycleListenerDelegate::DelegateType::FULL),
       observer_(observer),
-      env_holder_(std::make_shared<NapiEnvHolder>()) {
+      env_holder_(std::make_shared<NapiEnvHolder>()),
+      on_attach_callback_(on_attach_callback) {
   if (observer_) {
     // Ref the observer.
     observer_->AddRef();
@@ -99,6 +100,9 @@ void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(Napi::Env env) {
   env_holder_->OnRuntimeAttach(env);
   if (observer_ && observer_->attach_callback) {
     observer_->attach_callback(observer_, env);
+  }
+  if (on_attach_callback_) {
+    on_attach_callback_(env);
   }
 }
 

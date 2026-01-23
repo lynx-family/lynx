@@ -52,7 +52,8 @@ class LynxRuntimeLifecycleListenerDelegate
  public:
   LynxRuntimeLifecycleListenerDelegate();
   explicit LynxRuntimeLifecycleListenerDelegate(
-      lynx_runtime_lifecycle_observer_t* observer);
+      lynx_runtime_lifecycle_observer_t* observer,
+      std::function<void(napi_env env)> on_attach_callback = nullptr);
 
   ~LynxRuntimeLifecycleListenerDelegate() override;
 
@@ -69,6 +70,7 @@ class LynxRuntimeLifecycleListenerDelegate
  private:
   lynx_runtime_lifecycle_observer_t* observer_ = nullptr;
   std::shared_ptr<NapiEnvHolder> env_holder_;
+  std::function<void(napi_env env)> on_attach_callback_ = nullptr;
 };
 
 }  // namespace embedder
