@@ -9,7 +9,8 @@
 
 #include "core/renderer/ui_component/list/list_container_impl.h"
 
-namespace lynx::tasm {
+namespace lynx {
+namespace tasm {
 
 ListContainerAnimationManager::ListContainerAnimationManager(
     ListContainerImpl* container)
@@ -22,7 +23,7 @@ ListContainerAnimationManager::~ListContainerAnimationManager() {
 }
 
 bool ListContainerAnimationManager::UpdateAnimation() const {
-  return update_animation_;
+  return update_animation_.value_or(false);
 }
 
 void ListContainerAnimationManager::DeferredDestroyItemHolder(
@@ -37,14 +38,6 @@ void ListContainerAnimationManager::RecycleItemHolder(ItemHolder* holder) {
 
 void ListContainerAnimationManager::UpdateDiffResult(
     list::ListAdapterDiffResult result) {
-  if (result == list::ListAdapterDiffResult::kNone) {
-    return;
-  }
-
-  if (animator_ && animator_->IsRunning()) {
-    animator_->Stop();
-  }
-
   if (result == (list::ListAdapterDiffResult::kRemove |
                  list::ListAdapterDiffResult::kUpdate)) {
     animation_type_ = list::ListContainerAnimationType::kRemove;
@@ -55,24 +48,29 @@ void ListContainerAnimationManager::UpdateDiffResult(
   } else {
     animation_type_ = list::ListContainerAnimationType::kUpdate;
   }
+}
 
-  if (!animator_) {
-    InitializeAnimator();
-    animator_->RegisterCustomCallback(
-        [weak_ptr = weak_factory_.GetWeakPtr()](float progress) {
-          if (auto ptr = weak_ptr.get()) {
-            ptr->DoAnimationFrame(progress);
-          }
-        });
-    animator_->RegisterEventCallback(
-        [weak_ptr = weak_factory_.GetWeakPtr()]() {
-          if (auto ptr = weak_ptr.get()) {
-            ptr->EndAnimation();
-          }
-        },
-        animation::basic::Animation::EventType::End);
+void ListContainerAnimationManager::OnLayoutChildren() {
+  if (update_animation_ &&
+      AnimationType() != list::ListContainerAnimationType::kNone) {
+    if (!animator_) {
+      InitializeAnimator();
+      animator_->RegisterCustomCallback(
+          [weak_ptr = weak_factory_.GetWeakPtr()](float progress) {
+            if (auto ptr = weak_ptr.get()) {
+              ptr->DoAnimationFrame(progress);
+            }
+          });
+      animator_->RegisterEventCallback(
+          [weak_ptr = weak_factory_.GetWeakPtr()]() {
+            if (auto ptr = weak_ptr.get()) {
+              ptr->EndAnimation();
+            }
+          },
+          animation::basic::Animation::EventType::End);
+    }
+    animator_->Start();
   }
-  animator_->Start();
 }
 
 void ListContainerAnimationManager::InitializeAnimator() {
@@ -130,11 +128,15 @@ void ListContainerAnimationManager::EndAnimation() {
 }
 
 void ListContainerAnimationManager::SetUpdateAnimation(bool update_animation) {
-  if (update_animation_ && !update_animation && animator_ &&
-      animator_->IsRunning()) {
-    animator_->Stop();
+  if (!update_animation_.has_value()) {
+    update_animation_ = update_animation;
+  } else {
+    list_container_impl_->list_adapter_->OnErrorOccurred(base::LynxError(
+        lynx::error::E_COMPONENT_LIST_SET_UPDATE_ANIMATION_MULTIPLE_TIMES,
+        "Update-animation cannot be set multiple times."));
   }
-  update_animation_ = update_animation;
 }
 
-}  // namespace lynx::tasm
+}  // namespace tasm
+
+}  // namespace lynx

@@ -64,7 +64,9 @@ void LynxBasicAnimator::InitializeAnimator() {
 };
 
 bool LynxBasicAnimator::IsRunning() const {
-  return animation_ && animation_->GetState() == basic::Animation::State::kPlay;
+  return animation_ &&
+         animation_->play_state() == basic::Animation::PlayState::RUNNING;
+  ;
 }
 
 void LynxBasicAnimator::RegisterEventCallback(

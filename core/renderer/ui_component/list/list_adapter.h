@@ -139,11 +139,9 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   virtual void RecycleItemHolder(const ItemHolder* item_holder) {}
 
-  // Return diff result and whether to use animation in this diff process,
-  // animation will not be enabled in first screen.
-  std::pair<list::ListAdapterDiffResult, bool> UpdateDataSource(
-      const lepus::Value& data_source);
-  std::pair<list::ListAdapterDiffResult, bool> UpdateFiberDataSource(
+  list::ListAdapterDiffResult UpdateDataSource(const lepus::Value& data_source);
+
+  list::ListAdapterDiffResult UpdateFiberDataSource(
       const lepus::Value& data_source);
 
   void UpdateListContainerDataSource(
@@ -209,8 +207,6 @@ class ListAdapter : public AdapterHelper::Delegate {
   void MarkChildHolderDirty();
 
   void CheckSticky(ItemHolder* item_holder, int32_t index);
-
-  bool HasExpectedDiffAnimation() const;
 
  protected:
   Element* list_element_{nullptr};

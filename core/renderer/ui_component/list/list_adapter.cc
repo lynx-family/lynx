@@ -37,7 +37,7 @@ void ListAdapter::OnErrorOccurred(lynx::base::LynxError error) {
 }
 
 // Update data source for radon diff arch.
-std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateDataSource(
+list::ListAdapterDiffResult ListAdapter::UpdateDataSource(
     const lepus::Value& data_source) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_DATA_SOURCE);
   bool has_updated = false;
@@ -158,15 +158,15 @@ std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateDataSource(
       result |= list::ListAdapterDiffResult::kMove;
     }
   }
-  return {result, HasExpectedDiffAnimation()};
+  return result;
 }
 
 // Update data source for fiber arch.
-std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateFiberDataSource(
+list::ListAdapterDiffResult ListAdapter::UpdateFiberDataSource(
     const lepus::Value& data) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_FIVER_DATA_SOURCE);
   if (!data.IsTable()) {
-    return {list::ListAdapterDiffResult::kNone, false};
+    return list::ListAdapterDiffResult::kNone;
   }
   const auto& insert_action =
       data.GetProperty(BASE_STATIC_STRING(list::kFiberInsertAction));
@@ -208,20 +208,10 @@ std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateFiberDataSource(
         !adapter_helper_->move_to().empty()) {
       result |= list::ListAdapterDiffResult::kMove;
     }
-    return {result, HasExpectedDiffAnimation()};
+    return result;
   } else {
-    return {list::ListAdapterDiffResult::kNone, false};
+    return list::ListAdapterDiffResult::kNone;
   }
-}
-
-bool ListAdapter::HasExpectedDiffAnimation() const {
-  return !(adapter_helper_->insertions().size() ==
-               adapter_helper_->item_keys().size() &&
-           adapter_helper_->update_from().empty() &&
-           adapter_helper_->update_to().empty() &&
-           adapter_helper_->move_from().empty() &&
-           adapter_helper_->move_to().empty() &&
-           adapter_helper_->removals().empty());
 }
 
 void ListAdapter::UpdateListContainerDataSource(
