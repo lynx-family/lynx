@@ -107,9 +107,9 @@ runs:
       working-directory: lynx
       run: |
         if ([string]::IsNullOrEmpty("${{ inputs.target }}")) {
-            powershell.exe -File .\tools\hab.ps1 sync .
+            powershell.exe -Command "& .\tools\hab.ps1 sync ."
         } else {
-            powershell.exe -File .\tools\hab.ps1 sync . --target ${{ inputs.target }}
+            powershell.exe -Command "& .\tools\hab.ps1 sync . --target ${{ inputs.target }}"
         }
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
