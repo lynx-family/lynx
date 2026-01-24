@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "platform/embedder/plugin/cef/src/cef_webview.h"
+#include "platform/embedder/plugin/cef/src/cef_webview_constants.h"
+#include "platform/embedder/public/capi/lynx_log_capi.h"
 
 static const int kOpenDevtoolCommandID = 1001;
 static const char kOpenDevToolsText[] = "Open DevTools";
@@ -25,6 +27,8 @@ bool CEFWebviewClient::OnProcessMessageReceived(
 void CEFWebviewClient::OnFrameCreated(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame) {
   if (!webview_ || !webview_->browser_) {
+    LYNX_CAPI_LOG(LYNX_LOG_ERROR, LOG_TAG,
+                  "OnFrameCreated but webview or browser instance is null");
     return;
   }
   std::string js =
@@ -98,6 +102,7 @@ bool CEFWebviewClient::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
 }
 
 bool CEFWebviewClient::DoClose(CefRefPtr<CefBrowser> browser) {
+  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "DoClose");
   if (webview_) {
     webview_->SetClosing(true);
   }
@@ -123,12 +128,17 @@ void CEFWebviewClient::OnLoadEnd(CefRefPtr<CefBrowser> browser,
                                  CefRefPtr<CefFrame> frame,
                                  int httpStatusCode) {
   if (!webview_) {
+    LYNX_CAPI_LOG(LYNX_LOG_ERROR, LOG_TAG,
+                  "OnLoadEnd but webview instance is null");
     return;
   }
   if (httpStatusCode == 200 && frame->IsMain() && !loaded_) {
     loaded_ = true;
     webview_->TriggerEvent(
         "load", lynx::pub::LynxValue(lynx::pub::LynxValue::kCreateAsNullTag));
+  } else {
+    LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "OnLoadEnd status code: %d",
+                  httpStatusCode);
   }
 }
 
@@ -138,8 +148,14 @@ void CEFWebviewClient::OnLoadError(CefRefPtr<CefBrowser> browser,
                                    const CefString& errorText,
                                    const CefString& failedUrl) {
   if (!webview_) {
+    LYNX_CAPI_LOG(LYNX_LOG_ERROR, LOG_TAG,
+                  "OnLoadError but webview instance is null");
     return;
   }
+  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG,
+                "OnLoadError: error code: %d, error text:%s, failed url:%s",
+                static_cast<int>(errorCode), errorText.ToString().c_str(),
+                failedUrl.ToString().c_str());
   lynx::pub::LynxValue detail(lynx::pub::LynxValue::kCreateAsMapTag);
   detail.SetProperty("errorCode", lynx::pub::LynxValue(int(errorCode)));
   detail.SetProperty("errorMsg", lynx::pub::LynxValue(errorText.ToString()));
@@ -150,6 +166,7 @@ void CEFWebviewClient::OnLoadError(CefRefPtr<CefBrowser> browser,
 void CEFWebviewClient::OnRenderProcessTerminated(
     CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status,
     int error_code, const CefString& error_string) {
+  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "OnRenderProcessTerminated");
   message_router_->OnRenderProcessTerminated(browser);
 }
 
@@ -160,6 +177,7 @@ bool CEFWebviewClient::OnQuery(CefRefPtr<CefBrowser> browser,
   if (!webview_) {
     return false;
   }
+  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "OnQuery");
   const std::string& message = request;
   if (message.size() > 8 && memcmp(message.c_str(), "LyNxSig_", 8) == 0) {
     lynx::pub::LynxValue detail(lynx::pub::LynxValue::kCreateAsMapTag);

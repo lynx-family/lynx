@@ -5,7 +5,9 @@
 #include "platform/embedder/plugin/cef/src/macos/CEFWebviewMac.h"
 
 #include "include/cef_app.h"
+#include "platform/embedder/plugin/cef/src/cef_webview_constants.h"
 #include "platform/embedder/plugin/cef/src/macos/CEFWebviewClientMac.h"
+#include "platform/embedder/public/capi/lynx_log_capi.h"
 
 namespace lynx {
 namespace plugin {
@@ -38,6 +40,7 @@ void CEFWebviewMac::OnDetach() {
 }
 
 void CEFWebviewMac::OnDestroy() {
+  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "OnDestroy");
   if (browser_) {
     CefRefPtr<CefBrowserHost> host = browser_->GetHost();
     host->CloseBrowser(true);

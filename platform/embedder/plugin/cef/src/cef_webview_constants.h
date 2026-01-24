@@ -5,10 +5,6 @@
 #ifndef PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_CEF_WEBVIEW_CONSTANTS_H_
 #define PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_CEF_WEBVIEW_CONSTANTS_H_
 
-namespace lynx {
-namespace plugin {
-namespace embedder {
-
 // Cookie property names
 static const char kCookieDomain[] = "domain";
 static const char kCookieExpirationDate[] = "expirationDate";
@@ -46,10 +42,9 @@ static const char kMethodReload[] = "reload";
 // JavaScript execution context
 static const char kJsExecutionContext[] = "<host>";
 
-static const char LOG_TAG[] = "cef-x-webview"
-
-}  // namespace embedder
-}  // namespace plugin
-}  // namespace lynx
+// Log
+static constexpr const char* LOG_TAG = "cef-x-webview";
+// Trace
+static constexpr const char* CEF_TRACE_CATEGORY = "cef";
 
 #endif  // PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_CEF_WEBVIEW_CONSTANTS_H_

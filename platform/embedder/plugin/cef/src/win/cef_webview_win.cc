@@ -9,8 +9,10 @@
 
 #include <set>
 
+#include "platform/embedder/plugin/cef/src/cef_webview_constants.h"
 #include "platform/embedder/plugin/cef/src/win/cef_webview_client_win.h"
 #include "platform/embedder/plugin/cef/src/win/dpi_utils_win32.h"
+#include "platform/embedder/public/capi/lynx_log_capi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 
 #ifndef GWL_HWNDPARENT
@@ -80,6 +82,7 @@ void CEFWebviewWin::OnDetach() {
 }
 
 void CEFWebviewWin::OnDestroy() {
+  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "OnDestroy");
   if (browser_) {
     CefRefPtr<CefBrowserHost> host = browser_->GetHost();
     if (hwnd_) {

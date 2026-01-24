@@ -221,6 +221,7 @@ void CEFWebview::OnPropertiesChanged(const lynx::pub::LynxValue& attrs,
   }
   if (attrs.HasProperty(kPropertyUseOsr)) {
     use_osr_ = attrs.GetProperty(kPropertyUseOsr).Bool();
+    LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG, "set use-osr %d", use_osr_);
   }
   if (attrs.HasProperty(kPropertyMaxFps)) {
     fps_ = attrs.GetProperty(kPropertyMaxFps).Int32();
