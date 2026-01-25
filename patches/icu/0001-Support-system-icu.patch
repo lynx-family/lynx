@@ -1,7 +1,7 @@
-From 0ce36971d00a0acc2df1d09a044b29c30a20948a Mon Sep 17 00:00:00 2001
+From f9cc652cc2bb83c1ee184ef78809d8cbc1a2dc0b Mon Sep 17 00:00:00 2001
 From: tangyongjie <80395553+yongjieTang@users.noreply.github.com>
 Date: Wed, 5 Nov 2025 19:33:47 +0800
-Subject: [PATCH] [Feature] Support system icu.
+Subject: [PATCH] Support system icu.
 
 ---
  BUILD.gn               |  18 +-
@@ -12,7 +12,7 @@ Subject: [PATCH] [Feature] Support system icu.
  create mode 100644 android/system_icu.cpp
 
 diff --git a/BUILD.gn b/BUILD.gn
-index dad59595..37bc6d4b 100644
+index dad5959..37bc6d4 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -68,6 +68,10 @@ config("icu_config") {
@@ -70,7 +70,7 @@ index dad59595..37bc6d4b 100644
    data_dir = "chromeos"
 diff --git a/android/system_icu.cpp b/android/system_icu.cpp
 new file mode 100644
-index 00000000..75575150
+index 0000000..e6e45bd
 --- /dev/null
 +++ b/android/system_icu.cpp
 @@ -0,0 +1,416 @@
@@ -474,7 +474,7 @@ index 00000000..75575150
 +  return __verify_icu();
 +}
 +
-+extern "C" void init_system_icu(void *(*dlopen2)(const char *, int),
++__attribute__((visibility("default"))) extern "C" void init_system_icu(void *(*dlopen2)(const char *, int),
 +                                void *(*dlsym2)(void *, const char *)) {
 +  char sdk_version_string[PROP_VALUE_MAX];
 +  if (!__system_property_get("ro.build.version.sdk", sdk_version_string)) {
@@ -491,7 +491,7 @@ index 00000000..75575150
 +  __resolve_libicuuc(dlopen2, dlsym2);
 +}
 diff --git a/config.gni b/config.gni
-index 52630042..12c693ff 100644
+index 5263004..12c693f 100644
 --- a/config.gni
 +++ b/config.gni
 @@ -23,6 +23,9 @@ if (defined(is_fuchsia_tree) && is_fuchsia_tree) {
@@ -505,7 +505,7 @@ index 52630042..12c693ff 100644
      # the ICU data files content.  The setting has effect only when building
      # inside the Fuchsia source tree.
 diff --git a/sources.gni b/sources.gni
-index ba7c67ab..211073db 100644
+index ba7c67a..211073d 100644
 --- a/sources.gni
 +++ b/sources.gni
 @@ -1,9 +1,13 @@
@@ -549,5 +549,5 @@ index ba7c67ab..211073db 100644
  # ls  source/common/unicode/*h | sort | sed 's/^\(.*\)$/  "\1",/'
  icuuc_public = [
 -- 
-2.50.1 (Apple Git-155)
+2.39.5 (Apple Git-154)
 
