@@ -92,6 +92,8 @@ ElementManager::ElementManager(
   fix_radon_inline_convert_bug_ =
       LynxEnv::GetInstance().FixRadonInlineConvertBug();
   fix_new_fixed_removal_bug_ = LynxEnv::GetInstance().FixNewFixedRemovalBug();
+  disable_list_callback_if_detached_ =
+      LynxEnv::GetInstance().DisableListCallbackIfDetached();
   if (platform_layout_context_) {
     layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());
