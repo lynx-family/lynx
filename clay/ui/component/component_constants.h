@@ -112,7 +112,7 @@ extern const char* kEventVideoLoadedMetadata;
 extern const char* kEventVideoPlaying;
 extern const char* kEventVideoWaiting;
 extern const char* kEventVideoLoadStateChange;
-extern const char* kEventVideoPlaybackStateChange;
+extern const char* kEventVideoPlaybackStateChanged;
 extern const char* kEventVideoAbort;
 extern const char* kEventVideoCanplayThrough;
 extern const char* kEventVideoDurationChange;
