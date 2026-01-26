@@ -1061,7 +1061,9 @@ class Element : public lepus::RefCounted,
   base::auto_create_optional<StyleMap> updated_inherited_styles_;
   base::auto_create_optional<base::Vector<tasm::CSSPropertyID>>
       reset_inherited_ids_;
-  base::auto_create_optional<CustomPropertiesMap> custom_properties_;
+
+  CustomPropertiesMapRef custom_properties_;
+
   base::auto_create_optional<
       base::LinearFlatMap<tasm::CSSPropertyID, std::pair<CSSValue, IsLogic>>>
       pending_updated_direction_related_styles_;
