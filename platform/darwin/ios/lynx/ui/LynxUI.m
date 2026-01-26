@@ -3403,7 +3403,10 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
         siblingPoint = [sibling getHitTestPoint:originPoint];
       }
       target = [sibling hitTest:siblingPoint withEvent:event];
-      if (target) {
+      if (!target || [target pointerEvents] == kLynxPointerEventsValueNone) {
+        target = nil;
+        continue;
+      } else {
         break;
       }
     }
