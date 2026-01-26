@@ -2972,7 +2972,6 @@ void BaseView::takeScreenshot(const LynxModuleValues& args,
   // 6. Convert to base64 and return it to the Frontend.
   BaseView* node = this;
   node->SetRepaintBoundary(true);
-#ifndef ENABLE_SKITY
   bool compress_jpeg = format == "jpeg";
   page_view_->MakeRasterSnapshot(
       node, compress_jpeg, scale,
@@ -2981,10 +2980,17 @@ void BaseView::takeScreenshot(const LynxModuleValues& args,
           callback(LynxUIMethodResult::kOperationError, clay::Value());
           return;
         }
+#ifndef ENABLE_SKITY
         size_t length =
             fml::Base64::Encode(data->data(), data->size(), nullptr);
         std::vector<char> base64_data(length);
         fml::Base64::Encode(data->data(), data->size(), base64_data.data());
+#else
+        size_t length =
+            fml::Base64::Encode(data->RawData(), data->Size(), nullptr);
+        std::vector<char> base64_data(length);
+        fml::Base64::Encode(data->RawData(), data->Size(), base64_data.data());
+#endif  // ENABLE_SKITY
         std::string result_data(compress_jpeg ? "data:image/jpeg;base64,"
                                               : "data:image/png;base64,");
         result_data.append(base64_data.begin(), base64_data.end());
@@ -2994,7 +3000,6 @@ void BaseView::takeScreenshot(const LynxModuleValues& args,
         map["data"] = clay::Value(result_data);
         callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(map)));
       });
-#endif  // ENABLE_SKITY
 }
 
 void BaseView::ScrollToFocus() {

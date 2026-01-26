@@ -1736,7 +1736,6 @@ void PageView::MoveWindow() {
 void PageView::MakeRasterSnapshot(
     BaseView* target, bool compress_jpeg, float scale,
     std::function<void(GrDataPtr, int32_t, int32_t)> callback) {
-#ifndef ENABLE_SKITY
   if (!render_delegate_) {
     callback(nullptr, 0, 0);
     return;
@@ -1795,7 +1794,8 @@ void PageView::MakeRasterSnapshot(
           callback(nullptr, 0, 0);
           return;
         }
-        // The image must be CPU-backed.
+    // The image must be CPU-backed.
+#ifndef ENABLE_SKITY
         FML_DCHECK(!image->isTextureBacked());
         GrDataPtr gr_data = nullptr;
         // The scale factor has already been applied to the image with transform
@@ -1809,14 +1809,22 @@ void PageView::MakeRasterSnapshot(
           gr_data = SkPngEncoder::Encode(nullptr, image.get(), options);
         }
         callback(gr_data, image->width(), image->height());
-      });
 #else
-  // TODO: The jpeg/png encoder is not supported on Skity by default for
-  // binary size, so we have no need to call MakeRasterSnapshot now, should be
-  // implemented in future.
-  FML_UNIMPLEMENTED();
-  callback(nullptr, 0, 0);
+        FML_DCHECK(!image->IsTextureBackend());
+        GrDataPtr gr_data = nullptr;
+        // The scale factor has already been applied to the image with transform
+        // layer, so we don't need to scale the image here again. Just compress
+        // the image to png or jpeg format.
+        auto codec = compress_jpeg ? skity::Codec::MakeJPEGCodec()
+                                   : skity::Codec::MakePngCodec();
+        if (!codec) {
+          callback(nullptr, 0, 0);
+        } else {
+          gr_data = codec->Encode(image->GetPixmap()->get());
+          callback(gr_data, image->Width(), image->Height());
+        }
 #endif  // ENABLE_SKITY
+      });
 }
 
 fml::RefPtr<PaintImage> PageView::MakeRasterSnapshot(GrPicturePtr picture,
