@@ -3190,7 +3190,9 @@ public abstract class LynxBaseUI
 
       EventTarget hitTarget =
           performHitTestOnSibling(sibling, originX, originY, ignoreUserInteraction);
-      if (hitTarget != null) {
+      if (hitTarget == null || hitTarget.pointerEvents() == PointerEventsValue.None) {
+        continue;
+      } else {
         return hitTarget;
       }
     }
