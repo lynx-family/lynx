@@ -29,32 +29,43 @@ public interface ILynxTextService extends IServiceProvider {
    * @param api native object pointer of TextLayoutAPI
    */
   void destroyTextLayoutAPI(long api);
-  /**
-   * Draw page on a canvas
-   *
-   * @param page native object pointer of Page
-   * @param canvas Android canvas
-   */
-  void drawPageOnCanvas(long page, Canvas canvas);
-  /**
-   * Get char index from touch position
-   *
-   * @param page native object pointer of Page
-   * @param touchX touch position x
-   * @param touchY touch position y
-   * @return index of char on the touch position
-   */
-  int getSelectionCharIndex(long page, float touchX, float touchY);
 
   /**
-   * Get selection rects by char range
-   *
+   * create a page object from native Page
    * @param page native object pointer of Page
-   * @param start char index of the start touch position
-   * @param end char index of the end touch position
-   * @return rect array for each selection line,
-   *         every four float value in the returned array represent to a rect of line,
-   *         which packed to [left, top, width, height] format.
+   * @return platform Page object
    */
-  float[] getSelectionRects(long page, int start, int end);
+  Page createPage(long page);
+
+  public interface Page {
+    /**
+     * Draw page on a canvas
+     *
+     * @param canvas Android canvas
+     */
+    void drawPageCanvas(Canvas canvas);
+    /**
+     * Get char index from touch position
+     *
+     * @param touchX touch position x
+     * @param touchY touch position y
+     * @return index of char on the touch position
+     */
+    int getSelectionCharIndex(float touchX, float touchY);
+    /**
+     * Get selection rects by char range
+     *
+     * @param start char index of the start touch position
+     * @param end char index of the end touch position
+     * @return rect array for each selection line,
+     *         every four float value in the returned array represent to a rect of line,
+     *         which packed to [left, top, width, height] format.
+     */
+    float[] getSelectionRects(int start, int end);
+
+    /**
+     * destroy native page
+     */
+    void destroy();
+  }
 }

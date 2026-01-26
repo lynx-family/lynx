@@ -2563,9 +2563,7 @@ public interface com::lynx::tasm::service::ILynxTextService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxTextService.getServiceClass();
   public long com.lynx.tasm.service.ILynxTextService.createTextLayoutAPI(Object context);
   public void com.lynx.tasm.service.ILynxTextService.destroyTextLayoutAPI(long api);
-  public void com.lynx.tasm.service.ILynxTextService.drawPageOnCanvas(long page, Canvas canvas);
-  public int com.lynx.tasm.service.ILynxTextService.getSelectionCharIndex(long page, float touchX, float touchY);
-  public float[] com.lynx.tasm.service.ILynxTextService.getSelectionRects(long page, int start, int end);
+  public Page com.lynx.tasm.service.ILynxTextService.createPage(long page);
 }
 
 public interface com::lynx::tasm::service::ILynxTraceService {
@@ -8002,6 +8000,13 @@ public interface com::lynx::tasm::behavior::StyleConstants::OverflowType {
 public interface com::lynx::devtoolwrapper::OverlayService {
   public ArrayList< Dialog > com.lynx.devtoolwrapper.OverlayService.getGlobalOverlayView();
   public ArrayList< Integer > com.lynx.devtoolwrapper.OverlayService.getAllVisibleOverlaySign();
+}
+
+public interface com::lynx::tasm::service::ILynxTextService::Page {
+  public void com.lynx.tasm.service.ILynxTextService.Page.drawPageCanvas(Canvas canvas);
+  public int com.lynx.tasm.service.ILynxTextService.Page.getSelectionCharIndex(float touchX, float touchY);
+  public float[] com.lynx.tasm.service.ILynxTextService.Page.getSelectionRects(int start, int end);
+  public void com.lynx.tasm.service.ILynxTextService.Page.destroy();
 }
 
 public class com::lynx::tasm::PageConfig :  {
