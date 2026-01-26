@@ -6,6 +6,7 @@
 #include "base/include/debug/lynx_error.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
@@ -17,11 +18,15 @@
 namespace lynx {
 namespace tasm {
 
-NativePaintingCtxDarwin::NativePaintingCtxDarwin(UIView<LUIBodyView> *body_view)
+NativePaintingCtxDarwin::NativePaintingCtxDarwin(UIView<LUIBodyView> *body_view, void *textra)
     : context_(std::make_unique<PlatformRendererContextDarwin>(body_view)) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
       std::make_unique<PlatformRendererDarwinFactory>(context_.get()));
-  text_layout_impl_ = std::make_unique<TextLayoutDarwin>(nil, nil);
+  if (textra != 0) {
+    text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
+  } else {
+    text_layout_impl_ = std::make_unique<TextLayoutDarwin>(nil, nil);
+  }
 }
 
 std::unique_ptr<pub::Value> NativePaintingCtxDarwin::GetTextInfo(const std::string &content,

@@ -11,6 +11,8 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
@@ -46,12 +48,23 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   LAYOUT_BOTTOM,
 };
 
+static id<LynxServiceTextProtocol> getTextService() {
+  static id<LynxServiceTextProtocol> sService = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    sService = LynxService(LynxServiceTextProtocol);
+  });
+  return sService;
+}
+
 @implementation LynxUIRenderer {
   __weak UIView<LUIBodyView> *_containerView;
   __weak LynxContext *_lynxContext;
   LynxProviderRegistry *_providerRegistry;
   std::unique_ptr<lynx::tasm::UIDelegate> ui_delegate_;
   LynxUIOwner *_uiOwner;
+
+  void *_textra;
 
   LynxEventHandler *_eventHandler;
   LynxEventEmitter *_eventEmitter;
@@ -70,6 +83,7 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
     _lynxContext = context;
     _containerView = containerView;
     _providerRegistry = providerRegistry;
+    _textra = 0;
     _enableGenericResourceLoader =
         [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
     [self setupUIOwnerWithBuilder:builder];
@@ -136,8 +150,14 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
 }
 
 - (void)setupUIDelegate:(LynxShadowNodeOwner *)owner {
+  id<LynxServiceTextProtocol> textService =
+      (_lynxContext.isLayoutInElementModeOn && _lynxContext.isTextServiceModeOn) ? getTextService()
+                                                                                 : nil;
+  if (textService != nil) {
+    _textra = [textService createTextLayoutAPIFromContext:_uiOwner];
+  }
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateDarwin>(
-      _uiOwner, _lynxContext.isFragmentLayerRenderOn,
+      _uiOwner, _lynxContext.isFragmentLayerRenderOn, _textra,
       [[LynxEnv sharedInstance] enableCreateUIAsync], owner);
 }
 
@@ -302,6 +322,10 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
 
 - (void)reset {
   [_uiOwner reset];
+
+  if (getTextService() != nil && _textra) {
+    [getTextService() destroyTextLayoutAPI:_textra];
+  }
 }
 
 - (LynxGestureArenaManager *)getGestureArenaManager {

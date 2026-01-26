@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXT_LAYOUT_API_H_
-#define CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXT_LAYOUT_API_H_
+#ifndef CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_API_H_
+#define CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_API_H_
 #include <cstdint>
 #include <memory>
 
@@ -67,4 +67,4 @@ class TextLayoutAPI {
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXT_LAYOUT_API_H_
+#endif  // CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_API_H_

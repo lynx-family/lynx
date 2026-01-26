@@ -67,7 +67,8 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
 
 class PaintingContextDarwin : public PaintingCtxPlatformImpl {
  public:
-  PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async);
+  PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async,
+                        void* textra_ = nullptr);
   ~PaintingContextDarwin() override;
   virtual void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override;

@@ -24,6 +24,7 @@
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/utils/android/text_utils_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/runtime/js/bindings/modules/android/method_invoker.h"
@@ -58,10 +59,10 @@ void InvokeCallback(JNIEnv* env, jobject jcaller, jlong context, jint callback,
 
 jlong CreatePaintingContext(JNIEnv* env, jobject jcaller,
                             jobject painting_context, jobject text_layout,
-                            jint thread_strategy,
+                            jlong textra, jint thread_strategy,
                             jboolean enable_context_free) {
   return reinterpret_cast<jlong>(new lynx::tasm::PaintingContextAndroid(
-      env, painting_context, text_layout, thread_strategy,
+      env, painting_context, text_layout, textra, thread_strategy,
       enable_context_free));
 }
 
@@ -382,6 +383,7 @@ void PaintingContextAndroid::ConsumeGesture(int64_t idx, int32_t gesture_id,
 
 PaintingContextAndroid::PaintingContextAndroid(JNIEnv* env, jobject impl,
                                                jobject text_layout,
+                                               jlong textra,
                                                jint thread_strategy,
                                                bool enable_context_free)
     : impl_(std::make_shared<base::android::ScopedWeakGlobalJavaRef<jobject>>(
@@ -390,7 +392,10 @@ PaintingContextAndroid::PaintingContextAndroid(JNIEnv* env, jobject impl,
       enable_context_free_(enable_context_free) {
   platform_ref_ = std::make_shared<PaintingContextAndroidRef>(env, impl);
   // layout in element
-  if (text_layout != nullptr) {
+  if (textra != 0) {
+    text_layout_impl_ =
+        std::make_unique<TextLayoutTextra>(static_cast<intptr_t>(textra));
+  } else if (text_layout != nullptr) {
     text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
   }
 }
