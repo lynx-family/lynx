@@ -1,3 +1,8 @@
+# CHANGELOG
+
+# 0.0.21
+* supports to resolve `compilerOption` in a tasm file.
+
 # 0.0.20
 * support LEPUS_Eval with filename for sourcemap.
 

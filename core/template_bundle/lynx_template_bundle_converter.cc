@@ -18,7 +18,39 @@
 namespace lynx {
 namespace tasm {
 
-/// method to serialize to a template_bundle to json string,
+/// method to serialize compilerOptions in template_bundle into json string.
+void SerializeCompilerOptions(const CompileOptions &compile_options,
+                              rapidjson::Document &document) {
+  auto &allocator = document.GetAllocator();
+  rapidjson::Value compiler_options_json(rapidjson::kObjectType);
+
+  compiler_options_json.AddMember("config_type", compile_options.config_type,
+                                  allocator);
+
+#define SERIALIZE_FIXED_LENGTH_FIELD(TYPE, NAME, ID)                         \
+  if constexpr (std::is_same<decltype(compile_options.NAME), bool>::value) { \
+    compiler_options_json.AddMember(                                         \
+        #NAME, static_cast<bool>(compile_options.NAME), allocator);          \
+  } else {                                                                   \
+    compiler_options_json.AddMember(                                         \
+        #NAME, static_cast<int64_t>(compile_options.NAME), allocator);       \
+  }
+
+  FOREACH_FIXED_LENGTH_FIELD(SERIALIZE_FIXED_LENGTH_FIELD);
+#undef SERIALIZE_FIXED_LENGTH_FIELD
+
+#define SERIALIZE_STRING_FIELD_IMPL(NAME, ID)                           \
+  compiler_options_json.AddMember(                                      \
+      #NAME, rapidjson::Value(compile_options.NAME.c_str(), allocator), \
+      allocator);
+
+  FOREACH_STRING_FIELD(SERIALIZE_STRING_FIELD_IMPL);
+#undef SERIALIZE_STRING_FIELD_IMPL
+
+  document.AddMember("compilerOptions", compiler_options_json, allocator);
+}
+
+/// method to serialize a template_bundle into json string,
 /// be careful if you need to call this method.
 void SerializeBTSBundle(const piper::JsBundle &js_bundle,
                         rapidjson::Document &document) {
@@ -108,6 +140,9 @@ LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
                           template_bundle.enable_css_variable_, allocator);
   main_document.AddMember("enable-css-parser",
                           template_bundle.enable_css_parser_, allocator);
+
+  // put compiler option;
+  SerializeCompilerOptions(template_bundle.GetCompileOptions(), main_document);
 
   // put page config;
   auto page_config = template_bundle.GetPageConfig();
