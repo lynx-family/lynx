@@ -69,7 +69,8 @@ class DisplayListBuilder {
   DisplayListBuilder& LinearGradient(float angle,
                                      const base::Vector<uint32_t>& colors,
                                      const base::Vector<float>& stops,
-                                     int32_t tiling_index, int32_t clip_index);
+                                     int32_t tiling_index, int32_t clip_index,
+                                     int32_t repeat_x, int32_t repeat_y);
 
   DisplayListBuilder& MarkRootNeedClipBounds();
 
