@@ -107,6 +107,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_NEW_ANIMATOR_FLUSH_BUG,
     ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
     ENABLE_EVENT_HANDLE_REFACTOR,
+    // FIXME(dingwang.wxx): remove this config in the next version(remove
+    // in 3.8)
     ENABLE_DECOUPLED_LIST,
     // FIXME(wangyifei.20010605): remove this config in the next version(remove
     // in 3.6)
@@ -128,6 +130,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_HARMONY_DRAW_BEHIND,
     ENABLE_HARMONY_NEW_IMAGE,
     ENABLE_UNIFY_FIXED_BEHAVIOR,
+    // FIXME(dingwang.wxx): remove this config in the next version(remove
+    // in 3.8)
+    DISABLE_LIST_CALLBACK_IF_DETACHED,
     ENABLE_SHARE_CONTEXT_ICU,
     FIX_RADON_INLINE_CONVERT_BUG,
     ENABLE_FETCH_API_STANDARD_STREAMING,
@@ -251,6 +256,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_new_animator_on_patch_finish_opt"},
             {Key::ENABLE_EVENT_HANDLE_REFACTOR, "enable_event_refactor"},
             {Key::ENABLE_DECOUPLED_LIST, "enable_decoupled_list"},
+            {Key::DISABLE_LIST_CALLBACK_IF_DETACHED,
+             "disable_list_callback_if_detached"},
             {Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
              "fix_radon_transition_property_remove_bug"},
             {Key::ENABLE_GLOBAL_FONT_COLLECTION,
@@ -410,6 +417,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewAnimatorOnPatchFinishOpt();
   bool EnableEventHandleRefactor();
   bool EnableDecoupledList();
+  bool DisableListCallbackIfDetached();
   bool FixRadonTransitionPropertyRemoveBug();
   bool EnableGlobalFontCollection();
   uint32_t EnableGCOnceOnIdle();

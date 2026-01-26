@@ -64,6 +64,8 @@ export enum LynxTrailKey {
   ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC = 'enable_report_list_item_life_statistic',
   ENABLE_ASYNC_DESTROY_ENGINE = 'enable_async_destroy_engine',
   CONCURRENT_LOOP_HIGH_PRIORITY_WORKER_COUNT_PERCENT = 'concurrent_loop_high_priority_worker_count_percent',
+  ENABLE_DECOUPLED_LIST = 'enable_decoupled_list',
+  DISABLE_LIST_CALLBACK_IF_DETACHED = 'disable_list_callback_if_detached',
   ENABLE_USE_CONTEXT_POOL = 'enable_use_context_pool',
   FORCE_USE_SHADER_REPLACE_BLIT_WORKAROUND_CANVAS = 'force_use_shader_replace_blit_workaround_canvas',
   TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS = 'try_to_fix_native_window_leak_harmony_canvas',

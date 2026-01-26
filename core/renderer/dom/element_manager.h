@@ -1148,6 +1148,10 @@ class ElementManager : public ElementContextDelegate,
     return enable_level_order_traversing_;
   }
 
+  bool DisableListCallbackIfDetached() const {
+    return disable_list_callback_if_detached_;
+  }
+
   void RegisterVMUpdateOuterObjSizeCallback(
       base::MoveOnlyClosure<void, int> closure);
 
@@ -1315,6 +1319,8 @@ class ElementManager : public ElementContextDelegate,
   bool is_memory_collecting_{false};
 
   bool enable_simple_style_{false};
+
+  bool disable_list_callback_if_detached_{false};
 
   LynxEnvConfig lynx_env_config_;
   std::shared_ptr<PageConfig> config_;
