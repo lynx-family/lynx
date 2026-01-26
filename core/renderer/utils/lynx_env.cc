@@ -494,6 +494,10 @@ bool LynxEnv::EnableDecoupledList() {
   return GetBoolEnv(Key::ENABLE_DECOUPLED_LIST, true);
 }
 
+bool LynxEnv::DisableListCallbackIfDetached() {
+  return GetBoolEnv(Key::DISABLE_LIST_CALLBACK_IF_DETACHED, true);
+}
+
 bool LynxEnv::EnableReportMTSContextEvent() {
   return GetBoolEnv(Key::ENABLE_REPORT_BTS_CONTEXT_EVENT, false);
 }
