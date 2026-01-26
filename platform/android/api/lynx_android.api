@@ -4576,12 +4576,14 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.markFallbackProcess(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.isLayoutInElementModeOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isFragmentLayerRenderOn();
+  public boolean com.lynx.tasm.behavior.LynxContext.isTextServiceModeOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnginePoolEnabled();
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
   public void com.lynx.tasm.behavior.LynxContext.setTapSlop(String tapSlop);
   public String com.lynx.tasm.behavior.LynxContext.getTapSlop();
   public void com.lynx.tasm.behavior.LynxContext.setRuntimeCacheManager(ILynxViewRuntimeCacheManager cacheManager);
   public ILynxViewRuntimeCacheManager com.lynx.tasm.behavior.LynxContext.getRuntimeCacheManager();
+  public ILynxTextService com.lynx.tasm.behavior.LynxContext.getTextService();
   public void com.lynx.tasm.behavior.LynxContext.setEnableAsyncLoadImage(boolean b);
   public boolean com.lynx.tasm.behavior.LynxContext.isEnableAsyncLoadImage();
   public LynxBooleanOption com.lynx.tasm.behavior.LynxContext.getLongTaskMonitorEnabled();

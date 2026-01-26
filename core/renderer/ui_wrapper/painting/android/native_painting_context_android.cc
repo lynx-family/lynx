@@ -14,6 +14,7 @@
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
@@ -24,11 +25,11 @@
 // TODO: implement necessary functions for native ui renderer.
 jlong CreatePaintingContext(JNIEnv *env, jobject jcaller, jobject jThis,
                             jlong platformRendererContextPtr,
-                            jobject textLayout) {
+                            jobject textLayout, jlong textra) {
   // This native object will be managed by NativePaintingContextAndroid with
   // unique_ptr.
   return reinterpret_cast<jlong>(new lynx::tasm::NativePaintingCtxAndroid(
-      env, textLayout,
+      env, textLayout, textra,
       reinterpret_cast<lynx::tasm::PlatformRendererContext *>(
           platformRendererContextPtr)));
 }
@@ -121,11 +122,17 @@ bool RegisterJNIForNativePaintingContext(JNIEnv *env) {
 namespace tasm {
 
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
-    JNIEnv *env, jobject text_layout, PlatformRendererContext *view_manager)
+    JNIEnv *env, jobject text_layout, jlong textra,
+    PlatformRendererContext *view_manager)
     : view_manager_(std::unique_ptr<PlatformRendererContext>(view_manager)) {
   platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(
       std::make_unique<PlatformRendererAndroidFactory>(view_manager_.get()));
-  text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
+  if (textra != 0) {
+    text_layout_impl_ =
+        std::make_unique<TextLayoutTextra>(static_cast<intptr_t>(textra));
+  } else {
+    text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
+  }
 }
 
 void NativePaintingCtxAndroid::SetUIOperationQueue(

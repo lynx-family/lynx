@@ -164,4 +164,12 @@ NSString *const kDefaultComponentID = @"-1";
   return (self.lynxEmbeddedMode & LynxEmbeddedModeFragmentLayerRender) > 0;
 }
 
+- (bool)isLayoutInElementModeOn {
+  return (self.lynxEmbeddedMode & LynxEmbeddedModeLayoutInElement) > 0;
+}
+
+- (bool)isTextServiceModeOn {
+  return (self.lynxEmbeddedMode & LynxEmbeddedModeUseTextService) > 0;
+}
+
 @end

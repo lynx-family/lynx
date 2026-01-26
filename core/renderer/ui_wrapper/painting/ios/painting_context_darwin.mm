@@ -15,6 +15,7 @@
 #include "core/renderer/ui_wrapper/common/ios/platform_extra_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
@@ -283,10 +284,13 @@ void PaintingContextDarwin::StopExposure(const pub::Value& options) {
 
 void PaintingContextDarwin::ResumeExposure() { [uiOwner_.uiContext resumeExposure]; }
 
-PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async)
+PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async,
+                                             void* textra)
     : uiOwner_(owner), enable_create_ui_async_(enable_create_ui_async) {
   platform_ref_ = std::make_shared<PaintingContextDarwinRef>(owner);
-  if ([owner isLayoutInElementModeOn]) {
+  if (textra != 0) {
+    text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
+  } else if ([owner isLayoutInElementModeOn]) {
     text_layout_impl_ =
         std::make_unique<TextLayoutDarwin>(owner.textRenderManager, owner.fontFaceContext);
   }

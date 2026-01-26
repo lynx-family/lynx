@@ -71,7 +71,8 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
 class PaintingContextAndroid : public PaintingCtxPlatformImpl {
  public:
   PaintingContextAndroid(JNIEnv* env, jobject impl, jobject text_layout,
-                         jint thread_strategy, bool enable_context_free);
+                         jlong textra, jint thread_strategy,
+                         bool enable_context_free);
   ~PaintingContextAndroid() override = default;
   virtual void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override;

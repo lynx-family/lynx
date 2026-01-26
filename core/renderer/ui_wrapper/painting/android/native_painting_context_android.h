@@ -25,7 +25,7 @@ class PlatformRendererContext;
 class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
                                  public NativePaintingContext {
  public:
-  NativePaintingCtxAndroid(JNIEnv *env, jobject text_layout,
+  NativePaintingCtxAndroid(JNIEnv *env, jobject text_layout, jlong textra,
                            PlatformRendererContext *view_manager);
   NativePaintingCtxAndroid(const NativePaintingCtxAndroid &) = delete;
 

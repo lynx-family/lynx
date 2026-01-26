@@ -15,7 +15,9 @@ ui_wrapper_layout_shared_sources = [
   "list_node.cc",
   "list_node.h",
   "no_needed_layout_list.h",
-  "text_layout_api.h",
+  "textra/text_layout_api.h",
+  "textra/text_layout_textra.cc",
+  "textra/text_layout_textra.h",
 ]
 
 if (!enable_unittests) {
