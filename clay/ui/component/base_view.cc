@@ -3115,10 +3115,8 @@ void BaseView::OnMouseHoverChange() {
 void BaseView::OnMouseEvent(const ClayEventType type,
                             const PointerEvent& event) {
   if (page_view_->GetEventDelegate()) {
-    FloatPoint view_point = page_view_->ConvertTo<kPixelTypeLogical>(
-        GetPointBySelf(event.position));
-    FloatPoint position =
-        page_view_->ConvertTo<kPixelTypeLogical>(event.position);
+    auto position = event.position;
+    FloatPoint view_point = GetPointBySelf(position);
     // In flutter, event has no `button` property.
     // In web, only `buttons` has possible value for mouseenter/mouseleave.
     int buttons = type == kClayEventTypeMouseOver ? 0 : event.buttons;
