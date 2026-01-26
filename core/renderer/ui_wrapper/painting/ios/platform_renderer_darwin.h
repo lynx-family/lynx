@@ -8,6 +8,7 @@
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
+#import <Lynx/LynxRendererHost.h>
 #import <UIKit/UIKit.h>
 
 namespace lynx {
@@ -37,10 +38,10 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
 
   void InitializeUIView();
 
-  UIView* GetUIView() { return _view; }
+  UIView<LynxRendererHost>* GetUIView() { return _view; }
 
  private:
-  UIView* _view = nil;
+  UIView<LynxRendererHost>* _view = nil;
 
   PlatformRendererContextDarwin* context_ = nullptr;
 };

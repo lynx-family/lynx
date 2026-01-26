@@ -16,6 +16,8 @@
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxLogicExecutor.h>
+#import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
@@ -48,7 +50,9 @@
 
 @end
 
-@implementation LynxView
+@implementation LynxView {
+  LynxRenderer* _render;
+}
 
 #pragma mark - Init
 
@@ -331,6 +335,22 @@
 }
 
 #pragma mark - Override
+
+- (void)setRenderer:(LynxRenderer*)renderer {
+  _render = renderer;
+}
+
+- (LynxRenderer*)createRendererWithSign:(int32_t)sign {
+  return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign];
+}
+
+- (LynxRenderer*)getRenderer {
+  return _render;
+}
+
+- (UIView*)getView {
+  return self;
+}
 
 - (void)layoutSubviews {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_VIEW_LAYOUT_SUBVIEWS, INSTANCE_ID,

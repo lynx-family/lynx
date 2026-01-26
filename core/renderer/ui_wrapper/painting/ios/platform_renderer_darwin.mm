@@ -5,6 +5,11 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 
+#import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxContainerView.h>
+#import <Lynx/LynxRenderer+Internal.h>
+#import <Lynx/LynxRenderer.h>
+
 namespace lynx {
 namespace tasm {
 
@@ -25,9 +30,26 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
 
 void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
   display_list_ = std::move(display_list);
-  // TODO: impl this function later.
 
   if (_view != nil) {
+    constexpr int kFrameValueCount = 4;
+    if (display_list_.GetContentFloatData() &&
+        display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
+      float frame[4];
+      // The first four float values in the display list are the frame of the
+      // layer's OP_BEGIN.
+      memcpy(frame, display_list_.GetContentFloatData(), 4 * sizeof(float));
+
+      [_view
+          setFrame:CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
+                              frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3])];
+
+      if ([_view conformsToProtocol:@protocol(LUIBodyView)]) {
+        ((UIView<LUIBodyView>*)_view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
+      }
+    }
+
+    [[_view getRenderer] updateDisplayList:&display_list_];
     [_view setNeedsDisplay];
   }
 }
@@ -66,14 +88,21 @@ void PlatformRendererDarwin::InitializeUIView() {
     case PlatformRendererType::kImage:
     case PlatformRendererType::kScroll:
     case PlatformRendererType::kList:
-    case PlatformRendererType::kListItem:
-      _view = [[UIView alloc] init];
+    case PlatformRendererType::kListItem: {
+      _view = [[LynxContainerView alloc] init];
       break;
-    case PlatformRendererType::kPage:
-      _view = context_ != nullptr ? context_->GetContainerView() : nil;
+    }
+    case PlatformRendererType::kPage: {
+      _view = context_ != nullptr ? (UIView<LynxRendererHost>*)context_->GetContainerView() : nil;
       break;
+    }
     default:
       break;
+  }
+
+  if (_view != nil) {
+    LynxRenderer* renderer = [_view createRendererWithSign:GetId()];
+    [_view setRenderer:renderer];
   }
 }
 

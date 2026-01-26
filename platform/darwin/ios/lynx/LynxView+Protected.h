@@ -2,13 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxView.h>
 
 @class LynxWeakProxy;
 @class LynxLifecycleDispatcher;
 
-@interface LynxView () {
+@interface LynxView () <LynxRendererHost> {
  @protected
   LynxWeakProxy* _clientWeakProxy;
   BOOL _enableTextNonContiguousLayout;

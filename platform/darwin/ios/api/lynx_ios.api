@@ -5123,7 +5123,7 @@ public protocol LynxVerticalScrollProtocol-p : <NSObject> {
   public BOOL LynxVerticalScrollProtocol-p::canScrollBackwardsVertically();
 }
 
-public class LynxView : UIView, <LUIBodyView> {
+public class LynxView : UIView, <LUIBodyView>, <LynxRendererHost> {
   public NSString* LynxView::url url;
   public NSInteger LynxView::lynxViewId lynxViewId;
   public BOOL LynxView::enableAsyncDisplay enableAsyncDisplay;

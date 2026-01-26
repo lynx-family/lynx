@@ -12,6 +12,7 @@
 #import <Lynx/LynxConfigInfo.h>
 #import <Lynx/LynxExtraTiming.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxImageFetcher.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxLoadMeta.h>
 #import <Lynx/LynxMediaResourceFetcher.h>
@@ -26,7 +27,6 @@
 #import <Lynx/LynxViewClient.h>
 #import <Lynx/LynxViewClientV2.h>
 #import <Lynx/LynxViewEnum.h>
-#import "LynxImageFetcher.h"
 
 @class LynxTemplateRender;
 @class LynxContext;
