@@ -22,10 +22,10 @@ inline constexpr const char* const CALL_JSB_ON_ARK_TS = "CallJSBOnArkTS";
 inline constexpr const char* const PUB_VALUE_TO_LEPUS_VALUE =
     "PubValueToLepusValue";
 /**
- * @history_name{InvokeNativeModule}
+ * @history_name{NativeModule::Invoke}
  */
 inline constexpr const char* const HARMONY_NATIVE_MODULE_INVOKE =
-    "NativeModule::Invoke";
+    "CallPlatformImplementation";
 inline constexpr const char* const INVOKE_CALLBACK_ON_UI_THREAD =
     "InvokeCallbackOnUIThread";
 inline constexpr const char* const NAPI_VALUE_TO_LEPUS_VALUE =
