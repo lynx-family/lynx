@@ -51,6 +51,8 @@ import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
+import com.lynx.tasm.service.ILynxTextService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.FontFaceParser;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -65,6 +67,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private static final String TAG = "LynxContext";
   private static final String UIAPPEAREVENT = "uiappear";
   private static final String UIDISAPPEAREVENT = "uidisappear";
+
+  private static ILynxTextService sLynxTextService;
 
   private ImageInterceptor mImageInterceptor;
   private ImageInterceptor mAsyncImageInterceptor;
@@ -175,6 +179,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     super(base);
     mVirtualScreenMetrics = new DisplayMetrics();
     mVirtualScreenMetrics.setTo(screenMetrics);
+    if (sLynxTextService == null) {
+      sLynxTextService = LynxServiceCenter.inst().getService(ILynxTextService.class);
+    }
   }
 
   public void setPlatformMeasureHeightCache(int platformMeasureHeightCache) {
@@ -257,6 +264,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   }
 
   /**
+   * @brief check whether enable to use the Text service
+   */
+  public boolean isTextServiceModeOn() {
+    return (embeddedMode & EmbeddedMode.USE_TEXT_SERVICE) > 0;
+  }
+
+  /**
    * @brief check whether engine pool is enabled
    */
   public boolean isEnginePoolEnabled() {
@@ -296,6 +310,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
    */
   public ILynxViewRuntimeCacheManager getRuntimeCacheManager() {
     return this.lynxViewGroup;
+  }
+
+  /**
+   * @brief getTextService
+   */
+  public ILynxTextService getTextService() {
+    return sLynxTextService;
   }
 
   public void setEnableAsyncLoadImage(boolean b) {

@@ -85,6 +85,7 @@ class CreateViewAsyncStatus {
 
 public final class PaintingContext implements IPaintingContext {
   private static final String TAG = "lynx_PaintingContext";
+
   private final LynxUIOwner mUIOwner;
   private TextLayout mTextLayout;
   private boolean mDestroyed;
@@ -93,22 +94,32 @@ public final class PaintingContext implements IPaintingContext {
   private ConcurrentHashMap<String, Boolean> mNeedProcessDirectionCache;
 
   private long mNativePaintingContextPtr = 0;
+  private long mTextra = 0;
+
   public PaintingContext(LynxUIOwner uiOwner, int threadStrategy) {
     mUIOwner = uiOwner;
     mDestroyed = false;
     mNeedCreateNodeAsyncCache = new ConcurrentHashMap<String, Boolean>();
     mNeedProcessDirectionCache = new ConcurrentHashMap<String, Boolean>();
+
     if (mUIOwner.getContext().isLayoutInElementModeOn()) {
       mTextLayout = new TextLayout(uiOwner);
+      if (mUIOwner.getContext().isTextServiceModeOn()
+          && mUIOwner.getContext().getTextService() != null) {
+        mTextra = mUIOwner.getContext().getTextService().createTextLayoutAPI(mUIOwner.getContext());
+      }
     }
-    mNativePaintingContextPtr =
-        nativeCreatePaintingContext(this, mTextLayout, threadStrategy, mUIOwner.isContextFree());
+    mNativePaintingContextPtr = nativeCreatePaintingContext(
+        this, mTextLayout, mTextra, threadStrategy, mUIOwner.isContextFree());
   }
 
   // this func will be execed on main thread.
   @Override
   public void destroy() {
     mDestroyed = true;
+    if (mTextra != 0 && mUIOwner.getContext().getTextService() != null) {
+      mUIOwner.getContext().getTextService().destroyTextLayoutAPI(mTextra);
+    }
   }
 
   @Override
@@ -876,6 +887,6 @@ public final class PaintingContext implements IPaintingContext {
 
   private native void nativeInvokeCallback(long context, int callback, WritableArray array);
 
-  private native long nativeCreatePaintingContext(
-      Object paintingContext, Object textLayout, int threadStrategy, boolean isContextFree);
+  private native long nativeCreatePaintingContext(Object paintingContext, Object textLayout,
+      long textra, int threadStrategy, boolean isContextFree);
 }

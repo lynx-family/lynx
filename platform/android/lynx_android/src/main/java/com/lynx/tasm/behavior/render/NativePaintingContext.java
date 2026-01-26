@@ -21,18 +21,28 @@ public class NativePaintingContext implements IPaintingContext {
 
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
   private boolean mDestroyed = false;
+  private long mTextra = 0;
+  private LynxContext mContext;
 
   public NativePaintingContext(
       UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry) {
     mPlatformRendererContext = new PlatformRendererContext(rootView, context, behaviorRegistry);
-    mNativePtr = nativeCreatePaintingContext(
-        this, mPlatformRendererContext.getNativePtr(), mPlatformRendererContext.getTextLayout());
+    mContext = context;
+    if (context.isTextServiceModeOn() && context.getTextService() != null) {
+      mTextra = context.getTextService().createTextLayoutAPI(context);
+    }
+    mNativePtr = nativeCreatePaintingContext(this, mPlatformRendererContext.getNativePtr(),
+        mPlatformRendererContext.getTextLayout(), mTextra);
   }
 
+  // this func will be execed on main thread.
   @Override
   public void destroy() {
     mDestroyed = true;
     mPlatformRendererContext.destroy();
+    if (mTextra != 0 && mContext != null && mContext.getTextService() != null) {
+      mContext.getTextService().destroyTextLayoutAPI(mTextra);
+    }
   }
 
   @Override
@@ -95,7 +105,7 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   private native long nativeCreatePaintingContext(
-      NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout);
+      NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout, long textra);
 
   native void nativeSetLynxEngineActorForPlatformContextRef(long nativePtr, long ptr);
 

@@ -1109,6 +1109,8 @@ public class LynxContext : NSObject {
   public LynxKeyboardEventDispatcher* _Nullable LynxContext()::keyboardEventDispatcher keyboardEventDispatcher;
   public LynxPerformanceController* _Nullable LynxContext()::perfController perfController;
   public bool LynxContext()::isFragmentLayerRenderOn isFragmentLayerRenderOn;
+  public bool LynxContext()::isLayoutInElementModeOn isLayoutInElementModeOn;
+  public bool LynxContext()::isTextServiceModeOn isTextServiceModeOn;
   public int32_t LynxContext()::instanceId instanceId;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
