@@ -138,10 +138,10 @@ DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
 
 DisplayListBuilder& DisplayListBuilder::LinearGradient(
     float angle, const base::Vector<uint32_t>& colors,
-    const base::Vector<float>& stops, int32_t tiling_index,
-    int32_t clip_index) {
+    const base::Vector<float>& stops, int32_t tiling_index, int32_t clip_index,
+    int32_t repeat_x, int32_t repeat_y) {
   display_list_.AddLinearGradient(angle, colors, stops, tiling_index,
-                                  clip_index);
+                                  clip_index, repeat_x, repeat_y);
   return *this;
 }
 

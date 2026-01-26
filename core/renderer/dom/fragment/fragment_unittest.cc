@@ -331,5 +331,85 @@ TEST_F(FragmentTest, TestDrawNodeCapacity) {
             3);
 }
 
+TEST_F(FragmentTest, LinearGradientGeneratesLinearGradientOp) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+
+  auto* style = element->computed_css_style();
+  style->background_data_ = starlight::BackgroundData();
+  style->background_data_->image_data =
+      starlight::BackgroundData::BackgroundImageData();
+  auto& image_data = *style->background_data_->image_data;
+  image_data.image_count = 1;
+  image_data.repeat.push_back(starlight::BackgroundRepeatType::kRepeat);
+  image_data.repeat.push_back(starlight::BackgroundRepeatType::kNoRepeat);
+
+  auto color_array = lepus::CArray::Create();
+  color_array->emplace_back(0xFFFF0000);  // Red
+  color_array->emplace_back(0xFF0000FF);  // Blue
+
+  auto position_array = lepus::CArray::Create();
+  position_array->emplace_back(0.0f);
+  position_array->emplace_back(100.0f);
+
+  auto gradient_obj = lepus::CArray::Create();
+  gradient_obj->emplace_back(90.0f);  // Angle
+  gradient_obj->emplace_back(std::move(color_array));
+  gradient_obj->emplace_back(std::move(position_array));
+  gradient_obj->emplace_back(
+      static_cast<int32_t>(starlight::LinearGradientDirection::kRight));
+
+  auto image_array = lepus::CArray::Create();
+  image_array->emplace_back(
+      static_cast<int32_t>(starlight::BackgroundImageType::kLinearGradient));
+  image_array->emplace_back(std::move(gradient_obj));
+
+  image_data.image = lepus::Value(std::move(image_array));
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+
+  DisplayList list = builder.Build();
+  const int32_t* ops = list.GetContentOpTypesData();
+  ASSERT_NE(ops, nullptr);
+
+  // Op 0 is RecordBox (for clip)
+  // Op 1 is Fill (background color)
+  // Op 2 is RecordBox (for origin)
+  // Op 3 is LinearGradient
+  EXPECT_EQ(ops[3], static_cast<int32_t>(DisplayListOpType::kLinearGradient));
+
+  const int32_t* ints = list.GetContentIntData();
+  const float* floats = list.GetContentFloatData();
+
+  // Verify gradient params
+  // Op 0 (RecordBox): ints[0,1] = [0, 4]
+  // Op 1 (Fill): ints[2,3] = [2, 0], ints[4,5] = [color, clip_index]
+  // Op 2 (RecordBox): ints[6,7] = [0, 4]
+  // Op 3 (LinearGradient): ints[8,9] = [int_count, float_count], ints[10] =
+  // color_count
+  EXPECT_EQ(ints[8], 8);   // int_count (1 + 2 + 1 + 4)
+  EXPECT_EQ(ints[10], 2);  // color_count
+  EXPECT_EQ(static_cast<uint32_t>(ints[11]), 0xFFFF0000);
+  EXPECT_EQ(static_cast<uint32_t>(ints[12]), 0xFF0000FF);
+  EXPECT_EQ(ints[13], 2);  // stop_count
+  // repeat_x, repeat_y are at ints[16], ints[17]
+  // params start at ints[10]: color_count (10), colors (11,12), stop_count
+  // (13), tiling (14), clip (15), repeat_x (16), repeat_y (17)
+  EXPECT_EQ(ints[16],
+            static_cast<int32_t>(starlight::BackgroundRepeatType::kRepeat));
+  EXPECT_EQ(ints[17],
+            static_cast<int32_t>(starlight::BackgroundRepeatType::kNoRepeat));
+
+  // Verify floats
+  // Op 0: floats[0-3]
+  // Op 1: (none)
+  // Op 2: floats[4-7]
+  // Op 3: floats[8] = angle, floats[9,10] = stops
+  EXPECT_FLOAT_EQ(floats[8], 90.0f);
+  EXPECT_FLOAT_EQ(floats[9], 0.0f);
+  EXPECT_FLOAT_EQ(floats[10], 1.0f);
+}
+
 }  // namespace tasm
 }  // namespace lynx
