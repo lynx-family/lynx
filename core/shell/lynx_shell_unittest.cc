@@ -30,18 +30,12 @@ class LynxShellTest : public ::testing::Test {
     base::UIThread::Init();
     facade_ = new MockNativeFacade;
 
-    auto lynx_engine_creator = [](auto delegate) {
-      return std::make_unique<LynxEngine>(nullptr, std::move(delegate), nullptr,
-                                          shell::kUnknownInstanceId);
-    };
-
     // FIXME(heshan): tricky, here must ensure manufactor not create thread
     // POSIX thread exit may cause crash...
     lynx::shell::ShellOption option;
     shell_.reset(
         lynx::shell::LynxShellBuilder()
             .SetNativeFacade(std::unique_ptr<NativeFacade>(facade_))
-            .SetLynxEngineCreator(lynx_engine_creator)
             .SetLayoutContextPlatformImpl(nullptr)
             .SetStrategy(base::ThreadStrategyForRendering::ALL_ON_UI)
             .SetEngineActor([](auto& actor) {})

@@ -31,10 +31,6 @@ class LynxShellBuilder {
   LynxShellBuilder& SetUseInvokeUIMethodFunction(
       bool use_invoke_ui_method_func);
 
-  LynxShellBuilder& SetLynxEngineCreator(
-      const std::function<std::unique_ptr<shell::LynxEngine>(
-          std::unique_ptr<TasmMediator>)>& lynx_engine_creator);
-
   LynxShellBuilder& SetLynxEngineWrapper(
       shell::LynxEngineWrapper* engine_wrapper);
 
@@ -132,10 +128,6 @@ class LynxShellBuilder {
   bool enable_unified_pipeline_{false};
 
   std::string locale_;
-
-  std::function<std::unique_ptr<shell::LynxEngine>(
-      std::unique_ptr<TasmMediator>)>
-      lynx_engine_creator_;
 
   std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> layout_context_;
 

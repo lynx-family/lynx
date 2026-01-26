@@ -28,13 +28,6 @@ LynxShellBuilder& LynxShellBuilder::SetUseInvokeUIMethodFunction(
   return *this;
 }
 
-LynxShellBuilder& LynxShellBuilder::SetLynxEngineCreator(
-    const std::function<std::unique_ptr<shell::LynxEngine>(
-        std::unique_ptr<TasmMediator>)>& lynx_engine_creator) {
-  this->lynx_engine_creator_ = lynx_engine_creator;
-  return *this;
-}
-
 LynxShellBuilder& LynxShellBuilder::SetPaintingContextCreator(
     const std::function<std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl>(
         LynxShell*)>& painting_context_creator) {
@@ -259,6 +252,7 @@ LynxShell* LynxShellBuilder::build() {
   if (loader_ != nullptr) {
     loader_->SetPerfControllerActor(shell->perf_controller_actor_);
   }
+  shell->runtime_actor_ = runtime_actor_;
 
   shell->engine_build_options_.lynx_env_config_ = lynx_env_config_;
   shell->engine_build_options_.loader_ = loader_;
@@ -284,130 +278,20 @@ LynxShell* LynxShellBuilder::build() {
     AttachLynxEngine(shell);
     LOGI("get Engine by pool");
   } else {
-    // create layout actor
-    std::unique_ptr<LayoutMediator> layout_mediator;
-
-    if (force_layout_on_background_thread_) {
-      shell->layout_result_manager_ = std::make_shared<LayoutResultManager>();
-
-      layout_mediator = std::make_unique<lynx::shell::LayoutMediator>(
-          shell->layout_result_manager_);
-    } else {
-      layout_mediator = std::make_unique<lynx::shell::LayoutMediator>(
-          shell->tasm_operation_queue_);
-    }
-
-    layout_mediator->SetPageOptions(shell_option_.page_options_);
-    shell->layout_mediator_ = layout_mediator.get();
-    if (layout_context_) {
-      layout_context_->SetLynxShell(shell);
-    }
-    shell->layout_actor_ = std::make_shared<LynxActor<tasm::LayoutContext>>(
-        std::make_unique<lynx::tasm::LayoutContext>(
-            std::move(layout_mediator),
-            (!shell_option_.page_options_.IsLayoutInElementModeOn()
-                 ? std::move(this->layout_context_)
-                 : nullptr),
-            this->lynx_env_config_, shell_option_.page_options_),
-        shell->runners_.GetLayoutTaskRunner(), shell->instance_id_);
-
     TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
                       LYNX_SHELL_BUILDER_CREATE_ENGINE_ACTOR);
-    // create engine actor
-    auto tasm_mediator = std::make_unique<TasmMediator>(
-        shell->facade_actor_, shell->card_cached_data_mgr_,
-        shell->layout_actor_, std::move(tasm_platform_invoker_),
-        shell->perf_controller_actor_);
-    tasm_mediator->SetPageOptions(shell_option_.page_options_);
-    shell->tasm_mediator_ = tasm_mediator.get();
-    std::unique_ptr<lynx::shell::LynxEngine> lynx_engine;
-    if (this->lynx_engine_creator_ != nullptr) {
-      // lynx_engine_creator_ is nullptr by default, it is used only for
-      // lynx_shell_unitests.
-      lynx_engine = this->lynx_engine_creator_(std::move(tasm_mediator));
-    } else {
-      if (painting_context_ == nullptr) {
-        painting_context_ = painting_context_creator_(shell);
-      }
-      lynx_engine = shell->BuildLynxEngine(
-          std::move(tasm_mediator),
-          (shell_option_.page_options_.IsLayoutInElementModeOn()
-               ? std::move(this->layout_context_)
-               : nullptr),
-          std::move(painting_context_));
+    if (!painting_context_ && painting_context_creator_) {
+      painting_context_ = painting_context_creator_(shell);
     }
-    shell->engine_actor_ = std::make_shared<LynxActor<LynxEngine>>(
-        std::move(lynx_engine), shell->runners_.GetTASMTaskRunner(),
-        shell->instance_id_);
+    shell->BuildLynxEngine(std::move(tasm_platform_invoker_),
+                           std::move(layout_context_),
+                           std::move(painting_context_));
   }
-
+  // Todo(kechenglong): on_engine_actor_created_ could be removed?
   this->on_engine_actor_created_(shell->engine_actor_);
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
-  shell->tasm_mediator_->SetEngineActor(shell->engine_actor_);
-  if (shell->perf_mediator_) {
-    shell->perf_mediator_->SetEngineActor(shell->engine_actor_);
-  }
-  if (shell->timing_mediator_) {
-    shell->timing_mediator_->SetEngineActor(shell->engine_actor_);
-  }
-  // after set shell members
-  shell->engine_actor_->Impl()->SetOperationQueue(shell->tasm_operation_queue_);
-  shell->prop_bundle_creator_ = prop_bundle_creator_;
-  auto tasm = shell->engine_actor_->Impl()->GetTasm();
-  // @note(lipin): avoid crash when lynx_shell_unittest
-  if (tasm != nullptr) {
-    shell->ui_operation_queue_->SetErrorCallback(
-        [facade_actor = shell->facade_actor_](base::LynxError error) {
-          facade_actor->Act([error = std::move(error)](auto& facade) mutable {
-            facade->ReportError(error);
-          });
-        });
-    auto& element_manager = tasm->page_proxy()->element_manager();
-    element_manager->SetEnableNewAnimatorRadon(enable_new_animator_);
-    element_manager->SetEnableNativeListFromShell(enable_native_list_);
-    element_manager->SetPropBundleCreator(prop_bundle_creator_);
-    element_manager->SetThreadStrategy(this->strategy_);
-    if (element_manager->vsync_monitor()) {
-      element_manager->vsync_monitor()->BindTaskRunner(
-          shell->runners_.GetTASMTaskRunner());
-    }
-    element_manager->painting_context()->SetUIOperationQueue(
-        shell->ui_operation_queue_);
-    element_manager->painting_context()->impl()->SetInstanceId(
-        shell->instance_id_);
-    element_manager->painting_context()->SetPerfActor(
-        shell->perf_controller_actor_);
-
-    shell->layout_mediator_->Init(shell->engine_actor_, shell->facade_actor_,
-                                  shell->perf_controller_actor_,
-                                  element_manager->node_manager(),
-                                  element_manager->catalyzer());
-
-    if (native_module_manager_ != nullptr) {
-      native_module_manager_->SetEngineActor(shell->engine_actor_);
-      native_module_manager_->SetFacadeActor(shell->facade_actor_);
-      tasm->CreateModuleManager(std::move(native_module_manager_));
-    }
-    // @note(tangyongjie): avoid crash when lynx_shell_builder_unittest
-    shell->engine_actor_->ActLite([](auto& engine) { engine->Init(); });
-
-    auto painting_context = element_manager->painting_context();
-    if (use_invoke_ui_method_func_) {
-      shell::InvokeUIMethodFunction invoke_ui_method_func =
-          [painting_context](lynx::tasm::LynxGetUIResult ui_result,
-                             const std::string& method,
-                             fml::RefPtr<lynx::tasm::PropBundle> params,
-                             lynx::piper::ApiCallBack callback) {
-            painting_context->InvokeUIMethod(ui_result.UiImplIds()[0], method,
-                                             std::move(params), callback.id());
-          };
-      shell->tasm_mediator_->SetInvokeUIMethodFunction(
-          std::move(invoke_ui_method_func));
-    }
-  }
-
-  shell->runtime_actor_ = runtime_actor_;
-  shell->SetPageOptions(shell_option_.page_options_);
+  shell->OnLynxEngineBuilt(prop_bundle_creator_,
+                           std::move(native_module_manager_));
   if (lynx_engine_wrapper_) {
     // After creating the EngineWrapper for the first time or reusing it, the
     // internal objects need to be updated.

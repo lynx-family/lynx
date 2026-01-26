@@ -147,10 +147,57 @@ LynxShell::~LynxShell() {
   Destroy();
 }
 
-std::unique_ptr<lynx::shell::LynxEngine> LynxShell::BuildLynxEngine(
-    std::unique_ptr<TasmMediator> tasm_mediator,
+void LynxShell::BuildLynxEngine(
+    std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
     std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context,
     std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context) {
+  if (platform_layout_context) {
+    platform_layout_context->SetLynxShell(this);
+  }
+  BuildLayoutActor(!page_options_.IsLayoutInElementModeOn()
+                       ? std::move(platform_layout_context)
+                       : nullptr);
+  BuildEngineActor(std::move(tasm_platform_invoker),
+                   page_options_.IsLayoutInElementModeOn()
+                       ? std::move(platform_layout_context)
+                       : nullptr,
+                   std::move(painting_context));
+}
+
+void LynxShell::BuildLayoutActor(
+    std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
+        platform_layout_context) {
+  // create layout actor
+  std::unique_ptr<LayoutMediator> layout_mediator;
+
+  if (engine_build_options_.force_layout_on_background_thread_) {
+    layout_result_manager_ = std::make_shared<LayoutResultManager>();
+
+    layout_mediator =
+        std::make_unique<lynx::shell::LayoutMediator>(layout_result_manager_);
+  } else {
+    layout_mediator =
+        std::make_unique<lynx::shell::LayoutMediator>(tasm_operation_queue_);
+  }
+
+  layout_mediator->SetPageOptions(page_options_);
+  layout_mediator_ = layout_mediator.get();
+  layout_actor_ = std::make_shared<LynxActor<tasm::LayoutContext>>(
+      std::make_unique<lynx::tasm::LayoutContext>(
+          std::move(layout_mediator), std::move(platform_layout_context),
+          engine_build_options_.lynx_env_config_, page_options_),
+      runners_.GetLayoutTaskRunner(), instance_id_);
+}
+
+void LynxShell::BuildEngineActor(
+    std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
+    std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context,
+    std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context) {
+  auto tasm_mediator = std::make_unique<TasmMediator>(
+      facade_actor_, card_cached_data_mgr_, layout_actor_,
+      std::move(tasm_platform_invoker), perf_controller_actor_);
+  tasm_mediator->SetPageOptions(page_options_);
+  tasm_mediator_ = tasm_mediator.get();
   auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::move(painting_context), tasm_mediator.get(),
       engine_build_options_.lynx_env_config_, page_options_, instance_id_,
@@ -178,10 +225,82 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShell::BuildLynxEngine(
     tasm->SetLocale(engine_build_options_.locale_);
   }
   tasm->EnablePreUpdateData(engine_build_options_.enable_pre_update_data_);
-
-  return std::make_unique<lynx::shell::LynxEngine>(
+  auto lynx_engine = std::make_unique<lynx::shell::LynxEngine>(
       std::move(tasm), std::move(tasm_mediator), card_cached_data_mgr_,
       instance_id_);
+  engine_actor_ = std::make_shared<LynxActor<LynxEngine>>(
+      std::move(lynx_engine), runners_.GetTASMTaskRunner(), instance_id_);
+}
+
+void LynxShell::OnLynxEngineBuilt(
+    std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator,
+    std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager) {
+  tasm_mediator_->SetEngineActor(engine_actor_);
+  if (perf_mediator_) {
+    perf_mediator_->SetEngineActor(engine_actor_);
+  }
+  if (timing_mediator_) {
+    timing_mediator_->SetEngineActor(engine_actor_);
+  }
+
+  engine_actor_->Impl()->SetOperationQueue(tasm_operation_queue_);
+  prop_bundle_creator_ = std::move(prop_bundle_creator);
+
+  auto tasm = engine_actor_->Impl()->GetTasm();
+  if (tasm == nullptr) {
+    return;
+  }
+
+  ui_operation_queue_->SetErrorCallback(
+      [facade_actor = facade_actor_](base::LynxError error) {
+        facade_actor->Act([error = std::move(error)](auto& facade) mutable {
+          facade->ReportError(error);
+        });
+      });
+
+  auto& element_manager = tasm->page_proxy()->element_manager();
+  element_manager->SetEnableNewAnimatorRadon(
+      engine_build_options_.enable_new_animator_);
+  element_manager->SetEnableNativeListFromShell(
+      engine_build_options_.enable_native_list_);
+  element_manager->SetPropBundleCreator(prop_bundle_creator_);
+  element_manager->SetThreadStrategy(current_strategy_);
+  if (element_manager->vsync_monitor()) {
+    element_manager->vsync_monitor()->BindTaskRunner(
+        runners_.GetTASMTaskRunner());
+  }
+
+  auto* painting_context = element_manager->painting_context();
+  painting_context->SetUIOperationQueue(ui_operation_queue_);
+  if (painting_context->impl()) {
+    painting_context->impl()->SetInstanceId(instance_id_);
+  }
+  painting_context->SetPerfActor(perf_controller_actor_);
+
+  layout_mediator_->Init(engine_actor_, facade_actor_, perf_controller_actor_,
+                         element_manager->node_manager(),
+                         element_manager->catalyzer());
+
+  if (native_module_manager != nullptr) {
+    native_module_manager->SetEngineActor(engine_actor_);
+    native_module_manager->SetFacadeActor(facade_actor_);
+    tasm->CreateModuleManager(std::move(native_module_manager));
+  }
+
+  engine_actor_->ActLite([](auto& engine) { engine->Init(); });
+
+  if (engine_build_options_.use_invoke_ui_method_func_) {
+    shell::InvokeUIMethodFunction invoke_ui_method_func =
+        [painting_context](lynx::tasm::LynxGetUIResult ui_result,
+                           const std::string& method,
+                           fml::RefPtr<lynx::tasm::PropBundle> params,
+                           lynx::piper::ApiCallBack callback) {
+          painting_context->InvokeUIMethod(ui_result.UiImplIds()[0], method,
+                                           std::move(params), callback.id());
+        };
+    tasm_mediator_->SetInvokeUIMethodFunction(std::move(invoke_ui_method_func));
+  }
+  SetPageOptions(page_options_);
 }
 
 void LynxShell::Destroy() {

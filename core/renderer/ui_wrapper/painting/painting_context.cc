@@ -12,7 +12,9 @@ namespace tasm {
 void PaintingContext::SetUIOperationQueue(
     const std::shared_ptr<shell::DynamicUIOperationQueue>& queue) {
   ui_operation_queue_ = queue;
-  platform_impl_->SetUIOperationQueue(queue);
+  if (platform_impl_) {
+    platform_impl_->SetUIOperationQueue(queue);
+  }
 }
 
 void PaintingContext::OnNodeReady(int tag) {

@@ -450,11 +450,25 @@ class LynxShell {
 
  private:
   friend class LynxEngineWrapper;
-  std::unique_ptr<lynx::shell::LynxEngine> BuildLynxEngine(
-      std::unique_ptr<TasmMediator> tasm_mediator,
+  void BuildLynxEngine(
+      std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
       std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
           platform_layout_context,
       std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context);
+
+  void BuildLayoutActor(std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
+                            platform_layout_context);
+
+  void BuildEngineActor(
+      std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
+      std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
+          platform_layout_context,
+      std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context);
+
+  void OnLynxEngineBuilt(
+      std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator,
+      std::unique_ptr<lynx::pub::LynxNativeModuleManager>
+          native_module_manager);
 
   std::weak_ptr<piper::JsBundleHolder> GetWeakJsBundleHolder();
   LynxEngineBuildOptions engine_build_options_;
