@@ -2028,7 +2028,11 @@ EventTarget* UIBase::HitTest(float point[2]) {
       float sibling_point[] = {origin_point[0], origin_point[1]};
       sibling->GetPointInTarget(sibling_point, this, origin_point);
       best_hittest_target = sibling->HitTest(sibling_point);
-      if (best_hittest_target) {
+      if (!best_hittest_target || best_hittest_target->PointerEvents() ==
+                                      LynxPointerEventsValue::kNone) {
+        best_hittest_target = nullptr;
+        continue;
+      } else {
         break;
       }
     }
