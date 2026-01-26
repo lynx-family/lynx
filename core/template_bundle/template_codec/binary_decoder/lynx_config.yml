@@ -1803,7 +1803,7 @@ enableTransformedTouchPosition:
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
-  since: '3.7'
+  since: '3.6'
   supportPlatform:
     - Android
     - HarmonyOS
@@ -1824,7 +1824,7 @@ enableiOSAnimationLayerForExposure:
   defaultValue: 'false'
   valueType: bool
   author: rAY-ooo
-  since: '3.7'
+  since: '3.6'
   supportPlatform:
     - iOS
 enableFetchAPIStandardStreaming:
