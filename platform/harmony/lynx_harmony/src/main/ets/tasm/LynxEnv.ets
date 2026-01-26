@@ -40,10 +40,11 @@ class LynxEnvironment {
       this.setTracingDirPath(context.filesDir);
     }
     const imageService = LynxServiceCenter.getService<ILynxImageService>(LynxServiceType.Image);
-    if (!imageService) {
-      throw new Error('LynxImageService not found. Register via LynxServiceCenter.registerService before using.');
+    if (imageService) {
+      lynx.registerImageService(imageService.initNativeService(context.resourceManager));
+    } else {
+      LLog.e(TAG, 'LynxImageService not found. Register via LynxServiceCenter.registerService before using.');
     }
-    lynx.registerImageService(imageService.initNativeService(context.resourceManager));
 
     this.tryInitLynxDebug();
     lynx.initGlobalEnv(context.resourceManager);
