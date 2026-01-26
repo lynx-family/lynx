@@ -1473,6 +1473,9 @@ public class com::lynx::devtoolwrapper::DevToolOverlayDelegate :  {
 
 public class com::lynx::devtoolwrapper::DevToolSettings :  {
   public final String com.lynx.devtoolwrapper.DevToolSettings.SP_KEY_ENABLE_DEVTOOL SP_KEY_ENABLE_DEVTOOL;
+  public final int com.lynx.devtoolwrapper.DevToolSettings.V8_OFF V8_OFF;
+  public final int com.lynx.devtoolwrapper.DevToolSettings.V8_ON V8_ON;
+  public final int com.lynx.devtoolwrapper.DevToolSettings.V8_ALIGN_WITH_PROD V8_ALIGN_WITH_PROD;
   public static DevToolSettings com.lynx.devtoolwrapper.DevToolSettings.inst();
   public void com.lynx.devtoolwrapper.DevToolSettings.init(Context context);
   public boolean com.lynx.devtoolwrapper.DevToolSettings.isDevToolEnabled();

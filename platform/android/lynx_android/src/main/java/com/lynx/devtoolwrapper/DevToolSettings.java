@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.LLog;
 
 /**
@@ -30,6 +31,10 @@ public class DevToolSettings {
   // TODO(mitchilling): change these keys to private when encapsulated
   public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
 
+  public static final int V8_OFF = 0;
+  public static final int V8_ON = 1;
+  public static final int V8_ALIGN_WITH_PROD = 2;
+
   public static DevToolSettings inst() {
     if (sInstance == null) {
       synchronized (DevToolSettings.class) {
@@ -44,11 +49,32 @@ public class DevToolSettings {
   private DevToolSettings() {}
 
   public void init(Context context) {
-    if (context != null) {
-      mSharedPreferences = context.getSharedPreferences(SP_NAME, Context.MODE_PRIVATE);
-    } else {
+    if (context == null) {
       LLog.e(TAG, "init with null context");
+      return;
     }
+    mSharedPreferences = context.getSharedPreferences(SP_NAME, Context.MODE_PRIVATE);
+
+    if (!DevToolLifecycle.getInstance().isInitialized()) {
+      LLog.e(TAG, "DevTool is not initialized yet, can't sync references to native");
+      return;
+    }
+    syncToNativeOnInit();
+  }
+
+  private void syncToNativeOnInit() {
+    syncToNativeBoolean(SP_KEY_ENABLE_DEVTOOL, getPersistedBoolean(SP_KEY_ENABLE_DEVTOOL, false));
+    // FIXME(mitchilling): now we are using keys from LynxEnvKey, correct them after they're moved
+    syncToNativeBoolean(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE,
+        getPersistedBoolean(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE, true));
+    syncToNativeInt(LynxEnvKey.SP_KEY_ENABLE_V8,
+        getPersistedInt(LynxEnvKey.SP_KEY_ENABLE_V8, V8_ALIGN_WITH_PROD));
+    syncToNativeBoolean(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG,
+        getPersistedBoolean(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, true));
+    syncToNativeBoolean(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE,
+        getPersistedBoolean(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, true));
+    syncToNativeBoolean(LynxEnvKey.SP_KEY_ENABLE_LOGBOX,
+        getPersistedBoolean(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true));
   }
 
   private boolean getPersistedBoolean(String key, boolean defaultValue) {
@@ -64,20 +90,33 @@ public class DevToolSettings {
     }
   }
 
-  private void syncBooleanToNative(@NonNull String key, boolean defaultValue) {
-    if (!DevToolLifecycle.getInstance().isInitialized()) {
-      return;
+  private int getPersistedInt(String key, int defaultValue) {
+    if (mSharedPreferences != null) {
+      return mSharedPreferences.getInt(key, defaultValue);
     }
-    // FIXME(mitchilling): loop dependency between DevToolSettings and LynxEnv
-    LynxEnv.inst().nativeSetLocalEnv(key, defaultValue ? "1" : "0");
+    return defaultValue;
   }
 
-  private void syncIntToNative(@NonNull String key, int defaultValue) {
+  private void setPersistedInt(String key, int value) {
+    if (mSharedPreferences != null) {
+      mSharedPreferences.edit().putInt(key, value).apply();
+    }
+  }
+
+  private void syncToNativeBoolean(@NonNull String key, boolean value) {
     if (!DevToolLifecycle.getInstance().isInitialized()) {
       return;
     }
     // FIXME(mitchilling): loop dependency between DevToolSettings and LynxEnv
-    LynxEnv.inst().nativeSetLocalEnv(key, String.valueOf(defaultValue));
+    LynxEnv.inst().nativeSetLocalEnv(key, value ? "1" : "0");
+  }
+
+  private void syncToNativeInt(@NonNull String key, int value) {
+    if (!DevToolLifecycle.getInstance().isInitialized()) {
+      return;
+    }
+    // FIXME(mitchilling): loop dependency between DevToolSettings and LynxEnv
+    LynxEnv.inst().nativeSetLocalEnv(key, String.valueOf(value));
   }
 
   /*
@@ -91,6 +130,6 @@ public class DevToolSettings {
 
   public void setDevToolEnabled(boolean enabled) {
     setPersistedBoolean(SP_KEY_ENABLE_DEVTOOL, enabled);
-    syncBooleanToNative(SP_KEY_ENABLE_DEVTOOL, enabled);
+    syncToNativeBoolean(SP_KEY_ENABLE_DEVTOOL, enabled);
   }
 }

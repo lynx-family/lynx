@@ -9,6 +9,7 @@ import android.app.Application;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.tasm.LynxEnv;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,19 +32,19 @@ public class LynxDevtoolEnvTest {
 
   @Test
   public void enableV8() {
-    LynxDevtoolEnv.inst().enableV8(LynxDevtoolEnv.V8_OFF);
-    assertEquals(LynxDevtoolEnv.V8_OFF, LynxDevtoolEnv.inst().getV8Enabled());
+    LynxDevtoolEnv.inst().enableV8(DevToolSettings.V8_OFF);
+    assertEquals(DevToolSettings.V8_OFF, LynxDevtoolEnv.inst().getV8Enabled());
 
-    LynxDevtoolEnv.inst().enableV8(LynxDevtoolEnv.V8_ON);
-    assertEquals(LynxDevtoolEnv.V8_ON, LynxDevtoolEnv.inst().getV8Enabled());
+    LynxDevtoolEnv.inst().enableV8(DevToolSettings.V8_ON);
+    assertEquals(DevToolSettings.V8_ON, LynxDevtoolEnv.inst().getV8Enabled());
 
-    LynxDevtoolEnv.inst().enableV8(LynxDevtoolEnv.V8_ALIGN_WITH_PROD);
-    assertEquals(LynxDevtoolEnv.V8_ALIGN_WITH_PROD, LynxDevtoolEnv.inst().getV8Enabled());
+    LynxDevtoolEnv.inst().enableV8(DevToolSettings.V8_ALIGN_WITH_PROD);
+    assertEquals(DevToolSettings.V8_ALIGN_WITH_PROD, LynxDevtoolEnv.inst().getV8Enabled());
 
     LynxDevtoolEnv.inst().enableV8(3);
-    assertEquals(LynxDevtoolEnv.V8_ALIGN_WITH_PROD, LynxDevtoolEnv.inst().getV8Enabled());
+    assertEquals(DevToolSettings.V8_ALIGN_WITH_PROD, LynxDevtoolEnv.inst().getV8Enabled());
 
     LynxDevtoolEnv.inst().enableV8(-1);
-    assertEquals(LynxDevtoolEnv.V8_OFF, LynxDevtoolEnv.inst().getV8Enabled());
+    assertEquals(DevToolSettings.V8_OFF, LynxDevtoolEnv.inst().getV8Enabled());
   }
 }

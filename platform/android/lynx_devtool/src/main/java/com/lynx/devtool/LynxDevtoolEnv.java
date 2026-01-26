@@ -50,9 +50,6 @@ public class LynxDevtoolEnv {
   private ReadWriteLock mReadWriteLock;
   private Map<String, Boolean> mSwitchMasks;
 
-  public static final int V8_OFF = 0;
-  public static final int V8_ON = 1;
-  public static final int V8_ALIGN_WITH_PROD = 2;
   public static final String ENABLE_PERF_METRICS = "enable_perf_metrics";
 
   public static LynxDevtoolEnv inst() {
@@ -97,7 +94,6 @@ public class LynxDevtoolEnv {
       }
 
       initSwitchAttribute();
-      initSyncToNative();
 
       if (!LynxEnv.inst().isDevLibraryLoaded()) {
         loadNativeDevtoolLibrary();
@@ -156,23 +152,10 @@ public class LynxDevtoolEnv {
         put(LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE,
             new ArrayList<Object>(Arrays.asList(true, false, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_V8,
-            new ArrayList<Object>(Arrays.asList(true, true, V8_ALIGN_WITH_PROD)));
+            new ArrayList<Object>(Arrays.asList(true, true, DevToolSettings.V8_ALIGN_WITH_PROD)));
         put(ENABLE_PERF_METRICS, new ArrayList<Object>(Arrays.asList(false, false, false)));
       }
     };
-  }
-
-  // TODO(mitchilling): move this to DevToolSettings
-  private void initSyncToNative() {
-    syncToNative(DevToolSettings.SP_KEY_ENABLE_DEVTOOL,
-        getDevtoolEnv(DevToolSettings.SP_KEY_ENABLE_DEVTOOL, false));
-    syncToNative(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE,
-        getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE, true));
-    syncToNative(LynxEnvKey.SP_KEY_ENABLE_V8, getV8Enabled());
-    syncToNative(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, isQuickjsDebugEnabled());
-    syncToNative(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, isDomTreeEnabled());
-    syncToNative(
-        LynxEnvKey.SP_KEY_ENABLE_LOGBOX, getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true));
   }
 
   private void setDefaultAppInfo(Context context) {
@@ -546,24 +529,25 @@ public class LynxDevtoolEnv {
   }
 
   public int getV8Enabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, V8_ALIGN_WITH_PROD);
+    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, DevToolSettings.V8_ALIGN_WITH_PROD);
   }
 
   // 0 means Off, 1 means On, 2 means AlignWithProd. Use 2 as default.
   // When the value is 2, the V8 engine will be used on LynxView which configured with enable_v8,
   // and the Quickjs engine will be used on other LynxView.
   public void enableV8(int enabled) {
-    if (enabled > V8_ALIGN_WITH_PROD) {
-      enabled = V8_ALIGN_WITH_PROD;
+    if (enabled > DevToolSettings.V8_ALIGN_WITH_PROD) {
+      enabled = DevToolSettings.V8_ALIGN_WITH_PROD;
       LLog.w(TAG, "The value must be 0 or 1 or 2. Change the value to 2!");
-    } else if (enabled < V8_OFF) {
-      enabled = V8_OFF;
+    } else if (enabled < DevToolSettings.V8_OFF) {
+      enabled = DevToolSettings.V8_OFF;
       LLog.w(TAG, "The value must be 0 or 1 or 2. Change the value to 0!");
     }
     setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, enabled);
   }
 
   public boolean isDomTreeEnabled() {
+    // TODO(mitchilling): call DevToolSettings
     return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, true);
   }
 
@@ -632,6 +616,7 @@ public class LynxDevtoolEnv {
   }
 
   public boolean isQuickjsDebugEnabled() {
+    // TODO(mitchilling): call DevToolSettings
     return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, true);
   }
 
