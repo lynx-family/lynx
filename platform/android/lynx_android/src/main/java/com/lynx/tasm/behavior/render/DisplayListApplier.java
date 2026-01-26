@@ -4,10 +4,12 @@
 package com.lynx.tasm.behavior.render;
 
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.text.Spanned;
@@ -39,11 +41,24 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_BORDER = 9;
   private static final int OP_CLIP_RECT = 10;
   private static final int OP_RECORD_BOX = 11;
+  private static final int OP_LINEAR_GRADIENT = 12;
 
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
   private Paint mPaint;
-  private Stack<RectF> mBounds;
+
+  // Reusable objects for optimization
+  private final Path mReusablePath = new Path();
+  private final RectF mReusableRectF = new RectF();
+  private final float[] mReusableBorderRadii = new float[8];
+  private final int[] mReusableBorderColors = new int[4];
+  private final BorderStyle[] mReusableBorderStyles = new BorderStyle[4];
+  private final PointF mReusablePointF1 = new PointF();
+  private final PointF mReusablePointF2 = new PointF();
+  private final PointF mReusablePointF3 = new PointF();
+  private final PointF mReusablePointF4 = new PointF();
+  private int[] mReusableGradientColors;
+  private float[] mReusableGradientStops;
 
   private PlatformRendererContext mContext;
   // Separate indices for content and subtree property operations
@@ -60,7 +75,6 @@ public class DisplayListApplier implements Drawable.Callback {
     mDisplayList = displayList;
     mPaint = new Paint();
     mPaint.setAntiAlias(true);
-    mBounds = new Stack<>();
     reset();
     mTextMeasurer = platformRendererContext.getTextMeasurer();
     mContext = platformRendererContext;
@@ -71,7 +85,6 @@ public class DisplayListApplier implements Drawable.Callback {
     mContentOpIndex = 0;
     mContentIntIndex = 0;
     mContentFloatIndex = 0;
-    mBounds.clear();
     mRoundedRectangleArray.clear();
   }
 
@@ -132,45 +145,58 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   private void processContentOperations(Canvas canvas) {
-    if (mDisplayList.ops == null) {
+    if (mDisplayList.ops == null || mDisplayList.iArgv == null) {
       return;
     }
 
-    while (mContentOpIndex < mDisplayList.ops.length) {
+    final int[] ops = mDisplayList.ops;
+    final int[] iArgv = mDisplayList.iArgv;
+    final float[] fArgv = mDisplayList.fArgv;
+    final int opsLength = ops.length;
+    final int iArgvLength = iArgv.length;
+
+    while (mContentOpIndex < opsLength) {
       // Read operation type and parameter counts
-      if (mContentIntIndex >= mDisplayList.iArgv.length) {
+      if (mContentIntIndex + 1 >= iArgvLength) {
         break;
       }
 
-      int op = mDisplayList.ops[mContentOpIndex++];
-      int intParamCount = mDisplayList.iArgv[mContentIntIndex++];
-      int floatParamCount = mDisplayList.iArgv[mContentIntIndex++];
+      int op = ops[mContentOpIndex++];
+      int intParamCount = iArgv[mContentIntIndex++];
+      int floatParamCount = iArgv[mContentIntIndex++];
+
+      if (intParamCount < 0 || floatParamCount < 0) {
+        LLog.e(TAG, "Invalid param count: " + intParamCount + ", " + floatParamCount);
+        break;
+      }
+
+      int nextIntIndex = mContentIntIndex + intParamCount;
+      int nextFloatIndex = mContentFloatIndex + floatParamCount;
 
       switch (op) {
-        case OP_BEGIN:
+        case OP_BEGIN: {
           // Begin fragment: id, x, y, width, height (1 int, 4 floats)
-          if (intParamCount == 1) {
-            long id = nextContentInt();
+          if (intParamCount >= 1) {
+            nextContentInt(); // skip id
           }
-          if (floatParamCount == 4) {
+          if (floatParamCount >= 4) {
             float x = nextContentFloat();
             float y = nextContentFloat();
-            float width = nextContentFloat();
-            float height = nextContentFloat();
-            mBounds.push(new RectF(0, 0, width, height));
+            nextContentFloat(); // unused width
+            nextContentFloat(); // unused height
             canvas.save();
             canvas.translate(x, y);
-            // No direct canvas operation, just consume parameters
           }
           break;
+        }
 
-        case OP_END:
+        case OP_END: {
           // End fragment - no parameters
           canvas.restore();
-          mBounds.pop();
           break; // End of this sub view's content
+        }
 
-        case OP_FILL:
+        case OP_FILL: {
           mPaint.reset();
           // Fill: color (1 int), clip_index (1 int)
           int color = nextContentInt();
@@ -180,92 +206,81 @@ public class DisplayListApplier implements Drawable.Callback {
           if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
             RoundedRectangle roundedRectangle = mRoundedRectangleArray.get(clipIndex);
             if (roundedRectangle.hasBorderRadius()) {
-              Path path = new Path();
-              path.addRoundRect(roundedRectangle.getRectF(), roundedRectangle.getBorderRadii(),
-                  Path.Direction.CW);
-              canvas.drawPath(path, mPaint);
+              mReusablePath.reset();
+              mReusablePath.addRoundRect(roundedRectangle.getRectF(),
+                  roundedRectangle.getBorderRadii(), Path.Direction.CW);
+              canvas.drawPath(mReusablePath, mPaint);
             } else {
               canvas.drawRect(roundedRectangle.getRectF(), mPaint);
             }
-          } else if (!mBounds.isEmpty()) {
-            // This would fill the entire fragment bound
-            // Need to get bounds from the Begin operation or context
-            canvas.drawRect(mBounds.peek(), mPaint);
           }
           break;
+        }
 
-        case OP_DRAW_VIEW:
+        case OP_DRAW_VIEW: {
           // Draw view: view_id (1 int)
-          if (intParamCount == 1) {
-            int viewId = nextContentInt();
-            // This indicates we should stop processing and let the view draw itself
-          }
           return;
+        }
 
-        case OP_TEXT:
+        case OP_TEXT: {
           // Text: id (1 int)
           if (intParamCount >= 1) {
             int textId = nextContentInt();
             drawText(canvas, textId);
           }
           break;
+        }
 
-        case OP_IMAGE:
-          // Image: image_id (1 int)
-          if (intParamCount == 2) {
+        case OP_IMAGE: {
+          // Image: image_id (1 int), boxIndex (1 int)
+          if (intParamCount >= 2) {
             int imageId = nextContentInt();
             int boxIndex = nextContentInt();
             drawImage(canvas, imageId, boxIndex);
           }
           break;
-        case OP_BORDER:
-          if (intParamCount == 10) {
+        }
+        case OP_BORDER: {
+          if (intParamCount >= 10) {
+            mPaint.reset();
+            mPaint.setAntiAlias(true);
             int outBoxIndex = nextContentInt();
             int innerBoxIndex = nextContentInt();
 
             // 8 ints: border colors (4) + border styles (4)
-            int[] borderColors = new int[4];
+            // Order from C++ is: Top, Right, Bottom, Left
+            mReusableBorderColors[Spacing.TOP] = nextContentInt();
+            mReusableBorderColors[Spacing.RIGHT] = nextContentInt();
+            mReusableBorderColors[Spacing.BOTTOM] = nextContentInt();
+            mReusableBorderColors[Spacing.LEFT] = nextContentInt();
 
-            borderColors[Spacing.TOP] = nextContentInt(); // top color
-            borderColors[Spacing.RIGHT] = nextContentInt(); // right color
-            borderColors[Spacing.BOTTOM] = nextContentInt(); // bottom color
-            borderColors[Spacing.LEFT] = nextContentInt(); // left color
-
-            BorderStyle[] borderStyles = new BorderStyle[4];
-
-            borderStyles[Spacing.TOP] = BorderStyle.parse(nextContentInt()); // top style
-            borderStyles[Spacing.RIGHT] = BorderStyle.parse(nextContentInt()); // right style
-            borderStyles[Spacing.BOTTOM] = BorderStyle.parse(nextContentInt()); // bottom style
-            borderStyles[Spacing.LEFT] = BorderStyle.parse(nextContentInt()); // left style
+            mReusableBorderStyles[Spacing.TOP] = BorderStyle.parse(nextContentInt());
+            mReusableBorderStyles[Spacing.RIGHT] = BorderStyle.parse(nextContentInt());
+            mReusableBorderStyles[Spacing.BOTTOM] = BorderStyle.parse(nextContentInt());
+            mReusableBorderStyles[Spacing.LEFT] = BorderStyle.parse(nextContentInt());
 
             // Use the member function to draw borders (verifiable in tests)
-            drawRectangularBorders(
-                canvas, mPaint, outBoxIndex, innerBoxIndex, borderColors, borderStyles);
+            drawRectangularBorders(canvas, mPaint, outBoxIndex, innerBoxIndex,
+                mReusableBorderColors, mReusableBorderStyles);
           }
           break;
+        }
         case OP_CLIP_RECT: {
           float left = nextContentFloat();
           float top = nextContentFloat();
           float width = nextContentFloat();
           float height = nextContentFloat();
 
-          RectF rectF = new RectF(left, top, left + width, top + height);
-          if (floatParamCount > 4) {
-            float[] borderRadii = new float[8];
-            borderRadii[0] = nextContentFloat(); // top left x
-            borderRadii[1] = nextContentFloat(); // top left y
-            borderRadii[2] = nextContentFloat(); // top right x
-            borderRadii[3] = nextContentFloat(); // top right y
-            borderRadii[4] = nextContentFloat(); // bottom right x
-            borderRadii[5] = nextContentFloat(); // bottom right y
-            borderRadii[6] = nextContentFloat(); // bottom left x
-            borderRadii[7] = nextContentFloat(); // bottom left y
+          mReusableRectF.set(left, top, left + width, top + height);
+          if (floatParamCount >= 12) { // 4 + 8 radii
+            System.arraycopy(fArgv, mContentFloatIndex, mReusableBorderRadii, 0, 8);
+            mContentFloatIndex += 8;
 
-            Path path = new Path();
-            path.addRoundRect(rectF, borderRadii, Path.Direction.CW);
-            canvas.clipPath(path);
+            mReusablePath.reset();
+            mReusablePath.addRoundRect(mReusableRectF, mReusableBorderRadii, Path.Direction.CW);
+            canvas.clipPath(mReusablePath);
           } else {
-            canvas.clipRect(rectF);
+            canvas.clipRect(mReusableRectF);
           }
           break;
         }
@@ -277,24 +292,121 @@ public class DisplayListApplier implements Drawable.Callback {
 
           RectF rectF = new RectF(left, top, left + width, top + height);
           float[] borderRadii = null;
-          if (floatParamCount > 4) {
+          if (floatParamCount >= 12) {
             borderRadii = new float[8];
-            borderRadii[0] = nextContentFloat(); // top left x
-            borderRadii[1] = nextContentFloat(); // top left y
-            borderRadii[2] = nextContentFloat(); // top right x
-            borderRadii[3] = nextContentFloat(); // top right y
-            borderRadii[4] = nextContentFloat(); // bottom right x
-            borderRadii[5] = nextContentFloat(); // bottom right y
-            borderRadii[6] = nextContentFloat(); // bottom left x
-            borderRadii[7] = nextContentFloat(); // bottom left y
+            System.arraycopy(fArgv, mContentFloatIndex, borderRadii, 0, 8);
+            mContentFloatIndex += 8;
           }
           recordRoundedRectangle(new RoundedRectangle(rectF, borderRadii));
+          break;
+        }
+        case OP_LINEAR_GRADIENT: {
+          int colorCount = nextContentInt();
+          if (mReusableGradientColors == null || mReusableGradientColors.length != colorCount) {
+            mReusableGradientColors = new int[colorCount];
+          }
+          int[] colors = mReusableGradientColors;
+          System.arraycopy(iArgv, mContentIntIndex, colors, 0, colorCount);
+          mContentIntIndex += colorCount;
+
+          int stopCount = nextContentInt();
+          int tilingIndex = nextContentInt();
+          int clipIndex = nextContentInt();
+          int repeatX = nextContentInt();
+          int repeatY = nextContentInt();
+
+          float angle = nextContentFloat();
+          float[] stops = null;
+          if (stopCount > 0) {
+            if (mReusableGradientStops == null || mReusableGradientStops.length != stopCount) {
+              mReusableGradientStops = new float[stopCount];
+            }
+            stops = mReusableGradientStops;
+            System.arraycopy(fArgv, mContentFloatIndex, stops, 0, stopCount);
+            mContentFloatIndex += stopCount;
+          }
+
+          drawLinearGradient(
+              canvas, angle, colors, stops, tilingIndex, clipIndex, repeatX, repeatY);
           break;
         }
         default:
           break;
       }
+
+      // Ensure alignment
+      mContentIntIndex = nextIntIndex;
+      mContentFloatIndex = nextFloatIndex;
     }
+  }
+
+  private void drawLinearGradient(Canvas canvas, float angle, int[] colors, float[] stops,
+      int tilingIndex, int clipIndex, int repeatX, int repeatY) {
+    if (colors == null) {
+      return;
+    }
+
+    RoundedRectangle tilingBox = null;
+    if (tilingIndex >= 0 && tilingIndex < mRoundedRectangleArray.size()) {
+      tilingBox = mRoundedRectangleArray.get(tilingIndex);
+    }
+    if (tilingBox == null) {
+      return;
+    }
+
+    float width = tilingBox.getRectF().width();
+    float height = tilingBox.getRectF().height();
+    float left = tilingBox.getRectF().left;
+    float top = tilingBox.getRectF().top;
+
+    PointF center = mReusablePointF1;
+    center.set(left + width / 2.f, top + height / 2.f);
+    double radial = Math.toRadians(angle);
+    float sin = (float) Math.sin(radial);
+    float cos = (float) Math.cos(radial);
+    float tan = (float) Math.tan(radial);
+
+    PointF m = mReusablePointF2;
+    if (sin >= 0 && cos >= 0) { // Bottom left to top right
+      m.set(left + width, top);
+    } else if (sin >= 0 && cos < 0) { // Top left to bottom right
+      m.set(left + width, top + height);
+    } else if (sin < 0 && cos < 0) { // Top right to bottom left
+      m.set(left, top + height);
+    } else { // Bottom right to top left
+      m.set(left, top);
+    }
+
+    // Reference logic from BackgroundLinearGradientLayer.java
+    float tmp = (center.y - m.y - tan * center.x + tan * m.x);
+    float endX = center.x + sin * tmp / (sin * tan + cos);
+    float endY = center.y - tmp / (tan * tan + 1);
+    float startX = 2 * center.x - endX;
+    float startY = 2 * center.y - endY;
+
+    mPaint.reset();
+    mPaint.setAntiAlias(true);
+
+    Shader.TileMode tileMode = Shader.TileMode.CLAMP;
+    // BackgroundRepeatType: kRepeat = 0, kNoRepeat = 1, kRepeatX = 2, kRepeatY = 3, kRound = 4,
+    // kSpace = 5 For LinearGradient, if either axis repeats, we use REPEAT tile mode.
+    if (repeatX != 1 || repeatY != 1) {
+      tileMode = Shader.TileMode.REPEAT;
+    }
+
+    mPaint.setShader(new LinearGradient(startX, startY, endX, endY, colors, stops, tileMode));
+
+    if (clipIndex >= 0 && clipIndex < mRoundedRectangleArray.size()) {
+      RoundedRectangle clipBox = mRoundedRectangleArray.get(clipIndex);
+      if (clipBox.hasBorderRadius()) {
+        mReusablePath.reset();
+        mReusablePath.addRoundRect(clipBox.getRectF(), clipBox.getBorderRadii(), Path.Direction.CW);
+        canvas.drawPath(mReusablePath, mPaint);
+      } else {
+        canvas.drawRect(clipBox.getRectF(), mPaint);
+      }
+    }
+    mPaint.setShader(null);
   }
 
   /**

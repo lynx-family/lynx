@@ -16,6 +16,7 @@
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
+#include "core/renderer/starlight/style/css_type.h"
 #include "core/style/transform/matrix44.h"
 
 namespace lynx {
@@ -354,6 +355,75 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
       break;
   }
   display_list_builder.Fill(background_data->color, clip_index);
+
+  if (background_data->image_data) {
+    const auto& image_data = background_data->image_data;
+    if (image_data->image.IsArray()) {
+      starlight::BackgroundOriginType origin_type =
+          starlight::BackgroundOriginType::kPaddingBox;
+      if (!image_data->origin.empty()) {
+        origin_type = image_data->origin.back();
+      }
+      int32_t origin_index = -1;
+      switch (origin_type) {
+        case starlight::BackgroundOriginType::kPaddingBox:
+          origin_index = DefinePaddingBox(display_list_builder);
+          break;
+        case starlight::BackgroundOriginType::kBorderBox:
+          origin_index = DefineBorderBox(display_list_builder);
+          break;
+        case starlight::BackgroundOriginType::kContentBox:
+          origin_index = DefineContentBox(display_list_builder);
+          break;
+        default:
+          origin_index = DefinePaddingBox(display_list_builder);
+          break;
+      }
+
+      auto array = image_data->image.Array();
+      for (size_t i = 0; i + 1 < array->size(); i += 2) {
+        size_t image_index = i / 2;
+        auto type =
+            static_cast<starlight::BackgroundImageType>(array->get(i).Number());
+        if (type == starlight::BackgroundImageType::kLinearGradient) {
+          auto gradient_arr = array->get(i + 1).Array();
+          // gradient_arr: [angle, colors, stops, side_or_corner]
+          float angle = static_cast<float>(gradient_arr->get(0).Number());
+          auto colors_arr = gradient_arr->get(1).Array();
+          auto stops_arr = gradient_arr->get(2).Array();
+
+          base::Vector<uint32_t> colors;
+          colors.reserve(colors_arr->size());
+          for (size_t j = 0; j < colors_arr->size(); ++j) {
+            colors.push_back(
+                static_cast<uint32_t>(colors_arr->get(j).Number()));
+          }
+
+          base::Vector<float> stops;
+          stops.reserve(stops_arr->size());
+          for (size_t j = 0; j < stops_arr->size(); ++j) {
+            stops.push_back(static_cast<float>(stops_arr->get(j).Number()) /
+                            100.0f);
+          }
+
+          starlight::BackgroundRepeatType repeat_x =
+              starlight::BackgroundRepeatType::kRepeat;
+          starlight::BackgroundRepeatType repeat_y =
+              starlight::BackgroundRepeatType::kRepeat;
+          if (image_index * 2 < image_data->repeat.size()) {
+            repeat_x = image_data->repeat[image_index * 2];
+          }
+          if (image_index * 2 + 1 < image_data->repeat.size()) {
+            repeat_y = image_data->repeat[image_index * 2 + 1];
+          }
+
+          display_list_builder.LinearGradient(
+              angle, colors, stops, origin_index, clip_index,
+              static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
+        }
+      }
+    }
+  }
 }
 
 void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {

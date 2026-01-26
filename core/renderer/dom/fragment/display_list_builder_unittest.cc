@@ -929,8 +929,11 @@ TEST_F(DisplayListBuilderTest, LinearGradientOperation) {
   base::Vector<float> stops = {0.0f, 0.5f, 1.0f};
   int32_t tiling_index = 1;
   int32_t clip_index = 2;
+  int32_t repeat_x = 0;
+  int32_t repeat_y = 1;
 
-  builder_->LinearGradient(angle, colors, stops, tiling_index, clip_index);
+  builder_->LinearGradient(angle, colors, stops, tiling_index, clip_index,
+                           repeat_x, repeat_y);
 
   DisplayList display_list = builder_->Build();
 
@@ -945,18 +948,22 @@ TEST_F(DisplayListBuilderTest, LinearGradientOperation) {
   EXPECT_EQ(op_types_data[0],
             static_cast<int32_t>(DisplayListOpType::kLinearGradient));
 
-  // int_data layout: [int_count, float_count, stop_count, colors...,
-  // tiling_index, clip_index]
+  // int_data layout: [int_count, float_count, color_count, colors...,
+  // stop_count, tiling_index, clip_index, repeat_x, repeat_y]
   EXPECT_EQ(int_data_data[0],
-            1 + 3 + 2);  // int_count: 1 (stop_count) + 3 (colors) + 2 (indices)
+            1 + 3 + 1 + 4);  // int_count: 1 (color_count) + 3 (colors) + 1
+                             // (stop_count) + 4 (indices/repeats)
   EXPECT_EQ(int_data_data[1], 1 + 3);  // float_count: 1 (angle) + 3 (stops)
 
-  EXPECT_EQ(int_data_data[2], 3);  // stop_count
+  EXPECT_EQ(int_data_data[2], 3);  // color_count
   EXPECT_EQ(static_cast<uint32_t>(int_data_data[3]), 0xFFFF0000);
   EXPECT_EQ(static_cast<uint32_t>(int_data_data[4]), 0xFF00FF00);
   EXPECT_EQ(static_cast<uint32_t>(int_data_data[5]), 0xFF0000FF);
-  EXPECT_EQ(int_data_data[6], tiling_index);
-  EXPECT_EQ(int_data_data[7], clip_index);
+  EXPECT_EQ(int_data_data[6], 3);  // stop_count
+  EXPECT_EQ(int_data_data[7], tiling_index);
+  EXPECT_EQ(int_data_data[8], clip_index);
+  EXPECT_EQ(int_data_data[9], repeat_x);
+  EXPECT_EQ(int_data_data[10], repeat_y);
 
   // float_data layout: [angle, positions...]
   EXPECT_FLOAT_EQ(float_data_data[0], angle);

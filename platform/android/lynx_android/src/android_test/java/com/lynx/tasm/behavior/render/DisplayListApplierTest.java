@@ -10,6 +10,7 @@ import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.when;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
@@ -26,12 +28,15 @@ import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 /**
  * Unit tests for DisplayListApplier that verify the correct processing of display list operations.
@@ -254,15 +259,24 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testOpFill() {
-    testDisplayList.ops = new int[] {0, 2}; // OP_BEGIN, OP_FILL
-    testDisplayList.iArgv = new int[] {1, 4, 0, 2, 0, 0xFF0000FF, 0}; // intParamCounts
-    testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
+    testDisplayList.ops = new int[] {0, 11, 2, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_FILL, OP_END
+    testDisplayList.iArgv = new int[] {
+        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        0, 4, // OP_RECORD_BOX: 0 int, 4 float
+        2, 0, 0xFF0000FF, 0, // OP_FILL: 2 int, 0 float, color, clipIndex
+        0, 0 // OP_END
+    };
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 100f, // bounds for OP_BEGIN
+        0f, 0f, 100f, 100f // bounds for OP_RECORD_BOX
+    };
 
     displayListApplier.setDisplayList(testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
     verify(mockCanvas).drawRect(any(RectF.class), any(Paint.class));
+    verify(mockCanvas).restore();
   }
 
   /**
@@ -430,10 +444,13 @@ public class DisplayListApplierTest {
   @Test
   public void testSetDisplayList() {
     DisplayList newDisplayList = new DisplayList();
-    newDisplayList.ops = new int[] {0, 2, 1}; // Begin, OP_FILL, end
+    newDisplayList.ops = new int[] {0, 11, 2, 1}; // Begin, RECORD_BOX, OP_FILL, end
     newDisplayList.iArgv =
-        new int[] {1, 4, 0, 2, 0, 0xFF00FF00, 0, 0, 0}; // 1 int param, 4 float params
-    newDisplayList.fArgv = new float[] {0f, 0f, 32f, 32f}; // Green color
+        new int[] {1, 4, 0, 0, 4, 2, 0, 0xFF00FF00, 0, 0, 0}; // param counts and color
+    newDisplayList.fArgv = new float[] {
+        0f, 0f, 32f, 32f, // BEGIN
+        0f, 0f, 32f, 32f // RECORD_BOX
+    };
 
     displayListApplier.setDisplayList(newDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
@@ -495,15 +512,14 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testMultipleOperations() {
-    testDisplayList.ops = new int[] {0, 2, 6, 1}; // OP_BEGIN, OP_FILL, OP_TEXT, OP_END
+    testDisplayList.ops =
+        new int[] {0, 11, 2, 6, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_FILL, OP_TEXT, OP_END
     testDisplayList.iArgv =
-        new int[] {1, 4, 0, 2, 0, 0xFF0000FF, 0, 1, 0, 999, 0, 0}; // intParamCounts
+        new int[] {1, 4, 0, 0, 4, 2, 0, 0xFF0000FF, 0, 1, 0, 999, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {
-        10f,
-        20f,
-        100f,
-        50f,
-    }; // x,y,w,h + color
+        10f, 20f, 100f, 50f, // BEGIN
+        0f, 0f, 100f, 50f // RECORD_BOX
+    };
 
     when(mockTextMeasurer.takeTextLayout(anyInt())).thenReturn(mockTextUpdateBundle);
     when(mockTextUpdateBundle.getTextLayout()).thenReturn(mockTextLayout);
@@ -538,20 +554,21 @@ public class DisplayListApplierTest {
    */
   @Test
   public void testOpBorderUniform() {
-    testDisplayList.ops = new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.ops =
+        new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BOX, OP_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 0 int, 4 float params
+        1, 4, 0, // OP_BEGIN: 1 int, 4 float
         0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
         10, 0, // OP_BORDER: 10 int, 0 float params
         0, 1, // Out box index: 0, inner box index: 1
-        0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
+        0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (Top, Right, Bottom, Left)
         0, 0, 0, 0, // Border styles (solid)
-        0, 0 // OP_END, 0 int, 0 float params.
+        0, 0 // OP_END
     };
     testDisplayList.fArgv = new float[] {
         0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
         0f, 0f, 100f, 50f, // out box: x=0, y=0, width=100, height=50
-        5f, 5f, 90f, 40f, // inner box: x=0, y=0, width=100, height=50
+        5f, 5f, 90f, 40f, // inner box: x=5, y=5, width=90, height=40
         5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
     };
 
@@ -570,45 +587,46 @@ public class DisplayListApplierTest {
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
-    assertEquals(0xFF0000FF, capturedColors[0]); // left
-    assertEquals(0xFF0000FF, capturedColors[1]); // top
-    assertEquals(0xFF0000FF, capturedColors[2]); // right
-    assertEquals(0xFF0000FF, capturedColors[3]); // bottom
+    assertEquals(0xFF0000FF, capturedColors[Spacing.LEFT]);
+    assertEquals(0xFF0000FF, capturedColors[Spacing.TOP]);
+    assertEquals(0xFF0000FF, capturedColors[Spacing.RIGHT]);
+    assertEquals(0xFF0000FF, capturedColors[Spacing.BOTTOM]);
 
     // Verify border styles
     BorderStyle[] capturedStyles = borderStylesCaptor.getValue();
-    assertEquals(BorderStyle.SOLID, capturedStyles[0]); // left
-    assertEquals(BorderStyle.SOLID, capturedStyles[1]); // top
-    assertEquals(BorderStyle.SOLID, capturedStyles[2]); // right
-    assertEquals(BorderStyle.SOLID, capturedStyles[3]); // bottom
+    assertEquals(BorderStyle.SOLID, capturedStyles[Spacing.LEFT]);
+    assertEquals(BorderStyle.SOLID, capturedStyles[Spacing.TOP]);
+    assertEquals(BorderStyle.SOLID, capturedStyles[Spacing.RIGHT]);
+    assertEquals(BorderStyle.SOLID, capturedStyles[Spacing.BOTTOM]);
   }
 
   @Test
   public void testOpBorderComplex() {
-    testDisplayList.ops = new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BORDER, OP_END
+    testDisplayList.ops =
+        new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_RECORD_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 0 int, 4 float params
-        0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
-        10, 0, // OP_BORDER: 10 int, 0 float params,
-        0, 1, // Out box index: 0, inner box index: 1,
-        0xFFFF00FF, 0xFF00FFFF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
-        0, 1, 2, 3, // Border styles (solid)
-        0, 0 // OP_END, 0 int, 0 float params.
+        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        0, 4, // OP_RECORD_BOX (out): 0 int, 4 float
+        0, 4, // OP_RECORD_BOX (inner): 0 int, 4 float
+        10, 0, // OP_BORDER: 10 int, 0 float
+        0, 1, // Out box index: 0, inner box index: 1
+        0xFFFF00FF, 0xFF00FFFF, 0xFF0000FF, 0xFF000000, // Border colors (Top, Right, Bottom, Left)
+        0, 1, 2, 3, // Border styles (solid, dashed, dotted, double)
+        0, 0 // OP_END
     };
     testDisplayList.fArgv = new float[] {
-        0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
-        0f, 0f, 100f, 50f, // out box: x=0, y=0, width=100, height=50
-        5f, 5f, 90f, 40f, // inner box: x=0, y=0, width=100, height=50
-        5f, 6f, 5f, 0f // border widths: left=5, top=5, right=5, bottom=5
+        0f, 0f, 100f, 100f, // BEGIN
+        0f, 0f, 100f, 100f, // out box
+        5f, 5f, 90f, 90f // inner box
     };
 
     spyDisplayListApplier.setDisplayList(testDisplayList);
     spyDisplayListApplier.drawTillNextView(mockCanvas);
 
     verify(spyDisplayListApplier)
-        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(0, 0, 100, 50), null)));
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(0, 0, 100, 100), null)));
     verify(spyDisplayListApplier)
-        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(5, 5, 95, 45), null)));
+        .recordRoundedRectangle(eq(new RoundedRectangle(new RectF(5, 5, 95, 95), null)));
 
     // Verify drawRectangularBorders is called with correct parameters
     verify(spyDisplayListApplier)
@@ -620,7 +638,7 @@ public class DisplayListApplierTest {
     assertEquals(0xFFFF00FF, capturedColors[Spacing.TOP]);
     assertEquals(0xFF00FFFF, capturedColors[Spacing.RIGHT]);
     assertEquals(0xFF0000FF, capturedColors[Spacing.BOTTOM]);
-    assertEquals(0xFF0000FF, capturedColors[Spacing.LEFT]);
+    assertEquals(0xFF000000, capturedColors[Spacing.LEFT]);
 
     // Verify border styles
     BorderStyle[] capturedStyles = borderStylesCaptor.getValue();
@@ -635,18 +653,18 @@ public class DisplayListApplierTest {
     testDisplayList.ops =
         new int[] {0, 11, 11, 9, 1}; // OP_BEGIN, OP_BOX, OP_BOX, OP_BORDER, OP_END
     testDisplayList.iArgv = new int[] {
-        1, 4, 0, // OP_BEGIN: 0 int, 4 float params
-        4, 0, 4, 0, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
+        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        0, 4, 0, 4, // OP_BOX: 0 int, 4 float params, 0 int, 4 float params
         10, 0, // OP_BORDER: 10 int, 0 float
         0, 1, // Out box index: 0, inner box index: 1
-        0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (left, top, right, bottom)
-        1, 1, 1, 1, // Border styles (solid)
-        0, 0 // OP_END, 0 int, 0 float params.
+        0xFF0000FF, 0xFF0000FF, 0xFF0000FF, 0xFF0000FF, // Border colors (Top, Right, Bottom, Left)
+        1, 1, 1, 1, // Border styles (dashed)
+        0, 0 // OP_END
     };
     testDisplayList.fArgv = new float[] {
         0f, 0f, 100f, 50f, // bounds: x=0, y=0, width=100, height=50
         0f, 0f, 100f, 50f, // out box: x=0, y=0, width=100, height=50
-        5f, 5f, 90f, 40f, // inner box: x=0, y=0, width=100, height=50
+        5f, 5f, 90f, 40f, // inner box: x=5, y=5, width=90, height=40
         5f, 5f, 5f, 5f // border widths: left=5, top=5, right=5, bottom=5
     };
 
@@ -665,17 +683,54 @@ public class DisplayListApplierTest {
 
     // Verify border colors
     int[] capturedColors = borderColorsCaptor.getValue();
-    assertEquals(0xFF0000FF, capturedColors[0]); // left
-    assertEquals(0xFF0000FF, capturedColors[1]); // top
-    assertEquals(0xFF0000FF, capturedColors[2]); // right
-    assertEquals(0xFF0000FF, capturedColors[3]); // bottom
+    assertEquals(0xFF0000FF, capturedColors[Spacing.TOP]);
 
     // Verify border styles
     BorderStyle[] capturedStyles = borderStylesCaptor.getValue();
-    assertEquals(BorderStyle.DASHED, capturedStyles[0]); // left
-    assertEquals(BorderStyle.DASHED, capturedStyles[1]); // top
-    assertEquals(BorderStyle.DASHED, capturedStyles[2]); // right
-    assertEquals(BorderStyle.DASHED, capturedStyles[3]); // bottom
+    assertEquals(BorderStyle.DASHED, capturedStyles[Spacing.TOP]);
+    assertEquals(BorderStyle.DASHED, capturedStyles[Spacing.RIGHT]);
+    assertEquals(BorderStyle.DASHED, capturedStyles[Spacing.BOTTOM]);
+    assertEquals(BorderStyle.DASHED, capturedStyles[Spacing.LEFT]);
+  }
+
+  @Test
+  public void testOpLinearGradient() {
+    testDisplayList.ops = new int[] {
+        0, 11, 11, 12, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_RECORD_BOX, OP_LINEAR_GRADIENT, OP_END
+    testDisplayList.iArgv = new int[] {
+        1, 4, 0, // OP_BEGIN: 1 int, 4 float
+        0, 4, // OP_RECORD_BOX (tiling): 0 int, 4 float
+        0, 4, // OP_RECORD_BOX (clip): 0 int, 4 float
+        8, 3, // OP_LINEAR_GRADIENT: 8 ints, 3 floats
+        2, 0xFFFF0000, 0xFF0000FF, 2, 0, 1, 1, 1, 0, 0 // OP_END
+    };
+
+    testDisplayList.fArgv = new float[] {
+        0f, 0f, 100f, 100f, // BEGIN
+        0f, 0f, 100f, 100f, // Tiling Box
+        10f, 10f, 80f, 80f, // Clip Box
+        45f, 0f, 1f // Angle, Stop1, Stop2
+    };
+
+    final AtomicReference<Shader> capturedShader = new AtomicReference<>();
+    doAnswer(new Answer<Void>() {
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        Paint paint = invocation.getArgument(1);
+        capturedShader.set(paint.getShader());
+        return null;
+      }
+    })
+        .when(mockCanvas)
+        .drawRect(any(RectF.class), any(Paint.class));
+
+    displayListApplier.setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).save();
+    verify(mockCanvas).drawRect(any(RectF.class), any(Paint.class));
+    assertNotNull(capturedShader.get());
+    verify(mockCanvas).restore();
   }
 
   @Test
