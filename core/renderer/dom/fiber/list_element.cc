@@ -174,7 +174,10 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
     // to add item elements to the list element.
     return ssr_helper_->ComponentAtIndexInSSR(index, operationId);
   }
-
+  if (element_manager_ && element_manager_->DisableListCallbackIfDetached() &&
+      IsDetached()) {
+    return list::kInvalidIndex;
+  }
   std::vector<lepus::Value> args = {
       lepus::Value(fml::RefPtr<ListElement>(this)), lepus::Value(impl_id()),
       lepus::Value(index), lepus::Value(operationId),
@@ -195,7 +198,9 @@ void ListElement::ComponentAtIndexes(
               });
   // Note: here we need to check if component_at_indexes_ is callable to ensure
   // the compatibility with lower versions of the front-end framework.
-  if (!component_at_indexes_.IsCallable()) {
+  if (!component_at_indexes_.IsCallable() ||
+      (element_manager_ && element_manager_->DisableListCallbackIfDetached() &&
+       IsDetached())) {
     return;
   }
   const size_t index_size = index_array->size();
@@ -228,11 +233,13 @@ void ListElement::EnqueueComponent(int32_t sign) {
     ssr_helper_->OnEnqueueComponent(sign);
     return;
   }
-
+  if (element_manager_ && element_manager_->DisableListCallbackIfDetached() &&
+      IsDetached()) {
+    return;
+  }
   std::vector<lepus::Value> args = {
       lepus::Value(fml::RefPtr<ListElement>(this)), lepus::Value(impl_id()),
       lepus::Value(sign)};
-
   tasm_->CallLepusMethod(enqueue_component_, args);
 }
 
