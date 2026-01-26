@@ -4,6 +4,8 @@
 
 #include "clay/ui/component/nested_scroll/nested_scrollable.h"
 
+#include <float.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <limits>
@@ -23,8 +25,6 @@
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 
 namespace clay {
-
-const double kEpsilon = 0.01f;
 
 static constexpr int64_t kMillisecondsPerSecond = 1000;
 
@@ -47,8 +47,8 @@ static float MaximumDimension(const FloatPoint& delta) {
 }
 
 bool PointEqual(const FloatPoint& point1, const FloatPoint& point2) {
-  return std::abs(point1.x() - point2.x()) < kEpsilon &&
-         std::abs(point1.y() - point2.y()) < kEpsilon;
+  return std::abs(point1.x() - point2.x()) < FLT_EPSILON &&
+         std::abs(point1.y() - point2.y()) < FLT_EPSILON;
 }
 
 NestedScrollable::NestedScrollable(int id, std::string tag,
@@ -374,7 +374,7 @@ double GetDuration(float delta) {
 
 double VelocityBasedDurationBound(FloatPoint delta, double velocity) {
   double delta_max_dimension = MaximumDimension(delta);
-  if (std::abs(velocity) < kEpsilon) {
+  if (std::abs(velocity) < FLT_EPSILON) {
     return std::numeric_limits<double>::max();
   }
   double bound = delta_max_dimension / velocity * 2.5f;
@@ -384,7 +384,7 @@ double VelocityBasedDurationBound(FloatPoint delta, double velocity) {
 
 void NestedScrollable::UpdateWheelAnimation(FloatPoint delta) {
   auto t = wheel_animator_->GetActivatedTime();
-  if (t < kEpsilon || t - last_retarget_ < kEpsilon) {
+  if (t < FLT_EPSILON || t - last_retarget_ < FLT_EPSILON) {
     return;
   }
   auto new_delta = MaximumDimension(target_scroll_delta_) -
@@ -421,7 +421,7 @@ void NestedScrollable::DoWheelScroll(FloatPoint delta) {
       // ValueAnimator may not request frames on the start
       page_view()->RequestPaint();
     } else {
-      if (delta.distance() > kEpsilon) {
+      if (delta.distance() > FLT_EPSILON) {
         // If reverse scrolling occurs, stop the current animation and restart a
         // new animation
         if (MaximumDimension(delta) * MaximumDimension(target_scroll_delta_) <
