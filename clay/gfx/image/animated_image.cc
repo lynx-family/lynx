@@ -20,6 +20,8 @@ std::shared_ptr<AnimatedImage> AnimatedImage::Make(
   image->url_ = std::move(url);
   image->image_ = platform_image;
   image->frame_timer_ = std::make_unique<fml::OneshotTimer>(task_runner);
+  image->orig_info_ = ImageInfo::makeWH(platform_image->GetWidth(),
+                                        platform_image->GetHeight());
   image->StartAnimate();
   return image;
 }

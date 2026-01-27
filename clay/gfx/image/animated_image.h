@@ -21,9 +21,6 @@ class AnimatedImage : public BaseImage {
       fml::RefPtr<fml::TaskRunner> task_runner,
       std::shared_ptr<PlatformImage> image);
 
-  fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {
-    return gpu_image_.object();
-  }
   void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) override;
 
   void SetAutoPlay(bool auto_play);
@@ -41,7 +38,6 @@ class AnimatedImage : public BaseImage {
 
  private:
   std::unique_ptr<fml::OneshotTimer> frame_timer_;
-  GPUObject<GraphicsImage> gpu_image_;
 };
 
 }  // namespace clay

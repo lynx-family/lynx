@@ -22,16 +22,10 @@ class StaticImage : public BaseImage {
       fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
       std::shared_ptr<PlatformImage> image);
 
-  fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {
-    return gpu_image_.object();
-  }
   void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) override;
 
  private:
   StaticImage() = default;
-
- private:
-  GPUObject<GraphicsImage> gpu_image_;
 };
 
 }  // namespace clay

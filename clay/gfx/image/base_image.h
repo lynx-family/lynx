@@ -16,6 +16,7 @@
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/image/base_image_instance.h"
 #include "clay/gfx/image/graphics_image.h"
+#include "clay/gfx/image/image_info.h"
 #include "clay/gfx/image/platform_image.h"
 
 namespace clay {
@@ -31,17 +32,25 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
  public:
   virtual ~BaseImage() = default;
 
-  virtual int GetWidth() const { return image_->GetWidth(); }
-  virtual int GetHeight() const { return image_->GetHeight(); }
-  virtual void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) = 0;
-  virtual fml::RefPtr<GraphicsImage> GetGraphicsImage() const {
-    return nullptr;
-  }
   ImageType GetType() const { return type_; }
-  size_t GetGraphicsImageAllocSize() const {
-    return GetWidth() * GetHeight() * 4;
+  virtual int GetWidth() const { return orig_info_.width(); }
+  virtual int GetHeight() const { return orig_info_.height(); }
+  virtual void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) = 0;
+  fml::RefPtr<GraphicsImage> GetGraphicsImage() const {
+    return gpu_image_.object();
   }
-  const std::string& GetURL() const { return url_; }
+  size_t GetGraphicsImageAllocSize() const {
+    return gpu_image_.object() ? gpu_image_.object()->width() *
+                                     gpu_image_.object()->height() * 4
+                               : 0;
+  }
+
+  void SetExpectSizeCalculator(
+      std::function<skity::Vec2(skity::Vec2)> calculator,
+      bool force_use_original_size);
+  const std::string& GetUrl() const { return url_; }
+
+  bool IsSVG() const { return type_ == ImageType::kSVG; }
 
   std::unique_ptr<BaseImageInstance> NewInstance();
   void OnInstanceCreated(BaseImageInstance* instance);
@@ -53,6 +62,9 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   std::string url_;
   ImageType type_ = ImageType::kStatic;
   std::shared_ptr<PlatformImage> image_;
+  GPUObject<GraphicsImage> gpu_image_;
+  ImageInfo render_info_;
+  ImageInfo orig_info_;
 };
 
 }  // namespace clay

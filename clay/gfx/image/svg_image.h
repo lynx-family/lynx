@@ -25,9 +25,7 @@ class SVGImage : public BaseImage {
       const std::string& content);
 
   explicit SVGImage(const std::string& content);
-  fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {
-    return gpu_image_.object();
-  }
+
   int GetWidth() const override {
     return gpu_image_.object() ? gpu_image_.object()->width() : 1;
   }
@@ -42,7 +40,6 @@ class SVGImage : public BaseImage {
  private:
   std::string content_;
   std::shared_ptr<SVGDom> svg_dom_;
-  GPUObject<GraphicsImage> gpu_image_;
 };
 
 }  // namespace clay
