@@ -21,7 +21,7 @@ class Value;
 namespace runtime {
 namespace js {
 class JSIObjectWrapperManager;
-}
+}  // namespace js
 }  // namespace runtime
 namespace base {
 namespace android {

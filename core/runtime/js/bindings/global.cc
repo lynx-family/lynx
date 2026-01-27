@@ -12,10 +12,10 @@
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/big_int/jsbi.h"
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/bindings/text_codec_helper.h"
+#include "core/runtime/js/utils.h"
 
 namespace lynx {
 namespace runtime {

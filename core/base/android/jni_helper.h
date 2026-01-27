@@ -20,6 +20,9 @@
 namespace lynx {
 namespace base {
 namespace android {
+class JavaOnlyArray;
+class JavaOnlyMap;
+
 class JNIHelper {
  public:
   static lynx::base::android::ScopedLocalJavaRef<jbyteArray>
@@ -31,6 +34,14 @@ class JNIHelper {
 
   static ScopedLocalJavaRef<jobject> ConvertSTLStringMapToJavaMap(
       JNIEnv* env, const std::unordered_map<std::string, std::string>& map);
+
+  static void PushByteArrayToJavaArray(runtime::js::Runtime* rt,
+                                       const runtime::js::ArrayBuffer& buf,
+                                       JavaOnlyArray* jarray);
+  static void PushByteArrayToJavaMap(runtime::js::Runtime* rt,
+                                     const std::string& key,
+                                     const runtime::js::ArrayBuffer& buf,
+                                     JavaOnlyMap* jmap);
 };
 }  // namespace android
 }  // namespace base

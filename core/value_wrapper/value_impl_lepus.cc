@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "core/base/js_constants.h"
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/utils.h"
 
 namespace lynx {
 namespace pub {

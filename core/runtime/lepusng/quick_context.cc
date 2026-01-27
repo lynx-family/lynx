@@ -588,7 +588,7 @@ void QuickContext::SetSourceMapRelease(const lepus::Value& source_map_release) {
     return;
   }
 
-  common::JSErrorInfo args;
+  runtime::JSErrorInfo args;
   args.message = source_map_release.GetProperty(kMessage).StdString();
   args.stack = source_map_release.GetProperty(kStack).StdString();
   OnBTSConsoleEvent("info", "SetSourceMapRelease.message:" + args.message);

@@ -8,10 +8,6 @@ jni_register_configs:
   special_cases:
     - header: core/runtime/js/bindings/modules/android/lynx_promise_impl.h
       method: lynx::runtime::js::LynxPromiseImpl::RegisterJNI(env);
-    - header: core/runtime/common/utils.h
-      method:
-        - lynx::runtime::js::JSBUtilsRegisterJNI(env);
-        - lynx::runtime::js::JSBUtilsMapRegisterJNI(env);
 # gn file configs.
 gn_configs:
   output_path: platform/android/lynx_android/src/main/jni/BUILD.gn

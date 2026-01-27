@@ -15,7 +15,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/jsc/jsc_exception.h"
 #include "core/runtime/js/jsi/jsc/jsc_runtime.h"
 #include "third_party/modp_b64/modp_b64.h"

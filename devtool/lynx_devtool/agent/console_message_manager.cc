@@ -19,11 +19,11 @@ static constexpr std::string_view kLogError = "error";
 // lynx_console.cc)
 std::string_view MessageLogLevel(int level) {
   switch (level) {
-    case lynx::runtime::js::CONSOLE_LOG_VERBOSE:
+    case lynx::runtime::CONSOLE_LOG_VERBOSE:
       return kLogVerbose;
-    case lynx::runtime::js::CONSOLE_LOG_WARNING:
+    case lynx::runtime::CONSOLE_LOG_WARNING:
       return kLogWarning;
-    case lynx::runtime::js::CONSOLE_LOG_ERROR:
+    case lynx::runtime::CONSOLE_LOG_ERROR:
       return kLogError;
     default:
       return kLogInfo;

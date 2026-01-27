@@ -8,6 +8,7 @@ import("../../../Lynx.gni")
 import("v8/v8.gni")
 
 jsi_sources = [
+  "args_converter.h",
   "instrumentation.h",
   "jsi-inl.h",
   "jsi.cc",
@@ -35,7 +36,10 @@ config("jsi_unittest_config") {
 }
 
 unittest_set("jsi_unittests_testset") {
-  sources = [ "jsi_unittest.cc" ]
+  sources = [
+    "args_converter_unittest.cc",
+    "jsi_unittest.cc",
+  ]
 
   deps = [
     ":jsi",

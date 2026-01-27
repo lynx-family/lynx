@@ -17,10 +17,10 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/expected.h"
 #include "core/public/jsb/native_module_factory.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/modules/ios/lynx_module_creator_darwin.h"
 #include "core/runtime/js/bindings/modules/lynx_module.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/utils.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
 namespace lynx {

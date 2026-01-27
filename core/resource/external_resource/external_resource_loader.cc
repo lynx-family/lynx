@@ -177,7 +177,7 @@ void ExternalResourceLoader::LoadLazyBundle(
                               callback_id](auto& runtime) mutable {
             auto lynx_error = base::LynxError{callback_info.error_code,
                                               callback_info.error_msg};
-            common::FormatErrorUrl(lynx_error, callback_info.component_url);
+            runtime::FormatErrorUrl(lynx_error, callback_info.component_url);
             runtime->OnErrorOccurred(std::move(lynx_error));
 
             runtime->CallJSApiCallbackWithValue(

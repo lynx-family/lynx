@@ -17,7 +17,7 @@
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
-#include "core/runtime/common/jsi_object_wrapper.h"
+#include "core/runtime/js/jsi_object_wrapper.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/common/shell_trace_event_def.h"
