@@ -8,13 +8,15 @@
 #ifndef BASE_INCLUDE_FML_DELAYED_TASK_H_
 #define BASE_INCLUDE_FML_DELAYED_TASK_H_
 
-#include <deque>
 #include <functional>
 #include <queue>
+#include <utility>
 
+#include "base/include/base_defines.h"
 #include "base/include/closure.h"
 #include "base/include/fml/task_source_grade.h"
 #include "base/include/fml/time/time_point.h"
+#include "base/include/vector.h"
 
 namespace lynx {
 namespace fml {
@@ -22,34 +24,54 @@ namespace fml {
 class DelayedTask {
  public:
   DelayedTask(size_t order, base::closure task, fml::TimePoint target_time,
-              fml::TaskSourceGrade task_source_grade);
+              fml::TaskSourceGrade task_source_grade)
+      : order_(order),
+        task_source_grade_(task_source_grade),
+        target_time_(target_time),
+        task_(std::move(task)) {}
 
-  ~DelayedTask();
+  ~DelayedTask() = default;
 
   DelayedTask(const DelayedTask&) = delete;
   DelayedTask& operator=(const DelayedTask&) = delete;
-  DelayedTask(DelayedTask&&) = default;
-  DelayedTask& operator=(DelayedTask&&) = default;
+  BASE_INLINE DelayedTask(DelayedTask&&) = default;
+  BASE_INLINE DelayedTask& operator=(DelayedTask&&) = default;
 
   // after invoke this func, task_ will become nullptr!
-  base::closure GetTask() const;
+  base::closure GetTask() const { return std::move(task_); }
 
-  fml::TimePoint GetTargetTime() const;
+  fml::TimePoint GetTargetTime() const { return target_time_; }
 
-  fml::TaskSourceGrade GetTaskSourceGrade() const;
+  fml::TaskSourceGrade GetTaskSourceGrade() const { return task_source_grade_; }
 
-  bool operator>(const DelayedTask& other) const;
+  // Let std::priority_queue algorithms to always inline compare function.
+  BASE_INLINE bool operator>(const DelayedTask& other) const {
+    if (target_time_ == other.target_time_) {
+      return order_ > other.order_;
+    }
+    return target_time_ > other.target_time_;
+  }
+
+  // A flag telling base containers such as `base::Vector<DelayedTask>` to
+  // optimize for reallocate, insert and erase.
+  using TriviallyRelocatable = bool;
 
  private:
   size_t order_;
-  mutable base::closure task_;
-  fml::TimePoint target_time_;
   fml::TaskSourceGrade task_source_grade_;
+  fml::TimePoint target_time_;
+  mutable base::closure task_;
 };
 
-using DelayedTaskQueue =
-    std::priority_queue<DelayedTask, std::deque<DelayedTask>,
-                        std::greater<DelayedTask>>;
+class DelayedTaskQueue
+    : public std::priority_queue<DelayedTask, base::Vector<DelayedTask>,
+                                 std::greater<DelayedTask>> {
+ public:
+  using std::priority_queue<DelayedTask, base::Vector<DelayedTask>,
+                            std::greater<DelayedTask>>::priority_queue;
+  void reserve(size_t capacity) { this->c.reserve(capacity); }
+  void clear() { this->c.clear(); }
+};
 
 }  // namespace fml
 }  // namespace lynx

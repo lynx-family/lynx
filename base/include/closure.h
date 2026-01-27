@@ -13,6 +13,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "base/include/base_defines.h"
 #include "base/include/fml/macros.h"
 
 namespace lynx {
@@ -84,12 +85,12 @@ class MoveOnlyClosure {
   MoveOnlyClosure(const MoveOnlyClosure&) = delete;
   MoveOnlyClosure& operator=(const MoveOnlyClosure&) = delete;
 
-  MoveOnlyClosure(MoveOnlyClosure&& other) {
+  BASE_INLINE MoveOnlyClosure(MoveOnlyClosure&& other) {
     impl_ = other.impl_;
     other.impl_ = nullptr;
   }
 
-  MoveOnlyClosure& operator=(MoveOnlyClosure&& other) {
+  BASE_INLINE MoveOnlyClosure& operator=(MoveOnlyClosure&& other) {
     delete impl_;
     impl_ = other.impl_;
     other.impl_ = nullptr;

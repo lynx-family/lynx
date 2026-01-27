@@ -117,12 +117,7 @@ TEST(MessageLoopTaskQueue, PreserveTaskOrdering) {
   int expected_value = 1;
   std::vector<TaskQueueId> queue_ids = {queue_id};
   while (true) {
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    if (!task || !task.has_value()) {
-      break;
-    }
-
-    base::closure invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     if (!invocation) {
       break;
     }
@@ -165,11 +160,7 @@ TEST(MessageLoopTaskQueue, RegisterTasksOnMergedQueuesPreserveTaskOrdering) {
   // "test_val = 2" in raster2_queue
   std::vector<TaskQueueId> queue_ids = {platform_queue};
   while (true) {
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    if (!task || !task.has_value()) {
-      break;
-    }
-    base::closure invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     if (!invocation) {
       break;
     }
@@ -214,11 +205,7 @@ TEST(MessageLoopTaskQueue, UnmergeRespectTheOriginalTaskOrderingInQueues) {
   // "test_val = 2" in raster_queue (running on platform)
   std::vector<TaskQueueId> queue_ids = {platform_queue};
   for (int i = 0; i < 3; i++) {
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    if (!task || !task.has_value()) {
-      break;
-    }
-    base::closure invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     ASSERT_FALSE(!invocation);
     invocation();
     ASSERT_TRUE(test_val == i);
@@ -239,8 +226,7 @@ TEST(MessageLoopTaskQueue, UnmergeRespectTheOriginalTaskOrderingInQueues) {
   {
     ASSERT_TRUE(task_queue->GetNumPendingTasks(platform_queue) == 1);
     std::vector<TaskQueueId> queue_ids = {platform_queue};
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    base::closure invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     ASSERT_FALSE(!invocation);
     invocation();
     ASSERT_TRUE(test_val == 4);
@@ -251,8 +237,7 @@ TEST(MessageLoopTaskQueue, UnmergeRespectTheOriginalTaskOrderingInQueues) {
   {
     ASSERT_TRUE(task_queue->GetNumPendingTasks(raster_queue) == 2);
     std::vector<TaskQueueId> queue_ids = {raster_queue};
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    base::closure invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     ASSERT_FALSE(!invocation);
     invocation();
     ASSERT_TRUE(test_val == 3);
@@ -260,8 +245,7 @@ TEST(MessageLoopTaskQueue, UnmergeRespectTheOriginalTaskOrderingInQueues) {
   {
     ASSERT_TRUE(task_queue->GetNumPendingTasks(raster_queue) == 1);
     std::vector<TaskQueueId> queue_ids = {raster_queue};
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    base::closure invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     ASSERT_FALSE(!invocation);
     invocation();
     ASSERT_TRUE(test_val == 5);

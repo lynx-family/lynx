@@ -4,6 +4,7 @@
 #include "core/base/android/message_loop_android_vsync.h"
 
 #include <utility>
+#include <vector>
 
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
@@ -58,22 +59,19 @@ void MessageLoopAndroidVSync::FlushTasks(fml::FlushType type) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, MESSAGE_LOOP_ANDROID_VASYNC_FLUSH_TASKS);
   const auto now = fml::TimePoint::Now();
   auto begin = base::CurrentSystemTimeMilliseconds();
-  base::closure invocation;
+  std::vector<const base::closure*> observers;
   do {
-    auto task = task_queue_->GetNextTaskToRun(queue_ids_, now);
-    if (!task || !task.has_value()) {
-      break;
-    }
-
-    invocation = std::move(task.value().task);
+    auto invocation =
+        task_queue_->GetNextTaskToRun(queue_ids_, now, &observers);
     if (!invocation) {
       break;
     }
     invocation();
-
-    auto observers = task_queue_->GetObserversToNotify(task->task_queue_id);
-    for (const auto& observer : observers) {
-      (*observer)();
+    if (!observers.empty()) {
+      for (const auto& observer : observers) {
+        (*observer)();
+      }
+      observers.clear();
     }
     if (type == fml::FlushType::kSingle) {
       break;
@@ -82,7 +80,7 @@ void MessageLoopAndroidVSync::FlushTasks(fml::FlushType type) {
       // The maximum execution time has been reached, no further execution.
       return;
     }
-  } while (invocation);
+  } while (true);
 }
 
 bool MessageLoopAndroidVSync::CanRunNow() {

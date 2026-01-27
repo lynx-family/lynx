@@ -56,7 +56,8 @@ class BASE_EXPORT MessageLoopImpl
 
   void PostTask(base::closure task, fml::TimePoint target_time,
                 fml::TaskSourceGrade task_source_grade =
-                    fml::TaskSourceGrade::kUnspecified);
+                    fml::TaskSourceGrade::kUnspecified,
+                bool instant_task_hint = false);
 
   void AddTaskObserver(intptr_t key, base::closure callback);
 

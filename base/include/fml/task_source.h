@@ -8,6 +8,7 @@
 #ifndef BASE_INCLUDE_FML_TASK_SOURCE_H_
 #define BASE_INCLUDE_FML_TASK_SOURCE_H_
 
+#include <list>
 #include <queue>
 
 #include "base/include/fml/delayed_task.h"
@@ -46,11 +47,6 @@ class TaskSource {
     const DelayedTask& task;
   };
 
-  struct TopTaskResult {
-    TaskQueueId task_queue_id;
-    mutable base::closure task;
-  };
-
   /// Construts a TaskSource with the given `task_queue_id`.
   explicit TaskSource(TaskQueueId task_queue_id);
 
@@ -77,13 +73,16 @@ class TaskSource {
   /// the secondary heap has been paused or not.
   TopTask Top() const;
 
+  /// Returns the top task or nullptr.
+  const DelayedTask* TopOrNull() const;
+
  private:
   const fml::TaskQueueId task_queue_id_;
   fml::DelayedTaskQueue primary_task_queue_;
   fml::DelayedTaskQueue emergency_task_queue_;
   fml::DelayedTaskQueue micro_task_queue_;
   // we not care about the target time of idle tasks, just FIFO is enough.
-  std::queue<DelayedTask> idle_task_queue_;
+  std::queue<DelayedTask, std::list<DelayedTask>> idle_task_queue_;
 
   BASE_DISALLOW_COPY_ASSIGN_AND_MOVE(TaskSource);
 };

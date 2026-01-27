@@ -61,10 +61,18 @@ void MessageLoopWin::Terminate() {
 
 void MessageLoopWin::WakeUp(fml::TimePoint time_point) {
   LARGE_INTEGER due_time = {0};
-  fml::TimePoint now = fml::TimePoint::Now();
-  if (time_point > now) {
-    due_time.QuadPart = (time_point - now).ToNanoseconds() / -100;
+  if (time_point == fml::TimePoint()) {
+    // TimePoint(0) is a hint for wakeup immediately.
+    // This skips a `TimePoint::Now()` call.
+    // due_time.QuadPart already set to 0 which means to
+    // wake up the timer immediately.
+  } else {
+    fml::TimePoint now = fml::TimePoint::Now();
+    if (time_point > now) {
+      due_time.QuadPart = (time_point - now).ToNanoseconds() / -100;
+    }
   }
+
   // TODO(zhengsenyao): Replace LYNX_BASE_CHECK with CHECK when CHECK available.
   LYNX_BASE_CHECK(
       SetWaitableTimer(timer_.get(), &due_time, 0, NULL, NULL, FALSE));

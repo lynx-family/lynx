@@ -38,6 +38,17 @@ namespace fml {
 #endif
 
 bool TimerRearm(int fd, fml::TimePoint time_point) {
+  if (time_point == fml::TimePoint()) {
+    // TimePoint(0) is a hint for wakeup immediately.
+    struct itimerspec new_value;
+    new_value.it_interval.tv_sec = 0;
+    new_value.it_interval.tv_nsec = 0;
+    new_value.it_value.tv_sec = 0;
+    new_value.it_value.tv_nsec = 1;
+    return ::timerfd_settime(fd, 0, &new_value, nullptr) == 0;
+  }
+
+  // Wakeup at absolute time.
   uint64_t nano_secs = time_point.ToEpochDelta().ToNanoseconds();
 
   // "0" will disarm the timer, desired behavior is to immediately
@@ -46,7 +57,7 @@ bool TimerRearm(int fd, fml::TimePoint time_point) {
     nano_secs = 1;
   }
 
-  struct itimerspec spec = {};
+  struct itimerspec spec;
   spec.it_value.tv_sec = static_cast<time_t>(nano_secs / NSEC_PER_SEC);
   spec.it_value.tv_nsec = nano_secs % NSEC_PER_SEC;
   spec.it_interval = spec.it_value;  // single expiry.
