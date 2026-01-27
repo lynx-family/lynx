@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_helper.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime.h"

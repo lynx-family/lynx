@@ -11,7 +11,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/v8/v8_context_wrapper_impl.h"
 #include "core/runtime/js/jsi/v8/v8_exception.h"

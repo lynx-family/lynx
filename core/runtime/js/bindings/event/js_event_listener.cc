@@ -8,7 +8,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/utils.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/value_wrapper/value_wrapper_utils.h"

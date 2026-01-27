@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "base/include/compiler_specific.h"
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 extern "C" {

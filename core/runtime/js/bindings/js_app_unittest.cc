@@ -14,7 +14,6 @@
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
 #include "core/runtime/js/bindings/js_object_destruction_observer.h"
 #include "core/runtime/js/bindings/lynx.h"
@@ -28,6 +27,7 @@
 #include "core/runtime/js/lynx_api_handler.h"
 #include "core/runtime/js/mock_template_delegate.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/runtime/js/utils.h"
 #include "lynx_sub_error_code.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -483,9 +483,9 @@ TEST_P(AppTest, LoadAppTest) {
 
   JSValueCircularArray pre_obj_{};
   // check equal
-  auto lepus_args =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr,
-                    "", "", pre_obj_);
+  auto lepus_args = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr, "", "",
+      pre_obj_);
 
   EXPECT_EQ(data1, lepus_args.GetProperty("updateData"));
   EXPECT_EQ(lepus::Value(processor_name_1.c_str()),
@@ -515,12 +515,12 @@ TEST_P(AppTest, OnAppReloadTest) {
 
   // check equal
   JSValueCircularArray pre_obj_{};
-  auto lepus_args_0 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[0][0]), nullptr,
-                    "", "", pre_obj_);
-  auto lepus_args_1 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr,
-                    "", "", pre_obj_);
+  auto lepus_args_0 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[0][0]), nullptr, "", "",
+      pre_obj_);
+  auto lepus_args_1 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr, "", "",
+      pre_obj_);
 
   EXPECT_EQ(data1, lepus_args_0);
   EXPECT_EQ(lepus::Value(processor_name_1.c_str()),
@@ -566,34 +566,34 @@ TEST_P(AppTest, NotifyUpdatePageData) {
   EXPECT_EQ(mock_js_app_->call_count, 3);
 
   JSValueCircularArray pre_obj_{};
-  auto lepus_args_0_0 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[0][0]), nullptr,
-                    "", "", pre_obj_);
-  auto lepus_args_0_1 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr,
-                    "", "", pre_obj_);
+  auto lepus_args_0_0 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[0][0]), nullptr, "", "",
+      pre_obj_);
+  auto lepus_args_0_1 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr, "", "",
+      pre_obj_);
 
   EXPECT_EQ(data1, lepus_args_0_0);
   EXPECT_EQ(lepus::Value(processor_name_1.c_str()),
             lepus_args_0_1.GetProperty(tasm::kProcessorName));
 
-  auto lepus_args_1_0 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[1][0]), nullptr,
-                    "", "", pre_obj_);
-  auto lepus_args_1_1 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[1][1]), nullptr,
-                    "", "", pre_obj_);
+  auto lepus_args_1_0 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[1][0]), nullptr, "", "",
+      pre_obj_);
+  auto lepus_args_1_1 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[1][1]), nullptr, "", "",
+      pre_obj_);
 
   EXPECT_EQ(data2, lepus_args_1_0);
   EXPECT_EQ(lepus::Value(processor_name_2.c_str()),
             lepus_args_1_1.GetProperty(tasm::kProcessorName));
 
-  auto lepus_args_2_0 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[2][0]), nullptr,
-                    "", "", pre_obj_);
-  auto lepus_args_2_1 =
-      *ParseJSValue(*runtime, std::move(mock_js_app_->args_ary[2][1]), nullptr,
-                    "", "", pre_obj_);
+  auto lepus_args_2_0 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[2][0]), nullptr, "", "",
+      pre_obj_);
+  auto lepus_args_2_1 = *runtime::js::ParseJSValue(
+      *runtime, std::move(mock_js_app_->args_ary[2][1]), nullptr, "", "",
+      pre_obj_);
 
   EXPECT_EQ(data3, lepus_args_2_0);
   EXPECT_EQ(lepus::Value(processor_name_3.c_str()),

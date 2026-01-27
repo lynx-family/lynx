@@ -4,7 +4,7 @@
 
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 #import "LynxTemplateData+Converter.h"
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/utils.h"
 #include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {

@@ -1,0 +1,30 @@
+#Copyright 2026 The Lynx Authors.All rights reserved.
+#Licensed under the Apache License Version 2.0 that can be found in the
+#LICENSE file in the root directory of this source tree.
+import("../../../testing/test.gni")
+import("../../Lynx.gni")
+
+# TODO(liyanbo.monster): move other files into this gn.
+lynx_core_source_set("utils") {
+  sources = [
+    "jsi_object_wrapper.cc",
+    "jsi_object_wrapper.h",
+    "utils.cc",
+    "utils.h",
+  ]
+  deps = [
+    "../../../base/src:base_log_headers",
+    "../../../third_party/rapidjson",
+  ]
+}
+
+unittest_set("utils_unittests_testset") {
+  configs = [
+    "../../:lynx_public_config",
+    "jsi:jsi_unittest_config",
+  ]
+
+  sources = [ "utils_unittest.cc" ]
+
+  deps = [ ":utils" ]
+}

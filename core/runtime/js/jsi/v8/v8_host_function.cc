@@ -8,7 +8,7 @@
 
 #include "base/include/compiler_specific.h"
 #include "base/include/log/logging.h"
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/v8/v8_helper.h"
 #include "core/runtime/js/jsi/v8/v8_host_object.h"

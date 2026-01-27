@@ -7,8 +7,8 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/js_app.h"
+#include "core/runtime/js/utils.h"
 
 namespace lynx {
 namespace runtime {

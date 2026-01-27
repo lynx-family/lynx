@@ -83,7 +83,7 @@ void InspectorRuntimeObserverImpl::OnRuntimeCreated(
   // Always log the engine type regardless of whether JS debugging is enabled,
   // so do not invoke this logic within `OnInspectorInited`.
   OnConsoleMessagePosted(
-      {kEngineTypeMsg + type_str, runtime::js::CONSOLE_LOG_INFO,
+      {kEngineTypeMsg + type_str, runtime::CONSOLE_LOG_INFO,
        static_cast<int64_t>(base::CurrentSystemTimeMilliseconds())});
 }
 

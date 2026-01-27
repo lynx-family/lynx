@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_COMMON_ARGS_CONVERTER_H_
-#define CORE_RUNTIME_COMMON_ARGS_CONVERTER_H_
+#ifndef CORE_RUNTIME_JS_JSI_ARGS_CONVERTER_H_
+#define CORE_RUNTIME_JS_JSI_ARGS_CONVERTER_H_
 
 #include <memory>
 
@@ -41,14 +41,6 @@ class ArgsConverterImpl {
   std::unique_ptr<Out[]> heap_args;
 };
 
-// `ArgsConverter` is used to convert the argument array from one type to
-// another.
-//
-// The conversion is done by the closure passed to the constructor, which is
-// called for each argument and the result is stored in the internal array.
-// The array is allocated on the stack if the number of arguments is less than
-// or equal to MAX_STACK_ARGS, otherwise it is allocated on the heap.
-// The array is returned by the implicit conversion operator.
 template <typename Out, typename In, typename Conv,
           std::enable_if_t<std::is_pointer_v<In>, bool> = true>
 inline auto ArgsConverter(size_t argc, const In argv, const Conv& closure) {
@@ -66,4 +58,4 @@ inline auto ArgsConverter(size_t argc, const In& argv, const Conv& closure) {
 }  // namespace runtime
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_COMMON_ARGS_CONVERTER_H_
+#endif  // CORE_RUNTIME_JS_JSI_ARGS_CONVERTER_H_

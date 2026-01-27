@@ -10,8 +10,8 @@
 #include "core/base/android/piper_data.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/dom/android/lynx_view_data_manager_android.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
+#include "core/runtime/js/utils.h"
 #include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {

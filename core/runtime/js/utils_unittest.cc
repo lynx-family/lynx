@@ -2,22 +2,26 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/utils.h"
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/jsi_unittest.h"
+#include "core/runtime/js/jsi_object_wrapper.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace runtime {
 namespace js {
 namespace test {
-class UtilTests : public JSITestBase {};
+using runtime::js::ConvertPiperValueToStringVector;
+using runtime::js::JSIObjectWrapperManager;
+using runtime::js::JSValueCircularArray;
+using runtime::js::ParseJSValue;
+class UtilTests : public js::test::JSITestBase {};
 
 TEST_P(UtilTests, ValueFromLepusTest) {
   //   lepus::Value empty{};
@@ -89,7 +93,7 @@ TEST_P(UtilTests, ValueFromLepusTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Runtimes, UtilTests, ::testing::ValuesIn(runtimeGenerators()),
+    Runtimes, UtilTests, ::testing::ValuesIn(js::test::runtimeGenerators()),
     [](const ::testing::TestParamInfo<UtilTests::ParamType>& info) {
       auto rt = info.param(nullptr);
       switch (rt->type()) {
@@ -108,27 +112,27 @@ TEST_P(UtilTests, ConvertPiperValueToStringVector) {
   std::vector<std::string> output;
 
   // input = []
-  Value input = *Array::createWithLength(rt, 0);
+  js::Value input = *js::Array::createWithLength(rt, 0);
   EXPECT_TRUE(ConvertPiperValueToStringVector(rt, input, output));
   EXPECT_TRUE(output.empty());
 
   // input = ["#a", "#b"]
-  auto array = Array::createWithLength(rt, 2);
-  array->setValueAtIndex(rt, 0, String::createFromUtf8(rt, "#a"));
-  array->setValueAtIndex(rt, 1, String::createFromUtf8(rt, "#b"));
+  auto array = js::Array::createWithLength(rt, 2);
+  array->setValueAtIndex(rt, 0, js::String::createFromUtf8(rt, "#a"));
+  array->setValueAtIndex(rt, 1, js::String::createFromUtf8(rt, "#b"));
   input = *array;
   EXPECT_TRUE(ConvertPiperValueToStringVector(rt, input, output));
   bool res = output == std::vector<std::string>{"#a", "#b"};
   EXPECT_TRUE(res);
 
   // input = "#a"
-  input = String::createFromUtf8(rt, "#a");
+  input = js::String::createFromUtf8(rt, "#a");
   EXPECT_FALSE(ConvertPiperValueToStringVector(rt, input, output));
 
   // input = ["#a", 0]
-  array = Array::createWithLength(rt, 2);
-  array->setValueAtIndex(rt, 0, String::createFromUtf8(rt, "#a"));
-  array->setValueAtIndex(rt, 2, Value(0));
+  array = js::Array::createWithLength(rt, 2);
+  array->setValueAtIndex(rt, 0, js::String::createFromUtf8(rt, "#a"));
+  array->setValueAtIndex(rt, 2, js::Value(0));
   input = *array;
   EXPECT_FALSE(ConvertPiperValueToStringVector(rt, input, output));
 }
@@ -139,7 +143,7 @@ TEST_P(UtilTests, ParseNullJSValueTest) {
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
 
-  Value null_data = Value::null();
+  js::Value null_data = js::Value::null();
   auto lepus_value_opt =
       ParseJSValue(rt, null_data, jsi_object_wrapper_manager.get(),
                    jsi_object_group_id, target_sdk_version, pre_object_vector);
@@ -153,7 +157,7 @@ TEST_P(UtilTests, ParseUndefinedJSValueTest) {
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
 
-  Value undefined_data = Value::undefined();
+  js::Value undefined_data = js::Value::undefined();
   auto lepus_value_opt =
       ParseJSValue(rt, undefined_data, jsi_object_wrapper_manager.get(),
                    jsi_object_group_id, target_sdk_version, pre_object_vector);
@@ -168,7 +172,7 @@ TEST_P(UtilTests, ParseBoolJSValueTest) {
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
 
   {
-    Value true_data(true);
+    js::Value true_data(true);
     auto lepus_value_opt = ParseJSValue(
         rt, true_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -177,7 +181,7 @@ TEST_P(UtilTests, ParseBoolJSValueTest) {
   }
 
   {
-    Value false_data(false);
+    js::Value false_data(false);
     auto lepus_value_opt = ParseJSValue(
         rt, false_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -194,7 +198,7 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
 
   {
     int foo = 10;
-    Value int_data(foo);
+    js::Value int_data(foo);
     auto lepus_value_opt = ParseJSValue(
         rt, int_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -205,7 +209,7 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
 
   {
     double foo = 10.0;
-    Value double_data(foo);
+    js::Value double_data(foo);
     auto lepus_value_opt = ParseJSValue(
         rt, double_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -222,8 +226,8 @@ TEST_P(UtilTests, ParseStringJSValueTest) {
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
     std::string foo_str = "foo";
-    auto foo = String::createFromAscii(rt, foo_str);
-    Value string_data(foo);
+    auto foo = js::String::createFromAscii(rt, foo_str);
+    js::Value string_data(foo);
     auto lepus_value_opt = ParseJSValue(
         rt, string_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
         target_sdk_version, pre_object_vector);
@@ -239,7 +243,7 @@ TEST_P(UtilTests, ParseSymbolJSValueTest) {
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
-    Function make_symbol = function(R"(
+    js::Function make_symbol = function(R"(
 function makeSymbol() {
   return Symbol('foo');
 }
@@ -262,7 +266,7 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
     uint8_t empty_array_json[] = "[]";
-    auto empty_array_data_opt = Value::createFromJsonUtf8(
+    auto empty_array_data_opt = js::Value::createFromJsonUtf8(
         rt, empty_array_json, sizeof(empty_array_json) - 1);
     auto lepus_value_opt = ParseJSValue(
         rt, *empty_array_data_opt, jsi_object_wrapper_manager.get(),
@@ -276,7 +280,7 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
     const int element_count = 5;
     uint8_t array_json[] = "[\"foo\", true, 10, null, {}]";
     auto array_data_opt =
-        Value::createFromJsonUtf8(rt, array_json, sizeof(array_json) - 1);
+        js::Value::createFromJsonUtf8(rt, array_json, sizeof(array_json) - 1);
     auto lepus_value_opt = ParseJSValue(
         rt, *array_data_opt, jsi_object_wrapper_manager.get(),
         jsi_object_group_id, target_sdk_version, pre_object_vector);
@@ -317,7 +321,7 @@ TEST_P(UtilTests, ParseBigIntJSValueTest) {
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
-    auto big_int_opt = BigInt::createWithString(rt, "1234567890");
+    auto big_int_opt = js::BigInt::createWithString(rt, "1234567890");
     EXPECT_TRUE(big_int_opt.has_value());
     auto lepus_value_opt = ParseJSValue(
         rt, *big_int_opt, jsi_object_wrapper_manager.get(), jsi_object_group_id,
@@ -345,7 +349,7 @@ TEST_P(UtilTests, ParseFunctionJSValueTest) {
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
-  Function make_func = function(R"(
+  js::Function make_func = function(R"(
 function make() {
   return function() { return 1; };
 }
@@ -373,7 +377,7 @@ TEST_P(UtilTests, ParseObjectJSValueTest) {
   JSValueCircularArray pre_object_vector;
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
-  Function make_func = function(R"(
+  js::Function make_func = function(R"(
 function make() {
   return {"foo":1, [Symbol("bar")]: 2, "bar": undefined};
 }

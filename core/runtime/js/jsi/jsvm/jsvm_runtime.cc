@@ -12,7 +12,7 @@
 #include <string>
 #include <utility>
 
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/jslib.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_api.h"

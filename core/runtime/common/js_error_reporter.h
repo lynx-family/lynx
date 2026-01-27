@@ -15,7 +15,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 
 namespace lynx {
-namespace common {
+namespace runtime {
 
 struct JSErrorInfo {
   std::string name{"Error"};
@@ -65,7 +65,7 @@ struct ErrorEvent {
   std::string platform;
 };
 
-namespace testing {
+namespace test {
 class TestJSErrorReporter;
 }
 
@@ -107,9 +107,9 @@ class JSErrorReporter {
   std::unordered_map<std::string, std::string> source_maps_;
   std::unordered_map<std::string, std::string> custom_info_;
 
-  friend class lynx::common::testing::TestJSErrorReporter;
+  friend class lynx::runtime::test::TestJSErrorReporter;
 };
-}  // namespace common
+}  // namespace runtime
 }  // namespace lynx
 
 #endif  // CORE_RUNTIME_COMMON_JS_ERROR_REPORTER_H_
