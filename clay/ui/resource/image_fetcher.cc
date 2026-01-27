@@ -194,7 +194,7 @@ std::shared_ptr<BaseImage> ImageFetcher::FindImageFromCache(
 }
 
 void ImageFetcher::OnImageHasNoAccessor(BaseImage* image) {
-  auto& url = image->GetURL();
+  auto& url = image->GetUrl();
   if (url.empty()) {
     return;
   }
