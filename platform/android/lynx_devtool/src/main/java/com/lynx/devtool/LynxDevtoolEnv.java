@@ -50,7 +50,8 @@ public class LynxDevtoolEnv {
   private ReadWriteLock mReadWriteLock;
   private Map<String, Boolean> mSwitchMasks;
 
-  public static final String ENABLE_PERF_METRICS = "enable_perf_metrics";
+  // TODO(mitchilling): remove this deprecated value
+  @Deprecated public static final String ENABLE_PERF_METRICS = "enable_perf_metrics";
 
   public static LynxDevtoolEnv inst() {
     if (sInstance == null) {
@@ -109,51 +110,55 @@ public class LynxDevtoolEnv {
     }
     // All initializations are done. Let's notify DevToolLifecycle.
     DevToolLifecycle.getInstance().onInitialized();
+    // Synchronize settings to native after initialization
+    DevToolSettings.inst().syncToNative();
     if (LynxGlobalDebugBridge.getInstance().isEnabled()) {
       DevToolLifecycle.getInstance().onConnected();
     }
   }
 
-  // TODO:(mitchilling): remove this quadruple
+  // TODO:(mitchilling): remove this quadruple.
+  //  It's still used by E2E from `LynxInspectorOwner.setGlobalSwitch`/`getGlobalSwitch`
   private void initSwitchAttribute() {
     /**
      mSwitchAttrMap: A dictionary indicating all switches' attributes.
      key: switch name.
      value: an array of bool values indicating attributes of current switch.
-      The meaning of each value in array is as follows:
-        whether needs to be persisted
-        whether needs to be synchronized to native
-        default value
+     The meaning of each value in array is as follows:
+     whether needs to be persisted
+     whether needs to be synchronized to native
+     default value
      */
     mSwitchAttrMap = new HashMap<String, ArrayList<Object>>() {
       {
         put(DevToolSettings.SP_KEY_ENABLE_DEVTOOL,
             new ArrayList<Object>(Arrays.asList(true, true, false)));
-        put(LynxEnvKey.SP_KEY_ENABLE_LOGBOX,
+        put(DevToolSettings.SP_KEY_ENABLE_LOGBOX,
             new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH,
+        put(DevToolSettings.SP_KEY_ENABLE_HIGHLIGHT_TOUCH,
             new ArrayList<Object>(Arrays.asList(false, false, false)));
-        put(LynxEnvKey.SP_KEY_ENABLE_FSP_SCREENSHOT,
+        put(DevToolSettings.SP_KEY_ENABLE_FSP_SCREENSHOT,
             new ArrayList<Object>(Arrays.asList(true, false, false)));
-        put(LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD,
+        put(DevToolSettings.SP_KEY_ENABLE_LAUNCH_RECORD,
             new ArrayList<Object>(Arrays.asList(true, false, false)));
-        put(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG,
+        put(DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG,
             new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE,
+        put(DevToolSettings.SP_KEY_ENABLE_DOM_TREE,
             new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU,
+        put(DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU,
             new ArrayList<Object>(Arrays.asList(true, false, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT,
+        put(DevToolSettings.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT,
             new ArrayList<Object>(Arrays.asList(false, false, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE,
+        put(DevToolSettings.SP_KEY_ENABLE_QUICKJS_CACHE,
             new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_PIXEL_COPY,
+        put(DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY,
             new ArrayList<Object>(Arrays.asList(true, false, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE,
+        put(DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE,
             new ArrayList<Object>(Arrays.asList(true, false, false)));
-        put(LynxEnvKey.SP_KEY_ENABLE_V8,
+        put(DevToolSettings.SP_KEY_ENABLE_V8,
             new ArrayList<Object>(Arrays.asList(true, true, DevToolSettings.V8_ALIGN_WITH_PROD)));
-        put(ENABLE_PERF_METRICS, new ArrayList<Object>(Arrays.asList(false, false, false)));
+        put(DevToolSettings.SP_KEY_ENABLE_PERF_METRICS,
+            new ArrayList<Object>(Arrays.asList(false, false, false)));
       }
     };
   }
@@ -520,22 +525,28 @@ public class LynxDevtoolEnv {
   @Deprecated
   public void setShowDevtoolBadge(boolean show) {}
 
+  // TODO(mitchilling): remove these deprecated methods calling DevToolSettings
+  @Deprecated
   public boolean isQuickjsCacheEnabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE, true);
+    return DevToolSettings.inst().isQuickJSCacheEnabled();
   }
 
+  @Deprecated
   public void enableQuickjsCache(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_CACHE, enabled);
+    DevToolSettings.inst().setQuickJSCacheEnabled(enabled);
   }
 
+  @Deprecated
   public int getV8Enabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, DevToolSettings.V8_ALIGN_WITH_PROD);
+    return DevToolSettings.inst().getV8Enabled();
   }
 
   // 0 means Off, 1 means On, 2 means AlignWithProd. Use 2 as default.
   // When the value is 2, the V8 engine will be used on LynxView which configured with enable_v8,
   // and the Quickjs engine will be used on other LynxView.
+  @Deprecated
   public void enableV8(int enabled) {
+    // TODO(mitchilling): if we do integrity check here, these values will stay public
     if (enabled > DevToolSettings.V8_ALIGN_WITH_PROD) {
       enabled = DevToolSettings.V8_ALIGN_WITH_PROD;
       LLog.w(TAG, "The value must be 0 or 1 or 2. Change the value to 2!");
@@ -543,24 +554,27 @@ public class LynxDevtoolEnv {
       enabled = DevToolSettings.V8_OFF;
       LLog.w(TAG, "The value must be 0 or 1 or 2. Change the value to 0!");
     }
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, enabled);
+    DevToolSettings.inst().setV8Enabled(enabled);
   }
 
+  @Deprecated
   public boolean isDomTreeEnabled() {
-    // TODO(mitchilling): call DevToolSettings
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, true);
+    return DevToolSettings.inst().isDOMTreeEnabled();
   }
 
+  @Deprecated
   public void enableDomTree(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, enabled);
+    DevToolSettings.inst().setDOMTreeEnabled(enabled);
   }
 
+  @Deprecated
   public boolean isLongPressMenuEnabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU, true);
+    return DevToolSettings.inst().isLongPressMenuEnabled();
   }
 
+  @Deprecated
   public void enableLongPressMenu(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU, enabled);
+    DevToolSettings.inst().setLongPressMenuEnabled(enabled);
   }
 
   public boolean isIgnoreErrorTypeEnabled(final Integer errCode) {
@@ -611,29 +625,33 @@ public class LynxDevtoolEnv {
     }
   }
 
+  @Deprecated
   public void enableQuickjsDebug(boolean enabled) {
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, enabled);
+    DevToolSettings.inst().setQuickJSDebugEnabled(enabled);
   }
 
+  @Deprecated
   public boolean isQuickjsDebugEnabled() {
-    // TODO(mitchilling): call DevToolSettings
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, true);
+    return DevToolSettings.inst().isQuickJSDebugEnabled();
   }
 
+  @Deprecated
   public boolean isPreviewScreenShotEnabled() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT, true);
+    return DevToolSettings.inst().isPreviewScreenShotEnabled();
   }
 
   /**
    * API usage: devtool automation
    * @param enable <code>true</code> enable perf metrics report, <code>false</code> otherwise
    */
+  @Deprecated
   public void enablePerfMetrics(boolean enable) {
-    setDevtoolEnv(ENABLE_PERF_METRICS, enable);
+    DevToolSettings.inst().setPerfMetricsEnabled(enable);
   }
 
+  @Deprecated
   public boolean isPerfMetricsEnabled() {
-    return getDevtoolEnv(ENABLE_PERF_METRICS, false);
+    return DevToolSettings.inst().isPerfMetricsEnabled();
   }
 
   public boolean isAttached() {

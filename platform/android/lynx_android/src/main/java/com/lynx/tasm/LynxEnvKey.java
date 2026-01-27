@@ -58,8 +58,8 @@ public enum LynxEnvKey {
     return description;
   }
 
-  public static final String SP_KEY_ENABLE_DEBUG_MODE = "enable_debug_mode";
-  public static final String SP_KEY_ENABLE_LAUNCH_RECORD = "enable_launch_record";
+  @Deprecated public static final String SP_KEY_ENABLE_DEBUG_MODE = "enable_debug_mode";
+  @Deprecated public static final String SP_KEY_ENABLE_LAUNCH_RECORD = "enable_launch_record";
   public static final String SP_KEY_FORCE_DISABLE_QUICKJS_CACHE =
       FORCE_DISABLE_QUICKJS_CACHE.getDescription();
   public static final String SP_KEY_DISABLE_LEPUSNG_OPTIMIZE = "DISABLE_LEPUSNG_OPTIMIZE";
@@ -69,18 +69,19 @@ public enum LynxEnvKey {
   // Keys for devtool.
   // TODO(mitchilling): remove deprecated keys
   @Deprecated public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
-  public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
-  public static final String SP_KEY_ENABLE_HIGHLIGHT_TOUCH = "enable_highlight_touch";
-  public static final String SP_KEY_ENABLE_FSP_SCREENSHOT = "enable_fsp_screenshot";
+  @Deprecated public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
+  @Deprecated public static final String SP_KEY_ENABLE_HIGHLIGHT_TOUCH = "enable_highlight_touch";
+  @Deprecated public static final String SP_KEY_ENABLE_FSP_SCREENSHOT = "enable_fsp_screenshot";
   @Deprecated public static final String SP_KEY_SHOW_DEVTOOL_BADGE = "show_devtool_badge";
-  public static final String SP_KEY_ENABLE_QUICKJS_CACHE = "enable_quickjs_cache";
-  public static final String SP_KEY_ENABLE_V8 = "enable_v8";
-  public static final String SP_KEY_ENABLE_DOM_TREE = "enable_dom_tree";
-  public static final String SP_KEY_ENABLE_LONG_PRESS_MENU = "enable_long_press_menu";
+  @Deprecated public static final String SP_KEY_ENABLE_QUICKJS_CACHE = "enable_quickjs_cache";
+  @Deprecated public static final String SP_KEY_ENABLE_V8 = "enable_v8";
+  @Deprecated public static final String SP_KEY_ENABLE_DOM_TREE = "enable_dom_tree";
+  @Deprecated public static final String SP_KEY_ENABLE_LONG_PRESS_MENU = "enable_long_press_menu";
   public static final String SP_KEY_IGNORE_ERROR_TYPES = "ignore_error_types";
   public static final String SP_KEY_ENABLE_IGNORE_ERROR_CSS = "error_code_css";
-  public static final String SP_KEY_ENABLE_PIXEL_COPY = "enable_pixel_copy";
-  public static final String SP_KEY_ENABLE_QUICKJS_DEBUG = "enable_quickjs_debug";
+  @Deprecated public static final String SP_KEY_ENABLE_PIXEL_COPY = "enable_pixel_copy";
+  @Deprecated public static final String SP_KEY_ENABLE_QUICKJS_DEBUG = "enable_quickjs_debug";
+  @Deprecated
   public static final String SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT = "enable_preview_screen_shot";
   public static final String SP_KEY_ACTIVATED_CDP_DOMAINS = "activated_cdp_domains";
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_DOM = "enable_cdp_domain_dom";

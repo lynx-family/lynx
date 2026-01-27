@@ -6,6 +6,7 @@ package com.lynx.devtool.module;
 
 import com.lynx.devtool.LynxDevtoolEnv;
 import com.lynx.devtoolwrapper.CDPResultCallback;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.jsbridge.LynxContextModule;
 import com.lynx.jsbridge.LynxMethod;
@@ -73,12 +74,12 @@ public class LynxDevToolSetModule extends LynxContextModule {
 
   @LynxMethod
   public void switchQuickjsCache(Boolean arg) {
-    LynxDevtoolEnv.inst().enableQuickjsCache(arg);
+    DevToolSettings.inst().setQuickJSCacheEnabled(arg);
   }
 
   @LynxMethod
   public boolean isQuickjsCacheEnabled() {
-    return LynxDevtoolEnv.inst().isQuickjsCacheEnabled();
+    return DevToolSettings.inst().isQuickJSCacheEnabled();
   }
 
   @LynxMethod
@@ -103,32 +104,32 @@ public class LynxDevToolSetModule extends LynxContextModule {
 
   @LynxMethod
   public void switchV8(int arg) {
-    LynxDevtoolEnv.inst().enableV8(arg);
+    DevToolSettings.inst().setV8Enabled(arg);
   }
 
   @LynxMethod
   public int getV8Enabled() {
-    return LynxDevtoolEnv.inst().getV8Enabled();
+    return DevToolSettings.inst().getV8Enabled();
   }
 
   @LynxMethod
   public void enableDomTree(Boolean arg) {
-    LynxDevtoolEnv.inst().enableDomTree(arg);
+    DevToolSettings.inst().setDOMTreeEnabled(arg);
   }
 
   @LynxMethod
   public boolean isDomTreeEnabled() {
-    return LynxDevtoolEnv.inst().isDomTreeEnabled();
+    return DevToolSettings.inst().isDOMTreeEnabled();
   }
 
   @LynxMethod
   public void switchLongPressMenu(Boolean arg) {
-    LynxDevtoolEnv.inst().enableLongPressMenu(arg);
+    DevToolSettings.inst().setLongPressMenuEnabled(arg);
   }
 
   @LynxMethod
   public boolean isLongPressMenuEnabled() {
-    return LynxDevtoolEnv.inst().isLongPressMenuEnabled();
+    return DevToolSettings.inst().isLongPressMenuEnabled();
   }
 
   @LynxMethod
@@ -153,12 +154,12 @@ public class LynxDevToolSetModule extends LynxContextModule {
 
   @LynxMethod
   public void switchQuickjsDebug(Boolean arg) {
-    LynxDevtoolEnv.inst().enableQuickjsDebug(arg);
+    DevToolSettings.inst().setQuickJSDebugEnabled(arg);
   }
 
   @LynxMethod
   public boolean isQuickjsDebugEnabled() {
-    return LynxDevtoolEnv.inst().isQuickjsDebugEnabled();
+    return DevToolSettings.inst().isQuickJSDebugEnabled();
   }
 
   @LynxMethod

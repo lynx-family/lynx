@@ -5,8 +5,6 @@
 package com.lynx.devtool;
 
 import android.content.Context;
-import android.util.Log;
-import android.view.ViewGroup;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,14 +14,12 @@ import com.lynx.debugrouter.DebugRouter;
 import com.lynx.debugrouter.DebugRouterGlobalHandler;
 import com.lynx.debugrouter.StateListener;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.eventreport.ILynxEventReportObserver;
 import com.lynx.tasm.eventreport.LynxEventReporter;
-import java.lang.ref.WeakReference;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -135,11 +131,13 @@ public class LynxGlobalDebugBridge
   }
 
   private void enableTraceMode(boolean enable) {
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(LynxEnvKey.SP_KEY_ENABLE_DOM_TREE, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(LynxEnvKey.SP_KEY_ENABLE_QUICKJS_DEBUG, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(LynxEnvKey.SP_KEY_ENABLE_V8, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT, !enable);
-    LynxDevtoolEnv.inst().setDevtoolEnvMask(LynxEnvKey.SP_KEY_ENABLE_HIGHLIGHT_TOUCH, !enable);
+    // TODO(mitchilling): we have to figure out what does this "mask" do and then deal with them
+    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_DOM_TREE, !enable);
+    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG, !enable);
+    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_V8, !enable);
+    LynxDevtoolEnv.inst().setDevtoolEnvMask(
+        DevToolSettings.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT, !enable);
+    LynxDevtoolEnv.inst().setDevtoolEnvMask(DevToolSettings.SP_KEY_ENABLE_HIGHLIGHT_TOUCH, !enable);
   }
 
   @Override
