@@ -127,15 +127,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   public static final int INSTANCE_ID_DEFAULT = -1;
   private int mInstanceId = INSTANCE_ID_DEFAULT;
 
-  // lynx_session_id is a unique identifier for all active LynxView instances, constructed using the
-  // following format:
-  // "$currentTimestamp-$lynxViewIdentify"
-  // It is assigned during the LoadTemplate process and should not be modified elsewhere.
-  // The primary purpose of lynx_session_id is to identify each LynxView instance for image memory
-  // usage reporting. In different processes, lynx_session_id is also unique, mainly used to
-  // differentiate performance metrics across various LynxView instances. Unlike instanceID, this
-  // can differentiate performance data for LynxView instances across different processes.
-  private String mLynxSessionId;
   // Flatten UI enable force dark mode
   private boolean mForceDarkAllowed;
   private static boolean sSupportUsageHint = true;
@@ -567,21 +558,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return mLynxViewClient;
   }
 
-  private void updateLynxSessionID(UIBodyView bodyView) {
-    TraceEvent.beginSection(TraceEventDef.LYNX_CONTEXT_UPDATE_SESSION_ID);
-    String currentTimestamp = String.valueOf(System.currentTimeMillis());
-    String lynxViewIdentify = String.valueOf(System.identityHashCode(bodyView));
-    // sessionID would be like "$currentTimestamp-$lynxViewIdentify"
-    // Use StringBuilder to replace String format for String format is significantly slower than
-    // StringBuilder in this case.
-    StringBuilder builder = new StringBuilder();
-    builder.append(currentTimestamp);
-    builder.append("-");
-    builder.append(lynxViewIdentify);
-    mLynxSessionId = builder.toString();
-    TraceEvent.endSection(TraceEventDef.LYNX_CONTEXT_UPDATE_SESSION_ID);
-  }
-
   /**
    * use {@link #setUIBodyView(UIBodyView)} instead
    */
@@ -594,10 +570,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     setHasLynxViewAttached(bodyView != null);
     LLog.i("LynxUIRenderer", "lynxContext setUIBodyView" + bodyView + this);
     this.mBodyView = new WeakReference<>(bodyView);
-    // Prevent generate lynxSessionID multiple times
-    if (TextUtils.isEmpty(mLynxSessionId)) {
-      updateLynxSessionID(bodyView);
-    }
   }
 
   /**
@@ -607,11 +579,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   @NonNull
   @AnyThread
+  @Deprecated
   public String getLynxSessionID() {
-    if (mLynxSessionId == null) {
-      return "";
-    }
-    return mLynxSessionId;
+    return "";
   }
 
   public LynxView getLynxView() {
