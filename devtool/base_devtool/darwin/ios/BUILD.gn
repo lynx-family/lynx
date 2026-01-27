@@ -14,6 +14,7 @@ podspec_target("BaseDevtool_podspec") {
   } else {
     global_variables += [ "\$enable_trace = 0 " ]
   }
+  copy_resources_script = rebase_path("../../resources/copy_resources.py")
   root_specification = {
     name = "BaseDevtool"
     version = "$lynx_version"
@@ -51,11 +52,7 @@ podspec_target("BaseDevtool_podspec") {
     if (!is_debug) {
       pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
     }
-    prepare_command = [
-      "if [ -f \"./lynx/devtool/base_devtool/resources/copy_resources.py\" ]; then",
-      " python3 lynx/devtool/base_devtool/resources/copy_resources.py",
-      "fi",
-    ]
+    prepare_command = [ "python3 " + copy_resources_script ]
     ios = {
       deployment_target = "10.0"
     }
