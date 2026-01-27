@@ -345,7 +345,11 @@ deps = {
         "type": "git",
         "url": "https://chromium.googlesource.com/external/anongit.freedesktop.org/git/wayland/wayland.git",
         "commit": "5c3769edadc5390f27ff74500b5a8fcb6f65306b",
-        'condition': system == "linux"
+        'condition': system == "linux",
+        "require":
+        [
+            "../third_party/angle"
+        ]
     },
     '../third_party/gtest-parallel': {
         "type": "git",
@@ -389,7 +393,11 @@ deps = {
     '../third_party/angle/third_party/astc-encoder/src': {
         "type": "git",
         "url": "https://github.com/ARM-software/astc-encoder.git",
-        "commit": "573c475389bf51d16a5c3fc8348092e094e50e8f"
+        "commit": "573c475389bf51d16a5c3fc8348092e094e50e8f",
+        "require":
+        [
+            "../third_party/angle"
+        ]
     },
     '../third_party/vulkan-deps': {
         "type": "git",
