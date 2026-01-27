@@ -17,7 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setAppBundle:(LynxTemplateBundle *)bundle;
 
-- (void)updateMetaData:(LynxUpdateMeta *)meta;
+- (void)updateMetaData:(nullable LynxTemplateData *)initData
+           globalProps:(nullable LynxTemplateData *)globalProps;
 
 - (void)setUrl:(NSString *)url;
 
