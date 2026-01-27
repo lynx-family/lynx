@@ -8,6 +8,7 @@
 #ifndef BASE_INCLUDE_FML_MESSAGE_LOOP_TASK_QUEUES_H_
 #define BASE_INCLUDE_FML_MESSAGE_LOOP_TASK_QUEUES_H_
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -24,6 +25,7 @@
 #include "base/include/fml/task_source.h"
 #include "base/include/fml/wakeable.h"
 #include "base/include/no_destructor.h"
+#include "base/include/vector.h"
 
 namespace lynx {
 namespace fml {
@@ -89,16 +91,16 @@ class BASE_EXPORT MessageLoopTaskQueues {
   void RegisterTask(TaskQueueId queue_id, base::closure task,
                     fml::TimePoint target_time,
                     fml::TaskSourceGrade task_source_grade =
-                        fml::TaskSourceGrade::kUnspecified);
+                        fml::TaskSourceGrade::kUnspecified,
+                    bool instant_task_hint = false);
 
   bool HasPendingTasks(TaskQueueId queue_id) const;
 
-  std::optional<TaskSource::TopTaskResult> GetNextTaskToRun(
-      const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time);
+  base::closure GetNextTaskToRun(
+      const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time,
+      std::vector<const base::closure*>* observers = nullptr);
 
   size_t GetNumPendingTasks(TaskQueueId queue_id) const;
-
-  static TaskSourceGrade GetCurrentTaskSourceGrade();
 
   // Observers methods.
 
@@ -167,6 +169,7 @@ class BASE_EXPORT MessageLoopTaskQueues {
   ~MessageLoopTaskQueues();
 
   void WakeUpUnlocked(TaskQueueId queue_id, fml::TimePoint time) const;
+  void WakeUpUnlocked(TaskQueueEntry& queue, fml::TimePoint time) const;
 
   bool HasPendingTasksUnlocked(TaskQueueId queue_id) const;
 
@@ -183,7 +186,8 @@ class BASE_EXPORT MessageLoopTaskQueues {
       const std::vector<TaskQueueId>& queue_ids) const;
 
   mutable std::mutex queue_mutex_;
-  std::map<TaskQueueId, std::unique_ptr<TaskQueueEntry>> queue_entries_;
+  mutable base::LinearFlatMap<TaskQueueId, std::unique_ptr<TaskQueueEntry>>
+      queue_entries_;
 
   size_t task_queue_id_counter_;
 

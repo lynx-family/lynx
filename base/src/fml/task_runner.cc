@@ -69,7 +69,7 @@ void TaskRunner::PostTask(base::closure task) {
   }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now(),
-      fml::TaskSourceGrade::kUnspecified);
+      fml::TaskSourceGrade::kUnspecified, true);
 }
 
 void TaskRunner::PostEmergencyTask(base::closure task) {
@@ -79,13 +79,13 @@ void TaskRunner::PostEmergencyTask(base::closure task) {
   }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now(),
-      fml::TaskSourceGrade::kEmergency);
+      fml::TaskSourceGrade::kEmergency, true);
 }
 
 void TaskRunner::PostMicroTask(base::closure task) {
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now(),
-      fml::TaskSourceGrade::kMicrotask);
+      fml::TaskSourceGrade::kMicrotask, true);
 }
 
 void TaskRunner::PostIdleTask(base::closure task) {

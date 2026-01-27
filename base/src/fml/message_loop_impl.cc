@@ -34,7 +34,8 @@ MessageLoopImpl::~MessageLoopImpl() {
 }
 
 void MessageLoopImpl::PostTask(base::closure task, fml::TimePoint target_time,
-                               fml::TaskSourceGrade task_source_grade) {
+                               fml::TaskSourceGrade task_source_grade,
+                               bool instant_task_hint) {
   // TODO(zhengsenyao): Uncomment DCHECK code when DCHECK available.
   // DCHECK(task != nullptr);
   if (terminated_) {
@@ -43,7 +44,7 @@ void MessageLoopImpl::PostTask(base::closure task, fml::TimePoint target_time,
     return;
   }
   task_queue_->RegisterTask(internal_queue_id_, std::move(task), target_time,
-                            task_source_grade);
+                            task_source_grade, instant_task_hint);
 }
 
 void MessageLoopImpl::AddTaskObserver(intptr_t key, base::closure callback) {
@@ -121,40 +122,58 @@ void MessageLoopImpl::FlushVSyncAlignedTasks(FlushType type) {
 bool MessageLoopImpl::FlushTasksWithRestrictionDuration(
     FlushType type, const std::vector<TaskQueueId>& queue_ids,
     int64_t restriction_duration) {
+  if (queue_ids.empty()) {
+    return false;
+  }
+  std::vector<const base::closure*> observers;
   const auto now = fml::TimePoint::Now();
-  bool reach_max_restriction = false;
-  std::optional<TaskSource::TopTaskResult> task;
-  base::closure invocation;
-  do {
-    if (queue_ids.empty()) {
-      break;
-    }
-    task = task_queue_->GetNextTaskToRun(queue_ids, now);
-    if (!task || !task.has_value()) {
-      break;
-    }
-
-    invocation = std::move((*task).task);
-    if (!invocation) {
-      break;
-    }
-    invocation();
-    auto observers = task_queue_->GetObserversToNotify(task->task_queue_id);
-    for (const auto& observer : observers) {
-      (*observer)();
-    }
-    if (type == FlushType::kSingle) {
-      break;
-    }
-    // Reach maximum restriction duration, break
-    if (restriction_duration <=
-        (fml::TimePoint::Now() - now).ToMilliseconds()) {
-      reach_max_restriction = true;
-      break;
-    }
-  } while (invocation);
-
-  return reach_max_restriction;
+  if (restriction_duration == fml::TimeDelta::Max().ToMilliseconds()) {
+    // No restriction, skip checks in loop.
+    do {
+      auto invocation =
+          task_queue_->GetNextTaskToRun(queue_ids, now, &observers);
+      if (!invocation) {
+        break;
+      }
+      invocation();
+      if (!observers.empty()) {
+        for (const auto& observer : observers) {
+          (*observer)();
+        }
+        observers.clear();
+      }
+      if (type == FlushType::kSingle) {
+        break;
+      }
+    } while (true);
+    return false;
+  } else {
+    bool reach_max_restriction = false;
+    do {
+      auto invocation =
+          task_queue_->GetNextTaskToRun(queue_ids, now, &observers);
+      if (!invocation) {
+        break;
+      }
+      invocation();
+      if (!observers.empty()) {
+        for (const auto& observer : observers) {
+          (*observer)();
+        }
+        observers.clear();
+      }
+      if (type == FlushType::kSingle) {
+        break;
+      }
+      // Reach maximum restriction duration, break
+      if (restriction_duration <=
+          (fml::TimePoint::Now() - now).ToMilliseconds()) {
+        reach_max_restriction = true;
+        break;
+      }
+    } while (true);
+    return reach_max_restriction;
+  }
 }
 
 void MessageLoopImpl::WakeUp(fml::TimePoint time_point,
@@ -218,33 +237,28 @@ void MessageLoopImpl::Bind(const TaskQueueId& queue_id,
                            bool should_run_expired_tasks_immediately) {
   BASE_TRACE_EVENT(LYNX_BASE_TRACE_CATEGORY, MESSAGE_LOOP_IMPL_BIND);
 
-  (vsync_request_ && task_queue_->IsTaskQueueAlignedWithVSync(queue_id))
-      ? vsync_aligned_task_queue_ids_.emplace_back(queue_id)
-      : queue_ids_.emplace_back(queue_id);
+  auto& ids_vec =
+      (vsync_request_ && task_queue_->IsTaskQueueAlignedWithVSync(queue_id))
+          ? vsync_aligned_task_queue_ids_
+          : queue_ids_;
+
+  // Avoid duplicates
+  bool found = false;
+  for (const auto& exist : ids_vec) {
+    if (exist == queue_id) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    ids_vec.emplace_back(queue_id);
+  }
+
   task_queue_->SetWakeable(queue_id, this);
 
   if (should_run_expired_tasks_immediately) {
-    std::vector<TaskQueueId> queue_ids{queue_id};
-    const auto now = fml::TimePoint::Now();
-
-    while (1) {
-      auto next_task = task_queue_->GetNextTaskToRun(queue_ids, now);
-      if (!next_task) {
-        break;
-      }
-
-      auto invocation = std::move((*next_task).task);
-      if (!invocation) {
-        break;
-      }
-      invocation();
-
-      auto observers =
-          task_queue_->GetObserversToNotify(next_task->task_queue_id);
-      for (const auto& observer : observers) {
-        (*observer)();
-      }
-    }
+    FlushTasksWithRestrictionDuration(FlushType::kAll, {queue_id},
+                                      fml::TimeDelta::Max().ToMilliseconds());
   }
 }
 

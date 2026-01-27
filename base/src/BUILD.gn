@@ -214,7 +214,6 @@ lynx_base_source_set("base_core") {
               "file_utils.cc",
               "fml/concurrent_message_loop.cc",
               "fml/cpu_affinity.cc",
-              "fml/delayed_task.cc",
               "fml/memory/task_runner_checker.cc",
               "fml/message_loop.cc",
               "fml/message_loop_impl.cc",

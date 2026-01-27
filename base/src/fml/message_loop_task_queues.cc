@@ -19,27 +19,6 @@
 namespace lynx {
 namespace fml {
 
-namespace {
-
-// iOS prior to version 9 prevents c++11 thread_local and __thread specifier,
-// having us resort to boxed enum containers.
-class TaskSourceGradeHolder {
- public:
-  TaskSourceGrade task_source_grade;
-
-  explicit TaskSourceGradeHolder(TaskSourceGrade task_source_grade_arg)
-      : task_source_grade(task_source_grade_arg) {}
-};
-
-// Guarded by creation_mutex_.
-std::unique_ptr<TaskSourceGradeHolder>& GetThreadLocalGradeHolder() {
-  static thread_local base::NoDestructor<std::unique_ptr<TaskSourceGradeHolder>>
-      tls_task_source_grade;
-  return *tls_task_source_grade;
-}
-
-}  // namespace
-
 TaskQueueEntry::TaskQueueEntry(TaskQueueId created_for_arg,
                                bool is_aligned_with_vsync)
     : subsumed_by(_kUnmerged),
@@ -66,10 +45,7 @@ TaskQueueId MessageLoopTaskQueues::CreateTaskQueue(
 }
 
 MessageLoopTaskQueues::MessageLoopTaskQueues()
-    : task_queue_id_counter_(0), order_(0) {
-  GetThreadLocalGradeHolder().reset(
-      new TaskSourceGradeHolder{TaskSourceGrade::kUnspecified});
-}
+    : task_queue_id_counter_(0), order_(0) {}
 
 MessageLoopTaskQueues::~MessageLoopTaskQueues() = default;
 
@@ -98,13 +74,11 @@ void MessageLoopTaskQueues::DisposeTasks(TaskQueueId queue_id) {
   }
 }
 
-TaskSourceGrade MessageLoopTaskQueues::GetCurrentTaskSourceGrade() {
-  return GetThreadLocalGradeHolder().get()->task_source_grade;
-}
-
-void MessageLoopTaskQueues::RegisterTask(
-    TaskQueueId queue_id, base::closure task, fml::TimePoint target_time,
-    fml::TaskSourceGrade task_source_grade) {
+void MessageLoopTaskQueues::RegisterTask(TaskQueueId queue_id,
+                                         base::closure task,
+                                         fml::TimePoint target_time,
+                                         fml::TaskSourceGrade task_source_grade,
+                                         bool instant_task_hint) {
   std::lock_guard guard(queue_mutex_);
   size_t order = order_++;
   const auto& queue_entry = queue_entries_.at(queue_id);
@@ -114,8 +88,16 @@ void MessageLoopTaskQueues::RegisterTask(
   if (queue_entry->subsumed_by != _kUnmerged) {
     loop_to_wake = queue_entry->subsumed_by;
   }
-  // This can happen when the secondary tasks are paused.
-  if (HasPendingTasksUnlocked(loop_to_wake)) {
+  if (loop_to_wake == queue_id) {
+    // A task was just added to queue_id, no need to check
+    // HasPendingTasksUnlocked(loop_to_wake)
+    if (instant_task_hint) {
+      // WakeUp immediately using 0 time point.
+      WakeUpUnlocked(*queue_entry, fml::TimePoint());
+    } else {
+      WakeUpUnlocked(*queue_entry, GetNextWakeTimeUnlocked(loop_to_wake));
+    }
+  } else if (HasPendingTasksUnlocked(loop_to_wake)) {
     WakeUpUnlocked(loop_to_wake, GetNextWakeTimeUnlocked(loop_to_wake));
   }
 }
@@ -147,38 +129,101 @@ bool MessageLoopTaskQueues::HasPendingTasks(TaskQueueId queue_id) const {
   return HasPendingTasksUnlocked(queue_id);
 }
 
-std::optional<TaskSource::TopTaskResult>
-MessageLoopTaskQueues::GetNextTaskToRun(
-    const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time) {
+base::closure MessageLoopTaskQueues::GetNextTaskToRun(
+    const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time,
+    std::vector<const base::closure*>* observers) {
+  base::closure result;
+
+  struct TopTaskInfo {
+    const TaskQueueEntry& queue_entry;
+    const DelayedTask& task;
+  };
+
+  std::optional<TopTaskInfo> top_task;
+  auto update_top_task_from_queue_entry =
+      [&top_task](const TaskQueueEntry& queue_entry) {
+        if (queue_entry.task_source) {
+          const auto* task = queue_entry.task_source->TopOrNull();
+          if (task) {
+            if (!top_task.has_value() || top_task->task > *task) {
+              top_task.emplace(TopTaskInfo{queue_entry, *task});
+            }
+          }
+        }
+      };
+
+  // Combining `HasPendingTasksUnlocked`, `PeekNextTaskUnlocked` and
+  // `GetNextWakeTimeUnlocked` into single one to reduce redundant judgments and
+  // repetitive logic.
   std::lock_guard guard(queue_mutex_);
-  if (!HasPendingTasksUnlocked(queue_ids)) {
-    return std::nullopt;
-  }
-  TaskSource::TopTask top = PeekNextTaskUnlocked(queue_ids);
 
-  if (!HasPendingTasksUnlocked(queue_ids)) {
-    WakeUpUnlocked(queue_ids.front(), fml::TimePoint::Max());
-  } else {
-    WakeUpUnlocked(queue_ids.front(), GetNextWakeTimeUnlocked(queue_ids));
+  // Select the top-most task from all queues.
+  for (const auto& queue_id : queue_ids) {
+    const auto& entry = queue_entries_.at(queue_id);
+    if (entry->subsumed_by != _kUnmerged) {
+      continue;  // Owned by other
+    }
+    update_top_task_from_queue_entry(*entry);
+    if (!entry->owner_of.empty()) {
+      for (const auto& subsumed : entry->owner_of) {
+        const auto& subsumed_entry = queue_entries_.at(subsumed);
+        update_top_task_from_queue_entry(*subsumed_entry);
+      }
+    }
   }
 
-  if (top.task.GetTargetTime() > from_time) {
-    return std::nullopt;
+  // No task found.
+  if (!top_task.has_value()) {
+    return result;
   }
-  base::closure invocation = top.task.GetTask();
-  const auto task_source_grade = top.task.GetTaskSourceGrade();
-  queue_entries_.at(top.task_queue_id)->task_source->PopTask(task_source_grade);
-  GetThreadLocalGradeHolder().reset(
-      new TaskSourceGradeHolder{task_source_grade});
 
-  return TaskSource::TopTaskResult{top.task_queue_id, std::move(invocation)};
+  // The top-most task has not yet been triggered, wake up in future.
+  if (auto target_time = top_task->task.GetTargetTime();
+      target_time > from_time) {
+    WakeUpUnlocked(queue_ids.front(), target_time);
+    return result;
+  }
+
+  // This task has been confirmed to be executed and should be removed from the
+  // queue.
+  const auto& queue_entry = top_task->queue_entry;
+  result = top_task->task.GetTask();
+  queue_entry.task_source->PopTask(top_task->task.GetTaskSourceGrade());
+
+  // Get attached observers.
+  if (observers) {
+    if (!queue_entry.task_observers.empty()) {
+      for (const auto& observer : queue_entry.task_observers) {
+        observers->push_back(&(observer.second));
+      }
+    }
+
+    auto& subsumed_set = queue_entry.owner_of;
+    if (!subsumed_set.empty()) {
+      for (auto& subsumed : subsumed_set) {
+        for (const auto& observer :
+             queue_entries_.at(subsumed)->task_observers) {
+          observers->push_back(&(observer.second));
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 void MessageLoopTaskQueues::WakeUpUnlocked(TaskQueueId queue_id,
                                            fml::TimePoint time) const {
-  if (queue_entries_.at(queue_id)->wakeable) {
-    queue_entries_.at(queue_id)->wakeable->WakeUp(
-        time, queue_entries_.at(queue_id)->IsAlignedWithVSync());
+  auto& q = queue_entries_.at(queue_id);
+  if (q->wakeable) {
+    q->wakeable->WakeUp(time, q->IsAlignedWithVSync());
+  }
+}
+
+void MessageLoopTaskQueues::WakeUpUnlocked(TaskQueueEntry& queue,
+                                           fml::TimePoint time) const {
+  if (queue.wakeable) {
+    queue.wakeable->WakeUp(time, queue.IsAlignedWithVSync());
   }
 }
 

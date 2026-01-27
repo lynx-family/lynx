@@ -29,6 +29,8 @@ class TaskQueueId {
     return value_;
   }
 
+  std::size_t hash() const { return std::hash<size_t>()(value_); }
+
  private:
   size_t value_ = kUnmerged;
 };
@@ -41,5 +43,14 @@ constexpr TaskQueueId _kUnmerged = TaskQueueId(TaskQueueId::kUnmerged);
 namespace fml {
 using lynx::fml::TaskQueueId;
 }  // namespace fml
+
+namespace std {
+template <>
+struct hash<lynx::fml::TaskQueueId> {
+  std::size_t operator()(const lynx::fml::TaskQueueId& k) const {
+    return k.hash();
+  }
+};
+}  // namespace std
 
 #endif  // BASE_INCLUDE_FML_TASK_QUEUE_ID_H_

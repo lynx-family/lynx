@@ -21,7 +21,11 @@ constexpr int64_t kIdlePeriod = 50;  // milliseconds
 }  // namespace
 
 TaskSource::TaskSource(TaskQueueId task_queue_id)
-    : task_queue_id_(task_queue_id) {}
+    : task_queue_id_(task_queue_id) {
+  primary_task_queue_.reserve(64);
+  emergency_task_queue_.reserve(32);
+  micro_task_queue_.reserve(32);
+}
 
 TaskSource::~TaskSource() { ShutDown(); }
 
@@ -80,8 +84,6 @@ size_t TaskSource::GetNumPendingTasks() const {
 bool TaskSource::IsEmpty() const { return GetNumPendingTasks() == 0; }
 
 TaskSource::TopTask TaskSource::Top() const {
-  // TODO(zhengsenyao): Replace LYNX_BASE_CHECK with CHECK when CHECK available.
-  LYNX_BASE_CHECK(!IsEmpty());
   if (!micro_task_queue_.empty()) {
     const auto& microtask_top = micro_task_queue_.top();
     return {
@@ -112,11 +114,40 @@ TaskSource::TopTask TaskSource::Top() const {
     }
   }
 
+  // TODO(zhengsenyao): Replace LYNX_BASE_CHECK with CHECK when CHECK available.
+  LYNX_BASE_CHECK(!idle_task_queue_.empty());
   const auto& idle_top = idle_task_queue_.front();
   return {
       .task_queue_id = task_queue_id_,
       .task = idle_top,
   };
+}
+
+const DelayedTask* TaskSource::TopOrNull() const {
+  if (!micro_task_queue_.empty()) {
+    return &micro_task_queue_.top();
+  }
+
+  if (!emergency_task_queue_.empty()) {
+    return &emergency_task_queue_.top();
+  }
+
+  if (!primary_task_queue_.empty()) {
+    const auto& primary_top = primary_task_queue_.top();
+    // if there are primary tasks in a idle period,
+    // the idle tasks will be suspended.
+    if (idle_task_queue_.empty() ||
+        (primary_top.GetTargetTime() - TimePoint::Now()).ToMilliseconds() <=
+            kIdlePeriod) {
+      return &primary_top;
+    }
+  }
+
+  if (!idle_task_queue_.empty()) {
+    return &idle_task_queue_.front();
+  }
+
+  return nullptr;
 }
 
 }  // namespace fml

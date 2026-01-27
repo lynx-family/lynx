@@ -89,14 +89,22 @@ void MessageLoopDarwin::Terminate() {
 void MessageLoopDarwin::WakeUp(fml::TimePoint time_point) {
   // Rearm the timer. The time bases used by CoreFoundation and FXL are
   // different and must be accounted for.
+  if (time_point == fml::TimePoint()) {
+    // TimePoint(0) is a hint for wakeup immediately.
+    // This skips a `TimePoint::Now()` call.
+    CFRunLoopSourceSignal(work_source_);
+    CFRunLoopWakeUp(loop_);
+    return;
+  }
+
   auto now = TimePoint::Now();
-  // wake up immediately
   if (time_point <= now) {
     CFRunLoopSourceSignal(work_source_);
     CFRunLoopWakeUp(loop_);
     return;
   }
 
+  // Wakeup at specific time.
   CFRunLoopTimerSetNextFireDate(delayed_wake_timer_,
                                 CFAbsoluteTimeGetCurrent() + (time_point - now).ToSecondsF());
 }

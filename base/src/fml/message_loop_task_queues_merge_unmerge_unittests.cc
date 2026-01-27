@@ -39,13 +39,8 @@ static int CountRemainingTasks(MessageLoopTaskQueues* task_queue,
   const auto now = ChronoTicksSinceEpoch();
   int count = 0;
   std::vector<TaskQueueId> queue_ids = {queue_id};
-  base::closure invocation;
   do {
-    auto task = task_queue->GetNextTaskToRun(queue_ids, now);
-    if (!task || !task.has_value()) {
-      break;
-    }
-    invocation = std::move((*task).task);
+    auto invocation = task_queue->GetNextTaskToRun(queue_ids, now);
     if (!invocation) {
       break;
     }
@@ -53,7 +48,7 @@ static int CountRemainingTasks(MessageLoopTaskQueues* task_queue,
     if (run_invocation) {
       invocation();
     }
-  } while (invocation);
+  } while (true);
   return count;
 }
 
@@ -261,13 +256,17 @@ TEST(MessageLoopTaskQueueMergeUnmerge, GetTasksToRunNowBlocksMerge) {
   fml::AutoResetWaitableEvent wake_up_start, wake_up_end, merge_start,
       merge_end;
 
-  task_queue->RegisterTask(
-      queue_id_1, []() {}, ChronoTicksSinceEpoch());
   task_queue->SetWakeable(queue_id_1,
                           new TestWakeable([&](fml::TimePoint wake_time) {
                             wake_up_start.Signal();
                             wake_up_end.Wait();
                           }));
+
+  std::thread register_task_thread([&]() {
+    // Register task on another thread and wake up the queues.
+    task_queue->RegisterTask(
+        queue_id_1, []() {}, ChronoTicksSinceEpoch());
+  });
 
   std::thread tasks_to_run_now_thread([&]() {
     // Fetch task previously added with task_queue's queue_mutex_.
@@ -296,6 +295,7 @@ TEST(MessageLoopTaskQueueMergeUnmerge, GetTasksToRunNowBlocksMerge) {
   merge_end.Wait();
   ASSERT_TRUE(merge_done);
 
+  register_task_thread.join();
   tasks_to_run_now_thread.join();
   merge_thread.join();
 }
