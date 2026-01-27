@@ -1036,18 +1036,6 @@ Shell::GetResourceLoaderIntercept() {
 ScreenshotData Shell::ScreenshotSync(
     ScreenshotData::ScreenshotType screenshot_type, uint32_t background_color) {
   TRACE_EVENT("clay", "Shell::ScreenshotSync");
-  // Force submit the latest LayerTree to Rasterizer.
-  fml::AutoResetWaitableEvent ui_latch;
-  fml::TaskRunner::RunNowOrPostTask(
-      task_runners_.GetUITaskRunner(),
-      fml::MakeCopyable([engine = weak_engine_, &ui_latch]() mutable {
-        if (engine) {
-          engine->ForceBeginFrame();
-        }
-        ui_latch.Signal();
-      }));
-  ui_latch.Wait();
-
   std::future<std::optional<ScreenshotData>> screenshot_future =
       rasterizer_service_.ActWithPromise(
           [screenshot_type, background_color](auto& impl) {
@@ -1060,18 +1048,6 @@ ScreenshotData Shell::ScreenshotSync(
 void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
                             uint32_t background_color,
                             std::function<void(ScreenshotData)> callback) {
-  // Force submit the latest LayerTree to Rasterizer.
-  fml::AutoResetWaitableEvent ui_latch;
-  fml::TaskRunner::RunNowOrPostTask(
-      task_runners_.GetUITaskRunner(),
-      fml::MakeCopyable([engine = weak_engine_, &ui_latch]() mutable {
-        if (engine) {
-          engine->ForceBeginFrame();
-        }
-        ui_latch.Signal();
-      }));
-  ui_latch.Wait();
-
   rasterizer_service_.Act(
       [screenshot = screenshot, screenshot_type, background_color](auto& impl) {
         if (screenshot->load()) {

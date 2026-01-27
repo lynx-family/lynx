@@ -5,7 +5,6 @@
 #ifndef CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
 #define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
 
-#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -34,7 +33,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
     virtual void OnScrollStopped() = 0;
   };
 
-  ListContainerView(int32_t id, PageView* page_view, int32_t callback_id);
+  ListContainerView(int32_t id, PageView* page_view);
 
   void UpdateContentOffsetForListContainer(float content_size,
                                            float target_content_offset_x,
