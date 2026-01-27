@@ -532,7 +532,7 @@ subspec_target("JSRuntime") {
     "../../../../core/runtime",
     "../../../../core/runtime:js_common",
     "../../../../core/runtime/common:reporter",
-    "../../../../core/runtime/common:utils",
+    "../../../../core/runtime/js:utils",
     "../../../../core/runtime/js/bindings",
     "../../../../core/runtime/js/bytecode:jscache",
     "../../../../core/runtime/js/jsi",

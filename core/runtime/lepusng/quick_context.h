@@ -259,7 +259,7 @@ class QuickContext : private LEPUSRuntimeData,
   LEPUSValue current_this_;
   char* gc_info_start_;
 
-  common::JSErrorReporter js_error_reporter_;
+  runtime::JSErrorReporter js_error_reporter_;
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<runtime::profile::RuntimeProfiler> runtime_profiler_;
 #endif

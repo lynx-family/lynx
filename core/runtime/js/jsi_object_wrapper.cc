@@ -1,7 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/common/jsi_object_wrapper.h"
+#include "core/runtime/js/jsi_object_wrapper.h"
 
 #include <utility>
 
@@ -78,73 +78,60 @@ int JSIObjectWrapperManager::JSIObjectWrapper::ref_count() {
 void JSIObjectWrapperManager::ReleaseJSIObjectByID(int64_t jsi_object_id) {
   std::lock_guard<std::mutex> lock(map_mutex_);
   JSI_OBJECT_MAP::iterator it = jsi_object_map_.find(jsi_object_id);
-  if (it != jsi_object_map_.end()) {
-    JSIObjectWrapper* jsi_object_wrapper = it->second;
-    jsi_object_wrapper->Release();
+  if (it == jsi_object_map_.end()) {
+    return;
+  }
+  JSIObjectWrapper* wrapper = it->second;
+  if (wrapper->ref_count() == 0) {
+    grouped_jsi_object_map_.erase(wrapper->group_id_);
+    dirty_jsi_object_set_.erase(wrapper);
+    delete wrapper;
+    jsi_object_map_.erase(it);
+  } else {
+    dirty_jsi_object_set_.insert(wrapper);
+  }
+}
 
-    // move the wrapper  to dirty set if needed
-    if (jsi_object_wrapper->ref_count() == 0) {
-      dirty_jsi_object_set_.insert(jsi_object_wrapper);
+void JSIObjectWrapperManager::ForceGcOnJSThread() {
+  for (auto iter = dirty_jsi_object_set_.begin();
+       iter != dirty_jsi_object_set_.end();) {
+    if ((*iter)->ref_count() == 0) {
+      grouped_jsi_object_map_.erase((*iter)->group_id_);
+      JSI_OBJECT_MAP::iterator it = jsi_object_map_.find((*iter)->id_);
+      delete *iter;
+      iter = dirty_jsi_object_set_.erase(iter);
       jsi_object_map_.erase(it);
-
-      // remove from grouped_jsi_object_map_
-      std::pair<GROUPED_OBJECT_MAP::iterator, GROUPED_OBJECT_MAP::iterator>
-          range = grouped_jsi_object_map_.equal_range(
-              jsi_object_wrapper->group_id_);
-      for (auto itr_grouped_obj_map = range.first;
-           itr_grouped_obj_map != range.second; ++itr_grouped_obj_map) {
-        JSIObjectWrapper* curr_object_wrapper = itr_grouped_obj_map->second;
-        if (curr_object_wrapper->id_ == jsi_object_wrapper->id_) {
-          grouped_jsi_object_map_.erase(itr_grouped_obj_map);
-          break;
-        }
-      }
+    } else {
+      ++iter;
     }
   }
 }
 
 Value JSIObjectWrapperManager::GetJSIObjectByIDOnJSThread(
     Runtime& rt, int64_t jsi_object_id) {
-  Scope scope(rt);
-
   std::lock_guard<std::mutex> lock(map_mutex_);
   JSI_OBJECT_MAP::iterator it = jsi_object_map_.find(jsi_object_id);
-  if (it != jsi_object_map_.end()) {
-    Value obj = Value(rt, it->second->jsi_object_);
-    return obj;
-  }
-  return Value::null();
-}
-
-void JSIObjectWrapperManager::ForceGcOnJSThread() {
-  std::lock_guard<std::mutex> lock(map_mutex_);
-
-  auto it = dirty_jsi_object_set_.begin();
-  for (; it != dirty_jsi_object_set_.end(); it++) {
-    JSIObjectWrapper* wrapper = *it;
-    delete wrapper;
+  if (it == jsi_object_map_.end()) {
+    return Value::null();
   }
 
-  dirty_jsi_object_set_.clear();
+  auto wrapper = it->second;
+  if (!wrapper) {
+    return Value::null();
+  }
+  return Value(wrapper->jsi_object_);
 }
 
 void JSIObjectWrapperManager::DestroyOnJSThread() {
-  {
-    std::lock_guard<std::mutex> lock(map_mutex_);
-    auto it_obj = jsi_object_map_.begin();
-    for (; it_obj != jsi_object_map_.end(); it_obj++) {
-      JSIObjectWrapper* wrapper = it_obj->second;
-      delete wrapper;
-    }
-
-    jsi_object_map_.clear();
-    grouped_jsi_object_map_.clear();
+  std::lock_guard<std::mutex> lock(map_mutex_);
+  for (auto it : jsi_object_map_) {
+    delete it.second;
   }
-
-  ForceGcOnJSThread();
+  jsi_object_map_.clear();
+  grouped_jsi_object_map_.clear();
+  dirty_jsi_object_set_.clear();
 }
 
 }  // namespace js
-
 }  // namespace runtime
 }  // namespace lynx

@@ -13,10 +13,10 @@
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/runtime/common/bindings/resource/response_promise.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/js/bindings/resource/response_handler_in_js.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {

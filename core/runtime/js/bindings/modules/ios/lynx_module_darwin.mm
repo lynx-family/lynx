@@ -17,7 +17,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/utils.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/recorder/recorder_controller.h"

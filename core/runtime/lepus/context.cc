@@ -5,21 +5,15 @@
 #include "core/runtime/lepus/context.h"
 
 #include <memory>
-#include <unordered_set>
 #include <utility>
 
-#include "base/include/value/array.h"
 #include "base/include/value/path_parser.h"
-#include "base/include/value/ref_counted_class.h"
-#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/js_error_reporter.h"
-#include "core/runtime/common/utils.h"
-#include "core/runtime/lepus/js_object.h"
 #include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/lepus/tasks/lepus_raf_manager.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -168,7 +162,7 @@ void Context::ReportError(const std::string& exception_info, int32_t err_code,
   error.custom_info_ = {{"name", name_},
                         {"type", std::to_string(static_cast<int>(type_))}};
   if (name_.compare(LEPUS_DEFAULT_CONTEXT_NAME) != 0) {
-    common::FormatErrorUrl(error, name_);
+    runtime::FormatErrorUrl(error, name_);
   }
   BeforeReportError(error);
   delegate_->ReportError(std::move(error));

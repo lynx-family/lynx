@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/common/args_converter.h"
+#include "core/runtime/js/jsi/args_converter.h"
 
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

@@ -18,7 +18,7 @@
 #include "third_party/rapidjson/writer.h"
 
 namespace lynx {
-namespace common {
+namespace runtime {
 
 namespace {
 constexpr char kSourceMapReleaseErrorName[] = "LynxGetSourceMapReleaseError";
@@ -413,7 +413,7 @@ base::LynxError JSErrorReporter::ReportException(
   }
   auto error = base::LynxError(error_code, std::string(msg), "", error_level);
   AppendCustomInfo(error);
-  common::FormatErrorUrl(error, dynamic_component_path);
+  FormatErrorUrl(error, dynamic_component_path);
   return error;
 }
 
@@ -582,5 +582,5 @@ ErrorEvent JSErrorReporter::FormatError(JSErrorInfo& error_info) {
   return error_event;
 }
 
-}  // namespace common
+}  // namespace runtime
 }  // namespace lynx

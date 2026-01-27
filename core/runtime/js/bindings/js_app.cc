@@ -29,7 +29,6 @@
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/runtime/common/js_error_reporter.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/api_call_back.h"
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/bindings/js_object_destruction_observer.h"
@@ -37,6 +36,7 @@
 #include "core/runtime/js/bindings/lynx_js_error.h"
 #include "core/runtime/js/lynx_api_handler.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/runtime/js/utils.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
@@ -517,7 +517,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 BUILD_JSI_NATIVE_EXCEPTION("the args type is error."));
           }
           auto error_obj = args[0].asObject(rt);
-          common::JSErrorInfo error_info;
+          runtime::JSErrorInfo error_info;
           auto value = error_obj->getProperty(rt, "message");
           if (!value || !value->isString()) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -1563,7 +1563,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "the first argument of __SetSourceMapRelease must "
                 "be an object."));
           }
-          common::JSErrorInfo error_info;
+          runtime::JSErrorInfo error_info;
           auto js_error = args[0].asObject(rt);
           auto message = js_error->getProperty(rt, "message");
           if (!message || !message->isString()) {
@@ -2700,7 +2700,7 @@ void App::OnAppJSError(const JSIException& exception) {
   } else {
     LOGE("reportJSException when js_app_ is not ready: " << msg);
     base::LynxError error{exception.errorCode(), msg};
-    common::FormatErrorUrl(error, "");
+    runtime::FormatErrorUrl(error, "");
     delegate_->OnErrorOccurred(std::move(error));
   }
 }
@@ -3385,7 +3385,7 @@ void App::ElementAnimateV2(const std::string& component_id,
   delegate_->ElementAnimateV2(component_id, id_selector, args);
 }
 
-void App::ReportException(common::JSErrorInfo error_info) {
+void App::ReportException(runtime::JSErrorInfo error_info) {
   // fatal error should stop runloop to avoid more unreleated errors.
   if (error_info.error_level == base::LynxErrorLevel::Fatal) {
     state_ = State::kAppLoadFailed;
@@ -3710,7 +3710,7 @@ void App::FetchBundle(
   delegate_->FetchBundle(bundle_url, std::move(response_promise));
 }
 
-void App::SetSourceMapRelease(common::JSErrorInfo error_info) {
+void App::SetSourceMapRelease(runtime::JSErrorInfo error_info) {
   js_error_reporter_.SetSourceMapRelease(std::move(error_info));
 }
 

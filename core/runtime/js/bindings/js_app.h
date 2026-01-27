@@ -21,12 +21,12 @@
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
 #include "core/runtime/common/bindings/resource/response_promise.h"
 #include "core/runtime/common/js_error_reporter.h"
-#include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/js/bindings/api_call_back.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
 #include "core/runtime/js/bindings/js_task_adapter.h"
 #include "core/runtime/js/js_bundle_holder.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi_object_wrapper.h"
 #include "core/runtime/js/lynx_api_handler.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/services/fluency/fluency_tracer.h"
@@ -199,7 +199,7 @@ class App : public std::enable_shared_from_this<App> {
 
   void ReloadFromJS(const lepus::Value& value, ApiCallBack callback);
 
-  void ReportException(common::JSErrorInfo error_info);
+  void ReportException(runtime::JSErrorInfo error_info);
   void AddReporterCustomInfo(
       const std::unordered_map<std::string, std::string>& info);
 
@@ -264,7 +264,7 @@ class App : public std::enable_shared_from_this<App> {
                                    const std::string& extra_info_key,
                                    const std::string& extra_info_value);
 
-  void SetSourceMapRelease(common::JSErrorInfo error_info);
+  void SetSourceMapRelease(runtime::JSErrorInfo error_info);
   std::string GetSourceMapRelease(const std::string url);
 
   // raf
@@ -367,7 +367,7 @@ class App : public std::enable_shared_from_this<App> {
   // This is set by LynxRuntimeStandalone, once set, it cannot be modified.
   lepus::Value preset_data_;
 
-  common::JSErrorReporter js_error_reporter_;
+  runtime::JSErrorReporter js_error_reporter_;
 
   bool IsJsAppStateValid() {
     return (js_app_.isObject() && state_ != State::kAppLoadFailed);

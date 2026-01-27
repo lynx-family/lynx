@@ -7,8 +7,8 @@
 #include <cstring>
 
 #include "core/base/js_constants.h"
-#include "core/runtime/common/jsi_object_wrapper.h"
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/jsi_object_wrapper.h"
+#include "core/runtime/js/utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_impl_piper.h"
 

@@ -1,27 +1,19 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/common/utils.h"
+#include "core/runtime/js/utils.h"
 
 #include <memory>
 #include <utility>
-
-#if defined(OS_ANDROID)
-#include "core/base/android/android_jni.h"
-#include "core/base/android/jni_helper.h"
-#include "core/base/android/piper_data.h"
-#include "core/runtime/js/bindings/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
-#include "platform/android/lynx_android/src/main/jni/gen/JavaOnlyArray_jni.h"
-#endif  // OS_ANDROID
 
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/jsi_object_wrapper.h"
 
 namespace lynx {
 namespace runtime {
@@ -355,20 +347,6 @@ bool ConvertPiperValueToStringVector(Runtime& rt, const Value& input,
 
   return true;
 }
-
-#ifdef OS_ANDROID
-bool JSBUtilsRegisterJNI(JNIEnv* env) { return RegisterNativesImpl(env); }
-
-void PushByteArrayToJavaArray(Runtime* rt, const ArrayBuffer& array_buffer,
-                              base::android::JavaOnlyArray* jarray) {
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedLocalJavaRef<jbyteArray> jni_byte_array =
-      base::android::JNIHelper::ConvertToJNIByteArray(env, rt, array_buffer);
-  Java_JavaOnlyArray_pushByteArray(env, jarray->jni_object(),
-                                   jni_byte_array.Get());
-}
-
-#endif  // OS_ANDROID
 
 }  // namespace js
 

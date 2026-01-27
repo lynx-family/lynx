@@ -12,9 +12,9 @@
 #include "core/event/event_listener.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/event/js_event_listener.h"
 #include "core/runtime/js/bindings/js_app.h"
+#include "core/runtime/js/utils.h"
 #include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {

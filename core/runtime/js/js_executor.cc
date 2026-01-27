@@ -5,9 +5,9 @@
 
 #include "base/include/log/logging.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/runtime_manager.h"
+#include "core/runtime/js/utils.h"
 
 // BINARY_KEEP_SOURCE_FILE
 namespace lynx {

@@ -9,8 +9,8 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/runtime/js/utils.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {

@@ -15,8 +15,8 @@
 #include "core/base/lynx_trace_categories.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/lynx_console_helper.h"
-#include "core/runtime/common/utils.h"
 #include "core/runtime/js/bindings/console.h"
+#include "core/runtime/js/utils.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"
@@ -46,21 +46,24 @@ void Console::Init() {
     };
   };
 
-  methods_map_["log"] = make_log_function(CONSOLE_LOG_INFO, "log");
-  methods_map_["report"] = make_log_function(CONSOLE_LOG_REPORT, "log");
+  methods_map_["log"] = make_log_function(runtime::CONSOLE_LOG_INFO, "log");
+  methods_map_["report"] =
+      make_log_function(runtime::CONSOLE_LOG_REPORT, "log");
 
-  methods_map_["alog"] = make_log_function(CONSOLE_LOG_ALOG, "log");
-  methods_map_["error"] = make_log_function(CONSOLE_LOG_ERROR, "error");
-  methods_map_["warn"] = make_log_function(CONSOLE_LOG_WARNING, "warn");
-  methods_map_["info"] = make_log_function(CONSOLE_LOG_INFO, "info");
-  methods_map_["debug"] = make_log_function(CONSOLE_LOG_INFO, "debug");
+  methods_map_["alog"] = make_log_function(runtime::CONSOLE_LOG_ALOG, "log");
+  methods_map_["error"] =
+      make_log_function(runtime::CONSOLE_LOG_ERROR, "error");
+  methods_map_["warn"] =
+      make_log_function(runtime::CONSOLE_LOG_WARNING, "warn");
+  methods_map_["info"] = make_log_function(runtime::CONSOLE_LOG_INFO, "info");
+  methods_map_["debug"] = make_log_function(runtime::CONSOLE_LOG_INFO, "debug");
 
   methods_map_["assert"] = [this](Runtime* rt) {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "assert"), 0,
         [this](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) {
-          return Assert(&rt, CONSOLE_LOG_ERROR, args, count, "assert");
+          return Assert(&rt, runtime::CONSOLE_LOG_ERROR, args, count, "assert");
         });
   };
 
@@ -237,23 +240,23 @@ Value Console::LogWithLevel(Runtime* rt, const int level, const Value* args,
     base::logging::LogChannel channel_type = GetChannelType(rt, args);
 
     switch (level) {
-      case CONSOLE_LOG_VERBOSE:
+      case runtime::CONSOLE_LOG_VERBOSE:
         JSLOG(VERBOSE, rt->getRuntimeId(), channel_type) << msg;
         break;
-      case CONSOLE_LOG_INFO:
-      case CONSOLE_LOG_LOG:
+      case runtime::CONSOLE_LOG_INFO:
+      case runtime::CONSOLE_LOG_LOG:
         JSLOG(INFO, rt->getRuntimeId(), channel_type) << msg;
         break;
-      case CONSOLE_LOG_WARNING:
+      case runtime::CONSOLE_LOG_WARNING:
         JSLOG(WARNING, rt->getRuntimeId(), channel_type) << msg;
         break;
-      case CONSOLE_LOG_ERROR:
+      case runtime::CONSOLE_LOG_ERROR:
         JSLOG(ERROR, rt->getRuntimeId(), channel_type) << msg;
         break;
-      case CONSOLE_LOG_REPORT:
+      case runtime::CONSOLE_LOG_REPORT:
         JSALOG(ERROR, rt->getRuntimeId(), channel_type) << msg;
         break;
-      case CONSOLE_LOG_ALOG:
+      case runtime::CONSOLE_LOG_ALOG:
         JSALOG(INFO, rt->getRuntimeId(), channel_type) << msg;
         break;
       default:

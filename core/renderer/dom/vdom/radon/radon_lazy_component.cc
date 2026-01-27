@@ -233,7 +233,7 @@ bool RadonLazyComponent::LoadLazyBundleFromJS(const std::string& url) {
     auto error = lynx::base::LynxError(
         error::E_LAZY_BUNDLE_LOAD_BAD_RESPONSE, std::string(kErrorMsg),
         std::string(kSuggestion), base::LynxErrorLevel::Error);
-    common::FormatErrorUrl(error, entry_name_);
+    runtime::FormatErrorUrl(error, entry_name_);
     error.AddContextInfo("component_url_from_js", url);
     lynx::base::ErrorStorage::GetInstance().SetError(std::move(error));
     return false;

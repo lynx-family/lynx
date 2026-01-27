@@ -101,7 +101,7 @@ base::LynxError ConstructLynxErrorForLazyBundle(const std::string& url,
                                                 bool is_preload = false) {
   base::LynxError error{error_code, error_msg, suggestion,
                         base::LynxErrorLevel::Error};
-  common::FormatErrorUrl(error, url);
+  runtime::FormatErrorUrl(error, url);
   error.AddContextInfo("preload", std::to_string(is_preload));
   return error;
 }

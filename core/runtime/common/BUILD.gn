@@ -5,23 +5,6 @@
 import("../../../testing/test.gni")
 import("../../Lynx.gni")
 
-lynx_core_source_set("utils") {
-  sources = [
-    "args_converter.h",
-    "jsi_object_wrapper.cc",
-    "jsi_object_wrapper.h",
-    "utils.cc",
-    "utils.h",
-  ]
-  if (is_android) {
-    sources += [ "android/utils_map.cc" ]
-  }
-  deps = [
-    "../../../base/src:base_log_headers",
-    "../../../third_party/rapidjson",
-  ]
-}
-
 lynx_core_source_set("reporter") {
   sources = [
     "js_error_reporter.cc",
@@ -30,20 +13,12 @@ lynx_core_source_set("reporter") {
   deps = [ "../../../third_party/rapidjson" ]
 }
 
-unittest_set("utils_unittests_testset") {
+unittest_set("reporter_unittests_testset") {
   configs = [
     "../../:lynx_public_config",
     "../js/jsi:jsi_unittest_config",
   ]
 
-  sources = [
-    "args_converter_unittest.cc",
-    "js_error_reporter_unittest.cc",
-    "utils_unittest.cc",
-  ]
-
-  deps = [
-    ":reporter",
-    ":utils",
-  ]
+  sources = [ "js_error_reporter_unittest.cc" ]
+  deps = [ ":reporter" ]
 }
