@@ -465,4 +465,14 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
   public void setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request,
       @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width,
       int height, int radius, int iterations, boolean isPreView) {}
+
+  @Deprecated
+  @Override
+  public int getImageOrigin(@NonNull Object imageInfo) {
+    return -1;
+  }
+
+  @Deprecated
+  @Override
+  public void setImageSRSize(@NonNull Object builder, int width, int height) {}
 }

@@ -275,4 +275,14 @@ public class PropsConstants {
   public static final String IMAGE_CACHE_CHOICE = "cache-choice";
 
   public static final String IMAGE_PLACE_HOLDER_HASH_CONFIG = "placeholder-hash-config";
+
+  public static final String IMAGE_ENABLE_SMOOTH_ANIMATION = "android-enable-smooth-animation";
+
+  public static final String IMAGE_ENABLE_PROGRESSIVE_RENDERING = "progressive-rendering";
+
+  public static final String IMAGE_ADDITIONAL_CUSTOM_INFO = "additional-custom-info";
+
+  public static final String IMAGE_ENABLE_SUPER_RESOLUTION = "enable-super-resolution";
+
+  public static final String IMAGE_SUPER_RESOLUTION_SCALE = "super-resolution-scale";
 }

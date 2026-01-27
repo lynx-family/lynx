@@ -182,4 +182,21 @@ public interface ILynxImageService extends IServiceProvider {
   void setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request,
       @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width,
       int height, int radius, int iterations, boolean isPreView);
+
+  /**
+   * Deprecated and does not require implementation.
+   *
+   * @param imageInfo The image info object.
+   * @return The image origin.
+   */
+  @Deprecated int getImageOrigin(@NonNull Object imageInfo);
+
+  /**
+   * Deprecated and does not require implementation.
+   *
+   * @param builder The image request builder object.
+   * @param width The width for the super-resolution image.
+   * @param height The height for the super-resolution image.
+   */
+  @Deprecated void setImageSRSize(@NonNull Object builder, int width, int height);
 }

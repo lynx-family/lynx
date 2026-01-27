@@ -4,7 +4,9 @@
 package com.lynx.tasm.utils;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
+import android.graphics.Bitmap;
 import com.lynx.react.bridge.DynamicFromMap;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.image.ImageUtils;
@@ -43,5 +45,26 @@ public class ImageUtilsTest {
 
   private boolean checkAwaitValue(ImageUtils.LocalCacheState localCacheState) {
     return localCacheState.mUseLocalCache && localCacheState.mAwaitLocalCache;
+  }
+
+  @Test
+  public void getSizeInByteForBitmap() {
+    int width = 100;
+    int height = 100;
+    Bitmap.Config config = Bitmap.Config.ARGB_8888;
+    int size = ImageUtils.getSizeInByteForBitmap(width, height, config);
+    assertEquals(size, width * height * ImageUtils.ARGB_8888_BYTES_ONE_PIXEL);
+
+    config = Bitmap.Config.RGB_565;
+    size = ImageUtils.getSizeInByteForBitmap(width, height, config);
+    assertEquals(size, width * height * ImageUtils.RGB_565_BYTES_ONE_PIXEL);
+
+    config = Bitmap.Config.ALPHA_8;
+    size = ImageUtils.getSizeInByteForBitmap(width, height, config);
+    assertEquals(size, width * height * ImageUtils.ALPHA_8_BYTES_ONE_PIXEL);
+
+    config = Bitmap.Config.ARGB_4444;
+    size = ImageUtils.getSizeInByteForBitmap(width, height, config);
+    assertEquals(size, width * height * ImageUtils.ARGB_4444_BYTES_ONE_PIXEL);
   }
 }

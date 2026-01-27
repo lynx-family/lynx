@@ -42,6 +42,7 @@ import com.lynx.tasm.image.AutoSizeImage;
 import com.lynx.tasm.image.ImageContent;
 import com.lynx.tasm.image.ImageErrorCodeUtils;
 import com.lynx.tasm.image.ImageUtils;
+import com.lynx.tasm.image.LynxImageConfig;
 import com.lynx.tasm.image.LynxImageMediaFetcherProxy;
 import com.lynx.tasm.image.LynxScaleTypeDrawable;
 import com.lynx.tasm.image.ScalingUtils;
@@ -60,6 +61,7 @@ import com.lynx.tasm.utils.ColorUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -134,8 +136,6 @@ public class LynxImageManager implements Drawable.Callback {
   private boolean mAutoPlay = true;
 
   private String mTintColor;
-
-  private boolean mEnableExtraLoadInfo;
 
   private boolean mEnableAsyncRequest = true;
 
@@ -223,6 +223,16 @@ public class LynxImageManager implements Drawable.Callback {
   private @Nullable BackgroundDrawable.RoundRectPath mInnerClipPathForBorderRadius;
 
   private boolean mIsPixelated = false;
+
+  private boolean mEnableSmoothAnimation = false;
+
+  private boolean mEnableProgressiveRendering = false;
+
+  private Map<String, String> mCustomParams = new HashMap<>();
+
+  private boolean mEnableReportInfo = false;
+
+  private float mImageSRScale = 0;
 
   private static class ImageRequestHandle implements ImageLoadListener {
     private final ImageLoadListener mSrcLoadListenerImpl;
@@ -363,8 +373,8 @@ public class LynxImageManager implements Drawable.Callback {
 
     @Override
     public void onImageMonitorInfo(JSONObject monitorInfo) {
-      if (mEnableExtraLoadInfo) {
-        sendExtraLoadEvent(monitorInfo);
+      if (mEnableReportInfo) {
+        sendLoadWithReportInfo(monitorInfo);
       }
     }
   };
@@ -425,6 +435,13 @@ public class LynxImageManager implements Drawable.Callback {
     mAsyncRedirect =
         (mContext.getMediaResourceFetcher() != null || mContext.getAsyncImageInterceptor() != null);
     mEnableCheckLocalImage = mContext.isEnableCheckLocalImage();
+    LynxImageConfig imageConfig = mContext.getLynxImageConfig();
+    if (imageConfig != null) {
+      mEnableProgressiveRendering = imageConfig.getEnableProgressiveRendering();
+      if (imageConfig.getImageCustomParam() != null) {
+        mCustomParams.putAll(imageConfig.getImageCustomParam());
+      }
+    }
   }
 
   // region setProps
@@ -524,10 +541,6 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  public void setExtraLoadInfo(boolean enable) {
-    mEnableExtraLoadInfo = enable;
-  }
-
   public void setAsyncRequest(boolean enable) {
     if (mEnableAsyncRequest != enable) {
       mEnableAsyncRequest = enable;
@@ -625,9 +638,6 @@ public class LynxImageManager implements Drawable.Callback {
         case PropsConstants.ENABLE_RESOURCE_HINT:
           setEnableResourceHint(props.getBoolean(name, false));
           break;
-        case PropsConstants.EXTRA_LOAD_INFO:
-          setExtraLoadInfo(props.getBoolean(name, false));
-          break;
         case PropsConstants.IAMGE_CONFIG:
           setImageConfig(props.getString(name));
           break;
@@ -657,6 +667,29 @@ public class LynxImageManager implements Drawable.Callback {
           break;
         case PropsConstants.TINT_COLOR:
           setTintColor(props.getString(name));
+          break;
+        case PropsConstants.IMAGE_ENABLE_SMOOTH_ANIMATION:
+          setSmoothAnimation(props.getBoolean(name, false));
+          break;
+        case PropsConstants.IMAGE_ENABLE_PROGRESSIVE_RENDERING:
+          setProgressiveRendering(props.getBoolean(name, false));
+          break;
+        case PropsConstants.IMAGE_ADDITIONAL_CUSTOM_INFO:
+          setImageCustomParams(props.getMap(name));
+          break;
+        case PropsConstants.ENABLE_REPORT_INFO:
+          setEnableReportInfo(props.getBoolean(name, false));
+          break;
+        case PropsConstants.IMAGE_ENABLE_SUPER_RESOLUTION: {
+          float srScale = 0;
+          if (props.getBoolean(name)) {
+            srScale = 1.0f;
+          }
+          setImageSRScale(srScale);
+          break;
+        }
+        case PropsConstants.IMAGE_SUPER_RESOLUTION_SCALE:
+          setImageSRScale((float) props.getDouble(name, 0.0));
           break;
       }
     }
@@ -928,15 +961,24 @@ public class LynxImageManager implements Drawable.Callback {
         .setEnableDownSampling(!mDisableDefaultResize && !mAutoSize)
         .setEnableAsyncRequest(mEnableAsyncRequest)
         .setEnableGifLiteDecoder(mEnableCustomGifDecoder)
-        .setEnableResourceHint(mEnableResourceHint);
+        .setEnableResourceHint(mEnableResourceHint)
+        .setSmoothAnimation(mEnableSmoothAnimation)
+        .setProgressiveRendering(mEnableProgressiveRendering)
+        .setEnableReportInfo(mEnableReportInfo);
+
+    if (mImageSRScale > 0.0f) {
+      builder.setImageSRScale(mImageSRScale);
+    }
+    if (!mCustomParams.isEmpty()) {
+      builder.setCustomParam(mCustomParams);
+    } else if (mContext.getImageCustomParam() != null) {
+      builder.setCustomParam(mContext.getImageCustomParam());
+    }
     if (mBitmapConfig != null) {
       builder.setBitmapConfig(mBitmapConfig);
     }
     if (mContext.getEnableImageSmallDiskCache()) {
       builder.setDiskCacheChoice(DiskCacheChoice.SMALL_DISK);
-    }
-    if (mContext.getImageCustomParam() != null) {
-      builder.setCustomParam(mContext.getImageCustomParam());
     }
     if (!TextUtils.isEmpty(mBlurRadius)) {
       float radius = UnitUtils.toPxWithDisplayMetrics(
@@ -1228,7 +1270,7 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   private void sendLoadEvent(int width, int height) {
-    if (mContext != null && mUI != null && !mEnableExtraLoadInfo) {
+    if (mContext != null && mUI != null && !mEnableReportInfo) {
       LynxDetailEvent event = new LynxDetailEvent(mUI.getSign(), EVENT_LOAD);
       event.addDetail("height", height);
       event.addDetail("width", width);
@@ -1236,8 +1278,8 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  private void sendExtraLoadEvent(JSONObject monitorInfo) {
-    if (mContext != null && mUI != null && mEnableExtraLoadInfo && monitorInfo != null) {
+  private void sendLoadWithReportInfo(JSONObject monitorInfo) {
+    if (mContext != null && mUI != null && mEnableReportInfo && monitorInfo != null) {
       LynxDetailEvent event = new LynxDetailEvent(mUI.getSign(), EVENT_LOAD);
       Iterator<String> keys = monitorInfo.keys();
       while (keys.hasNext()) {
@@ -1250,6 +1292,16 @@ public class LynxImageManager implements Drawable.Callback {
         }
         event.addDetail(key, value);
       }
+      int memoryCost = ImageUtils.getSizeInByteForBitmap(mImageWidth, mImageHeight,
+          mBitmapConfig == null ? Bitmap.Config.ARGB_8888 : mBitmapConfig);
+      event.addDetail("src", mSrc);
+      event.addDetail("width", mImageWidth);
+      event.addDetail("height", mImageHeight);
+      event.addDetail("view_width", mViewWidth);
+      event.addDetail("view_height", mViewHeight);
+      event.addDetail("memoryCost", memoryCost);
+
+      mContext.getEventEmitter().sendCustomEvent(event);
     }
   }
 
@@ -1282,5 +1334,34 @@ public class LynxImageManager implements Drawable.Callback {
 
   public Boolean getHasContent() {
     return mImageDrawable != null || mPlaceholderDrawable != null;
+  }
+
+  private void setSmoothAnimation(boolean enable) {
+    mEnableSmoothAnimation = enable;
+  }
+
+  private void setProgressiveRendering(boolean enable) {
+    mEnableProgressiveRendering = enable;
+  }
+
+  private void setImageCustomParams(ReadableMap map) {
+    if (!mCustomParams.isEmpty()) {
+      mCustomParams.clear();
+    }
+    if (map != null) {
+      ReadableMapKeySetIterator iter = map.keySetIterator();
+      while (iter.hasNextKey()) {
+        String key = iter.nextKey();
+        mCustomParams.put(key, map.getString(key, ""));
+      }
+    }
+  }
+
+  private void setEnableReportInfo(boolean enable) {
+    mEnableReportInfo = enable;
+  }
+
+  private void setImageSRScale(float scale) {
+    mImageSRScale = scale;
   }
 }

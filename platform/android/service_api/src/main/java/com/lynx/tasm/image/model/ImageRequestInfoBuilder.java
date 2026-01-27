@@ -45,6 +45,16 @@ public class ImageRequestInfoBuilder {
 
   private boolean mEnablePremultiplied = true;
 
+  private boolean mEnableSmoothAnimation = false;
+
+  private boolean mEnableProgressiveRendering = false;
+
+  private boolean mEnableReportInfo = false;
+
+  private Map<String, String> mImageCustomParams;
+
+  private float mImageSRScale = 0;
+
   public static ImageRequestInfoBuilder newBuilderWithSource(String url) {
     return new ImageRequestInfoBuilder().setUrl(url);
   }
@@ -207,6 +217,51 @@ public class ImageRequestInfoBuilder {
 
   public List<BitmapPostProcessor> getProcessors() {
     return mProcessors;
+  }
+
+  public ImageRequestInfoBuilder setSmoothAnimation(boolean enable) {
+    this.mEnableSmoothAnimation = enable;
+    return this;
+  }
+
+  public boolean isEnableSmoothAnimation() {
+    return mEnableSmoothAnimation;
+  }
+
+  public ImageRequestInfoBuilder setProgressiveRendering(boolean enable) {
+    this.mEnableProgressiveRendering = enable;
+    return this;
+  }
+
+  public boolean isEnableProgressiveRendering() {
+    return mEnableProgressiveRendering;
+  }
+
+  public ImageRequestInfoBuilder setEnableReportInfo(boolean enable) {
+    this.mEnableReportInfo = enable;
+    return this;
+  }
+
+  public boolean isEnableReportInfo() {
+    return mEnableReportInfo;
+  }
+
+  public ImageRequestInfoBuilder setImageCustomParam(Map<String, String> imageCustomParam) {
+    this.mImageCustomParams = imageCustomParam;
+    return this;
+  }
+
+  public Map<String, String> getImageCustomParam() {
+    return mImageCustomParams;
+  }
+
+  public ImageRequestInfoBuilder setImageSRScale(float scale) {
+    this.mImageSRScale = scale;
+    return this;
+  }
+
+  public float getmImageSRScale() {
+    return mImageSRScale;
   }
 
   public ImageRequestInfo build() {

@@ -3,11 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.image;
 
+import android.graphics.Bitmap;
 import android.text.TextUtils;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.ReadableType;
 
 public class ImageUtils {
+  public static final int ALPHA_8_BYTES_ONE_PIXEL = 1;
+  public static final int ARGB_4444_BYTES_ONE_PIXEL = 2;
+  public static final int ARGB_8888_BYTES_ONE_PIXEL = 4;
+  public static final int RGB_565_BYTES_ONE_PIXEL = 2;
+
   public static class LocalCacheState {
     public boolean mUseLocalCache = false;
     public boolean mAwaitLocalCache = false;
@@ -46,5 +52,23 @@ public class ImageUtils {
       }
     }
     return state;
+  }
+
+  private static int getPixelSizeForBitmapConfig(Bitmap.Config bitmapConfig) {
+    switch (bitmapConfig) {
+      case ARGB_8888:
+        return ARGB_8888_BYTES_ONE_PIXEL;
+      case ALPHA_8:
+        return ALPHA_8_BYTES_ONE_PIXEL;
+      case ARGB_4444:
+        return ARGB_4444_BYTES_ONE_PIXEL;
+      case RGB_565:
+        return RGB_565_BYTES_ONE_PIXEL;
+    }
+    throw new UnsupportedOperationException("Current Bitmap.Config is not supported");
+  }
+
+  public static int getSizeInByteForBitmap(int width, int height, Bitmap.Config bitmapConfig) {
+    return width * height * getPixelSizeForBitmapConfig(bitmapConfig);
   }
 }

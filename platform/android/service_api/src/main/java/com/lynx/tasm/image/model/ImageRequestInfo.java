@@ -44,6 +44,14 @@ public class ImageRequestInfo {
 
   private boolean mForceStaticImage = false;
 
+  private boolean mEnableSmoothAnimation = false;
+
+  private boolean mEnableProgressiveRendering = false;
+
+  private boolean mEnableReportInfo = false;
+
+  private float mImageSRScale = 0;
+
   // Whether an image needs premultiplication: Libraries like Fresco default to premultiplying
   // decoded images, but a switch lets you disable this and handle it yourself when needed.
   // This should NOT be set to false for images to be directly drawn by the view system or through a
@@ -73,6 +81,10 @@ public class ImageRequestInfo {
     mUseLocalCache = builder.isUseLocalCache();
     mForceStaticImage = builder.isForceStaticImage();
     mEnablePremultiplied = builder.isEnablePremultiplied();
+    mEnableSmoothAnimation = builder.isEnableSmoothAnimation();
+    mEnableProgressiveRendering = builder.isEnableProgressiveRendering();
+    mEnableReportInfo = builder.isEnableReportInfo();
+    mImageSRScale = builder.getmImageSRScale();
   }
 
   public String getUrl() {
@@ -145,6 +157,22 @@ public class ImageRequestInfo {
 
   public boolean isAutoPlay() {
     return mAutoPlay;
+  }
+
+  public boolean isEnableSmoothAnimation() {
+    return mEnableSmoothAnimation;
+  }
+
+  public boolean isEnableProgressiveRendering() {
+    return mEnableProgressiveRendering;
+  }
+
+  public boolean isEnableReportInfo() {
+    return mEnableReportInfo;
+  }
+
+  public float getImageSRScale() {
+    return mImageSRScale;
   }
 
   @Override

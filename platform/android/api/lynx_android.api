@@ -2435,6 +2435,8 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object request, @NonNull View view);
   public void com.lynx.tasm.service.ILynxImageService.setImageCacheChoice(@NonNull String cacheChoice, @NonNull Object builder);
   public void com.lynx.tasm.service.ILynxImageService.setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request, @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width, int height, int radius, int iterations, boolean isPreView);
+  public int com.lynx.tasm.service.ILynxImageService.getImageOrigin(@NonNull Object imageInfo);
+  public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object builder, int width, int height);
 }
 
 public interface com::lynx::tasm::service::ILynxImageServiceExtension {
@@ -2803,6 +2805,10 @@ public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableAsyncRequest();
   public Object com.lynx.tasm.image.model.ImageRequestInfo.getCallerContext();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isAutoPlay();
+  public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableSmoothAnimation();
+  public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableProgressiveRendering();
+  public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableReportInfo();
+  public float com.lynx.tasm.image.model.ImageRequestInfo.getImageSRScale();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.equals(Object o);
   public int com.lynx.tasm.image.model.ImageRequestInfo.hashCode();
 }
@@ -2845,6 +2851,16 @@ public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setForceStaticImage(boolean forceStaticImage);
   public int com.lynx.tasm.image.model.ImageRequestInfoBuilder.getCacheChoice();
   public List< BitmapPostProcessor > com.lynx.tasm.image.model.ImageRequestInfoBuilder.getProcessors();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setSmoothAnimation(boolean enable);
+  public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableSmoothAnimation();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setProgressiveRendering(boolean enable);
+  public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableProgressiveRendering();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setEnableReportInfo(boolean enable);
+  public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableReportInfo();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setImageCustomParam(Map< String, String > imageCustomParam);
+  public Map< String, String > com.lynx.tasm.image.model.ImageRequestInfoBuilder.getImageCustomParam();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setImageSRScale(float scale);
+  public float com.lynx.tasm.image.model.ImageRequestInfoBuilder.getmImageSRScale();
   public ImageRequestInfo com.lynx.tasm.image.model.ImageRequestInfoBuilder.build();
 }
 
@@ -2855,7 +2871,12 @@ public class com::lynx::tasm::behavior::ui::image::ImageUrlRedirectUtils :  {
 }
 
 public class com::lynx::tasm::image::ImageUtils :  {
+  public final int com.lynx.tasm.image.ImageUtils.ALPHA_8_BYTES_ONE_PIXEL ALPHA_8_BYTES_ONE_PIXEL;
+  public final int com.lynx.tasm.image.ImageUtils.ARGB_4444_BYTES_ONE_PIXEL ARGB_4444_BYTES_ONE_PIXEL;
+  public final int com.lynx.tasm.image.ImageUtils.ARGB_8888_BYTES_ONE_PIXEL ARGB_8888_BYTES_ONE_PIXEL;
+  public final int com.lynx.tasm.image.ImageUtils.RGB_565_BYTES_ONE_PIXEL RGB_565_BYTES_ONE_PIXEL;
   public static LocalCacheState com.lynx.tasm.image.ImageUtils.parseLocalCache(Dynamic localCache);
+  public static int com.lynx.tasm.image.ImageUtils.getSizeInByteForBitmap(int width, int height, Bitmap.Config bitmapConfig);
 }
 
 public interface com::lynx::tasm::performance::fsp::IMeaningfulContentSnapshotCaptureHandler {
@@ -5612,7 +5633,6 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setImageConfig(Bitmap.Config config);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setAutoPlay(boolean autoPlay);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setTintColor(String color);
-  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setExtraLoadInfo(boolean enable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setAsyncRequest(boolean enable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setPreFetchWidth(String width);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsetsScale(String capInsetsScale);
@@ -8863,6 +8883,11 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_PRIORITY IMAGE_PRIORITY;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_CACHE_CHOICE IMAGE_CACHE_CHOICE;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_PLACE_HOLDER_HASH_CONFIG IMAGE_PLACE_HOLDER_HASH_CONFIG;
+  public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_ENABLE_SMOOTH_ANIMATION IMAGE_ENABLE_SMOOTH_ANIMATION;
+  public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_ENABLE_PROGRESSIVE_RENDERING IMAGE_ENABLE_PROGRESSIVE_RENDERING;
+  public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_ADDITIONAL_CUSTOM_INFO IMAGE_ADDITIONAL_CUSTOM_INFO;
+  public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_ENABLE_SUPER_RESOLUTION IMAGE_ENABLE_SUPER_RESOLUTION;
+  public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_SUPER_RESOLUTION_SCALE IMAGE_SUPER_RESOLUTION_SCALE;
 }
 
 public class com::lynx::tasm::behavior::utils::PropsHolderAutoRegister :  {
