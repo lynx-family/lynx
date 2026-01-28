@@ -10,6 +10,7 @@
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/lepus/lepus_date.h"
@@ -333,6 +334,12 @@ void ContextBinaryWriter::EncodeValue(const Value* value, bool is_header) {
     case ValueType::Value_CDate:
       EncodeDate(fml::static_ref_ptr_cast<CDate>(value->RefCounted()));
       break;
+    case ValueType::Value_ByteArray: {
+      auto* arr = value->ByteArray().get();
+      WriteCompactU64(static_cast<uint64_t>(arr->GetLength()));
+      WriteData(arr->GetPtr(), arr->GetLength(), "");
+      break;
+    }
     case ValueType::Value_RegExp: {
       Value pattern =
           lepus::Value(fml::static_ref_ptr_cast<RegExp>(value->RefCounted())
