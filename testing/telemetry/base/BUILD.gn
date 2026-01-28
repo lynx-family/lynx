@@ -5,7 +5,10 @@
 import("../../../testing/test.gni")
 benchmark_test("base_benchmark") {
   testonly = true
-  sources = [ "./vector_benchmark_ci.cc" ]
+  sources = [
+    "./message_loop_benchmark_ci.cc",
+    "./vector_benchmark_ci.cc",
+  ]
   deps = [ "../../../core/runtime/lepus/bindings:lepus" ]
 }
 
