@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxConfig+internal.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxLogicExecutor.h>
 #import <Lynx/LynxService.h>
@@ -60,6 +61,13 @@
 
 - (bool)isTemplateBundleReady {
   return _templateBundle != nil;
+}
+
+- (void)destroyForInstance:(NSString *)instanceId {
+  auto moduleFactoryPtr = [_config getSharedModuleFactoryPtr];
+  if (moduleFactoryPtr) {
+    moduleFactoryPtr->DeleteLynxContextForInstance(instanceId);
+  }
 }
 
 - (int)generateNextLynxViewID {
