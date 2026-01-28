@@ -67,10 +67,12 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected int presetWidthMeasureSpec;
   protected int presetHeightMeasureSpec;
   protected float fontScale = 1.0f;
+  protected boolean hasFontScaleSet = false;
+
   protected boolean enablePreUpdateData = false;
   protected HashMap<String, Object> mContextData;
 
-  protected ThreadStrategyForRendering threadStrategy = ThreadStrategyForRendering.ALL_ON_UI;
+  protected ThreadStrategyForRendering threadStrategy = null;
 
   protected int screenWidth = DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE;
   protected int screenHeight = DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE;
@@ -449,6 +451,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   public T setFontScale(float scale) {
     fontScale = scale;
+    hasFontScaleSet = true;
     return (T) this;
   }
 
