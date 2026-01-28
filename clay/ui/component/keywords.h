@@ -30,6 +30,7 @@ enum class KeywordID {
   kBorderRightWidth,
   kBorderTopWidth,
   kBorderBottomWidth,
+  kItemSnap,
   kOpacity,
   kBackground,
   kBorderColor,

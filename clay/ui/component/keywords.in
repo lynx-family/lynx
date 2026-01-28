@@ -13,6 +13,7 @@ border-left-width
 border-right-width
 border-top-width
 border-bottom-width
+item-snap
 opacity
 background
 border-color

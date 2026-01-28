@@ -7,8 +7,11 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <tuple>
 #include <utility>
 
+#include "base/include/float_comparison.h"
+#include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -71,6 +74,8 @@ void ListContainerView::SetAttribute(const char* attr_c,
     enable_recycle_sticky_item_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kExperimentalUpdateStickyForDiff) {
     update_sticky_for_diff_ = attribute_utils::GetBool(value);
+  } else if (kw == KeywordID::kItemSnap) {
+    ResolveItemSnapProp(value);
   } else if (kw == KeywordID::kEnableInsertPlatformViewOperation) {
     enable_insert_platform_view_operation_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kNeedVisibleItemInfo) {
@@ -80,12 +85,15 @@ void ListContainerView::SetAttribute(const char* attr_c,
   }
 }
 
-int ListContainerView::GetIndexFromItemKey(std::string item_key) {
-  if (item_key.empty() || item_key_map_.find(item_key) == item_key_map_.end()) {
+int ListContainerView::GetIndexFromItemKey(std::string item_key) const {
+  if (item_key.empty()) {
     return -1;
-  } else {
-    return item_key_map_[item_key];
   }
+  auto it = item_key_map_.find(item_key);
+  if (it == item_key_map_.end()) {
+    return -1;
+  }
+  return it->second;
 }
 
 void ListContainerView::EraseStickyItem(BaseView* view) {
@@ -113,6 +121,32 @@ void ListContainerView::EraseStickyItem(BaseView* view) {
     UpdateStickyInfoForDeletedChild(component, sticky_top_items_);
     UpdateStickyInfoForDeletedChild(component, sticky_bottom_items_);
   }
+}
+
+void ListContainerView::ResolveItemSnapProp(const clay::Value& value) {
+  ResetItemSnapProp();
+
+  if (!value.IsMap()) {
+    return;
+  }
+
+  const auto& map = attribute_utils::GetMap(value);
+
+  auto iter = map.find("factor");
+  if (iter != map.end() && iter->second.IsNumber()) {
+    snap_factor_ =
+        std::clamp(attribute_utils::GetDouble(iter->second), 0.0, 1.0);
+  }
+
+  iter = map.find("offset");
+  if (iter != map.end() && iter->second.IsNumber()) {
+    snap_offset_ = attribute_utils::GetDouble(iter->second);
+  }
+}
+
+void ListContainerView::ResetItemSnapProp() {
+  snap_factor_ = -1;
+  snap_offset_ = 0;
 }
 
 void ListContainerView::RemoveListItemPaintingNode(BaseView* view) {
@@ -582,6 +616,16 @@ void ListContainerView::SetMaxContent(float value) {
   }
 }
 
+void ListContainerView::HandleEvent(const PointerEvent& event) {
+  if (snap_factor_ >= 0 &&
+      (event.device == PointerEvent::DeviceType::kTouch ||
+       event.device == PointerEvent::DeviceType::kMouse ||
+       event.device == PointerEvent::DeviceType::kTrackpad)) {
+    DetectSnapScroll(event.type);
+  }
+  ScrollView::HandleEvent(event);
+}
+
 void ListContainerView::OnScrollStatusChange(ScrollStatus old_status) {
   // NOTE: Here we skip the call of ScrollView::OnScrollStatusChange, because
   // the logic is useless for list container.
@@ -591,10 +635,13 @@ void ListContainerView::OnScrollStatusChange(ScrollStatus old_status) {
 
   switch (status_) {
     case Scrollable::ScrollStatus::kFling:
+      SetScrollState(ListScrollState::kSettling);
+      break;
     case Scrollable::ScrollStatus::kBounce:
       SetScrollState(ListScrollState::kSettling);
       break;
     case Scrollable::ScrollStatus::kDragging:
+      last_scroll_offset_for_snap_ = scroll_offset_;
       SetScrollState(ListScrollState::kDragging);
       break;
     case Scrollable::ScrollStatus::kIdle:
@@ -638,6 +685,9 @@ void ListContainerView::DidScroll() {
 }
 
 void ListContainerView::OnScrollUpdate(float offset) {
+  if (status_ == Scrollable::ScrollStatus::kDragging) {
+    last_scroll_offset_for_snap_ = scroll_offset_;
+  }
   if (is_scroll_animating_) {
     if (initial_scrolling_estimated_offset_ != 0) {
       offset *=
@@ -695,6 +745,213 @@ clay::Value::Array ListContainerView::GetVisibleCells() {
   }
 
   return cells_array;
+}
+
+void ListContainerView::DetectSnapScroll(PointerEvent::EventType type) {
+  if (snap_factor_ >= 0) {
+    switch (type) {
+      case PointerEvent::EventType::kDownEvent:
+      case PointerEvent::EventType::kMoveEvent:
+      case PointerEvent::EventType::kPanZoomUpdateEvent:
+        last_scroll_offset_for_snap_ = scroll_offset_;
+        break;
+      case PointerEvent::EventType::kUpEvent:
+      case PointerEvent::EventType::kPanZoomEndEvent: {
+        bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+        bool forward = false;
+        if (is_vertical) {
+          if (last_scroll_offset_for_snap_.y() == scroll_offset_.y() &&
+              scroll_offset_.y() == 0) {
+            forward = false;
+          } else {
+            forward = scroll_offset_.y() >= last_scroll_offset_for_snap_.y();
+          }
+        } else {
+          if (last_scroll_offset_for_snap_.x() == scroll_offset_.x() &&
+              scroll_offset_.x() == 0) {
+            forward = false;
+          } else {
+            forward = scroll_offset_.x() >= last_scroll_offset_for_snap_.x();
+          }
+        }
+
+        bool has_velocity =
+            is_vertical
+                ? last_scroll_offset_for_snap_.y() != scroll_offset_.y()
+                : last_scroll_offset_for_snap_.x() != scroll_offset_.x();
+
+        auto scroll_target = CalcSnapScroll(forward, has_velocity);
+        int32_t scroll_position = std::get<0>(scroll_target);
+        if (scroll_position != -1) {
+          float target_x = std::get<1>(scroll_target);
+          float target_y = std::get<2>(scroll_target);
+
+          float target_offset = is_vertical ? target_y : target_x;
+
+          // ScrollTo expects an absolute content offset.
+          // However, we must ensure we don't scroll beyond bounds (though
+          // ScrollTo handles some clamping, explicit safety is better).
+          // And importantly, ensure we are not already there to avoid
+          // unnecessary calls/animations.
+          ScrollTo(true, target_offset);
+        }
+
+        if (page_view_) {
+          clay::Value::Map dict;
+          dict["position"] = clay::Value(scroll_position);
+          dict["currentScrollLeft"] = clay::Value(scroll_offset_.x());
+          dict["currentScrollTop"] = clay::Value(scroll_offset_.y());
+          dict["targetScrollLeft"] = clay::Value(std::get<1>(scroll_target));
+          dict["targetScrollTop"] = clay::Value(std::get<2>(scroll_target));
+          page_view_->SendCustomEvent(GetCallbackId(), "snap", std::move(dict));
+        }
+      } break;
+      case PointerEvent::EventType::kCancel:
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+std::tuple<int32_t, float, float> ListContainerView::CalcSnapScroll(
+    bool forward, bool has_velocity) const {
+  bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+  float content_offset = is_vertical ? scroll_offset_.y() : scroll_offset_.x();
+
+  Component* closest_item_before = nullptr;
+  Component* closest_item_after = nullptr;
+
+  float distance_before = std::numeric_limits<float>::lowest();
+  float distance_after = std::numeric_limits<float>::max();
+  float max_scroll_range = GetScrollRange();
+  float min_scroll_range = 0.f;
+
+  float viewport_size = is_vertical ? Height() : Width();
+  float viewport_start = content_offset;
+  float viewport_end = content_offset + viewport_size;
+  float check_start = viewport_start - viewport_size;
+  float check_end = viewport_end + viewport_size;
+
+  for (BaseView* child : children_) {
+    if (child && child->Is<Component>()) {
+      auto* list_item = static_cast<Component*>(child);
+      // Only consider visible items or items close to viewport
+      // Simple visibility check:
+      float item_start = is_vertical ? list_item->Top() : list_item->Left();
+      float item_end = is_vertical ? (list_item->Top() + list_item->Height())
+                                   : (list_item->Left() + list_item->Width());
+
+      if (item_end >= check_start && item_start <= check_end) {
+        float item_snap_offset = GetListItemSnapScrollOffset(list_item);
+        float clamped_snap_offset =
+            std::clamp(item_snap_offset, min_scroll_range, max_scroll_range);
+
+        float distance = clamped_snap_offset - content_offset;
+
+        if (lynx::base::FloatsLargerOrEqual(0, distance) &&
+            distance > distance_before) {
+          distance_before = distance;
+          closest_item_before = list_item;
+        }
+        if (lynx::base::FloatsLargerOrEqual(distance, 0) &&
+            distance < distance_after) {
+          distance_after = distance;
+          closest_item_after = list_item;
+        }
+      }
+    }
+  }
+
+  int32_t target_position = -1;
+  Component* target_item = nullptr;
+
+  if (!has_velocity) {
+    if (closest_item_after && closest_item_before) {
+      if (distance_after < std::abs(distance_before)) {
+        target_item = closest_item_after;
+      } else {
+        target_item = closest_item_before;
+      }
+    } else if (closest_item_after) {
+      target_item = closest_item_after;
+    } else if (closest_item_before) {
+      target_item = closest_item_before;
+    }
+  } else {
+    if (forward && closest_item_after) {
+      target_item = closest_item_after;
+    } else if (!forward && closest_item_before) {
+      target_item = closest_item_before;
+    }
+  }
+
+  if (target_item) {
+    target_position = GetIndexFromItemKey(target_item->ItemKey());
+    auto offsets = CalculateOffsets(target_item);
+    return {target_position, offsets.first, offsets.second};
+  }
+
+  // Fallback: extrapolate if no item found (edge case)
+  Component* visible_item = forward ? closest_item_before : closest_item_after;
+  if (!visible_item) {
+    visible_item = forward ? closest_item_after : closest_item_before;
+  }
+  if (!visible_item) return {-1, scroll_offset_.x(), scroll_offset_.y()};
+
+  target_position =
+      GetIndexFromItemKey(visible_item->ItemKey()) + (forward ? 1 : -1);
+  if (target_position < 0) target_position = 0;
+
+  // Try to find item by index
+  // Since children are not strictly ordered by index in children_ vector
+  // (z-index affects order), and we might not have all items loaded, this is
+  // tricky. For now, return current offset if target item not found.
+  for (BaseView* child : children_) {
+    if (child && child->Is<Component>()) {
+      auto* list_item = static_cast<Component*>(child);
+      if (GetIndexFromItemKey(list_item->ItemKey()) == target_position) {
+        auto offsets = CalculateOffsets(list_item);
+        return {target_position, offsets.first, offsets.second};
+      }
+    }
+  }
+
+  return {-1, scroll_offset_.x(), scroll_offset_.y()};
+}
+
+float ListContainerView::GetListItemSnapScrollOffset(
+    Component* list_item) const {
+  if (GetScrollDirection() == ScrollDirection::kHorizontal) {
+    return list_item->Left() - (Width() - list_item->Width()) * snap_factor_ +
+           snap_offset_;
+  } else {
+    return list_item->Top() - (Height() - list_item->Height()) * snap_factor_ +
+           snap_offset_;
+  }
+}
+
+std::pair<float, float> ListContainerView::CalculateOffsets(
+    Component* item) const {
+  bool is_vertical = GetScrollDirection() == ScrollDirection::kVertical;
+  float range = GetScrollRange();
+  float snap_offset = GetListItemSnapScrollOffset(item);
+  float clamped_offset = std::clamp(snap_offset, 0.f, range);
+
+  if (is_vertical) {
+    return {0.f, clamped_offset};
+  } else {
+    return {clamped_offset, 0.f};
+  }
+}
+
+float ListContainerView::GetScrollRange() const {
+  bool is_horizontal = GetScrollDirection() == ScrollDirection::kHorizontal;
+  float content_size = is_horizontal
+                           ? GetRenderScroll()->OverflowRect().width()
+                           : GetRenderScroll()->OverflowRect().height();
+  float view_size = is_horizontal ? Width() : Height();
+  return std::max(0.f, content_size - view_size);
 }
 
 size_t ListContainerView::GetVisibleItemsInfo(

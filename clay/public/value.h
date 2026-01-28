@@ -95,6 +95,9 @@ class Value {
   bool IsLong() const { return type() == kLong; }
   bool IsFloat() const { return type() == kFloat; }
   bool IsDouble() const { return type() == kDouble; }
+  bool IsNumber() const {
+    return IsDouble() || IsFloat() || IsInt() || IsUint() || IsLong();
+  }
   bool IsString() const { return type() == kString; }
   bool IsPointer() const { return type() == kPointer; }
   bool IsArray() const { return type() == kArray; }

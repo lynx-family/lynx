@@ -48,7 +48,8 @@ const std::unordered_set<KeywordID> kProxyAttributes = {
     KeywordID::kBounce,
     KeywordID::kBounces,
     KeywordID::kScrollToId,
-    KeywordID::kScrollEventThrottle};
+    KeywordID::kScrollEventThrottle,
+    KeywordID::kItemSnap};
 constexpr char kListContainerWrapperTag[] = "list-container-wrapper";
 
 LYNX_UI_METHOD_BEGIN(ListContainerWrapper) {

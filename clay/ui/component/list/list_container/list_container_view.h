@@ -6,8 +6,10 @@
 #define CLAY_UI_COMPONENT_LIST_LIST_CONTAINER_LIST_CONTAINER_VIEW_H_
 
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "clay/ui/component/component.h"
@@ -81,7 +83,16 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   void SetScrollState(ListScrollState state);
 
   void SetMaxContent(float value);
-  int GetIndexFromItemKey(std::string itemKey);
+  int GetIndexFromItemKey(std::string itemKey) const;
+
+  void ResolveItemSnapProp(const clay::Value& value);
+  void ResetItemSnapProp();
+  void DetectSnapScroll(PointerEvent::EventType type);
+  std::tuple<int32_t, float, float> CalcSnapScroll(bool forward,
+                                                   bool has_velocity) const;
+  float GetListItemSnapScrollOffset(Component* list_item) const;
+  std::pair<float, float> CalculateOffsets(Component* item) const;
+  float GetScrollRange() const;
 
   // sticky
   void UpdateStickyInfoForInsertedChild(
@@ -108,6 +119,8 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
       const std::vector<int>& sticky_item_indexes);
   void EraseStickyItem(BaseView* view);
 
+  void HandleEvent(const PointerEvent& event) override;
+
   // NodeReadyListener
   void OnComponentNodeReady(Component* component) override;
 
@@ -132,6 +145,9 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
   bool enable_list_sticky_ = false;
   int sticky_offset_ = 0;
+  float snap_factor_ = -1.f;
+  float snap_offset_ = 0.f;
+  FloatPoint last_scroll_offset_for_snap_{};
 
   bool need_visible_item_info_ = false;
 
