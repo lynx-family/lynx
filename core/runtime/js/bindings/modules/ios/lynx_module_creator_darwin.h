@@ -37,6 +37,8 @@ class LynxContextFinderDarwin {
   virtual std::string FindSchema(const std::string &unique_id) { return std::string(); };
   virtual void RegisterContext(const std::string &unique_id, LynxContext *context,
                                const std::string &schema){};
+  virtual void DeleteLynxContextForInstance(NSString *instanceId){};
+  virtual void Destroy(){};
   virtual bool IsShared() { return false; };
 };
 
@@ -49,6 +51,8 @@ class ModuleCreatorDarwin {
   virtual id<LynxModule> Create(NSString *name, LynxModuleWrapper *modulesClasses) { return nil; };
 
   virtual void Destroy(){};
+
+  virtual void DeleteLynxContextForInstance(NSString *instanceId){};
 
   virtual std::shared_ptr<LynxContextFinderDarwin> CurrentContextFinder() { return nullptr; };
   virtual void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin> &context_finder){};

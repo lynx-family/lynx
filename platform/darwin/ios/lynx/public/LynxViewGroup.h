@@ -50,6 +50,8 @@ typedef void (^LynxTemplateBundleResultBlock)(LynxTemplateBundle *_Nullable data
 
 - (bool)isTemplateBundleReady;
 
+- (void)destroyForInstance:(NSString *)instanceId;
+
 /**
  * default logicExecutor
  */

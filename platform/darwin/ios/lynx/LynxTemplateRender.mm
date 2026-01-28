@@ -415,6 +415,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 // TODO(huangweiwu): maybe we need remove this method..
 - (void)clearForDestroy {
   [_lynxUIRenderer reset];
+  [_lynxViewGroup
+      destroyForInstance:[NSString
+                             stringWithUTF8String:std::to_string(_context.instanceId).c_str()]];
   [LynxEventReporter clearCacheForInstanceId:_context.instanceId];
   _context.instanceId = kUnknownInstanceId;
   shell_->Destroy();
