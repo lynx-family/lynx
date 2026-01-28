@@ -838,7 +838,8 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
   if (bundle) {
     auto& bundle_options = bundle->GetCompileOptions();
     if (page_config) {
-      if (options.target_sdk_version_ != bundle_options.target_sdk_version_ ||
+      if (lynx::base::Version(bundle_options.target_sdk_version_) >
+              LYNX_VERSION ||
           options.enable_css_parser_ != bundle_options.enable_css_parser_ ||
           options.enable_css_selector_ != bundle_options.enable_css_selector_ ||
           options.enable_css_invalidation_ !=
