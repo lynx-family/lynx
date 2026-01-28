@@ -12,7 +12,7 @@ if system == "windows":
     python_path = "python"
 
 def unzip_webview2():
-  zipfile.ZipFile('webview2.nupkg').extractall('webview2')
+  zipfile.ZipFile('webview2.nupkg').extractall('Microsoft.Web.WebView2.1.0.902.49')
   os.remove('webview2.nupkg')
 
 def symlink_googletest():
@@ -161,7 +161,7 @@ deps = {
     "third_party/quickjs/src": {
         "type": "git",
         "url": "https://github.com/lynx-family/primjs.git",
-        "commit": "74edc19536cc137baad09336b5ac536691649786",
+        "commit": "faddf2de461adee94840c912195334ad0b1bdf0f",
         "ignore_in_git": True,
     },
     '../third_party/libpng': {
@@ -305,7 +305,7 @@ deps = {
         "commit": "9f4c61a31435a7a90a314fc68aeb386c92a09c0f",
         "require":
         [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ]
     },
     "../third_party/vulkan-deps/vulkan-loader/src":
@@ -314,7 +314,7 @@ deps = {
         "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Loader.git",
         "commit": "fdfdef6d1b75828c1c3658c867bbbc4adbec956c",
         "require": [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ],
         "patches": [
             os.path.join(root_dir, 'patches', 'vulkan-loader', '*.patch')
@@ -327,7 +327,7 @@ deps = {
         "commit": "1ef7bc1547db9b85bedb5792f958fdcdb5ecd97a",
         "require":
         [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ]
     },
     "../third_party/swiftshader/":
@@ -357,7 +357,7 @@ deps = {
         "commit": "96f4f904922f9bf66689e749c40f314845baaac8",
         "ignore_in_git": True,
     },
-    '../third_party/webview2.nupkg': {
+    '../third_party/webview2/webview2.nupkg': {
         "type": "http",
         "url": "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.902.49",
         "sha256": "b483c906b03690267108f4304d456eac0e718131ef994e69aaa5a21532b512c6",
@@ -368,9 +368,9 @@ deps = {
     # unzip webview2 since .nupkg cannot be decompress by default
     'unzip_webview2': {
         "type": "action",
-        "cwd": os.path.join(root_dir, '..', 'third_party'),
+        "cwd": os.path.join(root_dir, '..', 'third_party', 'webview2'),
         "function": unzip_webview2,
-        "require": ["../third_party/webview2.nupkg"],
+        "require": ["../third_party/webview2/webview2.nupkg"],
         "condition": system in ['windows']
     },
     '../third_party/abseil-cpp': {
@@ -410,7 +410,7 @@ deps = {
         "commit": "87d5b782bec60822aa878941e6b13c0a9a954c9b",
         "require":
         [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ]
     },
     '../third_party/vulkan-deps/spirv-tools/src': {
@@ -419,7 +419,7 @@ deps = {
         "commit": "5f45f793ae962a84c71a9b7ff434591c57cdad57",
         "require":
         [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ]
     },
     '../third_party/vulkan-deps/spirv-cross/src': {
@@ -428,7 +428,7 @@ deps = {
         "commit": "210a80013067672b52847ec7aa70ff78b2f4d77e",
         "require":
         [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ]
     },
     '../third_party/vulkan-deps/glslang/src': {
@@ -437,7 +437,7 @@ deps = {
         "commit": "a53aa3e94f8b4bf22a6eb6e8a207fe91ab02b989",
         "require":
         [
-            "third_party/vulkan-deps"
+            "../third_party/vulkan-deps"
         ]
     },
     "clay/third_party/glm": {

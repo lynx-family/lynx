@@ -37,6 +37,12 @@ group("lynx_windows_group") {
       "../../third_party/napi:quickjs",
       "../../third_party/quickjs",
     ]
+    if (jsengine_type == "v8") {
+      deps += [
+        "../../core/runtime/common/napi:napi_binding_v8",
+        "../../third_party/napi:v8",
+      ]
+    }
   }
 }
 
