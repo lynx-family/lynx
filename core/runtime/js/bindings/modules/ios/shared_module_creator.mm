@@ -12,7 +12,7 @@ namespace js {
 // CommonLynxContextFinderDarwin
 SharedLynxContextFinderDarwin::SharedLynxContextFinderDarwin() {
   // init cache
-  lynxContextWeakMap_ = [NSMapTable strongToWeakObjectsMapTable];
+  lynxContextMap_ = [LynxThreadSafeDictionary dictionary];
 }
 
 SharedLynxContextFinderDarwin::~SharedLynxContextFinderDarwin() {}
@@ -20,7 +20,12 @@ SharedLynxContextFinderDarwin::~SharedLynxContextFinderDarwin() {}
 LynxContext* SharedLynxContextFinderDarwin::FindContext(const std::string& unique_id) {
   NSString* str = [NSString stringWithCString:unique_id.c_str()
                                      encoding:[NSString defaultCStringEncoding]];
-  return [lynxContextWeakMap_ objectForKey:str];
+  return [lynxContextMap_ objectForKey:str];
+}
+
+void SharedLynxContextFinderDarwin::DeleteLynxContextForInstance(NSString* instanceId) {
+  _LogI(@"SharedLynxContextFinderDarwin Destroy LynxContext for %@", instanceId);
+  [lynxContextMap_ removeObjectForKey:instanceId];
 }
 
 std::string SharedLynxContextFinderDarwin::FindSchema(const std::string& unique_id) {
@@ -36,13 +41,17 @@ void SharedLynxContextFinderDarwin::RegisterContext(const std::string& unique_id
                                                     const std::string& schema) {
   NSString* str = [NSString stringWithCString:unique_id.c_str()
                                      encoding:[NSString defaultCStringEncoding]];
-  [lynxContextWeakMap_ setObject:context forKey:str];
+  lynxContextMap_[str] = context;
   schemas_[unique_id] = schema;
 }
 
 // CommonModuleCreator
 SharedModuleCreator::SharedModuleCreator() : context_finder_(nullptr) {
   moduleInstances_ = [[LynxThreadSafeDictionary alloc] init];
+}
+
+void SharedModuleCreator::DeleteLynxContextForInstance(NSString* instanceId) {
+  context_finder_->DeleteLynxContextForInstance(instanceId);
 }
 
 SharedModuleCreator::~SharedModuleCreator() {}

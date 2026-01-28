@@ -30,6 +30,8 @@ class SharedModuleCreator : public ModuleCreatorDarwin {
 
   void Destroy() override;
 
+  void DeleteLynxContextForInstance(NSString* instanceId) override;
+
   std::shared_ptr<LynxContextFinderDarwin> CurrentContextFinder() override;
 
   void SetContextFinder(const std::shared_ptr<LynxContextFinderDarwin>& context_finder) override;
@@ -50,11 +52,12 @@ class SharedLynxContextFinderDarwin : public LynxContextFinderDarwin {
   std::string FindSchema(const std::string& unique_id) override;
   void RegisterContext(const std::string& unique_id, LynxContext* context,
                        const std::string& schema) override;
+  void DeleteLynxContextForInstance(NSString* instanceId) override;
   bool IsShared() override { return true; };
 
  private:
-  // The LynxContext object will be used in BTS Thread , so a weak reference is used here.
-  NSMapTable<NSString*, LynxContext*>* lynxContextWeakMap_;
+  // The LynxContext object will be used in BTS Thread
+  LynxThreadSafeDictionary<NSString*, LynxContext*>* lynxContextMap_;
   std::unordered_map<std::string, std::string> schemas_;
 };
 }  // namespace js
