@@ -72,7 +72,8 @@ if (enable_skity) {
   clay_enable_tttext = true
   use_platform_decode = true
 } else {
-  use_binary_icudtl = is_android || is_harmony || is_linux
+  use_binary_icudtl =
+      (is_android || is_harmony || is_linux) && !enable_clay_standalone
 }
 
 if (clay_enable_tttext) {

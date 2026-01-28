@@ -7,6 +7,7 @@
 /third_party/v8
 /third_party/libcxxabi
 /third_party/llvm
+/third_party/glfw
 /third_party/gyp
 /third_party/googletest
 /third_party/checkstyle
@@ -19,6 +20,7 @@
 /third_party/httplib
 /third_party/boringssl
 /third_party/webview2
+/third_party/vulkan-deps
 *.profraw
 __pycache__
 /venv

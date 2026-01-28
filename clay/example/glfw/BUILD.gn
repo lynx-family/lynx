@@ -29,6 +29,13 @@ executable("clay_glfw") {
     "thread_host_holder.h",
   ]
 
+  if (is_win || is_mac) {
+    sources += [
+      "../../ui/platform/common/native_view_service_common.cc",
+      "../../ui/platform/common/native_view_service_common.h",
+    ]
+  }
+
   deps = [
     "../../../base/src:base_static",
     "../../common/graphics:gl_scoped_binder",
@@ -40,6 +47,14 @@ executable("clay_glfw") {
     "//build/secondary/third_party/glfw",
     "//third_party/skia",
   ]
+
+  ldflags = []
+  if (is_linux) {
+    ldflags += [
+      "-lrt",
+      "-lepoxy",
+    ]
+  }
 
   defines = [ "GLFW_INCLUDE_NONE" ]
   libs = []

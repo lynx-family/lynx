@@ -72,7 +72,11 @@ class GLDelegateGLFWWindow : public clay::GPUSurfaceGLDelegate {
 
   GLProcResolver GetGLProcResolver() const override {
     return [](const char* name) -> void* {
-      return reinterpret_cast<void*>(glfwGetProcAddress(name));
+      if (strncmp(name, "egl", 3) == 0) {
+        return nullptr;
+      } else {
+        return reinterpret_cast<void*>(glfwGetProcAddress(name));
+      }
     };
   }
 
@@ -241,7 +245,11 @@ class GLRenderer final : public clay::example::SurfaceDelegate,
   }
 
   void* GetGLProcResolver(const char* what) const override {
-    return reinterpret_cast<void*>(glfwGetProcAddress(what));
+    if (strncmp(what, "egl", 3) == 0) {
+      return nullptr;
+    } else {
+      return reinterpret_cast<void*>(glfwGetProcAddress(what));
+    }
   }
 
   uint32_t FBO(const ClayFrameInfo* frame_info) override {
