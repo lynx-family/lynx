@@ -167,6 +167,7 @@
 }
 
 - (void)setGenericResourceFetcher:(id<LynxGenericResourceFetcher>)genericResourceFetcher {
+  _genericResourceFetcher = genericResourceFetcher;
   self.lynxBackgroundRuntimeOptions.genericResourceFetcher = genericResourceFetcher;
 }
 
@@ -175,6 +176,7 @@
 }
 
 - (void)setMediaResourceFetcher:(id<LynxMediaResourceFetcher>)mediaResourceFetcher {
+  _mediaResourceFetcher = mediaResourceFetcher;
   self.lynxBackgroundRuntimeOptions.mediaResourceFetcher = mediaResourceFetcher;
 }
 
@@ -183,6 +185,7 @@
 }
 
 - (void)setTemplateResourceFetcher:(id<LynxTemplateResourceFetcher>)templateResourceFetcher {
+  _templateResourceFetcher = templateResourceFetcher;
   self.lynxBackgroundRuntimeOptions.templateResourceFetcher = templateResourceFetcher;
 }
 
