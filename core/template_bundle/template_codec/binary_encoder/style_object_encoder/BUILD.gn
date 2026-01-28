@@ -26,7 +26,7 @@ unittest_set("style_object_encoder_testset") {
     "../../../../renderer:tasm",
     "../../../../renderer/dom:dom",
     "../../../../renderer/dom:renderer_dom",
-    "../../../../runtime/lepus/bindings:lepus",
+    "../../../../runtime/lepus/bindings:bindings",
   ]
 
   sources = [ "style_object_parser_unittest.cc" ]

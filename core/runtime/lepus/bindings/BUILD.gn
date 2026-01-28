@@ -6,7 +6,7 @@ import("../../../../testing/test.gni")
 import("../../../Lynx.gni")
 import("build.gni")
 
-lynx_core_source_set("lepus") {
+lynx_core_source_set("bindings") {
   include_dirs = [ "../../../../../third_party" ]
 
   sources =
@@ -32,8 +32,4 @@ lynx_core_source_set("lepus") {
       "resource:lepus_runtime",
     ]
   }
-}
-
-group("bindings") {
-  public_deps = [ ":lepus" ]
 }

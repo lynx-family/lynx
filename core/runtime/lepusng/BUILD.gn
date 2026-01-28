@@ -18,13 +18,22 @@ lynx_core_source_set("lepus_ng") {
 
   public_deps = [
     "../../../third_party/rapidjson",
+    "../lepus:lepus",
     "../lepus/tasks:tasks",
   ]
-  deps = [ "../common:reporter" ]
+  deps = [
+    "../common:reporter",
+    "../lepus/bindings:bindings",
+  ]
   if (!is_android && !is_oliver_ssr) {
     deps += [ "../../../third_party/quickjs" ]
   }
 
   exclude_configs = [ "//build/config/compiler:chromium_code" ]
   configs = [ "//build/config/compiler:no_chromium_code" ]
+}
+
+copy("lepusng_unittest_sources") {
+  sources = [ "compiler/lepusng_unit_test" ]
+  outputs = [ "$root_out_dir/core/runtime/lepus/compiler/lepusng_unit_test" ]
 }

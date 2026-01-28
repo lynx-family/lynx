@@ -797,7 +797,7 @@ subspec_target("tasm") {
         "../../../../core/runtime/js/bindings/interceptor:interceptor_factory",
         "../../../../core/runtime/js/bindings/interceptor:network_interceptor",
         "../../../../core/runtime/js/bindings/resource:js_runtime",
-        "../../../../core/runtime/lepus/bindings:lepus",
+        "../../../../core/runtime/lepus/bindings:bindings",
         "../../../../core/runtime/lepus/bindings/event:lepus_runtime",
         "../../../../core/runtime/lepus/bindings/modules:lepus_runtime",
         "../../../../core/runtime/lepus/bindings/resource:lepus_runtime",

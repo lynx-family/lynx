@@ -38,7 +38,7 @@ lynx_core_source_set("tasm") {
     "../animation/utils:animation_utils",
     "../base",
     "../runtime/lepus:lepus",
-    "../runtime/lepus/bindings:lepus",
+    "../runtime/lepus/bindings:bindings",
     "../services/event_report",
     "../services/long_task_timing",
     "../services/performance",

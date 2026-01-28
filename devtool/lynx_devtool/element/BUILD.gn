@@ -54,7 +54,7 @@ unittest_set("devtool_element_helper_testset") {
     "../../../core/renderer/dom:dom",
     "../../../core/renderer/starlight:starlight",
     "../../../core/renderer/utils:renderer_utils",
-    "../../../core/runtime/lepus/bindings:lepus",
+    "../../../core/runtime/lepus/bindings:bindings",
     "../../../third_party/jsoncpp",
   ]
 }

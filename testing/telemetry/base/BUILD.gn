@@ -9,7 +9,7 @@ benchmark_test("base_benchmark") {
     "./message_loop_benchmark_ci.cc",
     "./vector_benchmark_ci.cc",
   ]
-  deps = [ "../../../core/runtime/lepus/bindings:lepus" ]
+  deps = [ "../../../core/runtime/lepus/bindings:bindings" ]
 }
 
 # These performance test cases are used to compare the performance
@@ -21,7 +21,7 @@ benchmark_test("vector_benchmark") {
     "./array_based_flat_map_benchmark.cc",
     "./vector_benchmark.cc",
   ]
-  deps = [ "../../../core/runtime/lepus/bindings:lepus" ]
+  deps = [ "../../../core/runtime/lepus/bindings:bindings" ]
 }
 
 # These tests are created to tune LinkedHashMap for proper template

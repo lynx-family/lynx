@@ -20,7 +20,7 @@ std::weak_ptr<HostFunctionType> getHostFunction(QuickjsRuntime* rt,
 
 class QuickjsHostFunctionProxy
     : public HostObjectWrapperBase<QuickjsRuntime, HostFunctionType> {
-  friend class QuickjsRuntimeInstance;
+  friend class js::QuickjsRuntimeInstance;
 
  public:
   QuickjsHostFunctionProxy(HostFunctionType hostFunction, QuickjsRuntime* rt);

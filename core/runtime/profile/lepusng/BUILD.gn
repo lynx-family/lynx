@@ -28,7 +28,7 @@ unittest_set("lepusng_profile_testset") {
     "../../../renderer/dom:dom",
     "../../../renderer/dom:renderer_dom",
     "../../lepus:lepus",
-    "../../lepus/bindings:lepus",
+    "../../lepus/bindings:bindings",
     "../../lepusng:lepus_ng",
   ]
 }

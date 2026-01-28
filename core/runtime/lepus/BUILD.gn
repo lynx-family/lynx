@@ -34,7 +34,6 @@ lynx_core_source_set("lepus") {
     "../profile:profile_public_header",
     "tasks:tasks",
   ]
-  deps += [ "../lepusng:lepus_ng" ]
 
   if (is_mac) {
     exclude_configs = [ "//build/config/compiler:no_exceptions" ]
@@ -89,9 +88,10 @@ unittest_set("lepus_testset") {
   ]
   deps = [
     ":lepus_unittest_sources",
-    ":lepusng_unittest_sources",
     ":value_utils_sources",
     "../../../third_party/rapidjson:rapidjson",
+    "../lepusng:lepus_ng",
+    "../lepusng:lepusng_unittest_sources",
   ]
 }
 
@@ -106,11 +106,6 @@ unittest_exec("lepus_unittests_exec") {
 copy("lepus_unittest_sources") {
   sources = [ "compiler/unit_test" ]
   outputs = [ "$root_out_dir/core/runtime/lepus/compiler/unit_test" ]
-}
-
-copy("lepusng_unittest_sources") {
-  sources = [ "compiler/lepusng_unit_test" ]
-  outputs = [ "$root_out_dir/core/runtime/lepus/compiler/lepusng_unit_test" ]
 }
 
 copy("value_utils_sources") {

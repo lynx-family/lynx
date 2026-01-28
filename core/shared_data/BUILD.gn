@@ -41,7 +41,7 @@ unittest_set("shared_data_test_testset") {
   deps = [
     "../renderer:tasm",
     "../renderer/dom:renderer_dom",
-    "../runtime/lepus/bindings:lepus",
+    "../runtime/lepus/bindings:bindings",
     "../shell/testing:mock_tasm_delegate_testset",
     "../shell/testing:shell_testset",
   ]

@@ -40,7 +40,7 @@ class QuickjsJSValueValue : public Runtime::PointerValue {
   LEPUSRuntime* rt_;
 
  protected:
-  friend class QuickjsRuntime;
+  friend class js::QuickjsRuntime;
   friend class QuickjsHelper;
   // for debug
   //  int time;

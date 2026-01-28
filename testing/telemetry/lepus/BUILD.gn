@@ -9,7 +9,7 @@ lepus_benchmark_deps = [
   "../../../core/renderer:tasm",
   "../../../core/renderer/dom:dom",
   "../../../core/renderer/dom:renderer_dom",
-  "../../../core/runtime/lepus/bindings:lepus",
+  "../../../core/runtime/lepus/bindings:bindings",
   "//third_party/googletest:gtest",
 ]
 
