@@ -11,6 +11,7 @@
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/tasm/config.h"
@@ -290,6 +291,14 @@ bool BaseBinaryReader::DecodeValue(Value* result, bool is_header) {
     case ValueType::Value_CDate: {
       DECODE_DATE(date);
       result->SetRefCounted(std::move(date));
+      break;
+    }
+    case ValueType::Value_ByteArray: {
+      uint64_t code_len;
+      ERROR_UNLESS(ReadCompactU64(&code_len));
+      auto data = std::make_unique<uint8_t[]>(code_len);
+      ERROR_UNLESS(ReadData(data.get(), static_cast<int>(code_len)));
+      result->SetByteArray(lepus::ByteArray::Create(std::move(data), code_len));
       break;
     }
     case ValueType::Value_RegExp: {

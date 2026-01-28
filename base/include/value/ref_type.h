@@ -29,12 +29,12 @@ enum class RefType : int32_t {
   kScope,
   kOtherType,
   kStyleObject,
+  kCSSFragment,
   kJSIObject,
   kEvent,
   kClosure,
   kCDate,
   kRegExp,
-  kCSSFragment,
 };
 
 }  // namespace lepus

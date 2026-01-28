@@ -100,7 +100,7 @@ LEPUSValue LEPUSValueHelper::ToJsValue(LEPUSContext* ctx, const lynx_value& val,
     case lynx_value_object: {
       RefType ref_type = static_cast<RefType>(val.tag);
       switch (ref_type) {
-        case RefType::kLepusTable... RefType::kStyleObject:
+        case RefType::kLepusTable... RefType::kCSSFragment:
           if (deep_convert) {
             return RefCountedToJSValue(
                 ctx, *reinterpret_cast<lepus::RefCounted*>(val.val_ptr));
