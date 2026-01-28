@@ -58,9 +58,10 @@ void ImplBase::OnExternalMemoryChanged(int64_t current_memory_in_bytes) {
   if (current_memory_in_bytes == resident_memory_in_bytes_) {
     return;
   }
-  if (IsNapiWrapped() && static_cast<napi_env>(NapiEnv())->rt) {
+  Napi::Env env = IsNapiWrapped() ? NapiEnv() : nullptr;
+  if (env && static_cast<napi_env>(env)->rt) {
     Napi::MemoryManagement::AdjustExternalMemory(
-        NapiEnv(), current_memory_in_bytes - last_reported_memory_in_bytes_);
+        env, current_memory_in_bytes - last_reported_memory_in_bytes_);
     last_reported_memory_in_bytes_ = current_memory_in_bytes;
   }
   resident_memory_in_bytes_ = current_memory_in_bytes;
