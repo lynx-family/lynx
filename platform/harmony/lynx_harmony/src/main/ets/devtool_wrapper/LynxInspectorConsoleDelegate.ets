@@ -3,5 +3,5 @@
 // LICENSE file in the root directory of this source tree.
 
 export interface LynxInspectorConsoleDelegate {
-  onConsoleMessage(msg: string): void;
+  onConsoleMessage: (msg: string) => void;
 }

@@ -3,7 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 import web_webview from '@ohos.web.webview';
-import { GetJSSourceCallback, ILogBox, LLog, LynxError, OnErrorCallback } from '@lynx/lynx';
+import { LLog, LynxError } from '@lynx/lynx';
+import { GetJSSourceCallback, ILogBox, OnErrorCallback } from '@lynx/lynx/src/main/ets/devtool_wrapper/ILogBox';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
 import { BusinessError, request } from '@kit.BasicServicesKit';

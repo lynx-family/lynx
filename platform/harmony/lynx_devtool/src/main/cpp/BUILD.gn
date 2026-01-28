@@ -23,6 +23,8 @@ devtool_source_set("cpp") {
     "inspector_owner_embedder_harmony.h",
     "inspector_owner_harmony.cc",
     "inspector_owner_harmony.h",
+    "message_handler_harmony.cc",
+    "message_handler_harmony.h",
   ]
 
   include_dirs = [ "../../../../../../third_party/debug_router/src/" ]

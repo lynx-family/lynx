@@ -14,6 +14,8 @@ export class InspectorOwnerHarmony {
   destroy: () => void;
   flushConsoleMessages: () => void;
   getConsoleObject: (objectId: string, needStringify: boolean, callbackId: number) => void;
+  subscribeMessage: (type: string, handler: MessageHandler) => void;
+  unsubscribeMessage: (type: string) => void;
 }
 
 export class LynxDevToolEnvHarmony {

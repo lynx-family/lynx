@@ -979,28 +979,23 @@ export class LynxDebugger {
   public static setSwitch(key: string, value: boolean): void;
   public static getSwitch(key: string): boolean;
   public static setAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
+  public static setOpenCardCallback(callback: (url: string) => void): void;
 }
 
 export interface LynxBaseInspectorOwner {
-  onLoaded(lynxView: LynxView): void;
-  destroy(lynxView: LynxView): void;
   setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
   getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
-}
-
-export interface ILogBox {
-  reportError(err: LynxError): void;
-  onLoaded(url: string): void;
-}
-
-export type OnErrorCallback = (msg: string) => void {
-}
-
-export type GetJSSourceCallback = () => Record<string, string> {
+  subscribeMessage(type: string, handler: MessageHandler): void;
+  unsubscribeMessage(type: string): void;
+  sendMessage(type: string, message: string): void;
 }
 
 export interface LynxInspectorConsoleDelegate {
-  onConsoleMessage(msg: string): void;
+  onConsoleMessage: (msg: string) => void;
+}
+
+export interface MessageHandler {
+  onMessage: (msg: string) => void;
 }
 
 export abstract class LynxBackgroundRuntimeClient {
@@ -1037,7 +1032,7 @@ export interface RuntimeLifecycleListener {
   onRuntimeDetach(): void;
 }
 
-export class LynxInspectorOwner implements LynxBaseInspectorOwner {
+export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspectorController {
   constructor(embedderProxy: number[]);
   public onLoaded(lynxView: LynxView): void;
   public destroy(lynxView: LynxView): void;
@@ -1045,11 +1040,15 @@ export class LynxInspectorOwner implements LynxBaseInspectorOwner {
   public getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
   public onConsoleMessage(msg: string): void;
   public onConsoleObject(detail: string, callbackId: number): void;
+  public subscribeMessage(type: string, handler: MessageHandler): void;
+  public unsubscribeMessage(type: string): void;
+  public sendMessage(type: string, message: string): void;
 }
 
 export class LynxDebugBridge {
   public static getInstance(): LynxDebugBridge;
   public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
+  public setOpenCardCallback(callback: (url: string) => void): void;
 }
 
 export interface HarmonyGlobalHandler {
@@ -1113,10 +1112,11 @@ export class LynxDevToolService implements ILynxDevToolService {
   public devtoolEnvSetSwitch(key: string, value: boolean): void;
   public devtoolEnvGetSwitch(key: string): boolean;
   public devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorOwner | null;
+  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
   public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   public createLogBoxComponent(logBox: ILogBox, title: string): NodeController | null;
   public registerWebSocketModule(moduleManager: LynxModuleManager): void;
+  public setOpenCardCallback(callback: (url: string) => void): void;
   static instance: any; = new LynxDevToolService()
 }
 
@@ -1189,10 +1189,11 @@ export interface ILynxDevToolService {
   devtoolEnvSetSwitch(key: string, value: boolean): void;
   devtoolEnvGetSwitch(key: string): boolean;
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorOwner | null;
+  createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null;
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
+  setOpenCardCallback(callback: (url: string) => void): void;
 }
 
 export interface ILynxImageService {

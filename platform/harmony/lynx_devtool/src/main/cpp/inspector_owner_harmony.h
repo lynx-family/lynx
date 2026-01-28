@@ -30,6 +30,8 @@ class InspectorOwnerHarmony {
   static napi_value GetSessionId(napi_env env, napi_callback_info info);
   static napi_value FlushConsoleMessages(napi_env env, napi_callback_info info);
   static napi_value GetConsoleObject(napi_env env, napi_callback_info info);
+  static napi_value SubscribeMessage(napi_env env, napi_callback_info info);
+  static napi_value UnsubscribeMessage(napi_env env, napi_callback_info info);
 
  private:
   std::shared_ptr<InspectorOwnerEmbedderHarmony> owner_;

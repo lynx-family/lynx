@@ -13,7 +13,7 @@ import { LynxGenericResourceFetcher } from '../provider/LynxGenericResourceFetch
 import { LynxMediaResourceFetcher } from '../provider/LynxMediaResourceFetcher';
 import { LynxTemplateResourceFetcher } from '../provider/LynxTemplateResourceFetcher';
 import { ModuleClassWrapper, SendableModuleClassWrapper } from '../jsbridge/LynxModule';
-import { ILogBox, LLog, LynxEnv, MetaData, TemplateBundle } from '../Index';
+import { LLog, LynxEnv, MetaData, TemplateBundle } from '../Index';
 import { RuntimeLifecycleListener } from '../jsbridge/RuntimeLifecycleListener';
 
 const TAG = 'LynxBackgroundRuntime';

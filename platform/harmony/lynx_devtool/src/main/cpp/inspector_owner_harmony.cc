@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/platform/harmony/napi_util.h"
+#include "platform/harmony/lynx_devtool/src/main/cpp/message_handler_harmony.h"
 
 namespace lynx {
 namespace devtool {
@@ -22,6 +23,8 @@ napi_value InspectorOwnerHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("getSessionId", GetSessionId),
       DECLARE_NAPI_FUNCTION("flushConsoleMessages", FlushConsoleMessages),
       DECLARE_NAPI_FUNCTION("getConsoleObject", GetConsoleObject),
+      DECLARE_NAPI_FUNCTION("subscribeMessage", SubscribeMessage),
+      DECLARE_NAPI_FUNCTION("unsubscribeMessage", UnsubscribeMessage),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -131,6 +134,55 @@ napi_value InspectorOwnerHarmony::GetConsoleObject(napi_env env,
     int callback_id = base::NapiUtil::ConvertToInt32(env, args[2]);
     owner_harmony_ptr->owner_->GetConsoleObject(object_id, need_stringify,
                                                 callback_id);
+  }
+
+  return nullptr;
+}
+
+napi_value InspectorOwnerHarmony::SubscribeMessage(napi_env env,
+                                                   napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  InspectorOwnerHarmony *owner_harmony_ptr = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void **>(&owner_harmony_ptr));
+  NAPI_THROW_IF_FAILED_NULL(env, status,
+                            "InspectorOwnerHarmony SubscribeMessage failed!");
+
+  if (!owner_harmony_ptr) {
+    LOGE("napi unwrap object is null when SubscribeMessage");
+  } else {
+    std::string type = base::NapiUtil::ConvertToString(env, args[0]);
+    napi_value js_message_handler = args[1];
+    auto message_handler =
+        std::make_shared<MessageHandlerHarmony>(env, js_message_handler);
+    owner_harmony_ptr->owner_->SubscribeMessage(type, message_handler);
+  }
+
+  return nullptr;
+}
+
+napi_value InspectorOwnerHarmony::UnsubscribeMessage(napi_env env,
+                                                     napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value args[1];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  InspectorOwnerHarmony *owner_harmony_ptr = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void **>(&owner_harmony_ptr));
+  NAPI_THROW_IF_FAILED_NULL(env, status,
+                            "InspectorOwnerHarmony UnsubscribeMessage failed!");
+
+  if (!owner_harmony_ptr) {
+    LOGE("napi unwrap object is null when UnsubscribeMessage");
+  } else {
+    std::string type = base::NapiUtil::ConvertToString(env, args[0]);
+    owner_harmony_ptr->owner_->UnsubscribeMessage(type);
   }
 
   return nullptr;

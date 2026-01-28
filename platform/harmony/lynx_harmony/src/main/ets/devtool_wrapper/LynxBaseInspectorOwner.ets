@@ -2,18 +2,20 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { LynxView } from '../tasm/LynxView';
-import { LynxInspectorConsoleDelegate } from './LynxInspectorConsoleDelegate'
+import { LynxInspectorConsoleDelegate } from './LynxInspectorConsoleDelegate';
+import { MessageHandler } from './MessageHandler';
 
 type CDPResultCallback = (result: string) => void;
 
 export interface LynxBaseInspectorOwner {
-  onLoaded(lynxView: LynxView): void;
-
-  destroy(lynxView: LynxView): void;
-  
   setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
-  
+
   getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
+
+  subscribeMessage(type: string, handler: MessageHandler): void;
+
+  unsubscribeMessage(type: string): void;
+
+  sendMessage(type: string, message: string): void;
 }
 

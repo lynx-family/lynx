@@ -2,16 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import {
-  GetJSSourceCallback,
-  ILogBox,
-  ILynxDevToolService,
-  LLog,
-  LynxBaseInspectorOwner,
-  LynxModuleManager,
-  LynxEnv,
-  OnErrorCallback
-} from '@lynx/lynx';
+import { ILynxDevToolService, LLog, LynxEnv, LynxModuleManager } from '@lynx/lynx';
+import { GetJSSourceCallback, ILogBox, OnErrorCallback } from '@lynx/lynx/src/main/ets/devtool_wrapper/ILogBox';
+import { LynxBaseInspectorController } from '@lynx/lynx/src/main/ets/devtool_wrapper/LynxBaseInspectorController';
 import { NodeController } from '@kit.ArkUI';
 
 export class LynxDevToolService implements ILynxDevToolService {
@@ -83,7 +76,7 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
-  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorOwner | null {
+  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null {
     let lynxInspectorOwner: ESObject = LynxDevToolService.devtoolModule?.LynxInspectorOwner;
     if (lynxInspectorOwner) {
       return new lynxInspectorOwner(embedderProxy);
@@ -117,6 +110,15 @@ export class LynxDevToolService implements ILynxDevToolService {
     let LynxWebSocketModule: ESObject = LynxDevToolService.devtoolModule?.LynxWebSocketModule;
     if (LynxWebSocketModule) {
       moduleManager.registerModule('LynxWebSocketModule', { moduleClass: LynxWebSocketModule });
+    }
+  }
+
+  public setOpenCardCallback(callback: (url: string) => void): void {
+    let lynxDebugBridgeInst: ESObject = LynxDevToolService.devtoolModule?.LynxDebugBridge?.getInstance();
+    if (lynxDebugBridgeInst) {
+      lynxDebugBridgeInst.setOpenCardCallback(callback);
+    } else {
+      LLog.i(LynxDevToolService.TAG, "setOpenCardCallback failed, lynxDebugBridgeInst is null");
     }
   }
 }

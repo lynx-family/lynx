@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 import { IServiceProvider } from './IServiceProvider';
-import { LynxBaseInspectorOwner } from '../../devtool_wrapper/LynxBaseInspectorOwner';
 import { GetJSSourceCallback, ILogBox, OnErrorCallback } from '../../devtool_wrapper/ILogBox';
 import { NodeController } from '@kit.ArkUI';
 import { LynxModuleManager } from '../../jsbridge/LynxModuleManager';
+import { LynxBaseInspectorController } from '../../devtool_wrapper/LynxBaseInspectorController';
 
 export interface ILynxDevToolService extends IServiceProvider {
   isDevToolModuleLoaded(): boolean
@@ -21,11 +21,13 @@ export interface ILynxDevToolService extends IServiceProvider {
 
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void
 
-  createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorOwner | null
+  createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null
 
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null
 
   createLogBoxComponent(logbox: ILogBox, title: string): NodeController | null;
 
   registerWebSocketModule(moduleManager: LynxModuleManager): void;
+
+  setOpenCardCallback(callback: (url: string) => void): void;
 }

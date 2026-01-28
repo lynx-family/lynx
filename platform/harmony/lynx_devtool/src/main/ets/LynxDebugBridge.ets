@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import lynxdevtool from 'liblynxdevtool.so';
+import { DebugRouter } from './DebugRouter';
 
 export class LynxDebugBridge {
   private static instance?: LynxDebugBridge;
@@ -22,5 +23,13 @@ export class LynxDebugBridge {
   public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean {
     return lynxdevtool.DebugBridgeHarmony.connectDevtools(remoteDebugUrl, Array.from(appInfo.keys()),
       Array.from(appInfo.values()));
+  }
+
+  public setOpenCardCallback(callback: (url: string) => void): void {
+    DebugRouter.addGlobalHandler({
+      onOpenCard: callback,
+      onMessage: () => {
+      }
+    });
   }
 }

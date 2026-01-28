@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { LynxInspectorConsoleDelegate } from '@lynx/lynx/src/main/ets/devtool_wrapper/LynxInspectorConsoleDelegate';
+import { LynxInspectorConsoleDelegate } from '@lynx/lynx';
 import { InspectorOwnerHarmony } from 'liblynxdevtool.so';
 
 export class ConsoleDelegateManager {

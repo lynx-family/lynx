@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+import { LynxBaseInspectorController } from './LynxBaseInspectorController';
 import { LynxBaseInspectorOwner } from './LynxBaseInspectorOwner';
 import { LynxEnv } from '../tasm/LynxEnv';
 import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
@@ -11,7 +12,7 @@ import { GetJSSourceCallback, ILogBox, OnErrorCallback } from './ILogBox';
 import { NodeController } from '@kit.ArkUI';
 
 export class LynxDevTool {
-  private owner: LynxBaseInspectorOwner | null = null;
+  private owner: LynxBaseInspectorController | null = null;
 
   constructor(embedderProxy: number[]) {
     this.initDevTool(embedderProxy);
@@ -27,9 +28,9 @@ export class LynxDevTool {
       }
     }
   }
-  
-  public getBaseInspectorOwner() : LynxBaseInspectorOwner | null {
-    return this.owner;
+
+  public getBaseInspectorOwner(): LynxBaseInspectorOwner | null {
+    return this.owner as ESObject as LynxBaseInspectorOwner;
   }
 
   public onLoaded(lynxView: LynxView) {

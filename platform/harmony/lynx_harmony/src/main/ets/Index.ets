@@ -127,9 +127,9 @@ export { LynxDebugger } from './devtool_wrapper/LynxDebugger'
 
 export { LynxBaseInspectorOwner } from './devtool_wrapper/LynxBaseInspectorOwner'
 
-export { ILogBox, OnErrorCallback, GetJSSourceCallback } from './devtool_wrapper/ILogBox'
-
 export { LynxInspectorConsoleDelegate } from './devtool_wrapper/LynxInspectorConsoleDelegate'
+
+export { MessageHandler } from './devtool_wrapper/MessageHandler'
 
 export {LynxBackgroundRuntime, LynxBackgroundRuntimeClient} from './tasm/LynxBackgroundRuntime'
 
