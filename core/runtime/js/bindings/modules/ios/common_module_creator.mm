@@ -29,6 +29,11 @@ void CommonLynxContextFinderDarwin::RegisterContext(const std::string& unique_id
   schema_ = schema;
 }
 
+void CommonLynxContextFinderDarwin::Destroy() {
+  _LogI(@"CommonLynxContextFinderDarwin Destroy LynxContext");
+  lynxContext_ = nullptr;
+}
+
 // CommonModuleCreator
 CommonModuleCreator::CommonModuleCreator() : context_finder_(nullptr) {
   moduleInstances_ = [[LynxThreadSafeDictionary alloc] init];
@@ -84,7 +89,9 @@ void CommonModuleCreator::Destroy() {
   if (moduleInstances_ == nil) {
     return;
   }
-
+  if (context_finder_) {
+    context_finder_->Destroy();
+  }
   [moduleInstances_ enumerateKeysAndObjectsUsingBlock:^(NSString* _Nonnull name,
                                                         id _Nonnull instance, BOOL* _Nonnull stop) {
     if (instance != nil) {

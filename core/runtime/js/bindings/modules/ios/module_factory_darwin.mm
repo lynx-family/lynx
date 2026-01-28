@@ -40,6 +40,12 @@ void ModuleFactoryDarwin::Bind(std::unique_ptr<ModuleCreatorDarwin> module_creat
   module_creator_ = std::move(module_creator);
 }
 
+void ModuleFactoryDarwin::DeleteLynxContextForInstance(NSString *instanceId) {
+  if (module_creator_) {
+    module_creator_->DeleteLynxContextForInstance(instanceId);
+  }
+}
+
 void ModuleFactoryDarwin::SetContextFinder(
     const std::shared_ptr<LynxContextFinderDarwin> &context_finder) {
   if (module_creator_) {
