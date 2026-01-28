@@ -7,7 +7,7 @@ apply from: '../publish.gradle'
 import org.json.simple.JSONObject
 
 ext.ABI_FILTERS = ['armeabi-v7a', 'armeabi', 'arm64-v8a', 'x86']
-ext.DEBUG_JS_ENGINE_TYPE = js_engine_type
+def js_engine_type = "quickjs"
 android {
     publishNonDefault true
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -123,9 +123,6 @@ android {
                             '-DBUILD_TYPE=release',
                             '-LH'//To show compile parameters
                 }
-
-
-                buildConfigField("String", "JS_ENGINE_TYPE", "\"${js_engine_type}\"")
             }
             ndk {
                 abiFilters(*rootProject.ext.abiList)
@@ -147,7 +144,6 @@ android {
                     // Symbol table with line numbers
                     cppFlags "-g"
                 }
-                buildConfigField("String", "JS_ENGINE_TYPE", "\"${DEBUG_JS_ENGINE_TYPE}\"")
             }
             ndk {
                 abiFilters(*rootProject.ext.abiList)
@@ -277,7 +273,6 @@ task configGnCompileParas {
             JSONObject gnBuildArgs_list = new JSONObject(gnBuildArgsList)
             String buildType = it
             gnBuildArgs_list.put("build_lepus_compile", "false")
-            gnBuildArgs_list.put("jsengine_type", "\"$js_engine_type\"")
             gnBuildArgs_list.put("enable_memory_tracing", "\"$enable_memory_tracing\"")
             gnBuildArgs_list.put("enable_lite", "\"$enable_lite\"")
             gnBuildArgs_list.put("enable_lto", "\"$enable_lto\"")

@@ -185,15 +185,10 @@ config("lynx_android_public_config") {
     defines += [ "USE_POW_TABLE=1" ]
   }
 
-  if (jsengine_type == "jsc") {
-    defines += [ "JS_ENGINE_TYPE=1" ]
-    include_dirs += [ "//third_party/jsc" ]
-  } else if (jsengine_type == "quickjs") {
-    defines += [
-      "JS_ENGINE_TYPE=2",
-      "QUICKJS_VER_LYNX",
-    ]
-  }
+  defines += [
+    "JS_ENGINE_TYPE=2",
+    "QUICKJS_VER_LYNX",
+  ]
 
   if (enable_memory_tracing) {
     defines += [ "MEMORY_TRACING" ]
@@ -251,13 +246,8 @@ config("lynx_android_private_config") {
     "jnigraphics",
     "log",
   ]
-  if (jsengine_type == "jsc") {
-    lib_dirs += [ "${jsc_lib_dir}" ]
-    libs += [ "jsc" ]
-  } else if (jsengine_type == "quickjs") {
-    lib_dirs += [ "${primjs_native_lib_dir}" ]
-    libs += [ "quick" ]
-  }
+  lib_dirs += [ "${primjs_native_lib_dir}" ]
+  libs += [ "quick" ]
   if (enable_napi_binding) {
     lib_dirs += [ "${primjs_native_lib_dir}" ]
     libs += [ "napi" ]

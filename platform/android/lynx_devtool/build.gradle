@@ -6,6 +6,7 @@ apply from: '../jacoco.gradle'
 apply from: '../publish.gradle'
 import org.json.simple.JSONObject
 ext.ABI_FILTERS = ['armeabi-v7a', 'armeabi', 'arm64-v8a', 'x86']
+def js_engine_type = "quickjs"
 
 android {
     publishNonDefault true

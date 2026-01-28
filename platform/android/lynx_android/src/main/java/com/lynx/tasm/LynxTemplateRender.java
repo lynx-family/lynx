@@ -984,45 +984,42 @@ public class LynxTemplateRender
       LynxEventReporter.moveExtraParams(lastInstanceId, mLynxContext.getInstanceId());
     }
 
-    if (!"none".equals(BuildConfig.JS_ENGINE_TYPE)) {
-      if (null != mLynxContext && mLogicExecutor == null) {
-        // init LynxRuntime If LogicExecutor is not provided.
-        setUpBackgroundThreadModuleFactory();
-        mResourceLoader = new LynxResourceLoader(mLynxRuntimeOptions, mLynxViewBuilder.fetcher,
-            this, mLynxContext.getTemplateResourceFetcher(),
-            mLynxContext.getGenericResourceFetcher());
-        if (mRuntime != null) {
-          // In LynxbakcgroundRuntime Standalone, we create and init a LynxRuntime without
-          // LynxShell. During LynxTemplateRender creation, this runtime is used to create
-          // LynxShell. Here we don't need to init the LynxRuntime which is already inited, but we
-          // we need to bind it to LynxShell.
-          attachPiper(mRuntime, mModuleFactory);
+    if (null != mLynxContext && mLogicExecutor == null) {
+      // init LynxRuntime If LogicExecutor is not provided.
+      setUpBackgroundThreadModuleFactory();
+      mResourceLoader = new LynxResourceLoader(mLynxRuntimeOptions, mLynxViewBuilder.fetcher, this,
+          mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
+      if (mRuntime != null) {
+        // In LynxbakcgroundRuntime Standalone, we create and init a LynxRuntime without
+        // LynxShell. During LynxTemplateRender creation, this runtime is used to create
+        // LynxShell. Here we don't need to init the LynxRuntime which is already inited, but we
+        // we need to bind it to LynxShell.
+        attachPiper(mRuntime, mModuleFactory);
 
-          // Destruction of Runtime inside wrapper will be handled by LynxShell. Since after
-          // attachement, user cannot use LynxBackgroundRuntime, we can safely release its
-          // reference.
-          mRuntime = null;
+        // Destruction of Runtime inside wrapper will be handled by LynxShell. Since after
+        // attachement, user cannot use LynxBackgroundRuntime, we can safely release its
+        // reference.
+        mRuntime = null;
 
-        } else {
-          initPiper();
-        }
-        // extension dependent on piper, should init after piper init.
-        setUpExtensionModules();
-        if (mDevTool != null) {
-          mDevTool.onRegisterModule(mModuleFactory);
-        }
-        mLynxContext.setJSProxy(mJSProxy);
       } else {
-        mEngineProxy = new LynxEngineProxy(mNativePtr);
-        if (mLynxContext == null) {
-          LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
-        } else {
-          mLayoutProxy = new LynxLayoutProxy(mNativePtr);
-          mLynxContext.setLayoutProxy(mLayoutProxy);
-        }
+        initPiper();
       }
-      mLynxContext.setEventEmitter(new LynxEventEmitter(mEngineProxy));
+      // extension dependent on piper, should init after piper init.
+      setUpExtensionModules();
+      if (mDevTool != null) {
+        mDevTool.onRegisterModule(mModuleFactory);
+      }
+      mLynxContext.setJSProxy(mJSProxy);
+    } else {
+      mEngineProxy = new LynxEngineProxy(mNativePtr);
+      if (mLynxContext == null) {
+        LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
+      } else {
+        mLayoutProxy = new LynxLayoutProxy(mNativePtr);
+        mLynxContext.setLayoutProxy(mLayoutProxy);
+      }
     }
+    mLynxContext.setEventEmitter(new LynxEventEmitter(mEngineProxy));
     mIntersectionObserverManager = new LynxIntersectionObserverManager(mLynxContext, mJSProxy);
     mLynxContext.setIntersectionObserverManager(mIntersectionObserverManager);
     EventEmitter eventEmitter = mLynxContext.getEventEmitter();

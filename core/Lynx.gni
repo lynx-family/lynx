@@ -50,6 +50,10 @@ if (is_win) {
     enable_replay_release = false
   }
 
+  if (jsengine_type == "none") {
+    jsengine_type = "quickjs"
+  }
+
   # these args are up to lynx_in_debug arg,
   # gradle will not pass these args when building Android.
   enable_testbench_replay = lynx_in_debug
