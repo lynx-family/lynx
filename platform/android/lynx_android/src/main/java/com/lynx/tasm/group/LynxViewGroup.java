@@ -186,7 +186,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   @Override
   public ThreadStrategyForRendering getThreadStrategy() {
-    return this.threadStrategy;
+    if (this.threadStrategy != null) {
+      return this.threadStrategy;
+    }
+    return ThreadStrategyForRendering.ALL_ON_UI;
   }
 
   @Override
