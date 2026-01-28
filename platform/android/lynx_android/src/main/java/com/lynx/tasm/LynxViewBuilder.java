@@ -391,10 +391,13 @@ public class LynxViewBuilder
 
   @Override
   public ThreadStrategyForRendering getThreadStrategy() {
+    if (this.threadStrategy != null) {
+      return this.threadStrategy;
+    }
     if (lynxViewGroup != null) {
       return lynxViewGroup.getThreadStrategy();
     }
-    return this.threadStrategy;
+    return ThreadStrategyForRendering.ALL_ON_UI;
   }
 
   @Override
@@ -415,10 +418,13 @@ public class LynxViewBuilder
 
   @Override
   public HashMap getContextData() {
+    if (this.mContextData != null) {
+      return this.mContextData;
+    }
     if (lynxViewGroup != null) {
       return lynxViewGroup.getContextData();
     }
-    return this.mContextData;
+    return null;
   }
 
   @Override
@@ -562,6 +568,9 @@ public class LynxViewBuilder
 
   @Override
   public float getFontScale() {
+    if (hasFontScaleSet) {
+      return this.fontScale;
+    }
     if (lynxViewGroup != null) {
       return lynxViewGroup.getFontScale();
     }
