@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h"
 
+#include "base/include/float_comparison.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
 namespace lynx {
@@ -115,7 +116,6 @@ void BaseScrollContainer::SetEnableScrollInteraction(
 }
 
 void BaseScrollContainer::ScrollTo(float x, float y, bool smooth) {
-  GestureRecognized();
   NodeManager::Instance().SetAttributeWithNumberValue(
       node_, NODE_SCROLL_OFFSET, x, y, (smooth ? 250 : 0),
       static_cast<int>(ArkUI_AnimationCurve::ARKUI_CURVE_SMOOTH), 0);
@@ -237,14 +237,18 @@ std::vector<float> BaseScrollContainer::GestureScrollBy(float delta_x,
   float last_scroll_offset = GetScrollDistance();
   if (IsHorizontal()) {
     float scroll_x = last_scroll_offset + delta_x;
-    ScrollTo(scroll_x <= 0 ? 0 : scroll_x, 0.f, false);
+    if (!base::FloatsEqual(delta_x, 0.f)) {
+      ScrollTo(scroll_x <= 0 ? 0 : scroll_x, 0.f, false);
+    }
     res[0] = GetScrollDistance() - last_scroll_offset;
     res[1] = 0;
     res[2] = delta_x - res[0];
     res[3] = delta_y;
   } else {
     float scroll_y = last_scroll_offset + delta_y;
-    ScrollTo(0.f, scroll_y <= 0 ? 0 : scroll_y, false);
+    if (!base::FloatsEqual(delta_y, 0.f)) {
+      ScrollTo(0.f, scroll_y <= 0 ? 0 : scroll_y, false);
+    }
     res[0] = 0;
     res[1] = GetScrollDistance() - last_scroll_offset;
     res[2] = delta_x;
@@ -255,7 +259,6 @@ std::vector<float> BaseScrollContainer::GestureScrollBy(float delta_x,
 
 // for worklet
 std::vector<float> BaseScrollContainer::ScrollBy(float delta_x, float delta_y) {
-  GestureRecognized();
   return GestureScrollBy(delta_x, delta_y);
 }
 
