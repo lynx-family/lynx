@@ -38,7 +38,6 @@ class LynxShellTest : public ::testing::Test {
             .SetNativeFacade(std::unique_ptr<NativeFacade>(facade_))
             .SetLayoutContextPlatformImpl(nullptr)
             .SetStrategy(base::ThreadStrategyForRendering::ALL_ON_UI)
-            .SetEngineActor([](auto& actor) {})
             .SetShellOption(option)
             .SetPropBundleCreator(
                 std::make_shared<lynx::tasm::PropBundleCreatorDefault>())

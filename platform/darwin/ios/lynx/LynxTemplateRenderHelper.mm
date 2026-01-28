@@ -141,11 +141,6 @@
               _isEngineInitFromReusePool ? nullptr : ui_delegate->CreateLayoutContext())
           .SetStrategy(
               static_cast<lynx::base::ThreadStrategyForRendering>(_threadStrategyForRendering))
-          .SetEngineActor([loader, lynxEngineProxy = _lynxEngineProxy](auto& actor) {
-            loader->SetEngineActor(actor);
-            [lynxEngineProxy
-                setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(actor)];
-          })
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
           .SetRuntimeActor(_runtime ? _runtime.runtimeActor : nullptr)
           .SetPerfControllerActor(_runtime ? _runtime.perfControllerActor : nullptr)
@@ -159,6 +154,9 @@
           .SetUseInvokeUIMethodFunction(_lynxUIRenderer.useInvokeUIMethodFunction)
           .SetLynxEngineWrapper(_lynxEngine ? [_lynxEngine getEngineNative] : nullptr)
           .build());
+
+  [_lynxEngineProxy setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(
+                                             shell_->GetEngineActor())];
 
   [_devTool onTemplateAssemblerCreated:(intptr_t)shell_.get()];
 

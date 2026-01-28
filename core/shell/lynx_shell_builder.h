@@ -67,10 +67,6 @@ class LynxShellBuilder {
 
   LynxShellBuilder& SetStrategy(base::ThreadStrategyForRendering strategy);
 
-  LynxShellBuilder& SetEngineActor(
-      const std::function<void(const std::shared_ptr<LynxActor<LynxEngine>>&)>&
-          on_engine_actor_created);
-
   LynxShellBuilder& SetRuntimeActor(
       const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor);
 
@@ -135,9 +131,6 @@ class LynxShellBuilder {
       std::make_shared<lynx::tasm::PropBundleCreatorDefault>();
 
   base::ThreadStrategyForRendering strategy_;
-
-  std::function<void(const std::shared_ptr<LynxActor<LynxEngine>>&)>
-      on_engine_actor_created_;
 
   std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_{};
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>

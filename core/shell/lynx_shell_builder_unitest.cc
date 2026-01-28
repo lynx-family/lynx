@@ -84,7 +84,6 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
                    .SetTasmLocale(locale_)
                    .SetLayoutContextPlatformImpl(nullptr)
                    .SetStrategy(strategy_)
-                   .SetEngineActor([](auto& actor) {})
                    .SetShellOption(*option_)
                    .build());
 
@@ -180,7 +179,6 @@ TEST_F(LynxShellBuilderTest,
                    .SetTasmLocale(locale_)
                    .SetLayoutContextPlatformImpl(nullptr)
                    .SetStrategy(strategy_)
-                   .SetEngineActor([](auto& actor) {})
                    .SetShellOption(*option_)
                    .SetForceLayoutOnBackgroundThread(false)
                    .build());
@@ -215,7 +213,6 @@ TEST_F(LynxShellBuilderTest,
                    .SetTasmLocale(locale_)
                    .SetLayoutContextPlatformImpl(nullptr)
                    .SetStrategy(strategy_)
-                   .SetEngineActor([](auto& actor) {})
                    .SetShellOption(*option_)
                    .SetForceLayoutOnBackgroundThread(true)
                    .build());

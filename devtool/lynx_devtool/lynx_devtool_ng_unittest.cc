@@ -87,7 +87,6 @@ TEST_F(LynxDevToolNGTest, OnTasmCreatedInitializesMediator) {
           .SetLynxEnvConfig(env_config)
           .SetEnableElementManagerVsyncMonitor(true)
           .SetStrategy(lynx::base::ThreadStrategyForRendering::ALL_ON_UI)
-          .SetEngineActor([](auto&) {})
           .SetShellOption(option)
           .build());
 

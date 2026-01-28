@@ -13,6 +13,7 @@
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/js_bundle_holder.h"
@@ -241,6 +242,9 @@ void LynxShell::OnLynxEngineBuilt(
   }
   if (timing_mediator_) {
     timing_mediator_->SetEngineActor(engine_actor_);
+  }
+  if (engine_build_options_.loader_ != nullptr) {
+    engine_build_options_.loader_->SetEngineActor(engine_actor_);
   }
 
   engine_actor_->Impl()->SetOperationQueue(tasm_operation_queue_);

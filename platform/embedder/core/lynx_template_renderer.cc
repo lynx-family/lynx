@@ -135,8 +135,6 @@ void LynxTemplateRenderer::Reset() {
           .SetStrategy(static_cast<base::ThreadStrategyForRendering>(
               settings_.thread_mode))
           .SetPropBundleCreator(ui_delegate_->CreatePropBundleCreator())
-          .SetEngineActor(
-              [loader](auto& actor) { loader->SetEngineActor(actor); })
           .SetShellOption(shell_option)
           .SetTasmPlatformInvoker(std::make_unique<TasmPlatformInvokerImpl>(
               weak_flag_->weak_from_this()))

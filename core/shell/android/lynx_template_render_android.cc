@@ -333,8 +333,6 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
                   : ui_delegate->CreateLayoutContext())
           .SetStrategy(static_cast<lynx::base::ThreadStrategyForRendering>(
               thread_strategy))
-          .SetEngineActor(
-              [loader](auto& actor) { loader->SetEngineActor(actor); })
           .SetLynxEngineWrapper(engine_wrapper)
           .SetRuntimeActor(
               (runtime_wrapper != nullptr)

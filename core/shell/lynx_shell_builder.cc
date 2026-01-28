@@ -125,13 +125,6 @@ LynxShellBuilder& LynxShellBuilder::SetStrategy(
   return *this;
 }
 
-LynxShellBuilder& LynxShellBuilder::SetEngineActor(
-    const std::function<void(const std::shared_ptr<LynxActor<LynxEngine>>&)>&
-        on_engine_actor_created) {
-  this->on_engine_actor_created_ = on_engine_actor_created;
-  return *this;
-}
-
 LynxShellBuilder& LynxShellBuilder::SetLynxEngineWrapper(
     shell::LynxEngineWrapper* engine_wrapper) {
   lynx_engine_wrapper_ = engine_wrapper;
@@ -287,8 +280,6 @@ LynxShell* LynxShellBuilder::build() {
                            std::move(layout_context_),
                            std::move(painting_context_));
   }
-  // Todo(kechenglong): on_engine_actor_created_ could be removed?
-  this->on_engine_actor_created_(shell->engine_actor_);
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
   shell->OnLynxEngineBuilt(prop_bundle_creator_,
                            std::move(native_module_manager_));

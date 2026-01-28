@@ -150,8 +150,6 @@ void LynxTemplateRenderer::SetUpLynxShell(
           .SetStrategy(
               static_cast<base::ThreadStrategyForRendering>(thread_mode))
           .SetPropBundleCreator(ui_delegate_->CreatePropBundleCreator())
-          .SetEngineActor(
-              [loader](auto& actor) { loader->SetEngineActor(actor); })
           .SetShellOption(shell_option)
           .SetTasmPlatformInvoker(std::move(invoker))
           .SetPerformanceControllerPlatform(
