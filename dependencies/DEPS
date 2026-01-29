@@ -1,5 +1,6 @@
 import os
 import platform
+import shutil
 import zipfile
 
 system = platform.system().lower()
@@ -13,6 +14,28 @@ if system == "windows":
 def unzip_webview2():
   zipfile.ZipFile('webview2.nupkg').extractall('Microsoft.Web.WebView2.1.0.902.49')
   os.remove('webview2.nupkg')
+
+def unzip_node_win():
+  node_path = os.path.join(root_dir, 'buildtools', 'node')
+  node_zip_path = os.path.join(root_dir, 'buildtools', 'node.zip')
+  if os.path.exists(node_path): 
+      shutil.rmtree(node_path); 
+  os.makedirs(node_path, exist_ok=True); 
+  zipfile.ZipFile(node_zip_path).extractall(node_path); 
+  os.remove(node_zip_path)
+  # Move content from intermediate directory to node_path
+  intermediate_dir = os.path.join(node_path, 'node-v16.18.1-win-x64')
+  if os.path.exists(intermediate_dir):
+      for item in os.listdir(intermediate_dir):
+          item_path = os.path.join(intermediate_dir, item)
+          dest_path = os.path.join(node_path, item)
+          if os.path.exists(dest_path):
+              if os.path.isdir(dest_path):
+                  shutil.rmtree(dest_path)
+              else:
+                  os.remove(dest_path)
+          shutil.move(item_path, node_path)
+      shutil.rmtree(intermediate_dir)
 
 deps = {
     'platform/android/gradle/wrapper/gradle-6.7.1-all.zip': {
@@ -47,17 +70,33 @@ deps = {
             "linux-arm64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-linux-arm64.tar.gz",
             "darwin-x86_64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-darwin-x64.tar.gz",
             "darwin-arm64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-darwin-arm64.tar.gz",
-            "windows-x86_64": "https://nodejs.org/dist/v18.19.1/node-v18.19.1-win-x64.zip"
         }.get(f'{system}-{machine}', None),
         "sha256": {
             "linux-x86_64": "724802c45237477dbe5777923743e6c77906830cae03a82b5653ebd75b301dda",
             "linux-arm64": "2913e8544d95c8be9e6034c539ec0584014532166a088bf742629756c3ec42e2",
             "darwin-x86_64": "ab67c52c0d215d6890197c951e1bd479b6140ab630212b96867395e21d813016",
             "darwin-arm64": "0c7249318868877032ed21cc0ed450015ee44b31b9b281955521cd3fc39fbfa3",
-            "windows-x86_64": "ff08f8fe253fba9274992d7052e9d9a70141342d7b36ddbd6e84cbe823e312c6"
         }.get(f'{system}-{machine}', None),
         "ignore_in_git": True,
-        "condition": system in ['linux', 'darwin', 'windows']
+        "condition": system in ['linux', 'darwin']
+    },
+    # workaround: windows node always copy failed due to permission issue
+    'download_node_win': {
+        "type": "action",
+        "cwd": root_dir,
+        "commands": [
+            "powershell.exe -Command New-Item -ItemType Directory -Path buildtools -Force",
+            "curl.exe -o buildtools/node.zip https://nodejs.org/dist/v18.19.1/node-v18.19.1-win-x64.zip",
+        ],
+        "ignore_in_git": True,
+        "condition": system == "windows",
+    },
+    'buildtools/node/win': {
+        "type": "action",
+        "cwd": root_dir,
+        "function": unzip_node_win,
+        "require": ["download_node_win"],
+        "condition": system in ['windows']
     },
     "third_party/xhook": {
         'type': 'git',
@@ -279,7 +318,7 @@ deps = {
             "pnpm install --frozen-lockfile"
         ],
         "require": [
-            "buildtools/node",
+            "buildtools/node/win" if system == "windows" else "buildtools/node",
             "buildtools/corepack/pnpm/7.33.6",
         ],
         "condition": system in ['linux', 'darwin', 'windows']
