@@ -497,6 +497,7 @@ void TouchEventHandler::ApplyEventTargetParams(lepus::DictionaryPtr params,
                                                  current_target, is_js_event));
 }
 
+// TODO(hexionghui): Use the new event logic to handle MouseEvent.
 void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
                                           const std::string &page_name,
                                           const std::string &name, int tag,
@@ -515,6 +516,13 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
   // so need to use the mousedown event to reset long press state.
   if (name.compare("mousedown") == 0) {
     long_press_consumed_ = false;
+    // On PC, a tap triggers both the `mouseclick` and `tap` events, while a
+    // long press triggers both the `mouselongpress` and `longpress` events.
+    // Because the mini-program pushes all the new event logic by default, and
+    // only `MouseEvent` is triggered on PC (no `TouchEvent` is triggered), the
+    // `tap` event cannot be triggered after a long press. Therefore, we need to
+    // modify the `long_press_consumed_` variable of `TouchEvent` accordingly.
+    event::TouchEvent::long_press_consumed_ = false;
   }
   bool bubbles = true;
   // According to the W3C specification, the `mouseenter` and `mouseleave`
