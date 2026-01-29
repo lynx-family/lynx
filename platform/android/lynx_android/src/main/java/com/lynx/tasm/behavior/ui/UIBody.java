@@ -660,6 +660,7 @@ public class UIBody extends UIGroup<UIBodyView> {
       JSONObject jsonData = new JSONObject();
       try {
         jsonData.put("name", ui.getClass().getName());
+        jsonData.put("tagName", ui.getTagName());
         jsonData.put("id", ui.getSign());
         jsonData.put("frame",
             new JSONArray(Arrays.asList(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight())));
