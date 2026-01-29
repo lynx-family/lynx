@@ -24,6 +24,8 @@ class NativePaintingContext {
   virtual void UpdateDisplayList(int id, DisplayList list) = 0;
   virtual void CreateImage(int id, base::String src, float width,
                            float height) = 0;
+  virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
+  virtual void DestroyTextBundle(int id) = 0;
 };
 
 }  // namespace lynx::tasm

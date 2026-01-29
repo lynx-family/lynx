@@ -279,5 +279,13 @@ void NativePaintingCtxAndroid::CreateImage(int id, base::String src,
   view_manager_->CreateImage(id, src, width, height);
 }
 
+void NativePaintingCtxAndroid::UpdateTextBundle(int id, intptr_t bundle) {
+  view_manager_->UpdateTextBundle(id, bundle);
+}
+
+void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
+  view_manager_->DestroyTextBundle(id);
+}
+
 }  // namespace tasm
 }  // namespace lynx

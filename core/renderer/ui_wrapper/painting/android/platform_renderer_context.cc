@@ -112,6 +112,26 @@ void PlatformRendererContext::DestroyImage(int32_t id) {
   Java_PlatformRendererContext_destroyImage(env, local_ref.Get(), id);
 }
 
+void PlatformRendererContext::UpdateTextBundle(int32_t id,
+                                               intptr_t text_bundle) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updateTextBundle(
+      env, local_ref.Get(), id, static_cast<jlong>(text_bundle));
+}
+
+void PlatformRendererContext::DestroyTextBundle(int32_t id) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_destroyTextBundle(env, local_ref.Get(), id);
+}
+
 PlatformRendererAndroid* PlatformRendererContext::GetPlatformRenderer(
     int32_t id) {
   auto it = renderer_registry_.find(id);

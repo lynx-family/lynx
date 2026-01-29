@@ -55,6 +55,10 @@ class PlatformRendererContext {
   void CreateImage(int32_t id, base::String src, float width, float height);
   void DestroyImage(int32_t id);
 
+  void UpdateTextBundle(int32_t id, intptr_t text_bundle);
+
+  void DestroyTextBundle(int32_t id);
+
   int32_t GetTagInfo(const std::string& tag_name);
 
  private:

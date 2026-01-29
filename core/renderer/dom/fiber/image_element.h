@@ -29,10 +29,7 @@ class ImageElement : public FiberElement {
 
   void ConvertToInlineElement() override;
 
-  const char* src() {
-    auto it = attr_map_.find(BASE_STATIC_STRING(kSrc));
-    return it == attr_map_.end() ? "" : it->second.CString();
-  }
+  const base::String& src() { return url_; }
 
   void ResetAttribute(const base::String& key) override;
 
@@ -56,6 +53,7 @@ class ImageElement : public FiberElement {
  protected:
   AttrUMap attr_map_;
   bool has_auto_size_{false};
+  base::String url_;
 
  private:
   template <OSType type>

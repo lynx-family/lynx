@@ -528,7 +528,7 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
 
   // src
   props->AddProp(kPropImageSrc);
-  props->AddProp(image_element->src());
+  props->AddProp(image_element->src().c_str());
 
   // mode
   // TBD

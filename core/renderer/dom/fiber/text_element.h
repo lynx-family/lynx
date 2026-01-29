@@ -77,6 +77,8 @@ class TextElement : public FiberElement {
                                : kCommonBuiltInNodeInfo;
   }
 
+  void SetTextBundle(intptr_t text_bundle);
+
  protected:
   void OnNodeAdded(FiberElement* child) override;
   void SetAttributeInternal(const base::String& key,

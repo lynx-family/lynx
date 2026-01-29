@@ -14,9 +14,16 @@ class TextFragmentBehavior : public FragmentBehavior {
  public:
   explicit TextFragmentBehavior(Fragment* fragment)
       : FragmentBehavior(fragment) {}
+  ~TextFragmentBehavior() override;
+
   void CreatePlatformRenderer(
       const fml::RefPtr<PropBundle>& attributes) override;
+  void OnUpdateLayout(const LayoutInfoForDraw& layout_result) override;
   void OnDraw(DisplayListBuilder& builder) override;
+  void SetTextBundle(intptr_t bundle) override { text_bundle_ = bundle; }
+
+ private:
+  intptr_t text_bundle_{0};
 };
 
 }  // namespace lynx::tasm

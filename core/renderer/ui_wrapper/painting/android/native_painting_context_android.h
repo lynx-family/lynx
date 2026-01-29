@@ -108,6 +108,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   void CreateImage(int id, base::String src, float width,
                    float height) override;
 
+  void UpdateTextBundle(int id, intptr_t bundle) override;
+
+  void DestroyTextBundle(int id) override;
 #pragma endregion  // NativePaintingContext
 
  private:
