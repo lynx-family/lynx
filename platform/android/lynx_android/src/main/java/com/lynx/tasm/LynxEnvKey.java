@@ -22,6 +22,7 @@ public enum LynxEnvKey {
   ENABLE_GENERIC_LYNX_RESOURCE_FETCHER_FONT_KEY("enable_generic_lynx_resource_fetcher_font"),
   ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP_GLOBAL("enable_vsync_aligned_message_loop_global"),
   FORCE_LAYOUT_ON_BACKGROUND_THREAD("force_layout_on_background_thread"),
+  ENABLE_FALLBACK_NEW_ENGINE_REBUILD("enable_fallback_new_engine_rebuild"),
   ENABLE_REPORT_CREATE_ASYNC_TAG("enable_report_create_async_tag"),
   ENABLE_SVG_ASYNC("enable_svg_async"),
   ENABLE_IMAGE_EVENT_REPORT("enable_image_event_report"),

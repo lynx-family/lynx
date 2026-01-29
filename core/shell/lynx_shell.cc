@@ -215,8 +215,8 @@ void LynxShell::BuildEngineActor(
       instance_id_, engine_build_options_.enable_unified_pipeline_,
       page_options_);
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
-  if (engine_build_options_.loader_ != nullptr) {
-    tasm->SetLazyBundleLoader(engine_build_options_.loader_);
+  if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
+    tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
   }
   if (engine_build_options_.white_board_ == nullptr) {
     engine_build_options_.white_board_ = std::make_shared<tasm::WhiteBoard>();
@@ -243,9 +243,11 @@ void LynxShell::OnLynxEngineBuilt(
   if (timing_mediator_) {
     timing_mediator_->SetEngineActor(engine_actor_);
   }
-  if (engine_build_options_.loader_ != nullptr) {
-    engine_build_options_.loader_->SetEngineActor(engine_actor_);
+  if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
+    engine_build_options_.lazy_bundle_loader_->SetEngineActor(engine_actor_);
   }
+  list_engine_proxy_ =
+      std::make_shared<shell::ListEngineProxyImpl>(engine_actor_);
 
   engine_actor_->Impl()->SetOperationQueue(tasm_operation_queue_);
   prop_bundle_creator_ = std::move(prop_bundle_creator);
@@ -304,7 +306,35 @@ void LynxShell::OnLynxEngineBuilt(
         };
     tasm_mediator_->SetInvokeUIMethodFunction(std::move(invoke_ui_method_func));
   }
+  if (runtime_actor_) {
+    tasm_mediator_->SetRuntimeActor(runtime_actor_);
+    layout_mediator_->SetRuntimeActor(runtime_actor_);
+    runtime_actor_->ActAsync(
+        [facade_actor = facade_actor_, engine_actor = engine_actor_,
+         card_cached_data_mgr = card_cached_data_mgr_](auto& runtime) mutable {
+          if (!runtime) {
+            return;
+          }
+          auto* delegate = runtime->GetDelegate();
+          if (!delegate) {
+            return;
+          }
+          static_cast<BTSRuntimeMediator*>(delegate)->AttachToLynxShell(
+              facade_actor, engine_actor, card_cached_data_mgr);
+        });
+  }
+
   SetPageOptions(page_options_);
+}
+
+void LynxShell::RebuildLynxEngine(
+    std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> layout_context,
+    std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context,
+    std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
+    std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager) {
+  BuildLynxEngine(std::move(tasm_platform_invoker), std::move(layout_context),
+                  std::move(painting_context));
+  OnLynxEngineBuilt(prop_bundle_creator_, std::move(native_module_manager));
 }
 
 void LynxShell::Destroy() {
@@ -406,10 +436,6 @@ void LynxShell::InitRuntime(
                 ctx.event()->add_debug_annotations(kTaskName,
                                                    kJSTaskInitRuntime);
               });
-  // init list_engine_proxy
-  list_engine_proxy_ =
-      std::make_shared<shell::ListEngineProxyImpl>(engine_actor_);
-
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
   engine_actor_->ActLite(

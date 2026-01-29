@@ -76,7 +76,7 @@ struct ShellOption {
 
 struct LynxEngineBuildOptions {
   tasm::LynxEnvConfig lynx_env_config_{0, 0, 1, 1};
-  std::shared_ptr<lynx::tasm::LazyBundleLoader> loader_;
+  std::shared_ptr<lynx::tasm::LazyBundleLoader> lazy_bundle_loader_;
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board_;
   std::shared_ptr<base::VSyncMonitor> element_manager_vsync_monitor_;
   bool enable_new_animator_{false};
@@ -93,6 +93,13 @@ struct LynxEngineBuildOptions {
 class LynxShell {
  public:
   virtual ~LynxShell();
+
+  void RebuildLynxEngine(
+      std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> layout_context,
+      std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context,
+      std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
+      std::unique_ptr<lynx::pub::LynxNativeModuleManager>
+          native_module_manager);
 
   // This is needed by RuntimeStandaloneHelper to create LynxRuntime
   // outside LynxShell. Don't use this elsewhere.
