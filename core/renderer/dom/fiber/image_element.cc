@@ -54,6 +54,8 @@ void ImageElement::ProcessAttributeForLayoutInElement(
     const base::String& key, const lepus::Value& value) {
   if (key.IsEqual(kImageAutoSize)) {
     has_auto_size_ = value.Bool();
+  } else if (key.IsEqual(kSrc)) {
+    url_ = value.String();
   }
 }
 

@@ -21,6 +21,7 @@ import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
+import com.lynx.tasm.service.ILynxTextService.Page;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Stack;
@@ -96,6 +97,13 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   private void drawText(Canvas canvas, int textId) {
+    if (mContext.getLynxContext() != null && mContext.getLynxContext().isTextServiceModeOn()) {
+      drawTextForTextra(canvas, textId);
+      return;
+    }
+    if (mTextMeasurer == null) {
+      return;
+    }
     TextUpdateBundle textBundle = (TextUpdateBundle) mTextMeasurer.takeTextLayout(textId);
     if (textBundle == null) {
       return;
@@ -113,6 +121,14 @@ public class DisplayListApplier implements Drawable.Callback {
       }
       textLayout.draw(canvas);
     }
+  }
+
+  private void drawTextForTextra(Canvas canvas, int textId) {
+    Page page = mContext.getTextBundle(textId);
+    if (page == null) {
+      return;
+    }
+    page.drawPageCanvas(canvas);
   }
 
   private void updateInlineImageSpans(TextUpdateBundle textBundle) {

@@ -372,7 +372,7 @@ void TextLayoutMock::AppendImageProps(ImageElement* image_element, size_t start,
 
   // src
   props->AddProp(kPropImageSrc);
-  props->AddProp(image_element->src());
+  props->AddProp(image_element->src().c_str());
 
   // mode
   // TBD

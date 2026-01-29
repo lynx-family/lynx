@@ -31,11 +31,40 @@ class InlineView {
   virtual MeasureResult Measure(const MeasureParams &params) = 0;
   virtual void Align(float x, float y) = 0;
 };
+
+struct Radius {
+  float top_left;
+  int top_left_type;  // 0:number, 1:percentage
+  float top_right;
+  int top_right_type;
+  float bottom_left;
+  int bottom_left_type;
+  float bottom_right;
+  int bottom_right_type;
+};
+
+struct VerticalAlign {
+  int vertical_align;
+  float vertical_align_length;
+};
+
+struct ImageProps {
+  float width;
+  float height;
+  int margin_left;
+  int margin_top;
+  int margin_right;
+  int margin_bottom;
+  Radius radius;
+  VerticalAlign vertical_align;
+};
+
 class ParagraphListener {
  public:
   virtual ~ParagraphListener() = 0;
   virtual void MarkParagraphDirty() = 0;
 };
+
 class ParagraphBuilder {
  public:
   virtual ~ParagraphBuilder() = default;
@@ -46,22 +75,24 @@ class ParagraphBuilder {
   virtual void PopTextStyle() = 0;
   virtual void SetTextStyle(TextPropertyKeyID key, void *value,
                             size_t length) = 0;
-  virtual void AddText(const char *text) = 0;
+  virtual void AddText(const char *text, size_t length) = 0;
   virtual void AddInlineView(std::unique_ptr<InlineView> inline_view) = 0;
-  virtual void AddImage(const char *src) = 0;
+  virtual void AddImage(const char *src, size_t length) = 0;
   virtual void SetPlaceHolderStyle(TextPropertyKeyID key, void *value,
                                    size_t length) = 0;
   virtual Paragraph *BuildParagraph() = 0;
 };
+
 class TextLayoutAPI {
  public:
-  ParagraphBuilder *CreateParagraphBuilder();
-  void DestroyParagraphBuilder(ParagraphBuilder *builder);
-  MeasureResult MeasureParagraph(Paragraph *paragraph);
-  void AlignParagraph(Paragraph *paragraph, float x, float y);
-  Page *GetPage(Paragraph *paragraph);
-  void DestroyPage(Page *page);
-  void DestroyParagraph(Paragraph *paragraph);
+  virtual ParagraphBuilder *CreateParagraphBuilder() = 0;
+  virtual void DestroyParagraphBuilder(ParagraphBuilder *builder) = 0;
+  virtual MeasureResult MeasureParagraph(Paragraph *paragraph,
+                                         MeasureParams params) = 0;
+  virtual void AlignParagraph(Paragraph *paragraph, float x, float y) = 0;
+  virtual Page *GetPage(Paragraph *paragraph) = 0;
+  virtual void DestroyPage(Page *page) = 0;
+  virtual void DestroyParagraph(Paragraph *paragraph) = 0;
 };
 }  // namespace text
 }  // namespace tasm

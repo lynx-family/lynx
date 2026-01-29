@@ -18,6 +18,19 @@ void TextFragmentBehavior::CreatePlatformRenderer(
   }
 }
 
+TextFragmentBehavior::~TextFragmentBehavior() {
+  if (painting_context_ && fragment_) {
+    painting_context_->DestroyTextBundle(fragment_->id());
+  }
+}
+
+void TextFragmentBehavior::OnUpdateLayout(
+    const LayoutInfoForDraw& layout_result) {
+  if (painting_context_ && fragment_) {
+    painting_context_->UpdateTextBundle(fragment_->id(), text_bundle_);
+  }
+}
+
 void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
   const auto& layout_info = fragment_->LayoutResult();
   builder.Begin(fragment_->id(),
