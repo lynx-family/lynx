@@ -68,7 +68,10 @@ rapidjson::Value DumpUITreeLayoutRecursively(LynxUI* root, rapidjson::Document& 
   value.SetObject();
 
   const char* className = class_getName([root class]);
+  NSString* tagName = root.tagName ?: @"";
+  const char* tagNameStr = [tagName UTF8String];
   value.AddMember("name", rapidjson::Value(className, allocator), allocator);
+  value.AddMember("tagName", rapidjson::Value(tagNameStr, allocator), allocator);
   value.AddMember("id", rapidjson::Value(static_cast<int64_t>(root.sign)), allocator);
 
   rapidjson::Value frame_array;
