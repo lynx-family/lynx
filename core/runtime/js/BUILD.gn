@@ -1,10 +1,144 @@
 #Copyright 2026 The Lynx Authors.All rights reserved.
 #Licensed under the Apache License Version 2.0 that can be found in the
 #LICENSE file in the root directory of this source tree.
+import("//${lynx_dir}/build_overrides/bindings_files.gni")
 import("../../../testing/test.gni")
 import("../../Lynx.gni")
+import("jsi/jsc/jsc.gni")
 
-# TODO(liyanbo.monster): move other files into this gn.
+lynx_core_source_set("js_common") {
+  sources = [
+    "js_bundle.cc",
+    "js_bundle.h",
+    "js_bundle_holder.h",
+  ]
+  deps = [ "../../../base/src:base_log_headers" ]
+}
+
+js_sources = [
+  "bindings/modules/lynx_jsi_module.cc",
+  "bindings/modules/lynx_jsi_module.h",
+  "bindings/modules/lynx_jsi_module_binding.cc",
+  "bindings/modules/lynx_jsi_module_binding.h",
+  "bindings/modules/lynx_jsi_module_callback.cc",
+  "bindings/modules/lynx_jsi_module_callback.h",
+  "bindings/modules/lynx_module.cc",
+  "bindings/modules/lynx_module.h",
+  "bindings/modules/lynx_module_manager.cc",
+  "bindings/modules/lynx_module_manager.h",
+  "bindings/modules/lynx_module_timing.cc",
+  "bindings/modules/lynx_module_timing.h",
+  "bindings/modules/module_delegate.h",
+  "bindings/modules/module_interceptor.cc",
+  "bindings/modules/module_interceptor.h",
+  "js_context_wrapper.cc",
+  "js_context_wrapper.h",
+  "js_executor.cc",
+  "js_executor.h",
+  "lynx_api_handler.cc",
+  "lynx_api_handler.h",
+  "lynx_runtime_helper.h",
+  "runtime_constant.h",
+  "runtime_lifecycle_listener_delegate.h",
+  "runtime_lifecycle_observer_impl.cc",
+  "runtime_lifecycle_observer_impl.h",
+  "runtime_manager.cc",
+  "runtime_manager.h",
+  "template_delegate.h",
+  "update_data_type.h",
+]
+
+if (!enable_unittests) {
+  if (is_apple && !is_oliver_node_lynx) {
+    js_sources += jsc_sources
+    if (!is_mac || !desktop_enable_embedder_layer) {
+      js_sources += [
+                      "../lepus/bindings/ios/lynx_lepus_module_darwin.h",
+                      "../lepus/bindings/ios/lynx_lepus_module_darwin.mm",
+                      "bindings/modules/ios/common_module_creator.h",
+                      "bindings/modules/ios/common_module_creator.mm",
+                      "bindings/modules/ios/lynx_module_creator_darwin.h",
+                      "bindings/modules/ios/lynx_module_darwin.h",
+                      "bindings/modules/ios/lynx_module_darwin.mm",
+                      "bindings/modules/ios/lynx_module_interceptor.h",
+                      "bindings/modules/ios/module_factory_darwin.h",
+                      "bindings/modules/ios/module_factory_darwin.mm",
+                      "bindings/modules/ios/shared_module_creator.h",
+                      "bindings/modules/ios/shared_module_creator.mm",
+                    ] + jsbridge_extend_shared_sources
+    }
+  } else if (is_harmony) {
+    js_sources += [
+      "bindings/modules/harmony/module_factory_harmony.cc",
+      "bindings/modules/harmony/module_factory_harmony.h",
+      "bindings/modules/harmony/native_module_harmony.cc",
+      "bindings/modules/harmony/native_module_harmony.h",
+      "bindings/modules/harmony/platform_module_manager.cc",
+      "bindings/modules/harmony/platform_module_manager.h",
+    ]
+  }
+}
+
+if (enable_unittests) {
+  if (is_mac) {
+    js_sources += jsc_sources
+  }
+}
+
+lynx_core_source_set("js") {
+  sources = js_sources
+
+  deps = [
+    ":utils",
+    "../../../third_party/rapidjson",
+    "../common:common",
+    "../common:reporter",
+    "../common/bindings/modules:native_modules",
+    "../profile",
+    "../profile/lepusng:lepusng_profile",
+    "../profile/quickjs:quickjs_profile",
+    "bindings",
+    "bindings/interceptor:interceptor_factory",
+    "jsi",
+    "//third_party/modp_b64",
+  ]
+
+  if (is_android || is_ios || is_win || is_mac || enable_unittests) {
+    deps += [ "../profile/v8:v8_profile" ]
+  }
+
+  public_deps = [ "jsi/quickjs" ]
+  if (enable_napi_binding) {
+    public_deps += [ "../common/napi:napi_binding_core" ]
+    deps += [ "napi:napi_loader_js" ]
+  }
+  if (is_android || is_ios) {
+    defines = [
+      "JS_SHARED_LIBRARY",
+      "EMSCRIPTEN",
+      "CONFIG_VERSION=\"2019-07-09\"",
+      "LYNX_DEV",
+      "LYNX_SIMPLIFY=0",
+    ]
+
+    if (is_debug) {
+      defines += [ "DEBUG_MEMORY" ]
+    }
+
+    configs = [ "//build/config/compiler:no_chromium_code" ]
+    exclude_configs = [ "//build/config/compiler:chromium_code" ]
+
+    cflags = [ "-Wno-unused-variable" ]
+
+    if (is_android) {
+      public_deps += [ "bindings/modules/android:modules_android_src" ]
+    }
+    if (enable_napi_binding) {
+      public_deps += [ "../common/napi:napi_binding_core" ]
+    }
+  }
+}
+
 lynx_core_source_set("utils") {
   sources = [
     "jsi_object_wrapper.cc",

@@ -23,7 +23,7 @@ group("lynx_test") {
     "../../core/renderer/starlight:starlight_tests",
     "../../core/renderer/tasm/react/android/mapbuffer:mapbuffer_tests",
     "../../core/renderer/ui_component/list:internal_list_container_testset_group",
-    "../../core/runtime:jsbridge_tests_exec",
+    "../../core/runtime:runtime_tests_exec",
     "../../core/runtime/common/bindings/event:runtime_common_unittests_exec",
     "../../core/runtime/common/bindings/resource:resource_common_unittests_exec",
     "../../core/runtime/js/bindings/event:js_runtime_unittests_exec",
