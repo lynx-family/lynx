@@ -750,6 +750,10 @@ void BaseView::SetCursor(const std::vector<std::string>& vec) {
   auto* mouse_region_manager = page_view_->mouse_region_manager();
   if (mouse_region_manager) {
     mouse_region_manager->AddCursorHolder(this);
+    // Force cursor update if mouse is currently hovering over this view
+    if (is_mouse_hover_) {
+      mouse_region_manager->ForceUpdateCursor();
+    }
   }
 }
 
@@ -832,6 +836,10 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
   auto* mouse_region_manager = page_view_->mouse_region_manager();
   if (mouse_region_manager) {
     mouse_region_manager->AddCursorHolder(this);
+    // Force cursor update if mouse is currently hovering over this view
+    if (is_mouse_hover_) {
+      mouse_region_manager->ForceUpdateCursor();
+    }
   }
 }
 
