@@ -146,6 +146,10 @@ inline constexpr const char* const RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH =
 inline constexpr const char* const RUNTIME_CALL_JS_API_CALLBACK =
     "LynxRuntime::CallJSApiCallback";
 /**
+ * @trace_description: Execute BTS callbacks on the background scripting thread.
+ * They are typically triggered by scenarios such as: UI operation result
+ * returns, component update or loading completion, resource loading status
+ * notifications, and event handling responses, etc.
  * @history_name{CallJSApiCallbackWithValue}
  */
 inline constexpr const char* const RUNTIME_CALL_JS_API_CALLBACK_WITH_VALUE =
