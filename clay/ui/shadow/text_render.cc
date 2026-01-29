@@ -448,11 +448,9 @@ bool TextRender::CheckTextFullyDisplayed(
   bool height_has_overflow =
       constraint.height_mode != TextMeasureMode::kIndefinite &&
       context_measure->measured_height_ > constraint.height;
-  bool width_has_overflow =
-      cache_paragraph_->GetMinIntrinsicWidth() > constraint.width;
   bool exceed_maxlines = measure_node_->text_style_->max_lines.has_value() &&
                          cache_paragraph_->DidExceedMaxLines();
-  return !(exceed_maxlines || height_has_overflow || width_has_overflow);
+  return !(exceed_maxlines || height_has_overflow);
 }
 
 void TextRender::TryShrinkFontSize(
