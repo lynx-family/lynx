@@ -163,8 +163,6 @@ public class AndroidView
   public boolean dispatchTouchEvent(MotionEvent event) {
     if (mPanInterceptAncestors) {
       getParent().requestDisallowInterceptTouchEvent(true);
-    } else {
-      getParent().requestDisallowInterceptTouchEvent(false);
     }
     return super.dispatchTouchEvent(event);
   }
