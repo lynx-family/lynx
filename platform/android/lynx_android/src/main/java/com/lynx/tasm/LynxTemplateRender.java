@@ -870,6 +870,26 @@ public class LynxTemplateRender
     }
   }
 
+  private LayoutTick createLayoutTickForCurrentStrategy() {
+    if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI) {
+      mViewLayoutTick = new ViewLayoutTick(mBodyView);
+      return mViewLayoutTick;
+    }
+    return new ChoreographerLayoutTick(mLynxContext);
+  }
+
+  private TasmPlatformInvoker tasmPlatformInvoker() {
+    TasmPlatformInvoker tasmPlatformInvoker;
+    if (mTasmPlatformInvoker != null && mTasmPlatformInvoker.get() != null) {
+      tasmPlatformInvoker = mTasmPlatformInvoker.get();
+      tasmPlatformInvoker.setNativeFacade(mNativeFacade);
+    } else {
+      tasmPlatformInvoker = new TasmPlatformInvoker(mNativeFacade);
+      mTasmPlatformInvoker = new WeakReference<>(tasmPlatformInvoker);
+    }
+    return tasmPlatformInvoker;
+  }
+
   private void createLynxEngine(final int lastInstanceId) {
     if (!checkIfEnvPrepared()) {
       return;
@@ -878,15 +898,7 @@ public class LynxTemplateRender
       return;
     }
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
-    // recreate
-    LayoutTick layoutTick;
-
-    if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI) {
-      mViewLayoutTick = new ViewLayoutTick(mBodyView);
-      layoutTick = mViewLayoutTick;
-    } else {
-      layoutTick = new ChoreographerLayoutTick(mLynxContext);
-    }
+    LayoutTick layoutTick = createLayoutTickForCurrentStrategy();
 
     LLog.i(TAG,
         "mEnableGenericResourceFetcher: " + mEnableGenericResourceFetcher + " render: " + this);
@@ -913,14 +925,7 @@ public class LynxTemplateRender
     lynxUIRenderer.onCreateTemplateRenderer(mLynxContext, mPageLoadListener,
         mThreadStrategyForRendering, mLynxViewConfigProvider.getBehaviorRegistry(), layoutTick);
 
-    TasmPlatformInvoker tasmPlatformInvoker;
-    if (mTasmPlatformInvoker != null && mTasmPlatformInvoker.get() != null) {
-      tasmPlatformInvoker = mTasmPlatformInvoker.get();
-      tasmPlatformInvoker.setNativeFacade(mNativeFacade);
-    } else {
-      tasmPlatformInvoker = new TasmPlatformInvoker(mNativeFacade);
-      mTasmPlatformInvoker = new WeakReference<>(tasmPlatformInvoker);
-    }
+    TasmPlatformInvoker tasmPlatformInvoker = tasmPlatformInvoker();
     boolean enableVSyncAligned = mLynxViewConfigProvider.isEnableVSyncAlignedMessageLoop()
         || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     setUpMainThreadModuleFactory();
@@ -1010,24 +1015,18 @@ public class LynxTemplateRender
         mDevTool.onRegisterModule(mModuleFactory);
       }
       mLynxContext.setJSProxy(mJSProxy);
-    } else {
-      mEngineProxy = new LynxEngineProxy(mNativePtr);
-      if (mLynxContext == null) {
-        LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
-      } else {
-        mLayoutProxy = new LynxLayoutProxy(mNativePtr);
-        mLynxContext.setLayoutProxy(mLayoutProxy);
-      }
     }
-    mLynxContext.setEventEmitter(new LynxEventEmitter(mEngineProxy));
+
     mIntersectionObserverManager = new LynxIntersectionObserverManager(mLynxContext, mJSProxy);
     mLynxContext.setIntersectionObserverManager(mIntersectionObserverManager);
-    EventEmitter eventEmitter = mLynxContext.getEventEmitter();
-    if (eventEmitter != null) {
-      eventEmitter.addObserver(mIntersectionObserverManager);
-      eventEmitter.registerEventReporter(mNativeFacade);
-      eventEmitter.registerEventFallback(this);
-    }
+
+    initEngineAndLayoutProxies();
+
+    EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
+    eventEmitter.addObserver(mIntersectionObserverManager);
+    eventEmitter.registerEventReporter(mNativeFacade);
+    eventEmitter.registerEventFallback(this);
+    mLynxContext.setEventEmitter(eventEmitter);
 
     setThemeInternal(mTheme);
 
@@ -2931,7 +2930,7 @@ public class LynxTemplateRender
     }
 
     int lastInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
-    if (mNativePtr != 0) {
+    if (mNativePtr != 0 && !LynxEnv.inst().enableFallbackNewEngineRebuild()) {
       destroyLynxEngine();
     }
 
@@ -2955,7 +2954,30 @@ public class LynxTemplateRender
     }
     mThreadStrategyForRendering = enable_async ? ThreadStrategyForRendering.MOST_ON_TASM
                                                : ThreadStrategyForRendering.ALL_ON_UI;
-    createLynxEngine(lastInstanceId);
+
+    if (mNativePtr != 0 && LynxEnv.inst().enableFallbackNewEngineRebuild()) {
+      TasmPlatformInvoker tasmPlatformInvoker = tasmPlatformInvoker();
+      LayoutTick layoutTick = createLayoutTickForCurrentStrategy();
+      mLynxUIRender.onCreateTemplateRenderer(mLynxContext, mPageLoadListener,
+          mThreadStrategyForRendering, mLynxViewConfigProvider.getBehaviorRegistry(), layoutTick);
+
+      nativeRebuildLynxEngine(mNativePtr, mNativeLifecycle, mLynxUIRender.getUIDelegatePtr(),
+          tasmPlatformInvoker, mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
+      mLynxUIRender.attachNativeFacade(mNativeFacade);
+      mLynxUIRender.setLynxEngineForPlatformContextRef(mNativePtr);
+
+      initEngineAndLayoutProxies();
+
+      EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
+      eventEmitter.addObserver(mIntersectionObserverManager);
+      eventEmitter.registerEventReporter(mNativeFacade);
+      eventEmitter.registerEventFallback(this);
+      mLynxContext.setEventEmitter(eventEmitter);
+
+      nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
+    } else {
+      createLynxEngine(lastInstanceId);
+    }
     updateViewport(tempPreWidthMeasureSpec, tempPreHeightMeasureSpec);
 
     mLynxContext.markFallbackProcess(true);
@@ -3718,15 +3740,6 @@ public class LynxTemplateRender
       LLog.i(TAG, "set JSGroupThreadName to lynx context: " + jsGroupThreadName);
       context.setJSGroupThreadName(jsGroupThreadName);
     }
-    mEngineProxy = new LynxEngineProxy(mNativePtr);
-    mNativeFacade.setEngineProxy(mEngineProxy);
-
-    if (mLynxContext == null) {
-      LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
-    } else {
-      mLayoutProxy = new LynxLayoutProxy(mNativePtr);
-      mLynxContext.setLayoutProxy(mLayoutProxy);
-    }
   }
 
   public LynxEngineProxy getEngineProxy() {
@@ -3762,11 +3775,17 @@ public class LynxTemplateRender
       LLog.i(TAG, "set JSGroupThreadName to lynx context: " + jsGroupThreadName);
       weakContext.get().setJSGroupThreadName(jsGroupThreadName);
     }
+  }
+
+  private void initEngineAndLayoutProxies() {
     mEngineProxy = new LynxEngineProxy(mNativePtr);
     mNativeFacade.setEngineProxy(mEngineProxy);
-
-    mLayoutProxy = new LynxLayoutProxy(mNativePtr);
-    mLynxContext.setLayoutProxy(mLayoutProxy);
+    if (mLynxContext == null) {
+      LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
+    } else {
+      mLayoutProxy = new LynxLayoutProxy(mNativePtr);
+      mLynxContext.setLayoutProxy(mLayoutProxy);
+    }
   }
 
   // TODO(hexionghui): This interface will be deleted later. Since LynxSendCustomEventRunnable
@@ -4171,6 +4190,9 @@ public class LynxTemplateRender
       boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
       boolean enableUnifiedPipeline, int embeddedMode, boolean has_logic_executor,
       boolean debuggable, long enginePtr, Object moduleFactory);
+
+  private static native void nativeRebuildLynxEngine(
+      long ptr, long lifecycle, long uiDelegate, Object tasmPlatformInvoker, Object moduleFactory);
 
   private static native void nativeDestroy(long ptr);
 

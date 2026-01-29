@@ -248,7 +248,7 @@ LynxShell* LynxShellBuilder::build() {
   shell->runtime_actor_ = runtime_actor_;
 
   shell->engine_build_options_.lynx_env_config_ = lynx_env_config_;
-  shell->engine_build_options_.loader_ = loader_;
+  shell->engine_build_options_.lazy_bundle_loader_ = loader_;
   shell->engine_build_options_.white_board_ = white_board_;
   shell->engine_build_options_.element_manager_vsync_monitor_ =
       element_manager_vsync_monitor_;

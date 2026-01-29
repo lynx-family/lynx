@@ -914,6 +914,11 @@ public class LynxEnv {
     return getBooleanFromExternalEnv(LynxEnvKey.FORCE_LAYOUT_ON_BACKGROUND_THREAD, false);
   }
 
+  @AnyThread
+  public boolean enableFallbackNewEngineRebuild() {
+    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_FALLBACK_NEW_ENGINE_REBUILD, true);
+  }
+
   public boolean isLayoutOnlyEnabled() {
     return mLayoutOnlyEnabled;
   }

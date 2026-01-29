@@ -357,6 +357,32 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
           .build());
 }
 
+void RebuildLynxEngine(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                       jlong ui_delegate_ptr, jobject tasm_platform_invoker,
+                       jobject module_factory) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    return;
+  }
+  auto* ui_delegate =
+      reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
+  std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager;
+  if (module_factory != nullptr) {
+    native_module_manager =
+        std::make_unique<lynx::pub::LynxNativeModuleManager>();
+    native_module_manager->SetPlatformModuleFactory(
+        std::make_shared<lynx::runtime::js::ModuleFactoryAndroid>(
+            env, module_factory));
+  }
+  reinterpret_cast<LynxShell*>(ptr)->RebuildLynxEngine(
+      ui_delegate->CreateLayoutContext(), ui_delegate->CreatePaintingContext(),
+      std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
+          env, tasm_platform_invoker),
+      std::move(native_module_manager));
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
 void Destroy(JNIEnv* env, jclass jcaller, jlong ptr) {
   delete reinterpret_cast<LynxShell*>(ptr);
 }
