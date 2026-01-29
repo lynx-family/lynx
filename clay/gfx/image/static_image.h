@@ -25,14 +25,6 @@ class StaticImage : public BaseImage {
   fml::RefPtr<GraphicsImage> GetGraphicsImage() const override {
     return gpu_image_.object();
   }
-  int GetWidth() const override {
-    return gpu_image_.object() ? gpu_image_.object()->width()
-                               : BaseImage::GetWidth();
-  }
-  int GetHeight() const override {
-    return gpu_image_.object() ? gpu_image_.object()->height()
-                               : BaseImage::GetHeight();
-  }
   void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) override;
 
  private:
