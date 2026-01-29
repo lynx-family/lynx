@@ -153,8 +153,15 @@ def generate_objc_implementation(class_name, definition, file_imports):
             # the type of input param is NSDictionary*, so the type of value is id _Null_unspecified.
             # therefore, we have to process the value which is not a object.
             if prop_type is not None:
+                converter_import = f'#import "LynxPerformanceEntryConverter.h"'
+                if converter_import not in file_imports:
+                    file_imports.append(converter_import)
                 if (prop_type == 'BOOL'):
-                    objc_implementation += f'        self.{prop} = [dictionary[@"{prop}"] boolValue];\n'
+                    objc_implementation += f'        self.{prop} = [LynxPerformanceEntryConverter getBooleanObject:dictionary name:@"{prop}" defaultValue:{default_value}];\n'
+                elif (prop_type == 'NSNumber*'):
+                    objc_implementation += f'        self.{prop} = [LynxPerformanceEntryConverter getNumberObject:dictionary name:@"{prop}" defaultValue:{default_value}];\n'
+                elif (prop_type == 'NSString*'):
+                    objc_implementation += f'        self.{prop} = [LynxPerformanceEntryConverter getStringObject:dictionary name:@"{prop}" defaultValue:{default_value}];\n'
                 else:
                     objc_implementation += f'        self.{prop} = dictionary[@"{prop}"]?: {default_value};\n'
     # If this is a base class, add a rawDictionary to store the original data.
@@ -176,6 +183,10 @@ def generate_objc_converter_header():
                   '#import "LynxPerformanceEntry.h"\n\n' \
                   '@interface LynxPerformanceEntryConverter : NSObject\n' \
                   '+ (LynxPerformanceEntry *)makePerformanceEntry:(NSDictionary *)dict;\n' \
+                  '+ (NSNumber *)getNumberObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(NSNumber *)defaultValue;\n' \
+                  '+ (NSString *)getStringObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(NSString *)defaultValue;\n' \
+                  '+ (BOOL)getBooleanObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(BOOL)defaultValue;\n' \
+                  '+ (NSDictionary *)getDictionaryObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(NSDictionary *)defaultValue;\n' \
                   '@end\n'
 
     return header_code
@@ -185,6 +196,56 @@ def generate_objc_converter_header():
 # @file_imports is a list, used to store import statements.
 def generate_objc_converter(entry_mapping, file_imports):
     oc_code = '@implementation LynxPerformanceEntryConverter\n' \
+              '+ (NSNumber *)getNumberObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(NSNumber *)defaultValue {\n' \
+              '    id result = dict[name];\n' \
+              '    if (!result) {\n' \
+              '        return defaultValue;\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSNumber class]]) {\n' \
+              '        return (NSNumber *)result;\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSString class]]) {\n' \
+              '        NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];\n' \
+              '        return [formatter numberFromString:(NSString *)result] ?: defaultValue;\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSNumber class]]) {\n' \
+              '        return (NSNumber *)result;\n' \
+              '    }\n' \
+              '    return defaultValue;\n' \
+              '}\n' \
+              '+ (NSString *)getStringObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(NSString *)defaultValue {\n' \
+              '    id result = dict[name];\n' \
+              '    if (!result) {\n' \
+              '        return defaultValue;\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSString class]]) {\n' \
+              '        return (NSString *)result;\n' \
+              '    }\n' \
+              '    return [result description];\n' \
+              '}\n' \
+              '+ (BOOL)getBooleanObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(BOOL)defaultValue {\n' \
+              '    id result = dict[name];\n' \
+              '    if (!result) {\n' \
+              '        return defaultValue;\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSNumber class]]) {\n' \
+              '        return [(NSNumber *)result boolValue];\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSString class]]) {\n' \
+              '        return [((NSString *)result) boolValue];\n' \
+              '    }\n' \
+              '    return defaultValue;\n' \
+              '}\n' \
+              '+ (NSDictionary *)getDictionaryObject:(NSDictionary *)dict name:(NSString *)name defaultValue:(NSDictionary *)defaultValue {\n' \
+              '    id result = dict[name];\n' \
+              '    if (!result) {\n' \
+              '        return defaultValue;\n' \
+              '    }\n' \
+              '    if ([result isKindOfClass:[NSDictionary class]]) {\n' \
+              '        return (NSDictionary *)result;\n' \
+              '    }\n' \
+              '    return defaultValue;\n' \
+              '}\n' \
               '+ (LynxPerformanceEntry *)makePerformanceEntry:(NSDictionary *)dict {\n' \
               '    NSString *name = dict[@"name"];\n' \
               '    NSString *type = dict[@"entryType"];\n' \
