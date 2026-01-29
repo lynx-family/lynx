@@ -13,7 +13,7 @@ namespace lynx::tasm {
 
 void ImageFragmentBehavior::OnUpdateLayout(
     const LayoutInfoForDraw& layout_info) {
-  const char* current_src =
+  const auto& current_src =
       static_cast<ImageElement*>(fragment_->element())->src();
 
   if (image_url_ != current_src) {

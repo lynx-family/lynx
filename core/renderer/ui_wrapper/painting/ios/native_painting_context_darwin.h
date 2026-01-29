@@ -101,6 +101,10 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void UpdateDisplayList(int id, DisplayList display_list) override;
 
+  void UpdateTextBundle(int id, intptr_t bundle) override;
+
+  void DestroyTextBundle(int id) override;
+
   void CreateImage(int id, base::String src, float width, float height) override;
 
 #pragma endregion  // NativePaintingContext

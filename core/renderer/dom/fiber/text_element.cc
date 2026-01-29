@@ -280,5 +280,12 @@ void TextElement::SetupFragmentBehavior(Fragment* fragment) {
   fragment->SetBehavior(std::make_unique<TextFragmentBehavior>(fragment));
 }
 
+void TextElement::SetTextBundle(intptr_t text_bundle) {
+  auto* fragment = fragment_impl();
+  if (fragment) {
+    fragment->SetTextBundle(text_bundle);
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx

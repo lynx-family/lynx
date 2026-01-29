@@ -31,6 +31,8 @@ class FragmentBehavior {
 
   NativePaintingContext* painting_context() { return painting_context_; }
 
+  virtual void SetTextBundle(intptr_t bundle) {}
+
  protected:
   // Used for other painting related operations.
   Fragment* fragment_;

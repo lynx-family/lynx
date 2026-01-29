@@ -22,8 +22,11 @@ import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.service.ILynxTextService.Page;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
   final private static String TAG = "PlatformRendererContext";
@@ -52,6 +55,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private long mNativePtr = 0;
   private TextLayout mTextLayout;
   private boolean mDestroyed = false;
+
+  private ConcurrentHashMap<Integer, Object> mExtraDatas = new ConcurrentHashMap<>();
 
   // TextMeasurer instance for text measurement functionality
   private TextMeasurer mTextMeasurer = null;
@@ -308,6 +313,33 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (rootView != null) {
       rootView.obtainImageAccordingToNodeIndex(sign);
     }
+  }
+
+  Page getTextBundle(int sign) {
+    return (Page) mExtraDatas.get(sign);
+  }
+
+  @CalledByNative
+  public void updateTextBundle(int sign, long textBundle) {
+    // Update the text layout bundle for the specified sign
+    Page page = mContext.getTextService().createPage(textBundle);
+    if (page != null) {
+      mExtraDatas.put(sign, page);
+    }
+  }
+
+  @CalledByNative
+  public void destroyTextBundle(final int sign) {
+    // Destroy the text layout bundle for the specified sign
+    UIThreadUtils.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        Page page = (Page) mExtraDatas.remove(sign);
+        if (page != null) {
+          page.destroy();
+        }
+      }
+    });
   }
 
   @CalledByNative

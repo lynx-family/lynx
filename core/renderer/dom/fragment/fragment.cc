@@ -314,6 +314,14 @@ int32_t Fragment::DefineContentBox(DisplayListBuilder& display_list_builder) {
                                           LayoutResult(), display_list_builder);
 }
 
+void Fragment::SetTextBundle(intptr_t bundle) {
+  if (behavior_ == nullptr) {
+    LOGE("Fragment::SetTextBundle failed since behavior_ is null.");
+    return;
+  }
+  behavior_->SetTextBundle(bundle);
+}
+
 void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
   if (!element()->computed_css_style()->HasBorder()) {
     return;

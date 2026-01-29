@@ -124,6 +124,14 @@ void NativePaintingCtxDarwin::UpdateDisplayList(int id, DisplayList display_list
   });
 }
 
+void NativePaintingCtxDarwin::UpdateTextBundle(int id, intptr_t bundle) {
+  // TBD
+}
+
+void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
+  // TBD
+}
+
 void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height) {
   // TODO: impl this function later.
 }
