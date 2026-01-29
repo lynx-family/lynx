@@ -2979,6 +2979,10 @@ public class LynxPerformanceEntry : NSObject {
 
 public class LynxPerformanceEntryConverter : NSObject {
   public LynxPerformanceEntry * LynxPerformanceEntryConverter::makePerformanceEntry:(NSDictionary *dict);
+  public NSNumber * LynxPerformanceEntryConverter::getNumberObject:name:defaultValue:(NSDictionary *dict,[name] NSString *name,[defaultValue] NSNumber *defaultValue);
+  public NSString * LynxPerformanceEntryConverter::getStringObject:name:defaultValue:(NSDictionary *dict,[name] NSString *name,[defaultValue] NSString *defaultValue);
+  public BOOL LynxPerformanceEntryConverter::getBooleanObject:name:defaultValue:(NSDictionary *dict,[name] NSString *name,[defaultValue] BOOL defaultValue);
+  public NSDictionary * LynxPerformanceEntryConverter::getDictionaryObject:name:defaultValue:(NSDictionary *dict,[name] NSString *name,[defaultValue] NSDictionary *defaultValue);
 }
 
 public class LynxPerformanceMetric : NSObject {
