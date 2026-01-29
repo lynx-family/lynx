@@ -5287,6 +5287,7 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public instancetype LynxViewGroup::initWithUrl:templateFetcher:(NSString *url,[templateFetcher] id< LynxTemplateResourceFetcher > templateFetcher);
   public instancetype LynxViewGroup::initWithUrl:templateBundle:(NSString *url,[templateBundle] LynxTemplateBundle *bundle);
   public bool LynxViewGroup::isTemplateBundleReady();
+  public void LynxViewGroup::destroyForInstance:(NSString *instanceId);
   public int LynxViewGroup::generateNextLynxViewID();
   public void LynxViewGroup::addLynxView:view:(int lynxViewId,[view] LynxView *_Nonnull view);
   public void LynxViewGroup::removeLynxView:(int lynxViewId);
