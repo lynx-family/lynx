@@ -45,6 +45,8 @@ class MouseRegionManager {
 
   void AddCursorHolder(BaseView* holder);
 
+  void ForceUpdateCursor();
+
  private:
   struct MouseRegionRoute {
     EnterCallback on_enter = nullptr;
