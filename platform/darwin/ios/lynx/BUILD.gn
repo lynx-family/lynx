@@ -530,8 +530,9 @@ subspec_target("JSRuntime") {
   framework = "JavaScriptCore"
   deps = [
     "../../../../core/runtime",
-    "../../../../core/runtime:js_common",
     "../../../../core/runtime/common:reporter",
+    "../../../../core/runtime/js:js",
+    "../../../../core/runtime/js:js_common",
     "../../../../core/runtime/js:utils",
     "../../../../core/runtime/js/bindings",
     "../../../../core/runtime/js/bytecode:jscache",

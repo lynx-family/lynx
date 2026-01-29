@@ -2,110 +2,21 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("//${lynx_dir}/build_overrides/bindings_files.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
-import("js/jsi/jsc/jsc.gni")
 
 declare_args() {
   # Enable javascript debug.
   use_js_debug = false
 }
 
-lynx_core_source_set("js_common") {
-  sources = [
-    "js/js_bundle.cc",
-    "js/js_bundle.h",
-    "js/js_bundle_holder.h",
-  ]
-  deps = [ "../../base/src:base_log_headers" ]
-}
-
-# jsbridge_shared_sources
-jsbridge_shared_sources = [
-  "common/lynx_console_helper.h",
-  "js/bindings/modules/lynx_jsi_module.cc",
-  "js/bindings/modules/lynx_jsi_module.h",
-  "js/bindings/modules/lynx_jsi_module_binding.cc",
-  "js/bindings/modules/lynx_jsi_module_binding.h",
-  "js/bindings/modules/lynx_jsi_module_callback.cc",
-  "js/bindings/modules/lynx_jsi_module_callback.h",
-  "js/bindings/modules/lynx_module.cc",
-  "js/bindings/modules/lynx_module.h",
-  "js/bindings/modules/lynx_module_manager.cc",
-  "js/bindings/modules/lynx_module_manager.h",
-  "js/bindings/modules/lynx_module_timing.cc",
-  "js/bindings/modules/lynx_module_timing.h",
-  "js/bindings/modules/module_delegate.h",
-  "js/bindings/modules/module_interceptor.cc",
-  "js/bindings/modules/module_interceptor.h",
-  "js/js_context_wrapper.cc",
-  "js/js_context_wrapper.h",
-  "js/js_executor.cc",
-  "js/js_executor.h",
-  "js/lynx_api_handler.cc",
-  "js/lynx_api_handler.h",
-  "js/lynx_runtime_helper.h",
-  "js/runtime_constant.h",
-  "js/runtime_lifecycle_listener_delegate.h",
-  "js/runtime_lifecycle_observer_impl.cc",
-  "js/runtime_lifecycle_observer_impl.h",
-  "js/runtime_manager.cc",
-  "js/runtime_manager.h",
-  "js/template_delegate.h",
-  "js/update_data_type.h",
-]
-
-if (!enable_unittests) {
-  if (is_apple && !is_oliver_node_lynx) {
-    jsbridge_shared_sources += jsc_sources
-    if (!is_mac || !desktop_enable_embedder_layer) {
-      jsbridge_shared_sources +=
-          [
-            "js/bindings/modules/ios/common_module_creator.h",
-            "js/bindings/modules/ios/common_module_creator.mm",
-            "js/bindings/modules/ios/lynx_module_creator_darwin.h",
-            "js/bindings/modules/ios/lynx_module_darwin.h",
-            "js/bindings/modules/ios/lynx_module_darwin.mm",
-            "js/bindings/modules/ios/lynx_module_interceptor.h",
-            "js/bindings/modules/ios/module_factory_darwin.h",
-            "js/bindings/modules/ios/module_factory_darwin.mm",
-            "js/bindings/modules/ios/shared_module_creator.h",
-            "js/bindings/modules/ios/shared_module_creator.mm",
-            "lepus/bindings/ios/lynx_lepus_module_darwin.h",
-            "lepus/bindings/ios/lynx_lepus_module_darwin.mm",
-          ] + jsbridge_extend_shared_sources
-    }
-  } else if (is_harmony) {
-    jsbridge_shared_sources += [
-      "js/bindings/modules/harmony/module_factory_harmony.cc",
-      "js/bindings/modules/harmony/module_factory_harmony.h",
-      "js/bindings/modules/harmony/native_module_harmony.cc",
-      "js/bindings/modules/harmony/native_module_harmony.h",
-      "js/bindings/modules/harmony/platform_module_manager.cc",
-      "js/bindings/modules/harmony/platform_module_manager.h",
-    ]
-  }
-}
-
-if (enable_unittests) {
-  if (is_mac) {
-    # On MacOS, NapiBindingCore source files create JSC runtime by default.
-    # And consequently all unittests should link with JSC framework and
-    # depends on NapiBindingJSC.
-    jsbridge_shared_sources += jsc_sources
-  }
-}
-
-# jsbridge_shared_sources end
-
 lynx_core_source_set("runtime") {
-  sources = jsbridge_shared_sources
   deps = [
-    ":js_common",
     "../../third_party/rapidjson",
     "common:reporter",
     "common/bindings/modules:native_modules",
+    "js:js",
+    "js:js_common",
     "js:utils",
     "js/bindings",
     "js/bindings/interceptor:interceptor_factory",
@@ -152,7 +63,7 @@ lynx_core_source_set("runtime") {
   }
 }
 
-unittest_set("jsbridge_testset") {
+unittest_set("runtime_testset") {
   sources = [
     "common/bindings/modules/lynx_native_module_manager_unittest.cc",
     "js/bindings/modules/lynx_module_manager_unittest.cc",
@@ -175,7 +86,7 @@ unittest_set("jsbridge_testset") {
   ]
 }
 
-unittest_exec("jsbridge_tests_exec") {
+unittest_exec("runtime_tests_exec") {
   sources = []
-  deps = [ ":jsbridge_testset" ]
+  deps = [ ":runtime_testset" ]
 }

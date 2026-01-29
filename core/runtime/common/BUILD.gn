@@ -13,6 +13,10 @@ lynx_core_source_set("reporter") {
   deps = [ "../../../third_party/rapidjson" ]
 }
 
+lynx_core_source_set("common") {
+  sources = [ "lynx_console_helper.h" ]
+}
+
 unittest_set("reporter_unittests_testset") {
   configs = [
     "../../:lynx_public_config",
