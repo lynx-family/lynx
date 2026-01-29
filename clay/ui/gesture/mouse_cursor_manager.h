@@ -42,7 +42,6 @@ class MouseCursorManager {
 
   const Cursor default_cursor_ = {CursorTypes::kBasic, std::string("")};
 
-  fml::WeakPtr<HitTestTarget> prev_hittest_target_;
   ActiveCursorCallback active_cursor_callback_;
 
   std::map<BaseView*, const Cursor*> cursor_cache_;

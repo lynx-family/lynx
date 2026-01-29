@@ -140,4 +140,8 @@ void MouseRegionManager::AddCursorHolder(BaseView* holder) {
   mouse_cursor_manager_->AddCursorHolder(holder);
 }
 
+void MouseRegionManager::ForceUpdateCursor() {
+  mouse_cursor_manager_->HandleHitTestResult(prev_chain_);
+}
+
 }  // namespace clay

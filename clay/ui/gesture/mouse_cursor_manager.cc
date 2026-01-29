@@ -39,11 +39,6 @@ void MouseCursorManager::HandleHitTestResult(
       continue;
     }
 
-    if (iter == prev_hittest_target_) {
-      break;
-    }
-
-    prev_hittest_target_ = iter;
     if (iter_base_view->IsInternalView()) {
       return;
     }
