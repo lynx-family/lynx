@@ -8220,6 +8220,12 @@ public class com::lynx::tasm::performance::performanceobserver::PerformanceEntry
 
 public class com::lynx::tasm::performance::performanceobserver::PerformanceEntryConverter :  {
   public static PerformanceEntry com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.makePerformanceEntry(ReadableMap map);
+  public static Double com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.getDoubleObject(HashMap< String, Object > propsMap, String name, Double defaultValue);
+  public static Integer com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.getIntegerObject(HashMap< String, Object > propsMap, String name, Integer defaultValue);
+  public static Long com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.getLongObject(HashMap< String, Object > propsMap, String name, Long defaultValue);
+  public static Boolean com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.getBooleanObject(HashMap< String, Object > propsMap, String name, Boolean defaultValue);
+  public static String com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.getStringObject(HashMap< String, Object > propsMap, String name, String defaultValue);
+  public static HashMap< String, Object > com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter.getHashMap(HashMap< String, Object > propsMap, String name, HashMap< String, Object > defaultValue);
 }
 
 public class com::lynx::tasm::performance::performanceobserver::PerformanceMetric :  {

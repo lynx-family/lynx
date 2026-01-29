@@ -52,9 +52,87 @@ def generate_java_converter(entry_mapping, file_imports):
     branch_codes.append(default_branch)
     
     return_code = f'        return entry;\n' \
-                f'    }}\n' \
-                f'}}\n'
-    java_code += '\n'.join(branch_codes) + '\n' + return_code
+                f'    }}\n'
+
+    utility_methods = ''
+    
+    # Template for numeric types
+    types_config = [
+        ('Double', 'doubleValue', 'Double.parseDouble'),
+        ('Integer', 'intValue', 'Integer.parseInt'),
+        ('Long', 'longValue', 'Long.parseLong')
+    ]
+    
+    for type_class, number_method, parse_method in types_config:
+        primitive_cast = type_class.lower() if type_class != 'Integer' else 'int'
+        utility_methods += \
+        f'\n' \
+        f'    static public {type_class} get{type_class}Object(HashMap<String, Object> propsMap, String name, {type_class} defaultValue) {{\n' \
+        f'        Object result = propsMap.get(name);\n' \
+        f'        if (result == null) {{\n' \
+        f'            return defaultValue;\n' \
+        f'        }}\n' \
+        f'        if (result instanceof {type_class}) {{\n' \
+        f'            return ({type_class}) result;\n' \
+        f'        }} else if (result instanceof Number) {{\n' \
+        f'            return ((Number) result).{number_method}();\n' \
+        f'        }} else if (result instanceof String) {{\n' \
+        f'            try {{\n' \
+        f'                return {parse_method}(((String) result));\n' \
+        f'            }} catch (NumberFormatException ignored) {{\n' \
+        f'                return defaultValue;\n' \
+        f'            }}\n' \
+        f'        }} else if (result instanceof Boolean) {{\n' \
+        f'            return ({primitive_cast})((Boolean) result ? 1 : 0);\n' \
+        f'        }}\n' \
+        f'        return defaultValue;\n' \
+        f'    }}\n'
+
+    # Boolean is slightly different
+    utility_methods += \
+    f'\n' \
+    f'    static public Boolean getBooleanObject(HashMap<String, Object> propsMap, String name, Boolean defaultValue) {{\n' \
+    f'        Object result = propsMap.get(name);\n' \
+    f'        if (result == null) {{\n' \
+    f'            return defaultValue;\n' \
+    f'        }}\n' \
+    f'        if (result instanceof Boolean) {{\n' \
+    f'            return (Boolean) result;\n' \
+    f'        }} else if (result instanceof Number) {{\n' \
+    f'            return ((Number) result).intValue() != 0;\n' \
+    f'        }} else if (result instanceof String) {{\n' \
+    f'            return Boolean.parseBoolean((String) result);\n' \
+    f'        }}\n' \
+    f'        return defaultValue;\n' \
+    f'    }}\n'
+
+    utility_methods += \
+    f'\n' \
+    f'    static public String getStringObject(HashMap<String, Object> propsMap, String name, String defaultValue) {{\n' \
+    f'        Object result = propsMap.get(name);\n' \
+    f'        if (result == null) {{\n' \
+    f'            return defaultValue;\n' \
+    f'        }}\n' \
+    f'        if (result instanceof String) {{\n' \
+    f'            return (String) result;\n' \
+    f'        }}\n' \
+    f'        return String.valueOf(result);\n' \
+    f'    }}\n'
+
+    utility_methods += \
+    f'\n' \
+    f'    static public HashMap<String, Object> getHashMap(HashMap<String, Object> propsMap, String name, HashMap<String, Object> defaultValue) {{\n' \
+    f'        Object result = propsMap.get(name);\n' \
+    f'        if (result == null) {{\n' \
+    f'            return defaultValue;\n' \
+    f'        }}\n' \
+    f'        if (result instanceof HashMap) {{\n' \
+    f'            return (HashMap<String, Object>) result;\n' \
+    f'        }}\n' \
+    f'        return defaultValue;\n' \
+    f'    }}\n'
+
+    java_code += '\n'.join(branch_codes) + '\n' + return_code + utility_methods + f'}}\n'
 
     return java_code
 
@@ -145,6 +223,9 @@ def _format_java_default_value(origin_type, value):
 def generate_java_constructor(class_name, definition, properties, java_code, file_imports):
     java_code += f'    public {class_name}(HashMap<String, Object> props) {{\n'
     import_hashmap_statement = f'import java.util.HashMap;'
+    converter_import = f'import {base_package_name}.PerformanceEntryConverter;'
+    if converter_import not in file_imports:
+        file_imports.append(converter_import)
     file_imports.append(import_hashmap_statement)
     # If a base class exists, the base class needs to be constructed first
     if 'allOf' in definition:
@@ -202,11 +283,8 @@ def generate_java_constructor(class_name, definition, properties, java_code, fil
             if (not is_optional) and (yaml_default is not None) and (default_value is not None):
                 default_value = _format_java_default_value(origin_type, yaml_default)
             if prop_type is not None:
-                if is_optional:
-                    boxed = convert_to_java_type(prop_type)
-                    java_code += f'        this.{prop} = props.get("{prop}") != null ? ({boxed}) props.get("{prop}") : null;\n'
-                else:
-                    java_code += f'        this.{prop} = props.get("{prop}") != null ? ({prop_type}) props.get("{prop}") : {default_value};\n'
+                java_default_value = 'null' if is_optional else f'({prop_type}){default_value}'
+                java_code += f'        this.{prop} = PerformanceEntryConverter.get{prop_type.capitalize()}Object(props, "{prop}", {java_default_value});\n'
     # If this is a base class, add a rawMap to store the original data.
     if class_name == 'PerformanceEntry':
         java_code += '        this.rawMap = props;\n'
