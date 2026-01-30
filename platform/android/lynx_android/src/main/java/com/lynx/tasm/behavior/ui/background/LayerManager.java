@@ -338,8 +338,8 @@ public abstract class LayerManager implements Drawable.Callback {
       int type = (int) bgImage.getLong(i);
       if (type == StyleConstants.BACKGROUND_IMAGE_URL) {
         i++;
-        if (mLynxImageService == null || mContext.isEmbeddedModeOn()) {
-          // do not support url image for embedded mode
+        if (mLynxImageService == null || mContext.isEnginePoolEnabled()) {
+          // do not support url image for embedded engine pool
           continue;
         }
         BackgroundLayerDrawable layer =
