@@ -83,6 +83,7 @@ public class AndroidView
   private boolean nativeInteractionEnabled = false;
   private boolean mPanInterceptSelf = false;
   private boolean mPanInterceptAncestors = false;
+  private boolean mHasSetPanInterceptAncestors = false;
   private boolean mPanInterceptDescendants = false;
 
   public AndroidView(Context context) {
@@ -152,6 +153,10 @@ public class AndroidView
   public boolean dispatchTouchEvent(MotionEvent event) {
     if (mPanInterceptAncestors) {
       getParent().requestDisallowInterceptTouchEvent(true);
+    } else {
+      if (mHasSetPanInterceptAncestors) {
+        getParent().requestDisallowInterceptTouchEvent(false);
+      }
     }
     return super.dispatchTouchEvent(event);
   }
@@ -209,6 +214,9 @@ public class AndroidView
 
   public void setPanInterceptAncestors(boolean panInterceptAncestors) {
     mPanInterceptAncestors = panInterceptAncestors;
+    if (mPanInterceptAncestors) {
+      mHasSetPanInterceptAncestors = true;
+    }
   }
 
   public void setPanInterceptDescendants(boolean panInterceptDescendants) {
