@@ -27,8 +27,6 @@
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/layout_bundle.h"
-#include "core/renderer/dom/selector/selector_item.h"
-#include "core/renderer/simple_styling/simple_style_node.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/utils/base/element_template_info.h"
 
@@ -59,9 +57,7 @@ constexpr const int32_t kCustomBuiltInNodeInfo =
      NodeInfoBits::kLayoutNodeTypeMask) |
     NodeInfoBits::kCreateAsyncMask;
 
-class FiberElement : public Element,
-                     public SelectorItem,
-                     public style::SimpleStyleNode {
+class FiberElement : public Element {
  public:
   using Action = Element::Action;
   using ActionParam = Element::ActionParam;

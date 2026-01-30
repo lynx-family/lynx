@@ -34,9 +34,11 @@
 #include "core/renderer/css/ng/invalidation/invalidation_set.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
+#include "core/renderer/dom/selector/selector_item.h"
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
+#include "core/renderer/simple_styling/simple_style_node.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
@@ -117,7 +119,9 @@ class InspectorAttribute {
 
 class Element : public lepus::RefCounted,
                 public fml::EnableWeakFromThis<Element>,
-                public event::EventTarget {
+                public event::EventTarget,
+                public SelectorItem,
+                public style::SimpleStyleNode {
  public:
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index = 0);
