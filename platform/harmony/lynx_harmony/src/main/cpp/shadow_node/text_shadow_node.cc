@@ -447,6 +447,25 @@ LayoutResult TextShadowNode::GetLayoutResult(ParagraphHarmony* paragraph,
     }
   }
 
+  if (width_mode == MeasureMode::AtMost &&
+      paragraph_style_->GetEffectiveAlignment() ==
+          starlight::TextAlignType::kJustify) {
+    float max_right = 0.f;
+    uint32_t line_count = paragraph->GetLineCount();
+    for (uint32_t i = 0; i < line_count; ++i) {
+      auto line_metric = paragraph->GetLineMetrics(i);
+      float right =
+          static_cast<float>(line_metric.Left() + line_metric.Width());
+      right /= ScaleDensity();
+      if (base::FloatsLarger(right, max_right)) {
+        max_right = right;
+      }
+    }
+    if (base::FloatsLarger(max_right, result.width_)) {
+      result.width_ = max_right;
+    }
+  }
+
   if (width_mode == MeasureMode::Definite) {
     result.width_ = width;
   }
