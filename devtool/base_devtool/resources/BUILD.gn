@@ -1,0 +1,22 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+group("build_logbox_assets") {
+  public_deps = [
+    ":copy_images",
+    ":copy_logbox_assets",
+  ]
+}
+
+action("copy_logbox_assets") {
+  script = "copy_resources.py"
+  args = [ rebase_path("$root_build_dir/devtool_resources/logbox") ]
+  outputs = [ "$root_build_dir/devtool_resources/logbox.zip" ]
+}
+
+action("copy_images") {
+  script = "images/copy_images.py"
+  args = [ rebase_path("$root_build_dir/devtool_resources") ]
+  outputs = [ "$root_build_dir/devtool_resources/notification_cancel.png" ]
+}

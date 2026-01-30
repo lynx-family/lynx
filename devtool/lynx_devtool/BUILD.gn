@@ -42,3 +42,10 @@ config("devtool_common_config") {
     defines += [ "ENABLE_TRACE_SYSTRACE=1" ]
   }
 }
+
+group("devtool_assets") {
+  public_deps = [
+    "../base_devtool/resources:build_logbox_assets",
+    "resources:build_lynx_devtool_resources",
+  ]
+}

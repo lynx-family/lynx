@@ -32,6 +32,21 @@ action("build_card_resources") {
   ]
 }
 
+action("arrange_devtool_resources") {
+  script = "../../../../devtool/lynx_devtool/resources/arrange_resources.py"
+  args = [
+    rebase_path("$root_build_dir/devtool_resources"),
+    rebase_path("$root_build_dir/devtool_resources"),
+  ]
+  inputs = [
+    "$root_build_dir/devtool_resources/logbox.zip",
+    "$root_build_dir/devtool_resources/lynx-error-parser.js",
+    "$root_build_dir/devtool_resources/notification_cancel.png",
+  ]
+  outputs = [ "$root_build_dir/devtool_resources/logbox" ]
+  public_deps = [ "../../../../devtool/lynx_devtool:devtool_assets" ]
+}
+
 mac_app_bundle("lynx_explorer") {
   output_name = "LynxExplorer"
   bundle_identifier_prefix = "com.lynx.Explorer"
@@ -125,6 +140,7 @@ bundle_data("resources_data") {
     "LynxExplorer/Info.plist",
     "Resource",
   ]
+  data_deps = [ ":devtool_resources" ]
   outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
 }
 
@@ -138,4 +154,14 @@ bundle_data("embed_bundles") {
     "../../../../platform/darwin/macos:lynx_debug_resources_bundle",
     "../../../../platform/darwin/macos:lynx_resources_bundle",
   ]
+}
+
+# TODO: sources should not be a folder
+bundle_data("devtool_resources") {
+  sources = [
+    "$root_build_dir/devtool_resources/logbox",
+    "$root_build_dir/devtool_resources/notification_cancel.png",
+  ]
+  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+  public_deps = [ ":arrange_devtool_resources" ]
 }

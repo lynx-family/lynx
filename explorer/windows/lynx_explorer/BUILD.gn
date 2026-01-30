@@ -54,6 +54,7 @@ executable("lynx_explorer") {
 
   deps = [
     ":build_card_resources",
+    ":copy_devtool_resources",
     ":copy_dll",
     ":copy_icu",
     ":copy_resources",
@@ -112,6 +113,20 @@ copy("copy_resources") {
   ]
   outputs = [ "$root_build_dir/lynx_explorer/{{source_file_part}}" ]
   deps = [ "../../../platform/windows:lynx_core" ]
+}
+
+action("copy_devtool_resources") {
+  script = "../../../devtool/lynx_devtool/resources/arrange_resources.py"
+  args = [
+    rebase_path("$root_build_dir/devtool_resources"),
+    rebase_path("$root_build_dir/lynx_explorer/js_assets"),
+  ]
+  inputs = [
+    "$root_build_dir/devtool_resources/logbox.zip",
+    "$root_build_dir/devtool_resources/lynx-error-parser.js",
+  ]
+  outputs = [ "$root_build_dir/lynx_explorer/js_assets/lynx-error-parser.js" ]
+  deps = [ "../../../devtool/lynx_devtool:devtool_assets" ]
 }
 
 copy("copy_icu") {

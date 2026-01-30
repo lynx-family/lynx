@@ -19,14 +19,16 @@ from tools.js_tools.pnpm_helper import get_pnpm_env, run_pnpm_command
 # Define the distribution path
 dist_path = os.path.join(current_dir, 'dist')
 
-# Define the Android target path
-android_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'android', 'base_devtool', 'src', 'main', 'assets', 'logbox')
+# Define the indicated output path
+output = sys.argv[1] if len(sys.argv) > 1 else None
 
-# Define the iOS target path
-ios_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', 'ios', 'assets', 'logbox')
-
-# Define the harmony target path
-harmony_target_path = os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', 'logbox')
+# Define target paths
+target_paths = [
+    os.path.join(root_path, 'devtool', 'base_devtool', 'android', 'base_devtool', 'src', 'main', 'assets', 'logbox'),
+    os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', 'ios', 'assets', 'logbox'),
+    os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', 'logbox'),
+    os.path.join(root_path, 'platform', 'darwin', 'macos', 'lynx_devtool', 'assets', 'logbox'),
+]
 
 def git_root_dir():
     command = ['git', 'rev-parse', '--show-toplevel']
@@ -51,34 +53,24 @@ def build():
     run_pnpm_command(['pnpm', '--filter', '@lynx-dev/logbox', 'build'],
                      root_path, env)
 
-    # Remove the existing Android and iOS target directories
-    if os.path.exists(android_target_path):
-        shutil.rmtree(android_target_path)
-    if os.path.exists(ios_target_path):
-        shutil.rmtree(ios_target_path)
-    if os.path.exists(harmony_target_path):
-        shutil.rmtree(harmony_target_path)
+    if output and os.path.exists(output):
+        target_paths.append(output)
 
-    # Create the Android and iOS target directories
-    os.makedirs(android_target_path, exist_ok=True)
-    os.makedirs(ios_target_path, exist_ok=True)
-    os.makedirs(harmony_target_path, exist_ok=True)
+    # Remove existing target directories and create new ones
+    for target_path in target_paths:
+        if os.path.exists(target_path):
+            shutil.rmtree(target_path)
+        os.makedirs(target_path, exist_ok=True)
 
-    # Copy the contents of the distribution directory to the Android and iOS target directories
+    # Copy the contents of the distribution directory to all target directories
     for item in os.listdir(dist_path):
         s = os.path.join(dist_path, item)
-        d_android = os.path.join(android_target_path, item)
-        d_ios = os.path.join(ios_target_path, item)
-        d_harmony = os.path.join(harmony_target_path, item)
-        if os.path.isdir(s):
-            shutil.copytree(s, d_android)
-            shutil.copytree(s, d_ios)
-            shutil.copytree(s, d_harmony)
-        else:
-            shutil.copy2(s, d_android)
-            shutil.copy2(s, d_ios)
-            shutil.copy2(s, d_harmony)
-
+        for target_path in target_paths:
+            d = os.path.join(target_path, item)
+            if os.path.isdir(s):
+                shutil.copytree(s, d)
+            else:
+                shutil.copy2(s, d)
 
 if __name__ == "__main__":
     build()

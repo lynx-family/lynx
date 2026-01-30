@@ -1,0 +1,26 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+group("build_lynx_devtool_resources") {
+  public_deps = [ ":build_lynx_error_parser_assets" ]
+
+  # TODO: delete the restriction when pc explorer support switch page
+  if (!is_win && !is_mac) {
+    public_deps += [ ":build_lynx_switchboard_assets" ]
+  }
+}
+
+action("build_lynx_error_parser_assets") {
+  script = "lynx-error-parser/build.py"
+  args = [ rebase_path("$root_build_dir/devtool_resources") ]
+  outputs = [ "$root_build_dir/devtool_resources/lynx-error-parser.js" ]
+}
+
+action("build_lynx_switchboard_assets") {
+  script = "devtool-switch/build.py"
+  args = [ rebase_path("$root_build_dir/devtool_resources") ]
+  outputs = [
+    "$root_build_dir/devtool_resources/switchPage/devtoolSwitch.lynx.bundle",
+  ]
+}

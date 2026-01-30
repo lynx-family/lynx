@@ -156,8 +156,7 @@ void LogBoxDialogBase::LoadErrorParser(const rapidjson::Value& params,
   bool res = false;
   if (!is_parser_loaded_ && params.HasMember("namespace") &&
       params["namespace"].IsString()) {
-    std::string parser_name = std::string("static\\js\\") +
-                              params["namespace"].GetString() +
+    std::string parser_name = std::string() + params["namespace"].GetString() +
                               "-error-parser.js";  // lynx-error-parser.js
     std::string content;
     GetFileContent(parser_name, content);

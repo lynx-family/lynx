@@ -3,6 +3,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 import os
+import sys
 import shutil
 
 # Get the current directory
@@ -14,37 +15,23 @@ root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', '..'))
 # Define the source path
 src_path = os.path.join(current_dir, 'notification_cancel.png')
 
-# Define the Android target path
-android_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'android', 'base_devtool', 'src', 'main', 'res', 'drawable')
+# Define the indicated output path
+output = sys.argv[1] if len(sys.argv) > 1 else None
 
-# Define the iOS target path
-ios_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', 'ios', 'assets')
-
-# Define the macOS target path
-macos_target_path = os.path.join(root_path, 'platform', 'darwin', 'macos', 'lynx_devtool', 'assets')
-
-# Define the harmony target path
-harmony_target_path = os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'base', 'media')
+# Windows does not need this image because it draws the button by code.
+target_paths = [
+    os.path.join(root_path, 'devtool', 'base_devtool', 'android', 'base_devtool', 'src', 'main', 'res', 'drawable'),
+    os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', 'ios', 'assets'),
+    os.path.join(root_path, 'platform', 'darwin', 'macos', 'lynx_devtool', 'assets'),
+    os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'base', 'media')
+]
 
 def copy_images():
-    # Create the target directories if they don't exist
-    os.makedirs(android_target_path, exist_ok=True)
-    os.makedirs(ios_target_path, exist_ok=True)
-    os.makedirs(harmony_target_path, exist_ok=True)
-    os.makedirs(macos_target_path, exist_ok=True)
-
-    # Copy the image to the Android target path
-    shutil.copy2(src_path, android_target_path)
-
-    # Copy the image to the iOS target path
-    shutil.copy2(src_path, ios_target_path)
-    
-    # Copy the image to the iOS target path
-    shutil.copy2(src_path, harmony_target_path)
-
-    # Copy the image to the macOS target path
-    shutil.copy2(src_path, macos_target_path)
-
+    for (target_path) in target_paths:
+        os.makedirs(target_path, exist_ok=True)
+        shutil.copy2(src_path, target_path)
+    if output and os.path.isdir(output):
+        shutil.copy2(src_path, output)
 
 if __name__ == "__main__":
     copy_images()
