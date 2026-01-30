@@ -249,7 +249,7 @@ bool LynxResourceLoaderDarwin::FetchTemplateByFetcherWrapper(const std::string& 
   return [_fetcher_wrapper fetchResource:nsUrl withLoadedBlock:fetcherBlock sync:sync];
 }
 
-void LynxResourceLoaderDarwin::LoadResource(
+void LynxResourceLoaderDarwin::LoadResourceInternal(
     const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_RESOURCE, [&request](lynx::perfetto::EventContext ctx) {

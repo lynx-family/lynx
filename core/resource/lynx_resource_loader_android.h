@@ -34,13 +34,15 @@ class LynxResourceLoaderAndroid : public pub::LynxResourceLoader {
       : jni_object_(env, jni_object) {}
   ~LynxResourceLoaderAndroid() override = default;
 
-  void LoadResource(const pub::LynxResourceRequest& request,
-                    base::MoveOnlyClosure<void, pub::LynxResourceResponse&>
-                        callback) override;
-
   void LoadBytecode(const pub::LynxResourceRequest& request,
                     base::MoveOnlyClosure<void, pub::LynxResourceResponse&>
                         callback) override;
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override;
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;

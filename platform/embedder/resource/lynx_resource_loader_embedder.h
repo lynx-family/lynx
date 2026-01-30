@@ -22,9 +22,11 @@ class LynxResourceLoaderEmbedder : public pub::LynxResourceLoader {
   void SetResourceFetcherHolder(
       std::shared_ptr<LynxResourceFetcherHolder> resource_fetcher_holder);
 
-  void LoadResource(const pub::LynxResourceRequest& request,
-                    base::MoveOnlyClosure<void, pub::LynxResourceResponse&>
-                        callback) override;
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override;
 
  private:
   runtime::js::JSSourceLoaderDesktop js_source_loader_;

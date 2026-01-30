@@ -77,14 +77,6 @@ class LynxResourceLoaderHarmony : public pub::LynxResourceLoader {
     ui_task_runner_ = task_runner;
   }
 
-  void LoadResource(const pub::LynxResourceRequest& request,
-                    base::MoveOnlyClosure<void, pub::LynxResourceResponse&>
-                        callback) override;
-
-  void LoadResourcePath(const pub::LynxResourceRequest& request,
-                        base::MoveOnlyClosure<void, pub::LynxPathResponse&>
-                            path_callback) override;
-
   virtual void LoadStream(
       const pub::LynxResourceRequest& request,
       const std::shared_ptr<pub::LynxStreamDelegate>& stream_delegate) override;
@@ -96,6 +88,17 @@ class LynxResourceLoaderHarmony : public pub::LynxResourceLoader {
   void DeleteRef();
 
   static NativeResourceManager* resource_manager;
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override;
+
+  void LoadResourcePathInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxPathResponse&> path_callback)
+      override;
 
  private:
   void PostTaskOnUIThread(base::closure task);

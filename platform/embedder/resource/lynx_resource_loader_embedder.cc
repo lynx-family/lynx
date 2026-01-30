@@ -46,7 +46,7 @@ void LynxResourceLoaderEmbedder::SetResourceFetcherHolder(
   resource_fetcher_holder_ = std::move(holder);
 }
 
-void LynxResourceLoaderEmbedder::LoadResource(
+void LynxResourceLoaderEmbedder::LoadResourceInternal(
     const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   if (request.type == pub::LynxResourceType::kAssets) {

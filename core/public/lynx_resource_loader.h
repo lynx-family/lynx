@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace pub {
@@ -80,7 +81,7 @@ struct LynxPathResponse {
   bool Success() const { return err_code == 0; }
 };
 
-class LynxStreamDelegate {
+class LYNX_EXPORT LynxStreamDelegate {
  public:
   virtual ~LynxStreamDelegate() = default;
   virtual void OnStart(size_t size) = 0;
@@ -89,18 +90,18 @@ class LynxStreamDelegate {
   virtual void OnError(std::string error_msg) = 0;
 };
 
-class LynxResourceLoader
+class LYNX_EXPORT LynxResourceLoader
     : public std::enable_shared_from_this<LynxResourceLoader> {
  public:
   virtual ~LynxResourceLoader() = default;
 
-  virtual void LoadResource(
+  void LoadResource(
       const LynxResourceRequest& request,
-      base::MoveOnlyClosure<void, LynxResourceResponse&> callback) = 0;
+      base::MoveOnlyClosure<void, LynxResourceResponse&> callback);
 
-  virtual void LoadResourcePath(
+  void LoadResourcePath(
       const LynxResourceRequest& request,
-      base::MoveOnlyClosure<void, LynxPathResponse&> path_callback) {}
+      base::MoveOnlyClosure<void, LynxPathResponse&> path_callback);
 
   virtual void LoadStream(
       const LynxResourceRequest& request,
@@ -120,6 +121,15 @@ class LynxResourceLoader
   virtual std::string ShouldRedirectUrl(const LynxResourceRequest& request) {
     return request.url;
   }
+
+ protected:
+  virtual void LoadResourceInternal(
+      const LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, LynxResourceResponse&> callback) = 0;
+
+  virtual void LoadResourcePathInternal(
+      const LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, LynxPathResponse&> path_callback){};
 };
 
 }  // namespace pub

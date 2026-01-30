@@ -34,11 +34,13 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
                            id<LynxGenericResourceFetcher> genericResourceFetcher);
   ~LynxResourceLoaderDarwin() override = default;
 
-  void LoadResource(const pub::LynxResourceRequest& request,
-                    base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) override;
-
   void LoadBytecode(const pub::LynxResourceRequest& request,
                     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) override;
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) override;
 
  private:
   using CopyableClosure =

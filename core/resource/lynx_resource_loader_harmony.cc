@@ -136,7 +136,7 @@ LynxResourceLoaderHarmony::LynxResourceLoaderHarmony(napi_env env,
 
 LynxResourceLoaderHarmony::~LynxResourceLoaderHarmony() {}
 
-void LynxResourceLoaderHarmony::LoadResource(
+void LynxResourceLoaderHarmony::LoadResourceInternal(
     const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   pub::ResourceLoadTiming timing;
@@ -246,7 +246,7 @@ void LynxResourceLoaderHarmony::LoadResource(
   });
 }
 
-void LynxResourceLoaderHarmony::LoadResourcePath(
+void LynxResourceLoaderHarmony::LoadResourcePathInternal(
     const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxPathResponse&> path_callback) {
   pub::ResourceLoadTiming timing;

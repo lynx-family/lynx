@@ -61,7 +61,7 @@ void ConfigLynxResourceSetting(JNIEnv* env, jobject jcaller) {
 namespace lynx {
 namespace shell {
 
-void LynxResourceLoaderAndroid::LoadResource(
+void LynxResourceLoaderAndroid::LoadResourceInternal(
     const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_RESOURCE,

@@ -22,7 +22,7 @@ lynx_core_source_set("resource") {
 }
 
 lynx_core_source_set("resource_loader") {
-  sources = []
+  sources = [ "lynx_resource_loader.cc" ]
   if (is_android) {
     sources += [
       "lynx_resource_loader_android.cc",
