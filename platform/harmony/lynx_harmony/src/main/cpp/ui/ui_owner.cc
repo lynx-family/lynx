@@ -643,14 +643,10 @@ void UIOwner::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
 void UIOwner::TriggerExposureCheck() { ui_observer_->TriggerExposureCheck(); }
 
 void UIOwner::StopExposure(const lepus::Value& options) {
-  auto task = [this, options]() { ui_observer_->StopExposure(options); };
-  context_->RunOnUIThread(std::move(task));
+  ui_observer_->StopExposure(options);
 }
 
-void UIOwner::ResumeExposure() {
-  auto task = [this]() { ui_observer_->ResumeExposure(); };
-  context_->RunOnUIThread(std::move(task));
-}
+void UIOwner::ResumeExposure() { ui_observer_->ResumeExposure(); }
 
 void UIOwner::SetObserverFrameRate(const lepus::Value& options) {
   ui_observer_->SetObserverFrameRate(options);
