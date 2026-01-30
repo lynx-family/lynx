@@ -138,20 +138,12 @@ class FiberElement : public Element {
   virtual bool is_if() const { return false; }
   virtual bool is_for() const { return false; }
 
-  bool is_inline_element() const { return is_inline_element_; }
-
-  bool is_list_item() const { return is_list_item_; }
-
-  int32_t dirty() const { return dirty_; }
-
   virtual const InheritedProperty GetInheritedProperty();
 
   const InheritedProperty GetParentInheritedProperty();
 
   virtual bool NeedFullFlushPath(CSSPropertyID id,
                                  const CSSValue& value) override;
-
-  const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }
 
   /**
    * A key function to GetListNode
@@ -180,11 +172,7 @@ class FiberElement : public Element {
   // element has a data model. Since the data model of a fiber element is not
   // empty by default, this interface is provided to the inspector to reset the
   // data model and mark the element as created by the inspector.
-  void ResetDataModel() { data_model_ = nullptr; }
-
   virtual bool CanBeLayoutOnly() const override;
-
-  void MarkCanBeLayoutOnly(bool flag) { can_be_layout_only_ = flag; }
 
   /**
    * A key function for flush all pending actions for current Element
@@ -542,12 +530,6 @@ class FiberElement : public Element {
     MarkRequireFlush();
   }
 
-  void ResetAllDirtyBits() { dirty_ = 0; }
-
-  bool StyleDirty() const { return dirty_ & kDirtyStyle; }
-
-  bool AttrDirty() const { return dirty_ & kDirtyAttr; }
-
   void MarkPropsDirty() { MarkDirty(kDirtyForceUpdate); }
 
   void TraversalInsertFixedElementOfTree();
@@ -559,8 +541,6 @@ class FiberElement : public Element {
       static_cast<FiberElement*>(child.get())->ApplyFunctionRecursive(func);
     }
   }
-
-  void ResetStyleSheet() { style_sheet_ = nullptr; };
 
   void MarkStyleDirty(bool recursive = false);
 
@@ -667,17 +647,6 @@ class FiberElement : public Element {
   bool IsRelatedCSSVariableUpdated(AttributeHolder* holder,
                                    const lepus::Value changing_css_variables);
 
-  bool HasElementContainer() { return element_container_ != nullptr; }
-
-  void set_style_sheet_manager(
-      const std::shared_ptr<CSSStyleSheetManager>& manager) {
-    css_style_sheet_manager_ = manager;
-  }
-
-  const std::shared_ptr<CSSStyleSheetManager>& style_sheet_manager() {
-    return css_style_sheet_manager_;
-  }
-
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);
 
@@ -687,26 +656,13 @@ class FiberElement : public Element {
     return css_id_ == element->css_id_;
   }
 
-  const auto& children() const { return scoped_children_; }
-
   Element* Sibling(int offset) const override;
-  Element* render_parent() override { return render_parent_; }
-  Element* first_render_child() override { return first_render_child_; }
-  Element* next_render_sibling() override { return next_render_sibling_; }
   virtual Element* first_child() const override {
     return scoped_children_.empty() ? nullptr : scoped_children_.front().get();
   };
   virtual Element* last_child() const override {
     return scoped_children_.empty() ? nullptr : scoped_children_.back().get();
   };
-
-  // set/get virtual parent node in AirModeFiber
-  void set_virtual_parent(FiberElement* virtual_parent) {
-    virtual_parent_ = virtual_parent;
-  }
-  FiberElement* virtual_parent() {
-    return static_cast<FiberElement*>(virtual_parent_);
-  }
   FiberElement* root_virtual_parent();
 
   const ClassList& classes() { return data_model_->classes(); }
@@ -718,11 +674,6 @@ class FiberElement : public Element {
   const DataMap& dataset() { return data_model_->dataset(); }
 
   virtual ParallelFlushReturn PrepareForCreateOrUpdate();
-
-  void set_attached_to_layout_parent(bool has) {
-    attached_to_layout_parent_ = has;
-  }
-  bool attached_to_layout_parent() const { return attached_to_layout_parent_; }
 
   // Helpers for finding non-virtual / non-wrapper nodes in the render tree
   // starting from the current element.
@@ -780,20 +731,6 @@ class FiberElement : public Element {
   // elements may be converted into inline elements.
   virtual void ConvertToInlineElement();
 
-  bool flush_required() { return flush_required_; }
-
-  void MarkTemplateElement() { is_template_ = true; }
-
-  bool IsTemplateElement() const { return is_template_; }
-
-  void MarkPartElement(base::String&& part_id) {
-    part_id_ = std::move(part_id);
-  }
-
-  bool IsPartElement() const { return !part_id_.empty(); }
-
-  const base::String& GetPartID() const { return part_id_; }
-
   // current element is inserted to DOM tree
   virtual void InsertedInto(FiberElement* insertion_point);
 
@@ -815,12 +752,6 @@ class FiberElement : public Element {
 
   virtual bool WillResolveStyle(StyleMap& merged_styles,
                                 CSSVariableMap* changed_css_vars) override;
-
-  // Check has_value() before usage to avoid unintentional construction.
-  const auto& builtin_attr_map() const { return builtin_attr_map_; }
-
-  // Check has_value() before usage to avoid unintentional construction.
-  const auto& updated_attr_map() const { return updated_attr_map_; }
 
   void PrepareOrUpdatePseudoElement(PseudoState state, StyleMap& style_map);
 
@@ -872,8 +803,6 @@ class FiberElement : public Element {
 
   virtual int32_t GetMemoryUsage() const override { return sizeof(*this); }
 
-  SLNode* GetLayoutObject() const override { return sl_node_.get(); }
-
   inline SLNode* slnode() const {
     if (sl_node_ != nullptr) {
       return sl_node_.get();
@@ -881,9 +810,6 @@ class FiberElement : public Element {
 
     return nullptr;
   }
-  inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
-  inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
-
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
 
@@ -910,8 +836,6 @@ class FiberElement : public Element {
   bool ConsumeAllAttributes();
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
-
-  bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
 
   ParallelFlushReturn CreateParallelTaskHandler();
 

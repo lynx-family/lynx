@@ -28,6 +28,7 @@
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_content_data.h"
+#include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
@@ -208,6 +209,7 @@ class Element : public lepus::RefCounted,
     data_model_->set_tag(tag_);
   }
   AttributeHolder* data_model() const { return data_model_.get(); };
+  void ResetDataModel() { data_model_ = nullptr; }
 
   bool is_fixed() { return is_fixed_; }
   // TODO(ZHOUZHITAO): Move parallel_flush_ flag from element to
@@ -229,6 +231,11 @@ class Element : public lepus::RefCounted,
 
   void SetNodeIndex(uint32_t node_index) { node_index_ = node_index; }
   uint32_t NodeIndex() const { return node_index_; }
+  int32_t dirty() const { return dirty_; }
+  void ResetAllDirtyBits() { dirty_ = 0; }
+  bool StyleDirty() const { return dirty_ & kDirtyStyle; }
+  bool AttrDirty() const { return dirty_ & kDirtyAttr; }
+  bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
 
   std::vector<float> ScrollBy(float width, float height);
   std::vector<float> GetRectToLynxView();
@@ -236,7 +243,7 @@ class Element : public lepus::RefCounted,
               const std::function<void(int32_t code, const pub::Value& data)>&
                   callback);
 
-  virtual SLNode* GetLayoutObject() const { return nullptr; }
+  virtual SLNode* GetLayoutObject() const { return sl_node_.get(); }
 
   ElementManager* element_manager() const { return element_manager_; }
   Element* parent() const { return parent_; }
@@ -245,11 +252,23 @@ class Element : public lepus::RefCounted,
   virtual Element* Sibling(int offset) const = 0;
 
   // only for fiber arch, indicate current real render tree hierarchy
-  virtual Element* render_parent() { return nullptr; }
-  virtual Element* first_render_child() { return nullptr; }
+  virtual Element* render_parent() { return render_parent_; }
+  virtual Element* first_render_child() { return first_render_child_; }
   virtual Element* first_child() const { return nullptr; }
   virtual Element* last_child() const { return nullptr; }
-  virtual Element* next_render_sibling() { return nullptr; }
+  virtual Element* next_render_sibling() { return next_render_sibling_; }
+  void set_virtual_parent(Element* virtual_parent) {
+    virtual_parent_ = virtual_parent;
+  }
+  Element* virtual_parent() { return virtual_parent_; }
+  const auto& children() const { return scoped_children_; }
+  void set_attached_to_layout_parent(bool has) {
+    attached_to_layout_parent_ = has;
+  }
+  bool attached_to_layout_parent() const { return attached_to_layout_parent_; }
+  bool flush_required() { return flush_required_; }
+  bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
+  void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
 
   virtual ~Element();
 
@@ -457,6 +476,14 @@ class Element : public lepus::RefCounted,
   BaseElementContainer* element_container() const {
     return element_container_.get();
   }
+  void set_style_sheet_manager(
+      const std::shared_ptr<CSSStyleSheetManager>& manager) {
+    css_style_sheet_manager_ = manager;
+  }
+  const std::shared_ptr<CSSStyleSheetManager>& style_sheet_manager() {
+    return css_style_sheet_manager_;
+  }
+  void ResetStyleSheet() { style_sheet_ = nullptr; }
 
   ElementContainer* element_container_impl();
   Fragment* fragment_impl();
@@ -489,6 +516,7 @@ class Element : public lepus::RefCounted,
 
   inline const auto& GlobalBindTarget() { return global_bind_target_set_; }
   virtual bool CanBeLayoutOnly() const = 0;
+  void MarkCanBeLayoutOnly(bool flag) { can_be_layout_only_ = flag; }
 
   LYNX_EXPORT_FOR_DEVTOOL bool HasUIPrimitive() const;
 
@@ -745,6 +773,14 @@ class Element : public lepus::RefCounted,
   virtual int32_t GetBuiltInNodeInfo() const { return 0; }
 
   bool is_list_item() const { return is_list_item_; }
+  bool is_inline_element() const { return is_inline_element_; }
+  void MarkTemplateElement() { is_template_ = true; }
+  bool IsTemplateElement() const { return is_template_; }
+  void MarkPartElement(base::String&& part_id) {
+    part_id_ = std::move(part_id);
+  }
+  bool IsPartElement() const { return !part_id_.empty(); }
+  const base::String& GetPartID() const { return part_id_; }
 
   void EnsureTagInfo();
 
@@ -777,6 +813,12 @@ class Element : public lepus::RefCounted,
   ALLOW_UNUSED_TYPE InspectorAttribute* inspector_attribute() {
     return inspector_attribute_.get();
   }
+  const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }
+  const auto& GetCurrentRawInlineStyles() const {
+    return current_raw_inline_styles_;
+  }
+  const auto& builtin_attr_map() const { return builtin_attr_map_; }
+  const auto& updated_attr_map() const { return updated_attr_map_; }
 
   void ResolveStyle(StyleMap& new_styles,
                     CSSVariableMap* changed_css_vars = nullptr);

@@ -4013,9 +4013,9 @@ void FiberElement::SetCSSID(int32_t id) {
 }
 
 FiberElement *FiberElement::root_virtual_parent() {
-  FiberElement *root_virtual = static_cast<FiberElement *>(virtual_parent_);
+  auto *root_virtual = static_cast<FiberElement *>(virtual_parent());
   while (root_virtual && root_virtual->virtual_parent() != nullptr) {
-    root_virtual = root_virtual->virtual_parent();
+    root_virtual = static_cast<FiberElement *>(root_virtual->virtual_parent());
   }
   return root_virtual;
 }
