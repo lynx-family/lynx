@@ -437,9 +437,7 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
     case KeywordID::kPlaceholderFontSize: {
       attribute_utils::Length val_with_unit{0.0, attribute_utils::Unit::kNone};
       if (attribute_utils::TryGetLength(value, val_with_unit)) {
-        auto font_size =
-            attribute_utils::ToPxWithDisplayMetrics(val_with_unit, page_view());
-        SetPlaceholderFontSize(font_size);
+        SetPlaceholderFontSize(val_with_unit.val);
       }
     } break;
     case KeywordID::kPlaceholderFontWeight: {
@@ -450,7 +448,8 @@ void EditableView::SetAttribute(const char* attr_c, const clay::Value& value) {
     } break;
     case KeywordID::kPlaceholderColor: {
       Color color;
-      if (Color::Parse(attribute_utils::GetCString(value), &color)) {
+      if (value.IsUint()) {
+        color = attribute_utils::GetUint(value, 0xff000000);
         SetPlaceholderColor(color);
       }
     } break;
