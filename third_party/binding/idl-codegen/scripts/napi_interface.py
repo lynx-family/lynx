@@ -511,8 +511,8 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                 if len(constructors) > 1:
                     constructor.update({'overload_index': overload_index})
                     overload_index += 1
-                add_buffered_method(interface, constructor, ptr_name, command_buffer_context, overloads_child_only, True)
-            add_buffered_method(interface, {'name': 'destructor', 'from_shared': False}, ptr_name, command_buffer_context, overloads_child_only, True)
+                add_buffered_method(interface, constructor, ptr_name, command_buffer_context, overloads_child_only, False, True)
+            add_buffered_method(interface, {'name': 'destructor', 'from_shared': False}, ptr_name, command_buffer_context, overloads_child_only, False, True)
 
         # Convert remote attributes to setter/getters.
         attributes = [
@@ -524,9 +524,9 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
             if attribute['does_generate_setter']:
                 attribute_copy = copy.deepcopy(attribute)
                 attribute_copy.update({'is_setter': True, 'camel_case_name': 'Set' + attribute_copy['camel_case_name'], 'arguments': [attribute], 'idl_type': 'void', 'is_async': deferred_setters})
-                add_buffered_method(interface, attribute_copy, ptr_name, command_buffer_context, overloads_child_only, True)
+                add_buffered_method(interface, attribute_copy, ptr_name, command_buffer_context, overloads_child_only, False, buffer_commands_for_remote)
             attribute.update({'is_getter': True, 'camel_case_name': 'Get' + attribute['camel_case_name']})
-            add_buffered_method(interface, attribute, ptr_name, command_buffer_context, overloads_child_only, True)
+            add_buffered_method(interface, attribute, ptr_name, command_buffer_context, overloads_child_only, False, buffer_commands_for_remote)
 
         for method in methods:
             method_is_remote_only = remote_only
@@ -559,7 +559,7 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                     method['keep_binding_version'] = False
                 method_is_remote_only = method_is_remote_only or method['do_not_buffer_for_single_thread']
 
-            add_buffered_method(interface, method, ptr_name, command_buffer_context, overloads_child_only, method_is_remote_only)
+            add_buffered_method(interface, method, ptr_name, command_buffer_context, overloads_child_only, not method_is_remote_only, buffer_commands_for_remote)
 
         command_buffer_context['interfaces'].append({
             'type_name': interface.name,
@@ -567,11 +567,13 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
             'shared_impl': interface.shared_impl,
             'ptr_name': ptr_name,
             'overloads_child_only': overloads_child_only,
+            'has_remote': buffer_commands_for_remote,
             'remote_only': remote_only,
             'remote_type_id': command_buffer_context['remote_type_id'],
             'remote_constructor_num': len(constructors),
         })
-        command_buffer_context['remote_type_id'] += 1
+        if buffer_commands_for_remote:
+            command_buffer_context['remote_type_id'] += 1
 
     for method in methods:
         if method.get('overloads', False):
@@ -601,23 +603,25 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
         'command_buffer_class': command_buffer_class_name,
     }
 
-def add_buffered_method(interface, method, ptr_name, command_buffer_context, overloads_child_only, remote_only):
+def add_buffered_method(interface, method, ptr_name, command_buffer_context, overloads_child_only, gen_for_napi, gen_for_remote):
     # Keep the base impl only
     if interface.sharing_impl and method['from_shared']:
         return
-    if not remote_only:
+    if gen_for_napi:
         method['buffered_method_id'] = command_buffer_context['method_index']
         command_buffer_context['method_index'] += 1
-    method['remote_method_id'] = command_buffer_context['remote_method_index']
-    command_buffer_context['remote_method_index'] += 1
+    if gen_for_remote:
+        method['remote_method_id'] = command_buffer_context['remote_method_index']
+        command_buffer_context['remote_method_index'] += 1
 
     method['ptr_name'] = ptr_name
     method['class_name'] = NameStyleConverter(interface.name).to_upper_camel_case()
     # |is_sync| determines the method is actually called sync/async (Call/Flush).
-    if not remote_only:
+    if gen_for_napi:
         method['is_sync'] = method['idl_type'] != 'void' and not method['return_async'] or method['forced_sync']
         command_buffer_context['methods'].append(method)
-    command_buffer_context['remote_methods'].append(method)
+    if gen_for_remote:
+        command_buffer_context['remote_methods'].append(method)
     # Record methods that only are overloaded in children, i.e. overload 2 is in children, but overload 1 not.
     if not method.get('from_shared', False) and method.get('overload_index', 0) == 1:
         overloads_child_only[method['name']] = False

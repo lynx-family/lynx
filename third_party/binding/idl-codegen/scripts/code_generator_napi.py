@@ -283,6 +283,15 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 js_text = render_template(js_template, class_context)
                 out.append((js_path, js_text))
             if generates_remote:
+                excluding_regexps = self.hardcoded_includes.get(template_context['component'], {}).get('remote_excluding_regexps', [])
+                skip_generation = False
+                for regex in excluding_regexps:
+                    import re
+                    if re.search(regex, class_name):
+                        skip_generation = True
+                        break
+                if skip_generation:
+                    continue
                 remote_js_template = self.jinja_env.get_template('remote.js.tmpl')
                 remote_js_path = self.js_output_path('remote' + js_class['type_name'], remote_js_outdir)
                 remote_js_text = render_template(remote_js_template, class_context)
