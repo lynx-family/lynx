@@ -15,7 +15,7 @@ namespace tasm {
 
 std::unique_ptr<PaintingCtxPlatformImpl> UIDelegateDarwin::CreatePaintingContext() {
   if (use_native_painting_context_) {
-    return std::make_unique<NativePaintingCtxDarwin>([ui_owner_ tryGetContainerView], textra_);
+    return std::make_unique<NativePaintingCtxDarwin>(ui_owner_, textra_);
   }
   return std::make_unique<PaintingContextDarwin>(ui_owner_, enable_create_ui_async_, textra_);
 }

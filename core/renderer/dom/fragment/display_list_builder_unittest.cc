@@ -143,7 +143,7 @@ TEST_F(DisplayListBuilderTest, DrawImageOperation) {
 
 TEST_F(DisplayListBuilderTest, DrawTextOperation) {
   int text_id = 456;
-  builder_->DrawText(text_id);
+  builder_->DrawText(text_id, -1);
 
   DisplayList display_list = builder_->Build();
 
@@ -155,9 +155,10 @@ TEST_F(DisplayListBuilderTest, DrawTextOperation) {
 
   EXPECT_EQ(op_types_data[0], static_cast<int32_t>(DisplayListOpType::kText));
   // With optimized AddOperation: [int_count, float_count, param]
-  EXPECT_EQ(int_data_data[0], 1);                         // int_count
+  EXPECT_EQ(int_data_data[0], 2);                         // int_count
   EXPECT_EQ(int_data_data[1], 0);                         // float_count
   EXPECT_EQ(int_data_data[2], text_id);                   // actual param
+  EXPECT_EQ(int_data_data[3], -1);                        // box_index
   EXPECT_EQ(display_list.GetContentFloatDataSize(), 0u);  // No float parameters
 }
 
@@ -228,7 +229,7 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
       .Fill(0xFF0000FF)
       .DrawView(123)
       .DrawImage(456, -1)
-      .DrawText(789)
+      .DrawText(789, -1)
       .Transform(transforms::Matrix44())
       .Clip(10.0f, 10.0f, 80.0f, 80.0f)
       .End();
@@ -301,7 +302,7 @@ TEST_F(DisplayListBuilderTest, LargeOperationSequence) {
       builder_->DrawImage(static_cast<int>(i), -1);
     }
     if (i % 5 == 0) {
-      builder_->DrawText(static_cast<int>(i * 2));
+      builder_->DrawText(static_cast<int>(i * 2), -1);
     }
   }
 
@@ -387,7 +388,7 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
       .Fill(0)
       .DrawView(0)
       .DrawImage(0, -1)
-      .DrawText(0)
+      .DrawText(0, -1)
       .Transform(
           transforms::Matrix44(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
       .Clip(0.0f, 0.0f, 0.0f, 0.0f)
@@ -443,9 +444,10 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_EQ(display_list.GetContentIntData()[13], -1);  // box_index
 
   // DrawText operation: [int_count=1, float_count=0, 1 int param]
-  EXPECT_EQ(display_list.GetContentIntData()[14], 1);  // int_count
-  EXPECT_EQ(display_list.GetContentIntData()[15], 0);  // float_count
-  EXPECT_EQ(display_list.GetContentIntData()[16], 0);  // DrawText param
+  EXPECT_EQ(display_list.GetContentIntData()[14], 2);   // int_count
+  EXPECT_EQ(display_list.GetContentIntData()[15], 0);   // float_count
+  EXPECT_EQ(display_list.GetContentIntData()[16], 0);   // DrawText param
+  EXPECT_EQ(display_list.GetContentIntData()[17], -1);  // box_index
 
   // Transform operation: [int_count=0, float_count=16, 16 float params]
   EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);   // int_count
@@ -465,7 +467,7 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
   builder_->DrawImage(0, -1);
-  builder_->DrawText(0);
+  builder_->DrawText(0, -1);
 
   DisplayList display_list = builder_->Build();
 
@@ -484,14 +486,15 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
 
   // Check DrawText operation
   EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kText));
-  EXPECT_EQ(int_data_data[4], 1);  // int_count
-  EXPECT_EQ(int_data_data[5], 0);  // float_count
-  EXPECT_EQ(int_data_data[6], 0);  // text_id param
+  EXPECT_EQ(int_data_data[4], 2);   // int_count
+  EXPECT_EQ(int_data_data[5], 0);   // float_count
+  EXPECT_EQ(int_data_data[6], 0);   // text_id param
+  EXPECT_EQ(int_data_data[7], -1);  // box_index
 }
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
   builder_->DrawImage(-123, 1);
-  builder_->DrawText(-456);
+  builder_->DrawText(-456, -1);
 
   DisplayList display_list = builder_->Build();
 
@@ -510,9 +513,10 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
 
   // Check DrawText operation with negative value
   EXPECT_EQ(op_types_data[1], static_cast<int32_t>(DisplayListOpType::kText));
-  EXPECT_EQ(int_data_data[4], 1);     // int_count
+  EXPECT_EQ(int_data_data[4], 2);     // int_count
   EXPECT_EQ(int_data_data[5], 0);     // float_count
   EXPECT_EQ(int_data_data[6], -456);  // text_id param
+  EXPECT_EQ(int_data_data[7], -1);    // box_index
 }
 
 TEST_F(DisplayListBuilderTest, NegativeValues) {

@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_RENDERER_CONTEXT_DARWIN_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_RENDERER_CONTEXT_DARWIN_H_
 
+#import <Lynx/LynxRendererContext.h>
 #import <UIKit/UIKit.h>
 
 @protocol LUIBodyView;
@@ -17,10 +18,12 @@ class PlatformRendererContextDarwin {
   PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view);
   ~PlatformRendererContextDarwin();
 
-  UIView<LUIBodyView>* GetContainerView() { return _container_view; }
+  UIView<LUIBodyView>* GetContainerView() { return _renderer_context.bodyView; }
+
+  LynxRendererContext* GetRendererContext() { return _renderer_context; }
 
  private:
-  __weak UIView<LUIBodyView>* _container_view;
+  LynxRendererContext* _renderer_context;
 };
 
 }  // namespace tasm

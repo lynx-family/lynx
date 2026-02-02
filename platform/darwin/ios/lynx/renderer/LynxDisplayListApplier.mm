@@ -2,7 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxTextLayer.h>
 #import "LynxDisplayListApplier+Internal.h"
 
 #include <stack>
@@ -14,6 +16,7 @@ using namespace lynx::tasm;
 
 @implementation LynxDisplayListApplier {
   __weak UIView<LynxRendererHost> *_view;
+  LynxRendererContext *_renderer_context;
   DisplayList *list_;
 
   size_t content_op_index_;
@@ -31,10 +34,12 @@ using namespace lynx::tasm;
   CALayer *_refLayer;
 }
 
-- (instancetype)initWithView:(UIView<LynxRendererHost> *)view {
+- (instancetype)initWithView:(UIView<LynxRendererHost> *)view
+                  andContext:(LynxRendererContext *)context {
   self = [super init];
   if (self) {
     _view = view;
+    _renderer_context = context;
 
     content_op_index_ = 0;
     content_int_index_ = 0;
@@ -107,20 +112,8 @@ using namespace lynx::tasm;
 
         CALayer *layer = [[CALayer alloc] init];
         layer.backgroundColor = [[UIColor alloc] initWithRed:r green:g blue:b alpha:a].CGColor;
-
-        auto &box = box_array_[clip_index];
-        CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
-        rect.origin.x += left_offset_;
-        rect.origin.y += top_offset_;
-        // TODO(songshourui.null): consider the border radius later.
-        [layer setFrame:rect];
-
-        if (_refLayer == nil) {
-          [_view.layer addSublayer:layer];
-        } else {
-          [_view.layer insertSublayer:layer above:_refLayer];
-        }
-        _refLayer = layer;
+        [self applyRectToLayer:layer withBoxIndex:clip_index];
+        [self insertLayer:layer];
         break;
       }
       case DisplayListOpType::kDrawView: {
@@ -132,7 +125,17 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kText: {
-        // TODO(songshourui.null): implement the kText action later.
+        if (int_count >= 2) {
+          auto text_id = [self nextContentInt];
+          auto box_index = [self nextContentInt];
+
+          LynxTextLayer *layer = [[LynxTextLayer alloc]
+              initWithLynxTextRenderer:(LynxTextRenderer *)[_renderer_context.textRenderManager
+                                           takeTextRender:text_id]];
+          [self applyRectToLayer:layer withBoxIndex:box_index];
+          [self insertLayer:layer];
+          [layer setNeedsDisplay];
+        }
         break;
       }
       case DisplayListOpType::kImage: {
@@ -214,6 +217,23 @@ using namespace lynx::tasm;
   top_offset_ = 0;
   left_offset_ = 0;
   box_array_.clear();
+}
+
+- (void)applyRectToLayer:(CALayer *)layer withBoxIndex:(int32_t)index {
+  auto &box = box_array_[index];
+  CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
+  rect.origin.x += left_offset_;
+  rect.origin.y += top_offset_;
+  [layer setFrame:rect];
+}
+
+- (void)insertLayer:(CALayer *)layer {
+  if (_refLayer == nil) {
+    [_view.layer addSublayer:layer];
+  } else {
+    [_view.layer insertSublayer:layer above:_refLayer];
+  }
+  _refLayer = layer;
 }
 
 @end

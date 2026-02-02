@@ -10,6 +10,7 @@
 #include <vector>
 
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIOwner.h>
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
@@ -21,7 +22,7 @@ namespace tasm {
 
 class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePaintingContext {
  public:
-  NativePaintingCtxDarwin(UIView<LUIBodyView> *body_view, void *textra);
+  NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra);
   ~NativePaintingCtxDarwin() override = default;
 
   NativePaintingCtxDarwin(const NativePaintingCtxDarwin &) = delete;

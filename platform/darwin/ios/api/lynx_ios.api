@@ -1338,7 +1338,7 @@ public class LynxDevToolEnvUtils : NSObject {
 }
 
 public class LynxDisplayListApplier : NSObject {
-  public instancetype LynxDisplayListApplier::initWithView:(UIView< LynxRendererHost > *view);
+  public instancetype LynxDisplayListApplier::initWithView:andContext:(UIView< LynxRendererHost > *view,[andContext] LynxRendererContext *context);
   public void LynxDisplayListApplier::applyDisplayList:(lynx::tasm::DisplayList *list);
   public void LynxDisplayListApplier::reset();
 }
@@ -3117,15 +3117,20 @@ public class LynxReloadBundleEntry : LynxPipelineEntry {
 }
 
 public class LynxRenderer : NSObject {
-  public instancetype LynxRenderer::initWithRenderHost:andSign:(UIView< LynxRendererHost > *host,[andSign] int32_t sign);
+  public instancetype LynxRenderer::initWithRenderHost:andSign:andContext:(UIView< LynxRendererHost > *host,[andSign] int32_t sign,[andContext] LynxRendererContext *context);
   public int32_t LynxRenderer::getSign();
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
 }
 
+public class LynxRendererContext : NSObject {
+  public UIView<LUIBodyView>* LynxRendererContext::bodyView bodyView;
+  public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
+}
+
 public protocol LynxRendererHost-p : <NSObject> {
   public void LynxRendererHost-p::setRenderer:(LynxRenderer *renderer);
-  public LynxRenderer * LynxRendererHost-p::createRendererWithSign:(int32_t sign);
+  public LynxRenderer * LynxRendererHost-p::createRendererWithSign:andContext:(int32_t sign,[andContext] LynxRendererContext *context);
   public LynxRenderer * LynxRendererHost-p::getRenderer();
   public UIView * LynxRendererHost-p::getView();
 }
@@ -3837,6 +3842,10 @@ public class LynxTextAttachmentInfo : NSObject {
 
 public class LynxTextInfoModule : NSObject, <LynxContextModule> {
   public NSDictionary * LynxTextInfoModule::getTextInfo:params:(NSString *text,[params] NSDictionary *params);
+}
+
+public class LynxTextLayer : CALayer, <CALayerDelegate> {
+  public instancetype LynxTextLayer::initWithLynxTextRenderer:(LynxTextRenderer *textRenderer);
 }
 
 public class LynxTextLayoutManager : NSLayoutManager {

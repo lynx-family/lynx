@@ -4,7 +4,10 @@
 
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxTextLayer.h>
+#import <Lynx/LynxTextRenderManager.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #include "core/renderer/dom/fragment/display_list.h"
@@ -31,18 +34,23 @@ using namespace lynx::tasm;
 
 - (void)testInitWithView {
   id mockView = OCMProtocolMock(@protocol(LynxRendererHost));
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockView];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockView
+                                                                      andContext:mockContext];
   XCTAssertNotNil(applier);
 }
 
 - (void)testApplyDisplayListWithNullInputs {
   id mockView = OCMProtocolMock(@protocol(LynxRendererHost));
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockView];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockView
+                                                                      andContext:mockContext];
 
   [applier applyDisplayList:nullptr];
   // Should not crash
 
-  LynxDisplayListApplier *nullViewApplier = [[LynxDisplayListApplier alloc] initWithView:nil];
+  LynxDisplayListApplier *nullViewApplier =
+      [[LynxDisplayListApplier alloc] initWithView:nil andContext:mockContext];
   DisplayList list;
   [nullViewApplier applyDisplayList:&list];
   // Should not crash
@@ -55,6 +63,7 @@ using namespace lynx::tasm;
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockLayer = OCMClassMock([CALayer class]);
   id mockRenderer = OCMClassMock([LynxRenderer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
 
   // Stub properties
   [[[mockUIView stub] andReturn:mockLayer] layer];
@@ -70,7 +79,8 @@ using namespace lynx::tasm;
   // [[_view getRenderer] getSign]
   [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   // Construct DisplayList
   DisplayList list;
@@ -123,7 +133,9 @@ using namespace lynx::tasm;
 
 - (void)testProcessContentOperationsWithTODOs {
   id mockUIView = OCMClassMock([LynxMockView class]);
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
   // kText, kImage, kBorder are currently empty but should be handled gracefully
@@ -138,9 +150,11 @@ using namespace lynx::tasm;
 - (void)testBeginWithIntCountNotOne {
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
   [[[mockUIView stub] andReturn:mockLayer] layer];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
   // kBegin with int_count=0 -> record_offset should be false
@@ -166,9 +180,11 @@ using namespace lynx::tasm;
 - (void)testDrawViewWithIntCountNotOne {
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockSubView = OCMClassMock([UIView class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
   [[[mockUIView stub] andReturn:@[ mockSubView ]] subviews];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
   // kDrawView with int_count=0 -> should NOT consume extra int
@@ -180,7 +196,9 @@ using namespace lynx::tasm;
 
 - (void)testProcessContentOperationsWithUnknownOp {
   id mockUIView = OCMClassMock([LynxMockView class]);
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
   // Add an unknown operation type to hit the default case
@@ -193,7 +211,9 @@ using namespace lynx::tasm;
 
 - (void)testProcessContentOperationsWithClipRect {
   id mockUIView = OCMClassMock([LynxMockView class]);
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
   // kClipRect with standard 4 floats
@@ -208,7 +228,9 @@ using namespace lynx::tasm;
 
 - (void)testProcessContentOperationsWithRecordBoxRadii {
   id mockUIView = OCMClassMock([LynxMockView class]);
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
   // kRecordBox with radii
@@ -223,6 +245,7 @@ using namespace lynx::tasm;
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockRenderer = OCMClassMock([LynxRenderer class]);
   id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
 
   [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
@@ -230,7 +253,8 @@ using namespace lynx::tasm;
   // Renderer sign is 1
   [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
 
@@ -264,6 +288,7 @@ using namespace lynx::tasm;
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockRenderer = OCMClassMock([LynxRenderer class]);
   id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
 
   [[[mockUIView stub] andReturn:mockRenderer] getRenderer];
   [[[mockUIView stub] andReturn:mockLayer] layer];
@@ -271,7 +296,8 @@ using namespace lynx::tasm;
   // Renderer sign is 1
   [[[mockRenderer stub] andReturnValue:OCMOCK_VALUE((int32_t)1)] getSign];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
 
   DisplayList list;
 
@@ -300,6 +326,39 @@ using namespace lynx::tasm;
 
   // kEnd (Pops 10, 10) -> Offset back to 0, 0
   list.AddOperation(DisplayListOpType::kEnd);
+
+  [applier applyDisplayList:&list];
+
+  [mockLayer verify];
+}
+
+- (void)testProcessContentOperationsWithText {
+  id mockUIView = OCMClassMock([LynxMockView class]);
+  id mockLayer = OCMClassMock([CALayer class]);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  id mockTextRenderManager = OCMClassMock([LynxTextRenderManager class]);
+  id mockTextRenderer = OCMClassMock([LynxTextRenderer class]);
+
+  [[[mockUIView stub] andReturn:mockLayer] layer];
+  [[[mockContext stub] andReturn:mockTextRenderManager] textRenderManager];
+  [[[mockTextRenderManager stub] andReturn:mockTextRenderer] takeTextRender:123];
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+                                                                      andContext:mockContext];
+
+  DisplayList list;
+  // 1. kRecordBox
+  list.AddOperation(DisplayListOpType::kRecordBox, 10.0f, 10.0f, 100.0f, 50.0f);
+
+  // 2. kText
+  // int_count=2 (text_id=123, box_index=0)
+  list.AddOperation(DisplayListOpType::kText, 123, 0);
+
+  // Expectation: LynxTextLayer added with correct frame
+  [[mockLayer expect] addSublayer:[OCMArg checkWithBlock:^BOOL(CALayer *layer) {
+                        return [layer isKindOfClass:[LynxTextLayer class]] &&
+                               CGRectEqualToRect(layer.frame, CGRectMake(10, 10, 100, 50));
+                      }]];
 
   [applier applyDisplayList:&list];
 

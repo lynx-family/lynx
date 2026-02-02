@@ -14,18 +14,21 @@
 #include "core/shell/dynamic_ui_operation_queue.h"
 
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxUIOwner+Private.h>
 
 namespace lynx {
 namespace tasm {
 
-NativePaintingCtxDarwin::NativePaintingCtxDarwin(UIView<LUIBodyView> *body_view, void *textra)
-    : context_(std::make_unique<PlatformRendererContextDarwin>(body_view)) {
+NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra)
+    : context_(std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView])) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
       std::make_unique<PlatformRendererDarwinFactory>(context_.get()));
   if (textra != 0) {
     text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
   } else {
-    text_layout_impl_ = std::make_unique<TextLayoutDarwin>(nil, nil);
+    context_->GetRendererContext().textRenderManager = owner.textRenderManager;
+    text_layout_impl_ =
+        std::make_unique<TextLayoutDarwin>(owner.textRenderManager, owner.fontFaceContext);
   }
 }
 

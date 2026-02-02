@@ -334,8 +334,8 @@ public class DisplayListApplierTest {
     when(mockTextUpdateBundle.getTextLayout()).thenReturn(mockTextLayout);
 
     testDisplayList.ops = new int[] {0, 6}; // OP_BEGIN, OP_TEXT
-    testDisplayList.iArgv = new int[] {1, 4, 0, 1, 0,
-        456}; // OP_BEGIN{ int: 1, float: 4} ID: 0 OP_TEXT{int: 1, float: 0} OP_TEXT_ID: 456
+    testDisplayList.iArgv = new int[] {1, 4, 0, 2, 0, 456,
+        -1}; // OP_BEGIN{ int: 1, float: 4} ID: 0 OP_TEXT{int: 2, float: 0} OP_TEXT_ID: 456
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
     displayListApplier.setDisplayList(testDisplayList);
@@ -368,7 +368,7 @@ public class DisplayListApplierTest {
     when(mockTextMeasurer.takeTextLayout(anyInt())).thenReturn(null);
 
     testDisplayList.ops = new int[] {0, 6}; // OP_BEGIN, OP_TEXT
-    testDisplayList.iArgv = new int[] {1, 4, 0, 1, 0}; // intParamCounts
+    testDisplayList.iArgv = new int[] {1, 4, 0, 2, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {0f, 0f, 100f, 50f}; // bounds for OP_BEGIN
 
     // Add text ID parameter
@@ -515,7 +515,7 @@ public class DisplayListApplierTest {
     testDisplayList.ops =
         new int[] {0, 11, 2, 6, 1}; // OP_BEGIN, OP_RECORD_BOX, OP_FILL, OP_TEXT, OP_END
     testDisplayList.iArgv =
-        new int[] {1, 4, 0, 0, 4, 2, 0, 0xFF0000FF, 0, 1, 0, 999, 0, 0}; // intParamCounts
+        new int[] {1, 4, 0, 0, 4, 2, 0, 0xFF0000FF, 0, 2, 0, 999, -1, 0, 0}; // intParamCounts
     testDisplayList.fArgv = new float[] {
         10f, 20f, 100f, 50f, // BEGIN
         0f, 0f, 100f, 50f // RECORD_BOX

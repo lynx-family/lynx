@@ -5,22 +5,27 @@
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 
 @implementation LynxRenderer {
   __weak UIView<LynxRendererHost>* _host;
   LynxDisplayListApplier* _applier;
+  LynxRendererContext* _renderer_context;
 
   lynx::tasm::DisplayList* list_;
 
   int32_t sign_;
 }
 
-- (instancetype)initWithRenderHost:(UIView<LynxRendererHost>*)host andSign:(int32_t)sign {
+- (instancetype)initWithRenderHost:(UIView<LynxRendererHost>*)host
+                           andSign:(int32_t)sign
+                        andContext:(LynxRendererContext*)context {
   self = [super init];
   if (self) {
     _host = host;
     sign_ = sign;
+    _renderer_context = context;
   }
   return self;
 }
@@ -34,7 +39,7 @@
     return;
   }
 
-  _applier = [[LynxDisplayListApplier alloc] initWithView:_host];
+  _applier = [[LynxDisplayListApplier alloc] initWithView:_host andContext:_renderer_context];
 }
 
 - (void)updateDisplayList:(lynx::tasm::DisplayList*)list {

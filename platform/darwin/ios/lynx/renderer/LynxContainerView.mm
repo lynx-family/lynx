@@ -13,8 +13,8 @@
   _render = renderer;
 }
 
-- (LynxRenderer*)createRendererWithSign:(int32_t)sign {
-  return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign];
+- (LynxRenderer*)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext*)context {
+  return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
 }
 
 - (LynxRenderer*)getRenderer {

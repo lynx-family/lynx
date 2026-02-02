@@ -52,7 +52,7 @@ class DisplayListBuilder {
   DisplayListBuilder& DrawImage(int32_t image_id, int32_t box_index);
 
   // Retrieve text source and draw
-  DisplayListBuilder& DrawText(int text_id);
+  DisplayListBuilder& DrawText(int text_id, int32_t box_index);
 
   // Set all border properties at once (color, width, style for all four sides)
   DisplayListBuilder& Border(int32_t out_index, int32_t inner_index,

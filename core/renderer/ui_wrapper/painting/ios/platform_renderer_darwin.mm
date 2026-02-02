@@ -101,7 +101,8 @@ void PlatformRendererDarwin::InitializeUIView() {
   }
 
   if (_view != nil) {
-    LynxRenderer* renderer = [_view createRendererWithSign:GetId()];
+    LynxRenderer* renderer = [_view createRendererWithSign:GetId()
+                                                andContext:context_->GetRendererContext()];
     [_view setRenderer:renderer];
   }
 }

@@ -26,7 +26,7 @@
 - (void)testRendererMethods {
   LynxContainerView* containerView = [[LynxContainerView alloc] init];
 
-  LynxRenderer* renderer = [containerView createRendererWithSign:1];
+  LynxRenderer* renderer = [containerView createRendererWithSign:1 andContext:nil];
 
   [containerView setRenderer:renderer];
 

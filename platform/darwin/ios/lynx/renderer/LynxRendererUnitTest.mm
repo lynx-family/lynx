@@ -5,6 +5,7 @@
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -33,11 +34,14 @@
 
 - (void)testUpdateDisplayList {
   id host = OCMProtocolMock(@protocol(LynxRendererHost));
-  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host andSign:1];
+  id context = OCMClassMock([LynxRendererContext class]);
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host
+                                                            andSign:1
+                                                         andContext:context];
 
   id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
-  OCMStub([mockApplier initWithView:host]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host andContext:context]).andReturn(mockApplier);
 
   lynx::tasm::DisplayList list;
   [[mockApplier expect] applyDisplayList:&list];
@@ -51,13 +55,16 @@
 
 - (void)testEnsureLynxDisplayListApplier {
   id host = OCMProtocolMock(@protocol(LynxRendererHost));
-  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host andSign:1];
+  id context = OCMClassMock([LynxRendererContext class]);
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host
+                                                            andSign:1
+                                                         andContext:context];
 
   id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
 
-  // Verify initWithView: is called with the host
-  [[[mockApplier expect] andReturn:mockApplier] initWithView:host];
+  // Verify initWithView:andContext: is called with the host and context
+  [[[mockApplier expect] andReturn:mockApplier] initWithView:host andContext:context];
 
   [renderer ensureLynxDisplayListApplier];
 
@@ -66,7 +73,7 @@
 }
 
 - (void)testGetSign {
-  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:nil andSign:1];
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:nil andSign:1 andContext:nil];
   XCTAssertEqual([renderer getSign], 1);
 }
 

@@ -25,7 +25,7 @@ void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
                 layout_info.layout_result.padding_[starlight::Direction::kTop],
                 layout_info.layout_result.size_.width_,
                 layout_info.layout_result.size_.height_);
-  builder.DrawText(fragment_->id());
+  builder.DrawText(fragment_->id(), fragment_->DefineContentBox(builder));
   builder.End();
 }
 

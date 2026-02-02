@@ -80,8 +80,9 @@ DisplayListBuilder& DisplayListBuilder::DrawImage(int32_t image_id,
   return *this;
 }
 
-DisplayListBuilder& DisplayListBuilder::DrawText(int text_id) {
-  display_list_.AddOperation(DisplayListOpType::kText, text_id);
+DisplayListBuilder& DisplayListBuilder::DrawText(int text_id,
+                                                 int32_t box_index) {
+  display_list_.AddOperation(DisplayListOpType::kText, text_id, box_index);
   return *this;
 }
 

@@ -6,10 +6,13 @@
 #import <UIKit/UIKit.h>
 
 @protocol LynxRendererHost;
+@class LynxRendererContext;
 
 @interface LynxRenderer : NSObject
 
-- (instancetype)initWithRenderHost:(UIView<LynxRendererHost> *)host andSign:(int32_t)sign;
+- (instancetype)initWithRenderHost:(UIView<LynxRendererHost> *)host
+                           andSign:(int32_t)sign
+                        andContext:(LynxRendererContext *)context;
 
 - (int32_t)getSign;
 

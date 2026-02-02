@@ -8,9 +8,11 @@
 
 namespace lynx {
 namespace tasm {
-PlatformRendererContextDarwin::PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view)
-    : _container_view(container_view) {}
+PlatformRendererContextDarwin::PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view) {
+  _renderer_context = [[LynxRendererContext alloc] init];
+  _renderer_context.bodyView = container_view;
+}
 
-PlatformRendererContextDarwin::~PlatformRendererContextDarwin() { _container_view = nullptr; }
+PlatformRendererContextDarwin::~PlatformRendererContextDarwin() { _renderer_context = nil; }
 }  // namespace tasm
 }  // namespace lynx

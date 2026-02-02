@@ -7,15 +7,16 @@
 #import <UIKit/UIKit.h>
 
 @class LynxRenderer;
+@class LynxRendererContext;
 
 @protocol LynxRendererHost <NSObject>
 
-- (void)setRenderer:(LynxRenderer*)renderer;
+- (void)setRenderer:(LynxRenderer *)renderer;
 
-- (LynxRenderer*)createRendererWithSign:(int32_t)sign;
+- (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context;
 
-- (LynxRenderer*)getRenderer;
+- (LynxRenderer *)getRenderer;
 
-- (UIView*)getView;
+- (UIView *)getView;
 
 @end

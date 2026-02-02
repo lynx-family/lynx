@@ -224,8 +224,10 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_TEXT: {
           // Text: id (1 int)
-          if (intParamCount >= 1) {
+          if (intParamCount >= 2) {
             int textId = nextContentInt();
+            // TODO(songshourui.null): Android doesn't use this index for now.
+            int boxIndex = nextContentInt();
             drawText(canvas, textId);
           }
           break;
