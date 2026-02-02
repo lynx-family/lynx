@@ -8,6 +8,7 @@
 #include "core/runtime/js/bindings/console.h"
 #include "core/runtime/js/runtime_manager.h"
 #include "core/runtime/js/utils.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 
 // BINARY_KEEP_SOURCE_FILE
 namespace lynx {
@@ -74,6 +75,10 @@ void JSExecutor::loadPreJSBundle(
   if (runtime_observer_ng_ != nullptr) {
     runtime_observer_ng_->OnRuntimeCreated(js_runtime_->type());
   }
+
+  tasm::report::EventTracker::UpdateGenericInfo(
+      static_cast<int32_t>(rt_id), "js_runtime_type",
+      static_cast<int64_t>(js_runtime_->type()));
 }
 
 void JSExecutor::SetObserver(JSIObserver* observer) {
