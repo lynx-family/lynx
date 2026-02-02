@@ -671,6 +671,10 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
   [self.gestureConsumer interceptGesture:intercept];
 }
 
+- (void)resetInterceptGesture {
+  self.gestureConsumer.interceptGestureStatus = LynxInterceptGestureStateUnset;
+}
+
 - (BOOL)canConsumeGesture:(CGPoint)delta {
   return
       [self.view consumeDeltaOffset:delta

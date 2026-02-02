@@ -17,5 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)interceptGesture:(BOOL)intercept;
 
+- (void)resetInterceptGesture;
+
 @end
 NS_ASSUME_NONNULL_END

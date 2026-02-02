@@ -1985,6 +1985,7 @@ bool UIBase::ShouldHitTest() {
 }
 
 EventTarget* UIBase::HitTest(float point[2]) {
+  gesture_status_ = LynxInterceptGestureStatus::LynxInterceptGestureStateUnset;
   float origin_point[2]{point[0], point[1]};
   EventTarget* target = nullptr;
   float target_point[] = {point[0], point[1]};

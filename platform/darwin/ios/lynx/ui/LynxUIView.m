@@ -142,6 +142,10 @@ LYNX_REGISTER_UI("view")
   }
 }
 
+- (void)resetInterceptGesture {
+  ((UILynxView *)self.view).interceptGestureStatus = LynxInterceptGestureStateUnset;
+}
+
 - (void)setContext:(LynxUIContext *)context {
   [super setContext:context];
   if (self.context.defaultOverflowVisible) {

@@ -991,6 +991,10 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   // Override by sub class
 }
 
+- (void)resetInterceptGesture {
+  // Override by sub class
+}
+
 - (LynxGestureArenaManager*)getGestureArenaManager {
   return [self.context.uiOwner gestureArenaManager];
 }
@@ -3511,6 +3515,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
+  [self resetInterceptGesture];
   CGPoint originPoint = point;
   LynxUI* guard = nil;
   NSMutableArray* siblingTargets = [NSMutableArray new];

@@ -1766,6 +1766,10 @@ LYNX_UI_METHOD(autoScroll) {
   [self.view.gestureConsumer interceptGesture:intercept];
 }
 
+- (void)resetInterceptGesture {
+  self.view.gestureConsumer.interceptGestureStatus = LynxInterceptGestureStateUnset;
+}
+
 - (BOOL)canConsumeGesture:(CGPoint)delta {
   return [self.view consumeDeltaOffset:delta vertical:_enableScrollY];
 }

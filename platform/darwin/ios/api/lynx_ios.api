@@ -4307,6 +4307,7 @@ public class LynxUI : <__covariant V UIView> {
   public LynxScrollInfo * LynxUI(Fluency)::infoWithScrollView:selector:(UIScrollView *view, [selector] SEL selector);
   public void LynxUI(Gesture)::consumeInternalGesture:(BOOL consume);
   public void LynxUI(Gesture)::interceptGesture:(BOOL intercept);
+  public void LynxUI(Gesture)::resetInterceptGesture();
   public BOOL LynxUI::needProcessDirection();
   public void LynxUI(AsyncDisplay)::drawRect:withParameters:(CGRect bounds, [withParameters] id drawParameters);
   public UIImage * LynxUI(AsyncDisplay)::imageWithActionBlock:opaque:scale:size:(LynxCGContextImageDrawingActions action, [opaque] BOOL opaque, [scale] CGFloat scale, [size] CGSize size);
@@ -4341,6 +4342,7 @@ public interface LynxUI(Fluency) {
 public interface LynxUI(Gesture) {
   public void LynxUI(Gesture)::consumeInternalGesture:(BOOL consume);
   public void LynxUI(Gesture)::interceptGesture:(BOOL intercept);
+  public void LynxUI(Gesture)::resetInterceptGesture();
 }
 
 public interface LynxUI(LynxHeroTransition) {

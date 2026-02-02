@@ -8,6 +8,7 @@
 #import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxUI+Fluency.h>
+#import <Lynx/LynxUI+Gesture.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
@@ -1738,6 +1739,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  [self resetInterceptGesture];
   if (self.context.enableEventRefactor) {
     return [self findHitTestTarget:point withEvent:event] ?: self;
   } else {
