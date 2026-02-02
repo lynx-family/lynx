@@ -2,12 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererHost.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
+#include "core/renderer/dom/fragment/display_list.h"
+
+@interface LynxRenderer (Testing)
+- (void)ensureLynxDisplayListApplier;
+@end
 
 @interface LynxRendererUnitTest : XCTestCase
 @end
@@ -25,10 +32,37 @@
 }
 
 - (void)testUpdateDisplayList {
-  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:nil andSign:1];
+  id host = OCMProtocolMock(@protocol(LynxRendererHost));
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host andSign:1];
+
+  id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
+  OCMStub([mockApplier alloc]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host]).andReturn(mockApplier);
+
   lynx::tasm::DisplayList list;
+  [[mockApplier expect] applyDisplayList:&list];
+
   [renderer updateDisplayList:&list];
+
   XCTAssertEqual([renderer getDisplayList], &list);
+  [mockApplier verify];
+  [mockApplier stopMocking];
+}
+
+- (void)testEnsureLynxDisplayListApplier {
+  id host = OCMProtocolMock(@protocol(LynxRendererHost));
+  LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:host andSign:1];
+
+  id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
+  OCMStub([mockApplier alloc]).andReturn(mockApplier);
+
+  // Verify initWithView: is called with the host
+  [[[mockApplier expect] andReturn:mockApplier] initWithView:host];
+
+  [renderer ensureLynxDisplayListApplier];
+
+  [mockApplier verify];
+  [mockApplier stopMocking];
 }
 
 - (void)testGetSign {

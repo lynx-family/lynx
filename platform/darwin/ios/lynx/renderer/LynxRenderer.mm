@@ -33,9 +33,8 @@
   if (_applier != nil) {
     return;
   }
-  // TODO(songshourui.null): add init function to LynxDisplayListApplier later.
-  // _applier = [[LynxDisplayListApplier alloc] initWithView:_host];
-  _applier = [[LynxDisplayListApplier alloc] init];
+
+  _applier = [[LynxDisplayListApplier alloc] initWithView:_host];
 }
 
 - (void)updateDisplayList:(lynx::tasm::DisplayList*)list {
@@ -43,8 +42,7 @@
 
   [self ensureLynxDisplayListApplier];
 
-  // TODO(songshourui.null): add init function to LynxDisplayListApplier later.
-  // [_applier applyDisplayList:list_];
+  [_applier applyDisplayList:list_];
 }
 
 - (lynx::tasm::DisplayList*)getDisplayList {
