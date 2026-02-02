@@ -679,6 +679,16 @@ void LynxShell::LoadTemplate(
         }};
     WatchDog::RunOnActorThreadIdle(std::move(gc_task), engine_actor_);
   }
+
+  if (!memory_pressure_callback_) {
+    memory_pressure_callback_ = std::make_unique<base::MemoryPressureCallback>(
+        [engine_actor = engine_actor_](base::MemoryPressureLevel) {
+          engine_actor->Act([](auto& engine) {
+            TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_TRIGGER_VM_GC);
+            engine->TriggerVmGC();
+          });
+        });
+  }
 }
 
 void LynxShell::LoadTemplateBundle(

@@ -101,6 +101,7 @@ base_core_public_headers_list = [
   "lru_cache.h",
   "lynx_actor.h",
   "md5.h",
+  "memory/memory_pressure_level.h",
   "no_destructor.h",
   "path_utils.h",
   "position.h",

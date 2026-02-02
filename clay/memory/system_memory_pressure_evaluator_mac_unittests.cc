@@ -23,19 +23,19 @@ TEST(SystemMemoryPressureEvaluatorMacTest, TestMapPressureLevel) {
   EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(
                 DISPATCH_MEMORYPRESSURE_NORMAL));
-  EXPECT_EQ(MemoryPressureListener::MEMORY_PRESSURE_LEVEL_MODERATE,
+  EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(
                 DISPATCH_MEMORYPRESSURE_WARN));
-  EXPECT_EQ(MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL,
+  EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(
                 DISPATCH_MEMORYPRESSURE_CRITICAL));
-  EXPECT_EQ(MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE,
+  EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(0));
-  EXPECT_EQ(MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE,
+  EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(3));
-  EXPECT_EQ(MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE,
+  EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(5));
-  EXPECT_EQ(MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE,
+  EXPECT_EQ(MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE,
             SystemMemoryPressureEvaluatorMac::MapPressureLevelForTest(-1));
 }
 

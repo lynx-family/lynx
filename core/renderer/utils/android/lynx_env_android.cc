@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "core/base/android/jni_helper.h"
+#include "core/base/memory/memory_pressure_callback.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/tasm/config.h"
@@ -78,6 +79,11 @@ void SetEnvMask(JNIEnv* env, jobject jcaller, jstring key, jboolean value) {
 }
 
 void InitUIThread(JNIEnv* env, jclass jcaller) { lynx::base::UIThread::Init(); }
+
+void OnMemoryPressure(JNIEnv* env, jclass jcaller, jint pressure) {
+  lynx::base::MemoryPressureCallback::NotifyMemoryPressure(
+      static_cast<lynx::base::MemoryPressureLevel>(pressure));
+}
 
 void RunJavaTaskOnConcurrentLoop(JNIEnv* env, jclass jcaller, jlong task_id,
                                  jint task_type) {

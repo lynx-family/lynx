@@ -142,6 +142,12 @@ inline constexpr const char* const LYNX_SHELL_SET_PAGE_OPTIONS =
 inline constexpr const char* const SET_PAGE_OPTIONS = "SetPageOptions";
 inline constexpr const char* const LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD =
     "LynxShell::AttachEngineToUIThread";
+/**
+ * @trace_description: Trigger JavaScript VM garbage collection when memory
+ * pressure occurs.
+ */
+inline constexpr const char* const LYNX_SHELL_TRIGGER_VM_GC =
+    "LynxShell::TriggerVmGC";
 inline constexpr const char* const LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD =
     "LynxShell::DetachEngineFromUIThread";
 inline constexpr const char* const LYNX_SHELL_UPDATE_VIEWPORT =

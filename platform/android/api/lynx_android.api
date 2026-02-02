@@ -5084,6 +5084,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.initNativeUIThread();
   public boolean com.lynx.tasm.LynxEnv.tryToLoadV8Bridge(boolean unused);
   public void com.lynx.tasm.LynxEnv.forceDisableQuickJsCache();
+  public void com.lynx.tasm.LynxEnv.trimMemory(@MemoryPressureLevel int pressure);
 }
 
 public enum com::lynx::tasm::LynxEnvKey {
@@ -7600,6 +7601,13 @@ public class com::lynx::devtoolwrapper::MemoryListener :  {
   public void com.lynx.devtoolwrapper.MemoryListener.addMemoryReporter(MemoryReporter reporter);
   public void com.lynx.devtoolwrapper.MemoryListener.removeMemoryReporter(MemoryReporter reporter);
   public boolean com.lynx.devtoolwrapper.MemoryListener.hasAvailableReporter();
+}
+
+public class com::lynx::tasm::base::MemoryPressureCallbackDispatcher :  {
+  public static MemoryPressureCallbackDispatcher com.lynx.tasm.base.MemoryPressureCallbackDispatcher.getInstance();
+  public void com.lynx.tasm.base.MemoryPressureCallbackDispatcher.addCallback(MemoryPressureCallback callback);
+  public void com.lynx.tasm.base.MemoryPressureCallbackDispatcher.removeCallback(MemoryPressureCallback callback);
+  public void com.lynx.tasm.base.MemoryPressureCallbackDispatcher.notifyMemoryPressure(@MemoryPressureLevel int pressure);
 }
 
 public class com::lynx::tasm::performance::memory::MemoryRecord :  {
@@ -10186,6 +10194,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE LYNX_ENGINE_POOL_POOL_ENGINE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DESTORY_LYNXVIEW DESTORY_LYNXVIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNXVIEW_BUILDER_BUILD LYNXVIEW_BUILDER_BUILD;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_ENV_TRIM_MEMORY LYNX_ENV_TRIM_MEMORY;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRIGGER_EMBEDDED_MODE_LIFECYCLE TRIGGER_EMBEDDED_MODE_LIFECYCLE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LOGIC_EXECUTOR_INIT LOGIC_EXECUTOR_INIT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LOGIC_EXECUTOR_EVENT LOGIC_EXECUTOR_EVENT;

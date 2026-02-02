@@ -107,6 +107,10 @@ public class TraceEventDef {
 
   public static final String DESTORY_LYNXVIEW = "DestroyLynxView";
   public static final String LYNXVIEW_BUILDER_BUILD = "CreateLynxView";
+  /**
+   * @trace_description: Dispatch memory pressure signal with level @args{pressure}.
+   */
+  public static final String LYNX_ENV_TRIM_MEMORY = "LynxEnv.trimMemory";
 
   public static final String TRIGGER_EMBEDDED_MODE_LIFECYCLE = "TriggerEmbeddedModeLifecycle";
 

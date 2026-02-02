@@ -16,6 +16,7 @@
 #include <functional>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/memory/memory_pressure_level.h"
 
 namespace clay {
 
@@ -48,28 +49,7 @@ namespace clay {
 //
 class MemoryPressureListener {
  public:
-  // A Java counterpart is in
-  // io/flutter/embedding/engine/memory/MemoryPressureLevel.java
-  enum MemoryPressureLevel {
-    // No problems, there is enough memory to use. This event is not sent via
-    // callback.
-    MEMORY_PRESSURE_LEVEL_NONE = 0,
-
-    // Modules are advised to free buffers that are cheap to re-allocate and not
-    // immediately needed.
-    MEMORY_PRESSURE_LEVEL_MODERATE = 1,
-
-    // At this level, modules are advised to free all possible memory.  The
-    // alternative is to be killed by the system, which means all memory will
-    // have to be re-created, plus the cost of a cold start.
-    MEMORY_PRESSURE_LEVEL_CRITICAL = 2,
-
-    // This must be the last value in the enum. The casing is different from the
-    // other values to make this enum work well with the
-    // UMA_HISTOGRAM_ENUMERATION macro.
-    kMaxValue = MEMORY_PRESSURE_LEVEL_CRITICAL,
-  };
-
+  using MemoryPressureLevel = lynx::base::MemoryPressureLevel;
   using MemoryPressureCallback = std::function<void(MemoryPressureLevel)>;
   using SyncMemoryPressureCallback = std::function<void(MemoryPressureLevel)>;
 

@@ -19,13 +19,17 @@ MemoryPressureListener::MemoryPressureLevel MapFromMacPressureLevel(
     dispatch_source_memorypressure_flags_t mac_pressure_level) {
   switch (mac_pressure_level) {
     case DISPATCH_MEMORYPRESSURE_NORMAL:
-      return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE;
+      return MemoryPressureListener::MemoryPressureLevel::
+          MEMORY_PRESSURE_LEVEL_NONE;
     case DISPATCH_MEMORYPRESSURE_WARN:
-      return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_MODERATE;
+      return MemoryPressureListener::MemoryPressureLevel::
+          MEMORY_PRESSURE_LEVEL_MODERATE;
     case DISPATCH_MEMORYPRESSURE_CRITICAL:
-      return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL;
+      return MemoryPressureListener::MemoryPressureLevel::
+          MEMORY_PRESSURE_LEVEL_CRITICAL;
   }
-  return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE;
+  return MemoryPressureListener::MemoryPressureLevel::
+      MEMORY_PRESSURE_LEVEL_NONE;
 }
 }  // namespace
 

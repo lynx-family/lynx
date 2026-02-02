@@ -10,6 +10,8 @@ import("../Lynx.gni")
 base_shared_sources = [
                         "js_constants.h",
                         "lynx_export.h",
+                        "memory/memory_pressure_callback.cc",
+                        "memory/memory_pressure_callback.h",
                         "thread/once_task.h",
                         "thread/thread_utils.cc",
                         "thread/thread_utils.h",
@@ -192,6 +194,7 @@ lynx_core_source_set("gtest_lynx_base_android") {
 unittest_set("base_testset") {
   sources = [
     "json/json_utils_unittests.cc",
+    "memory/memory_pressure_callback_unittest.cc",
     "thread/blocking_queue_unittest.cc",
     "thread/once_task_unittest.cc",
     "thread/thread_utils_unittest.cc",

@@ -22,6 +22,7 @@ import com.google.gson.JsonSyntaxException;
 import com.lynx.BuildConfig;
 import com.lynx.base.IBaseNativeLibraryLoader;
 import com.lynx.base.LynxBaseEnv;
+import com.lynx.base.memory.MemoryPressureLevel;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.devtoolwrapper.DevToolSettings;
@@ -35,8 +36,10 @@ import com.lynx.tasm.base.JNINamespace;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxNativeMemoryTracer;
 import com.lynx.tasm.base.LynxTraceEnv;
+import com.lynx.tasm.base.MemoryPressureCallbackDispatcher;
 import com.lynx.tasm.base.TraceController;
 import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorBundle;
 import com.lynx.tasm.behavior.BuiltInBehavior;
@@ -333,6 +336,14 @@ public class LynxEnv {
 
     // vsyncMonitor related
     initVsyncMonitor();
+
+    // add native memory listener
+    registerNativeMemoryPressureCallback();
+  }
+
+  private void registerNativeMemoryPressureCallback() {
+    MemoryPressureCallbackDispatcher.getInstance().addCallback(
+        (pressure) -> nativeOnMemoryPressure(pressure));
   }
 
   /**
@@ -1604,6 +1615,16 @@ public class LynxEnv {
     setBooleanLocalEnv(LynxEnvKey.FORCE_DISABLE_QUICKJS_CACHE, mForceDisableQuickJsCache);
   }
 
+  /**
+   * Dispatches a memory pressure signal to registered callbacks.
+   */
+  @AnyThread
+  public void trimMemory(@MemoryPressureLevel int pressure) {
+    TraceEvent.beginSection(TraceEventDef.LYNX_ENV_TRIM_MEMORY);
+    MemoryPressureCallbackDispatcher.getInstance().notifyMemoryPressure(pressure);
+    TraceEvent.endSection(TraceEventDef.LYNX_ENV_TRIM_MEMORY);
+  }
+
   private void initVsyncMonitor() {
     if (enableFreshRateOpt()) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
@@ -1619,4 +1640,5 @@ public class LynxEnv {
   protected static native void nativePrepareLynxGlobalPool();
   private static native void nativeClearBytecode(String bytecodeSourceUrl, boolean useV8);
   private static native void nativeSetGlobalBytecodeGenerateCallback(LynxBytecodeCallback callback);
+  private static native void nativeOnMemoryPressure(int pressure);
 }

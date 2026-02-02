@@ -161,9 +161,9 @@ bool SystemMemoryPressureEvaluatorWin::CheckMemoryPressure() {
 
   bool notify = false;
   switch (GetCurrentPressureLevel()) {
-    case MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE:
+    case MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE:
       break;
-    case MemoryPressureListener::MEMORY_PRESSURE_LEVEL_MODERATE:
+    case MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE:
       if (old_pressure_level != GetCurrentPressureLevel()) {
         moderate_pressure_repeat_count_ = 1;
       } else {
@@ -197,20 +197,20 @@ SystemMemoryPressureEvaluatorWin::CalculateCurrentPressureLevel() {
   MEMORYSTATUSEX mem_info;
   if (!GetSystemMemoryStatus(&mem_info)) {
     FML_LOG(ERROR) << "Get system memory status failed!";
-    return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE;
+    return MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE;
   }
   // How much system memory is actively available for use right now, in MBs.
   int phys_free = static_cast<int>(mem_info.ullAvailPhys / kMBBytes);
   // Determine if the physical memory is under critical memory pressure.
   if (phys_free <= critical_threshold_mb_)
-    return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL;
+    return MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL;
 
   // Determine if the physical memory is under moderate memory pressure.
   if (phys_free <= moderate_threshold_mb_)
-    return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_MODERATE;
+    return MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE;
 
   // No memory pressure was detected.
-  return MemoryPressureListener::MEMORY_PRESSURE_LEVEL_NONE;
+  return MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE;
 }
 
 void SystemMemoryPressureEvaluatorWin::InferThresholds() {
