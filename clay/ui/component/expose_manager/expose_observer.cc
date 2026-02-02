@@ -190,7 +190,7 @@ void ExposeObserver::CheckForIntersectionWithTarget() {
   now_entry_->relative_rect_ = root_rect;
   now_entry_->target_view_ = attached_view_;
   now_entry_->root_ = root_;
-  now_entry_->ComputeIntersectionRect();
+  now_entry_->ComputeIntersectionRect(exposure_ui_clip_enabled_);
   now_entry_->time_ = 0;  // not support time
   now_entry_->relative_to_id_ = attached_view_->GetIdSelector();
   now_entry_->ComputeIntersectionRatio();
@@ -268,6 +268,13 @@ bool ExposeObserver::UpdateExposeData(const char* attr,
     } else {
       expose_attrs_.exposure_ui_margin_enabled =
           NodeExposureUIMarginEnabled::kDisable;
+    }
+    return true;
+  } else if (KeywordID::kEnableExposureUiClip == kw) {
+    if (utils::GetBool(value, false)) {
+      exposure_ui_clip_enabled_ = true;
+    } else {
+      exposure_ui_clip_enabled_ = false;
     }
     return true;
   } else if (KeywordID::kExposureScreenMarginLeft == kw) {
