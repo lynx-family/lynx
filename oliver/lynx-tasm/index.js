@@ -44,8 +44,7 @@ async function encode_wasm(options) {
   return res;
 }
 function encode_napi(options) {
-  const bindingPath = path.resolve(__dirname, `./build/${process.platform}/Release/lepus.node`);
-  const lepus = require(bindingPath);
+  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
   const res = lepus.encode(JSON.stringify({...options}));
   if (res.status !== 0) {
     throw new Error(`encode error: ${res.error_msg}`);
@@ -69,15 +68,13 @@ function getEncodeMode(os) {
 }
 
 function encrypt(plain) {
-  const bindingPath = path.resolve(__dirname, `./build/${process.platform}/Release/lepus.node`);
-  const lepus = require(bindingPath);
+  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
   const res = lepus.encrypt(plain);
   return res
 }
 
 function decrypt(cipher) {
-  const bindingPath = path.resolve(__dirname, `./build/${process.platform}/Release/lepus.node`);
-  const lepus = require(bindingPath);
+  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
   const res = lepus.decrypt(cipher);
   return res
 }
@@ -96,8 +93,7 @@ function decrypt_wasm(plain) {
 
 function decode_napi(templateJS) {
   const templateArray = Uint8Array.from(templateJS);
-  const bindingPath = path.resolve(__dirname, `./build/${process.platform}/Release/lepus.node`);
-  const lepus = require(bindingPath);
+  const lepus = require(`./build/${process.platform}/Release/lepus.node`);
   const res = lepus.decode(templateArray);
   if (res.status !== 0) {
     throw new Error(`decode error: ${res.error_msg}`);
