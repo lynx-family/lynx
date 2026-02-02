@@ -9,6 +9,7 @@ import os
 import importlib.util as iu
 import importlib.machinery as im
 import hashlib
+import sys
 
 from pathlib import Path
 
@@ -35,19 +36,21 @@ def split_targets(target: str) -> list[str]:
     return sorted(targets)
 
 
-def deps_files_path(targets: list) -> list[Path]:
-    habitat_path = LYNX_ROOT_DIR / ".habitat"
+def deps_files_path(
+    targets: list[str], root_dir: Path, solution_name: str
+) -> list[Path]:
+    solution_path = root_dir / f".{solution_name}"
     spec = iu.spec_from_loader(
-        "habitat", im.SourceFileLoader("habitat", str(habitat_path))
+        "habitat", im.SourceFileLoader("habitat", str(solution_path))
     )
-    habitat = iu.module_from_spec(spec)
-    spec.loader.exec_module(habitat)
+    solution_module = iu.module_from_spec(spec)
+    spec.loader.exec_module(solution_module)
 
     # take .habitat file into account as well
-    res = [habitat_path, LYNX_ROOT_DIR / habitat.solutions[0]["deps_file"]]
+    res = [solution_path, root_dir / solution_module.solutions[0]["deps_file"]]
     res.extend(
         [
-            LYNX_ROOT_DIR / habitat.solutions[0]["target_deps_files"][target]
+            root_dir / solution_module.solutions[0]["target_deps_files"][target]
             for target in targets
         ]
     )
@@ -62,7 +65,10 @@ def get_digest(paths: list[Path]) -> str:
             digest.update(f.read())
 
         current = digest.hexdigest()
-        print(f"after calculating {path}, the current digest is {current}")
+        print(
+            f"after calculating {path}, the current digest is {current}",
+            file=sys.stderr,
+        )
 
     return digest.hexdigest()
 
@@ -73,20 +79,21 @@ def main():
     args = parser.parse_args()
 
     targets = split_targets(args.target)
-    paths = deps_files_path(targets)
+    paths = deps_files_path(targets, LYNX_ROOT_DIR, "habitat")
 
-    # ...-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+    # ...-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
     # for the cache key of deps with no target:
     #  - key: hab-macOS-[]-abc123
     #  - restore-keys: hab-macOS-[]-
     # for the cache key of deps with extra targets:
     #  - key: hab-macOS-[dev]-abc123
     #  - restore-keys: hab-macOS-[dev]-
-    target_key = f"[{'-'.join(targets)}]-"
+    target_key = f"[{'-'.join(targets)}]"
     digest_key = get_digest(paths)
 
     set_output(HABITAT_TARGETS, target_key)
     set_output(HABITAT_DEPS_FILE_DIGEST, digest_key)
 
 
-main()
+if __name__ == "__main__":
+    main()

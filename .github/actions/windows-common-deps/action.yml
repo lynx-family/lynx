@@ -64,18 +64,18 @@ runs:
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
         path: ${{ steps.hab-cache-dir.outputs.HABITAT_CACHE_DIR }}
-        key: hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+        key: hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
         restore-keys: |
-          hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}
+          hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-
 
     - name: Setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
       uses: actions/cache@v4
       with:
         path: ${{ steps.hab-cache-dir.outputs.HABITAT_CACHE_DIR }}
-        key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
+        key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
         restore-keys: |
-          hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}
+          hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-
 
     - name: Python Requirements Cache
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
