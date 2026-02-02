@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.22
+* Change `path.resolve` to `require.resolve` for webpack pre-bundle
+
 # 0.0.21
 * supports to resolve `compilerOption` in a tasm file.
 
