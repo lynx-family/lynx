@@ -24,7 +24,7 @@ class IntersectionObserverEntry {
   ~IntersectionObserverEntry() = default;
 
   void ComputeIntersectionRatio();
-  void ComputeIntersectionRect();
+  void ComputeIntersectionRect(bool ui_clip_enabled);
 
   clay::Value::Map ToMap();
   clay::Value::Map RectToMap(FloatRect rect);
@@ -84,6 +84,7 @@ class IntersectionObserver {
   bool is_initial_ = true;
   bool is_detaching_ = false;
   bool available_ = true;
+  bool exposure_ui_clip_enabled_ = false;
 
   std::unique_ptr<IntersectionObserverEntry> old_entry_;
   std::unique_ptr<IntersectionObserverEntry> now_entry_;

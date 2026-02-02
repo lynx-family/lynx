@@ -63,7 +63,7 @@ FloatRect BoundingRectWithScroll(BaseView* view) {
   return FloatRect(location.x(), location.y(), view->Width(), view->Height());
 }
 
-void IntersectionObserverEntry::ComputeIntersectionRect() {
+void IntersectionObserverEntry::ComputeIntersectionRect(bool ui_clip_enabled) {
   if (relative_rect_.IsEmpty() || bounding_client_rect_.IsEmpty()) {
     intersection_rect_ = FloatRect();
     return;
@@ -84,7 +84,8 @@ void IntersectionObserverEntry::ComputeIntersectionRect() {
       parent_rect = relative_rect_;
     } else {
       if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
-          parent->Is<ScrollView>() || parent->Is<BaseListView>()) {
+          parent->Is<ScrollView>() || parent->Is<BaseListView>() ||
+          ui_clip_enabled) {
         parent_rect = BoundingRectWithScroll(parent);
       }
     }
@@ -221,7 +222,7 @@ void IntersectionObserver::CheckForIntersectionWithTarget() {
   now_entry_->relative_rect_ = root_rect;
   now_entry_->target_view_ = attached_view_;
   now_entry_->root_ = root_;
-  now_entry_->ComputeIntersectionRect();
+  now_entry_->ComputeIntersectionRect(exposure_ui_clip_enabled_);
   now_entry_->time_ = 0;  // not support time
   now_entry_->relative_to_id_ = attached_view_->GetIdSelector();
   now_entry_->ComputeIntersectionRatio();

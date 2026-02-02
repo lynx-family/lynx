@@ -251,6 +251,7 @@ enum class KeywordID {
   kExposureId,
   kExposureArea,
   kEnableExposureUiMargin,
+  kEnableExposureUiClip,
   kExposureUiMarginLeft,
   kExposureUiMarginRight,
   kExposureUiMarginTop,

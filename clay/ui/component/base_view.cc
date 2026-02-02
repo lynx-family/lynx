@@ -89,6 +89,7 @@ const std::unordered_set<KeywordID> kExposureAttributes = {
     KeywordID::kExposureId,
     KeywordID::kExposureArea,
     KeywordID::kEnableExposureUiMargin,
+    KeywordID::kEnableExposureUiClip,
     KeywordID::kExposureUiMarginLeft,
     KeywordID::kExposureUiMarginRight,
     KeywordID::kExposureUiMarginTop,

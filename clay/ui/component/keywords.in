@@ -234,6 +234,7 @@ exposure-scene
 exposure-id
 exposure-area
 enable-exposure-ui-margin
+enable-exposure-ui-clip
 exposure-ui-margin-left
 exposure-ui-margin-right
 exposure-ui-margin-top
