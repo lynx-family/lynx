@@ -2221,6 +2221,10 @@ void App::EvaluateScript(const std::string& url, std::string script,
   auto rt = rt_.lock();
   if (rt) {
     Scope scope(*rt);
+    if (!url.empty() && evaluated_script_urls_.count(url) > 0) {
+      return api_callback_manager_.InvokeWithValue(
+          rt.get(), callback.id(), Value::null(), Value::undefined());
+    }
     auto prepared_script = rt->prepareJavaScript(
         std::make_shared<StringBuffer>(std::move(script)), url);
     auto ret = rt->evaluatePreparedJavaScript(prepared_script);
@@ -2235,6 +2239,9 @@ void App::EvaluateScript(const std::string& url, std::string script,
                                                    std::move(js_error_value));
     }
 
+    if (!url.empty()) {
+      evaluated_script_urls_.insert(url);
+    }
     return api_callback_manager_.InvokeWithValue(
         rt.get(), callback.id(), Value::null(), std::move(ret.value()));
   }

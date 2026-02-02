@@ -359,6 +359,7 @@ class App : public std::enable_shared_from_this<App> {
   tasm::TasmRuntimeBundle card_bundle_;
   std::unordered_map<std::string, tasm::TasmRuntimeBundle> component_bundles_;
   std::unordered_map<std::string, JsBundle> js_bundles_;
+  std::unordered_set<std::string> evaluated_script_urls_;
   lepus::Value card_config_;  // cache the init card config data
   lepus::Value init_global_props_;
   JsBundle standalone_js_bundle_;
