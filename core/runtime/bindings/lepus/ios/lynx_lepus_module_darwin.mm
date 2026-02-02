@@ -408,18 +408,22 @@ void TriggerLepusMethodAsync(const std::string& _js_method_name, const lepus::Va
   constexpr const static char kLepusUseUIThreadKey[] = "lepusUseUIThread";
   constexpr const static char kUseAirThreadKey[] = "useAirThread";
   constexpr const static char kFromPiper[] = "fromPiper";
+  const auto from_piper = _args.GetProperty(BASE_STATIC_STRING(kFromPiper)).IsTrue();
   lepus::Value args_ = ssr::FormatEventArgsForIOS(_js_method_name, _args);
   __block lepus::Value args = args_;
   __block std::string js_method_name = _js_method_name;
   __block id<TemplateRenderCallbackProtocol> _render = render_;
   NSMutableDictionary<NSString*, id>* modulesClasses_ = [render_ getLepusModulesClasses];
 
-  // fromPiper is true means this method is called by NativeModules that are not named bridge,
-  // only when fromPiper is true, LynxSDK can handle custom methods defined by developers.
+  // fromPiper is true means this method is called by NativeModules that are not named bridge
+  // and arguments are preprocessed by FormatEventArgsForIOS and should not be sorted again.
+  // Only when fromPiper is true, LynxSDK can handle custom methods defined by developers.
   NSDictionary* resolvedParams =
-      [render_ enableAirStrictMode] && !args.GetProperty(BASE_STATIC_STRING(kFromPiper)).IsTrue()
+      [render_ enableAirStrictMode] && !from_piper
           ? GetMethodDetailParamsForAir(js_method_name, args, true)
-          : GetMethodDetailParams(js_method_name, args, GetSortedParamsKey(true));
+          : GetMethodDetailParams(
+                js_method_name, args,
+                from_piper ? std::vector<base::String>{} : GetSortedParamsKey(true));
   bool not_switch_thread = args.GetProperty(BASE_STATIC_STRING(kUseAirThreadKey)).IsFalse() ||
                            args.GetProperty(BASE_STATIC_STRING(kLepusUseUIThreadKey)).IsTrue();
   LynxModuleWrapper* wrapper = modulesClasses_[[resolvedParams objectForKey:kLepusObjcModuleKey]];
