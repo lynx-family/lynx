@@ -280,7 +280,7 @@ void ExtensionModuleImpl::SetupNapiModule() {
   if (c_module_->napi_creator && env_ && !napi_module_) {
     auto exports = Napi::Object::New(env_);
     napi_value ret_exports =
-        c_module_->napi_creator(env_, exports, "", nullptr);
+        c_module_->napi_creator(env_, exports, "", c_module_->user_data);
     napi_module_ = std::make_unique<LynxNativeModuleNAPI>(env_, ret_exports);
     methods_ = napi_module_->AdoptMethods();
 
