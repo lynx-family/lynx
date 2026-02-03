@@ -143,6 +143,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable LynxUI*)uiWithName:(NSString*)name;
 - (nullable LynxUI*)uiWithIdSelector:(NSString*)idSelector;
 - (nullable LynxWeakProxy*)weakLynxUIWithName:(NSString*)name;
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount;
 
 - (void)reset;
 

@@ -140,6 +140,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (nullable UIView *)viewWithName:(nonnull NSString *)name;
 
+- (nonnull NSArray<LynxUI *> *)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                      findRoot:(nullable LynxUI *)findRoot
+                                      maxCount:(NSInteger)maxCount;
+
 @end
 
 NS_ASSUME_NONNULL_END

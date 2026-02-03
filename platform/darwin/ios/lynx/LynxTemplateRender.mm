@@ -1513,6 +1513,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return [_lynxUIRenderer viewWithName:name];
 }
 
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount {
+  return [_lynxUIRenderer uiWithFilterAll:filter findRoot:findRoot maxCount:maxCount];
+}
+
 #pragma mark - Module
 
 - (void)registerModule:(Class<LynxModule> _Nonnull)module param:(id _Nullable)param {

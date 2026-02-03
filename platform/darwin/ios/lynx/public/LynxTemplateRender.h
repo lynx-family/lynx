@@ -5,13 +5,13 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxExtensionModule.h>
+#import <Lynx/LynxImageFetcher.h>
 #import <Lynx/LynxResourceFetcher.h>
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateRenderDelegateExternal.h>
 #import <Lynx/LynxTemplateRenderProtocol.h>
 #import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxViewEnum.h>
-#import "LynxImageFetcher.h"
 
 @class LynxDevtool;
 @class LynxTemplateBundle;
@@ -85,6 +85,9 @@
 // prefer using `findViewWithName:` than `viewWithName:`.
 // `viewWithName:` will be marked deprecated in 1.6
 - (nullable UIView*)viewWithName:(nonnull NSString*)name;
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount;
 
 - (void)setImageDownsampling:(BOOL)enableImageDownsampling;
 - (BOOL)enableImageDownsampling;

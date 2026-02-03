@@ -21,6 +21,7 @@
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxUpdateMeta.h>
 #import <Lynx/LynxViewBuilder.h>
@@ -88,6 +89,8 @@
 @property(nonatomic, strong, nullable) NSArray<UIScrollView*>* nestedScrollViewsChain;
 
 @property(nonatomic, readwrite) BOOL catchAllException;
+
+@property(nonatomic, readonly, nullable) LynxUI* rootUI;
 
 - (nullable id<LynxResourceFetcher>)resourceFetcher;
 - (void)setResourceFetcher:(nullable id<LynxResourceFetcher>)resourceFetcher;
@@ -302,6 +305,20 @@
  * @return The `UIView` node corresponding to the idSelector attribute.
  */
 - (nullable UIView*)viewWithIdSelector:(nonnull NSString*)idSelector;
+
+/**
+ * @apidoc
+ * @brief Find all `LynxUI` nodes that match the `filter`.
+ * @param filter The filter to decide whether the node should be selected.
+ * @param findRoot The root to start find. This root may be included in the result. If nil, the
+ * search starts from the root of LynxView.
+ * @param maxCount The maximum number of nodes to return. If 0 or negative, all matching nodes will
+ * be returned.
+ * @return An array of `LynxUI` nodes that match the filter, starting from the specified root.
+ */
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount;
 
 /**
  * @apidoc

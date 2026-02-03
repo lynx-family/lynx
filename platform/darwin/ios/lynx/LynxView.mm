@@ -574,6 +574,16 @@
   }
 }
 
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount {
+  if (_templateRender != nil) {
+    return [_templateRender uiWithFilterAll:filter findRoot:findRoot maxCount:maxCount];
+  } else {
+    return @[];
+  }
+}
+
 #pragma mark - Setter & Getter
 
 - (LynxTemplateRender*)templateRender {
@@ -830,6 +840,13 @@
 
 - (void)setLynxViewId:(NSInteger)id {
   _lynxViewId = id;
+}
+
+- (LynxUI*)rootUI {
+  if (_templateRender == nil || [_templateRender uiOwner] == nil) {
+    return nil;
+  }
+  return (LynxUI*)[[_templateRender uiOwner] rootUI];
 }
 
 - (NSDictionary*)getPageDataByKey:(NSArray*)keys {

@@ -587,4 +587,10 @@ NSArray<NSNumber *> *VectorToNSArray(const std::vector<float> &vec) {
   return [_uiOwner uiWithName:name].view;
 }
 
+- (nonnull NSArray<LynxUI *> *)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                      findRoot:(nullable LynxUI *)findRoot
+                                      maxCount:(NSInteger)maxCount {
+  return [_uiOwner uiWithFilterAll:filter findRoot:findRoot maxCount:maxCount];
+}
+
 @end

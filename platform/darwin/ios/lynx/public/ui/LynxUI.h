@@ -42,6 +42,7 @@ enum LynxPropStatus {
 };
 
 typedef void (^LynxNodeReadyBlock)(LynxUI*);
+typedef bool (^LynxUIFilter)(LynxUI* _Nonnull item);
 
 @interface LynxUI<__covariant V : UIView*>
     : LynxComponent <LynxUI*>

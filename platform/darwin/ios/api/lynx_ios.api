@@ -3655,6 +3655,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public nullable LynxUI * LynxTemplateRender::uiWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxTemplateRender::viewWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxTemplateRender::viewWithName:(nonnull NSString *name);
+  public nonnull NSArray< LynxUI * > * LynxTemplateRender::uiWithFilterAll:findRoot:maxCount:(nonnull LynxUIFilter filter,[findRoot] nullable LynxUI *findRoot,[maxCount] NSInteger maxCount);
   public void LynxTemplateRender::setImageDownsampling:(BOOL enableImageDownsampling);
   public BOOL LynxTemplateRender::enableImageDownsampling();
   public BOOL LynxTemplateRender::enableNewImage();
@@ -4872,6 +4873,7 @@ public class LynxUIOwner : NSObject {
   public nullable LynxUI * LynxUIOwner::uiWithName:(NSString *name);
   public nullable LynxUI * LynxUIOwner::uiWithIdSelector:(NSString *idSelector);
   public nullable LynxWeakProxy * LynxUIOwner::weakLynxUIWithName:(NSString *name);
+  public nonnull NSArray< LynxUI * > * LynxUIOwner::uiWithFilterAll:findRoot:maxCount:(nonnull LynxUIFilter filter,[findRoot] nullable LynxUI *findRoot,[maxCount] NSInteger maxCount);
   public void LynxUIOwner::reset();
   public void LynxUIOwner::pauseRootLayoutAnimation();
   public void LynxUIOwner::resumeRootLayoutAnimation();
@@ -4999,6 +5001,7 @@ public protocol LynxUIRendererProtocol-p : <NSObject> {
   public nullable LynxUI * LynxUIRendererProtocol-p::uiWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxUIRendererProtocol-p::viewWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxUIRendererProtocol-p::viewWithName:(nonnull NSString *name);
+  public nonnull NSArray< LynxUI * > * LynxUIRendererProtocol-p::uiWithFilterAll:findRoot:maxCount:(nonnull LynxUIFilter filter,[findRoot] nullable LynxUI *findRoot,[maxCount] NSInteger maxCount);
 }
 
 public protocol LynxUIReportInfoDelegate-p : <NSObject> {
@@ -5164,6 +5167,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxRendererHost> {
   public id<LynxBaseInspectorOwner> LynxView::baseInspectorOwner baseInspectorOwner;
   public NSArray<UIScrollView*>* LynxView::nestedScrollViewsChain nestedScrollViewsChain;
   public BOOL LynxView::catchAllException catchAllException;
+  public LynxUI* LynxView::rootUI rootUI;
   public NSString* LynxView(Identify)::containerID containerID;
   public NSString* LynxView(Identify)::namescope namescope;
   public nullable id< LynxResourceFetcher > LynxView::resourceFetcher();
@@ -5215,6 +5219,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxRendererHost> {
   public nullable LynxUI * LynxView::uiWithName:(nonnull NSString *name);
   public nullable LynxUI * LynxView::uiWithIdSelector:(nonnull NSString *idSelector);
   public nullable UIView * LynxView::viewWithIdSelector:(nonnull NSString *idSelector);
+  public nonnull NSArray< LynxUI * > * LynxView::uiWithFilterAll:findRoot:maxCount:(nonnull LynxUIFilter filter,[findRoot] nullable LynxUI *findRoot,[maxCount] NSInteger maxCount);
   public void LynxView::addLifecycleClient:(nonnull id< LynxViewBaseLifecycle > lifecycleClient);
   public void LynxView::removeLifecycleClient:(nonnull id< LynxViewBaseLifecycle > lifecycleClient);
   public void LynxView::updateViewportWithPreferredLayoutWidth:preferredLayoutHeight:(CGFloat preferredLayoutWidth,[preferredLayoutHeight] CGFloat preferredLayoutHeight);
@@ -6962,6 +6967,7 @@ public enum LynxPropStatus {
 
   typedef struct TransOffset TransOffset
   typedef void(^ LynxNodeReadyBlock) (LynxUI *)
+  typedef bool(^ LynxUIFilter) (LynxUI *_Nonnull item)
 
 public enum NestedScrollMode {
   NestedScrollModeSelfOnly
