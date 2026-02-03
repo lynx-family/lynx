@@ -2360,6 +2360,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (BOOL)onLynxEvent:(LynxEvent*)event {
+  LynxUIOwner* uiOwner = _lynxUIRenderer.uiOwner;
+  if (uiOwner == nil || event == nil) {
+    return NO;
+  }
+
   if (event.eventType == kTouchEvent && ((LynxTouchEvent*)event).isMultiTouch) {
     NSMutableArray* targetKeysToRemove = [NSMutableArray array];
     NSMutableDictionary* uiTouchMap = ((LynxTouchEvent*)event).uiTouchMap;
@@ -2372,6 +2377,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       }
       id<LynxEventTarget> target =
           (id<LynxEventTarget>)[((LynxTouchEvent*)event).activeUIMap valueForKey:targetKey];
+      target = target == nil ? [_lynxUIRenderer.uiOwner findUIBySign:[targetKey intValue]] : target;
+      if (target == nil) {
+        return;
+      }
       LynxTouchEvent* touchEvent = [[LynxTouchEvent alloc] initWithName:event.eventName
                                                               targetTag:[targetKey intValue]
                                                                touchMap:touchMap];
@@ -2395,6 +2404,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 
   id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
+  target = target == nil ? [_lynxUIRenderer.uiOwner findUIBySign:event.targetSign] : target;
+  if (target == nil) {
+    return NO;
+  }
   LynxEventDetail* detail =
       [[LynxEventDetail alloc] initWithEvent:event
                                       target:(id<LynxEventTargetBase>)target
