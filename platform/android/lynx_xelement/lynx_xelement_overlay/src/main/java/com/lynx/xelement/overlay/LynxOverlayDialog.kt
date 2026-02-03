@@ -7,6 +7,8 @@ package com.lynx.xelement.overlay
 import android.app.Activity
 import android.app.Dialog
 import android.content.Context
+import android.graphics.Point
+import android.graphics.PointF
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.ViewGroup
@@ -103,8 +105,9 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     fun dispatchTouchEventToBelowContainer(event: MotionEvent): Boolean {
         val activity = ContextUtils.getActivity(overlay.lynxContext)
         return if (!containerPopupTag.isNullOrEmpty()) {
+            val point = PointF(event.rawX, event.rawY)
             val fragment = (activity as? FragmentActivity)?.let {
-                findFragmentByTagRecursive(it.supportFragmentManager, containerPopupTag)
+                findFragmentByTagRecursive(it.supportFragmentManager, containerPopupTag, point)
             } as? Fragment ?: return false
             val offsetX = 0f
             val offsetY = getBelowContainerHeightOffset().toFloat()
@@ -170,14 +173,31 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     }
 
 
-    private fun findFragmentByTagRecursive(fragmentManager: androidx.fragment.app.FragmentManager, tag: String?): androidx.fragment.app.Fragment? {
-        val fragment = fragmentManager.findFragmentByTag(tag)
+    private fun findFragmentByTagRecursive(fragmentManager: androidx.fragment.app.FragmentManager, tag: String?, point: PointF): androidx.fragment.app.Fragment? {
+      val reverseFragments = fragmentManager.fragments.reversed()
+      for (childFragment in reverseFragments) {
+        if (childFragment.isAdded) {
+          val location = IntArray(2)
+          childFragment.view?.getLocationOnScreen(location)
+          val fragmentX = location[0].toFloat()
+          val fragmentY = location[1].toFloat()
+          val fragmentWidth = childFragment.view?.width?.toFloat() ?: 0f
+          val fragmentHeight = childFragment.view?.height?.toFloat() ?: 0f
+          if (point.x >= fragmentX && point.x <= ((fragmentX + fragmentWidth)) &&
+            point.y >= fragmentY && point.y <= ((fragmentY + fragmentHeight))
+          ) {
+            return childFragment
+          }
+        }
+      }
+      
+      val fragment = fragmentManager.findFragmentByTag(tag)
         if (fragment != null) {
             return fragment
         }
-        for (childFragment in fragmentManager.fragments) {
+        for (childFragment in reverseFragments) {
             if (childFragment.isAdded) {
-                val found = findFragmentByTagRecursive(childFragment.childFragmentManager, tag)
+                val found = findFragmentByTagRecursive(childFragment.childFragmentManager, tag, point)
                 if (found != null) {
                     return found
                 }
