@@ -252,12 +252,14 @@ bool ExposeObserver::UpdateExposeData(const char* attr,
     if (!input_copy.empty()) {
       char* endptr = nullptr;
       errno = 0;
-      double area_double = strtod(input_copy.c_str(), &endptr);
-      std::string_view str_endptr(endptr, strlen(endptr));
-      if ((input_copy.c_str() + input_copy.size() != endptr) &&
-          (str_endptr == "%")) {
-        expose_attrs_.exposure_area = area_double / 100;
-        thresholds_.push_back(expose_attrs_.exposure_area);
+      [[maybe_unused]] double area_double = strtod(input_copy.c_str(), &endptr);
+      if (endptr) {
+        std::string_view str_endptr(endptr, strlen(endptr));
+        if ((input_copy.c_str() + input_copy.size() != endptr) &&
+            (str_endptr == "%")) {
+          expose_attrs_.exposure_area = area_double / 100;
+          thresholds_.push_back(expose_attrs_.exposure_area);
+        }
       }
     }
     return true;

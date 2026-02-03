@@ -173,6 +173,11 @@ static bool CheckLengthUnit(const std::string& input_copy, char* endptr,
     unit = Unit::kNone;
     return true;
   }
+
+  if (!endptr) {
+    return false;
+  }
+
   std::string str_endptr(endptr, endptr + strlen(endptr));
   str_endptr = lynx::base::TrimString(str_endptr);
   if (str_endptr == "px") {
