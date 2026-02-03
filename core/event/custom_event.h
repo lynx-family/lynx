@@ -17,7 +17,7 @@ class CustomEvent : public Event {
   CustomEvent(const std::string& event_name, const lepus::Value& event_param,
               const std::string& param_name, int64_t time_stamp = 0,
               Capture capture = Capture::kNo, Bubbles bubbles = Bubbles::kNo,
-              Cancelable cancelable = Cancelable::kNo,
+              Cancelable cancelable = Cancelable::kYes,
               ComposedMode composed_mode = ComposedMode::kScoped,
               PhaseType phase_type = PhaseType::kNone);
 
