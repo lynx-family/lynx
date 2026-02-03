@@ -1810,7 +1810,7 @@ bool Element::IsFixedUnifiedOnly() const {
 
 bool Element::IsEventPathCatch(event::EventTarget* target,
                                event::Event* event) {
-  if (event && event->from_frontend()) {
+  if (event && event->from_frontend() && target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
     if (this == root_component && !event->composed()) {
@@ -1823,7 +1823,8 @@ bool Element::IsEventPathCatch(event::EventTarget* target,
   if (IsRadonArch() && is_fixed()) {
     auto root = element_manager()->root();
     if (this != root) {
-      LOGI("Element::IsEventPathCatch fixed target.");
+      LOGI("Element::IsEventPathCatch fixed target.")
+      event->event_path().push_back(root->GetWeakTarget());
       return true;
     }
   }
@@ -1831,7 +1832,7 @@ bool Element::IsEventPathCatch(event::EventTarget* target,
 }
 
 bool Element::IsEventPathSkip(event::EventTarget* target, event::Event* event) {
-  if (event && event->from_frontend()) {
+  if (event && event->from_frontend() && target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
     if (GetParentComponentElement() != root_component && !event->composed()) {
