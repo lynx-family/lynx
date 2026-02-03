@@ -506,6 +506,10 @@ bool LynxEnv::EnableFiberElementMemoryReport() {
   return GetBoolEnv(Key::ENABLE_FIBER_ELEMENT_MEMORY_REPORT, true);
 }
 
+bool LynxEnv::EnableListNewArchitecture() {
+  return GetBoolEnv(Key::ENABLE_LIST_NEW_ARCHITECTURE, false);
+}
+
 bool LynxEnv::EnableNewAnimatorOnPatchFinishOpt() {
   static bool enable_new_animator_on_patch_finish_opt =
       GetBoolEnv(Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT, true);
