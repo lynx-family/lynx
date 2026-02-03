@@ -4,7 +4,7 @@
 package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import java.lang.ref.WeakReference;
@@ -13,7 +13,8 @@ import java.util.Deque;
 /**
  * Do not make this class public until a proxy class is added to decouple it from the Pool.
  */
-class LynxEngine {
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+public class LynxEngine {
   enum LynxEngineState {
     UN_LOADED,
     READY_BE_REUSED,

@@ -18,6 +18,7 @@ import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxEngine;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
@@ -62,6 +63,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   // initial globalProps shared by multiple lynxViews config by the same LynxViewGroup;
   private TemplateData globalProps;
 
+  private boolean enableCacheEngine;
+
   private BehaviorRegistry behaviorRegistry;
   private LynxBackgroundRuntimeOptions lynxRuntimeOptions;
   private HashMap contextData;
@@ -105,6 +108,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   /** Runtime Cache Manager **/
   private Future<Void> templateResultFutureTask;
+  private LynxEngine cachedLynxEngine;
 
   /**
    * shared LynxModuleFactory among multiple lynxViews config by the same LynxViewGroup;
@@ -117,7 +121,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   }
 
   LynxViewGroup(Context context, String url, TemplateBundle bundle, TemplateData globalProps,
-      BehaviorRegistry registry, LynxBackgroundRuntimeOptions runtimeOptions, HashMap contextData,
+      boolean enableCacheEngine, BehaviorRegistry registry,
+      LynxBackgroundRuntimeOptions runtimeOptions, HashMap contextData,
       ThreadStrategyForRendering threadStrategy, boolean enableAutoExpose,
       boolean enableLayoutSafepoint, boolean enableUnifiedPipeline, boolean forceDarkAllowed,
       Float density, int screenWidth, int screenHeight, boolean enableMultiAsyncThread,
@@ -131,6 +136,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.url = url;
     this.templateBundle = bundle;
     this.globalProps = globalProps;
+    this.enableCacheEngine = enableCacheEngine;
     this.behaviorRegistry = registry;
     this.lynxRuntimeOptions = runtimeOptions;
     this.contextData = contextData;
@@ -414,13 +420,24 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   }
 
   @Override
-  public void setLynxEngine(ILynxEngine lynxEngine) {
-    // TODO(@huangweiwu): to impl this;
+  public boolean isEngineCacheEnabled() {
+    return enableCacheEngine;
   }
 
   @Override
-  public ILynxEngine getLynxEngine() {
-    // TODO(@huangweiwu): to impl this;
+  public void setLynxEngine(LynxEngine lynxEngine) {
+    if (enableCacheEngine) {
+      this.cachedLynxEngine = lynxEngine;
+    }
+  }
+
+  @Override
+  public LynxEngine getLynxEngine() {
+    if (enableCacheEngine) {
+      LynxEngine result = this.cachedLynxEngine;
+      this.cachedLynxEngine = null;
+      return result;
+    }
     return null;
   }
 
@@ -537,31 +554,33 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       }
       LynxResourceRequest request = new LynxResourceRequest(
           url, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate);
-      fetcher.fetchTemplate(request, response -> {
-        if (response.getState() == LynxResourceResponse.ResponseState.FAILED) {
-          // request failed
-          setFetchResult(LynxResourceResponse.onFailed(response.getError()));
-          return;
-        }
-
-        TemplateBundle bundle = null;
-        TemplateProviderResult result = response.getData();
-        if (result != null) {
-          if (result.getTemplateBundle() != null) {
-            bundle = result.getTemplateBundle();
-          } else if (result.getTemplateBinary() != null) {
-            bundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
+      if (lynxRuntimeOptions.getTemplateResourceFetcher() != null) {
+        lynxRuntimeOptions.getTemplateResourceFetcher().fetchTemplate(request, response -> {
+          if (response.getState() == LynxResourceResponse.ResponseState.FAILED) {
+            // request failed
+            setFetchResult(LynxResourceResponse.onFailed(response.getError()));
+            return;
           }
-        }
-        if (bundle == null) {
-          // unknown error
-          setFetchResult(
-              LynxResourceResponse.onFailed(new RuntimeException("Template bundle is null")));
-          return;
-        }
-        // success
-        setFetchResult(LynxResourceResponse.onSuccess(bundle));
-      });
+
+          TemplateBundle bundle = null;
+          TemplateProviderResult result = response.getData();
+          if (result != null) {
+            if (result.getTemplateBundle() != null) {
+              bundle = result.getTemplateBundle();
+            } else if (result.getTemplateBinary() != null) {
+              bundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
+            }
+          }
+          if (bundle == null) {
+            // unknown error
+            setFetchResult(
+                LynxResourceResponse.onFailed(new RuntimeException("Template bundle is null")));
+            return;
+          }
+          // success
+          setFetchResult(LynxResourceResponse.onSuccess(bundle));
+        });
+      }
     };
     if (lynxRuntimeOptions != null) {
       LynxThreadPool.getAsyncServiceExecutor().execute(runnable);

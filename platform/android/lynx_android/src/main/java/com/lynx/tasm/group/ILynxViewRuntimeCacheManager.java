@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.group;
 
-import com.lynx.tasm.ILynxEngine;
+import com.lynx.tasm.LynxEngine;
 import com.lynx.tasm.TemplateBundle;
 
 /**
@@ -22,9 +22,23 @@ public interface ILynxViewRuntimeCacheManager {
    */
   TemplateBundle getTemplateBundle();
 
-  void setLynxEngine(ILynxEngine lynxEngine);
+  /**
+   * Cache A Already Loaded LynxEngine to LynxViewGroup
+   * @param lynxEngine A used {@link LynxEngine} to be destroyed.
+   */
+  void setLynxEngine(LynxEngine lynxEngine);
 
-  ILynxEngine getLynxEngine();
+  /**
+   * Acquire A Pre Used LynxEngine from LynxViewGroup
+   * @return LynxEngine cached previously
+   */
+  LynxEngine getLynxEngine();
+
+  /**
+   * Check if Engine Cache Enabled.
+   * @return checks if Engine Cache is enabled.
+   */
+  boolean isEngineCacheEnabled();
 
   void setBitmapSizeCache(String source, int width, int height);
 

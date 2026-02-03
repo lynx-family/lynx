@@ -24,6 +24,8 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
   private Context mContext;
   private boolean enableSharedModule = false;
 
+  private boolean enableCacheEngine;
+
   public LynxViewGroupBuilder setContext(@NonNull Context context) {
     this.mContext = context;
     return this;
@@ -54,15 +56,23 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
     return this;
   }
 
+  /**
+   * Enables Engine Cache in Current LynxViewGroup;
+   */
+  public LynxViewGroupBuilder setEnableCacheEngine(boolean enableCacheEngine) {
+    this.enableCacheEngine = enableCacheEngine;
+    return this;
+  }
+
   public ILynxViewGroup build() {
     LynxViewGroup group = new LynxViewGroup(mContext, url, templateBundle, globalProps,
-        behaviorRegistry, lynxRuntimeOptions, mContextData, threadStrategy, enableAutoExpose,
-        enableLayoutSafepoint, enableUnifiedPipeline, forceDarkAllowed, densityOverride,
-        screenWidth, screenHeight, enableMultiAsyncThread, enableSyncFlush, enablePendingJsTask,
-        enableAsyncHydration, enableVSyncAlignedMessageLoop, enableJSRuntime, enableAirStrictMode,
-        debuggable, presetWidthMeasureSpec, presetHeightMeasureSpec, fontScale, enablePreUpdateData,
-        uiRendererCreator, embeddedMode, hasPresetMeasureSpec, logicExecutor, enableMTSModule,
-        tapSlop, enableSharedModule);
+        enableCacheEngine, behaviorRegistry, lynxRuntimeOptions, mContextData, threadStrategy,
+        enableAutoExpose, enableLayoutSafepoint, enableUnifiedPipeline, forceDarkAllowed,
+        densityOverride, screenWidth, screenHeight, enableMultiAsyncThread, enableSyncFlush,
+        enablePendingJsTask, enableAsyncHydration, enableVSyncAlignedMessageLoop, enableJSRuntime,
+        enableAirStrictMode, debuggable, presetWidthMeasureSpec, presetHeightMeasureSpec, fontScale,
+        enablePreUpdateData, uiRendererCreator, embeddedMode, hasPresetMeasureSpec, logicExecutor,
+        enableMTSModule, tapSlop, enableSharedModule);
     return group;
   }
 }

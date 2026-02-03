@@ -2702,8 +2702,9 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
 public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setTemplateBundle(TemplateBundle bundle);
   public TemplateBundle com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getTemplateBundle();
-  public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setLynxEngine(ILynxEngine lynxEngine);
-  public ILynxEngine com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getLynxEngine();
+  public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setLynxEngine(LynxEngine lynxEngine);
+  public LynxEngine com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getLynxEngine();
+  public boolean com.lynx.tasm.group.ILynxViewRuntimeCacheManager.isEngineCacheEnabled();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setBitmapSizeCache(String source, int width, int height);
   public BitmapSize com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getBitmapSizeCache(String source);
 }
@@ -4907,6 +4908,30 @@ public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxCon
   public void com.lynx.jsbridge.LynxEmbeddedModule.getData(final int lynxViewId, final Callback resolve, final Callback reject);
   public void com.lynx.jsbridge.LynxEmbeddedModule.setDataV2(final ReadableMap params, final Callback resolve, final Callback reject);
   public void com.lynx.jsbridge.LynxEmbeddedModule.getDataV2(final Callback resolve, final Callback reject);
+}
+
+public class com::lynx::tasm::LynxEngine :  {
+  public com.lynx.tasm.LynxEngine.LynxEngine(@NonNull TemplateBundle templateBundle, LynxTemplateRender templateRender);
+  public ThreadStrategyForRendering com.lynx.tasm.LynxEngine.getThreadStrategy();
+  public void com.lynx.tasm.LynxEngine.setThreadStrategy(ThreadStrategyForRendering threadStrategy);
+  public TemplateBundle com.lynx.tasm.LynxEngine.getTemplateBundle();
+  public long com.lynx.tasm.LynxEngine.getNativePtr();
+  public void com.lynx.tasm.LynxEngine.setQueueRefFromPool(Deque< LynxEngine > lynxEngineQueue);
+  public ILynxUIRenderer com.lynx.tasm.LynxEngine.getLynxUIRenderer();
+  public void com.lynx.tasm.LynxEngine.setLynxUIRenderer(ILynxUIRenderer lynxUIRenderer);
+  public TasmPlatformInvoker com.lynx.tasm.LynxEngine.getTasmPlatformInvoker();
+  public void com.lynx.tasm.LynxEngine.setTasmPlatformInvoker(TasmPlatformInvoker tasmPlatformInvoker);
+  public PageConfig com.lynx.tasm.LynxEngine.getPageConfig();
+  public void com.lynx.tasm.LynxEngine.setPageConfig(PageConfig pageConfig);
+  public void com.lynx.tasm.LynxEngine.detachFromLynxView();
+  public synchronized void com.lynx.tasm.LynxEngine.updateLynxEngineState(LynxEngineState lynxEngineState);
+  public synchronized boolean com.lynx.tasm.LynxEngine.hasLoaded();
+  public synchronized boolean com.lynx.tasm.LynxEngine.canReused();
+  public synchronized boolean com.lynx.tasm.LynxEngine.tryBeReusing();
+  public void com.lynx.tasm.LynxEngine.attachCurrentTemplateRender(LynxTemplateRender templateRender);
+  public void com.lynx.tasm.LynxEngine.registerLynxEngineReused();
+  public void com.lynx.tasm.LynxEngine.destroy();
+  public String com.lynx.tasm.LynxEngine.toString();
 }
 
 public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder {
@@ -7437,6 +7462,7 @@ public class com::lynx::tasm::group::LynxViewGroupBuilder : LynxBaseConfigurator
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setGlobalProps(@NonNull TemplateData globalProps);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setLogicExecutor(ILynxLogicExecutor logicExecutor);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setEnableSharedModule(boolean enableSharedModule);
+  public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setEnableCacheEngine(boolean enableCacheEngine);
   public ILynxViewGroup com.lynx.tasm.group.LynxViewGroupBuilder.build();
 }
 
