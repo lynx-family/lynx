@@ -95,7 +95,7 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
          << event->type()
          << ", phase: " << static_cast<int>(event->event_phase())
          << ", target: " << GetUniqueID()
-         << ", listener options: " << listener->GetOptions().Flags());
+         << ", listener options: " << listener->GetOptions().Flags())
 
     is_catch |= listener->GetOptions().IsCatch();
     listener->Invoke(event);
