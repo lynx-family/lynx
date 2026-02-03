@@ -143,7 +143,7 @@ export struct LynxView {
   // This switch will be removed once OpenHarmony is fixed. Please avoid using it unnecessarily.
   experimentalFixFitContent?: boolean = false;
   private perfController?: PerformanceController;
-  private uiRenderer!: LynxUIRenderer;
+  private uiRenderer?: LynxUIRenderer;
   private templateRenderer!: LynxTemplateRenderer;
   private context: LynxContext = new LynxContext();
   private moduleManager: LynxModuleManager = new LynxModuleManager(this.context);
@@ -171,6 +171,16 @@ export struct LynxView {
 
   reInitTemplateRenderer() {
     LynxInfoReporterHelper.reportLynxTemplateEvent(LynxTemplateType.PAGE, this.url);
+    if (this.perfController) {
+      LLog.d(TAG, 'Destroy perfController before re-init template renderer');
+      this.perfController.destroy()
+      this.perfController = undefined;
+    }
+    if (this.uiRenderer) {
+      LLog.d(TAG, 'Destroy uiRenderer before re-init template renderer');
+      this.uiRenderer.aboutToDisappear();
+      this.uiRenderer = undefined;
+    }
     if (this.templateRenderer) {
       LLog.d(TAG, 'Destroy templateRender before re-init template renderer, url: ' + this.url);
       this.templateRenderer.aboutToDisappear();
@@ -225,11 +235,9 @@ export struct LynxView {
 
   prepareForLoadTemplate() {
     if (this.perfController) {
-      LLog.d(TAG, 'Destroy perfController before re-init template renderer');
       this.perfController.destroy()
     }
     if (this.uiRenderer) {
-      LLog.d(TAG, 'Destroy uiRenderer before re-init template renderer');
       this.uiRenderer.aboutToDisappear();
     }
 
@@ -291,10 +299,10 @@ export struct LynxView {
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
         this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
-        this.uiRenderer.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0)
+        this.uiRenderer?.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1 : 0)
       };
       this.currentWindow.on('keyboardHeightChange', this.keyboardHeightChangeCallback);
-      this.uiRenderer.setAvoidKeyboardListener((translateY: number) => {
+      this.uiRenderer?.setAvoidKeyboardListener((translateY: number) => {
         this.getUIContext()?.animateTo({
           duration: 300,
           curve: Curve.EaseOut,
@@ -313,7 +321,8 @@ export struct LynxView {
     LLog.d(TAG, 'aboutToDisappear.')
     this.perfController?.destroy();
     this.perfController = undefined;
-    this.uiRenderer.aboutToDisappear();
+    this.uiRenderer?.aboutToDisappear();
+    this.uiRenderer = undefined;
     this.templateRenderer.aboutToDisappear();
     this.nodeController?.dispose();
     this.nodeController = undefined;
@@ -649,7 +658,7 @@ export struct LynxView {
     .onAreaChange((oldValue: Area, newValue: Area) => {
       this.measuredSize.width = newValue.width as number;
       this.measuredSize.height = newValue.height as number;
-      this.uiRenderer.requestLayout();
+      this.uiRenderer?.requestLayout();
     })
   }
 
