@@ -74,7 +74,12 @@ std::unique_ptr<Surface> EmbedderSurfaceMetal::CreateGPUSurface(clay::GrContext*
   }
   auto surface = std::make_unique<GPUSurfaceMetalSkity>(
       this, context ? std::shared_ptr<clay::GrContext>(context) : main_context_,
-      MsaaSampleCount::kNone, true);
+#if defined(OS_OSX)
+      MsaaSampleCount::kFour,
+#else
+      MsaaSampleCount::kNone,
+#endif
+      true);
 
   if (!surface->IsValid()) {
     return nullptr;

@@ -53,7 +53,6 @@ TEST_F(BoxPainterTest, Background) {
   SkPaint paint;
   paint.setColor(SK_ColorBLUE);
   paint.setAntiAlias(true);
-  paint.setBlendMode(SkBlendMode::kSrc);
   constexpr SkRect rect = SkRect::MakeLTRB(0, 0, 100, 100);
   const auto expected_draw_calls = std::vector{
       MockCanvas::DrawCall{0, MockCanvas::DrawRectData{rect, paint}}};

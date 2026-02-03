@@ -458,9 +458,6 @@ void BoxPainter::PaintBackground(GraphicsContext* context,
   if (has_visible_color) {
     class Paint paint;
     paint.setColor(background.background_color);
-    if (background.background_color.Alpha() == 0xff) {
-      paint.setBlendMode(BlendMode::kSrc);
-    }
 #if defined(ENABLE_ANTIALIAS)
     // setAntiAlias in case topper transform layer has rotation.
     // INFO(feiyue.1998): disable antialias for background, or e2e test
