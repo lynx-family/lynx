@@ -50,6 +50,7 @@ import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.swiper.XSwiperUI;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
+import com.lynx.tasm.behavior.utils.Predicate;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.eventreport.LynxEventReporter;
@@ -58,6 +59,8 @@ import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot;
 import com.lynx.tasm.performance.memory.MemoryRecord;
+import com.lynx.tasm.service.ILynxTrailService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
@@ -68,12 +71,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @UiThread
 public class LynxUIOwner {
@@ -126,9 +131,13 @@ public class LynxUIOwner {
 
   private TextMeasurer mTextMeasurer;
 
+  private static volatile boolean useFindUIByFilter;
+  private static final AtomicBoolean settingsInited = new AtomicBoolean(false);
+
   public LynxUIOwner(
       LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body) {
     TraceEvent.beginSection(TraceEventDef.UI_OWNER_INIT);
+    initSettings();
     mContext = context;
     mBehaviorRegistry = behaviorRegistry;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -160,6 +169,21 @@ public class LynxUIOwner {
 
     attachUIBodyView(body);
     TraceEvent.endSection(TraceEventDef.UI_OWNER_INIT);
+  }
+
+  private static void initSettings() {
+    if (!settingsInited.compareAndSet(false, true)) {
+      return;
+    }
+    boolean enabled = false;
+    ILynxTrailService service = LynxServiceCenter.inst().getService(ILynxTrailService.class);
+    if (service != null) {
+      String value = service.stringValueForTrailKey("ui_owner_find_ui_by_filter");
+      if ("1".equals(value) || "true".equals(value)) {
+        enabled = true;
+      }
+    }
+    useFindUIByFilter = enabled;
   }
 
   /**
@@ -1398,7 +1422,57 @@ public class LynxUIOwner {
     }
   }
 
+  @NonNull
+  public List<LynxBaseUI> findAllLynxUIByFilter(
+      @NonNull Predicate<LynxBaseUI> filter, @Nullable LynxBaseUI findRoot, int maxCount) {
+    ArrayList<LynxBaseUI> result = new ArrayList<>();
+    collectByFilter(findRoot == null ? mUIBody : findRoot, filter, result, maxCount);
+    return result;
+  }
+
+  @Nullable
+  public LynxBaseUI findLynxUIByFilter(Predicate<LynxBaseUI> filter) {
+    return findLynxUIByFilter(filter, null);
+  }
+
+  @Nullable
+  public LynxBaseUI findLynxUIByFilter(
+      Predicate<LynxBaseUI> filter, @Nullable LynxBaseUI findRoot) {
+    List<LynxBaseUI> list = findAllLynxUIByFilter(filter, findRoot, 1);
+    if (!list.isEmpty()) {
+      return list.get(0);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * @return should the collecting be stopped early
+   */
+  private boolean collectByFilter(
+      @NonNull LynxBaseUI ui, Predicate<LynxBaseUI> filter, List<LynxBaseUI> out, int maxCount) {
+    LynxBaseUI target = (ui instanceof UIShadowProxy) ? ((UIShadowProxy) ui).getChild() : ui;
+    if (target == null) {
+      return false;
+    }
+    if (filter.test(target)) {
+      out.add(target);
+      if (maxCount > 0 && out.size() >= maxCount) {
+        return true;
+      }
+    }
+    for (LynxBaseUI child : target.getChildren()) {
+      if (collectByFilter(child, filter, out, maxCount)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public LynxBaseUI findLynxUIByName(@NonNull String name) {
+    if (useFindUIByFilter) {
+      return findLynxUIByFilter(ui -> Objects.equals(ui.getName(), name));
+    }
     for (LynxBaseUI ui : mUIHolder.values()) {
       if (ui != null && name.equals(ui.getName())) {
         return ui;
@@ -1408,6 +1482,9 @@ public class LynxUIOwner {
   }
 
   public LynxBaseUI findLynxUIByIdSelector(@NonNull String id) {
+    if (useFindUIByFilter) {
+      return findLynxUIByFilter(ui -> Objects.equals(ui.getIdSelector(), id));
+    }
     for (LynxBaseUI ui : mUIHolder.values()) {
       if (ui != null && id.equals(ui.getIdSelector())) {
         return ui;
@@ -1429,7 +1506,6 @@ public class LynxUIOwner {
     }
     return null;
   }
-
   /**
    * @param componentId the sign of LynBaseUI
    * @param nodes       nodes compose of ancestorSelectorNames and selectorName
@@ -1519,6 +1595,9 @@ public class LynxUIOwner {
   }
 
   public LynxBaseUI findLynxUIByIdSelector(String idSelector, LynxBaseUI ui) {
+    if (useFindUIByFilter) {
+      return findLynxUIByFilter(item -> Objects.equals(item.getIdSelector(), idSelector), ui);
+    }
     if (ui != null && ui.getIdSelector() != null && ui.getIdSelector().equals(idSelector)) {
       return ui;
     }

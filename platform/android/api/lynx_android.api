@@ -2622,7 +2622,8 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public void com.lynx.tasm.behavior.ILynxUIRenderer.setFirstLayout();
   public LynxBaseUI com.lynx.tasm.behavior.ILynxUIRenderer.findLynxUIByName(@NonNull String name);
   public LynxBaseUI com.lynx.tasm.behavior.ILynxUIRenderer.findLynxUIByIdSelector(@NonNull String id);
-  public LynxBaseUI com.lynx.tasm.behavior.ILynxUIRenderer.findLynxUIByIndex(@NonNull int index);
+  public LynxBaseUI com.lynx.tasm.behavior.ILynxUIRenderer.findLynxUIByIndex(int index);
+  public List< LynxBaseUI > com.lynx.tasm.behavior.ILynxUIRenderer.findAllLynxUIByFilter( @NonNull Predicate< LynxBaseUI > filter, @Nullable LynxBaseUI findRoot, int maxCount);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.onTouchEvent(MotionEvent ev, UIGroup rootUi);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.consumeSlideEvent(MotionEvent ev);
@@ -6945,6 +6946,9 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIOwner.findLynxUIById(String id, LynxBaseUI ui);
   public LynxContext com.lynx.tasm.behavior.LynxUIOwner.getContext();
   public void com.lynx.tasm.behavior.LynxUIOwner.reset();
+  public List< LynxBaseUI > com.lynx.tasm.behavior.LynxUIOwner.findAllLynxUIByFilter( @NonNull Predicate< LynxBaseUI > filter, @Nullable LynxBaseUI findRoot, int maxCount);
+  public LynxBaseUI com.lynx.tasm.behavior.LynxUIOwner.findLynxUIByFilter(Predicate< LynxBaseUI > filter);
+  public LynxBaseUI com.lynx.tasm.behavior.LynxUIOwner.findLynxUIByFilter(Predicate< LynxBaseUI > filter, @Nullable LynxBaseUI findRoot);
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIOwner.findLynxUIByName(@NonNull String name);
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIOwner.findLynxUIByIdSelector(@NonNull String id);
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIOwner.findLynxUIByA11yId(@NonNull String a11yIdStr);
@@ -7010,7 +7014,8 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public void com.lynx.tasm.behavior.LynxUIRenderer.setFirstLayout();
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByName(@NonNull String name);
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByIdSelector(@NonNull String id);
-  public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByIndex(@NonNull int index);
+  public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByIndex(int index);
+  public List< LynxBaseUI > com.lynx.tasm.behavior.LynxUIRenderer.findAllLynxUIByFilter( @NonNull Predicate< LynxBaseUI > filter, @Nullable LynxBaseUI findRoot, int maxCount);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.onTouchEvent(MotionEvent ev, UIGroup rootUi);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.onInterceptTouchEvent(MotionEvent ev);
   public void com.lynx.tasm.behavior.LynxUIRenderer.EnsureEventDispatcher();
@@ -7188,6 +7193,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public UIGroup< UIBodyView > com.lynx.tasm.LynxView.getLynxUIRoot();
   public void com.lynx.tasm.LynxView.syncFlush();
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIndex(int index);
+  public List< LynxBaseUI > com.lynx.tasm.LynxView.findAllUIByFilter( @NonNull Predicate< LynxBaseUI > filter, @Nullable LynxBaseUI findRoot, int maxCount);
   public void com.lynx.tasm.LynxView.setOnClickListener(@Nullable OnClickListener listener);
   public void com.lynx.tasm.LynxView.setVisibility(int visibility);
   public void com.lynx.tasm.LynxView.runOnTasmThread(Runnable runnable);
@@ -8394,6 +8400,10 @@ public class com::lynx::tasm::animation::layout::PositionAndSizeAnimation : Anim
   public com.lynx.tasm.animation.layout.PositionAndSizeAnimation.PositionAndSizeAnimation(LynxUI ui, int x, int y, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, final Rect bound);
   public void com.lynx.tasm.animation.layout.PositionAndSizeAnimation.onLayoutUpdate(int x, int y, int width, int height);
   public boolean com.lynx.tasm.animation.layout.PositionAndSizeAnimation.willChangeBounds();
+}
+
+public interface com::lynx::tasm::behavior::utils::Predicate {
+  public boolean com.lynx.tasm.behavior.utils.Predicate< T >.test(T var1);
 }
 
 public interface com::lynx::jsbridge::Promise {

@@ -25,6 +25,8 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.utils.Predicate;
+import java.util.List;
 
 public interface ILynxUIRenderer {
   void onInitBodyView(UIBodyView bodyView, Context context, LynxGroup group);
@@ -84,7 +86,11 @@ public interface ILynxUIRenderer {
 
   LynxBaseUI findLynxUIByIdSelector(@NonNull String id);
 
-  LynxBaseUI findLynxUIByIndex(@NonNull int index);
+  LynxBaseUI findLynxUIByIndex(int index);
+
+  @NonNull
+  List<LynxBaseUI> findAllLynxUIByFilter(
+      @NonNull Predicate<LynxBaseUI> filter, @Nullable LynxBaseUI findRoot, int maxCount);
 
   boolean onTouchEvent(MotionEvent ev, UIGroup rootUi);
 
