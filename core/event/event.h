@@ -160,7 +160,7 @@ class Event : public lepus::RefCounted {
   lepus::Value& detail() { return detail_; }
   void set_detail(const lepus::Value detail) { detail_ = detail; }
 
-  const std::vector<fml::WeakPtr<EventTarget>>& event_path() const;
+  std::vector<fml::WeakPtr<EventTarget>>& event_path();
 
   void SetTraceFlowId(uint64_t trace_flow_id) {
     trace_flow_id_ = trace_flow_id;
@@ -181,9 +181,9 @@ class Event : public lepus::RefCounted {
 
  protected:
   EventType event_type_{EventType::kNone};
-  int64_t time_stamp_;
+  int64_t time_stamp_{0};
   std::string type_;
-  bool from_frontend_;
+  bool from_frontend_{false};
 
   bool capture_ : 1;
   bool bubbles_ : 1;
