@@ -344,6 +344,9 @@ class LynxConfigDecoder final {
         doc[config::kEnableListNewArchitecture].IsBool()) {
       page_config->SetListNewArchitecture(
           doc[config::kEnableListNewArchitecture].GetBool());
+    } else {
+      page_config->SetListNewArchitecture(
+          LynxEnv::GetInstance().EnableListNewArchitecture());
     }
 
     if (doc.HasMember(config::kEnableNewListContainer) &&
