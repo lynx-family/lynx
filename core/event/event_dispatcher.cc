@@ -56,7 +56,7 @@ EventDispatcher::EventDispatcher(EventTarget& target, fml::RefPtr<Event> event)
 
 DispatchEventResult EventDispatcher::Dispatch() {
   if (!target_) {
-    LOGE("EventDispatcher::Dispatch error: the target is null.");
+    LOGE("EventDispatcher::Dispatch error: the target is null.")
     return {EventCancelType::kCanceledBeforeDispatch, false};
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH,
@@ -87,7 +87,7 @@ DispatchEventResult EventDispatcher::Dispatch() {
       if (!target) {
         LOGE(
             "EventDispatcher::Dispatch capture error: the target of event path "
-            "is null.");
+            "is null.")
         continue;
       }
       if (event_->target() == target) {
@@ -120,8 +120,8 @@ DispatchEventResult EventDispatcher::Dispatch() {
     for (auto& item : path) {
       if (!item) {
         LOGE(
-            "EventDispatcher::Dispatch capture error: the target of event path "
-            "is null.");
+            "EventDispatcher::Dispatch bubble error: the target of event path "
+            "is null.")
         continue;
       }
       if (event_->target() == item) {
