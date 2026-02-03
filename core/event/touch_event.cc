@@ -24,7 +24,7 @@ TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
                        float page_x, float page_y, float client_x,
                        float client_y, int64_t time_stamp)
     : Event(event_name, time_stamp, EventType::kTouchEvent, Capture::kYes,
-            Bubbles::kYes, Cancelable::kYes, ComposedMode::kComposed,
+            Bubbles::kYes, Cancelable::kYes, ComposedMode::kScoped,
             PhaseType::kNone),
       x_(x),
       y_(y),
@@ -39,7 +39,7 @@ TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
 TouchEvent::TouchEvent(const std::string& event_name,
                        const lepus::Value& targets_touches, int64_t time_stamp)
     : Event(event_name, time_stamp, EventType::kTouchEvent, Capture::kYes,
-            Bubbles::kYes, Cancelable::kYes, ComposedMode::kComposed,
+            Bubbles::kYes, Cancelable::kYes, ComposedMode::kScoped,
             PhaseType::kNone),
       is_multi_touch_(true),
       targets_touches_(targets_touches) {
