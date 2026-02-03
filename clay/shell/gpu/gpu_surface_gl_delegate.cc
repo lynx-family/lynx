@@ -130,6 +130,12 @@ GPUSurfaceGLDelegate::GetDefaultPlatformGLInterface() {
 
 bool GPUSurfaceGLDelegate::AllowsDrawingWhenGpuDisabled() const { return true; }
 
-int GPUSurfaceGLDelegate::GetSampleCount() const { return 1; }
+int GPUSurfaceGLDelegate::GetSampleCount() const {
+#if defined(ENABLE_SKITY) && defined(OS_WIN)
+  return 4;
+#else
+  return 1;
+#endif
+}
 
 }  // namespace clay
