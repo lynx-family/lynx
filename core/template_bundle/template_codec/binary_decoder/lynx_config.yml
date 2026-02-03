@@ -920,6 +920,7 @@ enableListNewArchitecture:
     member: list_new_architecture
     setter: SetListNewArchitecture
     getter: GetListNewArchitecture
+  readSettings: true
   author: keweibing
   since: '2.4'
   supportPlatform:
