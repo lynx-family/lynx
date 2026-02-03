@@ -40,6 +40,7 @@ podspec_target("XElement_podspec") {
       "Input",
       "Overlay",
       "SVG",
+      "Refresh",
       "Behavior",
     ]
   }
@@ -48,6 +49,7 @@ podspec_target("XElement_podspec") {
     ":Behavior",
     ":Input",
     ":Overlay",
+    ":Refresh",
     ":SVG",
   ]
 }
@@ -125,12 +127,37 @@ subspec_target("SVG") {
   dependency += lynx_dependency
 }
 
+subspec_target("Refresh") {
+  sources = [
+    "refresh/LynxUIRefresh.h",
+    "refresh/LynxUIRefresh.m",
+    "refresh/LynxUIRefreshHeader.h",
+    "refresh/LynxUIRefreshHeader.m",
+    "refresh/LynxUIRefreshShadowNode.h",
+    "refresh/LynxUIRefreshShadowNode.m",
+  ]
+  public_header_files = [
+    "refresh/LynxUIRefresh.h",
+    "refresh/LynxUIRefreshHeader.h",
+    "refresh/LynxUIRefreshShadowNode.h",
+  ]
+
+  dependency = [ [
+        "MJRefresh",
+        ">= 3.6.1",
+      ] ]
+
+  dependency += lynx_dependency
+}
+
 subspec_target("Behavior") {
   sources = [
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIInputAutoRegistry.m",
     "behavior/LynxUIOverlayAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.m",
+    "behavior/LynxUIRefreshAutoRegistry.h",
+    "behavior/LynxUIRefreshAutoRegistry.m",
     "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUISVGAutoRegistry.m",
     "behavior/LynxUITextAreaAutoRegistry.h",
@@ -139,6 +166,7 @@ subspec_target("Behavior") {
   public_header_files = [
     "behavior/LynxUIInputAutoRegistry.h",
     "behavior/LynxUIOverlayAutoRegistry.h",
+    "behavior/LynxUIRefreshAutoRegistry.h",
     "behavior/LynxUISVGAutoRegistry.h",
     "behavior/LynxUITextAreaAutoRegistry.h",
   ]
@@ -148,5 +176,6 @@ subspec_target("Behavior") {
     "XElement/Input",
     "XElement/Overlay",
     "XElement/SVG",
+    "XElement/Refresh",
   ]
 }
