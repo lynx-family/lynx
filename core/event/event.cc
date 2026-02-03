@@ -84,7 +84,7 @@ Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
 void Event::InitEventPath(EventTarget& target) {
   EventTarget* event_target = &target;
   if (!event_target) {
-    LOGE("Event::InitEventPath error: the target is null.");
+    LOGE("Event::InitEventPath error: the target is null.")
     return;
   }
   while (event_target && !event_target->IsEventPathCatch(&target, this)) {
@@ -94,10 +94,10 @@ void Event::InitEventPath(EventTarget& target) {
     }
     event_path_.push_back(event_target->GetWeakTarget());
     event_target = event_target->GetParentTarget();
-  };
+  }
 }
 
-const std::vector<fml::WeakPtr<EventTarget>>& Event::event_path() const {
+std::vector<fml::WeakPtr<EventTarget>>& Event::event_path() {
   return event_path_;
 }
 
@@ -109,7 +109,7 @@ void Event::HandleEventBaseDetail(bool is_core_event) {
   if (!target_ || !current_target_) {
     LOGE(
         "Event::HandleEventBaseDetail error: the target or current_target is "
-        "null.");
+        "null.")
     return;
   }
   BASE_STATIC_STRING_DECL(kTarget, "target");
