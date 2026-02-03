@@ -15,11 +15,6 @@ def unzip_webview2():
   zipfile.ZipFile('webview2.nupkg').extractall('Microsoft.Web.WebView2.1.0.902.49')
   os.remove('webview2.nupkg')
 
-def symlink_googletest():
-    src = os.path.join(os.getcwd(), "../third_party/googletest/src/googletest")
-    dest = os.path.join(os.getcwd(), "../third_party/googletest/googletest")
-    symlink_dir(src, dest)
-
 def symlink_dir(src, dest):
     if os.path.exists(dest) or os.path.islink(dest):
         if os.path.islink(dest):
@@ -79,19 +74,6 @@ deps = {
         "commit": "fa1bf5cf7ec3ad98e0be665acbb4b36c696ae059",
         "patches": os.path.join(root_dir, 'patches', 'nanopng', '0001-Adapt-nanopng-to-the-Skity-project.patch'),
         "ignore_in_git": True,
-    },
-    '../third_party/googletest/src': {
-        'type': 'git',
-        'url': 'https://github.com/google/googletest.git',
-        'commit': '04cf2989168a3f9218d463bea6f15f8ade2032fd',
-        'ignore_in_git': True,
-    },
-    'symlink_googletest': {
-        'type': 'action',
-        "cwd": root_dir,
-        "function": symlink_googletest,
-        "ignore_in_git": True,
-        "require": ['../third_party/googletest/src'],
     },
     'buildtools/node': {
         "type": "http",
