@@ -2032,10 +2032,9 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
       if (is_fixed_) {
         // When new fixed is enabled, layout node should be re-inserted to its
         // render_parent, with an full insertion call.
-        if (render_parent_) {
-          static_cast<FiberElement *>(render_parent_)
-              ->HandleInsertChildAction(
-                  this, 0, static_cast<FiberElement *>(next_render_sibling_));
+        if (parent_) {
+          static_cast<FiberElement *>(parent_)->HandleInsertChildAction(
+              this, 0, static_cast<FiberElement *>(next_render_sibling_));
         }
       } else {
         // z-index only has to insert its element container again.
