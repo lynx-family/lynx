@@ -102,8 +102,10 @@ extern const char* kEventIntersection;
 // video
 extern const char* kEventVideoPlay;
 extern const char* kEventVideoPause;
+extern const char* kEventVideoResume;
 extern const char* kEventVideoEnded;
 extern const char* kEventVideoError;
+extern const char* kEventVideoStop;
 extern const char* kEventVideoTimeUpdate;
 extern const char* kEventVideoBufferingChange;
 extern const char* kEventVideoSeek;
