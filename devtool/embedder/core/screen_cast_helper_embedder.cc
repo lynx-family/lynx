@@ -95,10 +95,15 @@ double ScreenCastHelper::GetScreenScaleFactor() {
 }
 
 void ScreenCastHelper::GetLynxScreenShot() {
-  TakeSnapshotAsync([this](const std::string& snapshot, float timestamp,
-                           float device_width, float device_height,
-                           float page_scale_factor) {
-    auto platform_delegate = weak_platform_embedder_.lock();
+  TakeSnapshotAsync([wp_self = weak_from_this()](
+                        const std::string& snapshot, float timestamp,
+                        float device_width, float device_height,
+                        float page_scale_factor) {
+    auto sp_self = wp_self.lock();
+    if (!sp_self) {
+      return;
+    }
+    auto platform_delegate = sp_self->weak_platform_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN(platform_delegate, "platform_delegate is null");
     platform_delegate->SendScreenCapture(snapshot);
   });
