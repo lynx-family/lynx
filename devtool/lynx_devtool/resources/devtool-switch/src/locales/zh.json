@@ -1,5 +1,5 @@
 {
-  "Lynx Debug desc": "DevTool 调试能力、LogBox、性能工具的总开关",
+  "DevTool Status desc": "表示 DevTool 组件是否可用，仅当此状态为 Enabled 时，具体的 DevTool 开关才可见",
   "Lynx DevTool desc": "开启后支持 DOM 元素审查，CSS 调试 JS 调试等\n开关后需重启 app",
   "V8": "V8 引擎",
   "V8 desc": "选择“On”，优先使用 V8 引擎运行 JS；\n选择“AlignWithProd”，与线上一致，仅在配置了 enable_v8 的页面使用V8引擎，其他页面使用 PrimJS 引擎\n（注意:对配置了 enable_v8 的页面，建议对两种引擎都进行测试）\n开关后需重启 app",
@@ -23,5 +23,5 @@
   "Enable FSP Screenshot desc": "开启后能在Trace中显示FSP截图，搜索“FSPSnapshotBase64Bitmap”可查看\n重启app生效",
   "TestBench": "TestBench",
   "TestBench desc": "Lynx 页面录制工具\n开关后需重启",
-  "Current JS Engine": "当前 JS 引擎"
+  "Current BTS Engine": "当前 BTS 引擎"
 }

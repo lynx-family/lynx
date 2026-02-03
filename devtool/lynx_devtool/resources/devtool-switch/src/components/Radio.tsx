@@ -2,6 +2,7 @@ import radio_off_image from '../assets/radio_off.png';
 import radio_on_image from '../assets/radio_on.png';
 
 import './Radio.css';
+import './Basic.css';
 
 interface Props {
   on: number;

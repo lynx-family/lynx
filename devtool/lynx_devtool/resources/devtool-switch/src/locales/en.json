@@ -1,5 +1,5 @@
 {
-  "Lynx Debug desc": "The main switch for DevTool, LogBox and Performance Tool.",
+  "DevTool Status desc": "Indicates whether the DevTool component is available. The DevTool switches are only visible when this is Enabled.",
   "Lynx DevTool desc": "Enables DOM element inspection, CSS debugging, JS debugging, and more. \nRequires an app restart after toggling.",
   "V8": "V8 Engine",
   "V8 desc": "Select 'On' to run JS with the V8 engine. \nSelect 'AlignWithProd' to use the V8 engine on pages configured with enable_v8, and the PrimJS engine on other pages.\n(Note: For pages configured with enable_v8, it is recommended to test with both engines)\nRequires an app restart after toggling.",
@@ -23,5 +23,5 @@
   "Enable FSP Screenshot desc": "When the switch is on, enable FSP screenshot, and display the FSP screenshot in the Trace, search for \"FSPSnapshotBase64Bitmap\" to view.\n Restart app to apply.",
   "TestBench": "TestBench",
   "TestBench desc": "Lynx Page Recording Tool\nRequires an app restart after toggling.",
-  "Current JS Engine": "Current JS engine"
+  "Current BTS Engine": "Current BTS engine"
 }

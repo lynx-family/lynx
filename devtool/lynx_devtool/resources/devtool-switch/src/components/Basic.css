@@ -1,0 +1,39 @@
+.container{
+  display:linear;
+  linear-gravity: top;
+  linear-orientation: vertical;
+  background-color: #ffffff;
+}
+
+.item_wrap {
+  display:linear;
+  linear-orientation: horizontal;
+  linear-gravity: space-between;
+  linear-cross-gravity: center;
+  border-bottom: 1rpx solid lightgray;
+  background-color:#ffffff;
+}
+
+.label_wrap{
+  height:100%;
+  width:550rpx;
+  margin-left: 20rpx;
+  padding: 10rpx 10rpx;
+  display:linear;
+  linear-orientation: vertical;
+}
+
+.label_text{
+  font-size:32rpx;
+  line-height: 40rpx;
+}
+
+.sub_label_text{
+  font-size:30rpx;
+  line-height: 40rpx;
+}
+
+.desc_text {
+  font-size:20rpx;
+  color: #c5b5b5;
+}

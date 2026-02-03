@@ -2,6 +2,7 @@ import switch_off_image from '../assets/switch_off.png';
 import switch_on_image from '../assets/switch_on.png';
 
 import './Switch.css';
+import './Basic.css';
 
 interface Props {
   on: boolean;

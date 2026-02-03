@@ -1,0 +1,16 @@
+.status_wrap {
+  height:100%;
+  margin-right: 20rpx;
+  width:150rpx;
+  display:linear;
+  linear-orientation: horizontal;
+  padding: 10rpx;
+}
+
+.status_text {
+  width: 100%;
+  font-size:30rpx;
+  color: #666;
+  linear-layout-gravity:center-vertical;
+  text-align: right;
+}

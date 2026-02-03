@@ -1,19 +1,18 @@
-import { useAtom } from 'jotai';
+import { useAtomValue } from 'jotai';
 
 import { i18n } from '../i18n';
 import { lynxDebug } from '../atoms';
 
-import { Switch } from '../components/Switch';
+import { Status } from '../components/Status';
 
 export function Header() {
-  const [enable, setEnable] = useAtom(lynxDebug);
+  const enable = useAtomValue(lynxDebug);
 
   return (
-    <Switch
-      title="Lynx Debug"
-      description={i18n.t('Lynx Debug desc')}
-      on={enable}
-      onChange={() => setEnable((prev) => !prev)}
+    <Status
+      title="DevTool Status"
+      description={i18n.t('DevTool Status desc')}
+      status={enable ? 'Enabled' : 'Disabled'}
     />
   );
 }
