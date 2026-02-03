@@ -94,6 +94,7 @@ void LynxUIScrollViewInternal::OnScrollStateChanged(
 
 void LynxUIScrollViewInternal::ScrollViewDidScroll() {
   if (!is_first_render_) {
+    context_->NotifyUIScroll();
     TryToSendScrollEvent();
     UpdateScrollPosition();
   }
