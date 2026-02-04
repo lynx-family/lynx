@@ -5,14 +5,15 @@
 #define CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
 
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/fml/task_runner.h"
 #include "core/base/lynx_export.h"
+#include "core/base/memory/memory_pressure_callback.h"
 #include "core/public/page_options.h"
 #include "core/runtime/js/js_context_wrapper.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -106,7 +107,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   JSContextWrapper* GetContextWrapper(const std::string& group_id);
 
  private:
-  RuntimeManager() = default;
+  RuntimeManager();
   std::shared_ptr<runtime::js::Runtime> CreateRuntime(
       const std::string& group_id,
       std::shared_ptr<runtime::js::JSIExceptionHandler> exception_handler,
@@ -143,11 +144,18 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   bool IsInspectEnabled(bool force_use_lightweight_js_engine,
                         const tasm::PageOptions& page_options);
 
+  void OnMemoryPressure(lynx::base::MemoryPressureLevel level);
+
   Shared_Context_Map shared_context_map_;
   std::unordered_map<runtime::js::JSRuntimeType,
                      std::shared_ptr<runtime::js::VMInstance>>
       mVMContainer_;
   std::unique_ptr<RuntimeManagerDelegate> runtime_manager_delegate_;
+
+  // for memory pressure callback
+  std::vector<std::weak_ptr<runtime::js::Runtime>> weak_runtimes_;
+  fml::RefPtr<fml::TaskRunner> memory_task_runner_;
+  std::unique_ptr<lynx::base::MemoryPressureCallback> memory_pressure_callback_;
 };
 
 }  // namespace runtime

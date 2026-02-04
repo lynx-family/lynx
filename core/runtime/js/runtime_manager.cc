@@ -7,9 +7,12 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#include "core/base/memory/memory_pressure_callback.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/js/bindings/global.h"
@@ -147,6 +150,14 @@ RuntimeManager* RuntimeManager::Instance() {
   static thread_local RuntimeManager instance_;
   return &instance_;
 }
+
+RuntimeManager::RuntimeManager()
+    : memory_task_runner_(nullptr),
+      memory_pressure_callback_(
+          std::make_unique<lynx::base::MemoryPressureCallback>(
+              [this](lynx::base::MemoryPressureLevel level) {
+                OnMemoryPressure(level);
+              })) {}
 
 RuntimeManager::~RuntimeManager() {
   // Should destroy runtime_manager_delegate_ before mVMContainer_
@@ -312,6 +323,13 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
     const tasm::PageOptions& page_options, bool use_shared_context) {
   auto js_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                 use_shared_context, page_options);
+  if (!memory_task_runner_) {
+    memory_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
+  }
+  if (memory_task_runner_) {
+    weak_runtimes_.emplace_back(
+        std::weak_ptr<runtime::js::Runtime>(js_runtime));
+  }
   js_runtime->setRuntimeId(rt_id);
   js_runtime->SetPageOptions(page_options);
   js_runtime->SetEnableUserBytecode(enable_bytecode);
@@ -533,6 +551,32 @@ bool RuntimeManager::IsInspectEnabled(bool force_use_lightweight_js_engine,
   return runtime_manager_delegate_ &&
          tasm::LynxEnv::GetInstance().IsJsDebugEnabled(
              force_use_lightweight_js_engine, debuggable);
+}
+
+void RuntimeManager::OnMemoryPressure(lynx::base::MemoryPressureLevel level) {
+  if (!memory_task_runner_) {
+    return;
+  }
+  memory_task_runner_->PostTask([this]() {
+    std::vector<std::weak_ptr<runtime::js::Runtime>> alive;
+    std::unordered_set<std::string> seen_groups;
+    for (auto& w : weak_runtimes_) {
+      auto rt = w.lock();
+      if (!rt) {
+        continue;
+      }
+      const auto& gid = rt->getGroupId();
+      if (IsSingleJSContext(gid)) {
+        rt->RequestGC();
+      } else {
+        if (seen_groups.insert(gid).second) {
+          rt->RequestGC();
+        }
+      }
+      alive.emplace_back(rt);
+    }
+    weak_runtimes_.swap(alive);
+  });
 }
 
 }  // namespace runtime
