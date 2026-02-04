@@ -38,6 +38,7 @@ constexpr const char kMessageEventTypeOnAppEnterForeground[] =
     "__OnAppEnterForeground";
 constexpr const char kMessageEventTypeOnAppEnterBackground[] =
     "__OnAppEnterBackground";
+constexpr const char kMessageEventTypeOnLowMemory[] = "__OnLowMemory";
 constexpr const char kMessageEventTypeOnComponentActivity[] =
     "__OnComponentActivity";
 constexpr const char kMessageEventTypeForceGcJSIObjectWrapper[] =

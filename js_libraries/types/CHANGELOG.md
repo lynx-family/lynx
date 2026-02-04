@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.8.1
+
+- Add memory event.
+
 ## 3.8.0 
 
 - Add coding skills in types folder to optimize code-gen result.

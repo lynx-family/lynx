@@ -964,6 +964,13 @@ export interface IMouseEvent extends BaseMouseEvent<Target> {}
 export interface IWheelEvent extends BaseWheelEvent<Target> {}
 export interface IKeyEvent extends BaseKeyEvent<Target> {}
 
+export enum MemoryPressureLevel {
+  MEMORY_PRESSURE_LEVEL_NONE = 0,
+  MEMORY_PRESSURE_LEVEL_MODERATE = 1,
+  MEMORY_PRESSURE_LEVEL_CRITICAL = 2,
+  kMaxValue = MEMORY_PRESSURE_LEVEL_CRITICAL,
+}
+
 interface LynxMessageEvents {
   // from native context
   __GlobalEvent: {
@@ -982,6 +989,10 @@ interface LynxMessageEvents {
     ];
     origin: 'NATIVE';
   }
+  __OnLowMemory: {
+    data: [MemoryPressureLevel];
+    origin: 'NATIVE';
+  };
 
   // from engine context
   __RenderPage: {

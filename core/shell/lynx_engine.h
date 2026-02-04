@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/no_destructor.h"
+#include "core/event/event_dispatch_result.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
@@ -293,6 +294,9 @@ class LynxEngine {
 
   void InsertLynxTemplateBundle(const std::string& url,
                                 lynx::tasm::LynxTemplateBundle bundle);
+
+  event::DispatchEventResult DispatchMessageEvent(
+      fml::RefPtr<runtime::MessageEvent> event);
 
   void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);
 

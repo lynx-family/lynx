@@ -788,5 +788,10 @@ void LynxEngine::OnReceiveMessageEvent(
   tasm_->OnReceiveMessageEvent(std::move(event));
 }
 
+event::DispatchEventResult LynxEngine::DispatchMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
+  return tasm_->DispatchMessageEvent(std::move(event));
+}
+
 }  // namespace shell
 }  // namespace lynx

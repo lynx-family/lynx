@@ -682,10 +682,26 @@ void LynxShell::LoadTemplate(
 
   if (!memory_pressure_callback_) {
     memory_pressure_callback_ = std::make_unique<base::MemoryPressureCallback>(
-        [engine_actor = engine_actor_](base::MemoryPressureLevel) {
-          engine_actor->Act([](auto& engine) {
+        [engine_actor = engine_actor_](base::MemoryPressureLevel level) {
+          engine_actor->Act([level](auto& engine) {
             TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_TRIGGER_VM_GC);
             engine->TriggerVmGC();
+
+            auto core_event = fml::MakeRefCounted<runtime::MessageEvent>(
+                runtime::kMessageEventTypeOnLowMemory,
+                runtime::ContextProxy::Type::kNative,
+                runtime::ContextProxy::Type::kCoreContext,
+                std::make_unique<pub::ValueImplLepus>(
+                    lepus::Value(static_cast<int>(level))));
+            (void)engine->DispatchMessageEvent(std::move(core_event));
+
+            auto js_event = fml::MakeRefCounted<runtime::MessageEvent>(
+                runtime::kMessageEventTypeOnLowMemory,
+                runtime::ContextProxy::Type::kNative,
+                runtime::ContextProxy::Type::kJSContext,
+                std::make_unique<pub::ValueImplLepus>(
+                    lepus::Value(static_cast<int>(level))));
+            (void)engine->DispatchMessageEvent(std::move(js_event));
           });
         });
   }
