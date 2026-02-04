@@ -179,7 +179,8 @@ ImplBase* NapiTestContext::ReleaseImpl() {
 Value NapiTestContext::VoidFromStringMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   if (info.Length() < 1) {
     ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "VoidFromString", "1");
@@ -195,7 +196,8 @@ Value NapiTestContext::VoidFromStringMethod(const CallbackInfo& info) {
 Value NapiTestContext::StringFromVoidMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   auto&& result = impl_->StringFromVoid();
   return String::New(info.Env(), result);
@@ -204,7 +206,8 @@ Value NapiTestContext::StringFromVoidMethod(const CallbackInfo& info) {
 Value NapiTestContext::VoidFromStringArrayMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   if (info.Length() < 1) {
     ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "VoidFromStringArray", "1");
@@ -223,7 +226,8 @@ Value NapiTestContext::VoidFromStringArrayMethod(const CallbackInfo& info) {
 Value NapiTestContext::VoidFromTypedArrayMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   if (info.Length() < 1) {
     ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "VoidFromTypedArray", "1");
@@ -242,7 +246,8 @@ Value NapiTestContext::VoidFromTypedArrayMethod(const CallbackInfo& info) {
 Value NapiTestContext::VoidFromArrayBufferMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   if (info.Length() < 1) {
     ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "VoidFromArrayBuffer", "1");
@@ -261,7 +266,8 @@ Value NapiTestContext::VoidFromArrayBufferMethod(const CallbackInfo& info) {
 Value NapiTestContext::VoidFromArrayBufferViewMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   if (info.Length() < 1) {
     ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "VoidFromArrayBufferView", "1");
@@ -280,7 +286,8 @@ Value NapiTestContext::VoidFromArrayBufferViewMethod(const CallbackInfo& info) {
 Value NapiTestContext::VoidFromNullableArrayBufferViewMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   if (info.Length() < 1) {
     ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "VoidFromNullableArrayBufferView", "1");
@@ -299,7 +306,8 @@ Value NapiTestContext::VoidFromNullableArrayBufferViewMethod(const CallbackInfo&
 Value NapiTestContext::FinishMethod(const CallbackInfo& info) {
   DCHECK(impl_);
 
-  NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  bool res = NapiGenTestCommandBuffer::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
 
   impl_->Finish();
   return info.Env().Undefined();

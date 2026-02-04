@@ -4,8 +4,8 @@
 
 #include "jsbridge/bindings/gen_test/napi_gen_test_command_buffer.h"
 
-#include "jsbridge/bindings/gen_test/napi_async_object.h"
 #include "base/include/no_destructor.h"
+#include "jsbridge/bindings/gen_test/napi_async_object.h"
 #include "third_party/binding/napi/napi_base_wrap.h"
 
 using Napi::Array;
@@ -106,8 +106,7 @@ void NapiGenTestCommandBuffer::UnregisterAsyncObject(
   DCHECK(cb);
   if (cb) {
     DCHECK(cb->async_object_registry_.count(async_object->id()));
-    DCHECK(cb->async_object_registry_[async_object->id()] ==
-                   async_object);
+    DCHECK(cb->async_object_registry_[async_object->id()] == async_object);
     cb->async_object_registry_.erase(async_object->id());
   }
 }
@@ -130,8 +129,7 @@ void NapiGenTestCommandBuffer::OrphanImpl(Napi::Env env,
   DCHECK(cb);
   if (cb) {
     DCHECK(!cb->orphans_.count(id));
-    LOGI("Orphaning id: " << id << ", env: " << env
-                                  << ", impl: " << impl);
+    LOGI("Orphaning id: " << id << ", env: " << env << ", impl: " << impl);
     cb->orphans_.insert({id, std::move(impl)});
     cb->RequestVSync();
   }
@@ -178,23 +176,26 @@ void NapiGenTestCommandBuffer::Install(Napi::Env env, Napi::Object& target) {
 }
 
 // static
-void NapiGenTestCommandBuffer::FlushCommandBuffer(Napi::Env env,
+bool NapiGenTestCommandBuffer::FlushCommandBuffer(Napi::Env env,
                                                   bool is_frame) {
   if (auto* cb = env.GetInstanceData<NapiGenTestCommandBuffer>(
           kNapiGenTestCommandBufferID)) {
-    cb->DoFlush(env);
+    bool success = true;
+    cb->DoFlush(env, &success);
+    return success;
   }
+  return false;
 }
 
 Value NapiGenTestCommandBuffer::Call(const CallbackInfo& info) {
-  return DoFlush(info.Env(), false);
+  return DoFlush(info.Env(), nullptr, false);
 }
 
 Value NapiGenTestCommandBuffer::Flush(const CallbackInfo& info) {
-  return DoFlush(info.Env());
+  return DoFlush(info.Env(), nullptr);
 }
 
-Value NapiGenTestCommandBuffer::DoFlush(Napi::Env env,
+Value NapiGenTestCommandBuffer::DoFlush(Napi::Env env, bool* success,
                                         bool reset_argument_cache) {
   if (is_in_flush_) {
     return Value();
@@ -214,7 +215,11 @@ Value NapiGenTestCommandBuffer::DoFlush(Napi::Env env,
     LOGI("Flushing with orphan id: " << key << ", impl: " << val);
   }
 
-  Value rv = RunBuffer(buffer_, length, env);
+  bool temp;
+  if (!success) {
+    success = &temp;
+  }
+  Value rv = RunBuffer(buffer_, length, env, success);
 
   // Reset buffer length.
   buffer_[0] = 1u;
@@ -235,7 +240,7 @@ void NapiGenTestCommandBuffer::RequestVSync() {}
 void NapiGenTestCommandBuffer::LogTypeError(const char* method,
                                             const char* arg_name, uint32_t id) {
   LOGE("Method " << method << " called with invalid " << arg_name
-                         << " argument id: " << id);
+                 << " argument id: " << id);
 }
 
 }  // namespace gen_test

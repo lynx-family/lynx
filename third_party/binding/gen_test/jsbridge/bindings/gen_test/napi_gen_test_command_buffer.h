@@ -2,15 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef THIRD_PARTY_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
-#define THIRD_PARTY_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
+#ifndef THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
+#define THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
 
 #include <map>
 
-#include "base/include/log/logging.h"
-#include "third_party/binding/napi/napi_bridge.h"
 #include "base/include/auto_reset.h"
+#include "base/include/log/logging.h"
 #include "base/include/shared_vector.h"
+#include "third_party/binding/napi/napi_bridge.h"
 
 namespace lynx {
 namespace gen_test {
@@ -18,10 +18,10 @@ namespace gen_test {
 class NapiAsyncObject;
 class VSyncSource;
 
-using binding::NapiBridge;
-using binding::ImplBase;
 using base::AutoReset;
 using base::SharedVector;
+using binding::ImplBase;
+using binding::NapiBridge;
 
 class NapiGenTestCommandBuffer : public Napi::ScriptWrappable {
  public:
@@ -32,14 +32,13 @@ class NapiGenTestCommandBuffer : public Napi::ScriptWrappable {
 
   Napi::Value Call(const Napi::CallbackInfo&);
 
-  static void FlushCommandBuffer(Napi::Env, bool = false);
+  static bool FlushCommandBuffer(Napi::Env, bool = false);
   Napi::Value Flush(const Napi::CallbackInfo&);
 
   // Register an object and its type to command buffer. Return its id.
-  static uint32_t RegisterBufferedObject(
-      Napi::ScriptWrappable* wrapped);
-  static void UnregisterBufferedObject(
-      Napi::ScriptWrappable* wrapped, uint32_t id);
+  static uint32_t RegisterBufferedObject(Napi::ScriptWrappable* wrapped);
+  static void UnregisterBufferedObject(Napi::ScriptWrappable* wrapped,
+                                       uint32_t id);
 
   static void RegisterAsyncObject(NapiAsyncObject* async_object);
   static void UnregisterAsyncObject(NapiAsyncObject* async_object);
@@ -49,11 +48,13 @@ class NapiGenTestCommandBuffer : public Napi::ScriptWrappable {
 
  private:
   Napi::Value DoCall(const Napi::CallbackInfo& info);
-  Napi::Value DoFlush(Napi::Env env, bool reset_argument_cache = true);
+  Napi::Value DoFlush(Napi::Env env, bool* success,
+                      bool reset_argument_cache = true);
 
   void RequestVSync();
 
-  Napi::Value RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env);
+  Napi::Value RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env,
+                        bool* success);
 
   template <typename T>
   static T& ReadBuffer(uint32_t* buffer, size_t word_offset) {
@@ -100,4 +101,4 @@ class NapiGenTestCommandBuffer : public Napi::ScriptWrappable {
 }  // namespace gen_test
 }  // namespace lynx
 
-#endif  // THIRD_PARTY_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
+#endif  // THIRD_PARTY_BINDING_GEN_TEST_JSBRIDGE_BINDINGS_GEN_TEST_NAPI_GEN_TEST_COMMAND_BUFFER_H_
