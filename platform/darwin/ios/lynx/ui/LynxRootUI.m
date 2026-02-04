@@ -10,7 +10,7 @@
 #import <Lynx/LynxViewInternal.h>
 
 @implementation LynxRootUI {
-  id<LynxEventTarget> _parentLynxPageUI;
+  __weak id<LynxEventTarget> _parentLynxPageUI;
   NSMutableDictionary *_childrenLynxPageUI;
 }
 
