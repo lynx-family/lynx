@@ -36,6 +36,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/base/lynx_trace_categories.h"
+#include "core/base/memory/memory_pressure_callback.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
@@ -755,4 +756,24 @@
   lynx::runtime::js::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
       CreateBytecodeGenerateCallback(callback));
 }
+
+- (void)trimMemory:(LynxMemoryPressureLevel)pressure {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "LynxEnv.trimMemory");
+  lynx::base::MemoryPressureLevel level =
+      lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE;
+  switch (pressure) {
+    case LynxMemoryPressureLevelModerate:
+      level = lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE;
+      break;
+    case LynxMemoryPressureLevelCritical:
+      level = lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL;
+      break;
+    case LynxMemoryPressureLevelNone:
+    default:
+      level = lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE;
+      break;
+  }
+  lynx::base::MemoryPressureCallback::NotifyMemoryPressure(level);
+}
+
 @end

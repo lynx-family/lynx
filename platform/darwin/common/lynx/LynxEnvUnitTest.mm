@@ -5,6 +5,7 @@
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <XCTest/XCTest.h>
+#include "core/base/memory/memory_pressure_callback.h"
 
 @interface LynxEnvUnitTest : XCTestCase
 
@@ -37,6 +38,19 @@
 
   XCTAssert([[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableAnimationSyncTimeOpt
                                              defaultValue:NO] == YES);
+}
+
+- (void)testTrimMemory {
+  int callCount = 0;
+  lynx::base::MemoryPressureCallback listener([&callCount](lynx::base::MemoryPressureLevel level) {
+    if (level == lynx::base::MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+      callCount++;
+    }
+  });
+
+  [[LynxEnv sharedInstance] trimMemory:LynxMemoryPressureLevelCritical];
+
+  XCTAssert(callCount == 1);
 }
 
 @end

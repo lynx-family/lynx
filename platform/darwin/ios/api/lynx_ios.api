@@ -1462,6 +1462,7 @@ public class LynxEnv : NSObject {
   public int LynxEnv::memoryAcquisitionDelaySec();
   public int LynxEnv::memoryReportIntervalSec();
   public int LynxEnv::globalMemoryReportThresholdMB();
+  public void LynxEnv::trimMemory:(LynxMemoryPressureLevel pressure);
   public BOOL LynxEnv::enableFSP();
   public NSDictionary< NSString *, id > *_Nullable LynxEnv::fspConfig();
   public NSDictionary< NSString *, NSString * > * LynxEnv::cppEnvDebugDescription();
@@ -6078,6 +6079,13 @@ public enum LynxPanInterceptScope {
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const kDefaultComponentID kDefaultComponentID;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ onComponentLoaded) (NSData *_Nullable data, NSError *_Nullable error) onComponentLoaded;
+
+public enum LynxMemoryPressureLevel {
+  LynxMemoryPressureLevelNone
+  LynxMemoryPressureLevelModerate
+  LynxMemoryPressureLevelCritical
+}
+
 
 public enum LynxEnvKey {
   LynxEnvSwitchRunloopThread
