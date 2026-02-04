@@ -25,7 +25,7 @@ namespace lynx {
 namespace gen_test {
 
 // TODO(yuyifei): Return value wrapper and remove |env| parameter.
-Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env) {
+Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env, bool* success) {
   Napi::Value rv;
   uint32_t current = 1u;
   while (current < length) {

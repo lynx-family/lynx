@@ -137,7 +137,16 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   {% endif %}
   {% endfor %}
   if (type_safe) {
-    {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{method.arguments | map ('command_argument_literal') | join(', ')}});
+    {% if method.is_raises_exception %} 
+    binding::ExceptionState exception_state(env);
+    {% endif %}
+    {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments | map ('command_argument_literal') | join(', ')}});
+    {% if method.is_raises_exception %} 
+    if (exception_state.HadException()) {
+      *success = false;
+      return Napi::Value();
+    }
+    {% endif %}
     {% if method.return_async %}
     FromAsyncId(command.id)->Init(std::unique_ptr<ImplBase>(result));
     {% endif %}
@@ -208,7 +217,7 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
 
 {% set ns = namespace(count = 0) %}
 // TODO(yuyifei): Return value wrapper and remove |env| parameter.
-Napi::Value {{napi_class}}::RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env) {
+Napi::Value {{napi_class}}::RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env, bool* success) {
   Napi::Value rv;
   uint32_t current = 1u;
   while (current < length) {

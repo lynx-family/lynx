@@ -115,7 +115,8 @@ Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const Callbac
   {% endif %}
 
   {% if buffer_commands %}
-  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  bool res = {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
   {% endif %}
 
   {% if attribute.is_boolean_type %}
@@ -156,7 +157,8 @@ void {{napi_class}}::{{attribute.camel_case_name}}AttributeSetter(const Callback
   {% endif %}
 
   {% if buffer_commands %}
-  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  bool res = {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
   {% endif %}
 
   {{ convert_attribute(callee(attribute) | trim, attribute) | trim }}
@@ -180,7 +182,8 @@ Value {{napi_class}}::{{method.camel_case_name}}Method{{'Overload' + method.over
   {% endif %}
 
   {% if buffer_commands %}
-  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  bool res = {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  if (!res) return Napi::Value();
   {% endif %}
 
   {{ insufficient_argnum_defend("Value", method, method.camel_case_name) | trim }}
