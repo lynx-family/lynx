@@ -73,6 +73,8 @@ export { LLog, LogLevel } from './base/LLog'
 
 export { TraceController, TraceConfig } from './base/TraceController'
 
+export { MemoryPressureLevel } from './base/memory/MemoryPressureLevel'
+
 export * from './tasm/service/Index'
 
 export { LynxReportEventPropValue } from './tasm/eventreport/ILynxEventReportObserver'

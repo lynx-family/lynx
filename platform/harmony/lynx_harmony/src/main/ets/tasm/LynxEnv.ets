@@ -8,6 +8,7 @@ import deviceInfo from '@ohos.deviceInfo';
 import lynx, { EmbedderPlatform } from 'liblynx.so';
 import BuildProfile from '../../../../BuildProfile';
 import { LLog } from '../base/LLog';
+import { TraceEventDef } from '../base/TraceEventDef';
 import { LynxBaseEnv, LynxBaseServiceCenter, LynxBaseServiceType } from '@lynx/lynx_base';
 import { LynxBaseTraceService } from '../base/LynxBaseTraceService';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
@@ -19,6 +20,8 @@ import { LynxDebugger } from '../devtool_wrapper/LynxDebugger';
 import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
 import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
 import { ILynxImageService } from './service/ILynxImageService';
+import { MemoryPressureCallback, MemoryPressureCallbackDispatcher } from '../base/memory/MemoryPressureCallbackDispatcher';
+import { MemoryPressureLevel } from '../base/memory/MemoryPressureLevel';
 
 const TAG = 'LynxEnv';
 
@@ -48,6 +51,7 @@ class LynxEnvironment {
 
     this.tryInitLynxDebug();
     lynx.initGlobalEnv(context.resourceManager);
+    this.registerNativeMemoryPressureCallback();
     LynxInfoReporterHelper.initialize();
     LynxEventReporter.initialize();
     LynxTrailHub.getInstance().init(context.getApplicationContext());
@@ -198,8 +202,32 @@ class LynxEnvironment {
     return lynx.parserTestBenchRecordData(source);
   }
 
+  /**
+   * Dispatches a memory pressure signal to registered callbacks.
+   */
+  public trimMemory(pressure: MemoryPressureLevel) {
+    if (this.isDebugModeEnabled()) {
+      lynx.traceEventBegin('lynx', TraceEventDef.LYNX_ENV_TRIM_MEMORY);
+    }
+    MemoryPressureCallbackDispatcher.getInstance().notifyMemoryPressure(pressure);
+    if (this.isDebugModeEnabled()) {
+      lynx.traceEventEnd('lynx', TraceEventDef.LYNX_ENV_TRIM_MEMORY);
+    }
+  }
+
   public getLynxVersion(): string {
     return BuildProfile.HAR_VERSION
+  }
+
+  private nativeOnMemoryPressure(pressure: number) {
+    lynx.notifyMemoryPressure(pressure);
+  }
+
+  private registerNativeMemoryPressureCallback() {
+    const handler: MemoryPressureCallback = (pressure) => {
+      this.nativeOnMemoryPressure(pressure);
+    };
+    MemoryPressureCallbackDispatcher.getInstance().addCallback(handler);
   }
 
   // Be called by Benchmark or performance action before initialize

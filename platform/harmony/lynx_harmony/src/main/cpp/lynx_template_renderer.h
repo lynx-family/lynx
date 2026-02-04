@@ -155,6 +155,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value TraceEventBegin(napi_env env, napi_callback_info info);
   static napi_value TraceEventEnd(napi_env env, napi_callback_info info);
   static napi_value TraceInstant(napi_env env, napi_callback_info info);
+  static napi_value NotifyMemoryPressure(napi_env env, napi_callback_info info);
   static napi_value ParserTestBenchRecordData(napi_env env,
                                               napi_callback_info info);
   static napi_value New(napi_env env, napi_callback_info info);

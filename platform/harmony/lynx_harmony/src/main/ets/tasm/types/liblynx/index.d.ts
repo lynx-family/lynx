@@ -24,6 +24,8 @@ export const traceInstant: (traceCategory: string, name: string, args?: Record<s
 
 export const parserTestBenchRecordData: (source: string) => string;
 
+export const notifyMemoryPressure: (pressure: number) => void;
+
 export class PaintingContext {
   static create(ref: Object, create: Function, update: Function, insert: Function, remove: Function, destroy: Function,
     layout: Function, flush: Function, layoutFinish: Function, updateContentSizeAndOffset: Function,

@@ -206,6 +206,7 @@ export const LynxEnv: LynxEnvironment {
   public setLogBoxEnabled(enabled: boolean): void;
   public isLogBoxEnabled(): void;
   public parserTestBenchRecordData(source: string): string;
+  public trimMemory(pressure: MemoryPressureLevel): void;
   public getLynxVersion(): string;
   public setPerformanceEnable(isOpen: boolean): void;
   public setDefaultDensityEnabled(enabled: boolean): void;
@@ -677,6 +678,13 @@ export interface TraceConfig {
   filePath?: string | undefined;
   bufferSize?: number | undefined;
   enableCompress?: string | undefined;
+}
+
+export enum MemoryPressureLevel {
+  NONE = 0
+  MODERATE = 1
+  CRITICAL = 2
+  MAX_VALUE = CRITICAL
 }
 
 export type LynxReportEventPropValue = string | number | boolean {

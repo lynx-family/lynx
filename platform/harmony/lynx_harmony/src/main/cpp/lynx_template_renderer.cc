@@ -15,6 +15,7 @@
 #include "base/trace/native/platform/harmony/trace_controller_delegate_harmony.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/base/memory/memory_pressure_callback.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
@@ -604,6 +605,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "parserTestBenchRecordData",
                        ParserTestBenchRecordData);
   NAPI_CREATE_FUNCTION(env, exports, "setCacheDirPath", SetCacheDirPath);
+  NAPI_CREATE_FUNCTION(env, exports, "notifyMemoryPressure",
+                       NotifyMemoryPressure);
 
   return exports;
 }
@@ -890,6 +893,26 @@ napi_value LynxTemplateRenderer::TraceInstant(napi_env env,
                         }
                       });
 #endif
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::NotifyMemoryPressure(napi_env env,
+                                                      napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (argc < 1) {
+    return nullptr;
+  }
+
+  int32_t pressure = base::NapiUtil::ConvertToInt32(env, args[0]);
+  if (pressure < 0) {
+    pressure = 0;
+  } else if (pressure > 2) {
+    pressure = 2;
+  }
+  lynx::base::MemoryPressureCallback::NotifyMemoryPressure(
+      static_cast<lynx::base::MemoryPressureLevel>(pressure));
   return nullptr;
 }
 
