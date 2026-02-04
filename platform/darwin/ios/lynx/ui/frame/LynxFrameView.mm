@@ -5,9 +5,15 @@
 #import <Lynx/LynxFrameView.h>
 
 #import <Lynx/LynxFrameShadowNode.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIContext.h>
+#import "LynxTraceEventDef.h"
+#import "LynxUIRendererProtocol.h"
+
+#include "base/trace/native/trace_defines.h"
+#include "base/trace/native/trace_event.h"
 
 #pragma mark - LynxFrameView
 
@@ -65,6 +71,15 @@
 
 - (UIView<LUIBodyView> *_Nullable)getRootView {
   return _rootView;
+}
+
+- (void)dealloc {
+  if (_render) {
+    _LogI(@"LynxFrameView %p: destroy", self);
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_FRAME_VIEW_DESTROY);
+    [_render.lynxUIRenderer reset];
+    _render = nil;
+  }
 }
 
 // TODO(zhoupeng.z): implement following methods, some of them are useless for LynxFrameView.
