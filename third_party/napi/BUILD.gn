@@ -20,6 +20,10 @@ config("napi_config") {
   if (use_primjs_napi) {
     defines += [ "USE_PRIMJS_NAPI" ]
   }
+
+  if (is_headless && is_android) {
+    defines += [ "NAPI_EXTERN=__attribute__((visibility(\"hidden\")))" ]
+  }
 }
 
 config("private_config") {
