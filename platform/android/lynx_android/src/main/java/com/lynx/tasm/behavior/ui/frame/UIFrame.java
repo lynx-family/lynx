@@ -105,8 +105,8 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
   }
 
   @Override
-  public void onNodeRemoved() {
-    super.onNodeRemoved();
+  public void destroy() {
+    super.destroy();
     LynxFrameView view = getView();
     if (view != null) {
       view.destroy();
