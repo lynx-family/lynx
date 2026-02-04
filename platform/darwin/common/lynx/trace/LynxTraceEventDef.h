@@ -190,6 +190,7 @@ static const char* const EVALUATE_SCRIPT_STANDALONE = "EvaluateScriptStandalone"
 static const char* const EVALUATE_SCRIPT_STANDALONE_FROM_BUNDLE =
     "EvaluateScriptStandaloneFromBundle";
 
+static const char* const LYNX_FRAME_VIEW_DESTROY = "LynxFrameView::destroy";
 #endif
 
 NS_ASSUME_NONNULL_END
