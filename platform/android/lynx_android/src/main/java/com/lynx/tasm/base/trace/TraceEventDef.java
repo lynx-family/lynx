@@ -237,4 +237,7 @@ public class TraceEventDef {
   public static final String FSP_TRACER_ON_VALUABLE_SNAPSHOT = "FSPTracer::OnValuableSnapshot";
   public static final String FSP_TRACER_SNAPSHOT_STABLE = "FSPTracer::SnapshotStable";
   public static final String FSP_TIMING_MARK_FSP_END = "Timing::Mark.fspEnd";
+
+  // frame
+  public static final String DESTORY_LYNXFRAMEVIEW = "DestroyLynxFrameView";
 }
