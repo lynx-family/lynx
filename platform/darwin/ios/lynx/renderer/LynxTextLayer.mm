@@ -13,6 +13,7 @@
   if (self) {
     _textRenderer = textRenderer;
     self.delegate = self;
+    self.contentsScale = [UIScreen mainScreen].scale;
   }
   return self;
 }
@@ -21,6 +22,7 @@
   CGRect frame = CGRectMake(0, 0, layer.frame.size.width, layer.frame.size.height);
 
   UIGraphicsPushContext(ctx);
+  CGContextSetShouldAntialias(ctx, YES);
   // TODO(songshourui.null): pass the padding and border to the text renderer later.
   [_textRenderer drawRect:frame padding:UIEdgeInsetsZero border:UIEdgeInsetsZero];
   UIGraphicsPopContext();
