@@ -5,7 +5,7 @@
 #ifndef CLAY_COMMON_GRAPHICS_GL_GL_PIPELINE_HELPER_H_
 #define CLAY_COMMON_GRAPHICS_GL_GL_PIPELINE_HELPER_H_
 
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 
 #include "clay/fml/logging.h"
 
@@ -22,10 +22,13 @@ class GlPipelineHelper {
 
  private:
   bool initialized_ = false;
+  GLuint vao_;
   GLuint vbo_;
   GLuint program_;
-  GLint location_pos_;
-  GLint location_tex_;
+
+  // Saved state for restoration
+  GLint saved_program_ = 0;
+  GLint saved_vao_ = 0;
 };
 
 }  // namespace clay
