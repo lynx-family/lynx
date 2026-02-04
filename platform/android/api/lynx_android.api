@@ -9770,6 +9770,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY_PAINT_END TIMING_KEY_PAINT_END;
   public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_TIMING MARK_TIMING;
   public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_HOST_PLATFORM_TIMING MARK_HOST_PLATFORM_TIMING;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.DESTORY_LYNXFRAMEVIEW DESTORY_LYNXFRAMEVIEW;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
@@ -10023,7 +10024,7 @@ public class com::lynx::tasm::behavior::ui::frame::UIFrame : com::lynx::tasm::be
   public com.lynx.tasm.behavior.ui.frame.UIFrame.UIFrame(LynxContext context, Object params);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setSign(int sign, String tagName);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.updateExtraData(Object data);
-  public void com.lynx.tasm.behavior.ui.frame.UIFrame.onNodeRemoved();
+  public void com.lynx.tasm.behavior.ui.frame.UIFrame.destroy();
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.updateLayout(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, Rect bound);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setData(ReadableMap value);
   public void com.lynx.tasm.behavior.ui.frame.UIFrame.setSrc(String value);

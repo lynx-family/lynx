@@ -15,6 +15,8 @@ import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import java.lang.ref.WeakReference;
@@ -28,9 +30,10 @@ public final class LynxFrameView extends UIBodyView {
   private int mSign;
   private LynxContext mContext;
   private boolean mIsBundleLoaded = false;
-  private boolean mIsIntrinsicSizeConsumed = false;
+  private boolean mIsIntrinsicSizeConsumed = true;
   private int mContentWidth = 0;
   private int mContentHeight = 0;
+  private boolean mDestroyed = false;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -154,6 +157,18 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   void destroy() {
-    mRender.destroy();
+    if (mDestroyed) {
+      return;
+    }
+    mDestroyed = true;
+
+    LLog.i(TAG, "lynxframeview destroy " + this.toString());
+    TraceEvent.beginSection(TraceEventDef.DESTORY_LYNXFRAMEVIEW);
+    if (mRender != null) {
+      mRender.onDetachedFromWindow();
+      mRender.destroy();
+      mRender = null;
+    }
+    TraceEvent.endSection(TraceEventDef.DESTORY_LYNXFRAMEVIEW);
   }
 }

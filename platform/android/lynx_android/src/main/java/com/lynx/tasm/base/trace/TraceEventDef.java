@@ -228,4 +228,7 @@ public class TraceEventDef {
   public static final String TIMING_KEY_PAINT_END = "paintEnd";
   public static final String MARK_TIMING = "Timing::Mark";
   public static final String MARK_HOST_PLATFORM_TIMING = "Timing::MarkHostPlatformTiming";
+
+  // frame
+  public static final String DESTORY_LYNXFRAMEVIEW = "DestroyLynxFrameView";
 }
