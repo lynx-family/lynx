@@ -115,6 +115,7 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
   virtual bool SwapBack(std::unique_ptr<FenceSync> fence_sync) = 0;
 
   virtual uint32_t Capacity() const = 0;
+  virtual void UpdateBufferMode(BufferMode mode) {}
 
   UpdateFrontMode update_front_mode() const { return update_front_mode_; }
 
@@ -164,6 +165,7 @@ class SharedImageSinkManaged final : public SharedImageSink {
   bool SwapBack(std::unique_ptr<FenceSync> fence_sync) override;
 
   uint32_t Capacity() const override { return capacity_; }
+  void UpdateBufferMode(BufferMode mode) override;
 
   void ClearBackFences() override;
 
@@ -178,7 +180,7 @@ class SharedImageSinkManaged final : public SharedImageSink {
   };
 
   uint32_t used_ = 0;
-  const uint32_t capacity_;
+  uint32_t capacity_;
   SharedImageFactory shared_image_factory_;
 
   fml::closure frame_available_callback_;

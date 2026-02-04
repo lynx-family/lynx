@@ -25,6 +25,10 @@ SharedImageSinkManaged::SharedImageSinkManaged(
 
 SharedImageSinkManaged::~SharedImageSinkManaged() = default;
 
+void SharedImageSinkManaged::UpdateBufferMode(BufferMode mode) {
+  capacity_ = mode;
+}
+
 void SharedImageSinkManaged::SetFrameAvailableCallback(
     const fml::closure& callback) {
   std::lock_guard<std::mutex> l(mutex_);
