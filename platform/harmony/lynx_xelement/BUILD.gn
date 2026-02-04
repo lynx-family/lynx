@@ -19,6 +19,10 @@ lynx_core_source_set("lynx_xelement") {
     "overlay/overlay_shadow_node.h",
     "overlay/ui_overlay.cc",
     "overlay/ui_overlay.h",
+    "refresh/refresh_shadow_node.cc",
+    "refresh/refresh_shadow_node.h",
+    "refresh/ui_refresh.cc",
+    "refresh/ui_refresh.h",
     "registry.cc",
     "registry.h",
   ]

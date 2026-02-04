@@ -9,6 +9,8 @@
 #include "platform/harmony/lynx_xelement/input/ui_textarea.h"
 #include "platform/harmony/lynx_xelement/overlay/overlay_shadow_node.h"
 #include "platform/harmony/lynx_xelement/overlay/ui_overlay.h"
+#include "platform/harmony/lynx_xelement/refresh/refresh_shadow_node.h"
+#include "platform/harmony/lynx_xelement/refresh/ui_refresh.h"
 
 namespace lynx {
 namespace tasm {
@@ -21,6 +23,9 @@ void XElementRegistry::Initialize() {
                      LayoutNodeType::CUSTOM};
   map["overlay"] = {UIOverlay::Make, OverlayShadowNode::Make,
                     LayoutNodeType::CUSTOM};
+  map["refresh"] = {UIRefresh::Make, RefreshShadowNode::Make,
+                    LayoutNodeType::CUSTOM};
+  map["refresh-header"] = {UIRefreshHeader::Make};
 }
 }  // namespace harmony
 }  // namespace tasm
