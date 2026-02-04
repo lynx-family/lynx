@@ -17,6 +17,23 @@
 
 namespace clay {
 
+namespace {
+
+SharedImageSink::BufferMode convert_buffer_mode(
+    ClaySharedImageSinkBufferMode clay_buffer_mode) {
+  switch (clay_buffer_mode) {
+    case kClaySharedImageSinkBufferModeSingleBuffer:
+      return SharedImageSink::kSingleBuffer;
+    case kClaySharedImageSinkBufferModeDoubleBuffer:
+      return SharedImageSink::kDoubleBuffer;
+    case kClaySharedImageSinkBufferModeTripleBuffer:
+    default:
+      return SharedImageSink::kTripleBuffer;
+  }
+}
+
+}  // namespace
+
 NativePlatformView::~NativePlatformView() {
   if (sink_ref_) {
     ClayReleaseSharedImageSink(sink_ref_);
@@ -116,6 +133,11 @@ ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(int width,
   }
 
   SharedImageSink* sink = reinterpret_cast<SharedImageSink*>(sink_ref_);
+  SharedImageSink::BufferMode mode = convert_buffer_mode(buffer_mode());
+  if (sink->Capacity() != mode) {
+    sink->UpdateBufferMode(mode);
+  }
+
   auto [backing, buffer_age] = sink->AcquireBack({width, height});
   if (!backing) {
     return nullptr;
