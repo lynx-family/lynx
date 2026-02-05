@@ -258,9 +258,8 @@ void RadonSlotsHelper::DiffWithPlugs(NameToPlugMap& old_plugs,
     } else {
       // case 3: new plug is not found, but old plug exists
       // we need to delete old plug
-      RadonBase* plug_root = old_plug_ptr->radon_children_.front().get();
-      plug_root->RemoveElementFromParent();
-      plug_root->ClearChildrenRecursivelyInPostOrder();
+      old_plug_ptr->RemoveElementFromParent();
+      old_plug_ptr->ClearChildrenRecursivelyInPostOrder();
     }
   }
 }
