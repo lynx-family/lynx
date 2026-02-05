@@ -53,7 +53,7 @@ export class Lynx {
   }
 
   setTimeout: LynxSetTimeout = this.getApp().wrapReport(
-    this.getApp().setTimeout,
+    this.getNativeApp().setTimeout,
     'setTimeout Error'
   );
 
@@ -79,7 +79,7 @@ export class Lynx {
   }
 
   setInterval: LynxSetTimeout = this.getApp().wrapReport(
-    this.getApp().setInterval,
+    this.getNativeApp().setInterval,
     'setInterval Error'
   );
   clearInterval = this.getNativeApp().clearInterval;
@@ -497,8 +497,8 @@ export class Lynx {
   cancelAnimationFrame = (animationId: number) =>
     this.getNativeApp().cancelAnimationFrame(animationId);
 
-  queueMicrotask(callback: () => void) {
-    this.getApp().queueMicrotask(callback);
+  queueMicrotask(callback: () => void): void {
+    this.getNativeLynx().queueMicrotask(callback);
   }
 
   loadScript = <LoadScript>(<T>(
