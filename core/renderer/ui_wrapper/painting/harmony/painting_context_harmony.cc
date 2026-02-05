@@ -173,10 +173,15 @@ std::unique_ptr<pub::Value> PaintingContextHarmony::GetTextInfo(
 }
 
 void PaintingContextHarmony::StopExposure(const pub::Value& options) {
-  ui_owner_->StopExposure(pub::ValueUtils::ConvertValueToLepusValue(options));
+  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  Enqueue([ui_owner = ui_owner_.get(), options = std::move(lepus_options)]() {
+    ui_owner->StopExposure(options);
+  });
 }
 
-void PaintingContextHarmony::ResumeExposure() { ui_owner_->ResumeExposure(); }
+void PaintingContextHarmony::ResumeExposure() {
+  Enqueue([ui_owner = ui_owner_.get()]() { ui_owner->ResumeExposure(); });
+}
 
 std::vector<float> PaintingContextHarmony::getWindowSize(int id) { return {}; }
 
