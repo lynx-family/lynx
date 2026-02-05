@@ -90,6 +90,7 @@ NS_ASSUME_NONNULL_BEGIN
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;
   std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin> module_factory_;
   std::weak_ptr<lynx::runtime::js::ModuleFactoryDarwin> main_thread_module_factory_;
+  std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> _paintingCtxPlatformRef;
   id<LynxUIRendererProtocol> _lynxUIRenderer;
   // property
   NSMutableDictionary* _extra;

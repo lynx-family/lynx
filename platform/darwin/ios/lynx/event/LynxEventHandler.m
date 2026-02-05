@@ -295,6 +295,7 @@
   float range_;
   NSMutableSet* _set;
   NSMutableSet* _setOfPropsChanged;
+  BOOL _isFragmentLayerRendererOn;
 }
 
 - (void)dealloc {
@@ -310,32 +311,46 @@
 }
 
 - (instancetype)initWithRootView:(UIView*)rootView {
-  return [self initWithRootView:rootView withRootUI:nil];
+  return [self initWithRootView:rootView andFlag:NO];
 }
 
-- (instancetype)initWithRootView:(UIView*)rootView withRootUI:(LynxUI*)rootUI {
+- (instancetype)initWithRootView:(UIView*)rootView andFlag:(BOOL)isFragmentLayerRenderOn {
+  return [self initWithRootView:rootView withRootUI:nil andFlag:isFragmentLayerRenderOn];
+}
+
+- (instancetype)initWithRootView:(UIView*)rootView withRootUI:(nullable LynxUI*)rootUI {
+  return [self initWithRootView:rootView withRootUI:rootUI andFlag:NO];
+}
+
+- (instancetype)initWithRootView:(UIView*)rootView
+                      withRootUI:(LynxUI*)rootUI
+                         andFlag:(BOOL)isFragmentLayerRenderOn {
   self = [super init];
   if (self) {
     _rootView = rootView;
     _rootUI = rootUI;
     _touchRecognizer = [[LynxTouchHandler alloc] initWithEventHandler:self];
-    _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
-                                                             action:@selector(dispatchTapEvent:)];
-    _longPressRecognizer =
-        [[UILongPressGestureRecognizer alloc] initWithTarget:self
-                                                      action:@selector(dispatchLongPressEvent:)];
-    _tapDelegate = [[TapGestureRecognizerDelegate alloc] initWithEventHandler:self];
-    _longPressDelegate = [[LongPressGestureRecognizerDelegate alloc] initWithEventHandler:self];
-    _tapRecognizer.delegate = _tapDelegate;
-    _tapRecognizer.cancelsTouchesInView = YES;
-    _longPressRecognizer.delegate = _longPressDelegate;
-    _longPressRecognizer.cancelsTouchesInView = YES;
-
-    [_rootView addGestureRecognizer:_tapRecognizer];
-    [_rootView addGestureRecognizer:_longPressRecognizer];
     [_rootView addGestureRecognizer:_touchRecognizer];
+    _isFragmentLayerRendererOn = isFragmentLayerRenderOn;
 
-    [_touchRecognizer setupVelocityTracker:_rootView];
+    if (!_isFragmentLayerRendererOn) {
+      [_touchRecognizer setupVelocityTracker:_rootView];
+
+      _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self
+                                                               action:@selector(dispatchTapEvent:)];
+      _longPressRecognizer =
+          [[UILongPressGestureRecognizer alloc] initWithTarget:self
+                                                        action:@selector(dispatchLongPressEvent:)];
+      _tapDelegate = [[TapGestureRecognizerDelegate alloc] initWithEventHandler:self];
+      _longPressDelegate = [[LongPressGestureRecognizerDelegate alloc] initWithEventHandler:self];
+      _tapRecognizer.delegate = _tapDelegate;
+      _tapRecognizer.cancelsTouchesInView = YES;
+      _longPressRecognizer.delegate = _longPressDelegate;
+      _longPressRecognizer.cancelsTouchesInView = YES;
+
+      [_rootView addGestureRecognizer:_tapRecognizer];
+      [_rootView addGestureRecognizer:_longPressRecognizer];
+    }
 
     // Defaul value is nil. If LynxUI has consume-slide-event prop, init _panGestureRecognizer and
     // _panGestureDelegate.
@@ -357,26 +372,30 @@
 
 - (void)attachContainerView:(UIView*)rootView {
   _rootView = rootView;
-  [_rootView addGestureRecognizer:_tapRecognizer];
-  [_rootView addGestureRecognizer:_longPressRecognizer];
   [_rootView addGestureRecognizer:_touchRecognizer];
-  if (_customPlatformGesture != nil) {
-    [_rootView addGestureRecognizer:_customPlatformGesture];
-  }
-  if (_panGestureRecognizer != nil) {
-    [_rootView addGestureRecognizer:_panGestureRecognizer];
+  if (!_isFragmentLayerRendererOn) {
+    [_rootView addGestureRecognizer:_tapRecognizer];
+    [_rootView addGestureRecognizer:_longPressRecognizer];
+    if (_customPlatformGesture != nil) {
+      [_rootView addGestureRecognizer:_customPlatformGesture];
+    }
+    if (_panGestureRecognizer != nil) {
+      [_rootView addGestureRecognizer:_panGestureRecognizer];
+    }
   }
 }
 
 - (void)removeEventGestures {
-  [_rootView removeGestureRecognizer:_tapRecognizer];
-  [_rootView removeGestureRecognizer:_longPressRecognizer];
   [_rootView removeGestureRecognizer:_touchRecognizer];
-  if (_customPlatformGesture != nil) {
-    [_rootView removeGestureRecognizer:_customPlatformGesture];
-  }
-  if (_panGestureRecognizer != nil) {
-    [_rootView removeGestureRecognizer:_panGestureRecognizer];
+  if (!_isFragmentLayerRendererOn) {
+    [_rootView removeGestureRecognizer:_tapRecognizer];
+    [_rootView removeGestureRecognizer:_longPressRecognizer];
+    if (_customPlatformGesture != nil) {
+      [_rootView removeGestureRecognizer:_customPlatformGesture];
+    }
+    if (_panGestureRecognizer != nil) {
+      [_rootView removeGestureRecognizer:_panGestureRecognizer];
+    }
   }
 }
 
@@ -628,6 +647,9 @@
 }
 
 - (void)setUpPlatformGesture {
+  if (_isFragmentLayerRendererOn) {
+    return;
+  }
   if (_customPlatformGesture && _customPlatformDelegate) {
     return;
   }
@@ -652,6 +674,9 @@
 }
 
 - (void)removePlatformGesture {
+  if (_isFragmentLayerRendererOn) {
+    return;
+  }
   if (!_customPlatformGesture && !_customPlatformDelegate) {
     return;
   }
@@ -965,7 +990,7 @@
 }
 
 - (void)setEnableViewReceiveTouch:(BOOL)enable {
-  if (enable) {
+  if (enable && !_isFragmentLayerRendererOn) {
     _tapRecognizer.cancelsTouchesInView = NO;
     _longPressRecognizer.cancelsTouchesInView = NO;
     _panGestureRecognizer.cancelsTouchesInView = NO;

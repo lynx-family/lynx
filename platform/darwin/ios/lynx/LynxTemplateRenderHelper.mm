@@ -40,6 +40,7 @@
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/public/lynx_extension_delegate.h"
 #include "core/renderer/lynx_global_pool.h"
+#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
@@ -124,6 +125,12 @@
     }
   }
 
+  if (painting_context) {
+    _paintingCtxPlatformRef = painting_context->GetPlatformRef();
+  } else {
+    _paintingCtxPlatformRef.reset();
+  }
+
   shell_.reset(
       lynx::shell::LynxShellBuilder()
           .SetNativeFacade(std::make_unique<lynx::shell::NativeFacadeDarwin>(self))
@@ -157,6 +164,11 @@
 
   [_lynxEngineProxy setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(
                                              shell_->GetEngineActor())];
+
+  if (_context.isFragmentLayerRenderOn && _paintingCtxPlatformRef) {
+    static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get())
+        ->SetLynxEngineActorForPlatformContextRef(shell_->GetEngineActor());
+  }
 
   [_devTool onTemplateAssemblerCreated:(intptr_t)shell_.get()];
 

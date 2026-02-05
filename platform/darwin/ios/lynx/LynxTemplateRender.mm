@@ -67,6 +67,7 @@
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/layout/ios/layout_context_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/utils/darwin/event_converter_darwin.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
@@ -1296,6 +1297,46 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI)callback {
   [_lynxUIRenderer.uiOwner setAttachLynxPageUICallback:callback];
+  _paintingCtxPlatformRef.get();
+}
+
+- (void)DispatchPlatformInputEvent:(NSArray*)iEventData withData:(NSArray*)fEventData {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+
+  NSUInteger count = iEventData.count;
+  int* int_event_data = (int*)malloc(count * sizeof(int));
+  if (int_event_data == NULL) {
+    return;
+  }
+  [iEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
+    int_event_data[idx] = [obj intValue];
+  }];
+
+  count = fEventData.count;
+  float* float_event_data = (float*)malloc(count * sizeof(float));
+  if (float_event_data == NULL) {
+    free(int_event_data);
+    return;
+  }
+  [fEventData enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
+    float_event_data[idx] = [obj floatValue];
+  }];
+
+  auto* platform_ref =
+      static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get());
+  if (platform_ref) {
+    platform_ref->DispatchPlatformInputEvent(int_event_data, float_event_data);
+  }
+
+  free(int_event_data);
+  free(float_event_data);
+}
+
+- (int)GetPlatformEventHandlerState {
+  return static_cast<lynx::tasm::NativePaintingCtxPlatformDarwinRef*>(_paintingCtxPlatformRef.get())
+      ->GetPlatformEventHandlerState();
 }
 
 #pragma mark - Life Cycle

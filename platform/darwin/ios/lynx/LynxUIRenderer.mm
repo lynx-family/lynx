@@ -190,7 +190,9 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventEmitter setIntersectionObserverBlock:intersectionObserver];
   _uiOwner.uiContext.eventEmitter = _eventEmitter;
   if (_eventHandler == nil) {
-    _eventHandler = [[LynxEventHandler alloc] initWithRootView:_containerView];
+    _eventHandler =
+        [[LynxEventHandler alloc] initWithRootView:_containerView
+                                           andFlag:_lynxContext.isFragmentLayerRenderOn];
   }
   _uiOwner.uiContext.eventHandler = _eventHandler;
 

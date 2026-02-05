@@ -32,7 +32,11 @@ NS_ASSUME_NONNULL_BEGIN
     focusedInputTarget;  // TODO: Migrate to foucsd-ui logic like we do on Android
 
 - (instancetype)initWithRootView:(UIView *)rootView;
+- (instancetype)initWithRootView:(UIView *)rootView andFlag:(BOOL)isFragmentLayerRenderOn;
 - (instancetype)initWithRootView:(UIView *)rootView withRootUI:(nullable LynxUI *)rootUI;
+- (instancetype)initWithRootView:(UIView *)rootView
+                      withRootUI:(nullable LynxUI *)rootUI
+                         andFlag:(BOOL)isFragmentLayerRenderOn;
 
 - (void)attachContainerView:(UIView *)rootView;
 

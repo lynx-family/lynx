@@ -43,6 +43,7 @@ FOUNDATION_EXPORT NSString *const kDefaultComponentID;
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)mode;
 - (bool)isEmbeddedModeOn;
+- (bool)isFragmentLayerRenderOn;
 
 @end
 

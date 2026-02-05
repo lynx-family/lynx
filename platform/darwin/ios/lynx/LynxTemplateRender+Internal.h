@@ -65,6 +65,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)detachLynxEngine;
 
+- (void)DispatchPlatformInputEvent:(NSArray *)iEventData withData:(NSArray *)fEventData;
+
+- (int)GetPlatformEventHandlerState;
+
 @end
 
 NS_ASSUME_NONNULL_END

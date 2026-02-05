@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <XElement/LynxOverlayContainer.h>
 
@@ -150,8 +151,11 @@
     return;
   }
   LynxUI *rootUI = self.uiDelegate.overlayRootUI;
-  self.eventHandler = [[LynxEventHandler alloc] initWithRootView:self withRootUI:rootUI];
-  [self.eventHandler updateUiOwner:nil eventEmitter:rootUI.context.eventEmitter];
+  BOOL flag = rootUI.context.lynxContext.isFragmentLayerRenderOn;
+  self.eventHandler = [[LynxEventHandler alloc] initWithRootView:self
+                                                      withRootUI:rootUI
+                                                         andFlag:flag];
+  [self.eventHandler updateUiOwner:rootUI.context.uiOwner eventEmitter:rootUI.context.eventEmitter];
   _eventHandlerIndex = [self.eventHandler
       setGestureArenaManagerAndGetIndex:rootUI.context.eventHandler.gestureArenaManager];
 }

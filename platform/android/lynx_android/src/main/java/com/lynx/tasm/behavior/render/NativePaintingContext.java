@@ -81,7 +81,6 @@ public class NativePaintingContext implements IPaintingContext {
       return false;
     }
 
-    // TODO(hexionghui): handle multi-pointer event.
     int pointerCount = ev.getPointerCount();
     // iEventData: [event_type, action_type, event_source, pointer_count, ...]
     int[] iEventData = {0, ev.getActionMasked(), ev.getSource(), pointerCount};

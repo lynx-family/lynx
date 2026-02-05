@@ -13,6 +13,7 @@
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
@@ -81,10 +82,12 @@
   // which is generated when the finger is pressed and recycled when the
   // finger is lifted, and the period remains unchanged.
   std::set<uint32_t> reuse_id_pool_;
+  std::set<uint32_t> reuse_touches_id_;
   LynxGestureVelocityTracker* _velocityTracker;
   NSMutableDictionary<NSString*, LynxWeakProxy*>* _outerGestures;
   NSTimeInterval _timestamp;
   NSString* _preTargetInlineCSSText;
+  NSMutableDictionary* _touchesIDMap;
 }
 
 - (instancetype)initWithEventHandler:(LynxEventHandler*)eventHandler {
@@ -113,7 +116,9 @@
     touches_map_ = std::map<UITouch*, EventTargetDetail*>();
     active_target_map_ = [NSMutableDictionary new];
     reuse_id_pool_ = std::set<uint32_t>();
+    reuse_touches_id_ = std::set<uint32_t>();
     _outerGestures = [NSMutableDictionary dictionary];
+    _touchesIDMap = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -164,6 +169,8 @@
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
   reuse_id_pool_.clear();
+  reuse_touches_id_.clear();
+  [_touchesIDMap removeAllObjects];
 }
 
 - (void)initClickEnv {
@@ -221,6 +228,8 @@
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
   reuse_id_pool_.clear();
+  reuse_touches_id_.clear();
+  [_touchesIDMap removeAllObjects];
   [_outerGestures removeAllObjects];
 }
 
@@ -345,6 +354,37 @@
   }
 
   return event;
+}
+
+- (BOOL)dispatchPlatformUIEvent:(NSSet<UITouch*>*)touches
+                      withEvent:(UIEvent*)event
+                        forType:(NSInteger)actionType {
+  LynxContext* lynxContext = _eventHandler.uiOwner.uiContext.lynxContext;
+  if (!lynxContext.isFragmentLayerRenderOn) {
+    return NO;
+  }
+
+  LynxTemplateRender* templateRender =
+      ((LynxView*)_eventHandler.uiOwner.uiContext.rootView).templateRender;
+  if (templateRender && touches && event) {
+    NSArray* touchArray = [touches allObjects];
+    NSInteger eventSource = ((UITouch*)touchArray.firstObject).type;
+    NSUInteger pointerCount = touches.count;
+    // iEventData: [event_type, action_type, event_source, pointer_count, ...]
+    NSArray* iEventData = @[ @0, @(actionType), @(eventSource), @(pointerCount) ];
+    // fEventData: [pointer_id, pointer_x, pointer_y, ...]
+    NSMutableArray* fEventData = [NSMutableArray arrayWithCapacity:pointerCount * 3];
+    for (NSUInteger i = 0; i < pointerCount; i++) {
+      UITouch* touch = touchArray[i];
+      NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
+      CGPoint point = [touch locationInView:touch.view];
+      [fEventData addObject:[_touchesIDMap valueForKey:key]];
+      [fEventData addObject:@(point.x)];
+      [fEventData addObject:@(point.y)];
+    }
+    [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+  }
+  return YES;
 }
 
 /**
@@ -511,7 +551,22 @@
 }
 
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
-  [self touchesBeganInner:touches withEvent:event];
+  for (UITouch* touch in touches) {
+    NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
+    if ([_touchesIDMap valueForKey:key] == nil) {
+      int32_t identifier = 0;
+      if (!reuse_touches_id_.empty()) {
+        identifier = *reuse_touches_id_.begin();
+        reuse_touches_id_.erase(reuse_touches_id_.begin());
+      } else {
+        identifier = (int32_t)_touchesIDMap.count;
+      }
+      _touchesIDMap[key] = @(identifier);
+    }
+  }
+  if (![self dispatchPlatformUIEvent:touches withEvent:event forType:0]) {
+    [self touchesBeganInner:touches withEvent:event];
+  }
 }
 
 - (void)touchesBeganInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
@@ -684,7 +739,9 @@
 }
 
 - (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
-  [self touchesMovedInner:touches withEvent:event];
+  if (![self dispatchPlatformUIEvent:touches withEvent:event forType:2]) {
+    [self touchesMovedInner:touches withEvent:event];
+  }
 }
 
 - (void)touchesMovedInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
@@ -824,7 +881,19 @@
 }
 
 - (void)touchesEnded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
-  [self touchesEndedInner:touches withEvent:event];
+  if (![self dispatchPlatformUIEvent:touches withEvent:event forType:1]) {
+    [self touchesEndedInner:touches withEvent:event];
+  }
+  NSArray* touchesArray = [touches allObjects];
+  [touchesArray
+      enumerateObjectsUsingBlock:^(UITouch* _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
+        NSString* key = [NSString stringWithFormat:@"%ld", obj.hash];
+        NSNumber* val = [_touchesIDMap valueForKey:key];
+        if (val) {
+          reuse_touches_id_.insert([val intValue]);
+          [_touchesIDMap removeObjectForKey:key];
+        }
+      }];
 }
 
 - (void)touchesEndedInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
@@ -919,7 +988,19 @@
 }
 
 - (void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
-  [self touchesCancelledInner:touches withEvent:event];
+  if (![self dispatchPlatformUIEvent:touches withEvent:event forType:3]) {
+    [self touchesCancelledInner:touches withEvent:event];
+  }
+  NSArray* touchesArray = [touches allObjects];
+  [touchesArray
+      enumerateObjectsUsingBlock:^(UITouch* _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
+        NSString* key = [NSString stringWithFormat:@"%ld", obj.hash];
+        NSNumber* val = [_touchesIDMap valueForKey:key];
+        if (val) {
+          reuse_touches_id_.insert([val intValue]);
+          [_touchesIDMap removeObjectForKey:key];
+        }
+      }];
 }
 
 - (void)touchesCancelledInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
@@ -1166,47 +1247,51 @@
 
   auto res = ![self isDescendantOfLynxView:otherGestureRecognizer];
   if (res == YES && _touchBegin == YES && _touchEndOrCancel == NO) {
-    _timestamp = [[NSDate date] timeIntervalSince1970];
-    if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
-      [self
-          showMessageOnConsole:
-              [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
-                                         [_eventHandler.rootView hash], 3]
-                     withLevel:DevToolLogLevelInfo];
-    }
-    _LogI(@"Lynxview LynxTouchHandler touchesCancelled %p: ", _eventHandler.rootView);
-    if (!_enableMultiTouch) {
-      CGPoint windowLocation = [otherGestureRecognizer locationInView:otherGestureRecognizer.view];
-      CGPoint clientPoint = [otherGestureRecognizer.view convertPoint:windowLocation
-                                                               toView:_eventHandler.rootView];
-      CGPoint viewPoint = [otherGestureRecognizer locationInView:gestureRecognizer.view];
-
-      [self dispatchEvent:LynxEventTouchCancel
-                 toTarget:_eventHandler.touchTarget
-                    phase:UITouchPhaseCancelled
-              clientPoint:clientPoint
-                pagePoint:clientPoint
-                viewPoint:viewPoint];
-    } else {
-      NSMutableDictionary* dict = [NSMutableDictionary new];
-      for (UITouch* touch in _touches) {
-        [self addMap:dict touch:touch];
+    if (![self dispatchPlatformUIEvent:_touches withEvent:_event forType:3]) {
+      _timestamp = [[NSDate date] timeIntervalSince1970];
+      if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
+        [self showMessageOnConsole:
+                  [NSString
+                      stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
+                                       [_eventHandler.rootView hash], 3]
+                         withLevel:DevToolLogLevelInfo];
       }
-      [self dispatchTouchAndEvent:LynxEventTouchCancel params:dict];
-    }
-    [_target dispatchTouch:LynxEventTouchCancel touches:_touches withEvent:_event];
+      _LogI(@"Lynxview LynxTouchHandler touchesCancelled %p: ", _eventHandler.rootView);
+      if (!_enableMultiTouch) {
+        CGPoint windowLocation =
+            [otherGestureRecognizer locationInView:otherGestureRecognizer.view];
+        CGPoint clientPoint = [otherGestureRecognizer.view convertPoint:windowLocation
+                                                                 toView:_eventHandler.rootView];
+        CGPoint viewPoint = [otherGestureRecognizer locationInView:gestureRecognizer.view];
 
-    LynxRootUI* childLynxPage =
-        _eventHandler.touchTarget
-            .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
-    if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
-        childLynxPage.view.isChildLynxPage) {
-      [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:_touches
-                                                                  withEvent:_event];
-    }
+        [self dispatchEvent:LynxEventTouchCancel
+                   toTarget:_eventHandler.touchTarget
+                      phase:UITouchPhaseCancelled
+                clientPoint:clientPoint
+                  pagePoint:clientPoint
+                  viewPoint:viewPoint];
+      } else {
+        NSMutableDictionary* dict = [NSMutableDictionary new];
+        for (UITouch* touch in _touches) {
+          [self addMap:dict touch:touch];
+        }
+        [self dispatchTouchAndEvent:LynxEventTouchCancel params:dict];
+      }
+      [_target dispatchTouch:LynxEventTouchCancel touches:_touches withEvent:_event];
 
-    [self onTouchEndOrCancel];
-    [self resetTouchEnv];
+      LynxRootUI* childLynxPage =
+          _eventHandler.touchTarget
+              .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+      if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+          childLynxPage.view.isChildLynxPage) {
+        [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:_touches
+                                                                    withEvent:_event];
+      }
+
+      [self onTouchEndOrCancel];
+      [self resetTouchEnv];
+    }
+    [_touchesIDMap removeAllObjects];
   }
   return !res;
 }

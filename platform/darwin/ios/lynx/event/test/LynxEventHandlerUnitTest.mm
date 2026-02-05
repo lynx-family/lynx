@@ -27,7 +27,8 @@
   // class.
   LynxRootUI* rootUI = [[LynxRootUI alloc] initWithLynxView:(LynxView*)[UIView new]];
   _handler = OCMPartialMock([[LynxEventHandler alloc] initWithRootView:rootUI.view
-                                                            withRootUI:rootUI]);
+                                                            withRootUI:rootUI
+                                                               andFlag:NO]);
 }
 
 - (void)tearDown {
