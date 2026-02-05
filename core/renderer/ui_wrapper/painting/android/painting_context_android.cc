@@ -1204,31 +1204,37 @@ std::unique_ptr<pub::Value> PaintingContextAndroid::GetTextInfo(
 }
 
 void PaintingContextAndroid::StopExposure(const pub::Value& options) {
-  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-
-  JNIEnv* env = base::android::AttachCurrentThread();
   auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
-  auto java_options =
-      tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
-          lepus_options);
-  if (lepus_options.IsEmpty()) {
-    java_options.PushBoolean("sendEvent", true);
-  }
-  Java_PaintingContext_stopExposure(env, local_ref.Get(),
-                                    java_options.jni_object());
+
+  Enqueue([impl = impl_, options = std::move(lepus_options)]() {
+    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    JNIEnv* env = base::android::AttachCurrentThread();
+
+    auto java_options =
+        tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
+            options);
+    if (options.IsEmpty()) {
+      java_options.PushBoolean("sendEvent", true);
+    }
+    Java_PaintingContext_stopExposure(env, local_ref.Get(),
+                                      java_options.jni_object());
+  });
 }
 
 void PaintingContextAndroid::ResumeExposure() {
-  base::android::ScopedLocalJavaRef<jobject> local_ref(*impl_);
-  if (local_ref.IsNull()) {
-    return;
-  }
+  Enqueue([impl = impl_]() {
+    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
 
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PaintingContext_resumeExposure(env, local_ref.Get());
+    JNIEnv* env = base::android::AttachCurrentThread();
+    Java_PaintingContext_resumeExposure(env, local_ref.Get());
+  });
 }
 
 }  // namespace tasm
