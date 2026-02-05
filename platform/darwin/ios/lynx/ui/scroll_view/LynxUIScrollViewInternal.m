@@ -188,7 +188,12 @@ LYNX_PROP_DEFINE("enable-scroll-bar", setEnableScrollBar, BOOL) {
   self.view.showsVerticalScrollIndicator = value;
 }
 
-LYNX_PROP_DEFINE("enable-scroll", setEnableScroll, BOOL) { self.view.scrollEnabled = value; }
+LYNX_PROP_DEFINE("enable-scroll", setEnableScroll, BOOL) {
+  self.view.scrollEnabled = value;
+  if (!value) {
+    self.view.panGestureRecognizer.state = UIGestureRecognizerStateCancelled;
+  }
+}
 
 LYNX_PROP_DEFINE("bounces", setBounces, BOOL) { self.view.bounces = value; }
 

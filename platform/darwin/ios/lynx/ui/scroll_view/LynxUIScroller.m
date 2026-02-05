@@ -557,6 +557,9 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     value = YES;
   }
   self.view.scrollEnabled = value;
+  if (!value) {
+    self.view.panGestureRecognizer.state = UIGestureRecognizerStateCancelled;
+  }
 }
 
 - (void)setFadingEdge:(NSString *)value requestReset:(BOOL)requestReset {
