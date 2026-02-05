@@ -110,12 +110,6 @@ export type LifeEvent =
   | 'datasetChanged'
   | 'instanceChanged';
 
-//The two types are for legacy compatibility; once the experiment results are valid, only the id type will be retained.
-export type LynxSetTimeout2 = (
-  idOrCallback: number | ((...args: unknown[]) => unknown),
-  number: number
-) => number;
-
 /**
  * NativeApp is the interface that native app implements
  * implementations are in `js_app.cc`
@@ -148,9 +142,9 @@ export interface NativeApp {
 
   setCard(app: BaseApp): void;
 
-  setTimeout: LynxSetTimeout2;
+  setTimeout: LynxSetTimeout;
 
-  setInterval: LynxSetTimeout2;
+  setInterval: LynxSetTimeout;
 
   clearTimeout(timeoutId: number): void;
 
