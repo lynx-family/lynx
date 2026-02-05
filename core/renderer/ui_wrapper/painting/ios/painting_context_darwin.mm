@@ -281,11 +281,17 @@ std::unique_ptr<pub::Value> PaintingContextDarwin::GetTextInfo(const std::string
 }
 
 void PaintingContextDarwin::StopExposure(const pub::Value& options) {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
   auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
-  [uiOwner_.uiContext stopExposure:convertLepusValueToNSObject(lepus_options)];
+  Enqueue([uiOwner, options = std::move(lepus_options)]() {
+    [uiOwner.uiContext stopExposure:convertLepusValueToNSObject(options)];
+  });
 }
 
-void PaintingContextDarwin::ResumeExposure() { [uiOwner_.uiContext resumeExposure]; }
+void PaintingContextDarwin::ResumeExposure() {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
+  Enqueue([uiOwner]() { [uiOwner.uiContext resumeExposure]; });
+}
 
 PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async,
                                              void* textra)
