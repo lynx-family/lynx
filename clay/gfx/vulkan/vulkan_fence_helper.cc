@@ -70,7 +70,6 @@ bool VulkanFenceHelper::WaitSemaphore() {
       egl_display, EGL_SYNC_NATIVE_FENCE_ANDROID, attribs);
   AndroidEGLFenceSync::eglWaitSyncKHR(egl_display, sync, 0);
   AndroidEGLFenceSync::eglDestroySyncKHR(egl_display, sync);
-  FML_LOG(ERROR) << "service wait done";
   return true;
 }
 

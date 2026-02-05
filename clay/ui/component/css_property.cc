@@ -261,7 +261,7 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
 
     case KeywordID::kPerspective: {
       const auto& array = utils::GetArray(value);
-      if (array.size() > 0) {
+      if (array.size() >= 2) {
         view->SetPerspective(array);
       }
     } break;
