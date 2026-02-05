@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.23
+* Support render functions for framework to load lazy CSS with `__LoadStyleSheet` and `__AdoptStyleSheet`.
+
 # 0.0.22
 * Change `path.resolve` to `require.resolve` for webpack pre-bundle
 
