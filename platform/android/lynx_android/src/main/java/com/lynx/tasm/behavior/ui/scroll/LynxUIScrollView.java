@@ -72,4 +72,8 @@ public class LynxUIScrollView extends LynxUIScrollViewInternal {
   public void autoScroll(ReadableMap params, Callback callback) {
     super.autoScroll(params, callback);
   }
+  @LynxUIMethod
+  public void getScrollInfo(ReadableMap params, Callback callback) {
+    super.getScrollInfo(params, callback);
+  }
 }

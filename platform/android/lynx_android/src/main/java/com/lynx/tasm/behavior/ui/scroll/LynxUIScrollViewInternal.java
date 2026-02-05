@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.ui.scroll;
 
 import android.content.Context;
 import com.lynx.react.bridge.Callback;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
@@ -12,6 +13,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView;
 import com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling;
+import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.UISimpleView;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.utils.DeviceUtils;
@@ -276,6 +278,20 @@ public class LynxUIScrollViewInternal
       mView.stopScrolling();
     }
     callback.invoke(LynxUIMethodConstants.SUCCESS);
+  }
+
+  public void getScrollInfo(ReadableMap params, Callback callback) {
+    LynxBaseScrollView scrollView = mView;
+    JavaOnlyMap result = new JavaOnlyMap();
+    result.putInt(
+        "scrollLeft", LynxUIHelper.px2dip(mContext, scrollView.getScrollOffsetHorizontally()));
+    result.putInt(
+        "scrollTop", LynxUIHelper.px2dip(mContext, scrollView.getScrollOffsetVertically()));
+    result.putInt(
+        "scrollWidth", LynxUIHelper.px2dip(mContext, scrollView.getScrollRangeHorizontally()[1]));
+    result.putInt(
+        "scrollHeight", LynxUIHelper.px2dip(mContext, scrollView.getScrollRangeVertically()[1]));
+    callback.invoke(LynxUIMethodConstants.SUCCESS, result);
   }
 
   @Override

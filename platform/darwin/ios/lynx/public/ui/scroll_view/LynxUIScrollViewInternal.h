@@ -11,6 +11,7 @@
 - (void)scrollTo:(NSDictionary *)params withResult:(LynxUIMethodCallbackBlock)callback;
 - (void)scrollBy:(NSDictionary *)params withResult:(LynxUIMethodCallbackBlock)callback;
 - (void)autoScroll:(NSDictionary *)params withResult:(LynxUIMethodCallbackBlock)callback;
+- (void)getScrollInfo:(NSDictionary *)params withResult:(LynxUIMethodCallbackBlock)callback;
 
 - (void)scrollInto:(LynxUI *)value isSmooth:(BOOL)isSmooth type:(NSString *)type;
 @end

@@ -5053,6 +5053,7 @@ public class LynxUIScrollViewInternal : LynxUI, <LynxBaseScrollView> {
   public void LynxUIScrollViewInternal::scrollTo:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
   public void LynxUIScrollViewInternal::scrollBy:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
   public void LynxUIScrollViewInternal::autoScroll:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
+  public void LynxUIScrollViewInternal::getScrollInfo:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
   public void LynxUIScrollViewInternal::scrollInto:isSmooth:type:(LynxUI *value,[isSmooth] BOOL isSmooth,[type] NSString *type);
 }
 

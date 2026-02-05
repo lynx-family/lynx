@@ -118,8 +118,8 @@
   NSMutableDictionary *scrollEventDetail = [NSMutableDictionary dictionaryWithDictionary:@{
     @"scrollLeft" : @(scrollView.contentOffset.x),  // scrollOffset
     @"scrollTop" : @(scrollView.contentOffset.y),
-    @"scrollHeight" : @(scrollView.contentSize.width),  // contentSize
-    @"scrollWidth" : @(scrollView.contentSize.height),
+    @"scrollHeight" : @(scrollView.contentSize.height),  // contentSize
+    @"scrollWidth" : @(scrollView.contentSize.width),
     @"isDragging" : @(scrollView.isDragging),
     @"scrollState" : @([scrollView currentScrollState]),
   }];
@@ -306,6 +306,18 @@ LYNX_PROP_DEFINE("scroll-event-throttle", setScrollEventThrottle, NSNumber *) {
   }
 
   callback(kUIMethodSuccess, nil);
+}
+
+- (void)getScrollInfo:(NSDictionary *)params withResult:(LynxUIMethodCallbackBlock)callback {
+  if (callback) {
+    UIScrollView *scrollView = self.view;
+    callback(kUIMethodSuccess, @{
+      @"scrollLeft" : @(scrollView.contentOffset.x),
+      @"scrollTop" : @(scrollView.contentOffset.y),
+      @"scrollWidth" : @(scrollView.contentSize.width),
+      @"scrollHeight" : @(scrollView.contentSize.height),
+    });
+  }
 }
 
 - (LynxBaseScrollView *)createView {

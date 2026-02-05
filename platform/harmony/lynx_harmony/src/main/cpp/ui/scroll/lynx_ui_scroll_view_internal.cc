@@ -395,6 +395,19 @@ void LynxUIScrollViewInternal::UIAutoScroll(
   callback(LynxGetUIResult::SUCCESS, lepus_value());
 }
 
+void LynxUIScrollViewInternal::UIGetScrollInfo(
+    const lepus::Value& args,
+    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
+  auto info = lepus::Dictionary::Create();
+  info->SetValue("scrollLeft", scroll_view_->GetScrollOffsetHorizontally());
+  info->SetValue("scrollTop", scroll_view_->GetScrollOffsetVertically());
+  float scroll_range[4]{0.f};
+  scroll_view_->GetScrollRange(scroll_range);
+  info->SetValue("scrollWidth", scroll_range[1]);
+  info->SetValue("scrollHeight", scroll_range[3]);
+  callback(LynxGetUIResult::SUCCESS, lepus_value(info));
+}
+
 void LynxUIScrollViewInternal::ScrollIntoView(bool smooth, const UIBase* target,
                                               const std::string& block,
                                               const std::string& inline_value) {
