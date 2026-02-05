@@ -131,24 +131,3 @@ export function handleLoadCardError(
     },
   });
 }
-
-/**
- * Calls a callback function of the specified application instance
- * @param instanceId Application instance ID
- * @param methodName function name
- * @param args Arguments to pass to the callback function (optional)
- */
-export function __invokeAppMethod(
-  instanceId: string,
-  methodName: string,
-  ...args: unknown[]
-): void {
-  const appInstance = nativeGlobal.multiApps[instanceId];
-  if (!appInstance) {
-    console.error(`callCallback: App instance not found for ID ${instanceId}`);
-    return;
-  }
-  if (typeof appInstance[methodName] === 'function') {
-    appInstance[methodName](...args);
-  }
-}
