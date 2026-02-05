@@ -6,7 +6,6 @@ import {
   destroyCard,
   callDestroyLifetimeFun,
   loadDynamicComponent,
-  __invokeAppMethod,
 } from './appManager';
 import { arrayBufferToBase64, base64ToArrayBuffer } from './polyfill';
 import nativeGlobal from './common/nativeGlobal';
@@ -49,4 +48,3 @@ nativeGlobal.AbortController = AbortController;
 nativeGlobal.AbortSignal = AbortSignal;
 nativeGlobal.URL = URL;
 URLSearchParamsPolyfill(nativeGlobal);
-nativeGlobal.__invokeAppMethod = __invokeAppMethod;
