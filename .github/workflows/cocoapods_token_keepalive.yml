@@ -14,18 +14,10 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Set up Ruby + specify Bundler version
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '2.6.10'
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
         with:
-          cache-backend: 'github'
+          cache-backend: 'lynx-infra'
       - name: Keep CocoaPods Token alive
         run: |
           cd $GITHUB_WORKSPACE/lynx
