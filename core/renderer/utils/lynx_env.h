@@ -116,6 +116,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     // FIXME(wangyifei.20010605): remove this config in the next version(remove
     // in 3.6)
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
+    // FIXME(linxs): remove this config in the next version(remove in 3.8)
+    FIX_LIST_CALLBACK_LEAK_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
     DISABLE_JS_MODE_STRIP,
     // Please add new enum values above
@@ -250,6 +252,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_GLOBAL_FONT_COLLECTION,
              "enable_global_font_collection"},
             {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
+            {Key::FIX_LIST_CALLBACK_LEAK_BUG, "fix_list_callback_leak"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
