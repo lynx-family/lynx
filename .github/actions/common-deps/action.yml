@@ -80,15 +80,20 @@ runs:
           pnpm-${{ runner.os }}-
 
     - name: Install Python dependencies
-      shell: bash
-      run: |
-        if [ "$RUNNER_OS" == "macOS" ]; then
-          python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages
-          python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages
-        else
-          python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt
-          python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
-        fi
+      uses: nick-fields/retry@v3
+      with:
+        max_attempts: 3
+        retry_wait_seconds: 3
+        timeout_minutes: 20
+        command: |
+          set -e
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages --retries 10 --timeout 60
+            python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages --retries 10 --timeout 60
+          else
+            python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --retries 10 --timeout 60
+            python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --retries 10 --timeout 60
+          fi
 
     - name: run habitat sync
       shell: bash
