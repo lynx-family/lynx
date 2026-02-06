@@ -184,7 +184,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
     if (mBehaviorRegistry != null) {
       Behavior behavior = mBehaviorRegistry.get(tagName);
-      if (behavior != null) {
+      if (behavior != null && behavior.supportFragmentLayerRenderer()) {
         IRendererHost host = behavior.createPlatformRendererHost(mContext);
         if (host != null) {
           Renderer renderer = host.createRenderer(this, sign);
@@ -247,7 +247,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
     host.getView().requestLayout();
-    host.getView().invalidate();
+    host.getRenderer().invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
   }
 
   @CalledByNative

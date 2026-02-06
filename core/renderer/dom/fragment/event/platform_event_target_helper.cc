@@ -44,6 +44,8 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     int op = ops[ops_idx++];
     int int_param_cnt = int_data[int_data_idx++];
     int float_param_cnt = int_data[int_data_idx++];
+    size_t int_param_end = int_data_idx + int_param_cnt;
+    size_t float_param_end = float_data_idx + float_param_cnt;
     switch (op) {
       // crate the event target.
       case static_cast<int>(DisplayListOpType::kBegin): {
@@ -71,7 +73,6 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
       }
       // create the sub event target tree.
       case static_cast<int>(DisplayListOpType::kDrawView): {
-        int_data_idx += int_param_cnt;
         if (child_renderer_idx < child_renderer_size) {
           auto child_renderer = fml::static_ref_ptr_cast<PlatformRendererImpl>(
               children_renderer[child_renderer_idx++]);
@@ -92,18 +93,11 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         }
         break;
       }
-      case static_cast<int>(DisplayListOpType::kFill):
-      case static_cast<int>(DisplayListOpType::kText):
-      case static_cast<int>(DisplayListOpType::kImage):
-      case static_cast<int>(DisplayListOpType::kBorder):
-      case static_cast<int>(DisplayListOpType::kClipRect): {
-        int_data_idx += int_param_cnt;
-        float_data_idx += float_param_cnt;
-        break;
-      }
       default:
         break;
     }
+    int_data_idx = int_param_end;
+    float_data_idx = float_param_end;
   }
 
   return event_target_tree_;
