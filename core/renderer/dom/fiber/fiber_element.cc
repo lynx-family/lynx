@@ -3956,9 +3956,14 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
               return true;
             }
 
-            if (css_transition_manager_ &&
-                css_transition_manager_->NeedsTransition(id)) {
-              return true;
+            if (css_transition_manager_) {
+              if (element_manager_ &&
+                          element_manager_
+                              ->FixDynamicUpdateTransitionConsumeBug()
+                      ? css_transition_manager_->ConsumeCSSProperty(id, value)
+                      : css_transition_manager_->NeedsTransition(id)) {
+                return true;
+              }
             }
 
             auto new_flags = DynamicCSSStylesManager::GetValueFlags(
