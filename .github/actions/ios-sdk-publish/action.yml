@@ -30,7 +30,7 @@ runs:
       run: |-
         cd $GITHUB_WORKSPACE/lynx
         source tools/envsetup.sh
-        python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag ${{ inputs.tag }} --version ${{ inputs.version }} --component ${{ inputs.component }}
+        vpython3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag ${{ inputs.tag }} --version ${{ inputs.version }} --component ${{ inputs.component }}
     - name: Push iOS SDK to release
       uses: ncipollo/release-action@v1
       with:
@@ -49,5 +49,5 @@ runs:
         source tools/envsetup.sh
         git config --global user.name "lynx.authors"
         git config --global user.email "lynx.authors@users.noreply.github.com"
-        python3 tools/ios_tools/skip_pod_lint.py --source public
-        python3 tools/ios_tools/cocoapods_publish_helper.py --publish --component ${{ inputs.component }}
+        vpython3 tools/ios_tools/skip_pod_lint.py --source public
+        vpython3 tools/ios_tools/cocoapods_publish_helper.py --publish --component ${{ inputs.component }}

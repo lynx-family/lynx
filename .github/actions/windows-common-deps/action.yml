@@ -26,28 +26,32 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Setup vpython3 PATH
+      shell: pwsh
+      run: |
+        echo "$env:GITHUB_WORKSPACE\lynx\tools\vpython_tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
     - name: Get habitat cache key
       id: hab
       shell: pwsh
       run: |
         if ([string]::IsNullOrEmpty("${{ inputs.target }}")) {
-          python lynx/tools/ci/habitat_cache_helper.py
+          vpython3 lynx/tools/ci/habitat_cache_helper.py
         } else {
-          python lynx/tools/ci/habitat_cache_helper.py --target ${{ inputs.target }}
+          vpython3 lynx/tools/ci/habitat_cache_helper.py --target ${{ inputs.target }}
         }
 
     - name: Get habitat cache directory
       id: hab-cache-dir
       shell: pwsh
       run: |
-        $habitat_cache_dir = python -c "import os; import tempfile; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
+        $habitat_cache_dir = vpython3 -c "import os; import tempfile; print(os.path.join(os.environ.get('HOME', tempfile.gettempdir()), '.habitat_cache'))"
         echo "HABITAT_CACHE_DIR=$habitat_cache_dir" >> ${env:GITHUB_OUTPUT}
 
     - name: Get npm cache directory
       id: npm-cache-dir
       shell: pwsh
       run: |
-        $npm_cache_dir = python -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.local', 'share', 'pnpm', 'store'))"
+        $npm_cache_dir = vpython3 -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.local', 'share', 'pnpm', 'store'))"
         echo "NPM_CACHE_DIR=$npm_cache_dir" >> ${env:GITHUB_OUTPUT}
 
     - name: Get Python Cache Directory
@@ -55,7 +59,7 @@ runs:
       shell: pwsh
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
       run: |
-        $cache = python -m pip cache dir
+        $cache = vpython3 -m pip cache dir
         $correctPath = (Get-Item $cache).FullName
         echo "PIP_CACHE_DIR=$correctPath" >> ${env:GITHUB_OUTPUT}
 
@@ -99,8 +103,8 @@ runs:
     - name: Install Python dependencies
       shell: pwsh
       run: |
-        python -m pip install -r lynx/tools/vpython_tools/requirements.txt
-        python -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
+        vpython3 -m pip install -r lynx/tools/vpython_tools/requirements.txt
+        vpython3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt
 
     - name: run habitat sync
       shell: pwsh

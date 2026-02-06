@@ -45,18 +45,19 @@ function Android-Env-Setup {
     $local_properties_file1 = Join-Path $lynx_dir_path 'platform\android\local.properties'
     $local_properties_file2 = Join-Path $lynx_dir_path 'explorer\android\local.properties'
     $cmake_dir = Join-Path $lynx_dir_path 'buildtools\cmake'
-    python $lynx_dir_path\tools\android_tools\update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$androidNdk" sdk.dir="$androidHome" cmake.dir="$cmake_dir"
+    vpython3 $lynx_dir_path\tools\android_tools\update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$androidNdk" sdk.dir="$androidHome" cmake.dir="$cmake_dir"
   } else {
     Write-Host "Please setup ANDROID_HOME environment variable for android build first."
   }
 }
 
 function Python-Env-Setup {
-  python $lynx_dir_path\tools\vpython_tools\vpython_env_setup.py --root_dir $lynx_dir_path
-  $venv_path = Join-Path $lynx_dir_path '.venv'
-  & $venv_path\Scripts\Activate.ps1
+  $vpython_tools_path = Join-Path $lynx_dir_path 'tools\vpython_tools'
+  Add-Environ 'PATH' $vpython_tools_path
+  [Environment]::SetEnvironmentVariable('PYWRAP_REQUIREMENTS', (Join-Path $lynx_dir_path 'tools\vpython_tools\requirements.txt'), 'Process')
+  [Environment]::SetEnvironmentVariable('PYWRAP_INSTALL_DEPS', '1', 'Process')
 }
 
 Lynx-Env-Setup
-Android-Env-Setup
 Python-Env-Setup
+Android-Env-Setup

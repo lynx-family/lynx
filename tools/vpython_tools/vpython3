@@ -1,0 +1,487 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+# vpython3 - A thread- and process-safe python wrapper/launcher script.
+# Based on https://github.com/jianliang00/vpython
+
+import hashlib
+import json
+import os
+import platform
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from pathlib import Path
+
+_LOCK = threading.RLock()
+
+
+def _bool_env(name: str, default: bool = False) -> bool:
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    v = v.strip().lower()
+    if v in ("1", "true", "yes", "y", "on"):
+        return True
+    if v in ("0", "false", "no", "n", "off"):
+        return False
+    return default
+
+
+def _int_env(name: str, default: int) -> int:
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    try:
+        return int(v.strip())
+    except Exception:
+        return default
+
+
+def _float_env(name: str, default: float) -> float:
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    try:
+        return float(v.strip())
+    except Exception:
+        return default
+
+
+def _log(verbose: bool, msg: str) -> None:
+    if verbose:
+        print(f"[pywrap] {msg}", file=sys.stderr)
+
+
+def _find_project_root(start: Path) -> Path:
+    cur = start.resolve()
+    markers = (
+        "requirements.txt",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "Pipfile",
+        "Pipfile.lock",
+        "poetry.lock",
+        "pdm.lock",
+        "uv.lock",
+        ".git",
+    )
+    for p in [cur, *cur.parents]:
+        for m in markers:
+            if (p / m).exists():
+                return p
+    return cur
+
+
+def _read_bytes(p: Path) -> bytes:
+    try:
+        return p.read_bytes()
+    except FileNotFoundError:
+        return b""
+
+
+def _hash_bytes(*chunks: bytes) -> str:
+    h = hashlib.sha256()
+    for c in chunks:
+        h.update(c)
+        h.update(b"\0")
+    return h.hexdigest()
+
+
+def _venv_python(venv_dir: Path) -> Path:
+    if os.name == "nt":
+        return venv_dir / "Scripts" / "python.exe"
+    return venv_dir / "bin" / "python"
+
+
+def _atomic_write_text(path: Path, text: str, encoding: str = "utf-8") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + f".tmp-{os.getpid()}-{int(time.time())}")
+    tmp.write_text(text, encoding)
+    os.replace(str(tmp), str(path))
+
+
+class FileLock:
+    """
+    Cross-platform file lock (stdlib only):
+      - POSIX: fcntl.flock
+      - Windows: msvcrt.locking
+
+    Safety note: these locks are OS-managed. If the process exits or is killed,
+    the OS closes file descriptors and releases the lock automatically.
+    """
+
+    def __init__(self, lock_path: Path, *, timeout_sec: int = 1800, poll_sec: float = 0.2, verbose: bool = False):
+        self.lock_path = lock_path
+        self.timeout_sec = timeout_sec
+        self.poll_sec = poll_sec
+        self.verbose = verbose
+        self._fd: int | None = None
+
+    def _nt_seek0(self) -> None:
+        # msvcrt.locking() locks/unlocks from *current file position*.
+        # Always reset offset so we operate on the same byte-range.
+        try:
+            os.lseek(self._fd, 0, os.SEEK_SET)
+        except OSError:
+            pass
+
+    def acquire(self) -> None:
+        start = time.time()
+        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(self.lock_path), os.O_RDWR | os.O_CREAT, 0o600)
+        self._fd = fd
+
+        while True:
+            try:
+                if os.name == "posix":
+                    import fcntl
+
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                else:
+                    import msvcrt
+
+                    # Ensure file has at least 1 byte to lock (optional but recommended)
+                    try:
+                        st = os.fstat(fd)
+                        if st.st_size == 0:
+                            os.write(fd, b"\0")
+                    except OSError:
+                        pass
+
+                    self._nt_seek0()
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+
+                # best-effort: write owner metadata for debugging
+                try:
+                    meta = {
+                        "pid": os.getpid(),
+                        "host": platform.node(),
+                        "acquired_at": int(time.time()),
+                    }
+                    os.ftruncate(fd, 0)
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    os.write(fd, (json.dumps(meta, ensure_ascii=False) + "\n").encode("utf-8"))
+                    os.fsync(fd)
+                except Exception:
+                    pass
+
+                return
+            except OSError:
+                if time.time() - start > self.timeout_sec:
+                    try:
+                        os.close(fd)
+                    finally:
+                        self._fd = None
+                    raise TimeoutError(f"Timeout waiting for lock: {self.lock_path}")
+                time.sleep(self.poll_sec)
+
+    def release(self) -> None:
+        if self._fd is None:
+            return
+        try:
+            if os.name == "posix":
+                import fcntl
+
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
+            else:
+                import msvcrt
+
+                self._nt_seek0()
+                msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
+        finally:
+            os.close(self._fd)
+            self._fd = None
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *_):
+        self.release()
+
+
+def _cleanup_tmp(parent: Path, prefix: str = ".tmp-venv-") -> None:
+    for p in parent.glob(prefix + "*"):
+        try:
+            if p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+            else:
+                p.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def _remove_venv(venv_dir: Path) -> None:
+    if venv_dir.exists():
+        shutil.rmtree(venv_dir, ignore_errors=True)
+
+
+def _ensure_venv(base_python: Path, venv_dir: Path, *, force_recreate: bool) -> None:
+    parent = venv_dir.parent
+    parent.mkdir(parents=True, exist_ok=True)
+
+    if force_recreate:
+        _remove_venv(venv_dir)
+
+    # self-heal common corrupted state
+    if venv_dir.exists() and not _venv_python(venv_dir).exists():
+        _remove_venv(venv_dir)
+
+    if venv_dir.exists():
+        return
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix=".tmp-venv-", dir=str(parent)))
+    try:
+        subprocess.run([str(base_python), "-m", "venv", str(tmp_dir)], check=True)
+        py = _venv_python(tmp_dir)
+        if not py.exists():
+            raise RuntimeError(f"venv python not found: {py}")
+        os.rename(str(tmp_dir), str(venv_dir))
+    finally:
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _marker_path(venv_dir: Path) -> Path:
+    return venv_dir / ".pywrap" / "ok.json"
+
+
+def _load_marker(venv_dir: Path):
+    try:
+        return json.loads(_marker_path(venv_dir).read_text("utf-8"))
+    except Exception:
+        return None
+
+
+def _write_marker(venv_dir: Path, data: dict) -> None:
+    _atomic_write_text(_marker_path(venv_dir), json.dumps(data, ensure_ascii=False, indent=2) + "\n", "utf-8")
+
+
+def _iter_dep_files(project_root: Path, dep_mode: str, req_file: Path) -> list[Path]:
+    if dep_mode == "requirements":
+        files = [req_file]
+        for name in ("constraints.txt", "constraints.lock", "requirements.lock"):
+            p = project_root / name
+            if p.is_file():
+                files.append(p)
+        return files
+
+    if dep_mode == "pyproject":
+        files = [project_root / "pyproject.toml"]
+        for name in ("poetry.lock", "pdm.lock", "uv.lock", "Pipfile.lock"):
+            p = project_root / name
+            if p.is_file():
+                files.append(p)
+        return files
+
+    return []
+
+
+def _dep_fingerprint(base_python: Path, dep_mode: str, project_root: Path, req_file: Path) -> str:
+    chunks: list[bytes] = [
+        str(base_python).encode(),
+        sys.version.encode(),
+        dep_mode.encode(),
+    ]
+    for f in _iter_dep_files(project_root, dep_mode, req_file):
+        chunks.append(str(f).encode())
+        chunks.append(_read_bytes(f))
+    return _hash_bytes(*chunks)
+
+
+def _install_deps(
+    venv_dir: Path,
+    project_root: Path,
+    dep_mode: str,
+    req_file: Path,
+    *,
+    upgrade_pip: bool,
+    pip_args: list[str],
+    local_first: bool,
+) -> None:
+    py = _venv_python(venv_dir)
+    download_dir = None
+
+    def _pip_install(args: list[str]) -> None:
+        if not local_first:
+            subprocess.run(
+                [
+                    str(py),
+                    "-m",
+                    "pip",
+                    "install",
+                    *args,
+                    "--disable-pip-version-check",
+                    *pip_args,
+                ],
+                check=True,
+            )
+            return
+
+        nonlocal download_dir
+        if download_dir is None:
+            download_dir = tempfile.mkdtemp(prefix=".tmp-pip-download-")
+
+        subprocess.run(
+            [
+                str(py),
+                "-m",
+                "pip",
+                "download",
+                *args,
+                "-d",
+                download_dir,
+                "--disable-pip-version-check",
+                *pip_args,
+            ],
+            check=True,
+        )
+        subprocess.run(
+            [
+                str(py),
+                "-m",
+                "pip",
+                "install",
+                "--no-index",
+                "--find-links",
+                download_dir,
+                *args,
+                "--disable-pip-version-check",
+                *pip_args,
+            ],
+            check=True,
+        )
+
+    try:
+        if upgrade_pip:
+            _pip_install(["--upgrade", "pip", "setuptools", "wheel"])
+
+        if dep_mode == "requirements" and req_file.is_file():
+            _pip_install(["-r", str(req_file)])
+        elif dep_mode == "pyproject":
+            _pip_install(["-e", str(project_root)])
+    finally:
+        if download_dir:
+            shutil.rmtree(download_dir, ignore_errors=True)
+
+
+def main(argv: list[str]) -> int:
+    verbose = _bool_env("PYWRAP_VERBOSE", False)
+
+    # original env contract (kept)
+    base_python = Path(os.environ.get("PYWRAP_BASE_PYTHON", sys.executable)).resolve()
+    venv_mode = os.environ.get("PYWRAP_VENV_MODE", "project").strip().lower()
+    dep_mode_env = os.environ.get("PYWRAP_DEP_MODE", "").strip().lower()
+
+    # new knobs (backward-compatible)
+    force_recreate = _bool_env("PYWRAP_FORCE_RECREATE", False)
+    install_deps = _bool_env("PYWRAP_INSTALL_DEPS", False)
+    upgrade_pip = _bool_env("PYWRAP_UPGRADE_PIP", True)
+    lock_timeout = _int_env("PYWRAP_LOCK_TIMEOUT_SEC", 1800)
+    lock_poll = _float_env("PYWRAP_LOCK_POLL_SEC", 0.2)
+    pip_args = shlex.split(os.environ.get("PYWRAP_PIP_ARGS", "").strip())
+    local_first = _bool_env("PYWRAP_LOCAL_FIRST", False)
+
+    cwd = Path.cwd()
+    project_root = _find_project_root(cwd)
+
+    req_file = Path(os.environ.get("PYWRAP_REQUIREMENTS", str(project_root / "requirements.txt")))
+    has_req = req_file.is_file()
+    has_pyproject = (project_root / "pyproject.toml").is_file()
+
+    dep_mode = dep_mode_env
+    if dep_mode not in ("requirements", "pyproject"):
+        dep_mode = "requirements" if has_req else "pyproject"
+    if dep_mode == "pyproject" and not has_pyproject and not has_req:
+        dep_mode = "none"
+
+    dep_hash = _dep_fingerprint(base_python, dep_mode, project_root, req_file)
+
+    if venv_mode == "cache":
+        cache_base = Path(os.environ.get("PYWRAP_CACHE_DIR", str(Path.home() / ".cache" / "pywrap")))
+        py_tag = f"py{sys.version_info.major}.{sys.version_info.minor}"
+        venv_dir = cache_base / "venvs" / py_tag / dep_hash[:16]
+    else:
+        venv_dir = project_root / ".venv"
+
+    lock_path = Path(str(venv_dir) + ".lock")
+
+    _log(verbose, f"project_root={project_root}")
+    _log(verbose, f"venv_dir={venv_dir}")
+    _log(verbose, f"dep_mode={dep_mode} dep_hash={dep_hash[:12]}...")
+
+    with _LOCK:
+        with FileLock(lock_path, timeout_sec=lock_timeout, poll_sec=lock_poll, verbose=verbose):
+            _cleanup_tmp(venv_dir.parent)
+            _ensure_venv(base_python, venv_dir, force_recreate=force_recreate)
+
+            py = _venv_python(venv_dir)
+            if not py.exists():
+                # attempt one self-heal
+                _remove_venv(venv_dir)
+                _ensure_venv(base_python, venv_dir, force_recreate=False)
+                py = _venv_python(venv_dir)
+                if not py.exists():
+                    raise RuntimeError(f"venv python missing: {py}")
+
+            marker = _load_marker(venv_dir)
+            marker_ok = (
+                isinstance(marker, dict)
+                and marker.get("dep_hash") == dep_hash
+                and marker.get("base_python") == str(base_python)
+                and marker.get("pip_args") == pip_args
+                and marker.get("local_first") == local_first
+            )
+
+            if not marker_ok and install_deps:
+                if dep_mode != "none":
+                    _install_deps(
+                        venv_dir,
+                        project_root,
+                        dep_mode,
+                        req_file,
+                        upgrade_pip=upgrade_pip,
+                        pip_args=pip_args,
+                        local_first=local_first,
+                    )
+
+                _write_marker(
+                    venv_dir,
+                    {
+                        "dep_hash": dep_hash,
+                        "dep_mode": dep_mode,
+                        "project_root": str(project_root),
+                        "requirements": str(req_file) if dep_mode == "requirements" else None,
+                        "base_python": str(base_python),
+                        "created_at": int(time.time()),
+                        "python_version": sys.version,
+                        "pip_args": pip_args,
+                        "local_first": local_first,
+                    },
+                )
+            elif not marker_ok and not install_deps:
+                _log(verbose, "marker mismatch but PYWRAP_INSTALL_DEPS=0; skipping dependency install")
+
+    py = _venv_python(venv_dir)
+    os.execv(str(py), [str(py), *argv])
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except subprocess.CalledProcessError as e:
+        print(f"[pywrap] command failed: {e}", file=sys.stderr)
+        sys.exit(e.returncode)
+    except Exception as e:
+        print(f"[pywrap] error: {e}", file=sys.stderr)
+        sys.exit(1)

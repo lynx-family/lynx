@@ -30,12 +30,12 @@ build_card_resources() {
 
     if [[ "$SKIP_CARD_BUILD" == "false" ]]; then
         # build showcase cards
-        python3 $root_dir/explorer/showcase/build_and_copy.py
+        vpython3 $root_dir/explorer/showcase/build_and_copy.py
     fi
 
     if [[ "$INTEGRATION_TEST" == "true" ]]; then
         # build integration test demo pages
-        python3 $root_dir/testing/integration_test/demo_pages/build_and_copy.py
+        vpython3 $root_dir/testing/integration_test/demo_pages/build_and_copy.py
     fi
 }
 
@@ -74,7 +74,7 @@ build_card_resources
 pushd $root_dir
 gn_root_dir=$(readlink -f $root_dir)
 echo "gn_root_dir: $gn_root_dir"
-generate_ios_podspec_cmd="python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir $enable_trace_param"
+generate_ios_podspec_cmd="vpython3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir $enable_trace_param"
 echo $generate_ios_podspec_cmd
 eval "$generate_ios_podspec_cmd"
 popd

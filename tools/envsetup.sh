@@ -42,7 +42,7 @@ function android_env_setup() {
     local local_properties_file1="${LYNX_DIR}/platform/android/local.properties"
     local local_properties_file2="${LYNX_DIR}/explorer/android/local.properties"
     local CMAKE_DIR="${LYNX_DIR}/buildtools/cmake"
-    python3 $LYNX_DIR/tools/android_tools/update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$ANDROID_NDK" sdk.dir="$ANDROID_SDK" cmake.dir="$CMAKE_DIR"
+    vpython3 $LYNX_DIR/tools/android_tools/update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$ANDROID_NDK" sdk.dir="$ANDROID_SDK" cmake.dir="$CMAKE_DIR"
   else
     echo "Please setup ANDROID_HOME for android build first."
   fi
@@ -66,12 +66,12 @@ function harmony_home_setup_for_ci() {
 }
 
 function python_env_setup() {
-  VENV_PATH=$LYNX_DIR/.venv
-  python3 $LYNX_DIR/tools/vpython_tools/vpython_env_setup.py --root_dir $LYNX_DIR
-  source $VENV_PATH/bin/activate
+  export PATH="${LYNX_DIR}/tools/vpython_tools:$PATH"
+  export PYWRAP_REQUIREMENTS="${LYNX_DIR}/tools/vpython_tools/requirements.txt"
+  export PYWRAP_INSTALL_DEPS=1
 }
 
 lynx_envsetup "${BASH_SOURCE:-$0}"
+python_env_setup
 android_env_setup "${BASH_SOURCE:-$0}"
 harmony_home_setup_for_ci
-python_env_setup

@@ -30,35 +30,35 @@ jobs:
       - name: Run file type check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers file-type
+          vpython3 tools_shared/git_lynx.py check --checkers file-type
       - name: Run cpplint check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers cpplint
+          vpython3 tools_shared/git_lynx.py check --checkers cpplint
       - name: Run java-lint check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers java-lint
+          vpython3 tools_shared/git_lynx.py check --checkers java-lint
       - name: Run commit-message check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers commit-message
+          vpython3 tools_shared/git_lynx.py check --checkers commit-message
       - name: Run coding-style check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers coding-style
+          vpython3 tools_shared/git_lynx.py check --checkers coding-style
       - name: Run android-check-style check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers android-check-style
+          vpython3 tools_shared/git_lynx.py check --checkers android-check-style
       - name: Run api check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers api-check --all
+          vpython3 tools_shared/git_lynx.py check --checkers api-check --all
       - name: Run gn relative path check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
+          vpython3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
 
   darwin-native-unittests-check:
     timeout-minutes: 60
@@ -191,7 +191,7 @@ jobs:
       - name: Build Darwin Tasm
         run: |
           source tools/envsetup.sh
-          python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
+          vpython3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
           pushd oliver/lynx-tasm
           npm install
           ../../buildtools/cmake/bin/cmake .
@@ -474,8 +474,8 @@ jobs:
             pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
             export server_port=$APPIUM_TEST_SERVER_PORT
             export platform=android
-            python3 -m pip install -r requirements.txt
-            python3 manage.py runtest android_test.core
+            vpython3 -m pip install -r requirements.txt
+            vpython3 manage.py runtest android_test.core
             echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
         id: run_test
       - name: Collect Lynx-E2E execution logs
@@ -578,7 +578,7 @@ jobs:
         run: |
           set -e
           pushd android/JavaEmptyProject/
-          python3 shell/prepare_package_with_local_aar.py $GITHUB_WORKSPACE/lynx/artifacts-collection.zip 0.0.1-alpha.1
+          vpython3 shell/prepare_package_with_local_aar.py $GITHUB_WORKSPACE/lynx/artifacts-collection.zip 0.0.1-alpha.1
           ./gradlew publishAllZips
           ./gradlew :app:assembleDebug
           popd
@@ -647,14 +647,14 @@ jobs:
         run: |-
           source tools/envsetup.sh
           export LANG=en_US.UTF-8
-          python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
+          vpython3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
       - name: Publish to Local Pod Source
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           git config --global user.name "lynx.authors"
           git config --global user.email "lynx.authors@users.noreply.github.com"
-          python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
+          vpython3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
       - name: Download the Demo Project
         uses: actions/checkout@v4.2.2
         with:
@@ -664,10 +664,10 @@ jobs:
       - name: Build the Demo Project
         run: |-
           cd $GITHUB_WORKSPACE
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
-          python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
+          vpython3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          vpython3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          vpython3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          vpython3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
           cd demo/ios/HelloLynxObjc
           export LANG=en_US.UTF-8
           BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
@@ -791,8 +791,8 @@ jobs:
             export server_port=$APPIUM_TEST_SERVER_PORT
             export platform=ios
             export APPIUM_isHeadless=True
-            pip3 install -r requirements.txt
-            python3 manage.py runtest ios_test.core
+            vpython3 -m pip install -r requirements.txt
+            vpython3 manage.py runtest ios_test.core
             echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
             popd
             popd

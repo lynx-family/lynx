@@ -52,7 +52,7 @@ podspec_target("BaseDevtool_podspec") {
     if (!is_debug) {
       pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
     }
-    prepare_command = [ "python3 " + copy_resources_script ]
+    prepare_command = [ "vpython3 " + copy_resources_script ]
     ios = {
       deployment_target = "10.0"
     }

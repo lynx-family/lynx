@@ -21,7 +21,7 @@ runs:
       id: npm-custom-cache-dir
       shell: pwsh
       run: |
-        $npm_custom_cache_dir = python -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.pnpm', 'v3'))"
+        $npm_custom_cache_dir = vpython3 -c "import os; import pathlib; print(os.path.join(pathlib.Path.home(), '.pnpm', 'v3'))"
         echo "NPM_CUSTOM_CACHE_DIR=$npm_custom_cache_dir" >> ${env:GITHUB_OUTPUT}
     - name: Cache pnpm Dependencies
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732

@@ -269,14 +269,14 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           COMMIT_ID=$(git rev-list -n 1 ${{ steps.get-latest-tag.outputs.latest-tag }})
-          python3 explorer/harmony/script/generate_changelog.py --version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }} --modules ${{ matrix.modules }} --base_commit $COMMIT_ID
+          vpython3 explorer/harmony/script/generate_changelog.py --version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }} --modules ${{ matrix.modules }} --base_commit $COMMIT_ID
       - name: Build Harmony SDK
         run: |
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           pushd platform/harmony && ohpm install && popd
           pushd explorer/harmony && ohpm install && popd
-          python3 explorer/harmony/script/build.py ${{ matrix.build_param }} --build_lynx_core --build_har --modules ${{ matrix.modules }} --override_version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }}
+          vpython3 explorer/harmony/script/build.py ${{ matrix.build_param }} --build_lynx_core --build_har --modules ${{ matrix.modules }} --override_version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }}
       - name: Publish Harmony SDK
         run: |
           cd $GITHUB_WORKSPACE/lynx
@@ -288,4 +288,4 @@ jobs:
           ohpm config set publish_registry https://ohpm.openharmony.cn/ohpm
           export PUBLISH_ID=${{ secrets.HARMONY_PUBLISH_ID }}
           export KEY_PATH=$GITHUB_WORKSPACE/lynx/publish_key
-          python3 explorer/harmony/script/publish.py --modules ${{ matrix.modules }} --version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }}
+          vpython3 explorer/harmony/script/publish.py --modules ${{ matrix.modules }} --version ${{ needs.get-version.outputs.version }}${{ matrix.version_suffix }}

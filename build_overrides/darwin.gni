@@ -111,8 +111,8 @@ js_debug_dependency = [
 ]
 
 build_devtool_resources_command = [
-  "python3 ./devtool/lynx_devtool/resources/copy_resources.py",
-  "python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
+  "vpython3 ./devtool/lynx_devtool/resources/copy_resources.py",
+  "vpython3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
 ]
 
 devtool_prepare_command = build_devtool_resources_command

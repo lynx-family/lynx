@@ -26,14 +26,17 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Setup vpython3 PATH
+      shell: bash
+      run: echo "$GITHUB_WORKSPACE/lynx/tools/vpython_tools" >> $GITHUB_PATH
     - name: Get habitat cache key
       id: hab
       shell: bash
       run: |
         if [[ "${{ inputs.target }}" == "" ]]; then
-          python3 lynx/tools/ci/habitat_cache_helper.py
+          vpython3 lynx/tools/ci/habitat_cache_helper.py
         else
-          python3 lynx/tools/ci/habitat_cache_helper.py --target ${{ inputs.target }}
+          vpython3 lynx/tools/ci/habitat_cache_helper.py --target ${{ inputs.target }}
         fi
 
     - name: Setup cache action
@@ -58,7 +61,7 @@ runs:
       id: pip
       shell: bash
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      run: echo "PIP_CACHE_DIR=$(python3 -m pip cache dir)" >> $GITHUB_OUTPUT
+      run: echo "PIP_CACHE_DIR=$(vpython3 -m pip cache dir)" >> $GITHUB_OUTPUT
 
     - name: Python Requirements Cache
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
@@ -88,11 +91,11 @@ runs:
         command: |
           set -e
           if [ "$RUNNER_OS" == "macOS" ]; then
-            python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages --retries 10 --timeout 60
-            python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages --retries 10 --timeout 60
+            vpython3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --break-system-packages --retries 10 --timeout 60
+            vpython3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --break-system-packages --retries 10 --timeout 60
           else
-            python3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --retries 10 --timeout 60
-            python3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --retries 10 --timeout 60
+            vpython3 -m pip install -r lynx/tools/vpython_tools/requirements.txt --retries 10 --timeout 60
+            vpython3 -m pip install -r lynx/testing/integration_test/test_script/requirements.txt --retries 10 --timeout 60
           fi
 
     - name: run habitat sync
