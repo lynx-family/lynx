@@ -52,6 +52,7 @@ class LYNX_EXPORT RuntimeProfilerManager : public lynx::trace::TracePlugin {
   int32_t js_profile_interval_{100};
   trace::RuntimeProfilerType js_profiler_type_{
       trace::RuntimeProfilerType::quickjs};
+  bool add_single_v8_profiler_already_{false};
 #endif
 };
 

@@ -127,6 +127,41 @@ struct TraceFormatTraits<bool> {
   }
 };
 
+// Specialisation for floating point values.
+template <typename T>
+struct TraceFormatTraits<
+    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    T value) {
+    debug->set_double_value(static_cast<double>(value));
+  }
+};
+
+// Specialisation for signed enums.
+template <typename T>
+struct TraceFormatTraits<
+    T,
+    typename std::enable_if<
+        std::is_enum<T>::value &&
+        std::is_signed<typename safe_underlying_type<T>::type>::value>::type> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    T value) {
+    debug->set_int_value(static_cast<int64_t>(value));
+  }
+};
+
+// Specialisation for unsigned enums.
+template <typename T>
+struct TraceFormatTraits<
+    T, typename std::enable_if<std::is_enum<T>::value &&
+                               std::is_unsigned<typename safe_underlying_type<
+                                   T>::type>::value>::type> {
+  inline static void WriteIntoTrace(lynx::perfetto::LynxDebugAnnotation* debug,
+                                    T value) {
+    debug->set_uint_value(static_cast<uint64_t>(value));
+  }
+};
+
 // Specialisations for C-style strings.
 template <>
 struct TraceFormatTraits<const char*> {

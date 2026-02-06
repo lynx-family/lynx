@@ -9,10 +9,13 @@ lynx_core_source_set("v8_profile") {
   sources = [
     "v8_runtime_profiler.cc",
     "v8_runtime_profiler.h",
+    "v8_runtime_profiler_helper.cc",
+    "v8_runtime_profiler_helper.h",
     "v8_runtime_profiler_wrapper.h",
   ]
 
   deps = [
+    "../:profile",
     "../:profile_public_header",
     "../../../../third_party/rapidjson:rapidjson",
   ]

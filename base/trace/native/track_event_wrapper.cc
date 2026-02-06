@@ -57,6 +57,18 @@ void TrackEvent_LegacyEvent::set_flow_direction(FlowDirection value) {
           value));
 }
 
+void TrackEvent_LegacyEvent::set_global_id(uint64_t value) {
+  legacy_event_->set_global_id(value);
+}
+
+void TrackEvent_LegacyEvent::set_use_async_tts(bool value) {
+  legacy_event_->set_use_async_tts(value);
+}
+
+void TrackEvent_LegacyEvent::set_bind_to_enclosing(bool value) {
+  legacy_event_->set_bind_to_enclosing(value);
+}
+
 void TrackEvent::set_name(const std::string& value) {
   ctx_->event()->set_name(value);
 }

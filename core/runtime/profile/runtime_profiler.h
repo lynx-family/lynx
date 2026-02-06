@@ -38,12 +38,15 @@ class LYNX_EXPORT RuntimeProfiler
   virtual trace::RuntimeProfilerType GetType() = 0;
 
   void SetTrackId(uint64_t track_id) { track_id_ = track_id; }
+  bool IsSingleProfiler() const { return is_single_profiler_; }
+  void EnableSingleProfiler();
 
  protected:
   void StopProfiling(base::closure task, bool is_destory);
   void StartProfiling(base::closure task, bool is_create);
   void SetupProfiling(base::closure task);
   uint64_t track_id_;
+  bool is_single_profiler_{false};
   fml::RefPtr<fml::TaskRunner> task_runner_{};
 };
 

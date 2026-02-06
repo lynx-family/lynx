@@ -58,6 +58,13 @@ void RuntimeProfiler::SetupProfiling(base::closure task) {
 #endif
 }
 
+void RuntimeProfiler::EnableSingleProfiler() {
+  if (GetType() != trace::RuntimeProfilerType::v8) {
+    return;
+  }
+  is_single_profiler_ = true;
+}
+
 }  // namespace profile
 }  // namespace runtime
 }  // namespace lynx

@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include "base/include/closure.h"
 #include "base/trace/native/trace_export.h"
 
 namespace perfetto {
@@ -170,8 +169,9 @@ class TRACE_EXPORT LynxDebugAnnotation {
 
   void set_legacy_json_value(const std::string& value);
 
+  LynxDebugAnnotation() = default;
+
  private:
-  LynxDebugAnnotation() = delete;
   ::perfetto::protos::pbzero::DebugAnnotation* debug_annotation_ = nullptr;
 };
 
@@ -193,6 +193,9 @@ class TRACE_EXPORT TrackEvent_LegacyEvent {
   void set_unscoped_id(uint64_t value);
   void set_bind_id(uint64_t value);
   void set_flow_direction(FlowDirection value);
+  void set_global_id(uint64_t value);
+  void set_use_async_tts(bool value);
+  void set_bind_to_enclosing(bool value);
 
  private:
   TrackEvent_LegacyEvent() = delete;
@@ -228,7 +231,7 @@ class TRACE_EXPORT TrackEvent {
   std::unique_ptr<TrackEvent_LegacyEvent> legacy_event_ = nullptr;
 };
 
-class TRACE_EXPORT EventContext {
+class EventContext {
  public:
   EventContext(TrackEvent* event) : event_(event) {}
   TrackEvent* event() const { return event_; }

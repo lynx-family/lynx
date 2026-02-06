@@ -32,11 +32,35 @@ RuntimeProfilerManager* RuntimeProfilerManager::GetInstance() {
 void RuntimeProfilerManager::AddRuntimeProfiler(
     std::shared_ptr<RuntimeProfiler> runtime_profiler) {
   if (runtime_profiler != nullptr) {
+    auto type = runtime_profiler->GetType();
+
+    // When Lynx is linked as a dynamic library, the process may contain two v8
+    // implementations. Registering two v8 RuntimeProfilers at the same time can
+    // corrupt profiling data or even crash the process. Enabling
+    // RuntimeProfiler::EnableSingleInstancePerType(true) prevents duplicate v8
+    // RuntimeProfiler registration.
+    std::lock_guard<std::mutex> lock(lock_);
+    if (type == trace::RuntimeProfilerType::v8) {
+      if (add_single_v8_profiler_already_) {
+        return;
+      }
+      if (runtime_profiler->IsSingleProfiler()) {
+        add_single_v8_profiler_already_ = true;
+        for (auto it = runtime_profilers_.begin();
+             it != runtime_profilers_.end();) {
+          if ((*it)->GetType() == trace::RuntimeProfilerType::v8) {
+            it = runtime_profilers_.erase(it);
+          } else {
+            ++it;
+          }
+        }
+      }
+    }
+
     auto track_id = lynx::perfetto::ThreadTrack::Current();
     runtime_profiler->SetTrackId(track_id);
-    std::lock_guard<std::mutex> lock(lock_);
     runtime_profilers_.emplace_back(runtime_profiler);
-    if (is_started_ && runtime_profiler->GetType() == js_profiler_type_) {
+    if (is_started_ && type == js_profiler_type_) {
       runtime_profiler->SetupProfiling(js_profile_interval_);
       runtime_profiler->StartProfiling(true);
     }
@@ -49,13 +73,18 @@ void RuntimeProfilerManager::RemoveRuntimeProfiler(
   auto it = std::find(runtime_profilers_.begin(), runtime_profilers_.end(),
                       runtime_profiler);
   if (it != runtime_profilers_.end()) {
-    if (is_started_ && runtime_profiler->GetType() == js_profiler_type_) {
+    auto type = runtime_profiler->GetType();
+    if (is_started_ && type == js_profiler_type_) {
       auto profile = runtime_profiler->StopProfiling(true);
       if (profile != nullptr) {
         profiles_.emplace_back(std::move(profile));
       }
     }
     runtime_profilers_.erase(it);
+    if (type == trace::RuntimeProfilerType::v8 &&
+        runtime_profiler->IsSingleProfiler()) {
+      add_single_v8_profiler_already_ = false;
+    }
   }
 }
 
