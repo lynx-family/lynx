@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/value/base_value.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
@@ -31,6 +32,10 @@ static const std::string sdk_version = "2.0";
 
 class MockContextDelegate : public lepus::Context::Delegate {
  public:
+  MockContextDelegate() {
+    lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
+    task_runner_ = lynx::fml::MessageLoop::GetCurrent().GetTaskRunner();
+  }
   const std::string& TargetSdkVersion() override { return sdk_version; }
   void ReportError(base::LynxError error) override {
     LOGE("lepus_benchmark_error: " << error.error_message_);
@@ -42,11 +47,14 @@ class MockContextDelegate : public lepus::Context::Delegate {
       std::unordered_map<std::string, std::string> mem_info) override {}
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override {
-    return nullptr;
+    return task_runner_;
   }
 
   void OnScriptingStart() override {}
   void OnScriptingEnd() override {}
+
+ private:
+  fml::RefPtr<fml::TaskRunner> task_runner_;
 };
 
 static MockContextDelegate mock_delegate_instance;
@@ -575,6 +583,7 @@ static void BM_ValueMethodsTestLepusValueOperatorEqual(
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.Initialize();
     qctx.SetGlobalData(
         "$kTemplateAssembler",
         lepus::Value((void*)&mock_delegate_instance));  // to mute error log

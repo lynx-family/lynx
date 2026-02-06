@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/thread/timed_task.h"
 #include "base/include/value/base_value.h"
 
@@ -34,6 +35,10 @@ class LepusCallbackManager {
                        std::unique_ptr<lepus::Value> closure,
                        int64_t interval_time);
   void RemoveTimeTask(uint32_t task_id);
+
+  // Post a C++ closure to be executed asynchronously.
+  // The closure will be cancelled if LepusCallbackManager is destroyed.
+  void PostTask(lepus::Context* context, base::closure task);
 
  private:
   // FuncTask cached in TaskMap , it has execute method

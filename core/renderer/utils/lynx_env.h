@@ -136,6 +136,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_RADON_INLINE_CONVERT_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     ENABLE_FETCH_API_STANDARD_STREAMING,
+    ENABLE_ASYNC_EVAL_LEPUS_PENDING_TASK,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -281,6 +282,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
+            {Key::ENABLE_ASYNC_EVAL_LEPUS_PENDING_TASK,
+             "enable_async_eval_lepus_pending_task"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -434,6 +437,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixRadonInlineConvertBug();
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
+  bool EnableAsyncEvalLepusPendingTask();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

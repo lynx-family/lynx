@@ -84,6 +84,12 @@ uint32_t LepusCallbackManager::SetTimeTask(
 
 LepusCallbackManager::~LepusCallbackManager() { Destroy(); }
 
+void LepusCallbackManager::PostTask(lepus::Context* context,
+                                    base::closure task) {
+  EnsureTimerTaskInvokerInited(context);
+  timer_task_manager_->SetTimeout(std::move(task), 0);
+}
+
 void LepusCallbackManager::EnsureTimerTaskInvokerInited(
     lepus::Context* context) {
   if (!timer_task_manager_) {
