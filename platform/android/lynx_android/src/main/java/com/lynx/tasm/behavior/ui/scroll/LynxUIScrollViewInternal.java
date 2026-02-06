@@ -17,6 +17,7 @@ import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.UISimpleView;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.utils.DeviceUtils;
+import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,8 +71,8 @@ public class LynxUIScrollViewInternal
       if (currentTime - mLastUpdateTime >= mThrottle) {
         int[] currentOffset = mView.getScrollOffset();
         HashMap<String, Object> params = new HashMap<>();
-        params.put("deltaX", currentOffset[0] - mLastContentOffset[0]);
-        params.put("deltaY", currentOffset[1] - mLastContentOffset[1]);
+        params.put("deltaX", PixelUtils.pxToDip(currentOffset[0] - mLastContentOffset[0]));
+        params.put("deltaY", PixelUtils.pxToDip(currentOffset[1] - mLastContentOffset[1]));
         sendScrollEvent("scroll", params);
         mLastContentOffset = currentOffset;
         mLastUpdateTime = currentTime;
@@ -79,8 +80,8 @@ public class LynxUIScrollViewInternal
     } else {
       int[] currentOffset = mView.getScrollOffset();
       HashMap<String, Object> params = new HashMap<>();
-      params.put("deltaX", currentOffset[0] - mLastContentOffset[0]);
-      params.put("deltaY", currentOffset[1] - mLastContentOffset[1]);
+      params.put("deltaX", PixelUtils.pxToDip(currentOffset[0] - mLastContentOffset[0]));
+      params.put("deltaY", PixelUtils.pxToDip(currentOffset[1] - mLastContentOffset[1]));
       sendScrollEvent("scroll", params);
       mLastContentOffset = currentOffset;
     }
@@ -356,10 +357,13 @@ public class LynxUIScrollViewInternal
   private void sendScrollEvent(String name, HashMap<String, Object> params) {
     HashMap<String, Object> scrollEventDetail = new HashMap<>();
     LynxBaseScrollView scrollView = mView;
-    scrollEventDetail.put("scrollLeft", scrollView.getScrollOffsetHorizontally());
-    scrollEventDetail.put("scrollTop", scrollView.getScrollOffsetVertically());
-    scrollEventDetail.put("scrollHeight", scrollView.getScrollRangeVertically()[1]);
-    scrollEventDetail.put("scrollWidth", scrollView.getScrollRangeHorizontally()[1]);
+    scrollEventDetail.put(
+        "scrollLeft", PixelUtils.pxToDip(scrollView.getScrollOffsetHorizontally()));
+    scrollEventDetail.put("scrollTop", PixelUtils.pxToDip(scrollView.getScrollOffsetVertically()));
+    scrollEventDetail.put(
+        "scrollHeight", PixelUtils.pxToDip(scrollView.getScrollRangeVertically()[1]));
+    scrollEventDetail.put(
+        "scrollWidth", PixelUtils.pxToDip(scrollView.getScrollRangeHorizontally()[1]));
     scrollEventDetail.put(
         "isDragging", scrollView.currentScrollState() == LynxBaseScrollView.SCROLL_STATE_DRAGGING);
     scrollEventDetail.put("scrollState", scrollView.currentScrollState());
