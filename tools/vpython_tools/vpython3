@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2025 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
@@ -241,7 +241,20 @@ def _ensure_venv(base_python: Path, venv_dir: Path, *, force_recreate: bool) -> 
 
     tmp_dir = Path(tempfile.mkdtemp(prefix=".tmp-venv-", dir=str(parent)))
     try:
-        subprocess.run([str(base_python), "-m", "venv", str(tmp_dir)], check=True)
+        try:
+            subprocess.run([str(base_python), "-m", "venv", str(tmp_dir)], check=True)
+        except subprocess.CalledProcessError:
+            # Fallback: ensurepip may be missing on some systems (e.g. Debian/Ubuntu
+            # system Python), so retry without pip.  Pip will still be available if
+            # the base interpreter has it installed system-wide, and _install_deps
+            # invokes pip via the venv python which inherits system packages.
+            if tmp_dir.exists():
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+            tmp_dir = Path(tempfile.mkdtemp(prefix=".tmp-venv-", dir=str(parent)))
+            subprocess.run(
+                [str(base_python), "-m", "venv", "--without-pip", str(tmp_dir)],
+                check=True,
+            )
         py = _venv_python(tmp_dir)
         if not py.exists():
             raise RuntimeError(f"venv python not found: {py}")
