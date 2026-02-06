@@ -34,9 +34,10 @@ void ElementManagerDelegateImpl::LoadFrameBundle(const std::string &src,
 
 void ElementManagerDelegateImpl::DidFrameBundleLoaded(
     const LazyBundleLoader::CallBackInfo &callback_info) {
-  auto bundle = callback_info.bundle ? std::make_shared<LynxTemplateBundle>(
-                                           std::move(*callback_info.bundle))
-                                     : nullptr;
+  auto bundle =
+      callback_info.bundle
+          ? std::make_shared<LynxTemplateBundle>(*callback_info.bundle)
+          : nullptr;
   auto frame_element_data = std::make_shared<FrameElementData>(
       callback_info.component_url, std::move(bundle), callback_info.error_code,
       callback_info.error_msg);
