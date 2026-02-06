@@ -217,12 +217,13 @@ void ExtensionModuleImpl::SetRuntimeInitState(
 }
 
 void ExtensionModuleImpl::SetRuntimeAttachedState(
-    napi_env env,
+    void* opaque_env,
     const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) {
   if (!c_module_ || !c_module_->on_runtime_attach_func) {
     LOGE("ExtensionModuleImpl c_module or on_runtime_attach_func is nullptr");
     return;
   }
+  napi_env env = static_cast<napi_env>(opaque_env);
   env_ = env;
   vsync_observer_ = vsync_observer;
   lynx_vsync_observer_t* observer = new lynx_vsync_observer_t;
@@ -231,12 +232,15 @@ void ExtensionModuleImpl::SetRuntimeAttachedState(
   c_module_->on_runtime_attach_func(c_module_, env, observer);
 }
 
-void ExtensionModuleImpl::SetRuntimeReadyState(napi_env env, napi_value lynx,
+void ExtensionModuleImpl::SetRuntimeReadyState(void* opaque_env,
+                                               void* opaque_lynx,
                                                const std::string& url) {
   if (!c_module_ || !c_module_->on_runtime_ready_func) {
     LOGE("ExtensionModuleImpl c_module or on_runtime_ready_func is nullptr");
     return;
   }
+  napi_env env = static_cast<napi_env>(opaque_env);
+  napi_value lynx = static_cast<napi_value>(opaque_lynx);
   c_module_->on_runtime_ready_func(c_module_, env, lynx, url.c_str());
 }
 

@@ -12,10 +12,6 @@
 #include "core/base/lynx_export.h"
 #include "core/public/vsync_observer_interface.h"
 
-namespace Napi {
-class Env;
-}
-
 namespace lynx {
 namespace runtime {
 
@@ -30,7 +26,7 @@ class LYNX_EXPORT RuntimeLifecycleObserver {
   virtual void OnRuntimeInit(int64_t runtime_id) = 0;
   virtual void OnAppEnterForeground() = 0;
   virtual void OnAppEnterBackground() = 0;
-  virtual void OnRuntimeAttach(Napi::Env env) = 0;
+  virtual void OnRuntimeAttach(void* env) = 0;
   virtual void OnRuntimeDetach() = 0;
 };
 

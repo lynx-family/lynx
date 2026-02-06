@@ -16,11 +16,6 @@
 #include "core/public/vsync_observer_interface.h"
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 
-namespace Napi {
-class Env;
-class Object;
-}  // namespace Napi
-
 namespace lynx {
 namespace runtime {
 
@@ -34,7 +29,7 @@ class RuntimeLifecycleObserverImpl : public RuntimeLifecycleObserver {
   void OnRuntimeInit(int64_t runtime_id) override;
   void OnAppEnterForeground() override;
   void OnAppEnterBackground() override;
-  void OnRuntimeAttach(Napi::Env env) override;
+  void OnRuntimeAttach(void* env) override;
   void OnRuntimeDetach() override;
 
   void AddEventListener(

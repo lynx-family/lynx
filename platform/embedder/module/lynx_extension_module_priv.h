@@ -65,9 +65,9 @@ class ExtensionModuleImpl : public piper::LynxExtensionModule {
   void SetRuntimeInitState(
       const fml::RefPtr<fml::TaskRunner>& task_runner) override;
   void SetRuntimeAttachedState(
-      napi_env env,
+      void* opaque_env,
       const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) override;
-  void SetRuntimeReadyState(napi_env env, napi_value lynx,
+  void SetRuntimeReadyState(void* opaque_env, void* opaque_lynx,
                             const std::string& url) override;
   void SetRuntimeDetachedState() override;
   void SetEnteringForegroundState() override;
