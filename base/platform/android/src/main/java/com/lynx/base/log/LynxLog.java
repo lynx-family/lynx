@@ -10,6 +10,8 @@ import com.lynx.base.CalledByNative;
 import com.lynx.base.LynxBaseEnv;
 import com.lynx.tasm.service.ILynxLogService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class LynxLog {
   private static final String TAG = "LynxLog";
@@ -30,6 +32,11 @@ public class LynxLog {
   private static boolean sIsJSLogsFromExternalChannelsOpen = false;
   private static ILynxLogService service = null;
 
+  // set interval as 500 ms when init LynxLog
+  private static final int sDetectALogDependencyInterval = 500;
+  private static int sTryCounts = 0;
+  private static final int sMaxTryCounts = (1 * 60 * 1000) / sDetectALogDependencyInterval;
+
   public static void initLynxLog(boolean isPrintLogsToAllChannels) {
     try {
       if (!sIsNativeLibLoad) {
@@ -45,7 +52,7 @@ public class LynxLog {
 
   private static void initLynxLogging(boolean isPrintLogsToAllChannels) {
     nativeInitLynxLoggingNative(isPrintLogsToAllChannels);
-    detectALogDependence();
+    asyncInitLynxNativeLog();
     setLogOutputChannel();
   }
 
@@ -204,7 +211,24 @@ public class LynxLog {
     }
   }
 
-  private static void detectALogDependence() {
+  private static void asyncInitLynxNativeLog() {
+    if (detectALogDependence()) {
+      return;
+    }
+    final Timer timer = new Timer();
+    TimerTask timerTask = new TimerTask() {
+      @Override
+      public void run() {
+        if (detectALogDependence()) {
+          cancel();
+          timer.cancel();
+        }
+      }
+    };
+    timer.schedule(timerTask, 0, sDetectALogDependencyInterval);
+  }
+
+  private static boolean detectALogDependence() {
     long address = 0;
     service = LynxServiceCenter.inst().getService(ILynxLogService.class);
     if (service != null) {
@@ -213,9 +237,13 @@ public class LynxLog {
     if (address != 0) {
       nativeInitALogNative(address);
       Log.i(TAG, "LynxLog dependency load successfully. function native address is " + address);
-      return;
+      return true;
     }
-    Log.i(TAG, "failed to load LynxLog dependency");
+    if (++sTryCounts >= sMaxTryCounts) {
+      Log.i(TAG, "failed to load LynxLog dependency");
+      return true;
+    }
+    return false;
   }
 
   private static void setLogOutputChannel() {
