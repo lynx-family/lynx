@@ -32,7 +32,7 @@ Fragment* Fragment::fragment_parent() const {
 }
 
 void Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
-  if (has_platform_renderer_) {
+  if (element()->is_wrapper() || has_platform_renderer_) {
     // If the fragment has a platform renderer, it means that the fragment
     // is already layerized.
     return;

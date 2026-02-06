@@ -219,6 +219,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_DRAW_VIEW: {
           // Draw view: view_id (1 int)
+          nextContentInt();
           return;
         }
 
