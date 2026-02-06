@@ -1,7 +1,6 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "lynx_runtime_lifecycle_observer_priv.h"
 #include "platform/embedder/lynx_runtime_lifecycle_observer_priv.h"
 #include "third_party/napi/include/napi.h"
 
@@ -58,7 +57,7 @@ lynx_runtime_lifecycle_observer_t::~lynx_runtime_lifecycle_observer_t() {
 namespace lynx {
 namespace embedder {
 
-void NapiEnvHolder::OnRuntimeAttach(Napi::Env env) { env_ = env; }
+void NapiEnvHolder::OnRuntimeAttach(napi_env env) { env_ = env; }
 
 void NapiEnvHolder::OnRuntimeDetach() { env_ = nullptr; }
 
@@ -95,10 +94,10 @@ void LynxRuntimeLifecycleListenerDelegate::OnAppEnterForeground() {}
 
 void LynxRuntimeLifecycleListenerDelegate::OnAppEnterBackground() {}
 
-void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(Napi::Env env) {
-  env_holder_->OnRuntimeAttach(env);
+void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(void* env) {
+  env_holder_->OnRuntimeAttach(static_cast<napi_env>(env));
   if (observer_ && observer_->attach_callback) {
-    observer_->attach_callback(observer_, env);
+    observer_->attach_callback(observer_, static_cast<napi_env>(env));
   }
 }
 

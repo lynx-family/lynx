@@ -78,7 +78,8 @@ void RuntimeLifecycleObserverImpl::OnAppEnterBackground() {
   }
 }
 
-void RuntimeLifecycleObserverImpl::OnRuntimeAttach(Napi::Env current_napi_env) {
+void RuntimeLifecycleObserverImpl::OnRuntimeAttach(void* env) {
+  napi_env current_napi_env = static_cast<napi_env>(env);
   LOGI("[Runtime] RuntimeLifecycleObserverImpl::OnRuntimeAttach:"
        << current_napi_env);
   auto op = LifecycleState::ATTACH;

@@ -191,7 +191,7 @@ class BTSRuntime final {
   }
 
 #if ENABLE_NAPI_BINDING
-  void NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx);
+  void NotifyRuntimeReady(void* env, void* lynx);
 #endif
 
  private:

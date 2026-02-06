@@ -105,10 +105,9 @@ RuntimeLifecycleListenerDelegateHarmony::
       env_(env),
       listener_ref_(listener_ref) {}
 
-void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(Napi::Env env) {
-  base::NapiHandleScope scope(env_);
+void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(void* env_ptr) {
+  base::NapiHandleScope scope(static_cast<napi_env>(env_ptr));
   napi_value param[1];
-  void* env_ptr = static_cast<void*>(env);
   param[0] = base::NapiUtil::CreatePtrArray(
       env_, reinterpret_cast<uintptr_t>(static_cast<napi_env>(env_ptr)));
   base::NapiUtil::AsyncInvokeJsMethod(env_, listener_ref_, "onRuntimeAttach", 1,

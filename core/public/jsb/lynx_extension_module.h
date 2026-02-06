@@ -30,9 +30,9 @@ class LynxExtensionModule : public LynxNativeModule {
   virtual void SetRuntimeInitState(
       const fml::RefPtr<fml::TaskRunner>& task_runner) = 0;
   virtual void SetRuntimeAttachedState(
-      napi_env env,
+      void* opaque_env,
       const std::shared_ptr<runtime::IVSyncObserver>& vsync_observer) = 0;
-  virtual void SetRuntimeReadyState(napi_env env, napi_value lynx,
+  virtual void SetRuntimeReadyState(void* opaque_env, void* opaque_lynx,
                                     const std::string& url) = 0;
   virtual void SetRuntimeDetachedState() = 0;
 

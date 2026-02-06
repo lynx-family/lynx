@@ -42,7 +42,7 @@ class MockListener : public RuntimeLifecycleListenerDelegate {
   MOCK_METHOD(void, OnAppEnterForeground, (), (override));
   MOCK_METHOD(void, OnAppEnterBackground, (), (override));
   MOCK_METHOD(void, OnRuntimeDetach, (), (override));
-  void OnRuntimeAttach(Napi::Env env) override { is_attach_called = true; }
+  void OnRuntimeAttach(void* env) override { is_attach_called = true; }
 
   bool is_attach_called{false};
 };
