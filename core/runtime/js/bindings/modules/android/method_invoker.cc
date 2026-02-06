@@ -439,7 +439,8 @@ base::expected<jvalue, std::string> MethodInvoker::ExtractPubValue(
   value.l = nullptr;
   return value;
 }
-base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
+base::expected<std::unique_ptr<pub::Value>, base::LynxError>
+MethodInvoker::Invoke(
     jobject module, const pub::Value* args, size_t args_count,
     base::MoveOnlyClosure<
         base::expected<base::android::ScopedGlobalJavaRef<jobject>,
@@ -473,8 +474,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
                                  std::string{error_message},
                                  "Please check the arguments.",
                                  base::LynxErrorLevel::Error};
-    return base::unexpected(
-        std::make_pair(std::move(error_message), std::move(error)));
+    return base::unexpected(std::move(error));
   }
 
   LOGI("NativeModule: LynxModuleAndroid MethodInvoker::InvokeMethod, method: ("
@@ -528,8 +528,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
           error::E_NATIVE_MODULES_COMMON_WRONG_PARAM_TYPE,
           std::string{error_message}, "Please check the arguments.",
           base::LynxErrorLevel::Error};
-      return base::unexpected(
-          std::make_pair(std::move(error_message), std::move(error)));
+      return base::unexpected(std::move(error));
     }
   }
   // Auth Verify
@@ -541,13 +540,13 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
     }
     bool verify_result = auth_verify_(method_name_, verify_params);
     if (!verify_result) {
-      std::string error_message =
-          std::string{" has been rejected by LynxMethodAuth!"};
+      std::string error_message = LynxModuleUtils::GenerateErrorMessage(
+          module_name_, method_name_,
+          first_arg_str + " has been rejected by LynxMethodAuth!");
       auto error = base::LynxError{
           error::E_NATIVE_MODULES_COMMON_AUTHORIZATION_ERROR, error_message,
           "Please check the arguments.", base::LynxErrorLevel::Error};
-      return base::unexpected(
-          std::make_pair(std::move(error_message), std::move(error)));
+      return base::unexpected(std::move(error));
     }
   }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
@@ -556,7 +555,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
     java_arguments[required_arg_count - 1] = {.l = nativePromise};
   }
   // Real Call Module Method!
-  base::expected<std::unique_ptr<pub::Value>, ErrorPair> ret =
+  base::expected<std::unique_ptr<pub::Value>, base::LynxError> ret =
       CallPlatformImplementation(env, module, java_arguments);
   if (!ret.has_value()) {
     return base::unexpected(std::move(ret.error()));
@@ -567,7 +566,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
   return ret;
 }
 
-base::expected<std::unique_ptr<pub::Value>, ErrorPair>
+base::expected<std::unique_ptr<pub::Value>, base::LynxError>
 MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
                                           jvalue* java_arguments) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, CALL_PLATFORM_IMPLEMENTATION);
@@ -576,8 +575,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
     auto result = env->Call##METHOD##MethodA(module, method_, java_arguments); \
     auto jni_error = ReportPendingJniException();                              \
     if (jni_error.has_value()) {                                               \
-      return base::unexpected(                                                 \
-          std::make_pair(std::move(jni_error_hit), std::move(jni_error)));     \
+      return base::unexpected(std::move(jni_error.value()));                   \
     }                                                                          \
     return std::make_unique<lynx::pub::ValueImplAndroid>(                      \
         base::android::JavaValue(result));                                     \
@@ -587,8 +585,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
     auto result = env->Call##METHOD##MethodA(module, method_, java_arguments); \
     auto jni_error = ReportPendingJniException();                              \
     if (jni_error.has_value()) {                                               \
-      return base::unexpected(                                                 \
-          std::make_pair(std::move(jni_error_hit), std::move(jni_error)));     \
+      return base::unexpected(std::move(jni_error.value()));                   \
     }                                                                          \
     return std::make_unique<lynx::pub::ValueImplAndroid>(                      \
         base::android::JavaValue(static_cast<RESULT_TYPE>(result)));           \
@@ -600,8 +597,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
         env, env->CallObjectMethodA(module, method_, java_arguments));         \
     auto jni_error = ReportPendingJniException();                              \
     if (jni_error.has_value()) {                                               \
-      return base::unexpected(                                                 \
-          std::make_pair(std::move(jni_error_hit), std::move(jni_error)));     \
+      return base::unexpected(std::move(jni_error.value()));                   \
     }                                                                          \
     static auto cls = base::android::GetGlobalClass(env, "java/lang/" #CLASS); \
     return std::make_unique<lynx::pub::ValueImplAndroid>(                      \
@@ -609,16 +605,13 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
   }
 
   char return_type = signature_.at(0);
-  const std::string jni_error_hit = LynxModuleUtils::GenerateErrorMessage(
-      module_name_, method_name_, "Unable to get pending JNI exception.");
   switch (return_type) {
     // Void Return
     case 'v': {
       env->CallVoidMethodA(module, method_, java_arguments);
       auto error_ptr = ReportPendingJniException();
       if (error_ptr.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error_ptr)));
+        return base::unexpected(std::move(error_ptr.value()));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue::Undefined());
@@ -655,8 +648,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       static auto cls = base::android::GetGlobalClass(env, "java/lang/Long");
       // The function signature of Long type is "J"
@@ -670,8 +662,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
       jchar result = env->CallCharMethodA(module, method_, java_arguments);
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       lynx::base::android::ScopedLocalJavaRef<jstring> str =
           base::android::JNIConvertHelper::ConvertToJNIString(env, &result, 1);
@@ -686,8 +677,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       static auto cls =
           base::android::GetGlobalClass(env, "java/lang/Character");
@@ -710,8 +700,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
                    env->CallObjectMethodA(module, method_, java_arguments)));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue(str.Get()));
@@ -724,8 +713,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       static auto cls = base::android::GetGlobalClass(env, "java/lang/Boolean");
       static jmethodID methodID =
@@ -740,8 +728,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       auto pub_java_value_map =
           std::make_shared<base::android::JavaOnlyMap>(env, obj);
@@ -754,8 +741,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       auto pub_java_value_array =
           std::make_shared<base::android::JavaOnlyArray>(env, arr);
@@ -767,8 +753,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue(
@@ -780,8 +765,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue(
@@ -793,8 +777,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
       // create a lynx object module
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue(
@@ -806,8 +789,7 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
           env, env->CallObjectMethodA(module, method_, java_arguments));
       auto error = ReportPendingJniException();
       if (error.has_value()) {
-        return base::unexpected(
-            std::make_pair(std::move(jni_error_hit), std::move(error)));
+        return base::unexpected(std::move(error.value()));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue(
@@ -815,11 +797,14 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
     }
     default:
       LOGF("NativeModule: FireMethod Unknown Return Type: " << return_type);
-      std::string error_message =
-          "NativeModule: FireMethod Unknown Return Type: " +
-          std::to_string(return_type);
-      return base::unexpected(
-          std::make_pair(std::move(error_message), std::nullopt));
+      std::string error_message = LynxModuleUtils::GenerateErrorMessage(
+          module_name_, method_name_,
+          std::string("FireMethod Unknown Return Type: ") +
+              std::to_string(return_type));
+      auto error = base::LynxError{
+          error::E_NATIVE_MODULES_EXCEPTION, std::move(error_message),
+          "Please ask RD of Lynx for help", base::LynxErrorLevel::Error};
+      return base::unexpected(std::move(error));
   }
 }
 

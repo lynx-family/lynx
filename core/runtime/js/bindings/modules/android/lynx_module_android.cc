@@ -141,7 +141,7 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
         "NativeModule: LynxModuleAndroid Create Callback Failed: Callback not "
         "Found.");
   };
-  base::expected<std::unique_ptr<pub::Value>, ErrorPair> invoke_result =
+  base::expected<std::unique_ptr<pub::Value>, base::LynxError> invoke_result =
       method_invoker->Invoke(
           Java_LynxModuleWrapper_getModule(env, local_ref.Get()).Get(),
           args.get(), count, std::move(function_creator));
@@ -153,15 +153,15 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
 
   if (!invoke_result.has_value()) {
     auto lock_delegate = delegate_.lock();
-    if (lock_delegate && invoke_result.error().second.has_value()) {
-      lock_delegate->OnErrorOccurred(
-          module_name_, method_name,
-          std::move(invoke_result.error().second.value()));
+    auto err = std::move(invoke_result.error());
+    std::string error_message = err.error_message_;
+    if (lock_delegate) {
+      lock_delegate->OnErrorOccurred(module_name_, method_name, std::move(err));
     }
     LOGE("NativeModule: Exception Happen In LynxModuleAndroid InvokeMethod: " +
              module_name_
          << "." << method_name << " , args: " << first_param_str);
-    return base::unexpected(std::move(invoke_result.error().first));
+    return base::unexpected(std::move(error_message));
   }
   return std::move(invoke_result.value());
 }
@@ -341,7 +341,8 @@ base::expected<Value, std::string> LynxModuleAndroid::CreateLynxNativePromise(
         invoker->Invoke(module, method_args, args_count,
                         std::move(function_creator), promise->GetJniObject());
     if (!ret.has_value()) {
-      auto error_message = BUILD_JSI_NATIVE_EXCEPTION(ret.error().first);
+      auto err_msg = ret.error().error_message_;
+      auto error_message = BUILD_JSI_NATIVE_EXCEPTION(err_msg);
       return base::unexpected(std::move(error_message));
     }
     LOGI("NativeModule:  |NATIVE_PROMISE| : ("

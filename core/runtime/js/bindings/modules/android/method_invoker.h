@@ -7,6 +7,7 @@
 
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -28,7 +29,6 @@
 namespace lynx {
 namespace runtime {
 namespace js {
-using ErrorPair = std::pair<std::string, std::optional<base::LynxError>>;
 
 class PtrContainerMap {
  public:
@@ -45,7 +45,7 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
   MethodInvoker(jobject method, std::string signature,
                 const std::string& module_name, const std::string& method_name);
 
-  base::expected<std::unique_ptr<pub::Value>, ErrorPair> Invoke(
+  base::expected<std::unique_ptr<pub::Value>, base::LynxError> Invoke(
       jobject module, const pub::Value* args, size_t args_count,
       base::MoveOnlyClosure<
           base::expected<base::android::ScopedGlobalJavaRef<jobject>,
@@ -87,7 +87,7 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
 
   base::expected<jvalue, std::string> ExtractPubValue(
       const base::android::JavaValue& args, int arg_index, char type);
-  base::expected<std::unique_ptr<pub::Value>, ErrorPair>
+  base::expected<std::unique_ptr<pub::Value>, base::LynxError>
   CallPlatformImplementation(JNIEnv* env, jobject module,
                              jvalue* java_arguments);
   std::optional<base::LynxError> ReportPendingJniException();
