@@ -28,6 +28,14 @@
   BOOL _isIntrinsicSizeConsumed;
 }
 
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _isIntrinsicSizeConsumed = YES;
+  }
+  return self;
+}
+
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView {
   if ([rootView isKindOfClass:[LynxView class]]) {
     _rootView = rootView;
