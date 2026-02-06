@@ -63,6 +63,10 @@ public class Behavior {
     return mNeedProcessDirection;
   }
 
+  public boolean supportFragmentLayerRenderer() {
+    return mSupportFragmentLayerRender;
+  }
+
   public LynxUI createUIWithParams(LynxContext context, Object params) {
     return createUI(context);
   }

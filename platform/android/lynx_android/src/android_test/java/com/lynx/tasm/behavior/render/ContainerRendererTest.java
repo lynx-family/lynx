@@ -277,6 +277,8 @@ public class ContainerRendererTest {
         .when(mockPlatformRendererContext)
         .getDisplayList(eq(TEST_SIGN), any(DisplayList.class));
 
+    containerRenderer.getRenderer().invalidate(Renderer.INVALIDATE_DISPLAY_LIST);
+
     // Second onDraw call
     containerRenderer.onDraw(mockCanvas);
 

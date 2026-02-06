@@ -13,6 +13,11 @@ import androidx.annotation.NonNull;
 import com.lynx.tasm.behavior.ui.PropBundle;
 
 public class Renderer {
+  public static final int INVALIDATE_PARENT = 1;
+  public static final int INVALIDATE_DISPLAY_LIST = 1 << 1;
+  public static final int REPAINT_TYPE_DRAW_ONLY = 1;
+  public static final int REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW = 2;
+
   private final Rect mLynxFrame = new Rect();
   private final Point mRenderOffset = new Point();
   private final int mSign;
@@ -20,6 +25,8 @@ public class Renderer {
   private DisplayListApplier mDisplayListApplier = null;
   private final DisplayList mDisplayList = new DisplayList();
   private IRendererHost mRenderHost;
+
+  private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
 
   public void setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy) {
     mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
@@ -83,13 +90,16 @@ public class Renderer {
   }
 
   public void onDraw(Canvas canvas) {
-    mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
+    if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
+      mPlatformRendererContext.getDisplayList(mSign, mDisplayList);
+    }
     if (mDisplayListApplier == null) {
       mDisplayListApplier =
           new DisplayListApplier(mDisplayList, mPlatformRendererContext, mRenderHost.getView());
     } else {
       mDisplayListApplier.setDisplayList(mDisplayList);
     }
+    mRepaintType = REPAINT_TYPE_DRAW_ONLY;
   }
 
   public void beforeDrawChild(Canvas canvas, View child) {
@@ -108,6 +118,22 @@ public class Renderer {
   public void afterDispatchDraw(Canvas canvas) {
     mDisplayListApplier.drawTillNextView(canvas);
     mDisplayListApplier.reset();
+  }
+
+  public void invalidate(int invalidateMask) {
+    if (getRendererHost().getView() == null) {
+      return;
+    }
+    mRenderHost.getView().invalidate();
+    if ((invalidateMask & INVALIDATE_PARENT) != 0
+        && mRenderHost.getView().getParent() instanceof View) {
+      if (mRenderHost.getView().getParent() instanceof View) {
+        ((View) mRenderHost.getView().getParent()).invalidate();
+      }
+    }
+    if ((invalidateMask & INVALIDATE_DISPLAY_LIST) != 0) {
+      mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
+    }
   }
 
   public void updateAttributes(PropBundle props) {}
