@@ -24,7 +24,7 @@ HABITAT_DEPS_FILE_DIGEST = "HABITAT_DEPS_FILE_DIGEST"
 
 def set_output(name: str, value: str) -> None:
     with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-        f.write(f"{name}={value}{os.linesep}")
+        f.write(f"{name}={value}\n")
 
 
 def split_targets(target: str) -> list[str]:
