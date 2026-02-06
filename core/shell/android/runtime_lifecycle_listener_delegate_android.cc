@@ -26,7 +26,7 @@ RuntimeLifecycleListenerDelegateAndroid::
       impl_(env, delegate) {}
 
 void RuntimeLifecycleListenerDelegateAndroid::OnRuntimeAttach(
-    Napi::Env current_napi_env) {
+    void* current_napi_env) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_RuntimeLifecycleListenerDelegate_onRuntimeAttach(
       env, impl_.Get(),

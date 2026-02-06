@@ -324,7 +324,9 @@ void BTSRuntime::PrepareNapiEnvironment() {
       std::make_unique<runtime::js::NapiLoaderJS>(
           std::to_string(GetRuntimeId()),
           [this](Napi::Env env, Napi::Object& lynx) {
-            this->NotifyRuntimeReady(env, lynx);
+            this->NotifyRuntimeReady(
+                static_cast<void*>(static_cast<napi_env>(env)),
+                static_cast<void*>(static_cast<napi_value>(lynx)));
           }));
   auto proxy =
       runtime::js::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
@@ -366,21 +368,19 @@ void BTSRuntime::RegisterNapiModules() {
   LOGI("napi registering module");
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
               RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH);
-  lifecycle_observer_->OnRuntimeAttach(napi_environment_->proxy()->Env());
+  napi_env env = static_cast<napi_env>(napi_environment_->proxy()->Env());
+  lifecycle_observer_->OnRuntimeAttach(static_cast<void*>(env));
   auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
   if (factory) {
-    factory->OnRuntimeAttach(
-        static_cast<napi_env>(napi_environment_->proxy()->Env()),
-        delegate_->GetVSyncObserver());
+    factory->OnRuntimeAttach(static_cast<void*>(env),
+                             delegate_->GetVSyncObserver());
   }
 }
 
-void BTSRuntime::NotifyRuntimeReady(Napi::Env env, Napi::Object& lynx) {
+void BTSRuntime::NotifyRuntimeReady(void* env, void* lynx) {
   auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
   if (factory) {
-    factory->OnRuntimeReady(
-        static_cast<napi_env>(napi_environment_->proxy()->Env()),
-        static_cast<napi_value>(lynx), template_url_);
+    factory->OnRuntimeReady(env, lynx, template_url_);
   }
 }
 

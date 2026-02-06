@@ -36,7 +36,7 @@ class NapiEnvHolder : public std::enable_shared_from_this<NapiEnvHolder> {
  public:
   NapiEnvHolder() = default;
 
-  void OnRuntimeAttach(Napi::Env env);
+  void OnRuntimeAttach(napi_env env);
   void OnRuntimeDetach();
 
   // Get the napi env attached to the runtime, it is necessary to ensure that it
@@ -64,7 +64,7 @@ class LynxRuntimeLifecycleListenerDelegate
   void OnRuntimeInit(int64_t runtime_id) override;
   void OnAppEnterForeground() override;
   void OnAppEnterBackground() override;
-  void OnRuntimeAttach(Napi::Env env) override;
+  void OnRuntimeAttach(void* env) override;
   void OnRuntimeDetach() override;
 
  private:

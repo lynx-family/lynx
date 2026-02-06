@@ -57,7 +57,7 @@ lynx_runtime_lifecycle_observer_t::~lynx_runtime_lifecycle_observer_t() {
 namespace lynx {
 namespace embedder {
 
-void NapiEnvHolder::OnRuntimeAttach(Napi::Env env) { env_ = env; }
+void NapiEnvHolder::OnRuntimeAttach(napi_env env) { env_ = env; }
 
 void NapiEnvHolder::OnRuntimeDetach() { env_ = nullptr; }
 
@@ -96,13 +96,13 @@ void LynxRuntimeLifecycleListenerDelegate::OnAppEnterForeground() {}
 
 void LynxRuntimeLifecycleListenerDelegate::OnAppEnterBackground() {}
 
-void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(Napi::Env env) {
-  env_holder_->OnRuntimeAttach(env);
+void LynxRuntimeLifecycleListenerDelegate::OnRuntimeAttach(void* env) {
+  env_holder_->OnRuntimeAttach(static_cast<napi_env>(env));
   if (observer_ && observer_->attach_callback) {
-    observer_->attach_callback(observer_, env);
+    observer_->attach_callback(observer_, static_cast<napi_env>(env));
   }
   if (on_attach_callback_) {
-    on_attach_callback_(env);
+    on_attach_callback_(static_cast<napi_env>(env));
   }
 }
 

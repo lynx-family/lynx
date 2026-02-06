@@ -22,7 +22,7 @@ class RuntimeLifecycleListenerDelegateAndroid
   RuntimeLifecycleListenerDelegateAndroid(JNIEnv* env, jobject delegate);
   ~RuntimeLifecycleListenerDelegateAndroid() override = default;
 
-  void OnRuntimeAttach(Napi::Env env) override;
+  void OnRuntimeAttach(void* current_napi_env) override;
   void OnRuntimeDetach() override;
 
  private:

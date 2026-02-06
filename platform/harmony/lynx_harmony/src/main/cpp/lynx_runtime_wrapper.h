@@ -58,7 +58,7 @@ class RuntimeLifecycleListenerDelegateHarmony
   void OnRuntimeInit(int64_t runtime_id) override {}
   void OnAppEnterForeground() override {}
   void OnAppEnterBackground() override {}
-  void OnRuntimeAttach(Napi::Env env) override;
+  void OnRuntimeAttach(void* env) override;
   void OnRuntimeDetach() override;
 
  private:

@@ -7,6 +7,10 @@
 #include "core/runtime/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 
+#ifdef USE_PRIMJS_NAPI
+#include "third_party/napi/include/primjs_napi_defines.h"
+#endif
+
 namespace lynx {
 namespace embedder {
 
@@ -24,9 +28,9 @@ class EmbedderRuntimeLifecycleListenerDelegate
   void OnRuntimeInit(int64_t runtime_id) override {}
   void OnAppEnterForeground() override {}
   void OnAppEnterBackground() override {}
-  void OnRuntimeAttach(Napi::Env env) override {
+  void OnRuntimeAttach(void* env) override {
     if (auto module_manager = module_manager_.lock()) {
-      module_manager->OnRuntimeAttach(env);
+      module_manager->OnRuntimeAttach(Napi::Env(static_cast<napi_env>(env)));
     }
   }
   void OnRuntimeDetach() override {}

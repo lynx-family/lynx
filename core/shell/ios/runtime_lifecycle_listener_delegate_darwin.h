@@ -34,7 +34,7 @@ class RuntimeLifecycleListenerDelegateDarwin
   void OnRuntimeInit(int64_t runtime_id) final{};
   void OnAppEnterForeground() final{};
   void OnAppEnterBackground() final{};
-  void OnRuntimeAttach(Napi::Env env) override;
+  void OnRuntimeAttach(void* env) override;
   void OnRuntimeDetach() override;
 
  private:

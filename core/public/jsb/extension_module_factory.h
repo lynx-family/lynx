@@ -58,19 +58,21 @@ class ExtensionModuleFactory : public NativeModuleFactory {
   }
 
   // Called on the BTS thread
-  void OnRuntimeAttach(napi_env env,
+  void OnRuntimeAttach(void* opaque_env,
                        const std::shared_ptr<IVSyncObserver>& vsync_observer) {
     for (const auto& pair : module_map_) {
-      pair.second->SetRuntimeAttachedState(env, vsync_observer);
+      pair.second->SetRuntimeAttachedState(static_cast<napi_env>(opaque_env),
+                                           vsync_observer);
     }
-    env_ = env;
+    env_ = static_cast<napi_env>(opaque_env);
     vsync_observer_ = vsync_observer;
   }
 
   // Called on the BTS thread
-  void OnRuntimeReady(napi_env env, napi_value lynx, const std::string& url) {
+  void OnRuntimeReady(void* env, void* lynx, const std::string& url) {
     for (const auto& pair : module_map_) {
-      pair.second->SetRuntimeReadyState(env, lynx, url);
+      pair.second->SetRuntimeReadyState(static_cast<napi_env>(env),
+                                        static_cast<napi_value>(lynx), url);
     }
   }
 

@@ -12,9 +12,9 @@
 namespace lynx {
 namespace shell {
 
-void RuntimeLifecycleListenerDelegateDarwin::OnRuntimeAttach(Napi::Env current_napi_env) {
+void RuntimeLifecycleListenerDelegateDarwin::OnRuntimeAttach(void *env) {
   @try {
-    [_listener onRuntimeAttach:current_napi_env];
+    [_listener onRuntimeAttach:env];
   } @catch (NSException *exception) {
     OnError(exception);
   }
