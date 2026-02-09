@@ -18,7 +18,13 @@ class LynxUIRenderer {
   static std::unique_ptr<LynxUIRenderer> CreateWithBuilder(
       lynx_view_builder_t* builder);
 
-  LynxUIRenderer() = default;
+  static std::unique_ptr<LynxUIRenderer> CreateWindowlessUIRenderer(
+      lynx_view_builder_t* builder);
+
+  explicit LynxUIRenderer(lynx_view_builder_t* builder)
+      : width_(builder->frame.width),
+        height_(builder->frame.height),
+        pixel_ratio_(builder->screen_size.pixel_ratio) {}
   virtual ~LynxUIRenderer() = default;
 
   LynxUIRenderer(const LynxUIRenderer&) = delete;
@@ -28,7 +34,11 @@ class LynxUIRenderer {
 
   virtual NativeWindow GetNativeWindow() = 0;
 
-  virtual void SetFrame(float x, float y, float width, float height) = 0;
+  virtual void SetPixelRatio(float pixel_ratio) { pixel_ratio_ = pixel_ratio; }
+  virtual void SetFrame(float x, float y, float width, float height) {
+    width_ = width;
+    height_ = height;
+  }
 
   virtual void OnEnterForeground() = 0;
 
@@ -45,6 +55,11 @@ class LynxUIRenderer {
   virtual void RegisterIMEHandler(void* handler, void* opaque) = 0;
 
   // TODO: Add more methods.
+
+ protected:
+  float width_ = 0;
+  float height_ = 0;
+  float pixel_ratio_ = 1;
 };
 }  // namespace embedder
 }  // namespace lynx

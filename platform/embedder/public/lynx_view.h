@@ -20,6 +20,7 @@
 #include "lynx_runtime_lifecycle_observer.h"
 #include "lynx_update_meta.h"
 #include "lynx_view_client.h"
+#include "lynx_windowless_renderer.h"
 
 namespace lynx {
 namespace pub {
@@ -62,6 +63,13 @@ class LynxView {
       lynx_view_builder_set_parent(builder_, parent);
       return *this;
     }
+    Builder& SetWindowlessRenderer(
+        std::shared_ptr<LynxWindowlessRenderer> renderer) {
+      renderer->InitIfNeeded();
+      lynx_view_builder_set_windowless_renderer(builder_, renderer->Impl());
+      windowless_renderer_ = renderer;
+      return *this;
+    }
     Builder& SetGenericResourceFetcher(
         std::shared_ptr<LynxGenericResourceFetcher> fetcher) {
       fetcher->InitIfNeeded();
@@ -94,6 +102,7 @@ class LynxView {
     std::unique_ptr<LynxView> Build() {
       std::unique_ptr<LynxView> view = std::make_unique<LynxView>(this);
       view->generic_fetcher_ = std::move(generic_fetcher_);
+      view->windowless_renderer_ = std::move(windowless_renderer_);
       return view;
     }
 
@@ -103,6 +112,7 @@ class LynxView {
    private:
     lynx_view_builder_t* builder_;
     std::shared_ptr<LynxGroup> group_;
+    std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
     std::shared_ptr<LynxGenericResourceFetcher> generic_fetcher_;
     friend class LynxView;
   };
@@ -291,6 +301,7 @@ class LynxView {
   lynx_view_t* lynx_view_;
   std::shared_ptr<LynxGenericResourceFetcher> generic_fetcher_;
   std::vector<std::shared_ptr<LynxViewClient>> lynx_view_clients_;
+  std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
   std::shared_ptr<LynxRuntimeLifecycleObserver> runtime_lifecycle_observer_;
 };
 

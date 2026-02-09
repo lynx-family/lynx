@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "base/include/log/logging.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/native_view/lynx_texture_view.h"
 
@@ -48,6 +49,19 @@ LYNX_EXTERN_C void lynx_view_builder_set_lynx_group(
 LYNX_EXTERN_C void lynx_view_builder_set_parent(lynx_view_builder_t* builder,
                                                 NativeWindow parent) {
   builder->parent = parent;
+}
+
+LYNX_EXTERN_C void lynx_view_builder_set_windowless_renderer(
+    lynx_view_builder_t* builder,
+    lynx_windowless_renderer_t* windowless_renderer) {
+#if defined(ENABLE_WINDOWLESS)
+  builder->windowless_renderer =
+      lynx::fml::RefPtr<lynx::embedder::LynxWindowlessRenderer>(
+          reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(
+              windowless_renderer));
+#else
+  UNIMPLEMENTED();
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_builder_set_generic_resource_fetcher(

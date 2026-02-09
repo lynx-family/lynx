@@ -36,7 +36,8 @@ std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
   return std::make_unique<LynxUIRendererWin>(builder);
 }
 
-LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder) {
+LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
+    : LynxUIRenderer(builder) {
   clay::FlutterDesktopEngineProperties properties = {};
 
   properties.icu_data_path = L"data\\icudtl.dat";
@@ -111,7 +112,9 @@ NativeWindow LynxUIRendererWin::GetNativeWindow() {
   return native_window;
 }
 
-void LynxUIRendererWin::SetFrame(float x, float y, float width, float height) {}
+void LynxUIRendererWin::SetFrame(float x, float y, float width, float height) {
+  LynxUIRenderer::SetFrame(x, y, width, height);
+}
 
 void LynxUIRendererWin::OnEnterForeground() { engine_->OnEnterForeground(); }
 

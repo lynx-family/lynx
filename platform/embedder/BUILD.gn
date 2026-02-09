@@ -26,6 +26,7 @@ config("config") {
 }
 
 lynx_core_source_set("embedder") {
+  defines = []
   sources = [
     "lynx_env.cc",
     "lynx_group.cc",
@@ -58,7 +59,7 @@ lynx_core_source_set("embedder") {
     "native_view/lynx_texture_view.h",
   ]
 
-  public_deps = [
+  deps = [
     ":public_headers",
     "../../core:lynx_native",
     "./core:renderer",
@@ -66,7 +67,11 @@ lynx_core_source_set("embedder") {
     "./resource:resource",
   ]
   if (enable_napi_binding) {
-    public_deps += [ "./module:module" ]
+    deps += [ "./module:module" ]
+  }
+  if (is_headless) {
+    deps += [ "./windowless:windowless" ]
+    defines += [ "ENABLE_WINDOWLESS" ]
   }
 
   public_configs = [

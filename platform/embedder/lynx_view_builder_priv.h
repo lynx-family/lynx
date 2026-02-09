@@ -12,6 +12,9 @@
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
 #include "platform/embedder/public/capi/lynx_view_builder_capi.h"
+#if defined(ENABLE_WINDOWLESS)
+#include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
+#endif
 
 struct lynx_view_builder_t {
   struct screen_size {
@@ -28,6 +31,10 @@ struct lynx_view_builder_t {
   float font_scale = 1.0;
   lynx_group_t* group = nullptr;
   NativeWindow parent = nullptr;
+#if defined(ENABLE_WINDOWLESS)
+  lynx::fml::RefPtr<lynx::embedder::LynxWindowlessRenderer>
+      windowless_renderer = nullptr;
+#endif
   lynx_generic_resource_fetcher_t* generic_fetcher = nullptr;
 
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>

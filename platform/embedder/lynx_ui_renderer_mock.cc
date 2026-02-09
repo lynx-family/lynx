@@ -8,14 +8,13 @@ namespace lynx {
 namespace embedder {
 class MockLynxUIRenderer : public LynxUIRenderer {
  public:
-  explicit MockLynxUIRenderer(lynx_view_builder_t* builder) {}
+  explicit MockLynxUIRenderer(lynx_view_builder_t* builder)
+      : LynxUIRenderer(builder) {}
   ~MockLynxUIRenderer() override {}
 
   void SetParent(NativeWindow parent) override {}
 
   NativeWindow GetNativeWindow() override { return nullptr; }
-
-  void SetFrame(float x, float y, float width, float height) override {}
 
   void OnEnterForeground() override {}
 
@@ -27,6 +26,10 @@ class MockLynxUIRenderer : public LynxUIRenderer {
 };
 
 std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
+    lynx_view_builder_t* builder) {
+  return std::make_unique<MockLynxUIRenderer>(builder);
+}
+std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWindowlessUIRenderer(
     lynx_view_builder_t* builder) {
   return std::make_unique<MockLynxUIRenderer>(builder);
 }

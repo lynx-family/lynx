@@ -10,6 +10,7 @@
 #include "lynx_group_capi.h"
 #include "lynx_native_module_capi.h"
 #include "lynx_native_view_capi.h"
+#include "lynx_windowless_renderer_capi.h"
 
 LYNX_EXTERN_C_BEGIN
 
@@ -61,6 +62,15 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_lynx_group(lynx_view_builder_t*,
 // view's position and behavior may be influenced by its parent.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_parent(lynx_view_builder_t*,
                                                    NativeWindow parent);
+
+// Sets the windowless renderer for the Lynx view being built. This function
+// assigns a windowless renderer to the Lynx view that is being constructed
+// using the provided builder. The windowless renderer is responsible for
+// rendering the Lynx view without a visible window, which can be useful for
+// offscreen rendering or headless scenarios.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_windowless_renderer(
+    lynx_view_builder_t*, lynx_windowless_renderer_t*);
+
 // generic fetcher.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_generic_resource_fetcher(
     lynx_view_builder_t*, lynx_generic_resource_fetcher_t* fetcher);

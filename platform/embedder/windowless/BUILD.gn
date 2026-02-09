@@ -1,0 +1,20 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+
+lynx_core_source_set("windowless") {
+  sources = [
+    "lynx_ui_renderer_windowless.cc",
+    "lynx_ui_renderer_windowless.h",
+    "lynx_windowless_renderer.cc",
+    "lynx_windowless_renderer_priv.h",
+  ]
+  configs = [ "../:config" ]
+  deps = [
+    "../../../clay/shell/platform/headless:headless",
+    "../../../clay/ui:ui",
+  ]
+  defines = [ "ENABLE_WINDOWLESS" ]
+}

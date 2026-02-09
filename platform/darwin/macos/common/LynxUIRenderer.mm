@@ -173,7 +173,7 @@ std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(lynx_view_buil
   return std::make_unique<LynxUIRendererImpl>(builder);
 }
 
-LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder) {
+LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder) : LynxUIRenderer(builder) {
   // init ui thread native loop
   if (NSThread.isMainThread) {
     base::UIThread::Init();

@@ -25,8 +25,18 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   lynx_view_t* view = new lynx_view_t;
   view->user_data = user_data;
   // Construct ui renderer with builder.
+#if defined(ENABLE_WINDOWLESS)
+  if (builder->windowless_renderer) {
+    view->lynx_ui_renderer =
+        lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
+  } else {
+    view->lynx_ui_renderer =
+        lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
+  }
+#else
   view->lynx_ui_renderer =
       lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
+#endif
   // get UIDelegate from lynx_ui_renderer.
   auto* ui_delegate = view->lynx_ui_renderer->GetUIDelegate();
 
@@ -213,6 +223,7 @@ LYNX_EXTERN_C void lynx_view_update_screen_metrics(lynx_view_t* view,
                                                    const float& pixel_ratio) {
   view->lynx_template_renderer->UpdateScreenMetrics(
       width * pixel_ratio, height * pixel_ratio, pixel_ratio);
+  view->lynx_ui_renderer->SetPixelRatio(pixel_ratio);
 }
 
 LYNX_EXTERN_C void lynx_view_set_frame(lynx_view_t* view, const float& x,
