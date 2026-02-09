@@ -279,8 +279,12 @@ source_set("txt") {
 
     public_deps -= [
       "//third_party/harfbuzz",
-      "//third_party/icu",
     ]
+    if (!is_mac && !is_win) {
+      public_deps -= [
+        "//third_party/icu",
+      ]
+    }
   }
 }
 

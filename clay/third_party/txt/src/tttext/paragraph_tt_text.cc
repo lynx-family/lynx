@@ -107,6 +107,10 @@ void ParagraphTTText::Layout(double width) {
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
   context.SetEnableSystemFontAdjust(false);
+  if (need_trim_space_) {
+    context.EnableFeature(ttoffice::tttext::FeatureOption::kTrimLineTailSpace,
+                          false);
+  }
   tttext::LayoutResult result =
       layout.Layout(paragraph_.get(), region_.get(), context);
   if (result != tttext::LayoutResult::kNormal &&
@@ -176,11 +180,9 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
     float rect[4] = {0};
     text_line->GetBoundingRectByCharRange(rect, std::max(start, start_index),
                                           std::min(end, end_index));
-    if (rect[2] != 0 && rect[3] != 0) {
-      result.push_back(
-          TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
-                  TextDirection::ltr));
-    }
+    result.push_back(
+        TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
+                TextDirection::ltr));
   }
   return result;
 }
@@ -208,22 +210,29 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForPlaceholders() {
 Paragraph::PositionWithAffinity ParagraphTTText::GetGlyphPositionAtCoordinate(
     double dx,
     double dy) {
-  ttoffice::tttext::CharPos char_pos = 0;
+  ttoffice::tttext::CharPos result = 0;
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
     float rect[4] = {0};
     text_line->GetBoundingRectForLine(rect);
-    if (rect[2] != 0 && rect[3] != 0 && dy < rect[1] + rect[3]) {
+    if (rect[2] != 0 && rect[3] != 0 && dy <= rect[1] + rect[3]) {
       if ((k != 0 && dy < rect[1])) {
         break;
       }
-      char_pos += text_line->GetCharPosByCoordinateX(dx);
+      auto char_pos = text_line->GetCharPosByCoordinateX(dx);
+      if (char_pos > 0) {
+        auto end_char = paragraph_->GetContentString(char_pos - 1, 1);
+        if (end_char == "\n") {
+          char_pos -= 1;
+        }
+      }
+      result += char_pos;
       break;
     } else {
-      char_pos += text_line->GetCharCount();
+      result += text_line->GetCharCount();
     }
   }
-  return Paragraph::PositionWithAffinity(char_pos, Paragraph::DOWNSTREAM);
+  return Paragraph::PositionWithAffinity(result, Paragraph::DOWNSTREAM);
 }
 Paragraph::Range<size_t> ParagraphTTText::GetWordBoundary(size_t offset) {
   if (region_ == nullptr)

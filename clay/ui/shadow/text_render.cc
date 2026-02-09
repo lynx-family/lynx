@@ -622,9 +622,13 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         }
         truncation_node->SetNeedLayout(true);
         truncation_node->SetNeedMount(true);
+#ifndef CLAY_ENABLE_TTTEXT
         auto end_dx = truncation_direction_ == TextDirection::kRtl
                           ? truncation_size.width()
                           : prev_layout_width_ - truncation_size.width();
+#else
+        auto end_dx = prev_layout_width_ - truncation_size.width();
+#endif
         auto line_metrics = cache_paragraph_->GetLineMetrics();
         if (line_metrics.empty()) {
           truncation_node->SetNeedMount(false);

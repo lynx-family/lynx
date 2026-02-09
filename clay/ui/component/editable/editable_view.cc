@@ -37,6 +37,9 @@
 #include "clay/ui/platform/keyboard_types.h"
 #include "clay/ui/rendering/editable/render_editable.h"
 #include "clay/ui/resource/font_collection.h"
+#if defined(CLAY_ENABLE_TTTEXT)
+#include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
+#endif
 
 namespace clay {
 namespace {
@@ -291,6 +294,10 @@ void EditableView::OnLayout(LayoutContext* context) {
     auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
     BuildTextSpan(text_style_)->Build(*builder);
     paragraph_ = Build(std::move(builder));
+#if defined(CLAY_ENABLE_TTTEXT)
+    auto* impl = static_cast<txt::ParagraphTTText*>(paragraph_.get());
+    impl->SetNeedTrimSpace(true);
+#endif
     LayoutText(context);
   }
 
@@ -1431,6 +1438,9 @@ std::shared_ptr<TextSpan> EditableView::BuildTextSpan(TextStyle style) {
       keyboard_input_type_ != KeyboardInputType::kPassword
           ? text_editing_value.GetU16Text()
           : std::u16string(text_editing_value.GetU16Length(), u'•');
+#if defined(CLAY_ENABLE_TTTEXT)
+  text_submit += u"\n";
+#endif
   auto selection = text_editing_value.selection();
   auto composing = text_editing_value.composing_range();
   std::vector<std::shared_ptr<TextSpan>> text_spans;

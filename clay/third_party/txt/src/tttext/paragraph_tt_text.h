@@ -83,6 +83,9 @@ class ParagraphTTText : public Paragraph {
   void UpdateForegroundPaint(size_t text_size, SkPaint paint);
 #endif
 
+  void SetNeedTrimSpace(bool need_trim_space) {
+    need_trim_space_ = need_trim_space;
+  }
   void AddPlaceholder(tttext::Style& style,
                       PlaceholderRun& span,
                       bool is_float);
@@ -96,6 +99,7 @@ class ParagraphTTText : public Paragraph {
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
   std::vector<size_t> placeholder_pos_;
+  bool need_trim_space_ = false;
 #ifdef ENABLE_SKITY
   skity::Paint sk_paint_;
   tttext::SkityPainter tt_painter_;
