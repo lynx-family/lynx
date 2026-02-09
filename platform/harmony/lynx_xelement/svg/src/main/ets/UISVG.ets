@@ -19,6 +19,7 @@ export class UISVG extends UIBase {
   private svgNodeController: SvgRenderNodeController = new SvgRenderNodeController();
   private src: string | undefined = undefined;
   private allowAntiAlias: boolean = true;
+  private sSvgBase64Scheme:string = "data:image/svg+xml;base64";
 
   layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number,
     paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number,
@@ -71,6 +72,29 @@ export class UISVG extends UIBase {
       this.needUpdateContent = false;
     }
     if (this.needRequestSrc) {
+       // base 64
+      if (this.src!.startsWith(this.sSvgBase64Scheme)) {
+        const base64Str = this.src!.substring(this.sSvgBase64Scheme.length + 1);
+        const base64Helper = new util.Base64Helper();
+        const uint8Array = base64Helper.decodeSync(base64Str);
+        const decoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
+        this.content = decoder.decode(uint8Array);
+        const roundWidth = Math.round(this.density! * this.width) / this.density!
+        const roundHeight = Math.round(this.density! * this.height) / this.density!
+        const data: SvgData = {
+          width: roundWidth,
+          height: roundHeight,
+          density: this.density,
+          content: this.content,
+          antiAlias: this.allowAntiAlias,
+        }
+        this.svgNodeController.updateData(data);
+        this.sendCustomEvent('load', { width: roundWidth, height: roundHeight } as SvgLoadEvent, 'detail');
+        this.needRequestSrc = false;
+        return;
+      }
+      
+      // fetch src
       const request = new LynxResourceRequest(this.src!, LynxResourceType.LYNX_RESOURCE_TYPE_SVG);
       this.lynxContext?.getGenericResourceFetcher()?.fetchResource(request,
         (err: BusinessError, res: ArrayBuffer) => {
