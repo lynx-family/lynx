@@ -5,14 +5,17 @@
 #include "base/include/debug/backtrace.h"
 
 #include <cstdlib>
+#include <mutex>
 #include <utility>
 
 namespace lynx {
 namespace base {
 namespace debug {
 
-BacktraceDelegate* g_backtrace_delegate = nullptr;
+static BacktraceDelegate* g_backtrace_delegate = nullptr;
+static std::mutex g_backtrace_delegate_mutex;
 void SetBacktraceDelegate(BacktraceDelegate* delegate) {
+  std::lock_guard<std::mutex> lock(g_backtrace_delegate_mutex);
   if (g_backtrace_delegate) {
     delete g_backtrace_delegate;
   }
