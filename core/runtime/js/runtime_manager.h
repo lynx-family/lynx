@@ -144,6 +144,10 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   bool IsInspectEnabled(bool force_use_lightweight_js_engine,
                         const tasm::PageOptions& page_options);
 
+  void TrackRuntimeForMemoryPressure(
+      const std::shared_ptr<runtime::js::Runtime>& runtime);
+  void CompactWeakRuntimes();
+
   void OnMemoryPressure(lynx::base::MemoryPressureLevel level);
 
   Shared_Context_Map shared_context_map_;

@@ -326,16 +326,36 @@ std::shared_ptr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
   if (!memory_task_runner_) {
     memory_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
   }
-  if (memory_task_runner_) {
-    weak_runtimes_.emplace_back(
-        std::weak_ptr<runtime::js::Runtime>(js_runtime));
-  }
+  TrackRuntimeForMemoryPressure(js_runtime);
   js_runtime->setRuntimeId(rt_id);
   js_runtime->SetPageOptions(page_options);
   js_runtime->SetEnableUserBytecode(enable_bytecode);
   js_runtime->SetBytecodeSourceUrl(bytecode_source_url);
   js_runtime->SetBytecodeGetter(std::move(bytecode_getter));
   return js_runtime;
+}
+
+void RuntimeManager::TrackRuntimeForMemoryPressure(
+    const std::shared_ptr<runtime::js::Runtime>& runtime) {
+  if (!memory_task_runner_) {
+    return;
+  }
+  memory_task_runner_->PostTask(
+      [this, w = std::weak_ptr<runtime::js::Runtime>(runtime)]() mutable {
+        weak_runtimes_.emplace_back(std::move(w));
+        CompactWeakRuntimes();
+      });
+}
+
+void RuntimeManager::CompactWeakRuntimes() {
+  std::vector<std::weak_ptr<runtime::js::Runtime>> alive;
+  alive.reserve(weak_runtimes_.size());
+  for (auto& w : weak_runtimes_) {
+    if (!w.expired()) {
+      alive.emplace_back(w);
+    }
+  }
+  weak_runtimes_.swap(alive);
 }
 
 void RuntimeManager::OnRelease(const std::string& group_id) {
