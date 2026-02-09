@@ -317,6 +317,12 @@ void UIBase::SendLayoutChangeEvent() {
 void UIBase::SetParent(UIBase* parent) { parent_ = parent; }
 
 void UIBase::AddChild(UIBase* child, int index) {
+  if (index > static_cast<int>(children_.size())) {
+    LOGE("UIBase::AddChild id: " << child->sign_ << ", parent: " << sign_
+                                 << ", invalid index: " << index
+                                 << ", children size: " << children_.size());
+    index = -1;
+  }
   if (index == -1) {
     children_.emplace_back(child);
   } else {
