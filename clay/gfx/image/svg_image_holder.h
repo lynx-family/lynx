@@ -75,7 +75,7 @@ class SVGImageHolder : public fml::RefCountedThreadSafe<SVGImageHolder> {
   SVGStatus status_;
   SVGDomPtr svg_dom_;
   std::promise<SVGDomPtr> svg_dom_promise_;
-  std::future<SVGDomPtr> svg_dom_future_ = svg_dom_promise_.get_future();
+  std::shared_future<SVGDomPtr> svg_dom_future_;
 
   std::unique_ptr<fml::SharedMutex> mutex_;
 
