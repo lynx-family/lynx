@@ -27,7 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onTakeSnapShot:(NSString*)snapshot;
 
 @property(nonatomic, weak, readwrite, nullable) VIEW_CLASS* uiView;
-@property(nonatomic, readwrite, nullable) NSString* snapshotCache;
+@property(atomic, readwrite, nullable) NSString* snapshotCache;
 @property(nonatomic, readwrite) uint64_t snapshotInterval;
 @property(nonatomic, readwrite) uint64_t lastScreenshotTime;
 @property(nonatomic, readwrite, nullable) CFRunLoopObserverRef observer;
