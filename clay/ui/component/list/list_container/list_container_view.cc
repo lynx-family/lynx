@@ -5,6 +5,7 @@
 #include "clay/ui/component/list/list_container/list_container_view.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -24,8 +25,9 @@ static constexpr const char kDataSourceStickyStart[] = "stickyStart";
 static constexpr const char kDataSourceStickyEnd[] = "stickyEnd";
 }  // namespace details
 
-ListContainerView::ListContainerView(int32_t id, PageView* page_view)
-    : WithTypeInfo(id, ScrollDirection::kVertical, page_view,
+ListContainerView::ListContainerView(int32_t id, PageView* page_view,
+                                     int32_t callback_id)
+    : WithTypeInfo(id, callback_id, ScrollDirection::kVertical, page_view,
                    std::make_unique<RenderScroll>()) {
   tag_ = "ListContainerView";
   AddEventCallback(event_attr::kEventScrollStateChange);
@@ -353,11 +355,12 @@ void ListContainerView::UpdateStickyEnds(float offset_x, float offset_y) {
   if (sticky_end_item != nullptr) {
     if (prev_sticky_bottom_item_ != sticky_end_item) {
       if (is_vertical) {
-        page_view_->SendEvent(id(), event_attr::kEventListStickyBottom,
-                              {"bottom"}, sticky_end_item->ItemKey());
+        page_view_->SendEvent(GetCallbackId(),
+                              event_attr::kEventListStickyBottom, {"bottom"},
+                              sticky_end_item->ItemKey());
       }
-      page_view_->SendEvent(id(), event_attr::kEventListStickyEnd, {"end"},
-                            sticky_end_item->ItemKey());
+      page_view_->SendEvent(GetCallbackId(), event_attr::kEventListStickyEnd,
+                            {"end"}, sticky_end_item->ItemKey());
       prev_sticky_bottom_item_ = sticky_end_item;
     }
     int sticky_start_offset = offset - (is_vertical ? sticky_end_item->Height()
@@ -464,12 +467,12 @@ void ListContainerView::UpdateStickyStarts(float offset_x, float offset_y) {
   if (sticky_start_item != nullptr) {
     if (prev_sticky_top_item_ != sticky_start_item) {
       if (is_vertical) {
-        page_view_->SendEvent(id(), event_attr::kEventListStickyTop, {"top"},
-                              sticky_start_item->ItemKey());
+        page_view_->SendEvent(GetCallbackId(), event_attr::kEventListStickyTop,
+                              {"top"}, sticky_start_item->ItemKey());
       }
 
-      page_view_->SendEvent(id(), event_attr::kEventListStickyStart, {"start"},
-                            sticky_start_item->ItemKey());
+      page_view_->SendEvent(GetCallbackId(), event_attr::kEventListStickyStart,
+                            {"start"}, sticky_start_item->ItemKey());
 
       prev_sticky_top_item_ = sticky_start_item;
     }
@@ -623,8 +626,8 @@ void ListContainerView::SetScrollState(ListScrollState state) {
     args["attachedCells"] = clay::Value(std::move(cells_array));
   }
 
-  page_view_->SendCustomEvent(id(), event_attr::kEventScrollStateChange,
-                              std::move(args));
+  page_view_->SendCustomEvent(
+      GetCallbackId(), event_attr::kEventScrollStateChange, std::move(args));
 }
 
 void ListContainerView::DidScroll() {
