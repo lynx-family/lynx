@@ -86,6 +86,9 @@ class TimingHandler {
   inline void SetFrameworkExtraTimingInfo(const PipelineID& pipeline_id,
                                           const std::string& key,
                                           const std::string& value) {
+    if (IsPipelineMapExceeded()) {
+      return;
+    }
     handler_ng_.SetFrameworkExtraTimingInfo(pipeline_id, key, value);
   }
 
@@ -94,10 +97,16 @@ class TimingHandler {
   inline void SetHostPlatformTimingExtraInfo(const PipelineID& pipeline_id,
                                              const std::string& key,
                                              const std::string& value) {
+    if (IsPipelineMapExceeded()) {
+      return;
+    }
     handler_ng_.SetHostPlatformTimingExtraInfo(pipeline_id, key, value);
   }
 
   inline void SetFSPInfo(const std::string& key, const std::string& value) {
+    if (IsPipelineMapExceeded()) {
+      return;
+    }
     handler_ng_.SetFSPInfo(key, value);
   }
   // This logic is to ensure compatibility with the old js_app markTiming
