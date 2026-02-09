@@ -16,7 +16,9 @@
 
 namespace clay {
 SVGImageHolder::SVGImageHolder()
-    : status_(SVGStatus::kNew), mutex_(fml::SharedMutex::Create()) {}
+    : status_(SVGStatus::kNew), mutex_(fml::SharedMutex::Create()) {
+  svg_dom_future_ = svg_dom_promise_.get_future().share();
+}
 
 SVGImageHolder::~SVGImageHolder() {
   {
@@ -29,13 +31,17 @@ SVGImageHolder::~SVGImageHolder() {
 
 SVGDomPtr SVGImageHolder::GetSVGDOM() {
   {
-    fml::UniqueLock lock(*mutex_);
+    fml::SharedLock lock(*mutex_);
     if (svg_dom_) {
       return svg_dom_;
     }
   }
   if (svg_dom_future_.valid()) {
-    svg_dom_ = svg_dom_future_.get();
+    SVGDomPtr svg_dom = svg_dom_future_.get();
+    fml::UniqueLock lock(*mutex_);
+    if (!svg_dom_) {
+      svg_dom_ = svg_dom;
+    }
   }
   return svg_dom_;
 }
