@@ -235,6 +235,22 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithOptimization) {
   EXPECT_FALSE(element->CanBeLayoutOnly());
 }
 
+TEST_F(RadonNodeTest,
+       TestViewCannotBeLayoutOnlyWithEmptyAttributeOnFirstFlush) {
+  auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  radon_node->CreateElementIfNeeded();
+  auto* element = radon_node->element();
+  element->computed_css_style()->SetOverflowDefaultVisible(true);
+
+  EXPECT_TRUE(element->is_view());
+  EXPECT_TRUE(element->CanBeLayoutOnly());
+
+  radon_node->SetStaticAttribute("123", lepus::Value());
+  radon_node->DispatchFirstTime();
+
+  EXPECT_FALSE(element->CanBeLayoutOnly());
+}
+
 TEST_F(RadonNodeTest, TestComponentCanBeLayoutOnly) {
   auto radon_node =
       std::make_unique<RadonComponent>(page_proxy.get(), 0, nullptr, nullptr,

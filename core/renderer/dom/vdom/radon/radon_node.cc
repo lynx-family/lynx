@@ -180,6 +180,7 @@ void RadonNode::DispatchFirstTime() {
 
   // Attribute
   if (!attributes().empty()) {
+    fiber_element->MarkCanBeLayoutOnly(false);
     for (const auto& [key, value] : attributes()) {
       // In first dispatch, should not flush empty attribute in RadonArch.
       if (!value.IsEmpty()) {
@@ -1029,6 +1030,9 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
   const auto should_convert_to_lepus_value =
       page_proxy_->element_manager()->GetEnableParallelElement();
   // check update and insert
+  if (!new_map.empty()) {
+    fiber_element()->MarkCanBeLayoutOnly(false);
+  }
   for (auto& it : new_map) {
     // try to find the corresponding style in old_map
     auto it_old_map = old_map.find(it.first);
