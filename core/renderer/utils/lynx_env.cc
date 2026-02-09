@@ -586,12 +586,6 @@ bool LynxEnv::FixRadonInlineConvertBug() {
   return fix_radon_inline_convert_bug;
 }
 
-bool LynxEnv::FixDynamicUpdateTransitionConsumeBug() {
-  static bool fix_dynamic_update_transition_consume_bug =
-      GetBoolEnv(Key::FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG, true);
-  return fix_dynamic_update_transition_consume_bug;
-}
-
 bool LynxEnv::EnableFetchAPIStreamingStandard() {
   return GetBoolEnv(Key::ENABLE_FETCH_API_STANDARD_STREAMING, false);
 }

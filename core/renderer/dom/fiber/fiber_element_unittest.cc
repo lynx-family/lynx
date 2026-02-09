@@ -13,7 +13,6 @@
 #include <tuple>
 
 #include "base/include/auto_reset.h"
-#include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -4485,116 +4484,6 @@ TEST_P(FiberElementTest, FiberElementDirectionCase04) {
   EXPECT_TRUE(
       extended_element->computed_css_style()->GetTextAttributes()->text_align ==
       starlight::TextAlignType::kRight);
-}
-
-TEST_P(FiberElementTest, DynamicUpdateShouldNotSkipStyleWhenNoTransition) {
-  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
-                          SLMeasureModeDefinite, false);
-
-  auto page = manager->CreateFiberPage("page", 11);
-  auto view = manager->CreateFiberView();
-  view->enable_new_animator_ = true;
-  view->SetStyle(tasm::CSSPropertyID::kPropertyIDWidth, lepus::Value("50vw"));
-  page->InsertNode(view);
-  page->FlushActionsAsRoot();
-
-  tasm_mediator.captured_ids_.clear();
-  tasm_mediator.captured_bundles_.clear();
-
-  view->css_transition_manager_ =
-      std::make_unique<animation::CSSTransitionManager>(view.get());
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  data.duration = 2000;
-  data.delay = 0;
-  data.timing_func = starlight::TimingFunctionData();
-  base::Vector<starlight::TransitionData> transition_data;
-  transition_data.emplace_back(data);
-  view->css_transition_manager_->setTransitionData(transition_data);
-
-  auto it =
-      view->parsed_styles_map_.find(tasm::CSSPropertyID::kPropertyIDWidth);
-  ASSERT_TRUE(it != view->parsed_styles_map_.end());
-  view->RecordElementPreviousStyle(tasm::CSSPropertyID::kPropertyIDWidth,
-                                   it->second);
-
-  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
-                          SLMeasureModeDefinite, false);
-
-  EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
-      view->impl_id(), tasm::CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(0.f, CSSValuePattern::VW), 1));
-}
-
-TEST_P(FiberElementTest, DynamicUpdateShouldSkipStyleWhenTransitionConsumes) {
-  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
-                          SLMeasureModeDefinite, false);
-
-  auto page = manager->CreateFiberPage("page", 11);
-  auto view = manager->CreateFiberView();
-  view->enable_new_animator_ = true;
-  view->SetStyle(tasm::CSSPropertyID::kPropertyIDWidth, lepus::Value("50vw"));
-  page->InsertNode(view);
-  page->FlushActionsAsRoot();
-
-  tasm_mediator.captured_ids_.clear();
-  tasm_mediator.captured_bundles_.clear();
-
-  view->css_transition_manager_ =
-      std::make_unique<animation::CSSTransitionManager>(view.get());
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  data.duration = 2000;
-  data.delay = 0;
-  data.timing_func = starlight::TimingFunctionData();
-  base::Vector<starlight::TransitionData> transition_data;
-  transition_data.emplace_back(data);
-  view->css_transition_manager_->setTransitionData(transition_data);
-
-  view->RecordElementPreviousStyle(tasm::CSSPropertyID::kPropertyIDWidth,
-                                   tasm::CSSValue(40.f, CSSValuePattern::VW));
-
-  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
-                          SLMeasureModeDefinite, false);
-
-  auto previous_opt =
-      view->GetElementPreviousStyle(tasm::CSSPropertyID::kPropertyIDWidth);
-  ASSERT_TRUE(previous_opt.has_value());
-  EXPECT_TRUE(previous_opt.value() ==
-              tasm::CSSValue(40.f, CSSValuePattern::VW));
-}
-
-TEST_P(FiberElementTest, DynamicUpdateTransitionConsumeSwitchOff) {
-  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
-                          SLMeasureModeDefinite, false);
-
-  manager->fix_dynamic_update_transition_consume_bug_ = false;
-
-  auto page = manager->CreateFiberPage("page", 11);
-  auto view = manager->CreateFiberView();
-  view->enable_new_animator_ = true;
-  view->SetStyle(tasm::CSSPropertyID::kPropertyIDWidth, lepus::Value("50vw"));
-  page->InsertNode(view);
-  page->FlushActionsAsRoot();
-
-  view->css_transition_manager_ =
-      std::make_unique<animation::CSSTransitionManager>(view.get());
-  starlight::TransitionData data;
-  data.property = starlight::AnimationPropertyType::kWidth;
-  data.duration = 2000;
-  data.delay = 0;
-  data.timing_func = starlight::TimingFunctionData();
-  base::Vector<starlight::TransitionData> transition_data;
-  transition_data.emplace_back(data);
-  view->css_transition_manager_->setTransitionData(transition_data);
-
-  view->RecordElementPreviousStyle(tasm::CSSPropertyID::kPropertyIDWidth,
-                                   tasm::CSSValue(40.f, CSSValuePattern::VW));
-
-  manager->UpdateViewport(200, SLMeasureModeDefinite, 600,
-                          SLMeasureModeDefinite, false);
-
-  EXPECT_TRUE(view->css_transition_manager_->animations_map_.empty());
 }
 
 TEST_P(FiberElementTest, RequireFlush) {
