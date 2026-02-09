@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - CQ-*
+      - cq-*
 
 defaults:
   run:
