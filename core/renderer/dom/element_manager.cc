@@ -91,6 +91,8 @@ ElementManager::ElementManager(
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   fix_radon_inline_convert_bug_ =
       LynxEnv::GetInstance().FixRadonInlineConvertBug();
+  fix_dynamic_update_transition_consume_bug_ =
+      LynxEnv::GetInstance().FixDynamicUpdateTransitionConsumeBug();
   fix_new_fixed_removal_bug_ = LynxEnv::GetInstance().FixNewFixedRemovalBug();
   disable_list_callback_if_detached_ =
       LynxEnv::GetInstance().DisableListCallbackIfDetached();
