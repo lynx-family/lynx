@@ -41,10 +41,11 @@ import { LynxSetModule } from '../jsbridge/LynxSetModule';
 import { ILynxExtensionService } from './service/ILynxExtensionService';
 import { LynxUIRendererCreator } from './LynxUIRendererCreator';
 import { url } from '@kit.ArkTS';
-import { ILynxTrailService, LynxBackgroundRuntime } from '../Index';
+import { ILynxTrailService, LynxBackgroundRuntime, LynxResourceLoadInfo } from '../Index';
 import { ILogBox } from '../devtool_wrapper/ILogBox';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
+import { LynxImageConfig } from './image/LynxImageConfig';
 
 export enum MeasureMode {
   INDEFINITE = 0,
@@ -168,6 +169,7 @@ export struct LynxView {
   threadMode: ThreadStrategyForRendering = ThreadStrategyForRendering.ALL_ON_UI;
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
+  lynxImageConfig?: LynxImageConfig;
 
   reInitTemplateRenderer() {
     LynxInfoReporterHelper.reportLynxTemplateEvent(LynxTemplateType.PAGE, this.url);

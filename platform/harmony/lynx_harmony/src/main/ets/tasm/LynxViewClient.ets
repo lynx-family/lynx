@@ -7,6 +7,7 @@ import { LynxContext } from './LynxContext';
 import { TemplateBundle } from './TemplateBundle';
 import { PerformanceEntry } from './gen/performance/performanceobserver/PerformanceEntry';
 import { IPerformanceObserver } from './performance/IPerformanceObserver';
+import { LynxResourceType } from '../Index';
 
 /**
  * The cause that the lynx pixel pipeline is activated
@@ -54,6 +55,26 @@ export class LynxPipelineInfo {
   toString(): string {
     return `LynxPipelineInfo(url: ${this.url}, pipelineOrigin: ${this.pipelineOrigin.toString(2)})`;
   }
+}
+
+/**
+ * Provide information about the loaded resource.
+ */
+export interface LynxResourceLoadInfo {
+  /**
+   * The type of the resource.
+   */
+  type: LynxResourceType;
+
+  /**
+   * The error code of the resource loading.
+   */
+  errCode: number;
+
+  /**
+   * The error message of the resource loading.
+   */
+  errMsg?: string;
 }
 
 /**
@@ -154,5 +175,13 @@ export abstract class LynxViewClient implements IPerformanceObserver {
    *
    */
   public onPerformanceEvent(entry: PerformanceEntry): void {
+  }
+
+  /**
+   * Notify the client that a resource has been loaded.
+   * @apidoc
+   * @param result The information about the loaded resource.
+   */
+  public onResourceLoaded(result: LynxResourceLoadInfo): void {
   }
 }

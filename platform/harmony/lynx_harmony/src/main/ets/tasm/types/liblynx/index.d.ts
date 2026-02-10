@@ -190,7 +190,7 @@ export class ShadowNode {
 export class UIOwner {
   constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function,
     startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number,
-    postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function);
+    postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function, onResourceLoaded: Function);
 
   attachPageRoot(content: NativeContent): void;
 
@@ -205,6 +205,8 @@ export class UIOwner {
   canConsumeTouchEvent(x: number, y: number): boolean;
 
   updateRootTarget(node: NativeContent): void;
+  
+  setLynxImageConfig(config?: Object): void;
 }
 
 export class UIBase {

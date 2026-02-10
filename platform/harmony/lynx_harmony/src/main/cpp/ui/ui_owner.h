@@ -27,6 +27,7 @@ namespace tasm {
 namespace harmony {
 class UIRoot;
 class GestureArenaManager;
+class LynxImageConfig;
 
 class UIOwner {
  public:
@@ -171,6 +172,8 @@ class UIOwner {
   bool ContainAccessibilityExclusiveUI(int32_t sign);
   void ResetAccessibilityAttrs();
   void AddKeyboardEventObserver(int32_t sign);
+  void OnResourceLoadCallback(const lepus::Value& value) const;
+  LynxImageConfig* GetLynxImageConfig() const;
 
  private:
   static const std::unordered_map<std::string, UICreatorFunc> behaviors_;
@@ -183,11 +186,14 @@ class UIOwner {
   static napi_value KeyboardStatusChanged(napi_env env,
                                           napi_callback_info info);
   static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
+  static napi_value SetLynxImageConfig(napi_env env, napi_callback_info info);
+
   void DestroySubTree(UIBase* root);
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);
   void RequestLayout();
   void UpdateComponentIdMap(UIBase* ui, PropBundleHarmony* painting_data);
+  void InitLynxImageConfig(bool enableImageLoadCallback);
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   std::unordered_map<int32_t, std::shared_ptr<UIBase>> ui_holder_;
@@ -205,6 +211,7 @@ class UIOwner {
   napi_ref post_draw_end_timing_frame_callback_{nullptr};
   napi_ref on_avoid_keyboard_callback_{nullptr};
   napi_ref js_get_node_type_{nullptr};
+  napi_ref on_resource_load_callback_{nullptr};
 
   std::shared_ptr<LynxContext> context_{nullptr};
   std::unique_ptr<EventDispatcher> event_dispatcher_ =
@@ -223,6 +230,7 @@ class UIOwner {
   bool destroyed_ = false;
 
   std::shared_ptr<GestureArenaManager> gesture_arena_manager_{nullptr};
+  std::unique_ptr<LynxImageConfig> image_config_{nullptr};
 };
 
 }  // namespace harmony

@@ -2881,6 +2881,12 @@ void UIBase::TakeScreenshot(
   }
   Base64EncodeTask(pixel_map, format, std::move(callback));
 }
+
+void UIBase::OnResourceLoadCallback(const lepus::Value& value) {
+  if (context_ && context_->GetUIOwner()) {
+    context_->GetUIOwner()->OnResourceLoadCallback(value);
+  }
+}
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx
