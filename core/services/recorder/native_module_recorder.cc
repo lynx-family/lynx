@@ -261,7 +261,7 @@ rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
         }
         rapidjson::Value key = ParsePiperValueToJsonValue(*property_name, rt);
         auto piper_val = piper_obj.getProperty(*rt, key.GetString());
-        if (!piper_val || piper_val->isUndefined() || piper_val->isNull()) {
+        if (!piper_val) {
           return return_val;
         }
         rapidjson::Value val = ParsePiperValueToJsonValue(*piper_val, rt);
