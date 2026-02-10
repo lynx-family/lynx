@@ -86,6 +86,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.4.0'
     implementation 'com.squareup.retrofit2:retrofit:2.7.0'
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.4'
+    implementation 'com.google.android.material:material:1.4.0'
 
     implementation project(':LynxAndroid')
     implementation project(':LynxBase')
@@ -99,7 +100,8 @@ dependencies {
     implementation project(':LynxXElement:Input')
     implementation project(':LynxXElement:Overlay')
     implementation project(':LynxXElement:SVG')
-    
+    implementation project(':LynxXElement:Refresh')
+
     kapt project(':LynxProcessor')
     compileOnly project(':LynxProcessor')
 }
