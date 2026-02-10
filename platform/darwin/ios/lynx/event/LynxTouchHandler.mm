@@ -509,6 +509,7 @@
 }
 
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  _LogI(@"LynxTouchHandler: touchesBegan %p: ", _eventHandler.rootView);
   [self touchesBeganInner:touches withEvent:event];
 }
 
@@ -519,7 +520,6 @@
                                          [_eventHandler.rootView hash], 0]
                      withLevel:DevToolLogLevelInfo];
   }
-  _LogI(@"Lynxview LynxTouchHandler touchesBegan %p: ", _eventHandler.rootView);
 
   if (self.state == UIGestureRecognizerStatePossible) {
     self.state = UIGestureRecognizerStateBegan;
@@ -670,6 +670,7 @@
   NSArray* gestures = [_outerGestures allValues];
   for (LynxWeakProxy* gesture in gestures) {
     if (((UIGestureRecognizer*)gesture.target).state == UIGestureRecognizerStateChanged) {
+      _LogI(@"LynxTouchHandler: touchesCancelled %p: ", _eventHandler.rootView);
       self.state = UIGestureRecognizerStateCancelled;
       [self dispatchEvent:LynxEventTouchCancel
                  toTarget:_target
@@ -682,6 +683,7 @@
 }
 
 - (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  _LogI(@"LynxTouchHandler: touchesMoved %p: ", _eventHandler.rootView);
   [self touchesMovedInner:touches withEvent:event];
 }
 
@@ -691,8 +693,6 @@
     [self resetTouchEnv];
     return;
   }
-
-  _LogI(@"Lynxview LynxTouchHandler touchesMoved %p: ", _eventHandler.rootView);
 
   _touchMoving = YES;
   self.state = UIGestureRecognizerStateChanged;
@@ -713,7 +713,7 @@
 
     CGPoint point = [touch locationInView:_eventHandler.rootView];
     if (touches_map_.find(touch) == touches_map_.end()) {
-      LLogError(@"Lynxview LynxTouchHandler touche miss: %f %f", point.x, point.y);
+      _LogE(@"LynxTouchHandler: touche miss: %f %f", point.x, point.y);
     }
     EventTargetDetail* detail = touches_map_[touch];
     if (point.x != detail.preTouchPoint.x || point.y != detail.preTouchPoint.y) {
@@ -822,6 +822,7 @@
 }
 
 - (void)touchesEnded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  _LogI(@"LynxTouchHandler: touchesEnded %p: ", _eventHandler.rootView);
   [self touchesEndedInner:touches withEvent:event];
 }
 
@@ -832,7 +833,6 @@
                                          [_eventHandler.rootView hash], 1]
                      withLevel:DevToolLogLevelInfo];
   }
-  _LogI(@"Lynxview LynxTouchHandler touchesEnded %p: ", _eventHandler.rootView);
 
   if ([self isAllTouchesAreCancelledOrEnded:_touches]) {
     self.state = UIGestureRecognizerStateEnded;
@@ -853,7 +853,7 @@
 
     if (touches_map_.find(touch) == touches_map_.end()) {
       CGPoint point = [touch locationInView:_eventHandler.rootView];
-      LLogError(@"Lynxview LynxTouchHandler touche miss: %f %f", point.x, point.y);
+      _LogE(@"LynxTouchHandler: touche miss: %f %f", point.x, point.y);
     }
     [self addMap:dict touch:touch];
     LynxTouchEvent* touchEvent = nil;
@@ -917,6 +917,7 @@
 }
 
 - (void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  _LogI(@"LynxTouchHandler: touchesCancelled %p: ", _eventHandler.rootView);
   [self touchesCancelledInner:touches withEvent:event];
 }
 
@@ -927,7 +928,6 @@
                                          [_eventHandler.rootView hash], 3]
                      withLevel:DevToolLogLevelInfo];
   }
-  _LogI(@"Lynxview LynxTouchHandler touchesCancelled %p: ", _eventHandler.rootView);
 
   if ([self isAllTouchesAreCancelledOrEnded:_touches]) {
     self.state = UIGestureRecognizerStateCancelled;
@@ -947,7 +947,7 @@
 
     if (touches_map_.find(touch) == touches_map_.end()) {
       CGPoint point = [touch locationInView:_eventHandler.rootView];
-      LLogError(@"Lynxview LynxTouchHandler touche miss: %f %f", point.x, point.y);
+      _LogE(@"LynxTouchHandler: touche miss: %f %f", point.x, point.y);
     }
     [self addMap:dict touch:touch];
 
@@ -1140,6 +1140,9 @@
         (UIGestureRecognizer*)otherGestureRecognizer {
   if (![self isDescendantOfLynxView:otherGestureRecognizer] &&
       [self blockNativeEvent:gestureRecognizer]) {
+    _LogW(@"LynxTouchHandler: blockNativeEvent [gesture] %@ %@ %ld",
+          NSStringFromClass([otherGestureRecognizer class]),
+          NSStringFromClass([otherGestureRecognizer.view class]), otherGestureRecognizer.state);
     return NO;
   }
   // _enableTouchRefactor's default value is false. If this flag is true, the external gesture
@@ -1172,7 +1175,10 @@
                                          [_eventHandler.rootView hash], 3]
                      withLevel:DevToolLogLevelInfo];
     }
-    _LogI(@"Lynxview LynxTouchHandler touchesCancelled %p: ", _eventHandler.rootView);
+    _LogI(@"LynxTouchHandler: touchesCancelled %p: ", _eventHandler.rootView);
+    _LogW(@"LynxTouchHandler: touches cancelled by [gesture] %@ %@ %ld",
+          NSStringFromClass([otherGestureRecognizer class]),
+          NSStringFromClass([otherGestureRecognizer.view class]), otherGestureRecognizer.state);
     if (!_enableMultiTouch) {
       CGPoint windowLocation = [otherGestureRecognizer locationInView:otherGestureRecognizer.view];
       CGPoint clientPoint = [otherGestureRecognizer.view convertPoint:windowLocation
