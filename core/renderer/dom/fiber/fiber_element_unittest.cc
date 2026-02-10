@@ -13,6 +13,7 @@
 #include <tuple>
 
 #include "base/include/auto_reset.h"
+#include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -5515,6 +5516,126 @@ TEST_P(FiberElementTest, DynamicViewportUpdate) {
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
       element->impl_id(), CSSPropertyID::kPropertyIDHeight,
       CSSValue(0.f, CSSValuePattern::CALC), 1));
+}
+
+TEST_P(FiberElementTest,
+       DynamicViewportUpdate_SkipTransitionConsume_FiberArch) {
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("50vh"));
+
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  element->css_transition_manager_ =
+      std::make_unique<animation::CSSTransitionManager>(element.get());
+  base::Vector<starlight::TransitionData> transition_data;
+  starlight::TransitionData data;
+  data.property = starlight::AnimationPropertyType::kWidth;
+  transition_data.emplace_back(data);
+  element->css_transition_manager_->setTransitionData(transition_data);
+
+  tasm_mediator.captured_ids_.clear();
+  tasm_mediator.captured_bundles_.clear();
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 800,
+                          SLMeasureModeDefinite, false);
+  EXPECT_FALSE(HasCaptureSignWithStyleKeyAndValuePattern(
+      element->impl_id(), CSSPropertyID::kPropertyIDWidth,
+      CSSValue(0.f, CSSValuePattern::VH), 1));
+}
+
+TEST_P(FiberElementTest,
+       DynamicViewportUpdate_SkipTransitionConsume_RadonArch_FlagOff) {
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("50vh"));
+  element->arch_type_ = RadonArch;
+  manager->fix_dynamic_update_transition_consume_bug_ = false;
+
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  element->css_transition_manager_ =
+      std::make_unique<animation::CSSTransitionManager>(element.get());
+  base::Vector<starlight::TransitionData> transition_data;
+  starlight::TransitionData data;
+  data.property = starlight::AnimationPropertyType::kWidth;
+  transition_data.emplace_back(data);
+  element->css_transition_manager_->setTransitionData(transition_data);
+
+  tasm_mediator.captured_ids_.clear();
+  tasm_mediator.captured_bundles_.clear();
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 800,
+                          SLMeasureModeDefinite, false);
+  EXPECT_FALSE(HasCaptureSignWithStyleKeyAndValuePattern(
+      element->impl_id(), CSSPropertyID::kPropertyIDWidth,
+      CSSValue(0.f, CSSValuePattern::VH), 1));
+}
+
+TEST_P(FiberElementTest,
+       DynamicViewportUpdate_SkipTransitionConsume_RadonArch_FlagOn) {
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("50vh"));
+  element->arch_type_ = RadonArch;
+  manager->fix_dynamic_update_transition_consume_bug_ = true;
+
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  element->css_transition_manager_ =
+      std::make_unique<animation::CSSTransitionManager>(element.get());
+  base::Vector<starlight::TransitionData> transition_data;
+  starlight::TransitionData data;
+  data.property = starlight::AnimationPropertyType::kWidth;
+  transition_data.emplace_back(data);
+  element->css_transition_manager_->setTransitionData(transition_data);
+
+  tasm_mediator.captured_ids_.clear();
+  tasm_mediator.captured_bundles_.clear();
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 800,
+                          SLMeasureModeDefinite, false);
+  EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
+      element->impl_id(), CSSPropertyID::kPropertyIDWidth,
+      CSSValue(0.f, CSSValuePattern::VH), 1));
+}
+
+TEST_P(FiberElementTest,
+       DynamicViewportUpdate_SkipTransitionConsume_NoNeedTransition) {
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("50vh"));
+
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  element->css_transition_manager_ =
+      std::make_unique<animation::CSSTransitionManager>(element.get());
+  base::Vector<starlight::TransitionData> transition_data;
+  starlight::TransitionData data;
+  data.property = starlight::AnimationPropertyType::kOpacity;
+  transition_data.emplace_back(data);
+  element->css_transition_manager_->setTransitionData(transition_data);
+
+  tasm_mediator.captured_ids_.clear();
+  tasm_mediator.captured_bundles_.clear();
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 800,
+                          SLMeasureModeDefinite, false);
+  EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValuePattern(
+      element->impl_id(), CSSPropertyID::kPropertyIDWidth,
+      CSSValue(0.f, CSSValuePattern::VH), 1));
 }
 
 TEST_P(FiberElementTest, DynamicFontScaleUpdate) {

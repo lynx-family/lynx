@@ -134,6 +134,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     DISABLE_LIST_CALLBACK_IF_DETACHED,
     ENABLE_SHARE_CONTEXT_ICU,
     FIX_RADON_INLINE_CONVERT_BUG,
+    FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     ENABLE_FETCH_API_STANDARD_STREAMING,
     // Please add new enum values above
@@ -276,6 +277,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
             {Key::ENABLE_SHARE_CONTEXT_ICU, "enable_share_context_icu"},
             {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
+            {Key::FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
+             "fix_dynamic_update_transition_consume_bug"},
             {Key::FIX_LIST_CALLBACK_LEAK_BUG, "fix_list_callback_leak"},
             {Key::ENABLE_LIST_NEW_ARCHITECTURE, "enable_list_new_architecture"},
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
@@ -432,6 +435,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableHarmonyNewImage();
   bool EnableUnifyFixedBehavior();
   bool FixRadonInlineConvertBug();
+  bool FixDynamicUpdateTransitionConsumeBug();
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
 

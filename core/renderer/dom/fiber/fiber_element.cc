@@ -3956,9 +3956,20 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
               return true;
             }
 
-            if (css_transition_manager_ &&
-                css_transition_manager_->NeedsTransition(id)) {
-              return true;
+            if (css_transition_manager_) {
+              if (IsFiberArch()) {
+                if (css_transition_manager_->NeedsTransition(id)) {
+                  return true;
+                }
+              } else {
+                const bool skip_transition =
+                    element_manager_ &&
+                    element_manager_->FixDynamicUpdateTransitionConsumeBug();
+                if (!skip_transition &&
+                    css_transition_manager_->NeedsTransition(id)) {
+                  return true;
+                }
+              }
             }
 
             auto new_flags = DynamicCSSStylesManager::GetValueFlags(
