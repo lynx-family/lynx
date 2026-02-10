@@ -6,6 +6,7 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICEIMAGEPROTOCOL_H_
 #import <Foundation/Foundation.h>
 #if TARGET_OS_IOS
+#import <Lynx/LynxImageLoadOptions.h>
 #import <Lynx/LynxUIImage.h>
 #import <LynxServiceAPI/ServiceAPI.h>
 #import <UIKit/UIKit.h>
@@ -200,6 +201,16 @@ typedef void (^LynxImageLoadCompletionBlock)(UIImage *_Nullable image, NSError *
  */
 @optional
 - (void)registerAnimatedImageCallback:(id)view UI:(LynxUIImage *)ui;
+
+/**
+ * Loads a image with LynxImageLoadOptions, and returns a block that can be used to cancel the
+ * operation. Add this method as optional to avoid break the existing code.
+ *
+ * @param options The ImageLoadOptions instance containing loading options.
+ * @return A block that can be used to cancel the operation.
+ */
+@optional
+- (dispatch_block_t)loadImageWithOptions:(LynxImageLoadOptions *)options;
 
 @end
 

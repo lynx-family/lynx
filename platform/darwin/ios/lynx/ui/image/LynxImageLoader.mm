@@ -32,6 +32,9 @@ NSString* const LynxImageCancelRequest = @"LynxImageCancelRequest";
 NSString* const LynxImagePreloadAllFrames = @"LynxImagePreloadAllFrames";
 NSString* const LynxImageTargetSize = @"LynxImageTargetSize";
 NSString* const LynxImageEnableFetchUIImage = @"LynxImageEnableFetchUIImage";
+NSString* const LynxShouldUseImageService = @"LynxShouldUseImageService";
+NSString* const LynxEnableGenericFetcher = @"LynxEnableGenericFetcher";
+NSString* const LynxLoaderInfo = @"LynxLoaderInfo";
 
 BOOL LynxImageFetchherSupportsProcessor(id<LynxImageFetcher> fetcher) {
   return [fetcher respondsToSelector:@selector(loadImageWithURL:
@@ -130,6 +133,25 @@ BOOL LynxImageFetchherSupportsProcessor(id<LynxImageFetcher> fetcher) {
     _imageService = LynxService(LynxServiceImageProtocol);
   }
   return _imageService;
+}
+
+- (dispatch_block_t)loadImageWithOptions:(LynxImageLoadOptions*)options {
+  if ([[options.contextInfo objectForKey:LynxShouldUseImageService] boolValue]) {
+    id<LynxServiceImageProtocol> service = [LynxImageLoader imageService];
+    if ([service respondsToSelector:@selector(loadImageWithOptions:)]) {
+      return [service loadImageWithOptions:options];
+    }
+  }
+
+  if (options.context.imageFetcher) {
+    return [self loadImageFromURL:options.imageURL.url
+                             size:options.targetSize
+                      contextInfo:options.contextInfo
+                       processors:options.processors
+                     imageFetcher:options.context.imageFetcher
+                        completed:options.completed];
+  }
+  return nil;
 }
 
 - (dispatch_block_t)loadImageFromLynxURL:(LynxURL*)requestUrl

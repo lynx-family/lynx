@@ -2211,8 +2211,19 @@ public protocol LynxImageFetcher-p : <NSObject> {
 public class LynxImageLoader : NSObject {
   public nonnull instancetype LynxImageLoader::sharedInstance();
   public id< LynxServiceImageProtocol > LynxImageLoader::imageService();
+  public dispatch_block_t LynxImageLoader::loadImageWithOptions:(LynxImageLoadOptions *options);
   public dispatch_block_t LynxImageLoader::loadImageFromLynxURL:size:contextInfo:processors:imageFetcher:LynxUIImage:enableGenericFetcher:completed:(LynxURL *requestUrl,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[processors] nullable NSArray *processors,[imageFetcher] nullable id< LynxImageFetcher > imageFetcher,[LynxUIImage] nullable LynxUIImage *lynxUIImage,[enableGenericFetcher] BOOL enableGenericFetcher,[completed] LynxImageLoadCompletionBlock completed);
   public dispatch_block_t LynxImageLoader::loadImageFromURL:size:contextInfo:processors:imageFetcher:completed:(NSURL *url,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[processors] NSArray *processors,[imageFetcher] id< LynxImageFetcher > imageFetcher,[completed] LynxImageLoadCompletionBlock completed);
+}
+
+public class LynxImageLoadOptions : NSObject {
+  public LynxURL* LynxImageLoadOptions::imageURL imageURL;
+  public CGFloat LynxImageLoadOptions::fontSize fontSize;
+  public CGSize LynxImageLoadOptions::targetSize targetSize;
+  public NSArray* LynxImageLoadOptions::processors processors;
+  public LynxImageLoadCompletionBlock LynxImageLoadOptions::completed completed;
+  public LynxUIContext* LynxImageLoadOptions::context context;
+  public NSDictionary* LynxImageLoadOptions::contextInfo contextInfo;
 }
 
 public protocol LynxImageProcessor-p : <NSObject> {
@@ -3377,6 +3388,7 @@ public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceImageProtocol-p::handleAnimatedImage:view:loopCount:(UIImage *image,[view] UIImageView *imageView,[loopCount] NSInteger loopCount);
   public void LynxServiceImageProtocol-p::setFrameCacheAutomatically:value:(id view,[value] BOOL frameCacheAutomatically);
   public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:UI:(id view,[UI] LynxUIImage *ui);
+  public dispatch_block_t LynxServiceImageProtocol-p::loadImageWithOptions:(LynxImageLoadOptions *options);
 }
 
 public class LynxServiceInfo : NSObject {
@@ -6682,6 +6694,9 @@ public enum LynxRadialCenterType {
   public FOUNDATION_EXPORT NSString* const LynxImagePreloadAllFrames LynxImagePreloadAllFrames;
   public FOUNDATION_EXPORT NSString* const LynxImageTargetSize LynxImageTargetSize;
   public FOUNDATION_EXPORT NSString* const LynxImageEnableFetchUIImage LynxImageEnableFetchUIImage;
+  public FOUNDATION_EXPORT NSString* const LynxShouldUseImageService LynxShouldUseImageService;
+  public FOUNDATION_EXPORT NSString* const LynxEnableGenericFetcher LynxEnableGenericFetcher;
+  public FOUNDATION_EXPORT NSString* const LynxLoaderInfo LynxLoaderInfo;
 
   public NSAttributedStringKey const LynxTextColorGradientKey LynxTextColorGradientKey;
   public NSAttributedStringKey const LynxInlineBackgroundKey LynxInlineBackgroundKey;
@@ -6812,6 +6827,8 @@ public enum LynxOverflow {
   public BOOL LynxSameMeasureMode(LynxMeasureMode left, LynxMeasureMode right);
 
   public NS_ASSUME_NONNULL_BEGIN BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager);
+
+  typedef void(^ LynxImageLoadCompletionBlock) (UIImage *_Nullable image, NSError *_Nullable error, NSURL *_Nullable imageURL)
 
   typedef void(^ RestoreNativeStateBlock) (void)
 

@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxImageFetcher.h>
+#import <Lynx/LynxImageLoadOptions.h>
 #import <Lynx/LynxServiceImageProtocol.h>
 #import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxURL.h>
@@ -17,6 +18,14 @@ NS_ASSUME_NONNULL_BEGIN
 + (id<LynxServiceImageProtocol>)imageService;
 
 /**
+ Load image from options.
+
+ @param options  image load options
+ @return         a block that can be used to cancel the operation
+ */
+- (dispatch_block_t)loadImageWithOptions:(LynxImageLoadOptions *)options;
+
+/**
  Load image from remote. After image downloaded, processors will be use to preprocess
  image in order on background thread. Completed block will be called after every
  thing prepare on main thread
@@ -25,13 +34,12 @@ NS_ASSUME_NONNULL_BEGIN
  @param processors  processor list to process image
  @param completed   callback when image ready
  */
-
-- (dispatch_block_t)loadImageFromLynxURL:(LynxURL*)requestUrl
+- (dispatch_block_t)loadImageFromLynxURL:(LynxURL *)requestUrl
                                     size:(CGSize)targetSize
-                             contextInfo:(NSDictionary*)contextInfo
-                              processors:(nullable NSArray*)processors
+                             contextInfo:(NSDictionary *)contextInfo
+                              processors:(nullable NSArray *)processors
                             imageFetcher:(nullable id<LynxImageFetcher>)imageFetcher
-                             LynxUIImage:(nullable LynxUIImage*)lynxUIImage
+                             LynxUIImage:(nullable LynxUIImage *)lynxUIImage
                     enableGenericFetcher:(BOOL)enableGenericFetcher
                                completed:(LynxImageLoadCompletionBlock)completed;
 
@@ -41,10 +49,10 @@ NS_ASSUME_NONNULL_BEGIN
  This method is deprecated.
  For Lynx internal components, please use loadImageFromLynxURL. For external components, use
  LynxImageFetcher to encapsulate the functionality. */
-- (dispatch_block_t)loadImageFromURL:(NSURL*)url
+- (dispatch_block_t)loadImageFromURL:(NSURL *)url
                                 size:(CGSize)targetSize
-                         contextInfo:(NSDictionary*)contextInfo
-                          processors:(NSArray*)processors
+                         contextInfo:(NSDictionary *)contextInfo
+                          processors:(NSArray *)processors
                         imageFetcher:(id<LynxImageFetcher>)imageFetcher
                            completed:(LynxImageLoadCompletionBlock)completed;
 

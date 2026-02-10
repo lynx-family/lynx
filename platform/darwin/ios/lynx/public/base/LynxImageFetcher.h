@@ -38,6 +38,9 @@ FOUNDATION_EXPORT NSString* const LynxImageCancelRequest;
 FOUNDATION_EXPORT NSString* const LynxImagePreloadAllFrames;
 FOUNDATION_EXPORT NSString* const LynxImageTargetSize;
 FOUNDATION_EXPORT NSString* const LynxImageEnableFetchUIImage;
+FOUNDATION_EXPORT NSString* const LynxShouldUseImageService;
+FOUNDATION_EXPORT NSString* const LynxEnableGenericFetcher;
+FOUNDATION_EXPORT NSString* const LynxLoaderInfo;
 
 @protocol LynxImageFetcher <NSObject>
 

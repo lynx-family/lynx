@@ -129,6 +129,7 @@ public_shared_sources = [
   "ui/UIView+Lynx.h",
   "ui/frame/LynxFrameView.h",
   "ui/frame/LynxUIFrame.h",
+  "ui/image/LynxImageLoadOptions.h",
   "ui/list/LynxListAppearEventEmitter.h",
   "ui/list/LynxListDebug.h",
   "ui/list/LynxListScrollEventEmitter.h",
