@@ -29,9 +29,11 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_config.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
@@ -94,6 +96,12 @@ UIImage::UIImage(LynxContext* context, int sign, const std::string& tag)
       Node(), NODE_IMAGE_OBJECT_FIT,
       static_cast<int32_t>(ARKUI_OBJECT_FIT_FILL));
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
+  if (context_ && context_->GetUIOwner()) {
+    LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
+    if (config && config->GetEnableImageLoadCallback()) {
+      enable_image_load_callback_ = true;
+    }
+  }
 }
 
 ArkUI_ObjectFit UIImage::ConvertMode(const std::string& mode) {
@@ -190,6 +198,8 @@ void UIImage::HandleImageSuccessCallback(float image_width,
                                          float image_height) {
   image_width_ = image_width;
   image_height_ = image_height;
+  load_finish_ = lynx::base::CurrentSystemTimeMilliseconds();
+  CreateImageLoadInfo(0, "");
   if (context_) {
     AutoSizeIfNeeded();
     if ((event_flags_ & image::kFlagImageLoadEvent) != 0) {
@@ -209,6 +219,8 @@ void UIImage::HandleImageFailCallback(float error_code,
       NodeManager::Instance().GetAttribute<std::string>(node_, NODE_IMAGE_SRC);
   LOGE("UIImage load image failed error_code: " << error_code << ", src: "
                                                 << src << ", url: " << src_);
+  load_finish_ = lynx::base::CurrentSystemTimeMilliseconds();
+  CreateImageLoadInfo(error_code, error_msg);
   if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_) {
     auto dict = lepus::Dictionary::Create();
     dict->SetValue(image::kErrorEventCode, error_code);
@@ -406,6 +418,7 @@ void UIImage::LoadImageResource(const std::string& url,
     return;
   }
   auto request = pub::LynxResourceRequest{url, pub::LynxResourceType::kImage};
+  load_start_ = lynx::base::CurrentSystemTimeMilliseconds();
   resource_loader->LoadResourcePath(
       request, [weak_self = weak_from_this(), handler = std::move(handler),
                 url](pub::LynxPathResponse& response) {
@@ -427,6 +440,9 @@ void UIImage::HandleImageSrcResponse(pub::LynxPathResponse& response) {
     //  During a cold start, the image library may occasionally experience
     //  successful requests that return empty data. As a temporary
     //  workaround,and will address it later.
+    if (!src_.empty()) {
+      has_src_ = true;
+    }
     ArkUI_AttributeItem item{.string = src_.c_str()};
     NodeManager::Instance().SetAttribute(Node(), NODE_IMAGE_SRC, &item);
   } else {
@@ -565,6 +581,34 @@ void UIImage::HandleImageWithProcessor(
         }
       },
       LynxImageEffectProcessor(effect_type, params));
+}
+
+void UIImage::CreateImageLoadInfo(int32_t error_code,
+                                  const std::string& error_msg) {
+  if (!enable_image_load_callback_) {
+    return;
+  }
+  // Only report load information for network resources (HTTP/HTTPS).
+  if (base::BeginsWith(src_, image::kHttpPrefix)) {
+    auto image_info = lepus::Dictionary::Create();
+    image_info->SetValue("type",
+                         static_cast<int32_t>(pub::LynxResourceType::kImage));
+    image_info->SetValue("src", src_);
+    image_info->SetValue("errCode", error_code);
+    if (error_code == 0) {
+      image_info->SetValue("loadStart", load_start_);
+      image_info->SetValue("loadFinish", load_finish_);
+      image_info->SetValue("cost", load_finish_ - load_start_);
+      image_info->SetValue("width", image_width_);
+      image_info->SetValue("height", image_height_);
+      image_info->SetValue("viewWidth", width_);
+      image_info->SetValue("viewHeight", height_);
+    } else {
+      image_info->SetValue("errMsg", error_msg);
+    }
+
+    UIBase::OnResourceLoadCallback(lepus_value(image_info));
+  }
 }
 
 }  // namespace harmony

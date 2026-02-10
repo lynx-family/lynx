@@ -18,6 +18,7 @@
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_config.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/native_node_content.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
@@ -47,6 +48,7 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
 
       DECLARE_NAPI_FUNCTION("canConsumeTouchEvent", CanConsumeTouchEvent),
       DECLARE_NAPI_FUNCTION("updateRootTarget", UpdateRootTarget),
+      DECLARE_NAPI_FUNCTION("setLynxImageConfig", SetLynxImageConfig),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -413,8 +415,9 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
    * 6 - getTagInfo ref
    * 7 - postDrawEndTimingFrameCallback function ref
    * 8 - onAvoidKeyboardCallback function ref
+   * 9 - OnResourceLoadCallback function ref
    */
-  size_t argc = 9;
+  size_t argc = 10;
   napi_value argv[argc];
   owner->env_ = env;
   napi_get_cb_info(env, info, &argc, argv, &js_object, nullptr);
@@ -428,6 +431,7 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[7], 0,
                         &owner->post_draw_end_timing_frame_callback_);
   napi_create_reference(env, argv[8], 0, &owner->on_avoid_keyboard_callback_);
+  napi_create_reference(env, argv[9], 0, &owner->on_resource_load_callback_);
   napi_wrap(
       env, js_object, owner,
       [](napi_env env, void* data, void* hint) -> void {}, nullptr, nullptr);
@@ -485,12 +489,14 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   napi_delete_reference(env, obj->js_get_node_type_);
   napi_delete_reference(env, obj->post_draw_end_timing_frame_callback_);
   napi_delete_reference(env, obj->on_avoid_keyboard_callback_);
+  napi_delete_reference(env, obj->on_resource_load_callback_);
   napi_delete_reference(env, obj->js_this_);
   obj->js_create_ = nullptr;
   obj->js_create_node_content_ = nullptr;
   obj->js_get_node_type_ = nullptr;
   obj->post_draw_end_timing_frame_callback_ = nullptr;
   obj->on_avoid_keyboard_callback_ = nullptr;
+  obj->on_resource_load_callback_ = nullptr;
   obj->js_this_ = nullptr;
   obj->env_ = nullptr;
   obj->destroyed_ = true;
@@ -539,6 +545,33 @@ napi_value UIOwner::UpdateRootTarget(napi_env env, napi_callback_info info) {
   if (node && node->UI()) {
     owner->UpdateRootTarget(node->UI());
   }
+  return nullptr;
+}
+
+napi_value UIOwner::SetLynxImageConfig(napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value argv[argc];
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+
+  UIOwner* owner = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&owner));
+  if (!owner) {
+    return nullptr;
+  }
+
+  lepus_value image_config =
+      base::NapiConvertHelper::JSONToLepusValue(env, argv[0]);
+  if (image_config.IsObject()) {
+    bool enable_callback = false;
+    lepus_value enable_value =
+        image_config.GetProperty("enableImageLoadCallback");
+    if (enable_value.IsBool()) {
+      enable_callback = enable_value.Bool();
+    }
+    owner->InitLynxImageConfig(enable_callback);
+  }
+
   return nullptr;
 }
 
@@ -1054,6 +1087,23 @@ void UIOwner::OnAvoidKeyboardCallback(float translate_y) const {
   napi_call_function(env_, js_recv, callback, argc, argv, &result);
 }
 
+void UIOwner::OnResourceLoadCallback(const lepus::Value& value) const {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value callback =
+      base::NapiUtil::GetReferenceNapiValue(env_, on_resource_load_callback_);
+  if (!js_recv || !callback) {
+    return;
+  }
+
+  size_t argc = 1;
+  napi_value argv[argc];
+  argv[0] = base::NapiConvertHelper::CreateNapiValue(env_, value);
+
+  napi_value result;
+  napi_call_function(env_, js_recv, callback, argc, argv, &result);
+}
+
 void UIOwner::AddOrRemoveUIFromExclusiveSet(int32_t sign, bool exclusive) {
   if (exclusive) {
     accessibility_exclusive_.insert(sign);
@@ -1078,6 +1128,21 @@ void UIOwner::ResetAccessibilityAttrs() {
     ui->ResetAccessibilityAttrs();
   }
 }
+
+void UIOwner::InitLynxImageConfig(bool enableImageLoadCallback) {
+  if (image_config_ == nullptr) {
+    image_config_ = std::make_unique<LynxImageConfig>();
+  }
+  image_config_->SetEnableImageLoadCallback(enableImageLoadCallback);
+}
+
+LynxImageConfig* UIOwner::GetLynxImageConfig() const {
+  if (image_config_ == nullptr) {
+    return nullptr;
+  }
+  return image_config_.get();
+}
+
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

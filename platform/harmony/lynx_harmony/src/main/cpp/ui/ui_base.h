@@ -27,6 +27,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_arena_member.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_handler_delegate.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_drawable.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_config.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/native_node_content.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_exposure.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/basic_shape.h"
@@ -241,6 +242,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
     return !overflow_.overflow_x && !overflow_.overflow_y;
   }
   virtual bool HasContent() { return false; }
+  void OnResourceLoadCallback(const lepus::Value& value);
 
  protected:
   static void EventReceiver(ArkUI_NodeEvent* event);
