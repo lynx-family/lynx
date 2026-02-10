@@ -1114,6 +1114,9 @@ class ElementManager : public ElementContextDelegate,
   bool FixRadonInlineConvertBug() const {
     return fix_radon_inline_convert_bug_;
   }
+  bool FixDynamicUpdateTransitionConsumeBug() const {
+    return fix_dynamic_update_transition_consume_bug_;
+  }
 
   bool FixListCallbackLeakFlag() const { return fix_list_callback_leak_flag_; }
   bool FixNewFixedRemovalBug() const { return fix_new_fixed_removal_bug_; }
@@ -1303,6 +1306,7 @@ class ElementManager : public ElementContextDelegate,
   bool dom_tree_enabled_{true};
   bool fix_new_animator_flush_bug_{true};
   bool fix_radon_inline_convert_bug_{true};
+  bool fix_dynamic_update_transition_consume_bug_{true};
   bool fix_new_fixed_removal_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
   bool enable_level_order_traversing_{false};
