@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/log/logging.h"
 #include "imageknife.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 
@@ -20,19 +21,23 @@ bool ImageTransform::Transform(
     return false;
   }
 
-  std::shared_ptr<ImageKnifePro::ImageData> image_data =
-      task->product.imageData;
-
-  if (!image_data) {
-    return false;
-  }
-
-  OH_PixelmapNative* new_pixelmap = image_data->GetPixelmap();
   for (const auto& processor : processors_) {
-    new_pixelmap = processor->Process(new_pixelmap);
+    std::shared_ptr<ImageKnifePro::ImageData> image_data =
+        task->product.imageData;
+
+    if (!image_data) {
+      return false;
+    }
+    OH_PixelmapNative* result = processor->Process(image_data->GetPixelmap());
+    if (result != nullptr) {
+      // The `result` is managed by ImageKnifePro::ImageData
+      task->product.imageData =
+          std::make_shared<ImageKnifePro::ImageData>(result);
+    } else {
+      LOGE("image transform return null pixelmap, params: "
+           << processor->Info());
+    }
   }
-  task->product.imageData =
-      std::make_shared<ImageKnifePro::ImageData>(new_pixelmap);
   return true;
 }
 
