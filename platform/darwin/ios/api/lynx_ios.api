@@ -2226,6 +2226,13 @@ public class LynxImageLoadOptions : NSObject {
   public NSDictionary* LynxImageLoadOptions::contextInfo contextInfo;
 }
 
+public class LynxImageManager : NSObject {
+  public instancetype LynxImageManager::initWithContext:(LynxUIContext *context);
+  public void LynxImageManager::requestImage:withType:(LynxURL *imageURL,[withType] LynxImageRequestType type);
+  public void LynxImageManager::setTarget:(UIImageView *view);
+  public void LynxImageManager::reset();
+}
+
 public protocol LynxImageProcessor-p : <NSObject> {
   public UIImage * LynxImageProcessor-p::processImage:(UIImage *image);
   public NSString * LynxImageProcessor-p::cacheKey();
