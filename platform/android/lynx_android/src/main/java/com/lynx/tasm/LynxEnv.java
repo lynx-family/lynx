@@ -1436,7 +1436,7 @@ public class LynxEnv {
 
   // FSP related getter methods
   public boolean enableFSP() {
-    return mEnableFSP;
+    return true;
   }
 
   public HashMap<String, String> getFSPConfig() {
@@ -1458,15 +1458,12 @@ public class LynxEnv {
    * Initialize all FSP related configurations in one method
    */
   private void initFSPConfig() {
-    mEnableFSP = getBooleanFromExternalEnv(LynxEnvKey.FSP_ENABLE, false);
-    if (mEnableFSP) {
-      String jsonStr = getStringFromExternalEnv(LynxEnvKey.FSP_CONFIG_JSON_STRING);
-      if (jsonStr != null) {
-        try {
-          Gson gson = new Gson();
-          mFSPConfig = gson.fromJson(jsonStr, HashMap.class);
-        } catch (Exception e) {
-        }
+    String jsonStr = getStringFromExternalEnv(LynxEnvKey.FSP_CONFIG_JSON_STRING);
+    if (jsonStr != null) {
+      try {
+        Gson gson = new Gson();
+        mFSPConfig = gson.fromJson(jsonStr, HashMap.class);
+      } catch (Exception e) {
       }
     }
   }
