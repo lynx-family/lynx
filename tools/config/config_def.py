@@ -5,13 +5,8 @@
 # /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import yaml
 import re
 import sys
-from pathlib import Path
-
-_accounts_set = None
-_accounts_mapping_path = Path(__file__).resolve().parents[3] / "accounts-mapping.yml"
 
 
 class Config:
@@ -162,7 +157,7 @@ class Config:
                 file=sys.stderr,
             )
             return False
-        if not (self.author and isinstance(self.author, str) and self._check_author()):
+        if not (self.author and isinstance(self.author, str)):
             print(
                 f"Config {self.name} author field '{self.author}' is invalid, please ensure it is not empty and configured as a string.",
                 file=sys.stderr,
@@ -179,28 +174,6 @@ class Config:
             )
             return False
         return True
-
-    def _check_author(self) -> bool:
-        global _accounts_set
-        if _accounts_set is None:
-            _accounts_set = set()
-            if not _accounts_mapping_path.exists():
-                print(
-                    f"please ensure {_accounts_mapping_path} file exists.",
-                    file=sys.stderr,
-                )
-            else:
-                accounts_mapping = yaml.safe_load(_accounts_mapping_path.read_text())
-                for account in accounts_mapping.get("mappings"):
-                    _accounts_set.add(account.get("external_username"))
-        if not _accounts_set or self.author in _accounts_set:
-            return True
-        else:
-            print(
-                f"Config {self.name} author field '{self.author}' is invalid, please ensure it is in the {_accounts_mapping_path} file.",
-                file=sys.stderr,
-            )
-            return False
 
     def _check_support_platform(self) -> bool:
         _support_platform_set = {"iOS", "Android", "HarmonyOS"}
