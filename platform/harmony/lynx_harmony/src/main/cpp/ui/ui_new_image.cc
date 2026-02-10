@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
+#include <filemanagement/file_uri/oh_file_uri.h>
 #include <native_drawing/drawing_color_filter.h>
 
 #include <cstdlib>
@@ -87,7 +88,15 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
   image_width_ = image_width;
   image_height_ = image_height;
   if (context_) {
-    AutoSizeIfNeeded();
+    context_->PostTaskOnUIThread([weak_self = weak_from_this()] {
+      auto self = weak_self.lock();
+      if (!self) {
+        return;
+      }
+      auto image = std::static_pointer_cast<UINewImage>(self);
+      image->AutoSizeIfNeeded();
+    });
+
     if ((event_flags_ & image::kFlagImageLoadEvent) != 0) {
       auto dict = lepus::Dictionary::Create();
       dict->SetValue(image::kLoadEventImageHeight, image_height_);
@@ -101,9 +110,10 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
 
 void UINewImage::OnImageLoadFailure(int error_code,
                                     const std::string& error_msg) {
-  LOGE("UINewImage load image failed error_code: "
-       << error_code << ", error_msg: " << error_msg);
-  if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_) {
+  LOGE("Load image failed error_code: " << error_code
+                                        << ", error_msg: " << error_msg);
+  if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_ &&
+      has_src_) {
     auto dict = lepus::Dictionary::Create();
     dict->SetValue(image::kErrorEventCode, error_code);
     dict->SetValue(image::kErrorEventMsg, error_msg);
@@ -289,19 +299,46 @@ void UINewImage::ResumeAnimation(
   callback(LynxGetUIResult::SUCCESS, lepus_value(""));
 }
 
+std::string UINewImage::GetRedirectUrl(const std::string& url) {
+  if (url.empty() || base::BeginsWith(url, image::kBase64Scheme) ||
+      base::BeginsWith(url, image::kLocalScheme) ||
+      base::BeginsWith(url, image::kResourceScheme)) {
+    return url;
+  }
+  auto resource_loader = context_->GetResourceLoader();
+  if (!resource_loader) {
+    return url;
+  }
+  pub::LynxResourceRequest request{url, pub::LynxResourceType::kImage};
+  std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
+  if (!redirect_url.empty() && redirect_url[0] == '/') {
+    char* result = nullptr;
+    auto code = OH_FileUri_GetUriFromPath(redirect_url.data(),
+                                          redirect_url.size(), &result);
+    if (code == ERR_OK && result != nullptr) {
+      redirect_url = result;
+      free(result);
+    } else {
+      LOGE("GetRedirectUrl failed, code: "
+           << code << ", url: " << url << ", redirect_url: " << redirect_url);
+    }
+  }
+  return redirect_url;
+}
+
 void UINewImage::LoadImage() {
+  if ((width_ <= 0 || height_ <= 0) && !auto_size_) {
+    LOGE("LoadImage empty size, src: " << src_);
+    return;
+  }
   if (skip_redirection_) {
     LoadImageFromService(src_, placeholder_);
     return;
   }
 
-  auto resource_loader = context_->GetResourceLoader();
-  if (!resource_loader) {
-    return;
-  }
-  pub::LynxResourceRequest request{src_, pub::LynxResourceType::kImage};
-  std::string redirect_url = resource_loader->ShouldRedirectUrl(request);
-  LoadImageFromService(redirect_url, placeholder_);
+  std::string final_src = GetRedirectUrl(src_);
+  std::string final_placeholder = GetRedirectUrl(placeholder_);
+  LoadImageFromService(final_src, final_placeholder);
 }
 
 void UINewImage::OnNodeReady() {
@@ -410,13 +447,30 @@ void UINewImage::SetEvents(const std::vector<lepus::Value>& events) {
 
 void UINewImage::LoadImageFromService(const std::string& url,
                                       const std::string& placeholder) {
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  OH_ArkUI_NodeUtils_AddCustomProperty(node_, "rawSrc", src_.c_str());
+  OH_ArkUI_NodeUtils_AddCustomProperty(node_, "src", url.c_str());
+  OH_ArkUI_NodeUtils_AddCustomProperty(node_, "placeholder",
+                                       placeholder.c_str());
+  OH_ArkUI_NodeUtils_AddCustomProperty(node_, "mode", mode_.c_str());
+  OH_ArkUI_NodeUtils_AddCustomProperty(node_, "skip-redirection",
+                                       skip_redirection_ ? "true" : "false");
+  OH_ArkUI_NodeUtils_AddCustomProperty(node_, "auto-size",
+                                       auto_size_ ? "true" : "false");
+#endif
+  has_src_ = !url.empty();
+  if (url.empty() && placeholder.empty()) {
+    LOGE("LoadImageFromService empty source return");
+    return;
+  }
   ImageRequestInfo info{
       .url = url,
       .placeholder = placeholder,
   };
   using ImageEffect = LynxImageEffectProcessor::ImageEffect;
   std::vector<std::unique_ptr<ImageProcessor>> processors;
-  if (effect_flags_ & image::kFlagEffectCapInsets) {
+  if ((effect_flags_ & image::kFlagEffectCapInsets) && width_ > 0 &&
+      height_ > 0) {
     LynxImageEffectProcessor::CapInsetParams cap_insets_params{
         cap_insets_[3], cap_insets_[0],   cap_insets_[1],
         cap_insets_[2], cap_inset_scale_, GenerateCommonViewParams(),
@@ -424,7 +478,8 @@ void UINewImage::LoadImageFromService(const std::string& url,
     processors.emplace_back(std::make_unique<LynxImageEffectProcessor>(
         ImageEffect::kCapInsets, cap_insets_params));
   }
-  if (effect_flags_ & image::kFlagEffectDropShadow) {
+  if ((effect_flags_ & image::kFlagEffectDropShadow) && width_ > 0 &&
+      height_ > 0) {
     LynxImageEffectProcessor::DropShadowParams shadow_params{
         shadow_radius_, shadow_color_, shadow_offset_x_, shadow_offset_y_,
         GenerateCommonViewParams()};

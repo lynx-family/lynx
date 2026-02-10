@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
 #include "core/resource/lynx_resource_loader_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
@@ -77,7 +78,9 @@ void ImageServiceNode::FetchImage(tasm::harmony::ImageRequestInfo info) {
                         : ImageKnifePro::DownSamplingStrategy::DEFAULT;
   UpdateImageSource(info.url, image_knife_option_->loadSrc);
   UpdateImageSource(info.placeholder, image_knife_option_->placeholderSrc);
-  if (!info.processors.empty()) {
+  if (info.processors.empty()) {
+    image_knife_option_->transformation = nullptr;
+  } else {
     image_knife_option_->transformation =
         std::make_shared<ImageTransform>(std::move(info.processors));
   }
