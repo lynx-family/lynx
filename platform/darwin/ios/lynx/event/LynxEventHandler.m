@@ -87,6 +87,9 @@
                                          otherGestureRecognizer.state]
                      withLevel:DevToolLogLevelWarning];
     }
+    _LogW(@"LynxEventHandler: tap failed due to [gesture] %@ %@ %ld",
+          NSStringFromClass([otherGestureRecognizer.view class]),
+          NSStringFromClass([otherGestureRecognizer class]), otherGestureRecognizer.state);
   }
   return res;
 }
@@ -113,6 +116,16 @@
     res = !((UITableView*)scrollableView).isDecelerating;
   }
   if (!res) {
+    if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
+      [self.eventHandler.touchRecognizer
+          showMessageOnConsole:
+              [NSString
+                  stringWithFormat:@"LynxEventHandler: tap failed due to [view] %@ is decelerating",
+                                   NSStringFromClass([scrollableView class])]
+                     withLevel:DevToolLogLevelWarning];
+    }
+    _LogW(@"LynxEventHandler: tap failed due to [view] %@ is decelerating",
+          NSStringFromClass([scrollableView class]));
     [self.eventHandler onGestureRecognizedByEventTarget:self.eventHandler.touchTarget];
   }
   return res;
@@ -456,12 +469,12 @@
     default:
       break;
   }
-  LLogInfo(@"Lynxview LynxEventHandler handlePlatformGesture %p: state=%@", self.rootView,
-           stateString);
+  _LogI(@"Lynxview LynxEventHandler handlePlatformGesture %p: state=%@", self.rootView,
+        stateString);
 }
 
 - (void)dispatchTapEvent:(UITapGestureRecognizer*)sender {
-  LLogInfo(@"Lynxview LynxEventHandler dispatchTapEvent %p: ", self.rootView);
+  _LogI(@"Lynxview LynxEventHandler dispatchTapEvent %p: ", self.rootView);
 
   // For the tap event, it only support single finger.
   if ([_touchRecognizer isEnableAndGetMultiTouch]) {
@@ -504,6 +517,8 @@
                                                           propsTargetSign]
                      withLevel:DevToolLogLevelWarning];
     }
+    _LogW(@"LynxEventHandler: tap failed due to [outside] %d [slide] %ld [props] %ld",
+          !touchInSideLynx, slideTargetSign, propsTargetSign);
   }
 
   LynxRootUI* childLynxPage =
@@ -515,7 +530,7 @@
 }
 
 - (void)dispatchLongPressEvent:(UILongPressGestureRecognizer*)sender {
-  LLogInfo(@"Lynxview LynxEventHandler dispatchLongPressEvent %p: ", self.rootView);
+  _LogI(@"Lynxview LynxEventHandler dispatchLongPressEvent %p: ", self.rootView);
 
   // For the longpress event, it only support single finger.
   if (_touchTarget == nil || [_touchRecognizer isEnableAndGetMultiTouch]) {
@@ -587,6 +602,8 @@
                                                             propsTargetSign]
                        withLevel:DevToolLogLevelWarning];
       }
+      _LogW(@"LynxEventHandler: tap failed due to [move] %d [slide] %ld [props] %ld",
+            !touchInThreshold, slideTargetSign, propsTargetSign);
     }
   } else if (sender.state == UIGestureRecognizerStateCancelled ||
              sender.state == UIGestureRecognizerStateFailed) {
@@ -725,6 +742,7 @@
   CGFloat semicircleAngle = 180;
   CGFloat angle = atan2(distanceY, distanceX) * semicircleAngle / M_PI;
   if ([self consumeSlideEvents:angle]) {
+    _LogI(@"LynxEventHandler: consumeSlideEvent angle %f", angle);
     [((PanGestureRecognizerDelegate*)sender.delegate).gestures
         enumerateObjectsUsingBlock:^(LynxWeakProxy* _Nonnull obj, NSUInteger idx,
                                      BOOL* _Nonnull stop) {

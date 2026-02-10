@@ -388,6 +388,7 @@
 }
 
 - (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
+  _LogI(@"LynxView: hitTest with point.x: %f, point.y: %f in %p", point.x, point.y, self);
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString
@@ -395,7 +396,6 @@
                                    [self hash], point.x, point.y]
                      withLevel:DevToolLogLevelInfo];
   }
-  _LogI(@"LynxView %p: hitTest with point.x: %f, point.y: %f", self, point.x, point.y);
 
   if ([_templateRender.lynxUIRenderer needHandleHitTest]) {
     UIView* target = [_templateRender.lynxUIRenderer hitTest:point withEvent:event];
@@ -426,7 +426,7 @@
       targetPoint = [self convertPoint:point toView:touchTarget.view];
     }
     if ([touchTarget eventThrough:targetPoint]) {
-      _LogI(@"LynxView hit event through");
+      _LogI(@"LynxView: hit event through in %ld", [touchTarget signature]);
       return nil;
     } else {
       return view;
