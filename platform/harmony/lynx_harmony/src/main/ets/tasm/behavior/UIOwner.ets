@@ -12,6 +12,7 @@ import { FluencyTraceHelper } from '../performance/fluency/FluencyTraceHelper';
 import { LynxContext } from '../LynxContext';
 import { DrawEndTimingFrameCallback } from '../performance/DrawEndTimingFrameCallback';
 import { PerformanceController } from '../performance/PerformanceController';
+import { LynxResourceLoadInfo, LynxViewClient } from '../LynxViewClient';
 
 export class UIOwner {
   native: lynx.UIOwner;
@@ -22,6 +23,7 @@ export class UIOwner {
   protected fluencyTraceHelper?: FluencyTraceHelper;
   private avoidKeyboardListener?: (translateY: number) => void;
   lynxContext: LynxContext;
+  private clients?: LynxViewClient[];
 
   constructor(behaviors: BehaviorRegistryMap, uiContext: UIContext, lynxContext: LynxContext,
     perfCollector: PerformanceController) {
@@ -29,11 +31,20 @@ export class UIOwner {
     this.behaviors = behaviors;
     this.perfController = perfCollector;
     this.native = new lynx.UIOwner(this, this.create, uiContext, this.createNativeContent, this.startFluencyTrace,
-      this.stopFluencyTrace, this.getNodeType, this.postDrawEndTimingFrameCallback, this.onAvoidKeyboardCallback);
+      this.stopFluencyTrace, this.getNodeType, this.postDrawEndTimingFrameCallback, this.onAvoidKeyboardCallback,
+      this.onResourceLoaded);
     this.uiContext = uiContext;
     this.id = this.native.getId();
     this.lynxContext = lynxContext;
+    this.clients = this.lynxContext.getLynxViewClient();
+    if (this.lynxContext.getLynxImageConfig() !== undefined) {
+      this.native.setLynxImageConfig(this.lynxContext.getLynxImageConfig());
+    }
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIOWNER_INIT);
+  }
+  
+  onResourceLoaded(result: LynxResourceLoadInfo) {
+    this.clients?.forEach(client => client.onResourceLoaded(result));
   }
 
   startFluencyTrace(sign: number, scene: string, tag: string, instanceId: number, probability: number) {

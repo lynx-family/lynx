@@ -59,7 +59,7 @@ export { NativeContent,
 export {
   EventHandler, EventHandlerArray } from './tasm/behavior/ui/EventHandler'
 
-export { LynxViewClient, LynxPipelineInfo } from './tasm/LynxViewClient'
+export { LynxViewClient, LynxPipelineInfo, LynxResourceLoadInfo } from './tasm/LynxViewClient'
 
 export { LynxError } from './tasm/LynxError'
 
@@ -136,3 +136,7 @@ export { MessageHandler } from './devtool_wrapper/MessageHandler'
 export {LynxBackgroundRuntime, LynxBackgroundRuntimeClient} from './tasm/LynxBackgroundRuntime'
 
 export { RuntimeLifecycleListener } from './jsbridge/RuntimeLifecycleListener'
+
+export { LynxImageConfig } from './tasm/image/LynxImageConfig'
+
+export { LynxImageLoadInfo } from './tasm/image/LynxImageLoadInfo'

@@ -27,6 +27,8 @@ inline constexpr const char* const kResourceRawFile = "resource://rawfile/";
 inline constexpr const char* const kResourceBaseMedia =
     "resource://base/media/";
 
+inline constexpr const char* const kHttpPrefix = "http";
+
 // event name
 inline constexpr const char* const kLoadEventName = "load";
 inline constexpr const char* const kLoadEventImageWidth = "width";

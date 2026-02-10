@@ -13,7 +13,15 @@ import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
 import { LynxView } from './LynxView';
 import { LynxReportEventPropValue } from './eventreport/ILynxEventReportObserver';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
-import { LLog, LynxEnv, LynxGenericResourceFetcher, LynxMediaResourceFetcher, TemplateBundle } from '../Index';
+import {
+  LLog,
+  LynxEnv,
+  LynxGenericResourceFetcher,
+  LynxMediaResourceFetcher,
+  LynxResourceLoadInfo,
+  LynxViewClient,
+  TemplateBundle
+} from '../Index';
 import { componentUtils } from '@kit.ArkUI';
 import { IContext } from './IContext';
 import { LynxExtensionModule } from '../extension/LynxExtensionModule';
@@ -21,6 +29,7 @@ import { TimingOption } from './performance/timing/TimingOption';
 import { TimingConstants } from './performance/timing/TimingConstants';
 import { LynxBaseInspectorOwner } from '../devtool_wrapper/LynxBaseInspectorOwner'
 import { NativeContent } from '../Index';
+import { LynxImageConfig } from './image/LynxImageConfig';
 
 const TAG = 'LynxContext'
 
@@ -316,6 +325,14 @@ export class LynxContext implements IContext {
       }
     }
     return null;
+  }
+
+  public getLynxImageConfig(): LynxImageConfig | undefined {
+    return this.lynxView?.lynxImageConfig;
+  }
+
+  public getLynxViewClient(): LynxViewClient[] | undefined {
+    return this.lynxView?.clients;
   }
 
   aboutToDisappear() {

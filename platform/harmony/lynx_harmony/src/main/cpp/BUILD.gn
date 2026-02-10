@@ -141,6 +141,8 @@ lynx_core_source_set("cpp") {
     "ui/background/layer_manager.h",
     "ui/base/lynx_base_image.cc",
     "ui/base/lynx_base_image.h",
+    "ui/base/lynx_image_config.cc",
+    "ui/base/lynx_image_config.h",
     "ui/base/lynx_image_constants.h",
     "ui/base/lynx_image_effect_processor.cc",
     "ui/base/lynx_image_effect_processor.h",

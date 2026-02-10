@@ -80,6 +80,7 @@ export abstract class LynxNodeController extends NodeController {
   threadMode: ThreadStrategyForRendering; = ThreadStrategyForRendering.ALL_ON_UI
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions; = new LynxBackgroundRuntimeOptions()
   enableAirStrictMode?: any; = false
+  lynxImageConfig?: LynxImageConfig;
 }
 
 export enum MeasureMode {
@@ -134,6 +135,8 @@ export class LynxContext implements IContext {
   public setExtensionModule(module: LynxExtensionModule): void;
   public getExtensionModule(): LynxExtensionModule | undefined;
   public getBaseInspectorOwner(): LynxBaseInspectorOwner | null;
+  public getLynxImageConfig(): LynxImageConfig | undefined;
+  public getLynxViewClient(): LynxViewClient[] | undefined;
   aboutToDisappear(): void;
   screenMetrics(): LynxScreenMetrics;
 }
@@ -385,7 +388,7 @@ export class ShadowNode {
 }
 
 export class UIOwner {
-  constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function, startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number, postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function);
+  constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function, startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number, postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function, onResourceLoaded: Function);
   attachPageRoot(content: NativeContent): void;
   getId(): string;
   destroy(id: string): void;
@@ -393,6 +396,7 @@ export class UIOwner {
   keyboardStatusChanged(height: number): void;
   canConsumeTouchEvent(x: number, y: number): boolean;
   updateRootTarget(node: NativeContent): void;
+  setLynxImageConfig(config: Object): void;
 }
 
 export class UIBase {
@@ -455,6 +459,13 @@ export abstract class LynxViewClient implements IPerformanceObserver {
   public onUpdateDataWithoutChange(): void;
   public onTemplateBundleReady(bundle: TemplateBundle): void;
   public onPerformanceEvent(entry: PerformanceEntry): void;
+  public onResourceLoaded(result: LynxResourceLoadInfo): void;
+}
+
+export interface LynxResourceLoadInfo {
+  type: LynxResourceType;
+  errCode: number;
+  errMsg?: string;
 }
 
 export class LynxError extends LynxErrorCodeLegacy {
@@ -1039,6 +1050,22 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
 export interface RuntimeLifecycleListener {
   onRuntimeAttach(napiEnv: number[]): void;
   onRuntimeDetach(): void;
+}
+
+export interface LynxImageConfig {
+  enableImageLoadCallback?: boolean;
+}
+
+export interface LynxImageLoadInfo {
+  src: string;
+  width: number;
+  height: number;
+  viewWidth?: number;
+  viewHeight?: number;
+  loadStart?: number;
+  loadFinish?: number;
+  cost?: number;
+  origin?: number;
 }
 
 export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspectorController {

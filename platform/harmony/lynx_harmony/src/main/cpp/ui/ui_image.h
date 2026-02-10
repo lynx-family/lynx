@@ -75,6 +75,10 @@ class UIImage : public UIBase {
   static std::unordered_map<std::string, void (UIImage::*)(const lepus::Value& value)>
       prop_setters_;
   LynxImageEffectProcessor::ImageEffect effect_type_{LynxImageEffectProcessor::ImageEffect::kNone};
+  uint64_t load_start_{0};
+  uint64_t load_finish_{0};
+  bool enable_image_load_callback_{false};
+
   ArkUI_ObjectFit ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
   void UpdatePlaceholder(const lepus::Value& value);
@@ -100,6 +104,7 @@ class UIImage : public UIBase {
                                 const LynxImageEffectProcessor::EffectParams& params);
   void LoadImageFromURL(bool placeholder = false);
   void SetImageSrcFromPath(const std::string& url, bool placeholder = false);
+  void CreateImageLoadInfo(int32_t err_code, const std::string& err_msg);
 };
 
 }  // namespace harmony
