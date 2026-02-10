@@ -7,7 +7,9 @@
 #include <cstdint>
 #include <memory>
 
+#include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/fiber/text_props.h"
+#include "core/renderer/starlight/style/css_type.h"
 namespace lynx {
 namespace tasm {
 namespace text {
