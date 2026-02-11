@@ -30,6 +30,8 @@ double {{argument.name}};
 {% else %}
 uint32_t {{argument.name}};
 {% endif %}
+{% elif argument['enum_type'] %}
+uint32_t {{argument.name}};
 {% elif argument.is_string_type %}
 uint32_t {{argument.name}}StringLengthGen;
 {% elif argument.is_wrapper_type %}
@@ -71,6 +73,8 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {% set ns.count = ns.count + 1 %}
     {% elif argument.idl_type == 'ArrayBufferView' %}
     {% set ns.count = ns.count + 2 %}
+    {% elif argument['enum_type'] %}
+    {% set ns.count = ns.count + 1 %}
     {% endif %}
     {{ decode_argument_struct(argument) | trim | indent(4) }}
     {% endfor %}

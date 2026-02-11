@@ -56,7 +56,7 @@ class {{'KRYPTON_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent
   void Init(std::unique_ptr<{{cpp_class}}>);
 
   // Attributes
-  {% for attribute in attributes if not attribute.from_shared and not attribute.owned_by_parent %}
+  {% for attribute in attributes if not attribute.from_shared and not attribute.owned_by_parent and attribute.has_binding_version %}
   {{'static ' if attribute.is_static}}Napi::Value {{attribute.camel_case_name}}AttributeGetter(const Napi::CallbackInfo&);
   {% if attribute.does_generate_setter %}
   {{'static ' if attribute.is_static}}void {{attribute.camel_case_name}}AttributeSetter(const Napi::CallbackInfo&, const Napi::Value&);

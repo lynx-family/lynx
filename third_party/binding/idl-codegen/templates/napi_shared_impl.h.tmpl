@@ -35,7 +35,7 @@ class {{napi_class}} : public NapiBridge {
   void Init(std::unique_ptr<{{cpp_class}}>);
 
   // Attributes
-  {% for attribute in attributes %}
+  {% for attribute in attributes if attribute.has_binding_version %}
   {{'static ' if attribute.is_static}}Napi::Value {{attribute.camel_case_name}}AttributeGetter(const Napi::CallbackInfo&);
   {% if attribute.does_generate_setter %}
   {{'static ' if attribute.is_static}}void {{attribute.camel_case_name}}AttributeSetter(const Napi::CallbackInfo&, const Napi::Value&);

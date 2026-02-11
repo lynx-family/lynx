@@ -6,7 +6,7 @@
 /**
  * This file is auto-generated, DO NOT MODIFY!!
  */
- 
+
 'use strict';
 
 let TestContextCB;
@@ -69,7 +69,7 @@ function getViewType(view) {
   }
 }
 
-const commandBufferCreator = function(appendTarget, idGen) {
+const commandBufferCreator = function (appendTarget, idGen) {
   if (TestContextCB) return TestContextCB;
   const cb = appendTarget.getCommandBuffer();
   const buffer = cb.buffer;
@@ -87,9 +87,10 @@ const commandBufferCreator = function(appendTarget, idGen) {
   const flushThresh = 40 * 1024;
   // Current cutoff for long commands is 32KB, which is well below the 40KB free space.
   const cmdLengthCutoff = 8192;
-  const isLittleEndian = new Uint16Array(new Uint8Array([1, 0]).buffer)[0] === 1;
+  const isLittleEndian =
+    new Uint16Array(new Uint8Array([1, 0]).buffer)[0] === 1;
 
-  let TestAsyncObject = appendTarget.TestAsyncObject
+  let TestAsyncObject = appendTarget.TestAsyncObject;
 
   function voidFromVoid() {
     let $end = uint32View[0];
@@ -97,7 +98,6 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[$end + 1] = this.__id;
 
     $end += 2;
-
 
     uint32View[0] = $end;
 
@@ -217,7 +217,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
     }
     let abvBufferView;
     if (ArrayBuffer.isView(abv)) {
-      abvBufferView = new Uint8Array(abv.buffer, abv.byteOffset, abv.byteLength);
+      abvBufferView = new Uint8Array(
+        abv.buffer,
+        abv.byteOffset,
+        abv.byteLength
+      );
       uint32View[$end + 2] = getViewType(abv);
     } else {
       abvBufferView = new Uint8Array(abv);
@@ -249,7 +253,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
     }
     let abvBufferView;
     if (ArrayBuffer.isView(abv)) {
-      abvBufferView = new Uint8Array(abv.buffer, abv.byteOffset, abv.byteLength);
+      abvBufferView = new Uint8Array(
+        abv.buffer,
+        abv.byteOffset,
+        abv.byteLength
+      );
       uint32View[$end + 2] = getViewType(abv);
     } else {
       abvBufferView = new Uint8Array(abv);
@@ -280,7 +288,6 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[$end + 2] = id;
     $end += 3;
 
-
     uint32View[0] = $end;
 
     if ($end > flushThresh) {
@@ -301,7 +308,6 @@ const commandBufferCreator = function(appendTarget, idGen) {
     objects.push(tao);
     $end += 3;
 
-
     uint32View[0] = $end;
 
     if ($end > flushThresh) {
@@ -321,7 +327,6 @@ const commandBufferCreator = function(appendTarget, idGen) {
     objects.push(tao);
     $end += 3;
 
-
     uint32View[0] = $end;
 
     if ($end > flushThresh) {
@@ -339,7 +344,6 @@ const commandBufferCreator = function(appendTarget, idGen) {
 
     uint32View[$end + 2] = tao.__id;
     $end += 3;
-
 
     uint32View[0] = $end;
 
@@ -369,8 +373,10 @@ let protoHooked = false;
 
 function hookTestContext(appendTarget, context, idGen) {
   const commandBuffer = commandBufferCreator(appendTarget, idGen);
+
   if (protoHooked) return;
   protoHooked = true;
+
   let ctxProto = context.__proto__;
   ctxProto.voidFromVoid = commandBuffer.voidFromVoid;
   ctxProto.voidFromString = ctxProto.voidFromString_;
@@ -380,12 +386,13 @@ function hookTestContext(appendTarget, context, idGen) {
   ctxProto.voidFromTypedArray = commandBuffer.voidFromTypedArray;
   ctxProto.voidFromArrayBuffer = commandBuffer.voidFromArrayBuffer;
   ctxProto.voidFromArrayBufferView = commandBuffer.voidFromArrayBufferView;
-  ctxProto.voidFromNullableArrayBufferView = commandBuffer.voidFromNullableArrayBufferView;
+  ctxProto.voidFromNullableArrayBufferView =
+    commandBuffer.voidFromNullableArrayBufferView;
   ctxProto.createAsyncObject = commandBuffer.createAsyncObject;
   ctxProto.asyncForAsyncObject = commandBuffer.asyncForAsyncObject;
-  ctxProto.asyncForNullableAsyncObject = commandBuffer.asyncForNullableAsyncObject;
+  ctxProto.asyncForNullableAsyncObject =
+    commandBuffer.asyncForNullableAsyncObject;
   ctxProto.syncForAsyncObject = commandBuffer.syncForAsyncObject;
-
 }
 
 export default hookTestContext;

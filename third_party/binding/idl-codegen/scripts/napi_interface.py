@@ -451,7 +451,17 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
         'methods': A list of method contexts.
     """
 
+    attributes = []
     methods = []
+
+    attributes = [
+        napi_attributes.attribute_context(interface, attribute, interfaces,
+                                        component_info)
+        for attribute in interface.attributes
+    ]
+
+    for attribute in attributes:
+        attribute['has_binding_version'] = True
 
     methods.extend([
         napi_methods.method_context(interface, method, component_info, interfaces_info)
@@ -485,6 +495,7 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
     command_buffer_class_name = 'Napi' + NameStyleConverter(command_buffer_context['component']).to_upper_camel_case() + 'CommandBuffer'
     overloads_child_only = {}
     buffer_commands = 'BufferCommands' in interface.extended_attributes
+    async_attributes = 'AsyncAttributes' in interface.extended_attributes
     buffer_commands_for_remote = command_buffer_context['generates_remote'] and not 'DataContainer' in interface.extended_attributes
     if buffer_commands_for_remote:
         for regex in command_buffer_context['remote_excludes']:
@@ -514,19 +525,33 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                 add_buffered_method(interface, constructor, ptr_name, command_buffer_context, overloads_child_only, False, True)
             add_buffered_method(interface, {'name': 'destructor', 'from_shared': False}, ptr_name, command_buffer_context, overloads_child_only, False, True)
 
-        # Convert remote attributes to setter/getters.
-        attributes = [
-            napi_attributes.attribute_context(interface, attribute, interfaces,
-                                            component_info)
-            for attribute in interface.attributes
-        ]
+        # For async attributes
+        if async_attributes and not buffer_commands_for_remote:
+            for attribute in attributes:
+                read_only = not attribute['does_generate_setter']
+                attribute['has_binding_version'] = read_only
+                if not read_only:
+                    attribute_copy = copy.deepcopy(attribute)
+                    attribute_copy['return_async'] = False
+                    attribute_copy['forced_sync'] = False
+                    attribute_copy.update({'is_setter': True, 'camel_case_name': 'Set' + attribute_copy['camel_case_name'], 'arguments': [attribute], 'idl_type': 'void'})
+                    add_buffered_method(interface, attribute_copy, ptr_name, command_buffer_context, overloads_child_only, True, False)   
+
+                    attribute_copy = copy.deepcopy(attribute)
+                    attribute_copy['return_async'] = False
+                    attribute_copy['forced_sync'] = False
+                    attribute_copy.update({'is_getter': True, 'camel_case_name': 'Get' + attribute_copy['camel_case_name']})         
+                    add_buffered_method(interface, attribute_copy, ptr_name, command_buffer_context, overloads_child_only, True, False)
+   
+         # Convert remote attributes and attirbute in commandbuffer to setter/getters.
         for attribute in attributes:
             if attribute['does_generate_setter']:
                 attribute_copy = copy.deepcopy(attribute)
                 attribute_copy.update({'is_setter': True, 'camel_case_name': 'Set' + attribute_copy['camel_case_name'], 'arguments': [attribute], 'idl_type': 'void', 'is_async': deferred_setters})
                 add_buffered_method(interface, attribute_copy, ptr_name, command_buffer_context, overloads_child_only, False, buffer_commands_for_remote)
-            attribute.update({'is_getter': True, 'camel_case_name': 'Get' + attribute['camel_case_name']})
-            add_buffered_method(interface, attribute, ptr_name, command_buffer_context, overloads_child_only, False, buffer_commands_for_remote)
+            attribute_copy = copy.deepcopy(attribute)
+            attribute_copy.update({'is_getter': True, 'camel_case_name': 'Get' + attribute['camel_case_name']})
+            add_buffered_method(interface, attribute_copy, ptr_name, command_buffer_context, overloads_child_only, False, buffer_commands_for_remote)
 
         for method in methods:
             method_is_remote_only = remote_only
@@ -599,9 +624,12 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
         method['has_binding_resolver'] = method.get('overloads', False) and (not buffer_commands or method.get('keep_binding_resolver', False) or method['do_not_buffer_for_single_thread'])
 
     return {
-        'methods': methods,
-        'command_buffer_class': command_buffer_class_name,
-    }
+            'attributes': attributes,
+            'methods': methods,
+            'command_buffer_class': command_buffer_class_name,
+        } 
+
+    
 
 def add_buffered_method(interface, method, ptr_name, command_buffer_context, overloads_child_only, gen_for_napi, gen_for_remote):
     # Keep the base impl only

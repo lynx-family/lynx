@@ -346,7 +346,7 @@ ImplBase* {{napi_class}}::ReleaseImpl() {
   {% endif %}
 {% endmacro %}
 
-{% for attribute in attributes if not attribute.from_shared and not attribute.owned_by_parent %}
+{% for attribute in attributes if not attribute.from_shared and not attribute.owned_by_parent and attribute.has_binding_version %}
 {{'// static' if attribute.is_static}}
 Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const CallbackInfo& info) {
   {% if enable_trace %}
@@ -523,7 +523,9 @@ Napi::Class* {{napi_class}}::Class(Napi::Env env) {
   {% if constants and not omit_constants %}
   {% set ns.props_count = ns.props_count + constants|length %}
   {% endif %}
-  {% set ns.props_count = ns.props_count + attributes|length %}
+  {% for attribute in attributes if attribute.has_binding_version %}
+  {% set ns.props_count = ns.props_count + 1 %}
+  {% endfor %}
   {% for method in methods if not method.overload_index or method.overloads %}
   {% if method.has_binding_version or method.has_binding_resolver %}
   {% set ns.props_count = ns.props_count + 1 %}
@@ -540,7 +542,7 @@ Napi::Class* {{napi_class}}::Class(Napi::Env env) {
 
   {% endif %}
   // Attributes
-  {% for attribute in attributes if not attribute.owned_by_parent %}
+  {% for attribute in attributes if not attribute.owned_by_parent and attribute.has_binding_version %}
   {% if attribute.is_static %}
   props.push_back(
       Wrapped::StaticAccessor("{{attribute.name}}",

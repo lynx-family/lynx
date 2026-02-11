@@ -104,7 +104,7 @@ ImplBase* {{napi_class}}::ReleaseImpl() {
   {% endif %}
 {% endmacro %}
 
-{% for attribute in attributes %}
+{% for attribute in attributes if attribute.has_binding_version %}
 {{'// static' if attribute.is_static}}
 Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const CallbackInfo& info) {
   {% if enable_trace %}

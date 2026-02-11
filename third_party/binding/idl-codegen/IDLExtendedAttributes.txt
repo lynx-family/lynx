@@ -136,3 +136,4 @@ NeedsNativeSetter
 ImplicitBufferSize
 HardcodedForRemote
 OwnedByParent
+AsyncAttributes
