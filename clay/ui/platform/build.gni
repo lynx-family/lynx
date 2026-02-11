@@ -11,6 +11,8 @@ ui_platform_sources = [
   "keyboard_bridge.h",
   "keyboard_types.h",
   "native_view_service.h",
+  "native_view_tag_sync.cc",
+  "native_view_tag_sync.h",
 ]
 
 ui_net_loader_sources = [

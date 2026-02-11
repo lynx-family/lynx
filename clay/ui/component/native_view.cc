@@ -23,6 +23,11 @@ namespace clay {
 NativeView::NativeView(int id, std::string tag, PageView* page_view)
     : WithTypeInfo(id, std::move(tag),
                    std::make_unique<RenderExternalContent>(), page_view) {
+  if (page_view != nullptr && page_view->GetViewContext() != nullptr) {
+    composition_preference_ =
+        page_view->GetViewContext()->GetNativeViewCompositionPreference(
+            GetName());
+  }
   Puppet<Owner::kUI, NativeViewService> native_view_service =
       page_view->GetServiceManager()->GetService<NativeViewService>();
   native_view_plugin_ = native_view_service.CreateObjectInActorThread(
@@ -218,6 +223,13 @@ void NativeView::OnDetachFromTree() {
   page_view_->GetViewTreeObserver()->RemoveOnPaintingListener(this);
 }
 
+void NativeView::OnNodeReady() {
+  // Ensure layout info is pushed before the layout-finish signal, so Java side
+  // can receive onLayout (size/position) earlier than node-ready.
+  ApplyUpdateChanged();
+  native_view_plugin_.Act([](auto& plugin) { plugin.OnNodeReady(); });
+}
+
 MeasureResult NativeView::Measure(const MeasureConstraint& constraint) {
   MeasureConstraint platform_constraint = constraint;
   if (constraint.width.has_value()) {
@@ -254,6 +266,11 @@ void NativeView::MarkAsEditing() {
   if (is_editing_) return;
   is_editing_ = true;
   page_view_->SetEditingPlatformView(this);
+}
+
+void NativeView::OnInsert(int parent_id, int index) {
+  native_view_plugin_.Act(
+      [parent_id, index](auto& plugin) { plugin.OnInsert(parent_id, index); });
 }
 
 void NativeView::ResignFirstResponder() {

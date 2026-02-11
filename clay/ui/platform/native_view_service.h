@@ -20,6 +20,13 @@ namespace clay {
 class NativeView;
 class SharedImageSink;
 
+enum class NativeViewCompositionPreference {
+  kAuto,
+  kHybridComposition,
+  kTextureLayer,
+  kOffscreenSurface,
+};
+
 class NativeViewPlugin : public ActorObject<Owner::kPlatform> {
  public:
   explicit NativeViewPlugin(int id) : id_(id) {}
@@ -29,6 +36,7 @@ class NativeViewPlugin : public ActorObject<Owner::kPlatform> {
 
   // lifecycle should only called once
   virtual bool OnCreate(std::string tag) = 0;
+  virtual void OnInsert(int parent_id, int index) {}
   virtual void OnAttach() = 0;
   virtual void OnDetach() = 0;
   virtual void OnDestroy() = 0;
@@ -37,6 +45,9 @@ class NativeViewPlugin : public ActorObject<Owner::kPlatform> {
   virtual void OnFocusChanged(bool focused, bool is_leaf) {}
   virtual void LayoutChanged(float left, float top, float width,
                              float height) = 0;
+  // Triggered by C++ node-ready patching (end-of-layout flush), not Android
+  // View#layout.
+  virtual void OnNodeReady() {}
   virtual MeasureResult Measure(const MeasureConstraint& constraint) = 0;
 
   virtual void UpdatePaddings(float padding_left, float padding_top,

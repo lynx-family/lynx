@@ -4,6 +4,8 @@
 
 #include "clay/lynx_adaptor/painting_context_clay.h"
 
+#include <array>
+#include <cmath>
 #include <unordered_map>
 #include <utility>
 
@@ -22,6 +24,14 @@
 namespace lynx {
 
 namespace {
+
+float MaybeRoundLayoutMetric(float value) {
+#if defined(OS_MAC) || defined(OS_WIN)
+  return std::roundf(value);
+#else
+  return value;
+#endif
+}
 
 [[maybe_unused]] void ConvertListData(const lynx::tasm::ListData& origin,
                                       clay::LynxListData* res) {
@@ -72,8 +82,17 @@ void PaintingContextClayRef::UpdateScrollInfo(int32_t container_id, bool smooth,
 
 void PaintingContextClayRef::UpdateNodeReadyPatching(
     std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
-  view_context_->UpdateNodeReadyPatching(std::move(ready_ids),
-                                         std::move(remove_ids));
+  auto task = [view_context = view_context_, ready_ids = std::move(ready_ids),
+               remove_ids = std::move(remove_ids)]() mutable {
+    view_context->UpdateNodeReadyPatching(std::move(ready_ids),
+                                          std::move(remove_ids));
+  };
+  auto queue = queue_.lock();
+  if (queue) {
+    queue->Enqueue(std::move(task));
+  } else {
+    task();
+  }
 }
 
 void PaintingContextClayRef::InsertListItemPaintingNode(int list_sign,
@@ -137,10 +156,16 @@ void PaintingContextClay::HandleValidate(int tag) {
 
 void PaintingContextClay::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
-  Enqueue([view_context = view_context_, options]() {
-    view_context->FinishLayoutOperation(options->list_comp_id_,
-                                        options->list_id_);
-  });
+  const int32_t child_view_id = options ? options->list_comp_id_ : 0;
+  const int32_t parent_view_id = options ? options->list_id_ : 0;
+  auto task = [view_context = view_context_, child_view_id, parent_view_id]() {
+    view_context->FinishLayoutOperation(child_view_id, parent_view_id);
+  };
+  if (ui_operation_queue_ref_) {
+    Enqueue(std::move(task));
+  } else {
+    task();
+  }
 }
 
 void PaintingContextClay::FinishTasmOperation(
@@ -177,10 +202,11 @@ void PaintingContextClay::CreatePaintingNode(
     int id, const std::string& tag,
     const fml::RefPtr<PropBundle>& painting_data, bool flatten,
     bool create_node_async, uint32_t node_index) {
-  Enqueue([view_context = view_context_, id, tag, painting_data = painting_data,
-           flatten, node_index] {
-    const char* tag_name = tag.c_str();
+  auto task = [view_context = view_context_, id, tag, painting_data,
+               flatten]() mutable {
+    std::string tag_name = tag;
     auto* pda = painting_data.get();
+
     // Terminology:
     // flatten: In lynx, the view does not have a real platform view, and its
     //          content will be drawn on the parent node that owns the platform
@@ -193,8 +219,8 @@ void PaintingContextClay::CreatePaintingNode(
     // need to draw this view and its parent separately, that means
     // repaint_boundary is true in Clay.
     //
-    // In Clay, we force the following components to have a repaint boundary for
-    // better performance, regardless of the value of flatten: PageView,
+    // In Clay, we force the following components to have a repaint boundary
+    // for better performance, regardless of the value of flatten: PageView,
     // ScrollView, ListView, Swiper, EditableView[Input].
     view_context->CreateView(id, tag_name);
     // we just apply value to repaint boundary if flatten false
@@ -202,7 +228,12 @@ void PaintingContextClay::CreatePaintingNode(
       view_context->SetRepaintBoundary(id, true);
     }
     SetAttribute(view_context, id, pda, true);
-  });
+  };
+  if (ui_operation_queue_ref_) {
+    Enqueue(std::move(task));
+  } else {
+    task();
+  }
 }
 
 int32_t PaintingContextClay::GetTagInfo(const std::string& tag_name) {
@@ -210,7 +241,8 @@ int32_t PaintingContextClay::GetTagInfo(const std::string& tag_name) {
 }
 
 void PaintingContextClay::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) {
-  Enqueue([view_context = view_context_, keyframes_data = keyframes_data]() {
+  auto task = [view_context = view_context_,
+               keyframes_data = std::move(keyframes_data)]() mutable {
     auto pdr = static_cast<PropBundleImpl*>(keyframes_data.get());
     auto keyframes_iter = pdr->map().find("keyframes");
     if (keyframes_iter == pdr->map().end()) {
@@ -220,18 +252,28 @@ void PaintingContextClay::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) {
 
     const auto& prop_keyframes_value = keyframes_iter->second;
     view_context->SetKeyframes(prop_keyframes_value);
-  });
+  };
+  if (ui_operation_queue_ref_) {
+    Enqueue(std::move(task));
+  } else {
+    task();
+  }
 }
 
 void PaintingContextClay::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const fml::RefPtr<PropBundle>& painting_data) {
-  Enqueue([view_context = view_context_, id, tend_to_flatten,
-           painting_data = painting_data]() {
+  auto task = [view_context = view_context_, id, tend_to_flatten,
+               painting_data]() {
     auto* pda = painting_data.get();
     SetAttribute(view_context, id, pda, false);
     view_context->SetRepaintBoundary(id, !tend_to_flatten);
-  });
+  };
+  if (ui_operation_queue_ref_) {
+    Enqueue(std::move(task));
+  } else {
+    task();
+  }
 }
 
 void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
@@ -240,45 +282,36 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
                                        const float* borders,
                                        const float* bounds, const float* sticky,
                                        float max_height, uint32_t node_index) {
-#define MAKE_UNIQUE_COPY(src, size)                      \
-  std::unique_ptr<float[]> src##_copy{nullptr};          \
-  if (src) {                                             \
-    src##_copy = std::make_unique<float[]>(size);        \
-    memcpy(src##_copy.get(), src, sizeof(float) * size); \
+  const std::array<float, 4> paddings_copy = {paddings[0], paddings[1],
+                                              paddings[2], paddings[3]};
+  const std::array<float, 4> margins_copy = {margins[0], margins[1], margins[2],
+                                             margins[3]};
+  const bool has_sticky = sticky != nullptr;
+  const std::array<float, 4> sticky_copy =
+      has_sticky
+          ? std::array<float, 4>{sticky[0], sticky[1], sticky[2], sticky[3]}
+          : std::array<float, 4>{0, 0, 0, 0};
+  auto task = [view_context = view_context_, tag, x, y, width, height,
+               paddings_copy, margins_copy, sticky_copy, has_sticky]() {
+    // Set margins, bounds, paddings.
+    // Margins should be earlier then bounds because of it may be used during
+    // bounds setting.
+    view_context->SetMargins(tag, margins_copy[0], margins_copy[1],
+                             margins_copy[2], margins_copy[3]);
+    view_context->SetBounds(
+        tag, MaybeRoundLayoutMetric(x), MaybeRoundLayoutMetric(y),
+        MaybeRoundLayoutMetric(width), MaybeRoundLayoutMetric(height));
+    view_context->SetPaddings(tag, MaybeRoundLayoutMetric(paddings_copy[0]),
+                              MaybeRoundLayoutMetric(paddings_copy[1]),
+                              MaybeRoundLayoutMetric(paddings_copy[2]),
+                              MaybeRoundLayoutMetric(paddings_copy[3]));
+    view_context->UpdateSticky(tag, has_sticky ? sticky_copy.data() : nullptr);
+  };
+  if (ui_operation_queue_ref_) {
+    Enqueue(std::move(task));
+  } else {
+    task();
   }
-
-  MAKE_UNIQUE_COPY(paddings, 4)
-  MAKE_UNIQUE_COPY(margins, 4)
-  MAKE_UNIQUE_COPY(sticky, 4)
-#undef MAKE_UNIQUE_COPY
-  // Set margins, bounds, paddings.
-  // Margins should be earlier then bounds because of it may be used during
-  // bounds setting.
-  Enqueue([view_context = view_context_, tag, x, y, width, height,
-           paddings_ptr = std::move(paddings_copy),
-           margins_ptr = std::move(margins_copy),
-           sticky_ptr = std::move(sticky_copy)]() {
-    auto margins = margins_ptr.get();
-    auto paddings = paddings_ptr.get();
-    auto sticky = sticky_ptr.get();
-#if OS_MAC || OS_WIN
-    view_context->SetMargins(tag, std::roundf(margins[0]),
-                             std::roundf(margins[1]), std::roundf(margins[2]),
-                             std::roundf(margins[3]));
-    view_context->SetBounds(tag, std::roundf(x), std::roundf(y),
-                            std::roundf(width), std::roundf(height));
-    view_context->SetPaddings(
-        tag, std::roundf(paddings[0]), std::roundf(paddings[1]),
-        std::roundf(paddings[2]), std::roundf(paddings[3]));
-#else
-    view_context->SetMargins(tag, margins[0], margins[1], margins[2],
-                             margins[3]);
-    view_context->SetBounds(tag, x, y, width, height);
-    view_context->SetPaddings(tag, paddings[0], paddings[1], paddings[2],
-                              paddings[3]);
-#endif
-    view_context->UpdateSticky(tag, sticky);
-  });
 }
 
 // Invoked by MTS/worklet
