@@ -135,15 +135,19 @@ LYNX_REGISTER_UI("view")
 
 - (void)interceptGesture:(BOOL)intercept {
   UILynxView *lynxView = (UILynxView *)self.view;
-  if (intercept) {
-    lynxView.interceptGestureStatus = LynxInterceptGestureStateTrue;
-  } else {
-    lynxView.interceptGestureStatus = LynxInterceptGestureStateFalse;
+  if ([lynxView isKindOfClass:UILynxView.class]) {
+    if (intercept) {
+      lynxView.interceptGestureStatus = LynxInterceptGestureStateTrue;
+    } else {
+      lynxView.interceptGestureStatus = LynxInterceptGestureStateFalse;
+    }
   }
 }
 
 - (void)resetInterceptGesture {
-  ((UILynxView *)self.view).interceptGestureStatus = LynxInterceptGestureStateUnset;
+  if ([self.view isKindOfClass:UILynxView.class]) {
+    ((UILynxView *)self.view).interceptGestureStatus = LynxInterceptGestureStateUnset;
+  }
 }
 
 - (void)setContext:(LynxUIContext *)context {
