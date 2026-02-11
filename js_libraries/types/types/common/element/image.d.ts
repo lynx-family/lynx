@@ -22,10 +22,10 @@ export interface ImageProps extends StandardProps {
 
   /**
    * Specifies image cropping/scaling mode
-   * scaleToFill: Scales the image without preserving the aspect ratio, stretching the image to fill the element
-   * aspectFit: Scales the image while preserving aspect ratio so that the long side is fully visible
-   * aspectFill: Scales the image while preserving aspect ratio, ensuring the short side fills the element
-   * center: Does not scale the image; image is centered
+   * `scaleToFill`: Scales the image without preserving the aspect ratio, stretching the image to fill the element.
+   * `aspectFit`: Scales the image while preserving aspect ratio so that the long side is fully visible.
+   * `aspectFill`: Scales the image while preserving aspect ratio, ensuring the short side fills the element.
+   * `center`: Does not scale the image; image is centered.
    * @defaultValue 'scaleToFill'
    * @since 0.2
    * @iOS
@@ -49,8 +49,9 @@ export interface ImageProps extends StandardProps {
    *
    * The default is ARGB_8888. Frontend developers can optimize image memory usage by setting it to RGB_565.
    *
-   * ARGB_8888: Each pixel occupies 32 bits of memory and includes an alpha channel.
-   * RGB_565: Each pixel occupies 16 bits of memory, which reduces memory usage but results in the loss of transparency.
+   * `ARGB_8888`: Each pixel occupies 32 bits of memory and includes an alpha channel.
+   * `RGB_565`: Each pixel occupies 16 bits of memory, which reduces memory usage but results in the loss of transparency.
+   *
    * Setting RGB_565 may affect the display of `<image>`'s border-radius. You can set border-radius on the parent view of the `<image>` and add the clip-radius attribute to the parent view.
    *
    * It is not recommended to use RGB_565 when mode="aspectFit", as it may cause black borders in the cropped area.

@@ -4,6 +4,8 @@
 
 - Add memory event.
 
+- Update `image` typings.
+
 ## 3.8.0 
 
 - Add coding skills in types folder to optimize code-gen result.
