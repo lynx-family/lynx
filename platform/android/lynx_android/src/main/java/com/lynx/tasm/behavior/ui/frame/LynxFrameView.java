@@ -34,6 +34,8 @@ public final class LynxFrameView extends UIBodyView {
   private int mContentWidth = 0;
   private int mContentHeight = 0;
   private boolean mDestroyed = false;
+  private TemplateData mInitData = null;
+  private TemplateData mGlobalProps = null;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -77,6 +79,14 @@ public final class LynxFrameView extends UIBodyView {
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl(mUrl);
     builder.setTemplateBundle(bundle);
+    if (mInitData != null) {
+      builder.setInitialData(mInitData);
+      mInitData = null;
+    }
+    if (mGlobalProps != null) {
+      builder.setGlobalProps(mGlobalProps);
+      mGlobalProps = null;
+    }
     mRender.loadTemplate(builder.build());
     mIsBundleLoaded = true;
   }
@@ -86,13 +96,31 @@ public final class LynxFrameView extends UIBodyView {
     mContentHeight = height;
   }
 
-  public void updateMetaData(TemplateData initData, TemplateData globalProps) {
+  void setInitData(TemplateData data) {
+    mInitData = data;
+  }
+
+  void setGlobalProps(TemplateData data) {
+    mGlobalProps = data;
+  }
+
+  void onPropsUpdated() {
+    if (!mIsBundleLoaded) {
+      return;
+    }
+    if (mInitData == null && mGlobalProps == null) {
+      return;
+    }
+
     LynxUpdateMeta meta =
         new LynxUpdateMeta.Builder()
-            .setUpdatedData(initData == null ? TemplateData.empty() : initData)
-            .setUpdatedGlobalProps(globalProps == null ? TemplateData.empty() : globalProps)
+            .setUpdatedData(mInitData == null ? TemplateData.empty() : mInitData)
+            .setUpdatedGlobalProps(mGlobalProps == null ? TemplateData.empty() : mGlobalProps)
             .build();
     mRender.updateMetaData(meta);
+
+    mInitData = null;
+    mGlobalProps = null;
   }
 
   public void setUrl(String url) {

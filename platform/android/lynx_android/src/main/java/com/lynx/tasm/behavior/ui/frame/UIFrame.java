@@ -29,8 +29,6 @@ import java.util.HashMap;
 @LynxBehavior(tagName = "frame", isCreateAsync = true)
 public final class UIFrame extends LynxUI<LynxFrameView> {
   private static final String TAG = "UIFrame";
-  private TemplateData mInitData = null;
-  private TemplateData mGlobalProps = null;
 
   public UIFrame(LynxContext context) {
     this(context, null);
@@ -140,7 +138,10 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
       LLog.e(TAG, "prop data is not a JavaOnlyMap");
       return;
     }
-    mInitData = TemplateData.fromMap((JavaOnlyMap) value);
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setInitData(TemplateData.fromMap((JavaOnlyMap) value));
+    }
   }
 
   @LynxProp(name = "src")
@@ -158,7 +159,10 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
       LLog.e(TAG, "global props data is not a JavaOnlyMap");
       return;
     }
-    mGlobalProps = TemplateData.fromMap((JavaOnlyMap) value);
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setGlobalProps(TemplateData.fromMap((JavaOnlyMap) value));
+    }
   }
 
   @Override
@@ -166,9 +170,7 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     super.onPropsUpdated();
     LynxFrameView view = getView();
     if (view != null) {
-      view.updateMetaData(mInitData, mGlobalProps);
-      mInitData = null;
-      mGlobalProps = null;
+      view.onPropsUpdated();
     }
   }
 }
