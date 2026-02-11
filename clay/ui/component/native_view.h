@@ -27,6 +27,10 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   void OnPainting() override;
   void OnAttachToTree() override;
   void OnDetachFromTree() override;
+  void OnNodeReady() override;
+  bool HitTest(const PointerEvent& event, HitTestResult& result) override;
+  BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
+                                    FloatPoint* relative_position) override;
   void SetPaddings(float padding_left, float padding_top, float padding_right,
                    float padding_bottom) override;
   void SendMotionEvent(const PointerEvent& point_event,
@@ -48,12 +52,18 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
 
   void MarkAsEditing();
   void ResignFirstResponder();
+  void OnInsert(int parent_id, int index);
+  void UpdateTouchDispatchState(bool handled, int action);
+  NativeViewCompositionPreference GetCompositionPreference() const {
+    return composition_preference_;
+  }
 
  private:
   void OnDestroy() override;
   void FocusHasChanged(bool focused, bool is_leaf) override;
 
   void ApplyUpdateChanged();
+  bool ShouldIgnoreForTouchHitTest() const;
 
   Puppet<Owner::kUI, std::unique_ptr<NativeViewPlugin>> native_view_plugin_;
   // Cache all attributes which need to be updated
@@ -66,6 +76,9 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   bool is_scroll_enabled_;
   bool is_editing_ = false;
   bool is_available_ = false;
+  bool ignore_for_touch_hit_test_ = false;
+  NativeViewCompositionPreference composition_preference_ =
+      NativeViewCompositionPreference::kAuto;
 };
 }  // namespace clay
 

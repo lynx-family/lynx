@@ -28,6 +28,7 @@
 #include "clay/public/ui_component_delegate.h"
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
+#include "clay/ui/platform/native_view_service.h"
 #include "clay/ui/shadow/bundle.h"
 #include "clay/ui/shadow/shadow_node.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
@@ -292,10 +293,24 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
     return clay::kPixelTypeFramework == clay::kPixelTypeLogical;
   }
 
-  // Sync native view tags. should be called before view tree created.
-  // tag in this set will be created as native view.
-  // these tags has a higher priority than builtin tags.
-  void SyncNativeViewTags(std::unordered_set<std::string> tags);
+  // Sync native view tags. Should be called before the view tree is created.
+  // Tags in `tags` are registered as NativeView entries when not already
+  // present. Tags in `bootstrap_tags` always override any existing ViewRegistry
+  // entry and stay reserved for the platform-view path.
+  void SyncNativeViewTags(std::unordered_set<std::string> tags,
+                          std::unordered_set<std::string> bootstrap_tags = {});
+  void SyncNativeViewCompositionPreferences(
+      std::unordered_map<std::string, NativeViewCompositionPreference>
+          composition_preferences);
+
+  NativeViewCompositionPreference GetNativeViewCompositionPreference(
+      const std::string& tag_name) const {
+    auto it = native_view_composition_preferences_.find(tag_name);
+    if (it == native_view_composition_preferences_.end()) {
+      return NativeViewCompositionPreference::kAuto;
+    }
+    return it->second;
+  }
 
   std::weak_ptr<ViewContext> GetWeakPtr() { return shared_from_this(); }
 
@@ -325,6 +340,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // In method invokeUIMethod, we need to use this map and radon(js) component
   // id to find related views.
   std::unordered_map<std::string, int> component_id_to_ui_id_map_;
+  std::unordered_map<std::string, NativeViewCompositionPreference>
+      native_view_composition_preferences_;
 
   fml::WeakPtrFactory<ViewContext> weak_factory_;
   std::unique_ptr<CustomFilterDecoder> custom_filter_decoder_;
