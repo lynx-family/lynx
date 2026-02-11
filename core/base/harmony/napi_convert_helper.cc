@@ -83,7 +83,7 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
           napi_get_element(env, object_keys, i, &k);
           napi_value v;
           napi_get_property(env, obj, k, &v);
-          std::string key = base::NapiUtil::ConvertToShortString(env, k);
+          std::string key = NapiUtil::ConvertToString(env, k);
           lepus_value value;
           create_lepus_value_from_js_object(env, v, value);
           dict->SetValue(key, value);
