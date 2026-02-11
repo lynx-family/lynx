@@ -5537,7 +5537,6 @@ public class com::lynx::tasm::behavior::ui::frame::LynxFrameView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setSign(int sign);
   public LynxView com.lynx.tasm.behavior.ui.frame.LynxFrameView.getRootView();
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateLayout(int width, int height);
-  public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateMetaData(TemplateData initData, TemplateData globalProps);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setUrl(String url);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.runOnTasmThread(Runnable runnable);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setIntrinsicContentSize(int width, int height);
