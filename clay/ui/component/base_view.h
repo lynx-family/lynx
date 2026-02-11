@@ -590,7 +590,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   AnimationHandler* GetAnimationHandler();
 
-  virtual void OnLayoutFinish(BaseView* view) {}
+  // Non-pure default implementation is in base_view.cc.
+  virtual void OnLayoutFinish(BaseView* view);
 
   float FromLogical(float value) const;
   float ToLogical(float value) const;

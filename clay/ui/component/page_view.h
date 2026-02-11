@@ -114,6 +114,7 @@ class PageView : public BaseView,
       std::shared_ptr<ScrollFluencyMonitorDelegate> delegate);
 
   BaseView* FindViewByViewId(int view_id);
+  ViewContext* GetViewContext() const { return view_context_; }
 
   BaseView* FindViewByIdSelector(std::string_view id_selector) {
     if (view_context_ == nullptr) {
