@@ -27,6 +27,7 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   void OnPainting() override;
   void OnAttachToTree() override;
   void OnDetachFromTree() override;
+  void OnNodeReady() override;
   void SetPaddings(float padding_left, float padding_top, float padding_right,
                    float padding_bottom) override;
   void SendMotionEvent(const PointerEvent& point_event,
@@ -48,6 +49,10 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
 
   void MarkAsEditing();
   void ResignFirstResponder();
+  void OnInsert(int parent_id, int index);
+  NativeViewCompositionPreference GetCompositionPreference() const {
+    return composition_preference_;
+  }
 
  private:
   void OnDestroy() override;
@@ -66,6 +71,8 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   bool is_scroll_enabled_;
   bool is_editing_ = false;
   bool is_available_ = false;
+  NativeViewCompositionPreference composition_preference_ =
+      NativeViewCompositionPreference::kAuto;
 };
 }  // namespace clay
 
