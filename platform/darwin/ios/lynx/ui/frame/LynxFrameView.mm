@@ -26,6 +26,8 @@
   BOOL _isBundleLoad;
   CGRect _contentRect;
   BOOL _isIntrinsicSizeConsumed;
+  LynxTemplateData *_initData;
+  LynxTemplateData *_globalProps;
 }
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView {
@@ -42,6 +44,14 @@
   LynxLoadMeta *loadMeta = [[LynxLoadMeta alloc] init];
   loadMeta.url = _url;
   loadMeta.templateBundle = bundle;
+  if (_initData) {
+    loadMeta.initialData = _initData;
+    _initData = nil;
+  }
+  if (_globalProps) {
+    loadMeta.globalProps = _globalProps;
+    _globalProps = nil;
+  }
   [_render loadTemplate:loadMeta];
   _isBundleLoad = YES;
 }
@@ -54,15 +64,29 @@
   }
 }
 
-- (void)updateMetaData:(nullable LynxTemplateData *)initData
-           globalProps:(nullable LynxTemplateData *)globalProps {
-  if (initData == nil && globalProps == nil) {
+- (void)setInitData:(nullable LynxTemplateData *)initData {
+  _initData = initData;
+}
+
+- (void)setGlobalProps:(nullable LynxTemplateData *)globalProps {
+  _globalProps = globalProps;
+}
+
+- (void)propsDidUpdate {
+  if (!_isBundleLoad) {
     return;
   }
+  if (!_initData && !_globalProps) {
+    return;
+  }
+
   LynxUpdateMeta *updateMeta = [[LynxUpdateMeta alloc] init];
-  [updateMeta setData:initData];
-  [updateMeta setGlobalProps:globalProps];
+  [updateMeta setData:_initData];
+  [updateMeta setGlobalProps:_globalProps];
   [_render updateMetaData:updateMeta];
+
+  _initData = nil;
+  _globalProps = nil;
 }
 
 - (void)setUrl:(NSString *)url {
