@@ -118,6 +118,10 @@ class BackgroundDrawable {
   LYNX_EXPORT float GetBorderRightWidth();
   LYNX_EXPORT float GetBorderTopWidth();
   LYNX_EXPORT float GetBorderBottomWidth();
+  uint32_t GetBorderLeftColor() const;
+  uint32_t GetBorderRightColor() const;
+  uint32_t GetBorderTopColor() const;
+  uint32_t GetBorderBottomColor() const;
 
   void AdjustBorder();
 

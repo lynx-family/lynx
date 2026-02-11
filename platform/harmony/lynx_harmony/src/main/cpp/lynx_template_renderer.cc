@@ -1679,6 +1679,19 @@ std::vector<float> LynxTemplateRenderer::GetTransformValue(
   return ui_delegate_->GetTransformValue(id, pad_border_margin_layout);
 }
 
+std::string LynxTemplateRenderer::GetLynxUITree() {
+  return ui_delegate_->GetLynxUITree();
+}
+
+std::string LynxTemplateRenderer::GetUINodeInfo(int id) {
+  return ui_delegate_->GetUINodeInfo(id);
+}
+
+int LynxTemplateRenderer::SetUIStyle(int id, const std::string& name,
+                                     const std::string& content) {
+  return ui_delegate_->SetUIStyle(id, name, content);
+}
+
 void LynxTemplateRenderer::SetupExtensionDelegate(
     pub::LynxExtensionDelegate* delegate) {
   delegate->SetRuntimeActor(shell_->GetRuntimeActor());

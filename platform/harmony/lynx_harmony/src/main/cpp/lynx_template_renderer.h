@@ -126,6 +126,11 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   int GetNodeForLocation(int x, int y) override;
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
+
+  std::string GetLynxUITree() override;
+  std::string GetUINodeInfo(int id) override;
+  int SetUIStyle(int id, const std::string& name,
+                 const std::string& content) override;
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override;
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,

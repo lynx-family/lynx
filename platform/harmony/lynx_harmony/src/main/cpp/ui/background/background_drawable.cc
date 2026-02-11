@@ -827,6 +827,22 @@ BackgroundDrawable::~BackgroundDrawable() {
   }
 }
 
+uint32_t BackgroundDrawable::GetBorderLeftColor() const {
+  return border_info_ ? border_info_->border_left_color : 0;
+}
+
+uint32_t BackgroundDrawable::GetBorderRightColor() const {
+  return border_info_ ? border_info_->border_right_color : 0;
+}
+
+uint32_t BackgroundDrawable::GetBorderTopColor() const {
+  return border_info_ ? border_info_->border_top_color : 0;
+}
+
+uint32_t BackgroundDrawable::GetBorderBottomColor() const {
+  return border_info_ ? border_info_->border_bottom_color : 0;
+}
+
 void BackgroundDrawable::DrawMultiColorBorderPath(
     OH_Drawing_Canvas* canvas, OH_Drawing_Pen* pen,
     const BackgroundDrawable::BorderPosition& border_position,

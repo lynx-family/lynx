@@ -142,9 +142,32 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
     return background_drawable_ ? background_drawable_->GetBorderLeftWidth()
                                 : 0.f;
   }
+  float GetBorderRightWidth() const {
+    return background_drawable_ ? background_drawable_->GetBorderRightWidth()
+                                : 0.f;
+  }
   float GetBorderTopWidth() const {
     return background_drawable_ ? background_drawable_->GetBorderTopWidth()
                                 : 0.f;
+  }
+  float GetBorderBottomWidth() const {
+    return background_drawable_ ? background_drawable_->GetBorderBottomWidth()
+                                : 0.f;
+  }
+  uint32_t GetBorderLeftColor() const {
+    return background_drawable_ ? background_drawable_->GetBorderLeftColor()
+                                : 0;
+  }
+  uint32_t GetBorderRightColor() const {
+    return background_drawable_ ? background_drawable_->GetBorderRightColor()
+                                : 0;
+  }
+  uint32_t GetBorderTopColor() const {
+    return background_drawable_ ? background_drawable_->GetBorderTopColor() : 0;
+  }
+  uint32_t GetBorderBottomColor() const {
+    return background_drawable_ ? background_drawable_->GetBorderBottomColor()
+                                : 0;
   }
   bool HasCustomizedLayout() const { return has_customized_layout_; }
   virtual bool HasJSObject() { return false; }

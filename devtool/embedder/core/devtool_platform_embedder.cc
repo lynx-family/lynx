@@ -96,6 +96,23 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     return GetBoxModelInGeneralPlatform(element);
   }
 
+  std::string GetLynxUITree() override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", {});
+    return embedder->GetLynxUITree();
+  }
+
+  std::string GetUINodeInfo(int id) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", {});
+    return embedder->GetUINodeInfo(id);
+  }
+  int SetUIStyle(int id, std::string name, std::string content) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", -1);
+    return embedder->SetUIStyle(id, name, content);
+  }
+
   std::vector<float> GetTransformValue(
       int identifier,
       const std::vector<float>& pad_border_margin_layout) override {
@@ -271,6 +288,22 @@ void DevtoolPlatformEmbedder::EmulateTouch(
   proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
                        input->delta_x_, input->delta_y_, input->modifiers_,
                        input->click_count_);
+}
+
+std::string DevtoolPlatformEmbedder::GetLynxUITree() {
+  CHECK_NULL_AND_LOG_RETURN_VALUE(proxy_, "proxy_ is null", {});
+  return proxy_->GetLynxUITree();
+}
+
+std::string DevtoolPlatformEmbedder::GetUINodeInfo(int id) {
+  CHECK_NULL_AND_LOG_RETURN_VALUE(proxy_, "proxy_ is null", {});
+  return proxy_->GetUINodeInfo(id);
+}
+
+int DevtoolPlatformEmbedder::SetUIStyle(int id, const std::string& name,
+                                        const std::string& content) {
+  CHECK_NULL_AND_LOG_RETURN_VALUE(proxy_, "proxy_ is null", -1);
+  return proxy_->SetUIStyle(id, name, content);
 }
 
 void DevtoolPlatformEmbedder::FlushConsoleMessages() {

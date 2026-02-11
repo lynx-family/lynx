@@ -79,6 +79,11 @@ class DevtoolPlatformEmbedder
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout);
 
+  std::string GetLynxUITree();
+
+  std::string GetUINodeInfo(int id);
+  int SetUIStyle(int id, const std::string& name, const std::string& content);
+
   void FlushConsoleMessages();
   void GetConsoleObject(const std::string& object_id, bool need_stringify,
                         int callback_id);

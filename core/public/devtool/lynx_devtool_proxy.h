@@ -37,6 +37,10 @@ class LynxDevToolProxy {
   virtual int GetNodeForLocation(int x, int y) = 0;
   virtual std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) = 0;
+  virtual std::string GetLynxUITree() = 0;
+  virtual std::string GetUINodeInfo(int id) = 0;
+  virtual int SetUIStyle(int id, const std::string& name,
+                         const std::string& content) = 0;
   virtual void SetInspectorOwner(LynxInspectorOwner* owner) = 0;
   virtual void EmulateTouch(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,

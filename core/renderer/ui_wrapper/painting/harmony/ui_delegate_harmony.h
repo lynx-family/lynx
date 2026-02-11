@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_UI_DELEGATE_HARMONY_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -69,6 +70,11 @@ class UIDelegateHarmony : public UIDelegate {
 
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
+
+  std::string GetLynxUITree() override;
+  std::string GetUINodeInfo(int id) override;
+  int SetUIStyle(int id, const std::string& name,
+                 const std::string& content) override;
 
   float ScreenWidth() { return screen_width_; }
   float ScreenHeight() { return screen_height_; }

@@ -78,6 +78,12 @@ class UIDelegate {
       int id, const std::vector<float>& pad_border_margin_layout) {
     return {};
   }
+  virtual std::string GetLynxUITree() { return std::string(); }
+  virtual std::string GetUINodeInfo(int id) { return std::string(); }
+  virtual int SetUIStyle(int id, const std::string& name,
+                         const std::string& content) {
+    return 0;
+  }
 
  private:
   // Represents an unknown instance ID. Typically set proactively during event

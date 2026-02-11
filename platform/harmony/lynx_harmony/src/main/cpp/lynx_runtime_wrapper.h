@@ -103,6 +103,13 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
     return std::vector<float>();
   };
 
+  std::string GetLynxUITree() override { return std::string(); }
+  std::string GetUINodeInfo(int id) override { return std::string(); }
+  int SetUIStyle(int id, const std::string& name,
+                 const std::string& content) override {
+    return 0;
+  }
+
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override {
     inspector_owner_ = owner;
   };
