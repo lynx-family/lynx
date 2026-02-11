@@ -13,6 +13,7 @@ export * from './text';
 export * from './view';
 export * from './input';
 export * from './textarea';
+export * from './title-bar-view';
 export * from './svg';
 export * from './element';
 export * from './methods';

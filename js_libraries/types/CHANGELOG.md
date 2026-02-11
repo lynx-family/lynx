@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.8.2
+
+- Add `title-bar-view` element types.
+
 ## 3.8.1
 
 - Add memory event.

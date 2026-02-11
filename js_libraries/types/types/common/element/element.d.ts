@@ -18,6 +18,7 @@ import { TextAreaProps, TextAreaUIMethods } from './textarea';
 import { FrameProps } from './frame';
 import { OverlayProps} from './overlay';
 import { SVGProps } from './svg';
+import { TitleBarViewProps } from './title-bar-view';
 
 
 export interface UIMethods {
@@ -52,6 +53,7 @@ export interface IntrinsicElements {
   'frame': FrameProps;
   'overlay': OverlayProps;
   'svg': SVGProps;
+  'title-bar-view': TitleBarViewProps;
 }
 
 declare module 'react' {
@@ -77,6 +79,7 @@ declare module 'react' {
       'frame': FrameProps;
       'overlay': OverlayProps;
       'svg': SVGProps;
+      'title-bar-view': TitleBarViewProps;
     }
   }
 }

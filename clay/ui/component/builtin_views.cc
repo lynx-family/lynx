@@ -28,6 +28,10 @@
 #include "clay/ui/shadow/raw_text_shadow_node.h"
 #include "clay/ui/shadow/text_shadow_node.h"
 
+#if (defined(OS_MAC) || defined(OS_WIN))
+#include "clay/ui/component/title_bar_view.h"
+#endif
+
 namespace clay {
 
 void keepBuiltinElements() {}
@@ -61,4 +65,7 @@ REGISTER_CLAY_ELEMENT("list", ListWrapper, void);
 REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
 #endif  // ENABLE_CLAY_LITE
 
+#if (defined(OS_MAC) || defined(OS_WIN))
+REGISTER_CLAY_ELEMENT("title-bar-view", TitleBarView, void);
+#endif
 }  // namespace clay

@@ -118,6 +118,13 @@ ui_component_sources = [
   "view_tree_observer.h",
 ]
 
+if (is_mac || is_win) {
+  ui_component_sources += [
+    "title_bar_view.cc",
+    "title_bar_view.h",
+  ]
+}
+
 if (!enable_clay_lite) {
   ui_component_sources += [
     "list/base_list_view.cc",
