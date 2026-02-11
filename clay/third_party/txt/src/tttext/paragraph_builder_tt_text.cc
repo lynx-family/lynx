@@ -193,7 +193,7 @@ void ParagraphBuilderTTText::ToTTParaStyle(const ParagraphStyle& para_style) {
   tt_para_style.EnableTextBounds(para_style.enable_text_bounds);
   tt_para_style.SetDefaultStyle(ToTTStyle(text_style));
   tt_para_style.SetLineSpaceAfterPx(para_style.line_spacing);
-  tt_para_style.SetHalfLeading(para_style.strut_half_leading);
+  tt_para_style.SetHalfLeading(para_style.half_leading);
 }
 void ParagraphBuilderTTText::CreateParagraph() {
   if (paragraph_ == nullptr) {
