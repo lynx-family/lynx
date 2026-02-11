@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/tasm",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "",
   "main": "index.js",
   "types": "index.d.ts",
@@ -15,7 +15,7 @@
     "index.d.ts",
     "lepus.js",
     "lepus.d.ts",
-    "Changelog.md"
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "run-script-os",

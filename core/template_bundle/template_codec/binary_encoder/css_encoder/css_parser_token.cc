@@ -90,13 +90,8 @@ void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
       tasm::CSSPropertyID id =
           tasm::CSSProperty::GetPropertyID(name.GetString());
       if (!tasm::CSSProperty::IsPropertyValid(id)) {
-        // FIXME: consider not using `std::stringstream`
-        std::stringstream error;
-        error << "Error In CSSParse: \"" << name.GetString()
-              << "\" is not supported now !";
-
-        const rapidjson::Value& loc = value[rapidjson::Value("keyLoc")];
-        throw lepus::ParseException(error.str().c_str(), path_.c_str(), loc);
+        // TODO(zhongyr): return structural error to compiler.
+        return;
       }
       // FIXME: consider moving these string literals into constexpr static
       lepus::Value css_value = lepus::jsonValueTolepusValue(value["value"]);

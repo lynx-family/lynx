@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.24
+* Optimize the encoding process of CSS, unsupported CSS properties will not stop the encoding process.
+
 # 0.0.23
 * Support render functions for framework to load lazy CSS with `__LoadStyleSheet` and `__AdoptStyleSheet`.
 

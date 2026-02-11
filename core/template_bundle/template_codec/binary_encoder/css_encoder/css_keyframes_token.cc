@@ -108,12 +108,8 @@ void CSSKeyframesToken::ConvertToCSSAttrsMap(const rapidjson::Value& value,
       default_value = value["defaultValue"].GetString();
     }
     if (!tasm::CSSProperty::IsPropertyValid(id)) {
-      std::stringstream error;
-      error << "Error In CSSParse: \"" << name.GetString()
-            << "\" is not supported now !";
-
-      const rapidjson::Value& loc = value[rapidjson::Value("keyLoc")];
-      throw lepus::ParseException(error.str().c_str(), file_.c_str(), loc);
+      // TODO(zhongyr): return structural error to compiler.
+      return;
     }
     if (tasm::Config::IsHigherOrEqual(compile_options_.target_sdk_version_,
                                       FEATURE_CSS_STYLE_VARIABLES) &&
