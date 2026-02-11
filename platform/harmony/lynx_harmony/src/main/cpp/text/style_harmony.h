@@ -262,8 +262,6 @@ class TextStyleHarmony {
       font_families[i] = custom_font_families_[i].c_str();
     }
 
-    LOGE("linxs OH_Drawing_SetTextStyleFontFamilies font_family: "
-         << font_families.get()[0] << ",text_style_:" << text_style_);
     OH_Drawing_SetTextStyleFontFamilies(text_style_, static_cast<int>(size),
                                         font_families.get());
   }
