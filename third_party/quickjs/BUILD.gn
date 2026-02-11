@@ -30,6 +30,7 @@ config("quickjs_private_config") {
     "-Wno-unknown-warning-option",
     "-Wno-newline-eof",
     "-Wno-sign-compare",
+    "-Oz"
   ]
 
   # FIXME(): definition controlled by the args
