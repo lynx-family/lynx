@@ -164,6 +164,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   private boolean mLayoutThreadChanged = false;
 
+  private boolean mEnableEngineReuse = false;
+
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
@@ -262,10 +264,19 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   }
 
   /**
-   * @brief check whether engine pool is enabled
+   * @brief check whether engine reuse ability is enabled
    */
   public boolean isEnginePoolEnabled() {
-    return EmbeddedMode.isEnginePoolEnable(embeddedMode);
+    return this.mEnableEngineReuse;
+  }
+
+  /**
+   * @brief set whether reuse engined is enabled
+   * @param enable
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setEnableReuseEngine(boolean enable) {
+    this.mEnableEngineReuse = enable;
   }
 
   /**

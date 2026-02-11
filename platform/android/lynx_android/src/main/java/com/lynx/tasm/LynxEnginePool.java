@@ -98,6 +98,9 @@ class LynxEnginePool {
 
   @NonNull
   private synchronized LinkedList<LynxEngine> getEngineQueue(TemplateBundle templateBundle) {
+    if (templateBundle == null) {
+      return new LinkedList<>();
+    }
     LinkedList<LynxEngine> engineQueue = mCache.get(templateBundle);
     if (engineQueue == null) {
       engineQueue = new LinkedList<>();

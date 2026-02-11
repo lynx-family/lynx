@@ -2700,6 +2700,7 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
   public void com.lynx.tasm.group.ILynxViewGroup.fetchTemplateBundle(LynxResourceCallback< TemplateBundle > callback);
   public boolean com.lynx.tasm.group.ILynxViewGroup.isTemplateBundleReady();
   public LynxModuleFactory com.lynx.tasm.group.ILynxViewGroup.getSharedModuleFactory();
+  public void com.lynx.tasm.group.ILynxViewGroup.release();
 }
 
 public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
@@ -4625,6 +4626,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isFragmentLayerRenderOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isTextServiceModeOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnginePoolEnabled();
+  public void com.lynx.tasm.behavior.LynxContext.setEnableReuseEngine(boolean enable);
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
   public void com.lynx.tasm.behavior.LynxContext.setTapSlop(String tapSlop);
   public String com.lynx.tasm.behavior.LynxContext.getTapSlop();

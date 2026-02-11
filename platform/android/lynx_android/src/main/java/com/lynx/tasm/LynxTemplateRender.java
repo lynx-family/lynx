@@ -418,6 +418,8 @@ public class LynxTemplateRender
     mTemplateAssembler.setLynxContext(mLynxContext);
 
     mLynxContext.setEmbeddedMode(mEmbeddedMode);
+    mLynxContext.setEnableReuseEngine(EmbeddedMode.isEnginePoolEnable(mEmbeddedMode)
+        || (mCacheManager != null && mCacheManager.isEngineCacheEnabled()));
     mLynxContext.setPerfController(mPerformanceController);
     mLynxContext.setTapSlop(builder.getTapSlop());
 
@@ -490,15 +492,22 @@ public class LynxTemplateRender
     if (mLynxEngineRef == null) {
       // Failed to get from the pool, create a new one.
       // This wrapper won't be cached because it doesn't have the Element/UI Tree context yet.
+      ensureLynxEngine();
+      mIsEngineFromReuse = false;
+    }
+    if (mTemplateData != null) {
+      mTemplateData.setEnableJSData(false);
+    }
+  }
+
+  // ensures that the LynxEngine is non-null;
+  private void ensureLynxEngine() {
+    if (mLynxEngineRef == null) {
       mLynxEngineRef = new LynxEngine(mTemplateBundle, this);
       mLynxUIRender = lynxUIRenderer();
       // Cache the platform-level reuse object.
       mLynxEngineRef.setLynxUIRenderer(mLynxUIRender);
       mLynxEngineRef.attachCurrentTemplateRender(this);
-      mIsEngineFromReuse = false;
-    }
-    if (mTemplateData != null) {
-      mTemplateData.setEnableJSData(false);
     }
   }
 

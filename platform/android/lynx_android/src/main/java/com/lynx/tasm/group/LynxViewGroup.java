@@ -612,12 +612,16 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     return mSharedModuleFactory;
   }
 
+  @Override
   public void release() {
     if (templateBundle != null) {
       templateBundle.release();
     }
     if (logicExecutor != null) {
       logicExecutor.destroy();
+    }
+    if (cachedLynxEngine != null) {
+      cachedLynxEngine.destroy();
     }
     setFetchResult(
         LynxResourceResponse.onFailed(new RuntimeException("This LynxViewGroup released")));

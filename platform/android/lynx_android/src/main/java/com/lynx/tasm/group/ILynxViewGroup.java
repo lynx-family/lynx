@@ -49,4 +49,9 @@ public interface ILynxViewGroup extends ILynxViewConfigProvider {
   boolean isTemplateBundleReady();
 
   LynxModuleFactory getSharedModuleFactory();
+
+  /**
+   * Invoked {@link ILynxViewGroup#release()} to destroy the LynxEngine associated with it.
+   */
+  void release();
 }
