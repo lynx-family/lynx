@@ -34,6 +34,7 @@
 #include "clay/ui/component/editable/textarea_view.h"
 #include "clay/ui/component/expose_manager/expose_observer.h"
 #include "clay/ui/component/inline_image_view.h"
+#include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/text/base_text_view.h"
@@ -246,6 +247,12 @@ void BaseView::AddChild(BaseView* child, int index) {
 
   DirtyChildrenPaintingOrder();
 
+  // Notify insert after parent-child relationship is established and before
+  // attach lifecycle notification.
+  if (child->Is<NativeView>()) {
+    static_cast<NativeView*>(child)->OnInsert(id(), GetChildIndex(child));
+  }
+
   // If the current node is in a layout tree, its descendants must be in a
   // layout tree.
   if (InLayoutTree()) {
@@ -256,6 +263,15 @@ void BaseView::AddChild(BaseView* child, int index) {
 
   if (attach_to_tree_) {
     child->OnAttachToTree();
+  }
+}
+
+void BaseView::OnLayoutFinish(BaseView* view) {
+  if (view == nullptr) {
+    return;
+  }
+  if (view->Is<NativeView>()) {
+    view->OnNodeReady();
   }
 }
 
