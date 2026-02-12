@@ -7216,6 +7216,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableLayoutOnly(boolean enableLayoutOnly);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setDynamicComponentFetcher(DynamicComponentFetcher fetcher);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableCreateViewAsync(boolean enable);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableAutoConcurrency(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setImageFetcher(LynxImageFetcher imageFetcher);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setUIRunningMode(boolean ui);
   public void com.lynx.tasm.LynxViewBuilder.setCustomBehaviorRegistry(@NonNull BehaviorRegistry registry);
@@ -7226,6 +7227,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setThreadStrategyForRendering(ThreadStrategyForRendering strategy);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setPresetMeasuredSpec(int widthMeasureSpec, int heightMeasureSpec);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setResourceProvider(String key, LynxResourceProvider provider);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setForceDarkAllowed(boolean allowed);
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module);
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module, Object param);
   public void com.lynx.tasm.LynxViewBuilder.registerModuleAuthValidator(LynxModule.AuthValidator authValidator);
@@ -7240,7 +7242,9 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnablePendingJsTask(boolean enablePendingJsTask);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableJSRuntime(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.enableAutoExpose(boolean enableAutoExpose);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableUserBytecode(boolean enableUserBytecode);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableVSyncAlignedMessageLoop(boolean enable);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setBytecodeSourceUrl(String url);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableAirStrictMode(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableMultiAsyncThread(boolean enableMultiAsyncThread);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableSyncFlush(boolean enable);
@@ -7268,6 +7272,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public boolean com.lynx.tasm.LynxViewBuilder.isEnablePendingJsTask();
   public boolean com.lynx.tasm.LynxViewBuilder.isEnableAsyncHydration();
   public boolean com.lynx.tasm.LynxViewBuilder.isEnableJSRuntime();
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnablePreUpdateData(boolean enable);
   public boolean com.lynx.tasm.LynxViewBuilder.isEnableAirStrictMode();
   public boolean com.lynx.tasm.LynxViewBuilder.isDebuggable();
   public boolean com.lynx.tasm.LynxViewBuilder.hasPresetMeasureSpec();

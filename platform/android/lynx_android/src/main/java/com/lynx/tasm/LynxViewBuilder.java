@@ -174,6 +174,26 @@ public class LynxViewBuilder
     return this;
   }
 
+  /**
+   * Experimental API.
+   *
+   * Enable auto concurrency or not.
+   *
+   * For this mode, use MULTI_THREADS and EnableMultiAsyncThread by default.
+   *
+   * Only switch to PART_ON_LAYOUT when absolutely necessary,
+   * like load template or render list child.
+   *
+   * @see ThreadStrategyForRendering#MULTI_THREADS
+   * @see ThreadStrategyForRendering#PART_ON_LAYOUT
+   * @see LynxViewBuilder#setEnableMultiAsyncThread
+   */
+  @Deprecated
+  @Override
+  public LynxViewBuilder setEnableAutoConcurrency(boolean enable) {
+    return super.setEnableAutoConcurrency(enable);
+  }
+
   public LynxViewBuilder setImageFetcher(LynxImageFetcher imageFetcher) {
     this.imageFetcher = imageFetcher;
     return this;
@@ -223,6 +243,16 @@ public class LynxViewBuilder
   @Override
   public LynxViewBuilder setResourceProvider(String key, LynxResourceProvider provider) {
     return super.setResourceProvider(key, provider);
+  }
+
+  /**
+   * Sets whether or not to allow force dark to apply to lynx context, default is false.
+   * @param allowed Whether or not to allow force dark
+   * @return
+   */
+  @Override
+  public LynxViewBuilder setForceDarkAllowed(boolean allowed) {
+    return super.setForceDarkAllowed(allowed);
   }
 
   @Override
@@ -296,8 +326,18 @@ public class LynxViewBuilder
   }
 
   @Override
+  public LynxViewBuilder setEnableUserBytecode(boolean enableUserBytecode) {
+    return super.setEnableUserBytecode(enableUserBytecode);
+  }
+
+  @Override
   public LynxViewBuilder setEnableVSyncAlignedMessageLoop(boolean enable) {
     return super.setEnableVSyncAlignedMessageLoop(enable);
+  }
+
+  @Override
+  public LynxViewBuilder setBytecodeSourceUrl(String url) {
+    return super.setBytecodeSourceUrl(url);
   }
 
   @Override
@@ -527,6 +567,16 @@ public class LynxViewBuilder
     } else {
       return enableJSRuntime;
     }
+  }
+
+  /**
+   * Control whether updateData can take effect before loadTemplate
+   *
+   * @param enable whether updateData could take effect before loadTemplate
+   */
+  @Override
+  public LynxViewBuilder setEnablePreUpdateData(boolean enable) {
+    return super.setEnablePreUpdateData(enable);
   }
 
   @Override
