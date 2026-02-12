@@ -43,6 +43,11 @@ enum class UriSchemeType {
 
 UriSchemeType ParseUriScheme(std::string_view uri);
 
+// Trim URL by removing unnecessary parts that don't affect loading.
+// This function removes URL fragments (#fragment) and default ports (80 for
+// http, 443 for https). Returns the trimmed URL.
+std::string TrimUrl(std::string_view url);
+
 }  // namespace url
 }  // namespace clay
 

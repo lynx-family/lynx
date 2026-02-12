@@ -58,6 +58,7 @@ if (enable_unittests) {
       sources = [
         "fetcher/http_resource_fetcher_unittests.cc",
         "net_loader_manager_unittests.cc",
+        "url/url_helper_test.cc",
       ]
 
       public_deps = [

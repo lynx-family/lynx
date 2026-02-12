@@ -65,10 +65,15 @@ class Image : public std::enable_shared_from_this<Image> {
   size_t GetUIAccessorCount() const { return ui_accessors_.size(); }
 
 #if defined(ENABLE_SVG)
-  void SetContentHash(std::string hash_string) {
+  void SetContentHash(size_t hash_string) {
     content_hash_ = std::move(hash_string);
   }
-  const std::string& GetContentHash() const { return content_hash_; }
+  size_t GetContentHash() const { return content_hash_; }
+
+  void SetContentMD5(std::string md5_string) {
+    content_md5_ = std::move(md5_string);
+  }
+  const std::string& GetContentMD5() const { return content_md5_; }
 #endif
 
   // Support SVG.
@@ -171,9 +176,13 @@ class Image : public std::enable_shared_from_this<Image> {
   // Support SVG.
   const bool is_svg_ = false;
 #if defined(ENABLE_SVG)
-  // content_hash_ stores the hash value of the SVG image content. This hash is
-  // primarily used to cache the content of SVG images within the ImageManager.
-  std::string content_hash_;
+  // For SVG images, this is the hash of the SVG content.
+  // This hash is primarily used to cache images within the ImageCache.
+  size_t content_hash_ = 0;
+  // For SVG images, this is the MD5 of the SVG content.
+  // This MD5 is primarily used to cache images within both the ImageManager and
+  // ImageCache.
+  std::string content_md5_;
 #endif
   const bool is_promise_ = false;
   std::weak_ptr<Notifier> weak_notifier_;

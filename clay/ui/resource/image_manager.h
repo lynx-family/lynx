@@ -45,7 +45,7 @@ class ImageManager : public Image::Notifier,
 
   void ClearCache();
 
-  bool GetImageResource(const std::string& final_url,
+  bool GetImageResource(const std::string& url,
                         const ImageResourceCallback& callback,
                         bool use_texture_backend, bool is_deferred,
                         bool decode_with_priority,
@@ -80,15 +80,6 @@ class ImageManager : public Image::Notifier,
       bool is_promise, bool enable_low_quality_image, bool is_deferred,
       bool decode_with_priority);
 
-  void CacheImage(const std::string& url, std::shared_ptr<Image> image);
-
-#if defined(ENABLE_PLATFORM_DECODE)
-  void CreateAndCacheImageAsync(const std::string& url, GrDataPtr data,
-                                bool is_svg, bool use_texture_backend,
-                                bool is_promise, bool enable_low_quality_image,
-                                bool is_deferred, const fml::closure& callback);
-#endif
-
   // impelementation of Image::Notifier
   void ImageHasNoAccessor(const Image* image) override;
   fml::RefPtr<GPUUnrefQueue> GetUnrefQueue() override { return unref_queue_; }
@@ -97,24 +88,26 @@ class ImageManager : public Image::Notifier,
       clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue);
 
  private:
-  void MoveToInactiveCacheIfNeeded(const std::string& url, const Image* image);
+  std::unique_ptr<ImageResource> GetImageResourceFromCache(
+      size_t content_hash, const std::string& url);
+  void MoveToInactiveCacheIfNeeded(size_t content_hash,
+                                   const std::string& identifier,
+                                   const Image* image);
 
-  void PerformDeferredRemoval();
   void PerformRemoval();
 
   clay::TaskRunners task_runners_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
 
-  // Contains ImageResourceFetcher which are currently referencing ImageManager.
-  // After all ImageResourceFetcher are removed, ImageManager will be destroyed.
+  // Contains ImageResourceFetcher which are currently referencing
+  // ImageManager. After all ImageResourceFetcher are removed, ImageManager
+  // will be destroyed.
   std::unordered_set<ImageResourceFetcher*> accessors_;
 
   // Contains images which are being used by rendering.
-  std::multimap<std::string, std::shared_ptr<Image>> active_url_image_map_;
+  std::multimap<std::string, std::shared_ptr<Image>> active_image_map_;
   // Contains images which are not being used by rendering.
   std::shared_ptr<ImageCache<Image>> inactive_image_cache_;
-
-  uint64_t removal_task_id_ = 0;
 };
 
 }  // namespace clay

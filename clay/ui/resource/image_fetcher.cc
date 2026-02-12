@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/md5.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/gfx/image/animated_image.h"
 #include "clay/gfx/image/base_image.h"
@@ -16,6 +17,7 @@
 #include "clay/net/loader/resource_loader.h"
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/net/loader/resource_loader_intercept.h"
+#include "clay/net/url/url_helper.h"
 
 namespace clay {
 
@@ -68,66 +70,76 @@ ImageFetcher::ImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
 
 ImageFetcher::~ImageFetcher() = default;
 
-uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
+uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
                                   const ImageCallback& callback) {
   auto fetchID = NextUniqueID();
-  auto image = FindImageFromCache(url);
+
+  std::string trimmed_url = url::TrimUrl(original_url);
+  if (trimmed_url.empty()) {
+    callback(nullptr, false);
+    return fetchID;
+  }
+
+  size_t content_hash = std::hash<std::string>{}(trimmed_url);
+  auto image = FindImageFromCache(content_hash, trimmed_url);
   if (image) {
     callback(image->NewInstance(), true);
     return fetchID;
   }
-  image_callback_map_.insert({url, callback});
-  auto it = url_loader_map_.find(url);
+  image_callback_map_.insert({trimmed_url, callback});
+  auto it = url_loader_map_.find(trimmed_url);
   if (it == url_loader_map_.end()) {
     if (is_svg) {
-      auto loader = GetOrCreateResourceLoader(resource_loader_intercept_, url,
-                                              task_runners_.GetUITaskRunner(),
-                                              service_manager_);
+      auto loader = GetOrCreateResourceLoader(
+          resource_loader_intercept_, trimmed_url,
+          task_runners_.GetUITaskRunner(), service_manager_);
       if (!loader) {
-        OnFetchFinish(url, nullptr);
+        OnFetchFinish(trimmed_url, nullptr);
         return fetchID;
       }
-      url_loader_map_.insert({url, loader});
-      loader->Load(url, [self = GetWeakPtr(), url, callback](
-                            const uint8_t* data, size_t size) {
+      url_loader_map_.insert({trimmed_url, loader});
+      loader->Load(trimmed_url, [self = GetWeakPtr(), trimmed_url, callback](
+                                    const uint8_t* data, size_t size) {
         if (!self) {
           callback(nullptr, false);
           return;
         }
         if (data == nullptr || size == 0) {
-          self->OnFetchFinish(url, nullptr);
+          self->OnFetchFinish(trimmed_url, nullptr);
           return;
         }
+
         auto image = SVGImage::Make(
-            self->weak_factory_.GetWeakPtr(), url,
+            self->weak_factory_.GetWeakPtr(), trimmed_url,
             std::string(reinterpret_cast<const char*>(data), size));
-        self->active_url_image_map_.insert({url, image});
-        self->OnFetchFinish(url, image);
+        self->active_image_map_.insert({trimmed_url, image});
+        self->OnFetchFinish(trimmed_url, image);
       });
     } else {
-      url_loader_map_.insert({url, nullptr});
-      FetchImage(url, [self = GetWeakPtr(), url, callback](
-                          std::shared_ptr<PlatformImage> platform_image) {
-        if (!self) {
-          callback(nullptr, false);
-          return;
-        }
-        if (!platform_image) {
-          self->OnFetchFinish(url, nullptr);
-          return;
-        }
-        std::shared_ptr<BaseImage> image;
-        if (platform_image->IsAnimated()) {
-          image = AnimatedImage::Make(self->weak_factory_.GetWeakPtr(), url,
-                                      self->task_runners_.GetUITaskRunner(),
-                                      platform_image);
-        } else {
-          image = StaticImage::Make(self->weak_factory_.GetWeakPtr(), url,
-                                    platform_image);
-        }
-        self->active_url_image_map_.insert({url, image});
-        self->OnFetchFinish(url, image);
-      });
+      url_loader_map_.insert({trimmed_url, nullptr});
+      FetchImage(trimmed_url,
+                 [self = GetWeakPtr(), trimmed_url,
+                  callback](std::shared_ptr<PlatformImage> platform_image) {
+                   if (!self) {
+                     callback(nullptr, false);
+                     return;
+                   }
+                   if (!platform_image) {
+                     self->OnFetchFinish(trimmed_url, nullptr);
+                     return;
+                   }
+                   std::shared_ptr<BaseImage> image;
+                   if (platform_image->IsAnimated()) {
+                     image = AnimatedImage::Make(
+                         self->weak_factory_.GetWeakPtr(), trimmed_url,
+                         self->task_runners_.GetUITaskRunner(), platform_image);
+                   } else {
+                     image = StaticImage::Make(self->weak_factory_.GetWeakPtr(),
+                                               trimmed_url, platform_image);
+                   }
+                   self->active_image_map_.insert({trimmed_url, image});
+                   self->OnFetchFinish(trimmed_url, image);
+                 });
     }
   }
   return fetchID;
@@ -136,26 +148,28 @@ uint64_t ImageFetcher::FetchImage(const std::string& url, bool is_svg,
 uint64_t ImageFetcher::FetchSVGImageWithContent(const std::string& content,
                                                 const ImageCallback& callback) {
   auto fetchID = NextUniqueID();
-  std::string hash_string = std::to_string(std::hash<std::string>{}(content));
-  auto image = FindImageFromCache(hash_string);
+
+  size_t content_hash = std::hash<std::string>()(content);
+  auto content_md5 = lynx::base::md5(content);
+  auto image = FindImageFromCache(content_hash, content_md5);
   if (image) {
     callback(image->NewInstance(), true);
     return fetchID;
   }
-  image = SVGImage::Make(weak_factory_.GetWeakPtr(), hash_string, content);
-  active_url_image_map_.insert({hash_string, image});
+  image = SVGImage::Make(weak_factory_.GetWeakPtr(), "", content);
+  active_image_map_.insert({content_md5, image});
   callback(image->NewInstance(), false);
   return fetchID;
 }
 
-void ImageFetcher::OnFetchFinish(const std::string& url,
+void ImageFetcher::OnFetchFinish(const std::string& trimmed_url,
                                  std::shared_ptr<BaseImage> image) {
-  auto loader_it = url_loader_map_.find(url);
+  auto loader_it = url_loader_map_.find(trimmed_url);
   if (loader_it != url_loader_map_.end()) {
     url_loader_map_.erase(loader_it);
   }
 
-  auto range = image_callback_map_.equal_range(url);
+  auto range = image_callback_map_.equal_range(trimmed_url);
   for (auto it = range.first; it != range.second; ++it) {
     if (image) {
       it->second(image->NewInstance(), false);
@@ -163,45 +177,73 @@ void ImageFetcher::OnFetchFinish(const std::string& url,
       it->second(nullptr, false);
     }
   }
-  image_callback_map_.erase(url);
+  image_callback_map_.erase(trimmed_url);
 }
 
-void ImageFetcher::TryCancelAsyncFetch(const std::string& url,
+void ImageFetcher::TryCancelAsyncFetch(const std::string& original_url,
                                        uint64_t fetch_id) {
-  auto iter = url_loader_map_.find(url);
+  std::string trimmed_url = url::TrimUrl(original_url);
+  auto iter = url_loader_map_.find(trimmed_url);
   if (iter != url_loader_map_.end()) {
     if (iter->second) {
       iter->second->CancelAll();
     }
     url_loader_map_.erase(iter);
   }
-  image_callback_map_.erase(url);
+  image_callback_map_.erase(trimmed_url);
 }
 
 std::shared_ptr<BaseImage> ImageFetcher::FindImageFromCache(
-    const std::string& url) {
-  auto it = active_url_image_map_.find(url);
-  if (it != active_url_image_map_.end()) {
+    size_t content_hash, const std::string& identifier) {
+  auto it = active_image_map_.find(identifier);
+  if (it != active_image_map_.end()) {
     return it->second;
   }
 
-  auto image = inactive_image_cache_->TakeImage(url);
+  auto image = inactive_image_cache_->TakeImage(content_hash, identifier);
   if (image) {
-    active_url_image_map_.insert({url, image});
+    active_image_map_.insert({identifier, image});
     return image;
   }
   return nullptr;
 }
 
 void ImageFetcher::OnImageHasNoAccessor(BaseImage* image) {
-  auto& url = image->GetUrl();
-  if (url.empty()) {
+  if (!image->GetUrl().empty()) {
+    MoveToInactiveCacheIfNeeded(std::hash<std::string>()(image->GetUrl()),
+                                image->GetUrl(), image);
     return;
   }
-  auto it = active_url_image_map_.find(url);
-  if (it != active_url_image_map_.end()) {
-    inactive_image_cache_->StoreImage(url, it->second);
-    active_url_image_map_.erase(it);
+
+  if (image->IsSVG()) {
+    SVGImage* svg_image = static_cast<SVGImage*>(image);
+    if (svg_image->GetContentMD5().empty()) {
+      return;
+    }
+    MoveToInactiveCacheIfNeeded(svg_image->GetContentHash(),
+                                svg_image->GetContentMD5(), svg_image);
+  }
+}
+
+void ImageFetcher::MoveToInactiveCacheIfNeeded(size_t content_hash,
+                                               const std::string& identifier,
+                                               const BaseImage* image) {
+  // Remove the image from the active_image_map_.
+  auto range = active_image_map_.equal_range(identifier);
+  size_t count = std::distance(range.first, range.second);
+  if (count == 1) {
+    // If there is only one image, then move it to inactive image cache.
+    inactive_image_cache_->StoreImage(content_hash, identifier,
+                                      range.first->second);
+    active_image_map_.erase(range.first);
+  } else {
+    for (auto image_iter = range.first; image_iter != range.second;
+         ++image_iter) {
+      if (image_iter->second.get() == image) {
+        active_image_map_.erase(image_iter);
+        break;
+      }
+    }
   }
 }
 

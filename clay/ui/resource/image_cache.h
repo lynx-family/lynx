@@ -52,8 +52,8 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
     desired_cache_bytes_ = max_cached_bytes_ * kDesiredOccupancyRatio;
   }
   ~ImageCache() { ClearCache(); }
-  void StoreImage(const std::string& id, std::shared_ptr<T> image,
-                  bool is_prune_old_images = true) {
+  void StoreImage(size_t content_hash, const std::string& identifier,
+                  std::shared_ptr<T> image, bool is_prune_old_images = true) {
 #if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
@@ -63,9 +63,9 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
       return;
     }
 
-    FML_DCHECK(cache_map_.find(id) == cache_map_.end());
-    cache_list_.emplace_back(id, fml::TimePoint::Now(), bytes, image);
-    cache_map_[id] = --cache_list_.end();
+    cache_list_.emplace_back(content_hash, identifier, fml::TimePoint::Now(),
+                             bytes, image);
+    cache_map_[content_hash] = --cache_list_.end();
     current_cache_bytes_ += bytes;
 
     // Clean to max bytes if cache bytes is too large.
@@ -79,12 +79,18 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 #endif
   }
 
-  std::shared_ptr<T> TakeImage(const std::string& id) {
+  std::shared_ptr<T> TakeImage(size_t content_hash,
+                               const std::string& identifier) {
 #if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
-    auto found = cache_map_.find(id);
+    auto found = cache_map_.find(content_hash);
     if (found == cache_map_.end()) {
+      return nullptr;
+    }
+
+    // Double check: if identifier is provided, verify if it matches
+    if (!identifier.empty() && found->second->identifier_ != identifier) {
       return nullptr;
     }
 
@@ -100,12 +106,18 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 #endif
   }
 
-  std::shared_ptr<T> FindImage(const std::string& id) {
+  std::shared_ptr<T> FindImage(size_t content_hash,
+                               const std::string& identifier) {
 #if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
-    auto found = cache_map_.find(id);
+    auto found = cache_map_.find(content_hash);
     if (found == cache_map_.end()) {
+      return nullptr;
+    }
+
+    // Double check: if identifier is provided, verify if it matches
+    if (!identifier.empty() && found->second->identifier_ != identifier) {
       return nullptr;
     }
 
@@ -133,7 +145,7 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
            (cleaned_items++ < kMaxCleanItemsPerCell)) {
       images.push_back(iter->image_);
       current_cache_bytes_ -= iter->bytes_;
-      cache_map_.erase(iter->id_);
+      cache_map_.erase(iter->content_hash_);
       iter = cache_list_.erase(iter);
     }
 
@@ -181,7 +193,7 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
       } else {
         images.push_back(iter->image_);
         current_cache_bytes_ -= iter->bytes_;
-        cache_map_.erase(iter->id_);
+        cache_map_.erase(iter->content_hash_);
         iter = cache_list_.erase(iter);
         cleaned_items++;
       }
@@ -202,17 +214,27 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
   }
 
   struct ImageItem {
-    ImageItem(const std::string& id, const fml::TimePoint& time_stamp,
-              size_t bytes, std::shared_ptr<T> image)
-        : id_(id), time_stamp_(time_stamp), bytes_(bytes), image_(image) {}
-    std::string id_;
+    ImageItem(size_t content_hash, const std::string& identifier,
+              const fml::TimePoint& time_stamp, size_t bytes,
+              std::shared_ptr<T> image)
+        : content_hash_(content_hash),
+          identifier_(identifier),
+          time_stamp_(time_stamp),
+          bytes_(bytes),
+          image_(image) {}
+    size_t content_hash_;
+    // Identifier for the image:
+    // - For non-SVG images: Trimmed URL
+    // - For SVG images: MD5 hash of the source content
+    // (lynx::base::md5(source))
+    std::string identifier_;
     fml::TimePoint time_stamp_;
     size_t bytes_;
     std::shared_ptr<T> image_;
   };
 
   std::list<ImageItem> cache_list_;
-  std::unordered_map<std::string, decltype(cache_list_.begin())> cache_map_;
+  std::unordered_map<size_t, decltype(cache_list_.begin())> cache_map_;
 
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
 

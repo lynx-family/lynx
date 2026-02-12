@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/md5.h"
 #include "clay/gfx/graphics_isolate.h"
 #include "clay/gfx/image/image_data_cache.h"
 #include "clay/gfx/image/image_producer.h"
@@ -15,8 +16,6 @@
 namespace clay {
 
 namespace {
-// TODO: Determine delay time based on specific conditions.
-constexpr int64_t kDeferredRemovalInterval = 30;  // 30 seconds
 // [key]: raster task queue id, [value]: ImageManager.
 static std::unordered_map<size_t, std::shared_ptr<ImageManager>>
     image_manager_map;
@@ -59,27 +58,8 @@ void ImageManager::RemoveAccessor(ImageResourceFetcher* accessor) {
   accessors_.erase(accessor);
   // If there is no accessor, then perform removal.
   if (accessors_.empty()) {
-#if defined(ENABLE_PLATFORM_DECODE)
-    PerformDeferredRemoval();
-#else
     PerformRemoval();
-#endif
   }
-}
-
-void ImageManager::PerformDeferredRemoval() {
-  FML_DCHECK(task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
-
-  std::weak_ptr<ImageManager> weak_this = shared_from_this();
-  removal_task_id_ = GenerateTaskID();
-  task_runners_.GetUITaskRunner()->PostDelayedTask(
-      [weak_this, id = removal_task_id_]() {
-        auto self = weak_this.lock();
-        if (self && self->accessors_.empty() && self->removal_task_id_ == id) {
-          self->PerformRemoval();
-        }
-      },
-      fml::TimeDelta::FromSeconds(kDeferredRemovalInterval));
 }
 
 void ImageManager::PerformRemoval() {
@@ -111,32 +91,36 @@ void ImageManager::ImageHasNoAccessor(const Image* image) {
   FML_DCHECK(task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
   FML_DCHECK(image != nullptr);
 #if defined(ENABLE_SVG)
-  if (image->IsSVG() && !image->GetContentHash().empty()) {
-    MoveToInactiveCacheIfNeeded(image->GetContentHash(), image);
+  if (image->IsSVG() && !image->GetContentMD5().empty()) {
+    MoveToInactiveCacheIfNeeded(image->GetContentHash(), image->GetContentMD5(),
+                                image);
     return;
   }
 #endif
-  MoveToInactiveCacheIfNeeded(image->GetUrl(), image);
+  MoveToInactiveCacheIfNeeded(std::hash<std::string>()(image->GetUrl()),
+                              image->GetUrl(), image);
 }
 
-void ImageManager::MoveToInactiveCacheIfNeeded(const std::string& url,
+void ImageManager::MoveToInactiveCacheIfNeeded(size_t content_hash,
+                                               const std::string& identifier,
                                                const Image* image) {
-  if (url.empty()) {
+  if (identifier.empty()) {
     return;
   }
   const_cast<Image*>(image)->SetIsActive(false);
-  // Remove the image from the active_url_image_map_.
-  auto range = active_url_image_map_.equal_range(url);
+  // Remove the image from the active_image_map_.
+  auto range = active_image_map_.equal_range(identifier);
   size_t count = std::distance(range.first, range.second);
   if (count == 1) {
     // If there is only one image, then move it to inactive image cache.
-    inactive_image_cache_->StoreImage(url, range.first->second);
-    active_url_image_map_.erase(range.first);
+    inactive_image_cache_->StoreImage(content_hash, identifier,
+                                      range.first->second);
+    active_image_map_.erase(range.first);
   } else {
     for (auto image_iter = range.first; image_iter != range.second;
          ++image_iter) {
       if (image_iter->second.get() == image) {
-        active_url_image_map_.erase(image_iter);
+        active_image_map_.erase(image_iter);
         break;
       }
     }
@@ -161,26 +145,10 @@ bool ImageManager::GetImageResource(const std::string& url,
   // If the image is not cached, then check if data is cached.
   auto sk_data = ImageDataCache::GetInstance().GetImageData(url);
   if (sk_data) {
-#if defined(ENABLE_PLATFORM_DECODE)
-    std::weak_ptr<ImageManager> weak_this = shared_from_this();
-    CreateAndCacheImageAsync(
-        url, sk_data, is_svg, use_texture_backend, is_promise,
-        enable_low_quality_image, is_deferred,
-        [weak_this, image_callback = std::move(callback), url]() {
-          auto self = weak_this.lock();
-          if (!self) {
-            return;
-          }
-          FML_DCHECK(self->task_runners_.GetUITaskRunner()
-                         ->RunsTasksOnCurrentThread());
-          image_callback(self->GetImageResourceFromCache(url), true);
-        });
-#else
     std::shared_ptr<Image> image = CreateAndCacheImage(
         url, sk_data, is_svg, use_texture_backend, is_promise,
         enable_low_quality_image, is_deferred, decode_with_priority);
     callback(image->GetAccessor(), true);
-#endif  // ENABLE_PLATFORM_DECODE
     return true;
   }
 
@@ -209,37 +177,22 @@ void ImageManager::GetImageResource(const std::string& url,
 
   // If the image is not cached, create new image by the source.
   auto sk_data = GrData::MakeWithCopy(source, len);
-#if defined(ENABLE_PLATFORM_DECODE)
-  std::weak_ptr<ImageManager> weak_this = shared_from_this();
-  CreateAndCacheImageAsync(
-      url, sk_data, false, use_texture_backend, false, enable_low_quality_image,
-      is_deferred, [weak_this, image_callback = std::move(callback), url]() {
-        auto self = weak_this.lock();
-        if (!self) {
-          return;
-        }
-        FML_DCHECK(
-            self->task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
-        image_callback(self->GetImageResourceFromCache(url), false);
-      });
-#else
   auto image = CreateAndCacheImage(url, sk_data, false, use_texture_backend,
                                    false, enable_low_quality_image, is_deferred,
                                    decode_with_priority);
   callback(image->GetAccessor(), false);
-#endif
 }
 
 bool ImageManager::UpdateCachedImageData(const std::string& url,
                                          GrDataPtr data) {
-  auto it = active_url_image_map_.find(url);
+  auto it = active_image_map_.find(url);
   // if the url is not in the map, it means that the image is not cached.
-  if (it == active_url_image_map_.end()) {
+  if (it == active_image_map_.end()) {
     return false;
   } else {
     // if the url is in the map, it means that the image is cached, and we need
     // to update the image data if needed (e.g. promise image).
-    auto range = active_url_image_map_.equal_range(url);
+    auto range = active_image_map_.equal_range(url);
     for (auto iter = range.first; iter != range.second; ++iter) {
       iter->second->SetRawData(data);
     }
@@ -249,43 +202,53 @@ bool ImageManager::UpdateCachedImageData(const std::string& url,
 
 std::unique_ptr<ImageResource> ImageManager::GetImageResourceFromCache(
     const std::string& url) {
+  return GetImageResourceFromCache(std::hash<std::string>()(url), url);
+}
+
+std::unique_ptr<ImageResource> ImageManager::GetImageResourceFromCache(
+    size_t content_hash, const std::string& identifier) {
   FML_DCHECK(task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
 
+  if (identifier.empty()) {
+    return nullptr;
+  }
+
   // First check if the image is already cached in active image map.
-  auto it = active_url_image_map_.find(url);
-  if (it != active_url_image_map_.end()) {
+  auto it = active_image_map_.find(identifier);
+  if (it != active_image_map_.end()) {
     std::shared_ptr<Image> image = it->second;
     // If the image is single frame image, then return a new ui accessor.
     if (image->IsSingleFrameImage()) {
       return image->GetAccessor();
     } else {
       // The first found image is multi frame image, then check all the images
-      // whth the url key in the map to see if there is any image with no ui
+      // whth the identifier in the map to see if there is any image with no ui
       // accessor.
-      auto range = active_url_image_map_.equal_range(url);
+      auto range = active_image_map_.equal_range(identifier);
       for (auto iter = range.first; iter != range.second; ++iter) {
         if (image->GetUIAccessorCount() == 0) {
           return image->GetAccessor();
         }
       }
 
-      // If all the multi frame images with the url key in the map have ui
+      // If all the multi frame images with the identifier in the map have ui
       // accessor, then create a new image, and return it's ui accessor.
       auto copied_image = Image::CloneImage(image);
       copied_image->SetIsActive(true);
-      active_url_image_map_.insert({url, copied_image});
+      active_image_map_.insert({identifier, copied_image});
       return copied_image->GetAccessor();
     }
   }
 
   // If the image is not cached, then check if the image is cached in inactive
   // image map.
-  auto image = inactive_image_cache_->TakeImage(url);
+  auto image = inactive_image_cache_->TakeImage(content_hash, identifier);
   if (image) {
     image->SetIsActive(true);
-    active_url_image_map_.insert({url, image});
+    active_image_map_.insert({identifier, image});
     return image->GetAccessor();
   }
+
   return nullptr;
 }
 
@@ -300,9 +263,9 @@ std::unique_ptr<ImageResource> ImageManager::GetImageResourceFromSVGContent(
   }
 
   // First check if the image is already cached in Image Resource map.
-  size_t hash = std::hash<std::string>()(source);
-  auto hash_string = std::to_string(hash);
-  auto image_resource = GetImageResourceFromCache(hash_string);
+  size_t content_hash = std::hash<std::string>()(source);
+  auto content_md5 = lynx::base::md5(source);
+  auto image_resource = GetImageResourceFromCache(content_hash, content_md5);
   if (image_resource) {
     return image_resource;
   }
@@ -312,9 +275,10 @@ std::unique_ptr<ImageResource> ImageManager::GetImageResourceFromSVGContent(
       "", sk_data, nullptr, shared_from_this(), task_runners_.GetUITaskRunner(),
       task_runners_.GetRasterTaskRunner(), true, use_texture_backend, false,
       false, is_deferred, decode_with_priority);
-  image->SetContentHash(hash_string);
+  image->SetContentHash(content_hash);
+  image->SetContentMD5(content_md5);
   image->SetIsActive(true);
-  active_url_image_map_.insert({hash_string, image});
+  active_image_map_.insert({content_md5, image});
   return image->GetAccessor();
 }
 #endif
@@ -330,14 +294,8 @@ std::shared_ptr<Image> ImageManager::CreateAndCacheImage(
       task_runners_.GetRasterTaskRunner(), is_svg, use_texture_backend,
       is_promise, enable_low_quality_image, is_deferred, decode_with_priority);
   image->SetIsActive(true);
-  active_url_image_map_.insert({url, image});
+  active_image_map_.insert({url, image});
   return image;
-}
-
-void ImageManager::CacheImage(const std::string& url,
-                              std::shared_ptr<Image> image) {
-  image->SetIsActive(true);
-  active_url_image_map_.insert({url, std::move(image)});
 }
 
 std::unique_ptr<ImageResource> ImageManager::CreateImageResourceFromCachedData(
@@ -353,42 +311,6 @@ std::unique_ptr<ImageResource> ImageManager::CreateImageResourceFromCachedData(
   }
   return nullptr;
 }
-
-#if defined(ENABLE_PLATFORM_DECODE)
-void ImageManager::CreateAndCacheImageAsync(
-    const std::string& url, GrDataPtr data, bool is_svg,
-    bool use_texture_backend, bool is_promise, bool enable_low_quality_image,
-    bool is_deferred, const fml::closure& callback) {
-  std::weak_ptr<ImageManager> weak_this = shared_from_this();
-  // The image creation is moved to a worker thread
-  // because when using the platform's decode function is time-consuming.
-  GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
-      [weak_this, task_runners = task_runners_, url, data, is_svg,
-       use_texture_backend, is_promise, enable_low_quality_image, is_deferred,
-       callback]() {
-        auto image = Image::CreateImage(
-            url, data, nullptr, weak_this, task_runners.GetUITaskRunner(),
-            task_runners.GetRasterTaskRunner(), is_svg, use_texture_backend,
-            is_promise, enable_low_quality_image, is_deferred);
-
-        task_runners.GetUITaskRunner()->PostTask(
-            [weak_this, callback, url, image]() {
-              auto self = weak_this.lock();
-              if (!self) {
-                return;
-              }
-
-              // It the image is not cached, insert it into the map.
-              auto it = self->active_url_image_map_.find(url);
-              if (it == self->active_url_image_map_.end()) {
-                image->SetIsActive(true);
-                self->active_url_image_map_.insert({url, image});
-              }
-              callback();
-            });
-      });
-}
-#endif
 
 std::shared_ptr<ImageManager> ImageManager::GetOrCreateImageManager(
     clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue) {
