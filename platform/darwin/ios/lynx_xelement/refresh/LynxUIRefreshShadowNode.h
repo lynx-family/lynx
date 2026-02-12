@@ -8,6 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxUIRefreshShadowNode : LynxCustomMeasureShadowNode
 
+- (BOOL)isRefreshHeader:(Class)clz;
+
 @end
 
 NS_ASSUME_NONNULL_END

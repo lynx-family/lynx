@@ -173,7 +173,8 @@ void UIRefresh::OnNodeEvent(ArkUI_NodeEvent* event) {
       case UI_TOUCH_EVENT_ACTION_UP: {
         const auto& vm = context_->VSyncMonitor();
         if (vm) {
-          vm->AsyncRequestVSync(
+          vm->ScheduleVSyncSecondaryCallback(
+              reinterpret_cast<uintptr_t>(this),
               [weak_self = weak_from_this()](int64_t, int64_t) {
                 auto self = weak_self.lock();
                 if (!self) {

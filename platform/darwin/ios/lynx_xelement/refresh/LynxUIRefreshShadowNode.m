@@ -33,7 +33,7 @@
 
       MeasureParam *customizedParam;
 
-      if ([clz isEqual:([LynxUIRefreshHeader class])]) {
+      if ([self isRefreshHeader:clz]) {
         customizedParam = [[MeasureParam alloc] initWithWidth:param.width
                                                     WidthMode:param.widthMode
                                                        Height:param.height
@@ -61,6 +61,10 @@
       [child alignWithAlignParam:param AlignContext:context];
     }
   }];
+}
+
+- (BOOL)isRefreshHeader:(Class)clz {
+  return [clz isEqual:([LynxUIRefreshHeader class])];
 }
 
 @end
