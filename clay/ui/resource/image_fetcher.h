@@ -35,11 +35,11 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
                clay::TaskRunners task_runners,
                fml::RefPtr<GPUUnrefQueue> unref_queue,
                std::shared_ptr<ServiceManager> service_manager);
-  uint64_t FetchImage(const std::string& url, bool is_svg,
+  uint64_t FetchImage(const std::string& original_url, bool is_svg,
                       const ImageCallback& callback);
   uint64_t FetchSVGImageWithContent(const std::string& content,
                                     const ImageCallback& callback);
-  void TryCancelAsyncFetch(const std::string& url, uint64_t fetch_id);
+  void TryCancelAsyncFetch(const std::string& original_url, uint64_t fetch_id);
 
   void OnImageHasNoAccessor(BaseImage* image);
 
@@ -48,12 +48,17 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
     return weak_factory_.GetWeakPtr();
   }
   virtual void FetchImage(
-      const std::string& url,
+      const std::string& trimmed_url,
       const std::function<void(std::shared_ptr<PlatformImage>)>& callback) = 0;
 
-  void OnFetchFinish(const std::string& url, std::shared_ptr<BaseImage> image);
+  void OnFetchFinish(const std::string& trimmed_url,
+                     std::shared_ptr<BaseImage> image);
 
-  std::shared_ptr<BaseImage> FindImageFromCache(const std::string& url);
+  std::shared_ptr<BaseImage> FindImageFromCache(size_t content_hash,
+                                                const std::string& identifier);
+  void MoveToInactiveCacheIfNeeded(size_t content_hash,
+                                   const std::string& identifier,
+                                   const BaseImage* image);
 
  protected:
   fml::WeakPtrFactory<ImageFetcher> weak_factory_;
@@ -61,8 +66,7 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
   std::shared_ptr<ServiceManager> service_manager_;
   clay::TaskRunners task_runners_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
-  std::unordered_map<std::string, std::shared_ptr<BaseImage>>
-      active_url_image_map_;
+  std::unordered_map<std::string, std::shared_ptr<BaseImage>> active_image_map_;
   std::shared_ptr<ImageCache<BaseImage>> inactive_image_cache_;
   std::unordered_map<std::string, std::shared_ptr<ResourceLoader>>
       url_loader_map_;

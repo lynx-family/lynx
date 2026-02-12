@@ -36,7 +36,7 @@ class ImageResourceFetcher
                        std::shared_ptr<ServiceManager> service_manager);
   ~ImageResourceFetcher();
 
-  ImageFetchID FetchImageAsync(const std::string& url,
+  ImageFetchID FetchImageAsync(const std::string& original_url,
                                const ImageResourceCallback& callback,
                                bool use_texture_backend,
                                bool is_deferred = false,
@@ -44,7 +44,8 @@ class ImageResourceFetcher
                                bool need_redirect = true,
                                bool enable_low_quality_image = false,
                                bool is_promise = false, bool is_svg = false);
-  void TryCancelAsyncFetch(const std::string& url, ImageFetchID fetch_id);
+  void TryCancelAsyncFetch(const std::string& original_url,
+                           ImageFetchID fetch_id);
 
   // if fetching an image who has not been downloaded, an ImageResource without
   // image data will be return immediately, and a asynchronous loading task will
@@ -53,10 +54,10 @@ class ImageResourceFetcher
   // before, the an ImageResource with image data will be return directly. The
   // design idea is similar to std::promise.
   std::unique_ptr<ImageResource> FetchPromiseImage(
-      const std::string& url, const ImageResourceCallback& callback,
+      const std::string& original_url, const ImageResourceCallback& callback,
       bool use_texture_backend, bool need_redirect = false);
 
-  void GetImageResource(const std::string& url,
+  void GetImageResource(const std::string& original_url,
                         const ImageResourceCallback& callback,
                         const uint8_t* source, const int len,
                         bool use_texture_backend, bool is_deferred,
@@ -81,17 +82,17 @@ class ImageResourceFetcher
  private:
   ImageFetchID GenerateFetchID();
   ImageFetchID FetchImageAsyncInternal(
-      const std::string& final_url, const ImageResourceCallback& callback,
+      const std::string& trimmed_url, const ImageResourceCallback& callback,
       bool use_texture_backend, bool is_deferred, bool decode_with_priority,
       bool need_redirect, bool enable_low_quality_image, bool is_promise,
       bool is_svg);
-  void OnDownloadEnd(bool success, const std::string& url, GrDataPtr data,
-                     bool is_svg, bool use_texture_backend,
+  void OnDownloadEnd(bool success, const std::string& trimmed_url,
+                     GrDataPtr data, bool is_svg, bool use_texture_backend,
                      bool enable_low_quality_image = false,
                      bool is_deferred = false,
                      bool decode_with_priority = false,
                      bool is_promise = false);
-  void RunImageResourceCallback(const std::string& url);
+  void RunImageResourceCallback(const std::string& trimmed_url);
 
   std::shared_ptr<ResourceLoaderIntercept> resource_loader_intercept_;
   std::shared_ptr<ServiceManager> service_manager_;
