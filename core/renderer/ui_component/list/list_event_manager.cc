@@ -386,8 +386,10 @@ void ListEventManager::SendExposureEvent(const std::string &event_name,
   if (!element) {
     return;
   }
-  if (element->event_map().find(base::String(event_name)) ==
-      element->event_map().end()) {
+  const auto &event_map = element->event_map();
+  const auto &lepus_event_map = element->lepus_event_map();
+  if (event_map.find(base::String(event_name)) == event_map.end() &&
+      lepus_event_map.find(base::String(event_name)) == lepus_event_map.end()) {
     return;
   }
   ElementManager *element_manager = list_container_->element_manager();
