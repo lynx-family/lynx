@@ -82,6 +82,7 @@ TEST_F(BoxPainterTest, SimpleBorder) {
   SkPaint paint;
   paint.setStyle(SkPaint::kStroke_Style);
   paint.setStrokeWidth(border_data.width_top_);
+  paint.setAntiAlias(true);
   paint.setColor(SK_ColorBLUE);
   constexpr SkRect rect = SkRect::MakeLTRB(5, 5, 95, 95);
   const auto expected_draw_calls = std::vector{

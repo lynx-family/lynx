@@ -61,6 +61,7 @@ struct ImageData {
   float cap_insets_scale = 1.0f;
   float image_opacity = 1.0f;
   std::optional<Color> tint_color = std::nullopt;
+  skity::RRect round_rect = {};
 };
 
 }  // namespace clay
