@@ -337,6 +337,10 @@ void RenderImage::Paint(PaintingContext& context, const FloatPoint& offset) {
     graphics_context->Translate(offset.x(), offset.y());
 
     // radius clip
+    skity::Rect draw_rect =
+        skity::Rect::MakeXYWH(0, 0, ContentWidth(), ContentHeight());
+    skity::RRect round_rect;
+    round_rect.SetRect(draw_rect);
     bool has_border_radius = HasBorder() && Border().HasBorderRadius();
     if (has_border_radius) {
       const auto& borders_data = Border();
@@ -355,14 +359,7 @@ void RenderImage::Paint(PaintingContext& context, const FloatPoint& offset) {
           borders_data.radius_x_bottom_left_ - PaddingLeft() - BorderLeft(),
           borders_data.radius_y_bottom_left_ - PaddingBottom() -
               BorderBottom()};
-
-      skity::Rect draw_rect = skity::Rect::MakeXYWH(
-          PaddingLeft() + BorderLeft(), PaddingTop() + BorderTop(),
-          ContentWidth(), ContentHeight());
-
-      skity::RRect round_rect;
       round_rect.SetRectRadii(draw_rect, radii);
-      graphics_context->ClipRRect(round_rect, GrClipOp::kIntersect, true);
     }
 
     // Translate to content_rect where the ImagePainter is going to paint into.
@@ -371,6 +368,7 @@ void RenderImage::Paint(PaintingContext& context, const FloatPoint& offset) {
     // Paint image into content_rect.
     ImageData image_data;
     CreateImageData(image_data);
+    image_data.round_rect = round_rect;
     ImagePainter(static_cast<RenderBox*>(this))
         .PaintImage(context.GetGraphicsContext(), image_data);
 
