@@ -26,6 +26,9 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
     placeholder_index_ = -1;
     return;
   }
+  TextParagraphBuilder* builder =
+      static_cast<LayoutContextText*>(context)->builder();
+  builder->PushStyle(text_style_.value());
   txt::PlaceholderRun placeholder(
       Width(), Height(), txt::PlaceholderAlignment::kBaseline,
       txt::TextBaseline::kAlphabetic, Height() + baseline_offset_);
@@ -34,6 +37,7 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   end_glyph_ = start_glyph_ + 1;
   placeholder_index_ =
       static_cast<LayoutContextText*>(context)->AddPlaceholder(placeholder);
+  builder->Pop();
 }
 
 MeasureResult InlineViewShadowNode::MeasureNativeNode(

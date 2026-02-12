@@ -108,12 +108,12 @@ TEST_F_UI(TextTest, VerticalAlign) {
   MeasureConstraint constraint{1000, MeasureMode::kDefinite, 100,
                                MeasureMode::kDefinite};
   inline_text_shadow_node_->SetVerticalAlign(
-      VerticalAlign{VerticalAlignType::kVerticalAlignLength, 20});
+      VerticalAlignType::kVerticalAlignLength, 20);
   std::string text = std::string("test");
   raw_text_shadow_node_->SetText(text);
   text_shadow_node_->Measure(constraint);
   auto baseline_shift = inline_text_shadow_node_->text_style_->baseline_shift;
-  EXPECT_EQ(baseline_shift, -20);
+  EXPECT_EQ(baseline_shift, 20);
 }
 
 }  // namespace clay

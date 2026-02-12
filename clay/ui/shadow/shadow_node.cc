@@ -18,31 +18,50 @@
 
 namespace clay {
 
+static constexpr float kDefaultFontSizeInDip = 14.f;
+static constexpr Color kDefaultTextColor = Color(0xFF000000);
+static constexpr TextAlignment kDefaultAlignment = TextAlignment::kStart;
+
 ShadowNode::ShadowNode(ShadowNodeOwner* owner, std::string tag, int id)
-    : tag_(tag), id_(id), owner_(owner) {}
+    : tag_(tag), id_(id), owner_(owner) {
+  EnsureDefaultStyle();
+}
 
 void ShadowNode::SetAttribute(const char* attr_c, const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (kw == KeywordID::kVerticalAlign) {
-    SetVerticalAlign(value);
-  } else if (kw == KeywordID::kIdselector) {
+  if (kw == KeywordID::kIdselector) {
     id_selector_ = attribute_utils::GetCString(value);
+  }
+  if (kw == KeywordID::kVerticalAlign) {
+    vertical_align_ = std::make_optional<VerticalAlign>();
+    const auto& array = attribute_utils::GetArray(value);
+    if (array.size() < 2) {
+      vertical_align_->type = VerticalAlignType::kVerticalAlignDefault;
+      vertical_align_->length = 0;
+    } else {
+      vertical_align_->type =
+          static_cast<VerticalAlignType>(attribute_utils::GetInt(array[0]));
+      vertical_align_->length = attribute_utils::GetDouble(array[1]);
+    }
+    SetVerticalAlign(vertical_align_->type, vertical_align_->length);
   }
 }
 
-void ShadowNode::SetVerticalAlign(const clay::Value& value) {
-  vertical_align_ = std::make_optional<VerticalAlign>();
-  const auto& array = attribute_utils::GetArray(value);
-  if (array.size() < 2) {
-    vertical_align_->type = VerticalAlignType::kVerticalAlignDefault;
-    vertical_align_->length = 0;
-  } else {
-    vertical_align_->type =
-        static_cast<VerticalAlignType>(attribute_utils::GetInt(array[0]));
-    vertical_align_->length = attribute_utils::GetDouble(array[1]);
-  }
+void ShadowNode::SetVerticalAlign(VerticalAlignType type, float length) {
+  EnsureDefaultStyle();
+  text_style_->align_type = type;
+  text_style_->baseline_shift = length;
   MarkDirty();
-  MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagStyle);
+}
+
+void ShadowNode::EnsureDefaultStyle() {
+  if (text_style_) {
+    return;
+  }
+  text_style_ = std::make_optional<TextStyle>();
+  text_style_->font_size = kDefaultFontSizeInDip * Logical2ClayPixelRatio();
+  text_style_->text_color = kDefaultTextColor;
+  text_style_->text_align = kDefaultAlignment;
 }
 
 void ShadowNode::AddChild(ShadowNode* node) { AddChild(node, ChildCount()); }

@@ -68,8 +68,6 @@ class BaseTextShadowNode : public ShadowNode {
 
   void RelayoutWhenSetFontFamily(const std::string& font_family);
 
-  void EnsureDefaultStyle();
-
   void TextLayout(LayoutContext* context) override;
   void PreLayout(PreLayoutContext* context) override;
   void ProcessChildLayout(LayoutContext* context);
@@ -91,8 +89,6 @@ class BaseTextShadowNode : public ShadowNode {
   void SetTextIndent(double indent);
 
   std::u16string GetRawText();
-
-  std::optional<TextStyle> text_style_;
   // The absolute line height.
   std::optional<float> line_height_;
   std::optional<uint32_t> max_length_;

@@ -234,7 +234,6 @@ void EditableView::InitDefaultStyle() {
   text_style_.text_color = Color(kDefaultEditableTextColor);
   text_style_.font_size = GetDefaultFontSize();
   text_style_.strut_font_size = GetDefaultFontSize();
-  text_style_.line_height = kDefaultLineHeight;
   text_style_.strut_height = kDefaultLineHeight;
   text_style_.strut_enabled = true;
 }
@@ -283,7 +282,8 @@ void EditableView::OnLayout(LayoutContext* context) {
     builder->Pop();
     paragraph_ = Build(std::move(builder));
     GetRenderEditable()->SetPlaceholderLineHeight(
-        *temp_style.font_size * text_style_.line_height.value_or(1.0));
+        *temp_style.font_size *
+        text_style_.line_height.value_or(kDefaultLineHeight));
     LayoutText(context);
     SetPlaceholderHeight(paragraph_->GetHeight());
   } else {
@@ -296,7 +296,8 @@ void EditableView::OnLayout(LayoutContext* context) {
 
   GetRenderEditable()->SetParagraph(paragraph_.get());
   GetRenderEditable()->SetRoughTextLineHeight(
-      *text_style_.font_size * text_style_.line_height.value_or(1.0));
+      *text_style_.font_size *
+      text_style_.line_height.value_or(kDefaultLineHeight));
 }
 
 float EditableView::EstimateHeightWithMaxLines() {

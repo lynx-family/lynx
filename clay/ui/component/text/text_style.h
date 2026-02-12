@@ -101,6 +101,7 @@ struct TextStyle {
   std::optional<bool> half_leading;
   std::optional<float> font_size;
   std::optional<float> baseline_shift;
+  std::optional<VerticalAlignType> align_type;
   std::optional<float> line_height;
   std::optional<float> line_spacing;
   std::optional<float> letter_spacing;
@@ -135,7 +136,6 @@ struct TextStyle {
   // Negative to use font's default leading. [0,inf)
   // to use custom leading as a ratio of font size.
   std::optional<double> strut_leading;
-  std::optional<VerticalAlignType> align_type;
   std::optional<bool> enable_text_bounds;
 #ifdef CLAY_ENABLE_TTTEXT
   std::optional<float> stroke_width;

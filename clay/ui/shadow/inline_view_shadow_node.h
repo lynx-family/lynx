@@ -21,6 +21,8 @@ class InlineViewShadowNode : public ShadowNode {
 
   bool IsInlineViewShadowNode() override { return true; }
 
+  bool IsVirtual() override { return true; }
+
   void TextLayout(LayoutContext* context) override;
 
   size_t StartGlyph() { return start_glyph_; }

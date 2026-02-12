@@ -66,6 +66,8 @@ class ShadowNode {
   void SetWidth(float width) { styles_.width = width; }
   void SetHeight(float height) { styles_.height = height; }
 
+  void SetVerticalAlign(VerticalAlignType type, float length);
+
   float Width() const { return styles_.width; }
   float Height() const { return styles_.height; }
   float PaddingLeft() const { return styles_.padding_left; }
@@ -125,10 +127,6 @@ class ShadowNode {
   std::optional<VerticalAlign> GetVerticalAlign() const {
     return vertical_align_;
   }
-  void SetVerticalAlign(const clay::Value& value);
-  void SetVerticalAlign(std::optional<VerticalAlign> vertical_align) {
-    vertical_align_ = vertical_align;
-  }
 
   void SetBaselineOffset(const FontMetrics& parent_metrics,
                          double child_descent, double child_ascent);
@@ -145,6 +143,9 @@ class ShadowNode {
   TextUpdateBundle* FindTextBundle();
   virtual void SetAttribute(KeywordID attr, const char* attr_c,
                             const clay::Value&){};
+
+  void EnsureDefaultStyle();
+  std::optional<TextStyle> text_style_;
 
  protected:
   ClayLayoutStyles styles_{};

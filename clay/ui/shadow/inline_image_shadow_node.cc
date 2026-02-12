@@ -26,6 +26,9 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
     placeholder_index_ = -1;
     return;
   }
+  TextParagraphBuilder* builder =
+      static_cast<LayoutContextText*>(context)->builder();
+  builder->PushStyle(text_style_.value());
   txt::PlaceholderRun placeholder(
       Width(), Height() + MarginTop() + MarginBottom(),
       txt::PlaceholderAlignment::kBaseline, txt::TextBaseline::kAlphabetic,
@@ -35,6 +38,7 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
   end_glyph_ = start_glyph_ + 1;
   placeholder_index_ =
       static_cast<LayoutContextText*>(context)->AddPlaceholder(placeholder);
+  builder->Pop();
 }
 
 }  // namespace clay

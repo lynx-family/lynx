@@ -106,6 +106,7 @@ void ParagraphTTText::Layout(double width) {
       width, std::numeric_limits<float>::max(), width_mode,
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
+  context.SetEnableSystemFontAdjust(false);
   tttext::LayoutResult result =
       layout.Layout(paragraph_.get(), region_.get(), context);
   if (result != tttext::LayoutResult::kNormal &&

@@ -35,9 +35,9 @@
 
 namespace clay {
 namespace utils = attribute_utils;
+namespace {
 static constexpr float kDefaultFontSizeInDip = 14.f;
-static const Color kDefaultTextColor = Color(0xFF000000);
-static constexpr TextAlignment kDefaultAlignment = TextAlignment::kStart;
+}
 
 BaseTextShadowNode::BaseTextShadowNode(ShadowNodeOwner* owner, std::string tag,
                                        int id)
@@ -231,7 +231,7 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
     } break;
     case clay::KeywordID::kTextSingleLineVerticalAlign: {
       SetTextSingleLineVerticalAlign(value);
-    }
+    } break;
     default:
       if (attr_c) {
         auto kw = GetKeywordID(attr_c);
@@ -263,16 +263,6 @@ void BaseTextShadowNode::CreateRawTextNodeIfNeed(std::string text) {
   }
 }
 
-void BaseTextShadowNode::EnsureDefaultStyle() {
-  if (text_style_) {
-    return;
-  }
-  text_style_ = std::make_optional<TextStyle>();
-  text_style_->font_size = kDefaultFontSizeInDip * Logical2ClayPixelRatio();
-  text_style_->text_color = kDefaultTextColor;
-  text_style_->text_align = kDefaultAlignment;
-}
-
 void BaseTextShadowNode::SetFontSize(float font_size) {
   EnsureDefaultStyle();
   if (text_style_->font_size != font_size) {
@@ -283,6 +273,7 @@ void BaseTextShadowNode::SetFontSize(float font_size) {
 
 void BaseTextShadowNode::SetLineHeight(float line_height) {
   EnsureDefaultStyle();
+#ifndef CLAY_ENABLE_TTTEXT
   if (line_height_.has_value() && line_height == *line_height_) {
     return;
   }
@@ -291,6 +282,11 @@ void BaseTextShadowNode::SetLineHeight(float line_height) {
   } else {
     line_height_ = line_height;
   }
+#else
+  if (text_style_->line_height != line_height) {
+    text_style_->line_height = line_height;
+  }
+#endif
 
   MarkDirty();
 }
@@ -521,6 +517,7 @@ void BaseTextShadowNode::SetTextSingleLineVerticalAlign(
     text_style_->align_type = VerticalAlignType::kVerticalAlignTop;
   }
   text_style_->enable_text_bounds = true;
+  MarkDirty();
 }
 
 void BaseTextShadowNode::PreLayout(PreLayoutContext* context) {

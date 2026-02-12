@@ -42,6 +42,8 @@ enum class TextDirection {
   ltr,
 };
 
+enum RulerType { kAtLeast, kAuto, kExact };
+
 // Adjusts the leading over and under text.
 //
 // kDisableFirstAscent and kDisableLastDescent allow disabling height
@@ -72,6 +74,7 @@ class ParagraphStyle {
   std::string font_family = "";
   double font_size = 14;
   double height = 1;
+  RulerType height_type = RulerType::kAuto;
   bool has_height_override = false;
   size_t text_height_behavior = TextHeightBehavior::kAll;
 

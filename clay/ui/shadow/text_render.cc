@@ -445,13 +445,17 @@ void TextRender::HandleAutoSize(const MeasureConstraint& constraint,
 bool TextRender::CheckTextFullyDisplayed(
     const MeasureConstraint& constraint,
     ShadowLayoutContextMeasure* context_measure) {
+  bool exceed_maxlines = measure_node_->text_style_->max_lines.has_value() &&
+                         cache_paragraph_->DidExceedMaxLines();
   bool height_has_overflow =
       constraint.height_mode != TextMeasureMode::kIndefinite &&
       context_measure->measured_height_ > constraint.height;
-  bool width_has_overflow =
-      cache_paragraph_->GetMinIntrinsicWidth() > constraint.width;
-  bool exceed_maxlines = measure_node_->text_style_->max_lines.has_value() &&
-                         cache_paragraph_->DidExceedMaxLines();
+  bool width_has_overflow = false;
+  if (measure_node_->text_style_->white_space &&
+      measure_node_->text_style_->white_space == WhiteSpace::kNoWrap) {
+    width_has_overflow =
+        cache_paragraph_->GetMinIntrinsicWidth() > constraint.width;
+  }
   return !(exceed_maxlines || height_has_overflow || width_has_overflow);
 }
 
@@ -538,7 +542,6 @@ void TextRender::TryExpandFontSize(
           cache_paragraph_ = std::move(pre_paragraph);
           return;
         }
-        cache_paragraph_ = std::move(pre_paragraph);
       }
     }
     return;
@@ -577,8 +580,9 @@ void TextRender::TryExpandFontSize(
         cache_paragraph_ = std::move(pre_paragraph);
         return;
       }
+    } else {
+      cache_paragraph_ = std::move(pre_paragraph);
     }
-    cache_paragraph_ = std::move(pre_paragraph);
   }
 }
 

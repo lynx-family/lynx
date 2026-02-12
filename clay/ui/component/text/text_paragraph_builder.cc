@@ -23,13 +23,31 @@ static const std::u16string kDefaultEllipsis = u"\u2026";
 
 #if defined(CLAY_ENABLE_TTTEXT)
 ttoffice::tttext::CharacterVerticalAlignment ToTTTextAlign(
-    VerticalAlignType type) {
+    VerticalAlignType type, txt::TextStyle& txt_style,
+    const TextStyle& clay_style) {
   if (type == VerticalAlignType::kVerticalAlignTop) {
     return ttoffice::tttext::CharacterVerticalAlignment::kTop;
   } else if (type == VerticalAlignType::kVerticalAlignCenter) {
     return ttoffice::tttext::CharacterVerticalAlignment::kMiddle;
   } else if (type == VerticalAlignType::kVerticalAlignBottom) {
     return ttoffice::tttext::CharacterVerticalAlignment::kBottom;
+  } else if (type == VerticalAlignType::kVerticalAlignMiddle) {
+    return ttoffice::tttext::CharacterVerticalAlignment::kMiddle;
+  } else if (type == VerticalAlignType::kVerticalAlignTextTop) {
+    return ttoffice::tttext::CharacterVerticalAlignment::kTextTop;
+  } else if (type == VerticalAlignType::kVerticalAlignTextBottom) {
+    return ttoffice::tttext::CharacterVerticalAlignment::kTextBottom;
+  } else if (type == VerticalAlignType::kVerticalAlignSub) {
+    return ttoffice::tttext::CharacterVerticalAlignment::kSubScript;
+  } else if (type == VerticalAlignType::kVerticalAlignSuper) {
+    return ttoffice::tttext::CharacterVerticalAlignment::kSuperScript;
+  } else if (type == VerticalAlignType::kVerticalAlignLength) {
+    txt_style.text_baseline_shift -= clay_style.baseline_shift.value_or(0);
+  } else if (type == VerticalAlignType::kVerticalAlignPercent) {
+    txt_style.text_baseline_shift -=
+        clay_style.baseline_shift.value_or(0) / 100 *
+        (clay_style.line_height ? clay_style.line_height.value()
+                                : clay_style.font_size.value_or(0) * 1.2);
   }
   return ttoffice::tttext::CharacterVerticalAlignment::kBaseLine;
 }
@@ -170,6 +188,7 @@ void ApplyParagraphStyle(const TextStyle& clay_style,
     txt_style.has_height_override = true;
     // TODO(WeiGuoliang): lxblxb kEvenLeading not found
     txt_style.text_height_behavior = txt::TextHeightBehavior::kAll;
+    txt_style.height_type = txt::RulerType::kExact;
   }
 
   if (clay_style.line_spacing) {
@@ -244,10 +263,6 @@ void ApplyTextStyle(const TextStyle& clay_style, txt::TextStyle& txt_style) {
     txt_style.font_size = clay_style.font_size.value();
   }
 
-  if (clay_style.baseline_shift) {
-    txt_style.text_baseline_shift = clay_style.baseline_shift.value();
-  }
-
   if (clay_style.half_leading) {
     txt_style.half_leading = clay_style.half_leading.value();
   }
@@ -302,14 +317,20 @@ void ApplyTextStyle(const TextStyle& clay_style, txt::TextStyle& txt_style) {
 
 #if defined(CLAY_ENABLE_TTTEXT)
   if (clay_style.align_type) {
-    txt_style.align_type = ToTTTextAlign(clay_style.align_type.value());
-    txt_style.enable_text_bounds_ = true;
+    txt_style.align_type =
+        ToTTTextAlign(clay_style.align_type.value(), txt_style, clay_style);
+    txt_style.enable_text_bounds_ =
+        clay_style.enable_text_bounds.value_or(false);
   }
   if (clay_style.stroke_color) {
     txt_style.stroke_color = clay_style.stroke_color.value();
   }
   if (clay_style.stroke_width) {
     txt_style.stroke_width = clay_style.stroke_width.value();
+  }
+#else
+  if (clay_style.baseline_shift) {
+    txt_style.text_baseline_shift = clay_style.baseline_shift.value();
   }
 #endif
 }

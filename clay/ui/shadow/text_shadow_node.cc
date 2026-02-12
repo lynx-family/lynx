@@ -261,7 +261,9 @@ MeasureResult TextShadowNode::Measure(const MeasureConstraint& constraint) {
   width_mode_ = constraint.width_mode;
   auto context = CreateLayoutContext(constraint);
 
+#ifndef CLAY_ENABLE_TTTEXT
   UpdateLineHeight();
+#endif
 
   // inline view measure
   MeasureInlineView(constraint);
