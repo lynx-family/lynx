@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_PAINTER_IMAGE_PAINTER_H_
 #define CLAY_UI_PAINTER_IMAGE_PAINTER_H_
 
+#include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/image/image_data.h"
 #include "clay/public/clay.h"
@@ -36,9 +37,10 @@ class ImagePainter {
   void PaintImage(GraphicsContext* context, const ImageData& image_data);
   void PaintBackgroundImage(
       GraphicsContext* context, const FloatRect& frame_rect,
-      const BackgroundImage& bg_image, ClayBackgroundOriginType origin,
-      ClayBackgroundClipType clip, const BackgroundSize& size_x,
-      const BackgroundSize& size_y, const BackgroundPosition& position_x,
+      const skity::RRect& rounded_rect, const BackgroundImage& bg_image,
+      ClayBackgroundOriginType origin, ClayBackgroundClipType clip,
+      const BackgroundSize& size_x, const BackgroundSize& size_y,
+      const BackgroundPosition& position_x,
       const BackgroundPosition& position_y, ClayBackgroundRepeatType repeat_x,
       ClayBackgroundRepeatType repeat_y);
 
@@ -49,7 +51,7 @@ class ImagePainter {
   void PaintBackgroundImage(GraphicsContext* context,
                             const BackgroundImage& bg_image,
                             const skity::Rect& src_rect,
-                            const skity::Rect& dst_rect);
+                            const skity::RRect& dst_rrect);
   GrSamplingOptions GetSamplingOptions() const;
 
   void PaintSingleMaskImage(GrCanvas* canvas, const MaskImage& mask_image,
