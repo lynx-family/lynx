@@ -87,6 +87,8 @@ class ParagraphStyle {
   double line_spacing = 0.0;
   bool strut_has_height_override = false;
   bool strut_half_leading = false;
+  // This is for tttext
+  bool half_leading = true;
   double strut_leading = -1;  // Negative to use font's default leading. [0,inf)
                               // to use custom leading as a ratio of font size.
   bool force_strut_height = false;
