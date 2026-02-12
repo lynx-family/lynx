@@ -10,24 +10,19 @@
 
 - Add coding skills in types folder to optimize code-gen result.
 
-## 3.7.2
-
-- Add `<svg>` element types.
-
-- Update `image` typings.
-
-## 3.7.1
-
-- Add `bindstartplay`, `bindcurrentloopcomplete` and `bindfinalloopcomplete` callback for animated image.
-
-- Add global `getNapiLoader()` function.
-
 ## 3.7.0
 
 ### Minor Changes
 
 - Add `experimental-search-ref-anchor-strategy` property for `<list>` element.
 
+- Add `bindstartplay`, `bindcurrentloopcomplete` and `bindfinalloopcomplete` callback for animated image.
+
+- Add global `getNapiLoader()` function.
+
+- Add `<svg>` element types.
+
+- Update `image` typings.
 ## 3.6.0
 
 ### Minor Changes
