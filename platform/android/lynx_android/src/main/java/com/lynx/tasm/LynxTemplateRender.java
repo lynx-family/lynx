@@ -497,9 +497,6 @@ public class LynxTemplateRender
       mLynxEngineRef.attachCurrentTemplateRender(this);
       mIsEngineFromReuse = false;
     }
-    if (mTemplateData != null) {
-      mTemplateData.setEnableJSData(false);
-    }
   }
 
   private void setLynxInternalModules(LynxModuleFactory factory) {
@@ -1653,7 +1650,6 @@ public class LynxTemplateRender
     }
 
     if (mLogicExecutor != null && metaData.getInitialData() != null) {
-      metaData.getInitialData().setEnableJSData(false);
       mTemplateData.updateWithTemplateData(metaData.getInitialData());
     }
 
@@ -1851,7 +1847,6 @@ public class LynxTemplateRender
     }
     TemplateData data = meta.getUpdatedData();
     if (mLynxContext != null && mLogicExecutor != null && data != null) {
-      data.setEnableJSData(false);
       mTemplateData.updateWithTemplateData(data);
     }
 

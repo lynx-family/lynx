@@ -668,6 +668,7 @@ public final class TemplateData {
 
   void bindContext(LynxContext context) {
     this.weakContext = new WeakReference<>(context);
+    this.mEnableJSData = !context.isEmbeddedModeOn();
   }
 
   /**
@@ -690,10 +691,6 @@ public final class TemplateData {
 
   void markConsumed() {
     mConsumed.set(true);
-  }
-
-  void setEnableJSData(boolean enableJSData) {
-    this.mEnableJSData = enableJSData;
   }
 
   // Just for android unit test.
