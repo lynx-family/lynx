@@ -2184,6 +2184,12 @@ void TemplateAssembler::UpdateDataByPreParsedData(
   if (template_data == nullptr || destroyed()) {
     return;
   }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_DATA_BY_PREPARSED_DATA,
+              [&template_data](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations(
+                    "keys", ConcatenateTableKeys(template_data->GetValue()));
+              });
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_UPDATE_DATA);
   PipelineScope pipeline_scope(this, pipeline_options);
 
@@ -2293,6 +2299,8 @@ void TemplateAssembler::UpdateDataByJS(
         ctx.event()->add_debug_annotations(INSTANCE_ID,
                                            std::to_string(instance_id));
         ctx.event()->add_debug_annotations("stacks", task.stacks_);
+        ctx.event()->add_debug_annotations("keys",
+                                           ConcatenateTableKeys(task.data_));
         ctx.event()->add_flow_ids(task.callback_.trace_flow_id());
       });
 
