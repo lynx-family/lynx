@@ -50,14 +50,6 @@ public class LynxDevToolEnvUtilsTest {
 
     doAnswer(invocation -> {
       String key = invocation.getArgument(0);
-      Object value = invocation.getArgument(1);
-      mEnvMap.put(key, value);
-      return null;
-    })
-        .when(mDevToolService)
-        .setDevtoolEnv(anyString(), any(Object.class));
-    doAnswer(invocation -> {
-      String key = invocation.getArgument(0);
       Set<String> value = invocation.getArgument(1);
       mGroupEnvMap.put(key, value);
       return null;
@@ -66,21 +58,8 @@ public class LynxDevToolEnvUtilsTest {
         .setDevtoolGroupEnv(anyString(), any(Set.class));
     doAnswer(invocation -> {
       String key = invocation.getArgument(0);
-      Boolean defaultValue = invocation.getArgument(1);
-      return mEnvMap.containsKey(key) ? (Boolean) mEnvMap.get(key) : defaultValue;
-    })
-        .when(mDevToolService)
-        .getDevtoolBooleanEnv(anyString(), any(Boolean.class));
-    doAnswer(invocation -> {
-      String key = invocation.getArgument(0);
-      Integer defaultValue = invocation.getArgument(1);
-      return mEnvMap.containsKey(key) ? (Integer) mEnvMap.get(key) : defaultValue;
-    })
-        .when(mDevToolService)
-        .getDevtoolIntEnv(anyString(), any(Integer.class));
-    doAnswer(invocation -> {
-      String key = invocation.getArgument(0);
-      return mGroupEnvMap.get(key);
+      Set<String> result = mGroupEnvMap.get(key);
+      return result != null ? result : new HashSet<>();
     })
         .when(mDevToolService)
         .getDevtoolGroupEnv(anyString());
@@ -89,20 +68,6 @@ public class LynxDevToolEnvUtilsTest {
   @After
   public void tearDown() {
     LynxServiceCenter.inst().unregisterService(ILynxDevToolService.class);
-  }
-
-  @Test
-  public void testSetAndGetBooleanEnv() {
-    LynxDevToolEnvUtils.setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, true);
-    assertEquals(true, LynxDevToolEnvUtils.getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, false));
-    assertEquals(false, (Boolean) LynxDevToolEnvUtils.getDevtoolEnv("test_boolean", false));
-  }
-
-  @Test
-  public void testSetAndGetIntegerEnv() {
-    LynxDevToolEnvUtils.setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, 1);
-    assertEquals(1, LynxDevToolEnvUtils.getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_V8, 0));
-    assertEquals(0, LynxDevToolEnvUtils.getDevtoolEnv("test_int", 0));
   }
 
   @Test
@@ -115,6 +80,6 @@ public class LynxDevToolEnvUtilsTest {
     assertEquals(domains, result);
 
     Set<String> emptyResult = LynxDevToolEnvUtils.getDevtoolEnv("test_group");
-    assertEquals(0, emptyResult.size());
+    assertTrue(emptyResult.isEmpty());
   }
 }

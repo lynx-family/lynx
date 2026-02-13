@@ -8,7 +8,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.res.Resources;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -16,29 +15,24 @@ import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
-import com.lynx.basedevtool.utils.DevToolDownloader;
-import com.lynx.basedevtool.utils.DownloadCallback;
 import com.lynx.debugrouter.DebugRouter;
 import com.lynx.devtool.helper.TestbenchDumpFileHelper;
-import com.lynx.devtool.helper.UITreeHelper;
 import com.lynx.devtool.tracing.FrameViewTrace;
 import com.lynx.devtool.utils.ErrorUtils;
 import com.lynx.devtoolwrapper.CDPEventListener;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.CustomizedMessage;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.devtoolwrapper.GlobalPropsObserver;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG;
 import com.lynx.devtoolwrapper.MessageHandler;
-import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.recorder.LynxDebugInfoRecorder;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.LynxError;
-import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.CalledByNative;
@@ -46,8 +40,6 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.PageReloadHelper;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.behavior.LynxUIOwner;
-import com.lynx.tasm.provider.LynxResourceCallback;
-import com.lynx.tasm.provider.LynxResourceResponse;
 import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -420,25 +412,90 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
   public Object setGlobalSwitch(String message) {
     try {
       JSONObject messageObj = new JSONObject(message);
-      LynxDevtoolEnv.inst().setDevtoolEnv(
-          messageObj.getString(GLOBAL_KEY), messageObj.get(GLOBAL_VALUE));
-      return messageObj.get(GLOBAL_VALUE);
+      String key = messageObj.getString(GLOBAL_KEY);
+      Object value = messageObj.get(GLOBAL_VALUE);
+      // Support limited switches here for limited scenarios. Currently only supports:
+      // - DevToolSettings.SP_KEY_ENABLE_DEVTOOL
+      // - DevToolSettings.SP_KEY_ENABLE_LOGBOX
+      // - DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE
+      // - DevToolSettings.SP_KEY_ENABLE_V8
+      // - DevToolSettings.SP_KEY_ENABLE_DOM_TREE
+      // - DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU
+      // - DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY
+      // - DevToolSettings.SP_KEY_ENABLE_PERF_METRICS
+      switch (key) {
+        case DevToolSettings.SP_KEY_ENABLE_DEVTOOL:
+          DevToolSettings.inst().setDevToolEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_LOGBOX:
+          DevToolSettings.inst().setLogBoxEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE:
+          DevToolSettings.inst().setDebugModeEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_V8:
+          DevToolSettings.inst().setV8Enabled((int) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_DOM_TREE:
+          DevToolSettings.inst().setDOMTreeEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU:
+          DevToolSettings.inst().setLongPressMenuEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY:
+          DevToolSettings.inst().setPixelCopyEnabled((boolean) value);
+          return value;
+        case DevToolSettings.SP_KEY_ENABLE_PERF_METRICS:
+          DevToolSettings.inst().setPerfMetricsEnabled((boolean) value);
+          return value;
+        default:
+          LLog.e(TAG, "setGlobalSwitch, unsupported key: " + key);
+          return null;
+      }
     } catch (JSONException e) {
       LLog.e(TAG, e.toString());
+      return null;
     }
-    return null;
   }
 
   public Object getGlobalSwitch(String message) {
     try {
       JSONObject messageObj = new JSONObject(message);
       String key = messageObj.getString(GLOBAL_KEY);
-      return LynxDevtoolEnv.inst().getDevtoolObjectEnv(
-          key, LynxDevtoolEnv.inst().getDefaultValue(key));
+      // Support limited switches here for limited scenarios. Currently only supports:
+      // - DevToolSettings.SP_KEY_ENABLE_DEVTOOL
+      // - DevToolSettings.SP_KEY_ENABLE_LOGBOX
+      // - DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE
+      // - DevToolSettings.SP_KEY_ENABLE_V8
+      // - DevToolSettings.SP_KEY_ENABLE_DOM_TREE
+      // - DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU
+      // - DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY
+      // - DevToolSettings.SP_KEY_ENABLE_PERF_METRICS
+      switch (key) {
+        case DevToolSettings.SP_KEY_ENABLE_DEVTOOL:
+          return DevToolSettings.inst().isDevToolEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_LOGBOX:
+          return DevToolSettings.inst().isLogBoxEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE:
+          return DevToolSettings.inst().isDebugModeEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_V8:
+          return DevToolSettings.inst().getV8Enabled();
+        case DevToolSettings.SP_KEY_ENABLE_DOM_TREE:
+          return DevToolSettings.inst().isDOMTreeEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU:
+          return DevToolSettings.inst().isLongPressMenuEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY:
+          return DevToolSettings.inst().isPixelCopyEnabled();
+        case DevToolSettings.SP_KEY_ENABLE_PERF_METRICS:
+          return DevToolSettings.inst().isPerfMetricsEnabled();
+        default:
+          LLog.e(TAG, "getGlobalSwitch, unsupported key: " + key);
+          return null;
+      }
     } catch (JSONException e) {
       LLog.e(TAG, e.toString());
+      return null;
     }
-    return null;
   }
 
   public void addUITreeToTestbench() {

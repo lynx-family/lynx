@@ -669,50 +669,10 @@ public class LynxEnv {
     }
   }
 
-  /**
-   * Set devtool switch value.
-   *
-   * @param key   Switch name.
-   * @param value Switch value. Each key has a value of a fixed type, which may be
-   *              Boolean or Integer.
-   */
-  public void setDevtoolEnv(String key, Object value) {
-    if (isNativeLibraryLoaded() && isLynxDebugEnabled()) {
-      LynxDevToolEnvUtils.setDevtoolEnv(key, value);
-    }
-  }
-
   public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
     if (isNativeLibraryLoaded() && isLynxDebugEnabled()) {
       LynxDevToolEnvUtils.setDevtoolEnv(groupKey, newGroupValues);
     }
-  }
-
-  /**
-   * Get devtool switch value.
-   *
-   * @param key          Switch name.
-   * @param defaultValue The default value when the switch value cannot be found.
-   * @return The Value of the switch.
-   */
-  public boolean getDevtoolEnv(String key, boolean defaultValue) {
-    return (boolean) getDevtoolEnvInternal(key, defaultValue);
-  }
-
-  public int getDevtoolEnv(String key, int defaultValue) {
-    return (int) getDevtoolEnvInternal(key, defaultValue);
-  }
-
-  protected Object getDevtoolEnvInternal(String key, Object defaultValue) {
-    if (!isNativeLibraryLoaded()) {
-      LLog.e(TAG, "getDevtoolEnv must be called after init! key: " + key);
-      return defaultValue;
-    }
-    if (!isLynxDebugEnabled()) {
-      LLog.e(TAG, "getDevtoolEnv must be called when isLynxDebugEnabled = true key: " + key);
-      return defaultValue;
-    }
-    return LynxDevToolEnvUtils.getDevtoolEnv(key, defaultValue);
   }
 
   public Set<String> getDevtoolEnv(String groupKey) {

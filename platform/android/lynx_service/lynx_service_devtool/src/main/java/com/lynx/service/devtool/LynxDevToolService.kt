@@ -173,16 +173,6 @@ class LynxDevToolService : ILynxDevToolService {
         }
     }
 
-    override fun setDevtoolEnv(key: String?, value: Any?) {
-        try {
-            LynxDevtoolEnv.inst().setDevtoolEnv(key, value)
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "setDevtoolEnv failed, ${e.message}")
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "setDevtoolEnv failed, ${e.message}")
-        }
-    }
-
     override fun setDevtoolGroupEnv(groupKey: String?, newGroupValues: MutableSet<String>?) {
         try {
             LynxDevtoolEnv.inst().setDevtoolEnv(groupKey, newGroupValues)
@@ -190,30 +180,6 @@ class LynxDevToolService : ILynxDevToolService {
             LLog.e(TAG, "setDevtoolGroupEnv failed, ${e.message}")
         } catch (e: NoClassDefFoundError) {
             LLog.e(TAG, "setDevtoolGroupEnv failed, ${e.message}")
-        }
-    }
-
-    override fun getDevtoolBooleanEnv(key: String?, defaultValue: Boolean?): Boolean {
-        try {
-            return LynxDevtoolEnv.inst().getDevtoolEnv(key, defaultValue)
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "getDevtoolBooleanEnv failed, ${e.message}")
-            return defaultValue ?: false
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "getDevtoolBooleanEnv failed, ${e.message}")
-            return defaultValue ?: false
-        }
-    }
-
-    override fun getDevtoolIntEnv(key: String?, defaultValue: Int?): Int {
-        try {
-            return LynxDevtoolEnv.inst().getDevtoolEnv(key, defaultValue)
-        } catch (e: ClassNotFoundException) {
-            LLog.e(TAG, "getDevtoolIntEnv failed, ${e.message}")
-            return defaultValue ?: 0
-        } catch (e: NoClassDefFoundError) {
-            LLog.e(TAG, "getDevtoolIntEnv failed, ${e.message}")
-            return defaultValue ?: 0
         }
     }
 

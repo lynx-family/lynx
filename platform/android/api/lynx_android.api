@@ -2403,10 +2403,7 @@ public interface com::lynx::tasm::service::ILynxDevToolService {
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeSetAppInfo(Context ctx, Map< String, String > appInfo);
   public void com.lynx.tasm.service.ILynxDevToolService.globalDebugBridgeOnPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId);
   public void com.lynx.tasm.service.ILynxDevToolService.devtoolEnvSetDevToolLibraryLoader(INativeLibraryLoader loader);
-  public void com.lynx.tasm.service.ILynxDevToolService.setDevtoolEnv(String key, Object value);
   public void com.lynx.tasm.service.ILynxDevToolService.setDevtoolGroupEnv(String groupKey, Set< String > newGroupValues);
-  public boolean com.lynx.tasm.service.ILynxDevToolService.getDevtoolBooleanEnv(String key, Boolean defaultValue);
-  public Integer com.lynx.tasm.service.ILynxDevToolService.getDevtoolIntEnv(String key, Integer defaultValue);
   public Set< String > com.lynx.tasm.service.ILynxDevToolService.getDevtoolGroupEnv(String key);
   public void com.lynx.tasm.service.ILynxDevToolService.devtoolEnvInit(Context ctx);
   public boolean com.lynx.tasm.service.ILynxDevToolService.isDevtoolAttached();
@@ -4941,9 +4938,7 @@ public class com::lynx::tasm::LynxDevToolDelegateImpl : com.lynx.devtoolwrapper.
 }
 
 public class com::lynx::devtoolwrapper::LynxDevToolEnvUtils :  {
-  public static void com.lynx.devtoolwrapper.LynxDevToolEnvUtils.setDevtoolEnv(String key, Object value);
   public static void com.lynx.devtoolwrapper.LynxDevToolEnvUtils.setDevtoolEnv(String groupKey, Set< String > newGroupValues);
-  public static Object com.lynx.devtoolwrapper.LynxDevToolEnvUtils.getDevtoolEnv(String key, Object defaultValue);
   public static Set< String > com.lynx.devtoolwrapper.LynxDevToolEnvUtils.getDevtoolEnv(String groupKey);
 }
 
@@ -5066,10 +5061,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public synchronized String com.lynx.tasm.LynxEnv.getLastUrl();
   public void com.lynx.tasm.LynxEnv.setLastUrl(String url);
   public boolean com.lynx.tasm.LynxEnv.hasInited();
-  public void com.lynx.tasm.LynxEnv.setDevtoolEnv(String key, Object value);
   public void com.lynx.tasm.LynxEnv.setDevtoolEnv(String groupKey, Set< String > newGroupValues);
-  public boolean com.lynx.tasm.LynxEnv.getDevtoolEnv(String key, boolean defaultValue);
-  public int com.lynx.tasm.LynxEnv.getDevtoolEnv(String key, int defaultValue);
   public Set< String > com.lynx.tasm.LynxEnv.getDevtoolEnv(String groupKey);
   public boolean com.lynx.tasm.LynxEnv.isLynxDebugEnabled();
   public void com.lynx.tasm.LynxEnv.initDevtool();

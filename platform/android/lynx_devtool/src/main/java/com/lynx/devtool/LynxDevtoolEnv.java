@@ -42,7 +42,6 @@ public class LynxDevtoolEnv {
   private Map<String, Integer> mErrorCodeMap;
   private Map<String, Set<String>> mGroupSets;
   private Map<String, Object> mSwitchNotPersist;
-  private Map<String, ArrayList<Object>> mSwitchAttrMap;
   // be used to load devtool native library
   private INativeLibraryLoader mDevtoolLibraryLoader = null;
 
@@ -95,8 +94,6 @@ public class LynxDevtoolEnv {
         }
       }
 
-      initSwitchAttribute();
-
       if (!LynxEnv.inst().isDevLibraryLoaded()) {
         loadNativeDevtoolLibrary();
       }
@@ -117,53 +114,6 @@ public class LynxDevtoolEnv {
       DevToolLifecycle.getInstance().onConnected();
     }
   }
-
-  // TODO:(mitchilling): remove this quadruple.
-  //  It's still used by E2E from `LynxInspectorOwner.setGlobalSwitch`/`getGlobalSwitch`
-  private void initSwitchAttribute() {
-    /**
-     mSwitchAttrMap: A dictionary indicating all switches' attributes.
-     key: switch name.
-     value: an array of bool values indicating attributes of current switch.
-     The meaning of each value in array is as follows:
-     whether needs to be persisted
-     whether needs to be synchronized to native
-     default value
-     */
-    mSwitchAttrMap = new HashMap<String, ArrayList<Object>>() {
-      {
-        put(DevToolSettings.SP_KEY_ENABLE_DEVTOOL,
-            new ArrayList<Object>(Arrays.asList(true, true, false)));
-        put(DevToolSettings.SP_KEY_ENABLE_LOGBOX,
-            new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_HIGHLIGHT_TOUCH,
-            new ArrayList<Object>(Arrays.asList(false, false, false)));
-        put(DevToolSettings.SP_KEY_ENABLE_FSP_SCREENSHOT,
-            new ArrayList<Object>(Arrays.asList(true, false, false)));
-        put(DevToolSettings.SP_KEY_ENABLE_LAUNCH_RECORD,
-            new ArrayList<Object>(Arrays.asList(true, false, false)));
-        put(DevToolSettings.SP_KEY_ENABLE_QUICKJS_DEBUG,
-            new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_DOM_TREE,
-            new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_LONG_PRESS_MENU,
-            new ArrayList<Object>(Arrays.asList(true, false, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT,
-            new ArrayList<Object>(Arrays.asList(false, false, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_QUICKJS_CACHE,
-            new ArrayList<Object>(Arrays.asList(true, true, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_PIXEL_COPY,
-            new ArrayList<Object>(Arrays.asList(true, false, true)));
-        put(DevToolSettings.SP_KEY_ENABLE_DEBUG_MODE,
-            new ArrayList<Object>(Arrays.asList(true, false, false)));
-        put(DevToolSettings.SP_KEY_ENABLE_V8,
-            new ArrayList<Object>(Arrays.asList(true, true, DevToolSettings.V8_ALIGN_WITH_PROD)));
-        put(DevToolSettings.SP_KEY_ENABLE_PERF_METRICS,
-            new ArrayList<Object>(Arrays.asList(false, false, false)));
-      }
-    };
-  }
-
   private void setDefaultAppInfo(Context context) {
     Map<String, String> appInfo = new HashMap<>();
     try {
@@ -255,22 +205,6 @@ public class LynxDevtoolEnv {
     LynxEnv.inst().setDevLibraryLoaded(true);
   }
 
-  private void syncToNative(String key, Object defaultValue) {
-    if (key == null || defaultValue == null) {
-      throw new RuntimeException("syncToNative failed! key or defaultValue is null");
-    }
-    if (getDefaultValue(key) == null
-        || (!getDefaultValue(key).getClass().equals(defaultValue.getClass()))) {
-      throw new RuntimeException(
-          "syncToNative failed! key: " + key + "value: " + defaultValue.toString());
-    }
-    if (defaultValue instanceof Boolean) {
-      LynxEnv.inst().nativeSetLocalEnv(key, ((Boolean) defaultValue).booleanValue() ? "1" : "0");
-    } else {
-      LynxEnv.inst().nativeSetLocalEnv(key, String.valueOf((Integer) defaultValue));
-    }
-  }
-
   private void syncToNative(String key, boolean defaultValue, String groupKey) {
     LynxEnv.inst().nativeSetGroupedEnv(key, defaultValue, groupKey);
   }
@@ -292,9 +226,6 @@ public class LynxDevtoolEnv {
       boolean syncToNative = needSyncToNative(key);
       KeyType type = getKeyType(key);
       switch (type) {
-        case NORMAL_KEY:
-          setDevtoolEnvInternal(key, value, persist, syncToNative);
-          break;
         case CDP_DOMAIN_KEY:
           setDevtoolGroupedEnvInternal(
               key, LynxEnvKey.SP_KEY_ACTIVATED_CDP_DOMAINS, (Boolean) value, persist, syncToNative);
@@ -307,6 +238,7 @@ public class LynxDevtoolEnv {
           }
           break;
         default:
+          LLog.e(TAG, "setDevtoolEnv, unsupported key: " + key);
           break;
       }
     } catch (RuntimeException e) {
@@ -332,17 +264,11 @@ public class LynxDevtoolEnv {
     return (Boolean) getDevtoolObjectEnv(key, defaultValue);
   }
 
-  public Integer getDevtoolEnv(String key, Integer defaultValue) {
-    return (Integer) getDevtoolObjectEnv(key, defaultValue);
-  }
-
   // This function will be called in LynxInspectorOwner when handle GetGlobalSwitch messages.
   Object getDevtoolObjectEnv(String key, Object defaultValue) {
     try {
       KeyType type = getKeyType(key);
       switch (type) {
-        case NORMAL_KEY:
-          return getDevtoolEnvInternal(key, defaultValue);
         case CDP_DOMAIN_KEY:
           return getDevtoolGroupedEnvInternal(
               key, LynxEnvKey.SP_KEY_ACTIVATED_CDP_DOMAINS, (Boolean) defaultValue);
@@ -354,6 +280,7 @@ public class LynxDevtoolEnv {
           return getDevtoolGroupedEnvInternal(
               errorCode.toString(), LynxEnvKey.SP_KEY_IGNORE_ERROR_TYPES, (Boolean) defaultValue);
         default:
+          LLog.e(TAG, "getDevtoolObjectEnv, unsupported key: " + key);
           return defaultValue;
       }
     } catch (RuntimeException e) {
@@ -371,68 +298,6 @@ public class LynxDevtoolEnv {
       return new HashSet<String>();
     }
     return set;
-  }
-
-  public Object getDefaultValue(String key) {
-    if (mSwitchAttrMap == null) {
-      return null;
-    }
-    if (mSwitchAttrMap.containsKey(key) && mSwitchAttrMap.get(key) != null) {
-      return mSwitchAttrMap.get(key).get(2);
-    }
-    return null;
-  }
-
-  private void setDevtoolEnvInternal(
-      String key, Object value, Boolean persist, Boolean syncToNative) {
-    if (getDefaultValue(key) == null
-        || (!getDefaultValue(key).getClass().equals(value.getClass()))) {
-      throw new RuntimeException(
-          "setDevtoolEnvInternal failed! key: " + key + ", value: " + value.toString());
-    }
-    if (persist && mSharedPreferences != null) {
-      if (value instanceof Boolean) {
-        mSharedPreferences.edit().putBoolean(key, (Boolean) value).apply();
-      } else {
-        mSharedPreferences.edit().putInt(key, (Integer) value).apply();
-      }
-    } else if (!persist) {
-      mSwitchNotPersist.put(key, value);
-    }
-    if (syncToNative) {
-      syncToNative(key, value);
-    }
-  }
-
-  private Object getDevtoolEnvInternal(String key, Object defaultValue) {
-    if (getDefaultValue(key) == null
-        || (!getDefaultValue(key).getClass().equals(defaultValue.getClass()))) {
-      throw new RuntimeException(
-          "getDevtoolEnvInternal failed! key: " + key + ", value: " + defaultValue.toString());
-    }
-    Boolean mask = getDevtoolEnvMask(key);
-    if (mSharedPreferences != null) {
-      if (defaultValue instanceof Boolean) {
-        if (mSharedPreferences.contains(key) || !mSwitchNotPersist.containsKey(key)) {
-          return mSharedPreferences.getBoolean(key, (Boolean) defaultValue) && mask;
-        } else {
-          return mask && (Boolean) mSwitchNotPersist.get(key);
-        }
-      } else {
-        if (mSharedPreferences.contains(key) || !mSwitchNotPersist.containsKey(key)) {
-          return mask ? mSharedPreferences.getInt(key, (Integer) defaultValue) : 0;
-        } else {
-          return mask ? mSwitchNotPersist.get(key) : 0;
-        }
-      }
-    } else {
-      LLog.e(TAG, "getDevtoolEnv must be called after init! key: " + key);
-      if (defaultValue instanceof Boolean) {
-        return mask && (Boolean) defaultValue;
-      } else {
-        return mask ? defaultValue : 0;
-      }
-    }
   }
 
   private void setDevtoolGroupedEnvInternal(
@@ -601,11 +466,6 @@ public class LynxDevtoolEnv {
     switch (type) {
       case ERROR_KEY:
         return true;
-      case NORMAL_KEY:
-        if (mSwitchAttrMap != null && mSwitchAttrMap.containsKey(key)
-            && mSwitchAttrMap.get(key) != null) {
-          return (Boolean) mSwitchAttrMap.get(key).get(0);
-        }
       default:
         return false;
     }
@@ -616,11 +476,6 @@ public class LynxDevtoolEnv {
     switch (type) {
       case CDP_DOMAIN_KEY:
         return true;
-      case NORMAL_KEY:
-        if (mSwitchAttrMap != null && mSwitchAttrMap.containsKey(key)
-            && mSwitchAttrMap.get(key) != null) {
-          return (Boolean) mSwitchAttrMap.get(key).get(1);
-        }
       default:
         return false;
     }

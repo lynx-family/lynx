@@ -43,10 +43,7 @@ public interface ILynxDevToolService extends IServiceProvider {
       String eventName, @NonNull JSONObject data, int instanceId);
 
   void devtoolEnvSetDevToolLibraryLoader(INativeLibraryLoader loader);
-  void setDevtoolEnv(String key, Object value);
   void setDevtoolGroupEnv(String groupKey, Set<String> newGroupValues);
-  boolean getDevtoolBooleanEnv(String key, Boolean defaultValue);
-  Integer getDevtoolIntEnv(String key, Integer defaultValue);
   Set<String> getDevtoolGroupEnv(String key);
   void devtoolEnvInit(Context ctx);
 

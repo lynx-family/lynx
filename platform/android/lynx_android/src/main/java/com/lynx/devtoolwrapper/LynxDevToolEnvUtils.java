@@ -16,41 +16,12 @@ public class LynxDevToolEnvUtils {
       LynxServiceCenter.inst().getService(ILynxDevToolService.class);
   private static final String TAG = "LynxDevToolEnvUtils";
 
-  static public void setDevtoolEnv(String key, Object value) {
-    if (DEVTOOL_SERVICE != null) {
-      DEVTOOL_SERVICE.setDevtoolEnv(key, value);
-    } else {
-      LLog.e(TAG, "failed to get DevToolService");
-    }
-  }
-
   static public void setDevtoolEnv(String groupKey, Set<String> newGroupValues) {
     if (DEVTOOL_SERVICE != null) {
       DEVTOOL_SERVICE.setDevtoolGroupEnv(groupKey, newGroupValues);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
-  }
-
-  static public Object getDevtoolEnv(String key, Object defaultValue) {
-    Object ret = defaultValue;
-
-    if (defaultValue instanceof Boolean) {
-      if (DEVTOOL_SERVICE != null) {
-        ret = DEVTOOL_SERVICE.getDevtoolBooleanEnv(key, (Boolean) defaultValue);
-      } else {
-        LLog.e(TAG, "failed to get DevToolService");
-      }
-    } else if (defaultValue instanceof Integer) {
-      if (DEVTOOL_SERVICE != null) {
-        ret = DEVTOOL_SERVICE.getDevtoolIntEnv(key, (Integer) defaultValue);
-      } else {
-        LLog.e(TAG, "failed to get DevToolService");
-      }
-    } else {
-      LLog.e(TAG, "value type error! key: " + key + ", value: " + defaultValue.toString());
-    }
-    return ret;
   }
 
   static public Set<String> getDevtoolEnv(String groupKey) {
