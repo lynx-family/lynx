@@ -6,6 +6,7 @@ package com.lynx.xelement.input
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Canvas
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
@@ -25,6 +26,7 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText {
     private var mCopyListener: CopyListener? = null
     private var isEditTextHasBeenServed: Boolean = false
     private var mAdjustInputMode = LYNX_EDIT_TEXT_LIGHT_INPUT_MODE_UNDEFINED
+    var mHasDrawn = false
     var onAttachedToWindowListener: OnAttachedListener? = null
 
     interface CopyListener {
@@ -126,4 +128,9 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText {
     open fun updateInputMode(inputMode: Int) {
         mAdjustInputMode = inputMode
     }
+
+  override fun onDraw(canvas: Canvas?) {
+    super.onDraw(canvas)
+    mHasDrawn = true
+  }
 }

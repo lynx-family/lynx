@@ -821,29 +821,49 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mView.setSelection(selectionStart, selectionEnd)
         callback?.invoke(LynxUIMethodConstants.SUCCESS, "Success.")
     }
-
+  
+    private fun doFocus(callback: Callback?) {
+      if (mView.requestFocus()) {
+        if (mUseCustomKeyboard) {
+          hideSoftInput()
+        } else if (showSoftInput()){
+          callback?.invoke(LynxUIMethodConstants.SUCCESS)
+        } else {
+          callback?.invoke(LynxUIMethodConstants.UNKNOWN, "fail to show keyboard")
+        }
+      } else {
+        callback?.invoke(LynxUIMethodConstants.UNKNOWN, "fail to focus")
+      }
+    }
+  
+    private fun doBlur(callback: Callback?) {
+      mView.clearFocus()
+      if (!mUseCustomKeyboard) {
+        hideSoftInput()
+      }
+      callback?.invoke(LynxUIMethodConstants.SUCCESS)
+    }
+  
     @LynxUIMethod
     fun focus(params: ReadableMap?, callback: Callback?) {
-        if (mView.requestFocus()) {
-            if (mUseCustomKeyboard) {
-                hideSoftInput()
-            } else if (showSoftInput()){
-                callback?.invoke(LynxUIMethodConstants.SUCCESS)
-            } else {
-                callback?.invoke(LynxUIMethodConstants.UNKNOWN, "fail to show keyboard")
-            }
-        } else {
-            callback?.invoke(LynxUIMethodConstants.UNKNOWN, "fail to focus")
+      if (view.mHasDrawn) {
+       doFocus(callback)
+      } else {
+        mView.post {
+          doFocus(callback)
         }
+      }
     }
 
     @LynxUIMethod
     fun blur(params: ReadableMap?, callback: Callback?) {
-        mView.clearFocus()
-        if (!mUseCustomKeyboard) {
-            hideSoftInput()
+      if (view.mHasDrawn) {
+        doBlur(callback)
+      } else {
+        mView.post {
+          doBlur(callback)
         }
-        callback?.invoke(LynxUIMethodConstants.SUCCESS)
+      }
     }
 
     @SuppressLint("WrongConstant")
