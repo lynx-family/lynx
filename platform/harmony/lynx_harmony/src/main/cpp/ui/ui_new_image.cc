@@ -21,9 +21,11 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_config.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
@@ -47,7 +49,8 @@ std::unordered_map<std::string, ImagePropSetter> UINewImage::prop_setters_ = {
     {"cap-insets-scale", &UINewImage::UpdateCapInsetScale},
     {"skip-redirection", &UINewImage::UpdateSkipRedirection},
     {"autoplay", &UINewImage::UpdateAutoPlay},
-    {"loop-count", &UINewImage::UpdateLoopCount}};
+    {"loop-count", &UINewImage::UpdateLoopCount},
+    {"enable-report-info", &UINewImage::UpdateEnableReportInfo}};
 
 std::unordered_map<std::string, UINewImage::UIMethod>
     UINewImage::image_ui_method_map_ = {
@@ -97,10 +100,51 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
       image->AutoSizeIfNeeded();
     });
 
-    if ((event_flags_ & image::kFlagImageLoadEvent) != 0) {
+    if ((event_flags_ & image::kFlagImageLoadEvent) != 0 &&
+        !enable_report_info_) {
       auto dict = lepus::Dictionary::Create();
       dict->SetValue(image::kLoadEventImageHeight, image_height_);
       dict->SetValue(image::kLoadEventImageWidth, image_width_);
+      CustomEvent event{Sign(), image::kLoadEventName, "detail",
+                        lepus_value(dict)};
+      context_->SendEvent(event);
+    }
+  }
+}
+
+void UINewImage::OnImageMonitorInfo(const ImageMonitorInfo& data) {
+  if (enable_image_load_callback_ &&
+      base::BeginsWith(src_, image::kHttpPrefix)) {
+    // Report image monitoring information to the native side
+    auto image_info = lepus::Dictionary::Create();
+    image_info->SetValue("type",
+                         static_cast<int32_t>(pub::LynxResourceType::kImage));
+    image_info->SetValue("src", src_);
+    image_info->SetValue("loadStart", data.load_start);
+    image_info->SetValue("loadFinish", data.load_finish);
+    image_info->SetValue("cost", data.load_finish - data.load_start);
+    image_info->SetValue(image::kLoadEventImageHeight, image_height_);
+    image_info->SetValue(image::kLoadEventImageWidth, image_width_);
+    image_info->SetValue("viewWidth", width_);
+    image_info->SetValue("viewHeight", height_);
+    image_info->SetValue("origin", static_cast<int32_t>(data.origin));
+    UIBase::OnResourceLoadCallback(lepus_value(image_info));
+  }
+  if (context_) {
+    // Report image monitoring information to the frontend
+    if ((event_flags_ & image::kFlagImageLoadEvent) != 0 &&
+        enable_report_info_) {
+      auto dict = lepus::Dictionary::Create();
+      dict->SetValue("src", src_);
+      dict->SetValue(image::kLoadEventImageHeight, image_height_);
+      dict->SetValue(image::kLoadEventImageWidth, image_width_);
+      dict->SetValue("view_height", height_);
+      dict->SetValue("view_width", width_);
+      dict->SetValue("memory_cost", image_height_ * image_width_ * 4);
+      dict->SetValue("load_start", data.load_start);
+      dict->SetValue("load_finish", data.load_finish);
+      dict->SetValue("cost", data.load_finish - data.load_start);
+      dict->SetValue("origin", static_cast<int32_t>(data.origin));
       CustomEvent event{Sign(), image::kLoadEventName, "detail",
                         lepus_value(dict)};
       context_->SendEvent(event);
@@ -112,6 +156,17 @@ void UINewImage::OnImageLoadFailure(int error_code,
                                     const std::string& error_msg) {
   LOGE("Load image failed error_code: " << error_code
                                         << ", error_msg: " << error_msg);
+  if (enable_image_load_callback_ &&
+      base::BeginsWith(src_, image::kHttpPrefix)) {
+    auto image_info = lepus::Dictionary::Create();
+    image_info->SetValue("type",
+                         static_cast<int32_t>(pub::LynxResourceType::kImage));
+    image_info->SetValue("src", src_);
+    image_info->SetValue("errCode", error_code);
+    image_info->SetValue("errMsg", error_msg);
+    UIBase::OnResourceLoadCallback(lepus_value(image_info));
+  }
+
   if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_ &&
       has_src_) {
     auto dict = lepus::Dictionary::Create();
@@ -153,6 +208,13 @@ UINewImage::UINewImage(LynxContext* context, int sign, const std::string& tag)
   image_node_ = image_service->CreateImageNode();
   InitNode(image_node_->GetNodeHandle());
   InitAccessibilityAttrs(LynxAccessibilityMode::kEnable, "image");
+
+  if (context_->GetUIOwner()) {
+    LynxImageConfig* config = context_->GetUIOwner()->GetLynxImageConfig();
+    if (config && config->GetEnableImageLoadCallback()) {
+      enable_image_load_callback_ = true;
+    }
+  }
 }
 
 ArkUI_ObjectFit UINewImage::ConvertMode(const std::string& mode) {
@@ -553,6 +615,10 @@ void UINewImage::UpdateTintColor(const lepus::Value& value) {
   }
 }
 
+void UINewImage::UpdateEnableReportInfo(const lepus::Value& value) {
+  enable_report_info_ = value.Bool();
+}
+
 void UINewImage::UpdateDropShadow(const lepus::Value& value) {
   dirty_flags_ |= image::kFlagEffectChanged;
   if (value.IsString()) {
@@ -591,6 +657,9 @@ UINewImage::GenerateCommonViewParams() {
           context_->ScaledDensity()};
 }
 
+bool UINewImage::NeedMonitorInfo() {
+  return enable_report_info_ || enable_image_load_callback_;
+}
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

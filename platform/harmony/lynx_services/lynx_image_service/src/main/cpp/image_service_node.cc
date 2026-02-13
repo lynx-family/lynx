@@ -6,9 +6,7 @@
 
 #include <utility>
 
-#include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
-#include "core/resource/lynx_resource_loader_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_harmony.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_transform.h"
@@ -26,6 +24,22 @@ static bool IsMedia(const std::string& url) {
 
 static bool IsRawFile(const std::string& url) {
   return base::BeginsWith(url, tasm::harmony::image::kResourceRawFile);
+}
+
+static tasm::harmony::LynxImageOrigin GetImageOrigin(
+    ImageKnifePro::ImageSourceFrom from) {
+  tasm::harmony::LynxImageOrigin origin =
+      tasm::harmony::LynxImageOrigin::kUnknown;
+  if (from == ImageKnifePro::ImageSourceFrom::FROM_MEMORY_CACHE) {
+    origin = tasm::harmony::LynxImageOrigin::kMemoryDecoded;
+  } else if (from == ImageKnifePro::ImageSourceFrom::FROM_FILE_CACHE) {
+    origin = tasm::harmony::LynxImageOrigin::kDisk;
+  } else if (from == ImageKnifePro::ImageSourceFrom::FROM_LOCAL_FILE) {
+    origin = tasm::harmony::LynxImageOrigin::kLocal;
+  } else if (from == ImageKnifePro::ImageSourceFrom::FROM_NETWORK_DOWNLOAD) {
+    origin = tasm::harmony::LynxImageOrigin::kNetwork;
+  }
+  return origin;
 }
 
 ImageServiceNode::ImageServiceNode(ImageServiceHarmony* service)
@@ -102,6 +116,13 @@ void ImageServiceNode::InitImageLoadListener(
           return;
         }
         listener->OnImageLoadSuccess(info.imageWidth, info.imageHeight);
+        if (listener->NeedMonitorInfo()) {
+          tasm::harmony::ImageMonitorInfo monitorInfo{
+              .load_start = info.timeInfo.requestStartTime,
+              .load_finish = info.timeInfo.requestEndTime,
+              .origin = GetImageOrigin(info.imageSourceFrom)};
+          listener->OnImageMonitorInfo(monitorInfo);
+        }
       };
   image_knife_option_->onLoadListener->onLoadFailed =
       [weak_listener = load_listener_](const std::string& err,

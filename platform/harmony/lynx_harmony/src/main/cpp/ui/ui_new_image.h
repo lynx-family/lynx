@@ -34,11 +34,13 @@ class UINewImage : public UIBase,
   void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
 
   void OnImageLoadSuccess(float image_width, float image_height) override;
+  void OnImageMonitorInfo(const ImageMonitorInfo& data) override;
   void OnImageLoadFailure(int error_code,
                           const std::string& error_msg) override;
   void OnAnimationStart() override;
   void OnAnimationRepeat() override;
   void OnAnimationFinish() override;
+  bool NeedMonitorInfo() override;
 
  protected:
   UINewImage(LynxContext* context, int sign, const std::string& tag);
@@ -87,6 +89,8 @@ class UINewImage : public UIBase,
   int32_t loop_count_{0};
   std::unique_ptr<ImageNode> image_node_;
   bool has_src_{false};
+  bool enable_image_load_callback_{false};  // for native side
+  bool enable_report_info_{false};          // for frontend
 
   static std::unordered_map<std::string,
                             void (UINewImage::*)(const lepus::Value& value)>
@@ -106,6 +110,7 @@ class UINewImage : public UIBase,
   void UpdateDropShadow(const lepus::Value& value);
   void UpdateSkipRedirection(const lepus::Value& value);
   void UpdateDownsampling(const lepus::Value& value);
+  void UpdateEnableReportInfo(const lepus::Value& value);
   void AutoSizeIfNeeded();
   std::string GetRedirectUrl(const std::string& url);
   void LoadImage();

@@ -33,10 +33,28 @@ struct ImageRequestInfo {
   std::unordered_map<std::string, std::string> custom_param;
 };
 
+enum class LynxImageOrigin : int32_t {
+  kUnknown = 1,
+  kNetwork = 2,
+  kDisk = 3,
+  kMemoryEncoded = 4,
+  kMemoryDecoded = 5,
+  kLocal = 6,  // local file or base64
+  kMax = 7,    // reserved field
+};
+
+struct ImageMonitorInfo {
+  uint64_t load_start = 0;
+  uint64_t load_finish = 0;
+  LynxImageOrigin origin = LynxImageOrigin::kUnknown;
+};
+
 class ImageLoadListener {
  public:
   virtual ~ImageLoadListener() = default;
   virtual void OnImageLoadSuccess(float image_width, float image_height) = 0;
+  virtual void OnImageMonitorInfo(const ImageMonitorInfo& info) = 0;
+  virtual bool NeedMonitorInfo() = 0;
   virtual void OnImageLoadFailure(int error_code,
                                   const std::string& error_msg) = 0;
 };
