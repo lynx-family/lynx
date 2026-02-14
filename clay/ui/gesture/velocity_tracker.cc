@@ -53,6 +53,9 @@ float VectorNorm(const float* vec, uint32_t length) {
 }
 
 // Velocity tracker algorithm based on least-squares linear regression.
+// degree: 2
+// weighting: none
+// restriction: aligned_directions
 class LeastSquaresVelocityTrackerStrategy : public VelocityTrackerStrategy {
  public:
   // Number of samples to keep.
@@ -68,7 +71,7 @@ class LeastSquaresVelocityTrackerStrategy : public VelocityTrackerStrategy {
 
   void AddPosition(uint64_t event_time, const FloatPoint& position) override;
 
-  bool GetEstimator(Estimator* out_estimator, bool is_vertical) const override;
+  bool GetEstimator(Estimator* out_estimator) const override;
 
  private:
   // Sample horizon.
@@ -143,12 +146,11 @@ void VelocityTracker::AddPosition(const FloatPoint& position,
   last_position_ = position;
 }
 
-VelocityEstimate VelocityTracker::GetVelocityEstimate(bool is_vertical) {
+VelocityEstimate VelocityTracker::GetVelocityEstimate() {
   VelocityEstimate result;
   result.movement = total_movement_;
   Estimator out_estimator;
-  if (strategy_->GetEstimator(&out_estimator, is_vertical) &&
-      out_estimator.degree >= 1) {
+  if (strategy_->GetEstimator(&out_estimator) && out_estimator.degree >= 1) {
     result.pixels_per_second = {out_estimator.x_coeff[1] * kVelocityScale,
                                 out_estimator.y_coeff[1] * kVelocityScale};
   } else {
@@ -313,8 +315,8 @@ void LeastSquaresVelocityTrackerStrategy::AddPosition(
   }
 }
 
-bool LeastSquaresVelocityTrackerStrategy::GetEstimator(Estimator* out_estimator,
-                                                       bool is_vertical) const {
+bool LeastSquaresVelocityTrackerStrategy::GetEstimator(
+    Estimator* out_estimator) const {
   out_estimator->Clear();
 
   if (movements_.empty()) {
@@ -322,19 +324,21 @@ bool LeastSquaresVelocityTrackerStrategy::GetEstimator(Estimator* out_estimator,
   }
 
   // Iterate over movement samples in reverse time order and collect samples.
-  float position[kHistorySize];
+  float x[kHistorySize];
+  float y[kHistorySize];
   float w[kHistorySize];
   float time[kHistorySize];
 
-  uint64_t newest_event_time_in_micros =
-      movements_.rbegin()->event_time_in_micros;
+  const Movement& newest_movement = *(movements_.rbegin());
   uint32_t sample_num = 0;
   for (auto iter = movements_.rbegin(); iter != movements_.rend(); ++iter) {
-    uint64_t age = newest_event_time_in_micros - iter->event_time_in_micros;
+    uint64_t age =
+        newest_movement.event_time_in_micros - iter->event_time_in_micros;
     if (age > kHorizonMicros) break;
 
-    position[sample_num] =
-        is_vertical ? iter->position.y() : iter->position.x();
+    const FloatPoint position = iter->position;
+    x[sample_num] = position.x();
+    y[sample_num] = position.y();
     w[sample_num] = 1.0f;
     time[sample_num] = -static_cast<float>(age) / kMicrosPerSecond;
     sample_num++;
@@ -347,33 +351,36 @@ bool LeastSquaresVelocityTrackerStrategy::GetEstimator(Estimator* out_estimator,
   if (degree > sample_num - 1) degree = sample_num - 1;
 
   if (degree >= 1) {
-    float det = 0;
+    float x_det = 0;
+    float y_det = 0;
     uint32_t n = degree + 1;
-    if (SolveLeastSquares(
-            time, position, w, sample_num, n,
-            is_vertical ? out_estimator->y_coeff : out_estimator->x_coeff,
-            &det)) {
-      float move_distance = position[0] - position[sample_num - 1];
-      float move_velocity =
-          is_vertical ? out_estimator->y_coeff[1] : out_estimator->x_coeff[1];
-      // If the velocity is in a sufficiently different direction from the
-      // primary movement, ignore it.
-      if (move_distance * move_velocity < 0) {
+    if (SolveLeastSquares(time, x, w, sample_num, n, out_estimator->x_coeff,
+                          &x_det) &&
+        SolveLeastSquares(time, y, w, sample_num, n, out_estimator->y_coeff,
+                          &y_det)) {
+      const Movement& oldest_movement = *(movements_.begin());
+      FloatPoint dp = newest_movement.position - oldest_movement.position;
+      if (out_estimator->x_coeff[1] * dp.x() +
+              out_estimator->y_coeff[1] * dp.y() <
+          0) {
+        // Note: Corresponding LSQ2_RESTRICTED in Chromium.
+        // If the velocity is in a
+        // sufficiently different direction from the primary movement, ignore
+        // it.
         return false;
       }
-
-      out_estimator->time = newest_event_time_in_micros;
+      out_estimator->time = newest_movement.event_time_in_micros;
       out_estimator->degree = degree;
-      out_estimator->confidence = det;
+      out_estimator->confidence = x_det * y_det;
       return true;
     }
   }
 
   // No velocity data available for this pointer, but we do have its current
   // position.
-  out_estimator->x_coeff[0] = is_vertical ? 0.f : position[0];
-  out_estimator->y_coeff[0] = is_vertical ? position[0] : 0.f;
-  out_estimator->time = newest_event_time_in_micros;
+  out_estimator->x_coeff[0] = x[0];
+  out_estimator->y_coeff[0] = y[0];
+  out_estimator->time = newest_movement.event_time_in_micros;
   out_estimator->degree = 0;
   out_estimator->confidence = 1.f;
   return true;

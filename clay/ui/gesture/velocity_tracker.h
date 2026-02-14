@@ -47,8 +47,7 @@ class VelocityTrackerStrategy {
   virtual void Clear() = 0;
   virtual void AddPosition(uint64_t event_time_in_micros,
                            const FloatPoint& position) = 0;
-  virtual bool GetEstimator(Estimator* out_estimator,
-                            bool is_vertical) const = 0;
+  virtual bool GetEstimator(Estimator* out_estimator) const = 0;
 
  protected:
   VelocityTrackerStrategy() = default;
@@ -83,7 +82,7 @@ class VelocityTracker {
                    bool end = false);
   void Clear();
 
-  VelocityEstimate GetVelocityEstimate(bool is_vertical);
+  VelocityEstimate GetVelocityEstimate();
 
  private:
   bool is_first_;

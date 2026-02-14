@@ -134,8 +134,10 @@ void DragGestureRecognizer::DidStopTrackingLastPointer(int pointer_id) {
     case DragState::kAccepted:
       if (on_drag_end_) {
         auto velocity_estimate =
-            velocity_trackers_[pointer_id].GetVelocityEstimate(
-                getType() == GestureRecognizerType::kVerticalDrag);
+            velocity_trackers_[pointer_id].GetVelocityEstimate();
+        getType() == GestureRecognizerType::kHorizontalDrag
+            ? velocity_estimate.pixels_per_second.SetHeight(0)
+            : velocity_estimate.pixels_per_second.SetWidth(0);
         GESTURE_LOG << GetMemberTag() << this << " end, velocity is "
                     << velocity_estimate.pixels_per_second.ToString()
                     << ", calculated in distance: "

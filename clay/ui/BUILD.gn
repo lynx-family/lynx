@@ -176,6 +176,7 @@ if (enable_unittests) {
       "event/gesture_event_unittests.cc",
       "gesture/gesture_manager_unittests.cc",
       "gesture/mouse_region_manager_unittests.cc",
+      "gesture/velocity_tracker_unittests.cc",
       "lynx_module/lynx_module_unittests.cc",
       "lynx_module/lynx_ui_method_unittests.cc",
       "painter/box_painter_unittests.cc",
