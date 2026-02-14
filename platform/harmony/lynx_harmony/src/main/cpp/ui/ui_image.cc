@@ -272,6 +272,9 @@ void UIImage::SetImageSrcFromPath(const std::string& url, bool placeholder) {
   OH_FileUri_GetUriFromPath(url.data(), url.size(), &result);
   ArkUI_AttributeItem item{.string = result};
   NodeManager::Instance().SetAttribute(Node(), type, &item);
+  if (LynxEnv::GetInstance().EnableHarmonyInvalidateAttributes()) {
+    NodeManager::Instance().InvalidateAttributes(Node());
+  }
   free(result);
 }
 

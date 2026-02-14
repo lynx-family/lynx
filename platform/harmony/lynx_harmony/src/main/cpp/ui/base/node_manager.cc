@@ -5,11 +5,14 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
 #include <ace/xcomponent/native_interface_xcomponent.h>
+#include <deviceinfo.h>
+#include <dlfcn.h>
 
 #include <string>
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 namespace lynx {
 namespace tasm {
@@ -30,6 +33,27 @@ bool NodeManager::SetAttribute(ArkUI_NodeHandle node,
                                ArkUI_NodeAttributeType type,
                                const ArkUI_AttributeItem* item) {
   return native_node_api_->setAttribute(node, type, item) == 0;
+}
+
+static void* GetInvalidateAttributesFunc() {
+  if (OH_GetSdkApiVersion() < 21) {
+    return nullptr;
+  }
+  void* handle =
+      base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName);
+  if (handle == nullptr) {
+    return nullptr;
+  }
+  return dlsym(handle, "OH_ArkUI_NativeModule_InvalidateAttributes");
+}
+
+int NodeManager::InvalidateAttributes(ArkUI_NodeHandle node) {
+  static auto* handler = GetInvalidateAttributesFunc();
+  if (handler) {
+    using InvalidateAttributes = int32_t (*)(ArkUI_NodeHandle);
+    return reinterpret_cast<InvalidateAttributes>(handler)(node);
+  }
+  return -1;
 }
 
 const ArkUI_AttributeItem* NodeManager::GetAttribute(

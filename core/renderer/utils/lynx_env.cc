@@ -596,6 +596,12 @@ bool LynxEnv::EnableFetchAPIStreamingStandard() {
   return GetBoolEnv(Key::ENABLE_FETCH_API_STANDARD_STREAMING, false);
 }
 
+bool LynxEnv::EnableHarmonyInvalidateAttributes() {
+  static bool value =
+      GetBoolEnv(Key::ENABLE_HARMONY_INVALIDATE_ATTRIBUTES, true);
+  return value;
+}
+
 bool LynxEnv::FixNewFixedRemovalBug() {
   return GetBoolEnv(Key::FIX_NEW_FIXED_REMOVAL_BUG, true);
 }
