@@ -316,7 +316,7 @@ declare global {
 
   function __InvokeUIMethod(e: ElementRef, method: string, params: Record<string, unknown>, callback: (res: { code: number; data: unknown }) => void): ElementRef[];
 
-  function __LoadLepusChunk(name: string, cfg: { chunkType: number }): void;
+  function __LoadLepusChunk(name: string, cfg: { chunkType: number; dynamicComponentEntry?: string }): boolean;
 
   function __CreateGestureDetector(
     node: ElementRef,
