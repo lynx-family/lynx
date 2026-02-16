@@ -5,8 +5,7 @@
 #import <XElement/LynxDigitKeyListener.h>
 #import <Foundation/Foundation.h>
 
-static NSString* const COMPATIBILITY_CHARACTERS[4] = {@"0123456789", @"0123456789-+",
-                                                      @"0123456789.", @"0123456789-+."};
+static NSString* const COMPATIBILITY_CHARACTERS = @"0123456789";
 static NSString* const DEFAULT_DECIMAL_POINT_CHARS = @".";
 static NSString* const DEFAULT_SIGN_CHARS = @"-+"; // maybe add the ASCII hyphen-minus U+2212 U+2013
 static int const SIGN = 1;
@@ -20,7 +19,7 @@ static int const DECIMAL = 2;
         _decimal = NO;
         _sign = NO;
         _mSignChars = DEFAULT_SIGN_CHARS;
-        _mDecimalPointChars = DEFAULT_DECIMAL_POINT_CHARS;
+        _mDecimalPointChars = [[NSLocale currentLocale] decimalSeparator] ? : DEFAULT_DECIMAL_POINT_CHARS;
     }
     return self;
 }
@@ -31,7 +30,7 @@ static int const DECIMAL = 2;
         _decimal = decimal;
         _sign = sign;
         _mSignChars = DEFAULT_SIGN_CHARS;
-        _mDecimalPointChars = DEFAULT_DECIMAL_POINT_CHARS;
+        _mDecimalPointChars = [[NSLocale currentLocale] decimalSeparator] ? : DEFAULT_DECIMAL_POINT_CHARS;
     }
     return self;
 }
@@ -49,8 +48,15 @@ static int const DECIMAL = 2;
 }
 
 - (NSString*)getAcceptedChars {
-    NSInteger kind = (_sign ? SIGN : 0) | (_decimal ? DECIMAL : 0);
-    return COMPATIBILITY_CHARACTERS[kind];
+    NSMutableString *accepted = [COMPATIBILITY_CHARACTERS mutableCopy];
+    if (_sign) {
+        [accepted appendString:_mSignChars];
+    }
+    if (_decimal) {
+        NSString *decimalChars = _mDecimalPointChars.length > 0 ? _mDecimalPointChars : DEFAULT_DECIMAL_POINT_CHARS;
+        [accepted appendString:decimalChars];
+    }
+    return accepted;
 }
 
 - (NSString *)filter:(NSString *)source start:(NSInteger)start end:(NSInteger)end dest:(NSString *)dest dstart:(NSInteger)dstart dend:(NSInteger)dend {

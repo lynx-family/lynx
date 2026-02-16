@@ -12,8 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 @property(nonatomic, readonly) NSArray<NSString*>* CHARACTERS;
-@property(nonatomic, assign, readwrite) NSString* mDecimalPointChars;
-@property(nonatomic, assign, readwrite) NSString* mSignChars;
+@property(nonatomic, copy, readwrite) NSString* mDecimalPointChars;
+@property(nonatomic, copy, readwrite) NSString* mSignChars;
 
 // init function
 - (instancetype)initWithParamsNeedsDecimal:(BOOL)decimal sign:(BOOL)sign;
