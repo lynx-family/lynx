@@ -25,4 +25,10 @@
  */
 @property(nonatomic) BOOL enableProgressiveRendering;
 
+/**
+ * Whether to enable image load callback (`onResourceLoaded`).
+ * When enabled, LynxViewLifecycleV2 clients receive image load events.
+ */
+@property(nonatomic) BOOL enableImageLoadCallback;
+
 @end

@@ -7,6 +7,7 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxImageBlurUtils.h>
+#import <Lynx/LynxImageLoadInfo.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageProcessor.h>
 #import <Lynx/LynxMeasureDelegate.h>
@@ -72,6 +73,10 @@ typedef NS_ENUM(NSInteger, LynxImageOrigin) {
 @end
 
 @implementation LynxImageConfig
+
+@end
+
+@implementation LynxImageLoadInfo
 
 @end
 
@@ -180,6 +185,7 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic, strong) NSMutableDictionary* placeholder_hash_config;
 @property(nonatomic) LynxBooleanOption frameCacheAutomatically;
 @property(nonatomic) CGFloat superResolutionScale;
+@property(nonatomic, assign) BOOL enableImageLoadCallback;
 @end
 
 @implementation LynxUIImage {
@@ -276,6 +282,9 @@ LYNX_REGISTER_UI("image")
   }
   if (self.context.imageConfig.enableProgressiveRendering) {
     _requestOptions |= LynxImageProgressiveRendering;
+  }
+  if (self.context.imageConfig.enableImageLoadCallback) {
+    _enableImageLoadCallback = YES;
   }
 }
 
@@ -788,6 +797,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     }
 
     [strongSelf monitorReporter:requestUrl];
+    [strongSelf notifyImageLoadedIfNeeded:requestUrl error:error];
   };
   _startRequestTime = [NSDate date];
   BOOL downsampling = (_downsampling || self.getEnableImageDownsampling) && !_autoSize;
@@ -976,6 +986,49 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   if (self.context.devtoolEnabled) {
     [[LynxMemoryListener shareInstance] uploadImageInfo:reportUrl.reportInfo];
   }
+}
+
+- (void)notifyImageLoadedIfNeeded:(LynxURL*)reportUrl error:(NSError*)error {
+  if (!self.enableImageLoadCallback) {
+    return;
+  }
+  if (!reportUrl || reportUrl.type != LynxImageRequestSrc ||
+      ![[reportUrl.url scheme] hasPrefix:@"http"]) {
+    return;
+  }
+
+  LynxLifecycleDispatcher* dispatcher = nil;
+  UIView* rootView = self.context.rootView;
+  if ([rootView isKindOfClass:[LynxView class]]) {
+    dispatcher = [(LynxView*)rootView getLifecycleDispatcher];
+  }
+  if (!dispatcher) {
+    return;
+  }
+
+  LynxImageLoadInfo* info = [[LynxImageLoadInfo alloc] init];
+  info.type = LynxResourceTypeImage;
+  info.errCode = error ? error.code : 0;
+  info.errMsg = error ? error.localizedDescription : nil;
+  info.src = reportUrl.url.absoluteString ?: @"";
+
+  if (info.errCode == 0) {
+    info.width = self.image.size.width;
+    info.height = self.image.size.height;
+    info.viewWidth = self.view.frame.size.width;
+    info.viewHeight = self.view.frame.size.height;
+    info.loadStart = self.startRequestTime.timeIntervalSince1970 * 1000;
+    info.loadFinish = self.finishRequestTime.timeIntervalSince1970 * 1000;
+    info.origin = [self getImageOrigin:reportUrl isNewImage:[self shouldUseNewImage]];
+  }
+
+  __weak typeof(dispatcher) weakDispatcher = dispatcher;
+  [LynxEventReporter
+      delayRunOnReportThread:^{
+        __strong typeof(weakDispatcher) strongDispatcher = weakDispatcher;
+        [strongDispatcher onResourceLoaded:info];
+      }
+                     delayMs:0];
 }
 
 - (LynxImageOrigin)getImageOrigin:(LynxURL*)reportUrl isNewImage:(BOOL)newImage {
