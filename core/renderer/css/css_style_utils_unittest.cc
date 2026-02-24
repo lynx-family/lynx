@@ -115,6 +115,73 @@ TEST(CssStyleUtils, ComputeFilter) {
   EXPECT_FALSE(output != target);
 }
 
+TEST(CssStyleUtils, ComputeIntStyle) {
+  tasm::CSSParserConfigs configs;
+  int dest = 1;
+
+  // Non-reset: assign positive integer.
+  tasm::CSSValue positive_value(10, tasm::CSSValuePattern::NUMBER);
+  bool changed = CSSStyleUtils::ComputeIntStyle(
+      positive_value, /*reset=*/false, dest, /*default_value=*/0,
+      "int style must be number!", configs);
+  EXPECT_TRUE(changed);
+  EXPECT_EQ(dest, 10);
+
+  // Non-reset: assign negative integer.
+  tasm::CSSValue negative_value(-5, tasm::CSSValuePattern::NUMBER);
+  changed = CSSStyleUtils::ComputeIntStyle(
+      negative_value, /*reset=*/false, dest, /*default_value=*/0,
+      "int style must be number!", configs);
+  EXPECT_TRUE(changed);
+  EXPECT_EQ(dest, -5);
+
+  // Non-reset: assign zero and then keep the same value.
+  tasm::CSSValue zero_value(0, tasm::CSSValuePattern::NUMBER);
+  changed = CSSStyleUtils::ComputeIntStyle(
+      zero_value, /*reset=*/false, dest, /*default_value=*/0,
+      "int style must be number!", configs);
+  EXPECT_TRUE(changed);
+  EXPECT_EQ(dest, 0);
+
+  changed = CSSStyleUtils::ComputeIntStyle(
+      zero_value, /*reset=*/false, dest, /*default_value=*/0,
+      "int style must be number!", configs);
+  EXPECT_FALSE(changed);
+  EXPECT_EQ(dest, 0);
+
+  // Reset: no-op when default equals current value.
+  changed = CSSStyleUtils::ComputeIntStyle(
+      zero_value, /*reset=*/true, dest, /*default_value=*/0,
+      "int style must be number!", configs);
+  EXPECT_FALSE(changed);
+  EXPECT_EQ(dest, 0);
+
+  // Reset: change to a new default value.
+  changed = CSSStyleUtils::ComputeIntStyle(
+      zero_value, /*reset=*/true, dest, /*default_value=*/100,
+      "int style must be number!", configs);
+  EXPECT_TRUE(changed);
+  EXPECT_EQ(dest, 100);
+
+  // Non-number input should not modify dest and returns false.
+  tasm::CSSValue invalid_value("not_number", tasm::CSSValuePattern::STRING,
+                               tasm::CSSValueType::DEFAULT);
+  changed = CSSStyleUtils::ComputeIntStyle(
+      invalid_value, /*reset=*/false, dest, /*default_value=*/100,
+      "int style must be number!", configs);
+  EXPECT_FALSE(changed);
+  EXPECT_EQ(dest, 100);
+
+  // Beyond FLT_MAX value.
+  dest = 99999999;
+  tasm::CSSValue new_value(100000000, tasm::CSSValuePattern::NUMBER);
+  changed = CSSStyleUtils::ComputeIntStyle(
+      new_value, /*reset=*/false, dest, /*default_value=*/0,
+      "int style must be number!", configs);
+  EXPECT_TRUE(changed);
+  EXPECT_EQ(dest, 100000000);
+}
+
 TEST(CssStyleUtils, GetLengthData) {
   ComputedCSSStyle computedCssStyle(1.0f, 3.0f);
   tasm::CSSParserConfigs configs;

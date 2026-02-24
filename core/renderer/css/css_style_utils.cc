@@ -566,7 +566,8 @@ inline bool ComputeNumberStyle(const tasm::CSSValue& value, const bool reset,
                             msg)
     dest = static_cast<T>(value.GetNumber());
   }
-  if (!base::FloatsEqual(old_value, dest)) {
+  // Use double for comparison to avoid precision issue.
+  if (!base::DoublesEqual(old_value, dest)) {
     return true;
   }
   dest = old_value;

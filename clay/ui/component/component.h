@@ -24,15 +24,9 @@ class Component : public WithTypeInfo<Component, BaseView> {
     node_ready_listener_ = node_ready_listener;
   }
 
-  std::optional<int> GetZIndex() const { return z_index_; }
-
   void OnNodeReady() override;
 
  private:
-  // for normal base_view, the z-order has been set by the lynx side (the order
-  // that has been layout). But considering the ListView, the order of child
-  // should be the index.
-  std::optional<int> z_index_;
   NodeReadyListener* node_ready_listener_{nullptr};
 };
 
