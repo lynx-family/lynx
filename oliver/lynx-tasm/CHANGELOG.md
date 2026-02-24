@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.25
+* fix `Module.__malloc` not found issue. #5150
+
 # 0.0.24
 * Optimize the encoding process of CSS, unsupported CSS properties will not stop the encoding process.
 
