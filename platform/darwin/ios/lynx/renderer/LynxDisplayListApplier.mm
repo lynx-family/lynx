@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
@@ -32,6 +33,8 @@ using namespace lynx::tasm;
   base::Vector<RoundedRectangle> box_array_;
 
   CALayer *_refLayer;
+
+  NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -67,7 +70,7 @@ using namespace lynx::tasm;
   }
 
   int32_t view_index = 0;
-  NSArray<UIView *> *views = [_view subviews];
+  UIView *refView = nil;
 
   while (content_op_index_ < list_->GetContentOpTypesSize()) {
     auto op = static_cast<DisplayListOpType>(list_->GetOpAtIndex(content_op_index_++));
@@ -120,8 +123,8 @@ using namespace lynx::tasm;
         if (int_count == 1) {
           [[maybe_unused]] auto view_id = [self nextContentInt];
         }
-        UIView *nextView = views[view_index++];
-        _refLayer = nextView.layer;
+        refView = [_view subviews][view_index++];
+        _refLayer = refView.layer;
         break;
       }
       case DisplayListOpType::kText: {
@@ -139,11 +142,48 @@ using namespace lynx::tasm;
         break;
       }
       case DisplayListOpType::kImage: {
-        // TODO(songshourui.null): implement the kImage action later.
+        if (int_count >= 2) {
+          auto image_id = [self nextContentInt];
+          [[maybe_unused]] auto box_index = [self nextContentInt];
+          LynxImageManager *imageManager = [self imageManagerForID:image_id];
+
+          UIImageView *imageView = [self createImageView];
+
+          auto &box = box_array_[box_index];
+          CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
+          rect.origin.x += left_offset_;
+          rect.origin.y += top_offset_;
+          [imageView setFrame:rect];
+
+          [imageManager setTarget:imageView];
+
+          if (refView == nil) {
+            [_view insertSubview:imageView atIndex:0];
+          } else {
+            [_view insertSubview:imageView aboveSubview:refView];
+          }
+
+          view_index++;
+        }
         break;
       }
       case DisplayListOpType::kBorder: {
-        // TODO(songshourui.null): implement the kBorder action later.
+        if (int_count >= 10) {
+          [[maybe_unused]] int out_box_index = [self nextContentInt];
+          [[maybe_unused]] int inner_box_index = [self nextContentInt];
+
+          [[maybe_unused]] int top_color = [self nextContentInt];
+          [[maybe_unused]] int right_color = [self nextContentInt];
+          [[maybe_unused]] int bottom_color = [self nextContentInt];
+          [[maybe_unused]] int left_color = [self nextContentInt];
+
+          [[maybe_unused]] int top_style = [self nextContentInt];
+          [[maybe_unused]] int right_style = [self nextContentInt];
+          [[maybe_unused]] int bottom_style = [self nextContentInt];
+          [[maybe_unused]] int left_style = [self nextContentInt];
+
+          // TODO(songshourui.null): implement the kBorder action later.
+        }
         break;
       }
       case DisplayListOpType::kClipRect: {
@@ -234,6 +274,35 @@ using namespace lynx::tasm;
     [_view.layer insertSublayer:layer above:_refLayer];
   }
   _refLayer = layer;
+}
+
+- (UIImageView *)createImageView {
+  UIImageView *imageView = [[LynxImageLoader imageService] imageView];
+  if (imageView) {
+    // TODO(songshourui.null): handle AnimatedImageCallBack here.
+    // [[LynxImageLoader imageService] addAnimatedImageCallBack:imageView UI:ui];
+  } else {
+    // fallback to create UIImageView if no imageService
+    imageView = [UIImageView new];
+  }
+  imageView.clipsToBounds = YES;
+  imageView.contentMode = UIViewContentModeScaleToFill;
+  imageView.userInteractionEnabled = YES;
+  return imageView;
+}
+
+- (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID {
+  if (_imageManagers == nil) {
+    _imageManagers = [NSMutableDictionary new];
+  }
+  LynxImageManager *imageManager = _imageManagers[@(imageManagerID)];
+  if (imageManager == nil) {
+    imageManager = [_renderer_context takeImageManager:imageManagerID];
+    if (imageManager != nil) {
+      _imageManagers[@(imageManagerID)] = imageManager;
+    }
+  }
+  return imageManager;
 }
 
 @end

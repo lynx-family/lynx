@@ -4,6 +4,36 @@
 
 #import <Lynx/LynxRendererContext.h>
 
-@implementation LynxRendererContext
+@implementation LynxRendererContext {
+  NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
+}
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _imageManagers = [NSMutableDictionary new];
+  }
+  return self;
+}
+
+- (void)createImageManager:(int32_t)imageManagerID
+             withSourceURL:(LynxURL *)sourceURL
+         andPlaceholderURL:(LynxURL *)placeholderURL {
+  LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:_uiContext];
+  [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
+  [imageManager requestImage:sourceURL withType:LynxImageRequestPlaceholder];
+  @synchronized(self) {
+    _imageManagers[@(imageManagerID)] = imageManager;
+  }
+}
+
+- (LynxImageManager *)takeImageManager:(int32_t)imageManagerID {
+  LynxImageManager *imageManager = nil;
+  @synchronized(self) {
+    imageManager = _imageManagers[@(imageManagerID)];
+    [_imageManagers removeObjectForKey:@(imageManagerID)];
+  }
+  return imageManager;
+}
 
 @end

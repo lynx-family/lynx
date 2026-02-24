@@ -3,11 +3,21 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxURL.h>
 
 @interface LynxRendererContext : NSObject
 
 @property(nonatomic, weak) UIView<LUIBodyView> *bodyView;
+@property(nonatomic, strong) LynxUIContext *uiContext;
 @property(nonatomic, strong) LynxTextRenderManager *textRenderManager;
+
+- (void)createImageManager:(int32_t)imageManagerID
+             withSourceURL:(LynxURL *)sourceURL
+         andPlaceholderURL:(LynxURL *)placeholderURL;
+
+- (LynxImageManager *)takeImageManager:(int32_t)imageManagerID;
 
 @end

@@ -25,13 +25,8 @@ void ImageFragmentBehavior::OnUpdateLayout(
 }
 
 void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
-  constexpr const static int32_t kInvalidIndex = -1;
-
   display_list_builder.DrawImage(
-      fragment()->id(),
-      fragment()->LayoutResult().border_radius_info != std::nullopt
-          ? fragment()->DefineContentBox(display_list_builder)
-          : kInvalidIndex);
+      fragment()->id(), fragment()->DefineContentBox(display_list_builder));
 }
 
 }  // namespace lynx::tasm

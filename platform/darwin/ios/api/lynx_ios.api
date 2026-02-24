@@ -3148,7 +3148,10 @@ public class LynxRenderer : NSObject {
 
 public class LynxRendererContext : NSObject {
   public UIView<LUIBodyView>* LynxRendererContext::bodyView bodyView;
+  public LynxUIContext* LynxRendererContext::uiContext uiContext;
   public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
+  public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL);
+  public LynxImageManager * LynxRendererContext::takeImageManager:(int32_t imageManagerID);
 }
 
 public protocol LynxRendererHost-p : <NSObject> {

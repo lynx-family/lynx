@@ -13,6 +13,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
+#import <Foundation/Foundation.h>
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxUIOwner+Private.h>
 
@@ -23,6 +24,8 @@ NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner, void *textr
     : context_(std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView])) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
       std::make_unique<PlatformRendererDarwinFactory>(context_.get()));
+
+  context_->GetRendererContext().uiContext = owner.uiContext;
   if (textra != 0) {
     text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
   } else {
@@ -133,7 +136,13 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
 }
 
 void NativePaintingCtxDarwin::CreateImage(int id, base::String src, float width, float height) {
-  // TODO: impl this function later.
+  LynxURL *sourceUrl = [[LynxURL alloc] init];
+  sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
+  sourceUrl.imageSize = CGSizeMake(width, height);
+
+  [context_->GetRendererContext() createImageManager:id
+                                       withSourceURL:sourceUrl
+                                   andPlaceholderURL:nil];
 }
 
 template <typename F>
