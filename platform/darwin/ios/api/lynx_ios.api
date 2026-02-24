@@ -2204,6 +2204,7 @@ public class LynxImageConfig : NSObject {
   public NSDictionary* LynxImageConfig::additionalCustomInfo additionalCustomInfo;
   public NSString* LynxImageConfig::previewHashMetaData previewHashMetaData;
   public BOOL LynxImageConfig::enableProgressiveRendering enableProgressiveRendering;
+  public BOOL LynxImageConfig::enableImageLoadCallback enableImageLoadCallback;
 }
 
 public protocol LynxImageFetcher-p : <NSObject> {
@@ -2219,6 +2220,18 @@ public class LynxImageLoader : NSObject {
   public dispatch_block_t LynxImageLoader::loadImageWithOptions:(LynxImageLoadOptions *options);
   public dispatch_block_t LynxImageLoader::loadImageFromLynxURL:size:contextInfo:processors:imageFetcher:LynxUIImage:enableGenericFetcher:completed:(LynxURL *requestUrl,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[processors] nullable NSArray *processors,[imageFetcher] nullable id< LynxImageFetcher > imageFetcher,[LynxUIImage] nullable LynxUIImage *lynxUIImage,[enableGenericFetcher] BOOL enableGenericFetcher,[completed] LynxImageLoadCompletionBlock completed);
   public dispatch_block_t LynxImageLoader::loadImageFromURL:size:contextInfo:processors:imageFetcher:completed:(NSURL *url,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[processors] NSArray *processors,[imageFetcher] id< LynxImageFetcher > imageFetcher,[completed] LynxImageLoadCompletionBlock completed);
+}
+
+public class LynxImageLoadInfo : LynxResourceLoadInfo {
+  public NSString* LynxImageLoadInfo::src src;
+  public CGFloat LynxImageLoadInfo::width width;
+  public CGFloat LynxImageLoadInfo::height height;
+  public CGFloat LynxImageLoadInfo::viewWidth viewWidth;
+  public CGFloat LynxImageLoadInfo::viewHeight viewHeight;
+  public double LynxImageLoadInfo::loadStart loadStart;
+  public double LynxImageLoadInfo::loadFinish loadFinish;
+  public double LynxImageLoadInfo::cost cost;
+  public NSInteger LynxImageLoadInfo::origin origin;
 }
 
 public class LynxImageLoadOptions : NSObject {
@@ -3184,6 +3197,12 @@ public protocol LynxResourceLoadDelegate-p : <NSObject> {
   public void LynxResourceLoadDelegate-p::onData:(NSData *data);
   public void LynxResourceLoadDelegate-p::onEnd();
   public void LynxResourceLoadDelegate-p::onError:(NSString *msg);
+}
+
+public class LynxResourceLoadInfo : NSObject {
+  public LynxResourceRequestType LynxResourceLoadInfo::type type;
+  public NSInteger LynxResourceLoadInfo::errCode errCode;
+  public NSString* LynxResourceLoadInfo::errMsg errMsg;
 }
 
 public class LynxResourceModule : NSObject, <LynxContextModule> {
@@ -5397,6 +5416,7 @@ public protocol LynxViewLifecycle-p : <NSObject>, <LynxTimingListener>, <LynxJSB
 
 public protocol LynxViewLifecycleV2-p : <LynxViewBaseLifecycle>, <LynxPerformanceObserverProtocol> {
   public void LynxViewLifecycleV2-p::onPageStartedWithLynxView:withPipelineInfo:(nonnull LynxView *lynxView,[withPipelineInfo] nonnull LynxPipelineInfo *info);
+  public void LynxViewLifecycleV2-p::onResourceLoaded:(nonnull LynxResourceLoadInfo *result);
 }
 
 public protocol LynxViewVisibleHelper-p : <NSObject> {

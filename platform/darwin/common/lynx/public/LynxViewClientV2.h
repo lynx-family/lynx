@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxPerformanceObserverProtocol.h>
+#import <Lynx/LynxResourceRequest.h>
 
 @class LynxView;
 
@@ -28,6 +29,20 @@ typedef NS_ENUM(NSInteger, LynxPipelineOrigin) {
 - (nonnull instancetype)initWithUrl:(nullable NSString *)url;
 
 - (void)addPipelineOrigin:(NSInteger)pipelineOrigin;
+
+@end
+
+/// Provide information about the loaded resource.
+@interface LynxResourceLoadInfo : NSObject
+
+/// The type of the resource.
+@property(nonatomic, assign) LynxResourceRequestType type;
+
+/// The error code of the resource loading. 0 means success.
+@property(nonatomic, assign) NSInteger errCode;
+
+/// The error message of the resource loading, if any.
+@property(nonatomic, copy, nullable) NSString *errMsg;
 
 @end
 
@@ -58,5 +73,13 @@ typedef NS_ENUM(NSInteger, LynxPipelineOrigin) {
 @optional
 - (void)onPageStartedWithLynxView:(nonnull LynxView *)lynxView
                  withPipelineInfo:(nonnull LynxPipelineInfo *)info;
+
+/**
+ * @apidoc
+ * @brief Notify the client that a resource has been loaded.
+ * @param result The information about the loaded resource.
+ */
+@optional
+- (void)onResourceLoaded:(nonnull LynxResourceLoadInfo *)result;
 
 @end

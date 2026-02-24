@@ -28,3 +28,7 @@
 }
 
 @end
+
+@implementation LynxResourceLoadInfo
+
+@end
