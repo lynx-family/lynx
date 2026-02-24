@@ -105,3 +105,30 @@ export class MetaData {
     }
   }
 }
+
+export enum LynxUpdateMode {
+  /**
+   * UPDATE MODE identifies an incremental action, data will be incrementally modified with previous data.
+   */
+  UPDATE = 0,
+  
+  /**
+   * RESET MODE identifies an reset action, data will be cleared before and the update with the in-coming data.
+   */
+  RESET = 1,
+  
+  /**
+   * RELOAD MODE identifies an reload action, it mostly behaves the same as `RESET` and will trigger the destroy & recreate of js lifecycle.
+   */
+  RELOAD = 2,
+}
+
+/**
+ * LynxUpdateMeta is the metadata structure used by LynxView to update template data.
+ * It will serve as the input parameter for UpdateData. Users can specify various parameters
+ * required for the update through LynxUpdateMeta, such as template data and globalProps, among others.
+ * @apidoc
+ */
+export class LynxUpdateMeta extends MetaData {
+  mode: LynxUpdateMode = LynxUpdateMode.UPDATE
+}
