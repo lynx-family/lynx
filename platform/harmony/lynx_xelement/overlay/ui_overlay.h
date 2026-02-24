@@ -32,8 +32,6 @@ class UIOverlay : public UIBase {
 
   ~UIOverlay() override;
 
-  void SetParent(UIBase* parent) override;
-
   void UpdateLayout(float left, float top, float width, float height,
                     const float* paddings, const float* margins,
                     const float* sticky, float max_height,

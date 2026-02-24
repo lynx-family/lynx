@@ -35,7 +35,6 @@ void UIOverlay::OnPropUpdate(const std::string& name,
                              const lepus::Value& value) {
   UIBase::OnPropUpdate(name, value);
   if (name == "visible") {
-    ShowDialog(value.Bool());
     is_visible_props_ = value.Bool();
   } else if (name == "events-pass-through") {
     is_event_pass_through_ = value.Bool();
@@ -67,17 +66,6 @@ void UIOverlay::ShowDialog(bool show_dialog) {
     } else {
       LOGE("overlay dismiss skipped: is_show_="
            << is_show_ << ", native_dialog_=" << native_dialog_);
-    }
-  }
-}
-
-void UIOverlay::SetParent(UIBase* parent) {
-  UIBase::SetParent(parent);
-  if (parent == nullptr) {
-    ShowDialog(false);
-  } else {
-    if (is_visible_props_) {
-      ShowDialog(true);
     }
   }
 }
@@ -290,6 +278,13 @@ void UIOverlay::InsertNode(UIBase* child, int index) {
 
 void UIOverlay::OnNodeReady() {
   UIBase::OnNodeReady();
+
+  if (Parent() == nullptr) {
+    ShowDialog(false);
+  } else {
+    ShowDialog(is_visible_props_);
+  }
+
   if (!are_gestures_attached_) {
     context_->AttachGesturesToRoot(this);
     are_gestures_attached_ = true;
