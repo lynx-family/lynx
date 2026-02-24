@@ -7,12 +7,16 @@
 
 #include <deque>
 
+#import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
+#import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUIView.h>
+#import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
-#import "LynxTouchHandler+Internal.h"
 #import "LynxTouchHandlerUnitTest.h"
 
 @interface LynxTouchHandler ()
@@ -210,6 +214,73 @@
   XCTAssertTrue([childUI pointerEvents] == kLynxPointerEventsValueAuto);
   [LynxPropsProcessor updateProp:@1 withKey:@"pointer-events" forUI:parentUI];
   XCTAssertTrue([childUI pointerEvents] == kLynxPointerEventsValueNone);
+}
+
+- (void)testDispatchPlatformUIEvent {
+  // 1. Mock dependencies
+  LynxEventHandler* mockEventHandler = OCMClassMock([LynxEventHandler class]);
+  LynxUIOwner* mockUIOwner = OCMClassMock([LynxUIOwner class]);
+  LynxUIContext* mockUIContext = OCMClassMock([LynxUIContext class]);
+  LynxContext* mockLynxContext = OCMClassMock([LynxContext class]);
+  LynxView* mockRootView = OCMClassMock([LynxView class]);
+  LynxTemplateRender* mockTemplateRender = OCMClassMock([LynxTemplateRender class]);
+  LynxTouchHandler* touchHandler =
+      OCMPartialMock([[LynxTouchHandler alloc] initWithEventHandler:mockEventHandler]);
+
+  // 2. Setup mock chain
+  OCMStub([mockEventHandler uiOwner]).andReturn(mockUIOwner);
+  OCMStub([mockUIOwner uiContext]).andReturn(mockUIContext);
+  OCMStub([mockUIContext lynxContext]).andReturn(mockLynxContext);
+  OCMStub([mockUIContext rootView]).andReturn(mockRootView);
+  OCMStub([mockRootView templateRender]).andReturn(mockTemplateRender);
+
+  // 3. Test Case: isFragmentLayerRenderOn is YES
+  __block BOOL stubReturnValue = YES;
+  OCMStub([mockLynxContext isFragmentLayerRenderOn]).andDo(^(NSInvocation* invocation) {
+    BOOL result = stubReturnValue;
+    [invocation setReturnValue:&result];
+  });
+
+  // Mock touch and event
+  UITouch* mockTouch = OCMClassMock([UITouch class]);
+  OCMStub([mockTouch type]).andReturn(UITouchTypeDirect);
+  OCMStub([mockTouch locationInView:OCMArg.any]).andReturn(CGPointMake(10, 20));
+  NSSet* touches = [NSSet setWithObject:mockTouch];
+  UIEvent* event = OCMClassMock([UIEvent class]);
+
+  // Stub inner methods to verify they are NOT called
+  OCMStub([touchHandler touchesBeganInner:OCMArg.any withEvent:OCMArg.any]);
+  OCMStub([touchHandler touchesMovedInner:OCMArg.any withEvent:OCMArg.any]);
+  OCMStub([touchHandler touchesEndedInner:OCMArg.any withEvent:OCMArg.any]);
+  OCMStub([touchHandler touchesCancelledInner:OCMArg.any withEvent:OCMArg.any]);
+
+  // Verify touchesBegan
+  [touchHandler touchesBegan:touches withEvent:event];
+  OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
+  OCMVerify(never(), [touchHandler touchesBeganInner:OCMArg.any withEvent:OCMArg.any]);
+
+  // Verify touchesMoved
+  [touchHandler touchesMoved:touches withEvent:event];
+  OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
+  OCMVerify(never(), [touchHandler touchesMovedInner:OCMArg.any withEvent:OCMArg.any]);
+
+  // Verify touchesEnded
+  [touchHandler touchesEnded:touches withEvent:event];
+  OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
+  OCMVerify(never(), [touchHandler touchesEndedInner:OCMArg.any withEvent:OCMArg.any]);
+
+  // Verify touchesCancelled
+  [touchHandler touchesBegan:touches withEvent:event];
+  [touchHandler touchesCancelled:touches withEvent:event];
+  OCMVerify([mockTemplateRender DispatchPlatformInputEvent:[OCMArg any] withData:[OCMArg any]]);
+  OCMVerify(never(), [touchHandler touchesCancelledInner:OCMArg.any withEvent:OCMArg.any]);
+
+  // 4. Test Case: isFragmentLayerRenderOn is NO
+  stubReturnValue = NO;
+
+  // Verify touchesBegan
+  [touchHandler touchesBegan:touches withEvent:event];
+  OCMVerify([touchHandler touchesBeganInner:touches withEvent:event]);
 }
 
 - (NSInteger)getGestureArenaMemberId {

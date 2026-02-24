@@ -3,12 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxEventHandlerUnitTest.h"
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxTransformRaw.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIView.h>
-#import "LynxEventHandler+Internal.h"
 
 @interface LynxUI ()
 @property(nonatomic, weak) LynxUIContext* context;
@@ -79,6 +80,73 @@
     [(LynxUI*)ui performSelector:@selector(onNodeReadyForUIOwner)];
   }];
   XCTAssertEqual([(NSMutableSet*)[_handler valueForKey:@"_setOfPropsChanged"] count], 2000);
+}
+
+- (void)testIsFragmentLayerRenderOn {
+  UIView* mockView = OCMClassMock([UIView class]);
+  LynxRootUI* mockRootUI = OCMClassMock([LynxRootUI class]);
+
+  // Test 1: Flag is YES
+  // When flag is YES, tap and long press recognizers should NOT be added.
+  // Only LynxTouchHandler should be added.
+  OCMReject([mockView addGestureRecognizer:[OCMArg checkWithBlock:^BOOL(id obj) {
+                        return [obj isKindOfClass:[UITapGestureRecognizer class]] ||
+                               [obj isKindOfClass:[UILongPressGestureRecognizer class]];
+                      }]]);
+
+  LynxEventHandler* handlerOn = [[LynxEventHandler alloc] initWithRootView:mockView
+                                                                withRootUI:mockRootUI
+                                                                   andFlag:YES];
+  OCMVerify([mockView addGestureRecognizer:[OCMArg isKindOfClass:[LynxTouchHandler class]]]);
+  XCTAssertTrue([[handlerOn valueForKey:@"_isFragmentLayerRendererOn"] boolValue]);
+
+  // Test 2: Flag is NO
+  // When flag is NO, tap and long press recognizers SHOULD be added.
+  id mockView2 = OCMClassMock([UIView class]);
+  LynxEventHandler* handlerOff = [[LynxEventHandler alloc] initWithRootView:mockView2
+                                                                 withRootUI:mockRootUI
+                                                                    andFlag:NO];
+  OCMVerify([mockView2 addGestureRecognizer:[OCMArg isKindOfClass:[UITapGestureRecognizer class]]]);
+  OCMVerify(
+      [mockView2 addGestureRecognizer:[OCMArg isKindOfClass:[UILongPressGestureRecognizer class]]]);
+  XCTAssertFalse([[handlerOff valueForKey:@"_isFragmentLayerRendererOn"] boolValue]);
+}
+
+- (void)testSetupPlatformGestureWithFragmentLayerRenderOn {
+  UIView* mockView = OCMClassMock([UIView class]);
+  LynxRootUI* mockRootUI = OCMClassMock([LynxRootUI class]);
+
+  LynxEventHandler* handlerOn = [[LynxEventHandler alloc] initWithRootView:mockView
+                                                                withRootUI:mockRootUI
+                                                                   andFlag:YES];
+
+  // When flag is YES, setUpPlatformGesture should do nothing
+  [handlerOn setEnablePlatformGesture:YES];
+
+  // Verify that LynxCustomGestureRecognizer was NOT added
+  OCMVerify(
+      never(),
+      [mockView addGestureRecognizer:[OCMArg isKindOfClass:NSClassFromString(
+                                                               @"LynxCustomGestureRecognizer")]]);
+}
+
+- (void)testAttachContainerViewWithFragmentLayerRenderOn {
+  UIView* mockView1 = OCMClassMock([UIView class]);
+  LynxRootUI* mockRootUI = OCMClassMock([LynxRootUI class]);
+
+  LynxEventHandler* handlerOn = [[LynxEventHandler alloc] initWithRootView:mockView1
+                                                                withRootUI:mockRootUI
+                                                                   andFlag:YES];
+
+  UIView* mockView2 = OCMClassMock([UIView class]);
+  // When flag is YES, attachContainerView should NOT add tap/longpress recognizers
+  OCMReject([mockView2 addGestureRecognizer:[OCMArg checkWithBlock:^BOOL(id obj) {
+                         return [obj isKindOfClass:[UITapGestureRecognizer class]] ||
+                                [obj isKindOfClass:[UILongPressGestureRecognizer class]];
+                       }]]);
+
+  [handlerOn attachContainerView:mockView2];
+  OCMVerify([mockView2 addGestureRecognizer:[OCMArg isKindOfClass:[LynxTouchHandler class]]]);
 }
 
 @end
