@@ -34,7 +34,7 @@ podspec_target("lynx_base_podspec") {
       "-Wall",
       "-Wextra",
       "-Wno-unused-parameter",
-      "-Wmissing-field-initializers",
+      "-Wno-missing-field-initializers",
       "-Wshorten-64-to-32",
       "-fno-rtti",
     ]
@@ -81,7 +81,7 @@ subspec_target("Framework") {
     "-Wall",
     "-Wextra",
     "-Wno-unused-parameter",
-    "-Wmissing-field-initializers",
+    "-Wno-missing-field-initializers",
     "-Wno-documentation",
     "-Werror",
   ]
