@@ -2508,6 +2508,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.screenSize = [[self->_lynxUIRenderer getScreenMetrics] screenSize];
     builder.lynxBackgroundRuntimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
+    builder.group = self->_group;
     [builder.lynxBackgroundRuntimeOptions merge:self->_builder.lynxBackgroundRuntimeOptions];
     [builder setThreadStrategyForRender:self->_threadStrategyForRendering];
   };
