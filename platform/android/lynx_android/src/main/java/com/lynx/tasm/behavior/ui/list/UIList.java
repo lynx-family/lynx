@@ -1744,7 +1744,12 @@ public class UIList extends AbsLynxList<RecyclerView> {
 
   public void setInitialPropsHasFlushed(String initialPropKey, String cacheKey) {
     if (nativeListStateCache != null) {
-      HashSet initialPropFlushSet = initialFlushPropCache.getOrDefault(cacheKey, new HashSet<>());
+      HashSet initialPropFlushSet = null;
+      if (initialFlushPropCache.containsKey(cacheKey)) {
+        initialPropFlushSet = initialFlushPropCache.get(cacheKey);
+      } else {
+        initialPropFlushSet = new HashSet();
+      }
       initialPropFlushSet.add(initialPropKey);
       nativeListStateCache.put(cacheKey, initialPropFlushSet);
     }
