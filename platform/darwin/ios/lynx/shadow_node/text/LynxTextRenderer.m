@@ -217,7 +217,7 @@
   if (physicalAlignment != NSTextAlignmentLeft &&
       ((_layoutSpec.widthMode == LynxMeasureModeAtMost &&
         _calculatedSize.width < _layoutSpec.width) ||
-       (_layoutSpec.width == LynxMeasureModeIndefinite))) {
+       (_layoutSpec.widthMode == LynxMeasureModeIndefinite))) {
     _textContainer.size = CGSizeMake(_calculatedSize.width, _calculatedSize.height);
     [_layoutManager ensureLayoutForTextContainer:_textContainer];
     _calculatedSize = [_layoutManager usedRectForTextContainer:_textContainer].size;
