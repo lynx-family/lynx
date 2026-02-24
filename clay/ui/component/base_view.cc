@@ -380,7 +380,7 @@ void BaseView::SetPaintingOrder(int value) {
   }
 }
 
-float BaseView::GetPaintingOrder() const {
+int BaseView::GetPaintingOrder() const {
   return render_object()->GetPaintingOrder();
 }
 

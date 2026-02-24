@@ -144,7 +144,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float GetTranslateZ() const;
 
   void SetPaintingOrder(int value);
-  float GetPaintingOrder() const;
+  int GetPaintingOrder() const;
 
   void SetID(int id);
   int id() const { return id_; }
