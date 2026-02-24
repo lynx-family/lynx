@@ -113,8 +113,6 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
       Component* child, std::unordered_map<int, Component*> sticky_items,
       const std::vector<int>& sticky_indexes, int index);
   void ResetStickyItem(Component* child);
-  void ApplyChildTranslateZ(Component* child);
-  void ApplyChildTranslateZ(Component* child, float translateZ);
   void UpdateStickyStarts(float offset_x, float offset_y);
   void UpdateStickyEnds(float offset_x, float offset_y);
   Component* GetStickyItemWithIndex(int index, bool is_sticky_top);

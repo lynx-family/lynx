@@ -18,8 +18,11 @@ Component::Component(int id, PageView* page_view)
 Component::~Component() = default;
 
 void Component::SetAttribute(const char* attr_c, const clay::Value& value) {
+  // For the normal BaseView, the z-order has been set by the lynx side (the
+  // order that has been layout). But considering the ListView, the order of
+  // child should be the index.
   if (GetKeywordID(attr_c) == KeywordID::kZIndex) {
-    z_index_ = attribute_utils::GetInt(value);
+    SetPaintingOrder(attribute_utils::GetInt(value));
     return;
   }
   BaseView::SetAttribute(attr_c, value);

@@ -173,9 +173,6 @@ void ListContainerView::InsertListItemPaintingNode(BaseView* view) {
   view->render_object()->SetRepaintBoundary(true);
   if (view->Is<Component>()) {
     auto component = static_cast<Component*>(view);
-    if (auto index = component->GetZIndex()) {
-      component->render_object()->SetPaintingOrder(index.value());
-    }
     if (enable_list_sticky_) {
       if (update_sticky_for_diff_) {
         std::string itemKey = view->ItemKey();
@@ -318,23 +315,6 @@ void ListContainerView::ResetStickyItem(Component* child) {
     child->SetTransform(TransformOperations(), FloatPoint());
   }
 };
-
-void ListContainerView::ApplyChildTranslateZ(Component* child) {
-  if (child) {
-    if (auto z = child->GetZIndex()) {
-      ApplyChildTranslateZ(child, *z);
-    }
-  }
-}
-
-void ListContainerView::ApplyChildTranslateZ(Component* child,
-                                             float translateZ) {
-  if (child != nullptr) {
-    TransformOperations ops;
-    ops.AppendTranslate(0, 0, translateZ);
-    child->SetTransform(ops, FloatPoint());
-  }
-}
 
 void ListContainerView::OnNodeReady() {
   ScrollView::OnNodeReady();
