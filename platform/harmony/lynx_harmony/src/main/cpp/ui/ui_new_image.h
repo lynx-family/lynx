@@ -86,6 +86,7 @@ class UINewImage : public UIBase,
   bool autoplay_{true};
   int32_t loop_count_{0};
   std::unique_ptr<ImageNode> image_node_;
+  bool has_src_{false};
 
   static std::unordered_map<std::string,
                             void (UINewImage::*)(const lepus::Value& value)>
@@ -106,6 +107,7 @@ class UINewImage : public UIBase,
   void UpdateSkipRedirection(const lepus::Value& value);
   void UpdateDownsampling(const lepus::Value& value);
   void AutoSizeIfNeeded();
+  std::string GetRedirectUrl(const std::string& url);
   void LoadImage();
   void LoadImageFromService(const std::string& url,
                             const std::string& placeholder);
