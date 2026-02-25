@@ -568,11 +568,6 @@ void PageView::CompositeFrame(
     frame_timing_collector_->EndRecord(Perf::kFirstBuildFrameCost);
   }
 
-#ifndef NDEBUG
-  // print rendering trees for debug styles and properties
-  // DumpRenderingTrees();
-#endif
-
   // Submit a frame to the engine.
   auto layer_tree = frame_builder_->TakeLayerTree();
   recorder->RecordVsyncTimeOnGeneration(recorder->GetVsyncStartTime());

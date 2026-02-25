@@ -42,7 +42,6 @@ fml_log_sources = [
   "$_src/log_level.h",
   "$_src/log_settings.cc",
   "$_src/log_settings.h",
-  "$_src/log_settings_state.cc",
   "$_src/logging.cc",
   "$_src/logging.h",
 ]

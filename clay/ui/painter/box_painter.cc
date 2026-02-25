@@ -28,26 +28,6 @@ namespace clay {
 
 static const float kExtendFill = 1e-2f;
 
-// TODO(zhangxiao.ninja): use or not
-#if 0
-static FloatRect CalculateSideRect(const FloatRoundedRect& outer_border,
-                                   const BorderSide& side) {
-    FloatRect side_rect = outer_border.rect();
-    float width = side.width_;
-
-    if (side.side_index_ == BorderSide::TOP)
-        side_rect.SetHeight(width);
-    else if (side.side_index_ == BorderSide::BOTTOM)
-        side_rect.ShiftYEdgeTo(side_rect.MaxY() - width);
-    else if (side.side_index_ == BorderSide::LEFT)
-        side_rect.SetWidth(width);
-    else
-        side_rect.ShiftXEdgeTo(side_rect.MaxX() - width);
-
-    return side_rect;
-}
-#endif
-
 static FloatRect CalculateSideRectIncludingInner(
     const FloatRoundedRect& outer_border, const BorderSide& side,
     const BordersData& border_data) {

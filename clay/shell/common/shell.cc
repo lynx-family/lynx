@@ -703,6 +703,7 @@ void Shell::OnPlatformViewSetViewportMetrics(const ViewportMetrics& metrics) {
     return;
   }
 
+#ifndef ENABLE_SKITY
   // This is the formula Android uses.
   // https://android.googlesource.com/platform/frameworks/base/+/39ae5bac216757bc201490f4c7b8c0f63006c6cd/libs/hwui/renderthread/CacheManager.cpp#45
   resource_cache_limit_ = metrics.physical_width * metrics.physical_height *
@@ -713,6 +714,7 @@ void Shell::OnPlatformViewSetViewportMetrics(const ViewportMetrics& metrics) {
     impl.GetRasterizer()->SetResourceCacheMaxBytes(resource_cache_max_bytes,
                                                    false);
   });
+#endif  // ENABLE_SKITY
 
   {
     std::scoped_lock<std::mutex> lock(*resize_mutex_);

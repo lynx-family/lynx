@@ -121,11 +121,6 @@ class PlatformViewEmbedder final : public PlatformView {
 
   ~PlatformViewEmbedder() override;
 
-#ifdef ENABLE_ACCESSIBILITY
-  // |PlatformView|
-  void UpdateSemantics(const clay::SemanticsUpdateNodes& update_nodes) override;
-#endif
-
   // |PlatformView|
   void NotifyDestroyed() override;
 

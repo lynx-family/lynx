@@ -90,18 +90,6 @@ void PlatformViewEmbedder::NotifyDestroyed() {
   latch.Wait();
 }
 
-#ifdef ENABLE_ACCESSIBILITY
-void PlatformViewEmbedder::UpdateSemantics(
-    const clay::SemanticsUpdateNodes& update_nodes) {
-#if 0
-  if (platform_dispatch_table_.update_semantics_callback != nullptr) {
-    platform_dispatch_table_.update_semantics_callback(std::move(update),
-                                                       std::move(actions));
-  }
-#endif
-}
-#endif
-
 // |PlatformView|
 std::unique_ptr<std::vector<std::string>>
 PlatformViewEmbedder::ComputePlatformResolvedLocales(

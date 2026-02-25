@@ -436,12 +436,7 @@ void GraphicsContext::SetPathFromPoints(clay::GrPath* path, size_t num_points,
                                         const FloatPoint* points) {
 #ifndef ENABLE_SKITY
   path->incReserve(num_points);
-#else
-  // TODO(zhangxiao.ninja) should skity support incReserve function?
-  //  path->incReserve(num_points);
-  FML_UNIMPLEMENTED();
 #endif  // ENABLE_SKITY
-  // path->moveTo(points[0].x(), points[0].y());
   PATH_MOVE_TO((*path), points[0].x(), points[0].y());
   for (size_t i = 1; i < num_points; ++i) {
     PATH_LINE_TO((*path), points[i].x(), points[i].y());

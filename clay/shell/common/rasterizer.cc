@@ -376,12 +376,6 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   compositor_context_->ui_time().SetLapTime(
       frame_timings_recorder.GetBuildDuration());
 
-  clay::GrCanvas* embedder_root_canvas = nullptr;
-
-  // On Android, the external view embedder deletes surfaces in `BeginFrame`.
-  //
-  // Deleting a surface also clears the GL context. Therefore, acquire the
-  // frame after calling `BeginFrame` as this operation resets the GL context.
   frame_timings_recorder.RecordFrameTime(FrameTimingKey::kAcquireFrameStart);
   auto frame = surface_->AcquireFrame(layer_tree.frame_size());
   frame_timings_recorder.RecordFrameTime(FrameTimingKey::kAcquireFrameEnd);
@@ -400,22 +394,12 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         }
       });
 
-  // If the external view embedder has specified an optional root surface, the
-  // root surface transformation is set by the embedder instead of
-  // having to apply it here.
-  skity::Matrix root_surface_transformation =
-      embedder_root_canvas ? skity::Matrix()
-                           : surface_->GetRootTransformation();
-
-  auto root_surface_canvas =
-      embedder_root_canvas ? embedder_root_canvas : frame->GetCanvas();
-
   auto compositor_frame = compositor_context_->AcquireFrame(
-      surface_->GetContext(),       // skia GrContext
-      root_surface_canvas,          // root surface canvas
-      compositor_state.get(),       // compositor state
-      root_surface_transformation,  // root surface transformation
-      true,                         // instrumentation enabled
+      surface_->GetContext(),             // skia GrContext
+      frame->GetCanvas(),                 // root surface canvas
+      compositor_state.get(),             // compositor state
+      surface_->GetRootTransformation(),  // root surface transformation
+      true,                               // instrumentation enabled
       frame->framebuffer_info()
           .supports_readback  // surface supports pixel reads
   );
@@ -613,9 +597,6 @@ std::optional<size_t> Rasterizer::GetResourceCacheMaxBytes() const {
   if (context) {
     return context->getResourceCacheLimit();
   }
-#else
-  // TODO(zhangxiao.ninja): adaptor logic with skity here
-  FML_UNIMPLEMENTED();
 #endif  // ENABLE_SKITY
   return std::nullopt;
 }
