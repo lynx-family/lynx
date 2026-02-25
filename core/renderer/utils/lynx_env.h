@@ -141,6 +141,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_FETCH_API_STANDARD_STREAMING,
     ENABLE_JS_CALL_TIMEOUT_GUARD,
     JS_CALL_TIMEOUT_MS,
+    ENABLE_JS_CALL_NATIVE_FREQUENCY_MONITOR,
+    JS_CALL_NATIVE_FREQUENCY_WINDOW_MS,
+    JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
+    JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -215,6 +219,14 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ELEMENT_STATISTIC, "enable_element_statistic"},
             {Key::VSYNC_TRIGGERED_FROM_UI_THREAD_ANDROID,
              "lynx_vsync_triggered_from_ui_thread_android"},
+            {Key::ENABLE_JS_CALL_NATIVE_FREQUENCY_MONITOR,
+             "enable_js_call_native_frequency_monitor"},
+            {Key::JS_CALL_NATIVE_FREQUENCY_WINDOW_MS,
+             "js_call_native_frequency_window_ms"},
+            {Key::JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
+             "js_call_native_frequency_threshold_common"},
+            {Key::JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
+             "js_call_native_frequency_cooldown_ms"},
             {Key::VSYNC_POST_TASK_BY_EMERGENCY,
              "lynx_vsync_post_task_by_emergency"},
             {Key::ENABLE_USE_MAP_BUFFER_FOR_UI_PROPS,
@@ -397,6 +409,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     uint32_t timeout_ms;
   };
   JSCallTimeoutConfig GetJSCallTimeoutConfig();
+  bool EnableJSCallNativeFrequencyMonitor();
+  uint32_t GetJSCallNativeFrequencyMonitorWindowMs();
+  uint32_t GetJSCallNativeFrequencyMonitorThresholdCommon();
+  uint32_t GetJSCallNativeFrequencyMonitorCooldownMs();
   uint32_t TimingMapExceededSize();
   uint32_t GetMemoryChangeThresholdMb();
   uint32_t GetMemoryAcquisitionDelaySec();

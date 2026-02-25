@@ -136,6 +136,15 @@ sections:
             level: error
             description: 'Calling RuntimeLifecycleListener has error.'
             fix-suggestion: 'Please see error info.'
+      - name: JsCallNativeFunction
+        mid-code: 4
+        description: 'Error occurred while calling native C++ method from JS.'
+        codes:
+          - name: TooFrequency
+            low-code: 1
+            level: warn
+            description: 'Calling native C++ method too frequently. This may cause OOM issues.'
+            fix-suggestion: 'Please throttle related calls.'
   - name: Resource
     description: 'Resource related errors'
     high-code: 3

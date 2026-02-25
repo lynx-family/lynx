@@ -18,8 +18,10 @@
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/template_entry.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
 #include "core/runtime/common/bindings/resource/response_promise.h"
+#include "core/runtime/common/js_call_native_frequency_monitor.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/js/bindings/api_call_back.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
@@ -307,7 +309,14 @@ class App : public std::enable_shared_from_this<App> {
             tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
         page_options_(page_options),
         animation_frame_handler_(
-            std::make_unique<runtime::AnimationFrameTaskHandler>()) {}
+            std::make_unique<runtime::AnimationFrameTaskHandler>()) {
+    auto& env = tasm::LynxEnv::GetInstance();
+    if (env.EnableJSCallNativeFrequencyMonitor()) {
+      js_call_native_frequency_monitor_ =
+          std::make_unique<JsCallNativeFrequencyMonitor>(
+              env.GetJSCallNativeFrequencyMonitorThresholdCommon());
+    }
+  }
 
   void Init();
   std::optional<Value> SendPageEvent(const std::string& page_name,
@@ -364,6 +373,9 @@ class App : public std::enable_shared_from_this<App> {
   lepus::Value preset_data_;
 
   runtime::JSErrorReporter js_error_reporter_;
+
+  std::unique_ptr<JsCallNativeFrequencyMonitor>
+      js_call_native_frequency_monitor_;
 
   bool IsJsAppStateValid() {
     return (js_app_.isObject() && state_ != State::kAppLoadFailed);

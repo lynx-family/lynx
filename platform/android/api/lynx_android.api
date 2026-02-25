@@ -5304,6 +5304,7 @@ public class com::lynx::tasm::LynxErrorBehavior :  {
   public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_RUNTIME_ERROR EB_BTS_RUNTIME_ERROR;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_PLATFORM_CALL_JS_FUNCTION EB_BTS_PLATFORM_CALL_JS_FUNCTION;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_LIFECYCLE_LISTENER_ERROR EB_BTS_LIFECYCLE_LISTENER_ERROR;
+  public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_JS_CALL_NATIVE_FUNCTION EB_BTS_JS_CALL_NATIVE_FUNCTION;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_RESOURCE_IMAGE EB_RESOURCE_IMAGE;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_RESOURCE_FONT EB_RESOURCE_FONT;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_RESOURCE_EXTERNAL_RESOURCE EB_RESOURCE_EXTERNAL_RESOURCE;
@@ -6559,6 +6560,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_BIG_IMAGE E_RESOURCE_IMAGE_BIG_IMAGE;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_PIC_SOURCE E_RESOURCE_IMAGE_PIC_SOURCE;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_FROM_USER_OR_DESIGN E_RESOURCE_IMAGE_FROM_USER_OR_DESIGN;

@@ -40,6 +40,7 @@ lynx_core_source_set("bindings") {
   public_deps = [
     "../../../services/feature_count:feature_count",
     "../../../services/fluency:fluency",
+    "../../common:common",
     "../../common/bindings/event:runtime_common",
     "../../common/bindings/modules:native_modules",
     "../../trace:runtime_trace",

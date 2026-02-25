@@ -14,7 +14,12 @@ lynx_core_source_set("reporter") {
 }
 
 lynx_core_source_set("common") {
-  sources = [ "lynx_console_helper.h" ]
+  sources = [
+    "js_call_native_frequency_monitor.cc",
+    "js_call_native_frequency_monitor.h",
+    "lynx_console_helper.h",
+  ]
+  deps = [ "../../build:build" ]
 }
 
 unittest_set("reporter_unittests_testset") {
@@ -25,4 +30,24 @@ unittest_set("reporter_unittests_testset") {
 
   sources = [ "js_error_reporter_unittest.cc" ]
   deps = [ ":reporter" ]
+}
+
+unittest_set("common_unittests_testset") {
+  configs = [ "../../:lynx_public_config" ]
+
+  sources = [ "js_call_native_frequency_monitor_unittests.cc" ]
+  deps = [
+    ":common",
+    "../../renderer/utils:lynx_env",
+  ]
+}
+
+unittest_exec("common_unittests_exec") {
+  sources = []
+  deps = [ ":common_unittests_testset" ]
+}
+
+group("common_unittests") {
+  testonly = true
+  deps = [ ":common_unittests_exec" ]
 }

@@ -308,6 +308,34 @@ LynxEnv::JSCallTimeoutConfig LynxEnv::GetJSCallTimeoutConfig() {
   return {.enable = enable, .timeout_ms = timeout_ms};
 }
 
+bool LynxEnv::EnableJSCallNativeFrequencyMonitor() {
+  return IsDevToolEnabled() ||
+         GetBoolEnv(Key::ENABLE_JS_CALL_NATIVE_FREQUENCY_MONITOR, false);
+}
+
+uint32_t LynxEnv::GetJSCallNativeFrequencyMonitorWindowMs() {
+  static constexpr uint32_t kDefaultWindowMs = 5000;
+  const long window_ms =
+      GetLongEnv(Key::JS_CALL_NATIVE_FREQUENCY_WINDOW_MS, kDefaultWindowMs);
+  return window_ms <= 0 ? kDefaultWindowMs : static_cast<uint32_t>(window_ms);
+}
+
+uint32_t LynxEnv::GetJSCallNativeFrequencyMonitorThresholdCommon() {
+  static constexpr uint32_t kDefaultThresholdPerMethod = 800;
+  const long threshold =
+      GetLongEnv(Key::JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
+                 kDefaultThresholdPerMethod);
+  return threshold <= 0 ? kDefaultThresholdPerMethod
+                        : static_cast<uint32_t>(threshold);
+}
+
+uint32_t LynxEnv::GetJSCallNativeFrequencyMonitorCooldownMs() {
+  static constexpr uint32_t kDefaultCooldownMs = 60000;
+  const long cooldown =
+      GetLongEnv(Key::JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS, kDefaultCooldownMs);
+  return cooldown < 0 ? kDefaultCooldownMs : static_cast<uint32_t>(cooldown);
+}
+
 uint32_t LynxEnv::TimingMapExceededSize() {
   return static_cast<uint32_t>(GetLongEnv(Key::TIMING_MAP_EXCEEDED_SIZE, 1000));
 }

@@ -651,6 +651,7 @@ export class LynxSubErrorCode {
   public static readonly E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR: number; = 20104
   public static readonly E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY: number; = 20201
   public static readonly E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION: number; = 20301
+  public static readonly E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY: number; = 20401
   public static readonly E_RESOURCE_IMAGE_BIG_IMAGE: number; = 30101
   public static readonly E_RESOURCE_IMAGE_PIC_SOURCE: number; = 30102
   public static readonly E_RESOURCE_IMAGE_FROM_USER_OR_DESIGN: number; = 30103
@@ -747,6 +748,7 @@ export class LynxErrorBehavior {
   public static readonly EB_BTS_RUNTIME_ERROR: number; = 201
   public static readonly EB_BTS_PLATFORM_CALL_JS_FUNCTION: number; = 202
   public static readonly EB_BTS_LIFECYCLE_LISTENER_ERROR: number; = 203
+  public static readonly EB_BTS_JS_CALL_NATIVE_FUNCTION: number; = 204
   public static readonly EB_RESOURCE_IMAGE: number; = 301
   public static readonly EB_RESOURCE_FONT: number; = 302
   public static readonly EB_RESOURCE_EXTERNAL_RESOURCE: number; = 303

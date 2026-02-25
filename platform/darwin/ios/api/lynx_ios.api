@@ -6240,6 +6240,7 @@ public enum LynxEnvKey {
   public FOUNDATION_EXPORT NSInteger const EBLynxBTSRuntimeError EBLynxBTSRuntimeError;
   public FOUNDATION_EXPORT NSInteger const EBLynxBTSPlatformCallJSFunction EBLynxBTSPlatformCallJSFunction;
   public FOUNDATION_EXPORT NSInteger const EBLynxBTSLifecycleListenerError EBLynxBTSLifecycleListenerError;
+  public FOUNDATION_EXPORT NSInteger const EBLynxBTSJsCallNativeFunction EBLynxBTSJsCallNativeFunction;
   public FOUNDATION_EXPORT NSInteger const EBLynxResourceImage EBLynxResourceImage;
   public FOUNDATION_EXPORT NSInteger const EBLynxResourceFont EBLynxResourceFont;
   public FOUNDATION_EXPORT NSInteger const EBLynxResourceExternalResource EBLynxResourceExternalResource;
@@ -6328,6 +6329,7 @@ public enum ELynxConsumer {
   public FOUNDATION_EXPORT NSInteger const ECLynxBTSRuntimeErrorExecuteTimeoutError ECLynxBTSRuntimeErrorExecuteTimeoutError;
   public FOUNDATION_EXPORT NSInteger const ECLynxBTSPlatformCallJSFunctionTooFrequency ECLynxBTSPlatformCallJSFunctionTooFrequency;
   public FOUNDATION_EXPORT NSInteger const ECLynxBTSLifecycleListenerErrorException ECLynxBTSLifecycleListenerErrorException;
+  public FOUNDATION_EXPORT NSInteger const ECLynxBTSJsCallNativeFunctionTooFrequency ECLynxBTSJsCallNativeFunctionTooFrequency;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceImageBigImage ECLynxResourceImageBigImage;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceImagePicSource ECLynxResourceImagePicSource;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceImageFromUserOrDesign ECLynxResourceImageFromUserOrDesign;

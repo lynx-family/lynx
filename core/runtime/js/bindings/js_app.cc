@@ -10,6 +10,7 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/expected.h"
@@ -3490,6 +3491,16 @@ void App::CallLepusMethod(const std::string& method_name, lepus::Value args,
   // ApiCallBack's creation and invocation use different trace_flow_id
   // generated in ApiCallBack's constructor
   LOGI(" CallLepusMethod: " << method_name << " " << this);
+  if (js_call_native_frequency_monitor_) {
+    const uint64_t now_ms = base::CurrentSystemTimeMilliseconds();
+    auto error_opt = js_call_native_frequency_monitor_->Record(
+        now_ms, "CallLepusMethod", method_name, stacks);
+    if (error_opt) {
+      LOGW("CallLepusMethod called too frequently. method:" << method_name
+                                                            << " " << this);
+      delegate_->OnErrorOccurred(std::move(*error_opt));
+    }
+  }
   delegate_->CallLepusMethod(method_name, std::move(args), callback);
 }
 
