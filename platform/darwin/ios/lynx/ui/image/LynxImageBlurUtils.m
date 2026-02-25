@@ -93,4 +93,29 @@
   return outputImage;
 }
 
++ (UIImage *)ciGaussianBlurImage:(UIImage *)inputImage withRadius:(CGFloat)radius {
+  if (radius <= 0 || !inputImage) {
+    return inputImage;
+  }
+
+  CIImage *inputCIImage = [[CIImage alloc] initWithImage:inputImage];
+  CIFilter *filter = [CIFilter filterWithName:@"CIGaussianBlur"];
+  CGFloat inputRadius = radius * [[UIScreen mainScreen] scale];
+  [filter setValue:inputCIImage forKey:kCIInputImageKey];
+  [filter setValue:@(inputRadius) forKey:kCIInputRadiusKey];
+  CIImage *outputCIImage = [filter outputImage];
+
+  CIContext *context = [CIContext contextWithOptions:nil];
+  CGImageRef outputCGImage = [context createCGImage:outputCIImage fromRect:[inputCIImage extent]];
+  if (outputCGImage == nil) {
+    return inputImage;
+  }
+
+  UIImage *outputImage = [UIImage imageWithCGImage:outputCGImage
+                                             scale:inputImage.scale
+                                       orientation:inputImage.imageOrientation];
+  CGImageRelease(outputCGImage);
+  return outputImage;
+}
+
 @end

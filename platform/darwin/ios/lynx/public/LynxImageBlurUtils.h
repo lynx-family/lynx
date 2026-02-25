@@ -16,6 +16,12 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (UIImage*)blurImage:(UIImage*)inputImage withRadius:(CGFloat)radius;
 
+/**
+ Blur input image with given radius
+ @param inputImage  image ready to blur
+ @param radius      radius (in point) to blur
+ */
++ (UIImage*)ciGaussianBlurImage:(UIImage*)inputImage withRadius:(CGFloat)radius;
 @end
 
 NS_ASSUME_NONNULL_END

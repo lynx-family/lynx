@@ -784,6 +784,7 @@ public class LynxBasicShape : NSObject {
 
 public class LynxBlurImageProcessor : NSObject, <LynxImageProcessor> {
   public instancetype LynxBlurImageProcessor::initWithBlurRadius:(CGFloat radius);
+  public void LynxBlurImageProcessor::setUseCIGaussianBlur:(BOOL enable);
 }
 
 public struct LynxBorderColors {
@@ -1455,6 +1456,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableImageEventReport();
   public BOOL LynxEnv::enableImageAsyncLayout();
   public BOOL LynxEnv::enableImageCancelRequest();
+  public BOOL LynxEnv::enableImageCIGaussianBlur();
   public BOOL LynxEnv::getUseNewImage();
   public BOOL LynxEnv::enableGenericResourceFetcher();
   public BOOL LynxEnv::enableTextContainerOpt();
@@ -2195,6 +2197,7 @@ public class LynxHttpStreamingDelegate : NSObject {
 
 public class LynxImageBlurUtils : NSObject {
   public UIImage * LynxImageBlurUtils::blurImage:withRadius:(UIImage *inputImage,[withRadius] CGFloat radius);
+  public UIImage * LynxImageBlurUtils::ciGaussianBlurImage:withRadius:(UIImage *inputImage,[withRadius] CGFloat radius);
 }
 
 public class LynxImageConfig : NSObject {
@@ -6131,6 +6134,7 @@ public enum LynxEnvKey {
   LynxEnvEnableImageEventReport
   LynxEnvEnableImageAsyncLayout
   LynxEnvEnableImageCancelRequest
+  LynxEnvEnableImageCIGaussianBlur
   LynxEnvEnableGenericResourceFetcher
   LynxEnvEnableAnimationSyncTimeOpt
   LynxEnvFixNewImageDownSampling

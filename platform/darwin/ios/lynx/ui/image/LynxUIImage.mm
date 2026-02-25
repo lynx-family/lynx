@@ -639,7 +639,12 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                                                                   capInsetsScale:_capInsetsScale]];
   }
   if (_blurRadius > 0) {
-    [processors addObject:[[LynxBlurImageProcessor alloc] initWithBlurRadius:_blurRadius]];
+    LynxBlurImageProcessor* blurProcessor =
+        [[LynxBlurImageProcessor alloc] initWithBlurRadius:_blurRadius];
+    if ([LynxEnv.sharedInstance enableImageCIGaussianBlur]) {
+      [blurProcessor setUseCIGaussianBlur:YES];
+    }
+    [processors addObject:blurProcessor];
   }
   BOOL supportsProcessor = LynxImageFetchherSupportsProcessor(self.context.imageFetcher);
   if (supportsProcessor) {

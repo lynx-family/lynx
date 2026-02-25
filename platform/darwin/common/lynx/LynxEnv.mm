@@ -530,6 +530,16 @@
   return enableImageCancelRequest;
 }
 
+- (BOOL)enableImageCIGaussianBlur {
+  static dispatch_once_t onceToken;
+  static BOOL enableCIGaussianBlur = NO;
+  dispatch_once(&onceToken, ^{
+    enableCIGaussianBlur = [self boolFromExternalEnv:LynxEnvEnableImageCIGaussianBlur
+                                        defaultValue:NO];
+  });
+  return enableCIGaussianBlur;
+}
+
 - (BOOL)getUseNewImage {
   static dispatch_once_t onceToken;
   static BOOL useNewImage = NO;
@@ -721,6 +731,7 @@
     @(LynxEnvEnableImageEventReport) : @"enable_image_event_report",
     @(LynxEnvEnableImageAsyncLayout) : @"enable_image_async_layout",
     @(LynxEnvEnableImageCancelRequest) : @"enable_image_cancel_request",
+    @(LynxEnvEnableImageCIGaussianBlur) : @"enable_image_ci_gaussian_blur",
     @(LynxEnvEnableGenericResourceFetcher) : @"enable_generic_resource_fetcher",
     @(LynxEnvEnableAnimationSyncTimeOpt) : @"enable_animation_sync_time_opt",
     @(LynxEnvFixNewImageDownSampling) : @"fix_new_image_downsampling",

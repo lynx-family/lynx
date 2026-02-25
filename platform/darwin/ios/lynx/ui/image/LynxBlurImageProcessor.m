@@ -7,18 +7,27 @@
 
 @implementation LynxBlurImageProcessor {
   CGFloat _blurRadius;
+  BOOL _useCIGaussianBlur;
 }
 
 - (instancetype)initWithBlurRadius:(CGFloat)radius {
   self = [super init];
   if (self) {
     _blurRadius = radius;
+    _useCIGaussianBlur = NO;
   }
   return self;
 }
 
+- (void)setUseCIGaussianBlur:(BOOL)enable {
+  _useCIGaussianBlur = enable;
+}
+
 - (UIImage *)processImage:(UIImage *)image {
   if (_blurRadius > 0) {
+    if (_useCIGaussianBlur) {
+      return [LynxImageBlurUtils ciGaussianBlurImage:image withRadius:_blurRadius];
+    }
     return [LynxImageBlurUtils blurImage:image withRadius:_blurRadius];
   }
   return image;

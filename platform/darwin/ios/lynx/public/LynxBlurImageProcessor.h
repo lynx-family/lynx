@@ -14,6 +14,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithBlurRadius:(CGFloat)radius;
 
+- (void)setUseCIGaussianBlur:(BOOL)enable;
+
 @end
 
 NS_ASSUME_NONNULL_END
