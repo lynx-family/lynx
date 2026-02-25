@@ -328,21 +328,35 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element) {
 LayoutResult TextLayoutTextra::Measure(Element* element, float width,
                                        int width_mode, float height,
                                        int height_mode) {
-  if (!paragraph_ || !api_) {
+  if (!api_) {
     return LayoutResult{0, 0, 0};
   }
-
+  auto paragraph_iter = paragraphs_.find(element->impl_id());
+  if (paragraph_iter == paragraphs_.end()) {
+    return LayoutResult{0, 0, 0};
+  }
+  auto* paragraph = paragraph_iter->second;
   text::MeasureParams measure_param = {
       width, static_cast<text::LayoutMode>(width_mode), height,
       static_cast<text::LayoutMode>(height_mode)};
   text::MeasureResult result =
-      api_->MeasureParagraph(paragraph_, std::move(measure_param));
+      api_->MeasureParagraph(paragraph, std::move(measure_param));
+
+  // update text bundle
+  auto* text_element = static_cast<TextElement*>(element);
+  text::Page* page = api_->GetPage(paragraph);
+  text_element->SetTextBundle(reinterpret_cast<intptr_t>(page));
 
   return {result.width, result.height, result.baseline};
 }
 
 void TextLayoutTextra::Align(Element* element) {
-  api_->AlignParagraph(paragraph_, 0, 0);
+  auto paragraph_iter = paragraphs_.find(element->impl_id());
+  if (paragraph_iter == paragraphs_.end()) {
+    return;
+  }
+  auto* paragraph = paragraph_iter->second;
+  api_->AlignParagraph(paragraph, 0, 0);
 }
 
 void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
@@ -361,21 +375,14 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
   // Apply inline element's styles
   BuildParagraphRecursively(text_element);
 
-  // make sure to release the Paragraph
-  if (paragraph_ != nullptr) {
-    api_->DestroyParagraph(paragraph_);
-  }
-  paragraph_ = paragraph_builder_->BuildParagraph();
+  auto paragraph = paragraph_builder_->BuildParagraph();
+  paragraphs_.emplace(element->impl_id(), paragraph);
 
   // release build builder in the end
   if (paragraph_builder_ != nullptr) {
     api_->DestroyParagraphBuilder(paragraph_builder_);
     paragraph_builder_ = nullptr;
   }
-
-  // update text bundle
-  text::Page* page = api_->GetPage(paragraph_);
-  text_element->SetTextBundle(reinterpret_cast<intptr_t>(page));
 }
 
 }  // namespace tasm

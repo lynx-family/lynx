@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_TEXTRA_TEXT_LAYOUT_TEXTRA_H_
 
 #include <cstdint>
+#include <unordered_map>
 
 #include "core/public/text_layout_impl.h"
 
@@ -45,7 +46,7 @@ class TextLayoutTextra : public TextLayoutImpl {
 
   text::TextLayoutAPI* api_{nullptr};
   text::ParagraphBuilder* paragraph_builder_{nullptr};
-  text::Paragraph* paragraph_{nullptr};
+  std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
 };
 
 }  // namespace tasm
