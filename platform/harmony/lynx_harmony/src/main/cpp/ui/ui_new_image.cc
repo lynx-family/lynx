@@ -389,7 +389,10 @@ std::string UINewImage::GetRedirectUrl(const std::string& url) {
 }
 
 void UINewImage::LoadImage() {
-  if ((width_ <= 0 || height_ <= 0) && !auto_size_) {
+  // When using a processor, the view size is used as the cache key.
+  // Requests can be deferred until the size is available to avoid the processor
+  // returning an empty pixelmap.
+  if (effect_flags_ != 0 && (width_ <= 0 || height_ <= 0) && !auto_size_) {
     LOGE("LoadImage empty size, src: " << src_);
     return;
   }
