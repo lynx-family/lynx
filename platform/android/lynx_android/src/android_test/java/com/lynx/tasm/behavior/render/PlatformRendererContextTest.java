@@ -16,7 +16,10 @@ import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
@@ -130,6 +133,80 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testGetTargetWidthHeight() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout view = new FrameLayout(context);
+    view.layout(0, 0, 50, 60);
+    IRendererHost host = createHost(view);
+    rendererContext.mViewHolder.put(1, host);
+
+    assertEquals(50, rendererContext.getTargetWidth(1));
+    assertEquals(60, rendererContext.getTargetHeight(1));
+
+    assertEquals(0, rendererContext.getTargetWidth(99));
+    assertEquals(0, rendererContext.getTargetHeight(99));
+  }
+
+  @Test
+  public void testUpdatePlatformRendererFrame() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout view = spy(new FrameLayout(context));
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(view, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    rendererContext.updatePlatformRendererFrame(1, true, 1, 2, 3, 4, 5, 6);
+
+    verify(renderer).setLynxFrame(true, 1, 2, 1 + 3, 2 + 4, 5, 6);
+    verify(view).requestLayout();
+    verify(renderer).invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+  }
+
+  @Test
+  public void testUpdatePlatformRendererAttributes() {
+    ViewGroup mockView = mock(ViewGroup.class);
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(mockView, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    PropBundle propBundle = mock(PropBundle.class);
+    rendererContext.updatePlatformRendererAttributes(1, propBundle);
+
+    verify(renderer).updateAttributes(propBundle);
+  }
+
+  @Test
+  public void testUpdatePlatformRendererSubtreeProperties() {
+    ViewGroup mockView = mock(ViewGroup.class);
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    doNothing().when(renderer).applySubtreeProperties(any(ByteBuffer.class), anyInt());
+    IRendererHost host = createHost(mockView, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    ByteBuffer buffer = ByteBuffer.allocate(68).order(ByteOrder.nativeOrder());
+    rendererContext.updatePlatformRendererSubtreeProperties(1, buffer, 1);
+
+    verify(renderer).applySubtreeProperties(buffer, 1);
+  }
+
+  @Test
+  public void testUpdatePlatformExtraData() {
+    ViewGroup mockView = mock(ViewGroup.class);
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(mockView, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    Object extraData = new Object();
+    rendererContext.updatePlatformExtraData(1, extraData);
+
+    verify(renderer).updateExtraData(extraData);
+  }
+
+  @Test
   public void testRemovePlatformRendererFromParent() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     FrameLayout parent = new FrameLayout(context);
@@ -146,6 +223,13 @@ public class PlatformRendererContextTest {
   private IRendererHost createHost(ViewGroup view) {
     IRendererHost host = mock(IRendererHost.class);
     when(host.getView()).thenReturn(view);
+    return host;
+  }
+
+  private IRendererHost createHost(ViewGroup view, Renderer renderer) {
+    IRendererHost host = mock(IRendererHost.class);
+    when(host.getView()).thenReturn(view);
+    when(host.getRenderer()).thenReturn(renderer);
     return host;
   }
 }

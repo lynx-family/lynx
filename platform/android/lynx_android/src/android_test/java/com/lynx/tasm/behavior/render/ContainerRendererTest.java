@@ -9,12 +9,17 @@ import static org.mockito.Mockito.*;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.os.Build;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.PropBundle;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -294,6 +299,73 @@ public class ContainerRendererTest {
 
     // Should complete without exceptions
     assertEquals("Should have no children", 0, containerRenderer.getChildCount());
+  }
+
+  @Test
+  public void testInvalidateMarksDisplayListRepaint() throws Exception {
+    Field repaintField = Renderer.class.getDeclaredField("mRepaintType");
+    repaintField.setAccessible(true);
+    containerRenderer.getRenderer().invalidate(Renderer.INVALIDATE_DISPLAY_LIST);
+    assertEquals(Renderer.REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW,
+        repaintField.getInt(containerRenderer.getRenderer()));
+  }
+
+  @Test
+  public void testApplySubtreePropertiesOpacity() {
+    View hostView = containerRenderer;
+    containerRenderer.getRenderer().setRenderHost(containerRenderer);
+
+    ByteBuffer buffer = ByteBuffer.allocate(68).order(ByteOrder.nativeOrder());
+    buffer.putInt(DisplayListApplier.SUBTREE_OP_OPACITY);
+    buffer.putFloat(0.5f);
+    buffer.position(0);
+
+    containerRenderer.getRenderer().applySubtreeProperties(buffer, 1);
+
+    assertEquals(0.5f, hostView.getAlpha(), 0.0001f);
+  }
+
+  @Test
+  public void testApplySubtreePropertiesTransform() {
+    View hostView = containerRenderer;
+    containerRenderer.getRenderer().setRenderHost(containerRenderer);
+
+    ByteBuffer buffer = ByteBuffer.allocate(68).order(ByteOrder.nativeOrder());
+    buffer.putInt(DisplayListApplier.SUBTREE_OP_TRANSFORM);
+    float[] transform = new float[16];
+    for (int i = 0; i < 16; i++) {
+      transform[i] = 0f;
+    }
+    transform[0] = 2f;
+    transform[5] = 3f;
+    transform[10] = 1f;
+    transform[15] = 1f;
+    buffer.asFloatBuffer().put(transform);
+    buffer.position(0);
+
+    containerRenderer.getRenderer().applySubtreeProperties(buffer, 1);
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      // On Android Q+, transform is applied via setAnimationMatrix()
+      Matrix animMatrix = hostView.getAnimationMatrix();
+      assertNotNull("Animation matrix should be set", animMatrix);
+      float[] values = new float[9];
+      animMatrix.getValues(values);
+      // scaleX should be 2.0 (values[0])
+      // scaleY should be 3.0 (values[4])
+      assertEquals(2f, values[0], 0.0001f);
+      assertEquals(3f, values[4], 0.0001f);
+    } else {
+      // On pre-Android Q, transform is applied via individual scale properties
+      assertEquals(2f, hostView.getScaleX(), 0.0001f);
+      assertEquals(3f, hostView.getScaleY(), 0.0001f);
+    }
+  }
+
+  @Test
+  public void testUpdateAttributesAndExtraDataNoCrash() {
+    containerRenderer.getRenderer().updateAttributes(mock(PropBundle.class));
+    containerRenderer.getRenderer().updateExtraData(new Object());
   }
 
   @Test

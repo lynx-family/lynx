@@ -44,6 +44,10 @@ public class DisplayListApplier implements Drawable.Callback {
   private static final int OP_RECORD_BOX = 11;
   private static final int OP_LINEAR_GRADIENT = 12;
 
+  // Subtree property operation types (matching C++ DisplayListSubtreePropertyOpType)
+  static final int SUBTREE_OP_TRANSFORM = 0;
+  static final int SUBTREE_OP_OPACITY = 1;
+
   private DisplayList mDisplayList;
   private TextMeasurer mTextMeasurer;
   private Paint mPaint;
@@ -62,7 +66,6 @@ public class DisplayListApplier implements Drawable.Callback {
   private float[] mReusableGradientStops;
 
   private PlatformRendererContext mContext;
-  // Separate indices for content and subtree property operations
   private int mContentOpIndex;
   private int mContentIntIndex;
   private int mContentFloatIndex;
