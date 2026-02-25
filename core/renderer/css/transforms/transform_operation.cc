@@ -273,6 +273,9 @@ TransformOperation ComposeTransform(
 TransformOperation TransformOperation::BlendTransformOperations(
     const TransformOperation* from, const TransformOperation* to,
     float progress, tasm::Element* element) {
+  if (!from && !to) {
+    return TransformOperation();
+  }
   DCHECK(from != nullptr || to != nullptr);
   DCHECK(element);
   if (IsOperationIdentity(from) && IsOperationIdentity(to)) {

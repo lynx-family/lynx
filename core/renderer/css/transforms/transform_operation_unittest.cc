@@ -11,6 +11,7 @@
 #include <cmath>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -260,6 +261,53 @@ TEST_F(TransformOperationTest, BlendTransformOperations) {
         &transform0, &transform1, 0.8, element.get());
     CompareTransformOperation(expected, result);
   }
+}
+
+TEST_F(TransformOperationTest, BlendIdentityAndNonIdentityLists) {
+  auto element = manager->CreateFiberElement("view");
+  std::array<float, 4> arr = {0, 0, 0, 0};
+  element->UpdateLayout(0.0, 0.0, 100.0, 200.0, arr, arr, arr, &arr, 0);
+
+  // Reproduce crash: Check failed: from != nullptr || to != nullptr.
+  // Scenario:
+  // @keyframes crash {
+  //   from {
+  //     transform: translateX(0px) translateX(0px); /* 2 Identity ops */
+  //   }
+  //   to {
+  //     transform: translateX(100px); /* 1 Non-Identity op */
+  //   }
+  // }
+  //
+  // from: [Identity, Identity] -> IsIdentity() = true, size treated as 0
+  // to:   [Non-Identity]       -> IsIdentity() = false, size = 1
+  // MatchingPrefixLength returns max(2, 1) = 2.
+  // Loop runs for i=0, i=1.
+  // i=1: from_size=0, to_size=1. Both indices out of bounds -> nullptr,
+  // nullptr.
+
+  TransformOperation identity_op1;
+  identity_op1.type = TransformOperation::Type::kTranslate;
+  identity_op1.translate.value.x = starlight::NLength::MakeUnitNLength(0.0f);
+
+  TransformOperation identity_op2;
+  identity_op2.type = TransformOperation::Type::kTranslate;
+  identity_op2.translate.value.x = starlight::NLength::MakeUnitNLength(0.0f);
+
+  lynx::transforms::TransformOperations from_ops(element.get());
+  from_ops.Append(identity_op1);
+  from_ops.Append(identity_op2);
+
+  TransformOperation non_identity_op;
+  non_identity_op.type = TransformOperation::Type::kTranslate;
+  non_identity_op.translate.value.x =
+      starlight::NLength::MakeUnitNLength(100.0f);
+
+  lynx::transforms::TransformOperations to_ops(element.get());
+  to_ops.Append(non_identity_op);
+
+  // This should crash if the bug exists
+  lynx::transforms::TransformOperations result = to_ops.Blend(from_ops, 0.5f);
 }
 
 }  // namespace testing
