@@ -1950,7 +1950,13 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
                   static_cast<FiberElement *>(param_child->render_parent_));
             } else {
               // node with z-index only needs remove its element container.
-              param.child_->element_container()->RemoveSelf(false);
+              if (param.child_->element_container()) {
+                param.child_->element_container()->RemoveSelf(false);
+              } else {
+                LOGE(
+                    "FiberElement::PrepareAndGenerateChildrenActions "
+                    "kRemoveIntergenerationAct failed ");
+              }
             }
           }
         } break;
@@ -2075,7 +2081,11 @@ void FiberElement::HandleRemoveChildAction(FiberElement *child) {
     RemoveLayoutNode(child);
   }
 
-  child->element_container()->RemoveSelf(false);
+  if (child->element_container()) {
+    child->element_container()->RemoveSelf(false);
+  } else {
+    LOGE("FiberElement::HandleRemoveChildAction failed ");
+  }
 }
 
 void FiberElement::HandleRemoveSelf(FiberElement *removal_point,
