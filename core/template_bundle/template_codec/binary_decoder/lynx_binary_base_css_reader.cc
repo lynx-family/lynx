@@ -144,7 +144,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSFragment(SharedCSSFragment* fragment,
     DECODE_STDSTR(name);
     CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
     ERROR_UNLESS(DecodeCSSKeyframesToken(token));
-    fragment->keyframes_.emplace(std::move(name), token);
+    fragment->keyframes_.emplace(std::move(name), fml::AdoptRef(token));
   }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
 
