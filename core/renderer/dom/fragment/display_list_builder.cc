@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
+#include <cstring>
 #include <utility>
 
 #include "core/renderer/dom/fragment/display_list.h"
@@ -51,22 +52,12 @@ DisplayListBuilder& DisplayListBuilder::DrawView(int view_id) {
 
 DisplayListBuilder& DisplayListBuilder::Transform(
     const transforms::Matrix44& matrix) {
-  // Use AddOperation directly to avoid temporary vector construction
-  display_list_.AddOperation(
-      DisplayListSubtreePropertyOpType::kTransform, matrix.rc(0, 0),
-      matrix.rc(1, 0), matrix.rc(2, 0), matrix.rc(3, 0), matrix.rc(0, 1),
-      matrix.rc(1, 1), matrix.rc(2, 1), matrix.rc(3, 1), matrix.rc(0, 2),
-      matrix.rc(1, 2), matrix.rc(2, 2), matrix.rc(3, 2), matrix.rc(0, 3),
-      matrix.rc(1, 3), matrix.rc(2, 3), matrix.rc(3, 3));
-  return *this;
-}
-
-DisplayListBuilder& DisplayListBuilder::Clip(float x, float y, float width,
-                                             float height) {
-  // Use AddOperation directly to avoid temporary vector construction - only
-  // store float params
-  display_list_.AddOperation(DisplayListSubtreePropertyOpType::kClip, x, y,
-                             width, height);
+  SubtreeProperty prop;
+  prop.type = DisplayListSubtreePropertyOpType::kTransform;
+  // Matrix44 uses column-major storage (fMat[col][row]), which matches
+  // what Renderer.java expects
+  std::memcpy(prop.data.transform, matrix.Data(), sizeof(float) * 16);
+  display_list_.AddSubtreeProperty(prop);
   return *this;
 }
 
@@ -148,6 +139,13 @@ DisplayListBuilder& DisplayListBuilder::LinearGradient(
 
 DisplayListBuilder& DisplayListBuilder::MarkRootNeedClipBounds() {
   display_list_.MarkRootNeedClipBounds();
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::Opacity(float alpha) {
+  display_list_.AddSubtreeProperty(
+      (SubtreeProperty){.type = DisplayListSubtreePropertyOpType::kOpacity,
+                        .data.opacity = alpha});
   return *this;
 }
 

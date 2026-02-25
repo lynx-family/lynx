@@ -19,6 +19,7 @@ PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
 
 void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
   // Call platform-specific implementation
+  OnUpdateSubtreeProperties(display_list);
   OnUpdateDisplayList(std::move(display_list));
 }
 

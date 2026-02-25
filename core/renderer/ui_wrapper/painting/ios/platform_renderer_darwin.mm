@@ -75,6 +75,10 @@ void PlatformRendererDarwin::OnRemoveFromParent() {
   [_view removeFromSuperview];
 }
 
+void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtree_properties) {
+  // TODO: impl this function later.
+}
+
 void PlatformRendererDarwin::InitializeUIView() {
   if (IsPlatformExtendedRenderer()) {
     // TODO: impl this function later.

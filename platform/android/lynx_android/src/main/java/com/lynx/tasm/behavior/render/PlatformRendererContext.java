@@ -25,6 +25,7 @@ import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -267,6 +268,22 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     Renderer renderer = host.getRenderer();
     if (renderer != null) {
       renderer.updateAttributes(propBundle);
+    }
+  }
+
+  @CalledByNative
+  public void updatePlatformRendererSubtreeProperties(int sign, ByteBuffer buffer, int count) {
+    IRendererHost host = mViewHolder.get(sign);
+    if (host == null) {
+      LLog.d(TAG, "host renderer not found for sign: " + sign);
+      return;
+    }
+
+    // Get the renderer
+    Renderer renderer = host.getRenderer();
+    if (renderer != null) {
+      buffer.order(java.nio.ByteOrder.nativeOrder());
+      renderer.applySubtreeProperties(buffer, count);
     }
   }
 

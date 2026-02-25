@@ -186,6 +186,30 @@ int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
                                                  tag_ref.Get());
 }
 
+void PlatformRendererContext::UpdatePlatformRendererSubtreeProperties(
+    int32_t id, const SubtreeProperty* properties, size_t count) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  // Count total size
+  const size_t total_bytes = count * sizeof(SubtreeProperty);
+
+  // 创建 DirectByteBuffer（零拷贝）
+  void* buffer_data = const_cast<void*>(static_cast<const void*>(properties));
+  jobject direct_buffer = env->NewDirectByteBuffer(buffer_data, total_bytes);
+
+  if (direct_buffer != nullptr) {
+    // 调用 Java 方法
+    Java_PlatformRendererContext_updatePlatformRendererSubtreeProperties(
+        env, local_ref.Get(), id, direct_buffer, static_cast<jint>(count));
+
+    // 释放本地引用（DirectByteBuffer 是局部引用）
+    env->DeleteLocalRef(direct_buffer);
+  }
+}
+
 void PlatformRendererContext::UpdatePlatformRendererExtraData(
     int32_t id, jobject extra_bundle) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);

@@ -8442,6 +8442,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererAttributes(int sign, PropBundle propBundle);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererSubtreeProperties(int sign, ByteBuffer buffer, int count);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformExtraData(int sign, Object extraData);
   public LynxImageManager com.lynx.tasm.behavior.render.PlatformRendererContext.getImage(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createImage(int sign, String src, int width, int height);
@@ -9185,6 +9186,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.invalidate(int invalidateMask);
   public void com.lynx.tasm.behavior.render.Renderer.updateAttributes(PropBundle props);
   public void com.lynx.tasm.behavior.render.Renderer.updateExtraData(Object extraData);
+  public void com.lynx.tasm.behavior.render.Renderer.applySubtreeProperties(java.nio.ByteBuffer buffer, int count);
 }
 
 public class abstract com::lynx::tasm::rendernode::compat::RenderNodeCompat :  {

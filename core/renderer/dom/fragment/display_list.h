@@ -37,7 +37,7 @@ enum class DisplayListOpType : int32_t {
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
   kTransform = 0,
-  kClip = 1,
+  kOpacity = 1,
 };
 
 enum class DisplayListOpCategory : int8_t {
@@ -60,7 +60,7 @@ struct DisplayListOpCategoryTraits<DisplayListOpCategory::kSubtreeProperty> {
  * fragment.
  *
  * The DisplayList separates content operations from subtree-influencing group
- * properties (transform/clip) to optimize animation performance. Group
+ * properties (transform) to optimize animation performance. Group
  * properties affect the entire subtree and only apply to owner layers, making
  * them special operations that can be updated independently.
  *
@@ -69,14 +69,42 @@ struct DisplayListOpCategoryTraits<DisplayListOpCategory::kSubtreeProperty> {
  * Begin, End)
  * - content_int_data_: Integer parameters for content operations
  * - content_float_data_: Float parameters for content operations
- * - subtree_property_ops_: Subtree-influencing group properties (Transform,
- * Clip)
+ * - subtree_property_ops_: Subtree-influencing group properties (Transform)
  * - subtree_property_int_data_: Integer parameters for subtree properties
  * - subtree_property_float_data_: Float parameters for subtree properties
  *
  * For each operation, the *_int_data_ stores the parameter counts of both int
  * params and float params. Then the actual parameters are appended in sequence.
  */
+
+extern "C" {
+typedef struct SubtreeProperty {
+  DisplayListSubtreePropertyOpType type;
+  union Data {
+    float transform[16];
+    float opacity;
+  } data;
+} SubtreeProperty;
+
+// Once the size and offset changed, should change all related buffer based
+// operations. (e.g. On android we use this in DirectByteBuffer to sync data.)
+static_assert(sizeof(SubtreeProperty) == 68,
+              "SubtreeProperty size must be 68 bytes (4 + 64)");
+static_assert(offsetof(SubtreeProperty, type) == 0,
+              "type field must be at offset 0");
+static_assert(offsetof(SubtreeProperty, data) == 4,
+              "data field must be at offset 4");
+static_assert(offsetof(SubtreeProperty, data.transform) == 4,
+              "transform array must start at offset 4");
+static_assert(offsetof(SubtreeProperty, data.opacity) == 4,
+              "opacity must be at offset 4 (union shared)");
+static_assert(std::is_standard_layout<SubtreeProperty>::value,
+              "SubtreeProperty must be standard layout for JNI");
+static_assert(
+    std::is_trivially_copyable<SubtreeProperty>::value,
+    "SubtreeProperty must be trivially copyable for DirectByteBuffer");
+}
+
 class DisplayList {
  public:
   DisplayList() = default;
@@ -107,22 +135,6 @@ class DisplayList {
 
   const float* GetRenderOffset() const { return render_offset_; }
 
-  const int32_t* GetSubtreePropertyOpTypesData() const {
-    return subtree_property_data_.has_value()
-               ? subtree_property_data_->ops.data()
-               : nullptr;
-  }
-  const int32_t* GetSubtreePropertyIntData() const {
-    return subtree_property_data_.has_value()
-               ? subtree_property_data_->int_data.data()
-               : nullptr;
-  }
-  const float* GetSubtreePropertyFloatData() const {
-    return subtree_property_data_.has_value()
-               ? subtree_property_data_->float_data.data()
-               : nullptr;
-  }
-
   // Size accessors
   size_t GetContentOpTypesSize() const {
     return content_data_.has_value() ? content_data_->ops.size() : 0;
@@ -144,20 +156,13 @@ class DisplayList {
     return content_data_->float_data[index];
   }
 
-  size_t GetSubtreePropertyOpTypesSize() const {
-    return subtree_property_data_.has_value()
-               ? subtree_property_data_->ops.size()
-               : 0;
+  size_t GetSubtreePropertiesSize() const {
+    return subtree_properties_.has_value() ? subtree_properties_->size() : 0;
   }
-  size_t GetSubtreePropertyIntDataSize() const {
-    return subtree_property_data_.has_value()
-               ? subtree_property_data_->int_data.size()
-               : 0;
-  }
-  size_t GetSubtreePropertyFloatDataSize() const {
-    return subtree_property_data_.has_value()
-               ? subtree_property_data_->float_data.size()
-               : 0;
+
+  const SubtreeProperty* GetSubtreePropertiesData() const {
+    return subtree_properties_.has_value() ? subtree_properties_->data()
+                                           : nullptr;
   }
 
   void MarkRootNeedClipBounds() { root_need_clip_bounds_ = true; }
@@ -173,20 +178,17 @@ class DisplayList {
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
 
-  template <typename OpType, typename... Args>
-  auto AddOperation(OpType type, Args... args) -> std::enable_if_t<
-      std::is_same_v<OpType, DisplayListOpType> ||
-      std::is_same_v<OpType, DisplayListSubtreePropertyOpType>> {
-    if constexpr (std::is_same_v<OpType, DisplayListOpType>) {
-      AddOperationToData(content_data_, type, args...);
-    } else if constexpr (std::is_same_v<OpType,
-                                        DisplayListSubtreePropertyOpType>) {
-      AddOperationToData(subtree_property_data_, type, args...);
-    }
+  template <typename... Args>
+  auto AddOperation(DisplayListOpType type, Args... args) {
+    AddOperationToData(content_data_, type, args...);
   }
 
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
   const auto& SubLayers() const { return sub_layers_; }
+
+  void AddSubtreeProperty(const SubtreeProperty& prop) {
+    subtree_properties_->push_back(prop);
+  }
 
  private:
   template <typename OpType, typename... Args>
@@ -200,7 +202,8 @@ class DisplayList {
   // Subtree-influencing group properties (frequently updated during animations)
   // These operations affect the entire subtree and only apply to owner layers -
   // lazy allocated
-  base::auto_create_optional<OpData> subtree_property_data_;
+  base::auto_create_optional<base::InlineVector<SubtreeProperty, 1>>
+      subtree_properties_;
 
   // Platform renderers that belongs to the layer holds this displayList. Used
   // for re-construct ot update the platform renderer hierachy.

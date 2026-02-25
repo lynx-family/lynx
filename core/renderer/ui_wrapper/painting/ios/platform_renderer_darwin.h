@@ -35,6 +35,7 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
                           bool tends_to_flatten) override;
   void OnAddChild(PlatformRenderer* child) override;
   void OnRemoveFromParent() override;
+  void OnUpdateSubtreeProperties(const DisplayList& subtree_properties) override;
 
   void InitializeUIView();
 

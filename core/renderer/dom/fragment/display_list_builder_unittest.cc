@@ -169,59 +169,20 @@ TEST_F(DisplayListBuilderTest, TransformOperation) {
 
   DisplayList display_list = builder_->Build();
 
-  const int32_t* subtree_op_types_data =
-      display_list.GetSubtreePropertyOpTypesData();
-  const int32_t* subtree_int_data = display_list.GetSubtreePropertyIntData();
-  const float* subtree_float_data = display_list.GetSubtreePropertyFloatData();
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
 
-  EXPECT_NE(subtree_op_types_data, nullptr);
-  EXPECT_NE(subtree_int_data, nullptr);
-  EXPECT_NE(subtree_float_data, nullptr);
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
 
-  EXPECT_EQ(subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-
-  // Check parameter structure: [int_count, float_count]
-  EXPECT_EQ(subtree_int_data[0], 0);   // int_count
-  EXPECT_EQ(subtree_int_data[1], 16);  // float_count
-
-  // Check transform matrix values (float params start at index 0)
-  EXPECT_EQ(display_list.GetSubtreePropertyFloatDataSize(), 16u);
-  for (int i = 0; i < 4; ++i) {
-    for (int j = 0; j < 4; ++j) {
-      EXPECT_FLOAT_EQ(subtree_float_data[i * 4 + j], matrix.rc(j, i));
-    }
+  // Check transform matrix values (column-major order)
+  const float* matrix_data = matrix.Data();
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
+                    matrix_data[i]);
   }
-}
-
-TEST_F(DisplayListBuilderTest, ClipOperation) {
-  float x = 10.0f, y = 20.0f, width = 100.0f, height = 200.0f;
-  builder_->Clip(x, y, width, height);
-
-  DisplayList display_list = builder_->Build();
-
-  const int32_t* subtree_op_types_data =
-      display_list.GetSubtreePropertyOpTypesData();
-  const int32_t* subtree_int_data = display_list.GetSubtreePropertyIntData();
-  const float* subtree_float_data = display_list.GetSubtreePropertyFloatData();
-
-  EXPECT_NE(subtree_op_types_data, nullptr);
-  EXPECT_NE(subtree_int_data, nullptr);
-  EXPECT_NE(subtree_float_data, nullptr);
-
-  EXPECT_EQ(subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
-
-  // Check parameter structure - optimized to only store float params
-  EXPECT_EQ(subtree_int_data[0], 0);  // int_count (no int params)
-  EXPECT_EQ(subtree_int_data[1], 4);  // float_count (4 float params)
-
-  // Check float parameters directly
-  EXPECT_EQ(display_list.GetSubtreePropertyFloatDataSize(), 4u);
-  EXPECT_FLOAT_EQ(subtree_float_data[0], x);
-  EXPECT_FLOAT_EQ(subtree_float_data[1], y);
-  EXPECT_FLOAT_EQ(subtree_float_data[2], width);
-  EXPECT_FLOAT_EQ(subtree_float_data[3], height);
 }
 
 TEST_F(DisplayListBuilderTest, MethodChaining) {
@@ -231,18 +192,14 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
       .DrawImage(456, -1)
       .DrawText(789, -1)
       .Transform(transforms::Matrix44())
-      .Clip(10.0f, 10.0f, 80.0f, 80.0f)
       .End();
 
   DisplayList display_list = builder_->Build();
 
   // Verify content operations (Begin, Fill, DrawView, DrawImage, DrawText, End)
   const int32_t* content_op_types_data = display_list.GetContentOpTypesData();
-  const int32_t* subtree_op_types_data =
-      display_list.GetSubtreePropertyOpTypesData();
 
   EXPECT_NE(content_op_types_data, nullptr);
-  EXPECT_NE(subtree_op_types_data, nullptr);
 
   EXPECT_EQ(content_op_types_data[0],
             static_cast<int32_t>(DisplayListOpType::kBegin));
@@ -257,11 +214,13 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
   EXPECT_EQ(content_op_types_data[5],
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
-  // Verify subtree property operations (Transform, Clip)
-  EXPECT_EQ(subtree_op_types_data[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-  EXPECT_EQ(subtree_op_types_data[1],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
+  // Verify subtree property operations (Transform)
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
 }
 
 TEST_F(DisplayListBuilderTest, ClearBuilder) {
@@ -391,7 +350,6 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
       .DrawText(0, -1)
       .Transform(
           transforms::Matrix44(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-      .Clip(0.0f, 0.0f, 0.0f, 0.0f)
       .End();
 
   DisplayList display_list = builder_->Build();
@@ -411,10 +369,12 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
             static_cast<int32_t>(DisplayListOpType::kEnd));
 
   // Verify subtree property operations
-  EXPECT_EQ(display_list.GetSubtreePropertyOpTypesData()[0],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kTransform));
-  EXPECT_EQ(display_list.GetSubtreePropertyOpTypesData()[1],
-            static_cast<int32_t>(DisplayListSubtreePropertyOpType::kClip));
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
 
   // Check specific zero values
   // Begin operation: [int_count=1, float_count=4, 1 int param, 4 float params]
@@ -449,20 +409,10 @@ TEST_F(DisplayListBuilderTest, ZeroValues) {
   EXPECT_EQ(display_list.GetContentIntData()[16], 0);   // DrawText param
   EXPECT_EQ(display_list.GetContentIntData()[17], -1);  // box_index
 
-  // Transform operation: [int_count=0, float_count=16, 16 float params]
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);   // int_count
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[1], 16);  // float_count
+  // Transform operation: [16 float parameters]
   for (int i = 0; i < 16; ++i) {
-    EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[i], 0.0f);
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i], 0.0f);
   }
-
-  // Clip operation: [int_count=0, float_count=4, 4 float params]
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[2], 0);  // int_count
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[3], 4);  // float_count
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[16], 0.0f);
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[17], 0.0f);
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[18], 0.0f);
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[19], 0.0f);
 }
 
 TEST_F(DisplayListBuilderTest, DrawImageAndTextWithZeroValues) {
@@ -522,9 +472,7 @@ TEST_F(DisplayListBuilderTest, DrawImageAndTextWithNegativeValues) {
 TEST_F(DisplayListBuilderTest, NegativeValues) {
   transforms::Matrix44 matrix(-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12,
                               -13, -14, -15, -16);
-  builder_->Begin(0, -10.0f, -20.0f, -100.0f, -200.0f)
-      .Transform(matrix)
-      .Clip(-5.0f, -15.0f, -50.0f, -100.0f);
+  builder_->Begin(0, -10.0f, -20.0f, -100.0f, -200.0f).Transform(matrix);
 
   DisplayList display_list = builder_->Build();
 
@@ -542,30 +490,61 @@ TEST_F(DisplayListBuilderTest, NegativeValues) {
   EXPECT_FLOAT_EQ(display_list.GetContentFloatData()[3], -200.0f);
 
   // Check Transform operation with negative values (subtree property)
-  // Transform: [int_count=0, float_count=16, 16 float params]
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[0], 0);   // int_count
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[1], 16);  // float_count
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
 
-  // Check Transform float parameters directly
-  for (int i = 0; i < 4; ++i) {
-    for (int j = 0; j < 4; ++j) {
-      EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[i * 4 + j],
-                      matrix.rc(j, i));
-    }
+  // Check Transform float parameters directly (column-major order)
+  const float* matrix_data = matrix.Data();
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
+                    matrix_data[i]);
+  }
+}
+
+TEST_F(DisplayListBuilderTest, OpacityOperation) {
+  builder_->Opacity(0.5f);
+
+  DisplayList display_list = builder_->Build();
+
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kOpacity);
+  EXPECT_FLOAT_EQ(subtree_properties_data[0].data.opacity, 0.5f);
+}
+
+TEST_F(DisplayListBuilderTest, MultipleSubtreeProperties) {
+  transforms::Matrix44 matrix;
+  matrix.preTranslate(10.0f, 20.0f, 0.0f);
+  builder_->Transform(matrix);
+  builder_->Opacity(0.75f);
+
+  DisplayList display_list = builder_->Build();
+
+  const SubtreeProperty* subtree_properties_data =
+      display_list.GetSubtreePropertiesData();
+  EXPECT_NE(subtree_properties_data, nullptr);
+  EXPECT_EQ(display_list.GetSubtreePropertiesSize(), 2u);
+
+  // Check Transform property (column-major order)
+  EXPECT_EQ(subtree_properties_data[0].type,
+            DisplayListSubtreePropertyOpType::kTransform);
+  const float* matrix_data = matrix.Data();
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(subtree_properties_data[0].data.transform[i],
+                    matrix_data[i]);
   }
 
-  // Check Clip operation with negative values (subtree property)
-  // Clip: [int_count=0, float_count=4, 4 float params]
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[2],
-            0);  // int_count for Clip
-  EXPECT_EQ(display_list.GetSubtreePropertyIntData()[3],
-            4);  // float_count for Clip
-
-  // Check Clip float parameters directly
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[16], -5.0f);
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[17], -15.0f);
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[18], -50.0f);
-  EXPECT_FLOAT_EQ(display_list.GetSubtreePropertyFloatData()[19], -100.0f);
+  // Check Opacity property
+  EXPECT_EQ(subtree_properties_data[1].type,
+            DisplayListSubtreePropertyOpType::kOpacity);
+  EXPECT_FLOAT_EQ(subtree_properties_data[1].data.opacity, 0.75f);
 }
 
 TEST_F(DisplayListBuilderTest, BorderOperation) {

@@ -44,9 +44,7 @@ class DisplayListBuilder {
 
   // Apply transform
   DisplayListBuilder& Transform(const transforms::Matrix44& matrix);
-
-  // Apply clip
-  DisplayListBuilder& Clip(float x, float y, float width, float height);
+  DisplayListBuilder& Opacity(float alpha);
 
   // Retrieve Image source and draw
   DisplayListBuilder& DrawImage(int32_t image_id, int32_t box_index);

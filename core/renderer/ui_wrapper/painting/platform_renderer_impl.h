@@ -31,11 +31,13 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   ~PlatformRendererImpl() override = default;
 
-  // PlatformRenderer interface
+  // PlatformRenderer interface.
+  // Content
   void UpdateDisplayList(DisplayList display_list) override;
+
+  // for layer only.
   void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
                         bool tends_to_flatten) override;
-
   const DisplayList& GetDisplayList() const { return display_list_; }
 
   void RemoveFromParent() override;
@@ -61,6 +63,8 @@ class PlatformRendererImpl : public PlatformRenderer {
                                   bool tends_to_flatten) = 0;
   virtual void OnAddChild(PlatformRenderer* child) = 0;
   virtual void OnRemoveFromParent() = 0;
+  virtual void OnUpdateSubtreeProperties(
+      const DisplayList& subtree_properties) = 0;
 
   // Get the parent renderer
   PlatformRendererImpl* GetParent() const { return parent_; }
@@ -73,7 +77,6 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   DisplayList display_list_;
   ChildVecT children_;
-
   bool is_platform_extended_renderer_ = false;
 };
 

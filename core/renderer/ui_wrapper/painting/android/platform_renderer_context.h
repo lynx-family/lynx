@@ -41,6 +41,10 @@ class PlatformRendererContext {
                                    const float frame[4],
                                    const float render_offset[2]);
 
+  // Update platform renderer subtree properties (transform, clip, etc.)
+  void UpdatePlatformRendererSubtreeProperties(
+      int32_t id, const SubtreeProperty* properties, size_t count);
+
   // Update platform renderer attributes
   void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
 

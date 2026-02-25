@@ -5,29 +5,17 @@
 #ifndef CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 #define CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 
-#include <errno.h>
-#include <stdlib.h>
-
-#include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "base/include/flex_optional.h"
-#include "base/include/string/string_utils.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_property_bitset.h"
+#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/measure_context.h"
 #include "core/renderer/css/text_attributes.h"
-#include "core/renderer/starlight/style/box_data.h"
-#include "core/renderer/starlight/style/data_ref.h"
-#include "core/renderer/starlight/style/default_layout_style.h"
-#include "core/renderer/starlight/style/flex_data.h"
-#include "core/renderer/starlight/style/grid_data.h"
 #include "core/renderer/starlight/style/layout_computed_style.h"
-#include "core/renderer/starlight/style/linear_data.h"
-#include "core/renderer/starlight/style/relative_data.h"
 #include "core/renderer/starlight/style/surround_data.h"
 #include "core/renderer/starlight/types/layout_types.h"
 #include "core/renderer/tasm/config.h"
@@ -157,6 +145,13 @@ class ComputedCSSStyle {
   bool HasTransform() const { return transform_raw_.has_value(); }
 
   bool HasTransformOrigin() const { return transform_origin_.has_value(); }
+
+  bool TransformChanged() const {
+    return changed_bitset_.Has(tasm::kPropertyIDTransform) ||
+           changed_bitset_.Has(tasm::kPropertyIDTransformOrigin) ||
+           reset_bitset_.Has(tasm::kPropertyIDTransform) ||
+           reset_bitset_.Has(tasm::kPropertyIDTransformOrigin);
+  }
 
   bool HasTransition() const { return transition_data_.has_value(); }
 
@@ -336,6 +331,11 @@ class ComputedCSSStyle {
   uint32_t GetHandleColor() { return handle_color_; }
 
   bool HasOpacity() const;
+
+  bool OpacityChanged() const {
+    return changed_bitset_.Has(tasm::kPropertyIDOpacity) ||
+           reset_bitset_.Has(tasm::kPropertyIDOpacity);
+  }
 
   const LayoutComputedStyle* GetConstLayoutComputedStyle() const {
     return &layout_computed_style_;

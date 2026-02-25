@@ -435,7 +435,14 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
+  if (!element()->computed_css_style()->TransformChanged()) {
+    return;
+  }
+
+  transforms::Matrix44 final_matrix;
   if (!element()->computed_css_style()->HasTransform()) {
+    display_list_builder.Transform(final_matrix);
+    // Transform is reset to identity matrix.
     return;
   }
 
@@ -462,12 +469,19 @@ void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
             .ToFloat();
   }
 
-  transforms::Matrix44 final_matrix;
   final_matrix.preTranslate(origin_x, origin_y, 0.0f);
   final_matrix.preConcat(matrix);
   final_matrix.preTranslate(-origin_x, -origin_y, 0.0f);
-
   display_list_builder.Transform(final_matrix);
+}
+
+void Fragment::DrawOpacity(DisplayListBuilder& display_list_builder) {
+  if (!element()->computed_css_style()->OpacityChanged()) {
+    return;
+  }
+
+  auto opacity = element()->computed_css_style()->GetOpacity();
+  display_list_builder.Opacity(opacity);
 }
 
 void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
@@ -603,6 +617,7 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   DrawBackground(display_list_builder);
   DrawBorder(display_list_builder);
   DrawTransform(display_list_builder);
+  DrawOpacity(display_list_builder);
   DrawClip(display_list_builder);
 
   if (behavior_) {

@@ -25,20 +25,13 @@ void DisplayList::Clear() {
     content_data_->float_data.clear();
     content_data_.reset();
   }
-  if (subtree_property_data_.has_value()) {
-    subtree_property_data_->ops.clear();
-    subtree_property_data_->int_data.clear();
-    subtree_property_data_->float_data.clear();
-    subtree_property_data_.reset();
-  }
+  ClearSubtreeProperties();
 }
 
 void DisplayList::ClearSubtreeProperties() {
-  if (subtree_property_data_.has_value()) {
-    subtree_property_data_->ops.clear();
-    subtree_property_data_->int_data.clear();
-    subtree_property_data_->float_data.clear();
-    subtree_property_data_.reset();
+  if (subtree_properties_.has_value()) {
+    subtree_properties_->clear();
+    subtree_properties_.reset();
   }
 }
 

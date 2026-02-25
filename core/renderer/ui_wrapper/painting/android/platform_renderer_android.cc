@@ -143,4 +143,16 @@ void PlatformRendererAndroid::OnUpdateAttributes(
   }
 }
 
+void PlatformRendererAndroid::OnUpdateSubtreeProperties(
+    const DisplayList& subtree_properties) {
+  if (!context_ || subtree_properties.GetSubtreePropertiesSize() <= 0) {
+    return;
+  }
+  // Forward to PlatformRendererContext for JNI transmission
+  context_->UpdatePlatformRendererSubtreeProperties(
+      PlatformRendererImpl::GetId(),
+      subtree_properties.GetSubtreePropertiesData(),
+      subtree_properties.GetSubtreePropertiesSize());
+}
+
 }  // namespace lynx::tasm

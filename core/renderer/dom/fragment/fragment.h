@@ -120,6 +120,7 @@ class Fragment : public BaseElementContainer {
 
   void DrawBackground(DisplayListBuilder& display_list_builder);
   void DrawTransform(DisplayListBuilder& display_list_builder);
+  void DrawOpacity(DisplayListBuilder& display_list_builder);
 
   void ReinsertDescendantsToCorrectParent();
 
